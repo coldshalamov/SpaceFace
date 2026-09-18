@@ -49,18 +49,39 @@ const THREAT_COMPOSE_MAX_BIAS = 70;
 const THREAT_COMPOSE_FRACTION = 0.08;
 const TETHER_COMPOSE_MAX_BIAS = 64;
 const TETHER_COMPOSE_FRACTION = 0.12;
-// C1: the threat zoom needs real range — a 0.14 ceiling flattened the 0.10/0.30 curve to a step.
-export const CONTEXT_ZOOM_MAX = 0.42;
-const THREAT_ZOOM_BASE = 0.10;
-const THREAT_ZOOM_RANGE = 0.30;
+// Bounded tactical threat containment (2026-09): the context channel is a gentle, heavily damped
+// viewport expansion only — never speed-based FOV breathing, never snap. Hard ceiling +20% total,
+// passive hostiles nudge +5-12%, a live attacker earns +15-20% by distance. The functional
+// containment machinery (minZoom / group fit below) is untouched by this retune.
+export const CONTEXT_ZOOM_MAX = 0.20;
+const THREAT_ZOOM_BASE = 0.05;
+const THREAT_ZOOM_RANGE = 0.07;
+const ACTIVE_THREAT_ZOOM_BASE = 0.15;
+const ACTIVE_THREAT_ZOOM_RANGE = 0.05;
 const TETHER_ZOOM_BASE = 0.03;
 const TETHER_ZOOM_RANGE = 0.06;
+
+/**
+ * Pure threat-containment zoom bias. `distanceWu` is the composed threat's distance from the
+ * player; `active` marks a contact actively attacking the player. Result is bounded to
+ * [0, CONTEXT_ZOOM_MAX] and monotonic non-decreasing in distance — the further the threat, the
+ * wider the frame needed to keep it, up to the containment ceiling.
+ */
+export function resolveThreatZoomBias(distanceWu, active) {
+  const d = Number.isFinite(distanceWu) ? Math.max(0, distanceWu) : 0;
+  const base = active ? ACTIVE_THREAT_ZOOM_BASE : THREAT_ZOOM_BASE;
+  const range = active ? ACTIVE_THREAT_ZOOM_RANGE : THREAT_ZOOM_RANGE;
+  return Math.min(CONTEXT_ZOOM_MAX, base + clamp01(d / THREAT_COMPOSE_RANGE) * range);
+}
 // U13: slightly tighter than the 0.80 pair contract so an active attacker stays readable inside the
 // 10% margin even when safe-rect clamping and dodge lead compete for focus.
 const ACTIVE_ATTACKER_SAFE_NDC = 0.55;
 const COMPOSITION_BIAS_LERP = 1.6;
 const COMPOSITION_BIAS_SLEW = 90;
-const CONTEXT_ZOOM_LERP = 1.2;
+// Threat-containment damping: 0.6 s half-life (ln2/λ = 0.6). Exponential damp never overshoots,
+// so the widened frame glides out and settles — no throttle pulsing, no aggressive snapping.
+export const CONTEXT_ZOOM_DAMP_HALF_LIFE_S = 0.6;
+const CONTEXT_ZOOM_LERP = Math.log(2) / CONTEXT_ZOOM_DAMP_HALF_LIFE_S;
 const SAFE_VIEW_X = 0.52;
 const SAFE_VIEW_Z = 0.46;
 // F4: lead is measured in SECONDS of velocity, not a world-unit cap — a WU cap shrank the lead
@@ -848,7 +869,7 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
       : Math.min(THREAT_COMPOSE_MAX_BIAS, d * THREAT_COMPOSE_FRACTION);
     fx += ((composedThreat.pos.x - player.pos.x) / d) * bias;
     fz += ((composedThreat.pos.z - player.pos.z) / d) * bias;
-    zoomBias = Math.max(zoomBias, THREAT_ZOOM_BASE + clamp01(d / THREAT_COMPOSE_RANGE) * THREAT_ZOOM_RANGE);
+    zoomBias = Math.max(zoomBias, resolveThreatZoomBias(d, composedIsActive));
   }
 
   const tetherAnchor = resolveTetherCompositionAnchor(state, player, tetherOut);

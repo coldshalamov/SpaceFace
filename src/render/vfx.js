@@ -47,6 +47,8 @@ import {
 } from './particleShards.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { resolveFractureProgress, resolveVeinFracturePattern } from './asteroidMotionPresentation.js';
+import { resolveFunnelMoteStream, TRACTOR_VORTEX_RANGE_WU } from './pickupMotionPresentation.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
@@ -511,6 +513,27 @@ const VFX_LOOT_MAGNET_HZ = 24;
 const LOOT_MAGNET_DRAW_RANGE = TABLE_LOOT_MAGNET_CAP_WU;
 const _lootMagnetFocusScratch = { x: 0, z: 0 };
 const _tableLookAtScratch = { x: 0, z: 0 };
+// Wreck cryo-coolant wisps: dead hulks slowly vent split coolant lines. A cadence-gated scan of
+// the indexed wrecks bucket; per-wreck vent slots are deterministic (id-hashed phase against sim
+// time), so a hulk sighs every couple of seconds instead of shimmering every frame.
+const VFX_WRECK_WISP_HZ = 4;
+const WRECK_WISP_INTERVAL_S = 2.4;
+const WRECK_WISP_MAX_TRACKED = 64;
+const _funnelMoteScratch = { cycle: 0, angle: 0 };
+const _veinPatternScratch = {
+  axisAngle: 0,
+  swell: 0,
+  veins: [{ angle: 0, open: 0 }, { angle: 0, open: 0 }, { angle: 0, open: 0 }],
+};
+
+function hashVfxId(id) {
+  const s = String(id || '');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+  }
+  return h;
+}
 const _arcadeStructuralCullPos = { x: 0, z: 0 };
 const _arcadeStructuralBurstReq = {
   x: 0,
@@ -1076,6 +1099,7 @@ export const vfx = {
     this._arcadeStructuralSerial = 0;
     this._collisionContactTicks = new Map();
     this._collisionMediumTicks = new Map();
+    this._wreckWispSlots = new Map();
     this._collisionPresentationTick = -1;
     this._spawnAdmissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
     this._admissionSerial = 0;
@@ -1392,6 +1416,7 @@ export const vfx = {
     this._beamDamageCueNext?.clear?.();
     this._collisionContactTicks?.clear?.();
     this._collisionMediumTicks?.clear?.();
+    this._wreckWispSlots?.clear?.();
     this._fieldActiveIds?.clear?.();
     this._hexRgbCache?.clear?.();
     this._rcsScaleCache?.clear?.();
@@ -1433,6 +1458,7 @@ export const vfx = {
     this._beamDamageCueNext = null;
     this._collisionContactTicks = null;
     this._collisionMediumTicks = null;
+    this._wreckWispSlots = null;
     this._fieldActiveIds = null;
     this._hexRgbCache = null;
     this._rcsScaleCache = null;
@@ -2077,6 +2103,8 @@ export const vfx = {
     add('mining:stop', () => this._onMiningStop());
     add('mining:tick', (p) => this._onMiningTick(p));
     add('mining:yield', (p) => this._onMiningYield(p));
+    add('asteroid:destroyed', (p) => this._onAsteroidShatter(p, false));
+    add('asteroid:chunked', (p) => this._onAsteroidShatter(p, true));
     add('weapons:vent', (p) => this._onWeaponVent(p));
     add('station:sideEvent', (p) => this._onStationSideEvent(p));
     add('ship:thrust', (p) => this._onThrust(p));
@@ -9620,6 +9648,37 @@ export const vfx = {
     // Drifting dust / debris cloud
     this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.55, 2.2, 5.0, 0.55, 0.0, col,
       (Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9);
+    // Thermal-fracture steam: as the ore body cracks, superheated vapor vents from the vein
+    // faces. Count and size scale with fracture progress — a fresh rock barely hisses while a
+    // nearly-spent one visibly strains toward the shatter. Deterministic vein angles, cosmetic
+    // velocity jitter.
+    const steamTargetId = this._miningBeam ? this._miningBeam.targetId : null;
+    const steamRock = steamTargetId != null ? this._ent(steamTargetId) : null;
+    if (steamRock && steamRock.pos) {
+      const rd = steamRock.data || {};
+      const fracture = resolveFractureProgress(
+        Number.isFinite(rd.oreHP) ? rd.oreHP : steamRock.hull,
+        Number.isFinite(rd.oreHPMax) ? rd.oreHPMax : steamRock.hullMax,
+      );
+      if (fracture > 0.05) {
+        const pattern = resolveVeinFracturePattern(steamTargetId, fracture, _veinPatternScratch);
+        const rockR = steamRock.radius || 8;
+        const nSteam = Math.min(4, 1 + Math.floor(fracture * 3.999));
+        for (let k = 0; k < nSteam; k++) {
+          const vein = pattern.veins[k % pattern.veins.length];
+          if (vein.open <= 0.05) continue;
+          const vdx = Math.cos(vein.angle);
+          const vdz = Math.sin(vein.angle);
+          this._spawnSprite(SPR_PUFF,
+            pos.x + vdx * rockR * 0.35, 0.35, pos.z + vdz * rockR * 0.35,
+            0.7 + Math.random() * 0.4,
+            0.9 + fracture * 1.1, 2.8 + fracture * 2.2,
+            0.28 + vein.open * 0.22, 0.0, '#e8f2f8',
+            vdx * (5 + fracture * 9) + (Math.random() - 0.5) * 3,
+            vdz * (5 + fracture * 9) + (Math.random() - 0.5) * 3);
+        }
+      }
+    }
     // Strong ore-tinted dynamic light at contact — brighter, wider
     this._flashLight({ x: pos.x, z: pos.z }, col, 4.6, 3.8, 155);
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
@@ -9681,6 +9740,47 @@ export const vfx = {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, 0, 1, 0, 16);
     }
+  },
+
+  // Yield shatter — the rock gives way: basalt chunk burst, ore-gem sparkles, a break ring, and
+  // a low thump cue pair. Fires on final depletion (asteroid:destroyed, position in payload) and
+  // on every calved chunk (asteroid:chunked — position comes from the fresh chunk entity).
+  _onAsteroidShatter(p, chunked) {
+    if (!this._scene || !p) return;
+    let pos = p.pos || null;
+    if (!pos && p.chunkId != null) {
+      const chunk = this._ent(p.chunkId);
+      if (chunk && chunk.pos) pos = chunk.pos;
+    }
+    if (!pos) return;
+    const col = oreColor(p.commodityId || p.typeId);
+    // Dark basalt fracture chunks — heavy, fast, upward-popping, short-lived.
+    this._c0.set('#9a8d7c'); this._c1.set('#241d16');
+    const n = Math.max(10, Math.round((chunked ? 10 : 16) * (this._burst || 1)));
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 10 + Math.random() * 26;
+      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.5 + Math.random() * 0.4, 2.4, 0.8, this._c0, this._c1, 1.6, 0, 3 + Math.random() * 6);
+    }
+    // Ore-gem sparkles — the exposed vein glittering as it breaks open.
+    this._c0.set('#ffffff'); this._c1.set(col);
+    for (let k = 0; k < 8; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 6 + Math.random() * 18;
+      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.45 + Math.random() * 0.3, 1.6, 0.25, this._c0, this._c1, 2.2, 0, 4 + Math.random() * 8);
+    }
+    this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, 0.3, 3.0, 8.0, 0.8, 0.0, col, 0, 0);
+    this._spawnSprite(SPR_RING, pos.x, 0.3, pos.z, 0.5, 2.0, 16.0, 0.5, 0.0, col, 0, 0);
+    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, 3.2, 9.0, 0.4, 0.0, '#cbb9a0',
+      (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+    this._flashLight({ x: pos.x, z: pos.z }, col, 5.0, 4.0, 170);
+    this._emitJuiceCue(
+      chunked ? 'presentation.mining.chunk' : 'presentation.mining.shatter',
+      { pos },
+      chunked ? 0.8 : 1.2,
+    );
   },
 
   _onWeaponVent(payload) {
@@ -10299,6 +10399,17 @@ export const vfx = {
       this._lootMagnetLive = 0;
       sub.lootMagnet = 0;
     }
+    // Wreck cryo-coolant wisps — dead hulks sigh split coolant vapor on a slow per-wreck beat.
+    if (this._wreckWispsRelevant()) {
+      const wispStep = this._consumeCadence('_cadenceWreckWisps', dt, VFX_WRECK_WISP_HZ);
+      sub.wreckWisps = wispStep > 0
+        ? (this._updateWreckWisps() > 0 ? 1 : (sub.wreckWisps || 0))
+        : (sub.wreckWisps || 0);
+    } else {
+      this._cadenceWreckWisps = 0;
+      if (this._wreckWispSlots) this._wreckWispSlots.clear();
+      sub.wreckWisps = 0;
+    }
     // Continuous, family-specific swept surfaces replace sparse particle fallthrough. Update
     // an initialized owner even when empty so the full release lifecycle retires, then buffers sleep.
     if (this._fieldFlowRelevant() || this._fieldGeomInitialized) {
@@ -10465,11 +10576,83 @@ export const vfx = {
           0.22 + Math.random() * 0.16, 0.9 + rush * 0.7, 0.0,
           this._c0, this._c1, 2.4, 1.1, 0, roll, 0.7 + rush * 0.5,
         );
+        // Gravimetric funnel mote — inside the vortex range the tractor field itself reads as a
+        // spiral stream converging on the scoop, not just the drop flying home. Deterministic
+        // phase from the drop id + sim time (resolveFunnelMoteStream); velocity aims at the bay.
+        const moteDistSq = pdx * pdx + pdz * pdz;
+        if (moteDistSq < TRACTOR_VORTEX_RANGE_WU * TRACTOR_VORTEX_RANGE_WU) {
+          const mote = resolveFunnelMoteStream(e.id, this._t || 0, _funnelMoteScratch);
+          const t = mote.cycle;
+          const spiralR = (1 - t) * 3.5;
+          const mx = e.pos.x - pdx * t + Math.cos(mote.angle) * spiralR;
+          const mz = e.pos.z - pdz * t + Math.sin(mote.angle) * spiralR;
+          const dl = Math.sqrt(moteDistSq) || 1;
+          this._spawnSprite(SPR_FLASH, mx, 1.0, mz,
+            0.22, 0.55, 0.18, 0.5, 0.0, col,
+            (-pdx / dl) * 36, (-pdz / dl) * 36,
+            1.4, mote.angle);
+        }
       }
       }
     }
     this._lootMagnetLive = drawn;
     return drawn > 0 ? 1 : 0;
+  },
+
+  // -------------------------------------------------------------------------
+  // Wreck cryo-coolant wisps.
+  //
+  // Dead hulks keep one quiet sign of life: split coolant lines sighing pale vapor on a slow
+  // per-wreck beat. Vent slots are deterministic (id-hashed phase against sim time), so the
+  // cadence scan is cheap, the rhythm never shimmers frame-to-frame, and the slot map is bounded
+  // (stale ids expire two intervals after they leave the draw table).
+  // -------------------------------------------------------------------------
+  _wreckWispsRelevant() {
+    const state = this.state;
+    if (!state) return false;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    if (!player || !player.alive || !player.pos) return false;
+    return indexedTypeScan(state, 'wrecks').length > 0;
+  },
+
+  _updateWreckWisps() {
+    const state = this.state;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    if (!player || !player.pos) return 0;
+    const wrecks = indexedTypeScan(state, 'wrecks');
+    const slots = this._wreckWispSlots || (this._wreckWispSlots = new Map());
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : (this._t || 0);
+    const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
+    const drawSq = tableWu * tableWu;
+    let emitted = 0;
+    for (let i = 0; i < wrecks.length; i++) {
+      const e = wrecks[i];
+      if (!e || e.alive === false || e.type !== 'wreck' || !e.pos) continue;
+      const pdx = e.pos.x - player.pos.x;
+      const pdz = e.pos.z - player.pos.z;
+      if (pdx * pdx + pdz * pdz > drawSq) continue;
+      const h = hashVfxId(e.id);
+      const phase = ((h & 0xffff) / 0xffff) * WRECK_WISP_INTERVAL_S;
+      const slot = Math.floor((simTime + phase) / WRECK_WISP_INTERVAL_S);
+      if (slots.get(e.id) === slot) continue;
+      slots.set(e.id, slot);
+      // Vent from a fixed hull breach point (id-hashed azimuth), drifting outward as it cools.
+      const a = (((h >>> 16) & 0xff) / 255) * Math.PI * 2;
+      const breach = (e.radius || 6) * 0.5;
+      this._spawnSprite(SPR_PUFF,
+        e.pos.x + Math.cos(a) * breach, 0.5, e.pos.z + Math.sin(a) * breach,
+        1.6, 0.9, 3.6, 0.20, 0.0, '#cfe8ff',
+        Math.cos(a) * 1.6 + (Math.random() - 0.5) * 1.2,
+        Math.sin(a) * 1.6 + (Math.random() - 0.5) * 1.2);
+      emitted++;
+    }
+    if (slots.size > WRECK_WISP_MAX_TRACKED) {
+      const cutoff = Math.floor(simTime / WRECK_WISP_INTERVAL_S) - 2;
+      for (const [id, slot] of slots) {
+        if (slot < cutoff) slots.delete(id);
+      }
+    }
+    return emitted;
   },
 
   _updateDamageVenting(dt) {

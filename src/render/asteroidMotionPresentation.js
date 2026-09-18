@@ -7,6 +7,9 @@
 //      the rock experiences high-frequency thermal micro-jitter and vein luminance agitation.
 //   3. Impact Wobble: Projectile strikes and kinetic collisions impart rotational recoil wobble
 //      that smoothly damps down over ~1.2s.
+//   4. Thermal Fracture Strain: As the ore body depletes, the rock trembles harder under the beam
+//      and swells a few percent along a deterministic crack axis (transforms only — asteroid
+//      materials are shared/instanced). Yield shatter seeds each chunk's tumble kick.
 //
 // PURE RENDER-ONLY PRESENTATION: Never alters physics positions/radii, zero per-frame garbage.
 
@@ -19,10 +22,79 @@ function hashId(id) {
   return h;
 }
 
+function clamp01(v) {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+// Max axis swell of a fully fractured rock (2.5% — a worked rock reads strained, never ballooned).
+const FRACTURE_SWELL_MAX = 0.025;
+const FRACTURE_VEIN_COUNT = 3;
+const EMPTY_DATA = {};
+
+/**
+ * Pure ore-body fracture progress: 0 at full HP, 1 at depletion. NaN- and sign-safe.
+ * Presentation is monotonic by contract — callers take `max(previous, this)` so a worked rock
+ * never visibly heals.
+ */
+export function resolveFractureProgress(hp, maxHp) {
+  const cur = Number(hp);
+  const max = Number(maxHp);
+  if (!Number.isFinite(cur) || !Number.isFinite(max) || max <= 0) return 0;
+  return clamp01(1 - cur / max);
+}
+
+/**
+ * Deterministic thermal-vein fracture pattern for a rock at a given fracture progress.
+ * Vein angles are stable per asteroid id; each vein's `open` grows monotonically with fracture
+ * (staggered thresholds, so cracks appear one after another). `axisAngle`/`swell` drive the
+ * subtle transform-only strain presentation on shared-material rocks.
+ * Pass `out` ({axisAngle, swell, veins:[{angle, open} x3]}) to stay allocation-free in hot paths.
+ */
+export function resolveVeinFracturePattern(id, fracture, out = null) {
+  const h = hashId(id);
+  const f = clamp01(Number.isFinite(fracture) ? fracture : 0);
+  const rec = out || {
+    axisAngle: 0,
+    swell: 0,
+    veins: Array.from({ length: FRACTURE_VEIN_COUNT }, () => ({ angle: 0, open: 0 })),
+  };
+  rec.axisAngle = (((h >>> 27) & 0x1f) / 31) * Math.PI;
+  rec.swell = f * f;
+  for (let i = 0; i < FRACTURE_VEIN_COUNT; i++) {
+    const vein = rec.veins[i];
+    vein.angle = (((h >>> (i * 8)) & 0xff) / 255) * Math.PI * 2;
+    vein.open = clamp01(f * 1.6 - i * 0.3);
+  }
+  return rec;
+}
+
+/**
+ * Deterministic yield-split pattern for a chunk calved off a parent rock: a bounded tumble kick
+ * (rad/s) and a recoil wobble seed so fresh chunks read as newly shattered, never as clones
+ * drifting in formation. Pure function of (parentId, chunkId).
+ */
+export function resolveYieldSplitPattern(parentId, chunkId) {
+  const h = (hashId(parentId) ^ Math.imul(hashId(chunkId), 0x9e3779b1)) >>> 0;
+  const a = ((h & 0xffff) / 0xffff) * Math.PI * 2;
+  const mag = 0.25 + (((h >>> 16) & 0xff) / 255) * 0.45;
+  return {
+    kickAngle: a,
+    spinX: Math.cos(a) * mag,
+    spinY: (0.5 + (((h >>> 24) & 0xff) / 255)) * mag,
+    spinZ: Math.sin(a) * mag,
+    wobble: 0.08 + (((h >>> 8) & 0xff) / 255) * 0.12,
+  };
+}
+
 export function createAsteroidMotionTracker() {
   const asteroidStates = new Map();
   let busSubscribers = [];
   let currentMinedTargetId = null;
+  const veinScratch = {
+    axisAngle: 0,
+    swell: 0,
+    veins: Array.from({ length: FRACTURE_VEIN_COUNT }, () => ({ angle: 0, open: 0 })),
+  };
 
   function getState(asteroidId) {
     let rec = asteroidStates.get(asteroidId);
@@ -48,6 +120,11 @@ export function createAsteroidMotionTracker() {
         wobbleMag: 0,
         wobblePhase: 0,
         miningAgitation: 0,
+        fracture: 0,
+        scaleBodyRef: null,
+        baseScaleX: 1,
+        baseScaleY: 1,
+        baseScaleZ: 1,
         lastTime: 0,
       };
       asteroidStates.set(asteroidId, rec);
@@ -80,19 +157,35 @@ export function createAsteroidMotionTracker() {
 
   function onMiningContact(payload) {
     if (!payload) return;
-    if (payload.targetId) currentMinedTargetId = payload.targetId;
+    if (payload.targetId != null) currentMinedTargetId = payload.targetId;
   }
 
   function onMiningStop() {
     currentMinedTargetId = null;
   }
 
+  // Fresh-calved chunk: deterministic tumble kick + recoil wobble so the shatter reads as
+  // broken rock, never as a clone drifting in formation. Render-only; sim velocities untouched.
+  function onAsteroidChunked(payload) {
+    if (!payload || payload.chunkId == null) return;
+    const rec = getState(payload.chunkId);
+    const split = resolveYieldSplitPattern(payload.parentId, payload.chunkId);
+    rec.spinX += split.spinX * 0.35;
+    rec.spinY += split.spinY * 0.35;
+    rec.spinZ += split.spinZ * 0.35;
+    rec.wobbleMag = Math.min(0.3, Math.max(rec.wobbleMag, split.wobble + 0.12));
+  }
+
   function bindEvents(bus) {
     if (!bus || typeof bus.on !== 'function') return;
     busSubscribers.push(bus.on('combat:damage', onDamage));
     busSubscribers.push(bus.on('physics:impact', onImpact));
-    busSubscribers.push(bus.on('mining:beamContact', onMiningContact));
+    // `mining:beamContact` is never emitted by the sim — the live beam lifecycle pair is
+    // mining:start / mining:stop (src/systems/mining.js). Keep combat:beamStop as a failsafe.
+    busSubscribers.push(bus.on('mining:start', onMiningContact));
+    busSubscribers.push(bus.on('mining:stop', onMiningStop));
     busSubscribers.push(bus.on('combat:beamStop', onMiningStop));
+    busSubscribers.push(bus.on('asteroid:chunked', onAsteroidChunked));
   }
 
   function unbindEvents() {
@@ -141,9 +234,19 @@ export function createAsteroidMotionTracker() {
       rec.miningAgitation = Math.max(0, rec.miningAgitation - dt * 6.0);
     }
 
+    // 4. Thermal fracture progression — monotonic: a worked rock never visibly heals.
+    //    oreHP/oreHPMax is the sim's ore-body pool (hull/hullMax alias); render-only read.
+    const data = entity.data || EMPTY_DATA;
+    const frac = resolveFractureProgress(
+      Number.isFinite(data.oreHP) ? data.oreHP : entity.hull,
+      Number.isFinite(data.oreHPMax) ? data.oreHPMax : entity.hullMax,
+    );
+    if (frac > rec.fracture) rec.fracture = frac;
+
     if (!reducedMotion && rec.miningAgitation > 0.01) {
       const jitPhase = simTime * 95.0;
-      const mag = rec.miningAgitation * 0.05;
+      // Fractured rock trembles harder under the beam — strain reads before the shatter.
+      const mag = rec.miningAgitation * 0.05 * (1 + rec.fracture);
       jitterX = Math.sin(jitPhase) * mag;
       jitterZ = Math.cos(jitPhase * 1.25) * mag;
     }
@@ -160,6 +263,37 @@ export function createAsteroidMotionTracker() {
 
     body.position.x = jitterX;
     body.position.z = jitterZ;
+
+    // 5. Crack-axis strain swell. Materials are shared/instanced, so the fracture reads through
+    //    transforms only: a ≤2.5% ellipsoid swell along the deterministic vein axis plus a slow
+    //    thermal breathing. Base scale is captured per body object and re-applied absolutely —
+    //    never multiplied — so mesh recreation and repeated frames cannot drift. Bodies without
+    //    a scale interface (minimal test doubles) simply skip the swell.
+    if (body.scale && typeof body.scale.set === 'function') {
+      if (rec.scaleBodyRef !== body) {
+        rec.scaleBodyRef = body;
+        rec.baseScaleX = body.scale.x;
+        rec.baseScaleY = body.scale.y;
+        rec.baseScaleZ = body.scale.z;
+      }
+      if (rec.fracture > 0.01) {
+        const pattern = resolveVeinFracturePattern(entity.id, rec.fracture, veinScratch);
+        const breathe = reducedMotion ? 0
+          : Math.sin(simTime * 7.0 + rec.rotY) * 0.15 * rec.miningAgitation;
+        const s = Math.min(1, pattern.swell + breathe * pattern.swell) * FRACTURE_SWELL_MAX;
+        const ca = Math.cos(pattern.axisAngle);
+        const sa = Math.sin(pattern.axisAngle);
+        const along = 1 + s;
+        const across = 1 - s * 0.4;
+        body.scale.set(
+          rec.baseScaleX * (along * ca * ca + across * sa * sa),
+          rec.baseScaleY,
+          rec.baseScaleZ * (along * sa * sa + across * ca * ca),
+        );
+      } else {
+        body.scale.set(rec.baseScaleX, rec.baseScaleY, rec.baseScaleZ);
+      }
+    }
   }
 
   function prune(activeEntityIds) {
@@ -171,12 +305,18 @@ export function createAsteroidMotionTracker() {
     }
   }
 
+  function getFracture(asteroidId) {
+    const rec = asteroidStates.get(asteroidId);
+    return rec ? rec.fracture : 0;
+  }
+
   return {
     bindEvents,
     unbindEvents,
     updateAsteroidMotion,
     onDamage,
     onImpact,
+    getFracture,
     prune,
   };
 }

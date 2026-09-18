@@ -18,8 +18,81 @@ function hashId(id) {
   return h;
 }
 
+// --- Tractor-beam gravimetric vortex: pure math ---------------------------------------------
+// The vortex is a presentation-only spiral layered on the pickup mesh; the sim's magnet pull
+// (src/systems/mining.js) owns the real motion. These helpers are exported for the VFX funnel
+// stream and for focused tests.
+
+export const TRACTOR_MAGNET_RANGE_WU = 350;   // magnet attractor presentation range
+export const TRACTOR_VORTEX_RANGE_WU = 200;   // inside this the spiral offset is visible
+export const TRACTOR_VORTEX_MAX_RADIUS_WU = 6.0;
+export const TRACTOR_MAGNETIZED_MIN_PULL = 0.1;
+
+/** Pull factor in [0, 1): 0 at/ beyond magnet range, →1 at the scoop. NaN-safe. */
+export function resolveTractorPullFactor(distanceWu) {
+  const d = Number(distanceWu);
+  if (!Number.isFinite(d) || d >= TRACTOR_MAGNET_RANGE_WU) return 0;
+  return Math.max(0, 1 - d / TRACTOR_MAGNET_RANGE_WU);
+}
+
+export function isTractorMagnetized(pullFactor) {
+  return pullFactor > TRACTOR_MAGNETIZED_MIN_PULL;
+}
+
+/** Angular rate (rad/s) of the vortex spiral: spins faster as the pull hardens. */
+export function resolveTractorVortexRate(pullFactor) {
+  const p = Number.isFinite(pullFactor) ? Math.min(1, Math.max(0, pullFactor)) : 0;
+  return 8.0 + p * 12.0;
+}
+
+/**
+ * Spiral offset for a pickup at `distanceWu` with accumulated `vortexAngle` (rad).
+ * Writes { radius, x, z } into `out` (allocated when omitted). Radius collapses both at the
+ * scoop (drop compresses into the intake) and at the vortex boundary (smooth onset).
+ */
+export function resolveTractorVortex(distanceWu, vortexAngle, out = null) {
+  const rec = out || { radius: 0, x: 0, z: 0 };
+  const d = Number(distanceWu);
+  if (!Number.isFinite(d) || d >= TRACTOR_VORTEX_RANGE_WU) {
+    rec.radius = 0;
+    rec.x = 0;
+    rec.z = 0;
+    return rec;
+  }
+  const pull = resolveTractorPullFactor(d);
+  const a = Number.isFinite(vortexAngle) ? vortexAngle : 0;
+  const radius = Math.min(d * 0.15, TRACTOR_VORTEX_MAX_RADIUS_WU * (1 - pull));
+  rec.radius = radius;
+  rec.x = Math.cos(a) * radius;
+  rec.z = Math.sin(a) * radius;
+  return rec;
+}
+
+/** Cargo-bay compression: 1 outside 25 wu, easing to 0.15 at the scoop mouth. */
+export function resolveTractorScaleTarget(distanceWu) {
+  const d = Number(distanceWu);
+  if (!Number.isFinite(d) || d >= 25) return 1.0;
+  return Math.max(0.15, d / 25.0);
+}
+
+/**
+ * Deterministic ambient funnel-mote stream phase for VFX: `cycle` runs 0 (drop rim) → 1 (scoop)
+ * on a ~0.7 s loop keyed to sim time, `angle` precesses so motes describe the funnel wall.
+ * Pure function of (seed, simTime) — safe for tests, no Math.random in the hot path.
+ */
+export function resolveFunnelMoteStream(seed, simTime, out = null) {
+  const rec = out || { cycle: 0, angle: 0 };
+  const h = hashId(seed);
+  const phase = ((h & 0xffff) / 0xffff);
+  const t = Number.isFinite(simTime) ? simTime : 0;
+  rec.cycle = (t * 1.4 + phase) % 1;
+  rec.angle = phase * Math.PI * 2 + t * (3.0 + (((h >>> 16) & 0xff) / 255) * 4.0);
+  return rec;
+}
+
 export function createPickupMotionTracker() {
   const pickupStates = new Map();
+  const vortexScratch = { radius: 0, x: 0, z: 0 };
 
   function getState(pickupId) {
     let rec = pickupStates.get(pickupId);
@@ -62,11 +135,8 @@ export function createPickupMotionTracker() {
       const dz = playerEntity.pos.z - entity.pos.z;
       distToPlayer = Math.hypot(dx, dz);
 
-      // Check if closing in rapidly (magnet attractor range ~ 300 WU)
-      if (distToPlayer < 350) {
-        pullFactor = Math.max(0, 1 - distToPlayer / 350.0);
-        isMagnetized = pullFactor > 0.1;
-      }
+      pullFactor = resolveTractorPullFactor(distToPlayer);
+      isMagnetized = isTractorMagnetized(pullFactor);
     }
 
     // Dynamic tumble acceleration under tractor pull
@@ -80,18 +150,15 @@ export function createPickupMotionTracker() {
     // Magnetic spiral vortex offset
     let vortexOffsetX = 0;
     let vortexOffsetZ = 0;
-    if (!reducedMotion && isMagnetized && distToPlayer < 200) {
-      rec.vortexAngle += dt * (8.0 + pullFactor * 12.0);
-      const vortexRadius = Math.min(distToPlayer * 0.15, 6.0 * (1 - pullFactor));
-      vortexOffsetX = Math.cos(rec.vortexAngle) * vortexRadius;
-      vortexOffsetZ = Math.sin(rec.vortexAngle) * vortexRadius;
+    if (!reducedMotion && isMagnetized && distToPlayer < TRACTOR_VORTEX_RANGE_WU) {
+      rec.vortexAngle += dt * resolveTractorVortexRate(pullFactor);
+      const vortex = resolveTractorVortex(distToPlayer, rec.vortexAngle, vortexScratch);
+      vortexOffsetX = vortex.x;
+      vortexOffsetZ = vortex.z;
     }
 
     // Snapping scale compression into cargo bay
-    let targetScale = 1.0;
-    if (distToPlayer < 25) {
-      targetScale = Math.max(0.15, distToPlayer / 25.0);
-    }
+    const targetScale = resolveTractorScaleTarget(distToPlayer);
     rec.scaleRatio += (targetScale - rec.scaleRatio) * (1 - Math.exp(-12.0 * dt));
 
     // Vertical zero-G levitation bobbing
