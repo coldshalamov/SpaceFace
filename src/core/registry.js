@@ -750,6 +750,17 @@ export function createRegistry(ctx) {
         try {
           this.keepalive(dt);
         } finally {
+          // The runner reserves an input snapshot for every step it is asked to take, tagged with
+          // targetTick = tick + 1. A frozen registry still consumed input this step, so the step
+          // counter must advance (simTime does not — the freeze is a simulation pause, not a skip
+          // of the step itself) and the snapshot must publish. One stepped-but-frozen tick that
+          // stayed silent used to close the runner inside any freeze window that did not also
+          // hold the clock at zero (menu push, sector-shell cook).
+          state.tick += 1;
+          if (tickBoundary && typeof tickBoundary.publishInputCommand === 'function') {
+            tickBoundary.publishInputCommand(state.input, state.tick,
+              typeof input.inputActivityStamp === 'function' ? input.inputActivityStamp() : null);
+          }
           perf.recordStepTotal(perfNow() - stepStart);
         }
         return;

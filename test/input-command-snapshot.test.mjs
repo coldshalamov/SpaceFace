@@ -350,3 +350,38 @@ test('SimulationRunner rejects duplicate boundary publication without leaking a 
   assert.equal(diagnostics.inputCommandSnapshots.pending, 0);
   assert.equal(runner.getPendingCompletedTickCount(), 0);
 });
+
+test('a stepped-but-frozen registry tick still publishes its input snapshot', async () => {
+  const { createGameState } = await import('../src/core/gameState.js');
+  const { createBus } = await import('../src/core/eventBus.js');
+  const { createRegistry } = await import('../src/core/registry.js');
+  const { input } = await import('../src/systems/input.js');
+
+  const state = createGameState(7);
+  // The real input system needs DOM init; headless the keepalive path only needs a tickable
+  // no-op in its place. Restored in the finally below.
+  const realUpdate = input.update;
+  input.update = () => {};
+  // Docked freezes the full tick (screen/menu/sector-cook windows freeze the same way), but the
+  // runner may still be asked to step inside that window: the step consumed input, so the input
+  // snapshot contract still applies. The step counter advances without simTime — a pause of the
+  // simulation, not of the runner's step accounting.
+  try {
+    state.ui.docked = true;
+    const registry = createRegistry({ state, bus: createBus(), helpers: {} });
+    const runner = createSimulationRunner(state, registry);
+    const simTimeBefore = state.simTime;
+    const tickBefore = state.tick;
+
+    runner.advance(LOOP_FIXED_DT, 1);
+
+    assert.equal(state.simTime, simTimeBefore, 'frozen step must not advance the simulation clock');
+    assert.equal(state.tick, tickBefore + 1, 'the consumed step still counts as a step');
+    assert.equal(runner.getDiagnostics().inputBoundaryErrorCount, 0);
+    const completed = {};
+    assert.equal(runner.consumeLatestCompletedTick(completed), 1);
+    assert.equal(completed.tick, tickBefore + 1);
+  } finally {
+    input.update = realUpdate;
+  }
+});
