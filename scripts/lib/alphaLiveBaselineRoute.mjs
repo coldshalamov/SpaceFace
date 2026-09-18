@@ -283,7 +283,21 @@ export async function runBrowserPublicRoute({
     let strandIterations = 0;
     while (Date.now() < dockDeadline) {
       approachSnapshot = await readApproachSnapshot(page);
-      assert.equal(approachSnapshot.playerAlive, true, `player died during public autopilot approach: ${JSON.stringify(approachSnapshot)}`);
+      if (approachSnapshot.playerAlive !== true) {
+        // The combat/law observer is installed before the baseline route starts (when present),
+        // so an approach death can name its killer instead of arriving as a bare hull:0.
+        const observer = await page.evaluate(() => {
+          const obs = window.__M3_DAMAGE_OBSERVER__;
+          if (!obs) return null;
+          return {
+            playerHits: (obs.playerHits || []).slice(-8),
+            deaths: (obs.deaths || []).slice(-3),
+            lawIncidents: (obs.lawIncidents || []).slice(-6),
+            outgoingHits: (obs.outgoingHits || []).length,
+          };
+        }).catch(() => null);
+        assert.fail(`player died during public autopilot approach: ${JSON.stringify(approachSnapshot)} observer=${JSON.stringify(observer)}`);
+      }
       if (await dockPrompt.isVisible().catch(() => false)) break;
       if (!corridorBrakePulsed && approachSnapshot.autopilot?.active === true
         && approachSnapshot.corridor?.inCapture === true && Number(approachSnapshot.speed) > 26) {
