@@ -1369,7 +1369,7 @@ export const vfx = {
     for (const slot of this._lights || []) disposeVfxRoot(slot && slot.obj, disposeState);
     disposeVfxRoot(this._miningBeam && this._miningBeam.mesh, disposeState);
     disposeVfxRoot(this._miningBeam && this._miningBeam.glow, disposeState);
-    for (const key of ['mesh', 'glow', 'band', 'anchor', 'anchorCore', 'targetHalo']) {
+    for (const key of ['mesh', 'glow', 'band', 'anchorCore']) {
       disposeVfxRoot(this._tetherCable && this._tetherCable[key], disposeState);
     }
     disposeVfxRoot(this._arcPreview && this._arcPreview.mesh, disposeState);
@@ -1522,7 +1522,7 @@ export const vfx = {
     add(this._spriteBatches && this._spriteBatches.combustion.mesh);
     if (this._miningBeam) { add(this._miningBeam.mesh); add(this._miningBeam.glow); }
     if (this._tetherCable) {
-      for (const key of ['mesh', 'glow', 'band', 'anchor', 'anchorCore', 'targetHalo']) add(this._tetherCable[key]);
+      for (const key of ['mesh', 'glow', 'band', 'anchorCore']) add(this._tetherCable[key]);
     }
     add(this._arcPreview && this._arcPreview.mesh);
     add(this._masslineReleaseArc && this._masslineReleaseArc.mesh);
@@ -7622,30 +7622,18 @@ export const vfx = {
     band.visible = false;
     this._scene.add(band);
 
-    // The hitch ring used to be 28% of its own radius thick, which at anchor scale drew a ~20px
-    // solid donut of flat additive colour — it read as a HUD element pasted into the world rather
-    // than as the point where a rope is biting into a rock. Thin it to a bright band and let
-    // targetHalo (below) supply the soft outer falloff, so ring + halo together give the same
-    // hot-core / saturated-surround structure as the rope itself.
-    const anchorGeo = new THREE.RingGeometry(0.87, 1.0, 48);
-    anchorGeo.rotateX(-Math.PI / 2);
-    const anchorMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color('#39d0ff'),
-      transparent: true, opacity: 0.52,
-      depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-      forceSinglePass: true,
-      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2,
-    });
-    const anchor = new THREE.Mesh(anchorGeo, anchorMat);
-    anchor.frustumCulled = false;
-    anchor.renderOrder = 12;
-    anchor.visible = false;
-    this._scene.add(anchor);
+    // 2026-09-17 (owner direction): the hitch RING is gone. A closed ring sitting at the contact
+    // point read as the object being lassoed — a loop thrown around the hull — when a tether is
+    // supposed to be a line physically stuck to it. The attachment is now the hot `anchorCore`
+    // point alone (below); the rope runs straight into it with no loop around the body.
+    // (The former `anchor` RingGeometry and the large-anchor `targetHalo` outline were both this
+    // same read and were removed together.)
 
     // The hitch core: a genuine soft hot point, not a flat disc. A CircleGeometry fans from a single
     // centre vertex, so painting the centre white and the rim black and blending additively gives a
     // real radial falloff for the cost of one vertex-colour attribute — the same white-core /
-    // coloured-surround structure the rope has, at the point where the force is applied.
+    // coloured-surround structure the rope has, at the point where the force is applied. It is now
+    // the ONLY attachment marker, so it carries the whole "the line is biting here" read.
     const anchorCoreGeo = new THREE.CircleGeometry(0.42, 32);
     anchorCoreGeo.rotateX(-Math.PI / 2);
     {
@@ -7668,23 +7656,8 @@ export const vfx = {
     anchorCore.visible = false;
     this._scene.add(anchorCore);
 
-    const targetHaloGeo = new THREE.RingGeometry(0.92, 1.0, 56);
-    targetHaloGeo.rotateX(-Math.PI / 2);
-    const targetHaloMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color('#39d0ff'),
-      transparent: true, opacity: 0.18,
-      depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-      forceSinglePass: true,
-      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
-    });
-    const targetHalo = new THREE.Mesh(targetHaloGeo, targetHaloMat);
-    targetHalo.frustumCulled = false;
-    targetHalo.renderOrder = 8;
-    targetHalo.visible = false;
-    this._scene.add(targetHalo);
-
     this._tetherCable = {
-      mesh, glow, band, anchor, anchorCore, targetHalo, SEG, BANDS,
+      mesh, glow, band, anchorCore, SEG, BANDS,
       along, side, glowAlong, glowSide,
       wasActive: false,
       lastSourceId: null,
@@ -8100,7 +8073,7 @@ export const vfx = {
     const whipT = snapping ? cable.snapAge : cable.latchAge;
     const whipEnv = snapping ? snapEnv * snapEnv : latchEnv * latchEnv;
     // All event transients share one accessibility choke point. The steady load-colored cable,
-    // banding, and anchor remain; reduced motion/flash removes the whip/snap modulation itself.
+    // banding, and contact point remain; reduced motion/flash removes the whip/snap modulation itself.
     const transientScale = masslineA11y.pulseScale;
     const visualWhip = whipEnv * transientScale;
     const visualSnap = snapEnv * transientScale;
@@ -8249,24 +8222,17 @@ export const vfx = {
     }
     cable.band.geometry.attributes.position.needsUpdate = true;
     const isLargeAnchor = tr >= 18 || anchorEnt.type === 'station';
-    cable.anchor.position.set(mx, 1.62, mz);
     const anchorScale = isLargeAnchor
       ? Math.max(6.5, Math.min(28, tr * 0.24))
       : Math.max(3.8, Math.min(18, tr * 0.16));
-    // The hitch breathes with load and shivers with strain, so the point where the force is actually
-    // applied is the second-loudest thing after the rope itself. The ring used to sit at a fixed
-    // radius on a fixed opacity, which read as a flat HUD donut pasted onto the world.
+    // The contact point breathes with load and shivers with strain, so the spot where the force is
+    // actually applied is the second-loudest thing after the rope itself. It is the only attachment
+    // marker now — no ring, so no lasso read (owner direction 2026-09-17).
     const hitchBreath = 1 + l * 0.16
       + Math.sin(motionTime * (6 + l * 9)) * (0.03 + s * 0.09) * masslineA11y.motionAmplitudeScale;
-    cable.anchor.scale.setScalar(anchorScale * hitchBreath);
-    cable.anchor.rotation.y = motionTime * (1.8 + l * 2.6 + cable.reelGlow * 4.0);
-    cable.anchor.material.color.copy(this._ctmp);
-    cable.anchor.material.opacity = Math.min(1,
-      (0.52 + 0.40 * l + visualWhip * 0.32 + cable.reelGlow * 0.34)
-      * cable.fade * masslineA11y.opacityScale);
     cable.anchorCore.position.set(mx, 1.64, mz);
-    // The hitch core is the white-hot point of contact — it stays near-white while the ring keeps
-    // the tension colour, mirroring the core/halo split on the rope itself.
+    // The hitch core is the white-hot point of contact — it stays near-white so the line reads as
+    // biting into the hull, the same core/halo split the rope itself uses.
     cable.anchorCore.scale.setScalar(Math.max(1.4, anchorScale * (0.44 + l * 0.16)) * hitchBreath);
     cable.anchorCore.rotation.y = -motionTime * (2.4 + l * 3.2);
     cable.anchorCore.material.color.copy(this._ctmp).lerp(this._tetherColorWhite,
@@ -8274,21 +8240,6 @@ export const vfx = {
     cable.anchorCore.material.opacity = Math.min(1,
       (0.72 + 0.28 * l + visualWhip * 0.28 + cable.reelGlow * 0.42)
       * cable.fade * masslineA11y.opacityScale);
-    // Body outline for large anchors only — "this whole thing is what you have hold of". A small
-    // rock does not need it: the hitch ring plus its gradient core already reads, and drawing a
-    // second big ring around an ordinary asteroid put a flat disc over the play area for no
-    // information gain.
-    cable.targetHaloActive = isLargeAnchor;
-    if (cable.targetHalo) {
-      const haloLocal = this._toLocalXZ(anchorEnt.pos.x, anchorEnt.pos.z, this._entityLocalXZ);
-      cable.targetHalo.position.set(haloLocal.x, 1.58, haloLocal.z);
-      cable.targetHalo.scale.setScalar(Math.max(anchorScale * 1.6, tr * 1.08));
-      cable.targetHalo.rotation.y = motionTime * 0.65;
-      cable.targetHalo.material.color.copy(this._ctmp);
-      cable.targetHalo.material.opacity = isLargeAnchor
-        ? (0.20 + 0.20 * l + visualWhip * 0.12) * cable.fade * masslineA11y.opacityScale
-        : 0;
-    }
     setTetherCableVisible(cable, true);
 
     // Sparks crawling the line — the about-to-part read, and the RAREST thing this effect does.
@@ -13839,9 +13790,7 @@ function setTetherCableVisible(cable, visible) {
   if (cable.mesh) cable.mesh.visible = visible;
   if (cable.glow) cable.glow.visible = visible;
   if (cable.band) cable.band.visible = visible;
-  if (cable.anchor) cable.anchor.visible = visible;
   if (cable.anchorCore) cable.anchorCore.visible = visible;
-  if (cable.targetHalo) cable.targetHalo.visible = visible && cable.targetHaloActive === true;
 }
 
 function sameTetherIdentity(a, b) {
