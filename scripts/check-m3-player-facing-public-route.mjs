@@ -559,25 +559,54 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   } catch (err) {
     // The death route is the assertion under test — a timeout needs the combat state at expiry:
     // did the quarry die first, disengage, or simply fail to out-damage a braking starter ship?
-    const lastCombat = await page.evaluate(() => {
+    const lastCombat = await page.evaluate(async () => {
       const state = window.SF?.state;
       const player = state && state.entities && state.entities.get(state.playerId);
       const target = state && state.entities && state.entities.get(state.player && state.player.targetId);
       const hits = (window.__M3_DAMAGE_OBSERVER__ && window.__M3_DAMAGE_OBSERVER__.playerHits) || [];
       const lastHit = hits.at(-1) || null;
+      const ai = target && target.data && target.data.ai;
+      let authorization = null;
+      let protection = null;
+      try {
+        const mod = await import('/src/ai/engagementAuthority.js');
+        protection = target && player ? mod.protectedStationAt(state, player) : null;
+        authorization = target && player ? {
+          strike: mod.authorizeAIEngagement({
+            state, self: target, target: player,
+            objectiveReason: 'combat_doctrine:interceptor_flyby:strike',
+          }),
+          ingress: mod.authorizeAIEngagement({
+            state, self: target, target: player,
+            objectiveReason: 'combat_doctrine:interceptor_flyby:ingress',
+          }),
+        } : null;
+      } catch (e) { authorization = { error: String(e && e.message || e) }; }
       return {
         mode: state && state.mode,
         playerAlive: player && player.alive !== false,
         vitals: player ? { shield: player.shield, armor: player.armor, hull: player.hull } : null,
         playerSpeed: player && player.vel ? Math.hypot(player.vel.x || 0, player.vel.z || 0) : null,
+        playerPos: player && player.pos ? { x: Math.round(player.pos.x), z: Math.round(player.pos.z) } : null,
         targetId: target && target.id,
         targetAlive: target ? target.alive !== false && Number(target.hull || 0) > 0 : null,
         targetVitals: target ? { shield: target.shield, armor: target.armor, hull: target.hull } : null,
         targetDist: target && player ? Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z) : null,
-        targetAiState: target && target.data && target.data.ai ? {
-          state: target.data.ai.state || null, morale: target.data.ai.morale ?? null,
-          disengaged: target.data.ai.disengaged ?? null,
+        targetPos: target && target.pos ? { x: Math.round(target.pos.x), z: Math.round(target.pos.z) } : null,
+        targetVel: target && target.vel ? { x: +target.vel.x.toFixed(1), z: +target.vel.z.toFixed(1) } : null,
+        targetRot: target && typeof target.rot === 'number' ? +target.rot.toFixed(2) : null,
+        targetAi: ai ? {
+          activity: ai.activity || null, roe: ai.roe || null, motive: ai.motive || null,
+          engagementTrigger: ai.engagementTrigger || null, combatDoctrineId: ai.combatDoctrineId || null,
+          zoneId: ai.zoneId || null, approachTelegraph: ai.approachTelegraph || null,
+          noFireResponseWindowS: ai.noFireResponseWindowS ?? null,
+          forceFlee: ai.forceFlee ?? null, fsm: ai.fsm || null,
+          pirateDisengaged: ai.pirateDisengaged ?? null, motiveSatisfied: ai.motiveSatisfied ?? null,
+          passive: ai.passive ?? null, doctrinePhase: ai.doctrinePhase || null,
+          combatDoctrine: ai.combatDoctrine ? { phase: ai.combatDoctrine.phase, fireWindow: ai.combatDoctrine.fireWindow } : null,
         } : null,
+        authorization,
+        protection: protection ? { stationId: protection.stationId, radius: protection.radius } : null,
         hitCount: hits.length,
         lastHitAt: lastHit && lastHit.atTick,
         simTick: state && state.tick,
