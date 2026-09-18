@@ -493,6 +493,8 @@
     "check:recommended-next": "node scripts/check-recommended-next-action.mjs",
     "check:tech-tree-guidance": "node scripts/check-tech-tree-guidance.mjs",
     "check:tech-display-names": "node scripts/check-tech-display-names.mjs",
+    "check:progression:verbs": "node scripts/check-progression-verb-audit.mjs",
+    "check:build-identities": "node scripts/check-build-identities.mjs",
     "check:market-nav": "node scripts/check-market-navigation.mjs",
     "check:market-first-loop": "node scripts/check-market-first-loop-runtime.mjs",
     "check:localmap-routes": "node scripts/check-localmap-route-metrics.mjs",
