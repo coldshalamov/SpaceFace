@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { ActivityKind, RulesOfEngagement } from '../src/ai/doctrine.js';
+import { authorizeAIEngagement } from '../src/ai/engagementAuthority.js';
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import {
   CERES_ACTIVITY_POCKETS,
@@ -1361,4 +1362,103 @@ test('failed lease release and successor change: failed release reports false, f
     'exact combat pre-claim shape is restored on successful release');
   assert.deepEqual(jobPatrol.data.intent, foreignIntentSnapshot,
     'foreign intent successor was never overwritten');
+});
+
+test('shared-responder livelock: losing incident reconcile must not retask responders bound to a live incident', () => {
+  const h = bootHarness();
+
+  // Incident A: a non-lawful pirate attacks the lawful hauler inside the jurisdiction -> the
+  // nearest patrols are bound to the pirate (hostile_fire).
+  const pirate = h.sim.spawn({
+    type: 'ship',
+    team: 1,
+    factionId: 'faction_reaver',
+    pos: { x: 220, z: 60 },
+    hull: 150,
+    hullMax: 150,
+    radius: 7,
+    data: { ai: {}, combat: {}, intent: { fire: false } },
+  });
+  h.bus.emit('combat:damage', {
+    attackerId: pirate.id,
+    targetId: h.victim.id,
+    applied: 15,
+    amount: 15,
+    pos: { x: h.victim.pos.x, z: h.victim.pos.z },
+  });
+  const incidentA = Object.values(h.state.lawSecurity.incidents)[0];
+  assert.ok(incidentA, 'pirate incident must open');
+  h.state.simTime = incidentA.dispatchAt;
+  h.law.update(SIM_DT, h.state);
+  assert.equal(incidentA.status, 'responding');
+  assert.ok(incidentA.responderIds.length >= 1);
+  for (const id of incidentA.responderIds) {
+    const resp = h.responders.find((r) => r.id === id);
+    assert.equal(resp.data.ai.witnessIncidentId, incidentA.id);
+    assert.equal(resp.data.ai.securityTargetId, pirate.id);
+  }
+
+  // Incident B: the player attacks a second lawful hauler -> dispatch legitimately retasks the
+  // same nearest patrols onto the player (shared responderIds across incidents).
+  const victimB = h.sim.spawn(makeShipEntitySpec('ship_mule', {
+    team: 2,
+    factionId: 'faction_scn',
+    pos: { x: 140, z: 0 },
+  }));
+  victimB.data.trafficRole = 'hauler';
+  h.state.tick = 1000;
+  h.bus.emit('combat:damage', {
+    attackerId: h.player.id,
+    targetId: victimB.id,
+    applied: 20,
+    amount: 20,
+    pos: { x: victimB.pos.x, z: victimB.pos.z },
+  });
+  const incidentB = Object.values(h.state.lawSecurity.incidents)
+    .find((inc) => inc.id !== incidentA.id);
+  assert.ok(incidentB, 'player incident must open');
+  h.state.simTime = incidentB.dispatchAt;
+  h.law.update(SIM_DT, h.state);
+  assert.equal(incidentB.status, 'responding');
+  assert.ok(incidentB.responderIds.length >= 1, 'player incident must claim responders');
+  const boundToB = h.responders.filter((r) => incidentB.responderIds.includes(r.id));
+  for (const resp of boundToB) {
+    assert.equal(resp.data.ai.witnessIncidentId, incidentB.id);
+    assert.equal(resp.data.ai.securityTargetId, h.player.id);
+  }
+  const boundTicks = boundToB.map((resp) => resp.data.ai.activity.startedTick);
+
+  // Six hundred ticks pass. Pre-fix, every reconcile of incident A re-authorized the shared
+  // responders back to the pirate and incident B re-authorized them to the player, resetting
+  // activity.startedTick every tick -> the no-fire response window never elapsed -> nobody
+  // could ever fire (live route: hits froze for 15000+ ticks, all incidents 'responding').
+  for (let i = 1; i <= 600; i++) {
+    h.state.tick = 1000 + i;
+    h.state.simTime += SIM_DT;
+    h.law.update(SIM_DT, h.state);
+  }
+
+  for (let i = 0; i < boundToB.length; i++) {
+    const ai = boundToB[i].data.ai;
+    assert.equal(ai.witnessIncidentId, incidentB.id,
+      'a foreign incident reconcile must not steal the binding');
+    assert.equal(ai.securityTargetId, h.player.id,
+      'securityTargetId must stay on the binding incident attacker');
+    assert.equal(ai.activity.startedTick, boundTicks[i],
+      'activity.startedTick must not reset while ownership is stable');
+  }
+
+  // The response window has long elapsed: with a fire-phase objective reason the bound chaser
+  // clears every structural gate — lawful, non-passive, hostile-confirmed, protected-target
+  // security_response enforcement — and is authorized to fire on the player inside the volume.
+  const chaser = boundToB.find((resp) => resp.data.ai.securityTargetId === h.player.id);
+  assert.ok(chaser);
+  const doctrineId = chaser.data.ai.combatDoctrineId;
+  const verdict = authorizeAIEngagement({
+    state: h.state,
+    self: chaser,
+    target: h.player,
+    objectiveReason: `combat_doctrine:${doctrineId}:strike`,
+  });
+  assert.equal(verdict.ok, true, `bound chaser must be cleared to engage: ${JSON.stringify(verdict)}`);
 });

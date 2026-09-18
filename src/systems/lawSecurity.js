@@ -1417,9 +1417,17 @@ export const lawSecurity = {
     const liveResponders = [];
     for (const id of incident.responderIds) {
       const responder = entityById(state, id);
-      if (responder && responder.alive !== false && isLawful(responder)) {
-        liveResponders.push(responder);
-      }
+      if (!responder || responder.alive === false || !isLawful(responder)) continue;
+      // One responder, one incident: a unit bound to another live incident stays foreign-owned.
+      // Shared responderIds are how a busy jurisdiction retasks the same patrols; without the
+      // guard each incident's reconcile flips securityTargetId back to its own attacker and
+      // _authorizeResponder resets activity.startedTick, so the no-fire response window never
+      // elapses and the shared units orbit every offender without firing (live route 2026-09-19:
+      // two unresolved npc_piracy incidents plus the player_piracy incident all listed the same
+      // three responders; incoming hits froze for 15000+ ticks with every incident 'responding').
+      const boundTo = responder.data && responder.data.ai && responder.data.ai.witnessIncidentId;
+      if (boundTo != null && boundTo !== incident.id && hasLiveIncident(state, boundTo)) continue;
+      liveResponders.push(responder);
     }
 
     const anchor = incident.victimAnchor;
