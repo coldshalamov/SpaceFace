@@ -7,12 +7,10 @@
  * Worker and called directly on the main thread). Both hosts get the full
  * animation.
  *
- * Direction (2026-09): five authored figures emerge from the same signal field.
- * Pilot / courier / anchorage / massline / singularity; geometry is shared by
- * GL, main-thread 2D, and worker 2D. The existing 32.5-second clock is unchanged.
- * Grade (2026-09): field-dominant and ghostly. The figures stay half-buried in
- * the swirl — a pseudo-abstract phosphor visualizer with a barely-visible
- * horror/cyberpunk cast — rather than reading as clean illustration plates.
+ * Direction (2026-09): CONTINUUM — coexisting, solid projected sculptures.
+ * No scene holds, source resets, or fixed-center tableaux. The former 32.5 s
+ * phase clock remains only for legacy telemetry / the source-free fallback.
+ * Continuous source bodies, light and flow use unwrapped independent clocks.
  * The picture is a single continuous simulation — every frame is derived from
  * the previous frame (ping-pong feedback) through a curl-noise flow field,
  * slow zoom / rotation / kaleidoscope folding, phosphor decay and hue drift,
@@ -25,7 +23,7 @@
  * the animation — never the game.
  */
 
-// SPACEFACE_SIGNAL_TABLEAUX_INTEGRATION_2
+// SPACEFACE_SIGNAL_TABLEAUX_INTEGRATION_4_CONTINUUM
 import { createSignalTableaux } from './loadingSignalTableaux.js';
 
 // Phase timing shared with the DOM telemetry below.
@@ -42,7 +40,7 @@ const LOOP_SECONDS = ACT_COUNT * ACT_SECONDS;
  */
 function createEngine(host) {
   'use strict';
-  let tableau = host.tableaux ? host.tableaux({ ...host, readFrequently: true }) : null;
+  let tableau = host.tableaux ? host.tableaux(host) : null;
 
   const ACTS = 5;
   const ACT_LEN = 6.5;
@@ -101,34 +99,31 @@ function createEngine(host) {
     }
     return lut;
   }
-  // Ghost-field grade (2026-09): mids sit ~30% lower so the swirl reads as dark
-  // phosphor over blood-black; accents carry a bruised magenta / dried-blood
-  // cast. Hot tips are preserved — bloom and the anamorphic streak need them.
   const PALETTES = [
-    { // 0 · GENESIS — abyssal teal condensation
-      main: buildLUT(['#010708', '#03161a', '#073236', '#0d5a58', '#1f9a86', '#a8e8d8']),
-      accent: buildLUT(['#0c060f', '#221228', '#471a3e', '#7d2f52', '#c06a7d', '#f2c9d4']),
-      bg: '#020506',
+    { // 0 · GENESIS — deep teal condensation
+      main: buildLUT(['#020c0e', '#052226', '#0a4a4e', '#12827e', '#2cc4ae', '#b8fff0']),
+      accent: buildLUT(['#0a0714', '#241a3e', '#4b3a72', '#7d68ad', '#b3a3e0', '#efeaff']),
+      bg: '#030809',
     },
-    { // 1 · CURRENTS — toxic flow
-      main: buildLUT(['#020a07', '#052417', '#0a4a2a', '#127a40', '#37c878', '#c2f2cf']),
-      accent: buildLUT(['#040c12', '#0c2438', '#144a62', '#1f7a8e', '#4fc4d4', '#c8ecf2']),
-      bg: '#020604',
+    { // 1 · CURRENTS — emerald flow
+      main: buildLUT(['#03100b', '#08321f', '#0f6b3c', '#1cae5c', '#54eca0', '#d6ffe4']),
+      accent: buildLUT(['#061019', '#123452', '#1f6a8e', '#39a8c4', '#7fe0ea', '#e0fbff']),
+      bg: '#040a08',
     },
-    { // 2 · BLOOM — ultraviolet ritual
-      main: buildLUT(['#090412', '#1f0e34', '#431c58', '#7a2c7a', '#b85a9e', '#f2c8e2']),
-      accent: buildLUT(['#100902', '#38240a', '#6e5412', '#a8821a', '#d8a83e', '#f2e2b0']),
-      bg: '#070410',
+    { // 2 · BLOOM — jewel symmetry
+      main: buildLUT(['#0d0616', '#2c1440', '#5c2a6e', '#a0489a', '#e08ac2', '#ffe9f6']),
+      accent: buildLUT(['#160d02', '#48300a', '#8a6a14', '#cfa51e', '#ffd873', '#fff7dc']),
+      bg: '#0a0510',
     },
-    { // 3 · TEMPEST — ember against corpse-light
-      main: buildLUT(['#0e0302', '#330f04', '#702a08', '#b85a14', '#e89a3e', '#f2dcae']),
-      accent: buildLUT(['#030710', '#0d2240', '#1c4470', '#35688e', '#5fa8bc', '#c8e2ea']),
-      bg: '#080302',
+    { // 3 · TEMPEST — fire against ice
+      main: buildLUT(['#120503', '#401505', '#8a3a0c', '#d97a1e', '#ffc35e', '#fff0d0']),
+      accent: buildLUT(['#040a18', '#123058', '#2a5f9a', '#4f9ad4', '#93d4f2', '#e4f6ff']),
+      bg: '#0c0503',
     },
-    { // 4 · SINGULARITY — void collapse
-      main: buildLUT(['#03030c', '#0d0c30', '#1e1c58', '#3c3486', '#6e62b8', '#c2bce8']),
-      accent: buildLUT(['#0a020c', '#2a0a2e', '#5c1648', '#96305e', '#c85a7e', '#f2b8c8']),
-      bg: '#03030a',
+    { // 4 · SINGULARITY — indigo collapse
+      main: buildLUT(['#050512', '#141244', '#2c2a7e', '#5a54b8', '#9a92e8', '#eae6ff']),
+      accent: buildLUT(['#0d0310', '#3a0f3e', '#78216e', '#b8489a', '#eb8cc8', '#ffe4f2']),
+      bg: '#050510',
     },
   ];
 
@@ -166,6 +161,7 @@ function createEngine(host) {
   let frameCounter = 0;
   let labAct = -1;
   let labFreeze = false;
+  let needsPaint = true;
 
   // Interleaved gradient noise (Jimenez 2014) — spectrally quiet dither that
   // reads as film grain instead of Bayer crosshatch. Animated per frame.
@@ -187,8 +183,8 @@ function createEngine(host) {
   // ─────────────────────────────────────────────────────────────────────────
   const FLOWP = [
     // speed fscale drift  swirl attract bright sym  energy
-    { sp: 14, fs: 0.055, dr: 0.10, sw: 0.24, at: 0.05, br: 0.30, sym: 0, en: 0.22 },
-    { sp: 34, fs: 0.105, dr: 0.24, sw: 0.44, at: 0.00, br: 0.42, sym: 0, en: 0.38 },
+    { sp: 14, fs: 0.055, dr: 0.10, sw: 0.10, at: 0.05, br: 0.30, sym: 0, en: 0.22 },
+    { sp: 30, fs: 0.105, dr: 0.24, sw: 0.30, at: 0.00, br: 0.42, sym: 0, en: 0.38 },
     { sp: 22, fs: 0.160, dr: 0.16, sw: 0.85, at: 0.12, br: 0.50, sym: 1, en: 0.52 },
     { sp: 58, fs: 0.290, dr: 0.55, sw: -0.4, at: -0.1, br: 0.66, sym: 0, en: 0.85 },
     { sp: 26, fs: 0.090, dr: 0.05, sw: 1.30, at: 0.65, br: 0.72, sym: 0, en: 0.62 },
@@ -532,7 +528,7 @@ function createEngine(host) {
       const c2 = v.getContext('2d');
       const g = c2.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.36, W / 2, H / 2, Math.max(W, H) * 0.72);
       g.addColorStop(0, 'rgba(0,0,0,0)');
-      g.addColorStop(1, 'rgba(0,0,0,0.32)');
+      g.addColorStop(1, 'rgba(0,0,0,0.24)');
       c2.fillStyle = g;
       c2.fillRect(0, 0, W, H);
       vignette = v;
@@ -558,12 +554,14 @@ function createEngine(host) {
   }
 
   function frame(now) {
+    rafId = null;
     if (!running) return;
+    if ((reduced || labFreeze) && !needsPaint) return;
     const t0 = Date.now();
     let dt = lastNow ? (now - lastNow) / 1000 : 1 / 60;
     lastNow = now;
     dt = clamp(dt, 0.001, 0.05);
-    if (!labFreeze) T += dt;
+    if (!labFreeze && !reduced) T += dt;
 
     progressShown += (progress - progressShown) * Math.min(1, dt * 3);
     if (T - lastPointerAt > 4) {
@@ -577,12 +575,10 @@ function createEngine(host) {
     const act = actIndexAt(tt);
     const uLocal = (tt % ACT_LEN) / ACT_LEN;
     let glitch = 0;
-    if (labAct < 0) {
+    if (labAct < 0 && !tableau?.continuous) {
       if (uLocal > 0.925) glitch = (uLocal - 0.925) / 0.075;
       else if (uLocal < 0.055) glitch = 1 - uLocal / 0.055;
-      // Ghost-field grade: seams carry analog unrest (tear/dropout), but reduced
-      // motion still gets none of it — that zero is an accessibility contract.
-      glitch *= reduced ? 0 : 0.45;
+      glitch *= reduced ? 0 : 0.18;
     }
     // CRT power-on effect only lives for the first 0.9s of phase 1 — after
     // that it must get out of the way (a stale multiplier here once doubled
@@ -590,7 +586,7 @@ function createEngine(host) {
     const powerOn = (labAct === 0 || (labAct < 0 && act === 0 && tt < ACT_LEN))
       ? (tt < 0.9 ? tt / 0.9 : -1) : -1;
 
-    if (!labFreeze) {
+    if (!tableau?.continuous && (!labFreeze || needsPaint)) {
       skipScene = frameCostAvg > 24 && (frameCounter & 1) === 1;
       if (lastAct !== act && lastAct >= 0) { decaySnap.set(decay); snapT = T; }
       lastAct = act;
@@ -608,22 +604,25 @@ function createEngine(host) {
       }
     }
 
-    emitCells(act, glitch, powerOn);
+    if (!tableau?.continuous) emitCells(act, glitch, tableau ? -1 : powerOn);
+    if (tableau) {
+      try { tableau.composeFallback(ctx, W, H, T, act, reduced, dt); }
+      catch { tableau.dispose(); tableau = null; }
+    }
+    needsPaint = false;
 
     if (scanPattern) {
       const oldAlpha = ctx.globalAlpha;
-      ctx.globalAlpha = 0.34;
+      ctx.globalAlpha = tableau?.continuous ? 0.06 : 0.34;
       ctx.fillStyle = scanPattern;
       ctx.fillRect(0, 0, W, H);
       ctx.globalAlpha = oldAlpha;
     }
     const bandY = ((T * 0.12) % 1) * H;
-    const grad = ctx.createLinearGradient(0, bandY - 14, 0, bandY + 14);
-    grad.addColorStop(0, 'rgba(255,255,255,0)');
-    grad.addColorStop(0.5, 'rgba(220,255,250,0.045)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, bandY - 14, W, 28);
+    if (!reduced && !tableau) {
+      ctx.fillStyle = 'rgba(80,160,145,0.018)';
+      ctx.fillRect(0, bandY-1, W, 2);
+    }
     if (vignette) ctx.drawImage(vignette, 0, 0, W, H);
 
     drawWaveform();
@@ -633,7 +632,8 @@ function createEngine(host) {
 
     frameCostAvg = frameCostAvg * 0.92 + (Date.now() - t0) * 0.08;
     frameCounter++;
-    rafId = host.raf(frame);
+    needsPaint = false;
+    if (!reduced && !labFreeze) rafId = host.raf(frame);
   }
 
   function init(msg) {
@@ -673,7 +673,7 @@ function createEngine(host) {
           lastPointerAt = T;
           break;
         case 'destroy':
-          if (tableau) tableau.dispose();
+          if (tableau) tableau.dispose();ctx=null;waveCtx=null;
           // fall through: a normal stop retains the resources needed for resume
         case 'stop':
           running = false;
@@ -681,13 +681,16 @@ function createEngine(host) {
           rafId = null;
           break;
         case 'start':
-          if (!running && ctx) { running = true; lastNow = 0; rafId = host.raf(frame); }
+          if (!running && ctx) { running = true; needsPaint = true; lastNow = 0; rafId = host.raf(frame); }
           break;
         case 'lab':
-          if (msg.act !== undefined) labAct = Number(msg.act);
+          if (msg.act !== undefined) labAct = Number.isInteger(Number(msg.act)) ? clamp(Number(msg.act), -1, 4) : -1;
           labFreeze = !!msg.freeze;
-          if (msg.t !== undefined) T = Number(msg.t);
+          if (msg.t !== undefined && Number.isFinite(Number(msg.t))) T = Math.max(0, Number(msg.t));
           if (msg.reduced !== undefined) reduced = !!msg.reduced;
+          if(msg.clear){lum.fill(0);decay.fill(0);decaySnap.fill(0);emittedKey.fill(-2);lastAct=-1;if(tableau)tableau.resetHistory();}
+          needsPaint = true;
+          if (running && rafId == null) rafId = host.raf(frame);
           break;
       }
     },
@@ -731,6 +734,8 @@ const GLSL_SCENE = `
 uniform sampler2D uPrev;
 uniform sampler2D uTableau;
 uniform float uTableauActive;
+uniform float uSignalStep;
+uniform float uHardShadow;
 uniform vec4 uWarp, uFlow, uLook, uDrive, uAux;
 uniform vec3 uPalA, uPalB, uPalC, uPalD;
 
@@ -747,10 +752,16 @@ vec3 hueRot(vec3 c, float a){
   return c*ca + cross(k, c)*sin(a) + k*dot(k, c)*(1.0-ca);
 }
 vec2 curl2(vec2 p){
-  float e = 0.14;
-  float a = gfbm(p + vec2(0.0, e)) - gfbm(p - vec2(0.0, e));
-  float b = gfbm(p + vec2(e, 0.0)) - gfbm(p - vec2(e, 0.0));
-  return vec2(a, -b)/(2.0*e);
+  // Analytical derivative of the existing value-noise fBm. Four lattice
+  // evaluations instead of sixteen finite-difference fBm evaluations.
+  vec2 grad=vec2(0.0);float amp=0.5,freq=1.0;
+  for(int k=0;k<4;k++){
+    vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f),du=6.0*f*(1.0-f);
+    float a=gh2(i),b=gh2(i+vec2(1.0,0.0)),c=gh2(i+vec2(0.0,1.0)),d=gh2(i+vec2(1.0,1.0));
+    grad+=amp*freq*du*vec2(mix(b-a,d-c,u.y),mix(c-a,d-b,u.x));
+    p=p*2.03+7.31;amp*=0.5;freq*=2.03;
+  }
+  return vec2(grad.y,-grad.x);
 }
 
 // ── emitters (blended by modeBlend so phases morph, never cut) ─────────────
@@ -836,6 +847,7 @@ vec3 inj4(vec2 cc, float b, float e, float uL){
   return s;
 }
 vec3 injMode(float m, vec2 cc, float b, float e, float uL){
+  m = mod(m, 5.0); // horizon -> pilot is a cyclic hand-off, not a sixth emitter
   if (m < 0.5) return inj0(cc, b, e);
   if (m < 1.5) return inj1(cc, b, e);
   if (m < 2.5) return inj2(cc, b, e);
@@ -861,7 +873,7 @@ void main(){
   // kaleidoscope fold (BLOOM): sector-mirror the lookup coordinate
   vec2 puvB = puvA;
   float artHold = smoothstep(0.13, 0.24, uAux.x)*(1.0 - smoothstep(0.76, 0.96, uAux.x));
-  float symWeight = uLook.y*mix(1.0, mix(0.60, 0.30, artHold), uTableauActive);
+  float symWeight = uLook.y*mix(1.0, mix(0.035, 0.0, artHold), uTableauActive);
   if (symWeight > 0.001){
     vec2 k = (puvB - 0.5)*vec2(aspect, 1.0);
     float r = length(k);
@@ -877,31 +889,55 @@ void main(){
   prev *= 1.0 - smoothstep(0.44, 0.5, max(ef2.x, ef2.y))*0.92; // no border smear
   prev = hueRot(prev, uLook.w)*uLook.z;
   float pl = dot(prev, vec3(0.299, 0.587, 0.114));
-  prev = mix(vec3(pl), prev, 1.04); // hold saturation against hue drift
+  prev = max(vec3(0.0), mix(vec3(pl), prev, mix(1.04, 1.002, uTableauActive)));
+  // Hot phosphor cools quickly; faint trails survive. This preserves fresh
+  // mechanical detail inside the feedback instead of smearing it into bloom.
+  prev /= 1.0 + max(pl,0.0)*0.10*uTableauActive*clamp(uSignalStep,0.0,3.0);
 
   // ── new energy ───────────────────────────────────────────────────────────
   float uL = uAux.x;
   float mA = floor(modeB), mf = smoothstep(0.0, 1.0, fract(modeB));
-  vec3 inj = mix(injMode(mA, cc, beat, e, uL), injMode(mA + 1.0, cc, beat, e, uL), mf);
+  vec3 inj;
+  if(uTableauActive<0.5){
+    inj=injMode(mA,cc,beat,e,uL);
+    if(mf>0.001)inj=mix(inj,injMode(mA+1.0,cc,beat,e,uL),mf);
+  } else {
+    // The drawing is the emitter. Retain a quiet living substrate without
+    // running a second, disconnected set of fireworks under it.
+    float mist=gvno(cc*2.7+uFlow.xy*uT*.25);
+    inj=pal(mist)*smoothstep(.60,.92,mist)*.35;
+  }
   // living fog: a full-frame, ever-evolving luminous substrate so the picture
   // never has dead zones — the emitters ride on top of it
   float fogN = gfbm(cc*1.15 + uFlow.xy*uT*0.05 + 3.7);
   vec3 fog = pal(0.22 + fogN*0.5)*pow(gfbm(cc*0.85 - uT*0.03), 2.0)*uAux.z;
-  // Authored signal is injected BEFORE the existing phosphor/character pass.
-  // Ghost-field grade: the swirl dominates and the figure ghosts through it at
-  // under half strength — half-buried signal, never an illustration plate.
-  vec4 figure = texture2D(uTableau, vec2(uv.x, 1.0 - uv.y));
-  float artOn = uTableauActive;
-  float legibility = smoothstep(0.13, 0.24, uAux.x)*(1.0 - smoothstep(0.76, 0.96, uAux.x));
-  vec3 col = prev*mix(1.0, mix(0.96, 0.82, legibility), artOn)
-    + inj*(1.0 - uAux.y*0.55)*mix(1.0, 0.55, artOn)
-    + fog*mix(1.0, 0.50, artOn);
-  col = mix(col, figure.rgb*1.38, figure.a*0.50*artOn);
+  // One material: source strokes deposit energy INTO the advected feedback.
+  // Moving matte coverage resolves inside history; nothing is a static overlay.
+  float morph = 0.45 + 0.2*sin(uT*0.137);
+  vec2 suv = uv + vec2(disp.x/aspect, disp.y)*mix(0.18, 0.62, morph)*(1.0-uAux.y);
+  vec4 figure = texture2D(uTableau, vec2(suv.x, 1.0-suv.y));
+  vec3 emission = figure.rgb*figure.a;
+  float ink = max(figure.r, max(figure.g, figure.b));
+  // Black source alpha is an optical shadow, not black emissive paint.
+  float absorption = figure.a*(1.0-smoothstep(0.001, 0.006, ink))*uTableauActive*mix(.10,1.0,uHardShadow);
+  float step60 = clamp(uSignalStep, 0.0, 3.0);
+  float headroom = 1.0/(1.0 + max(pl,0.0)*1.35);
+  vec3 signal = emission*(1.02 + 0.04*beat)*step60*headroom;
+  vec3 substrate = (inj*0.018 + fog*0.012)*step60;
+  // Moving matte surfaces occlude old emission instead of accumulating into
+  // chalk-white silhouettes. Trails remain in the uncovered flow, not smeared
+  // across every newly exposed hull panel. This is inside the feedback pass.
+  float matteRetention = pow(max(.001,1.0-figure.a*.87),step60);
+  vec3 coupled = prev*matteRetention + signal + substrate;
+  // Reduced motion is a settled exposure, independent of previous-frame age.
+  coupled = mix(coupled, emission*1.65 + fog*0.012, uAux.y);
+  coupled *= 1.0-absorption;
+  vec3 col = mix(prev + inj*(1.0-uAux.y*0.55) + fog, coupled, uTableauActive);
 
   // dither defeats 8-bit feedback banding and keeps dark areas alive
-  col += (gh2(gl_FragCoord.xy + fract(uT)*vec2(157.0, 113.0)) - 0.5)*0.012;
-  col = mix(col, vec3(1.25, 1.28, 1.20), white*mix(1.0, 0.30, uTableauActive));
-  gl_FragColor = vec4(min(col, vec3(6.0)), 1.0);
+  col += (gh2(gl_FragCoord.xy + fract(uT)*vec2(157.0, 113.0)) - 0.5)*mix(0.012, 0.0015, uTableauActive)*(1.0-absorption);
+  col = mix(col, vec3(1.25, 1.28, 1.20), white*(1.0-uTableauActive));
+  gl_FragColor = vec4(clamp(col, vec3(0.0), vec3(4.0)), 1.0);
 }
 `;
 
@@ -914,6 +950,9 @@ const GLSL_POST = `
 precision highp float;
 uniform sampler2D uScene;
 uniform sampler2D uAtlas;
+uniform sampler2D uTableau;
+uniform float uTableauActive;
+uniform float uHardShadow;
 uniform vec2 uRes;
 uniform vec2 uCellPx;
 uniform float uTime, uGlitch, uPowerOn, uFlash, uGrille, uAsciiShift;
@@ -926,13 +965,19 @@ void main(){
   float rowN = ph2(vec2(floor(uv.y*90.0), floor(uTime*24.0)));
   float tear = rowN > 0.9 ? (rowN-0.9)*22.0*uGlitch*sign(rowN-0.95) : 0.0;
   buv.x = fract(buv.x + tear*0.05);
-  float ab = 0.0008 + uGlitch*0.0032;
+  // A travelling oblique phase sheet bends the whole inhabited field.
+  // Smooth analytic phase, not random scanline jumps or alternating frames.
+  float sheet = exp(-pow((uv.x + uv.y*0.29 - 0.62 - 0.38*sin(uTime*0.117))/0.07,2.0));
+  buv += uTableauActive*sheet*vec2(sin(uv.y*19.0+uTime*.71),cos(uv.x*17.0-uTime*.63))*.0014;
+  float ab = mix(0.0008,0.00038+sheet*.00095,uTableauActive) + uGlitch*0.0032;
   vec3 col;
   col.r = texture2D(uScene, clamp(buv+vec2(ab,0.0), 0.001, 0.999)).r;
   col.g = texture2D(uScene, clamp(buv, 0.001, 0.999)).g;
   col.b = texture2D(uScene, clamp(buv-vec2(ab,0.0), 0.001, 0.999)).b;
   vec3 bloom = texture2D(uScene, clamp(buv, 0.001, 0.999), 3.0).rgb;
-  col += bloom*0.45;
+  col += bloom*mix(0.45,0.62,uTableauActive);
+  vec3 bloom2 = texture2D(uScene, clamp(buv, 0.001, 0.999), 5.0).rgb;
+  col += bloom2*0.30*uTableauActive;
   // character cell: glyph ramp + per-cell color
   vec2 cellId = floor(gl_FragCoord.xy/uCellPx);
   vec2 cuv = (cellId*uCellPx + uCellPx*0.5)/uRes;
@@ -952,17 +997,25 @@ void main(){
   float dotMask = smoothstep(0.48, 0.08, length(cf - 0.5));
   float shiftPulse = smoothstep(0.58, 0.98, 0.5 + 0.5*sin(uTime*0.74 + cellId.x*0.09 + cellId.y*0.05));
   float glyphMix = mix(dotMask, ga, clamp(0.28 + uAsciiShift*0.72*shiftPulse, 0.0, 1.0));
-  vec3 outc = cellCol*glyphMix*1.95;
+  // Ink/rotoscope finish is a value-and-edge treatment, NOT pose quantizing.
+  float L = max(dot(col,vec3(.299,.587,.114)),.0001);
+  float bands = (floor(L*9.0)+smoothstep(.22,.80,fract(L*9.0)))/9.0;
+  vec2 px = 1.0/uRes;
+  float neighbor = dot(texture2D(uScene,clamp(buv+px*vec2(1.0,1.0),.001,.999)).rgb,vec3(.299,.587,.114));
+  float edgeInk = clamp(abs(L-neighbor)*2.8,0.0,.24);
+  vec3 painted = col*mix(1.0,bands/L,.15)*(1.0-edgeInk*.24);
+  painted += cellCol*glyphMix*.035;
+  vec3 outc = mix(cellCol*glyphMix*1.95, painted, uTableauActive);
   // cell lattice
   vec2 gf = abs(cf - 0.5);
-  outc *= 0.88 + 0.12*smoothstep(0.5, 0.34, max(gf.x, gf.y));
+  outc *= mix(0.88,0.98,uTableauActive) + mix(0.12,0.02,uTableauActive)*smoothstep(0.5, 0.34, max(gf.x, gf.y));
   // aperture grille
   float g3 = fract(gl_FragCoord.x/3.0);
   outc *= vec3(0.9 + 0.2*step(g3, 0.333), 0.9 + 0.2*step(0.333, g3)*step(g3, 0.666), 0.9 + 0.2*step(0.666, g3))*uGrille + (1.0-uGrille);
   // scanline
-  outc *= 0.91 + 0.09*sin(gl_FragCoord.y*3.14159);
+  outc *= mix(.91,.989,uTableauActive) + mix(.09,.011,uTableauActive)*sin(gl_FragCoord.y*3.14159);
   // retrace band
-  outc += vec3(0.85, 1.0, 0.98)*exp(-abs(uv.y - fract(uTime*0.11))*55.0)*0.038;
+  outc += vec3(0.85, 1.0, 0.98)*exp(-abs(uv.y - fract(uTime*0.11))*55.0)*mix(.038,.004,uTableauActive);
   // power-on band
   if (uPowerOn >= 0.0){
     float bw = (0.04 + 0.96*pow(uPowerOn, 0.3333))*0.5;
@@ -972,9 +1025,25 @@ void main(){
   }
   // dropout
   if (uGlitch > 0.3 && ph2(cellId + floor(uTime*47.0)) > 0.93) outc *= 0.2;
-  outc *= 1.0 - 0.38*r2;   // vignette (ghost-field grade closes in slightly)
+  outc *= 1.0 - 0.3*r2;   // vignette
   outc = pow(max(outc, vec3(0.0)), vec3(0.96));
   outc += vec3(uFlash);
+  outc = mix(outc, 1.0-exp(-outc*1.16), uTableauActive);
+  // ── film finish: graded, not raw ─────────────────────────────────────────
+  // Lift the blacks a whisper, split-tone the shadows cool / highlights warm,
+  // gentle S-curve, then fine animated grain. Only where the source drives.
+  float fin = uTableauActive;
+  outc = mix(outc, outc*outc*(3.0-2.0*outc)*.94 + vec3(.012,.016,.019), fin*.55);
+  float lAvg = dot(outc, vec3(.299,.587,.114));
+  outc = mix(outc, outc*vec3(.94,1.0,1.10), (1.0-smoothstep(.05,.45,lAvg))*fin*.5);
+  outc = mix(outc, outc*vec3(1.07,1.0,.90), smoothstep(.35,.9,lAvg)*fin*.28);
+  float gr = ph2(gl_FragCoord.xy + fract(uTime)*vec2(311.0, 197.0)) - .5;
+  outc += gr * .028 * fin * (0.35 + 0.65*smoothstep(.02,.4,lAvg));
+  // Absorption is also applied AFTER mip-bloom: the singularity has a real
+  // black interior instead of a luminous grey disk. No source color is added.
+  vec4 mask = texture2D(uTableau, vec2(buv.x,1.0-buv.y));
+  float maskInk = max(mask.r,max(mask.g,mask.b));
+  outc *= 1.0-mask.a*(1.0-smoothstep(0.001,0.006,maskInk))*uTableauActive*mix(.12,1.0,uHardShadow);
   gl_FragColor = vec4(outc, 1.0);
 }
 `;
@@ -995,8 +1064,13 @@ const GL_SOURCES = {
 
 function createEngineGL(host) {
   'use strict';
-  const tableau = host.tableaux ? host.tableaux(host) : null;
+  const tableau = host.tableaux ? host.tableaux({ ...host, quick: true }) : null;
   const ACTS = 5, ACT_LEN = 6.5, LOOP_LEN = ACTS * ACT_LEN;
+  // Trajectory beat: every source clock in loadingSignalTableaux is quantized
+  // onto this exact frame grid, so the whole composition returns to its opening
+  // pose here and the feedback pass dissolves through the wrap. The visualizer
+  // reads as one unbroken transmission, never a restarted loop.
+  const BODY_LOOP = 480;
   const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
   const lerp = (a, b, t) => a + (b - a) * t;
   const sstep = (a, b, x) => {
@@ -1008,6 +1082,7 @@ function createEngineGL(host) {
   // worker and cannot close over module scope).
   const SRC = host && host.sources;
   if (!SRC || !SRC.vert || !SRC.common || !SRC.scene || !SRC.post) {
+    if(tableau)tableau.dispose();
     return host && host.engine2D ? host.engine2D(host) : { receive() {} };
   }
   const sceneSrc = 'precision highp float;\n' +
@@ -1016,17 +1091,19 @@ function createEngineGL(host) {
   const postSrc = SRC.post;
 
   function fallback2D(reason) {
+    if(tableau)tableau.dispose();
     try { if (host.post) host.post({ type: 'glFallback', reason: String(reason) }); } catch {}
     if (host.engine2D) return host.engine2D(host);
     return { receive() {} };
   }
 
   // ── validate the whole GL stack on a THROWAWAY canvas first ─────────────
-  let validated = false;
+  let validated = false, preflightGL=null;
   try {
     if (typeof OffscreenCanvas !== 'function') return fallback2D('no-offscreen');
     const scratch = new OffscreenCanvas(8, 8);
     const sgl = scratch.getContext('webgl2', { antialias: false });
+    preflightGL=sgl;
     if (!sgl) return fallback2D('no-webgl2');
     const cShader = (gl2, type, src) => {
       const sh = gl2.createShader(type);
@@ -1049,83 +1126,89 @@ function createEngineGL(host) {
     validated = true;
   } catch (e) {
     return fallback2D('validate:' + e.message);
+  } finally {
+    try { if(preflightGL)preflightGL.getExtension('WEBGL_lose_context')?.loseContext(); } catch {}
   }
   if (!validated) return fallback2D('validate-false');
 
   // ── phase choreography ──────────────────────────────────────────────────
-  // Per-phase targets. Phases cross-blend over the last 14% of their window,
+  // Per-phase targets. Phases cross-blend over the last 31% of their window,
   // so the simulation state carries across transitions — no cuts, only morphs.
   //   zoom/rot: per-frame feedback magnifiers (1.0 = hold)
   //   flowAmp:  uv displacement per frame from the curl field
   //   decay:    phosphor retention per frame; hue: rotation per frame
   //   period:   beat interval driving injection pulses
   const PH = [
-    { // 0 · GENESIS — abyssal water finding first light
-      zoom: 1.0006, rot: 0.00018, flowAmp: 0.0052, flowScale: 0.34,
-      drift: [0.045, 0.020], swirl: 0.0016, jitter: 0.0004,
-      symN: 6, symAmt: 0, decay: 0.9830, hue: 0.0026, period: 2.6, energy: 0.22, fog: 0.55,
-      palA: [0.070, 0.165, 0.160], palB: [0.090, 0.235, 0.210], palC: [1.0, 1.0, 1.0], palD: [0.36, 0.46, 0.42],
+    { // 0 · GENESIS — dark water finding first light
+      zoom: 1.0006, rot: 0.00018, flowAmp: 0.0042, flowScale: 0.34,
+      drift: [0.045, 0.020], swirl: 0.0006, jitter: 0.0004,
+      symN: 6, symAmt: 0, decay: 0.9780, hue: 0.0026, period: 2.6, energy: 0.22, fog: 0.62,
+      palA: [0.085, 0.200, 0.185], palB: [0.085, 0.230, 0.205], palC: [1.0, 1.0, 1.0], palD: [0.38, 0.47, 0.42],
     },
-    { // 1 · CURRENTS — long toxic streams
-      zoom: 0.99915, rot: -0.00033, flowAmp: 0.0095, flowScale: 0.95,
-      drift: [0.100, -0.030], swirl: 0.0022, jitter: 0.0009,
-      symN: 0, symAmt: 0, decay: 0.9710, hue: -0.0035, period: 1.7, energy: 0.38, fog: 0.42,
-      palA: [0.055, 0.150, 0.175], palB: [0.100, 0.240, 0.265], palC: [1.0, 1.0, 1.0], palD: [0.47, 0.36, 0.30],
+    { // 1 · CURRENTS — long emerald streams
+      zoom: 0.99915, rot: -0.00033, flowAmp: 0.0085, flowScale: 0.95,
+      drift: [0.100, -0.030], swirl: 0.0012, jitter: 0.0009,
+      symN: 0, symAmt: 0, decay: 0.9650, hue: -0.0035, period: 1.7, energy: 0.38, fog: 0.42,
+      palA: [0.075, 0.190, 0.215], palB: [0.095, 0.235, 0.260], palC: [1.0, 1.0, 1.0], palD: [0.45, 0.35, 0.30],
     },
     { // 2 · BLOOM — kaleidoscope opens (symAmt is shaped in code)
-      zoom: 1.0026, rot: 0.00062, flowAmp: 0.0062, flowScale: 1.65,
+      zoom: 1.0026, rot: 0.00062, flowAmp: 0.0050, flowScale: 1.65,
       drift: [0.060, 0.060], swirl: 0.0040, jitter: 0.0007,
-      symN: 6, symAmt: 1, decay: 0.9620, hue: 0.0042, period: 1.15, energy: 0.52, fog: 0.30,
-      palA: [0.170, 0.120, 0.200], palB: [0.200, 0.170, 0.230], palC: [1.0, 1.0, 0.9], palD: [0.08, 0.44, 0.68],
+      symN: 6, symAmt: 1, decay: 0.9680, hue: 0.0042, period: 1.15, energy: 0.52, fog: 0.36,
+      palA: [0.240, 0.180, 0.270], palB: [0.200, 0.170, 0.230], palC: [1.0, 1.0, 0.9], palD: [0.10, 0.42, 0.70],
     },
     { // 3 · TEMPEST — the field tears
       zoom: 1.0058, rot: 0.00130, flowAmp: 0.0160, flowScale: 2.70,
       drift: [-0.160, 0.090], swirl: -0.0028, jitter: 0.0050,
-      symN: 0, symAmt: 0, decay: 0.9580, hue: -0.0060, period: 0.60, energy: 0.85, fog: 0.26,
-      palA: [0.170, 0.085, 0.085], palB: [0.235, 0.130, 0.155], palC: [1.2, 0.9, 0.8], palD: [0.02, 0.55, 0.25],
+      symN: 0, symAmt: 0, decay: 0.9520, hue: -0.0060, period: 0.60, energy: 0.85, fog: 0.26,
+      palA: [0.220, 0.120, 0.105], palB: [0.220, 0.140, 0.150], palC: [1.2, 0.9, 0.8], palD: [0.02, 0.55, 0.25],
     },
     { // 4 · SINGULARITY — collapse (zoom accelerates in code), then rebirth
       zoom: 1.0030, rot: 0.00220, flowAmp: 0.0080, flowScale: 1.20,
       drift: [0.000, 0.000], swirl: 0.0200, jitter: 0.0016,
-      symN: 0, symAmt: 0, decay: 0.9760, hue: 0.0080, period: 0.90, energy: 0.62, fog: 0.34,
-      palA: [0.120, 0.100, 0.190], palB: [0.175, 0.130, 0.270], palC: [0.8, 1.0, 1.2], palD: [0.60, 0.60, 0.52],
+      symN: 0, symAmt: 0, decay: 0.9710, hue: 0.0080, period: 0.90, energy: 0.62, fog: 0.34,
+      palA: [0.170, 0.155, 0.260], palB: [0.160, 0.145, 0.265], palC: [0.8, 1.0, 1.2], palD: [0.62, 0.58, 0.50],
     },
   ];
 
+  const phaseScratch = {};
+  const palAKeys = ['palA_0','palA_1','palA_2'];
+  const palBKeys = ['palB_0','palB_1','palB_2'];
+  const palCKeys = ['palC_0','palC_1','palC_2'];
+  const palDKeys = ['palD_0','palD_1','palD_2'];
   function phaseParams(tt) {
     const p = Math.floor(tt / ACT_LEN) % ACTS;
     const u = (tt % ACT_LEN) / ACT_LEN;
     const A = PH[p], B = PH[(p + 1) % ACTS];
-    const w = sstep(0.86, 1.0, u);
+    const w = sstep(0.69, 1.0, u);
     // per-phase shaping applied to A before the cross-blend
     let zoomA = A.zoom, symAmtA = A.symAmt;
     if (p === 2) symAmtA = Math.pow(Math.sin(u * Math.PI), 1.5); // bloom opens, then folds
-    if (p === 4) zoomA = A.zoom + Math.pow(u, 3) * 0.030;        // collapse accelerates
+    if (p === 4) zoomA = A.zoom + Math.pow(u, 3) * 0.0015;        // collapse accelerates
     const white = p === 4 ? sstep(0.94, 1.0, u) * 0.9 : 0;
-    const o = {
-      p, u, white,
-      zoom: lerp(zoomA, B.zoom, w),
-      rot: lerp(A.rot, B.rot, w),
-      flowAmp: lerp(A.flowAmp, B.flowAmp, w),
-      flowScale: lerp(A.flowScale, B.flowScale, w),
-      dx: lerp(A.drift[0], B.drift[0], w),
-      dy: lerp(A.drift[1], B.drift[1], w),
-      swirl: lerp(A.swirl, B.swirl, w),
-      jitter: lerp(A.jitter, B.jitter, w),
-      symN: lerp(A.symN, B.symN, w),
-      symAmt: lerp(symAmtA, B.symAmt, w),
-      decay: lerp(A.decay, B.decay, w),
-      hue: lerp(A.hue, B.hue, w),
-      period: lerp(A.period, B.period, w),
-      energy: lerp(A.energy, B.energy, w),
-      fog: lerp(A.fog, B.fog, w),
-      mode: p + w,
-    };
+    const o = phaseScratch;
+    o.p=p; o.u=u; o.white=white;
+    o.zoom = lerp(zoomA, B.zoom, w);
+    o.rot = lerp(A.rot, B.rot, w);
+    o.flowAmp = lerp(A.flowAmp, B.flowAmp, w);
+    o.flowScale = lerp(A.flowScale, B.flowScale, w);
+    o.dx = lerp(A.drift[0], B.drift[0], w);
+    o.dy = lerp(A.drift[1], B.drift[1], w);
+    o.swirl = lerp(A.swirl, B.swirl, w);
+    o.jitter = lerp(A.jitter, B.jitter, w);
+    o.symN = lerp(A.symN, B.symN, w);
+    o.symAmt = lerp(symAmtA, B.symAmt, w);
+    o.decay = lerp(A.decay, B.decay, w);
+    o.hue = lerp(A.hue, B.hue, w);
+    o.period = lerp(A.period, B.period, w);
+    o.energy = lerp(A.energy, B.energy, w);
+    o.fog = lerp(A.fog, B.fog, w);
+    o.mode = p + w;
     for (let c = 0; c < 3; c++) {
-      o['palA_' + c] = lerp(A.palA[c], B.palA[c], w);
-      o['palB_' + c] = lerp(A.palB[c], B.palB[c], w);
-      o['palC_' + c] = lerp(A.palC[c], B.palC[c], w);
-      o['palD_' + c] = lerp(A.palD[c], B.palD[c], w);
+      o[palAKeys[c]] = lerp(A.palA[c], B.palA[c], w);
+      o[palBKeys[c]] = lerp(A.palB[c], B.palB[c], w);
+      o[palCKeys[c]] = lerp(A.palC[c], B.palC[c], w);
+      o[palDKeys[c]] = lerp(A.palD[c], B.palD[c], w);
     }
     return o;
   }
@@ -1135,7 +1218,8 @@ function createEngineGL(host) {
   let W = 640, H = 380, WW = 200, WH = 48;
   let progScene = null, progPost = null, quadBuf = null;
   let texA = null, texB = null, fbA = null, fbB = null, atlasTex = null;
-  let renderScale = 1.05;
+  let renderScale = 0.90;
+  let uniformScene=null, uniformPost=null, attribScene=-1, attribPost=-1;
   let hdrOK = false;
   let dead = false;
   let running = false, rafId = null;
@@ -1143,7 +1227,7 @@ function createEngineGL(host) {
   let progress = 0.05, progressShown = 0.05;
   let gx = 0, gy = 0, gxT = 0, gyT = 0, lastPointerAt = -10;
   let reduced = false;
-  let labAct = -1, labFreeze = false;
+  let labAct = -1, labFreeze = false, needsPaint = true;
   let frameCounter = 0, frameCostAvg = 10;
   let energy = 0.3;
   const energyHist = new Float32Array(64).fill(0.1);
@@ -1154,19 +1238,19 @@ function createEngineGL(host) {
     gl2.shaderSource(sh, src);
     gl2.compileShader(sh);
     if (!gl2.getShaderParameter(sh, gl2.COMPILE_STATUS)) {
-      throw new Error('shader: ' + gl2.getShaderInfoLog(sh));
+      const reason=gl2.getShaderInfoLog(sh); gl2.deleteShader(sh); throw new Error('shader: ' + reason);
     }
     return sh;
   }
   function link(gl2, vsSrc, fsSrc) {
-    const p = gl2.createProgram();
-    gl2.attachShader(p, compile(gl2, gl2.VERTEX_SHADER, vsSrc));
-    gl2.attachShader(p, compile(gl2, gl2.FRAGMENT_SHADER, fsSrc));
-    gl2.linkProgram(p);
-    if (!gl2.getProgramParameter(p, gl2.LINK_STATUS)) {
-      throw new Error('link: ' + gl2.getProgramInfoLog(p));
-    }
-    return p;
+    const p = gl2.createProgram(); let vs=null,fs=null;
+    try {
+      vs=compile(gl2,gl2.VERTEX_SHADER,vsSrc);fs=compile(gl2,gl2.FRAGMENT_SHADER,fsSrc);
+      gl2.attachShader(p,vs);gl2.attachShader(p,fs);gl2.linkProgram(p);
+      if(!gl2.getProgramParameter(p,gl2.LINK_STATUS))throw new Error('link: '+gl2.getProgramInfoLog(p));
+      return p;
+    } catch(e) {gl2.deleteProgram(p);throw e;}
+    finally {if(vs)gl2.deleteShader(vs);if(fs)gl2.deleteShader(fs);}
   }
 
   function buildAtlasTex(gl2) {
@@ -1212,9 +1296,36 @@ function createEngineGL(host) {
     gl2.framebufferTexture2D(gl2.FRAMEBUFFER, gl2.COLOR_ATTACHMENT0, gl2.TEXTURE_2D, tex, 0);
     const ok = gl2.checkFramebufferStatus(gl2.FRAMEBUFFER) === gl2.FRAMEBUFFER_COMPLETE;
     gl2.bindFramebuffer(gl2.FRAMEBUFFER, null);
-    return ok ? { tex, fb } : null;
+    if(!ok){gl2.deleteFramebuffer(fb);gl2.deleteTexture(tex);return null;}
+    return { tex, fb };
   }
 
+  function onContextLost(event){
+    if(event && event.preventDefault)event.preventDefault();
+    running=false;dead=true;
+    if(rafId!=null)host.cancel(rafId);rafId=null;
+    destroyResources();
+    try{if(host.post)host.post({type:'glRuntimeError',message:'context-lost'});}catch{}
+  }
+  function destroyResources(){
+    if(canvas && canvas.removeEventListener)canvas.removeEventListener('webglcontextlost',onContextLost);
+    if(tableau)tableau.dispose();
+    if(!gl)return;
+    try {
+      if(texA)gl.deleteTexture(texA);if(texB)gl.deleteTexture(texB);if(atlasTex)gl.deleteTexture(atlasTex);
+      if(fbA)gl.deleteFramebuffer(fbA);if(fbB)gl.deleteFramebuffer(fbB);
+      if(quadBuf)gl.deleteBuffer(quadBuf);if(progScene)gl.deleteProgram(progScene);if(progPost)gl.deleteProgram(progPost);
+    } catch {}
+    texA=texB=atlasTex=fbA=fbB=quadBuf=progScene=progPost=null;
+  }
+  function clearHistory(){
+    if(tableau)tableau.resetHistory();
+    if(!gl||!fbA||!fbB)return;
+    gl.clearColor(0,0,0,0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,fbA);gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,fbB);gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  }
   function init(msg) {
     canvas = msg.canvas;
     W = msg.width || 640; H = msg.height || 380;
@@ -1226,6 +1337,7 @@ function createEngineGL(host) {
       gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, powerPreference: 'high-performance' });
     } catch { gl = null; }
     if (!gl) throw new Error('real-context-failed');
+    if(canvas.addEventListener)canvas.addEventListener('webglcontextlost',onContextLost);
     try { hdrOK = !!gl.getExtension('EXT_color_buffer_float'); } catch { hdrOK = false; }
     if (msg.waveformCanvas) {
       try {
@@ -1239,6 +1351,10 @@ function createEngineGL(host) {
     reduced = !!msg.reducedMotion;
     progScene = link(gl, SRC.vert, sceneSrc);
     progPost = link(gl, SRC.vert, postSrc);
+    uniformScene = {}; uniformPost = {};
+    for (const name of ['uPrev','uRes','uT','uGyro','uWarp','uFlow','uLook','uDrive','uAux','uPalA','uPalB','uPalC','uPalD','uSignalStep','uHardShadow']) uniformScene[name]=gl.getUniformLocation(progScene,name);
+    for (const name of ['uScene','uAtlas','uTableau','uTableauActive','uHardShadow','uRes','uCellPx','uTime','uGlitch','uPowerOn','uFlash','uGrille','uAsciiShift']) uniformPost[name]=gl.getUniformLocation(progPost,name);
+    attribScene=gl.getAttribLocation(progScene,'aPos'); attribPost=gl.getAttribLocation(progPost,'aPos');
     quadBuf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
@@ -1246,10 +1362,19 @@ function createEngineGL(host) {
     if (!atlasTex) throw new Error('no-atlas');
     const rw = Math.max(2, Math.round(W * renderScale));
     const rh = Math.max(2, Math.round(H * renderScale));
-    const fa = makeFBO(gl, rw, rh);
-    const fb = makeFBO(gl, rw, rh);
-    if (!fa || !fb) throw new Error('no-fbo');
+    let fa = makeFBO(gl, rw, rh), fb = makeFBO(gl, rw, rh);
+    if((!fa||!fb)&&hdrOK){
+      if(fa){gl.deleteTexture(fa.tex);gl.deleteFramebuffer(fa.fb);}
+      if(fb){gl.deleteTexture(fb.tex);gl.deleteFramebuffer(fb.fb);}
+      hdrOK=false;fa=makeFBO(gl,rw,rh);fb=makeFBO(gl,rw,rh);
+    }
+    if (!fa || !fb) {
+      if(fa){gl.deleteTexture(fa.tex);gl.deleteFramebuffer(fa.fb);}
+      if(fb){gl.deleteTexture(fb.tex);gl.deleteFramebuffer(fb.fb);}
+      throw new Error('no-fbo');
+    }
     texA = fa.tex; fbA = fa.fb; texB = fb.tex; fbB = fb.fb;
+    clearHistory();
     gl.viewport(0, 0, W, H);
     running = true;
     rafId = host.raf(frame);
@@ -1267,13 +1392,16 @@ function createEngineGL(host) {
         if (fbA) gl.deleteFramebuffer(fbA);
         if (fbB) gl.deleteFramebuffer(fbB);
         texA = fa.tex; fbA = fa.fb; texB = fb.tex; fbB = fb.fb;
+      } else {
+        if(fa){gl.deleteTexture(fa.tex);gl.deleteFramebuffer(fa.fb);}
+        if(fb){gl.deleteTexture(fb.tex);gl.deleteFramebuffer(fb.fb);}
       }
     } catch {}
   }
 
   function bindQuad(prog) {
     gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
-    const loc = gl.getAttribLocation(prog, 'aPos');
+    const loc = prog===progScene ? attribScene : attribPost;
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   }
@@ -1297,12 +1425,14 @@ function createEngineGL(host) {
   }
 
   function frame(now) {
+    rafId = null;
     if (!running || dead) return;
+    if ((reduced || labFreeze) && !needsPaint) return;
     const t0 = Date.now();
     let dt = lastNow ? (now - lastNow) / 1000 : 1 / 60;
     lastNow = now;
     dt = clamp(dt, 0.001, 0.05);
-    if (!labFreeze) T += dt;
+    if (!labFreeze && !reduced) T += dt;
     progressShown += (progress - progressShown) * Math.min(1, dt * 3);
     if (T - lastPointerAt > 4) {
       gxT = Math.sin(T * 0.3) * 0.4;
@@ -1315,27 +1445,48 @@ function createEngineGL(host) {
     const act = labAct >= 0 ? labAct : Math.floor(tt / ACT_LEN) % ACTS;
     const uLocal = (tt % ACT_LEN) / ACT_LEN;
     let glitch = 0;
-    if (labAct < 0) {
+    if (labAct < 0 && !tableau?.continuous) {
       if (uLocal > 0.925) glitch = (uLocal - 0.925) / 0.075;
       else if (uLocal < 0.055) glitch = 1 - uLocal / 0.055;
-      // Ghost-field grade: seams carry analog unrest (tear/dropout), but reduced
-      // motion still gets none of it — that zero is an accessibility contract.
-      glitch *= reduced ? 0 : 0.45;
+      glitch *= reduced ? 0 : 0.18;
     }
     const powerOn = (labAct === 0 || (labAct < 0 && act === 0 && tt < ACT_LEN)) ? (tt < 0.9 ? tt / 0.9 : -1) : -1;
 
     if (frameCounter > 0 && frameCounter % 90 === 0) {
       const previousScale = renderScale;
-      if (frameCostAvg > 23 && renderScale > 0.75) renderScale = Math.max(0.75, renderScale - 0.1);
-      else if (frameCostAvg < 10 && renderScale < 1.15) renderScale = Math.min(1.15, renderScale + 0.05);
+      if (frameCostAvg > 23 && renderScale > 0.60) renderScale = Math.max(0.60, renderScale - 0.1);
+      else if (frameCostAvg < 10 && renderScale < 1.0) renderScale = Math.min(1.0, renderScale + 0.05);
       if (renderScale !== previousScale) resizeFBOs();
     }
 
     // ── choreography → uniforms ────────────────────────────────────────────
-    const pp = phaseParams(labAct >= 0 ? (labAct * ACT_LEN + (T % ACT_LEN)) : tt);
-    const mScale = reduced ? 0.3 : 1;
-    const beatPh = (T / (pp.period * (reduced ? 1.6 : 1))) % 1;
-    const beat = Math.pow(1 - beatPh, 1.7) * (reduced ? 0.6 : 1);
+    const signalTime = reduced ? (tableau?.continuous ? 12 : act * ACT_LEN + 3.25) : T % BODY_LOOP;
+    const pp = phaseParams(reduced ? signalTime : (labAct >= 0 ? (labAct * ACT_LEN + (T % ACT_LEN)) : tt));
+    const frameStep = Math.min(3, dt*60);
+    // Legacy phase windows must not govern the current or "hold" its figures.
+    // These feedback modulations run on the UNWRAPPED clock: only the source
+    // sculptures wrap (on their exact grid), the current itself never jumps.
+    if (tableau?.continuous) {
+      pp.zoom=1.0010+.00025*Math.sin(T*.091);
+      pp.rot=.0011*Math.sin(T*.083);
+      pp.flowScale=.92+.11*Math.sin(T*.071);
+      pp.dx=.037+.008*Math.cos(T*.079);
+      pp.dy=.021+.005*Math.sin(T*.067);
+      pp.flowAmp=.0060+.0012*Math.sin(T*.097);
+      pp.swirl=.0034+.0009*Math.sin(T*.063);
+      pp.jitter=0;pp.decay=.936;pp.hue=.0006*Math.sin(T*.1);
+      pp.symAmt=0;pp.symN=1;pp.fog=.42;pp.white=0;pp.u=.5;
+      pp.energy=.33+.07*Math.sin(T*.047);pp.mode=0;pp.period=1;
+      pp.palA_0=.23;pp.palA_1=.30;pp.palA_2=.30;
+      pp.palB_0=.12;pp.palB_1=.14;pp.palB_2=.12;
+      pp.palC_0=1;pp.palC_1=1;pp.palC_2=1;
+      pp.palD_0=.12;pp.palD_1=.16;pp.palD_2=.21;
+    }
+    const transportGain=tableau?.continuous ? .80 : 0.20+0.80*sstep(.66,1,pp.u);
+    const mScale = reduced ? 0 : frameStep*transportGain;
+    const hardShadow=tableau?.continuous ? 1 : act===4 ? 1-sstep(.69,.95,pp.u) : 0;
+    const beatPh = (signalTime / (pp.period * (reduced ? 1.6 : 1))) % 1;
+    const beat = tableau?.continuous ? .5+.18*Math.sin(T*.91) : Math.pow(1 - beatPh, 1.7) * (reduced ? 0.6 : 1);
     energy = pp.energy * (0.7 + beat * 0.5);
 
     const rw = Math.max(2, Math.round(W * renderScale));
@@ -1345,26 +1496,32 @@ function createEngineGL(host) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbB);
       gl.viewport(0, 0, rw, rh);
       gl.useProgram(progScene);
-      if (tableau) tableau.bindGL(gl, progScene, W, H, T, act, reduced);
+      let signalOn = false;
+      if (tableau) {
+        tableau.setFlow(pp.flowScale, pp.dx, pp.dy, pp.flowAmp*transportGain, pp.swirl*transportGain, reduced ? 0 : gx, reduced ? 0 : gy);
+        signalOn = tableau.bindGL(gl, progScene, W, H, signalTime, act, reduced);
+      }
+      gl.uniform1f(uniformScene.uSignalStep, frameStep);
+      gl.uniform1f(uniformScene.uHardShadow, hardShadow);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texA);
-      gl.uniform1i(gl.getUniformLocation(progScene, 'uPrev'), 0);
-      gl.uniform2f(gl.getUniformLocation(progScene, 'uRes'), rw, rh);
-      gl.uniform1f(gl.getUniformLocation(progScene, 'uT'), T);
-      gl.uniform2f(gl.getUniformLocation(progScene, 'uGyro'), gx, gy);
-      gl.uniform4f(gl.getUniformLocation(progScene, 'uWarp'),
-        1 + (pp.zoom - 1) * mScale, pp.rot * mScale, pp.flowAmp * mScale, pp.flowScale);
-      gl.uniform4f(gl.getUniformLocation(progScene, 'uFlow'),
+      gl.uniform1i(uniformScene.uPrev, 0);
+      gl.uniform2f(uniformScene.uRes, rw, rh);
+      gl.uniform1f(uniformScene.uT, tableau?.continuous ? T : signalTime);
+      gl.uniform2f(uniformScene.uGyro, reduced ? 0 : gx, reduced ? 0 : gy);
+      gl.uniform4f(uniformScene.uWarp,
+        Math.pow(pp.zoom, mScale), pp.rot * mScale, pp.flowAmp * mScale, pp.flowScale);
+      gl.uniform4f(uniformScene.uFlow,
         pp.dx, pp.dy, pp.swirl * mScale, pp.jitter * mScale);
-      gl.uniform4f(gl.getUniformLocation(progScene, 'uLook'),
-        pp.symN, pp.symAmt * (reduced ? 0.5 : 1), pp.decay, pp.hue * mScale);
-      gl.uniform4f(gl.getUniformLocation(progScene, 'uDrive'),
+      gl.uniform4f(uniformScene.uLook,
+        pp.symN, pp.symAmt * (reduced ? 0 : 1), Math.pow(pp.decay, frameStep), pp.hue * mScale);
+      gl.uniform4f(uniformScene.uDrive,
         beat, pp.mode, pp.white * (reduced ? 0.4 : 1), pp.energy);
-      gl.uniform4f(gl.getUniformLocation(progScene, 'uAux'), pp.u, reduced ? 1 : 0, pp.fog, 0);
-      gl.uniform3f(gl.getUniformLocation(progScene, 'uPalA'), pp.palA_0, pp.palA_1, pp.palA_2);
-      gl.uniform3f(gl.getUniformLocation(progScene, 'uPalB'), pp.palB_0, pp.palB_1, pp.palB_2);
-      gl.uniform3f(gl.getUniformLocation(progScene, 'uPalC'), pp.palC_0, pp.palC_1, pp.palC_2);
-      gl.uniform3f(gl.getUniformLocation(progScene, 'uPalD'), pp.palD_0, pp.palD_1, pp.palD_2);
+      gl.uniform4f(uniformScene.uAux, pp.u, reduced ? 1 : 0, pp.fog, 0);
+      gl.uniform3f(uniformScene.uPalA, pp.palA_0, pp.palA_1, pp.palA_2);
+      gl.uniform3f(uniformScene.uPalB, pp.palB_0, pp.palB_1, pp.palB_2);
+      gl.uniform3f(uniformScene.uPalC, pp.palC_0, pp.palC_1, pp.palC_2);
+      gl.uniform3f(uniformScene.uPalD, pp.palD_0, pp.palD_1, pp.palD_2);
       bindQuad(progScene);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       gl.bindTexture(gl.TEXTURE_2D, texB);
@@ -1377,21 +1534,24 @@ function createEngineGL(host) {
       bindQuad(progPost);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texB);
-      gl.uniform1i(gl.getUniformLocation(progPost, 'uScene'), 0);
+      gl.uniform1i(uniformPost.uScene, 0);
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, atlasTex);
-      gl.uniform1i(gl.getUniformLocation(progPost, 'uAtlas'), 1);
-      gl.uniform2f(gl.getUniformLocation(progPost, 'uRes'), W, H);
+      gl.uniform1i(uniformPost.uAtlas, 1);
+      gl.uniform1i(uniformPost.uTableau, 2);
+      gl.uniform1f(uniformPost.uTableauActive, signalOn ? 1 : 0);
+      gl.uniform1f(uniformPost.uHardShadow, hardShadow);
+      gl.uniform2f(uniformPost.uRes, W, H);
       const cellPxX = Math.max(2.0, Math.min(3.0, W / 440.0));
       const cellPxY = cellPxX * 1.72;
-      gl.uniform2f(gl.getUniformLocation(progPost, 'uCellPx'), cellPxX, cellPxY);
-      gl.uniform1f(gl.getUniformLocation(progPost, 'uTime'), T);
-      gl.uniform1f(gl.getUniformLocation(progPost, 'uGlitch'), glitch);
-      gl.uniform1f(gl.getUniformLocation(progPost, 'uPowerOn'), powerOn);
-      gl.uniform1f(gl.getUniformLocation(progPost, 'uFlash'), 0);
-      gl.uniform1f(gl.getUniformLocation(progPost, 'uGrille'), 1.0);
-      const asciiShift = reduced ? 0.42 : (0.62 + 0.12 * Math.sin(T * 0.31 + Math.sin(T * 0.09) * 0.5));
-      gl.uniform1f(gl.getUniformLocation(progPost, 'uAsciiShift'), asciiShift);
+      gl.uniform2f(uniformPost.uCellPx, cellPxX, cellPxY);
+      gl.uniform1f(uniformPost.uTime, tableau?.continuous ? T : signalTime);
+      gl.uniform1f(uniformPost.uGlitch, glitch);
+      gl.uniform1f(uniformPost.uPowerOn, tableau ? -1 : powerOn);
+      gl.uniform1f(uniformPost.uFlash, 0);
+      gl.uniform1f(uniformPost.uGrille, tableau?.continuous ? .10 : 1.0);
+      const asciiShift = tableau?.continuous ? .12 : reduced ? 0.42 : (0.62 + 0.12 * Math.sin(T * 0.31 + Math.sin(T * 0.09) * 0.5));
+      gl.uniform1f(uniformPost.uAsciiShift, asciiShift);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       // swap for the next frame
@@ -1400,7 +1560,7 @@ function createEngineGL(host) {
     } catch (e) {
       // A mid-run GL failure kills only the animation, never the game.
       running = false;
-      dead = true;
+      dead = true;destroyResources();
       try { if (host.post) host.post({ type: 'glRuntimeError', message: String(e) }); } catch {}
       return;
     }
@@ -1412,18 +1572,19 @@ function createEngineGL(host) {
 
     frameCostAvg = frameCostAvg * 0.92 + (Date.now() - t0) * 0.08;
     frameCounter++;
-    rafId = host.raf(frame);
+    needsPaint = false;
+    if (!reduced && !labFreeze) rafId = host.raf(frame);
   }
 
   return {
     receive(msg) {
-      if (!msg || dead) return;
+      if (!msg || (dead && msg.type !== 'destroy')) return;
       switch (msg.type) {
         case 'init':
           try {
             init(msg);
           } catch (e) {
-            dead = true;
+            dead = true;destroyResources();
             try { if (host.post) host.post({ type: 'glInitError', message: String(e) }); } catch {}
           }
           break;
@@ -1434,7 +1595,7 @@ function createEngineGL(host) {
           lastPointerAt = T;
           break;
         case 'destroy':
-          if (tableau) tableau.dispose();
+          destroyResources();dead=true;
           // fall through: a normal stop retains the resources needed for resume
         case 'stop':
           running = false;
@@ -1442,13 +1603,16 @@ function createEngineGL(host) {
           rafId = null;
           break;
         case 'start':
-          if (!running && gl && !dead) { running = true; lastNow = 0; rafId = host.raf(frame); }
+          if (!running && gl && !dead) { running = true; needsPaint = true; lastNow = 0; rafId = host.raf(frame); }
           break;
         case 'lab':
-          if (msg.act !== undefined) labAct = Number(msg.act);
+          if (msg.act !== undefined) labAct = Number.isInteger(Number(msg.act)) ? clamp(Number(msg.act), -1, 4) : -1;
           labFreeze = !!msg.freeze;
-          if (msg.t !== undefined) T = Number(msg.t);
+          if (msg.t !== undefined && Number.isFinite(Number(msg.t))) T = Math.max(0, Number(msg.t));
           if (msg.reduced !== undefined) reduced = !!msg.reduced;
+          if(msg.clear)clearHistory();
+          needsPaint = true;
+          if (running && rafId == null) rafId = host.raf(frame);
           break;
       }
     },
@@ -1534,11 +1698,11 @@ export function createTerminalArtwork({
 
   const nativeDpr = Number(globalThis.devicePixelRatio) || 1;
   const dpr = Math.min(4, Math.max(1, nativeDpr));
-  const resolutionBoost = Math.min(5, Math.max(1, dpr * 1.35));
+  const resolutionBoost = Math.min(2, Math.max(1, dpr));
   const rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { width: 640, height: 380 };
   let w = Math.round((rect.width || 640) * resolutionBoost);
   let h = Math.round((rect.height || 380) * resolutionBoost);
-  const MAX_RENDER_PIXELS = 6_000_000;
+  const MAX_RENDER_PIXELS = 1_500_000;
   const pixelCount = w * h;
   if (pixelCount > MAX_RENDER_PIXELS) {
     const scaleDown = Math.sqrt(MAX_RENDER_PIXELS / pixelCount);
@@ -1684,18 +1848,18 @@ export function createTerminalArtwork({
   let lastPctText = '';
   let lastStageName = '';
   const actTitles = [
-    'SIGNAL_GENESIS // CONDENSATION',
-    'DEEP_CURRENTS // FLOW STATE',
-    'PRISM_BLOOM // SYMMETRY CASCADE',
-    'TEMPEST_PROTOCOL // ION STORM',
-    'SINGULARITY // EVENT HORIZON',
+    'THE_PILOT // PRESSURE VESSEL',
+    'THE_COURIER // FREE VECTOR',
+    'THE_ANCHORAGE // ORBITAL MACHINE',
+    'BORROWED_MOMENTUM // MASSLINE',
+    'EVENT_HORIZON // SIGNAL RETURN',
   ];
   const actLogs = [
-    '[PHASE_01] SIGNAL_GENESIS // FIRST_LIGHT',
-    '[PHASE_02] DEEP_CURRENTS // EMERALD_STREAMS',
-    '[PHASE_03] PRISM_BLOOM // KALEIDO_FOLD',
-    '[PHASE_04] TEMPEST_PROTOCOL // DISCHARGE',
-    '[PHASE_05] SINGULARITY // COLLAPSE_AND_REBIRTH',
+    '[PHASE_01] THE_PILOT // LIFE_SUPPORT',
+    '[PHASE_02] THE_COURIER // KINETIC_THRUST',
+    '[PHASE_03] THE_ANCHORAGE // PERIMETER_SCAN',
+    '[PHASE_04] BORROWED_MOMENTUM // TETHER_LOAD',
+    '[PHASE_05] EVENT_HORIZON // RETURN_TO_VISOR',
   ];
 
   function updateTelemetry(time) {
@@ -1929,3 +2093,6 @@ export function bootstrapLoadingTerminal(document = globalThis.document) {
   instance.start();
   return instance;
 }
+
+// Proof harness seams. These are the very same worker-serialized factories.
+export { createEngine as createIntro2DEngine, createEngineGL as createIntroGLEngine, GL_SOURCES as INTRO_GL_SOURCES };

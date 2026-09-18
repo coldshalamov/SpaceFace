@@ -1,131 +1,99 @@
-// test/loading-intro-grade.test.mjs
-//
-// Ghost-field grade contract for the loading visualizer (2026-09): the five
-// authored figures stay half-buried in the signal swirl — a pseudo-abstract
-// phosphor visualizer with a barely-visible horror/cyberpunk cast — rather
-// than reading as clean illustration plates.
-//
-// What this pins, and why it is shaped this way:
-//  - The tableau factory's svg() output is its public, deterministic, Node-
-//    runnable surface: stroke counts, the alpha envelope, the curl-formation
-//    bbox spread, sustained motion, reduced-motion stability, and the dark
-//    grade are all asserted as numbers, not screenshots.
-//  - The GL composite constants have no other Node-observable seam (they run
-//    inside the worker/GL hosts), so they are pinned as source anchors in the
-//    installer's own style. A deliberate re-grade updates these pins.
-//  - Runtime proof lives outside this file: scripts/loading-signal-tableaux-
-//    proof.html imports the actual intro host, and this grade was reviewed in
-//    headless Edge (all five acts, reduced motion, forced 2D fallback) before
-//    these bounds were set.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { createSignalTableaux } from '../src/ui/loadingSignalTableaux.js';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
+import {createSignalTableaux} from '../src/ui/loadingSignalTableaux.js';
+import {createIntro2DEngine,createIntroGLEngine,INTRO_GL_SOURCES} from '../src/ui/loadingTerminalArt.js';
+const art=()=>createSignalTableaux({});
+const maxDelta=(a,b)=>a.reduce((m,x,i)=>Math.max(m,Math.abs(x-b[i])),0);
+const pose=(a,t,act=-1,reduced=false)=>new Float32Array(a.sample(t,act,reduced).positions);
+const noop=()=>{};
+function canvasHost(){const context=new Proxy({},{get:(o,k)=>o[k]??noop,set:(o,k,v)=>(o[k]=v,true)});return {document:{createElement:()=>({width:0,height:0,getContext:()=>context})},context};}
 
-const ACT_SECONDS = 6.5;
-const BRIGHTS = ['#8fd8c8', '#86cbc9', '#c9c4ea', '#c7a07a', '#adaadd'];
-
-function parseSvg(svg) {
-  const paths = [...svg.matchAll(/<path d="([^"]+)" fill="([^"]+)" stroke="([^"]+)" stroke-width="[^"]+" opacity="([^"]+)"/g)]
-    .map((m) => ({ d: m[1], fill: m[2], stroke: m[3], opacity: Number(m[4]) }));
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  let finite = true;
-  for (const p of paths) {
-    const nums = p.d.match(/-?\d+\.?\d*/g).map(Number);
-    for (let i = 0; i + 1 < nums.length; i += 2) {
-      const x = nums[i], y = nums[i + 1];
-      if (!Number.isFinite(x) || !Number.isFinite(y)) { finite = false; continue; }
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-    }
-  }
-  const meanOpacity = paths.reduce((a, p) => a + p.opacity, 0) / Math.max(1, paths.length);
-  return { paths, meanOpacity, finite, area: (maxX - minX) * (maxY - minY) };
-}
-
-function luminance(hex) {
-  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-}
-
-test('every act emits rich, finite, ghost-graded linework', () => {
-  const factory = createSignalTableaux({});
-  for (let act = 0; act < 5; act++) {
-    const svg = factory.svg({ act, time: act * ACT_SECONDS + 3.25 });
-    assert.ok(svg.includes('viewBox="0 0 1440 900"'), `act ${act}: plate size preserved`);
-    const m = parseSvg(svg);
-    assert.ok(m.paths.length >= 90, `act ${act}: ${m.paths.length} strokes, expected a full scene`);
-    assert.ok(m.finite, `act ${act}: all coordinates finite`);
-    // The envelope modulates: never flat-opaque plates, never invisible art.
-    // Measured mid-act means: 0.37–0.71 across the five scenes.
-    assert.ok(m.meanOpacity > 0.2 && m.meanOpacity < 0.78,
-      `act ${act}: mean opacity ${m.meanOpacity.toFixed(3)} outside the ghost band`);
-    // The dark grade: each act's bright phosphor tone is present by exact hex.
-    const strokes = new Set(m.paths.map((p) => p.stroke));
-    assert.ok(strokes.has(BRIGHTS[act]), `act ${act}: bright tone ${BRIGHTS[act]} missing`);
-    // Fills are blood-black silhouettes, never paper.
-    for (const p of m.paths) {
-      if (p.fill === 'none') continue;
-      assert.ok(luminance(p.fill) < 0.15, `act ${act}: fill ${p.fill} too hot for the grade`);
-    }
-  }
+test('five coherent authored sculptures have real surface geometry',()=>{
+ const a=art(),rows=a.inspect();assert.equal(rows.length,5);
+ assert.deepEqual(rows.map(x=>x.id),['witness','courier','anchorage','massline','singularity']);
+ for(const r of rows){assert(r.finite&&r.continuous);assert(r.points>500);assert(r.faces>0);}
+ assert(rows[1].faces>100);assert(rows[2].faces>500);assert(a.continuous);a.dispose();
 });
-
-test('figures form from a wide curl and dissolve back into it', () => {
-  const factory = createSignalTableaux({});
-  for (let act = 0; act < 5; act++) {
-    const t0 = act * ACT_SECONDS;
-    const mid = parseSvg(factory.svg({ act, time: t0 + 3.25 }));
-    const form = parseSvg(factory.svg({ act, time: t0 + ACT_SECONDS * 0.08 }));
-    const dis = parseSvg(factory.svg({ act, time: t0 + ACT_SECONDS * 0.94 }));
-    // Measured: formation 2.78–4.26x, dissolution 2.24–3.87x the mid-act bbox.
-    assert.ok(form.area >= mid.area * 2.2, `act ${act}: formation spread ${form.area.toFixed(0)} too tight`);
-    assert.ok(dis.area >= mid.area * 1.9, `act ${act}: dissolution spread ${dis.area.toFixed(0)} too tight`);
-  }
+test('source is standalone and survives worker-style function serialization',()=>{
+ const a=runInNewContext(`(${createSignalTableaux.toString()})({})`);
+ assert.equal(a.sample(1.5).bodies.length,6);assert.equal(a.stats().pointCount,art().stats().pointCount);
+ const s=createSignalTableaux.toString();assert(!/Math\.random\(|requestAnimationFrame\(|setInterval\(|fetch\(/.test(s));a.dispose();
 });
-
-test('figures stay animated, and reduced motion holds them fixed', () => {
-  const factory = createSignalTableaux({});
-  for (let act = 0; act < 5; act++) {
-    const t0 = act * ACT_SECONDS;
-    const a = factory.svg({ act, time: t0 + 3.1 });
-    const b = factory.svg({ act, time: t0 + 3.6 });
-    assert.notEqual(a, b, `act ${act}: mid-act figure must keep moving`);
-    const r1 = factory.svg({ act, time: t0 + 1.0, reduced: true });
-    const r2 = factory.svg({ act, time: t0 + 5.0, reduced: true });
-    assert.equal(r1, r2, `act ${act}: reduced motion must freeze figure geometry`);
-  }
+test('legacy act controls cannot select or freeze a scene',()=>{
+ const a=art(),p=pose(a,14.5);for(const act of [-1,0,1,2,3,4,99])assert.equal(maxDelta(p,pose(a,14.5,act)),0);a.dispose();
 });
-
-test('the retuned factory still survives worker serialization', () => {
-  const factory = createSignalTableaux({});
-  const revived = new Function(`return (${createSignalTableaux.toString()})`)()({});
-  for (let act = 0; act < 5; act++) {
-    assert.equal(revived.svg({ act }), factory.svg({ act }),
-      `act ${act}: serialized factory must render byte-identical geometry`);
+test('all five objects move at every sampled interval across two minutes',()=>{
+ const a=art(),mins=Array(5).fill(Infinity);let samples=0;
+ for(let t=0;t<=120;t+=.125){
+  const f=a.sample(t),before=new Float32Array(f.positions),alpha=new Float32Array(f.alphas);
+  for(const x of before)assert(Number.isFinite(x));
+  const g=a.sample(t+1/30),sum=Array(5).fill(0),count=Array(5).fill(0);
+  for(let k=0;k<g.tracks.length;k++){
+   const p=g.tracks[k];if(p.object>=5||alpha[k]<.04)continue;
+   for(let j=0;j<p.count;j+=Math.max(1,Math.floor(p.count/8))){const i=p.offset+j*2;sum[p.object]+=Math.hypot(g.positions[i]-before[i],g.positions[i+1]-before[i+1]);count[p.object]++;}
   }
+  for(let o=0;o<5;o++){assert(count[o]>0);const d=sum[o]/count[o];mins[o]=Math.min(mins[o],d);assert(d>.002,`held object ${o} at ${t}: ${d}`);}
+  samples++;
+ }
+ console.log('Motion sweep:',JSON.stringify({samples,seconds:120,minimumMeanDisplacementPer30HzStep:mins}));a.dispose();
 });
-
-test('the GL host keeps the field dominant and the figure ghostly', () => {
-  const src = readFileSync(
-    fileURLToPath(new URL('../src/ui/loadingTerminalArt.js', import.meta.url)), 'utf8');
-  // Figure ghosts through at half strength — never an opaque plate.
-  assert.ok(src.includes('figure.rgb*1.38'), 'figure exposure pin');
-  assert.ok(src.includes('figure.a*0.50*artOn'), 'figure mix pin (half strength)');
-  // The swirl survives under the figure instead of being crushed to ~3%.
-  assert.ok(src.includes('mix(1.0, 0.55, artOn)'), 'injector restoration pin');
-  assert.ok(src.includes('mix(1.0, 0.50, artOn)'), 'fog restoration pin');
-  assert.ok(src.includes('mix(0.96, 0.82, legibility)'), 'feedback persistence pin');
-  // The kaleidoscope keeps folding through figures instead of dying to 0.01.
-  assert.ok(src.includes('mix(0.60, 0.30, artHold)'), 'symmetry survival pin');
-  // Accessibility is not negotiable: no post flash, no seam glitch under
-  // reduced motion. The 0.45 seam unrest applies to full motion only, in both
-  // the 2D and GL engines (exactly two sites).
-  assert.ok(src.includes("gl.uniform1f(gl.getUniformLocation(progPost, 'uFlash'), 0)"),
-    'post flash must stay hard zero');
-  const glitchSites = src.split('glitch *= reduced ? 0 : 0.45;').length - 1;
-  assert.equal(glitchSites, 2, `expected 2 seam-glitch sites, found ${glitchSites}`);
+test('former 6.5-second boundaries and 32.5-second wrap are continuous',()=>{
+ const a=art();for(let t=6.5;t<125;t+=6.5){assert(maxDelta(pose(a,t-.0001),pose(a,t+.0001))<.2,`jump at ${t}`);}
+ assert(maxDelta(pose(a,0),pose(a,32.5))>100);a.dispose();
+});
+test('composition is not a fixed centered montage; depth and scale change independently',()=>{
+ const a=art(),ranges=Array.from({length:5},()=>({xs:[],ys:[],ds:[],ss:[]}));
+ for(let t=0;t<120;t+=.5){const bs=a.sample(t).bodies.slice(0,5);assert(bs.filter(b=>Math.hypot(b.x,b.y)<80).length<3);
+  bs.forEach((b,i)=>{ranges[i].xs.push(b.x);ranges[i].ys.push(b.y);ranges[i].ds.push(b.depth);ranges[i].ss.push(b.scale);});
+ }
+ for(const r of ranges){assert(Math.max(...r.xs)-Math.min(...r.xs)>400);assert(Math.max(...r.ys)-Math.min(...r.ys)>200);assert(Math.max(...r.ds)-Math.min(...r.ds)>.6);assert(Math.max(...r.ss)-Math.min(...r.ss)>.3);}a.dispose();
+});
+test('station ring, orbiting craft, and visor move relative to their parent',()=>{
+ const a=art();for(const [o,g] of [[0,1],[2,1],[3,2]]){
+  const f=a.sample(10),p=f.tracks.find(p=>p.object===o&&p.group===g),b={...f.bodies[o]},x=f.positions[p.offset]-b.x,y=f.positions[p.offset+1]-b.y;
+  const h=a.sample(12),c=h.bodies[o];assert(Math.hypot((h.positions[p.offset]-c.x)-x,(h.positions[p.offset+1]-c.y)-y)>.3);
+ }a.dispose();
+});
+test('reduced motion is an explicitly stable pose, independent of time and flow',()=>{
+ const a=art(),p=pose(a,0,0,true);a.setFlow(1.2,.08,-.03,.008,.01,1,2);assert.equal(maxDelta(p,pose(a,900,4,true)),0);assert.equal(a.sample(4,2,true).time,12);a.dispose();
+});
+test('sampling has stable typed storage and deterministic repeatable output',()=>{
+ const a=art(),f=a.sample(1),positions=f.positions,tracks=f.tracks,order=f.order,p=pose(a,12.34);
+ a.sample(300);assert.strictEqual(a.sample(4),f);assert.strictEqual(f.positions,positions);assert.strictEqual(f.tracks,tracks);assert.strictEqual(f.order,order);
+ assert.equal(maxDelta(p,pose(a,12.34)),0);assert.equal(maxDelta(p,pose(art(),12.34)),0);a.dispose();
+});
+test('invalid clocks are safe and very large clocks remain finite',()=>{
+ const a=art();for(const t of [NaN,Infinity,-Infinity,-12,Number.MAX_VALUE])for(const p of a.sample(t).positions)assert(Number.isFinite(p));a.dispose();
+});
+test('black-hole core is opaque and painter-ordered, not a post-frame cutout',()=>{
+ const a=art();for(const t of [0,4,30,60,90]){const f=a.sample(t),k=f.tracks.findIndex(p=>p.object===4&&p.material===6);assert(k>=0);assert.equal(f.alphas[k],1);assert.equal(f.tracks[k].width,0);}
+ const s=createSignalTableaux.toString();assert(!s.includes('destination-out'));a.dispose();
+});
+test('SVG is a generated live pose, not a runtime image asset',()=>{
+ const a=art(),s=a.svg({time:31,width:960,height:540});assert(s.startsWith('<svg'));assert(s.includes('CONTINUUM'));assert(!/NaN|Infinity|<image|<script/.test(s));assert((s.match(/<path /g)||[]).length>1200);assert.notEqual(s,a.svg({time:31.5,width:960,height:540}));a.dispose();
+});
+test('headless source gracefully returns no canvas without a canvas host',()=>{
+ const a=art();assert.equal(a.render(),null);a.dispose();a.dispose();assert(a.stats().disposed);assert.equal(a.render(),null);assert.equal(a.composeFallback({},400,225,0,-1,false),false);
+});
+test('GPU source texture has a 30Hz upload ceiling and a bounded resolution',()=>{
+ const host=canvasHost(),a=createSignalTableaux(host),calls={image:0,sub:0,delete:0};
+ const gl=new Proxy({createTexture:()=>({}),getUniformLocation:()=>({}),texImage2D:()=>calls.image++,texSubImage2D:()=>calls.sub++,deleteTexture:()=>calls.delete++},{get:(o,k)=>o[k]??noop});const program={};
+ for(let i=0;i<121;i++)assert(a.bindGL(gl,program,3840,2160,i/60,-1,false));
+ const s=a.stats();assert(s.uploads<=61&&s.uploads>=59);assert(s.textureWidth<=1280&&s.textureHeight<=800);
+ const n=s.uploads;a.bindGL(gl,program,3840,2160,2,-1,false);assert.equal(a.stats().uploads,n);
+ a.bindGL(gl,program,3840,2160,3,-1,true);const r=a.stats().uploads;
+ for(let i=0;i<10;i++)a.bindGL(gl,program,3840,2160,4+i,-1,true);assert.equal(a.stats().uploads,r);
+ a.dispose();a.dispose();assert.equal(calls.delete,1);
+});
+test('production exports and worker serialization retain original host contracts',()=>{
+ assert.equal(typeof createIntro2DEngine,'function');assert.equal(typeof createIntroGLEngine,'function');assert(INTRO_GL_SOURCES);
+ const engine=readFileSync(new URL('../src/ui/loadingTerminalArt.js',import.meta.url),'utf8');
+ assert(engine.includes('tableau?.continuous'));assert(engine.includes('matteRetention'));assert(engine.includes('context-lost'));assert(engine.includes("case 'stop':"));
+ assert(engine.includes('createSignalTableaux.toString()'));assert(!engine.includes('CONTINUUM_PLACEHOLDER'));
+});
+test('preview controls do not reintroduce act selection or a looping time modulo',()=>{
+ const html=readFileSync(new URL('../scripts/loading-signal-tableaux-proof.html',import.meta.url),'utf8'),js=readFileSync(new URL('../scripts/loading-signal-tableaux-proof.mjs',import.meta.url),'utf8');
+ assert(!html.includes('data-act'));assert(!js.includes('time%32.5'));assert(js.includes('prefers-reduced-motion'));assert(html.includes('Production WebGL2'));
 });
