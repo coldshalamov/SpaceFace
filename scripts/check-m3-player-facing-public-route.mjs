@@ -559,23 +559,21 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   } catch (err) {
     // The death route is the assertion under test — a timeout needs the combat state at expiry:
     // did the quarry die first, disengage, or simply fail to out-damage a braking starter ship?
-    const lastCombat = await page.evaluate(async () => {
+    const lastCombat = await page.evaluate(async (quarryId) => {
       const state = window.SF?.state;
       const player = state && state.entities && state.entities.get(state.playerId);
       const target = state && state.entities && state.entities.get(state.player && state.player.targetId);
       const hits = (window.__M3_DAMAGE_OBSERVER__ && window.__M3_DAMAGE_OBSERVER__.playerHits) || [];
       const lastHit = hits.at(-1) || null;
       const ai = target && target.data && target.data.ai;
-      let authorization = null;
-      let protection = null;
-      let aiInspect = null;
-      try {
-        if (target && window.SF?.helpers && typeof window.SF.helpers.inspectAI === 'function') {
-          const raw = window.SF.helpers.inspectAI({ entityId: target.id });
+      const inspectEntity = (id) => {
+        if (id == null || !window.SF?.helpers || typeof window.SF.helpers.inspectAI !== 'function') return null;
+        try {
+          const raw = window.SF.helpers.inspectAI({ entityId: id });
           const lastDecision = raw && raw.lastResult && Array.isArray(raw.lastResult.decisions)
-            ? raw.lastResult.decisions.find((d) => d && d.entityId === target.id) || null
+            ? raw.lastResult.decisions.find((d) => d && d.entityId === id) || null
             : null;
-          aiInspect = raw ? {
+          return raw ? {
             tick: raw.tick,
             perception: raw.perception || null,
             behavior: raw.behavior || null,
@@ -583,8 +581,10 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
             combatDoctrine: raw.combatDoctrine || null,
             lastDecision,
           } : null;
-        }
-      } catch (e) { aiInspect = { error: String(e && e.message || e) }; }
+        } catch (e) { return { error: String(e && e.message || e) }; }
+      };
+      let authorization = null;
+      let protection = null;
       try {
         const mod = await import('/src/ai/engagementAuthority.js');
         protection = target && player ? mod.protectedStationAt(state, player) : null;
@@ -599,6 +599,22 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
           }),
         } : null;
       } catch (e) { authorization = { error: String(e && e.message || e) }; }
+      const describeEntity = (e) => e ? {
+        id: e.id, type: e.type, name: e.data && (e.data.displayName || e.data.name || e.data.enemyTypeId) || null,
+        alive: e.alive !== false && Number(e.hull || 0) > 0,
+        vitals: { shield: e.shield, armor: e.armor, hull: e.hull },
+        pos: e.pos ? { x: Math.round(e.pos.x), z: Math.round(e.pos.z) } : null,
+        vel: e.vel ? { x: +e.vel.x.toFixed(1), z: +e.vel.z.toFixed(1) } : null,
+        dist: player && e.pos ? Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z) : null,
+        intent: e.data && e.data.intent || null,
+        simTier: e.activity && e.activity.simTier || null,
+        ai: e.data && e.data.ai ? {
+          activity: e.data.ai.activity || null, roe: e.data.ai.roe || null,
+          motive: e.data.ai.motive || null, passive: e.data.ai.passive ?? null,
+          combatDoctrineId: e.data.ai.combatDoctrineId || null, zoneId: e.data.ai.zoneId || null,
+        } : null,
+        inspect: inspectEntity(e.id),
+      } : null;
       return {
         mode: state && state.mode,
         playerAlive: player && player.alive !== false,
@@ -612,6 +628,9 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
         targetPos: target && target.pos ? { x: Math.round(target.pos.x), z: Math.round(target.pos.z) } : null,
         targetVel: target && target.vel ? { x: +target.vel.x.toFixed(1), z: +target.vel.z.toFixed(1) } : null,
         targetRot: target && typeof target.rot === 'number' ? +target.rot.toFixed(2) : null,
+        quarry: quarryId == null ? null
+          : describeEntity((target && target.id === quarryId) ? target : state.entities.get(quarryId))
+            || { id: quarryId, missing: true },
         targetAi: ai ? {
           activity: ai.activity || null, roe: ai.roe || null, motive: ai.motive || null,
           engagementTrigger: ai.engagementTrigger || null, combatDoctrineId: ai.combatDoctrineId || null,
@@ -632,7 +651,7 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
         simTick: state && state.tick,
         autoFire: state && state.input && state.input.autoFire,
       };
-    }).catch(() => null);
+    }, authoredMission && authoredMission.targetId).catch(() => null);
     assert.fail(`player death route never surfaced gameOver: ${JSON.stringify(lastCombat)}`);
     throw err;
   }
