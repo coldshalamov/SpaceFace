@@ -79,7 +79,12 @@ function collectKit(seed, sectorId) {
     .filter((row) => !/lane_pin|tally|claim_mark|locker|ash_pin|whistle/.test(String(row.poiId || '')))
     .map((row) => ({ x: Number(row.pos.x), z: Number(row.pos.z) }));
   const placed = [];
-  for (const ent of sim.state.entityList || []) {
+  // Kit dressing lands as dressing-table rows (insertDressingRow), not live entityList actors.
+  const residents = [
+    ...(sim.state.entityList || []),
+    ...((sim.state.world && sim.state.world.dressing && sim.state.world.dressing.rows) || []),
+  ];
+  for (const ent of residents) {
     if (!ent || !ent.data || ent.data.everydaySpaceKit !== true) continue;
     placed.push({
       placeId: String(ent.data.placeId),

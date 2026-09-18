@@ -333,8 +333,14 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 .sx-sw__slotfield.is-board .sx-hardpoint.is-selected { border-color: var(--k-signal); }
 .sx-sw__slotfield.is-board .sx-hardpoint:focus-visible { box-shadow: inset 0 0 0 1px var(--k-signal); }
 /* With no hull preview the stage is the nameplate plus the systems board: tall enough for both,
-   no orbit words or drag cue (there is nothing to orbit), and the stats take the rest and scroll. */
+   no orbit words or drag cue (there is nothing to orbit), and the stats take the rest and scroll.
+   The window itself is never an empty bay: the authored berth-bay plate is the final picture —
+   the same authored fallback the screen manager grants a staged screen that cannot run. */
 .sx-sw__stage:has(> .sx-sw__canvas[data-preview-blocked]) { min-height: calc(var(--k-row) * 7.2); }
+.sx-sw__stage:has(> .sx-sw__canvas[data-preview-blocked]) {
+  background: linear-gradient(rgb(8 12 16 / 58%), rgb(8 12 16 / 58%)),
+    url("../assets/ui/kit/assets/plates/plate.backdrop.berth-bay.png") center / cover no-repeat;
+}
 .sx-sw__stage:has(> .sx-sw__canvas[data-preview-blocked]) .sx-sw__camera,
 .sx-sw__stage:has(> .sx-sw__canvas[data-preview-blocked]) .sx-sw__dragcue { display: none; }
 .sx-sw__main:has(.sx-sw__canvas[data-preview-blocked]) > .sx-sw__stats { max-height: none; flex: 1 1 auto; }

@@ -857,6 +857,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.combat.damage_applied': 'sfx.hullHit',
   'presentation.combat.near_miss': 'sfx_combat_near_miss',
   'presentation.combat.player_hit': 'sfx.playerDamage',
+  // Bomb payload detonations (src/data/bombs.js audioCue). The other six payloads name
+  // sfx_explosion_small directly; these two semantic ids must not collapse to sfx_ui_click.
+  'bombs.goo.burst': 'sfx_explosion_small',
+  'bombs.emp.pulse': 'sfx_cm_ecm',
   [FIRST_HOUR_AUDIO_SIGNATURES.enemyKill.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.enemyKill.recipeId,
   [FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak.recipeId,
   'presentation.subsystem.disabled': 'sfx_subsystem_disabled',

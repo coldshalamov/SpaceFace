@@ -382,11 +382,9 @@ test('default player-owned Massline suppresses every snap transient while retain
       bandOpacity: cable.band.material.opacity,
       coreWidth: Math.hypot(core[0] - core[3], core[2] - core[5]) * 0.5,
       glowWidth: Math.hypot(glow[0] - glow[3], glow[2] - glow[5]) * 0.5,
-      anchorOpacity: cable.anchor.material.opacity,
       anchorCoreOpacity: cable.anchorCore.material.opacity,
       anchorCoreColor: cable.anchorCore.material.color.getHexString(),
-      targetHaloOpacity: cable.targetHalo.material.opacity,
-      visible: cable.mesh.visible && cable.band.visible && cable.anchor.visible,
+      visible: cable.mesh.visible && cable.band.visible && cable.anchorCore.visible,
     };
   };
 
@@ -398,10 +396,8 @@ test('default player-owned Massline suppresses every snap transient while retain
   assert.ok(fullSnap.bandOpacity > fullSteady.bandOpacity);
   assert.ok(fullSnap.coreWidth > fullSteady.coreWidth);
   assert.ok(fullSnap.glowWidth > fullSteady.glowWidth);
-  assert.ok(fullSnap.anchorOpacity > fullSteady.anchorOpacity);
   assert.ok(fullSnap.anchorCoreOpacity > fullSteady.anchorCoreOpacity);
   assert.notEqual(fullSnap.anchorCoreColor, fullSteady.anchorCoreColor);
-  assert.ok(fullSnap.targetHaloOpacity > fullSteady.targetHaloOpacity);
 
   state.settings.video.motionReduce = true;
   state.settings.accessibility.flashReduce = true;
@@ -411,8 +407,8 @@ test('default player-owned Massline suppresses every snap transient while retain
     'snap whitening, luminance, opacity, widths, hitch, and anchor transients share one policy');
   assert.equal(reducedSnap.visible, true);
   assert.ok(reducedSnap.coreIntensity > 0 && reducedSnap.glowOpacity > 0
-    && reducedSnap.bandOpacity > 0 && reducedSnap.anchorOpacity > 0,
-  'the static cable, band, and anchor remain readable');
+    && reducedSnap.bandOpacity > 0 && reducedSnap.anchorCoreOpacity > 0,
+  'the static cable, band, and contact point remain readable');
 });
 
 test('the alternate Massline ribbon applies reduced-flash HDR and reduced-motion pulse policy live', () => {

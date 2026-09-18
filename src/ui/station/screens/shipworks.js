@@ -544,6 +544,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let previewSettleTimer = 0;
   let previewSettleGeneration = 0;
   let previewRevealPhase = 'idle';
+  // While the preview is in blocked mode (secondary WebGL refused — Intel/ANGLE TDRs the live
+  // flight context), the shared berth stage has been asked to seat the previewed hull; leaving
+  // Shipworks must restore the player's own hull there.
+  let blockedPreviewActive = false;
   let activeBandModel = null;
   let ghostBandModel = null;
   let ghostMassDelta = null;
@@ -883,6 +887,53 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return mount;
   }
 
+  /**
+   * The blocked-mount preview. A second WebGL context is refused where it would TDR the live
+   * flight context (Intel/ANGLE — `secondaryPreviewWebGlBlocked`), so the stage window's picture
+   * is the authored berth-bay plate the sheet paints under `data-preview-blocked`: the same
+   * authored-fallback doctrine the screen manager grants every staged screen ("the authored plate
+   * is the final image"), never an empty bay. `previewReady` therefore means what it means there —
+   * the final picture is on screen — and `previewAssetState` says honestly that it is a plate.
+   *
+   * While docked the shared UI stage still draws the berth behind the panel (veiled); re-requesting
+   * `state.ui.stageRequest` with the previewed def — the same seam the berth uses (stationApp's
+   * createBerth.show) — seats the selected hull there, so the ghost behind the screen and the
+   * berth itself show the ship being fitted rather than a stale one.
+   */
+  function sharedBerthRequest() {
+    const ui = ctx && ctx.state && ctx.state.ui;
+    const request = ui && ui.stageRequest;
+    return request && request.scene === 'berth' ? request : null;
+  }
+
+  function previewThroughSharedStage(defId) {
+    blockedPreviewActive = true;
+    canvas.dataset.previewAssetState = 'authored-plate';
+    canvas.dataset.previewReady = 'true';
+    canvas.dataset.previewReveal = 'settled';
+    const ui = ctx && ctx.state && ctx.state.ui;
+    const request = sharedBerthRequest();
+    if (!request) return; // the in-flight host stands on the held flight frame; the plate is enough
+    if (request.hullDefId !== defId) {
+      ui.stageRequest = { ...request, hullDefId: defId || null, __lastStatus: undefined };
+    }
+  }
+
+  /** Leaving Shipworks re-seats the player's own hull so the berth shows the ship you fly. */
+  function restoreSharedStageHull() {
+    if (!blockedPreviewActive) return;
+    blockedPreviewActive = false;
+    const ui = ctx && ctx.state && ctx.state.ui;
+    const request = sharedBerthRequest();
+    if (!request) return;
+    const player = ctx.state && ctx.state.player;
+    const ships = (player && player.ownedShips) || [];
+    const ship = ships[Number(player && player.activeShipIndex) || 0] || ships[0] || null;
+    const defId = (ship && ship.defId) || 'ship_kestrel';
+    if (request.hullDefId === defId) return;
+    ui.stageRequest = { ...request, hullDefId: defId, __lastStatus: undefined };
+  }
+
   function previewShip(defId, fittings, isPlayer, meta) {
     ensureMount();
     writeCanvasPreviewMeta(defId, fittings, meta);
@@ -890,8 +941,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!mount) {
       canvas.dataset.previewReady = 'false';
       if (!canvas.dataset.previewBlocked) canvas.dataset.previewBlocked = 'secondary-webgl';
+      previewThroughSharedStage(defId);
       return;
     }
+    blockedPreviewActive = false;
     const sameHull = mount.getDefId && mount.getDefId() === defId;
     // Gate on ASSET READINESS, not hull identity alone. The stage is a shared singleton built for
     // the dock host, so a flight-first F2 open can match the hull id while that hull's GLB is
@@ -2763,6 +2816,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     onHide() {
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
       previewSettleTimer = 0;
+      restoreSharedStageHull();
       if (mount) mount.setActive(false);
       powerBeam.setActive(false);
     }, // stop the render loop when leaving (perf)

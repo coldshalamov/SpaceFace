@@ -3654,11 +3654,19 @@ function placeFileForEntity(entity) {
   if (id) {
     const remasterFile = OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID[id];
     if (remasterFile) return remasterFile;
-    if (data.everydaySpaceKit === true) {
+    // The family maps are flag-gated so random dressing rows cannot leak into kit/wreck bodies.
+    // Authored set pieces are the opposite case: a POI or world one-off that NAMES a family body
+    // was placed deliberately (the great tanker in Helios, the resonant cathedral gantry), so the
+    // placement flags admit them — otherwise they spawn as permanently invisible markers.
+    // Stations are excluded: their own type-total fallback below owns station bodies, and a
+    // landmark station must never resolve as a dressing prop.
+    const authoredSetPiece = entity.type !== 'station'
+      && (data.worldOneOff === true || data.landmark === true || data.poi === true);
+    if (data.everydaySpaceKit === true || authoredSetPiece) {
       const kitFile = EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[id];
       if (kitFile) return kitFile;
     }
-    if (data.wreckAftermath === true) {
+    if (data.wreckAftermath === true || authoredSetPiece) {
       const wreckFile = WRECK_AFTERMATH_PLACE_FILE_BY_ID[id];
       if (wreckFile) return wreckFile;
     }

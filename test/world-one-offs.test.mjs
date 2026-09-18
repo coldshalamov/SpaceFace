@@ -106,28 +106,32 @@ function bootOneOffHarness() {
     },
   };
   system.state = { entities, meta: { seed: 47 } };
-  return { system, spawned, entities };
+  // One-off props are dressing rows (insertDressingRow → state.world.dressing), not live
+  // spawnEntity actors — the assertions read the table the props actually land in.
+  const dressingRows = () => (system.state.world && system.state.world.dressing
+    ? system.state.world.dressing.rows : []);
+  return { system, spawned, dressingRows, entities };
 }
 
 test('the world spawns the one-offs verbatim on sector activation, and spins the tug', () => {
-  const { system, spawned } = bootOneOffHarness();
+  const { system, dressingRows } = bootOneOffHarness();
 
   // Ceres Belt: the tug, the shrine, the ram, and the pod-field cluster (1 hero + 7 shells).
   const ceres = SECTOR_BY_ID.get('sector_ceres_belt');
   const activeCeres = { pois: [], stations: [], gates: [], dressing: [] };
   system._spawnWorldOneOffs(ceres, activeCeres);
   assert.equal(activeCeres.dressing.length, 11, 'tug + shrine + ram + the pod field (1 hero + 7 shells)');
-  for (const prop of spawned) {
+  for (const prop of dressingRows()) {
     assert.equal(prop.data.worldOneOff, true,
       'every one-off prop carries the additive-dressing flag the PQ-020 census classifies by');
   }
-  const tug = spawned.find((e) => e.data.name === 'The Long Berth — an abandoned yard tug');
+  const tug = dressingRows().find((e) => e.data.name === 'The Long Berth — an abandoned yard tug');
   assert.ok(tug, 'the abandoned tug spawns');
   const station = ceres.stations.find((s) => s.id === 'station_ceres');
   assert.equal(tug.pos.x, station.pos.x - 260, 'the tug sits exactly where the data says, no rng');
   assert.equal(tug.pos.z, station.pos.z + 240);
   assert.equal(tug.rot, 2.1);
-  const shrine = spawned.find((e) => e.data.name === 'The Strut Shrine');
+  const shrine = dressingRows().find((e) => e.data.name === 'The Strut Shrine');
   assert.ok(shrine, 'the strut shrine spawns');
   assert.equal(shrine.pos.x, station.pos.x + 980, 'the shrine hangs across the refinery approach');
   assert.equal(shrine.pos.z, station.pos.z + 1140);
@@ -136,10 +140,10 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
   // tug by its spin and NOTHING else (snapshot every prop's rot before the tick).
   assert.equal(activeCeres.worldOneOffSpins.length, 1, 'only the tug carries a spin in Ceres');
   assert.equal(activeCeres.worldOneOffSpins[0].id, tug.id);
-  const rotBefore = new Map(spawned.map((p) => [p.id, p.rot]));
+  const rotBefore = new Map(dressingRows().map((p) => [p.id, p.rot]));
   system._tickWorldOneOffSpin(1, { world: { activeSector: activeCeres } });
   assert.ok(Math.abs(tug.rot - (rotBefore.get(tug.id) + 0.32)) < 1e-9, 'one second advances the tug by its spin');
-  for (const prop of spawned) {
+  for (const prop of dressingRows()) {
     if (prop === tug) continue;
     assert.equal(prop.rot, rotBefore.get(prop.id),
       `${prop.data.name || prop.data.placeId} must never be spun`);
@@ -148,7 +152,6 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
   // Helios Prime: only the great tanker (the shrine lives in Ceres now).
   const helios = SECTOR_BY_ID.get('sector_helios_prime');
   const activeHelios = { pois: [], stations: [], gates: [], dressing: [] };
-  spawned.length = 0;
   system._spawnWorldOneOffs(helios, activeHelios);
   assert.equal(activeHelios.dressing.length, 1, 'the tanker alone sits in the start sector');
   assert.equal(activeHelios.worldOneOffSpins, undefined, 'the tanker does not spin');
@@ -164,4 +167,40 @@ test('world.js owns the pass end to end: spawn on dressing, tick in update, rese
     'the spin ticks inside world.update');
   assert.match(source, /active\.worldOneOffSpins = \[\];/,
     'the spin list resets with the sector dressing on deactivation');
+});
+
+test('every placed set piece resolves an authored body — a named prop can never go invisible', async () => {
+  const { resolvePlaceFileForEntity } = await import('../src/render/partsLibrary.js');
+  const { system, dressingRows } = bootOneOffHarness();
+
+  for (const sector of SECTORS) {
+    const active = { pois: [], stations: [], gates: [], dressing: [] };
+    system._spawnWorldOneOffs(sector, active);
+  }
+  assert.ok(dressingRows().length >= 12, 'all one-off rows spawn across the sectors');
+  for (const prop of dressingRows()) {
+    assert.ok(
+      resolvePlaceFileForEntity({ type: 'fx', data: prop.data }),
+      `${prop.data.name || prop.data.placeId} (${prop.data.placeId}) must resolve a place file`,
+    );
+  }
+
+  // A landmark POI may name a body that lives only in the family maps: the marker is a
+  // deliberate authored placement, so the family file must resolve — or the scanner leads the
+  // player to a marker floating over empty space.
+  assert.ok(
+    resolvePlaceFileForEntity({
+      type: 'fx',
+      data: { poi: true, landmark: true, placeId: 'place_maintenance_gantry' },
+    }),
+    'a landmark POI naming a family-map body must still resolve its authored file',
+  );
+
+  // The gate stays shut for rows it was built for: an undecorated dressing row naming a family
+  // id still resolves nothing — random census dressing must not leak into authored families.
+  assert.equal(
+    resolvePlaceFileForEntity({ type: 'fx', data: { placeId: 'place_maintenance_gantry' } }),
+    null,
+    'a bare dressing row without the family or set-piece flags stays unadmitted',
+  );
 });

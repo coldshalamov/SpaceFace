@@ -74,7 +74,12 @@ function collectWrecks(seed, sectorId) {
   const active = sim.state.world.sectorContents[sectorId] || {};
   const stations = (active.stations || []).map((row) => ({ x: Number(row.pos.x), z: Number(row.pos.z) }));
   const wrecks = [];
-  for (const ent of sim.state.entityList || []) {
+  // Wreck aftermath lands as dressing-table rows (insertDressingRow), not live entityList actors.
+  const residents = [
+    ...(sim.state.entityList || []),
+    ...((sim.state.world && sim.state.world.dressing && sim.state.world.dressing.rows) || []),
+  ];
+  for (const ent of residents) {
     if (!ent || !ent.data || ent.data.wreckAftermath !== true) continue;
     const model = WRECK_AFTERMATH_MODELS.find((item) => item.id === ent.data.placeId);
     wrecks.push({
