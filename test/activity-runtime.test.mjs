@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 
-import { SIM_TIER } from '../src/world/activityClassification.js';
+import { PRESENTATION_TIER, SIM_TIER } from '../src/world/activityClassification.js';
 import { shouldOwnerThink } from '../src/core/activityScheduler.js';
 import { SpatialHash } from '../src/core/spatialHash.js';
 import { spatialHashLayersFromState } from '../src/core/physics.js';
@@ -438,4 +438,43 @@ test('activity manager publishes glass and exact sets from the live classifier',
   assert.ok(frame.renderGlassIds.includes(1));
   assert.equal(player.alive, true);
   assert.equal(far.alive, true);
+});
+
+test('incremental classify revisits fast non-physics movers the hash cannot see', () => {
+  // Travel-lane traffic repositions itself every tick at 420 WU/s and opted out of physics
+  // bodies, so the production broad-phase hash never contains it. The incremental classifier
+  // must still revisit it once it closes, or its spawn-time R3 stamp survives the whole pass
+  // through the player's glass and the hull never earns a mesh.
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const laneHauler = {
+    id: 7,
+    type: 'freighter',
+    alive: true,
+    collides: false,
+    physicsBody: false,
+    radius: 12,
+    pos: { x: 3000, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    data: {},
+    flags: {},
+  };
+  const state = makeState([player, laneHauler], { runtime: { profileId: 'production' } });
+  // Physics-only hash membership, mirroring the production broad-phase: the opted-out hauler
+  // is absent even though the hash itself is active.
+  const hash = new SpatialHash(64);
+  hash.rebuild([player]);
+  state.spatialHash = hash;
+  const first = ensureActivityClassified(state);
+  assert.equal(first.classifyMode, 'full');
+  assert.equal(laneHauler.activity.simTier, SIM_TIER.S3_DORMANT);
+  assert.equal(laneHauler.activity.presentationTier, PRESENTATION_TIER.R3_UNLOADED);
+  // The hauler closes to the glass between ticks; the next classify must pick it up.
+  state.tick = (state.tick | 0) + 1;
+  state.simTime = (state.simTime || 0) + 1 / 60;
+  laneHauler.pos.x = 40;
+  const second = ensureActivityClassified(state);
+  assert.equal(second.classifyMode, 'incremental');
+  assert.equal(laneHauler.activity.presentationTier, PRESENTATION_TIER.R0_GLASS);
+  assert.ok(second.glassIds.includes(7), 'revisited hauler joins the glass set');
 });

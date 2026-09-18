@@ -21,7 +21,7 @@ import {
   classifyActivity,
   physicsReachWu,
 } from './activityClassification.js';
-import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { hasNearWorkSlot, shouldOwnerThink } from '../core/activityScheduler.js';
 import { ballisticDrift, consumeScheduledWorldWake } from './worldCatchup.js';
 import {
@@ -663,12 +663,18 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
   const radius = Math.max(0, reach) + NEAR_EXIT_PAD_WU;
   queryNearbyEntities(state, origin, radius, scratch, runtime.classifyEmptyFallback);
   for (let i = 0; i < scratch.length; i++) add(scratch[i]);
-  if (!hasActiveSpatialHash(state && state.spatialHash) && origin) {
+  // The spatial hash only indexes physics bodies. Closed-form movers that opted out of
+  // physics (travel-lane traffic repositions itself every tick at 420 WU/s) are invisible
+  // to the radius query, so without this scan an S3/R3 stamp from spawn time survives the
+  // whole pass through the player's glass and the hull never earns a mesh. The no-hash
+  // path below already visits this disc; the hash path must visit at least the same set.
+  // `add` dedupes against the hash results, so physics entities cost one Set lookup here.
+  if (origin) {
     const enter = reach + NEAR_ENTER_PAD_WU;
     const enter2 = enter * enter;
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
-      if (!entity || entity.alive === false || !entity.pos) continue;
+      if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
       const dx = finite(entity.pos.x) - origin.x;
       const dz = finite(entity.pos.z) - origin.z;
       if (dx * dx + dz * dz <= enter2) add(entity);

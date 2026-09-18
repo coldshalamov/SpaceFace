@@ -1046,6 +1046,9 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // spawns the moment flight starts and the tutorial line points at it — it must be on the glass
     // now, not after the 20 s residency hold. Measured 2026-09-12: both rescue rocks sat queued
     // from +1 s and were built at +20.3 s. Everything else keeps the hold.
+    // The queue is empty under the hold (reconcile/poll never run here), so enqueue the exempt
+    // set — rescue actors, explicit focus, on-glass rows — before draining, or the drain no-ops.
+    enqueueHoldExemptMeshBuilds(owner);
     if (typeof owner._drainProtectedFirstFlightBuilds === 'function') owner._drainProtectedFirstFlightBuilds();
     return 'held-first-flight';
   }
@@ -1083,6 +1086,52 @@ export function serviceRenderMeshResidency(owner, frameDt) {
 function isFirstFlightProtectedEntity(entity) {
   const data = entity && entity.alive !== false ? entity.data : null;
   return !!(data && (data.rescue === true || data.onboardingTraining === true));
+}
+
+/**
+ * Entities the first-flight streaming hold must not starve: the rescue set piece,
+ * explicit render focus (player, target lock, forced roots), and whatever the activity
+ * frame currently has on the readable glass. The set is small by construction; the bulk
+ * runway keeps the hold so the cooked working set survives first flight.
+ */
+function isHoldExemptMeshBuild(entity, state, glassIds) {
+  if (!entity || entity.alive === false) return false;
+  if (isFirstFlightProtectedEntity(entity)) return true;
+  if (entityIsExplicitRenderFocus(entity, state)) return true;
+  if (glassIds) {
+    if (typeof glassIds.has === 'function' ? glassIds.has(entity.id) : glassIds.includes(entity.id)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Queue the hold-exempt set while the first-flight residency hold owns streaming.
+ * Reconcile and poll never run under the hold, so without this the build queue stays
+ * empty and the exempt drain below is a no-op (live-confirmed: the rescue rock sat
+ * meshless until the hold released at +20 s). The per-build relevance check inside
+ * _drainMeshBuildQueue stays the backstop, so far exempt rows still wait their turn.
+ */
+function enqueueHoldExemptMeshBuilds(owner) {
+  const state = owner && owner.state;
+  if (!owner || !state || !owner._meshes || !owner._meshBuildQueuedIds || !owner._meshBuildQueue) return 0;
+  const frame = owner._activityFrame;
+  const glassIds = frame && frame.renderGlassIds;
+  const list = collectMeshPresentationEntities(
+    state,
+    owner._presentationMeshScratch || (owner._presentationMeshScratch = []),
+  );
+  const before = owner._meshBuildQueue.length;
+  enqueueMissingMeshBuilds(
+    list,
+    owner._meshes,
+    owner._meshBuildQueuedIds,
+    owner._meshBuildQueue,
+    (entity) => !owner._sectorBoundaryPreparations?.has(entity.id)
+      && isHoldExemptMeshBuild(entity, state, glassIds),
+  );
+  return owner._meshBuildQueue.length - before;
 }
 
 function liveFlyDefersOnGlassAuthoredUpgrade(state) {
@@ -8349,17 +8398,20 @@ export const render = {
   },
 
   /**
-   * Build the opening's rescue set piece out of the queue while the first-flight residency hold
-   * keeps every other build waiting. Hoists the protected ids to the head and drains exactly that
-   * many, so nothing else slips through the hold.
+   * Build the hold-exempt set out of the queue while the first-flight residency hold keeps
+   * every other build waiting. Hoists the exempt ids (rescue set piece, explicit focus,
+   * on-glass rows) to the head and drains exactly that many, so nothing else slips
+   * through the hold.
    */
   _drainProtectedFirstFlightBuilds() {
     const queue = this._meshBuildQueue;
     if (!queue || this._meshBuildQueueHead >= queue.length) return 0;
+    const frame = this._activityFrame;
+    const glassIds = frame && frame.renderGlassIds;
     let moved = 0;
     for (let i = this._meshBuildQueueHead; i < queue.length; i++) {
       const entity = resolveWorldPresentationEntity(this.state, queue[i]);
-      if (!isFirstFlightProtectedEntity(entity)) continue;
+      if (!isHoldExemptMeshBuild(entity, this.state, glassIds)) continue;
       const slot = this._meshBuildQueueHead + moved;
       if (i !== slot) {
         const [id] = queue.splice(i, 1);
