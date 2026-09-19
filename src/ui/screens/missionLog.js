@@ -36,6 +36,7 @@ import {
   buildMissionLogOriginChoiceModel,
 } from '../careerLadderView.js';
 import { el, rows, hero, settle, cue } from '../kit/index.js';
+import { injectDeckplate } from '../deckplate/index.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -1684,6 +1685,8 @@ export const missionLogScreen = {
   _subbed: false,
 
   mount(rootEl, ctx) {
+
+    injectDeckplate();
     this._ctx = ctx;
     this._rootEl = rootEl;
 

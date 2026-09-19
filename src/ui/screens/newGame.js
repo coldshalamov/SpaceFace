@@ -17,6 +17,7 @@ import { fittingsFromDefaultModules } from '../../systems/ships.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createStageHull } from './stageHull.js';
+import { injectDeckplate } from '../deckplate/index.js';
 
 // PQ-156.00: the catalog owns the three starter hulls; Hitch stays the default pick so a
 // Launch with no interaction emits the exact legacy ship_kestrel payload.
@@ -54,9 +55,17 @@ function fhUrl(rel) {
 function forcedColorsActive() {
   return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
 }
+// Deckplate (FRONTEND_PROGRAM Wave 2): the Field Hardware PNG plates, keys and tiles are drawn by
+// the deckplate bridge now (src/ui/deckplate/screens.js, FH_BRIDGE), so pins keep geometry, type
+// and colour only. Forced colours keeps every pin: there the system palette is the material.
+const DP_MATERIAL_PROP = /^(border-image|border-style$|border-width$|background)/;
 function pin(node, props) {
   if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
-  for (const name of Object.keys(props)) node.style.setProperty(name, props[name], 'important');
+  const materialsToBridge = !forcedColorsActive();
+  for (const name of Object.keys(props)) {
+    if (materialsToBridge && DP_MATERIAL_PROP.test(name)) continue;
+    node.style.setProperty(name, props[name], 'important');
+  }
   return node;
 }
 function installShell(root) {
@@ -354,6 +363,8 @@ export const newGameScreen = {
   id: 'newGame',
 
   mount(rootEl, ctx) {
+
+    injectDeckplate();
     if (refs && refs.unsubStartFailed) {
       try { refs.unsubStartFailed(); } catch (e) {}
     }

@@ -10,6 +10,7 @@
 
 import { STORY_BEATS } from '../../data/missions.js';
 import { el, settle, cue } from '../kit/index.js';
+import { injectDeckplate } from '../deckplate/index.js';
 
 /** The receipt's fields and their labels. The kicker, the second line, the hero words and the
  *  coverage sentence are all spelled from this table (the screen-import check reads the pairs). */
@@ -186,6 +187,8 @@ export const gameOverScreen = {
   _menuButton: null,
 
   mount(rootEl, ctx) {
+
+    injectDeckplate();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-gameover');
     // k-screen--cold: the one screen that deepens the menu scrim to the wanted blue (Task B §1.5).

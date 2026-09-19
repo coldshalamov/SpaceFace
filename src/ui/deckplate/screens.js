@@ -16,6 +16,12 @@ const LED_RED = 'radial-gradient(circle at 12px 50%, #fff1ea 0, var(--dp-danger-
 const LED_OFF_TL = LED_OFF.replace('12px 50%', '9px 9px');
 const LED_ON_TL = LED_ON.replace('12px 50%', '9px 9px');
 const LED_RED_TL = LED_RED.replace('12px 50%', '9px 9px');
+// Keys carry their lamp in the cap, left of the legend; tabs carry it on the rail side.
+const KEY_LED_OFF = LED_OFF.replace('12px 50%', '14px 50%');
+const KEY_LED_ON = LED_ON.replace('12px 50%', '14px 50%');
+const KEY_LED_RED = LED_RED.replace('12px 50%', '14px 50%');
+const TAB_LED_OFF = LED_OFF.replace('12px 50%', '16px 50%');
+const TAB_LED_ON = LED_ON.replace('12px 50%', '16px 50%');
 
 /* The verb list, as any kit words column inside a deckplate menu: grouped, iconed, LED-lit. */
 const WORDS = `
@@ -164,6 +170,151 @@ const PAUSE = `
   #screens .of-pause .k-word:is(:hover, :focus-visible) { outline:2px solid Highlight !important; }
   #screens :is(.of-pause) .k-word[data-icon]::before { forced-color-adjust:none; background:CanvasText; }
   #screens :is(.of-pause) .k-word[data-hint]::after { border-image:none; border:1px solid CanvasText; background:Canvas; color:CanvasText; }
+}
+`;
+
+const FH_BRIDGE = `
+/* ══ FH → DECKPLATE BRIDGE (FRONTEND_PROGRAM Wave 2, 2026-09-19) ════════════════════════════════
+   The shell screens (new game, load/save, help, credits, codex, research, achievements) are built
+   from the Field Hardware vocabulary: .fh-plate, .fh-key, .fh-row, .fh-input, .fh-tile, .fh-light.
+   Rather than restyle each screen, this maps that vocabulary onto the deckplate materials once:
+   brown bench plates become smoked glass in a thin machined bezel, the sprite keys become keycaps
+   with a lamp, tabs become lit legends, rows take the one selection language. Border widths drop
+   to the deckplate hardware's and the padding grows by the difference, so every content box stays
+   exactly where the screen laid it out. The fh colour tokens resolve to the deckplate ones. */
+html body #screens {
+  --fh-legend:var(--dp-lamp); --fh-legend-now:var(--dp-lamp-hot);
+  --fh-text:var(--dp-ink); --fh-text-resting:var(--dp-ink-dim); --fh-text-tertiary:var(--dp-ink-mute);
+}
+/* panels: glass seated in a thin machined bezel */
+html body #screens :is(.fh-plate, .fh-window) {
+  border-width:12px; padding:calc(var(--fh-space-l) + 12px);
+  border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
+  background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
+  box-shadow:0 12px 30px rgb(0 0 0 / .45), var(--dp-glass-depth);
+  color:var(--dp-ink);
+}
+/* a sunk plate is a glass well: no bezel of its own, the rim and lip only */
+html body #screens .fh-plate.fh-plate--sunk {
+  border-width:0; border-image:none; padding:calc(var(--fh-space-l) + 24px);
+  background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
+}
+/* the paper plate was a tan card: it becomes glass like every other panel, its ink bone */
+html body #screens .fh-plate.fh-plate--paper { color:var(--dp-ink); }
+html body #screens .fh-plate.fh-plate--edge {
+  border-width:10px; padding:calc(var(--fh-space-m) + 6px);
+  border-image:url("${HW}bezel-thin.svg") 12 / 10px / 0 stretch;
+  background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
+}
+html body #screens .fh-rail {
+  border-width:5px; border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
+  background:var(--dp-metal-layers), linear-gradient(90deg, #232833, #171b22);
+}
+/* keys: keycap hardware, a lamp in the cap, the legend etched */
+html body #screens .fh-key {
+  border-width:8px 10px 10px; min-height:44px; padding-inline:calc(var(--fh-space-xl) + 8px) calc(var(--fh-space-xl) + 8px);
+  border-image:url("${HW}keycap.svg") 10 10 12 / 8px 10px 10px / 0 stretch;
+  background:${KEY_LED_OFF}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 78; letter-spacing:.14em;
+  color:var(--dp-ink); text-shadow:0 -1px 0 rgb(0 0 0 / .7);
+  transition:color var(--dp-d-cut) var(--dp-ease-lamp), box-shadow var(--dp-d-cut) var(--dp-ease-lamp);
+}
+html body #screens .fh-key:is(:hover, :focus-visible) {
+  border-image-source:url("${HW}keycap.svg"); color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+  background:${KEY_LED_ON}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .35), 0 8px 16px -10px var(--dp-lamp-bloom);
+}
+html body #screens .fh-key:active { border-image-source:url("${HW}keycap-pressed.svg"); }
+html body #screens :is(.fh-key:disabled, .fh-key[aria-disabled='true']) {
+  border-image-source:url("${HW}keycap.svg"); color:var(--dp-ink-mute); text-shadow:none; box-shadow:none;
+  background:${KEY_LED_OFF}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3); filter:saturate(.6) brightness(.85);
+}
+/* the screen's one primary command wears the selection language permanently */
+html body #screens .fh-key.fh-key--primary {
+  border-image-source:url("${HW}keycap.svg"); color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+  background:${KEY_LED_ON}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .5), inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
+}
+html body #screens .fh-key.fh-key--primary:is(:hover, :focus-visible) { filter:brightness(1.1); }
+/* a destructive key: bone at rest, the lamp driven red under the hand */
+html body #screens .fh-key.fh-key--hazard { border-image-source:url("${HW}keycap.svg"); }
+html body #screens .fh-key.fh-key--hazard:is(:hover, :focus-visible) {
+  color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
+  background:${KEY_LED_RED}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), 0 8px 16px -10px var(--dp-danger-bloom);
+}
+html body #screens .fh-key.fh-key--small {
+  border-width:6px 7px 8px; min-height:34px; padding-inline:calc(var(--fh-space-l) + 5px) calc(var(--fh-space-l) + 5px);
+  border-image:url("${HW}keycap.svg") 10 10 12 / 6px 7px 8px / 0 stretch;
+}
+/* tabs: navigation legends, not commands — a lamp and a legend, the open one lit */
+html body #screens .fh-key.fh-key--legend {
+  border-image:none; border-width:0; border-color:transparent; min-height:40px; border-radius:2px;
+  padding:0 14px 0 30px;
+  background:${TAB_LED_OFF};
+  font-variation-settings:"wght" 760, "wdth" 78; letter-spacing:.16em; color:var(--dp-ink-dim); text-shadow:none; box-shadow:none;
+}
+html body #screens .fh-key.fh-key--legend:is(:hover, :focus-visible) {
+  border-image:none; color:var(--dp-ink);
+  background:${TAB_LED_OFF}, linear-gradient(90deg, rgb(255 255 255 / .05), transparent 80%); box-shadow:none;
+}
+html body #screens .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], .is-lit) {
+  border-image:none; color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+  background:${TAB_LED_ON}, linear-gradient(90deg, rgb(255 238 210 / .08), transparent 80%);
+  box-shadow:inset 0 -2px 0 var(--dp-lamp), 0 10px 16px -12px var(--dp-lamp-bloom);
+}
+/* rows: etched hairlines; the selected row lights like every deckplate row */
+html body #screens .fh-row { border:0 solid transparent; }
+html body #screens .fh-row.is-selected {
+  border-width:0; border-image:none; color:var(--dp-lamp-hot);
+  background:linear-gradient(90deg, rgb(255 238 210 / .07), transparent 70%);
+  box-shadow:inset 3px 0 0 var(--dp-lamp), inset 0 0 0 1px rgb(255 217 140 / .18);
+}
+/* the etched hairline the old tile drew, under rows and as a divider */
+html body #screens .fh-row { background-image:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px); background-size:100% 2px; background-repeat:no-repeat; background-position:left top; }
+html body #screens .fh-hairline { height:4px; border:0; background:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px) left center / 100% 2px no-repeat; }
+html body #screens .fh-legend[data-fh-lit="on"] { color:var(--dp-lamp); }
+/* inputs: a glass readout in a thin bezel; focus lights its rim */
+html body #screens .fh-input {
+  border-width:5px; padding:0 calc(var(--fh-space-m) + 7px);
+  border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
+  background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
+  color:var(--dp-ink); font-family:var(--dp-face-read);
+}
+html body #screens .fh-input:focus-visible { box-shadow:inset 0 0 0 1px var(--dp-lamp), 0 0 12px var(--dp-lamp-bloom-soft); }
+/* tiles: keyart framed as a glass card; the chosen one lit */
+html body #screens .fh-tile {
+  border-width:10px; border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
+  background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
+}
+html body #screens .fh-tile[aria-selected='true'] {
+  border-image-source:url("${HW}bezel-thin.svg"); color:var(--dp-lamp-hot);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .45), inset 0 -3px 0 var(--dp-lamp), 0 10px 20px -12px var(--dp-lamp-bloom);
+}
+html body #screens .fh-tile-legend { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 70; }
+/* lights: the deckplate lens */
+html body #screens .fh-light {
+  border-radius:50%; width:9px; height:9px;
+  background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
+  box-shadow:0 0 6px var(--dp-lamp-bloom), 0 0 0 1px #06080a;
+}
+html body #screens .fh-light:is([data-level='off'], [data-level='dim']) {
+  background:radial-gradient(circle at 42% 36%, #3b352c, #17140f 70%); box-shadow:inset 0 1px 1.5px rgb(0 0 0 / .85), 0 0 0 1px #06080a;
+}
+html body #screens .fh-light[data-colour='wanted'] { background:radial-gradient(circle at 42% 34%, #fff1ea, var(--dp-danger-hot) 26%, var(--dp-danger) 60%, #6b1a10); box-shadow:0 0 6px var(--dp-danger-bloom), 0 0 0 1px #06080a; }
+html body #screens .fh-light:is([data-colour='good'], [data-colour='cold']) { background:radial-gradient(circle at 42% 34%, #fffaf0 0%, #d8d2c4 45%, #6b675d 100%); box-shadow:0 0 5px rgb(232 226 212 / .25), 0 0 0 1px #06080a; }
+/* type: the display face for titles, the etched condensed voice for legends */
+html body #screens .fh-title { font-family:var(--dp-face-display); font-variation-settings:"wght" 900, "wdth" 125; color:var(--dp-ink); text-shadow:0 -1px 0 rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .12); }
+html body #screens .fh-legend { font-family:var(--dp-face-etch); color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow); }
+@media (prefers-reduced-motion:reduce) { html body #screens .fh-key { transition:none; } }
+@media (forced-colors:active) {
+  html body #screens :is(.fh-plate, .fh-window, .fh-rail, .fh-key, .fh-input, .fh-tile) {
+    border-image:none; border:1px solid CanvasText; background:Canvas; color:CanvasText; box-shadow:none; filter:none;
+  }
+  html body #screens :is(.fh-key:is(:hover, :focus-visible), .fh-key--legend:is([aria-selected='true'], .is-lit), .fh-row.is-selected, .fh-tile[aria-selected='true']) {
+    outline:2px solid Highlight; background:Canvas; color:CanvasText;
+  }
+  html body #screens .fh-light { forced-color-adjust:none; background:CanvasText; box-shadow:none; }
 }
 `;
 
@@ -380,7 +531,7 @@ ${S} .k-foot .fh-key--primary {
   border-style:solid; border-color:transparent; border-width:10px 10px 12px; border-radius:0;
   border-image:url("${HW}keycap.svg") 10 10 12 / 10px 10px 12px / 0 stretch;
   background:var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  min-height:44px; padding:0 14px; color:var(--dp-ink); text-shadow:0 -1px 0 rgb(0 0 0 / .7);
+  min-height:44px; padding:0 14px; color:var(--dp-ink); text-shadow:0 -1px 0 rgb(0 0 0 / .7); box-shadow:none;
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 78; letter-spacing:.14em;
 }
 ${S} .k-foot .fh-key--primary:is(:hover, :focus-visible) { filter:brightness(1.12); color:var(--dp-lamp-hot); }
@@ -401,4 +552,4 @@ ${S} .k-foot .fh-key--primary::after {
 }
 `;
 
-export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + TITLE + SETTINGS;
+export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + TITLE + SETTINGS;

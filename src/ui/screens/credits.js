@@ -2,6 +2,7 @@
 // Third-party notices PQ-033.00. Unique chrome: styles/credits.css. Data from scripts/write-credits.mjs.
 import { CREDITS } from '../../data/credits.js';
 import { el, words, settle, cue } from '../kit/index.js';
+import { injectDeckplate } from '../deckplate/index.js';
 
 const CREDITS_SHEET_ID = 'of-credits-css';
 
@@ -71,6 +72,8 @@ export const creditsScreen = {
   _section: 'made',
 
   mount(rootEl, ctx) {
+
+    injectDeckplate();
     ensureCreditsStyles();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu');

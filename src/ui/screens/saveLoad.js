@@ -14,6 +14,7 @@ import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
 import { confirm } from '../confirm.js';
 import { el, rows, words, hero, settle, cue } from '../kit/index.js';
 import { createStageHull, STAGE_HULL_RELEASE_MS } from './stageHull.js';
+import { injectDeckplate } from '../deckplate/index.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
@@ -41,9 +42,17 @@ function fhUrl(rel) {
 function forcedColorsActive() {
   return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
 }
+// Deckplate (FRONTEND_PROGRAM Wave 2): the Field Hardware PNG plates, keys and tiles are drawn by
+// the deckplate bridge now (src/ui/deckplate/screens.js, FH_BRIDGE), so pins keep geometry, type
+// and colour only. Forced colours keeps every pin: there the system palette is the material.
+const DP_MATERIAL_PROP = /^(border-image|border-style$|border-width$|background)/;
 function pin(node, props) {
   if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
-  for (const name of Object.keys(props)) node.style.setProperty(name, props[name], 'important');
+  const materialsToBridge = !forcedColorsActive();
+  for (const name of Object.keys(props)) {
+    if (materialsToBridge && DP_MATERIAL_PROP.test(name)) continue;
+    node.style.setProperty(name, props[name], 'important');
+  }
   return node;
 }
 function installShell(root) {
@@ -682,6 +691,8 @@ export const saveLoadScreen = {
   id: 'saveLoad',
 
   mount(rootEl, ctx) {
+
+    injectDeckplate();
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen');
     rootEl.dataset.kReady = '0';

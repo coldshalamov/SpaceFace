@@ -21,6 +21,7 @@ import {
   techTreeNameLineBudget,
   techTreeNodeHeight,
 } from '../../localization/layout.js';
+import { injectDeckplate } from '../deckplate/index.js';
 
 // Branch -> column index. Colour is by MEANING (researched / available / locked), never by branch.
 const BRANCHES = [
@@ -66,9 +67,17 @@ function fhUrl(rel) {
 function forcedColorsActive() {
   return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
 }
+// Deckplate (FRONTEND_PROGRAM Wave 2): the Field Hardware PNG plates, keys and tiles are drawn by
+// the deckplate bridge now (src/ui/deckplate/screens.js, FH_BRIDGE), so pins keep geometry, type
+// and colour only. Forced colours keeps every pin: there the system palette is the material.
+const DP_MATERIAL_PROP = /^(border-image|border-style$|border-width$|background)/;
 function pin(node, props) {
   if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
-  for (const name of Object.keys(props)) node.style.setProperty(name, props[name], 'important');
+  const materialsToBridge = !forcedColorsActive();
+  for (const name of Object.keys(props)) {
+    if (materialsToBridge && DP_MATERIAL_PROP.test(name)) continue;
+    node.style.setProperty(name, props[name], 'important');
+  }
   return node;
 }
 function installShell(root) {
@@ -564,6 +573,8 @@ export const techTreeScreen = {
   _regions: null,
 
   mount(rootEl, ctx) {
+
+    injectDeckplate();
     this._ctx = ctx;
     this._root = rootEl;
     // `#sf-techtree` stays as an inert hook (probe-frontend-unblind-capture reads `#sf-techtree canvas`).

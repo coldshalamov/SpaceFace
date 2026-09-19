@@ -6,6 +6,7 @@
 import { ACHIEVEMENT_CATEGORIES } from '../../data/achievements.js';
 import { ACHIEVEMENT_UNLOCKED_EVENT, readAchievementRows } from '../../systems/achievements.js';
 import { el, words, settle, cue } from '../kit/index.js';
+import { injectDeckplate } from '../deckplate/index.js';
 
 const ACHIEVEMENTS_SHEET_ID = 'of-achievements-css';
 
@@ -73,6 +74,8 @@ export const achievementsScreen = {
   _section: 'all',
 
   mount(rootEl, ctx) {
+
+    injectDeckplate();
     ensureAchievementsStyles();
     this._unsubscribe();
     rootEl.innerHTML = '';
