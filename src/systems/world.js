@@ -205,6 +205,13 @@ const SCAN_RANGE = 400;         // wu POI auto-detect radius
 const SECTOR_SCAN_TIME = 2.0;   // s to complete a sector scan
 const FUEL_REFUND_FRAC = 0.5;   // refunded on aborted charge
 
+// Free-flight membership hysteresis. The Voronoi membership test is a knife edge; a player
+// patrolling rocks on a border used to flip residency every oscillation across it (measured:
+// 38 continuous enter/exits in one hour), and each flip re-runs the residency plan. A switch now
+// requires the player to sit LEAD_WU inside the candidate cell and hold that lead for DWELL_S.
+const MEMBERSHIP_LEAD_WU = 150;
+const MEMBERSHIP_DWELL_S = 8;
+
 // Jump-drive tiers (design 05). Resolved from the equipped module; defaults to T1.
 const DRIVE_TIERS = {
   jump_t1: { baseCharge: 8.0, tierFuelMult: 1.0,  driveStealth: 0.0,  hotJump: false },
@@ -221,6 +228,14 @@ for (const sector of SECTORS) {
 }
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+
+/** Squared distance from a global pose to a sector's galactic origin (membership hysteresis). */
+function _dist2ToSectorOrigin(pos, sectorId) {
+  const o = sectorGlobalOrigin(sectorId);
+  const dx = pos.x - o.x;
+  const dz = pos.z - o.z;
+  return dx * dx + dz * dz;
+}
 
 function driveCooldownMultiplier(player) {
   const mods = player && player.efficiencyMods;
@@ -1551,13 +1566,27 @@ export const world = {
     const player = state.entities.get(state.playerId);
     if (!player || !player.pos) return;
     const next = sectorMembershipAtGlobal(player.pos, CORRIDOR_SECTOR_IDS);
-    if (!next || next === state.world.currentSectorId) return;
+    const current = state.world.currentSectorId;
+    if (!next || next === current) { this._membershipCandidate = null; return; }
     // Only auto-switch when both current and next are corridor (or current is unset/corridor).
-    if (state.world.currentSectorId && !isCorridorSector(state.world.currentSectorId)) return;
+    if (current && !isCorridorSector(current)) return;
+    // Hysteresis: the candidate must lead the current cell by MEMBERSHIP_LEAD_WU and hold the
+    // lead for MEMBERSHIP_DWELL_S continuously before the residency plan re-runs.
+    const dNext = _dist2ToSectorOrigin(player.pos, next);
+    const dCur = current ? _dist2ToSectorOrigin(player.pos, current) : Infinity;
+    const lead = dNext + MEMBERSHIP_LEAD_WU * MEMBERSHIP_LEAD_WU <= dCur;
+    if (!lead) { this._membershipCandidate = null; return; }
+    const now = state.simTime || 0;
+    if (!this._membershipCandidate || this._membershipCandidate.sectorId !== next) {
+      this._membershipCandidate = { sectorId: next, sinceT: now };
+      return;
+    }
+    if (now - this._membershipCandidate.sinceT < MEMBERSHIP_DWELL_S) return;
+    this._membershipCandidate = null;
     this.enterSector(next, {
       continuous: true,
       noTeleport: true,
-      fromSectorId: state.world.currentSectorId,
+      fromSectorId: current,
     });
   },
 
