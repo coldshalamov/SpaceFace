@@ -387,7 +387,7 @@ function drawObjectiveLabel(g, cue) {
     cue.metrics.center,
     cue.metrics.radius,
   );
-  g.fillStyle = 'rgba(5,12,16,0.95)';
+  g.fillStyle = 'rgba(11,13,16,0.95)';
   g.fillRect(placement.x, placement.y, placement.width, placement.height);
   g.strokeStyle = 'rgba(217,160,84,0.6)';
   g.lineWidth = 1;
@@ -423,7 +423,7 @@ function drawRangePlate(g, metrics, range, expanded) {
   }
   const x = metrics.size - width - inset;
   const y = inset;
-  g.fillStyle = 'rgba(5,12,16,0.90)';
+  g.fillStyle = 'rgba(11,13,16,0.90)';
   g.fillRect(x, y, width, height);
   g.strokeStyle = 'rgba(174,183,182,0.42)';
   g.lineWidth = 1;
@@ -478,9 +478,9 @@ function drawBackground(g, center, radius) {
   g.clearRect(0, 0, center * 2, center * 2);
   // Dark ground first: every mark on this dial is small, so contrast has to come from the plate.
   const gradient = g.createRadialGradient(center, center, 0, center, center, radius);
-  gradient.addColorStop(0, 'rgba(3,14,22,0.82)');
-  gradient.addColorStop(0.68, 'rgba(4,17,27,0.62)');
-  gradient.addColorStop(1, 'rgba(8,38,48,0.38)');
+  gradient.addColorStop(0, 'rgba(13,16,20,0.82)');
+  gradient.addColorStop(0.68, 'rgba(15,19,24,0.62)');
+  gradient.addColorStop(1, 'rgba(28,33,41,0.38)');
   g.fillStyle = gradient;
   g.beginPath();
   g.arc(center, center, radius, 0, Math.PI * 2);
@@ -507,14 +507,14 @@ function drawBackground(g, center, radius) {
   }
   for (const fraction of [0.25, 0.5, 1]) {
     g.strokeStyle = fraction === 1
-      ? 'rgba(0,240,255,0.16)'
-      : 'rgba(0,240,255,0.07)';
+      ? 'rgba(242,185,80,0.16)'
+      : 'rgba(242,185,80,0.07)';
     g.lineWidth = fraction === 1 ? 1.25 : 1;
     g.beginPath();
     g.arc(center, center, radius * fraction, 0, Math.PI * 2);
     g.stroke();
   }
-  g.strokeStyle = 'rgba(0,240,255,0.09)';
+  g.strokeStyle = 'rgba(242,185,80,0.09)';
   g.beginPath();
   g.moveTo(center, center - radius);
   g.lineTo(center, center + radius);
@@ -771,7 +771,7 @@ export function createRadar(ctx) {
     // One crisp sweep line preserves sensor motion without washing the entire instrument in bloom.
     const sweepAngle = reducedMotion ? -Math.PI / 2 : ((now % 3600) / 3600) * Math.PI * 2;
     g.save();
-    g.strokeStyle = 'rgba(99,243,255,0.12)';
+    g.strokeStyle = 'rgba(242,185,80,0.12)';
     g.lineWidth = 1;
     g.beginPath();
     g.moveTo(center, center);
@@ -780,7 +780,7 @@ export function createRadar(ctx) {
     g.restore();
 
     g.save();
-    g.fillStyle = 'rgba(99,243,255,0.72)';
+    g.fillStyle = 'rgba(255,217,140,0.72)';
     g.font = canvasFont(700, 12, 'data');
     g.textAlign = 'center';
     g.textBaseline = 'bottom';
@@ -810,7 +810,7 @@ export function createRadar(ctx) {
     const rangeRatio = rangeRingRatioForEntity(player, range);
     const weaponRingRadius = radius * rangeRatio;
     g.save();
-    g.strokeStyle = 'rgba(99,243,255,0.13)';
+    g.strokeStyle = 'rgba(242,185,80,0.13)';
     g.lineWidth = 1;
     g.setLineDash([3, 4]);
     g.beginPath();

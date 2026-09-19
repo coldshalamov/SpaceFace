@@ -2,14 +2,17 @@
 const STYLE_ID = 'sf-hull-integrity-style';
 export const HULL_INTEGRITY_CSS = `
 .sf-schematic.sf-integrity, #hud .sf-schematic.sf-integrity {
-  --si-paper:#eff8ff; --si-muted:#b3c7d8; --si-edge:#6e94ab;
-  --si-blue:#87dfff; --si-core:#d9fcff; --si-facet-edge:#438ca6;
-  --si-warning:var(--sf-warn, #ffc279); --si-danger:var(--sf-danger, #ff6179);
-  --si-signal:var(--si-blue); --si-body:#102d3e; --si-cut:#06101b; --si-track:#4b6e83;
+  /* Deckplate: the integrity instrument speaks the one accent. Ice reads are remapped to the lamp
+     ramp (warm bone ink, filament signal); warning/danger are the lamp driven hot/red. */
+  --si-paper:var(--dp-ink, #e8e2d4); --si-muted:var(--dp-ink-dim, #a9a696); --si-edge:var(--dp-metal-4, #2f3542);
+  --si-blue:var(--dp-lamp, #f2b950); --si-core:var(--dp-lamp-hot, #ffd98c); --si-facet-edge:var(--dp-lamp-dim, #8a6b3a);
+  --si-warning:var(--dp-lamp, #f2b950); --si-danger:var(--dp-danger, #ff5038);
+  --si-signal:var(--si-blue); --si-body:var(--dp-metal-2, #191d24); --si-cut:var(--dp-metal-0, #0b0d10); --si-track:var(--dp-metal-3, #232833);
   position:relative; display:block; isolation:isolate; contain:style; box-sizing:border-box;
   width:100%; max-width:272px; height:auto; aspect-ratio:272 / 174; grid-column:1 / -1; grid-row:auto;
-  margin:0; padding:0; border:0; border-radius:0; overflow:visible;
-  background:url("assets/ui/kit/assets/svg/hull-integrity-shell.svg") center / 100% 100% no-repeat;
+  margin:0; padding:0; border:0; border-radius:var(--dp-r-instrument, 3px); overflow:visible;
+  background-color:var(--dp-metal-1, #12151a); background-image:var(--dp-plate-img, none);
+  box-shadow:var(--dp-plate-bevel-raised, 0 2px 10px rgb(0 0 0 / .38));
   color:var(--si-paper); font-family:var(--k-text, 'Instrument Sans'), Arial, sans-serif;
   font-size:12px; line-height:1; font-variant-numeric:tabular-nums; text-shadow:none;
 }
@@ -43,11 +46,18 @@ export const HULL_INTEGRITY_CSS = `
   position:absolute; left:0; top:24%; display:block; width:80%; height:68%; overflow:visible;
   fill:var(--si-paper); filter:none; transform:none;
 }
+/* The lamina cells are the fill — warm metal facets under the key light, the lamp at the core. */
+.sf-integrity .sf-integrity__gradient-edge { stop-color:var(--dp-lamp-dim, #8a6b3a); }
+.sf-integrity .sf-integrity__gradient-core { stop-color:var(--dp-lamp-hot, #ffd98c); }
+.sf-integrity[data-hull="critical"] .sf-integrity__gradient-edge,
+.sf-integrity[data-hull="destroyed"] .sf-integrity__gradient-edge { stop-color:var(--dp-danger, #ff5038); }
+.sf-integrity[data-hull="critical"] .sf-integrity__gradient-core,
+.sf-integrity[data-hull="destroyed"] .sf-integrity__gradient-core { stop-color:var(--dp-danger-hot, #ff8a70); }
 .sf-integrity .sf-integrity__percent { right:0; top:70%; color:var(--si-muted); font-size:14px; }
 .sf-integrity .sf-integrity__hull-state { left:0; top:97%; color:var(--si-signal); letter-spacing:.10em; }
 .sf-integrity .sf-integrity__shield-readout { position:absolute; left:49.63%; top:67.2%; width:45.23%; height:25.28%; }
 .sf-integrity .sf-integrity__shield-label { left:0; top:0; color:var(--si-muted); letter-spacing:.08em; }
-.sf-integrity .sf-integrity__shield-value { right:0; top:0; font-size:14px; color:var(--si-blue); }
+.sf-integrity .sf-integrity__shield-value { right:0; top:0; font-size:14px; color:var(--si-signal); }
 .sf-integrity .sf-integrity__shield-rail, #hud .sf-integrity .sf-integrity__shield-rail {
   position:absolute; left:0; top:39%; display:block; width:100%; height:4px; overflow:visible;
 }
@@ -61,10 +71,8 @@ export const HULL_INTEGRITY_CSS = `
 .sf-integrity .sf-integrity__shadow { fill:var(--si-cut); stroke:var(--si-cut); stroke-width:1.8; }
 .sf-integrity .sf-integrity__body { fill:var(--si-body); stroke:none; }
 .sf-integrity .sf-integrity__damage-hatch { fill:none; stroke:var(--si-edge); stroke-width:.22; opacity:.38; }
-.sf-integrity .sf-integrity__lamina { fill:var(--si-facet); stroke:none; }
+.sf-integrity .sf-integrity__lamina { fill:var(--si-facet, var(--dp-metal-3, #232833)); stroke:none; }
 .sf-integrity .sf-integrity__loss { fill:var(--si-warning); stroke:none; }
-.sf-integrity .sf-integrity__gradient-edge { stop-color:var(--si-facet-edge); }
-.sf-integrity .sf-integrity__gradient-core { stop-color:var(--si-core); }
 .sf-integrity .sf-integrity__spar { fill:var(--si-paper); opacity:.94; }
 .sf-integrity .sf-integrity__structure { fill:none; stroke:var(--si-cut); stroke-width:.38; }
 .sf-integrity .sf-integrity__outline { fill:none; stroke:var(--si-edge); stroke-width:.54; stroke-linejoin:round; }
@@ -76,9 +84,9 @@ export const HULL_INTEGRITY_CSS = `
 .sf-integrity .sf-integrity__rail-bed { stroke:var(--si-track); stroke-width:4; }
 .sf-integrity .sf-integrity__rail-fill { stroke:var(--si-blue); stroke-width:4; }
 .sf-integrity .sf-integrity__rail-cuts { stroke:var(--si-cut); stroke-width:2; }
-.sf-integrity[data-hull="damaged"] { --si-signal:var(--si-warning); --si-facet-edge:#a37841; --si-core:#ffe2a6; }
+.sf-integrity[data-hull="damaged"] { --si-signal:var(--si-warning); --si-facet-edge:var(--dp-lamp-dim, #8a6b3a); --si-core:var(--dp-lamp-hot, #ffd98c); }
 .sf-integrity[data-hull="critical"], .sf-integrity[data-hull="destroyed"] {
-  --si-signal:var(--si-danger); --si-facet-edge:var(--si-danger); --si-core:#ffd3cf;
+  --si-signal:var(--si-danger); --si-facet-edge:var(--si-danger); --si-core:var(--dp-danger-hot, #ff8a70);
 }
 .sf-integrity[data-hull="critical"] .sf-integrity__figures,
 .sf-integrity[data-hull="destroyed"] .sf-integrity__figures { fill:var(--si-signal); }

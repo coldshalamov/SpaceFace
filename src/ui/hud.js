@@ -3817,11 +3817,16 @@ export function createHud(ctx, alerts) {
    * Every static class/style/attribute is written exactly once, here.
    */
   function createOverviewRow(entity) {
+    // dp-contact: the roster row is a printed line on the plate whose IFF mark is a lamp bead.
+    // The bead is a lens set into the row (deckplate); hover wakes it, a hostile tier drives it red.
     const el = document.createElement('div');
-    el.className = 'sf-overview-row';
+    el.className = 'sf-overview-row dp-contact';
 
     const left = document.createElement('div');
     left.className = 'sf-overview-row__left';
+    const lampEl = document.createElement('span');
+    lampEl.className = 'dp-contact__lamp';
+    lampEl.setAttribute('aria-hidden', 'true');
     const iffIcon = document.createElement('span');
     iffIcon.style.setProperty('font-weight', 'bold');
     const glyphEl = document.createElement('span');
@@ -3830,7 +3835,7 @@ export function createHud(ctx, alerts) {
     const nameEl = document.createElement('span');
     nameEl.className = 'sf-overview-row__name';
     const stateEl = document.createElement('span');
-    left.append(iffIcon, glyphEl, nameEl, stateEl);
+    left.append(lampEl, iffIcon, glyphEl, nameEl, stateEl);
 
     const right = document.createElement('div');
     right.className = 'sf-overview-row__right';
@@ -3846,7 +3851,7 @@ export function createHud(ctx, alerts) {
 
     const rec = {
       id: entity.id,
-      el, iffIcon, glyphEl, nameEl, stateEl, tierEl, distEl, speedEl,
+      el, lampEl, iffIcon, glyphEl, nameEl, stateEl, tierEl, distEl, speedEl,
       detailEl: null,
       attached: false,
       stamp: 0,
@@ -3904,6 +3909,8 @@ export function createHud(ctx, alerts) {
     if (rec.iffColor !== iff.color) {
       rec.el.style.setProperty('--iff-color', iff.color);
       rec.iffIcon.style.setProperty('color', iff.color);
+      rec.lampEl.style.setProperty('color', iff.color);
+      rec.lampEl.style.setProperty('background', iff.color);
       rec.iffColor = iff.color;
     }
     if (rec.icon !== iff.icon) { rec.iffIcon.innerHTML = glyphSvg(iff.icon, 11); rec.icon = iff.icon; }

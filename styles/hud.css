@@ -96,7 +96,7 @@
   will-change: opacity;
 }
 
-/* --- Multi-Stage Missile Lock Convergence --- */
+/* --- Multi-Stage Missile Lock Convergence (dp-bracket motion: breathe at idle, snap on latch) --- */
 /* Brackets container inside lockRing */
 .sf-lockring__brackets {
   position: absolute;
@@ -109,10 +109,29 @@
   position: absolute;
   width: 8px;
   height: 8px;
-  border-color: var(--hud-cyan, #39d0ff);
+  border-color: var(--dp-lamp, #f2b950);
   border-style: solid;
   opacity: 0.8;
-  transition: border-color 0.15s ease, opacity 0.15s ease;
+  transition: border-color 0.15s var(--dp-ease-lamp, ease), opacity 0.15s var(--dp-ease-lamp, ease);
+}
+
+/* The bracket set BREATHES while the sensor is alive (idle stand-off pulse) and SNAPS once when
+   the stage advances (one overshoot, then still — a mechanical latch, not a glow). */
+@keyframes sf-bracket-breathe {
+  0%, 100% { opacity: .6; }
+  50% { opacity: 1; }
+}
+@keyframes sf-bracket-snap {
+  0% { transform: scale(1.24); opacity: .65; }
+  55% { transform: scale(.96); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.sf-lockring__brackets { animation: sf-bracket-breathe var(--dp-d-breathe, 3.4s) var(--dp-ease-lamp, ease) infinite; }
+.sf-lockring[data-stage] .sf-lockring__brackets { animation: sf-bracket-snap 240ms var(--dp-ease-snap, cubic-bezier(.3,1.6,.4,1)) 1; }
+.sf-lockring[data-stage="acquiring"] .sf-lockring__brackets,
+.sf-lockring[data-stage="tracking"] .sf-lockring__brackets {
+  animation: sf-bracket-snap 240ms var(--dp-ease-snap, cubic-bezier(.3,1.6,.4,1)) 1,
+             sf-bracket-breathe var(--dp-d-breathe, 3.4s) var(--dp-ease-lamp, ease) 240ms infinite;
 }
 
 .sf-lockring__bracket--tl {
@@ -139,14 +158,14 @@
   border-width: 0 0 2px 2px;
 }
 
-/* Stage 1: Acquiring (slow search pulse, cyan/amber) */
+/* Stage 1: Acquiring (slow search pulse, the lamp at idle heat) */
 .sf-lockring[data-stage="acquiring"] .sf-lockring__track {
   stroke-dasharray: 6 6;
   animation: sf-lockring-spin 3s linear infinite;
 }
 
 .sf-lockring[data-stage="acquiring"] .sf-lockring__bracket {
-  border-color: var(--hud-cyan, #39d0ff);
+  border-color: var(--dp-lamp-dim, #8a6b3a);
   animation: sf-bracket-pulse-slow 0.5s ease-in-out infinite alternate;
 }
 
@@ -160,17 +179,17 @@
   to   { opacity: 0.9; }
 }
 
-/* Stage 2: Tracking (accelerating pulse, amber tint, converging inward) */
+/* Stage 2: Tracking (accelerating pulse, the lamp at full heat, converging inward) */
 .sf-lockring[data-stage="tracking"] .sf-lockring__fill {
-  stroke: var(--hud-amber, #ffaa00);
+  stroke: var(--dp-lamp, #f2b950);
 }
 
 .sf-lockring[data-stage="tracking"] .sf-lockring__label {
-  color: var(--hud-amber, #ffaa00);
+  color: var(--dp-lamp-hot, #ffd98c);
 }
 
 .sf-lockring[data-stage="tracking"] .sf-lockring__bracket {
-  border-color: var(--hud-amber, #ffaa00);
+  border-color: var(--dp-lamp, #f2b950);
   opacity: 0.95;
   animation: sf-bracket-pulse-fast 0.16s ease-in-out infinite alternate;
 }
@@ -180,33 +199,33 @@
   to   { opacity: 1; }
 }
 
-/* Stage 3: Locked (snapped shut, solid red/amber, heavy latch) */
+/* Stage 3: Locked (snapped shut, the lamp driven red, heavy latch — the snap lands, then still) */
 .sf-lockring[data-stage="locked"] .sf-lockring__fill {
-  stroke: var(--k-red, #ff3344);
-  filter: drop-shadow(0 0 4px rgba(255, 51, 68, 0.7));
+  stroke: var(--dp-danger, #ff5038);
+  filter: drop-shadow(0 0 4px var(--dp-danger-bloom, rgba(255, 80, 56, 0.7)));
 }
 
 .sf-lockring[data-stage="locked"] .sf-lockring__label {
-  color: var(--k-red, #ff3344);
+  color: var(--dp-danger-hot, #ff8a70);
   font-weight: 700;
   letter-spacing: 1px;
 }
 
 .sf-lockring[data-stage="locked"] .sf-lockring__bracket {
-  border-color: var(--k-red, #ff3344);
+  border-color: var(--dp-danger, #ff5038);
   opacity: 1;
   border-width: 2.5px;
-  filter: drop-shadow(0 0 3px rgba(255, 51, 68, 0.8));
+  filter: drop-shadow(0 0 3px var(--dp-danger-bloom, rgba(255, 80, 56, 0.8)));
 }
 
 /* Target Diamond Stages */
 .sf-lockdiamond[data-stage="acquiring"] .sf-lockdiamond__inner {
-  border-color: var(--hud-cyan, #39d0ff);
+  border-color: var(--dp-lamp-dim, #8a6b3a);
   border-style: dashed;
 }
 
 .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner {
-  border-color: var(--hud-amber, #ffaa00);
+  border-color: var(--dp-lamp, #f2b950);
   animation: sf-diamondpulse-fast 0.3s ease-in-out infinite alternate;
 }
 
@@ -216,9 +235,9 @@
 }
 
 .sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner {
-  border-color: var(--k-red, #ff3344);
+  border-color: var(--dp-danger, #ff5038);
   border-width: 3px;
-  box-shadow: 0 0 8px rgba(255, 51, 68, 0.7);
+  box-shadow: 0 0 8px var(--dp-danger-bloom, rgba(255, 80, 56, 0.7));
   animation: none;
 }
 
@@ -248,6 +267,19 @@
   .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner {
     animation: none !important;
   }
+  .sf-lockring__brackets,
+  .sf-lockring[data-stage] .sf-lockring__brackets,
+  .sf-lockring[data-stage="acquiring"] .sf-lockring__brackets,
+  .sf-lockring[data-stage="tracking"] .sf-lockring__brackets {
+    animation: none !important;
+  }
+}
+
+html.sf-reduce-motion .sf-lockring__brackets,
+html.sf-reduce-motion .sf-lockring[data-stage] .sf-lockring__brackets,
+html.sf-reduce-flash .sf-lockring__brackets,
+html.sf-reduce-flash .sf-lockring[data-stage] .sf-lockring__brackets {
+  animation: none !important;
 }
 
 html.sf-reduce-motion #hud.sf-hud--glitch,

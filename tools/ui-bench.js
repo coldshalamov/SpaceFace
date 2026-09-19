@@ -44,6 +44,11 @@ const SCREENS = Object.freeze({
   sandbox: () => import('../src/ui/screens/sandbox.js').then((m) => m.sandboxScreen),
 });
 
+/** The flight HUD is not a .mount() screen; it is the always-mounted overlay createHud() builds
+ *  into #hud. The bench mounts it through the same module the game does, over the frozen still,
+ *  with a real GameState and the real kit/deckplate sheets — so --shot=flight frames the true
+ *  instrument, not a mock. */
+
 /** Screens that exist but need the running game (a docked berth, a live sector, a hull render). */
 const NEEDS_THE_GAME = Object.freeze({
   station: 'needs a live docked berth (renderer + station app)',
@@ -133,6 +138,21 @@ let current = null;
 let currentScreen = null;
 
 async function goto(id) {
+  if (id === 'flight') {
+    screensEl.innerHTML = '';
+    document.body.classList.add('k-screen-top');
+    document.body.dataset.kScreen = id;
+    try {
+      await mountFlightHud();
+      current = id; currentScreen = null;
+      stack.push(id);
+      if (stack.length > 6) stack.shift();
+      picker.value = id;
+    } catch (error) {
+      showBroken(id, `HUD mount threw: ${error && error.message ? error.message : String(error)}`);
+    }
+    return;
+  }
   const loader = SCREENS[id];
   if (!loader) {
     showBroken(id, NEEDS_THE_GAME[id] || 'no bench loader for this surface');
@@ -159,6 +179,40 @@ async function goto(id) {
   }
 }
 
+/** Mount the always-on flight HUD into #hud (the bench page carries the node) over the held
+ *  still. Runs the real createHud + createAlerts, ticks one frame, and proves the alert/annunc
+ *  lane by raising one persistent status and one warn floor through the same events the sim uses. */
+async function mountFlightHud() {
+  const hudRoot = document.getElementById('hud');
+  const [{ createHud }, { createAlerts }] = await Promise.all([
+    import('../src/ui/hud.js'),
+    import('../src/ui/alerts.js'),
+  ]);
+  let alertsRoot = document.getElementById('alerts');
+  if (!alertsRoot) {
+    alertsRoot = document.createElement('div');
+    alertsRoot.id = 'alerts';
+    hudRoot.appendChild(alertsRoot);
+  }
+  const ctx = {
+    state, bus,
+    screenManager: manager, registry,
+    helpers: { worldToScreen: () => null },
+    writeStorePage() {}, publishStoreStill() {},
+  };
+  const alerts = createAlerts(ctx);
+  createHud(ctx, alerts);
+  if (typeof hudRoot._sfFrame === 'function') hudRoot._sfFrame(1 / 60);
+  // One persistent affordance + one warning through the live event path, so the annunciator is
+  // lit in the frame rather than judged empty.
+  bus.emit('dock:range', { inRange: true });
+  bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 80, kind: 'warn', text: 'TAKING FIRE', ttl: 30 });
+    // A single frame renders the "now"; the instruments' reactive writes (lamina fill, bar
+    // segments, gauge fraction) settle on the driven frames the live route runs. A bench still
+    // proves composition, type, material and light; ui-look proves the reactions on the live route.
+    note('— flight HUD mounted (createHud) + dock status + warn floor lit');
+}
+
 async function back() {
   stack.pop();
   const previous = stack[stack.length - 1];
@@ -178,6 +232,12 @@ function showBroken(id, why) {
 }
 
 // The picker lists what the bench can mount, and says what it cannot.
+{
+  const opt = document.createElement('option');
+  opt.value = 'flight';
+  opt.textContent = 'flight — HUD';
+  picker.appendChild(opt);
+}
 for (const id of Object.keys(SCREENS).sort()) {
   const option = document.createElement('option');
   option.value = id;
@@ -194,7 +254,9 @@ for (const [id, why] of Object.entries(NEEDS_THE_GAME)) {
 picker.addEventListener('change', () => { stack.length = 0; void goto(picker.value); });
 
 // A still behind the panel: any capture the agent already has, or the committed title backdrop.
-const still = params.get('bg') || '../assets/ui/backdrops/backdrop-title.jpg';
+// The flight HUD judges against the WORLD, so its default still is the last flight capture.
+const still = params.get('bg')
+  || ((params.get('screen') === 'flight') ? '../.devshots/hud-baseline/flight.png' : '../assets/ui/backdrops/backdrop-title.jpg');
 bgEl.src = still;
 stillInput.value = params.get('bg') || '';
 stillInput.addEventListener('change', () => {

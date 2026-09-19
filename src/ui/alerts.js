@@ -90,15 +90,20 @@ export function createAlerts(ctx) {
   function ensureEl(rec) {
     if (rec.el) return rec.el;
     const el = document.createElement('div');
-    el.className = `sf-alert sf-alert--${rec.sev}`;
+    // dp-annunc: the annunciator is a machined strip with a lamp lens (deckplate components).
+    // Persistent condition chips (ttl Infinity) are lit controls — --status, never a blinker.
+    el.className = `sf-alert sf-alert--${rec.sev} dp-annunc`;
     // Persistent condition chips are discoverable status text, never a second automatic voice.
     // Transient/danger speech belongs to the single arbiter floor below.
     el.setAttribute('role', 'group');
     el.setAttribute('aria-live', 'off');
     el.setAttribute('aria-atomic', 'true');
+    const lens = document.createElement('span');
+    lens.className = 'dp-annunc__lens dp-lamp';
+    lens.setAttribute('aria-hidden', 'true');
     const txt = document.createElement('span');
     txt.className = 'sf-alert__text';
-    el.appendChild(txt);
+    el.append(lens, txt);
     rec._txt = txt;
     rec.el = el;
     return el;
@@ -112,7 +117,7 @@ export function createAlerts(ctx) {
     rec.ttl = ttl == null || ttl === Infinity ? Infinity : ttl * 1000;
     rec.born = performance.now();
     rec.expiresAt = rec.ttl === Infinity ? Infinity : rec.born + rec.ttl;
-    if (rec.el) rec.el.className = `sf-alert sf-alert--${sev}`;
+    if (rec.el) rec.el.className = `sf-alert sf-alert--${sev} dp-annunc`;
     recomputeNextExpiry();
     render();
   }
@@ -266,12 +271,15 @@ export function createAlerts(ctx) {
       floorEl.setAttribute('role', 'group');
       floorEl.setAttribute('aria-live', 'off');
       floorEl.setAttribute('aria-atomic', 'true');
+      const lens = document.createElement('span');
+      lens.className = 'dp-annunc__lens dp-lamp';
+      lens.setAttribute('aria-hidden', 'true');
       const txt = document.createElement('span');
       txt.className = 'sf-alert__text';
-      floorEl.appendChild(txt);
+      floorEl.append(lens, txt);
       floorEl._txt = txt;
     }
-    floorEl.className = `sf-alert sf-alert--floor sf-alert--${sev}`;
+    floorEl.className = `sf-alert sf-alert--floor sf-alert--${sev} dp-annunc dp-annunc--${sev}`;
     // Danger is announced assertively (mirrors the prior danger-pill a11y behavior); every other
     // voice is polite so it never interrupts a screen reader mid-sentence.
     // Identical line already on the floor (same-id coalesce / re-surface) — keep DOM, no re-speak.

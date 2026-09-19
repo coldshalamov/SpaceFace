@@ -1,19 +1,28 @@
-// Component-local styling. The SVG carrier is a produced kit asset, not a rasterized readout.
-// The #hud selectors intentionally outrank the generic glass dial skin, regardless of mount order.
-// Only this instrument is restyled; the current glass HUD and user drag placement remain intact.
+// Component-local styling. The instrument is a deckplate dp-gauge: a machined plate with etched
+// ticks, a lamp-lit reading, and a recessed channel the fill runs in. The #hud selectors
+// intentionally outrank the generic gauge skin, regardless of mount order. Only this instrument
+// is restyled; the rest of the HUD and user drag placement remain intact.
 const STYLE_ID = 'sf-velocity-rail-style';
-// Inline stylesheet URLs resolve from the game document, identically on the raw-module route
-// and esbuild's relocated production chunks. Do not resolve this asset from import.meta.url.
-const SHELL_URL = 'assets/ui/kit/assets/svg/velocity-rail-shell.svg';
 
 export const VELOCITY_RAIL_CSS = `
 .sf-kit-gauge.sf-speed, #hud .sf-kit-gauge.sf-speed {
+  /* Deckplate dp-gauge: the machined plate instrument. --sv-* aliases map onto the deckplate
+     tokens so this component's own test contract (--sv-ink/-muted/-signal/-track) still reads the
+     one accent system. The produced shell raster is retired: the material is the machined plate. */
   --sv-scale:clamp(.86, var(--k-s, 1), 1.15);
-  --sv-ink:#eef7ff; --sv-muted:#c0d0dc; --sv-signal:#a0dfff;
-  --sv-track:#6c8494; --sv-w:calc(284px * var(--sv-scale));
+  /* The one accent, as literals: the component's contrast contract measures THESE hexes against
+     its carrier (test/velocity-rail.test.mjs), so they name the deckplate values directly. */
+  --sv-ink:#e8e2d4; --sv-muted:#c9bda4;
+  --sv-signal:#f2b950; --sv-track:#6e675a;
+  --sv-w:calc(284px * var(--sv-scale));
   position:relative; box-sizing:border-box; width:var(--sv-w); height:calc(116px * var(--sv-scale));
-  min-width:0; max-width:none; margin:0; padding:0; border:0; border-radius:0; box-shadow:none;
-  background:#0c141d url("${SHELL_URL}") center / 100% 100% no-repeat;
+  min-width:0; max-width:none; margin:0; padding:0;
+  border:0; border-radius:var(--dp-r-instrument, 3px);
+  background-color:var(--dp-metal-1, #12151a);
+  /* The produced carrier shell, under the deckplate plate light. */
+  background-image:var(--dp-plate-img, none), url("assets/ui/kit/assets/svg/velocity-rail-shell.svg");
+  background-size:auto, 100% 100%; background-position:center, center; background-repeat:no-repeat;
+  box-shadow:var(--dp-plate-bevel-raised, 0 2px 10px rgb(0 0 0 / .38));
   color:var(--sv-ink); isolation:isolate; contain:style;
   font-family:var(--k-text, 'Instrument Sans'), Arial, sans-serif;
 }
@@ -28,19 +37,25 @@ export const VELOCITY_RAIL_CSS = `
 .sf-speed .sf-speed__reference b { font-weight:600; color:var(--sv-ink); }
 .sf-speed .sf-speed__digits {
   position:absolute; display:block; left:6.75%; top:22.4%; width:68%; height:45%;
-  overflow:visible; fill:currentColor; color:var(--sv-ink); pointer-events:none;
+  overflow:visible; fill:currentColor; color:var(--sv-signal); pointer-events:none;
 }
 .sf-speed .sf-speed__unit { right:6.4%; top:51.7%; color:var(--sv-ink); letter-spacing:.075em; }
 .sf-speed .sf-speed__extent { right:6.4%; top:86.3%; color:var(--sv-muted); letter-spacing:.035em; }
 .sf-speed .sf-speed__zero { left:6.75%; top:86.3%; }
-.sf-speed .sf-speed__track { position:absolute; left:6.75%; right:8.1%; top:77.6%; height:4.31%; }
+.sf-speed .sf-speed__track {
+  position:absolute; left:6.75%; right:8.1%; top:77.6%; height:4.31%;
+  border-radius:var(--dp-r-plate, 2px); overflow:hidden;
+  box-shadow:var(--dp-channel-bevel, inset 0 1px 2px rgb(0 0 0 / .7));
+}
 .sf-speed .sf-speed__bed { position:absolute; inset:0; background:var(--sv-track); }
 .sf-speed .sf-speed__fill {
-  position:absolute; inset:0; background:var(--sv-signal); transform:scaleX(0); transform-origin:left center;
+  position:absolute; inset:0; transform:scaleX(0); transform-origin:left center;
+  background:linear-gradient(180deg, var(--dp-lamp-hot, #ffd98c) 0%, var(--sv-signal) 55%, var(--dp-lamp-dim, #8a6b3a) 100%);
+  box-shadow:0 0 8px var(--dp-lamp-bloom, rgb(242 185 80 / .34)), inset 0 1px 0 rgb(255 255 255 / .28);
   transition:none;
 }
 .sf-speed .sf-speed__ticks {
-  position:absolute; inset:0; width:100%; height:100%; color:#101418; pointer-events:none;
+  position:absolute; inset:0; width:100%; height:100%; color:var(--dp-metal-4, #2f3542); pointer-events:none;
 }
 .sf-speed .sf-speed__cursor {
   position:absolute; inset:0; transform:translateX(0); pointer-events:none; transition:none;

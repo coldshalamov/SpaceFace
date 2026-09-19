@@ -1,10 +1,14 @@
 // The production flight stylesheet, isolated from system imports for genuine presentation tests.
 // uiRoot invokes this same one-time style owner; no copied CSS or substitute runtime.
+// The flight HUD is the first surface built on the deckplate design system (src/ui/deckplate/*);
+// injectDeckplate runs before the HUD sheet so the register's var(--dp-*) references resolve.
 import { bracketCss } from '../hudBrackets.js';
+import { injectDeckplate } from '../deckplate/index.js';
 const HUD_STYLE_ID = 'sf-hud-style';
 
 export function injectHudCss() {
   if (document.getElementById(HUD_STYLE_ID)) return;
+  injectDeckplate();
   const s = document.createElement('style');
   s.id = HUD_STYLE_ID;
   s.textContent = `
@@ -1846,38 +1850,39 @@ export function injectHudCss() {
     .sf-pslot__key, .sf-pslot__name { color:CanvasText; }
   }
 
-  /* ══ GLASS REGISTER — owner directive, 2026-09-14 ═════════════════════════════════════════════
-     The machined amber surfaces read as wood on the flight layer and sink into the render against
-     it. This register re-skins the SAME instruments as smoked glass with an ice signal light: a
-     translucent near-black fill under a faint top sheen, one crisp cool edge, a soft outer drop so
-     the instrument separates from whatever is behind it, and neon cyan reserved for live state.
-     Amber survives as the objective/warning signal only (--k-signal); red as danger only.
-     No backdrop-filter (flight perf floor, FIELD_HARDWARE_PROGRAM §7): legibility comes from fill
-     opacity and edge light, not blur. Layout, sizes, copy and data wiring are untouched; every
-     rule trails the sheet and wins by source order or #hud scoping. Forced-colours restatement
-     closes the section, after the sheet's own forced-colours block. */
+  /* ══ DECKPLATE REGISTER — the 2026-09-18 reset ═══════════════════════════════════════════
+     The 2026-09-14 glass register (smoked translucent cards, neon cyan) was the tenth generic
+     one-off; the owner never approved a frame and the standing bar is consistent, high-detail,
+     creative, interactive, non-generic. This register assembles the flight HUD from the
+     deckplate design system (src/ui/deckplate/*) instead of re-mixing a surface by hand:
+     the ship's own machined hardware — gunmetal plate under one warm key light, etched
+     legends, and the ONE accent: the warm lamp (live = filament amber, danger = lamp red).
+     The HUD's contract DOM (sf-* classes, data-* attrs, aria roles) is untouched — only the
+     paint changes. --glass-* aliases are kept as deckplate synonyms because promptDeck.js /
+     contactHailPrompt.js (out of this session's scope) still consume them. No backdrop-filter
+     (flight perf floor). */
 
   :root {
-    --glass-fill:rgb(9 14 22 / .82);
-    --glass-fill-2:rgb(13 20 30 / .74);
-    --glass-fill-3:rgb(20 30 44 / .62);
-    --glass-edge:rgb(188 220 255 / .20);
-    --glass-sheen:linear-gradient(180deg, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 46%);
-    --glass-drop:0 10px 26px rgb(2 6 14 / .40);
-    --glass-inner:inset 0 1px 0 rgb(255 255 255 / .05);
-    --glass-neon:rgb(141 217 255);
-    --glass-neon-2:rgb(92 178 255);
-    --glass-glow:0 0 14px rgb(92 178 255 / .32);
+    --glass-fill:rgb(18 21 26 / .92);
+    --glass-fill-2:rgb(25 29 36 / .88);
+    --glass-fill-3:rgb(11 13 16 / .85);
+    --glass-edge:rgb(74 81 98 / .5);
+    --glass-sheen:radial-gradient(140% 120% at 18% 0%, rgb(255 224 178 / .09) 0%, transparent 58%);
+    --glass-drop:0 2px 10px rgb(0 0 0 / .38);
+    --glass-inner:inset 0 1px 0 rgb(255 232 190 / .14), inset 0 -1px 0 rgb(0 0 0 / .55);
+    --glass-neon:var(--dp-lamp);
+    --glass-neon-2:var(--dp-lamp-dim);
+    --glass-glow:0 0 14px var(--dp-lamp-bloom);
   }
-  /* The readable ink ramp on glass. The HUD's own cyan is the neon now; amber is the objective. */
+  /* The readable ink ramp on metal: warm bone ink, the lamp as the live colour. */
   #hud {
-    --hud-paper:rgb(236 244 253 / .97);
-    --hud-muted:rgb(178 199 222 / .80);
-    --hud-cyan:var(--glass-neon);
-    --hud-line:var(--glass-edge);
+    --hud-paper:var(--dp-ink);
+    --hud-muted:var(--dp-ink-dim);
+    --hud-cyan:var(--dp-lamp);
+    --hud-line:var(--dp-metal-4);
   }
 
-  /* --- shared smoked-glass surface: every panel that carries text --- */
+  /* --- shared machined surface: every panel that carries text is a dp-plate --- */
   #hud .sf-bars,
   #hud .sf-overview,
   #hud .sf-target,
@@ -1890,19 +1895,19 @@ export function injectHudCss() {
   .sf-alert,
   .sf-toast {
     box-sizing:border-box;
-    background-color:var(--glass-fill);
-    background-image:var(--glass-sheen);
-    border:1px solid var(--glass-edge);
-    border-radius:10px;
-    box-shadow:var(--glass-drop), var(--glass-inner);
+    background-color:var(--dp-metal-1);
+    background-image:var(--dp-plate-img);
+    border:0;
+    border-radius:var(--dp-r-plate);
+    box-shadow:var(--dp-plate-bevel);
     backdrop-filter:none !important;
     -webkit-backdrop-filter:none !important;
   }
-  #hud .sf-objarrow__label, .sf-toast { border-radius:8px; }
-  .sf-alert { border-radius:999px; }
+  #hud .sf-objarrow__label, .sf-toast { border-radius:var(--dp-r-plate); }
+  .sf-alert { border-radius:var(--dp-r-instrument); }
 
-  /* --- left instrument card: hull schematic + vitals --- */
-  #hud .sf-bars { width:100%; max-width:288px; padding:10px 12px 11px; gap:5px 10px; border-radius:12px; }
+  /* --- left instrument card: hull schematic + vitals, a raised plate --- */
+  #hud .sf-bars { width:100%; max-width:288px; padding:10px 12px 11px; gap:5px 10px; border-radius:var(--dp-r-instrument); box-shadow:var(--dp-plate-bevel-raised); }
   #hud .sf-condition-head { color:var(--hud-muted); }
   #hud .sf-condition-state { color:var(--hud-cyan); }
   #hud .sf-cond-stat { color:var(--hud-muted); }
@@ -1914,97 +1919,112 @@ export function injectHudCss() {
   #hud .sf-barrow__label { color:var(--hud-muted); }
   #hud .sf-barrow__num { color:var(--hud-paper); }
 
-  /* --- segmented gauges: glass track, neon wells --- */
+  /* --- segmented gauges: the dp-vital channel — wells cut in the plate, lamps inside --- */
   #hud .sf-bars .sf-bar.sf-kit-bar, #hud .sf-kit-bar {
-    height:26px; min-height:26px; padding:0 8px; gap:3px;
-    border:1px solid var(--glass-edge); border-image:none; border-radius:7px;
-    background:var(--glass-fill-3); background-image:none;
-    box-shadow:var(--glass-inner);
+    height:26px; min-height:26px; padding:3px 8px; gap:3px;
+    border:0; border-image:none; border-radius:var(--dp-r-plate);
+    background-color:var(--dp-metal-0); background-image:var(--dp-channel-img);
+    box-shadow:var(--dp-channel-bevel);
   }
-  #hud .sf-kit-bar > .sf-bar__fill { inset:5px 8px; background:var(--glass-neon); opacity:0; }
+  #hud .sf-kit-bar > .sf-bar__fill { inset:6px 8px; background:linear-gradient(180deg, var(--dp-lamp-hot), var(--dp-lamp) 55%, var(--dp-lamp-dim)); opacity:0; }
   #hud .sf-kit-bar:not(:has(.sf-kit-seg.is-on)) > .sf-bar__fill { opacity:1; }
   #hud .sf-kit-seg {
-    flex:1 1 0; min-width:0; max-width:12px; height:11px; border-radius:3px;
-    background-color:rgb(198 226 255 / .12); background-image:none;
+    flex:1 1 0; min-width:0; max-width:12px; height:11px; border-radius:1px;
+    background:linear-gradient(180deg, var(--dp-metal-0), var(--dp-metal-1));
+    box-shadow:inset 0 1px 1px rgb(0 0 0 / .6);
   }
   #hud .sf-kit-seg.is-on {
-    background-color:var(--glass-neon);
-    background-image:linear-gradient(180deg, rgb(255 255 255 / .38), transparent 72%);
-    box-shadow:0 0 9px rgb(92 178 255 / .65);
+    background:linear-gradient(180deg, var(--dp-lamp-hot) 0%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
+    box-shadow:0 0 6px var(--dp-lamp-bloom), inset 0 1px 0 rgb(255 255 255 / .3);
   }
   #hud .sf-kit-seg.is-hot {
-    background-color:var(--k-red);
-    background-image:linear-gradient(180deg, rgb(255 255 255 / .34), transparent 72%);
-    box-shadow:0 0 9px rgb(255 77 61 / .55);
+    background:linear-gradient(180deg, var(--dp-danger-hot) 0%, var(--dp-danger) 55%, #a8241a 100%);
+    box-shadow:0 0 6px var(--dp-danger-bloom), inset 0 1px 0 rgb(255 255 255 / .26);
   }
-  #hud .sf-kit-seg.is-cold { background-color:rgb(214 236 255 / .85); background-image:none; box-shadow:none; }
-  html[data-k-temp="wanted"] #hud .sf-kit-seg.is-on { background-color:var(--k-red); box-shadow:0 0 8px rgb(255 77 61 / .5); }
+  #hud .sf-kit-seg.is-cold { background:linear-gradient(180deg, #efe6d2, #b9ae97); box-shadow:none; }
+  html[data-k-temp="wanted"] #hud .sf-kit-seg.is-on { background:linear-gradient(180deg, var(--dp-danger-hot), var(--dp-danger) 55%, #a8241a); box-shadow:0 0 7px var(--dp-danger-bloom); }
 
-  /* --- speed instrument: owner directive, 2026-09-14 — the produced dial reads as a car dashboard
-         (warm bezel, smoked window, heavy pointer). It is retired here and the instrument is drawn
-         as a shiplike gauge: a glass panel carrying one fine 220 degree ring with the ticks, the
-         live arc and the needle all on the same pivot the wiring already rotates around
-         (--sf-gauge-deg / --sf-gauge-arc, set by setKitGauge). The DOM contract, the aria meter
-         and the responsive factor are untouched; only the painted layers change. --- */
+  /* --- speed instrument: a machined dp-gauge. The 2026-09-14 glass ring is retired with the
+         register it belonged to. velocityRailStyles.js owns the instrument's own skin and wins
+         by component scoping; these rules only keep the generic dial paint off it. The DOM
+         contract, the aria meter and the responsive factor are untouched. --- */
   #hud .sf-kit-gauge {
     filter:none;
-    color:var(--glass-neon);
-    background-color:var(--glass-fill-2);
-    background-image:var(--glass-sheen);
-    border:1px solid var(--glass-edge);
-    border-radius:14px;
-    box-shadow:var(--glass-drop), var(--glass-inner);
+    color:var(--dp-lamp);
+    background-color:var(--dp-metal-1);
+    background-image:var(--dp-plate-img);
+    border:0;
+    border-radius:var(--dp-r-instrument);
+    box-shadow:var(--dp-plate-bevel-raised);
   }
   #hud .sf-kit-gauge__arc {
     background:repeating-conic-gradient(from -110deg at 50% 62%,
-        rgb(198 226 255 / .45) 0deg 0.7deg, transparent 0.7deg 22deg),
+        rgb(255 232 190 / .30) 0deg 0.7deg, transparent 0.7deg 22deg),
       conic-gradient(from -110deg at 50% 62%,
-        var(--glass-neon) 0deg var(--sf-gauge-arc, 0deg), transparent var(--sf-gauge-arc, 0deg) 220deg),
+        var(--dp-lamp) 0deg var(--sf-gauge-arc, 0deg), transparent var(--sf-gauge-arc, 0deg) 220deg),
       conic-gradient(from -110deg at 50% 62%,
-        rgb(198 226 255 / .16) 0deg 220deg, transparent 220deg 360deg);
+        rgb(255 232 190 / .12) 0deg 220deg, transparent 220deg 360deg);
     -webkit-mask-image:radial-gradient(circle closest-side at 50% 62%, transparent 0 86%, #000 88% 98%, transparent 99%),
       conic-gradient(from -110deg at 50% 62%, #000 0deg 220deg, transparent 220deg 360deg);
     -webkit-mask-composite:source-in;
     mask-image:radial-gradient(circle closest-side at 50% 62%, transparent 0 86%, #000 88% 98%, transparent 99%),
       conic-gradient(from -110deg at 50% 62%, #000 0deg 220deg, transparent 220deg 360deg);
     mask-composite:intersect;
-    filter:drop-shadow(0 0 6px rgb(92 178 255 / .35));
+    filter:drop-shadow(0 0 6px var(--dp-lamp-bloom));
   }
-  #hud .sf-kit-gauge__needle { color:var(--glass-neon); }
-  #hud .sf-kit-gauge__hub { fill:var(--hud-paper); }
+  #hud .sf-kit-gauge__needle { color:var(--dp-lamp); }
+  #hud .sf-kit-gauge__hub { fill:var(--dp-ink); }
   #hud .sf-kit-gauge__face { background:none; }
-  #hud .sf-kit-gauge__num { color:var(--hud-paper); text-shadow:0 0 14px rgb(92 178 255 / .28); }
+  #hud .sf-kit-gauge__num { color:var(--dp-lamp-hot); text-shadow:0 0 12px var(--dp-lamp-bloom); }
 
-  /* --- power rail: glass tiles in a glass rack --- */
+  /* --- power rail: machined sockets in a rail plate --- */
   #hud .sf-prail { padding-bottom:0; }
   #hud .sf-prail__label {
     position:static; height:auto; line-height:1.2; padding:0 0 6px;
-    font-family:var(--k-display, var(--hud-display));
+    font-family:var(--dp-face-etch);
     font-variation-settings:"wght" 700, "wdth" 62;
     font-size:var(--k-fs-fine); letter-spacing:.18em; text-transform:uppercase;
-    color:var(--hud-muted); opacity:1;
+    color:var(--dp-ink-mute); opacity:1; text-shadow:var(--dp-etch-shadow);
   }
   #hud .sf-prail__slots {
-    border:1px solid var(--glass-edge); border-image:none; border-radius:12px;
-    background:var(--glass-fill-2); background-image:var(--glass-sheen);
-    box-shadow:var(--glass-drop), var(--glass-inner);
+    border:0; border-image:none; border-radius:var(--dp-r-instrument);
+    background-color:var(--dp-metal-1); background-image:var(--dp-plate-img);
+    box-shadow:var(--dp-plate-bevel-raised);
     padding:8px 10px 24px; gap:8px; align-items:flex-end;
   }
+  /* dp-socket: the bay cut into the rail. State lives in data-state (powerRail.js), the lamp
+     strip on the bay floor carries armed/cooling; the mark dims when the bay is dead. */
   #hud .sf-pslot {
-    background:var(--glass-fill-3); background-image:var(--glass-sheen);
-    border:1px solid var(--glass-edge); border-radius:9px;
-    box-shadow:var(--glass-inner);
-    color:var(--hud-muted); opacity:1;
+    background:
+      radial-gradient(120% 90% at 50% 0%, rgb(255 232 190 / .05), transparent 55%),
+      linear-gradient(180deg, rgb(0 0 0 / .62), rgb(0 0 0 / .22) 58%, rgb(255 255 255 / .028));
+    border:0; border-radius:var(--dp-r-instrument);
+    box-shadow:inset 0 2px 5px rgb(0 0 0 / .78), inset 0 -1px 0 rgb(255 232 190 / .10),
+      inset 1px 0 0 rgb(0 0 0 / .4), inset -1px 0 0 rgb(0 0 0 / .4);
+    color:var(--dp-ink-dim); opacity:1;
   }
-  #hud .sf-pslot__key { color:var(--hud-muted); opacity:1; }
-  #hud .sf-pslot__name { bottom:-17px; color:var(--hud-muted); }
-  #hud .sf-pslot__sweep circle { stroke:var(--glass-neon); }
+  #hud .sf-pslot__key { color:var(--dp-ink-mute); opacity:1; text-shadow:var(--dp-etch-shadow); }
+  #hud .sf-pslot__name { bottom:-17px; color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow); }
+  #hud .sf-pslot__sweep circle { stroke:var(--dp-lamp); }
   #hud .sf-pslot[data-state="armed"] {
-    border-color:rgb(141 217 255 / .85); color:rgb(234 246 255);
-    background:linear-gradient(180deg, rgb(70 132 194 / .46), rgb(20 42 66 / .58));
-    box-shadow:var(--glass-glow), var(--glass-inner);
+    background:
+      radial-gradient(120% 90% at 50% 0%, rgb(255 217 140 / .16), transparent 55%),
+      linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .16) 58%, rgb(255 217 140 / .06));
+    color:var(--dp-lamp-hot);
+    box-shadow:inset 0 2px 5px rgb(0 0 0 / .7), inset 0 -1px 0 var(--dp-lamp-bloom),
+      inset 1px 0 0 rgb(0 0 0 / .4), inset -1px 0 0 rgb(0 0 0 / .4), 0 0 12px var(--dp-lamp-bloom-soft);
   }
-  #hud .sf-pslot[data-state="armed"] .fh-glyph .accent { fill:var(--glass-neon); }
+  #hud .sf-pslot[data-state="armed"] .fh-glyph .accent { fill:var(--dp-lamp); }
+  #hud .sf-pslot[data-state="armed"] .sf-pslot__name { color:var(--dp-ink); }
+  #hud .sf-pslot[data-state="cooling"] { opacity:.86; }
+  #hud .sf-pslot[data-state="cooling"] .sf-pslot__art { opacity:.6; }
+  #hud .sf-pslot[data-state="unaffordable"] { opacity:.62; }
+  #hud .sf-pslot[data-state="unaffordable"] .sf-pslot__art { opacity:.4; }
+  #hud .sf-pslot[data-state="locked"] { box-shadow:inset 0 2px 5px rgb(0 0 0 / .78), inset 1px 0 0 rgb(0 0 0 / .4), inset -1px 0 0 rgb(0 0 0 / .4); }
+  #hud .sf-pslot[data-state="locked"] .sf-pslot__art { opacity:.36; }
+  #hud .sf-pslot[data-state="empty"] { background:var(--dp-metal-0); }
+  #hud .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.22; }
+  #hud .sf-prail[data-claimed] .sf-pslot__name { color:var(--dp-lamp); }
   #hud .sf-pslot[data-state="armed"] .sf-pslot__name { color:rgb(214 238 255); }
   #hud .sf-pslot[data-state="cooling"] { opacity:.86; }
   #hud .sf-pslot[data-state="cooling"] .sf-pslot__art { opacity:.6; }
@@ -2016,54 +2036,57 @@ export function injectHudCss() {
   #hud .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.22; }
   #hud .sf-prail[data-claimed] .sf-pslot__name { color:var(--glass-neon); }
 
-  /* --- radar: glass dial, ice rose --- */
+  /* --- radar: the instrument binnacle — a machined ring, dark lens, warm rose --- */
   #hud .sf-kit-radar__bezel {
-    background:radial-gradient(circle at 50% 40%, rgb(24 38 54 / .78), rgb(7 11 17 / .88) 68%);
-    border:1px solid var(--glass-edge); border-radius:50%;
-    box-shadow:var(--glass-drop), var(--glass-inner);
+    background:radial-gradient(circle at 50% 34%, var(--dp-metal-3), var(--dp-metal-1) 58%, var(--dp-metal-0) 100%);
+    border:0; border-radius:50%;
+    box-shadow:var(--dp-plate-bevel-raised);
   }
   #hud .sf-kit-radar__face {
-    background:radial-gradient(circle at 50% 38%, rgb(30 48 68 / .35), rgb(6 10 16 / .55) 76%);
+    background:radial-gradient(circle at 50% 38%, rgb(0 0 0 / .24), rgb(0 0 0 / .5) 76%);
     background-image:none; border-radius:50%;
+    box-shadow:inset 0 2px 8px rgb(0 0 0 / .7), inset 0 -1px 0 rgb(255 232 190 / .06);
   }
-  #hud .sf-kit-radar__n { filter:hue-rotate(188deg) saturate(.35) brightness(1.6); }
+  #hud .sf-kit-radar__n { filter:none; }
 
   /* --- right dock: roster, target card, sector law --- */
   #hud .sf-overview { overflow:hidden; }
-  #hud .sf-overview-row { border-bottom:1px solid var(--glass-edge); }
-  #hud .sf-overview-row:hover { background:rgb(141 217 255 / .08); }
+  #hud .sf-overview-row { border-bottom:1px solid var(--dp-metal-3); transition:background var(--dp-d-cut) var(--dp-ease-lamp); }
+  #hud .sf-overview-row:hover { background:rgb(242 185 80 / .09); }
   #hud .sf-overview-row__name { color:var(--hud-paper); }
   #hud .sf-overview-row__right, #hud .sf-overview-row__detail,
   #hud .sf-overview-row__state, #hud .sf-overview-row__tier, #hud .sf-overview-footer { color:var(--hud-muted); }
-  #hud .sf-target { padding:10px 12px; }
-  #hud .sf-target__name { color:var(--hud-paper); }
+  #hud .sf-target { padding:10px 12px; border-radius:var(--dp-r-instrument); box-shadow:var(--dp-plate-bevel-raised); }
+  #hud .sf-target__name { color:var(--hud-paper); text-shadow:0 0 10px var(--dp-lamp-bloom-soft); }
   #hud .sf-target__faction, #hud .sf-target__meta, #hud .sf-target__dist,
   #hud .sf-target__identity, #hud .sf-target__intent, #hud .sf-target__tri-label,
   #hud .sf-target__tri-layer, #hud .sf-tri__k, #hud .sf-target__threat-word { color:var(--hud-muted); }
-  #hud .sf-target__dist { color:var(--hud-paper); }
+  #hud .sf-target__dist { color:var(--dp-lamp-hot); }
+  #hud .sf-target__rangebar { background-color:var(--dp-metal-0); background-image:var(--dp-channel-img); box-shadow:var(--dp-channel-bevel); border-radius:var(--dp-r-plate); }
+  #hud .sf-target__rangefill { background:linear-gradient(180deg, var(--dp-lamp-hot), var(--dp-lamp) 55%, var(--dp-lamp-dim)); box-shadow:0 0 6px var(--dp-lamp-bloom); }
   #hud #sf-sector-law { padding:10px 12px; }
   #hud .sf-law__head, #hud .sf-law__meta, #hud .sf-law__detail, #hud .sf-law__jurisdiction { color:var(--hud-muted); }
   #hud .sf-law__headline { color:var(--hud-paper); }
 
   /* --- left contextual column: mission, nav, comms tape, first-use --- */
-  #hud .sf-mission-tracker { padding:8px 12px 9px; border-left:2px solid var(--glass-neon-2); }
-  #hud .sf-mt-title { border-bottom-color:var(--glass-edge); }
+  #hud .sf-mission-tracker { padding:8px 12px 9px; border-left:2px solid var(--dp-lamp); }
+  #hud .sf-mt-title { border-bottom-color:var(--dp-metal-3); color:var(--dp-lamp); }
   #hud .sf-mt-obj { color:var(--hud-paper); }
   #hud .sf-mt-time { color:var(--hud-muted); }
   #hud .sf-nav-readout { padding:8px 12px; }
   #hud .sf-nav-label { color:var(--hud-paper); }
   #hud .sf-nav-meta { color:var(--hud-muted); }
   #hud .sf-obj { color:var(--hud-paper); }
-  #hud .sf-commtape { padding:6px 10px; border-bottom:0; border-radius:8px; }
+  #hud .sf-commtape { padding:6px 10px; border-bottom:0; border-radius:var(--dp-r-plate); }
   #hud .sf-commtape__band, #hud .sf-commtape .sf-comm-backlog-btn,
   #hud .sf-commtape .sf-contact-hail__button, #hud .sf-commtape .sf-fx-comms-trace__wave {
     color:var(--hud-muted);
   }
-  #hud .sf-commtape .sf-comm-backlog-btn:hover, #hud .sf-commtape .sf-contact-hail__button:hover { color:var(--hud-paper); }
+  #hud .sf-commtape .sf-comm-backlog-btn:hover, #hud .sf-commtape .sf-contact-hail__button:hover { color:var(--dp-lamp-hot); }
   #hud .sf-news-ticker { color:var(--hud-paper); }
   #hud .sf-firstuse { color:var(--hud-paper); }
   #hud .sf-band-hud__button { color:var(--hud-muted); }
-  #hud .sf-band-hud__button:hover, #hud .sf-band-hud__button:focus-visible { color:var(--hud-paper); }
+  #hud .sf-band-hud__button:hover, #hud .sf-band-hud__button:focus-visible { color:var(--dp-lamp-hot); }
 
   /* --- command deck readouts --- */
   #hud .sf-stat__k { color:var(--hud-muted); }
@@ -2075,35 +2098,36 @@ export function injectHudCss() {
   #hud #sf-onboarding .sf-ob-card,
   #sf-onboarding .sf-ob-card {
     box-sizing:border-box;
-    background-color:var(--glass-fill) !important;
-    background-image:var(--glass-sheen) !important;
-    border:1px solid var(--glass-edge) !important;
-    border-radius:10px !important;
-    box-shadow:var(--glass-drop), var(--glass-inner) !important;
+    background-color:var(--dp-metal-1) !important;
+    background-image:var(--dp-plate-img) !important;
+    border:0 !important;
+    border-radius:var(--dp-r-instrument) !important;
+    box-shadow:var(--dp-plate-bevel-raised) !important;
     padding:10px 12px !important;
   }
   #hud #sf-onboarding .sf-ob-title { color:var(--hud-paper); }
   #hud #sf-onboarding .sf-ob-hint, #hud #sf-onboarding .sf-ob-flavor { color:var(--hud-muted); }
-  #hud #sf-onboarding .sf-ob-progress { color:var(--glass-neon); }
+  #hud #sf-onboarding .sf-ob-progress { color:var(--dp-lamp); }
 
-  /* --- world marks near the reticle cool with the register --- */
-  #hud .sf-lockring .sf-lockring__fill { stroke:var(--glass-neon); }
-  #hud .sf-lockring .sf-lockring__track { stroke:var(--glass-edge); }
+  /* --- world marks near the reticle ride the lamp ramp --- */
+  #hud .sf-lockring .sf-lockring__fill { stroke:var(--dp-lamp); }
+  #hud .sf-lockring .sf-lockring__track { stroke:var(--dp-metal-4); }
   #hud .sf-lockring__label { color:var(--hud-paper); }
-  #hud .sf-lockdiamond__inner { border-color:var(--glass-neon); }
-  #hud .sf-leadpip__full, #hud .sf-leadpip__arc, #hud .sf-leadpip__tick { stroke:var(--glass-neon); }
+  #hud .sf-lockdiamond__inner { border-color:var(--dp-lamp); }
+  #hud .sf-leadpip__full, #hud .sf-leadpip__arc, #hud .sf-leadpip__tick { stroke:var(--dp-lamp); }
   #hud .sf-gravity-mark__ring { border-color:var(--hud-paper); }
   #hud .sf-gravity-mark__core { background:var(--hud-paper); }
   #hud .sf-gravity-mark__label, #hud .sf-momentum-sink__label { color:var(--hud-paper); }
   #hud .sf-objarrow--onscreen .sf-objarrow__glyph { border-color:var(--hud-paper); background:var(--k-signal); }
   #hud .sf-objarrow__label { padding:4px 9px; }
 
-  /* --- alerts and receipts: same glass, one line each --- */
+  /* --- alerts and receipts: one machined strip each (the annunciator's plate) --- */
   .sf-alert { padding:7px 18px; }
   .sf-alert--dock { padding:9px 24px; }
   .sf-toast { padding:6px 10px; }
 
-  /* --- high contrast: keep the glass readable, not translucent --- */
+  /* --- high contrast: the token remap (deckplate/tokens.js) flattens the plates; keep the
+         surfaces opaque so the remapped ink keeps its ratio --- */
   html.sf-high-contrast #hud .sf-bars, html.sf-high-contrast #hud .sf-overview,
   html.sf-high-contrast #hud .sf-target, html.sf-high-contrast #hud .sf-mission-tracker,
   html.sf-high-contrast #hud .sf-nav-readout,   html.sf-high-contrast #hud #sf-sector-law,
@@ -2111,7 +2135,7 @@ export function injectHudCss() {
   html.sf-high-contrast #hud .sf-pslot, html.sf-high-contrast #hud .sf-kit-gauge,
   html.sf-high-contrast .sf-alert, html.sf-high-contrast .sf-toast {
     background:rgb(0 0 0 / .95); background-image:none;
-    border-color:rgb(230 240 255 / .85); box-shadow:none;
+    border-color:rgb(255 255 255 / .85); box-shadow:none;
   }
 
   /* --- forced colours: the system palette owns the surface again --- */
