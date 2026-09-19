@@ -1200,6 +1200,9 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               swingStartTick = 0;
               return;
             }
+            if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
+              console.log(`    [swing] t=${Math.round(state.simTime)} lineAtt=${lineAttached} latched=${latchedId} rock=${rock.id} dRock=${Math.round(dist(p.pos, rock.pos))} needWinch=${needWinch} v=${Math.round(speedOf(p))} rkV=${Math.round(speedOf(rock))}`);
+            }
             // Winch tight, then SWING exactly like the verbs-bench predator: turn across the
             // line, burn the tangent (boost pulses load the arc), and cut when the rock's
             // velocity actually points at the wreck.
@@ -1218,7 +1221,10 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             swingStartTick = swingStartTick || state.tick;
             const stretchTicks = state.tick - swingStartTick;
             // Cut when the swing geometry lines the rock up with the wreck (or failsafe late).
-            if ((rkSpeed >= 18 && rkDot > 0.93) || stretchTicks > 420) {
+            // Contact pad at the wreck is ~32 wu at ~230 wu range: the release needs a
+            // near-exact alignment or the rock sails past. The sweep crosses this window
+            // every revolution, so hold on until it truly lines up.
+            if ((rkSpeed >= 25 && rkDot > 0.995) || stretchTicks > 600) {
               input.tetherCut = true;
               cmd.cut = true;
               unhook();

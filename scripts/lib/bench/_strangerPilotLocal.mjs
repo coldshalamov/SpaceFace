@@ -909,7 +909,6 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
   let latchedTargetId = null;    // the body this policy intends to hold
   let needWinch = true;          // every fresh latch must be winched tight before a swing
   let raidWall = null;           // cached throw-target rock (static, so position is stable)
-  let stuckTicks = 0;            // consecutive slow ticks while the hull should be moving
   let winchUntil = -1;           // simTime: reel this long after each fresh attach
   const decided = {};            // one decision log per choice point
 
@@ -1185,29 +1184,6 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               const wdz = derelict.pos.z - rock.pos.z;
               const wd = Math.hypot(wdx, wdz) || 1;
               const launch = { x: rock.pos.x - (wdx / wd) * 150, z: rock.pos.z - (wdz / wd) * 150 };
-              // Unstick: a recoil can grind the hull along a static rock — sidestep 90 deg
-              // for a beat whenever thrust is commanded but the hull is not moving.
-              if (speedOf(p) < 5) {
-                stuckTicks = (stuckTicks || 0) + 1;
-              } else {
-                stuckTicks = 0;
-              }
-              if (stuckTicks > 240) {
-                // Aim directly AWAY from the nearest static rock: grinding along a surface
-                // only ends when the thrust points off the pin.
-                let pin = null;
-                let pinD = 220;
-                for (const e of (state.entityList || [])) {
-                  if (!e || !e.alive || e.type !== 'asteroid' || !e.pos) continue;
-                  const dd = dist(p.pos, e.pos);
-                  if (dd < pinD) { pinD = dd; pin = e; }
-                }
-                const away = pin
-                  ? { x: p.pos.x + (p.pos.x - pin.pos.x) * 3, z: p.pos.z + (p.pos.z - pin.pos.z) * 3 }
-                  : { x: p.pos.x - (wdz / wd) * 300, z: p.pos.z + (wdx / wd) * 300 };
-                flyTo(input, away, { arrive: 80, boost: energyFull(p) });
-                return;
-              }
               if (dist(p.pos, launch) > 110) {
                 flyTo(input, launch, { arrive: 40, boost: energyFull(p) });
                 return;
@@ -1250,8 +1226,8 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(input.aimAngle - (p.rot || 0)) / 0.5));
             input.moveZ = 1;
             input.boost = energyFull(p) && ((stretchTicks % 90) === 20 || (stretchTicks % 90) === 60);
-            // The line rides passive through the stretch: holding line-control bleeds idle
-            // energy every tick, and an empty capacitor means no thrust means no swing.
+            cmd.lineControl = true;
+            cmd.lineLength = 0;
             return;
           }
         } else if (r.current === 'shove') {

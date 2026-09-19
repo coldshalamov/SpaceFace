@@ -6,7 +6,8 @@
 //   node scripts/run-actual-game-playthrough.mjs --archetype=prospector --seed=4242 --hours=10 \
 //        --out=.devshots/actual-game
 //
-// Archetypes: prospector (miner-trader) | hunter (combat) | improviser (tether/physics).
+// Archetypes: prospector (miner-trader) | hunter (combat) | improviser (tether/physics)
+//   | raider (piracy → WANTED → pursuit → resolution).
 // The sim is the real fixed-timestep host (src/core/sim.js) with the production open-world systems
 // (world materialization, mining, traffic, encounters, tether family, economy, missions, heat).
 // Pilots drive the player input contract; station verbs use the same live paths the browser UI and
@@ -39,6 +40,7 @@ import { masslineImpacts } from '../src/systems/masslineImpacts.js';
 import { masslineThrow } from '../src/systems/masslineThrow.js';
 import { masslineSnares } from '../src/systems/masslineSnares.js';
 import { masslineThreats } from '../src/systems/masslineThreats.js';
+import { tensionDirector } from '../src/systems/tensionDirector.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { aiEncounter } from '../src/systems/aiEncounter.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
@@ -47,15 +49,40 @@ import { heat } from '../src/systems/heat.js';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { dockingCorridor } from '../src/systems/dockingCorridor.js';
 import { fieldDepletion } from '../src/systems/fieldDepletion.js';
+import { voiceArbiter } from '../src/ui/voiceArbiter.js';
+import { flybyFocus } from '../src/systems/flybyFocus.js';
+import { scanner } from '../src/systems/scanner.js';
+import { aceMemory } from '../src/systems/aceMemory.js';
+import { barkDirector } from '../src/systems/barkDirector.js';
+import { combatOutcome } from '../src/systems/combatOutcome.js';
+import { aftermathWrecks } from '../src/systems/aftermathWrecks.js';
+import { wingMorale } from '../src/systems/wingMorale.js';
+import { custodyConsequences } from '../src/systems/custodyConsequences.js';
+import { survivorPod } from '../src/systems/survivorPod.js';
+import { factions } from '../src/systems/factions.js';
+import { factionPresence } from '../src/systems/factionPresence.js';
+import { spawnBudget } from '../src/systems/spawnBudget.js';
+import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
+import { bountyHunt } from '../src/systems/bountyHunt.js';
+import { provenanceLedger } from '../src/systems/provenanceLedger.js';
+import { createChronicler } from '../src/systems/chronicler.js';
+import { isRunSealed } from '../src/core/runSeal.js';
+import { lossLedger } from '../src/systems/lossLedger.js';
+import { pirateDisengage } from '../src/systems/pirateDisengage.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
 import { presentationAdapters } from '../src/systems/presentationAdapters.js';
+import { onboarding } from '../src/systems/onboarding.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
+import { COMBAT_FLAGS, MASSLINE2_FLAGS, TRAVEL_FLAGS } from '../src/data/featureFlags.js';
+import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/ships.js';
 import { createPlaythroughLedger } from './lib/bench/playthroughLedger.mjs';
 import {
   createMinerTraderPilot,
   createHunterPilot,
+  createRaiderPilot,
   createImproviserPilot,
+  createStrangerPilot,
   createServices,
 } from './lib/bench/playthroughPilots.mjs';
 
@@ -74,7 +101,9 @@ function argInt(name, fallback) {
 const ARCHETYPES = {
   prospector: createMinerTraderPilot,
   hunter: createHunterPilot,
+  raider: createRaiderPilot,
   improviser: createImproviserPilot,
+  stranger: createStrangerPilot,
 };
 const archetype = argValue('archetype', 'prospector');
 if (!ARCHETYPES[archetype]) {
@@ -91,6 +120,10 @@ const log = (m) => console.log(`[playthrough ${archetype} s${seed}] ${m}`);
 
 // ── boot ─────────────────────────────────────────────────────────────────────────────────────
 const tacticalAI = createTacticalAISystem();
+// Genie 01: campaign-gated world memory, mirroring registry.js/nodeSystemFactoryTable.
+const chronicler = createChronicler({
+  shouldObserve: (state) => !isRunSealed(state),
+});
 const sim = createSimulation({
   seed,
   systems: [
@@ -98,14 +131,31 @@ const sim = createSimulation({
     economy, missions, story, save,
     world, mining, fields, traffic, salvage, lootShards,
     tetherGameplay, masslineImpacts, masslineThrow, masslineSnares, masslineThreats,
-    encounterDirector, aiEncounter, tacticalAI, aiPorts,
+    tensionDirector, encounterDirector, aiEncounter, tacticalAI, aiPorts,
+    // Chain-parity block: the combat→aftermath→salvage→economy→law route needs the real
+    // aftermath/voice/witness/responder surface, not a stripped manifest. Registration order
+    // mirrors registry.js: voice + scanner + memory before bark/law consumers, budget/jobs
+    // before the law response that spends them.
+    voiceArbiter, scanner, flybyFocus, aceMemory, barkDirector,
+    combatOutcome, aftermathWrecks, wingMorale, custodyConsequences, survivorPod,
+    factions, factionPresence, spawnBudget, npcJobsRuntime, bountyHunt,
+    provenanceLedger, chronicler, lossLedger, pirateDisengage,
     heat, lawSecurity, dockingCorridor, fieldDepletion,
     presentationOrchestrator, presentationAdapters,
+    // Onboarding runs LAST (registry parity): it only reads state and drives the tutorial UI,
+    // but its beat FSM must be live for the stranger archetype — the pilot follows the rail.
+    onboarding,
   ],
 });
 const { state, bus, registry } = sim;
 
 state.mode = 'flight';
+// Production feature profile (registry parity): the momentum-kill beat needs the massline
+// impact-damage + tumble flags the browser boot seeds from the production profile.
+state.settings.gameplay.runtimeProfile = 'production';
+Object.assign(COMBAT_FLAGS, PRODUCTION_FEATURES.combat);
+Object.assign(MASSLINE2_FLAGS, PRODUCTION_FEATURES.massline2);
+Object.assign(TRAVEL_FLAGS, PRODUCTION_FEATURES.travel);
 state.settings.gameplay.physicsBackend = 'rapier-dynamic';
 state.settings.gameplay.flightBackend = 'v3';
 state.settings.gameplay.aiBackend = 'sg06-tactical';
