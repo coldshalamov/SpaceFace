@@ -4213,30 +4213,6 @@
         "docs/program-compass/2026-09-ACTUAL-GAME.md"
       ],
       "brief": "Move the measured open-world shape: restore encounter supply in hours 5–9, close the combat→salvage→economy→law chain at least once, and give income a curve past the first-hour cliff. Rerun the six-session battery and diff the hourly tables; sector-boundary flapping is already fixed by 3e84b438e."
-    },
-    {
-      "id": "PQ-210",
-      "priority": 1007,
-      "title": "Mining-prop stragglers re-author",
-      "state": "ready",
-      "canonical": [
-        "MINING-PROP-STRAGGLERS"
-      ],
-      "aliases": [
-        "place-mining-drone",
-        "place-conveyor-barge"
-      ],
-      "dependsOn": [],
-      "mutexes": [],
-      "sources": [
-        "design/program/02_REMAINING_WORK.md",
-        "docs/visual-assets/README.md"
-      ],
-      "checks": [],
-      "evidence": [
-        "design/program/02_REMAINING_WORK.md"
-      ],
-      "brief": "Re-author place_mining_drone and place_conveyor_barge through the material-truth V2 Blender pipeline — the last two live world-dressing props on the 2026-07-05 bevel pass — then promote release GLBs, manifests, and LOD/collision evidence on the standard visual-asset route."
     }
   ],
   "dispatchUnits": [
@@ -19504,52 +19480,6 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "The starter field depletes and the next reachable field is ~14,000 WU away with nothing on the way; give income a curve, and address the ~92-shots-per-rock mining click-farm."
-    },
-    {
-      "id": "PQ-210.00",
-      "parentId": "PQ-210",
-      "priority": 9870,
-      "title": "Re-author place_mining_drone (material-truth V2)",
-      "kind": "implementation",
-      "state": "ready",
-      "dependsOn": [],
-      "mutexes": [
-        "browser-gpu"
-      ],
-      "paths": [
-        "assets/ships/parts/places/place_mining_drone.glb",
-        "assets/ships/release/parts/places/place_mining_drone.glb",
-        "assets/ships/parts/parts_manifest.json"
-      ],
-      "checks": [
-        "npm run check:graphics:asset-receipts"
-      ],
-      "receiptRefs": [],
-      "brief": "Material-truth preflight, authored bevels/weighted normals, UV-authored PBR, top-down silhouette read, LOD0/1/2 in prop budget, authored colliders; promote release GLBs and manifests."
-    },
-    {
-      "id": "PQ-210.01",
-      "parentId": "PQ-210",
-      "priority": 9871,
-      "title": "Re-author place_conveyor_barge (material-truth V2)",
-      "kind": "implementation",
-      "state": "planned",
-      "dependsOn": [
-        "PQ-210.00"
-      ],
-      "mutexes": [
-        "browser-gpu"
-      ],
-      "paths": [
-        "assets/ships/parts/places/place_conveyor_barge.glb",
-        "assets/ships/release/parts/places/place_conveyor_barge.glb",
-        "assets/ships/release/release_manifest.json"
-      ],
-      "checks": [
-        "npm run check:graphics:asset-receipts"
-      ],
-      "receiptRefs": [],
-      "brief": "Same material-truth V2 route for the 73 m industrial barge; keep the Abandoned Mining Colony landmark binding and world dressing counts honest."
     }
   ]
 }

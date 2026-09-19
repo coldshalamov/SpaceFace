@@ -41,15 +41,22 @@ heading/capture is not the proof and agents review by reading the live owner.
 - Proposed queue leaf: `PQ-206.00` (§E) — investigate the wing-fight kill source, then decide whether
   it is authored (a wing gank) or a bug (non-DPS capital resolution), and add a fixed-seed pin.
 
-### A3. Mining-prop stragglers
+### A3. Mining-prop stragglers — CLOSED 2026-09-19
 
-- Source: [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md) §Verified-open findings not yet
-  queue-represented (row `TODO`, verify-open 2026-08-18).
-- Outcome: `place_mining_drone` (580 tris / 4 meshes / 4 KB flat normal) and `place_conveyor_barge`
-  (1,144 tris, 4 KB stub normal/ORM) are the only live world-dressing props still on the 2026-07-05
-  bevel pass; every neighbouring prop was re-authored by `PQ-045.prop-promotion`.
-- Proposed queue leaf: `PQ-210.00`–`.01` (§E) — material-truth V2 re-author through the Blender
-  pipeline, the standard `docs/visual-assets/README.md` route.
+- Source: [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md) §Verified-open findings (row `TODO`,
+  verify-open 2026-08-18).
+- Outcome: **stale — not a real residual.** The V3 material-truth re-author of both props had already
+  landed (manifest note "Opening-route industrial prop V3 2026-08-18"; builders
+  `tools/blender/remaster_opening_mining_drone_v3.py` / `remaster_opening_conveyor_barge_v3.py`).
+  The finding's "580 tris / 4 meshes / 4 KB flat normal" and "1,144 tris / 4 KB stub normal/ORM"
+  measured the pre-V3 bevel pass, not the live release.
+- Live evidence 2026-09-19: drone release `79cffc2f…` = 17,924 tris / 7 materials / 22 KTX2, LOD
+  8716/6704/2504; barge release `73e83200…` = 37,332 tris / 9 materials / 29 KTX2, LOD
+  19500/12608/5224. Source + release hashes match the release manifest; both render-packages were
+  compiled from these exact release GLBs.
+- Action: `PQ-210` withdrawn (admitted in error on the stale finding); packet retained under
+  [`roadmap/retired/PQ-210.md`](./roadmap/retired/PQ-210.md). No asset or code change was needed.
+- Receipt: [`roadmap/receipts/MINING-PROP-V3-VERIFY-2026-09-19.md`](./roadmap/receipts/MINING-PROP-V3-VERIFY-2026-09-19.md).
 
 ## B. Four landed verticals — follow-ups
 
@@ -163,8 +170,9 @@ lost. Rows whose terminal action was "pathspec commit" or "receipt written" are 
 
 ## E. Admissions to `roadmap/program-queue.json`
 
-Additive rows only; no other lane's row, state, or priority was changed. Each packet carries at least
-one `ready` dispatch unit so `program-dispatch --ready` surfaces it.
+Additive rows only; no other lane's row, state, or priority was changed. Each packet carried at least
+one `ready` dispatch unit so `program-dispatch --ready` surfaces it. `PQ-210` was withdrawn on
+2026-09-19 after its premise proved stale (§A3); it is no longer in the queue.
 
 | Queue id | Priority | Packet | Leaves (dispatch ids) |
 |---|---|---|---|
@@ -173,7 +181,7 @@ one `ready` dispatch unit so `program-dispatch --ready` surfaces it.
 | `PQ-207` | 1004 | People-who-remember residuals | `PQ-207.00` berth refresh cost (ready), `.01` double speaker/crowding, `.02` bark/radio online census, `.03` blind mechanic playtest |
 | `PQ-208` | 1005 | Build-identity drift guard | `PQ-208.00` verb-drift guard (ready), `.01` wire or reclassify declared-but-unwired keys |
 | `PQ-209` | 1006 | Actual-game defects (compass) | `PQ-209.00` encounter supply hours 5–9 (ready), `.01` close the combat→salvage→economy chain, `.02` income curve past hour 0 |
-| `PQ-210` | 1007 | Mining-prop stragglers | `PQ-210.00` re-author `place_mining_drone` (ready), `.01` re-author `place_conveyor_barge` |
+| `PQ-210` | 1007 | Mining-prop stragglers — **WITHDRAWN 2026-09-19** (§A3) | None: the V3 re-author already landed; task + units removed from the queue |
 
 Compass defects 4, 5, 6, 9, 10 are deliberately folded into the rows above rather than cloned as
 separate packets (§B4). Compass defect 7 is closed by `3e84b438e`.
