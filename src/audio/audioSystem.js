@@ -35,11 +35,13 @@ import { resolveAccessibilityCue } from '../ui/captions.js';
 import {
   createEnvironmentMixRuntime,
   resolveEnvironmentClass,
+  environmentOcclusion,
   weightDuckEnvelope,
   weightDuckGainForTarget,
   resolveVisualEventCue,
   visualEventAudioAllowed,
   VISUAL_EVENT_BUS,
+  ENVIRONMENT_CLASSES,
 } from './environmentMix.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
@@ -83,6 +85,31 @@ export const BULLET_TIME_AUDIO = Object.freeze({
   exitS: 0.15,
   loopRate: 0.85,
   musicMult: 0.630957, // -4 dB
+});
+// Combat choreography: the mix builds with threat instead of sitting flat. `rt.threat`
+// (recomputed at MUSIC_RECOMPUTE_S) leans the combat fader in and the music fader out, and a
+// continuous pressure bed rides the combat bus so escalation is audible between shots.
+// Everything is bounded — the limiter still owns the ceiling.
+export const PRESSURE_MIX = Object.freeze({
+  combatLift: 0.14,     // combat bus fader lift at full threat (~+1.2 dB)
+  musicDuck: 0.30,      // music bus fader dip at full threat (~-3 dB)
+  bedBaseGain: 0.004,   // floor once engaged — pressure never quite zero under threat
+  bedGain: 0.075,       // bandpassed noise layer peak at full threat
+  bedBaseHz: 180,
+  bedSpanHz: 1500,
+  bedQ: 0.9,
+  subHz: 38,
+  subGain: 0.05,
+  subAt: 0.55,          // sub-osc growl opens above this threat
+  ledgerS: 0.25,        // bus-meter sample cadence
+  ledgerCap: 240,       // 60 s of meter history, preallocated ring
+});
+// A critical comms cue owns the ear: the world mix bows for the phrase. The comms bus itself
+// is never ducked — the voice must stay on top.
+export const COMMS_DUCK = Object.freeze({
+  gain: 0.58,
+  defaultS: 1.5,
+  releasePadS: 0.45,
 });
 // target stem weights per music state. PQ-158.03: the adaptive matrix owns these.
 const STEM_WEIGHTS = {
@@ -1363,6 +1390,24 @@ export const audio = {
     rt._weightDuckEnvelope = null;
     rt._masslineReelLastTick = -1e9;
     rt._environmentClass = 'void';
+    // Hull occlusion stub: one shared lowpass per physical bus; `_syncEnvironmentMix` owns the
+    // cutoff. Voices route through it only when positional AND the listener is interior.
+    rt._occlusionFilters = null;
+    rt._occlusionCutHz = 19000;
+    // Critical comms own the ear: world buses bow for the phrase (audio-clock envelope).
+    rt._commsDuckUntilS = 0;
+    rt._commsDuckGain = COMMS_DUCK.gain;
+    rt._commsDuckLive = 1;
+    // Pressure layer + spool strand — continuous beds built once with the other flight beds.
+    rt._pressureNoise = null; rt._pressureFilter = null; rt._pressureGain = null;
+    rt._pressureSub = null; rt._pressureSubGain = null;
+    rt._tetherSpoolOsc = null; rt._tetherSpoolGain = null;
+    // Bus-meter surface: applied fader targets (per _applySettings) + per-bus feed estimates,
+    // sampled into a preallocated ring at PRESSURE_MIX.ledgerS.
+    rt._musicFeed = 0;
+    rt._busLevels = null;
+    rt._busFeed = { engine: 0, ambient: 0, combat: 0, ui: 0, comms: 0, music: 0, sfx: 0 };
+    rt._mixLedger = { cap: PRESSURE_MIX.ledgerCap, head: 0, n: 0, nextAt: 0, entries: null };
     rt._heardAudioTick = -1;
     rt._heardRecipes = new Set();
     rt.sidechainDuck = 1;
@@ -1922,6 +1967,18 @@ export const audio = {
     engineBus.connect(engineBreach);
     ambientBus.connect(ambientBreach);
     combatBus.connect(combatBreach);
+    // Occlusion stubs: positional voices on the physical buses route through one shared
+    // lowpass per bus while the listener sits inside a pressurized space — the world outside
+    // the hull muffles. Interior voices (non-positional, UI, comms) never touch these.
+    rt._occlusionFilters = {};
+    for (const [occlBusName, occlBus] of [['engine', engineBus], ['ambient', ambientBus], ['combat', combatBus]]) {
+      const f = ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = rt._occlusionCutHz;
+      f.Q.value = 0.7;
+      f.connect(occlBus);
+      rt._occlusionFilters[occlBusName] = f;
+    }
     uiBus.connect(sfxBus);
     commsBus.connect(sfxBus);
     sfxBus.connect(master);
@@ -1996,6 +2053,150 @@ export const audio = {
     this._ensureEngineHum();
     this._ensureBrakeHiss();
     this._ensureTetherHum();
+    this._ensurePressureBed();
+  },
+
+  /**
+   * The pressure layer: a continuous threat-scaled growl riding the combat bus so escalation
+   * is audible between shots. Built once with the other flight beds; parameter writes are
+   * change-gated through `_bedTargetCache` like the tether hum.
+   */
+  _ensurePressureBed() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || !rt.combatBus || rt._pressureGain) return;
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoiseBuffer(ctx, rt._caches);
+    noise.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = PRESSURE_MIX.bedBaseHz;
+    filter.Q.value = PRESSURE_MIX.bedQ;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+    gain.gainValue = 0.0001;
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.value = PRESSURE_MIX.subHz;
+    const subGain = ctx.createGain();
+    subGain.gain.value = 0.0001;
+    subGain.gainValue = 0.0001;
+    noise.connect(filter);
+    filter.connect(gain);
+    sub.connect(subGain);
+    subGain.connect(gain);
+    gain.connect(rt.combatBus);
+    try { noise.start(ctx.currentTime); sub.start(ctx.currentTime); } catch (_) {}
+    rt._pressureNoise = noise;
+    rt._pressureFilter = filter;
+    rt._pressureGain = gain;
+    rt._pressureSub = sub;
+    rt._pressureSubGain = subGain;
+  },
+
+  _updatePressureLayer() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || rt._paused || !rt._pressureGain) return;
+    const threat = clamp(Number(rt.threat) || 0, 0, 1);
+    const now = ctx.currentTime;
+    const gain = threat <= 0.02 ? 0.0001
+      : PRESSURE_MIX.bedBaseGain + Math.pow(threat, 1.6) * PRESSURE_MIX.bedGain;
+    const freq = PRESSURE_MIX.bedBaseHz + threat * PRESSURE_MIX.bedSpanHz;
+    const sub = Math.max(0.0001,
+      Math.pow(clamp((threat - PRESSURE_MIX.subAt) / (1 - PRESSURE_MIX.subAt), 0, 1), 2) * PRESSURE_MIX.subGain);
+    const cache = rt._bedTargetCache || (rt._bedTargetCache = Object.create(null));
+    if (cache.pressureGainNode !== rt._pressureGain || cache.pressureGain !== gain) {
+      cache.pressureGainNode = rt._pressureGain;
+      cache.pressureGain = gain;
+      rt._pressureGain.gain.setTargetAtTime(gain, now, 0.12);
+    }
+    rt._pressureGain.gainValue = gain;
+    if (cache.pressureFilterNode !== rt._pressureFilter || cache.pressureFreq !== freq) {
+      cache.pressureFilterNode = rt._pressureFilter;
+      cache.pressureFreq = freq;
+      rt._pressureFilter.frequency.setTargetAtTime(freq, now, 0.15);
+    }
+    if (cache.pressureSubNode !== rt._pressureSubGain || cache.pressureSub !== sub) {
+      cache.pressureSubNode = rt._pressureSubGain;
+      cache.pressureSub = sub;
+      rt._pressureSubGain.gain.setTargetAtTime(sub, now, 0.18);
+    }
+    rt._pressureSubGain.gainValue = sub;
+  },
+
+  /**
+   * Bus-meter ledger: what a console meter bridge would show — applied fader targets times a
+   * bounded per-bus feed estimate (active voice peaks + continuous bed levels). Entries are
+   * preallocated once and mutated in place; the frame path never allocates here.
+   */
+  _writeMixLedger(now) {
+    const rt = this.rt, led = rt && rt._mixLedger;
+    if (!led || now < led.nextAt) return;
+    led.nextAt = now + PRESSURE_MIX.ledgerS;
+    if (!led.entries) {
+      led.entries = new Array(led.cap);
+      for (let i = 0; i < led.cap; i++) {
+        led.entries[i] = {
+          t: 0, simT: 0, threat: 0, pressure: 0, commsDuck: 1, env: 0,
+          engine: 0, ambient: 0, combat: 0, music: 0, ui: 0, comms: 0, sfx: 0, master: 0,
+          combatFader: 0, musicFader: 0, ambientFader: 0, engineFader: 0,
+        };
+      }
+    }
+    const feed = rt._busFeed;
+    for (const k in feed) feed[k] = 0;
+    const voices = rt.voices;
+    for (let i = 0; i < voices.length; i++) {
+      const v = voices[i];
+      if (v && !v._stopped) feed[v.busName || 'sfx'] += Math.min(1, Number(v.callGain) || 0);
+    }
+    const loops = rt.loops;
+    for (const key in loops) {
+      const v = loops[key];
+      if (v && !v._stopped) feed[v.busName || 'sfx'] += Math.min(1, Number(v.callGain) || 0);
+    }
+    if (rt._pressureGain) feed.combat += rt._pressureGain.gainValue || 0;
+    if (rt._pressureSubGain) feed.combat += rt._pressureSubGain.gainValue || 0;
+    if (rt.tetherHum) feed.combat += rt.tetherHum.gainValue || 0;
+    if (rt.tetherOverloadGain) feed.combat += rt.tetherOverloadGain.gainValue || 0;
+    if (rt._tetherSpoolGain) feed.combat += rt._tetherSpoolGain.gainValue || 0;
+    if (rt._engineTelemetry) feed.engine += Math.max(rt._engineTelemetry.humG || 0, rt._engineTelemetry.noiseG || 0);
+    if (rt.bandBed && rt.bandBed.activeGraph && rt.bandBed.activeGraph.output) {
+      feed.ambient += Math.min(1, rt.bandBed.activeGraph.output.gain.value || 0);
+    }
+    feed.music += rt._musicFeed || 0;
+    const lvl = rt._busLevels || {};
+    const e = led.entries[led.head];
+    led.head = (led.head + 1) % led.cap;
+    led.n = Math.min(led.n + 1, led.cap);
+    e.t = now;
+    e.simT = Number(this.state && this.state.simTime) || 0;
+    e.threat = Number(rt.threat) || 0;
+    e.pressure = rt._pressureGain ? (rt._pressureGain.gainValue || 0) : 0;
+    e.commsDuck = rt._commsDuckLive != null ? rt._commsDuckLive : 1;
+    e.env = Math.max(0, ENVIRONMENT_CLASSES.indexOf(rt._environmentClass));
+    e.engine = (lvl.engine || 0) * Math.min(feed.engine, 4);
+    e.ambient = (lvl.ambient || 0) * Math.min(feed.ambient, 4);
+    e.combat = (lvl.combat || 0) * Math.min(feed.combat, 4);
+    e.music = (lvl.music || 0) * Math.min(feed.music, 4);
+    e.ui = (lvl.ui || 0) * Math.min(feed.ui, 4);
+    e.comms = (lvl.comms || 0) * Math.min(feed.comms, 4);
+    e.sfx = lvl.sfx != null ? lvl.sfx : 1;
+    e.master = lvl.master || 0;
+    e.combatFader = lvl.combat || 0;
+    e.musicFader = lvl.music || 0;
+    e.ambientFader = lvl.ambient || 0;
+    e.engineFader = lvl.engine || 0;
+  },
+
+  /** Ordered bus-meter samples, oldest -> newest. Telemetry/test surface. */
+  mixLedger() {
+    const led = this.rt && this.rt._mixLedger;
+    if (!led || !led.entries || !led.n) return [];
+    const out = new Array(led.n);
+    for (let i = 0; i < led.n; i++) {
+      out[i] = led.entries[(led.head - led.n + i + led.cap) % led.cap];
+    }
+    return out;
   },
 
   _wallClockMs() {
@@ -2145,8 +2346,10 @@ export const audio = {
     // frame still re-applies, so the transient shape is bit-for-bit what it was before.
     // The cache key is (param identity, target, snap) — `snap` matters on its own because muting
     // leaves engine/ambient/combat/ui/comms targets untouched and only flips the ramp to a snap.
+    const levels = rt._busLevels || (rt._busLevels = Object.create(null));
     const ramp = (key, param, target, instant) => {
       const safe = target <= 0 ? 0 : Math.max(0.0001, target);
+      levels[key] = safe;
       // Mute / silence targets snap immediately so unlock + mute never leak a 50ms ramp blip.
       const snap = !!(instant || muted || safe <= 0.0001);
       const prev = cache[key];
@@ -2179,8 +2382,16 @@ export const audio = {
     const hush = this._hushGainFor(nowMs);
     const hushSoft = 1 - (1 - hush) * 0.55;
 
+    // Choreography: threat leans combat in and music out; a critical comms phrase bows the
+    // whole world mix. All bounded multipliers on the existing faders.
+    const pressure = clamp(Number(rt.threat) || 0, 0, 1);
+    const combatPressure = 1 + PRESSURE_MIX.combatLift * pressure;
+    const musicPressure = 1 - PRESSURE_MIX.musicDuck * pressure;
+    const commsDuck = t < (rt._commsDuckUntilS || 0) ? (rt._commsDuckGain || COMMS_DUCK.gain) : 1;
+    rt._commsDuckLive = commsDuck;
+
     const engineVal = a.engine == null ? 0.7 : a.engine;
-    const engineTarget = linearGain(sfxVal) * linearGain(engineVal) * 0.12589 * hush;
+    const engineTarget = linearGain(sfxVal) * linearGain(engineVal) * 0.12589 * hush * commsDuck;
     ramp('engine', rt.engineBus.gain, engineTarget);
 
     const sidechain = rt.sidechainDuck || 1.0;
@@ -2188,11 +2399,11 @@ export const audio = {
     const ambientDuck = rt._weightDuckEnvelope
       ? weightDuckGainForTarget('ambient', rt._weightDuckEnvelope, nowMs)
       : 1;
-    const ambientTarget = linearGain(sfxVal) * linearGain(ambientVal) * 0.06309 * sidechain * ambientDuck * hush;
+    const ambientTarget = linearGain(sfxVal) * linearGain(ambientVal) * 0.06309 * sidechain * ambientDuck * hush * commsDuck;
     ramp('ambient', rt.ambientBus.gain, ambientTarget);
 
     const combatVal = a.combat == null ? 0.7 : a.combat;
-    const combatTarget = linearGain(sfxVal) * linearGain(combatVal) * 0.25119 * hush;
+    const combatTarget = linearGain(sfxVal) * linearGain(combatVal) * 0.25119 * hush * combatPressure * commsDuck;
     ramp('combat', rt.combatBus.gain, combatTarget);
 
     const uiVal = a.ui == null ? 0.7 : a.ui;
@@ -2213,11 +2424,28 @@ export const audio = {
     const weightDuck = rt._weightDuckEnvelope
       ? weightDuckGainForTarget('music', rt._weightDuckEnvelope, nowMs)
       : 1;
-    const musicTarget = musicSilenced ? 0 : rt._musicBase * (rt._bulletTimeMusicMult || 1) * weightDuck * hush;
+    const musicTarget = musicSilenced ? 0 : rt._musicBase * (rt._bulletTimeMusicMult || 1) * weightDuck * hush * musicPressure * commsDuck;
     ramp('music', rt.musicBus.gain, musicTarget, musicSilenced);
     // The mine bus is NOT ramped here: its envelope is the law's enter/retract fade (§9, ≤600 ms
     // in), owned by `_updateMine`. It still inherits master + sfx/ambient sliders through
     // `ambientBus`, so a muted or slider-zeroed game silences it exactly like everything else.
+  },
+
+  /**
+   * Critical comms duck the world mix for the phrase. Audio-clock envelope evaluated in
+   * `_applySettings`; the comms bus itself never bows.
+   */
+  _commsDuck(seconds, gain) {
+    const rt = this.rt;
+    if (!rt) return;
+    const now = rt.ctx ? rt.ctx.currentTime : 0;
+    const dur = Number.isFinite(seconds) ? seconds : COMMS_DUCK.defaultS;
+    rt._commsDuckUntilS = Math.max(rt._commsDuckUntilS || 0, now + Math.max(0.2, dur));
+    rt._commsDuckGain = Number.isFinite(gain) ? gain : COMMS_DUCK.gain;
+    invalidateBusGainCache(rt, 'engine');
+    invalidateBusGainCache(rt, 'ambient');
+    invalidateBusGainCache(rt, 'combat');
+    invalidateBusGainCache(rt, 'music');
   },
 
   // ---- one-shot SFX API ----
@@ -2240,8 +2468,13 @@ export const audio = {
     if (this._isCriticalSquelchActive() && !this._isPriorityVoice(recipeId, opts)) {
       if (busName === 'ui' || busName === 'combat') return null;
     }
+    // A critical comms cue owns the ear — the world mix bows for its phrase.
+    if (busName === 'comms' && (opts.critical || opts.duck)) {
+      this._commsDuck(Number.isFinite(opts.duckSeconds) ? opts.duckSeconds : COMMS_DUCK.defaultS);
+    }
 
     let att = 1, pan = 0, rate = opts.rate || 1;
+    let occluded = false;
     if (opts.position) {
       if (!Number.isFinite(opts.position.x) || !Number.isFinite(opts.position.z)) return null;
       const p = this._playerPos();
@@ -2249,6 +2482,12 @@ export const audio = {
       if (d > D_FAR) return null; // cull distant sounds
       att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       pan = clamp((opts.position.x - p.x) / PAN_SPAN, -1, 1);
+      // Interior occlusion: a positional voice heard through the hull is muffled and quieter.
+      const occl = environmentOcclusion(rt._environmentClass);
+      if (occl.gain < 1 && rt._occlusionFilters && rt._occlusionFilters[busName]) {
+        att *= occl.gain;
+        occluded = true;
+      }
     }
     // Player damage supplies ship-local panning. Explicit pan intentionally overrides the
     // world-X positional fallback; all other positional sounds keep the established behavior.
@@ -2280,6 +2519,8 @@ export const audio = {
     else if (busName === 'combat') targetBus = rt.combatBus;
     else if (busName === 'ui') targetBus = rt.uiBus;
     else if (busName === 'comms') targetBus = rt.commsBus;
+    // Occluded positional voices ride the shared lowpass that feeds their bus.
+    if (occluded) targetBus = rt._occlusionFilters[busName];
 
     let dest = targetBus;
     let panner = null;
@@ -2300,6 +2541,18 @@ export const audio = {
     voice._panner = panner;
     voice.loop = !!recipe.loop || (recipe.type && String(recipe.type).startsWith('continuous'));
     voice.role = busName === 'engine' ? 'engineLoop' : (recipe.category === 'weapon' && voice.loop ? 'weaponLoop' : busName);
+    // Authored reverb sends (recipe.reverbMix): an extra wet tap into the shared environment
+    // send so this voice's tail rides the active room beyond the bus-level mix.
+    if (rt._environmentMix && Number.isFinite(recipe.reverbMix) && recipe.reverbMix > 0) {
+      try {
+        const wet = ctx.createGain();
+        wet.gain.value = Math.min(1, recipe.reverbMix) * 0.9;
+        voice.gain.connect(wet);
+        wet.connect(rt._environmentMix.send);
+        voice._reverbSend = wet;
+        if (voice.nodes) voice.nodes.push(wet);
+      } catch (_) {}
+    }
     if (sampleBuffer) {
       attachSampleLayer(ctx, sampleBuffer, sampleBinding, voice,
         opts.startTime !== undefined ? opts.startTime : ctx.currentTime, {
@@ -3729,6 +3982,8 @@ export const audio = {
     });
     const rt = this.rt, ctx = rt && rt.ctx;
     const t0 = ctx ? ctx.currentTime : 0;
+    const speechDur = resolved.speech && Number.isFinite(resolved.speech.durationS)
+      ? resolved.speech.durationS : 0.9;
     // Industrial punctuation: the mic solenoid keys open, the voice rides the carrier, then the
     // squelch tail collapses it. Scheduled starts keep the gap tight and sample-accurate.
     this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain, startTime: t0 });
@@ -3737,10 +3992,9 @@ export const audio = {
       rate: resolved.speech.rate,
       barkSampleId: resolved.sampleId,
       critical: true,
+      duckSeconds: BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS + COMMS_DUCK.releasePadS,
       startTime: t0 + BARK_PUNCT.keyLeadS,
     });
-    const speechDur = resolved.speech && Number.isFinite(resolved.speech.durationS)
-      ? resolved.speech.durationS : 0.9;
     this.play('sfx_comms_squelch_tail', {
       gain: BARK_PUNCT.tailGain,
       startTime: t0 + BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS,
@@ -3820,6 +4074,17 @@ export const audio = {
       screen,
     });
     rt._environmentClass = rt._environmentMix.setClass(classId);
+    // Occlusion follows the room: interiors lowpass the positional world heard through the hull.
+    const occl = environmentOcclusion(classId);
+    if (rt._occlusionFilters && rt._occlusionCutHz !== occl.cutoffHz) {
+      rt._occlusionCutHz = occl.cutoffHz;
+      const now = rt.ctx ? rt.ctx.currentTime : 0;
+      for (const busName in rt._occlusionFilters) {
+        const f = rt._occlusionFilters[busName];
+        try { f.frequency.setTargetAtTime(occl.cutoffHz, now, 0.14); }
+        catch (_) { try { f.frequency.value = occl.cutoffHz; } catch (__) {} }
+      }
+    }
   },
 
   _applyThemeMatrix(sectorId) {
@@ -4380,6 +4645,7 @@ export const audio = {
     const w = (rt._themeMatrix && rt._themeMatrix.stemWeights)
       || STEM_WEIGHTS[stateName]
       || STEM_WEIGHTS.calm;
+    rt._musicFeed = (w.A || 0) + (w.B || 0) + (w.C || 0) + (w.D || 0);
     const xf = stateName === 'combat' ? XFADE_COMBAT_S : XFADE_S;
     const t = ctx.currentTime;
     for (const key of ['A', 'B', 'C', 'D']) {
@@ -4567,6 +4833,8 @@ export const audio = {
     this._updateSectorCues(now);
     this._updateStationMurmur(now);
     this._updatePlaceContext(now);
+    this._updatePressureLayer();
+    this._writeMixLedger(now);
 
     // recover music gain after a duck (skip while paused — _onPause manages the bus)
     if (!rt._paused && rt._duckUntil && now >= rt._duckUntil && rt.musicBus) {
@@ -5038,17 +5306,30 @@ export const audio = {
     const overloadGain = ctx.createGain();
     overloadGain.gain.value = 0.0001;
 
+    // Third strand: the winch spool — a metallic whine that lives only while the line actually
+    // moves (reeling / payingOut on the physics mirror), separate from the strain hum.
+    const spoolOsc = ctx.createOscillator();
+    spoolOsc.type = 'sawtooth';
+    spoolOsc.frequency.value = 260;
+    const spoolGain = ctx.createGain();
+    spoolGain.gain.value = 0.0001;
+    spoolGain.gainValue = 0.0001;
+    spoolOsc.connect(spoolGain);
+    spoolGain.connect(rt.combatBus);
+
     osc.connect(gain);
     overloadOsc.connect(overloadGain);
     gain.connect(rt.combatBus);
     overloadGain.connect(rt.combatBus);
 
-    try { osc.start(ctx.currentTime); overloadOsc.start(ctx.currentTime); } catch (_) {}
+    try { osc.start(ctx.currentTime); overloadOsc.start(ctx.currentTime); spoolOsc.start(ctx.currentTime); } catch (_) {}
 
     rt.tetherOsc = osc;
     rt.tetherHum = gain;
     rt.tetherOverloadOsc = overloadOsc;
     rt.tetherOverloadGain = overloadGain;
+    rt._tetherSpoolOsc = spoolOsc;
+    rt._tetherSpoolGain = spoolGain;
   },
 
   _updateTetherHum() {
@@ -5110,6 +5391,26 @@ export const audio = {
         rt.tetherOverloadGain.gain.setTargetAtTime(overloadGain, now, 0.05);
       }
       rt.tetherOverloadGain.gainValue = overloadGain;
+    }
+    // Spool strand: real winch state — lineLengthRate signs direction, reelStrength is the
+    // physics mirror's smoothed effort. Silences the frame the line stops moving.
+    if (rt._tetherSpoolOsc && rt._tetherSpoolGain) {
+      const reelRate = active && tether.lineControl ? Math.abs(Number(tether.lineLengthRate) || 0) : 0;
+      const reelStrength = active ? clamp(Number(tether.reelStrength) || 0, 0, 1) : 0;
+      const spooling = reelRate > 0.02 && !!(tether.reeling || tether.payingOut);
+      const spoolGain = spooling ? clamp(0.006 + reelStrength * 0.05 + reelRate * 0.012, 0.006, 0.075) : 0.0001;
+      const spoolFreq = (260 + reelRate * 220 + reelStrength * 170) * slowPitch;
+      if (cache.spoolOscNode !== rt._tetherSpoolOsc || cache.spoolFreq !== spoolFreq) {
+        cache.spoolOscNode = rt._tetherSpoolOsc;
+        cache.spoolFreq = spoolFreq;
+        rt._tetherSpoolOsc.frequency.setTargetAtTime(spoolFreq, now, 0.06);
+      }
+      if (cache.spoolGainNode !== rt._tetherSpoolGain || cache.spoolGain !== spoolGain) {
+        cache.spoolGainNode = rt._tetherSpoolGain;
+        cache.spoolGain = spoolGain;
+        rt._tetherSpoolGain.gain.setTargetAtTime(spoolGain, now, 0.06);
+      }
+      rt._tetherSpoolGain.gainValue = spoolGain;
     }
   },
 

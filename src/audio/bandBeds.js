@@ -31,10 +31,15 @@ const SILENCE_GAIN = 0.0001;
 export function createBandBedRuntime(ctx, destination, options = {}) {
   if (!ctx || !destination) throw new TypeError('Band bed runtime requires an AudioContext and destination.');
   const random = typeof options.random === 'function' ? options.random : Math.random;
+  // A retune crossfades the outgoing carrier into the new one instead of hard-replacing the
+  // graph. At most one graph may be fading at a time — a faster retune hard-stops the oldest.
+  const crossfadeS = Math.min(4, Math.max(0.15, finite(options.crossfadeS, 1.2)));
   const runtime = {
     ctx,
     destination,
     activeGraph: null,
+    fadingGraph: null,
+    crossfadeS,
     lastIntent: null,
     _noiseBuffer: null,
 
@@ -42,24 +47,45 @@ export function createBandBedRuntime(ctx, destination, options = {}) {
       const intent = normalizeIntent(value);
       this.lastIntent = intent;
       if (!intent.active || intent.silence || intent.strength <= 0 || !intent.profile) {
-        this._stopGraph();
+        this._fadeOutGraph(this.activeGraph);
+        this.activeGraph = null;
         return null;
       }
 
       if (!this.activeGraph || this.activeGraph.bedSig !== intent.bedSig) {
-        this._stopGraph();
+        this._fadeOutGraph(this.activeGraph);
         this.activeGraph = buildGraph(ctx, destination, intent.profileKey, intent.profile,
           this._noiseBuffer || (this._noiseBuffer = makeNoiseBuffer(ctx, random)));
         if (this.activeGraph) this.activeGraph.bedSig = intent.bedSig;
+        updateGraph(ctx, this.activeGraph, intent, Math.max(0.08, crossfadeS / 3));
+      } else {
+        updateGraph(ctx, this.activeGraph, intent, 0.08);
       }
-      updateGraph(ctx, this.activeGraph, intent);
       return this.activeGraph;
     },
 
+    _fadeOutGraph(graph) {
+      if (!graph) return;
+      if (this.fadingGraph && this.fadingGraph !== graph) stopGraph(this.fadingGraph);
+      this.fadingGraph = graph;
+      const now = finite(ctx.currentTime, 0);
+      setTarget(graph.output.gain, SILENCE_GAIN, now, Math.max(0.05, crossfadeS / 3));
+      const stopAt = now + crossfadeS;
+      for (const source of graph.sources || []) {
+        try { source.stop(stopAt); } catch (_) {}
+      }
+      graph.stopAt = stopAt;
+    },
+
     _stopGraph() {
-      if (!this.activeGraph) return;
-      stopGraph(this.activeGraph);
-      this.activeGraph = null;
+      if (this.activeGraph) {
+        stopGraph(this.activeGraph);
+        this.activeGraph = null;
+      }
+      if (this.fadingGraph) {
+        stopGraph(this.fadingGraph);
+        this.fadingGraph = null;
+      }
     },
 
     destroy() {
@@ -163,12 +189,12 @@ function buildGraph(ctx, destination, profileKey, cfg, noiseBuffer) {
   return { profileKey, cfg, output, filter, panner, nodes, sources, stopped: false };
 }
 
-function updateGraph(ctx, graph, intent) {
+function updateGraph(ctx, graph, intent, fadeTc) {
   const strength = clamp01(intent.strength);
   // Carriers remain restrained under the existing ambient mix and become noisier, not simply
   // louder, at weak reception. The sim chooses the copy; this curve is cosmetic only.
   const target = Math.max(SILENCE_GAIN, (0.008 + strength * 0.034) * graph.cfg.level);
-  setTarget(graph.output.gain, target, ctx.currentTime, 0.08);
+  setTarget(graph.output.gain, target, ctx.currentTime, finite(fadeTc, 0.08));
   setTarget(graph.filter.frequency, graph.cfg.tone * (0.72 + strength * 0.38), ctx.currentTime, 0.12);
   if (graph.panner && graph.panner.pan) {
     setTarget(graph.panner.pan, graph.cfg.pan * (0.5 + strength * 0.5), ctx.currentTime, 0.15);

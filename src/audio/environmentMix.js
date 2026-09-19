@@ -46,6 +46,24 @@ export const ENVIRONMENT_IR = Object.freeze({
   }),
 });
 
+// Occlusion stub: positional world sounds heard while the listener sits inside a pressurized
+// space are muffled by the hull. `void` is open air — no occlusion. Interiors lowpass the
+// exterior world and trim its level; interior voices (non-positional cues, comms, UI) never
+// route through this filter.
+export const ENVIRONMENT_OCCLUSION = Object.freeze({
+  void: Object.freeze({ cutoffHz: 19000, gain: 1 }),
+  hangar: Object.freeze({ cutoffHz: 5200, gain: 0.62 }),
+  station: Object.freeze({ cutoffHz: 3400, gain: 0.5 }),
+});
+
+export function environmentOcclusion(classId) {
+  return ENVIRONMENT_OCCLUSION[classId] || ENVIRONMENT_OCCLUSION.void;
+}
+
+export function environmentOccludes(classId) {
+  return environmentOcclusion(classId).gain < 1;
+}
+
 export const WEIGHT_DUCK_TARGETS = Object.freeze(['music', 'ambient']);
 export const WEIGHT_DUCK_UNAFFECTED = Object.freeze(['critical', 'comms', 'ui', 'sfx']);
 
