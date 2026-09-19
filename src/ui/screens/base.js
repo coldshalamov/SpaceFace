@@ -54,6 +54,7 @@ function injectStyle() {
 #sf-base .base-slot.empty:hover { border-color:var(--accent); color:#fff; background:color-mix(in srgb, var(--accent) 8%, transparent); opacity:1; }
 #sf-base .base-slot .nm { font-weight:600; color:var(--ink); font-size:13px; margin-bottom:4px; }
 #sf-base .base-slot .eff { color:var(--accent); font-size:12px; font-family:var(--mono); }
+#sf-base .base-sec-h { font-family:var(--mono); letter-spacing:.06em; font-size:12px; color:var(--ink-dim); text-transform:uppercase; margin-top:6px; }
 #sf-base .base-shop { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 #sf-base .base-specializations { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
 #sf-base .base-spec { border:1px solid var(--panel-edge); border-radius:5px; padding:14px;
@@ -483,7 +484,7 @@ export const baseScreen = {
 
     // ---- operating identity (M5 / SPEC3-F6): one claim, one visible job ----
     const specHead = document.createElement('div');
-    specHead.style.cssText = 'font-family:var(--mono);letter-spacing:.06em;font-size:12px;color:var(--ink-dim);text-transform:uppercase;margin-top:6px;';
+    specHead.className = 'base-sec-h';
     specHead.textContent = 'Operating identity';
     wrap.appendChild(specHead);
 
@@ -632,7 +633,7 @@ export const baseScreen = {
 
     // ---- build shop ----
     const shopHead = document.createElement('div');
-    shopHead.style.cssText = 'font-family:var(--mono);letter-spacing:.06em;font-size:12px;color:var(--ink-dim);text-transform:uppercase;margin-top:6px;';
+    shopHead.className = 'base-sec-h';
     shopHead.textContent = 'Build module';
     wrap.appendChild(shopHead);
 

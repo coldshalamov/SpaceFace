@@ -191,6 +191,8 @@ html body #screens {
   --fh-legend:var(--dp-lamp); --fh-legend-now:var(--dp-lamp-hot);
   /* amber is for what is lit or acted on: a resting legend is bone, a header legend a step brighter */
   --fh-legend-rest:var(--dp-ink-mute); --fh-legend-lit:var(--dp-ink-dim);
+  /* good news reads in bone with its sign or arrow; the deckplate carries no green */
+  --k-good:#d8d2c4;
   --fh-text:var(--dp-ink); --fh-text-resting:var(--dp-ink-dim); --fh-text-tertiary:var(--dp-ink-mute);
   --dp-glass-bb:var(--dp-glass-spec) border-box, var(--dp-glass-fall) border-box,
     var(--dp-tex-smudge) 0 0 / 512px repeat border-box, linear-gradient(180deg, #151a21, #090c10) border-box;
@@ -331,9 +333,10 @@ html body #screens > :not(.sx-observatory) .fh-tile {
   border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch; background:var(--dp-glass-bb);
 }
 html body #screens > :not(.sx-observatory) .fh-tile[aria-selected='true'] {
-  border-image-source:url("${HW}bezel-thin.svg"); color:var(--dp-lamp-hot);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .45), inset 0 -3px 0 var(--dp-lamp), 0 10px 20px -12px var(--dp-lamp-bloom);
+  border-image-source:url("${HW}bezel-lit.svg"); color:var(--dp-lamp-hot);
+  box-shadow:0 10px 22px -12px var(--dp-lamp-bloom);
 }
+html body #screens > :not(.sx-observatory) .fh-tile:focus-visible { outline:0 solid transparent !important; border-image-source:url("${HW}bezel-lit.svg"); }
 html body #screens > :not(.sx-observatory) .fh-tile-legend { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 70; }
 /* lights: the deckplate lens */
 html body #screens > :not(.sx-observatory) .fh-light {
@@ -394,7 +397,10 @@ ${sel}.k-word--danger:is(:hover, :focus-visible) {
   background:${KEY_LED_RED_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
   box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), 0 8px 16px -10px var(--dp-danger-bloom);
 }
-${sel}:is([aria-disabled='true'], :disabled) { color:var(--dp-ink-mute); text-shadow:none; box-shadow:none; filter:saturate(.6) brightness(.85); }
+${sel}:is([aria-disabled='true'], :disabled) {
+  color:var(--dp-ink-mute); text-shadow:none; box-shadow:none; filter:saturate(.6) brightness(.85); cursor:default;
+  background:${KEY_LED_OFF_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+}
 @media (prefers-reduced-motion:reduce) { ${sel} { transition:none; } }
 @media (forced-colors:active) {
   ${sel} { border-image:none; border:1px solid ButtonText; background:ButtonFace; color:ButtonText; box-shadow:none; filter:none; }
@@ -1034,6 +1040,26 @@ ${SEL} .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], 
 ${SEL}.of-settings .sf-tabbar .k-word::before { display:none; }
 ${SEL}.of-settings .sf-tabbar .k-word:focus-visible { background:${LED_OFF.replace('12px 50%', '20px 50%')}, ${EDGE_LIT}, linear-gradient(90deg, rgb(255 255 255 / .05), transparent 80%) border-box; }
 ${SEL}.of-settings .sf-tabbar .k-word:is([aria-selected='true'], [aria-current='true']) { background:${LED_ON.replace('12px 50%', '20px 50%')}, ${EDGE_LIT}, ${LIFT_LIT}; }
+/* a bar is an etched meter: a dark groove, a bone fill that glows faintly (the lamp when it signals) */
+${SEL} .k-bar { height:5px; border-radius:1px; background:rgb(0 0 0 / .55); box-shadow:inset 0 1px 1px rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .07); }
+${SEL} .k-bar .k-bar__fill { border-radius:1px; background:linear-gradient(180deg, #f3eee3, #c9c4b6); box-shadow:0 0 6px rgb(232 226 212 / .22); }
+${SEL} .k-bar.k-bar--signal .k-bar__fill { background:linear-gradient(180deg, var(--dp-lamp-hot), var(--dp-lamp)); box-shadow:0 0 6px var(--dp-lamp-bloom); }
+@media (forced-colors:active) { ${SEL} .k-bar { background:GrayText; box-shadow:none; } ${SEL} .k-bar .k-bar__fill { background:CanvasText; box-shadow:none; } }
+/* the data states (empty, loading, error, denied): the code word etched, the headline in the header
+   voice, the fill in the reading face, the verb a keycap */
+${SEL} .sf-state__word { font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 72; font-size:12px; letter-spacing:.18em; color:var(--dp-ink-mute); }
+${SEL} .sf-state__head { font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 86; font-size:clamp(20px, min(1.5vw, 2.8vh), 28px); line-height:1.1; letter-spacing:.04em; text-transform:uppercase; color:var(--dp-ink); }
+${SEL} :is(.sf-state__fills, .sf-state__detail) { font-family:var(--dp-face-read); color:var(--dp-ink-dim); }
+${SEL} .sf-state__glyph { color:var(--dp-ink-mute); }
+${dpKey(`${SEL} .sf-state__verb`)}
+${SEL} .sf-state__verb { align-self:flex-start; min-height:38px; font-size:12px; }
+/* footprint: the empty state stands in a pane; the verbs are keys with their reasons under them */
+${SEL}[data-screen="footprint"] .fp-statehost:not([hidden]) {
+  align-self:start; box-sizing:border-box; padding:18px 22px; border:14px solid transparent; border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
+  background:var(--dp-glass-bb); box-shadow:0 14px 34px rgb(0 0 0 / .5);
+}
+${dpKey(`${SEL}[data-screen="footprint"] > .k-foot .k-word`)}
+${SEL}[data-screen="footprint"] > .k-foot .k-word { min-height:40px; font-size:12px; }
 /* keys drawn by the bridge: the lit cap is the focus */
 ${SEL} .fh-key:not(.fh-key--legend):focus-visible { outline:0 solid transparent !important; }
 /* a small key in a screen's foot is a command (export, import): the one keycap with its lamp */
@@ -1063,4 +1089,210 @@ ${SEL} > .k-foot > :has(> .sf-back), ${SEL} > .k-foot > :has(> li > .sf-back) { 
 html.sf-high-contrast body #screens > .k-screen:not(.sx-observatory) :is(.k-row, .fh-row, .fh-key, .k-word):focus-visible { outline:2px solid #fff !important; }
 `;
 
-export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL + CHART + SELECTION;
+/* ── THE SHIP (F2) — the flight host of the shipworks stage on deckplate materials. ──
+   The board chips are glass sockets whose lamp is the socket (fitted lit, open dark); the four
+   handling bands are the header voice, the chosen band lit the one way; the verbs are keycaps; the
+   callout pins over the hull are small lamps, not squares. */
+const SH = 'html body #screens #sf-ship';
+const SHIP = `
+${SH} .sx-sw__slotfield.is-board .sx-hardpoint {
+  box-sizing:border-box; min-height:40px; padding:6px 12px 6px 28px; border:0; border-radius:3px;
+  background:${LED_ON.replace('12px 50%', '14px 50%')}, var(--dp-glass-flight); box-shadow:var(--dp-glass-depth);
+}
+${SH} .sx-sw__slotfield.is-board .sx-hardpoint.is-empty { background:${LED_OFF.replace('12px 50%', '14px 50%')}, var(--dp-glass-flight); }
+${SH} .sx-sw__slotfield.is-board .sx-hardpoint__reticle { display:none; }
+${SH} .sx-sw__slotfield.is-board .sx-hardpoint:is(.is-selected, :hover, :focus-visible) {
+  box-shadow:var(--dp-glass-depth), inset 0 0 0 1px rgb(255 217 140 / .42); outline:0 solid transparent !important;
+}
+${SH} .sx-hardpoint__reticle { width:7px; height:7px; left:-3.5px; top:-3.5px; border-radius:50%; background:radial-gradient(circle at 42% 34%, #fffaf0, #d8d2c4 45%, #6b675d); box-shadow:0 0 6px rgb(232 226 212 / .3), 0 0 0 1px #06080a; }
+${SH} .sx-hardpoint.is-selected .sx-hardpoint__reticle { background:radial-gradient(circle at 42% 34%, #fff6df, var(--dp-lamp-hot) 30%, var(--dp-lamp) 60%, var(--dp-lamp-dim)); box-shadow:0 0 8px var(--dp-lamp-bloom), 0 0 0 1px #06080a; }
+${SH} .sx-hardpoint__copy b { font-family:var(--dp-face-etch); font-variation-settings:"wght" 740, "wdth" 80; font-weight:inherit; letter-spacing:.06em; color:var(--dp-ink); }
+${SH} .sx-hardpoint__copy em { font-family:var(--dp-face-etch); font-variation-settings:"wght" 680, "wdth" 72; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dp-ink-mute); }
+${SH} .sx-hardpoint.is-empty .sx-hardpoint__copy b { color:var(--dp-ink-mute); }
+${SH} .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__copy b { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
+${SH} .sx-hardpoint__leader path { stroke:rgb(232 226 212 / .28); }
+/* the handling bands */
+${SH} .sx-sw-hero { position:relative; padding:8px 18px 10px 18px; border-radius:2px; background:none; box-shadow:none; }
+${SH} .sx-sw-hero .k-hero__n {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 84; font-size:clamp(30px, min(2.5vw, 4.4vh), 48px);
+  line-height:1; letter-spacing:.02em; text-transform:uppercase; color:var(--dp-ink); text-shadow:var(--dp-emit);
+}
+${SH} .sx-sw-hero .k-hero__w { font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 72; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--dp-ink-mute); }
+${SH} .sx-sw-hero:hover { background:linear-gradient(90deg, rgb(255 255 255 / .05), transparent 80%); }
+${SH} .sx-sw-hero:focus-visible { outline:0 solid transparent !important; background:${EDGE_LIT}, linear-gradient(90deg, rgb(255 255 255 / .05), transparent 80%) border-box; }
+${SH} .sx-sw-hero:is([aria-pressed="true"], .is-selected) { background:${EDGE_LIT}, ${LIFT_LIT}; }
+${SH} .sx-sw-hero:is([aria-pressed="true"], .is-selected) .k-hero__w { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
+${SH} .sx-sw-hero.k-hero--good .k-hero__n { color:var(--dp-ink); }
+/* the gauges over the hangar sit on a smoked strip so they read against the lit bay */
+${SH} .sx-sw__gauges { padding:4px 14px; border-radius:3px; background:var(--dp-glass-flight); box-shadow:var(--dp-glass-depth); }
+${SH} .sx-sw__gauges .k-row { min-height:32px; }
+${SH} .sx-sw__gauges :is(.k-row__label, dt, .k-caps) { font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 72; letter-spacing:.14em; color:var(--dp-ink-mute); }
+/* the verbs are commands */
+${dpKey(`${SH} .sx-sw-verb.k-word`)}
+${SH} .sx-sw-verb.k-word { min-height:38px; font-size:12px; }
+${SH} .sx-sw-verbs { gap:10px; align-items:center; }
+`;
+
+/* ── THE RANGE — its course is an instrument pane, not a drawing floating over the world: the
+   drill box stands on smoked glass so the hull behind never reads as part of the course. Focus on
+   the course is a quiet lit rim, not a frame. ── */
+const RG = 'html body #screens #sf-range';
+const RANGE = `
+${RG} .sf-range__box { border-radius:3px; background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth), 0 14px 34px rgb(0 0 0 / .5); }
+${RG} .sf-range__canvas:focus-visible { outline:1px solid rgb(242 185 80 / .38) !important; outline-offset:-1px; }
+/* the rule verbs are commands, every one a keycap (Next rule was drawn as a tab) */
+${dpKey(`${RG} .sf-range__verbs .k-word.fh-key`)}
+${RG} .sf-range__verbs .k-word.fh-key { min-height:38px; font-size:12px; }
+@media (forced-colors:active) { ${RG} .sf-range__canvas:focus-visible { outline:2px solid Highlight !important; } }
+`;
+
+/* ── THE CRUCIBLE — the door keeps its foundry and its hazard Launch plate (now drawn on the
+   keycap); the in-run screens (rearm, refit, results) stand over the paused arena like any held
+   world: the offers are glass cards in the thin bezel that light their own bezel under the hand,
+   the refit is a glass pane of hardpoint rows, every verb is a keycap (Strip and Main menu are the
+   hazard kind: bone at rest, the lamp driven red under the hand). ── */
+const CRD = 'html body #screens .of-crucible-door';
+const CR = 'html body #screens > .k-screen:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results)';
+const HAZARD_BAND = 'repeating-linear-gradient(135deg, #e0452c 0 6px, #22100b 6px 12px) 14px 50% / 22px calc(100% - 24px) no-repeat border-box';
+const CRUCIBLE = `
+${CRD} .fh-key.fh-key--hazard {
+  padding-left:52px; color:var(--dp-ink); font-variation-settings:"wght" 800, "wdth" 84; letter-spacing:.2em;
+  background:${HAZARD_BAND}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  box-shadow:0 10px 24px -14px rgb(224 69 44 / .5);
+}
+${CRD} .fh-key.fh-key--hazard:is(:hover, :focus-visible) {
+  color:var(--dp-danger-hot); text-shadow:0 0 14px var(--dp-danger-bloom);
+  background:${HAZARD_BAND}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), 0 10px 24px -12px var(--dp-danger-bloom);
+}
+${CR} { background:radial-gradient(130% 100% at 30% 30%, rgb(9 10 13 / .84), rgb(5 6 9 / .92) 70%, rgb(4 5 7 / .95)); }
+${dpKey(`${CR} .k-foot .k-word`)}
+${dpKey(`${CR} .sf-cru-row .k-word`)}
+${CR} .sf-cru-row .k-word { min-height:36px; font-size:12px; }
+${CR} .sf-cru-stage.k-stage--scroll {
+  box-sizing:border-box; padding:8px 16px; border:14px solid transparent; border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
+  background:var(--dp-glass-bb); box-shadow:0 14px 34px rgb(0 0 0 / .5); --sf-fade-edge:14px;
+}
+${CR} .sf-cru-row { align-items:center; min-height:54px; }
+${CR} .sf-cru-card {
+  box-sizing:border-box; text-align:left; border:14px solid transparent; border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
+  background:var(--dp-glass-bb); box-shadow:0 14px 30px rgb(0 0 0 / .5); color:var(--dp-ink);
+}
+${CR} .sf-cru-card:is(:hover, :focus-visible):not(:disabled) {
+  outline:0 solid transparent !important; border-image-source:url("${HW}bezel-lit.svg"); box-shadow:0 14px 30px rgb(0 0 0 / .5), 0 10px 24px -12px var(--dp-lamp-bloom);
+}
+${CR} .sf-cru-card:is(:hover, :focus-visible):not(:disabled) .sf-cru-verb { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
+${CR} .sf-cru-verb { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; letter-spacing:.18em; color:var(--dp-ink-mute); }
+${CR} .sf-cru-name { font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 86; text-transform:uppercase; letter-spacing:.04em; color:var(--dp-ink); }
+${CR} .sf-cru-key { display:inline-grid; place-items:center; min-width:22px; height:22px; padding:0 6px 2px; box-sizing:border-box;
+  border-style:solid; border-color:transparent; border-width:3px 4px 5px; border-image:url("${HW}keycap.svg") 10 10 12 / 3px 4px 5px / 0 stretch;
+  background:var(--dp-metal-3); color:var(--dp-ink-dim); font-family:var(--dp-face-etch); font-size:12px; }
+${CR} .sf-cru-key:empty { display:none; }
+@media (forced-colors:active) {
+  ${CR} :is(.sf-cru-stage, .sf-cru-card) { border-image:none; border:1px solid CanvasText; background:Canvas; box-shadow:none; }
+  ${CRD} .fh-key.fh-key--hazard { background:ButtonFace; }
+}
+`;
+
+/* ── THE LAST OLD PANELS — the claim registry (base) and any screen still on the old menu plate,
+   and the operations board (automation). They spoke the retired blue menu vocabulary: their
+   tokens now resolve to the deckplate (amber for what you act on, bone for information and good
+   news, red for threat — no blue, no green, no cyan); the panel is glass in the fastened bezel with
+   no backdrop blur; cards are glass wells; buttons are keycaps; the tabs are one selector track. ── */
+const OLDP = 'html body #screens .screen.sf-menu:not(.k-screen)';
+const AU = 'html body #screens #sf-automation';
+const BS = 'html body #screens #sf-base';
+const LEGACY = `
+${OLDP}, ${AU} {
+  --panel:#0d1116; --panel-2:#151a21; --panel-edge:rgb(232 226 212 / .12); --panel-edge-2:rgb(232 226 212 / .22);
+  --ink:var(--dp-ink); --ink-dim:var(--dp-ink-dim); --ink-mute:var(--dp-ink-mute);
+  --accent:var(--dp-lamp); --accent-2:var(--dp-lamp-hot); --accent-3:var(--dp-lamp);
+  --good:#d8d2c4; --warn:var(--dp-lamp-hot); --danger:var(--dp-danger-hot);
+  --mono:var(--dp-face-read); --mf-display:var(--dp-face-etch); --mf-ui:var(--dp-face-read); --mf-line-2:rgb(232 226 212 / .16);
+  --sf-display-face:var(--dp-face-etch); --sf-body-face:var(--dp-face-read); --sf-data-face:var(--dp-face-read);
+  border:14px solid transparent; border-image:url("${HW}bezel.svg") 30 / 30px / 0 stretch; border-radius:0;
+  background:var(--dp-glass-bb); box-shadow:var(--dp-stand-off); -webkit-backdrop-filter:none; backdrop-filter:none;
+}
+/* Asteroid Works keeps its own warm law palette; only its green and its typewriter numerals go: the
+   charge reads in bone, figures in the reading face (tabular) */
+html body #screens .ast-screen { --aw-mint:#d8d2c4; --aw-sky:#c9c4b6; --aw-mono:var(--dp-face-read); }
+/* cards and wells */
+${BS} :is(.base-plan, .base-slot, .base-spec, .base-ledger, .base-mod),
+${AU} :is(.au-next, .au-summary, .au-metric, .au-card, .au-income, .au-outpost-flow, .au-miner-ops, .au-empty) {
+  border:0; border-radius:3px; background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth); transform:none; translate:none;
+}
+${BS} :is(.base-slot, .base-spec, .base-mod):hover, ${AU} :is(.au-metric, .au-card):hover {
+  transform:none; translate:none; background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth), inset 0 0 0 1px rgb(232 226 212 / .1);
+}
+${BS} .base-slot.empty, ${AU} .au-empty {
+  background:repeating-linear-gradient(135deg, rgb(255 255 255 / .022) 0 6px, transparent 6px 12px), var(--dp-glass-solid); color:var(--dp-ink-mute);
+}
+${BS} .base-spec.active { background:${EDGE_LIT}, ${LIFT_LIT}, var(--dp-glass-solid); box-shadow:var(--dp-glass-depth); }
+${BS} .base-plan--warn { box-shadow:var(--dp-glass-depth), inset 3px 0 0 var(--dp-lamp); }
+${BS} .base-plan--bad { box-shadow:var(--dp-glass-depth), inset 3px 0 0 var(--dp-danger); }
+${BS} .base-plan--ok { box-shadow:var(--dp-glass-depth), inset 3px 0 0 #d8d2c4; }
+${AU} .au-next { box-shadow:var(--dp-glass-depth), inset 3px 0 0 var(--dp-lamp); }
+${BS} .base-ledger-cell { border-left:2px solid rgb(232 226 212 / .22); }
+/* type */
+${BS} .base-title, ${AU} .au-title {
+  font-family:var(--dp-face-display); font-variation-settings:"wght" 900, "wdth" 125; font-weight:inherit;
+  font-size:clamp(22px, min(1.8vw, 3.2vh), 32px); letter-spacing:.05em; text-transform:uppercase; color:var(--dp-ink);
+}
+${AU} .au-title::before { width:8px; height:8px; border-radius:50%; background:radial-gradient(circle at 42% 34%, #fff6df, var(--dp-lamp-hot) 30%, var(--dp-lamp) 60%, var(--dp-lamp-dim)); box-shadow:0 0 8px var(--dp-lamp-bloom); }
+${BS} :is(.base-plan-k, .base-ledger-k), ${AU} :is(.au-kicker, .au-section-h, .au-metric .k, .au-flow-k, .au-income .lbl, .au-program-label) {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; font-weight:inherit; letter-spacing:.16em; color:var(--dp-ink-mute);
+}
+${BS} .base-sec-h { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; letter-spacing:.2em; color:var(--dp-ink-mute); }
+${BS} .base-plan--warn .base-plan-k { color:var(--dp-lamp-hot); }
+${BS} .base-spec .verb { color:var(--dp-lamp-hot); }
+${BS} .base-spec .effect { color:var(--dp-ink); }
+${BS} .base-spec .risk { color:var(--dp-ink-dim); }
+${BS} :is(.base-slot .nm, .base-spec .nm, .base-mod .nm, .base-plan-title), ${AU} :is(.au-next-title, .au-card .nm) {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 780, "wdth" 84; font-weight:inherit; letter-spacing:.04em; text-transform:uppercase; color:var(--dp-ink);
+}
+${AU} .au-section-h { border-bottom:0; background:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px) left bottom / 100% 2px no-repeat; }
+${AU} .au-head { border-bottom:0; background:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px) left bottom / 100% 2px no-repeat; }
+${AU} .au-credits { border:0; border-radius:3px; background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth); color:var(--dp-ink); }
+/* meters */
+${AU} :is(.au-capbar, .au-storebar, .au-minibar) { border:0; border-radius:1px; background:rgb(0 0 0 / .55); box-shadow:inset 0 1px 1px rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .07); }
+${AU} .au-capfill { background:linear-gradient(180deg, var(--dp-lamp-hot), var(--dp-lamp)); box-shadow:0 0 8px var(--dp-lamp-bloom); }
+${AU} .au-minibar > i { background:linear-gradient(180deg, #f3eee3, #c9c4b6); }
+/* chips */
+${AU} :is(.au-pill, .au-program-badge) { border:0; border-radius:2px; background:rgb(0 0 0 / .32); box-shadow:inset 0 0 0 1px rgb(232 226 212 / .14);
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 74; letter-spacing:.14em; color:var(--dp-ink-dim); }
+${AU} .au-pill.warn { color:var(--dp-lamp-hot); box-shadow:inset 0 0 0 1px rgb(255 217 140 / .35); background:rgb(0 0 0 / .32); }
+${AU} .au-pill.bad { color:var(--dp-danger-hot); box-shadow:inset 0 0 0 1px rgb(255 80 56 / .4); background:rgb(0 0 0 / .32); }
+${AU} .au-pill.ok { color:var(--dp-ink); background:rgb(0 0 0 / .32); }
+/* the tabs: one recessed selector track */
+${AU} .au-tabs { gap:3px; padding:3px; border:0; border-radius:3px; background:linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .28)); box-shadow:inset 0 1px 3px rgb(0 0 0 / .85), 0 1px 0 rgb(255 236 204 / .07); }
+${AU} .au-tab { min-height:30px; border:0; border-radius:2px; background:linear-gradient(180deg, #232830, #191d24); box-shadow:inset 0 1px 0 rgb(255 236 204 / .07);
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 74; font-weight:inherit; letter-spacing:.14em; color:var(--dp-ink-dim); }
+${AU} .au-tab:hover { color:var(--dp-ink); background:linear-gradient(180deg, #2a2f37, #1e222a); }
+${AU} .au-tab:focus-visible { outline:0 solid transparent !important; color:var(--dp-ink); background:linear-gradient(var(--dp-lamp), var(--dp-lamp)) 0 0 / 2px 100% no-repeat, linear-gradient(180deg, #2a2f37, #1e222a); }
+${AU} .au-tab.active { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); background:linear-gradient(var(--dp-lamp), var(--dp-lamp)) 0 0 / 2px 100% no-repeat, linear-gradient(180deg, #2c3139, #20252d);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .3), 0 8px 14px -10px var(--dp-lamp-bloom); }
+/* verbs: keycaps; the one primary lit, a recall the hazard kind */
+${dpKey(`${AU} :is(.au-close, .au-cta, .au-card button, .au-outpost-detail button)`)}
+${dpKey(`${BS} button.sf-btn`)}
+${AU} :is(.au-cta, .au-card button.au-buy):not(:disabled), ${BS} button.sf-btn.sf-btn--primary:not(:disabled) {
+  color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+  background:${KEY_LED_ON_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .5), inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
+}
+${AU} .au-card button.au-recall:is(:hover, :focus-visible):not(:disabled) {
+  color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
+  background:${KEY_LED_RED_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), 0 8px 16px -10px var(--dp-danger-bloom);
+}
+${AU} .au-program { border:0; border-radius:3px; background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth); color:var(--dp-ink); }
+${AU} .au-outpost-detail summary { color:var(--dp-lamp-hot); }
+@media (forced-colors:active) {
+  ${OLDP}, ${AU} { border-image:none; border:1px solid CanvasText; background:Canvas; }
+  ${BS} :is(.base-plan, .base-slot, .base-spec, .base-ledger, .base-mod), ${AU} :is(.au-next, .au-summary, .au-metric, .au-card, .au-income, .au-outpost-flow, .au-miner-ops, .au-empty) {
+    background:Canvas; border:1px solid CanvasText; box-shadow:none;
+  }
+  ${AU} .au-tab.active { outline:2px solid Highlight !important; }
+}
+`;
+
+export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + LEGACY;

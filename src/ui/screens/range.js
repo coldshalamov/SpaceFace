@@ -125,9 +125,16 @@ function fhUrl(rel) {
 function forcedColorsActive() {
   return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
 }
+// Materials (sprite borders, fills) are the deckplate sheet's, bridged from the fh-* classes; a pin
+// that set them inline would outrank the sheet. Forced colours keeps every pin (the system palette).
+const DP_MATERIAL_PROP = /^(border-image|border-style$|border-width$|background)/;
 function pin(node, props) {
   if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
-  for (const name of Object.keys(props)) node.style.setProperty(name, props[name], 'important');
+  const materialsToBridge = !forcedColorsActive();
+  for (const name of Object.keys(props)) {
+    if (materialsToBridge && DP_MATERIAL_PROP.test(name)) continue;
+    node.style.setProperty(name, props[name], 'important');
+  }
   return node;
 }
 function paintMarking(node) {
@@ -200,15 +207,10 @@ function paintKey(button, kind = 'legend') {
       'min-height': spec.minH,
       padding: spec.pad,
       'font-size': spec.typeSize,
-      'font-family': 'var(--fh-face-display)',
-      'font-variation-settings': "'wght' 600, 'wdth' 62",
-      'letter-spacing': 'var(--fh-track-legend)',
       'text-transform': 'uppercase',
       'justify-content': 'center',
       'align-items': 'center',
       'box-sizing': 'border-box',
-      background: 'transparent',
-      color: 'var(--fh-text)',
       'border-style': 'solid',
       'border-width': spec.width,
       'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
