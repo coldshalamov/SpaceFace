@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="sf-title sf-desc">
+  <title id="sf-title">SpaceFace emblem — The Unclosed Eye</title>
+  <desc id="sf-desc">An asymmetric, fractured shell surrounds a suspended ember. A folded crescent, an open upper seam and a lower cleft suggest an unfamiliar face or an incomplete orbital machine.</desc>
+  <path fill="#EAE6DF" d="M303 40C158 56 69 172 85 301C94 381 153 438 224 459C169 416 151 361 165 311C179 257 225 227 293 197C358 168 386 111 363 68L336 116C307 157 277 170 234 185C219 135 246 83 303 40Z"/>
+  <path fill="#EAE6DF" d="M389 98C450 174 452 285 399 365C361 423 304 454 247 458L272 393C325 368 358 326 362 277C364 244 350 214 330 198L369 163Z"/>
+  <path fill="#F2B950" d="M231 276C248 245 277 232 305 235C290 259 266 278 231 276Z"/>
+</svg>

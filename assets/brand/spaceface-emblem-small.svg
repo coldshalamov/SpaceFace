@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="sf-title sf-desc">
+  <title id="sf-title">SpaceFace emblem — small-size optical master</title>
+  <desc id="sf-desc">Wider openings and an enlarged ember for display at 16 to 32 pixels.</desc>
+  <path fill="#EAE6DF" d="M301 40C156 58 69 174 85 301C94 381 151 436 216 456C163 410 146 357 162 308C177 254 222 224 290 193C350 166 379 114 360 72L329 121C305 150 274 165 239 176C225 132 250 80 301 40Z"/>
+  <path fill="#EAE6DF" transform="translate(6 0)" d="M392 111C450 186 450 286 399 365C360 423 306 451 257 457L284 392C333 366 364 325 368 278C370 244 356 216 337 201L377 168Z"/>
+  <path fill="#F2B950" transform="translate(0 16)" d="M219 286C239 246 273 230 307 232C289 263 258 286 219 286Z"/>
+</svg>
