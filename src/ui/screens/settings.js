@@ -273,7 +273,7 @@ export const settingsScreen = {
 
     const title = el('header', 'k-title');
     title.appendChild(el('h1', 'k-display k-t-title fh-title', 'Settings'));
-    title.appendChild(el('p', 'k-t-emph k-62 fh-legend', 'Saved with your profile.'));
+    title.appendChild(el('p', 'k-t-emph k-62', 'Saved with your profile.'));
     rootEl.appendChild(title);
 
     // Section keys down the left. `dom.words` owns the arrow-key roving; the list is the

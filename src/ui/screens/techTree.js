@@ -432,6 +432,9 @@ const KIT_INK = Object.freeze({
   bone: '#eae6df',
   bone62: 'rgba(234,230,223,0.62)',
   bone38: 'rgba(234,230,223,0.38)',
+  // A locked node still names itself and its price at reading contrast (>= 4.5:1 on its tile).
+  boneLocked: 'rgba(234,230,223,0.64)',
+  boneCost: 'rgba(234,230,223,0.58)',
   hair: 'rgba(234,230,223,0.14)',
   signal: '#f2b950',
   legend: '#e8e2d4',
@@ -617,7 +620,7 @@ function cornerHero(parent, word, hook) {
   pin(n, {
     'font-family': 'var(--fh-face-display)',
     'font-variation-settings': "'wght' 800, 'wdth' 125",
-    color: 'var(--fh-signal)',
+    color: 'var(--dp-ink, var(--fh-text))',
     'font-size': 'var(--fh-size-subhead)',
     'line-height': '0.9',
   });
@@ -664,8 +667,7 @@ export const techTreeScreen = {
     const heading = el('h1', 'k-display k-t-title', 'Research');
     paintMarking(heading);
     head.appendChild(heading);
-    const branchLine = el('p', 'k-t-emph k-62 fh-legend', 'Select a node');
-    paintLegend(branchLine);
+    const branchLine = el('p', 'k-t-emph k-62', 'Select a node');
     head.appendChild(branchLine);
     rootEl.appendChild(head);
 
@@ -744,6 +746,16 @@ export const techTreeScreen = {
     availableWord.dataset.swatch = 'available';
     researchedWord.dataset.swatch = 'researched';
     lockedWord.dataset.swatch = 'locked';
+    const back = el('button', 'k-word k-word--emph sf-back', 'Back');
+    back.type = 'button';
+    back.dataset.action = 'back';
+    back.addEventListener('click', () => {
+      const mgr = ctx && (ctx.screenManager || (ctx.screens && typeof ctx.screens.popScreen === 'function' ? ctx.screens : null));
+      if (mgr && typeof mgr.popScreen === 'function') mgr.popScreen();
+      else if (ctx && ctx.bus) ctx.bus.emit('ui:popScreen', {});
+    });
+    foot.setAttribute('aria-label', 'Legend and actions');
+    foot.appendChild(back);
     foot.appendChild(availableWord);
     foot.appendChild(researchedWord);
     foot.appendChild(lockedWord);
@@ -917,8 +929,8 @@ export const techTreeScreen = {
   _nodeInk(stt, sel, hov) {
     if (sel) return KIT_INK.signal;
     if (stt === 'researched') return KIT_INK.bone;
-    if (stt === 'available') return hov ? KIT_INK.bone : KIT_INK.bone62;
-    return hov ? KIT_INK.bone62 : KIT_INK.bone38;
+    if (stt === 'available') return KIT_INK.bone;
+    return hov ? KIT_INK.bone : KIT_INK.boneLocked;
   },
 
   _draw() {
@@ -952,7 +964,7 @@ export const techTreeScreen = {
       const top = this._layout.branchTop[b.id];
       if (top == null) continue;
       g.fillStyle = KIT_INK.legend;
-      g.globalAlpha = 0.45;
+      g.globalAlpha = 0.64;
       g.font = kitLegendFont(12, zoom);
       g.fillText(String(b.label).toUpperCase(), PAD_X, top + 2);
       g.globalAlpha = 1;
@@ -1026,7 +1038,7 @@ export const techTreeScreen = {
       wrapText(g, n.name, p.x, p.y, NODE_W, NAME_LINE_H, nameLines);
 
       g.font = kitFont(400, 12, zoom);
-      g.fillStyle = KIT_INK.bone38;
+      g.fillStyle = KIT_INK.boneCost;
       g.textBaseline = 'bottom';
       if (stt === 'researched') {
         g.fillText('researched', p.x, p.y + boxH);

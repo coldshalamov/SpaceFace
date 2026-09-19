@@ -499,8 +499,7 @@ export const helpScreen = {
     const heading = el('h1', 'k-display k-t-title', 'Help');
     paintMarking(heading);
     title.appendChild(heading);
-    const now = el('p', 'k-t-emph k-62 sf-help-now fh-legend', profileName(ctx.state));
-    paintLegend(now);
+    const now = el('p', 'k-t-emph k-62 sf-help-now', profileName(ctx.state));
     title.appendChild(now);
     rootEl.appendChild(title);
     this._nowEl = now;

@@ -706,7 +706,6 @@ export const saveLoadScreen = {
     paintMarking(heading);
     title.appendChild(heading);
     const sub = el('p', 'k-t-emph k-62', '');
-    paintLegend(sub);
     title.appendChild(sub);
     rootEl.appendChild(title);
 

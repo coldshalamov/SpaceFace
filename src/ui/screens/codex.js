@@ -585,8 +585,7 @@ export const codexScreen = {
     const heading = el('h1', 'k-display k-t-title', 'Codex');
     paintMarking(heading);
     title.appendChild(heading);
-    const tabLine = el('p', 'k-t-emph k-62 fh-legend', TAB_LINES[this._activeTab] || '');
-    paintLegend(tabLine, true);
+    const tabLine = el('p', 'k-t-emph k-62', TAB_LINES[this._activeTab] || '');
     title.appendChild(tabLine);
     rootEl.appendChild(title);
     this._tabLine = tabLine;

@@ -172,6 +172,11 @@ const PAUSE = `
 }
 `;
 
+/* The one selection light (critic, shell round 2): a 2px amber edge on the chosen thing's inner
+   left and a faint warm lift behind its legend. Drawn as background layers on the border box, so a
+   transparent kit border never pushes the edge inward. */
+const EDGE_LIT = 'linear-gradient(var(--dp-lamp), var(--dp-lamp)) 0 0 / 2px 100% no-repeat border-box';
+const LIFT_LIT = 'linear-gradient(90deg, rgb(255 238 210 / .09), transparent 75%) border-box';
 const FH_BRIDGE = `
 /* ══ FH → DECKPLATE BRIDGE (FRONTEND_PROGRAM Wave 2, 2026-09-19) ════════════════════════════════
    The shell screens (new game, load/save, help, credits, codex, research, achievements) are built
@@ -184,6 +189,8 @@ const FH_BRIDGE = `
    scoped skin (styles/station-orbital.css), re-pointed at the same palette. */
 html body #screens {
   --fh-legend:var(--dp-lamp); --fh-legend-now:var(--dp-lamp-hot);
+  /* amber is for what is lit or acted on: a resting legend is bone, a header legend a step brighter */
+  --fh-legend-rest:var(--dp-ink-mute); --fh-legend-lit:var(--dp-ink-dim);
   --fh-text:var(--dp-ink); --fh-text-resting:var(--dp-ink-dim); --fh-text-tertiary:var(--dp-ink-mute);
   --dp-glass-bb:var(--dp-glass-spec) border-box, var(--dp-glass-fall) border-box,
     var(--dp-tex-smudge) 0 0 / 512px repeat border-box, linear-gradient(180deg, #151a21, #090c10) border-box;
@@ -198,9 +205,10 @@ html body #screens > :not(.sx-observatory) :is(.fh-plate, .fh-window) {
 }
 html body #screens > :not(.sx-observatory) .fh-plate { border-width:24px; }
 html body #screens > :not(.sx-observatory) .fh-window { border-width:20px; }
-/* a sunk plate is a glass well: the plate's border stays as air, the well wears the rim and lip */
+/* a sunk plate is the same pane: glass to its outer edge in the thin bezel, so its visible edge
+   sits on the grid line the title sits on (an air border had pushed the glass 24px inward) */
 html body #screens > :not(.sx-observatory) .fh-plate.fh-plate--sunk {
-  border-image:none; background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
+  border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch; background:var(--dp-glass-bb); box-shadow:0 12px 30px rgb(0 0 0 / .45);
 }
 /* the paper plate was a tan card: glass like every other panel, its ink bone */
 html body #screens > :not(.sx-observatory) .fh-plate.fh-plate--paper { color:var(--dp-ink); }
@@ -264,8 +272,8 @@ html body #screens > :not(.sx-observatory) .fh-key.fh-key--legend:is(:hover, :fo
 }
 html body #screens > :not(.sx-observatory) .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) {
   border-image:none; color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
-  background:linear-gradient(90deg, rgb(255 238 210 / .08), transparent 80%);
-  box-shadow:inset 0 -2px 0 var(--dp-lamp), 0 10px 16px -12px var(--dp-lamp-bloom);
+  background:${EDGE_LIT}, ${LIFT_LIT};
+  box-shadow:none;
 }
 html body #screens > :not(.sx-observatory) .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit)::before {
   background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
@@ -282,8 +290,8 @@ html body #screens > :not(.sx-observatory) .k-words.k-words--row.of-pause .fh-ke
   background:linear-gradient(180deg, #232830, #191d24) padding-box; box-shadow:inset 0 1px 0 rgb(255 236 204 / .07);
 }
 html body #screens > :not(.sx-observatory) .k-words.k-words--row.of-pause .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) {
-  background:linear-gradient(180deg, #2c3139, #20252d) padding-box;
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .3), inset 0 -2px 0 var(--dp-lamp), 0 8px 14px -10px var(--dp-lamp-bloom);
+  background:linear-gradient(var(--dp-lamp), var(--dp-lamp)) 0 0 / 2px 100% no-repeat padding-box, linear-gradient(180deg, #2c3139, #20252d) padding-box;
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .3), 0 8px 14px -10px var(--dp-lamp-bloom);
 }
 /* rows: etched hairlines; the selected row lights like every deckplate row (and keeps its box) */
 html body #screens > :not(.sx-observatory) .fh-row {
@@ -292,24 +300,23 @@ html body #screens > :not(.sx-observatory) .fh-row {
 }
 html body #screens > :not(.sx-observatory) .fh-row.is-selected {
   border-width:0; border-image:none; color:var(--dp-lamp-hot);
-  background:linear-gradient(90deg, rgb(255 238 210 / .07), transparent 70%);
-  box-shadow:inset 3px 0 0 var(--dp-lamp), inset 0 0 0 1px rgb(255 217 140 / .18);
+  background:${EDGE_LIT}, ${LIFT_LIT};
+  box-shadow:none;
 }
 html body #screens > :not(.sx-observatory) .fh-hairline { height:4px; border:0; background:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px) left center / 100% 2px no-repeat; }
-html body #screens > :not(.sx-observatory) .fh-legend[data-fh-lit="on"] { color:var(--dp-lamp); }
+html body #screens > :not(.sx-observatory) .fh-legend[data-fh-lit="on"] { color:var(--dp-ink-dim); }
 /* hero readouts in a corner plate are information: bone, not the lamp */
 html body #screens > :not(.sx-observatory) .k-corner .k-hero__n { color:var(--dp-ink); text-shadow:var(--dp-emit); }
 html body #screens > :not(.sx-observatory) .k-corner .k-hero__w { font-family:var(--dp-face-etch); color:var(--dp-ink-mute); }
 /* selects: a glass readout in a thin bezel with an etched chevron */
 html body #screens > :not(.sx-observatory) select.k-select {
-  -webkit-appearance:none; appearance:none; min-height:36px; padding:0 34px 0 12px; border-radius:0;
-  border:5px solid transparent; border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
-  background:
-    linear-gradient(135deg, transparent 45%, var(--dp-ink-dim) 45% 55%, transparent 55%) calc(100% - 17px) 50% / 7px 7px no-repeat,
-    linear-gradient(45deg, transparent 45%, var(--dp-ink-dim) 45% 55%, transparent 55%) calc(100% - 12px) 50% / 7px 7px no-repeat,
-    var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
-  color:var(--dp-ink); font-family:var(--dp-face-read);
+  -webkit-appearance:none; appearance:none; min-height:40px; padding:0 36px 0 12px; border-radius:3px;
+  border:0; border-image:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23b7b4a6' stroke-width='1.5'/%3E%3C/svg%3E") right 13px center / 10px 6px no-repeat, var(--dp-glass-solid);
+  box-shadow:var(--dp-glass-depth);
+  color:var(--dp-ink); font-family:var(--dp-face-read); font-size:14px;
 }
+html body #screens > :not(.sx-observatory) select.k-select:focus-visible { outline:0 solid transparent !important; box-shadow:var(--dp-glass-depth), inset 0 0 0 1px rgb(255 217 140 / .55); }
 html body #screens > :not(.sx-observatory) select.k-select option { background:#12161c; color:var(--dp-ink); }
 /* inputs: a glass readout in a thin bezel; focus lights its rim */
 html body #screens > :not(.sx-observatory) .fh-input {
@@ -379,6 +386,7 @@ ${sel}:is(.k-word--primary, [aria-pressed='true']) {
   background:${KEY_LED_ON_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
   box-shadow:inset 0 0 0 1px rgb(255 217 140 / .5), inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
 }
+${sel}:focus-visible { outline:0 solid transparent !important; }
 ${sel}:active { border-image-source:url("${HW}keycap-pressed.svg"); }
 ${sel}.k-word--danger { color:var(--dp-ink-dim); }
 ${sel}.k-word--danger:is(:hover, :focus-visible) {
@@ -390,7 +398,7 @@ ${sel}:is([aria-disabled='true'], :disabled) { color:var(--dp-ink-mute); text-sh
 @media (prefers-reduced-motion:reduce) { ${sel} { transition:none; } }
 @media (forced-colors:active) {
   ${sel} { border-image:none; border:1px solid ButtonText; background:ButtonFace; color:ButtonText; box-shadow:none; filter:none; }
-  ${sel}:is(:hover, :focus-visible, .k-word--primary, [aria-pressed='true']) { outline:2px solid Highlight; }
+  ${sel}:is(:hover, :focus-visible, .k-word--primary, [aria-pressed='true']) { outline:2px solid Highlight !important; }
 }
 `;
 }
@@ -420,8 +428,15 @@ ${ML} .k-row:is(.is-tracked, .tracked, [aria-current='true'], [aria-selected='tr
   box-shadow:inset 3px 0 0 var(--dp-lamp), inset 0 0 0 1px rgb(255 217 140 / .16);
 }
 ${ML} .sf-mlog-card .k-t-title {
-  font-family:var(--dp-face-display); font-variation-settings:"wght" 860, "wdth" 110; text-transform:uppercase;
-  font-size:clamp(26px, min(2.5vw, 4.6vh), 48px); line-height:1; letter-spacing:.03em; color:var(--dp-ink); text-shadow:var(--dp-emit);
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 86; text-transform:uppercase;
+  font-size:clamp(24px, min(2vw, 3.6vh), 38px); line-height:1.05; letter-spacing:.05em; color:var(--dp-ink); text-shadow:var(--dp-emit);
+}
+${ML} .sf-mlog-terms { --k-row-cols:10.5em minmax(0, 1fr) !important; }
+${ML} .sf-mlog-body .k-row__num {
+  align-self:start; justify-self:end; display:inline-grid; place-items:center; min-height:22px; padding:2px 8px; border-radius:2px;
+  background:rgb(0 0 0 / .32); box-shadow:inset 0 0 0 1px rgb(232 226 212 / .14);
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 74; font-size:12px; line-height:1.1;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--dp-ink-dim); white-space:nowrap;
 }
 ${ML} .sf-mlog-card :is(.k-sentence--emph, .sf-mlog-obj) { color:var(--dp-ink-dim); }
 ${ML} .sf-mlog-card :is(dt, .k-row__label, th) {
@@ -446,7 +461,7 @@ const GAMEOVER = `
 ${GO}.k-screen::before {
   background:
     radial-gradient(110% 80% at 12% 18%, rgb(150 26 14 / .22), transparent 60%),
-    linear-gradient(180deg, rgb(4 5 8 / .72), rgb(4 5 8 / .88));
+    linear-gradient(180deg, rgb(4 5 8 / .93), rgb(4 5 8 / .97));
 }
 ${GO} .k-title .k-caps {
   display:block; margin-bottom:6px;
@@ -469,8 +484,8 @@ ${GO} .k-stage {
 }
 ${GO} .sf-go-grid { gap:clamp(18px, 3vw, 56px); flex-wrap:nowrap; }
 ${GO} .k-hero__n {
-  font-family:var(--dp-face-display); font-variation-settings:"wght" 820, "wdth" 100; letter-spacing:-.01em;
-  color:var(--dp-ink); text-shadow:var(--dp-emit);
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 800, "wdth" 80; letter-spacing:.04em; text-transform:uppercase;
+  font-size:clamp(22px, min(1.8vw, 3.3vh), 34px); line-height:1.05; color:var(--dp-ink); text-shadow:var(--dp-emit);
 }
 ${GO} .k-hero__w {
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 70; font-size:12px; letter-spacing:.18em;
@@ -505,13 +520,15 @@ html body #screens .of-help .k-row__num.fh-data {
       ever cut in half at a hard edge. */
 const SHELL_SCREENS = 'html body #screens > .k-screen:not(.sx-observatory):not([data-screen="mainMenu"])';
 const SHELL = `
+@property --sf-fade-a { syntax:'<number>'; inherits:false; initial-value:1; }
+@keyframes sf-scroll-foot { from { --sf-fade-a:.08; } 96% { --sf-fade-a:.9; } to { --sf-fade-a:1; } }
 html body[data-game-mode="menu"] #screens > .k-screen:not([data-k-stage]):not(.sx-observatory) {
   background:url("/assets/ui/backdrops/backdrop-shell.jpg") center / cover no-repeat;
 }
 /* in a run the same screens hold the world, dimmed, so the panels read first (pause and the loss
    report carry their own dim) */
 html body:not([data-game-mode="menu"]) #screens > .k-screen:not([data-k-stage]):not(.sx-observatory):not(.of-pause):not(.sf-gameover) {
-  background:radial-gradient(120% 90% at 0% 0%, rgb(12 11 10 / .42), rgb(4 6 9 / .66) 70%);
+  background:radial-gradient(130% 100% at 30% 30%, rgb(9 10 13 / .86), rgb(5 6 9 / .93) 70%, rgb(4 5 7 / .96));
 }
 html body #screens .k-screen .k-foot .sf-back.k-word, html body #screens .k-screen .sf-back.k-word {
   position:relative; box-sizing:border-box; display:inline-flex; align-items:center; gap:0; width:auto; min-width:0; min-height:40px;
@@ -542,14 +559,19 @@ html body #screens .k-screen .sf-codex-entry .k-t-title,
 html body #screens .k-screen .fh-plate--edge .fh-title {
   font-size:clamp(24px, min(2vw, 3.6vh), 38px); line-height:1.05;
 }
-${SHELL_SCREENS} :is(.k-stage--scroll, .sf-mlog-body, .tt-scroll, .tt-side, .sf-settings-pane) {
-  scrollbar-width:thin; scrollbar-color:rgb(232 226 212 / .28) transparent;
-  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 26px), transparent);
-  mask-image:linear-gradient(180deg, #000 calc(100% - 26px), transparent);
+${SHELL_SCREENS} :is(.k-stage--scroll, .sf-mlog-body, .tt-scroll, .tt-side, .sf-settings-pane, .sf-ng-body) {
+  --sf-fade-edge:0px;
+  scrollbar-width:thin; scrollbar-color:rgb(232 226 212 / .34) rgb(0 0 0 / .28);
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - var(--sf-fade-edge) - 46px), rgb(0 0 0 / var(--sf-fade-a)) calc(100% - var(--sf-fade-edge)), #000 calc(100% - var(--sf-fade-edge)));
+  mask-image:linear-gradient(180deg, #000 calc(100% - var(--sf-fade-edge) - 46px), rgb(0 0 0 / var(--sf-fade-a)) calc(100% - var(--sf-fade-edge)), #000 calc(100% - var(--sf-fade-edge)));
   padding-bottom:30px;
+  animation:sf-scroll-foot linear both; animation-timeline:scroll(self block);
 }
+/* a pane with a frame fades to its frame's inner edge; the frame itself stays whole */
+${SHELL_SCREENS} :is(.k-stage--scroll, .sf-ng-body).fh-plate { --sf-fade-edge:24px; }
+${SHELL_SCREENS} .sf-settings-pane { --sf-fade-edge:14px; }
 /* help: the register is only as wide as a reader needs, so each key sits beside its action */
-html body #screens .of-help .k-stage--scroll { max-width:min(1040px, 100%); }
+html body #screens .of-help .k-stage--scroll { max-width:min(820px, 100%); }
 /* mission log: path choices stand clear of the text above them; entity links read as one kind of
    link (an amber hairline: you can act on it), never a web underline on some and not others */
 html body #screens .sf-mlog .sf-mlog-career-choices { margin-top:10px; }
@@ -569,7 +591,7 @@ html body #screens .k-screen:has(.tt-side) .tt-side { margin-top:clamp(64px, 9vh
   html body #screens .k-screen :is(.fh-input, .k-input):focus-visible { outline:2px solid Highlight !important; }
   html body #screens .k-screen .sf-back.k-word { border-image:none; border:1px solid ButtonText; background:ButtonFace; color:ButtonText; }
   html body #screens .k-screen .sf-back.k-word::after { border-image:none; border:1px solid ButtonText; background:ButtonFace; }
-  ${SHELL_SCREENS} :is(.k-stage--scroll, .sf-mlog-body, .tt-scroll, .tt-side, .sf-settings-pane) { -webkit-mask-image:none; mask-image:none; }
+  ${SHELL_SCREENS} :is(.k-stage--scroll, .sf-mlog-body, .tt-scroll, .tt-side, .sf-settings-pane, .sf-ng-body) { -webkit-mask-image:none; mask-image:none; }
 }
 `;
 
@@ -610,8 +632,8 @@ const TITLE = `
   border-image-source:none; color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:
     radial-gradient(circle at calc(var(--fht-rail-w) * .5) 50%, #fff6df 0, var(--dp-lamp-hot) 2px, var(--dp-lamp) 5px, rgb(242 185 80 / .35) 8px, rgb(242 185 80 / .1) 16px, transparent 22px),
-    linear-gradient(90deg, transparent calc(var(--fht-rail-w) + 6px), var(--dp-lamp) calc(var(--fht-rail-w) + 6px) calc(var(--fht-rail-w) + 9px), transparent calc(var(--fht-rail-w) + 9px)) 0 22% / 100% 56% no-repeat,
-    linear-gradient(90deg, transparent calc(var(--fht-rail-w) + 9px), rgb(255 238 210 / .07) calc(var(--fht-rail-w) + 9px), transparent 70%);
+    linear-gradient(90deg, transparent calc(var(--fht-rail-w) + 4px), var(--dp-lamp) calc(var(--fht-rail-w) + 4px) calc(var(--fht-rail-w) + 6px), transparent calc(var(--fht-rail-w) + 6px)) 0 10% / 100% 80% no-repeat,
+    radial-gradient(60% 70% at calc(var(--fht-rail-w) + 30%) 50%, rgb(255 222 170 / .06), transparent 70%);
   box-shadow:none;
 }
 /* the lit row IS the focus indicator (lamp, amber legend, amber edge); a ring around the whole
@@ -684,8 +706,8 @@ ${S} .sf-tabbar .k-word:is(:hover, :focus-visible) {
 }
 ${S} .sf-tabbar .k-word:is([aria-selected='true'], [aria-current='true']) {
   border-image:none; color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
-  background:${LED_ON.replace('12px 50%', '20px 50%')}, linear-gradient(90deg, rgb(255 238 210 / .08), transparent 80%);
-  box-shadow:inset 3px 0 0 var(--dp-lamp), 0 10px 16px -12px var(--dp-lamp-bloom);
+  background:${LED_ON.replace('12px 50%', '20px 50%')}, ${EDGE_LIT}, ${LIFT_LIT};
+  box-shadow:none;
 }
 /* The panel is the instrument: a fastened bezel around a glass face. */
 ${S} .sf-settings-pane, ${S} #sf-settings-pane {
@@ -986,4 +1008,59 @@ ${GM} .gm-deck-table .k-row { ${GM_HAIR} }
 }
 `;
 
-export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL + CHART;
+/* ── ONE SELECTION, ONE HEADER (critic, shell round 2). ──
+   A chosen thing in a list, a tab set or a nav lights ONE way on every screen: its lamp, its legend
+   in amber, the amber edge on its inner left, a faint warm lift. Keyboard focus is that same edge —
+   never an outer ring (forced colours and the game's high-contrast mode keep a real ring). The kit's
+   underline bar is not a selection language here. And every shell screen stands on one header grid:
+   the kit margin, the title at the same point, one sentence under it in one voice, the way back
+   first in the foot. */
+const SEL = 'html body #screens > .k-screen:not(.sx-observatory)';
+const SELECTION = `
+${SEL} .k-word:not(.sf-back):not([data-hint]):not(.gm-close)::after { display:none; }
+/* rows */
+${SEL} :is(.k-row, .fh-row):is([aria-selected="true"], .is-selected, .is-tracked, [aria-current="true"]) {
+  border-image:none; background:${EDGE_LIT}, ${LIFT_LIT}; box-shadow:none;
+}
+${SEL} :is(.k-row, .fh-row):is([aria-selected="true"], .is-selected, .is-tracked, [aria-current="true"]) :is(.k-row__name, .sf-slot-name) {
+  color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+}
+${SEL} :is(.k-row, .fh-row):focus-visible { outline:0 solid transparent !important; background:${EDGE_LIT}, linear-gradient(90deg, rgb(255 255 255 / .05), transparent 75%) border-box; }
+${SEL} :is(.k-row, .fh-row):is([aria-selected="true"], .is-selected, .is-tracked, [aria-current="true"]):focus-visible { background:${EDGE_LIT}, ${LIFT_LIT}; }
+/* legend tabs: focus is the edge; the lit one keeps its lamp, legend and edge */
+${SEL} .fh-key.fh-key--legend:focus-visible { outline:0 solid transparent !important; background:${EDGE_LIT}, linear-gradient(90deg, rgb(255 255 255 / .05), transparent 80%) border-box; }
+${SEL} .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) { background:${EDGE_LIT}, ${LIFT_LIT}; box-shadow:none; }
+/* settings: the rail pip was a second lamp — each tab carries one, in its own cap */
+${SEL}.of-settings .sf-tabbar .k-word::before { display:none; }
+${SEL}.of-settings .sf-tabbar .k-word:focus-visible { background:${LED_OFF.replace('12px 50%', '20px 50%')}, ${EDGE_LIT}, linear-gradient(90deg, rgb(255 255 255 / .05), transparent 80%) border-box; }
+${SEL}.of-settings .sf-tabbar .k-word:is([aria-selected='true'], [aria-current='true']) { background:${LED_ON.replace('12px 50%', '20px 50%')}, ${EDGE_LIT}, ${LIFT_LIT}; }
+/* keys drawn by the bridge: the lit cap is the focus */
+${SEL} .fh-key:not(.fh-key--legend):focus-visible { outline:0 solid transparent !important; }
+/* a small key in a screen's foot is a command (export, import): the one keycap with its lamp */
+${dpKey(`${SEL} > .k-foot .fh-key.fh-key--small`)}
+${SEL} > .k-foot .fh-key.fh-key--small { min-height:40px; font-size:13px; }
+/* a window onto the hangar is set in the fastened bezel, like every instrument pane */
+${SEL}.fh-shell > .k-stage:has(> .k-world--stage) {
+  border:14px solid transparent; border-image:url("${HW}bezel.svg") 30 / 30px / 0 stretch; box-shadow:var(--dp-stand-off);
+}
+/* new game: Launch is the largest key, level with Back */
+${SEL} > .k-foot.sf-ng-footer { align-items:center; }
+${SEL} > .k-foot .sf-ng-launch { min-height:48px; padding-left:36px; padding-right:26px; font-size:15px; letter-spacing:.18em; }
+/* the research tree's pane is its content's width, so its scrollbar is the tree's edge */
+${SEL} .tt-scroll { width:fit-content; max-width:100%; justify-self:start; }
+/* one header grid */
+${SEL}:is(.of-settings, .of-credits, .of-achievements) { padding:var(--k-margin); }
+${SEL} > .k-title .k-t-emph.k-62 {
+  margin:12px 0 0; max-width:64ch; font-family:var(--dp-face-read); font-variation-settings:normal; font-weight:400;
+  font-size:clamp(15px, min(1vw, 1.8vh), 18px); line-height:1.4; letter-spacing:.005em; text-transform:none;
+  color:var(--dp-ink-dim); text-shadow:0 1px 2px rgb(0 0 0 / .6);
+}
+${SEL} > .k-foot .sf-back { order:-1; }
+${SEL} > .k-foot > :has(> .sf-back), ${SEL} > .k-foot > :has(> li > .sf-back) { order:-1; }
+@media (forced-colors:active) {
+  ${SEL} :is(.k-row, .fh-row, .fh-key):focus-visible { outline:2px solid Highlight !important; }
+}
+html.sf-high-contrast body #screens > .k-screen:not(.sx-observatory) :is(.k-row, .fh-row, .fh-key, .k-word):focus-visible { outline:2px solid #fff !important; }
+`;
+
+export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL + CHART + SELECTION;
