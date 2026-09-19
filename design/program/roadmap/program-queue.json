@@ -18580,7 +18580,7 @@
       "priority": 496,
       "title": "The fork rails are solid",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "heist-breakaway"
@@ -18598,7 +18598,10 @@
         "npm run check:pq019c:mission",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-195.01-REPORT.md"
+      ],
+      "partialIntegration": "2026-09-19 leaf integrated on master at d9989b38 (worker candidate 424126fc on pq195-third-shift, opencode-go/deepseek-v4.1-flash; independent review opencode-go/glm-5.3 VERDICT: ACCEPT). Two 75x10 rail capsules + 74x10 rear arrestor as static station-material bodies spawned/owned/removed with the facility; 155 WU/s refused entry arrested at the custody-head plane (not the kernel volume), load recoverable, PQ-137.11 give contract intact. New test pq195-01-fork-colliders 4/4; pq195-00 14/14; breakaway 42/42; sg02-player-contact-give 8/8; pq019c 67/67; baseline 15/15. Residuals in receipt.",
       "brief": "The fork's two rails and rear arrestor become colliders, so a refused crossing is turned by the machine instead of passing through it. DONE WHEN: a 155 WU/s entry is refused and deflected by real colliders, the load stays recoverable, and the player is never knocked around by the rails — do not touch player collision immunity, and the knock ruling's runtime guard stays green."
     },
     {
