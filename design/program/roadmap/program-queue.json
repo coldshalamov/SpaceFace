@@ -18702,7 +18702,7 @@
       "priority": 500,
       "title": "Someone else wants it",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "heist-breakaway"
@@ -18721,7 +18721,10 @@
         "npm run check:pq019c:mission",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-195.05-REPORT.md"
+      ],
+      "partialIntegration": "2026-09-19 leaf integrated on master at ffda82307 (candidate e60578b0a on pq195-third-shift; controller direct implementation + self-review — opencode provider quota exhausted). Bounded pressure element at launch: ≤2 light hulls + ≤1 tether-control specialist through spawnBudget (request/bindEntity/releaseSome), ATTACK_RUN on the tug anchored at the assembly via the existing tactical owner; durable pressureSpawned blocks re-arm on reload; slots released on settle + sector exit; Capsule Run unaffected. Tests: pq195-05 6/6, leaf regression 20/20, tactical suite 16/16, pq019c 67/67, baseline 15/15.",
       "brief": "At most two pursuing light hulls and one optional specialist through the ordinary spawn-budget arbiter and the existing tactical owner, reusing current archetypes. DONE WHEN: a raider commits to an intelligible run at the load or the tug, can be crossed with the spindle itself, and abandons a bad attack; no decorative traffic is added to make the scene feel busy."
     },
     {
