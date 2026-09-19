@@ -36,6 +36,7 @@ import {
 import { zonesForSector, zoneTypeMeta, zoneThreat, zoneAt } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
+import { dpIcon, injectDeckplate } from './deckplate/index.js';
 import { entityAttr } from './entityResolver.js';
 import {
   careersTabAvailability, careersTabHtml, careersOverviewLineHtml,
@@ -2260,16 +2261,6 @@ const STYLE_ID = 'sf-galaxymap-style';
 /** The scan ring's whole life, in ms — the kit's `--k-d-temp`; a canvas draw cannot read the token. */
 const SCAN_RING_MS = 400;
 
-function kitAsset(rel) {
-  try { return new URL('../../assets/ui/kit/' + rel, import.meta.url).href; }
-  catch { return 'assets/ui/kit/' + rel; }
-}
-function kitIconSrc(name, size = 24) {
-  return kitAsset('icons/' + size + '/icon-' + name + '.svg');
-}
-function kitIconHtml(name, size = 24) {
-  return '<img class="fh-icon" src="' + kitIconSrc(name, size) + '" alt="" width="' + size + '" height="' + size + '">';
-}
 const LAYER_KIT_ICON = Object.freeze({
   route: 'route', mission: 'missions', market: 'market', events: 'warning',
   security: 'patrol', faction: 'factions', hazard: 'danger', services: 'station',
@@ -2281,217 +2272,27 @@ const SERVICE_KIT_ICON = Object.freeze({
   module_craft: 'module', toll: 'credits', scan: 'scan',
 });
 
-/** Field Hardware BENCH chrome for the chart. Produced kit sprites; layout stays in navigationStyles. */
+/** The chart's type. Its materials — glass panes, keycaps, lamps, the selector tracks — are the
+ *  deckplate sheet's CHART block (src/ui/deckplate/screens.js), the one source every screen uses. */
 const CHART_HARDWARE = `
 #sf-galaxymap.of-chart {
-  font-family: var(--fh-face-text, var(--k-text));
-  color: var(--fh-text, var(--k-text-live));
+  font-family: var(--dp-face-read, var(--k-text));
+  color: var(--dp-ink, var(--k-text-live));
 }
-#sf-galaxymap.of-chart .k-word::after { display: none !important; background: none !important; }
 #sf-galaxymap.of-chart .gm-title {
-  font-family: var(--fh-face-display, var(--k-display)) !important;
+  font-family: var(--dp-face-display, var(--k-display)) !important;
   font-variation-settings: 'wght' 900, 'wdth' 125 !important;
-  letter-spacing: var(--fh-track-display, 0.02em) !important;
+  letter-spacing: .04em !important;
   text-transform: uppercase !important;
-  line-height: 1.1 !important;
-  font-size: clamp(40px, 5vw, 96px) !important;
-  color: var(--fh-text, var(--k-bone)) !important;
-}
-#sf-galaxymap.of-chart .gm-stamp,
-#sf-galaxymap.of-chart .gm-level,
-#sf-galaxymap.of-chart .k-caps,
-#sf-galaxymap.of-chart .gm-rail-sum,
-#sf-galaxymap.of-chart .gm-rail-sum-t,
-#sf-galaxymap.of-chart .gm-deck-title,
-#sf-galaxymap.of-chart .gm-hints-title,
-#sf-galaxymap.of-chart .gm-layer-bank-title {
-  font-family: var(--fh-face-display, var(--k-display)) !important;
-  font-variation-settings: 'wght' 600, 'wdth' 62 !important;
-  letter-spacing: var(--fh-track-legend, 0.06em) !important;
-  text-transform: uppercase !important;
-  font-size: var(--fh-size-fine, 12px) !important;
-  color: color-mix(in srgb, var(--fh-legend, var(--k-gold)) 45%, transparent) !important;
-}
-#sf-galaxymap.of-chart .gm-left-rail,
-#sf-galaxymap.of-chart .gm-right-inspector,
-#sf-galaxymap.of-chart .gm-deck,
-#sf-galaxymap.of-chart .gm-hints,
-#sf-galaxymap.of-chart .gm-search-results {
-  border-style: solid;
-  border-width: 16px;
-  border-image-source: url("assets/ui/kit/assets/plates/plate.edge.small.png");
-  border-image-slice: 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 16px;
-  background: transparent;
-  box-sizing: border-box;
-}
-#sf-galaxymap.of-chart .gm-search-input {
-  border-style: solid !important;
-  border-width: 12px !important;
-  border-image-source: url("assets/ui/kit/assets/controls/input.underline.rest.png");
-  border-image-slice: 12 fill;
-  border-image-repeat: stretch;
-  border-image-width: 12px;
-  background: transparent !important;
-  color: var(--fh-text, var(--k-bone)) !important;
-  font-family: var(--fh-face-text, var(--k-text)) !important;
-  min-height: 36px;
-}
-#sf-galaxymap.of-chart .gm-search-input:focus {
-  border-image-source: url("assets/ui/kit/assets/controls/input.underline.focus.png");
-}
-#sf-galaxymap.of-chart .gm-scale-btn,
-#sf-galaxymap.of-chart .gm-tab,
-#sf-galaxymap.of-chart .gm-layer-btn,
-#sf-galaxymap.of-chart .gm-ins-btn,
-#sf-galaxymap.of-chart .gm-place-btn,
-#sf-galaxymap.of-chart .gm-ribbon-btn,
-#sf-galaxymap.of-chart .gm-deck-sort,
-#sf-galaxymap.of-chart .gm-close,
-#sf-galaxymap.of-chart .gm-hint-btn {
-  all: unset;
-  box-sizing: border-box;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 100%;
-  border-style: solid;
-  border-width: 12px;
-  border-image-source: url("assets/ui/kit/assets/keys/key.small.rest.png");
-  border-image-slice: 12 fill;
-  border-image-repeat: stretch;
-  border-image-width: 12px;
-  background: transparent;
-  color: var(--fh-text, var(--k-bone));
-  font-family: var(--fh-face-display, var(--k-display));
-  font-variation-settings: 'wght' 600, 'wdth' 62;
-  letter-spacing: var(--fh-track-legend, 0.06em);
-  text-transform: uppercase;
-  font-size: var(--fh-size-fine, 12px);
-  min-height: 32px;
-  min-width: 72px;
-  padding: 0 8px;
-  white-space: nowrap;
-}
-#sf-galaxymap.of-chart .gm-scale-btn,
-#sf-galaxymap.of-chart .gm-tab,
-#sf-galaxymap.of-chart .gm-layer-btn {
-  border-width: 14px;
-  border-image-source: url("assets/ui/kit/assets/keys/key.legend.rest.png");
-  border-image-slice: 14 fill;
-  border-image-width: 14px;
-  justify-content: flex-start;
-  min-height: 36px;
-  color: var(--fh-text-resting, var(--k-bone-62));
-}
-#sf-galaxymap.of-chart .gm-scale-btn:hover,
-#sf-galaxymap.of-chart .gm-tab:hover,
-#sf-galaxymap.of-chart .gm-layer-btn:hover,
-#sf-galaxymap.of-chart .gm-hint-btn:hover,
-#sf-galaxymap.of-chart .gm-close:hover,
-#sf-galaxymap.of-chart .gm-place-btn:hover,
-#sf-galaxymap.of-chart .gm-ribbon-btn:hover,
-#sf-galaxymap.of-chart .gm-deck-sort:hover,
-#sf-galaxymap.of-chart .gm-ins-btn:hover {
-  border-image-source: url("assets/ui/kit/assets/keys/key.small.hover.png");
-  color: var(--fh-text, var(--k-bone));
-}
-#sf-galaxymap.of-chart .gm-scale-btn:hover,
-#sf-galaxymap.of-chart .gm-tab:hover,
-#sf-galaxymap.of-chart .gm-layer-btn:hover {
-  border-image-source: url("assets/ui/kit/assets/keys/key.legend.hover.png");
-}
-#sf-galaxymap.of-chart .gm-scale-btn[aria-pressed="true"],
-#sf-galaxymap.of-chart .gm-scale-btn.is-current,
-#sf-galaxymap.of-chart .gm-tab[aria-selected="true"],
-#sf-galaxymap.of-chart .gm-layer-btn[aria-pressed="true"],
-#sf-galaxymap.of-chart .gm-layer-btn.active {
-  border-image-source: url("assets/ui/kit/assets/keys/key.legend.lit.png");
-  color: var(--fh-text, var(--k-bone));
-}
-#sf-galaxymap.of-chart .gm-plot-btn,
-#sf-galaxymap.of-chart #gm-plot-course-btn,
-#sf-galaxymap.of-chart #gm-engage-route-btn {
-  border-width: 18px;
-  border-image-source: url("assets/ui/kit/assets/keys/key.primary.rest.png");
-  border-image-slice: 18 fill;
-  border-image-width: 18px;
-  min-height: 44px;
-  min-width: 120px;
-}
-#sf-galaxymap.of-chart .gm-plot-btn:hover,
-#sf-galaxymap.of-chart #gm-plot-course-btn:hover,
-#sf-galaxymap.of-chart #gm-engage-route-btn:hover {
-  border-image-source: url("assets/ui/kit/assets/keys/key.primary.hover.png");
-}
-#sf-galaxymap.of-chart .gm-ins-btn[aria-disabled="true"],
-#sf-galaxymap.of-chart .gm-place-btn[aria-disabled="true"],
-#sf-galaxymap.of-chart .gm-ribbon-btn[aria-disabled="true"],
-#sf-galaxymap.of-chart .gm-ins-btn:disabled {
-  border-image-source: url("assets/ui/kit/assets/keys/key.small.disabled.png");
-  color: var(--fh-text-tertiary, var(--k-bone-38));
-  cursor: default;
-}
-#sf-galaxymap.of-chart .gm-layer-ico,
-#sf-galaxymap.of-chart .gm-legend-ico {
-  display: inline-flex !important;
-  width: 24px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 24px;
-  color: var(--fh-text-resting, var(--k-bone-62));
-}
-#sf-galaxymap.of-chart .gm-layer-ico img,
-#sf-galaxymap.of-chart .gm-legend-ico img {
-  width: 24px;
-  height: 24px;
-  display: block;
-}
-#sf-galaxymap.of-chart .gm-layer-btn {
-  gap: 8px;
-}
-#sf-galaxymap.of-chart .gm-rail-sec {
-  border-top: 0 !important;
-  border-bottom: 0 !important;
-}
-#sf-galaxymap.of-chart .gm-legend-row,
-#sf-galaxymap.of-chart .gm-hint-row,
-#sf-galaxymap.of-chart .gm-search-item {
-  background-image: url("assets/ui/kit/assets/tiles/tile.etch.hairline.png");
-  background-repeat: repeat-x;
-  background-position: bottom left;
-  border: 0;
-  box-shadow: none;
-}
-@media (forced-colors: active) {
-  #sf-galaxymap.of-chart .gm-left-rail,
-  #sf-galaxymap.of-chart .gm-right-inspector,
-  #sf-galaxymap.of-chart .gm-deck,
-  #sf-galaxymap.of-chart .gm-hints,
-  #sf-galaxymap.of-chart .gm-search-results,
-  #sf-galaxymap.of-chart .gm-scale-btn,
-  #sf-galaxymap.of-chart .gm-tab,
-  #sf-galaxymap.of-chart .gm-layer-btn,
-  #sf-galaxymap.of-chart .gm-ins-btn,
-  #sf-galaxymap.of-chart .gm-place-btn,
-  #sf-galaxymap.of-chart .gm-ribbon-btn,
-  #sf-galaxymap.of-chart .gm-deck-sort,
-  #sf-galaxymap.of-chart .gm-close,
-  #sf-galaxymap.of-chart .gm-hint-btn,
-  #sf-galaxymap.of-chart .gm-search-input {
-    border: 1px solid CanvasText !important;
-    border-image: none !important;
-    background: Canvas !important;
-    color: CanvasText !important;
-  }
+  line-height: .95 !important;
+  font-size: clamp(40px, min(3.9vw, 7vh), 76px) !important;
+  color: var(--dp-ink, var(--k-bone)) !important;
 }
 `;
 
 let _styleInjected = false;
 function injectStyle() {
+  if (HAS_DOC) injectDeckplate();
   if (!HAS_DOC || _styleInjected || document.getElementById(STYLE_ID)) { _styleInjected = true; return; }
   const el = document.createElement('style');
   el.id = STYLE_ID;
@@ -3783,7 +3584,7 @@ export const galaxyMapScreen = {
     }
     const layerButtonById = new Map(LAYER_DEFS.map((layer) => [layer.id, `
             <button class="gm-layer-btn k-word k-word--body fh-key fh-key--legend${this._layers[layer.id] ? ' active is-lit' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
-              <span class="gm-layer-ico" aria-hidden="true">${kitIconHtml(LAYER_KIT_ICON[layer.id] || 'scan')}</span>
+              <span class="gm-layer-ico" aria-hidden="true">${dpIcon(LAYER_KIT_ICON[layer.id] || 'scan', 18)}</span>
               <span class="gm-layer-name">${layer.name}</span>
               <span class="gm-layer-state" aria-hidden="true"></span>
             </button>`]));
@@ -3794,7 +3595,7 @@ export const galaxyMapScreen = {
               </div>`).join('');
     const legendHtml = LEGEND_SERVICES.map((svc) => `
             <div class="gm-legend-row k-row k-row--static fh-row">
-              <span class="gm-legend-ico" aria-hidden="true">${kitIconHtml(SERVICE_KIT_ICON[svc] || 'station')}</span>
+              <span class="gm-legend-ico" aria-hidden="true">${dpIcon(SERVICE_KIT_ICON[svc] || 'station', 18)}</span>
               <span>${svc === 'ore_buy' ? 'Ore buy' : svc[0].toUpperCase() + svc.slice(1)}</span>
             </div>`).join('');
     const markLegendHtml = LEGEND_MARKS.map((mark) => `
@@ -6944,6 +6745,7 @@ export const galaxyMapScreen = {
     if (this._levelEl && this._levelEl.textContent !== levelLabel) {
       this._levelEl.textContent = levelLabel;
     }
+    if (this._root && this._root.dataset && this._root.dataset.scale !== level) this._root.dataset.scale = level;
 
     // Contact memory accrues whenever the chart is reading the near field, not only while LOCAL
     // happens to be the level on screen — otherwise zooming out for a moment silently resets what
@@ -7444,7 +7246,7 @@ export const galaxyMapScreen = {
         color: n.current ? INK.ink0 : (stale ? INK.ink2 : INK.ink1),
         // Only the final line can carry its own hue, so give it to the presence row when that row
         // is the last thing in the block — the faction colour is the whole point of that line.
-        secondaryColor: (!stale && presenceRows.length === 1) ? presenceRows[0].color : null,
+        secondaryColor: (!stale && presenceRows.length === 1) ? legibleHue(presenceRows[0].color) : null,
       }));
 
       // Security overlay pip
@@ -8901,53 +8703,88 @@ function drawNavCartouche(g, rows, w, h, options = {}) {
   g.save();
   g.translate(x0, y0);
 
-  // Plate: the same opaque warm near-black the inspector and header plates use, so the cartouche
-  // reads as part of the instrument rather than as an overlay floating above it.
-  g.fillStyle = INK.plateHard;
-  g.strokeStyle = INK.plateEdge;
+  // Plate: the chart's glass, painted — the same pane the DOM regions wear. A smoked face falling
+  // away from the one upper-left light, a reflection plane across its upper third, seated in a dark
+  // line with a lit top and left rim and a shadowed lip.
+  const face = g.createLinearGradient(0, 0, 0, boxH);
+  face.addColorStop(0, 'rgba(17, 21, 27, 0.9)');
+  face.addColorStop(1, 'rgba(7, 9, 12, 0.94)');
+  g.fillStyle = face;
+  g.fillRect(0, 0, boxW, boxH);
+  const spec = g.createLinearGradient(0, 0, boxW * 0.21, boxH);
+  spec.addColorStop(0, 'rgba(255, 250, 240, 0.075)');
+  spec.addColorStop(0.27, 'rgba(255, 250, 240, 0.028)');
+  spec.addColorStop(0.285, 'rgba(255, 250, 240, 0)');
+  g.fillStyle = spec;
+  g.fillRect(0, 0, boxW, boxH);
   g.lineWidth = 1;
-  g.beginPath();
-  g.rect(0.5, 0.5, boxW - 1, boxH - 1);
-  g.fill();
-  g.stroke();
+  g.strokeStyle = 'rgba(2, 3, 5, 0.92)';
+  g.strokeRect(0.5, 0.5, boxW - 1, boxH - 1);
+  g.beginPath(); g.moveTo(2, 1.5); g.lineTo(boxW - 2, 1.5);
+  g.strokeStyle = 'rgba(255, 236, 204, 0.3)'; g.stroke();
+  g.beginPath(); g.moveTo(1.5, 2); g.lineTo(1.5, boxH - 2);
+  g.strokeStyle = 'rgba(255, 236, 204, 0.12)'; g.stroke();
+  g.beginPath(); g.moveTo(2, boxH - 1.5); g.lineTo(boxW - 2, boxH - 1.5);
+  g.strokeStyle = 'rgba(0, 0, 0, 0.5)'; g.stroke();
+
+  // The scale legend sits in the plate's lower right; the last value is fitted short of it.
+  let titleW = 0;
+  if (options.title) {
+    g.font = CARTOUCHE_ETCH;
+    setLetterSpacing(g, '1.6px');
+    titleW = g.measureText(options.title).width;
+    setLetterSpacing(g, '0px');
+  }
 
   let y = padY;
-  for (const row of rows) {
+  rows.forEach((row, index) => {
     const tracked = row.tone === NAV_ROW_TONE.TRACKED;
     const muted = row.tone === NAV_ROW_TONE.MUTED;
+    const last = index === rows.length - 1;
 
-    // Leading glyph — the non-colour half of the tone signal.
-    g.save();
-    const gy = y + 7;
+    // Leading lamp — the non-colour half of the tone signal: lit and glowing when tracked, a dark
+    // lamp when plain, no lamp (an open dash) when muted.
+    const lx = padX - 1.5;
+    const ly = y + 7;
     if (tracked) {
-      g.fillStyle = INK.amberHot;
-      g.fillRect(padX - 4, gy - 2.5, 5, 5);
+      const glow = g.createRadialGradient(lx, ly, 0, lx, ly, 7);
+      glow.addColorStop(0, '#fff6df');
+      glow.addColorStop(0.22, '#ffd98c');
+      glow.addColorStop(0.5, '#f2b950');
+      glow.addColorStop(0.72, 'rgba(242, 185, 80, 0.28)');
+      glow.addColorStop(1, 'rgba(242, 185, 80, 0)');
+      g.fillStyle = glow;
+      g.beginPath(); g.arc(lx, ly, 7, 0, Math.PI * 2); g.fill();
     } else if (muted) {
       g.strokeStyle = INK.ink2;
-      g.lineWidth = 1;
-      g.beginPath(); g.moveTo(padX - 4, gy); g.lineTo(padX + 1, gy); g.stroke();
+      g.beginPath(); g.moveTo(lx - 3, ly); g.lineTo(lx + 3, ly); g.stroke();
     } else {
-      g.strokeStyle = INK.ink1;
-      g.lineWidth = 1;
-      g.strokeRect(padX - 3.5, gy - 2, 4, 4);
+      g.fillStyle = '#17140f';
+      g.beginPath(); g.arc(lx, ly, 3.2, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+      g.stroke();
+      g.fillStyle = 'rgba(255, 236, 204, 0.16)';
+      g.beginPath(); g.arc(lx - 0.8, ly - 0.9, 1, 0, Math.PI * 2); g.fill();
     }
-    g.restore();
 
-    // Sizes are written at the 12px floor the canvas font helper enforces anyway; asking for 8px
-    // and placing the next line 10px down assumed a size that never rendered.
+    // Sizes are written at the 12px floor. The label is an etched legend (the condensed face in
+    // caps, tracked out); the value is the reading face.
     g.textAlign = 'left';
     g.textBaseline = 'top';
-    g.font = FONT_MONO(500, 12);
-    g.fillStyle = INK.ink2;
+    g.font = CARTOUCHE_ETCH;
+    setLetterSpacing(g, '1.6px');
+    g.fillStyle = 'rgba(232, 226, 212, 0.56)';
     g.fillText(row.label, padX + 8, y);
+    setLetterSpacing(g, '0px');
 
-    g.font = FONT_DISPLAY(600, 12);
-    g.fillStyle = tracked ? INK.amberHot : (muted ? INK.ink2 : INK.ink0);
-    g.fillText(fitCartoucheText(g, row.value, boxW - padX * 2 - 10), padX + 8, y + 13);
+    g.font = CARTOUCHE_VALUE;
+    g.fillStyle = tracked ? '#ffd98c' : (muted ? INK.ink2 : '#e8e2d4');
+    const budget = boxW - padX * 2 - 10 - (last && titleW ? titleW + 14 : 0);
+    g.fillText(fitCartoucheText(g, row.value, budget), padX + 8, y + 13);
 
     if (row.detail) {
       g.font = FONT_MONO(500, 12);
-      g.fillStyle = INK.ink2;
+      g.fillStyle = 'rgba(232, 226, 212, 0.5)';
       const detailW = g.measureText(row.detail).width;
       // Detail is right-aligned against the plate edge so the four value strings stay on one
       // reading column no matter how long each detail happens to be.
@@ -8958,16 +8795,26 @@ function drawNavCartouche(g, rows, w, h, options = {}) {
       }
     }
     y += rowH;
-  }
+  });
 
   if (options.title) {
-    g.font = FONT_MONO(500, 7.5);
-    g.fillStyle = INK.ink2;
+    g.font = CARTOUCHE_ETCH;
+    setLetterSpacing(g, '1.6px');
+    g.fillStyle = 'rgba(232, 226, 212, 0.42)';
     g.textAlign = 'right';
     g.textBaseline = 'bottom';
-    g.fillText(options.title, boxW - padX, boxH - 3);
+    g.fillText(options.title, boxW - padX + 1.6, boxH - 6);
+    setLetterSpacing(g, '0px');
   }
   g.restore();
+}
+
+/** The cartouche's two voices: the etched legend (Archivo, condensed caps) and the reading face. */
+const CARTOUCHE_ETCH = 'condensed 700 12px Archivo, "Instrument Sans", system-ui, sans-serif';
+const CARTOUCHE_VALUE = '600 13px "Instrument Sans", system-ui, sans-serif';
+/** letterSpacing is a newer canvas property; where it is missing the legend is simply untracked. */
+function setLetterSpacing(g, value) {
+  if (g && 'letterSpacing' in g) g.letterSpacing = value;
 }
 
 /** Ellipsize to a pixel budget. A cartouche that overflows its plate is worse than a short label. */
@@ -9361,6 +9208,26 @@ function asteroidOreGlyph(typeId) {
     case 'ast_rare_exotic': return 'Xe';
     default: return 'Si';
   }
+}
+
+/**
+ * A faction hue is data, but a dark hue set as 12px text on the chart's ground does not read (the
+ * Archive's indigo sat near 2:1). Lift the hue toward bone until it clears 4.5:1 on the ground; the
+ * hue survives, only its lightness moves. Rings and fills keep the faction's own colour.
+ */
+function legibleHue(hex) {
+  const s = String(hex || '').replace('#', '');
+  if (s.length !== 6) return hex;
+  const rgb = [0, 2, 4].map((i) => parseInt(s.slice(i, i + 2), 16));
+  if (!rgb.every(Number.isFinite)) return hex;
+  const lin = (c) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const lum = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+  const BONE = [232, 226, 212];
+  let out = rgb;
+  for (let t = 0; t <= 1.0001 && lum(out) < 0.19; t += 0.1) {
+    out = rgb.map((c, i) => Math.round(c + (BONE[i] - c) * t));
+  }
+  return '#' + out.map((c) => c.toString(16).padStart(2, '0')).join('');
 }
 
 function hexToRgba(hex, alpha) {

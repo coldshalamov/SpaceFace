@@ -807,4 +807,183 @@ ${S} .k-foot .fh-key--primary::after {
 }
 `;
 
-export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL;
+/* ── THE CHART — the star chart's chrome on the deckplate (FRONTEND_PROGRAM Wave 4). ──
+   The chart is an instrument laid over the paused world. The world recedes under a smoked ground —
+   deeper at system and galaxy scale, where the hull behind the table means nothing — and every
+   region the chart hangs over it is the one glass pane in a thin machined bezel the shell screens
+   use. Commands are keycaps with a lamp; a lens is a lamp row (the lamp IS its state); the scale is
+   one selector track; the nine inspector tabs are a legend grid, so no tab is ever cut off. The
+   canvas keeps its own grammar (src/ui/map/tacticalMapGrammar.js). Geometry stays the chart's: each
+   pane keeps the border width the chart's layout sheet was measured with. */
+const GM = 'html body #screens #sf-galaxymap.of-chart';
+const GM_GLASS = 'var(--dp-glass-spec) border-box, var(--dp-glass-fall) border-box, '
+  + 'var(--dp-tex-smudge) 0 0 / 512px repeat border-box, linear-gradient(180deg, rgb(17 21 27 / .88), rgb(7 9 12 / .93)) border-box';
+const GM_TRACK = 'background:linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .28)); '
+  + 'box-shadow:inset 0 1px 3px rgb(0 0 0 / .85), 0 1px 0 rgb(255 236 204 / .07); border-radius:3px;';
+const GM_SEG = 'background:linear-gradient(180deg, #232830, #191d24); box-shadow:inset 0 1px 0 rgb(255 236 204 / .07);';
+const GM_SEG_LIT = 'background:linear-gradient(180deg, #2c3139, #20252d); color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); '
+  + 'box-shadow:inset 0 0 0 1px rgb(255 217 140 / .3), inset 0 -2px 0 var(--dp-lamp), 0 8px 14px -10px var(--dp-lamp-bloom);';
+const GM_ETCH = 'font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 74; letter-spacing:.14em; text-transform:uppercase;';
+const GM_HAIR = 'background-image:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px); '
+  + 'background-size:100% 2px; background-repeat:no-repeat; background-position:left top;';
+const GM_CHIP = 'display:inline-grid; place-items:center; min-width:22px; height:22px; padding:0 6px 2px; box-sizing:border-box; '
+  + 'border-style:solid; border-color:transparent; border-width:3px 4px 5px; border-image:url("' + HW + 'keycap.svg") 10 10 12 / 3px 4px 5px / 0 stretch; '
+  + 'background:var(--dp-metal-3); color:var(--dp-ink-dim); font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 80; '
+  + 'font-size:12px; line-height:1; letter-spacing:.04em; text-transform:uppercase; text-shadow:none;';
+const GM_KEYS = `${GM} :is(.gm-close, .gm-hint-btn, .gm-ins-btn, .gm-place-btn, .gm-ribbon-btn, .gm-deck-sort, .gm-rail-add)`;
+const CHART = `
+${GM} { background:radial-gradient(130% 100% at 50% 45%, rgb(6 8 11 / .6), rgb(5 6 9 / .85) 68%, rgb(4 5 7 / .94)); }
+${GM}:is([data-scale="system"], [data-scale="galaxy"]) {
+  background:radial-gradient(130% 100% at 50% 45%, rgb(9 11 15 / .9), rgb(5 6 9 / .96) 68%, rgb(3 4 6 / .985));
+}
+${GM} .k-word::after { display:none; }
+/* the title block: the place's name at the one screen-title size, its stamp an etched legend */
+${GM} .gm-stamp { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); }
+${GM} .gm-level { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); }
+${GM} .gm-level b { color:var(--dp-ink-dim); font-weight:inherit; }
+/* panes: smoked glass seated in the thin bezel */
+${GM} :is(.gm-left-rail, .gm-right-inspector, .gm-deck, .gm-hints, .gm-search-results) {
+  border-style:solid; border-color:transparent; border-width:16px; border-radius:0;
+  border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
+  background:${GM_GLASS}; box-shadow:0 14px 34px rgb(0 0 0 / .5); color:var(--dp-ink);
+  scrollbar-width:thin; scrollbar-color:rgb(232 226 212 / .24) transparent;
+}
+/* the scale: one recessed selector track, the current scale lit in its segment */
+${GM} .gm-scale-buttons.k-words { display:inline-flex; flex-wrap:nowrap; gap:3px; padding:3px; width:max-content; ${GM_TRACK} }
+${GM} .gm-scale-btn.k-word {
+  display:inline-flex; align-items:center; justify-content:center; min-width:78px; min-height:30px; padding:0 14px;
+  border:0; border-image:none; border-radius:2px; ${GM_SEG} ${GM_ETCH} font-size:12px; color:var(--dp-ink-dim); cursor:pointer;
+}
+${GM} .gm-scale-btn.k-word:is(:hover, :focus-visible) { color:var(--dp-ink); background:linear-gradient(180deg, #2a2f37, #1e222a); }
+${GM} .gm-scale-btn.k-word:is([aria-pressed="true"], .is-current) { ${GM_SEG_LIT} }
+${GM} .gm-rail-track { height:2px; background:rgb(0 0 0 / .6); box-shadow:0 1px 0 rgb(255 236 204 / .08); border-radius:1px; }
+${GM} .gm-rail-marker { width:3px; height:12px; top:-5px; border-radius:1px; background:var(--dp-lamp-hot); box-shadow:0 0 8px var(--dp-lamp-bloom); }
+/* search: a glass well, the slash key as a small cap */
+${GM} .gm-search-input.k-input {
+  box-sizing:border-box; min-height:40px; padding:0 40px 0 14px; border:0; border-radius:3px; border-image:none;
+  background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
+  color:var(--dp-ink); font-family:var(--dp-face-read); font-size:14px;
+}
+${GM} .gm-search-input.k-input::placeholder { color:var(--dp-ink-mute); }
+${GM} .gm-search-input.k-input:focus { outline:0; box-shadow:var(--dp-glass-depth), inset 0 0 0 1px rgb(255 217 140 / .55), 0 0 0 1px rgb(242 185 80 / .22); }
+${GM} .gm-search-kbd { ${GM_CHIP} right:9px; top:50%; transform:translateY(-50%); }
+${GM} :is(.gm-search-item, .gm-hint-row) { border:0; box-shadow:none; ${GM_HAIR} }
+${GM} .gm-search-item.selected { color:var(--dp-lamp-hot); box-shadow:inset 2px 0 0 var(--dp-lamp); }
+${GM} .gm-hint-row kbd { ${GM_CHIP} min-width:0; }
+${GM} .gm-hints-title { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); }
+/* commands: keycaps with the lamp in the cap */
+${dpKey(GM_KEYS)}
+${GM_KEYS} { min-height:34px; padding:0 14px 0 30px; font-size:12px; max-width:100%; white-space:nowrap; }
+${GM} .gm-frame-group .gm-frame-btn { width:100%; justify-content:flex-start; }
+${GM} :is(#gm-set-course-btn, #gm-engage-route-btn, .gm-plot-btn) { width:100%; min-height:40px; font-size:13px; }
+${GM} :is(#gm-set-course-btn, #gm-engage-route-btn):not(:disabled):not([aria-disabled="true"]) {
+  color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+  background:${KEY_LED_ON_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .5), inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
+}
+${GM_KEYS}:is(:disabled, [aria-disabled="true"]) {
+  background:${KEY_LED_OFF_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  color:var(--dp-ink-mute); text-shadow:none; box-shadow:none; filter:saturate(.6) brightness(.85); cursor:default;
+}
+${GM} #gm-engage-route-btn[data-engage-state="nav:abortRoute"]:not(:disabled) {
+  color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
+  background:${KEY_LED_RED_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), 0 8px 16px -10px var(--dp-danger-bloom);
+}
+${GM} .gm-hint-btn[aria-expanded="true"] {
+  color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+  background:${KEY_LED_ON_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+}
+/* the chart's way back is the same control as every screen's: a plain cap and its ESC chip */
+${GM} .gm-close.k-word::after { content:"ESC" / ""; ${GM_CHIP} position:static; transform:none; width:auto; margin-left:12px; opacity:1; }
+${GM} :is(.gm-frame-reason, .gm-plot-reason, .gm-engage-reason, .gm-ribbon-reason) { color:var(--dp-ink-mute); font-family:var(--dp-face-read); font-size:12px; }
+/* the rail: disclosures under etched legends; each lens a lamp row */
+${GM} .gm-rail-sec { border:0; ${GM_HAIR} }
+${GM} .gm-rail-sec:first-child { background-image:none; }
+${GM} .gm-rail-sum { justify-content:flex-start; ${GM_ETCH} font-size:12px; color:var(--dp-ink-dim); }
+${GM} .gm-rail-sum-t { font-family:inherit; font-size:inherit; font-variation-settings:inherit; letter-spacing:inherit; color:inherit; }
+${GM} .gm-rail-sum-n { margin-left:auto; font-family:var(--dp-face-etch); letter-spacing:.06em; color:var(--dp-ink-mute); }
+${GM} .gm-rail-sum::after {
+  content:""; flex:0 0 auto; align-self:center; width:6px; height:6px; margin:0 3px 3px 10px;
+  border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(-45deg);
+}
+${GM} .gm-rail-sec[open] > .gm-rail-sum::after { transform:rotate(45deg); margin-bottom:6px; }
+${GM} :is(.gm-rail-sec[open] > .gm-rail-sum, .gm-rail-sum:hover) { color:var(--dp-ink); }
+${GM} .gm-layer-buttons { gap:14px; }
+${GM} .gm-layer-bank { gap:1px; }
+${GM} .gm-layer-bank-title { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); margin:0 0 4px; }
+${GM} .gm-layer-btn.k-word {
+  position:relative; box-sizing:border-box; display:flex; align-items:center; gap:10px; width:100%; max-width:100%; min-height:34px;
+  margin:0; padding:0 10px 0 28px; border:0; border-image:none; border-radius:2px; cursor:pointer;
+  background:${LED_OFF}; box-shadow:none; text-shadow:none;
+  ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute);
+}
+${GM} .gm-layer-btn.k-word::before { display:none; }
+${GM} .gm-layer-btn.k-word:is([aria-pressed="true"], .active) { background:${LED_ON}; color:var(--dp-ink); }
+${GM} .gm-layer-btn.k-word:is(:hover, :focus-visible) { background:${LED_OFF}, linear-gradient(90deg, rgb(255 238 210 / .07), transparent 85%); color:var(--dp-lamp-hot); }
+${GM} .gm-layer-btn.k-word:is([aria-pressed="true"], .active):is(:hover, :focus-visible) { background:${LED_ON}, linear-gradient(90deg, rgb(255 238 210 / .07), transparent 85%); }
+${GM} .gm-layer-ico { display:inline-flex; flex:0 0 18px; width:18px; height:18px; color:inherit; opacity:.85; }
+${GM} .gm-layer-ico .dp-icon { width:18px; height:18px; display:block; }
+${GM} .gm-layer-ico .dp-icon .accent { fill:currentColor; }
+${GM} .gm-layer-btn.k-word:is([aria-pressed="true"], .active) .gm-layer-ico .dp-icon .accent { fill:var(--dp-lamp); }
+${GM} .gm-layer-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${GM} .gm-rail-commodity label { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); }
+${GM} .gm-rail-commodity :is(select, .sf-select__field) {
+  min-height:34px; padding:0 30px 0 10px; border:0; border-radius:3px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23b7b4a6' stroke-width='1.5'/%3E%3C/svg%3E") right 11px center / 10px 6px no-repeat, var(--dp-glass-solid);
+  box-shadow:var(--dp-glass-depth); color:var(--dp-ink); font-family:var(--dp-face-read); font-size:13px;
+}
+${GM} :is(.gm-rail-item, .gm-legend-row) { border:0; ${GM_HAIR} }
+${GM} .gm-rail-legend > .gm-legend-row:first-of-type { background-image:none; }
+${GM} :is(.gm-rail-item.is-tracked, .gm-rail-item.is-current) { color:var(--dp-lamp-hot); box-shadow:inset 2px 0 0 var(--dp-lamp); }
+${GM} :is(.gm-rail-title, .gm-ins-kind, .gm-ins-title, .gm-deck-title) { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); }
+${GM} .gm-legend-ico { width:18px; height:18px; color:var(--dp-ink-dim); }
+${GM} .gm-legend-ico .dp-icon { width:18px; height:18px; display:block; }
+${GM} .gm-legend-ico .dp-icon .accent { fill:var(--dp-lamp-dim, var(--dp-lamp)); }
+${GM} .gm-legend-ico svg:not(.dp-icon) { width:18px; height:18px; stroke:var(--dp-ink-dim); }
+/* the inspector: nine tabs as a legend grid in one recessed track — every tab on the glass */
+${GM} .gm-tabs.k-words {
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(84px, 1fr)); gap:3px; padding:3px; overflow:visible; ${GM_TRACK}
+}
+${GM} .gm-tab.k-word {
+  display:flex; align-items:center; justify-content:center; min-width:0; min-height:30px; margin:0; padding:0 6px;
+  border:0; border-image:none; border-radius:2px; ${GM_SEG} ${GM_ETCH} font-size:12px; letter-spacing:.1em; color:var(--dp-ink-dim);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;
+}
+${GM} .gm-tab.k-word::before { display:none; }
+${GM} .gm-tab.k-word:is(:hover, :focus-visible) { color:var(--dp-ink); background:linear-gradient(180deg, #2a2f37, #1e222a); }
+${GM} .gm-tab.k-word[aria-selected="true"] { ${GM_SEG_LIT} }
+/* the detail region scrolls: it ends in a fade over a padded foot, so no line is cut at the edge */
+${GM} .gm-inspector-content {
+  padding-bottom:24px; scrollbar-width:thin; scrollbar-color:rgb(232 226 212 / .24) transparent;
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent);
+}
+${GM} .gm-ins-section { border-top:0; ${GM_HAIR} }
+${GM} .gm-ins-section:first-child { background-image:none; }
+${GM} .gm-ins-target-name {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 86; font-weight:inherit;
+  font-size:clamp(20px, 1.5vw, 28px); line-height:1.05; letter-spacing:.04em; text-transform:uppercase; color:var(--dp-ink);
+}
+${GM} :is(.gm-inspector-empty, .gm-ins-note) { font-family:var(--dp-face-read); color:var(--dp-ink-dim); }
+${GM} .gm-ins-row { color:var(--dp-ink-dim); }
+${GM} .gm-ins-row-val { color:var(--dp-ink); }
+/* the weather: an etched meter */
+${GM} .gm-weather-bar { height:4px; border-radius:1px; background:rgb(0 0 0 / .55); box-shadow:inset 0 1px 1px rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .07); overflow:hidden; }
+${GM} .gm-weather-seg--combat { background:var(--dp-danger); }
+${GM} .gm-weather-seg--civil { background:var(--dp-ink-dim); }
+${GM} .gm-weather[data-weather-level="working"] .gm-weather-word { color:var(--dp-lamp-hot); }
+${GM} .gm-weather[data-weather-level="hot"] .gm-weather-word { color:var(--dp-danger-hot); }
+/* the foot: the cargo deck and the route ribbon */
+${GM} .gm-deck-table .k-row { ${GM_HAIR} }
+@media (forced-colors:active) {
+  ${GM} { background:Canvas; }
+  ${GM} :is(.gm-left-rail, .gm-right-inspector, .gm-deck, .gm-hints, .gm-search-results) { border:1px solid CanvasText; border-image:none; background:Canvas; }
+  ${GM} :is(.gm-scale-btn, .gm-tab, .gm-layer-btn).k-word { border:1px solid ButtonText; background:ButtonFace; color:ButtonText; }
+  ${GM} :is(.gm-scale-btn[aria-pressed="true"], .gm-tab[aria-selected="true"], .gm-layer-btn[aria-pressed="true"]).k-word { outline:2px solid Highlight; }
+  ${GM} :is(.gm-search-input, .gm-rail-commodity select) { border:1px solid CanvasText; background:Canvas; color:CanvasText; }
+  ${GM} .gm-inspector-content { -webkit-mask-image:none; mask-image:none; }
+  ${GM} :is(.gm-search-kbd, .gm-hint-row kbd), ${GM} .gm-close.k-word::after { border:1px solid ButtonText; border-image:none; background:ButtonFace; color:ButtonText; }
+}
+`;
+
+export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL + CHART;

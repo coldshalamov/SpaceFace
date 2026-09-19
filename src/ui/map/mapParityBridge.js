@@ -87,7 +87,7 @@ function createLegendKey(documentRef) {
     '<div class="gm-parity-key__title">SYMBOL KEY / FLIGHT PARITY</div>',
     '<div class="gm-parity-key__grid">',
     ...mapParityLegendModel().map((item) => (
-      `<span class="gm-parity-key__item" data-kind="${item.id}" title="${item.label}: ${item.channel}">`
+      `<span class="gm-parity-key__item" data-kind="${item.id}" style="--gm-key:${item.colour}" title="${item.label}: ${item.channel}">`
         + `<span class="gm-parity-key__glyph">${item.svg}</span>`
         + `<span class="gm-parity-key__label">${item.label}</span>`
         + '</span>'
@@ -286,17 +286,18 @@ function injectStyle(documentRef) {
   box-sizing:border-box;
   margin-top:auto;
   padding:10px 0 0;
-  border-top:1px solid rgba(190,178,152,.24);
-  color:var(--ink-dim,#b3afa2);
-  font-family:var(--mf-ui,"IBM Plex Sans","Segoe UI",system-ui,sans-serif);
+  background:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px) left top / 100% 2px no-repeat;
+  color:var(--dp-ink-dim,#b7b4a6);
+  font-family:var(--dp-face-read,"Instrument Sans",system-ui,sans-serif);
 }
 #sf-galaxymap .gm-parity-key__title {
   margin-bottom:8px;
-  color:var(--ink-mute,#8a877d);
-  font-family:var(--mf-mono,"IBM Plex Mono",ui-monospace,monospace);
+  color:var(--dp-ink-mute,#96948e);
+  font-family:var(--dp-face-etch,"Archivo",system-ui,sans-serif);
+  font-variation-settings:"wght" 720, "wdth" 74;
   font-size:12px;
-  font-weight:700;
-  letter-spacing:.06em;
+  letter-spacing:.14em;
+  text-transform:uppercase;
 }
 #sf-galaxymap .gm-parity-key__grid {
   display:grid;
@@ -337,12 +338,12 @@ function injectStyle(documentRef) {
   stroke-linejoin:round;
 }
 #sf-galaxymap .gm-parity-key__glyph .open { fill:none; }
-#sf-galaxymap .gm-parity-key__glyph .ink { fill:#f4f0e6; stroke:none; }
-#sf-galaxymap .gm-parity-key__item[data-kind="player"] { color:#63f3ff; }
-#sf-galaxymap .gm-parity-key__item[data-kind="objective"] { color:#ffc064; }
-#sf-galaxymap .gm-parity-key__item[data-kind="hostile"] { color:#ff6673; }
-#sf-galaxymap .gm-parity-key__item[data-kind="station"] { color:#63d8ff; }
-#sf-galaxymap .gm-parity-key__item[data-kind="gate"] { color:#c7a9ff; }
+/* The glyph's cut-outs are the chart's ground, as the scope draws them. */
+#sf-galaxymap .gm-parity-key__glyph .ink { fill:#0b0d10; stroke:none; }
+/* Each item's colour is the grammar's own (inline --gm-key from TACTICAL_MAP_PALETTE), so the key
+   cannot drift from what the radar and the chart actually draw. The label stays bone. */
+#sf-galaxymap .gm-parity-key__glyph { color:var(--gm-key, currentColor); }
+#sf-galaxymap .gm-parity-key__label { color:var(--dp-ink,#e8e2d4); }
 #sf-galaxymap .gm-viewport { position:relative; }
 #sf-galaxymap .gm-parity-overlay {
   position:absolute;
@@ -355,7 +356,7 @@ function injectStyle(documentRef) {
 }
 #sf-galaxymap .gm-parity-overlay__objective {
   fill:none;
-  stroke:#ffc064;
+  stroke:#f2b950;
   stroke-width:2;
   stroke-linecap:square;
   stroke-linejoin:miter;
