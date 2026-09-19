@@ -664,17 +664,48 @@ function mountWith(state, { busEvents = [] } = {}) {
 // =============================================================================================
 // 7. NO SELECTION IS NEVER AN EMPTY PANEL — it answers the four navigation questions
 // =============================================================================================
+// The four answers live on ONE of two surfaces, and both must be proven. When the window is wide
+// enough the cartouche paints them on the chart and the panel deliberately does NOT repeat the same
+// sentences (progressive disclosure, ADR D9.9); when the window is too narrow for the cartouche the
+// DOM rows are the documented fallback. Asserting only the DOM rows measures the retired always-on
+// dump rather than the shipped behaviour, so this block proves both paths.
 {
-  const { root } = mountWith(makeState({
+  const navState = makeState({
+    sectorId: TETHYS,
+    route: makeRoute(2),
+    executor: makeExecutor(ROUTE_EXECUTOR_STATUS.TRANSITING),
+  });
+  const { root } = mountWith(navState);
+  galaxyMapScreen._draw();
+  galaxyMapScreen._updateInspector();
+  const panel = root.querySelector('#gm-tabpanel');
+  // It must be the SAME object the on-canvas cartouche reads, or panel and chart can disagree.
+  const ctxRows = galaxyMapScreen._navContext(galaxyMapScreen._ctx.state).rows;
+  assert.equal(ctxRows.length, 4, 'the shared nav context must answer all four navigation questions');
+
+  // 7a. Wide window: the cartouche carries the four answers on glass, and the panel stays compact
+  // by NOT repeating the same sentence.
+  const canvasTexts = galaxyMapScreen._g._rec.texts.map((t) => t.text).join(' | ');
+  for (const row of ctxRows) {
+    assert.ok(canvasTexts.includes(row.label),
+      `the cartouche must paint the ${row.label} answer at this window size; got ${canvasTexts.slice(0, 400)}`);
+  }
+  assert.ok(panel.textContent.trim().length > 0, 'the no-selection panel must never be blank');
+  assert.equal(panel.querySelectorAll('.gm-nav-row').length, 0,
+    'the cartouche already answers these four questions — the panel must not duplicate them');
+
+  // 7b. Small window: the cartouche is withheld, so the DOM rows become the answer surface.
+  const { root: smallRoot } = mountWith(makeState({
     sectorId: TETHYS,
     route: makeRoute(2),
     executor: makeExecutor(ROUTE_EXECUTOR_STATUS.TRANSITING),
   }));
+  galaxyMapScreen._canvas.width = 380;
+  galaxyMapScreen._canvas.height = 360;
   galaxyMapScreen._draw();
   galaxyMapScreen._updateInspector();
-  const panel = root.querySelector('#gm-tabpanel');
-  const rows = panel.querySelectorAll('.gm-nav-row');
-  assert.equal(rows.length, 4, 'the no-selection Overview must show all four navigation answers');
+  const rows = smallRoot.querySelector('#gm-tabpanel').querySelectorAll('.gm-nav-row');
+  assert.equal(rows.length, 4, 'a window too small for the cartouche must fall back to all four DOM rows');
   for (const row of rows) {
     const value = row.querySelector('.gm-nav-row-v');
     assert.ok(value && value.textContent.trim().length > 0,
@@ -682,14 +713,11 @@ function mountWith(state, { busEvents = [] } = {}) {
     assert.ok(row.hasAttribute('data-tone'),
       'tone must be an attribute so the row never depends on colour alone');
   }
-  // It must be the SAME object the on-canvas cartouche reads, or panel and chart can disagree.
-  const ctxRows = galaxyMapScreen._navContext(galaxyMapScreen._ctx.state).rows;
-  assert.equal(rows.length, ctxRows.length);
   for (let i = 0; i < rows.length; i++) {
     assert.match(rows[i].textContent, new RegExp(ctxRows[i].label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
-      'the inspector rows must be rendered from resolveMapNavContext, not re-derived');
+      'the fallback rows must be rendered from resolveMapNavContext, not re-derived');
   }
-  ok('with nothing selected the inspector answers all four questions from the shared nav context');
+  ok('the four navigation answers are on glass with nothing selected — cartouche when it fits, DOM rows when it cannot');
 }
 
 // =============================================================================================
