@@ -65,6 +65,8 @@ import {
   STORY_BRANCH_INTRO_TAG,
   SET_PIECE_MISSIONS,
   offerMixWeight,
+  offerHistoryTierFor,
+  offerHistoryMultiplier,
 } from '../data/missions.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
 import {
@@ -1817,6 +1819,34 @@ export const missions = {
     return changed;
   },
 
+  /**
+   * Durable career score for offer history. Pure read of save-backed state (no wall time, no rng):
+   * completed contracts, sectors visited, executed trades, fields worked, and story progress.
+   * Bounded so one long mining session cannot inflate the board past its band.
+   */
+  _playerHistoryScore() {
+    const state = this.state;
+    const missions = state.missions || {};
+    const completed = Array.isArray(missions.completedLog) ? missions.completedLog.length : 0;
+    const discovery = (state.world && state.world.discovery) || {};
+    let sectorsVisited = 0;
+    for (const sectorId of Object.keys(discovery)) {
+      const rec = discovery[sectorId];
+      if (rec && Number(rec.visitedCount) > 0) sectorsVisited++;
+    }
+    const trades = state.player && Array.isArray(state.player.tradeLedger)
+      ? state.player.tradeLedger.length : 0;
+    const fieldsWorked = Object.values((state.fieldDepletion && state.fieldDepletion.fields) || {})
+      .filter((rec) => rec && Number(rec.destroyedCount) > 0).length;
+    const storyBeat = (state.story && Number(state.story.beatIndex)) || 0;
+    return Math.min(60,
+      Math.min(24, completed * 2)
+      + Math.min(6, sectorsVisited)
+      + Math.min(8, Math.floor(trades / 5))
+      + Math.min(12, fieldsWorked)
+      + Math.min(10, storyBeat));
+  },
+
   /** Deterministically generate S offers for a station at an epoch (seeded, no Math.random). */
   _generateOffers(info, epoch) {
     const helpers = this.helpers;
@@ -1832,6 +1862,9 @@ export const missions = {
     // Loyalty boost: friendly players see more of the station faction's signature types.
     const rep = this._repOf(info.factionId);
     const repBoost = 1 + Math.max(0, rep) / 100;
+    // Career overlay: the same board stops serving starter-tier repeats forever as the player's
+    // durable history accumulates (completed contracts, sectors visited, trades, fields worked).
+    const historyTier = offerHistoryTierFor(this._playerHistoryScore());
 
     const offers = [];
     for (let i = 0; i < S; i++) {
@@ -1840,7 +1873,7 @@ export const missions = {
       // opens on a bounty-free epoch.
       const typeId = i === 0 && info.boardAnchorType
         ? info.boardAnchorType
-        : this._pickType(weights, rng, repBoost, profile);
+        : this._pickType(weights, rng, repBoost, profile, historyTier);
       const offer = this._rollOffer(typeId, info, rng, epoch, i);
       if (offer) offers.push(offer);
     }
@@ -1894,14 +1927,16 @@ export const missions = {
     return pick;
   },
 
-  /** Weighted pick of a mission type by OFFER_MIX (signature types rep-boosted). */
-  _pickType(weights, rng, repBoost, stationType) {
+  /** Weighted pick of a mission type by OFFER_MIX (signature types rep-boosted, history overlaid). */
+  _pickType(weights, rng, repBoost, stationType, historyTier = 'starter') {
     let total = 0;
     const w = new Array(TYPE_ORDER.length);
     for (let i = 0; i < TYPE_ORDER.length; i++) {
       let weight = offerMixWeight(weights, TYPE_ORDER[i]);
       // signature types (weight>=3) get the friendly-rep boost.
       if (weight >= 3) weight *= repBoost;
+      // Career overlay last: 0-weight (authored-only) types stay structurally zero at every tier.
+      if (weight > 0) weight *= offerHistoryMultiplier(historyTier, TYPE_ORDER[i]);
       w[i] = weight; total += weight;
     }
     if (total <= 0) return TYPE_ORDER[0];

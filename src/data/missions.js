@@ -7,20 +7,24 @@
 
 export const MISSION_TUNING = {
   BASE: {
-    // Freight bases must cover real cargo acquisition, collateral exposure, tolls, and repair.
-    // The old 180/170 values made successful Courier contracts net-negative.
-    // bounty_hunt 110: combat contracts must clear gate tolls + repair + death insurance
-    // after exclusive mission settlement (no stacked ambient bountyCr). Tuned for M3 Hunter
-    // cohort ≥62.5 cr/min with real operating costs. The denser public-route adapter sits
-    // without pushing the denser public route above its existing 400 cr/min ceiling.
-    // Below mining quota and patrol_clear because this is a single-target writ.
-    cargo_delivery: 600, bulk_trade: 550, bounty_hunt: 110, mining_quota: 130,
-    salvage_retrieval: 160, escort: 180, patrol_clear: 220, smuggling_run: 250,
-    passenger_transport: 160, recon_scan: 140,
-    tow_recovery: 170, demolition: 200, rescue_under_fire: 210,
-    authored_set_piece: 220, capital_boss: 360,
+    // Generated compatibility values. economyMissionTerms is the canonical live quote.
+    cargo_delivery: 411,
+    bulk_trade: 453,
+    bounty_hunt: 552,
+    mining_quota: 677,
+    salvage_retrieval: 614,
+    escort: 598,
+    patrol_clear: 656,
+    smuggling_run: 494,
+    passenger_transport: 453,
+    recon_scan: 552,
+    tow_recovery: 697,
+    demolition: 635,
+    rescue_under_fire: 739,
+    authored_set_piece: 863,
+    capital_boss: 1237,
   },
-  RISK_MULT: [1.0, 1.3, 1.7, 2.2, 3.0],
+  RISK_MULT: [1,1.146809,1.358636,1.6905,2.24],
   BASE_REP: {
     cargo_delivery: 3, bulk_trade: 3, bounty_hunt: 5, mining_quota: 2,
     salvage_retrieval: 3, escort: 4, patrol_clear: 5, smuggling_run: 4,
@@ -35,7 +39,7 @@ export const MISSION_TUNING = {
   cruiseSpeedRef: 140,
   slackDefault: 2.2,
   collateralPct: 0.25,
-  refreshSec: 600,
+  refreshSec: 300,
   maxActive: 8,
   // Daily featured contract: one rolled offer per station per real-calendar day pays a fixed
   // premium and a small standing bonus. The day key joins the board hash only at the
@@ -139,18 +143,18 @@ export const STORY_BRANCH_INTROS = [
 
 export const MISSION_TYPES = [
   {
-    type: 'cargo_delivery', riskTierRange: [0, 1], chainable: true,
+    type: 'cargo_delivery', riskTierRange: [0, 4], chainable: true,
     completionEvent: 'cargo.delivered',
-    rewardFormula: 'round(600 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 20) * slack)', taskTime: 20,
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 20,
     failureCondition: 'timer OR cargo lost (ship destroyed)',
     constraints: { needsCargoSpace: true },
   },
   {
-    type: 'bulk_trade', riskTierRange: [1, 2], chainable: true, collateral: true,
+    type: 'bulk_trade', riskTierRange: [0, 4], chainable: true, collateral: true,
     completionEvent: 'trade.sold (aggregated to quota)',
-    rewardFormula: 'round(550 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + quotaQty*1.5) * slack)', taskTime: 'quotaQty*1.5',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 'quotaQty*1.5',
     failureCondition: 'timer OR fail to sell quota; collateral forfeited',
     constraints: { collateralPct: 0.25 },
   },
@@ -158,84 +162,84 @@ export const MISSION_TYPES = [
     // R1+ keeps "first blood" / early board writs reachable before standing climbs to R2.
     type: 'bounty_hunt', riskTierRange: [1, 4], chainable: true,
     completionEvent: 'enemy.killed (entityId==targetId)',
-    rewardFormula: 'round(110 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 60) * slack)', taskTime: 60,
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 60,
     failureCondition: 'timer OR target despawns/flees sector',
     constraints: { fValueIsTargetStrength: true },
   },
   {
-    type: 'mining_quota', riskTierRange: [1, 3], chainable: true,
+    type: 'mining_quota', riskTierRange: [0, 4], chainable: true,
     completionEvent: 'mining.yield (aggregated to quota)',
-    rewardFormula: 'round(130 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + quotaQty*3) * slack)', taskTime: 'quotaQty*3',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 'quotaQty*3',
     failureCondition: 'timer',
     constraints: {},
   },
   {
-    type: 'salvage_retrieval', riskTierRange: [1, 3], chainable: true,
+    type: 'salvage_retrieval', riskTierRange: [0, 4], chainable: true,
     completionEvent: 'cargo.delivered (itemId==salvageId)',
-    rewardFormula: 'round(160 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 30) * slack)', taskTime: 30,
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 30,
     failureCondition: 'timer OR wreck destroyed before pickup',
     constraints: {},
   },
   {
     type: 'escort', riskTierRange: [2, 4], chainable: false,
     completionEvent: 'dock.entered@dest with escortee.alive',
-    rewardFormula: 'round(180 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 90) * slack)', taskTime: 90,
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 90,
     failureCondition: 'escortee destroyed OR abandoned (player leaves sector)',
     constraints: { fValueIsTargetStrength: true },
   },
   {
     type: 'patrol_clear', riskTierRange: [2, 4], chainable: true,
     completionEvent: 'all spawn-tagged enemy.killed (clearCount reached)',
-    rewardFormula: 'round(220 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + clearCount*45) * slack)', taskTime: 'clearCount*45',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 'clearCount*45',
     failureCondition: 'timer expires with hostiles remaining',
     constraints: { fValueIsTargetStrength: true },
   },
   {
     type: 'smuggling_run', riskTierRange: [2, 4], chainable: false, collateral: true,
     completionEvent: 'cargo.delivered (itemId==contrabandId) covertly',
-    rewardFormula: 'round(250 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 20) * slack)', taskTime: 20,
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 20,
     failureCondition: 'scanned with contraband OR timer; collateral forfeited on bust',
     constraints: { collateralPct: 0.25, repToLawFaction: -3 },
   },
   {
-    type: 'passenger_transport', riskTierRange: [0, 2], chainable: true,
+    type: 'passenger_transport', riskTierRange: [0, 4], chainable: true,
     completionEvent: 'dock.entered@dest',
-    rewardFormula: 'round(160 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 20) * slack)', taskTime: 20,
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 20,
     failureCondition: 'timer OR ship destroyed (passenger lost)',
     constraints: {},
   },
   {
-    type: 'recon_scan', riskTierRange: [1, 3], chainable: true,
+    type: 'recon_scan', riskTierRange: [0, 4], chainable: true,
     completionEvent: 'scan.completed (targetId in objective set)',
-    rewardFormula: 'round(140 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + scanTargets*0.25) * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + scanTargets*25) * slack)', taskTime: 'scanTargets*25',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 'scanTargets*25',
     failureCondition: 'timer OR scan-target despawns',
     constraints: { fValueIsScanTargets: true },
   },
   {
     // PQ-152.00 — long tow. Headline is TOW, not fly-there. Two solutions: keep the slag core
     // on the line into the yard, or sling it in with a throw / clean release.
-    type: 'tow_recovery', riskTierRange: [1, 3], chainable: true,
+    type: 'tow_recovery', riskTierRange: [0, 4], chainable: true,
     completionEvent: 'dock:docked@dest while latched (tow_in) OR massline:throw / clean release of the core (sling_in)',
-    rewardFormula: 'round(170 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 40) * slack)', taskTime: 40,
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 40,
     failureCondition: 'timer OR slag core destroyed',
     constraints: { physicalVerb: 'tow' },
   },
   {
     // PQ-152.00 — wrecking-ball demolition. Headline is KNOCK DOWN. Two solutions: put mass
     // through the tower, or cut it down with guns.
-    type: 'demolition', riskTierRange: [1, 3], chainable: true,
+    type: 'demolition', riskTierRange: [0, 4], chainable: true,
     completionEvent: 'tether:whipImpact / massline:throw on the tower (wrecking_ball) OR entity:killed (cut_down)',
-    rewardFormula: 'round(200 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 50) * slack)', taskTime: 50,
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 50,
     failureCondition: 'timer',
     constraints: { physicalVerb: 'knock_down', fValueIsTargetStrength: true },
   },
@@ -244,8 +248,8 @@ export const MISSION_TYPES = [
     // the field, or open a corridor then reel the group from stand-off.
     type: 'rescue_under_fire', riskTierRange: [2, 4], chainable: false,
     completionEvent: 'dock:docked@dest while latched to a pod (stage_tow) OR escorts down + tether:reel on a pod (corridor_pull)',
-    rewardFormula: 'round(210 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 70) * slack)', taskTime: 70,
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 70,
     failureCondition: 'timer OR all life pods destroyed',
     constraints: { physicalVerb: 'pull', fValueIsTargetStrength: true },
   },
@@ -1766,23 +1770,87 @@ export function validateOfferMix(mix = OFFER_MIX, types = MISSION_TYPES) {
   return { ok: errors.length === 0, errors };
 }
 
+// Generated by the station workload shares; authored-only types remain structural zero.
 export const OFFER_MIX = {
-  mining:       withPhysicalMix([3, 2, 2, 4, 2, 1, 1, 0, 1, 1], 3, 2, 1),
-  refinery:     withPhysicalMix([3, 2, 2, 4, 2, 1, 1, 0, 1, 1], 0, 0, 0),
-  fab:          withPhysicalMix([3, 2, 2, 2, 2, 1, 1, 0, 1, 1], 1, 3, 1),
-  trade_hub:    withPhysicalMix([4, 4, 2, 1, 1, 2, 1, 1, 3, 1], 0, 0, 0),
-  military:     withPhysicalMix([1, 1, 4, 0, 1, 2, 4, 0, 1, 2], 0, 0, 0),
-  research:     withPhysicalMix([2, 1, 1, 1, 2, 1, 1, 0, 1, 4], 1, 1, 2),
-  blackmarket:  withPhysicalMix([2, 1, 3, 2, 3, 1, 2, 2, 1, 2], 2, 2, 2),
-  // Charon's refinery remains an economic refinery; this mission-only profile gives its writ wall
-  // the intended hunter identity without changing commodity roles, station art, or facility access.
-  // Physical columns stay 0 so the hunter-ratio pin is not diluted.
-  bounty_board: withPhysicalMix([1, 0, 7, 0, 4, 1, 5, 1, 0, 3], 0, 0, 0),
-  // Tethys is the freight-and-front junction: cargo, trade, convoy, patrol, passenger, and recon
-  // work dominate its ordinary rolls while the physical station remains a normal trade hub.
-  // Physical columns stay 0 so the junction-ratio pin is not diluted.
-  contracts_hub: withPhysicalMix([5, 4, 2, 0, 1, 5, 3, 1, 3, 3], 0, 0, 0),
+  mining: withPhysicalMix([3,2,1,4,3,1,1,0,1,2], 4, 2, 1),
+  refinery: withPhysicalMix([4,4,1,2,4,1,1,0,1,1], 3, 1, 1),
+  fab: withPhysicalMix([3,3,1,1,3,1,1,0,1,2], 2, 4, 1),
+  trade_hub: withPhysicalMix([4,4,2,1,2,3,1,1,3,2], 2, 1, 1),
+  military: withPhysicalMix([1,1,4,0,2,3,4,0,1,3], 1, 2, 3),
+  research: withPhysicalMix([2,1,1,1,3,1,1,0,1,4], 1, 1, 2),
+  blackmarket: withPhysicalMix([2,1,3,1,3,1,2,4,1,2], 2, 2, 2),
+  bounty_board: withPhysicalMix([1,0,7,0,4,1,5,1,0,3], 0, 0, 0),
+  contracts_hub: withPhysicalMix([5,4,2,0,1,5,3,1,3,3], 0, 0, 0),
 };
+
+/**
+ * Offer history scaling (program-compass mid-game fix). A station's OFFER_MIX is the local
+ * identity; this table is the player's career overlay on top of it. Multipliers are applied to a
+ * type's weight after `offerMixWeight`, so an empty row (starter) is byte-identical to the
+ * shipped mix. Tiers are pure score bands computed by the missions system from durable history
+ * (completed contracts, sectors visited, trades, story beat, fields worked) — no wall time.
+ */
+export const OFFER_HISTORY_TIERS = Object.freeze([
+  Object.freeze({ id: 'starter', minScore: 0, label: 'First contracts' }),
+  Object.freeze({ id: 'working', minScore: 3, label: 'Working spacer' }),
+  Object.freeze({ id: 'established', minScore: 10, label: 'Established' }),
+  Object.freeze({ id: 'veteran', minScore: 24, label: 'Veteran' }),
+]);
+
+export const OFFER_HISTORY_MIX = Object.freeze({
+  starter: Object.freeze({}),
+  working: Object.freeze({
+    cargo_delivery: 0.8, bulk_trade: 0.85,
+    mining_quota: 1.15, salvage_retrieval: 1.2, bounty_hunt: 1.15, recon_scan: 1.1,
+  }),
+  established: Object.freeze({
+    cargo_delivery: 0.55, bulk_trade: 0.6,
+    mining_quota: 1.3, salvage_retrieval: 1.45, bounty_hunt: 1.5,
+    patrol_clear: 1.4, escort: 1.35, smuggling_run: 1.3, recon_scan: 1.2,
+  }),
+  veteran: Object.freeze({
+    cargo_delivery: 0.35, bulk_trade: 0.45,
+    mining_quota: 1.25, salvage_retrieval: 1.5, bounty_hunt: 1.8, patrol_clear: 1.7,
+    escort: 1.6, smuggling_run: 1.6, recon_scan: 1.3,
+    demolition: 1.4, rescue_under_fire: 1.4, tow_recovery: 1.3,
+  }),
+});
+
+/** Pure score→tier band. The score itself is computed by the owning system from durable state. */
+export function offerHistoryTierFor(score) {
+  const s = Number(score);
+  const value = Number.isFinite(s) ? Math.max(0, s) : 0;
+  let tier = OFFER_HISTORY_TIERS[0];
+  for (const candidate of OFFER_HISTORY_TIERS) {
+    if (value >= candidate.minScore) tier = candidate;
+  }
+  return tier.id;
+}
+
+/** Weight multiplier for one mission type at a history tier; 1 when the tier carries no opinion. */
+export function offerHistoryMultiplier(tierId, typeId) {
+  const row = OFFER_HISTORY_MIX[tierId];
+  if (!row || !typeId) return 1;
+  const mult = Number(row[typeId]);
+  return Number.isFinite(mult) && mult > 0 ? mult : 1;
+}
+
+/** Structural guard: every authored history override must name a real mission type. */
+export function validateOfferHistoryMix(mix = OFFER_HISTORY_MIX, types = MISSION_TYPES) {
+  const errors = [];
+  const known = new Set((types || []).map((t) => t && t.type).filter(Boolean));
+  for (const [tier, row] of Object.entries(mix || {})) {
+    if (!OFFER_HISTORY_TIERS.some((t) => t.id === tier)) {
+      errors.push(`unknown history tier ${tier}`);
+    }
+    for (const typeId of Object.keys(row || {})) {
+      if (!known.has(typeId)) errors.push(`${tier}: unknown mission type ${typeId}`);
+      const mult = Number(row[typeId]);
+      if (!(mult > 0)) errors.push(`${tier}.${typeId}: multiplier must be > 0`);
+    }
+  }
+  return { ok: errors.length === 0, errors };
+}
 
 // 8-beat story spine FSM.
 // cold_start.objective is longform spine copy for Mission Log / post-tutorial story tracker —

@@ -201,6 +201,7 @@ export const presentationOrchestrator = {
       this.bus.on('cargo:massSettled', (payload) => this._onMiningCargoMass(payload || {})),
       this.bus.on('cargo:full', (payload) => this._onMiningCargoFull(payload || {})),
       this.bus.on('fieldDepletion:changed', (payload) => this._onMiningFieldAftermath(payload || {})),
+      this.bus.on('field:regrown', (payload) => this._onMiningFieldRegrown(payload || {})),
       this.bus.on('drill:warn', (payload) => this._onMiningDrillWarning(payload || {})),
       this.bus.on('drill:start', () => { this._drillContactBand = null; }),
       this.bus.on('drill:scanPulse', (payload) => this._onMiningDrillScan(payload || {})),
@@ -1124,6 +1125,23 @@ export const presentationOrchestrator = {
       magnitude: Math.max(0, Number(payload.depleted) || 0),
       sequence: band,
       tags: [band, payload.sectorId].filter(Boolean),
+    });
+  },
+
+  /**
+   * A worked belt reopened a seam (world slow-clock regrowth). Reuse the existing field-memory cue
+   * with a distinct sequence so the dust reads as "the field is back" without new HUD chrome.
+   */
+  _onMiningFieldRegrown(payload) {
+    const band = fieldDepletionBand(payload.depleted);
+    this._emitCue('mining.field.aftermath', payload, {
+      sourceEvent: 'field:regrown',
+      sourceId: this.state.playerId,
+      targetId: payload.fieldId || null,
+      material: 'field',
+      magnitude: Math.max(1, Number(payload.rocks) || 1),
+      sequence: 'regrowth',
+      tags: ['regrowth', band, payload.sectorId].filter(Boolean),
     });
   },
 
