@@ -232,8 +232,11 @@ const CIVILIAN_VIOLENCE_RADIUS_WU = 300;
 const CIVILIAN_VIOLENCE_RADIUS_SQ = CIVILIAN_VIOLENCE_RADIUS_WU * CIVILIAN_VIOLENCE_RADIUS_WU;
 const CIVILIAN_ALARM_TTL_S = 5;
 const CIVILIAN_VIOLENCE_RING_CAP = 8;
-const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle', 'tug']);
-const CIVILIAN_ALARM_HOLD_ROLES = new Set(['miner', 'surveyor', 'tender', 'salvor']);
+const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle', 'tug', 'miner', 'prospector', 'tourist']);
+const CIVILIAN_ALARM_HOLD_ROLES = new Set(['surveyor', 'tender', 'salvor']);
+const CIVILIAN_HAULER_DUMP_ROLES = new Set(['hauler', 'shuttle', 'tanker', 'arclight']);
+const CIVILIAN_DISTRESS_RADIUS_WU = 1800;
+const CIVILIAN_DISTRESS_COOLDOWN_S = 3;
 const AMBUSH_LOADED_HAULER_COMMODITY_ID = 'cmdty_ore_iron';
 const AMBUSH_LOADED_HAULER_QTY = 16;
 const HAULER_SPILL_VEL_FRACTION = 0.45;
@@ -246,6 +249,21 @@ const CERES_LAW_RESPONSE_WASP_FITTINGS = Object.freeze(
   fittingsFromDefaultModules('ship_wasp', ['wpn_pulse_laser_s']),
 );
 const ASTEROID_BY_ID = new Map(ASTEROIDS.map((def) => [def.id, def]));
+
+export function isShipDisabled(entity, state = null) {
+  if (!entity || entity.alive === false || entity.type !== 'ship') return false;
+  const data = entity.data || {};
+  if (data.disabled || data.derelict || data.engineDead || data.deadInWater || data.surrendered) return true;
+  if (entity.flags && (entity.flags.disabled || entity.flags.derelict)) return true;
+  if (data.hp != null && data.maxHp && data.hp <= data.maxHp * 0.25) return true;
+  if (entity.hull != null && entity.hullMax && entity.hull <= entity.hullMax * 0.25) return true;
+  const combat = (state && state.combat) || null;
+  const runtime = combat && combat.entities && combat.entities[String(entity.id)];
+  const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+  if (drive && (drive.destroyed === true || drive.effectiveDisabled === true)) return true;
+  return false;
+}
+
 
 // Causal traffic roles (spec §12.1). Each role is a distinct, READABLE behavior — not a combat-AI
 // skin. The hull + speed + archetype encode the role's identity; the update loop encodes its
@@ -353,6 +371,8 @@ const TRAFFIC_ROLES = {
               label: 'Volatiles Tanker', docks: true, trades: true },
   customs:    { ship: 'ship_wasp',     team: 2, speed: 40, archetype: 'passive', weight: 2,
               label: 'Inspection Cutter', docks: true, trades: false },
+  tourist:    { ship: 'ship_drifter',  team: 2, speed: 24, archetype: 'passive', weight: 4,
+              label: 'Sightseer', docks: true, trades: false, loiters: true },
 };
 
 function lawPresenceRole(role) {
@@ -1056,6 +1076,7 @@ export function trafficRoleMixForSector(sector, state = null) {
   // PQ-193.08: tanker and inspection cutter are the same fixture doctrine.
   out.tanker = 0;
   out.customs = 0;
+  out.tourist = (sec.scenic || sec.tourism) ? 4 : 0;
   return state ? regionalTrafficRoleWeights(state, sec.id, out) : out;
 }
 function pickRole(roleWeights, rng) {
@@ -3568,6 +3589,11 @@ export const traffic = {
       ent.data.scanLabel = 'EXPRESS LINER · HITCHABLE';
       if (!ent.data.trafficLabel) ent.data.trafficLabel = 'Express Liner';
     }
+    if (role === 'tourist') {
+      ent.data.tourist = true;
+      if (!ent.data.trafficLabel) ent.data.trafficLabel = 'Sightseer';
+    }
+    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     if (ent.data.worldRecordId) return;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const qx = ent.pos ? Math.round(ent.pos.x / 4) * 4 : 0;
@@ -3633,6 +3659,8 @@ export const traffic = {
       } else {
         e.data.cargoManifest = manifest;
       }
+      const cargoDumped = !!d.cargoDumped;
+      const carrying = cargoDumped ? false : (d.carrying !== undefined ? !!d.carrying : !!(manifest && manifest.totalQty > 0));
       const rec = {
         id: e.id,
         role,
@@ -3642,6 +3670,12 @@ export const traffic = {
         orbitPhase: this._rng() * Math.PI * 2,
         dockSeq: d.freightDockSeq | 0,
         manifest,
+        carrying,
+        fleeingWithLoad: !!d.fleeingWithLoad,
+        scenicBodyId: d.scenicBodyId || null,
+        assistingShipId: d.assistingShipId || null,
+        cargoDumped,
+        civilianReaction: d.civilianReaction || null,
       };
       if (role === 'express') {
         this._stampTrafficDurableIdentity(e, sectorId, role, TRAFFIC_ROLES.express, adoptIdx);
@@ -3917,14 +3951,23 @@ export const traffic = {
       if (hasLivePlayer && entityNeedsAiThink(e, state) === false) continue;
       // Nearby gunfire: civilians change course before ordinary / world-site / job branches.
       // Job hulls are interrupted through npcJobsRuntime; traffic never writes their intent.
-      if (this._reactCivilianViolence(e, rec, stations, state)) continue;
+      if (this._reactCivilianViolence(e, rec, stations, state)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
       // One authored recurring passenger liner owns the existing express hull and V3 boost route.
       // Its passenger itinerary must consume the tick before the generic express/freight branch.
-      if (this._stepPassengerLinerService(e, rec, stations, dt)) continue;
+      if (this._stepPassengerLinerService(e, rec, stations, dt)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
       // One authored recurring courier owns a saved berth/departure timetable. It still delegates
       // actual transit to npcJobsRuntime, but traffic keeps its service state readable while that
       // job is live (or interrupted) instead of falling through to ambient random routing.
-      if (this._stepPriorityCourierService(e, rec, stations, dt)) continue;
+      if (this._stepPriorityCourierService(e, rec, stations, dt)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
       // PQ-014: when this hull carries a live NPC job, npcJobsRuntime owns its steering. Traffic
       // yields entirely (no setIntent) so there is exactly one intent writer per job hull per tick.
       if (e.data && e.data.jobId) continue;
@@ -3933,20 +3976,24 @@ export const traffic = {
 
       if (rec.worldSiteRoute) {
         this._stepWorldSiteRoute(e, rec, stations, dt, worldRecordIndex);
+        this._syncTrafficRecordToData(e, rec);
         continue;
       }
       if (rec.claimTravelRoute) {
         this._stepClaimTravelRoute(e, rec, stations, dt);
+        this._syncTrafficRecordToData(e, rec);
         continue;
       }
 
       // Role-specific behavior dispatch (spec §12.1). Each role has a distinct, readable behavior.
-      if (role.orbits) { this._stepOrbit(e, rec, stations, dt); continue; }       // patrol
-      if (role.flees) { this._stepFlee(e, rec, stations, state); continue; }       // pirate/raider
+      if (role.orbits) { this._stepOrbit(e, rec, stations, dt); this._syncTrafficRecordToData(e, rec); continue; }       // patrol
+      if (role.flees) { this._stepFlee(e, rec, stations, state); this._syncTrafficRecordToData(e, rec); continue; }       // pirate/raider
+      if (role.loiters || rec.role === 'tourist') { this._stepTourist(e, rec, stations, state, dt); this._syncTrafficRecordToData(e, rec); continue; } // tourist
       // Miners/escorts/haulers keep last intent on skipped ticks. Hostiles still plan every tick.
       if (!shouldAmbientHaulerPlan(state.tick, e, trafficPlanOpts)) continue;
-      if (role.seeks === 'asteroid') { this._stepMiner(e, rec, stations, state); continue; } // miner
-      if (role.escorts) { this._stepEscort(e, rec, list, state); continue; }       // convoy escort
+      if (role.seeks === 'asteroid') { this._stepMiner(e, rec, stations, state); this._syncTrafficRecordToData(e, rec); continue; } // miner
+      if (role.escorts) { this._stepEscort(e, rec, list, state); this._syncTrafficRecordToData(e, rec); continue; }       // convoy escort
+      if (rec.role === 'tug') { if (this._stepTug(e, rec, stations, state, dt)) { this._syncTrafficRecordToData(e, rec); continue; } } // tug assisting disabled ship
 
       // resolve current target (it may have despawned)
       let target = state.entities.get(rec.targetId);
@@ -3966,6 +4013,7 @@ export const traffic = {
       if (rec.waitT > 0) {
         rec.waitT -= dt;
         setIntent(e, 0, 0, false, false, null, e.rot);
+        this._syncTrafficRecordToData(e, rec);
         continue;
       }
 
@@ -3993,11 +4041,13 @@ export const traffic = {
             (state.world && state.world.currentSectorId) || 'unknown', rec.dockSeq | 0);
         }
         setIntent(e, 0, 0, false, false, null, aimAngle);
+        this._syncTrafficRecordToData(e, rec);
         continue;
       }
       // drive: face the target, thrust forward. moveZ=1 means forward along the nose.
       const expressBoost = !!(role.express && massline2Flag('hitchhiking'));
       setIntent(e, 0, 1, expressBoost, false, null, aimAngle);
+      this._syncTrafficRecordToData(e, rec);
       // V3 reads this intent and applies real thrust. Traffic never writes velocity, so a latched
       // player receives only the Rapier constraint pull and whatever momentum the liner earns.
     }
@@ -4183,6 +4233,9 @@ export const traffic = {
     }
     this._recordViolence(x, z, attackerId, victimId, Number.isFinite(state && state.simTime) ? state.simTime : 0);
     this._spillHaulerCargoFromViolence(victim, attacker);
+    if (victim) {
+      this._broadcastCivilianDistress(victim, attacker, 'combat_damage');
+    }
   },
 
   _combatAimedShipVictim(shooter, payload) {
@@ -4227,13 +4280,117 @@ export const traffic = {
       Number.isFinite(state && state.simTime) ? state.simTime : 0,
     );
     this._spillHaulerCargoFromViolence(victim, shooter);
+    if (victim) {
+      this._broadcastCivilianDistress(victim, shooter, 'combat_fire');
+    }
+  },
+
+  _findNearbyDisabledShip(state, tug, maxRadius = 1500) {
+    if (!state || !tug || !tug.pos) return null;
+    const maxR2 = maxRadius * maxRadius;
+    let best = null;
+    let bestDist2 = maxR2;
+    const checkCandidate = (candidate) => {
+      if (!candidate || candidate.id === tug.id || candidate.alive === false || candidate.type !== 'ship') return;
+      if (!candidate.pos) return;
+      const dx = candidate.pos.x - tug.pos.x;
+      const dz = candidate.pos.z - tug.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > maxR2 || d2 >= bestDist2) return;
+      if (isShipDisabled(candidate, state)) {
+        bestDist2 = d2;
+        best = candidate;
+      }
+    };
+    if (state.entityIndex || (state.entityList && state.entityList.length > 0)) {
+      forEachLivingWorldActor(state, checkCandidate);
+    } else if (state.entities && typeof state.entities.forEach === 'function') {
+      state.entities.forEach(checkCandidate);
+    }
+    return best;
+  },
+
+  _broadcastCivilianDistress(caller, threatEnt, cause = 'threat') {
+    if (!caller || !caller.pos) return null;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    const data = caller.data || (caller.data = {});
+    if (data.lastDistressSimT && (now - data.lastDistressSimT < CIVILIAN_DISTRESS_COOLDOWN_S)) {
+      return null;
+    }
+    data.lastDistressSimT = now;
+
+    const callerPos = entityPos(caller);
+    if (!callerPos) return null;
+    const threatPos = entityPos(threatEnt);
+    const radius = CIVILIAN_DISTRESS_RADIUS_WU;
+    const radiusSq = radius * radius;
+
+    const recipients = [];
+    let routedToPlayer = false;
+
+    const player = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    if (player && player.alive !== false && player.pos) {
+      const pdx = player.pos.x - callerPos.x;
+      const pdz = player.pos.z - callerPos.z;
+      if (pdx * pdx + pdz * pdz <= radiusSq) {
+        routedToPlayer = true;
+        recipients.push(player.id);
+      }
+    }
+
+    if (this.state && this.state.entities && typeof this.state.entities.forEach === 'function') {
+      this.state.entities.forEach((ent) => {
+        if (!ent || ent.id === caller.id || ent.alive === false || ent.type !== 'ship') return;
+        if (ent.id === (this.state && this.state.playerId)) return;
+        if (!ent.pos) return;
+        const dx = ent.pos.x - callerPos.x;
+        const dz = ent.pos.z - callerPos.z;
+        if (dx * dx + dz * dz <= radiusSq) {
+          recipients.push(ent.id);
+        }
+      });
+    }
+
+    const payload = {
+      callerId: caller.id,
+      callerRole: data.trafficRole || data.role || 'civilian',
+      callerName: data.trafficLabel || caller.name || 'Civilian Craft',
+      pos: { x: callerPos.x, z: callerPos.z },
+      threatId: threatEnt ? threatEnt.id : null,
+      cause,
+      radius,
+      routedToPlayer,
+      recipients,
+      simTime: now,
+    };
+
+    if (this.state && this.state.traffic) {
+      this.state.traffic.lastDistressCall = payload;
+    }
+
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('distress:call', payload);
+      if (routedToPlayer) {
+        this.bus.emit('comms:message', {
+          sender: payload.callerName,
+          channel: 'distress',
+          text: `MAYDAY: Under attack near (${Math.round(callerPos.x)}, ${Math.round(callerPos.z)})! Requesting immediate assistance!`,
+          callerId: caller.id,
+          pos: payload.pos,
+        });
+      }
+    }
+
+    return payload;
   },
 
   _civilianHaulerRole(entity, rec) {
     const role = (rec && rec.role)
       || (entity && entity.data && (entity.data.trafficRole || entity.data.jobKind || entity.data.role))
       || '';
-    if (CIVILIAN_ALARM_FLEE_ROLES.has(role)) return role;
+    if (CIVILIAN_HAULER_DUMP_ROLES.has(role)) return role;
     if (entity && entity.data && entity.data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT_ID) {
       return 'hauler';
     }
@@ -4259,7 +4416,25 @@ export const traffic = {
     if (data.violenceCargoSpilled === true) return null;
     const rec = this._trafficRecordFor(hauler);
     if (!this._civilianHaulerRole(hauler, rec)) return null;
-    const current = data.cargoManifest || (rec && rec.manifest) || null;
+    let current = data.cargoManifest || (rec && rec.manifest) || null;
+    if (!validCausalManifest(current)) {
+      if (data.cargo && typeof data.cargo === 'object') {
+        const lines = Object.entries(data.cargo)
+          .filter(([id, q]) => typeof id === 'string' && Number.isSafeInteger(q) && q > 0)
+          .map(([commodityId, qty]) => ({ commodityId, qty }));
+        if (lines.length > 0) {
+          const totalQty = lines.reduce((sum, l) => sum + l.qty, 0);
+          current = { manifestId: `manifest_${hauler.id}`, lines, totalQty };
+        }
+      }
+      if (!validCausalManifest(current) && (rec?.carrying || data.carrying)) {
+        current = {
+          manifestId: `manifest_${hauler.id}`,
+          lines: [{ commodityId: AMBUSH_LOADED_HAULER_COMMODITY_ID, qty: AMBUSH_LOADED_HAULER_QTY }],
+          totalQty: AMBUSH_LOADED_HAULER_QTY,
+        };
+      }
+    }
     if (!validCausalManifest(current)) return null;
     const line = current.lines.find((row) => row && row.qty > 0);
     if (!line) return null;
@@ -4282,6 +4457,15 @@ export const traffic = {
     }, this.helpers);
     if (!pod) return null;
     data.violenceCargoSpilled = true;
+    data.cargoDumped = true;
+    data.carrying = false;
+    if (rec) {
+      rec.cargoDumped = true;
+      rec.carrying = false;
+    }
+    if (data.cargo && data.cargo[line.commodityId] != null) {
+      data.cargo[line.commodityId] = Math.max(0, data.cargo[line.commodityId] - dump);
+    }
     const nextLines = current.lines
       .map((row) => {
         if (row !== line) return { ...row };
@@ -4355,7 +4539,7 @@ export const traffic = {
     for (let i = 0; i < ring.length; i++) {
       const row = ring[i];
       if (!row || now - row.t > CIVILIAN_ALARM_TTL_S) continue;
-      if (id === row.attackerId || id === row.victimId) continue;
+      if (id === row.attackerId) continue;
       const dx = pos.x - row.x;
       const dz = pos.z - row.z;
       const d2 = dx * dx + dz * dz;
@@ -4443,6 +4627,7 @@ export const traffic = {
     const threatEnt = hit.attackerId != null && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(hit.attackerId)
       : null;
+    this._broadcastCivilianDistress(e, threatEnt, 'threat_alarm');
     const threatPos = entityPos(threatEnt);
     const hx = threatPos ? threatPos.x : hit.x;
     const hz = threatPos ? threatPos.z : hit.z;
@@ -4480,13 +4665,96 @@ export const traffic = {
     if (!Number.isFinite(aim) || (dx === 0 && dz === 0)) {
       aim = ((hash32(e.id, 'civilian-alarm') >>> 0) / 4294967296) * Math.PI * 2;
     }
+
+    // Role & Class Behavioral Variety
+    if (roleName === 'miner' || roleName === 'ore_carrier' || roleName === 'prospector') {
+      const reaction = carrying ? 'flee_with_load' : 'flee_alarmed';
+      if (rec) {
+        rec.civilianReaction = reaction;
+        if (carrying) rec.fleeingWithLoad = true;
+      }
+      if (e.data) {
+        e.data.civilianReaction = reaction;
+        if (carrying) e.data.fleeingWithLoad = true;
+      }
+      if (stations && stations.length > 1 && rec && !rec.worldSiteRoute && !rec.claimTravelRoute) {
+        if (rec.violenceResumeTargetId == null) rec.violenceResumeTargetId = rec.targetId;
+        const dest = this._pickFleeStation(e, stations, aim, rec.targetId);
+        if (dest && dest.id !== rec.targetId) rec.targetId = dest.id;
+      }
+      setIntent(e, 0, 1, true, false, null, aim);
+      if (e.data && e.data.intent) e.data.intent.brake = false;
+      return true;
+    }
+
+    if (roleName === 'courier') {
+      const reaction = 'dodge_aggressive';
+      if (rec) rec.civilianReaction = reaction;
+      if (e.data) e.data.civilianReaction = reaction;
+      const jinkPhase = (now * 6) + (((e.id * 17) ^ 0x5a) % 31);
+      const lateralStrafe = Math.sin(jinkPhase) > 0 ? 1 : -1;
+      const jinkAim = aim + Math.sin(jinkPhase * 0.7) * 0.65;
+      setIntent(e, lateralStrafe, 1, true, false, null, jinkAim);
+      if (e.data && e.data.intent) e.data.intent.brake = false;
+      return true;
+    }
+
+    if (CIVILIAN_HAULER_DUMP_ROLES.has(roleName)) {
+      const reaction = 'dump_cargo';
+      if (rec) rec.civilianReaction = reaction;
+      if (e.data) e.data.civilianReaction = reaction;
+      this._spillHaulerCargoFromViolence(e, threatEnt);
+      if (stations && stations.length > 1 && rec && !rec.worldSiteRoute && !rec.claimTravelRoute) {
+        if (rec.violenceResumeTargetId == null) rec.violenceResumeTargetId = rec.targetId;
+        const dest = this._pickFleeStation(e, stations, aim, rec.targetId);
+        if (dest && dest.id !== rec.targetId) rec.targetId = dest.id;
+      }
+      setIntent(e, 0, 1, true, false, null, aim);
+      if (e.data && e.data.intent) e.data.intent.brake = false;
+      return true;
+    }
+
+    if (roleName === 'tug') {
+      const reaction = 'assist_disabled';
+      if (rec) rec.civilianReaction = reaction;
+      if (e.data) e.data.civilianReaction = reaction;
+      const disabled = this._findNearbyDisabledShip(state, e, 1500);
+      if (disabled && disabled.pos) {
+        if (rec) rec.assistingShipId = disabled.id;
+        if (e.data) e.data.assistingShipId = disabled.id;
+        const tdx = disabled.pos.x - (e.pos && e.pos.x || 0);
+        const tdz = disabled.pos.z - (e.pos && e.pos.z || 0);
+        const dist = Math.hypot(tdx, tdz);
+        if (dist < 60) {
+          setIntent(e, 0, 0, false, true, null, Math.atan2(tdz, tdx));
+          if (e.data && e.data.intent) e.data.intent.brake = true;
+        } else {
+          setIntent(e, 0, 1, false, false, null, Math.atan2(tdz, tdx));
+          if (e.data && e.data.intent) e.data.intent.brake = false;
+        }
+      } else {
+        setIntent(e, 0, 0, false, true, null, e.rot || 0);
+        if (e.data && e.data.intent) e.data.intent.brake = true;
+      }
+      return true;
+    }
+
+    if (roleName === 'tourist') {
+      const reaction = 'scenic_loiter';
+      if (rec) rec.civilianReaction = reaction;
+      if (e.data) e.data.civilianReaction = reaction;
+      setIntent(e, 0, 0, false, true, null, aim);
+      if (e.data && e.data.intent) e.data.intent.brake = true;
+      return true;
+    }
+
     if (doesFlee && stations && stations.length > 1 && !rec.worldSiteRoute && !rec.claimTravelRoute) {
       if (rec.violenceResumeTargetId == null) rec.violenceResumeTargetId = rec.targetId;
       const dest = this._pickFleeStation(e, stations, aim, rec.targetId);
       if (dest && dest.id !== rec.targetId) rec.targetId = dest.id;
     }
     setIntent(e, 0, 1, !carrying, false, null, aim);
-    if (e.data.intent) e.data.intent.brake = false;
+    if (e.data && e.data.intent) e.data.intent.brake = false;
     return true;
   },
 
@@ -4550,6 +4818,120 @@ export const traffic = {
       rec.carrying = true; rec.targetId = this._pickStation(stations).id; rec.waitT = 1.5; setIntent(e, 0, 0, false, false, null, e.rot); return;
     }
     setIntent(e, 0, 1, false, false, null, Math.atan2(rock.pos.z - e.pos.z, rock.pos.x - e.pos.x));
+  },
+
+  _pickScenicBody(state, stations) {
+    const world = state && state.world;
+    if (world) {
+      if (Array.isArray(world.planets) && world.planets.length > 0) {
+        const p = world.planets[Math.floor(this._rng() * world.planets.length)];
+        if (p && p.pos) return { id: p.id || 'planet_0', pos: p.pos, radius: p.radius || 400, name: p.name || 'Planet' };
+      }
+      if (Array.isArray(world.bodies) && world.bodies.length > 0) {
+        const b = world.bodies[Math.floor(this._rng() * world.bodies.length)];
+        if (b && b.pos) return { id: b.id || 'body_0', pos: b.pos, radius: b.radius || 300, name: b.name || 'Celestial Body' };
+      }
+      if (Array.isArray(world.pois) && world.pois.length > 0) {
+        const scenicPois = world.pois.filter((p) => p && p.type && (p.type === 'anomaly' || p.type === 'beacon' || p.type === 'colony'));
+        if (scenicPois.length > 0) {
+          const poi = scenicPois[Math.floor(this._rng() * scenicPois.length)];
+          if (poi && poi.pos) return { id: poi.id, pos: poi.pos, radius: 150, name: poi.name || 'Scenic POI' };
+        }
+      }
+    }
+    if (Array.isArray(stations) && stations.length > 0) {
+      const scenicStation = stations.find((s) => s && (s.scenic || s.tourism || s.type === 'research' || s.size === 'L')) || stations[0];
+      if (scenicStation && scenicStation.pos) {
+        return { id: scenicStation.id, pos: scenicStation.pos, radius: 200, name: scenicStation.name || 'Scenic Station' };
+      }
+    }
+    return null;
+  },
+
+  _stepTourist(e, rec, stations, state, dt) {
+    if (!e || !e.pos) return;
+    let target = null;
+    if (rec.scenicBodyId && state.entities && typeof state.entities.get === 'function') {
+      target = state.entities.get(rec.scenicBodyId);
+    }
+    if ((!target || target.alive === false) && !rec.scenicPos) {
+      const body = this._pickScenicBody(state, stations);
+      if (body) {
+        rec.scenicBodyId = body.id;
+        rec.scenicPos = body.pos;
+        rec.scenicRadius = body.radius || 250;
+        if (e.data) {
+          e.data.scenicBodyId = body.id;
+          e.data.scenicPos = body.pos;
+        }
+      }
+    }
+    const tPos = (target && target.pos) || rec.scenicPos || (stations && stations[0] && stations[0].pos);
+    if (!tPos) {
+      setIntent(e, 0, 0, false, false, null, e.rot || 0);
+      return;
+    }
+    const dx = tPos.x - e.pos.x;
+    const dz = tPos.z - e.pos.z;
+    const dist = Math.hypot(dx, dz);
+    const loiterR = rec.scenicRadius || 250;
+    if (dist > loiterR + 100) {
+      const aim = Math.atan2(dz, dx);
+      setIntent(e, 0, 0.8, false, false, null, aim);
+    } else {
+      rec.orbitPhase = (rec.orbitPhase || 0) + dt * 0.15;
+      const tx = tPos.x + Math.cos(rec.orbitPhase) * loiterR;
+      const tz = tPos.z + Math.sin(rec.orbitPhase) * loiterR;
+      const aim = Math.atan2(tz - e.pos.z, tx - e.pos.x);
+      setIntent(e, 0, 0.4, false, false, null, aim);
+    }
+  },
+
+  _stepTug(e, rec, stations, state, dt) {
+    if (!e || !e.pos) return false;
+    let disabled = null;
+    if (rec.assistingShipId && state.entities && typeof state.entities.get === 'function') {
+      const candidate = state.entities.get(rec.assistingShipId);
+      if (candidate && candidate.alive !== false && isShipDisabled(candidate, state)) {
+        disabled = candidate;
+      }
+    }
+    if (!disabled) {
+      disabled = this._findNearbyDisabledShip(state, e, 1500);
+    }
+    if (!disabled || !disabled.pos) {
+      rec.assistingShipId = null;
+      if (e.data) e.data.assistingShipId = null;
+      return false;
+    }
+    rec.assistingShipId = disabled.id;
+    if (e.data) e.data.assistingShipId = disabled.id;
+    const dx = disabled.pos.x - e.pos.x;
+    const dz = disabled.pos.z - e.pos.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist < 60) {
+      rec.civilianReaction = 'assist_disabled';
+      if (e.data) e.data.civilianReaction = 'assist_disabled';
+      setIntent(e, 0, 0, false, true, null, Math.atan2(dz, dx));
+      if (e.data && e.data.intent) e.data.intent.brake = true;
+    } else {
+      rec.civilianReaction = 'assist_disabled';
+      if (e.data) e.data.civilianReaction = 'assist_disabled';
+      setIntent(e, 0, 0.8, false, false, null, Math.atan2(dz, dx));
+      if (e.data && e.data.intent) e.data.intent.brake = false;
+    }
+    return true;
+  },
+
+  _syncTrafficRecordToData(e, rec) {
+    if (!e || !e.data || !rec) return;
+    const d = e.data;
+    d.carrying = !!rec.carrying;
+    d.fleeingWithLoad = !!rec.fleeingWithLoad;
+    d.scenicBodyId = rec.scenicBodyId || null;
+    d.assistingShipId = rec.assistingShipId || null;
+    d.cargoDumped = !!rec.cargoDumped;
+    d.civilianReaction = rec.civilianReaction || null;
   },
 
   _resolveAsteroid(state, id) {
