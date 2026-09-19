@@ -40,7 +40,7 @@ import { masslineImpacts } from '../src/systems/masslineImpacts.js';
 import { masslineThrow } from '../src/systems/masslineThrow.js';
 import { masslineSnares } from '../src/systems/masslineSnares.js';
 import { masslineThreats } from '../src/systems/masslineThreats.js';
-import { tensionDirector } from '../src/systems/tensionDirector.js';
+import { tensionDirector, tensionSuspensionReason } from '../src/systems/tensionDirector.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { aiEncounter } from '../src/systems/aiEncounter.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
@@ -150,6 +150,12 @@ const sim = createSimulation({
 const { state, bus, registry } = sim;
 
 state.mode = 'flight';
+// Non-stranger archetypes opt out of the tutorial rail through the game's own setting: an
+// unfinished rail holds the tension director's tutorial suspension for the whole session, and
+// the pilots (except stranger, which follows the rail) never complete its beats. This must be
+// the setting — replacing state.onboarding with a minimal object would strip the beat fields
+// the onboarding system owns.
+if (archetype !== 'stranger') state.settings.gameplay.tutorialHints = false;
 // Production feature profile (registry parity): the momentum-kill beat needs the massline
 // impact-damage + tumble flags the browser boot seeds from the production profile.
 state.settings.gameplay.runtimeProfile = 'production';
@@ -305,7 +311,9 @@ while (state.simTime < targetSimSeconds && iterations < maxIterations) {
     const p = state.entities.get(state.playerId);
     const credits = state.player.credits;
     const rate = Math.round((Date.now() - startedWall) / 1000);
-    log(`h${hour}: credits=${credits} hull=${p ? Math.round(p.hull || 0) : '?'} pos=(${Math.round(p ? p.pos.x : 0)},${Math.round(p ? p.pos.z : 0)}) wall=${rate}s`);
+    // Drama-system visibility: the compass should always know WHY tension/chronicler are quiet.
+    const tdSuspend = tensionSuspensionReason(state);
+    log(`h${hour}: credits=${credits} hull=${p ? Math.round(p.hull || 0) : '?'} pos=(${Math.round(p ? p.pos.x : 0)},${Math.round(p ? p.pos.z : 0)}) wall=${rate}s${tdSuspend ? ` tdSuspend=${tdSuspend}` : ' td=live'}`);
   }
 }
 
