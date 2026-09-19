@@ -6,9 +6,6 @@
 // paced, quiet after spending, never during docking or protected tutorial beats, never within
 // 30 s of the last meaningful encounter, never two combat shapes at once.
 //
-// Optional session layer: systems/tensionDirector.js supplies a leased pacing policy.
-// It changes cadence/selection only; all authored gates, quotas, caps and live scripts below remain.
-//
 // Layers (each independently testable):
 //   1. PLANNER (pure, exported): planEncounters(seed, sectorId, dayIndex, zones) — everything
 //      derives from mulberry32(hash32(seed, sectorId, dayIndex)); same inputs → same schedule.
@@ -43,9 +40,6 @@
 // Additive + guarded: no zones → nothing schedules; missing helpers → shapes no-op cleanly.
 // factionId is READABILITY only; hostility is team/passive/lawful/context (scanner + aiPorts).
 
-import {
-  readTensionPolicy, tensionAccrualScale, tensionCandidateRank, tensionPacingBlockReason,
-} from '../ai/tensionPolicy.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
@@ -531,8 +525,8 @@ export const encounterDirector = {
       (((state.player && state.player.bounty) | 0) > 0 ? 0.25 : 0) + ecologyDanger * 0.45;
     const civilRate =
       0.35 + sec * 0.45 + (zone && CIVIL_ZONE_TYPES.has(zone.type) ? 0.35 : 0);
-    dir.pressure.combat = Math.min(POOL_MAX, dir.pressure.combat + combatRate * step * tensionAccrualScale(state, 'combat'));
-    dir.pressure.civilian = Math.min(POOL_MAX, dir.pressure.civilian + civilRate * step * tensionAccrualScale(state, 'civilian'));
+    dir.pressure.combat = Math.min(POOL_MAX, dir.pressure.combat + combatRate * step);
+    dir.pressure.civilian = Math.min(POOL_MAX, dir.pressure.civilian + civilRate * step);
   },
 
   // ═══ THE PACING GATE (fires at most one due item per 1 Hz beat) ═══════════════════════════════
@@ -545,10 +539,7 @@ export const encounterDirector = {
     let dueBest = Infinity;
     for (let i = 0; i < dir.pending.length; i++) {
       const it = dir.pending[i];
-      if (it.dueAt <= now) {
-        const rank = tensionCandidateRank(state, it, ENCOUNTERS[it.shapeId], now);
-        if (rank < dueBest) { dueBest = rank; dueIdx = i; }
-      }
+      if (it.dueAt <= now && it.dueAt < dueBest) { dueBest = it.dueAt; dueIdx = i; }
     }
     if (dueIdx < 0) return;
     const item = dir.pending[dueIdx];
@@ -3319,16 +3310,6 @@ export function advanceSessionRhythm(dir, state, now) {
     && SESSION_RHYTHM_PHASES.includes(host.sessionRhythm.phase)
     ? host.sessionRhythm
     : null;
-  // The session owner publishes an expiring read-only policy. This owner alone writes
-  // sessionRhythm. With no valid policy, the original standalone rhythm remains intact.
-  const tension = readTensionPolicy(state, t);
-  if (tension) {
-    if (!current || current.phase !== tension.rhythmPhase) {
-      return writeSessionRhythm(host, tension.rhythmPhase, t, current && current.phase);
-    }
-    current.dwellS = Math.max(0, t - (Number.isFinite(current.enteredAt) ? current.enteredAt : t));
-    return { ...current, changed: false, previous: current.phase };
-  }
   const playerDocked = isDocked(state);
   if (!current) {
     return writeSessionRhythm(host, playerDocked ? 'work' : 'travel', t, null);
@@ -3370,8 +3351,6 @@ export function advanceSessionRhythm(dir, state, now) {
 export function encounterPacingBlockReason(dir, state, shape, now) {
   if (isDocked(state)) return 'docked';
   if (isTutorialActive(state)) return 'tutorial';
-  const tensionReason = tensionPacingBlockReason(dir, state, shape, now);
-  if (tensionReason) return tensionReason;
   const rhythmReason = sessionRhythmBlockReason(dir && dir.sessionRhythm && dir.sessionRhythm.phase, shape);
   if (rhythmReason) return rhythmReason;
   if (now < (dir.cooldowns[shape.id] || 0)) return 'cooldown';

@@ -1,0 +1,9 @@
+(node:2107) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+hunter/4242: 10h, 551 transitions, 119 combat spawns; repeat+checkpoint=true
+hunter/8008: 10h, 550 transitions, 119 combat spawns; repeat+checkpoint=true
+prospector/4242: 10h, 490 transitions, 108 combat spawns; repeat+checkpoint=true
+prospector/8008: 10h, 487 transitions, 108 combat spawns; repeat+checkpoint=true
+improviser/4242: 10h, 493 transitions, 140 combat spawns; repeat+checkpoint=true
+improviser/8008: 10h, 496 transitions, 141 combat spawns; repeat+checkpoint=true
+Wrote deterministic JSON + CSV traces to /mnt/data/spaceface-tension-director/evidence/ten-hour

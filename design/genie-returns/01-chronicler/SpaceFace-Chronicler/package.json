@@ -1,0 +1,15 @@
+{
+  "name": "spaceface-chronicler-delivery",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone delivery harness; do not replace SpaceFace's package.json",
+  "scripts": {
+    "test": "node repo/scripts/test-chronicler.mjs && node --test tests/install.test.mjs",
+    "demo": "node repo/scripts/demo-chronicler.mjs",
+    "soak": "node repo/scripts/soak-chronicler.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

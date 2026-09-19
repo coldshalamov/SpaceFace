@@ -1,0 +1,29 @@
+{
+  "schema": "spaceface.tension.validation.v1",
+  "node": "v22.16.0",
+  "platform": "linux-x64",
+  "tests": {
+    "passed": 59,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "fixture": {
+    "evidenceClass": "focused-consumer-with-world-doubles",
+    "uniqueDirectedRuns": 6,
+    "legacyArms": 6,
+    "repeatedDirectedRunsWithCheckpoint": 6,
+    "hoursPerRun": 10,
+    "simulatedFixtureHours": 180,
+    "allRepeatCheckpointHashesEqual": true
+  },
+  "gameplayBrowserTested": false,
+  "productionWorldTested": false,
+  "githubWritesPerformed": false,
+  "runtimeSourceSHA256": {
+    "repo/src/ai/tensionWindow.js": "d0eef835367c05c6efa8709fae7b363612a3cedc957c27cb4bcb3815ea603967",
+    "repo/src/ai/tensionPolicy.js": "9272257f90f71119aae6ec285b4e1416c4b1bfa89dd6be6ac944238041b1f11c",
+    "repo/src/ai/tensionDirector.js": "98b1c53898763e4654a0cecef5bbf4f0e90d884e41a28f24fa9ea7f9975fedad",
+    "repo/src/systems/tensionDirector.js": "cdfd2480e715b8b5a95ba0d1f6ac9abfcf446caccdac2275ab5a5c04ef5434b6"
+  }
+}

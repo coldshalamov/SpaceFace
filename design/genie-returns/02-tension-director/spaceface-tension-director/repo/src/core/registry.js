@@ -144,8 +144,6 @@ import { contractClausesSystem } from '../systems/contractClauses.js'; // COLLAT
 import { moralTrapSystem } from '../systems/moralTrap.js';             // MORAL_TRAP_CONTRACTS: mid-run reveal + binary choice → distinct shipped consequences
 import { lossLedger } from '../systems/lossLedger.js';                 // BP-01.1 WRECK_PROVENANCE: event-sourced loss recorder (assetLost/outpostRaided → ring buffer + wreck tag)
 import { provenanceLedger } from '../systems/provenanceLedger.js';     // J10 Footprint: event-sourced act→incident→standing consequence chains
-import { createChronicler } from '../systems/chronicler.js';           // Genie 01: world memory — causal stories, news, legends (design/genie-returns/01-chronicler)
-import { isRunSealed } from './runSeal.js';
 import { factionPresence } from '../systems/factionPresence.js';       // Depth Program K1: five additive faction presences + service/boarding seams
 import { bandRadio } from '../systems/bandRadio.js';                   // Depth Program A1: deterministic in-flight radio/ticker state
 import { v2FlavorRuntime } from '../systems/v2FlavorRuntime.js';       // Depth Program V2 physical-carrier flavor reachability
@@ -173,13 +171,6 @@ import { applyFeatureConfigToMaps } from '../data/featureFlags.js';
 import { bindRuntimeToState } from '../runtime/createAuthoritativeRuntime.js';
 import { partitionUpdateSystems, updateQueueForThisStep } from './catchupPolicy.js';
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
-
-// Genie 01: one campaign-gated Chronicler per GameState. Crucible/lab runs are run-sealed and
-// never chronicled. The module's default singleton export is for standalone tooling — never
-// import both in the same runtime.
-const chronicler = createChronicler({
-  shouldObserve: (state) => !isRunSealed(state),
-});
 
 /**
  * Teardown dependencies are expressed as [dependent, owner] pairs. Dependents release their
@@ -427,7 +418,6 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['intervention', intervention],
     ['lossLedger', lossLedger],
     ['provenanceLedger', provenanceLedger],
-    ['chronicler', chronicler],
     ['factionPresence', factionPresence],
     ['spawnBudget', spawnBudget],
     ['world', world],

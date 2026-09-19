@@ -1,0 +1,2288 @@
+diff --git a/scripts/demo-chronicler.mjs b/scripts/demo-chronicler.mjs
+new file mode 100644
+--- /dev/null
++++ b/scripts/demo-chronicler.mjs
+@@ -0,0 +1,47 @@
++/** Fixed-seed demonstration. Synthetic facts, real packet event bus, real production module. */
++import assert from 'node:assert/strict';
++import { harness, chain } from '../tests/chronicler/harness.mjs';
++
++const h = harness({}, 4242);
++chain(h); h.step(13);
++const connected = h.system.query({ completeOnly: true })[0];
++assert.equal(connected?.complete, true);
++for (const [t, transition] of [[20, 'encountered'], [30, 'fled'], [240, 'returned'], [260, 'defeated']]) {
++  h.emit(t, 'aceMemory:transition', { aceId: 'iona-demo', aceName: 'Iona Voss', transition }); h.step(t + 3);
++}
++for (const [i, name] of ['Quiet Meridian', 'Peregrine', 'Tin Saint'].entries()) {
++  const t = 300 + i * 30;
++  h.emit(t, 'distress:rescued', { id: `rescue-${i}`, name, rescuerId: 1 }); h.step(t + 3);
++}
++h.step(3613);
++const recall = h.system.requestRecall({ context: 'dock', stationId: 'station_helios_dock', sectorId: 'helios' });
++assert.ok(recall); assert.match(recall.text, /sim-hour/);
++const saved = h.system.serialize(); h.system.deserialize(saved);
++assert.deepEqual(h.system.serialize(), saved);
++
++// This second run deliberately lacks source-tagged inventory and sale receipts.
++const native = harness({}, 4242); chain(native, { through: 4 });
++native.emit(10, 'economy:tradeCompleted', {
++  stationId: 'station_helios_dock', commodityId: 'cmdty_salvage', side: 'sell', qty: 4, total: 240,
++});
++native.step(13);
++assert.equal(native.system.query({ completeOnly: true }).length, 0);
++const result = {
++  fixture: 'Synthetic producer receipts; not a full-game playthrough', seed: 4242,
++  headline: h.events('news:publish')[0], connectedStory: connected,
++  aceSaga: h.system.query({ kind: 'ace_saga' })[0], legends: h.system.getLegends(),
++  stationRecall: recall,
++  nativeOnly: { completeChains: 0, stories: native.system.query() },
++  saveRoundTripExact: true, diagnostics: h.system.diagnostics(),
++};
++if (process.argv.includes('--json')) console.log(JSON.stringify(result, null, 2));
++else {
++  console.log('SPACEFACE / THE CHRONICLER — fixed-seed fixture 4242\n');
++  console.log('NEWS\n' + result.headline.text + '\n');
++  console.log('PROVEN CAUSAL PATH\n' + connected.milestones.join(' → ') + '\n');
++  console.log('RIVAL MEMORY\n' + result.aceSaga.summary + '\n');
++  console.log('LEGEND\n' + result.legends.map(l => `${l.title}: ${l.text}`).join('\n') + '\n');
++  console.log('ONE SIM-HOUR LATER, AT THE STATION\n' + recall.text + '\n');
++  console.log('TRUTHFUL FAILURE\nNative salvage completion + an unsourced trade remain separate; complete chains: 0.\n');
++  console.log('SAVE / RESTORE\nExact round trip. This demonstrates the module, not a running SpaceFace integration.');
++}
+diff --git a/scripts/soak-chronicler.mjs b/scripts/soak-chronicler.mjs
+new file mode 100644
+--- /dev/null
++++ b/scripts/soak-chronicler.mjs
+@@ -0,0 +1,155 @@
++/** Module-only synthetic soak, fixed-step replay and mid-inbox save/restore comparison.
++ * Wall time is measured only in this harness. The simulation module never sees it.
++ */
++import { createHash } from 'node:crypto';
++import { performance } from 'node:perf_hooks';
++import { spawnSync } from 'node:child_process';
++import { writeFileSync } from 'node:fs';
++import { createChronicler } from '../src/systems/chronicler.js';
++import { createBus, OUTPUTS, receipts } from '../tests/chronicler/harness.mjs';
++const args = Object.fromEntries(process.argv.slice(2).map(a => {
++  const i = a.indexOf('='); return i < 0 ? [a, true] : [a.slice(0, i), a.slice(i + 1)];
++}));
++const hours = Number(args['--hours'] || 63);
++const seeds = String(args['--seeds'] || '4242,8008').split(',').map(Number);
++if (!Number.isFinite(hours) || hours <= 0 || hours > 168 || seeds.some(s => !Number.isSafeInteger(s))) {
++  throw new Error('Use --hours=0.1..168 --seeds=4242,8008 [--out=report.json]');
++}
++const totalTicks = Math.round(hours * 3600 * 60);
++function hash(s) { return createHash('sha256').update(s).digest('hex'); }
++function seeded(seed) {
++  let x = seed >>> 0 || 1;
++  return () => { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; return x >>> 0; };
++}
++function tapeFor(seed) {
++  const pick = seeded(seed), tape = [];
++  for (let episode = 0, tick = 60; tick < totalTicks - 30 * 60; episode++, tick += 180 * 60) {
++    const suffix = `-${seed}-${episode}`;
++    let packets;
++    switch (pick() % 8) {
++      case 0: packets = receipts(suffix).map((p, i) => [tick + [0, 0, 0, 3, 8, 15, 23][i] * 60, ...p]); break;
++      case 1: packets = receipts(suffix).slice(0, 4).map((p, i) => [tick + (i === 3 ? 3 * 60 : 0), ...p]); break;
++      case 2: packets = ['fled', 'returned', 'defeated'].map((transition, i) => [tick + i * 7 * 60,
++        'aceMemory:transition', { aceId: `ace${suffix}`, aceName: `Voss ${episode}`, transition }]); break;
++      case 3: packets = [[tick, 'distress:rescued', { id: `rescue${suffix}`, name: `Courier ${episode}` }]]; break;
++      case 4: packets = [[tick, 'heat:changed', { level: 2, value: .3, previousLevel: 0 }],
++        [tick + 5 * 60, 'heat:changed', { level: 4, value: .7, previousLevel: 2 }],
++        [tick + 20 * 60, 'heat:changed', { level: 0, value: 0, previousLevel: 4 }]]; break;
++      case 5: packets = [[tick, 'economy:tradeCompleted', { receiptId: `untraced${suffix}`, side: 'sell',
++        stationId: 'station_helios_dock', commodityId: 'cmdty_salvage', qty: 3, total: 3000 }]]; break;
++      case 6: packets = receipts(suffix).slice(0, 2).map(([event, p]) => [tick, event, { ...p, killerId: 9,
++        ...(p.presentation ? { presentation: { ...p.presentation, playerCaused: false } } : {}) }]); break;
++      default: packets = [[tick, 'salvage:reactorVented', { wreckId: `reactor${suffix}` }],
++        [tick, 'aftermath:causeRecorded', { fingerprint: `cause${suffix}`, consequenceKind: 'shipping shortage' }],
++        [tick + 8 * 60, 'aftermath:remedied', { fingerprint: `cause${suffix}`, consequenceKind: 'shipping shortage', missionId: `mission${suffix}` }]];
++    }
++    for (const p of packets) tape.push(p);
++    // Repeated receipt delivery is realistic; it must not duplicate facts, quantities or legends.
++    if (episode % 5 === 0) tape.push(structuredClone(packets[0]));
++  }
++  return tape.sort((a, b) => a[0] - b[0]);
++}
++function percentile(values, fraction) { return values.length ? values[Math.min(values.length - 1, Math.floor(values.length * fraction))] : 0; }
++function run(tape, seed, restore) {
++  const bus = createBus(), outputHash = createHash('sha256');
++  const state = { simTime: 0, tick: 0, playerId: 1, meta: { seed }, entities: new Map(),
++    world: { currentSectorId: 'helios', activeSector: { name: 'Helios' } },
++    rng: () => { throw new Error('Unexpected gameplay RNG consumption'); } };
++  const counts = Object.fromEntries(OUTPUTS.map(e => [e, 0])); let completeAnnouncements = 0;
++  for (const event of OUTPUTS) bus.on(event, payload => {
++    counts[event]++; if (event === 'chronicler:story' && payload.complete) completeAnnouncements++;
++    outputHash.update(JSON.stringify([state.tick, event, payload]) + '\n');
++  });
++  let publishPasses = 0;
++  function install() {
++    const instance = createChronicler().init({ state, bus });
++    const publish = instance._publish;
++    instance._publish = function (...args) { publishPasses++; return publish.apply(this, args); };
++    return instance;
++  }
++  let system = install();
++  const splitTick = tape.find(p => p[0] >= Math.floor(totalTicks / 2))?.[0] || Math.floor(totalTicks / 2);
++  let input = 0, maxBytes = 0, maxStories = 0, maxFacts = 0, maxPending = 0, maxSeen = 0;
++  let checkpointPending = 0, samples = 0, activeSteps = 0;
++  const timings = [], start = performance.now();
++  for (let tick = 0; tick <= totalTicks; tick++) {
++    state.tick = tick; state.simTime = tick / 60;
++    let active = false;
++    while (input < tape.length && tape[input][0] === tick) {
++      const [, event, p] = tape[input++]; bus.emit(event, p); active = true;
++    }
++    if (tick === splitTick && restore) {
++      const snapshot = system.serialize(); checkpointPending = snapshot.pending.length;
++      system.destroy(); state.chronicler = JSON.parse(JSON.stringify(snapshot));
++      system = install();
++    }
++    if (active) {
++      maxPending = Math.max(maxPending, state.chronicler.pending.length);
++      const before = performance.now(); system.update(1 / 60, state);
++      timings.push(performance.now() - before); activeSteps++;
++      maxStories = Math.max(maxStories, state.chronicler.stories.length);
++      maxFacts = Math.max(maxFacts, state.chronicler.stories.reduce((n, s) => n + s.nodes.length, 0));
++      maxSeen = Math.max(maxSeen, state.chronicler.seen.length);
++      if (activeSteps % 64 === 0) { maxBytes = Math.max(maxBytes, Buffer.byteLength(JSON.stringify(system.serialize()))); samples++; }
++    } else system.update(1 / 60, state);
++  }
++  const final = JSON.stringify(system.serialize());
++  maxBytes = Math.max(maxBytes, Buffer.byteLength(final)); samples++;
++  const diagnostics = system.diagnostics(); timings.sort((a, b) => a - b);
++  for (const story of state.chronicler.stories) {
++    if (story.nodes.length > diagnostics.config.maxFactsPerStory) throw new Error('Unbounded story');
++    const ids = new Set(story.nodes.map(f => f.id));
++    if (story.edges.some(e => !ids.has(e.from) || !ids.has(e.to))) throw new Error('Dangling edge');
++  }
++  if (maxStories > diagnostics.config.maxStories || maxPending > diagnostics.config.maxPending
++      || maxSeen > diagnostics.config.maxSeen) throw new Error('Retention bound exceeded');
++  return {
++    mode: restore ? 'mid-inbox-save-restore' : 'uninterrupted', seed, simulatedHours: hours,
++    updateCalls: totalTicks + 1, inputsDelivered: input, outputCounts: counts, completeAnnouncements,
++    checkpoint: restore ? { tick: splitTick, pendingFacts: checkpointPending } : null,
++    snapshotSha256: hash(final), outputSha256: outputHash.digest('hex'),
++    retention: { peakStories: maxStories, peakFacts: maxFacts, peakPending: maxPending,
++      peakSeen: maxSeen, sampledMaxSnapshotBytes: maxBytes, snapshotSamples: samples },
++    diagnostics,
++    measurements: { wallSeconds: (performance.now() - start) / 1000, activeSteps, publishPasses,
++      activeStepMedianMs: percentile(timings, .5), activeStepP95Ms: percentile(timings, .95),
++      activeStepMaxMs: timings.at(-1) || 0 },
++  };
++}
++const results = [];
++for (const seed of seeds) {
++  // Isolate seeds so this stress fixture does not accumulate four large V8 heaps/JIT profiles.
++  // A seed still runs both uninterrupted and restored trajectories in its own process.
++  if (seeds.length > 1) {
++    const child = spawnSync(process.execPath, [process.argv[1], `--hours=${hours}`, `--seeds=${seed}`],
++      { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
++    if (child.stderr) process.stderr.write(child.stderr);
++    if (child.error) throw child.error;
++    if (!child.stdout) throw new Error(`Soak child ${seed} returned no report (status ${child.status})`);
++    const report = JSON.parse(child.stdout);
++    results.push(...report.results);
++    if (child.status !== 0 || !report.passed) process.exitCode = 1;
++    if (typeof args['--out'] === 'string') writeFileSync(args['--out'] + '.partial', JSON.stringify(results, null, 2));
++    continue;
++  }
++  const tape = tapeFor(seed);
++  const continuous = run(tape, seed, false), resumed = run(tape, seed, true);
++  const expectedCompleteChains = tape.filter(p => p[1] === 'chronicler:provenance' && p[2].stage === 'law').length;
++  const allSuppliedChainsConnected = continuous.completeAnnouncements === expectedCompleteChains
++    && resumed.completeAnnouncements === expectedCompleteChains;
++  const exactState = continuous.snapshotSha256 === resumed.snapshotSha256;
++  const exactOutputs = continuous.outputSha256 === resumed.outputSha256;
++  results.push({ seed, exactState, exactOutputs, expectedCompleteChains, allSuppliedChainsConnected, continuous, resumed });
++  console.error(`seed ${seed}: state=${exactState}, emissions=${exactOutputs}, ${continuous.updateCalls} ticks/run`);
++  if (!exactState || !exactOutputs || !allSuppliedChainsConnected) process.exitCode = 1;
++  if (typeof args['--out'] === 'string') writeFileSync(args['--out'] + '.partial', JSON.stringify(results, null, 2));
++}
++const report = {
++  scope: 'MODULE-ONLY synthetic 60 Hz simulation with the real packet bus; NOT full-game/browser/FPS evidence',
++  node: process.version, platform: process.platform, arch: process.arch,
++  hoursPerRun: hours, seeds, results,
++  passed: results.every(r => r.exactState && r.exactOutputs && r.allSuppliedChainsConnected),
++};
++const json = JSON.stringify(report, null, 2) + '\n';
++if (typeof args['--out'] === 'string') writeFileSync(args['--out'], json);
++console.log(json);
+diff --git a/scripts/test-chronicler.mjs b/scripts/test-chronicler.mjs
+new file mode 100644
+--- /dev/null
++++ b/scripts/test-chronicler.mjs
+@@ -0,0 +1,8 @@
++import { readdirSync } from 'node:fs';
++import { fileURLToPath } from 'node:url';
++import { spawnSync } from 'node:child_process';
++const dir = fileURLToPath(new URL('../tests/chronicler/', import.meta.url));
++const paths = readdirSync(dir).filter(n => n.endsWith('.test.mjs')).sort().map(n => `${dir}/${n}`);
++const result = spawnSync(process.execPath, ['--test', ...paths], { stdio: 'inherit' });
++if (result.error) { console.error(result.error.message); process.exitCode = 1; }
++else process.exitCode = result.status ?? 1;
+diff --git a/src/chronicler/ledger.js b/src/chronicler/ledger.js
+new file mode 100644
+--- /dev/null
++++ b/src/chronicler/ledger.js
+@@ -0,0 +1,273 @@
++import { refKey, increment, compareId, clone } from './schema.js';
++
++// An edge is documentary lineage, not an inference from distance, actor, commodity or time.
++const PARENT_STAGES = Object.freeze({
++  aftermath: ['kill'], binding: ['aftermath'], salvage: ['binding', 'aftermath'],
++  recovered: ['salvage', 'aftermath'], sold: ['recovered'],
++  law: ['sold', 'kill', 'scan', 'recovered', 'trade'],
++  reactor: ['binding', 'aftermath'], remedy: ['cause'],
++});
++const RELATION = Object.freeze({
++  aftermath: 'left_aftermath', binding: 'materialized_as', salvage: 'processed',
++  recovered: 'recovered_from', sold: 'sold_from', law: 'legal_consequence_of',
++  reactor: 'reactor_action_on', remedy: 'remedied',
++});
++
++function freshStory(memory, fact) {
++  const sequence = memory.nextStory++;
++  return {
++    id: `ch:s:${sequence}`, sequence, createdAt: fact.t, updatedAt: fact.t,
++    nodes: [], edges: [], groups: [],
++    revision: 0, signature: '', announcedRevision: 0,
++    newsRevision: 0, newsAt: null, radioRevision: 0,
++  };
++}
++
++/** Preserve a saga's important new outcome without discarding any causal-graph participant.
++ * Repeated sightings are less useful than a later defeat; redundant wanted transitions are less
++ * useful than the clear signal. General causal chains are never truncated to make room.
++ */
++function makeDetailRoom(story, incoming) {
++  const unlinked = f => !story.edges.some(e => e.from === f.id || e.to === f.id);
++  let disposable = null;
++  if (incoming.stage === 'ace' && incoming.details.transition !== 'encountered') {
++    disposable = story.nodes.find(f => f.stage === 'ace' && f.details.transition === 'encountered' && unlinked(f));
++    if (!disposable) {
++      const first = new Set();
++      disposable = story.nodes.find(f => {
++        if (f.stage !== 'ace') return false;
++        const repeated = first.has(f.details.transition); first.add(f.details.transition);
++        return repeated && unlinked(f);
++      });
++    }
++  } else if (incoming.stage === 'wanted') {
++    const wanted = story.nodes.filter(f => f.stage === 'wanted');
++    const peak = wanted.reduce((a, b) => Math.max(a.details.level, a.details.previousLevel)
++      >= Math.max(b.details.level, b.details.previousLevel) ? a : b, wanted[0]);
++    disposable = wanted.find(f => f !== peak && unlinked(f));
++  }
++  if (!disposable) return false;
++  story.nodes.splice(story.nodes.indexOf(disposable), 1);
++  return true;
++}
++
++/**
++ * Append facts, then resolve lineage across the WHOLE bounded memory in one batch.
++ * This handles synchronous re-entrant publishers: a heat/wreck callback may run before the
++ * Chronicler sees the kill which invoked it. Same-tick delivery order is not causality.
++ */
++export function ingestBatch(memory, batch) {
++  const groups = new Map();
++  for (const s of memory.stories) for (const group of s.groups) groups.set(group, s);
++  for (const f of batch) {
++    let group = f.group;
++    if (f.stage === 'wanted') {
++      const active = memory.stories.find(s => s.id === memory.activeWanted);
++      if (active && f.details.previousLevel > 0) group = `wanted:${active.id}`;
++    }
++    let story = group ? groups.get(group) : null;
++    if (!story) {
++      story = freshStory(memory, f);
++      memory.stories.push(story);
++    }
++    if (story.nodes.length >= memory.config.maxFactsPerStory) {
++      increment(memory.metrics, 'detailDropped');
++      if (!makeDetailRoom(story, f)) continue;
++    }
++    story.nodes.push(f);
++    story.updatedAt = Math.max(story.updatedAt, f.t);
++    if (group && !story.groups.includes(group)) story.groups.push(group);
++    if (f.stage === 'wanted' && f.details.level > 0) {
++      const wantedGroup = `wanted:${story.id}`;
++      if (!story.groups.includes(wantedGroup)) story.groups.push(wantedGroup);
++      memory.activeWanted = story.id;
++    } else if (f.stage === 'wanted' && f.details.cleared) memory.activeWanted = null;
++    for (const g of story.groups) groups.set(g, story);
++    increment(memory.metrics, 'accepted');
++    updateProfile(memory, f);
++  }
++  resolveLineage(memory);
++}
++
++export function resolveLineage(memory) {
++  const providers = new Map();
++  const nodes = [];
++  const owner = new Map();
++  const stories = memory.stories;
++  const byId = new Map(stories.map(s => [s.id, s]));
++  const roots = new Map(stories.map(s => [s.id, s.id]));
++  const sizes = new Map(stories.map(s => [s.id, s.nodes.length]));
++  function root(key) {
++    let r = key;
++    while (roots.get(r) !== r) r = roots.get(r);
++    while (key !== r) { const next = roots.get(key); roots.set(key, r); key = next; }
++    return r;
++  }
++  function join(a, b) {
++    a = root(a); b = root(b);
++    if (a === b) return true;
++    if (sizes.get(a) + sizes.get(b) > memory.config.maxFactsPerStory) return false;
++    if (byId.get(a).sequence > byId.get(b).sequence) [a, b] = [b, a];
++    roots.set(b, a); sizes.set(a, sizes.get(a) + sizes.get(b));
++    return true;
++  }
++  for (const story of stories) {
++    for (const fact of story.nodes) {
++      nodes.push(fact); owner.set(fact.id, story.id);
++      for (const r of fact.provides) {
++        const key = refKey(r);
++        if (!providers.has(key)) providers.set(key, []);
++        providers.get(key).push(fact);
++      }
++    }
++  }
++  // Reserve fungible source quantities in deterministic simulation/receipt order. This is only
++  // a proof-accounting check; it never changes cargo, credits or the authoritative trade result.
++  nodes.sort((a, b) => a.t - b.t || a.seq - b.seq);
++  const spent = new Map();
++  const edges = [];
++  let unresolved = 0, invalid = 0, ambiguous = 0;
++  for (const fact of nodes) {
++    if (!fact.parent) { fact.parentStatus = 'none'; continue; }
++    const prior = fact.parentStatus;
++    const allowed = PARENT_STAGES[fact.stage] || [];
++    const raw = (providers.get(refKey(fact.parent)) || []).filter(p => p.id !== fact.id);
++    let candidates = raw.filter(p => allowed.includes(p.stage) && p.t <= fact.t + 1e-9);
++    // A death ID is ephemeral: do not connect a new body to an old death just because its
++    // numeric entity ID was reused. Durable marker/receipt links have no such time horizon.
++    if (fact.parent.kind === 'death') candidates = candidates.filter(p => Math.abs(p.t - fact.t) <= 1);
++    const priority = Math.min(...candidates.map(p => allowed.indexOf(p.stage)));
++    candidates = candidates.filter(p => allowed.indexOf(p.stage) === priority);
++    if (candidates.length !== 1) {
++      fact.parentStatus = candidates.length > 1 ? 'ambiguous' : 'pending';
++      if (candidates.length > 1) ambiguous++;
++      else unresolved++;
++      continue;
++    }
++    const parent = candidates[0];
++    let reason = null;
++    if (fact.stage === 'sold') {
++      if (fact.details.commodityId !== parent.details.commodityId) reason = 'commodity_mismatch';
++      else if (!fact.actor.key || fact.actor.key !== parent.actor.key) reason = 'custody_mismatch';
++      else if ((spent.get(parent.id) || 0) + fact.details.qty > parent.details.qty + 1e-9) reason = 'overdrawn_proof';
++    }
++    if (reason) {
++      fact.parentStatus = reason; invalid++; continue;
++    }
++    if (!join(owner.get(fact.id), owner.get(parent.id))) {
++      fact.parentStatus = 'capacity'; unresolved++; continue;
++    }
++    fact.parentStatus = 'resolved';
++    if (prior !== 'resolved') increment(memory.metrics, 'linksResolved');
++    if (fact.stage === 'sold') spent.set(parent.id, (spent.get(parent.id) || 0) + fact.details.qty);
++    edges.push({ from: parent.id, to: fact.id, relation: RELATION[fact.stage], certainty: 'explicit' });
++  }
++  const merged = new Map();
++  for (const story of stories) {
++    const key = root(story.id);
++    if (!merged.has(key)) {
++      const primary = byId.get(key);
++      merged.set(key, { ...primary, nodes: [], edges: [], groups: [] });
++    }
++    const target = merged.get(key);
++    target.nodes.push(...story.nodes);
++    target.groups = [...new Set([...target.groups, ...story.groups])].slice(0, 32);
++    target.createdAt = Math.min(target.createdAt, story.createdAt);
++    target.updatedAt = Math.max(target.updatedAt, story.updatedAt);
++    if (story.id !== key) {
++      // Preserve the surviving semantic signature. Only a changed narrative deserves a new
++      // revision; a rematerialization binding must not republish an old battle.
++      target.newsAt = later(target.newsAt, story.newsAt);
++    }
++  }
++  for (const edge of edges) merged.get(root(owner.get(edge.from))).edges.push(edge);
++  memory.stories = [...merged.values()].sort((a, b) => a.sequence - b.sequence);
++  for (const s of memory.stories) {
++    s.nodes.sort((a, b) => a.t - b.t || a.seq - b.seq);
++    const meaningful = s.nodes.filter(n => !['binding', 'cause'].includes(n.stage));
++    s.updatedAt = Math.max(...(meaningful.length ? meaningful : s.nodes).map(n => n.t));
++    s.edges.sort((a, b) => compareId(a.from, b.from) || compareId(a.to, b.to));
++  }
++  if (memory.activeWanted) memory.activeWanted = roots.has(memory.activeWanted) ? root(memory.activeWanted) : null;
++  // These three metrics are gauges of retained evidence, not cumulative failure counters.
++  memory.metrics.unresolvedLinks = unresolved;
++  memory.metrics.invalidLinks = invalid;
++  memory.metrics.ambiguousLinks = ambiguous;
++}
++function later(a, b) { return a === null ? b : b === null ? a : Math.max(a, b); }
++
++const LEGEND_RULES = Object.freeze({
++  collisionKills: { title: 'The Wreckwright', noun: 'confirmed collision kills' },
++  rescues: { title: 'A Hand in the Dark', noun: 'documented rescues' },
++  aceDefeats: { title: 'The Ace Breaker', noun: 'documented ace defeats' },
++});
++const THRESHOLDS = [3, 7, 15];
++function updateProfile(memory, f) {
++  const key = f.actor.key;
++  if (!key || !['kill', 'rescue', 'ace'].includes(f.stage)) return;
++  let kind = null;
++  if (f.stage === 'kill' && ['terrain_collision', 'ship_collision'].includes(f.details.cause)) kind = 'collisionKills';
++  if (f.stage === 'rescue') kind = 'rescues';
++  if (f.stage === 'ace' && f.details.transition === 'defeated') kind = 'aceDefeats';
++  if (!kind) return;
++  let profile = memory.profiles.find(p => p.actorKey === key);
++  if (!profile) {
++    if (memory.profiles.length >= memory.config.maxProfiles) {
++      const candidate = memory.profiles.filter(p => p.actorKey !== 'player')
++        .sort((a, b) => a.lastAt - b.lastAt || compareId(a.actorKey, b.actorKey))[0];
++      if (!candidate) return;
++      memory.profiles.splice(memory.profiles.indexOf(candidate), 1);
++    }
++    profile = { actorKey: key, actorName: f.actor.name, lastAt: f.t, visibility: f.visibility,
++      counts: { collisionKills: 0, rescues: 0, aceDefeats: 0 },
++      examples: { collisionKills: [], rescues: [], aceDefeats: [] } };
++    memory.profiles.push(profile);
++  }
++  profile.visibility = [profile.visibility, f.visibility].includes('private') ? 'private'
++    : [profile.visibility, f.visibility].includes('player') ? 'player' : 'public';
++  profile.lastAt = f.t;
++  profile.actorName = f.actor.name;
++  profile.counts[kind] = Math.min(Number.MAX_SAFE_INTEGER, profile.counts[kind] + 1);
++  const proof = {
++    factId: f.id, sourceEvent: f.event, receiptId: f.externalId,
++    t: f.t, subject: f.subject?.name || null, sectorId: f.sectorId,
++    cause: f.details.cause || f.details.transition || 'rescued',
++  };
++  profile.examples[kind].push(proof);
++  if (profile.examples[kind].length > 3) profile.examples[kind].shift();
++  const count = profile.counts[kind];
++  if (!THRESHOLDS.includes(count)) return;
++  const legendId = `ch:legend:${JSON.stringify([key, kind])}`;
++  const prior = memory.legends.find(l => l.id === legendId);
++  if (prior && prior.count >= count) return;
++  const legend = {
++    id: legendId, actorKey: key, actorName: f.actor.name, kind,
++    title: LEGEND_RULES[kind].title, count, formedAt: f.t,
++    text: `${f.actor.name === 'you' ? 'Your record' : f.actor.name + "'s record"}: ${count} ${LEGEND_RULES[kind].noun}.`,
++    // Bounded exemplar receipts remain self-contained if the original episode is later evicted.
++    evidence: clone(profile.examples[kind]), announced: false,
++    visibility: profile.visibility,
++  };
++  if (prior) memory.legends.splice(memory.legends.indexOf(prior), 1);
++  memory.legends.push(legend);
++  if (memory.legends.length > memory.config.maxLegends) memory.legends.shift();
++  increment(memory.metrics, 'legendsFormed');
++}
++
++/** Whole-story eviction preserves referential integrity: never leave half a causal proof. */
++export function pruneMemory(memory, views, now) {
++  if (memory.stories.length <= memory.config.maxStories) return;
++  const scored = memory.stories.map(story => {
++    const view = views.get(story.id);
++    const agePenalty = Math.min(35, Math.max(0, now - story.updatedAt) / 600);
++    const activeBonus = story.id === memory.activeWanted ? 100 : 0;
++    // Without incubation, an archive full of old 100-point stories evicts a new kill before
++    // its recovery/sale receipts can arrive. Protect development briefly, not indefinitely.
++    const incubationBonus = now - story.createdAt < memory.config.incubationSeconds ? 100 : 0;
++    return { story, score: (view?.score || 0) - agePenalty + activeBonus + incubationBonus };
++  }).sort((a, b) => a.score - b.score || a.story.updatedAt - b.story.updatedAt || a.story.sequence - b.story.sequence);
++  const remove = new Set(scored.slice(0, memory.stories.length - memory.config.maxStories).map(r => r.story.id));
++  memory.stories = memory.stories.filter(s => !remove.has(s.id));
++  increment(memory.metrics, 'storiesEvicted', remove.size);
++  if (remove.has(memory.activeWanted)) memory.activeWanted = null;
++}
+diff --git a/src/chronicler/narrative.js b/src/chronicler/narrative.js
+new file mode 100644
+--- /dev/null
++++ b/src/chronicler/narrative.js
+@@ -0,0 +1,211 @@
++import { label, clone, compareId } from './schema.js';
++
++const COMPLETE_STAGES = ['kill', 'aftermath', 'salvage', 'recovered', 'sold', 'law'];
++const SURFACE_TEXT = { terrain: 'terrain', craft: 'another craft', structure: 'a structure' };
++const victimName = f => f?.subject?.player ? 'your ship' : f?.subject?.name || 'an unnamed ship';
++const pilotName = f => f?.actor?.player ? 'You' : f?.actor?.name || 'An unknown pilot';
++const sectorName = f => label(f?.zoneName || f?.sectorName || f?.sectorId);
++const stationName = f => label(f?.stationName || f?.stationId, 'a station');
++// Do not round a small, positive cargo receipt down to a fictitious zero.
++function quantity(n) { return String(n); }
++function killLine(f) {
++  const target = victimName(f);
++  if (['terrain_collision', 'ship_collision'].includes(f.details.cause)) {
++    return `${target} was destroyed in a collision with ${SURFACE_TEXT[f.details.surface] || 'another body'} in ${sectorName(f)}.`;
++  }
++  if (f.actor.id === null && !f.actor.player) return `${target} was destroyed in ${sectorName(f)}.`;
++  return `${pilotName(f)} destroyed ${target} in ${sectorName(f)}.`;
++}
++function pathsFrom(story) {
++  const byId = new Map(story.nodes.map(n => [n.id, n]));
++  const children = new Map();
++  for (const edge of story.edges) {
++    if (!children.has(edge.from)) children.set(edge.from, []);
++    children.get(edge.from).push(edge.to);
++  }
++  const paths = [];
++  function walk(node, path) {
++    const next = [...path, node];
++    paths.push(next);
++    if (next.length >= 12) return;
++    for (const key of children.get(node.id) || []) {
++      if (!next.some(n => n.id === key) && byId.has(key)) walk(byId.get(key), next);
++    }
++  }
++  for (const n of story.nodes) if (n.stage === 'kill') walk(n, []);
++  return paths;
++}
++function progressOf(path) {
++  let i = 0;
++  for (const fact of path) if (fact.stage === COMPLETE_STAGES[i]) i++;
++  return i;
++}
++function visibilityOf(nodes) {
++  return nodes.some(n => n.visibility === 'private') ? 'private'
++    : nodes.some(n => n.visibility === 'player') ? 'player' : 'public';
++}
++
++/** Pure, evidence-only language. No dice, no witnesses/motives invented, no outcome mutation. */
++export function buildStoryView(story) {
++  const ns = story.nodes;
++  const kills = ns.filter(n => n.stage === 'kill');
++  const aces = ns.filter(n => n.stage === 'ace');
++  const rescues = ns.filter(n => n.stage === 'rescue');
++  const wanted = ns.filter(n => n.stage === 'wanted');
++  const reactor = ns.filter(n => n.stage === 'reactor');
++  const remedy = ns.find(n => n.stage === 'remedy' && n.parentStatus === 'resolved');
++  const paths = pathsFrom(story).sort((a, b) => progressOf(b) - progressOf(a)
++    || b.length - a.length || a[0].seq - b[0].seq);
++  const best = paths[0] || [];
++  const progress = progressOf(best);
++  const kill = best[0] || kills[0];
++  let kind = 'record', score = 0, title = 'A mark in the record', summary = '';
++  let radio = '', complete = false;
++  if (kill) {
++    score = kill.actor.player ? 22 : 6;
++    if (['terrain_collision', 'ship_collision'].includes(kill.details.cause)) score += 22;
++    if (['station', 'capital'].includes(kill.details.victimClass)) score += 20;
++    score += Math.min(24, Math.max(0, kills.length - 1) * 8);
++    kind = 'battle'; title = `Loss recorded in ${sectorName(kill)}`; summary = killLine(kill);
++    if (kills.length > 1) summary += ` ${kills.length} ship losses share this recorded encounter; their individual causes remain separate.`;
++    if (progress >= 2) { score += 8; kind = 'battle_aftermath'; summary += ' An identified wreck or cargo manifest remains in the record.'; }
++    if (progress >= 3) {
++      score += 14; kind = 'battle_salvage'; title = `The wreck of ${victimName(kill)}`;
++      summary = `${killLine(kill)} Its wreck was subsequently processed for salvage.`;
++    }
++    if (progress >= 4) {
++      const recovery = best.find(n => n.stage === 'recovered');
++      score += 8; kind = 'battle_recovery';
++      summary += ` ${pilotName(recovery)} recovered ${quantity(recovery.details.qty)} units of ${label(recovery.details.commodityId, 'cargo')}.`;
++    }
++    if (progress >= 5) {
++      const sale = best.find(n => n.stage === 'sold');
++      score += 18; kind = 'combat_salvage_economy'; title = `A wreck reaches the market`;
++      summary += ` ${quantity(sale.details.qty)} of those units were sold at ${stationName(sale)} for ${quantity(sale.details.total)} credits.`;
++    }
++    if (progress >= 6) {
++      const law = best.find(n => n.stage === 'law');
++      score += 20; kind = 'combat_salvage_economy_law'; complete = true;
++      title = `The wreck left a paper trail`;
++      summary += ` A ${law.details.kind} receipt explicitly names that sale as its cause.`;
++    }
++    radio = progress >= 5
++      ? `Remember ${victimName(kill)}? The wreck was cut, the cargo sold${complete ? ', and the sale drew a recorded legal consequence' : ''}. ${sectorName(kill)} has a history now.`
++      : progress >= 3 ? `Remember the wreck of ${victimName(kill)} in ${sectorName(kill)}? The salvage work is finished. The record stays.`
++      : `${killLine(kill)} That loss is still in the archive.`;
++  }
++  if (aces.length) {
++    const ace = aces[aces.length - 1];
++    const name = ace.subject.name;
++    const transitions = aces.map(a => a.details.transition);
++    const fled = transitions.includes('fled');
++    const returnedAfterEscape = aces.some((a, i) => a.details.transition === 'returned'
++      && aces.slice(0, i).some(p => p.details.transition === 'fled'));
++    kind = 'ace_saga'; score = Math.max(score, 30);
++    title = `${name}: a continuing record`;
++    if (ace.details.transition === 'defeated') {
++      score = Math.max(score, returnedAfterEscape ? 82 : 58);
++      summary = `${name} was defeated${returnedAfterEscape ? ' after escaping and returning to the field' : ''}.`;
++    } else if (ace.details.transition === 'returned') {
++      score = Math.max(score, fled ? 70 : 48);
++      summary = `${name} has returned${fled ? '; an earlier escape is on record' : ' to the field'}.`;
++    } else if (ace.details.transition === 'fled') {
++      score = Math.max(score, 44); summary = `${name} escaped. The encounter is remembered, but their motive is not known.`;
++    } else if (ace.details.transition === 'flung') {
++      score = Math.max(score, 42); summary = `${name} was flung during an encounter. No kill is implied.`;
++    } else summary = `${name} was encountered in ${sectorName(ace)}.`;
++    radio = returnedAfterEscape ? `Remember ${name}, the captain who got away? ${summary}` : summary;
++  } else if (rescues.length && (!kill || score < 45)) {
++    const f = rescues[0]; kind = 'rescue'; score = Math.max(score, f.actor.player ? 48 : 35);
++    title = `A rescue in ${sectorName(f)}`;
++    summary = `${pilotName(f)} rescued ${f.subject.name} in ${sectorName(f)}.`;
++    radio = `One for the rescue log: ${summary}`;
++  } else if (wanted.length && !kill) {
++    const f = wanted[wanted.length - 1];
++    const peak = Math.max(...wanted.map(w => Math.max(w.details.level, w.details.previousLevel)));
++    score = 30 + peak * 8; kind = f.details.cleared ? 'wanted_cleared' : 'wanted';
++    title = f.details.cleared ? 'The search flag came down' : 'A WANTED signal';
++    summary = f.details.cleared
++      ? `Your WANTED flag cleared after reaching level ${peak}. This records a status change, not an acquittal.`
++      : `Your WANTED signal reached level ${peak} in ${sectorName(f)}.`;
++    radio = f.details.cleared ? `The WANTED signal cleared. The earlier level-${peak} search remains on the record.` : summary;
++  } else if (remedy) {
++    kind = 'aftermath_remedied'; score = Math.max(score, 58); title = 'An aftermath answered';
++    summary = `A recorded ${remedy.details.kind} consequence was remedied${remedy.details.missionId ? ` through mission ${remedy.details.missionId}` : ''}.`;
++    radio = summary;
++  } else if (reactor.length && (!kill || score < 42)) {
++    const f = reactor[reactor.length - 1]; kind = 'reactor_action'; score = Math.max(score, 42);
++    const outcome = f.details.outcome === 'reactorVented' ? 'was vented'
++      : f.details.outcome === 'reactorTowedClear' ? 'was towed clear' : 'burst';
++    title = `A reactor ${outcome}`; summary = `A wreck reactor ${outcome} in ${sectorName(f)}.`;
++    radio = summary;
++  }
++  if (!summary) {
++    const f = ns.find(n => n.stage === 'trade') || ns.find(n => !['binding', 'cause'].includes(n.stage)) || ns[0];
++    if (f.stage === 'trade') {
++      kind = 'trade'; score = f.details.total >= 1000 ? 30 : 8; title = `A sale at ${stationName(f)}`;
++      summary = `${quantity(f.details.qty)} units of ${label(f.details.commodityId, 'cargo')} sold for ${quantity(f.details.total)} credits. Their source is not in this receipt.`;
++    } else if (f.stage === 'scan') {
++      kind = 'contraband_scan'; score = 36; title = 'Contraband found';
++      summary = `A scan found contraband in ${sectorName(f)}. A specific legal consequence has not been linked.`;
++    } else if (f.stage === 'salvage') {
++      kind = 'salvage'; score = 20; title = 'Salvage processing complete';
++      summary = 'A wreck was processed. Its destruction and subsequent cargo custody are not yet linked.';
++    } else if (f.stage === 'aftermath') {
++      kind = 'aftermath'; score = 16; title = 'An aftermath recorded';
++      summary = `An identified wreck or manifest was recorded in ${sectorName(f)}. Its destruction receipt is not linked.`;
++    } else if (['recovered', 'sold', 'law'].includes(f.stage)) {
++      kind = 'unlinked_provenance'; score = 12; title = 'A receipt awaiting its source';
++      summary = `A ${f.stage} receipt was recorded. Its upstream chain is not complete.`;
++    } else { score = 4; summary = 'A simulation fact was retained for possible later connection.'; }
++    radio = summary;
++  }
++  const evidence = ns.map(f => ({
++    id: f.id, sourceEvent: f.event, sourceReceiptId: f.externalId, stage: f.stage,
++    t: f.t, tick: f.tick, actor: clone(f.actor), subject: clone(f.subject),
++    sectorId: f.sectorId, stationId: f.stationId, factionId: f.factionId,
++    details: clone(f.details), parent: clone(f.parent), parentStatus: f.parentStatus,
++  }));
++  const milestoneFacts = ns.filter(f => !['binding', 'cause'].includes(f.stage));
++  return {
++    id: story.id, revision: story.revision, kind, complete,
++    score: Math.min(100, Math.round(score)), title, summary, radio,
++    createdAt: story.createdAt, updatedAt: story.updatedAt,
++    sectorId: kill?.sectorId || milestoneFacts[0]?.sectorId || null,
++    sectorIds: [...new Set(ns.map(n => n.sectorId).filter(Boolean))],
++    actorKeys: [...new Set(ns.map(n => n.actor.key).filter(Boolean))],
++    factionIds: [...new Set(ns.map(n => n.factionId).filter(Boolean))],
++    stationIds: [...new Set(ns.map(n => n.stationId).filter(Boolean))],
++    visibility: visibilityOf(ns),
++    milestones: COMPLETE_STAGES.slice(0, progress),
++    proof: best.map(n => n.id),
++    causalLinks: clone(story.edges), evidence,
++  };
++}
++
++// Evidence-only bindings can enrich a chain without generating another headline revision.
++export function semanticSignature(view) {
++  return JSON.stringify([view.kind, view.score, view.title, view.summary, view.visibility]);
++}
++
++export function rankViews(views, context, now) {
++  const c = context || {};
++  return views.filter(v => (c.includePrivate === true || v.visibility === 'public')
++    && (!c.kind || v.kind === c.kind)
++    && (!c.completeOnly || v.complete)
++    && (!c.actorKey || v.actorKeys.includes(String(c.actorKey)))
++    && (!c.factionId || v.factionIds.includes(String(c.factionId)))
++    && (!c.stationId || v.stationIds.includes(String(c.stationId)))
++    && (!c.sectorId || v.sectorIds.includes(String(c.sectorId)))
++    && v.score >= (Number.isFinite(c.minScore) ? c.minScore : 0)
++    && now - v.updatedAt >= (Number.isFinite(c.minAgeSeconds) ? c.minAgeSeconds : 0))
++    .sort((a, b) => (b.score - Math.min(25, Math.max(0, now - b.updatedAt) / 1800))
++      - (a.score - Math.min(25, Math.max(0, now - a.updatedAt) / 1800))
++      || b.updatedAt - a.updatedAt || compareId(a.id, b.id));
++}
++export function recallText(view, now) {
++  const age = Math.max(0, now - view.updatedAt);
++  const when = age >= 3600 ? `${Math.floor(age / 3600)} sim-hour${age >= 7200 ? 's' : ''} ago`
++    : `${Math.max(1, Math.floor(age / 60))} sim-minute${age >= 120 ? 's' : ''} ago`;
++  return `${when}: ${view.radio}`;
++}
+diff --git a/src/chronicler/normalize.js b/src/chronicler/normalize.js
+new file mode 100644
+--- /dev/null
++++ b/src/chronicler/normalize.js
+@@ -0,0 +1,242 @@
++import { finite, id, text, ref, refKey, FACT_EVENTS } from './schema.js';
++
++const EVENTS = new Set(FACT_EVENTS);
++const CAUSES = new Set(['generic', 'kinetic', 'explosive', 'terrain_collision', 'ship_collision']);
++const SURFACES = new Set(['terrain', 'craft', 'structure']);
++const ACE_TRANSITIONS = new Set(['encountered', 'fled', 'defeated', 'flung', 'returned']);
++const PROOF_STAGES = new Set(['recovered', 'sold', 'law']);
++const MAX_QTY = 1e12;
++
++function entity(state, entityId) {
++  return entityId != null && state.entities && typeof state.entities.get === 'function'
++    ? state.entities.get(entityId) : null;
++}
++function nameOf(state, entityId, supplied, fallback) {
++  const e = entity(state, entityId);
++  return text(supplied || (e && (e.name || e.data?.name || e.data?.callsign || e.data?.label)), fallback);
++}
++function identity(state, entityId, supplied, playerCaused = false, fallback = 'an unknown pilot') {
++  const key = id(entityId);
++  const player = playerCaused || (key !== null && key === id(state.playerId));
++  return { id: key, key: player ? 'player' : key, player,
++    name: nameOf(state, entityId, supplied, player ? 'you' : fallback) };
++}
++function firstRef(...refs) { return refs.find(Boolean) || null; }
++function point(p) {
++  return p && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
++}
++function positive(n) { return typeof n === 'number' && Number.isFinite(n) && n > 0 && n <= MAX_QTY; }
++function killFacts(p, state) {
++  // Match compactKillCausality's precedence. Copy only semantic scalars from presentation;
++  // NEVER retain that receipt, its vectors, Three objects, or arbitrary source data.
++  const receipt = p.presentation;
++  const cause = [receipt?.cause, p.cause].find(c => CAUSES.has(c)) || 'generic';
++  const playerCaused = typeof receipt?.playerCaused === 'boolean'
++    ? receipt.playerCaused : p.killerId != null && p.killerId === state.playerId;
++  const surface = SURFACES.has(receipt?.surface) ? receipt.surface
++    : cause === 'terrain_collision' ? 'terrain' : cause === 'ship_collision' ? 'craft' : null;
++  return { cause, playerCaused, surface };
++}
++
++/**
++ * Whitelist a bus payload into a bounded JSON fact. `null` means normal filtered noise;
++ * `{ invalid: true }` means a recognized, malformed receipt. No arbitrary payload spreading.
++ * All observation times come from state.simTime, never from a source-supplied timestamp.
++ */
++export function normalizeFact(event, p, state) {
++  if (!EVENTS.has(event)) return null;
++  if (!p || typeof p !== 'object' || Array.isArray(p)) return { invalid: true };
++  const t = Math.max(0, finite(state.simTime));
++  const tick = Number.isSafeInteger(state.tick) ? Math.max(0, state.tick) : Math.round(t * 60);
++  const currentSectorId = id(state.world?.currentSectorId);
++  const sectorId = id(p.sectorId) || (event.startsWith('aceMemory:') ? id(p.record?.lastSectorId) : null) || currentSectorId;
++  const common = {
++    event, stage: '', t, tick,
++    sectorId, sectorName: text(p.sectorName || (sectorId === currentSectorId ? state.world?.activeSector?.name : '')),
++    zoneId: id(p.zoneId), zoneName: text(p.zoneName),
++    stationId: id(p.stationId), stationName: text(p.stationName),
++    factionId: id(p.factionId || p.victimFactionId),
++    visibility: ['private', 'player'].includes(p.visibility) ? p.visibility : 'public',
++    actor: identity(state, p.actorId), subject: null,
++    externalId: id(p.receiptId || p.eventId),
++    provides: [], parent: null, group: null,
++    details: {}, dedupe: '',
++  };
++  const f = common;
++  switch (event) {
++    case 'entity:killed': {
++      const victim = p.id ?? p.victimId;
++      if (id(victim) === null) return { invalid: true };
++      const k = killFacts(p, state);
++      f.stage = 'kill';
++      f.actor = identity(state, p.killerId, p.killerName, k.playerCaused);
++      // Explicit false on a physics receipt must override killerId fallback for PLAYER credit.
++      f.actor.player = k.playerCaused;
++      f.actor.key = k.playerCaused ? 'player' : id(p.killerId);
++      if (!k.playerCaused && id(p.killerId) === id(state.playerId)) f.actor.name = text(p.killerName, 'an uncredited impact');
++      f.subject = identity(state, victim, p.victimName || p.victimLabel, false, 'an unnamed ship');
++      f.provides = [ref('death', victim)];
++      f.group = id(p.encounterId) ? `encounter:${id(p.encounterId)}` : null;
++      f.details = { ...k, victimClass: text(p.victimClass, 'ship', 48),
++        factionLawful: p.factionLawful === true, pos: point(p.pos) };
++      f.dedupe = `kill:${JSON.stringify([id(victim), id(p.killId) || f.externalId || tick])}`;
++      break;
++    }
++    case 'aftermathWreck:recorded':
++    case 'loot:manifestPayload': {
++      const marker = event === 'aftermathWreck:recorded';
++      const object = marker ? p.markerId : p.payloadId;
++      if (id(object) === null) return { invalid: true };
++      f.stage = 'aftermath';
++      f.actor = identity(state, p.killerId, p.killerName);
++      f.subject = identity(state, p.victimId, p.victimLabel || p.victimName, false, 'an unnamed ship');
++      f.provides = [ref(marker ? 'marker' : 'wreck', object)];
++      f.parent = ref('death', p.victimId);
++      f.group = id(p.encounterId) ? `encounter:${id(p.encounterId)}` : null;
++      f.details = { markerId: marker ? id(object) : null, wreckId: marker ? null : id(object),
++        victimId: id(p.victimId), sourceKind: marker ? 'wreck' : 'manifest', pos: point(p.pos) };
++      f.dedupe = `${event}:${id(object)}`;
++      break;
++    }
++    case 'aftermathWreck:spawned': {
++      if (id(p.entityId) === null || id(p.markerId) === null) return { invalid: true };
++      f.stage = 'binding';
++      f.parent = ref('marker', p.markerId);
++      f.provides = [ref('wreck', p.entityId)];
++      f.details = { markerId: id(p.markerId), wreckId: id(p.entityId) };
++      f.dedupe = `binding:${JSON.stringify([p.markerId, id(p.entityId)])}`;
++      break;
++    }
++    case 'salvage:completed': {
++      if (id(p.wreckId) === null && id(p.markerId) === null) return { invalid: true };
++      f.stage = 'salvage';
++      f.actor = identity(state, p.actorId ?? state.playerId);
++      f.parent = firstRef(ref('marker', p.markerId), ref('wreck', p.wreckId));
++      // These aliases deliberately allow a recovery receipt to choose a processed wreck rather
++      // than the earlier unprocessed marker. Stage restrictions in the ledger prevent cycles.
++      f.provides = [ref('marker', p.markerId), ref('wreck', p.wreckId)].filter(Boolean);
++      // `loot` in stock mining is the FINAL DRAIN BATCH, not total salvage or collected cargo.
++      // Do not count it as acquired cargo. This fact asserts processing completion only.
++      f.details = { markerId: id(p.markerId), wreckId: id(p.wreckId) };
++      f.dedupe = `salvage:${id(p.markerId) || id(p.wreckId)}`;
++      break;
++    }
++    case 'chronicler:provenance': {
++      if (!PROOF_STAGES.has(p.stage) || !id(p.receiptId) || !p.source
++        || !ref(p.source.kind, p.source.id) || id(p.actorId) === null) return { invalid: true };
++      if (p.stage !== 'law' && (!id(p.commodityId) || !positive(p.qty))) return { invalid: true };
++      if (p.stage === 'sold' && (!id(p.stationId) || !Number.isFinite(p.total) || p.total < 0 || p.total > MAX_QTY)) {
++        return { invalid: true };
++      }
++      // Recovery must identify an actual wreck/marker. A sale must identify a recovery RECEIPT.
++      // Legal causality must identify the receipt which the authoritative law owner validated.
++      const allowed = p.stage === 'recovered' ? ['marker', 'wreck'] : ['receipt'];
++      if (!allowed.includes(p.source.kind)) return { invalid: true };
++      f.stage = p.stage;
++      f.externalId = id(p.receiptId);
++      f.actor = identity(state, p.actorId, p.actorName);
++      f.parent = ref(p.source.kind, p.source.id);
++      f.details = { commodityId: id(p.commodityId), qty: finite(p.qty), total: finite(p.total),
++        kind: text(p.kind, p.stage === 'law' ? 'legal action' : p.stage, 64) };
++      if (p.stage === 'sold') f.group = `transaction:${f.externalId}`;
++      f.dedupe = `receipt:${f.externalId}`;
++      break;
++    }
++    case 'economy:tradeCompleted': {
++      if (p.side !== 'sell') return null;
++      if (!id(p.commodityId) || !id(p.stationId) || !positive(p.qty)
++        || !Number.isFinite(p.total) || p.total < 0) return { invalid: true };
++      f.stage = 'trade';
++      if (f.externalId) f.group = `transaction:${f.externalId}`;
++      f.actor = identity(state, p.actorId ?? state.playerId);
++      f.details = { commodityId: id(p.commodityId), qty: p.qty, total: p.total,
++        provenanceMissing: true };
++      // Unproven native sales remain independent. No FIFO guess, commodity coincidence, or
++      // "last wreck" heuristic is allowed to transform this into a recovered-cargo sale.
++      f.dedupe = f.externalId ? `trade:${f.externalId}`
++        : `trade:${JSON.stringify([tick, f.stationId, f.details])}`;
++      break;
++    }
++    case 'aceMemory:transition':
++    case 'aceMemory:returnSpawned': {
++      const aceId = id(p.aceId);
++      const transition = event === 'aceMemory:returnSpawned' ? 'returned' : p.transition;
++      if (!aceId || !ACE_TRANSITIONS.has(transition)) return null;
++      f.stage = 'ace';
++      f.actor = identity(state, state.playerId);
++      f.subject = { id: aceId, key: `ace:${aceId}`, player: false, name: text(p.aceName || p.name, aceId) };
++      f.group = `ace:${aceId}`;
++      f.details = { transition, aceId, crew: text(p.crew),
++        count: Math.max(0, finite(p.record?.encounterCount)),
++        returnTier: Math.max(0, finite(p.returnTier ?? p.tier ?? p.record?.returnTier)) };
++      f.dedupe = `ace:${JSON.stringify([aceId, transition, f.externalId || tick, f.details.count])}`;
++      break;
++    }
++    case 'distress:rescued': {
++      f.stage = 'rescue';
++      f.actor = identity(state, p.rescuerId ?? p.actorId ?? state.playerId);
++      const target = p.targetId ?? p.shipId ?? p.entityId ?? p.id ?? p.distressId;
++      f.subject = identity(state, target, p.name || p.shipName, false, 'a ship in distress');
++      f.details = { encounterId: id(p.encounterId) };
++      f.dedupe = `rescue:${f.externalId || id(p.distressId) || JSON.stringify([id(target), tick])}`;
++      break;
++    }
++    case 'heat:changed': {
++      if (!Number.isFinite(p.level) || !Number.isFinite(p.value)) return { invalid: true };
++      const level = Math.max(0, Math.min(5, Math.floor(p.level)));
++      const previous = Number.isFinite(p.previousLevel) ? Math.max(0, Math.min(5, Math.floor(p.previousLevel)))
++        : p.previousValue >= (p.threshold ?? 0.15) ? Math.max(1, Math.ceil(p.previousValue * 5)) : 0;
++      if (level === previous && !p.wantedCrossed) return null;
++      f.stage = 'wanted';
++      f.actor = identity(state, state.playerId);
++      f.details = { level, previousLevel: previous, reason: text(p.reason, 'status change', 120),
++        tier: text(p.tier, level ? 'wanted' : 'none', 32), cleared: level === 0 };
++      f.dedupe = `wanted:${JSON.stringify([tick, level, previous, f.details.reason])}`;
++      break;
++    }
++    case 'contraband:scanned': {
++      if (p.found !== true) return null;
++      f.stage = 'scan'; f.actor = identity(state, state.playerId);
++      f.details = { found: true };
++      f.dedupe = f.externalId ? `scan:${f.externalId}` : `scan:${JSON.stringify([tick, p.scannerId ?? null])}`;
++      break;
++    }
++    case 'salvage:reactorVented':
++    case 'salvage:reactorTowedClear':
++    case 'salvage:reactorBurst': {
++      const wreck = id(p.wreckId ?? p.targetId);
++      if (!wreck) return { invalid: true };
++      f.stage = 'reactor';
++      f.actor = identity(state, p.actorId ?? state.playerId);
++      f.parent = ref('wreck', wreck);
++      f.details = { outcome: event.split(':')[1], wreckId: wreck };
++      f.dedupe = `${event}:${wreck}`;
++      break;
++    }
++    case 'aftermath:causeRecorded': {
++      const key = id(p.fingerprint || p.causeId);
++      if (!key) return { invalid: true };
++      f.stage = 'cause';
++      f.provides = [ref('cause', key)];
++      f.group = id(p.encounterId) ? `encounter:${id(p.encounterId)}` : null;
++      f.details = { kind: text(p.consequenceKind, 'aftermath', 64) };
++      f.dedupe = `cause:${key}`;
++      break;
++    }
++    case 'aftermath:remedied': {
++      const key = id(p.fingerprint || p.causeId);
++      if (!key) return { invalid: true };
++      f.stage = 'remedy';
++      f.parent = ref('cause', key);
++      f.actor = identity(state, p.actorId ?? state.playerId);
++      f.details = { missionId: id(p.missionId), kind: text(p.consequenceKind, 'aftermath', 64) };
++      f.dedupe = `remedy:${JSON.stringify([key, f.details.missionId])}`;
++      break;
++    }
++    default: return null;
++  }
++  f.provides = f.provides.filter(Boolean);
++  if (f.externalId) f.provides.push(ref('receipt', f.externalId));
++  f.provides = f.provides.filter((r, i, all) => all.findIndex(x => refKey(x) === refKey(r)) === i);
++  return f;
++}
+diff --git a/src/chronicler/persistence.js b/src/chronicler/persistence.js
+new file mode 100644
+--- /dev/null
++++ b/src/chronicler/persistence.js
+@@ -0,0 +1,174 @@
++import { CHRONICLER_VERSION, DEFAULT_CONFIG, COUNTERS, FACT_EVENTS, STAGES, REF_KINDS,
++  freshMemory, configFor } from './schema.js';
++
++const ROOT_KEYS = ['schemaVersion', 'config', 'nextFact', 'nextStory', 'clock', 'pending',
++  'seen', 'stories', 'profiles', 'legends', 'activeWanted', 'cadence', 'recallKeys', 'metrics'];
++const FACT_KEYS = ['event', 'stage', 't', 'tick', 'sectorId', 'sectorName', 'zoneId', 'zoneName',
++  'stationId', 'stationName', 'factionId', 'visibility', 'actor', 'subject', 'externalId',
++  'provides', 'parent', 'group', 'details', 'dedupe', 'id', 'seq', 'parentStatus'];
++const DETAILS = new Set(['cause', 'playerCaused', 'surface', 'victimClass', 'factionLawful', 'pos',
++  'markerId', 'wreckId', 'victimId', 'sourceKind', 'commodityId', 'qty', 'total', 'kind',
++  'provenanceMissing', 'transition', 'aceId', 'crew', 'count', 'returnTier', 'encounterId',
++  'level', 'previousLevel', 'reason', 'tier', 'cleared', 'found', 'outcome', 'missionId']);
++const STORY_KEYS = ['id', 'sequence', 'createdAt', 'updatedAt', 'nodes', 'edges', 'groups',
++  'revision', 'signature', 'announcedRevision', 'newsRevision', 'newsAt', 'radioRevision'];
++const COUNTS = ['collisionKills', 'rescues', 'aceDefeats'];
++const EVENT_STAGES = Object.freeze({
++  'entity:killed': ['kill'], 'aftermathWreck:recorded': ['aftermath'],
++  'loot:manifestPayload': ['aftermath'], 'aftermathWreck:spawned': ['binding'],
++  'salvage:completed': ['salvage'], 'chronicler:provenance': ['recovered', 'sold', 'law'],
++  'economy:tradeCompleted': ['trade'], 'aceMemory:transition': ['ace'],
++  'aceMemory:returnSpawned': ['ace'], 'distress:rescued': ['rescue'],
++  'heat:changed': ['wanted'], 'contraband:scanned': ['scan'],
++  'salvage:reactorVented': ['reactor'], 'salvage:reactorTowedClear': ['reactor'],
++  'salvage:reactorBurst': ['reactor'], 'aftermath:causeRecorded': ['cause'],
++  'aftermath:remedied': ['remedy'],
++});
++function check(ok, message) { if (!ok) throw new TypeError(`Invalid Chronicler snapshot: ${message}`); }
++function object(value, keys, path) {
++  check(value && typeof value === 'object' && !Array.isArray(value), `${path} must be an object`);
++  check(Object.keys(value).every(k => keys.includes(k)), `${path} has unknown fields`);
++}
++function number(n, path, min = 0) { check(Number.isFinite(n) && n >= min, `${path} must be finite and >= ${min}`); }
++function integer(n, path, min = 0) { check(Number.isSafeInteger(n) && n >= min, `${path} must be a safe integer`); }
++function string(s, path, max = 512, nullable = false) {
++  check(nullable && s === null || typeof s === 'string' && s.length <= max, `${path} must be a bounded string`);
++}
++function array(a, max, path) { check(Array.isArray(a) && a.length <= max, `${path} exceeds its bounded array contract`); }
++function clock(n, path) { if (n !== null) number(n, path); }
++function reference(r, path) {
++  if (r === null) return;
++  object(r, ['kind', 'id'], path);
++  check(REF_KINDS.includes(r.kind), `${path}.kind`);
++  string(r.id, `${path}.id`, 192); check(r.id.length > 0, `${path}.id is empty`);
++}
++function identity(a, path) {
++  if (a === null) return;
++  object(a, ['id', 'key', 'name', 'player'], path);
++  string(a.id, `${path}.id`, 192, true); string(a.key, `${path}.key`, 256, true);
++  string(a.name, `${path}.name`, 160); check(typeof a.player === 'boolean', `${path}.player`);
++}
++function fact(f, path) {
++  object(f, FACT_KEYS, path);
++  check(FACT_EVENTS.includes(f.event) && STAGES.includes(f.stage)
++    && EVENT_STAGES[f.event].includes(f.stage), `${path}.event/stage`);
++  integer(f.seq, `${path}.seq`, 1); check(f.id === `ch:f:${f.seq}`, `${path}.id`);
++  number(f.t, `${path}.t`); integer(f.tick, `${path}.tick`);
++  for (const k of ['sectorId', 'zoneId', 'stationId', 'factionId', 'externalId']) string(f[k], `${path}.${k}`, 192, true);
++  for (const k of ['sectorName', 'zoneName', 'stationName']) string(f[k], `${path}.${k}`, 160);
++  string(f.group, `${path}.group`, 384, true); string(f.dedupe, `${path}.dedupe`, 1024);
++  check(['public', 'private', 'player'].includes(f.visibility), `${path}.visibility`);
++  identity(f.actor, `${path}.actor`); check(f.actor !== null, `${path}.actor cannot be null`);
++  identity(f.subject, `${path}.subject`);
++  array(f.provides, 4, `${path}.provides`); f.provides.forEach(r => { reference(r, path); check(r !== null, path); });
++  reference(f.parent, `${path}.parent`);
++  object(f.details, [...DETAILS], `${path}.details`);
++  for (const [k, value] of Object.entries(f.details)) {
++    if (k === 'pos') {
++      if (value !== null) {
++        object(value, ['x', 'z'], path);
++        number(value.x, path, -Number.MAX_VALUE); number(value.z, path, -Number.MAX_VALUE);
++      }
++    } else check(value === null || typeof value === 'boolean'
++      || typeof value === 'string' && value.length <= 192
++      || typeof value === 'number' && Number.isFinite(value), `${path}.details.${k}`);
++  }
++  if (['kill', 'ace', 'rescue'].includes(f.stage)) check(f.subject !== null, `${path}.subject is required`);
++  if (f.stage === 'kill') {
++    check(['generic', 'kinetic', 'explosive', 'terrain_collision', 'ship_collision'].includes(f.details.cause), `${path}.cause`);
++    check(typeof f.details.playerCaused === 'boolean', `${path}.playerCaused`);
++    check([null, 'terrain', 'craft', 'structure'].includes(f.details.surface), `${path}.surface`);
++  }
++  if (f.stage === 'ace') {
++    check(['encountered', 'fled', 'defeated', 'flung', 'returned'].includes(f.details.transition), `${path}.transition`);
++    string(f.details.aceId, `${path}.aceId`, 192);
++  }
++  if (f.stage === 'wanted') {
++    integer(f.details.level, `${path}.level`); integer(f.details.previousLevel, `${path}.previousLevel`);
++    check(f.details.level <= 5 && f.details.previousLevel <= 5 && typeof f.details.cleared === 'boolean', `${path}.wanted`);
++  }
++  if (f.stage === 'reactor') check(['reactorVented', 'reactorTowedClear', 'reactorBurst'].includes(f.details.outcome), `${path}.outcome`);
++  if (['law', 'cause', 'remedy'].includes(f.stage)) string(f.details.kind, `${path}.kind`, 64);
++  if (f.event === 'chronicler:provenance') {
++    check(typeof f.externalId === 'string' && f.externalId.length > 0 && f.actor.id !== null, `${path}.receipt identity`);
++    check(f.parent && (f.stage === 'recovered' ? ['marker', 'wreck'] : ['receipt']).includes(f.parent.kind), `${path}.source kind`);
++  }
++  if (['recovered', 'sold', 'trade'].includes(f.stage)) {
++    number(f.details.qty, `${path}.qty`, Number.MIN_VALUE);
++    check(f.details.qty <= 1e12 && typeof f.details.commodityId === 'string', `${path} cargo quantity/identity`);
++  }
++  if (['sold', 'trade'].includes(f.stage)) number(f.details.total, `${path}.total`);
++  if (f.parentStatus !== undefined) check(['none', 'pending', 'ambiguous', 'resolved', 'capacity',
++    'commodity_mismatch', 'custody_mismatch', 'overdrawn_proof'].includes(f.parentStatus), `${path}.parentStatus`);
++}
++function exemplar(e, path) {
++  object(e, ['factId', 'sourceEvent', 'receiptId', 't', 'subject', 'sectorId', 'cause'], path);
++  string(e.factId, path, 64); string(e.sourceEvent, path, 80);
++  string(e.receiptId, path, 192, true); string(e.subject, path, 160, true);
++  string(e.sectorId, path, 192, true); string(e.cause, path, 64); number(e.t, path);
++}
++
++/** Strict and atomic. Missing legacy data starts empty; malformed/future schemas do not wipe a run. */
++export function restoreMemory(input, fallbackConfig, now = 0) {
++  if (input === null || input === undefined) return freshMemory(fallbackConfig, now);
++  check(typeof input === 'object' && input.schemaVersion === CHRONICLER_VERSION, 'unsupported schemaVersion');
++  // Reject giant/cyclic input before traversal. This path runs only at a load boundary.
++  const json = JSON.stringify(input);
++  check(json.length <= 32 * 1024 * 1024, 'snapshot is larger than 32 MiB');
++  const m = JSON.parse(json);
++  object(m, ROOT_KEYS, 'root');
++  object(m.config, Object.keys(DEFAULT_CONFIG), 'config');
++  check(JSON.stringify(m.config) === JSON.stringify(configFor(m.config)), 'config is not canonical');
++  integer(m.nextFact, 'nextFact', 1); integer(m.nextStory, 'nextStory', 1); number(m.clock, 'clock');
++  array(m.pending, m.config.maxPending, 'pending');
++  array(m.seen, m.config.maxSeen, 'seen'); m.seen.forEach(s => string(s, 'seen key', 1024));
++  array(m.stories, m.config.maxStories, 'stories');
++  const ids = new Set(), sequences = new Set(), storyIds = new Set();
++  function uniqueFact(f, p) {
++    fact(f, p); check(!ids.has(f.id) && !sequences.has(f.seq), 'duplicate fact identity');
++    ids.add(f.id); sequences.add(f.seq); check(f.seq < m.nextFact, 'nextFact does not advance');
++  }
++  m.pending.forEach((f, i) => uniqueFact(f, `pending[${i}]`));
++  for (const s of m.stories) {
++    object(s, STORY_KEYS, 'story'); integer(s.sequence, 'story.sequence', 1);
++    check(s.id === `ch:s:${s.sequence}` && s.sequence < m.nextStory && !storyIds.has(s.id), 'story identity');
++    storyIds.add(s.id); number(s.createdAt, 'createdAt'); number(s.updatedAt, 'updatedAt');
++    check(s.updatedAt >= s.createdAt, 'story chronology');
++    array(s.nodes, m.config.maxFactsPerStory, 'story.nodes'); check(s.nodes.length > 0, 'empty story');
++    s.nodes.forEach(f => uniqueFact(f, 'story.fact'));
++    const local = new Set(s.nodes.map(f => f.id));
++    array(s.edges, s.nodes.length, 'story.edges');
++    for (const e of s.edges) {
++      object(e, ['from', 'to', 'relation', 'certainty'], 'edge');
++      check(local.has(e.from) && local.has(e.to) && e.from !== e.to && e.certainty === 'explicit', 'dangling/invalid edge');
++      string(e.relation, 'edge.relation', 64);
++    }
++    array(s.groups, 32, 'groups'); s.groups.forEach(g => string(g, 'group', 384));
++    for (const key of ['revision', 'announcedRevision', 'newsRevision', 'radioRevision']) integer(s[key], key);
++    check(s.announcedRevision <= s.revision && s.newsRevision <= s.revision && s.radioRevision <= s.revision, 'revision order');
++    clock(s.newsAt, 'story.newsAt'); string(s.signature, 'signature', 8192);
++  }
++  check(m.activeWanted === null || storyIds.has(m.activeWanted), 'activeWanted');
++  object(m.cadence, ['newsAt', 'radioAt', 'recallAt'], 'cadence');
++  for (const key of ['newsAt', 'radioAt', 'recallAt']) clock(m.cadence[key], key);
++  array(m.recallKeys, 128, 'recallKeys'); m.recallKeys.forEach(k => string(k, 'recall key', 1024));
++  object(m.metrics, COUNTERS, 'metrics'); COUNTERS.forEach(k => integer(m.metrics[k], `metrics.${k}`));
++  array(m.profiles, m.config.maxProfiles, 'profiles');
++  for (const p of m.profiles) {
++    object(p, ['actorKey', 'actorName', 'lastAt', 'counts', 'examples', 'visibility'], 'profile');
++    string(p.actorKey, 'actorKey', 256); string(p.actorName, 'actorName', 160); number(p.lastAt, 'profile.lastAt');
++    check(['public', 'private', 'player'].includes(p.visibility), 'profile.visibility');
++    object(p.counts, COUNTS, 'counts'); object(p.examples, COUNTS, 'examples');
++    for (const key of COUNTS) { integer(p.counts[key], 'count'); array(p.examples[key], 3, 'examples'); p.examples[key].forEach(e => exemplar(e, 'example')); }
++  }
++  array(m.legends, m.config.maxLegends, 'legends');
++  for (const l of m.legends) {
++    object(l, ['id', 'actorKey', 'actorName', 'kind', 'title', 'count', 'formedAt', 'text', 'evidence', 'announced', 'visibility'], 'legend');
++    string(l.id, 'legend.id', 512); string(l.actorKey, 'actorKey', 256); string(l.actorName, 'actorName', 160);
++    check(COUNTS.includes(l.kind), 'legend.kind'); string(l.title, 'title', 160); string(l.text, 'text', 512);
++    integer(l.count, 'legend.count', 1); number(l.formedAt, 'formedAt');
++    check(typeof l.announced === 'boolean' && ['public', 'private', 'player'].includes(l.visibility), 'legend audience');
++    array(l.evidence, 3, 'legend.evidence'); l.evidence.forEach(e => exemplar(e, 'legend evidence'));
++  }
++  return m;
++}
+diff --git a/src/chronicler/schema.js b/src/chronicler/schema.js
+new file mode 100644
+--- /dev/null
++++ b/src/chronicler/schema.js
+@@ -0,0 +1,104 @@
++/** The Chronicler's durable schema. No renderer objects, timers, RNG draws, or dependencies. */
++export const CHRONICLER_VERSION = 1;
++export const DEFAULT_CONFIG = Object.freeze({
++  maxStories: 96,
++  maxFactsPerStory: 32,
++  maxPending: 512,
++  factsPerUpdate: 128,
++  maxSeen: 2048,
++  maxProfiles: 64,
++  maxLegends: 24,
++  settleSeconds: 2,
++  incubationSeconds: 60,
++  newsCooldown: 60,
++  storyCooldown: 240,
++  radioCooldown: 120,
++  recallCooldown: 180,
++  recallMinAge: 120,
++  minNewsScore: 38,
++  publishNews: true,
++  offerRadio: true,
++});
++
++export const FACT_EVENTS = Object.freeze([
++  'entity:killed',
++  'aftermathWreck:recorded', 'aftermathWreck:spawned',
++  'aftermath:causeRecorded', 'aftermath:remedied',
++  'loot:manifestPayload', 'salvage:completed',
++  'salvage:reactorVented', 'salvage:reactorTowedClear', 'salvage:reactorBurst',
++  'aceMemory:transition', 'aceMemory:returnSpawned',
++  'distress:rescued', 'heat:changed', 'contraband:scanned',
++  'economy:tradeCompleted',
++  // An opt-in producer contract, NOT an assertion that stock cargo/economy already emit it.
++  'chronicler:provenance',
++]);
++export const STAGES = Object.freeze([
++  'kill', 'aftermath', 'binding', 'salvage', 'recovered', 'sold', 'law',
++  'ace', 'rescue', 'wanted', 'scan', 'reactor', 'trade', 'cause', 'remedy',
++]);
++export const REF_KINDS = Object.freeze(['death', 'marker', 'wreck', 'receipt', 'cause']);
++export const COUNTERS = Object.freeze([
++  'observed', 'accepted', 'ignored', 'invalid', 'duplicates', 'queueDropped',
++  'detailDropped', 'storiesEvicted', 'linksResolved', 'ambiguousLinks',
++  'invalidLinks', 'unresolvedLinks', 'storiesPublished', 'newsPublished',
++  'radioOffered', 'recallsOffered', 'legendsFormed',
++]);
++
++export function finite(value, fallback = 0) {
++  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
++}
++export function id(value) {
++  if (typeof value === 'number') return Number.isSafeInteger(value) ? String(value) : null;
++  if (typeof value !== 'string' || !value.trim() || value.length > 192) return null;
++  return /[\u0000-\u001f\u007f]/.test(value) ? null : value.trim();
++}
++export function text(value, fallback = '', max = 160) {
++  if (typeof value !== 'string') return fallback;
++  return value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) || fallback;
++}
++export function label(value, fallback = 'unmapped space') {
++  return text(value, fallback).replace(/^(sector_|station_|cmdty_|faction_)/, '').replace(/_/g, ' ');
++}
++export function ref(kind, value) {
++  const normalized = id(value);
++  return normalized !== null && REF_KINDS.includes(kind) ? { kind, id: normalized } : null;
++}
++export function refKey(value) { return value ? JSON.stringify([value.kind, value.id]) : ''; }
++export function clone(value) { return JSON.parse(JSON.stringify(value)); }
++export function compareId(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
++export function increment(metrics, key, amount = 1) {
++  metrics[key] = Math.min(Number.MAX_SAFE_INTEGER, (metrics[key] || 0) + amount);
++}
++export function configFor(input = {}) {
++  const config = { ...DEFAULT_CONFIG };
++  const ceilings = {
++    maxStories: 256, maxFactsPerStory: 96, maxPending: 4096,
++    factsPerUpdate: 1024, maxSeen: 8192, maxProfiles: 256, maxLegends: 64,
++  };
++  for (const key of Object.keys(config)) {
++    if (typeof config[key] === 'boolean') {
++      if (typeof input[key] === 'boolean') config[key] = input[key];
++    } else if (Number.isFinite(input[key])) {
++      config[key] = Math.max(key in ceilings ? 1 : 0,
++        Math.min(key in ceilings ? ceilings[key] : 86400, input[key]));
++      if (key in ceilings) config[key] = Math.floor(config[key]);
++    }
++  }
++  // A full causal path has seven nodes when a materialization binding is present.
++  config.maxFactsPerStory = Math.max(12, config.maxFactsPerStory);
++  config.factsPerUpdate = Math.min(config.factsPerUpdate, config.maxPending);
++  return config;
++}
++export function freshMemory(config, now = 0) {
++  return {
++    schemaVersion: CHRONICLER_VERSION,
++    config: configFor(config),
++    nextFact: 1, nextStory: 1,
++    clock: Math.max(0, finite(now)),
++    pending: [], seen: [], stories: [], profiles: [], legends: [],
++    activeWanted: null,
++    cadence: { newsAt: null, radioAt: null, recallAt: null },
++    recallKeys: [],
++    metrics: Object.fromEntries(COUNTERS.map(key => [key, 0])),
++  };
++}
+diff --git a/src/chronicler/voiceBridge.js b/src/chronicler/voiceBridge.js
+new file mode 100644
+--- /dev/null
++++ b/src/chronicler/voiceBridge.js
+@@ -0,0 +1,21 @@
++/** Optional PRESENTATION adapter. Kept out of the simulation owner and its save state. */
++export function createChroniclerVoiceBridge({ bus, helpers = {} } = {}) {
++  if (!bus || typeof bus.on !== 'function') throw new TypeError('Voice bridge requires a bus');
++  const off = [];
++  function offer(payload, channel) {
++    if (!payload || typeof payload.text !== 'string') return;
++    const accepted = !!(helpers.voice && typeof helpers.voice.say === 'function' && helpers.voice.say({
++      id: `${channel}:${payload.sourceRef}`,
++      channel, text: payload.text, kind: 'chronicler',
++      priority: 12, ttl: 5, source: 'chronicler', sourceRef: payload.sourceRef,
++      storyId: payload.storyId, sectorId: payload.sectorId,
++    }));
++    // Acceptance means the arbiter accepted the offer, NOT that audio was actually heard.
++    bus.emit(accepted ? 'chronicler:voiceAccepted' : 'chronicler:voiceRejected', {
++      storyId: payload.storyId, sourceRef: payload.sourceRef, channel,
++    });
++  }
++  off.push(bus.on('chronicler:radio', p => offer(p, 'band')));
++  off.push(bus.on('chronicler:recall', p => offer(p, 'comms')));
++  return { name: 'chroniclerVoiceBridge', destroy() { for (const fn of off.splice(0)) if (typeof fn === 'function') fn(); } };
++}
+diff --git a/src/systems/chronicler.js b/src/systems/chronicler.js
+new file mode 100644
+--- /dev/null
++++ b/src/systems/chronicler.js
+@@ -0,0 +1,324 @@
++/**
++ * The Chronicler — the simulation's evidence-backed memory, not a second gameplay authority.
++ * Owns ONLY state.chronicler. Public events are offers/facts, never reputation/bounty commands.
++ * Registry contract: init(ctx), update(dt, state), newGame(), serialize(), deserialize(), destroy().
++ */
++import { FACT_EVENTS, configFor, freshMemory, clone, finite, increment } from '../chronicler/schema.js';
++import { normalizeFact } from '../chronicler/normalize.js';
++import { ingestBatch, resolveLineage, pruneMemory } from '../chronicler/ledger.js';
++import { buildStoryView, semanticSignature, rankViews, recallText } from '../chronicler/narrative.js';
++import { restoreMemory } from '../chronicler/persistence.js';
++
++function priority(f) {
++  if (['recovered', 'sold', 'law', 'remedy'].includes(f.stage)) return 100;
++  if (['ace', 'rescue', 'wanted'].includes(f.stage)) return 80;
++  if (['aftermath', 'binding', 'salvage'].includes(f.stage)) return 70;
++  if (f.stage === 'kill') return f.actor.player ? 65 : 20;
++  return 40;
++}
++function due(at, now, cooldown) { return at === null || now - at >= cooldown; }
++function storyPacket(view) {
++  return { ...clone(view), source: 'chronicler', sourceRef: `${view.id}:r${view.revision}` };
++}
++function publication(view, text) {
++  const sourceRef = `${view.id}:r${view.revision}`;
++  return {
++    id: sourceRef, eventId: sourceRef, source: 'chronicler', sourceRef,
++    storyId: view.id, revision: view.revision, kind: `chronicler-${view.kind}`,
++    text, headline: view.title, sectorId: view.sectorId,
++    stationId: view.stationIds[view.stationIds.length - 1] || null,
++    factionId: view.factionIds[0] || null,
++    complete: view.complete,
++    // Compact, self-contained citations survive ticker retention independently of archive eviction.
++    evidence: view.evidence.filter(f => view.proof.length ? view.proof.includes(f.id) : true)
++      .slice(0, 8).map(f => ({ factId: f.id, event: f.sourceEvent, receiptId: f.sourceReceiptId, t: f.t })),
++  };
++}
++
++export function createChronicler(options = {}) {
++  const defaults = configFor(options);
++  const shouldObserve = typeof options.shouldObserve === 'function' ? options.shouldObserve : () => true;
++  return {
++    name: 'chronicler',
++    init(ctx) {
++      if (!ctx?.state || !ctx.bus || typeof ctx.bus.on !== 'function' || typeof ctx.bus.emit !== 'function') {
++        throw new TypeError('Chronicler.init requires { state, bus }');
++      }
++      this.destroy();
++      this._state = ctx.state; this._bus = ctx.bus;
++      this._subs = []; this._restoring = false; this._updating = false; this._clockBlocked = false;
++      this._adopt(restoreMemory(ctx.state.chronicler, defaults, ctx.state.simTime));
++      for (const event of FACT_EVENTS) this._listen(event, p => this.capture(event, p));
++      this._listen('game:new', () => this.newGame());
++      this._listen('game:newGame', () => this.newGame());
++      this._listen('save:restoring', () => { this._restoring = true; });
++      this._listen('save:error', () => { this._restoring = false; });
++      this._listen('save:loaded', () => {
++        // Some save owners replace a whole field, others call deserialize first. Support both.
++        if (this._state.chronicler !== this._memory) this.deserialize(this._state.chronicler);
++        this._restoring = false; this._clockBlocked = false;
++      });
++      this._listen('game:started', () => {
++        // This fires on Continue too. NEVER erase an archive merely because a game started.
++        if (this._state.chronicler !== this._memory) this.deserialize(this._state.chronicler);
++      });
++      this._listen('dock:docked', p => this.requestRecall({
++        context: 'dock', stationId: p?.stationId,
++        sectorId: p?.sectorId || this._state.world?.currentSectorId,
++      }));
++      this._listen('sector:enter', p => this.requestRecall({
++        context: 'sector', sectorId: p?.sectorId || p?.id || this._state.world?.currentSectorId,
++      }));
++      return this;
++    },
++    _listen(event, fn) {
++      const off = this._bus.on(event, fn);
++      this._subs.push(typeof off === 'function' ? off : () => this._bus?.off?.(event, fn));
++    },
++    _adopt(memory) {
++      // Derive the graph and every read model before touching live state. Even a structurally
++      // malformed narrative fact must not partially replace a healthy archive at a load boundary.
++      resolveLineage(memory);
++      const views = new Map(memory.stories.map(story => [story.id, buildStoryView(story)]));
++      this._memory = memory;
++      this._state.chronicler = memory;
++      this._seen = new Set(memory.seen);
++      this._retainedKeys = new Set([...memory.pending, ...memory.stories.flatMap(s => s.nodes)].map(f => f.dedupe));
++      this._nextWake = 0;
++      this._views = views;
++    },
++    _enabled() { return !!this._memory && !this._restoring && shouldObserve(this._state) !== false; },
++
++    /** Public producer/harness entry point; ordinary integration uses the bus subscriptions. */
++    capture(event, payload) {
++      if (!this._enabled()) return null;
++      const m = this._memory;
++      if (finite(this._state.simTime) + 1e-9 < m.clock) { this._clockBlocked = true; return null; }
++      increment(m.metrics, 'observed');
++      const f = normalizeFact(event, payload, this._state);
++      if (!f) { increment(m.metrics, 'ignored'); return null; }
++      if (f.invalid) { increment(m.metrics, 'invalid'); return null; }
++      if (this._seen.has(f.dedupe) || this._retainedKeys.has(f.dedupe)) { increment(m.metrics, 'duplicates'); return null; }
++      if (m.pending.length >= m.config.maxPending) {
++        let weakest = 0;
++        for (let i = 1; i < m.pending.length; i++) {
++          if (priority(m.pending[i]) < priority(m.pending[weakest])) weakest = i;
++        }
++        increment(m.metrics, 'queueDropped');
++        if (priority(f) <= priority(m.pending[weakest])) return null;
++        const [dropped] = m.pending.splice(weakest, 1);
++        this._seen.delete(dropped.dedupe); this._retainedKeys.delete(dropped.dedupe);
++        m.seen = m.seen.filter(k => k !== dropped.dedupe);
++      }
++      if (!Number.isSafeInteger(m.nextFact + 1)) throw new RangeError('Chronicler receipt sequence exhausted');
++      f.seq = m.nextFact++; f.id = `ch:f:${f.seq}`;
++      this._seen.add(f.dedupe); this._retainedKeys.add(f.dedupe); m.seen.push(f.dedupe);
++      while (m.seen.length > m.config.maxSeen) this._seen.delete(m.seen.shift());
++      m.pending.push(f);
++      return f.id;
++    },
++
++    update(_dt, state = this._state) {
++      if (!this._memory || this._updating || this._restoring) return 0;
++      if (state !== this._state) {
++        this._state = state;
++        this._adopt(restoreMemory(state.chronicler, defaults, state.simTime));
++      } else if (state.chronicler !== this._memory) this.deserialize(state.chronicler);
++      if (!this._enabled()) return 0;
++      const now = Math.max(0, finite(state.simTime));
++      if (now + 1e-9 < this._memory.clock) {
++        // A host rewind needs deserialize/newGame. Silently retiming old evidence would lie.
++        this._clockBlocked = true;
++        return 0;
++      }
++      this._clockBlocked = false; this._updating = true;
++      try {
++        const m = this._memory;
++        m.clock = now;
++        const batch = m.pending.splice(0, m.config.factsPerUpdate);
++        if (batch.length) {
++          ingestBatch(m, batch);
++          this._refreshViews(true);
++          pruneMemory(m, this._views, now);
++          const retained = new Set(m.stories.map(s => s.id));
++          for (const key of this._views.keys()) if (!retained.has(key)) this._views.delete(key);
++          this._refreshLinkGauges();
++          this._retainedKeys = new Set([...m.pending, ...m.stories.flatMap(s => s.nodes)].map(f => f.dedupe));
++          this._nextWake = now;
++        }
++        // Do not publish an intermediate proof while its later packets are still in the inbox.
++        if (m.pending.length === 0 && now >= this._nextWake) {
++          this._publish(now);
++          if (this._memory === m) this._scheduleWake(now);
++        }
++        return batch.length;
++      } finally { this._updating = false; }
++    },
++    _refreshLinkGauges() {
++      const m = this._memory;
++      const statuses = m.stories.flatMap(s => s.nodes.map(f => f.parentStatus));
++      m.metrics.unresolvedLinks = statuses.filter(s => s === 'pending' || s === 'capacity').length;
++      m.metrics.ambiguousLinks = statuses.filter(s => s === 'ambiguous').length;
++      m.metrics.invalidLinks = statuses.filter(s => ['commodity_mismatch', 'custody_mismatch', 'overdrawn_proof'].includes(s)).length;
++    },
++    _refreshViews(revise) {
++      for (const story of this._memory.stories) {
++        const view = buildStoryView(story);
++        const signature = semanticSignature(view);
++        if (revise && signature !== story.signature) {
++          story.revision++;
++          story.signature = signature;
++        }
++        view.revision = story.revision;
++        this._views.set(story.id, view);
++      }
++    },
++    _emit(event, payload) { this._bus?.emit(event, clone(payload)); },
++    _publish(now) {
++      const m = this._memory;
++      const ranked = rankViews([...this._views.values()], { minScore: m.config.minNewsScore }, now);
++      let announcements = 0;
++      for (const view of ranked) {
++        const story = m.stories.find(s => s.id === view.id);
++        if (now - story.updatedAt < m.config.settleSeconds || story.announcedRevision >= story.revision) continue;
++        story.announcedRevision = story.revision; // reserve before synchronous callbacks/re-entry
++        increment(m.metrics, 'storiesPublished');
++        this._emit('chronicler:story', storyPacket(view));
++        if (this._memory !== m || !this._bus) return;
++        if (++announcements >= 4) break;
++      }
++      let legends = 0;
++      for (const legend of m.legends) {
++        if (legend.announced || legend.visibility !== 'public') continue;
++        legend.announced = true;
++        this._emit('chronicler:legend', legend);
++        if (this._memory !== m || !this._bus) return;
++        if (++legends >= 2) break;
++      }
++      if (m.config.publishNews && due(m.cadence.newsAt, now, m.config.newsCooldown)) {
++        const view = ranked.find(v => {
++          const s = m.stories.find(s => s.id === v.id);
++          return now - s.updatedAt >= m.config.settleSeconds && s.newsRevision < s.revision
++            && due(s.newsAt, now, m.config.storyCooldown);
++        });
++        if (view) {
++          const story = m.stories.find(s => s.id === view.id);
++          story.newsRevision = story.revision; story.newsAt = now; m.cadence.newsAt = now;
++          increment(m.metrics, 'newsPublished');
++          this._emit('news:publish', publication(view, view.summary));
++          if (this._memory !== m || !this._bus) return;
++        }
++      }
++      if (m.config.offerRadio && due(m.cadence.radioAt, now, m.config.radioCooldown)) {
++        const view = ranked.find(v => {
++          const s = m.stories.find(s => s.id === v.id);
++          return now - s.updatedAt >= m.config.recallMinAge && s.radioRevision < s.revision;
++        });
++        if (view) {
++          m.stories.find(s => s.id === view.id).radioRevision = view.revision;
++          m.cadence.radioAt = now;
++          increment(m.metrics, 'radioOffered');
++          this._emit('chronicler:radio', { ...publication(view, recallText(view, now)), channel: 'band' });
++        }
++      }
++    },
++
++    _scheduleWake(now) {
++      const m = this._memory;
++      let next = Infinity;
++      for (const v of this._views.values()) {
++        if (v.visibility !== 'public' || v.score < m.config.minNewsScore) continue;
++        const s = m.stories.find(s => s.id === v.id);
++        const settled = s.updatedAt + m.config.settleSeconds;
++        if (s.announcedRevision < s.revision) next = Math.min(next, settled);
++        if (m.config.publishNews && s.newsRevision < s.revision) {
++          next = Math.min(next, Math.max(settled,
++            s.newsAt === null ? 0 : s.newsAt + m.config.storyCooldown,
++            m.cadence.newsAt === null ? 0 : m.cadence.newsAt + m.config.newsCooldown));
++        }
++        if (m.config.offerRadio && s.radioRevision < s.revision) {
++          next = Math.min(next, Math.max(s.updatedAt + m.config.recallMinAge,
++            m.cadence.radioAt === null ? 0 : m.cadence.radioAt + m.config.radioCooldown));
++        }
++      }
++      if (m.legends.some(l => !l.announced && l.visibility === 'public')) next = now;
++      // Only quotas can leave already-due work. Retry at the next fixed tick, not recursively.
++      this._nextWake = next <= now ? now + 1 / 60 : next;
++    },
++
++    /** Read-only snapshots. A UI/query never advances the simulation or consumes a headline. */
++    query(context = {}) {
++      if (!this._memory) return [];
++      const now = Math.max(0, finite(this._state.simTime));
++      const limit = Math.max(0, Math.min(256, Math.floor(finite(context.limit, 12))));
++      return clone(rankViews([...this._views.values()], context, now).slice(0, limit));
++    },
++    getStory(storyId, { includePrivate = false } = {}) {
++      const view = this._views?.get(storyId);
++      return view && (includePrivate || view.visibility === 'public') ? clone(view) : null;
++    },
++    getLegends({ includePrivate = false } = {}) {
++      return this._memory ? clone(this._memory.legends.filter(l => includePrivate || l.visibility === 'public')) : [];
++    },
++    recall(context = {}) {
++      if (!this._memory) return null;
++      const m = this._memory;
++      const filter = { ...context, includePrivate: false, minScore: m.config.minNewsScore,
++        minAgeSeconds: m.config.recallMinAge, limit: 256 };
++      let candidates = this.query(filter);
++      if (!candidates.length && context.stationId && context.sectorId) {
++        delete filter.stationId;
++        candidates = this.query(filter);
++      }
++      const key = JSON.stringify([context.context || 'recall', context.stationId || null,
++        context.sectorId || null, context.actorKey || null, context.factionId || null]);
++      const view = candidates.find(v => !m.recallKeys.includes(`${key}:${v.id}:r${v.revision}`));
++      if (!view) return null;
++      return { ...publication(view, recallText(view, finite(this._state.simTime))),
++        context: context.context || 'recall', recallKey: `${key}:${view.id}:r${view.revision}` };
++    },
++    requestRecall(context = {}) {
++      if (!this._enabled()) return null;
++      const m = this._memory;
++      const now = Math.max(0, finite(this._state.simTime));
++      if (now < m.clock || !due(m.cadence.recallAt, now, m.config.recallCooldown)) return null;
++      const offer = this.recall(context);
++      if (!offer) return null;
++      m.cadence.recallAt = now;
++      m.recallKeys.push(offer.recallKey);
++      if (m.recallKeys.length > 128) m.recallKeys.shift();
++      increment(m.metrics, 'recallsOffered');
++      this._emit('chronicler:recall', offer);
++      return clone(offer);
++    },
++    diagnostics() {
++      if (!this._memory) return { initialized: false };
++      const m = this._memory;
++      return { initialized: true, restoring: this._restoring, clockBlocked: this._clockBlocked,
++        stories: m.stories.length, facts: m.stories.reduce((n, s) => n + s.nodes.length, 0),
++        pending: m.pending.length, seen: m.seen.length, profiles: m.profiles.length,
++        legends: m.legends.length, config: clone(m.config), ...clone(m.metrics) };
++    },
++    serialize() { return this._memory ? clone(this._memory) : null; },
++    deserialize(data) {
++      if (!this._state) throw new Error('Initialize Chronicler before deserialize');
++      const candidate = restoreMemory(data, defaults, this._state.simTime);
++      this._adopt(candidate); this._clockBlocked = false;
++      return true;
++    },
++    newGame() {
++      if (!this._state) return;
++      this._adopt(freshMemory(defaults, this._state.simTime));
++      this._restoring = false; this._clockBlocked = false;
++    },
++    destroy() {
++      for (const off of this._subs || []) off();
++      this._subs = [];
++      this._bus = null; this._state = null; this._memory = null;
++      this._views = new Map(); this._seen = new Set(); this._retainedKeys = new Set(); this._nextWake = Infinity;
++    },
++  };
++}
++
++export const chronicler = createChronicler();
++export default chronicler;
+diff --git a/tests/chronicler/chronicler.test.mjs b/tests/chronicler/chronicler.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/tests/chronicler/chronicler.test.mjs
+@@ -0,0 +1,474 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { harness, chain, receipts } from './harness.mjs';
++import { normalizeFact } from '../../src/chronicler/normalize.js';
++import { createChronicler } from '../../src/systems/chronicler.js';
++import { createChroniclerVoiceBridge } from '../../src/chronicler/voiceBridge.js';
++import { DEFAULT_CONFIG, FACT_EVENTS } from '../../src/chronicler/schema.js';
++
++const full = h => h.system.query({ completeOnly: true, limit: 256 });
++const statuses = h => h.system.query({ includePrivate: true, limit: 256 }).flatMap(v => v.evidence.map(f => f.parentStatus));
++
++test('seven real-shaped receipts make a six-stage explicit causal story', () => {
++  const h = harness(); chain(h); h.step(13);
++  assert.equal(full(h).length, 1);
++  const view = full(h)[0];
++  assert.equal(view.kind, 'combat_salvage_economy_law');
++  assert.deepEqual(view.milestones, ['kill', 'aftermath', 'salvage', 'recovered', 'sold', 'law']);
++  assert.equal(view.evidence.length, 7);
++  assert.equal(view.causalLinks.length, 6);
++  assert.match(view.summary, /4 of those units were sold/);
++  assert.match(view.summary, /a structure/);
++  assert.doesNotMatch(view.summary, /999|asteroid|mercy/);
++  assert.equal(h.events('news:publish').length, 1);
++  assert.equal(h.events('chronicler:story').length, 1);
++  assert.equal(h.events('news:publish')[0].sourceRef, `${view.id}:r${view.revision}`);
++  assert.ok(h.events('news:publish')[0].evidence.every(e => e.factId && e.event));
++});
++
++test('processing a wreck is not inventory acquisition; native sale is not sourced salvage', () => {
++  const h = harness(); chain(h, { through: 4 });
++  h.emit(10, 'economy:tradeCompleted', { side: 'sell', commodityId: 'cmdty_salvage', qty: 999,
++    total: 9000, stationId: 'station_helios_dock' });
++  h.step(13);
++  assert.equal(full(h).length, 0);
++  const views = h.system.query();
++  assert.equal(views.length, 2);
++  assert.equal(views.find(v => v.kind === 'battle_salvage').milestones.length, 3);
++  assert.equal(views.find(v => v.kind === 'trade').evidence[0].details.provenanceMissing, true);
++});
++
++test('re-entrant aftermath publication before its parent kill still resolves', () => {
++  const rs = receipts();
++  const h = harness({}, 4242, bus => {
++    bus.on('entity:killed', () => { for (const packet of rs.slice(1)) bus.emit(...packet); });
++  });
++  h.emit(10, ...rs[0]); h.step(13);
++  assert.equal(full(h).length, 1);
++  assert.equal(h.system.diagnostics().unresolvedLinks, 0);
++});
++
++test('every same-tick delivery permutation resolves without treating delivery order as causality', () => {
++  for (const order of [[6, 5, 4, 3, 2, 1, 0], [3, 6, 1, 4, 0, 5, 2], [5, 0, 6, 2, 4, 1, 3]]) {
++    const h = harness(); chain(h, { order }); h.step(13);
++    assert.equal(full(h).length, 1);
++    assert.equal(full(h)[0].causalLinks.length, 6);
++  }
++});
++
++test('a parent arriving in a later batch at the same sim-time backfills an unresolved chain', () => {
++  const h = harness({ settleSeconds: 0 }); const rs = receipts();
++  for (const packet of rs.slice(1)) h.emit(10, ...packet);
++  h.step(10); assert.equal(full(h).length, 0);
++  h.emit(10, ...rs[0]); h.step(10);
++  assert.equal(full(h).length, 1);
++});
++
++test('a future parent is not permitted to explain an earlier effect', () => {
++  const h = harness(); const rs = receipts();
++  for (const packet of rs.slice(1)) h.emit(10, ...packet);
++  h.step(10); h.emit(100, ...rs[0]); h.step(103);
++  assert.equal(full(h).length, 0);
++  assert.ok(h.system.diagnostics().unresolvedLinks > 0);
++});
++
++test('common player, sector, commodity and timing do not merge unrelated battles', () => {
++  const h = harness(); chain(h, { suffix: '-A', through: 4 }); chain(h, { suffix: '-B', through: 4 });
++  h.step(13);
++  assert.equal(h.system.query().length, 2);
++  assert.ok(h.system.query().every(v => v.evidence.filter(f => f.stage === 'kill').length === 1));
++});
++
++test('an encounter may group multiple losses but only a connected path counts as a full story', () => {
++  const h = harness();
++  h.emit(10, 'entity:killed', { id: 5, killerId: 1, encounterId: 'e1' });
++  h.emit(10, 'entity:killed', { id: 6, killerId: 1, encounterId: 'e1' });
++  h.emit(10, 'aftermathWreck:recorded', { victimId: 999, markerId: 'wrong', encounterId: 'e1' });
++  h.emit(10, 'salvage:completed', { markerId: 'wrong', wreckId: 9 }); h.step(13);
++  assert.equal(h.system.query().length, 1);
++  assert.equal(full(h).length, 0);
++  assert.equal(h.system.query()[0].milestones.length, 1);
++});
++
++test('overdrawn source quantities cannot finish a causal chain', () => {
++  const h = harness(); const rs = receipts(); rs[5][1].qty = 9;
++  for (const r of rs) h.emit(10, ...r); h.step(13);
++  assert.equal(full(h).length, 0);
++  assert.ok(statuses(h).includes('overdrawn_proof'));
++  assert.equal(h.system.diagnostics().invalidLinks, 1);
++});
++
++test('partial sales conserve documentary quantity across distinct receipts', () => {
++  const h = harness(); chain(h);
++  const sale = receipts()[5][1];
++  h.emit(10, 'chronicler:provenance', { ...sale, receiptId: 'second-sale', qty: 4 });
++  h.emit(10, 'chronicler:provenance', { ...sale, receiptId: 'third-sale', qty: 1 }); h.step(13);
++  assert.equal(full(h).length, 1);
++  assert.equal(statuses(h).filter(s => s === 'overdrawn_proof').length, 1);
++  const sales = h.system.query({ limit: 256 }).flatMap(v => v.evidence)
++    .filter(f => f.stage === 'sold' && f.parentStatus === 'resolved');
++  assert.equal(sales.reduce((n, f) => n + f.details.qty, 0), 8);
++});
++
++test('same-source sales cannot swap commodity or custody owner', () => {
++  for (const [field, value, status] of [['commodityId', 'cmdty_gold', 'commodity_mismatch'], ['actorId', 22, 'custody_mismatch']]) {
++    const h = harness(); const rs = receipts(); rs[5][1][field] = value;
++    for (const r of rs) h.emit(10, ...r); h.step(13);
++    assert.equal(full(h).length, 0); assert.ok(statuses(h).includes(status));
++  }
++});
++
++test('ambiguous source aliases fail closed instead of choosing a convenient parent', () => {
++  const h = harness();
++  h.emit(10, 'entity:killed', { id: 7, killerId: 1, killId: 'life-a' });
++  h.emit(10, 'entity:killed', { id: 7, killerId: 2, killId: 'life-b' });
++  h.emit(10, 'aftermathWreck:recorded', { markerId: 'ambiguous', victimId: 7 }); h.step(13);
++  assert.equal(h.system.diagnostics().ambiguousLinks, 1);
++  assert.equal(h.system.query({ limit: 256 }).length, 3);
++});
++
++test('duplicates are suppressed in pending, retained and serialized memory even with a tiny recent ring', () => {
++  const h = harness({ maxSeen: 1 }); const rs = chain(h);
++  for (const r of rs) h.emit(10, ...r);
++  h.step(13);
++  assert.equal(h.system.diagnostics().facts, 7);
++  const saved = h.system.serialize(); h.system.deserialize(saved);
++  for (const r of rs.slice(1)) h.emit(13, ...r);
++  h.step(13);
++  assert.equal(h.system.diagnostics().facts, 7);
++  assert.equal(h.system.diagnostics().duplicates, 13);
++});
++
++test('native trade and explicit trade proof share a transaction but do not double-count sourced cargo', () => {
++  const h = harness(); chain(h);
++  h.emit(10, 'economy:tradeCompleted', { receiptId: 'trade-29', side: 'sell', commodityId: 'cmdty_salvage',
++    qty: 4, total: 240, stationId: 'station_helios_dock' }); h.step(13);
++  assert.equal(h.system.query().length, 1);
++  assert.equal(full(h).length, 1);
++  assert.equal(full(h)[0].evidence.filter(f => f.stage === 'sold').length, 1);
++});
++
++test('source objects and query/event snapshots cannot mutate durable evidence', () => {
++  const h = harness(); const rs = chain(h);
++  rs[0][1].victimName = 'MUTATED'; rs[5][1].qty = 9999; h.step(13);
++  h.bus.on('news:publish', p => { p.text = 'changed'; p.evidence.length = 0; });
++  const view = full(h)[0]; view.summary = 'bad'; view.evidence[0].details.cause = 'bad';
++  assert.match(full(h)[0].summary, /Morrow/);
++  assert.equal(full(h)[0].evidence[0].details.cause, 'terrain_collision');
++  assert.equal(full(h)[0].evidence.find(f => f.stage === 'sold').details.qty, 4);
++});
++
++test('normalization retains no renderer payloads, entity references or cyclic source objects', () => {
++  const h = harness();
++  const visual = { cause: 'ship_collision', surface: 'structure', playerCaused: false };
++  visual.mesh = { parent: visual }; visual.pos = { x: 0, y: 123, z: 3 };
++  h.emit(10, 'entity:killed', { id: 7, killerId: 1, presentation: visual, cause: 'kinetic' }); h.step(13);
++  const saved = JSON.stringify(h.system.serialize());
++  assert.doesNotMatch(saved, /mesh|123|"y"/);
++  const f = h.system.query()[0].evidence[0];
++  assert.equal(f.details.cause, 'ship_collision'); assert.equal(f.details.surface, 'structure');
++  assert.equal(f.details.playerCaused, false); assert.equal(f.actor.player, false);
++  assert.equal(h.system.diagnostics().profiles, 1); // NPC/uncredited key, NOT the player profile
++  assert.notEqual(h.system.serialize().profiles[0].actorKey, 'player');
++});
++
++test('private/player-only evidence does not leak to public feeds, queries or recalls', () => {
++  for (const visibility of ['private', 'player']) {
++    const h = harness(); chain(h, { visibility }); h.step(13); h.step(200);
++    assert.equal(h.system.query().length, 0);
++    assert.equal(h.system.query({ includePrivate: true }).length, 1);
++    assert.equal(h.outputs.length, 0);
++    assert.equal(h.system.requestRecall({ sectorId: 'helios' }), null);
++  }
++});
++
++test('legends are earned from distinct receipts and preserve exemplar evidence after episode eviction', () => {
++  const h = harness({ maxStories: 2 });
++  for (let i = 0; i < 3; i++) {
++    h.emit(i * 10, 'entity:killed', { id: `ship-${i}`, killerId: 1, cause: 'ship_collision' }); h.step(i * 10 + 3);
++  }
++  assert.equal(h.system.diagnostics().stories, 2);
++  assert.equal(h.system.getLegends()[0].title, 'The Wreckwright');
++  assert.equal(h.system.getLegends()[0].count, 3);
++  assert.equal(h.system.getLegends()[0].evidence.length, 3);
++  assert.equal(h.events('chronicler:legend').length, 1);
++});
++
++test('a public last event cannot launder private history into a legend', () => {
++  const h = harness();
++  for (let i = 0; i < 3; i++) {
++    h.emit(i, 'entity:killed', { id: i + 20, killerId: 1, cause: 'ship_collision', visibility: i === 0 ? 'private' : 'public' }); h.step(i);
++  }
++  h.step(10);
++  assert.equal(h.system.getLegends().length, 0);
++  assert.equal(h.system.getLegends({ includePrivate: true }).length, 1);
++  assert.equal(h.events('chronicler:legend').length, 0);
++});
++
++test('escaped captain, return and defeat form a remembered saga without inventing mercy', () => {
++  const h = harness();
++  h.emit(10, 'aceMemory:transition', { aceId: 'ace-iona', aceName: 'Iona', transition: 'fled', record: { encounterCount: 1 } }); h.step(13);
++  h.emit(400, 'aceMemory:returnSpawned', { aceId: 'ace-iona', aceName: 'Iona' }); h.step(403);
++  h.emit(800, 'aceMemory:transition', { aceId: 'ace-iona', aceName: 'Iona', transition: 'defeated', record: { encounterCount: 2 } }); h.step(803);
++  const v = h.system.query()[0];
++  assert.equal(v.kind, 'ace_saga'); assert.match(v.summary, /escaping and returning/);
++  assert.doesNotMatch(v.summary + v.radio, /mercy|spared|grateful|revenge/);
++});
++
++test('heat edges form one pursuit episode; clearing is not exoneration', () => {
++  const h = harness();
++  h.emit(10, 'heat:changed', { level: 2, previousValue: 0, value: .3, wantedCrossed: true, reason: 'piracy kill (ship)' }); h.step(13);
++  h.emit(20, 'heat:changed', { level: 3, previousValue: .3, value: .5 }); h.step(23);
++  h.emit(30, 'heat:changed', { level: 0, previousValue: .5, value: 0, wantedCrossed: true }); h.step(33);
++  assert.equal(h.system.query().length, 1);
++  assert.equal(h.system.query()[0].kind, 'wanted_cleared');
++  assert.match(h.system.query()[0].summary, /level 3/);
++  assert.match(h.system.query()[0].summary, /not an acquittal/);
++  assert.equal(h.system.query()[0].causalLinks.length, 0);
++});
++
++test('a near-simultaneous piracy kill and WANTED event are not fabricated as an explicit causal edge', () => {
++  const h = harness(); chain(h, { through: 1 });
++  h.emit(10, 'heat:changed', { level: 2, previousValue: 0, value: .3, wantedCrossed: true, reason: 'piracy kill (ship)' }); h.step(13);
++  assert.equal(h.system.query().length, 2);
++  assert.ok(h.system.query().every(v => v.causalLinks.length === 0));
++});
++
++test('reactor and remedy facts are useful without inventing victims or outcomes', () => {
++  const h = harness();
++  h.emit(10, 'salvage:reactorVented', { wreckId: 800 });
++  h.emit(10, 'aftermath:causeRecorded', { fingerprint: 'cause-a', consequenceKind: 'freight_loss' });
++  h.emit(10, 'aftermath:remedied', { fingerprint: 'cause-a', missionId: 'mission-a', consequenceKind: 'freight_loss' }); h.step(13);
++  assert.ok(h.system.query().some(v => v.kind === 'reactor_action'));
++  assert.ok(h.system.query().some(v => v.kind === 'aftermath_remedied'));
++  assert.doesNotMatch(h.system.query().map(v => v.summary).join(' '), /saved lives|averted/);
++});
++
++test('three documented rescues produce a distinct humanitarian legend', () => {
++  const h = harness();
++  for (let i = 0; i < 3; i++) h.emit(10, 'distress:rescued', { distressId: `d${i}`, targetId: i + 40 });
++  h.step(13);
++  assert.equal(h.system.getLegends()[0].title, 'A Hand in the Dark');
++});
++
++test('save preserves pending facts and serialization emits nothing', () => {
++  const h = harness(); chain(h);
++  const before = h.outputs.length, snap = h.system.serialize();
++  assert.equal(snap.pending.length, 7); assert.equal(h.outputs.length, before);
++  const resumed = harness(); resumed.at(10); resumed.system.deserialize(snap); resumed.step(13);
++  h.step(13);
++  assert.deepEqual(resumed.system.serialize(), h.system.serialize());
++  assert.deepEqual(resumed.outputs, h.outputs);
++});
++
++test('mid-arc save/resume produces exactly the uninterrupted state and subsequent outputs', () => {
++  const h = harness(); const rs = chain(h, { through: 4 }); h.step(13);
++  const resumed = harness(); resumed.at(13); resumed.system.deserialize(h.system.serialize());
++  const start = h.outputs.length;
++  for (const r of receipts().slice(4)) { h.emit(30, ...r); resumed.emit(30, ...r); }
++  for (const t of [33, 133, 260, 1000]) { h.step(t); resumed.step(t); }
++  assert.deepEqual(resumed.system.serialize(), h.system.serialize());
++  assert.deepEqual(resumed.outputs, h.outputs.slice(start));
++});
++
++test('restoring cadence does not replay an already published headline', () => {
++  const h = harness(); chain(h); h.step(13);
++  const resumed = harness(); resumed.at(13); resumed.system.deserialize(h.system.serialize());
++  resumed.step(13); resumed.step(20); resumed.step(100);
++  assert.equal(resumed.events('news:publish').length, 0);
++  resumed.step(140); assert.equal(resumed.events('chronicler:radio').length, 1);
++});
++
++test('unsupported, corrupt and identity-rewinding saves fail atomically', () => {
++  const h = harness(); chain(h); h.step(13); const original = h.system.serialize();
++  const corruptions = [
++    s => { s.schemaVersion = 99; },
++    s => { s.nextFact = 1; },
++    s => { s.stories[0].nodes[4].details.qty = -1; },
++    s => { s.stories[0].edges[0].from = 'not-a-fact'; },
++    s => { s.config.maxStories = 999999; },
++    s => { s.secret = 'unrecognized'; },
++  ];
++  for (const corrupt of corruptions) {
++    const s = structuredClone(original); corrupt(s);
++    assert.throws(() => h.system.deserialize(s), /snapshot/i);
++    assert.deepEqual(h.system.serialize(), original);
++  }
++});
++
++test('legacy saves without Chronicler data start empty rather than manufacturing history', () => {
++  const h = harness(); chain(h); h.step(13); h.system.deserialize(null);
++  assert.equal(h.system.query().length, 0); assert.equal(h.system.diagnostics().facts, 0);
++});
++
++test('Continue does not clear memory; explicit new-game does', () => {
++  const h = harness(); chain(h); h.step(13);
++  h.bus.emit('game:started', {}); assert.equal(full(h).length, 1);
++  h.at(0); h.bus.emit('game:new', {}); assert.equal(h.system.query().length, 0);
++  assert.equal(h.system.diagnostics().accepted, 0);
++});
++
++test('load restoration ignores synthetic materialization events and resumes after failure', () => {
++  const h = harness(); h.bus.emit('save:restoring', {});
++  chain(h); h.step(13); assert.equal(h.system.diagnostics().facts, 0);
++  h.bus.emit('save:error', {}); chain(h, { t: 20 }); h.step(23); assert.equal(full(h).length, 1);
++});
++
++test('field replacement at save:loaded rebinds the system rather than reading a stale object', () => {
++  const h = harness(); chain(h); h.step(13); const snap = h.system.serialize();
++  h.system.newGame(); h.state.chronicler = snap; h.bus.emit('save:loaded', {});
++  assert.equal(full(h).length, 1);
++});
++
++test('unannounced clock rewinds stop processing until a proper lifecycle restore', () => {
++  const h = harness(); chain(h); h.step(13); const saved = h.system.serialize();
++  h.step(2); assert.equal(h.system.diagnostics().clockBlocked, true);
++  assert.deepEqual(h.system.serialize(), saved);
++  h.at(13); h.system.deserialize(saved); h.step(13);
++  assert.equal(h.system.diagnostics().clockBlocked, false);
++});
++
++test('re-entrant publication reserves its cadence and leaves newly captured facts for the next step', () => {
++  const h = harness(); let calls = 0;
++  h.bus.on('news:publish', () => {
++    calls++; h.bus.emit('distress:rescued', { distressId: 'during-publish', targetId: 987 });
++    assert.equal(h.system.update(0, h.state), 0);
++  });
++  chain(h); h.step(13);
++  assert.equal(calls, 1); assert.equal(h.system.diagnostics().pending, 1);
++  h.step(14); assert.equal(h.system.diagnostics().pending, 0); assert.equal(calls, 1);
++});
++
++test('destroy and repeated init remove subscriptions, preserving only owned durable data', () => {
++  const h = harness();
++  h.system.init({ state: h.state, bus: h.bus });
++  for (const event of FACT_EVENTS) assert.equal(h.bus._listeners.get(event)?.size, 1);
++  chain(h); h.step(13); const snap = h.state.chronicler;
++  h.system.destroy();
++  for (const event of FACT_EVENTS) assert.equal(h.bus._listeners.get(event)?.size || 0, 0);
++  assert.equal(h.state.chronicler, snap);
++});
++
++test('context recall works while docked, is local, and persists anti-repeat keys', () => {
++  const h = harness(); chain(h); h.step(13); h.at(200); h.state.mode = 'docked';
++  h.bus.emit('dock:docked', { stationId: 'unrelated-local-station', sectorId: 'helios' });
++  assert.equal(h.events('chronicler:recall').length, 1);
++  assert.match(h.events('chronicler:recall')[0].text, /sim-minutes ago/);
++  assert.equal(h.system.requestRecall({ sectorId: 'other-sector' }), null);
++  const saved = h.system.serialize();
++  const resumed = harness(); resumed.at(200); resumed.system.deserialize(saved); resumed.at(1000);
++  assert.equal(resumed.system.requestRecall({ context: 'dock', stationId: 'unrelated-local-station', sectorId: 'helios' }), null);
++});
++
++test('headline budgets and meaningful-revision cooldowns suppress spam', () => {
++  const h = harness(); for (let i = 0; i < 10; i++) chain(h, { suffix: `-${i}` });
++  h.step(13); assert.equal(h.events('news:publish').length, 1); assert.equal(h.events('chronicler:story').length, 4);
++  h.step(14); assert.equal(h.events('chronicler:story').length, 8); assert.equal(h.events('news:publish').length, 1);
++  h.step(73); assert.equal(h.events('news:publish').length, 2);
++});
++
++test('wreck rematerialization neither republishes nor rejuvenates an old story', () => {
++  const h = harness(); chain(h); h.step(13); const original = full(h)[0];
++  h.emit(1000, 'aftermathWreck:spawned', { markerId: 'aft-morrow', entityId: 'new-body' }); h.step(1003);
++  const current = full(h)[0];
++  assert.equal(current.revision, original.revision);
++  assert.equal(current.updatedAt, original.updatedAt);
++  assert.equal(h.events('news:publish').length, 1);
++});
++
++test('queue admission preserves higher-value provenance over ambient kill floods', () => {
++  const h = harness({ maxPending: 8 });
++  for (let i = 0; i < 100; i++) h.emit(10, 'entity:killed', { id: i + 100, killerId: 999 });
++  chain(h); h.step(13);
++  assert.equal(full(h).length, 1);
++  assert.ok(h.system.diagnostics().queueDropped >= 99);
++  assert.ok(h.system.diagnostics().pending <= 8);
++});
++
++test('per-update work budgets never publish an inbox-incomplete proof', () => {
++  const h = harness({ factsPerUpdate: 2, settleSeconds: 0 }); chain(h);
++  for (let i = 0; i < 3; i++) { assert.equal(h.step(10), 2); assert.equal(h.outputs.length, 0); }
++  assert.equal(h.step(10), 1); assert.equal(full(h).length, 1); assert.equal(h.events('news:publish').length, 1);
++});
++
++test('retention caps evict whole episodes with no dangling edges', () => {
++  const h = harness({ maxStories: 8, maxSeen: 16 });
++  for (let i = 0; i < 80; i++) { chain(h, { t: i * 10, suffix: `-${i}` }); h.step(i * 10 + 3); }
++  const saved = h.system.serialize();
++  assert.ok(saved.stories.length <= 8); assert.ok(saved.seen.length <= 16);
++  for (const s of saved.stories) {
++    const ids = new Set(s.nodes.map(f => f.id));
++    assert.ok(s.edges.every(e => ids.has(e.from) && ids.has(e.to)));
++  }
++  assert.ok(h.system.diagnostics().storiesEvicted > 0);
++  assert.doesNotThrow(() => h.system.deserialize(saved));
++});
++
++test('dense single-episode detail is capped without growing an unbounded character saga', () => {
++  const h = harness({ maxFactsPerStory: 12 });
++  for (let i = 0; i < 100; i++) {
++    h.emit(i, 'aceMemory:transition', { aceId: 'same-ace', aceName: 'Iona', transition: 'encountered', record: { encounterCount: i } }); h.step(i);
++  }
++  assert.equal(h.system.diagnostics().facts, 12);
++  assert.equal(h.system.diagnostics().detailDropped, 88);
++});
++
++test('low-information or malformed input is bounded and cannot crash a fixed step', () => {
++  const h = harness();
++  for (const payload of [null, [], 1, {}, { id: NaN }, { id: 'x'.repeat(1000) }]) h.emit(10, 'entity:killed', payload);
++  h.emit(10, 'economy:tradeCompleted', { side: 'buy' });
++  h.emit(10, 'heat:changed', { level: 2, value: .3, previousValue: .3 });
++  h.emit(10, 'chronicler:provenance', { receiptId: '__proto__', stage: 'sold', source: { kind: 'receipt', id: 'x' }, actorId: 1, commodityId: 'x', qty: Infinity });
++  assert.doesNotThrow(() => h.step(13));
++  assert.equal(h.system.diagnostics().facts, 0); assert.ok(h.system.diagnostics().invalid >= 6);
++  assert.equal({}.polluted, undefined);
++});
++
++test('queries, serialization and simulation do not consult wall time or the gameplay RNG', () => {
++  const h = harness(); chain(h);
++  const random = Math.random, wall = Date.now;
++  Math.random = () => { throw new Error('random'); }; Date.now = () => { throw new Error('wall time'); };
++  try { h.step(13); h.system.query(); h.system.serialize(); h.step(1000); }
++  finally { Math.random = random; Date.now = wall; }
++  assert.equal(full(h).length, 1);
++});
++
++test('identical fixed-seed tapes produce byte-identical archives and emitted content', () => {
++  const run = () => { const h = harness({}, 8008); chain(h); h.step(13); h.step(180); h.system.requestRecall({ sectorId: 'helios' }); return h; };
++  const a = run(), b = run();
++  assert.equal(JSON.stringify(a.system.serialize()), JSON.stringify(b.system.serialize()));
++  assert.deepEqual(a.outputs, b.outputs);
++});
++
++test('idle fast path does not rebuild or sort stories on every simulation tick', () => {
++  const h = harness(); chain(h); h.step(13); h.step(1000);
++  let publishes = 0, refreshes = 0;
++  const publish = h.system._publish, refresh = h.system._refreshViews;
++  h.system._publish = function (...args) { publishes++; return publish.apply(this, args); };
++  h.system._refreshViews = function (...args) { refreshes++; return refresh.apply(this, args); };
++  for (let i = 1; i < 10000; i++) h.step(1000 + i / 60);
++  assert.equal(publishes, 0); assert.equal(refreshes, 0);
++});
++
++test('campaign observation gate suppresses sealed-run writes and returns cleanly', () => {
++  const h = harness({ shouldObserve: s => !s.sealed }); h.state.sealed = true;
++  chain(h); h.step(13); assert.equal(h.system.diagnostics().observed, 0);
++  h.state.sealed = false; chain(h, { t: 20 }); h.step(23); assert.equal(full(h).length, 1);
++});
++
++test('optional voice bridge submits real offers and never mislabels rejection as hearing', () => {
++  const h = harness(); let accepted = false; const heard = [];
++  const bridge = createChroniclerVoiceBridge({ bus: h.bus, helpers: { voice: { say(p) { heard.push(p); return accepted; } } } });
++  chain(h); h.step(13); h.step(150);
++  assert.equal(h.events('chronicler:voiceRejected').length, 1); assert.equal(heard[0].channel, 'band');
++  accepted = true; h.at(200); h.system.requestRecall({ sectorId: 'helios' });
++  assert.equal(h.events('chronicler:voiceAccepted').length, 1); assert.equal(heard[1].channel, 'comms');
++  bridge.destroy(); assert.equal(h.bus._listeners.get('chronicler:radio').size, 1); // harness recorder only
++});
++
++test('each factory instance is independent and init enforces the real bus contract', () => {
++  assert.throws(() => createChronicler().init({}), /requires/);
++  const a = harness(), b = harness(); chain(a); a.step(13);
++  assert.equal(b.system.query().length, 0);
++  assert.equal(Object.keys(DEFAULT_CONFIG).length > 0, true);
++});
+diff --git a/tests/chronicler/hardening.test.mjs b/tests/chronicler/hardening.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/tests/chronicler/hardening.test.mjs
+@@ -0,0 +1,143 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { harness, chain, receipts } from './harness.mjs';
++import { normalizeFact } from '../../src/chronicler/normalize.js';
++import { createChronicler } from '../../src/systems/chronicler.js';
++let compactKillCausality;
++try { ({ compactKillCausality } = await import('../../src/combat/killCausality.js')); }
++catch (error) {
++  if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
++  ({ compactKillCausality } = await import('../../../fixtures/killCausality.js'));
++}
++
++test('kill semantics conform to the supplied production helper over 1,176 combinations', () => {
++  const h = harness();
++  const causes = ['generic', 'kinetic', 'explosive', 'terrain_collision', 'ship_collision', 'unknown', undefined];
++  let compared = 0;
++  for (const cause of causes) for (const other of causes)
++    for (const surface of ['terrain', 'craft', 'structure', 'unknown'])
++      for (const playerCaused of [true, false, undefined]) for (const killerId of [1, 9]) {
++        const p = { id: 42, killerId, cause: other, presentation: { cause, surface, playerCaused } };
++        const d = normalizeFact('entity:killed', p, h.state).details;
++        const expected = compactKillCausality(p, 1);
++        assert.deepEqual({ cause: d.cause, surface: d.surface, playerCaused: d.playerCaused },
++          { cause: expected.cause, surface: expected.surface, playerCaused: expected.playerCaused });
++        compared++;
++      }
++  assert.equal(compared, 1176);
++});
++
++test('a remote event does not inherit the currently rendered sector name', () => {
++  const h = harness();
++  h.emit(10, 'entity:killed', { id: 42, killerId: 1, sectorId: 'sector_nyx', victimName: 'Courier' }); h.step(13);
++  assert.match(h.system.query()[0].summary, /nyx/);
++  assert.doesNotMatch(h.system.query()[0].summary, /Helios/);
++});
++
++test('ace record sector and explicit sector labels agree instead of mixing locations', () => {
++  const h = harness();
++  h.emit(10, 'aceMemory:transition', { aceId: 'iona', aceName: 'Iona', transition: 'encountered', record: { lastSectorId: 'sector_nyx' } }); h.step(13);
++  assert.match(h.system.query()[0].summary, /nyx/);
++  assert.doesNotMatch(h.system.query()[0].summary, /Helios/);
++});
++
++test('a multi-sector causal arc is recallable where its cargo was sold', () => {
++  const h = harness(); const rs = receipts();
++  for (let i = 0; i < rs.length; i++) {
++    if (i >= 5) Object.assign(rs[i][1], { sectorId: 'nyx', sectorName: 'Nyx' });
++    h.emit(10, ...rs[i]);
++  }
++  h.step(13); h.at(400);
++  const v = h.system.query({ sectorId: 'nyx' })[0];
++  assert.equal(v.complete, true); assert.deepEqual(v.sectorIds, ['helios', 'nyx']);
++  assert.ok(h.system.requestRecall({ context: 'dock', stationId: 'station_helios_dock', sectorId: 'nyx' }));
++});
++
++test('clock rewind fails closed at capture as well as at update', () => {
++  const h = harness(); chain(h); h.step(13); const before = h.system.serialize();
++  h.emit(1, 'entity:killed', { id: 5, killerId: 1 });
++  assert.deepEqual(h.system.serialize(), before);
++  assert.equal(h.system.diagnostics().clockBlocked, true);
++  h.step(14); assert.equal(h.system.diagnostics().clockBlocked, false);
++});
++
++test('semantically corrupt saves fail atomically, including event-stage and proof mismatches', () => {
++  const h = harness(); chain(h); h.step(13); const before = h.system.serialize();
++  const changes = [
++    s => { s.stories[0].nodes[0].stage = 'ace'; },
++    s => { s.stories[0].nodes[0].subject = null; },
++    s => { s.stories[0].nodes[0].details.cause = 'invented_physics'; },
++    s => { s.stories[0].nodes.find(f => f.stage === 'sold').parent.kind = 'wreck'; },
++    s => { s.stories[0].nodes.find(f => f.stage === 'law').details.kind = {}; },
++  ];
++  for (const change of changes) {
++    const bad = structuredClone(before); change(bad);
++    assert.throws(() => h.system.deserialize(bad));
++    assert.deepEqual(h.system.serialize(), before);
++  }
++});
++
++test('initial existing-state adoption derives edges and does not trust a forged serialized edge', () => {
++  const h = harness(); chain(h); h.step(13); const saved = h.system.serialize();
++  const s = saved.stories[0]; s.edges = [{ from: s.nodes[0].id, to: s.nodes[6].id, relation: 'made_up', certainty: 'explicit' }];
++  h.system.destroy(); h.state.chronicler = saved;
++  const system = createChronicler().init({ state: h.state, bus: h.bus });
++  assert.equal(system.query()[0].causalLinks.length, 6);
++  assert.ok(system.query()[0].causalLinks.every(e => e.relation !== 'made_up'));
++});
++
++test('small positive quantities are never narrated as zero', () => {
++  const h = harness();
++  h.emit(10, 'economy:tradeCompleted', { side: 'sell', commodityId: 'ore', qty: 0.000001,
++    total: 0.000002, stationId: 'dock' }); h.step(13);
++  assert.match(h.system.query()[0].summary, /0\.000001 units/);
++});
++
++test('a dense ace saga makes room for the later outcome, not another routine sighting', () => {
++  const h = harness({ maxFactsPerStory: 12 });
++  for (let i = 0; i < 100; i++) {
++    h.emit(i, 'aceMemory:transition', { aceId: 'iona', aceName: 'Iona', transition: 'encountered', record: { encounterCount: i } }); h.step(i);
++  }
++  for (const [t, transition] of [[110, 'fled'], [120, 'returned'], [130, 'defeated']]) {
++    h.emit(t, 'aceMemory:transition', { aceId: 'iona', aceName: 'Iona', transition }); h.step(t);
++  }
++  assert.equal(h.system.diagnostics().facts, 12);
++  assert.match(h.system.query()[0].summary, /defeated after escaping and returning/);
++});
++
++test('dense wanted transitions preserve the peak and the final clear flag', () => {
++  const h = harness({ maxFactsPerStory: 12 });
++  for (let i = 1; i <= 50; i++) {
++    const level = i % 2 ? 5 : 2;
++    h.emit(i, 'heat:changed', { level, value: .5, previousLevel: i === 1 ? 0 : level === 5 ? 2 : 5 }); h.step(i);
++  }
++  h.emit(60, 'heat:changed', { level: 0, value: 0, previousLevel: 2 }); h.step(63);
++  assert.equal(h.system.query()[0].kind, 'wanted_cleared');
++  assert.match(h.system.query()[0].summary, /reaching level 5/);
++  assert.equal(h.state.chronicler.activeWanted, null);
++  assert.equal(h.system.diagnostics().facts, 12);
++});
++
++test('fifteen documented rescues graduate a single legend through all three thresholds', () => {
++  const h = harness({ maxStories: 4 });
++  for (let i = 0; i < 15; i++) { h.emit(i * 10, 'distress:rescued', { id: `rescue-${i}` }); h.step(i * 10 + 3); }
++  assert.equal(h.system.getLegends().length, 1);
++  assert.equal(h.system.getLegends()[0].count, 15);
++  assert.equal(h.system.diagnostics().legendsFormed, 3);
++  const before = h.system.serialize(); h.system.deserialize(before);
++  assert.deepEqual(h.system.serialize(), before);
++});
++
++test('a full archive of old legends cannot starve the next developing causal chain', () => {
++  const h = harness({ maxStories: 3 });
++  for (let i = 0; i < 3; i++) { chain(h, { suffix: `old-${i}`, t: i * 100 }); h.step(i * 100 + 3); }
++  assert.equal(h.system.query({ completeOnly: true }).length, 3);
++  const rs = receipts('new');
++  for (let i = 0; i < rs.length; i++) {
++    const t = 1000 + [0, 0, 0, 3, 8, 15, 23][i];
++    h.emit(t, ...rs[i]); h.step(t);
++  }
++  h.step(1026);
++  assert.ok(h.system.query({ completeOnly: true }).some(v => v.summary.includes('Morrownew')));
++  assert.ok(h.system.diagnostics().stories <= 3);
++});
+diff --git a/tests/chronicler/harness.mjs b/tests/chronicler/harness.mjs
+new file mode 100644
+--- /dev/null
++++ b/tests/chronicler/harness.mjs
+@@ -0,0 +1,47 @@
++import { createChronicler } from '../../src/systems/chronicler.js';
++let createBus;
++try { ({ createBus } = await import('../../src/core/eventBus.js')); }
++catch (error) {
++  if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
++  ({ createBus } = await import('../../../fixtures/eventBus.js'));
++}
++export { createBus };
++export const OUTPUTS = ['chronicler:story', 'news:publish', 'chronicler:legend',
++  'chronicler:radio', 'chronicler:recall', 'chronicler:voiceAccepted', 'chronicler:voiceRejected'];
++export function harness(options = {}, seed = 4242, beforeInit = null) {
++  const bus = createBus();
++  const state = { simTime: 0, tick: 0, mode: 'flight', playerId: 1, player: { heat: 0, credits: 500 },
++    meta: { seed }, world: { currentSectorId: 'helios', activeSector: { name: 'Helios' } },
++    entities: new Map(), rng: () => { throw new Error('Chronicler must not consume the gameplay RNG'); } };
++  const outputs = [];
++  for (const name of OUTPUTS) bus.on(name, p => outputs.push({ event: name, payload: structuredClone(p) }));
++  if (beforeInit) beforeInit(bus, state);
++  const system = createChronicler(options).init({ state, bus });
++  function at(t) { state.simTime = t; state.tick = Math.round(t * 60); }
++  return { bus, state, system, outputs, at,
++    emit(t, event, p) { at(t); bus.emit(event, p); },
++    step(t) { at(t); return system.update(1 / 60, state); },
++    events(name) { return outputs.filter(e => e.event === name).map(e => e.payload); } };
++}
++export function receipts(suffix = '', visibility = 'public') {
++  const marker = `aft-morrow${suffix}`, cargo = `cargo-17${suffix}`, sale = `trade-29${suffix}`;
++  const victimId = `ship-42${suffix}`, wreckId = `wreck-900${suffix}`;
++  return [
++    ['entity:killed', { id: victimId, killerId: 1, victimName: `Morrow${suffix}`, victimClass: 'hauler',
++      sectorId: 'helios', visibility, presentation: { cause: 'terrain_collision', surface: 'structure', playerCaused: true } }],
++    ['aftermathWreck:recorded', { markerId: marker, victimId, killerId: 1, sectorId: 'helios', victimLabel: `Morrow${suffix}`, visibility }],
++    ['aftermathWreck:spawned', { markerId: marker, entityId: wreckId, sectorId: 'helios', visibility }],
++    ['salvage:completed', { markerId: marker, wreckId, loot: { cmdty_salvage: 999 }, visibility }],
++    ['chronicler:provenance', { receiptId: cargo, stage: 'recovered', source: { kind: 'marker', id: marker },
++      actorId: 1, commodityId: 'cmdty_salvage', qty: 8, sectorId: 'helios', visibility }],
++    ['chronicler:provenance', { receiptId: sale, stage: 'sold', source: { kind: 'receipt', id: cargo },
++      actorId: 1, commodityId: 'cmdty_salvage', qty: 4, total: 240, stationId: 'station_helios_dock', sectorId: 'helios', visibility }],
++    ['chronicler:provenance', { receiptId: `law-31${suffix}`, stage: 'law', source: { kind: 'receipt', id: sale },
++      actorId: 1, kind: 'fencing investigation', sectorId: 'helios', visibility }],
++  ];
++}
++export function chain(h, { t = 10, suffix = '', visibility = 'public', through = 7, order = null } = {}) {
++  const rs = receipts(suffix, visibility).slice(0, through);
++  for (const i of order || rs.map((_, i) => i)) h.emit(t, ...rs[i]);
++  return rs;
++}

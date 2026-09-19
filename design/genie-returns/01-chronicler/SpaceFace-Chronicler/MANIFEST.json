@@ -1,0 +1,193 @@
+{
+  "package": "SpaceFace Chronicler",
+  "version": "1.0.0",
+  "schemaVersion": 1,
+  "repository": "coldshalamov/SpaceFace",
+  "packetBase": "de9f3f1fc",
+  "checkedInterfaceCommit": "94f38d342b8730df104777e64a5457a4ffb725f3",
+  "inputArchiveSha256": "dd1253d5b1a15c8a2cff9f3802cb0f76c703c5be9dcaa3ad19131e3c98a50a7f",
+  "hashAlgorithm": "SHA-256",
+  "manifestSelfExcluded": true,
+  "files": [
+    {
+      "path": "INTEGRATION-NOTES.md",
+      "bytes": 21167,
+      "sha256": "7f1c0b595535108676ebe0aa00d86ca344aee99f9374df44ff44073a4017b932",
+      "role": "delivery-support"
+    },
+    {
+      "path": "README.md",
+      "bytes": 6344,
+      "sha256": "f46021fb37146d0d9cd561a6bc08fea1b0775313428ef1d81be01e67d2a95676",
+      "role": "delivery-support"
+    },
+    {
+      "path": "SOURCE-CONTEXT.md",
+      "bytes": 1642,
+      "sha256": "354170be567b51e6fd447b1fabb32b51660254c109a2b5f0aa9b733588d1d61c",
+      "role": "delivery-support"
+    },
+    {
+      "path": "VERIFICATION.md",
+      "bytes": 6684,
+      "sha256": "17f609ecf3a625df3a297242622bda89dbc266b3896c2d66841b59049876503f",
+      "role": "delivery-support"
+    },
+    {
+      "path": "evidence/demo.json",
+      "bytes": 22607,
+      "sha256": "ea6052f875ab97d3762bcaedfabb237d1d5d0f1dd796d0038965ee277739661a",
+      "role": "delivery-support"
+    },
+    {
+      "path": "evidence/demo.txt",
+      "bytes": 947,
+      "sha256": "09394f5ece3b4fee592f9b0f1334da9b2ac3cc2d58e6b600dcb6d1a70b20b26a",
+      "role": "delivery-support"
+    },
+    {
+      "path": "evidence/installer-tests.tap",
+      "bytes": 811,
+      "sha256": "1b677192595c5290469c5bca9bb43afd71fe589d0bd12b3dbe3d19e8fa4c47a3",
+      "role": "delivery-support"
+    },
+    {
+      "path": "evidence/package-check.json",
+      "bytes": 652,
+      "sha256": "53ed36dfa29e84d84e15c6074f2ac589b6fc947463f5315e20d36bc71524f360",
+      "role": "delivery-support"
+    },
+    {
+      "path": "evidence/soak-63h.json",
+      "bytes": 11393,
+      "sha256": "1f53fa0eddc1ec692785b99c8b660e24538ab6aee0e59a6f043cd253fae8e15f",
+      "role": "delivery-support"
+    },
+    {
+      "path": "evidence/soak-launcher-smoke.json",
+      "bytes": 11025,
+      "sha256": "13b51206df1b8f0a6b1d073a2207423d4a9389217ae62afa50a4e5a56558a2aa",
+      "role": "delivery-support"
+    },
+    {
+      "path": "evidence/tests.tap",
+      "bytes": 13613,
+      "sha256": "8d87c19a450d0a82593c449db6f13c6823d9113b2e6d017259d9b9022f5c226d",
+      "role": "delivery-support"
+    },
+    {
+      "path": "fixtures/eventBus.js",
+      "bytes": 4836,
+      "sha256": "245849424330e791884c8b36d43b5784f91e356589a80d7e283efe20c5d13316",
+      "role": "delivery-support"
+    },
+    {
+      "path": "fixtures/killCausality.js",
+      "bytes": 2972,
+      "sha256": "f53b63fbeff89f463521298b50031c51b6522642093dcab1718b365ff434ea56",
+      "role": "delivery-support"
+    },
+    {
+      "path": "install.mjs",
+      "bytes": 3360,
+      "sha256": "f14125e6aa94cf09191065a23c577822bfd393ca39b019ae02e56805c8bd2ab9",
+      "role": "delivery-support"
+    },
+    {
+      "path": "package.json",
+      "bytes": 451,
+      "sha256": "46d1ec27b9212a52139e9ee884ca07b4f129a54c78776085bb49a18670cc50ba",
+      "role": "delivery-support"
+    },
+    {
+      "path": "repo/scripts/demo-chronicler.mjs",
+      "bytes": 2654,
+      "sha256": "2a8b81af10781b97cbafacd43f98986ece6121dc7dfd205d4848787fc9ee53cb",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/scripts/soak-chronicler.mjs",
+      "bytes": 9795,
+      "sha256": "bf98b1965874f46cdc9dfbae001e1b684e48efb8590494eb51ad12938b520542",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/scripts/test-chronicler.mjs",
+      "bytes": 519,
+      "sha256": "67c1baa6e68f468e8adbb955e1d5b9df95600b315ef69ef0aa529e17656aee33",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/src/chronicler/ledger.js",
+      "bytes": 13453,
+      "sha256": "001dbed056ba340d69aecf8bb0bba16a1ec3faf7e9860537738cbfb0f4f32bfd",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/src/chronicler/narrative.js",
+      "bytes": 12339,
+      "sha256": "760e96a9a2dae8e2f07205a2f198f8f8003bf273f8fa9b45ebe72e24056aa2dc",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/src/chronicler/normalize.js",
+      "bytes": 12870,
+      "sha256": "b44fa1c2be6f587d4ed8f4ac6df00694967bdcd94dadf42edf65aef3285d8819",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/src/chronicler/persistence.js",
+      "bytes": 11813,
+      "sha256": "aaf7af00362a55c8dcd89a91f9e91d2c075f44c7d948b74849a561c81aaeb845",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/src/chronicler/schema.js",
+      "bytes": 4357,
+      "sha256": "df351203b64a2df157123e7fa08a60685f94452f6dbd414fbb5932628c8ac20c",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/src/chronicler/voiceBridge.js",
+      "bytes": 1245,
+      "sha256": "a59b088e41134774fbff1a7ec787949d4610ba14065c32abf394c7d8aadf9f02",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/src/systems/chronicler.js",
+      "bytes": 16220,
+      "sha256": "f71e8fb5f2d917fd37649fb88b7b32eff5fdc0d7565c5456a6d32697338adf92",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/tests/chronicler/chronicler.test.mjs",
+      "bytes": 25019,
+      "sha256": "e2ba40a95e13c7a46c83a90420befc1d8eb315e204bb1508db3d75211ffc0419",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/tests/chronicler/hardening.test.mjs",
+      "bytes": 7274,
+      "sha256": "bb3cf15e40c6bc94e7b2a36f3b40d0807cc65567bb4c1f7aca9abdd87ac00e11",
+      "role": "repository-addition"
+    },
+    {
+      "path": "repo/tests/chronicler/harness.mjs",
+      "bytes": 3186,
+      "sha256": "f51337272094a9d5aad565d10c5bf4f9667061b976e1603ad18de2e2e9182478",
+      "role": "repository-addition"
+    },
+    {
+      "path": "spaceface-chronicler.patch",
+      "bytes": 125058,
+      "sha256": "f21a77e447104e0e61e2b97556d49ea00a0db03ba15106e67177d80668045d67",
+      "role": "delivery-support"
+    },
+    {
+      "path": "tests/install.test.mjs",
+      "bytes": 2881,
+      "sha256": "5084e9c6c479414cdd36405c37f1bb52fad95e3054b481224824fdebca10e783",
+      "role": "delivery-support"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "source": "uploaded 02-tension-director.zip",
+  "advertised_commit": "de9f3f1fc",
+  "advertised_commit_resolution": "GitHub returned 422 No commit found; uploaded snapshots are authoritative",
+  "inspected_github_search_commit": "94f38d342b8730df104777e64a5457a4ffb725f3",
+  "files": {
+    "src/systems/encounterDirector.js": {
+      "packet_sha256": "e78a658ff7ab8ed9006e2e172ce930b4ceff06948ea1766afd530d4fc9900900",
+      "delivered_sha256": "a2f3f7e71a5e448cc715a21702d7bf959bac64d8ee86fbede935e88f3c178778"
+    },
+    "src/core/registry.js": {
+      "packet_sha256": "10009fd3acac74bd7a09a18f032d31613169f9029d3ed9407f530c9956bdd813",
+      "delivered_sha256": "01feec36237e1829f9bac7fda24d82b4fc3ae9d6a764c8bd4e0cb3f429f006ab"
+    }
+  },
+  "uploaded_archive_sha256": "db68bcc5eaef668d3102e86f4afd5f30ca6fc34fd519ec35781e41078f6401a4",
+  "integration_policy": "Uploaded snapshots are the authoritative patch baseline. Installer requires unique context and never silently substitutes master files.",
+  "verified_supporting_interfaces": [
+    {
+      "path": "src/systems/difficultyDirector.js",
+      "ref": "master read during task",
+      "purpose": "Existing damage/pin-release owner; read recovery stance only"
+    },
+    {
+      "path": "src/runtime/authoritativeSystemManifest.js",
+      "ref": "master read during task",
+      "purpose": "Actual production init/update/calendar arrays"
+    },
+    {
+      "path": "src/runtime/resolveRuntimeManifest.js",
+      "ref": "master read during task",
+      "purpose": "Registry lookup alone does not change resolved membership"
+    },
+    {
+      "path": "scripts/lib/bench/playthroughLedger.mjs",
+      "ref": "94f38d342b8730df104777e64a5457a4ffb725f3",
+      "purpose": "Confirmed direct transaction service, player attribution and fact-versus-metric distinction"
+    }
+  ]
+}

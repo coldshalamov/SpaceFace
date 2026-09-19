@@ -36,8 +36,8 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
-  'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'factionPresence',
-  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'encounterDirector', 'routeFollower',
+  'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
+  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'routeFollower',
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
@@ -75,7 +75,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'crafting', 'economy', 'intervention', 'world',
   'heistFacilities',
-  'regionalEcology', 'encounterDirector', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
+  'regionalEcology', 'tensionDirector', 'encounterDirector', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'stationServices',
   'difficultyDirector', 'gateControlDirector',
   'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
@@ -89,7 +89,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // swarmChain: the kill chain. It ticks only to notice a lapse, and it reads the phase
   // survivalRun has already settled this tick.
   'swarmChain',
-  'heat', 'traffic', 'drill', 'claims',
+  'heat', 'traffic', 'drill', 'claims', 'chronicler',
   'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'planetHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
   // and census this tick advanced to; DOM-guarded so Node no-ops.
@@ -157,7 +157,7 @@ export const CALENDAR_CLOCK_PERIOD_TICKS = 30;
 export const CALENDAR_CLOCK_IDS = Object.freeze([
   'buildIdentity', 'aceMemory', 'factionPresence', 'barkDirector', 'beacons', 'travelLanes',
   'automation', 'asteroidSites', 'asteroidFormations', 'crafting', 'economy', 'intervention',
-  'heistFacilities', 'regionalEcology', 'encounterDirector', 'routeFollower', 'livingPoiBehaviors',
+  'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'routeFollower', 'livingPoiBehaviors',
   'pirateRumor', 'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'gateControlDirector',
   'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
   'factions', 'sectorSim', 'missions', 'careerOrigins', 'careerLadders', 'liveCareerLadderBranches',

@@ -114,7 +114,10 @@ import { beacons } from '../systems/beacons.js';
 import { onboarding } from '../systems/onboarding.js';
 import { spawnBudget } from '../systems/spawnBudget.js';
 import { regionalEcology } from '../systems/regionalEcology.js';
+import { tensionDirector } from '../systems/tensionDirector.js';
 import { encounterDirector } from '../systems/encounterDirector.js';
+import { createChronicler } from '../systems/chronicler.js';
+import { isRunSealed } from '../core/runSeal.js';
 import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js';
 import { pirateRumor } from '../systems/pirateRumor.js';
 import { ambushSignatures } from '../systems/ambushSignatures.js';
@@ -161,6 +164,11 @@ export function getNodeSystemFactoryTable(options = {}) {
   const flightBackend = typeof options.flightBackend === 'string' ? options.flightBackend : 'v3';
   const flightSlot = options.flightSlot
     || (flightBackend === 'legacy' ? flight : flightV3);
+
+  // Genie 01: campaign-gated world memory, one instance per Node registry (mirrors registry.js).
+  const chronicler = createChronicler({
+    shouldObserve: (state) => !isRunSealed(state),
+  });
 
   /** @type {Array<[string, object]>} */
   const entries = [
@@ -240,11 +248,13 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['intervention', intervention],
     ['lossLedger', lossLedger],
     ['provenanceLedger', provenanceLedger],
+    ['chronicler', chronicler],
     ['factionPresence', factionPresence],
     ['spawnBudget', spawnBudget],
     ['world', world],
     ['heistFacilities', heistFacilities],
     ['regionalEcology', regionalEcology],
+    ['tensionDirector', tensionDirector],
     ['encounterDirector', encounterDirector],
     ['routeFollower', routeFollower],
     ['travelLanes', travelLanes],

@@ -34,8 +34,10 @@ test('production init + update order lengths match the live browser baseline', (
   // input-gated deployable owner, so init and update move together this time.
   // 148 -> 150: the station yard (berths/crews/service queue) and the pacing director join
   // both orders — both tick real per-second work, so init and update move together again.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 150);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 112);
+  // 150 -> 152: genie packet arrivals — the Chronicler (world memory; init+update, 60 Hz table)
+  // and the tension director (pacing policy over the encounter owner; init+update+calendar).
+  assert.equal(PRODUCTION_INIT_ORDER.length, 152);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 114);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -152,8 +154,9 @@ test('browser production system set is unchanged vs production manifest constant
 
   // Full init list length and terminal platform systems preserved. 147 since PQ-146.02 registered
   // the existing stuntGrammar observer so trick receipts reach titles and barks; 148 with the
-  // drift-bomb bay (one system, both orders); 150 with the station yard and the pacing director.
-  assert.equal(registry.systems.length, 150);
+  // drift-bomb bay (one system, both orders); 150 with the station yard and the pacing director;
+  // 152 with the Chronicler and the tension director (genie packet returns).
+  assert.equal(registry.systems.length, 152);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

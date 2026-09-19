@@ -1,0 +1,23 @@
+{
+  "freshZipExtraction": true,
+  "allManifestHashesMatch": true,
+  "zipCrcValid": true,
+  "moduleTests": {
+    "passed": 61,
+    "failed": 0
+  },
+  "installerTests": {
+    "passed": 3,
+    "failed": 0
+  },
+  "demoAssertionsPassed": true,
+  "patchAppliesCleanly": true,
+  "patchedFixtureCheckoutTests": {
+    "passed": 61,
+    "failed": 0
+  },
+  "identicalInstallerReapplyPreservesFiles": true,
+  "fixtureFilesMatchUserPacketExactly": true,
+  "patchCheckoutScope": "Minimal fixture checkout with actual supplied bus/helper; not the full live game",
+  "codePathsTested": "All repo/ files unchanged between extraction verification and final packaging"
+}

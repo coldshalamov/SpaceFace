@@ -1,0 +1,883 @@
+{
+  "fixture": "Synthetic producer receipts; not a full-game playthrough",
+  "seed": 4242,
+  "headline": {
+    "id": "ch:s:1:r1",
+    "eventId": "ch:s:1:r1",
+    "source": "chronicler",
+    "sourceRef": "ch:s:1:r1",
+    "storyId": "ch:s:1",
+    "revision": 1,
+    "kind": "chronicler-combat_salvage_economy_law",
+    "text": "Morrow was destroyed in a collision with a structure in Helios. Its wreck was subsequently processed for salvage. You recovered 8 units of salvage. 4 of those units were sold at helios dock for 240 credits. A fencing investigation receipt explicitly names that sale as its cause.",
+    "headline": "The wreck left a paper trail",
+    "sectorId": "helios",
+    "stationId": "station_helios_dock",
+    "factionId": null,
+    "complete": true,
+    "evidence": [
+      {
+        "factId": "ch:f:1",
+        "event": "entity:killed",
+        "receiptId": null,
+        "t": 10
+      },
+      {
+        "factId": "ch:f:2",
+        "event": "aftermathWreck:recorded",
+        "receiptId": null,
+        "t": 10
+      },
+      {
+        "factId": "ch:f:4",
+        "event": "salvage:completed",
+        "receiptId": null,
+        "t": 10
+      },
+      {
+        "factId": "ch:f:5",
+        "event": "chronicler:provenance",
+        "receiptId": "cargo-17",
+        "t": 10
+      },
+      {
+        "factId": "ch:f:6",
+        "event": "chronicler:provenance",
+        "receiptId": "trade-29",
+        "t": 10
+      },
+      {
+        "factId": "ch:f:7",
+        "event": "chronicler:provenance",
+        "receiptId": "law-31",
+        "t": 10
+      }
+    ]
+  },
+  "connectedStory": {
+    "id": "ch:s:1",
+    "revision": 1,
+    "kind": "combat_salvage_economy_law",
+    "complete": true,
+    "score": 100,
+    "title": "The wreck left a paper trail",
+    "summary": "Morrow was destroyed in a collision with a structure in Helios. Its wreck was subsequently processed for salvage. You recovered 8 units of salvage. 4 of those units were sold at helios dock for 240 credits. A fencing investigation receipt explicitly names that sale as its cause.",
+    "radio": "Remember Morrow? The wreck was cut, the cargo sold, and the sale drew a recorded legal consequence. Helios has a history now.",
+    "createdAt": 10,
+    "updatedAt": 10,
+    "sectorId": "helios",
+    "sectorIds": [
+      "helios"
+    ],
+    "actorKeys": [
+      "player"
+    ],
+    "factionIds": [],
+    "stationIds": [
+      "station_helios_dock"
+    ],
+    "visibility": "public",
+    "milestones": [
+      "kill",
+      "aftermath",
+      "salvage",
+      "recovered",
+      "sold",
+      "law"
+    ],
+    "proof": [
+      "ch:f:1",
+      "ch:f:2",
+      "ch:f:4",
+      "ch:f:5",
+      "ch:f:6",
+      "ch:f:7"
+    ],
+    "causalLinks": [
+      {
+        "from": "ch:f:1",
+        "to": "ch:f:2",
+        "relation": "left_aftermath",
+        "certainty": "explicit"
+      },
+      {
+        "from": "ch:f:2",
+        "to": "ch:f:3",
+        "relation": "materialized_as",
+        "certainty": "explicit"
+      },
+      {
+        "from": "ch:f:2",
+        "to": "ch:f:4",
+        "relation": "processed",
+        "certainty": "explicit"
+      },
+      {
+        "from": "ch:f:4",
+        "to": "ch:f:5",
+        "relation": "recovered_from",
+        "certainty": "explicit"
+      },
+      {
+        "from": "ch:f:5",
+        "to": "ch:f:6",
+        "relation": "sold_from",
+        "certainty": "explicit"
+      },
+      {
+        "from": "ch:f:6",
+        "to": "ch:f:7",
+        "relation": "legal_consequence_of",
+        "certainty": "explicit"
+      }
+    ],
+    "evidence": [
+      {
+        "id": "ch:f:1",
+        "sourceEvent": "entity:killed",
+        "sourceReceiptId": null,
+        "stage": "kill",
+        "t": 10,
+        "tick": 600,
+        "actor": {
+          "id": "1",
+          "key": "player",
+          "player": true,
+          "name": "you"
+        },
+        "subject": {
+          "id": "ship-42",
+          "key": "ship-42",
+          "player": false,
+          "name": "Morrow"
+        },
+        "sectorId": "helios",
+        "stationId": null,
+        "factionId": null,
+        "details": {
+          "cause": "terrain_collision",
+          "playerCaused": true,
+          "surface": "structure",
+          "victimClass": "hauler",
+          "factionLawful": false,
+          "pos": null
+        },
+        "parent": null,
+        "parentStatus": "none"
+      },
+      {
+        "id": "ch:f:2",
+        "sourceEvent": "aftermathWreck:recorded",
+        "sourceReceiptId": null,
+        "stage": "aftermath",
+        "t": 10,
+        "tick": 600,
+        "actor": {
+          "id": "1",
+          "key": "player",
+          "player": true,
+          "name": "you"
+        },
+        "subject": {
+          "id": "ship-42",
+          "key": "ship-42",
+          "player": false,
+          "name": "Morrow"
+        },
+        "sectorId": "helios",
+        "stationId": null,
+        "factionId": null,
+        "details": {
+          "markerId": "aft-morrow",
+          "wreckId": null,
+          "victimId": "ship-42",
+          "sourceKind": "wreck",
+          "pos": null
+        },
+        "parent": {
+          "kind": "death",
+          "id": "ship-42"
+        },
+        "parentStatus": "resolved"
+      },
+      {
+        "id": "ch:f:3",
+        "sourceEvent": "aftermathWreck:spawned",
+        "sourceReceiptId": null,
+        "stage": "binding",
+        "t": 10,
+        "tick": 600,
+        "actor": {
+          "id": null,
+          "key": null,
+          "player": false,
+          "name": "an unknown pilot"
+        },
+        "subject": null,
+        "sectorId": "helios",
+        "stationId": null,
+        "factionId": null,
+        "details": {
+          "markerId": "aft-morrow",
+          "wreckId": "wreck-900"
+        },
+        "parent": {
+          "kind": "marker",
+          "id": "aft-morrow"
+        },
+        "parentStatus": "resolved"
+      },
+      {
+        "id": "ch:f:4",
+        "sourceEvent": "salvage:completed",
+        "sourceReceiptId": null,
+        "stage": "salvage",
+        "t": 10,
+        "tick": 600,
+        "actor": {
+          "id": "1",
+          "key": "player",
+          "player": true,
+          "name": "you"
+        },
+        "subject": null,
+        "sectorId": "helios",
+        "stationId": null,
+        "factionId": null,
+        "details": {
+          "markerId": "aft-morrow",
+          "wreckId": "wreck-900"
+        },
+        "parent": {
+          "kind": "marker",
+          "id": "aft-morrow"
+        },
+        "parentStatus": "resolved"
+      },
+      {
+        "id": "ch:f:5",
+        "sourceEvent": "chronicler:provenance",
+        "sourceReceiptId": "cargo-17",
+        "stage": "recovered",
+        "t": 10,
+        "tick": 600,
+        "actor": {
+          "id": "1",
+          "key": "player",
+          "player": true,
+          "name": "you"
+        },
+        "subject": null,
+        "sectorId": "helios",
+        "stationId": null,
+        "factionId": null,
+        "details": {
+          "commodityId": "cmdty_salvage",
+          "qty": 8,
+          "total": 0,
+          "kind": "recovered"
+        },
+        "parent": {
+          "kind": "marker",
+          "id": "aft-morrow"
+        },
+        "parentStatus": "resolved"
+      },
+      {
+        "id": "ch:f:6",
+        "sourceEvent": "chronicler:provenance",
+        "sourceReceiptId": "trade-29",
+        "stage": "sold",
+        "t": 10,
+        "tick": 600,
+        "actor": {
+          "id": "1",
+          "key": "player",
+          "player": true,
+          "name": "you"
+        },
+        "subject": null,
+        "sectorId": "helios",
+        "stationId": "station_helios_dock",
+        "factionId": null,
+        "details": {
+          "commodityId": "cmdty_salvage",
+          "qty": 4,
+          "total": 240,
+          "kind": "sold"
+        },
+        "parent": {
+          "kind": "receipt",
+          "id": "cargo-17"
+        },
+        "parentStatus": "resolved"
+      },
+      {
+        "id": "ch:f:7",
+        "sourceEvent": "chronicler:provenance",
+        "sourceReceiptId": "law-31",
+        "stage": "law",
+        "t": 10,
+        "tick": 600,
+        "actor": {
+          "id": "1",
+          "key": "player",
+          "player": true,
+          "name": "you"
+        },
+        "subject": null,
+        "sectorId": "helios",
+        "stationId": null,
+        "factionId": null,
+        "details": {
+          "commodityId": null,
+          "qty": 0,
+          "total": 0,
+          "kind": "fencing investigation"
+        },
+        "parent": {
+          "kind": "receipt",
+          "id": "trade-29"
+        },
+        "parentStatus": "resolved"
+      }
+    ]
+  },
+  "aceSaga": {
+    "id": "ch:s:8",
+    "revision": 4,
+    "kind": "ace_saga",
+    "complete": false,
+    "score": 82,
+    "title": "Iona Voss: a continuing record",
+    "summary": "Iona Voss was defeated after escaping and returning to the field.",
+    "radio": "Remember Iona Voss, the captain who got away? Iona Voss was defeated after escaping and returning to the field.",
+    "createdAt": 20,
+    "updatedAt": 260,
+    "sectorId": "helios",
+    "sectorIds": [
+      "helios"
+    ],
+    "actorKeys": [
+      "player"
+    ],
+    "factionIds": [],
+    "stationIds": [],
+    "visibility": "public",
+    "milestones": [],
+    "proof": [],
+    "causalLinks": [],
+    "evidence": [
+      {
+        "id": "ch:f:8",
+        "sourceEvent": "aceMemory:transition",
+        "sourceReceiptId": null,
+        "stage": "ace",
+        "t": 20,
+        "tick": 1200,
+        "actor": {
+          "id": "1",
+          "key": "player",
+          "player": true,
+          "name": "you"
+        },
+        "subject": {
+          "id": "iona-demo",
+          "key": "ace:iona-demo",
+          "player": false,
+          "name": "Iona Voss"
+        },
+        "sectorId": "helios",
+        "stationId": null,
+        "factionId": null,
+        "details": {
+          "transition": "encountered",
+          "aceId": "iona-demo",
+          "crew": "",
+          "count": 0,
+          "returnTier": 0
+        },
+        "parent": null,
+        "parentStatus": "none"
+      },
+      {
+        "id": "ch:f:9",
+        "sourceEvent": "aceMemory:transition",
+        "sourceReceiptId": null,
+        "stage": "ace",
+        "t": 30,
+        "tick": 1800,
+        "actor": {
+          "id": "1",
+          "key": "player",
+          "player": true,
+          "name": "you"
+        },
+        "subject": {
+          "id": "iona-demo",
+          "key": "ace:iona-demo",
+          "player": false,
+          "name": "Iona Voss"
+        },
+        "sectorId": "helios",
+        "stationId": null,
+        "factionId": null,
+        "details": {
+          "transition": "fled",
+          "aceId": "iona-demo",
+          "crew": "",
+          "count": 0,
+          "returnTier": 0
+        },
+        "parent": null,
+        "parentStatus": "none"
+      },
+      {
+        "id": "ch:f:10",
+        "sourceEvent": "aceMemory:transition",
+        "sourceReceiptId": null,
+        "stage": "ace",
+        "t": 240,
+        "tick": 14400,
+        "actor": {
+          "id": "1",
+          "key": "player",
+          "player": true,
+          "name": "you"
+        },
+        "subject": {
+          "id": "iona-demo",
+          "key": "ace:iona-demo",
+          "player": false,
+          "name": "Iona Voss"
+        },
+        "sectorId": "helios",
+        "stationId": null,
+        "factionId": null,
+        "details": {
+          "transition": "returned",
+          "aceId": "iona-demo",
+          "crew": "",
+          "count": 0,
+          "returnTier": 0
+        },
+        "parent": null,
+        "parentStatus": "none"
+      },
+      {
+        "id": "ch:f:11",
+        "sourceEvent": "aceMemory:transition",
+        "sourceReceiptId": null,
+        "stage": "ace",
+        "t": 260,
+        "tick": 15600,
+        "actor": {
+          "id": "1",
+          "key": "player",
+          "player": true,
+          "name": "you"
+        },
+        "subject": {
+          "id": "iona-demo",
+          "key": "ace:iona-demo",
+          "player": false,
+          "name": "Iona Voss"
+        },
+        "sectorId": "helios",
+        "stationId": null,
+        "factionId": null,
+        "details": {
+          "transition": "defeated",
+          "aceId": "iona-demo",
+          "crew": "",
+          "count": 0,
+          "returnTier": 0
+        },
+        "parent": null,
+        "parentStatus": "none"
+      }
+    ]
+  },
+  "legends": [
+    {
+      "id": "ch:legend:[\"player\",\"rescues\"]",
+      "actorKey": "player",
+      "actorName": "you",
+      "kind": "rescues",
+      "title": "A Hand in the Dark",
+      "count": 3,
+      "formedAt": 360,
+      "text": "Your record: 3 documented rescues.",
+      "evidence": [
+        {
+          "factId": "ch:f:12",
+          "sourceEvent": "distress:rescued",
+          "receiptId": null,
+          "t": 300,
+          "subject": "Quiet Meridian",
+          "sectorId": "helios",
+          "cause": "rescued"
+        },
+        {
+          "factId": "ch:f:13",
+          "sourceEvent": "distress:rescued",
+          "receiptId": null,
+          "t": 330,
+          "subject": "Peregrine",
+          "sectorId": "helios",
+          "cause": "rescued"
+        },
+        {
+          "factId": "ch:f:14",
+          "sourceEvent": "distress:rescued",
+          "receiptId": null,
+          "t": 360,
+          "subject": "Tin Saint",
+          "sectorId": "helios",
+          "cause": "rescued"
+        }
+      ],
+      "announced": true,
+      "visibility": "public"
+    }
+  ],
+  "stationRecall": {
+    "id": "ch:s:1:r1",
+    "eventId": "ch:s:1:r1",
+    "source": "chronicler",
+    "sourceRef": "ch:s:1:r1",
+    "storyId": "ch:s:1",
+    "revision": 1,
+    "kind": "chronicler-combat_salvage_economy_law",
+    "text": "1 sim-hour ago: Remember Morrow? The wreck was cut, the cargo sold, and the sale drew a recorded legal consequence. Helios has a history now.",
+    "headline": "The wreck left a paper trail",
+    "sectorId": "helios",
+    "stationId": "station_helios_dock",
+    "factionId": null,
+    "complete": true,
+    "evidence": [
+      {
+        "factId": "ch:f:1",
+        "event": "entity:killed",
+        "receiptId": null,
+        "t": 10
+      },
+      {
+        "factId": "ch:f:2",
+        "event": "aftermathWreck:recorded",
+        "receiptId": null,
+        "t": 10
+      },
+      {
+        "factId": "ch:f:4",
+        "event": "salvage:completed",
+        "receiptId": null,
+        "t": 10
+      },
+      {
+        "factId": "ch:f:5",
+        "event": "chronicler:provenance",
+        "receiptId": "cargo-17",
+        "t": 10
+      },
+      {
+        "factId": "ch:f:6",
+        "event": "chronicler:provenance",
+        "receiptId": "trade-29",
+        "t": 10
+      },
+      {
+        "factId": "ch:f:7",
+        "event": "chronicler:provenance",
+        "receiptId": "law-31",
+        "t": 10
+      }
+    ],
+    "context": "dock",
+    "recallKey": "[\"dock\",\"station_helios_dock\",\"helios\",null,null]:ch:s:1:r1"
+  },
+  "nativeOnly": {
+    "completeChains": 0,
+    "stories": [
+      {
+        "id": "ch:s:1",
+        "revision": 1,
+        "kind": "battle_salvage",
+        "complete": false,
+        "score": 66,
+        "title": "The wreck of Morrow",
+        "summary": "Morrow was destroyed in a collision with a structure in Helios. Its wreck was subsequently processed for salvage.",
+        "radio": "Remember the wreck of Morrow in Helios? The salvage work is finished. The record stays.",
+        "createdAt": 10,
+        "updatedAt": 10,
+        "sectorId": "helios",
+        "sectorIds": [
+          "helios"
+        ],
+        "actorKeys": [
+          "player"
+        ],
+        "factionIds": [],
+        "stationIds": [],
+        "visibility": "public",
+        "milestones": [
+          "kill",
+          "aftermath",
+          "salvage"
+        ],
+        "proof": [
+          "ch:f:1",
+          "ch:f:2",
+          "ch:f:4"
+        ],
+        "causalLinks": [
+          {
+            "from": "ch:f:1",
+            "to": "ch:f:2",
+            "relation": "left_aftermath",
+            "certainty": "explicit"
+          },
+          {
+            "from": "ch:f:2",
+            "to": "ch:f:3",
+            "relation": "materialized_as",
+            "certainty": "explicit"
+          },
+          {
+            "from": "ch:f:2",
+            "to": "ch:f:4",
+            "relation": "processed",
+            "certainty": "explicit"
+          }
+        ],
+        "evidence": [
+          {
+            "id": "ch:f:1",
+            "sourceEvent": "entity:killed",
+            "sourceReceiptId": null,
+            "stage": "kill",
+            "t": 10,
+            "tick": 600,
+            "actor": {
+              "id": "1",
+              "key": "player",
+              "player": true,
+              "name": "you"
+            },
+            "subject": {
+              "id": "ship-42",
+              "key": "ship-42",
+              "player": false,
+              "name": "Morrow"
+            },
+            "sectorId": "helios",
+            "stationId": null,
+            "factionId": null,
+            "details": {
+              "cause": "terrain_collision",
+              "playerCaused": true,
+              "surface": "structure",
+              "victimClass": "hauler",
+              "factionLawful": false,
+              "pos": null
+            },
+            "parent": null,
+            "parentStatus": "none"
+          },
+          {
+            "id": "ch:f:2",
+            "sourceEvent": "aftermathWreck:recorded",
+            "sourceReceiptId": null,
+            "stage": "aftermath",
+            "t": 10,
+            "tick": 600,
+            "actor": {
+              "id": "1",
+              "key": "player",
+              "player": true,
+              "name": "you"
+            },
+            "subject": {
+              "id": "ship-42",
+              "key": "ship-42",
+              "player": false,
+              "name": "Morrow"
+            },
+            "sectorId": "helios",
+            "stationId": null,
+            "factionId": null,
+            "details": {
+              "markerId": "aft-morrow",
+              "wreckId": null,
+              "victimId": "ship-42",
+              "sourceKind": "wreck",
+              "pos": null
+            },
+            "parent": {
+              "kind": "death",
+              "id": "ship-42"
+            },
+            "parentStatus": "resolved"
+          },
+          {
+            "id": "ch:f:3",
+            "sourceEvent": "aftermathWreck:spawned",
+            "sourceReceiptId": null,
+            "stage": "binding",
+            "t": 10,
+            "tick": 600,
+            "actor": {
+              "id": null,
+              "key": null,
+              "player": false,
+              "name": "an unknown pilot"
+            },
+            "subject": null,
+            "sectorId": "helios",
+            "stationId": null,
+            "factionId": null,
+            "details": {
+              "markerId": "aft-morrow",
+              "wreckId": "wreck-900"
+            },
+            "parent": {
+              "kind": "marker",
+              "id": "aft-morrow"
+            },
+            "parentStatus": "resolved"
+          },
+          {
+            "id": "ch:f:4",
+            "sourceEvent": "salvage:completed",
+            "sourceReceiptId": null,
+            "stage": "salvage",
+            "t": 10,
+            "tick": 600,
+            "actor": {
+              "id": "1",
+              "key": "player",
+              "player": true,
+              "name": "you"
+            },
+            "subject": null,
+            "sectorId": "helios",
+            "stationId": null,
+            "factionId": null,
+            "details": {
+              "markerId": "aft-morrow",
+              "wreckId": "wreck-900"
+            },
+            "parent": {
+              "kind": "marker",
+              "id": "aft-morrow"
+            },
+            "parentStatus": "resolved"
+          }
+        ]
+      },
+      {
+        "id": "ch:s:5",
+        "revision": 1,
+        "kind": "trade",
+        "complete": false,
+        "score": 8,
+        "title": "A sale at helios dock",
+        "summary": "4 units of salvage sold for 240 credits. Their source is not in this receipt.",
+        "radio": "4 units of salvage sold for 240 credits. Their source is not in this receipt.",
+        "createdAt": 10,
+        "updatedAt": 10,
+        "sectorId": "helios",
+        "sectorIds": [
+          "helios"
+        ],
+        "actorKeys": [
+          "player"
+        ],
+        "factionIds": [],
+        "stationIds": [
+          "station_helios_dock"
+        ],
+        "visibility": "public",
+        "milestones": [],
+        "proof": [],
+        "causalLinks": [],
+        "evidence": [
+          {
+            "id": "ch:f:5",
+            "sourceEvent": "economy:tradeCompleted",
+            "sourceReceiptId": null,
+            "stage": "trade",
+            "t": 10,
+            "tick": 600,
+            "actor": {
+              "id": "1",
+              "key": "player",
+              "player": true,
+              "name": "you"
+            },
+            "subject": null,
+            "sectorId": "helios",
+            "stationId": "station_helios_dock",
+            "factionId": null,
+            "details": {
+              "commodityId": "cmdty_salvage",
+              "qty": 4,
+              "total": 240,
+              "provenanceMissing": true
+            },
+            "parent": null,
+            "parentStatus": "none"
+          }
+        ]
+      }
+    ]
+  },
+  "saveRoundTripExact": true,
+  "diagnostics": {
+    "initialized": true,
+    "restoring": false,
+    "clockBlocked": false,
+    "stories": 5,
+    "facts": 14,
+    "pending": 0,
+    "seen": 14,
+    "profiles": 1,
+    "legends": 1,
+    "config": {
+      "maxStories": 96,
+      "maxFactsPerStory": 32,
+      "maxPending": 512,
+      "factsPerUpdate": 128,
+      "maxSeen": 2048,
+      "maxProfiles": 64,
+      "maxLegends": 24,
+      "settleSeconds": 2,
+      "incubationSeconds": 60,
+      "newsCooldown": 60,
+      "storyCooldown": 240,
+      "radioCooldown": 120,
+      "recallCooldown": 180,
+      "recallMinAge": 120,
+      "minNewsScore": 38,
+      "publishNews": true,
+      "offerRadio": true
+    },
+    "observed": 14,
+    "accepted": 14,
+    "ignored": 0,
+    "invalid": 0,
+    "duplicates": 0,
+    "queueDropped": 0,
+    "detailDropped": 0,
+    "storiesEvicted": 0,
+    "linksResolved": 6,
+    "ambiguousLinks": 0,
+    "invalidLinks": 0,
+    "unresolvedLinks": 0,
+    "storiesPublished": 7,
+    "newsPublished": 5,
+    "radioOffered": 2,
+    "recallsOffered": 1,
+    "legendsFormed": 1
+  }
+}

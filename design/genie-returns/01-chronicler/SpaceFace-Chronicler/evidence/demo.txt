@@ -1,0 +1,22 @@
+SPACEFACE / THE CHRONICLER — fixed-seed fixture 4242
+
+NEWS
+Morrow was destroyed in a collision with a structure in Helios. Its wreck was subsequently processed for salvage. You recovered 8 units of salvage. 4 of those units were sold at helios dock for 240 credits. A fencing investigation receipt explicitly names that sale as its cause.
+
+PROVEN CAUSAL PATH
+kill → aftermath → salvage → recovered → sold → law
+
+RIVAL MEMORY
+Iona Voss was defeated after escaping and returning to the field.
+
+LEGEND
+A Hand in the Dark: Your record: 3 documented rescues.
+
+ONE SIM-HOUR LATER, AT THE STATION
+1 sim-hour ago: Remember Morrow? The wreck was cut, the cargo sold, and the sale drew a recorded legal consequence. Helios has a history now.
+
+TRUTHFUL FAILURE
+Native salvage completion + an unsourced trade remain separate; complete chains: 0.
+
+SAVE / RESTORE
+Exact round trip. This demonstrates the module, not a running SpaceFace integration.

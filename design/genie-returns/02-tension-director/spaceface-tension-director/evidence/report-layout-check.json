@@ -1,0 +1,17 @@
+{
+  "artifact": "evidence/session-shape.html",
+  "method": "Chromium render of supplied HTML content (no local file navigation)",
+  "desktopViewport": [
+    1440,
+    1150
+  ],
+  "mobileViewport": [
+    390,
+    844
+  ],
+  "charts": 6,
+  "pageErrors": [],
+  "desktopNoPageOverflow": true,
+  "mobileNoPageOverflow": true,
+  "evidenceClass": "static-report-layout-only-not-gameplay"
+}

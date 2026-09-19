@@ -1,0 +1,372 @@
+
+> spaceface-tension-director-delivery@1.0.0 test
+> node tools/test.mjs
+
+TAP version 13
+# Subtest: normalizes applied damage, preserves zero, and ignores NPC-versus-NPC events
+ok 1 - normalizes applied damage, preserves zero, and ignores NPC-versus-NPC events
+  ---
+  duration_ms: 2.415304
+  type: 'test'
+  ...
+# Subtest: sensor reads XZ distance, not render height, and ignores distant stale combat
+ok 2 - sensor reads XZ distance, not render height, and ignores distant stale combat
+  ---
+  duration_ms: 1.656992
+  type: 'test'
+  ...
+# Subtest: bounded sensor scan conservatively closes admission on truncation
+ok 3 - bounded sensor scan conservatively closes admission on truncation
+  ---
+  duration_ms: 304.232238
+  type: 'test'
+  ...
+# Subtest: bus adapter only attributes damage, kills, mining, and tethers to this player
+ok 4 - bus adapter only attributes damage, kills, mining, and tethers to this player
+  ---
+  duration_ms: 1.241105
+  type: 'test'
+  ...
+# Subtest: telegraphs and actual spawns are separate evidence; duplicate or empty spawns do not count
+ok 5 - telegraphs and actual spawns are separate evidence; duplicate or empty spawns do not count
+  ---
+  duration_ms: 1.045492
+  type: 'test'
+  ...
+# Subtest: sector-boundary flapping does not reset tension or manufacture exploration variety
+ok 6 - sector-boundary flapping does not reset tension or manufacture exploration variety
+  ---
+  duration_ms: 7.744481
+  type: 'test'
+  ...
+# Subtest: all protected modes disable the policy and freeze active pacing
+ok 7 - all protected modes disable the policy and freeze active pacing
+  ---
+  duration_ms: 4.909167
+  type: 'test'
+  ...
+# Subtest: a docking recovery window cannot be bypassed by resuming in an old build phase
+ok 8 - a docking recovery window cannot be bypassed by resuming in an old build phase
+  ---
+  duration_ms: 4.337343
+  type: 'test'
+  ...
+# Subtest: save lifecycle restores exact own state and rejects stale outgoing state
+ok 9 - save lifecycle restores exact own state and rejects stale outgoing state
+  ---
+  duration_ms: 7.702047
+  type: 'test'
+  ...
+# Subtest: save error resumes the outgoing controller without losing its history
+ok 10 - save error resumes the outgoing controller without losing its history
+  ---
+  duration_ms: 0.86545
+  type: 'test'
+  ...
+# Subtest: new game resets all history and listener teardown is complete and repeatable
+ok 11 - new game resets all history and listener teardown is complete and repeatable
+  ---
+  duration_ms: 4.679468
+  type: 'test'
+  ...
+# Subtest: optional successful transaction port records an actual dockside trade but not a credit guess
+ok 12 - optional successful transaction port records an actual dockside trade but not a credit guess
+  ---
+  duration_ms: 0.225481
+  type: 'test'
+  ...
+# Subtest: system writes neither entities, combat difficulty, economy, nor encounter state
+ok 13 - system writes neither entities, combat difficulty, economy, nor encounter state
+  ---
+  duration_ms: 3.770813
+  type: 'test'
+  ...
+# Subtest: policy-event subscribers receive detached immutable values
+ok 14 - policy-event subscribers receive detached immutable values
+  ---
+  duration_ms: 0.275525
+  type: 'test'
+  ...
+# Subtest: 60 Hz repeated calls and 1 Hz calls give the same one-second policy sequence
+ok 15 - 60 Hz repeated calls and 1 Hz calls give the same one-second policy sequence
+  ---
+  duration_ms: 58.618019
+  type: 'test'
+  ...
+# Subtest: no RNG use: the shared stream can throw and the controller still works
+ok 16 - no RNG use: the shared stream can throw and the controller still works
+  ---
+  duration_ms: 8.340049
+  type: 'test'
+  ...
+# Subtest: two simultaneous game worlds do not share phase or fact history
+ok 17 - two simultaneous game worlds do not share phase or fact history
+  ---
+  duration_ms: 4.512216
+  type: 'test'
+  ...
+# Subtest: optional dockside hook cannot launder incoming combat into a protected non-flight mode
+ok 18 - optional dockside hook cannot launder incoming combat into a protected non-flight mode
+  ---
+  duration_ms: 0.348843
+  type: 'test'
+  ...
+# (node:2033) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: policy lease expires and invalid/disabled policies restore neutral read behavior
+ok 19 - policy lease expires and invalid/disabled policies restore neutral read behavior
+  ---
+  duration_ms: 11.633319
+  type: 'test'
+  ...
+# Subtest: read port clamps malicious numeric values without opening new authority
+ok 20 - read port clamps malicious numeric values without opening new authority
+  ---
+  duration_ms: 4.924995
+  type: 'test'
+  ...
+# Subtest: actual campaign gate blocks unsolicited combat in recovery but still admits civilian ambient
+ok 21 - actual campaign gate blocks unsolicited combat in recovery but still admits civilian ambient
+  ---
+  duration_ms: 0.684841
+  type: 'test'
+  ...
+# Subtest: actual legacy rhythm stays byte-equivalent in behavior when no tension policy is installed
+ok 22 - actual legacy rhythm stays byte-equivalent in behavior when no tension policy is installed
+  ---
+  duration_ms: 0.275531
+  type: 'test'
+  ...
+# Subtest: actual session-rhythm owner adopts intent without the controller cross-writing it
+ok 23 - actual session-rhythm owner adopts intent without the controller cross-writing it
+  ---
+  duration_ms: 3.123346
+  type: 'test'
+  ...
+# Subtest: actual quota, cooldown, pressure and live-combat gates remain mandatory
+ok 24 - actual quota, cooldown, pressure and live-combat gates remain mandatory
+  ---
+  duration_ms: 2.657419
+  type: 'test'
+  ...
+# Subtest: actual accrual applies bounded cadence multipliers while retaining the pool cap
+ok 25 - actual accrual applies bounded cadence multipliers while retaining the pool cap
+  ---
+  duration_ms: 0.863941
+  type: 'test'
+  ...
+# Subtest: actual pump prioritizes context but invokes normal gates before the existing fire seam
+ok 26 - actual pump prioritizes context but invokes normal gates before the existing fire seam
+  ---
+  duration_ms: 4.388802
+  type: 'test'
+  ...
+# Subtest: preference is bounded, respects overdue age and exact no-policy ordering
+ok 27 - preference is bounded, respects overdue age and exact no-policy ordering
+  ---
+  duration_ms: 2.2987
+  type: 'test'
+  ...
+# Subtest: major beats are held for a commitment window, not admitted during curiosity
+ok 28 - major beats are held for a commitment window, not admitted during curiosity
+  ---
+  duration_ms: 2.042459
+  type: 'test'
+  ...
+# Subtest: fractional-second undocking has a valid protective lease before the next 1 Hz decision
+ok 29 - fractional-second undocking has a valid protective lease before the next 1 Hz decision
+  ---
+  duration_ms: 3.211477
+  type: 'test'
+  ...
+# Subtest: readiness veto also reaches the existing tactical rhythm reader, not only the spawn gate
+ok 30 - readiness veto also reaches the existing tactical rhythm reader, not only the spawn gate
+  ---
+  duration_ms: 4.103118
+  type: 'test'
+  ...
+# Subtest: opening provides a real protected quiet window
+ok 31 - opening provides a real protected quiet window
+  ---
+  duration_ms: 5.419787
+  type: 'test'
+  ...
+# Subtest: empty world never receives a fabricated peak or victory
+ok 32 - empty world never receives a fabricated peak or victory
+  ---
+  duration_ms: 30.415354
+  type: 'test'
+  ...
+# Subtest: actual delivered pressure enters peak and resolution buys aftermath
+ok 33 - actual delivered pressure enters peak and resolution buys aftermath
+  ---
+  duration_ms: 2.40308
+  type: 'test'
+  ...
+# Subtest: critical hull overrides minimum phase dwell immediately at next decision
+ok 34 - critical hull overrides minimum phase dwell immediately at next decision
+  ---
+  duration_ms: 1.149975
+  type: 'test'
+  ...
+# Subtest: actual burst damage triggers recovery while a zero hit is ignored
+ok 35 - actual burst damage triggers recovery while a zero hit is ignored
+  ---
+  duration_ms: 3.436168
+  type: 'test'
+  ...
+# Subtest: recovery has hysteresis, a minimum duration, and no forced danger on an unrepaired hull
+ok 36 - recovery has hysteresis, a minimum duration, and no forced danger on an unrepaired hull
+  ---
+  duration_ms: 39.780489
+  type: 'test'
+  ...
+# Subtest: continuous actual combat accumulates fatigue and closes new-pressure admission
+ok 37 - continuous actual combat accumulates fatigue and closes new-pressure admission
+  ---
+  duration_ms: 65.0567
+  type: 'test'
+  ...
+# Subtest: chapter and motif variation are bounded, with no time-based power growth
+ok 38 - chapter and motif variation are bounded, with no time-based power growth
+  ---
+  duration_ms: 51.823175
+  type: 'test'
+  ...
+# Subtest: pressure targets, rates and slew remain bounded on every difficulty
+ok 39 - pressure targets, rates and slew remain bounded on every difficulty
+  ---
+  duration_ms: 622.490093
+  type: 'test'
+  ...
+# Subtest: repeated input at one timestamp cannot advance the dramatic clock
+ok 40 - repeated input at one timestamp cannot advance the dramatic clock
+  ---
+  duration_ms: 2.626152
+  type: 'test'
+  ...
+# Subtest: pause/modal flapping does not mint active seconds
+ok 41 - pause/modal flapping does not mint active seconds
+  ---
+  duration_ms: 1.135791
+  type: 'test'
+  ...
+# Subtest: time jump makes one protected decision, not thousands of catch-up beats
+ok 42 - time jump makes one protected decision, not thousands of catch-up beats
+  ---
+  duration_ms: 1.567826
+  type: 'test'
+  ...
+# Subtest: window saturates repeated verbs, excludes future/old bins, and never grows
+ok 43 - window saturates repeated verbs, excludes future/old bins, and never grows
+  ---
+  duration_ms: 3.955481
+  type: 'test'
+  ...
+# Subtest: duplicate receipts are counted once and deduplication storage is capped
+ok 44 - duplicate receipts are counted once and deduplication storage is capped
+  ---
+  duration_ms: 0.734728
+  type: 'test'
+  ...
+# Subtest: invalid and ambient-independent facts cannot corrupt state
+ok 45 - invalid and ambient-independent facts cannot corrupt state
+  ---
+  duration_ms: 0.195402
+  type: 'test'
+  ...
+# Subtest: same facts and seed produce byte-identical snapshots; instances are isolated
+ok 46 - same facts and seed produce byte-identical snapshots; instances are isolated
+  ---
+  duration_ms: 165.838018
+  type: 'test'
+  ...
+# Subtest: JSON save/restore continuation is exact, including phase, filters, leases, and event dedupe
+ok 47 - JSON save/restore continuation is exact, including phase, filters, leases, and event dedupe
+  ---
+  duration_ms: 332.450679
+  type: 'test'
+  ...
+# Subtest: inspect and snapshots cannot mutate the live controller
+ok 48 - inspect and snapshots cannot mutate the live controller
+  ---
+  duration_ms: 1.116553
+  type: 'test'
+  ...
+# Subtest: corrupt/version-mismatched snapshots are rejected before replacing live state
+ok 49 - corrupt/version-mismatched snapshots are rejected before replacing live state
+  ---
+  duration_ms: 2.109711
+  type: 'test'
+  ...
+# Subtest: trace, window, and identity rings remain bounded over a ten-hour session
+ok 50 - trace, window, and identity rings remain bounded over a ten-hour session
+  ---
+  duration_ms: 3176.309179
+  type: 'test'
+  ...
+# Subtest: sparse arrays, negative time budgets and prototype channel names cannot enter a snapshot
+ok 51 - sparse arrays, negative time budgets and prototype channel names cannot enter a snapshot
+  ---
+  duration_ms: 2.562577
+  type: 'test'
+  ...
+# (node:2065) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: fixed-seed integrated consumer trace matches across an owner save/restore
+ok 52 - fixed-seed integrated consumer trace matches across an owner save/restore
+  ---
+  duration_ms: 460.448917
+  type: 'test'
+  ...
+# Subtest: legacy A/B arm is explicit and active rather than a disconnected baseline
+ok 53 - legacy A/B arm is explicit and active rather than a disconnected baseline
+  ---
+  duration_ms: 9.2537
+  type: 'test'
+  ...
+# Subtest: installer preflights every file, wires all manifest arrays, is idempotent and rolls back exactly
+ok 54 - installer preflights every file, wires all manifest arrays, is idempotent and rolls back exactly
+  ---
+  duration_ms: 97.871668
+  type: 'test'
+  ...
+# Subtest: installer handles Windows CRLF and preserves unrelated checkout changes
+ok 55 - installer handles Windows CRLF and preserves unrelated checkout changes
+  ---
+  duration_ms: 41.292379
+  type: 'test'
+  ...
+# Subtest: conflicting newer source fails without adding even the new modules
+ok 56 - conflicting newer source fails without adding even the new modules
+  ---
+  duration_ms: 11.508276
+  type: 'test'
+  ...
+# Subtest: checkout changes after preflight and modified-source rollback are refused
+ok 57 - checkout changes after preflight and modified-source rollback are refused
+  ---
+  duration_ms: 22.842123
+  type: 'test'
+  ...
+# Subtest: manifest wiring refuses duplicate or wrong-order identities and is exact when already wired
+ok 58 - manifest wiring refuses duplicate or wrong-order identities and is exact when already wired
+  ---
+  duration_ms: 0.549598
+  type: 'test'
+  ...
+# Subtest: installer refuses a symlinked source destination
+ok 59 - installer refuses a symlinked source destination
+  ---
+  duration_ms: 4.553826
+  type: 'test'
+  ...
+1..59
+# tests 59
+# suites 0
+# pass 59
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4614.193664

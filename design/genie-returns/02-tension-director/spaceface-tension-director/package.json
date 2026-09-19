@@ -1,0 +1,15 @@
+{
+  "name": "spaceface-tension-director-delivery",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free, deterministic session pacing for SpaceFace",
+  "scripts": {
+    "test": "node tools/test.mjs",
+    "fixture": "node --experimental-vm-modules fixture/run.mjs",
+    "verify": "node tools/verify-delivery.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
