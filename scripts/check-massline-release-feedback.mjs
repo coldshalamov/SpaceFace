@@ -24,14 +24,16 @@ const PLAYER_ID = 1;
 const TARGET_ID = 2;
 const MISSED_CUE_ID = 'massline.release.missed';
 
-// Telemetry that drives rateRelease() to each classification band. releaseScore =
-// tangentQuality * clamp01(strain/0.65) * (1 - overloadPenalty); at strain 0.65 the load term is 1
-// and the score is exactly the tangential fraction, so these are the bands' own thresholds.
+// Telemetry that drives rateRelease() to each classification band.
+// CADENCE contract change (scoringVersion 'cadence.v1'): the score is TECHNIQUE —
+// tangency × smoothstep(15..95, |v_t|) × grip — not tangentQuality × strain-load, so the old
+// strain-band fixtures no longer map to classes. Each entry now names a real kinematic state and
+// the class it genuinely produces under the cadence ladder (probed against rateCadenceTechnique):
 const TELEMETRY_BY_CLASSIFICATION = Object.freeze({
-  messy: { tangentialSpeed: 20, radialSpeed: 80 },  // 0.20 -> messy  (< 0.35)
-  good: { tangentialSpeed: 50, radialSpeed: 50 },   // 0.50 -> good   (>= 0.35)
-  clean: { tangentialSpeed: 75, radialSpeed: 25 },  // 0.75 -> clean  (>= 0.65)
-  razor: { tangentialSpeed: 90, radialSpeed: 10 },  // 0.90 -> razor  (>= 0.85)
+  messy: { tangentialSpeed: 20, radialSpeed: 80 },  // speed 82, tangency 0.24, readiness ~0.01 -> 0.003
+  good: { tangentialSpeed: 55, radialSpeed: 25 },   // speed 60, tangency 0.91, readiness 0.50 -> 0.455
+  clean: { tangentialSpeed: 75, radialSpeed: 15 },  // speed 76, tangency 0.98, readiness 0.84 -> 0.827
+  razor: { tangentialSpeed: 95, radialSpeed: 5 },   // speed 95, tangency 1.00, readiness 1.00 -> 0.999
 });
 
 // Sanity: the new recipes exist, validate, and escalate good -> clean -> razor.
@@ -366,8 +368,14 @@ function stateWithTelemetry(telemetry, { targetDistance = 100 } = {}) {
     simTime: 1 / 60,
     playerId: PLAYER_ID,
     entities: new Map([
-      [PLAYER_ID, { id: PLAYER_ID, alive: true, pos: { x: 0, z: 0 } }],
-      [TARGET_ID, { id: TARGET_ID, alive: true, pos: { x: targetDistance, z: 0 } }],
+      // CADENCE: rateRelease reads the pair's live kinematics, so both endpoints carry the
+      // velocity the telemetry declares (player at rest; full relative motion on the target —
+      // the rating is translation/velocity-invariant).
+      [PLAYER_ID, { id: PLAYER_ID, alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } }],
+      [TARGET_ID, {
+        id: TARGET_ID, alive: true, pos: { x: targetDistance, z: 0 },
+        vel: { x: telemetry.radialSpeed, z: telemetry.tangentialSpeed },
+      }],
     ]),
     player: {
       masslineTelemetry: {
@@ -464,6 +472,11 @@ function emitRelease(harness, classification) {
   const telemetry = TELEMETRY_BY_CLASSIFICATION[classification];
   assert.ok(telemetry, `unknown release classification fixture: ${classification}`);
   Object.assign(harness.state.player.masslineTelemetry, telemetry);
+  // CADENCE: the rating reads the pair's live kinematics, so the target entity's velocity must
+  // track the same fixture numbers the telemetry was just given.
+  const emitTarget = harness.state.entities.get(TARGET_ID);
+  emitTarget.vel.x = telemetry.radialSpeed;
+  emitTarget.vel.z = telemetry.tangentialSpeed;
   // Advance the tick each call so dedupe windows don't suppress back-to-back releases in tests
   // that compare good vs razor across separate harnesses (each harness is fresh, but we keep the
   // habit defensive).

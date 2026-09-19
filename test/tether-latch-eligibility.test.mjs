@@ -15,6 +15,7 @@ import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js
 import { serializeCombatState, restoreCombatState } from '../src/combat/persistence.js';
 import { rankMasslineTargets } from '../src/combat/masslineTargetScoring.js';
 import { isAttachable, tetherGameplay } from '../src/systems/tetherGameplay.js';
+import { cadenceAxis } from '../src/systems/masslineControlLaw.js';
 
 const DT = 1 / 60;
 const TETHER_DEF = { maxLength: 390, minLength: 18, reelRate: 69 };
@@ -1069,23 +1070,37 @@ test('Heavy-Duty Winch scales normalized line input by its snapshotted reel rate
   };
 
   const base = reelFor({ mult: undefined, axis: 0.5, dt: 0.25 });
-  assert.ok(Math.abs(base.delta - TETHER_DEF.reelRate * 0.5 * 0.25) < 1e-9,
-    'a partial positive axis pays out at base rate × axis × dt');
+  // CADENCE authored change: the old pins were linear, delta = rate × axis × dt. The normalized
+  // axis now goes through the precision response curve (deadzone 0.08, 0.3·u + 0.7·u³) and a
+  // bounded motor spin-up (0.12 s to full rate). At dt = 0.25 one tick exceeds the spin-up window,
+  // so the single-step delta is exactly cadenceAxis(axis) × rate × dt. The Winch-multiplier
+  // plumbing this test exists to pin is unchanged: the fitted 1.8x rate scales the same delta.
+  assert.ok(Math.abs(base.delta - cadenceAxis(0.5) * base.rate * 0.25) < 1e-9,
+    'a partial positive axis pays out at cadenceAxis(0.5) × base rate × dt');
 
   const winch = reelFor({ mult: 1.8, axis: 0.5, dt: 0.25 });
   assert.ok(Math.abs(winch.rate - TETHER_DEF.reelRate * 1.8) < 1e-9);
-  assert.ok(Math.abs(winch.delta - winch.rate * 0.5 * 0.25) < 1e-9,
-    'the fitted winch applies its authored 1.8x speed to payout');
+  assert.ok(Math.abs(winch.delta - cadenceAxis(0.5) * winch.rate * 0.25) < 1e-9,
+    'the fitted winch applies its authored 1.8x speed to the same cadence payout');
 
   const reelIn = reelFor({ mult: 1.8, axis: -0.25, dt: 0.2 });
-  assert.ok(Math.abs(reelIn.delta - reelIn.rate * -0.25 * 0.2) < 1e-9,
-    'negative axis uses the same rate and dt scaling for reel-in');
+  assert.ok(Math.abs(reelIn.delta - cadenceAxis(-0.25) * reelIn.rate * 0.2) < 1e-9,
+    'negative axis uses the same response curve, rate and dt scaling for reel-in');
 
   const sixtyHz = reelFor({ mult: undefined, axis: 1, dt: 1 / 60, ticks: 60 });
   const thirtyHz = reelFor({ mult: undefined, axis: 1, dt: 1 / 30, ticks: 30 });
-  assert.ok(Math.abs(sixtyHz.delta - TETHER_DEF.reelRate) < 1e-9);
-  assert.ok(Math.abs(thirtyHz.delta - sixtyHz.delta) < 1e-9,
-    'the same one-second command pays out equally at 30 Hz and 60 Hz');
+  // CADENCE authored change: the old pins required a sustained full-axis second to pay out exactly
+  // reelRate and to be dt-independent. The 0.12 s spin-up is time-based, so one second pays out
+  // just under the authored rate and the discretization differs by under one percent:
+  // 60 Hz: 7 partial ramp ticks (k·rate/7.2) then 53 full ticks; 30 Hz: 3 partial (k·rate/3.6) then 27.
+  const expected60 = TETHER_DEF.reelRate * (28 / 7.2 + 53) / 60;
+  const expected30 = TETHER_DEF.reelRate * (6 / 3.6 + 27) / 30;
+  assert.ok(Math.abs(sixtyHz.delta - expected60) < 1e-9,
+    'a one-second full-axis command pays out the ramp-adjusted amount at 60 Hz');
+  assert.ok(Math.abs(thirtyHz.delta - expected30) < 1e-9,
+    'a one-second full-axis command pays out the ramp-adjusted amount at 30 Hz');
+  assert.ok(Math.abs(sixtyHz.delta - thirtyHz.delta) < 0.01 * TETHER_DEF.reelRate,
+    'the same one-second command stays within one percent across 30 Hz and 60 Hz');
 
   assert.equal(reelFor({ mult: 1.8, axis: 1, dt: 0 }).delta, 0,
     'zero dt cannot move the line');

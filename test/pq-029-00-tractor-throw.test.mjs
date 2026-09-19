@@ -133,6 +133,11 @@ test('a winched tractor throw on seed 29000 is >= 1.2x Hitch cruise', async () =
 });
 
 test('the throw ends in a release rating, never a silent cut', () => {
+  // CADENCE contract change: rateRelease scores TECHNIQUE from the pair's live kinematics
+  // (readCadencePair needs both endpoints' pos/vel); the telemetry-only fixture below used to be
+  // enough when the score was strain-driven. The fixture now provides the entities that match the
+  // telemetry it always declared (payload 31 WU out, 110 WU/s tangential, 12 WU/s radial). The
+  // BAR is unchanged: a fast, near-pure tangential loaded swing must still rate clean or better.
   const state = {
     playerId: SEED,
     player: {
@@ -142,11 +147,18 @@ test('the throw ends in a release rating, never a silent cut', () => {
         maxStrainSinceLatch: 0.6, maxTangentialSpeedSinceLatch: 110, maxAngularSpeedSinceLatch: 2.4,
       },
     },
+    entities: new Map([
+      [SEED, { id: SEED, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } }],
+      ['throw-pod', { id: 'throw-pod', pos: { x: 31, z: 0 }, vel: { x: 12, z: 110 } }],
+    ]),
   };
   const rating = rateRelease(state, 'throw-pod');
   console.log(`TRACTOR_RELEASE classification=${rating.classification} score=${rating.releaseScore.toFixed(2)} tangential=${rating.tangentialSpeed}`);
   assert.ok(['razor', 'clean'].includes(rating.classification),
     `a loaded swing release must rate clean or better, got ${rating.classification}`);
+  assert.equal(rating.scoringVersion, 'cadence.v1');
+  assert.ok(rating.speedReadiness >= 0.99,
+    'a 110 WU/s tangential release is at full speed readiness under the cadence ladder');
   assert.equal(rating.targetId, 'throw-pod');
   assert.equal(rating.sourceId, SEED);
 });

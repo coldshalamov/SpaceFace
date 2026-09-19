@@ -1,5 +1,3 @@
-import { solveCadenceRelease } from './masslineReleaseGeometry.js';
-
 // Massline fire control + throw-release solvers (Wave M2 §3.1/§3.3,
 // design/revamp/MASSLINE_PHYSICS_IDENTITY.md).
 //
@@ -34,12 +32,11 @@ export const ORBIT_RADIAL_RATIO_MAX = 1.0;
 
 // Four fixed ticks at 60 Hz = 15 Hz, inside SF-06's deterministic 10-20 Hz predictor budget.
 // The expensive intercept solve runs only on these sample ticks; fixed-tick consumers project the
-// cached metadata between samples. CADENCE refreshes cheap ballistic contact every tick, and
-// explicitly requests fresh field trajectories whenever a release decision is authorised.
+// cached angular error between samples so Arm/Snap and the HUD still see one coherent live stream.
 export const RELEASE_PREDICTOR_SAMPLE_TICKS = 4;
 
-// Legacy angular-tolerance exports retained for gunnery/UI callers. CADENCE throw contact does
-// NOT use these inflated radii or angle clamps; it sweeps the sum of both physical proxy radii.
+// Solution-tolerance clamp (radians). Target-size honesty (§3.3): big targets are generous,
+// fighters stay a low-percentage play. assistForgiveness is the victim-radius multiplier dial.
 export const ASSIST_FORGIVENESS = 1.6;
 export const SOLUTION_TOL_MIN_RAD = 0.5 * Math.PI / 180;
 export const SOLUTION_TOL_MAX_RAD = 12 * Math.PI / 180;
@@ -253,7 +250,7 @@ export function solveTetherLeadSolution(shooter, target, projSpeed, opts = {}) {
 }
 
 /**
- * Legacy angular UI tolerance (not used to authorize CADENCE throws).
+ * Angular tolerance for "on solution" at a given range — target-size honesty in one place.
  * radius/dist in world units; returns radians clamped to [TOL_MIN, TOL_MAX].
  */
 export function solutionToleranceRad(targetRadius, distance, forgiveness = ASSIST_FORGIVENESS) {
@@ -269,48 +266,180 @@ export function solutionToleranceRad(targetRadius, distance, forgiveness = ASSIS
  * vector points at the moving-target intercept. On a sustained swing that direction rotates at
  * the line's angular rate, so the solution recurs every revolution.
  *
- * payload: { pos:{x,z}, vel:{x,z}, radius? }
+ * payload: { pos:{x,z}, vel:{x,z} }
  * aim:     { pos:{x,z}, vel?:{x,z}, radius? }  — the caller's captured transient release target
  *                                                  (entity or synthetic point). This pure solver
  *                                                  never reads selection, auto-aim, or raw input.
- * opts.omega is retained as a compatible input but does not invent an off-vector ETA.
- * A separately gated coast forecast supplies timing; a free-flight ray alone cannot.
+ * opts.omega — signed rotation rate of the payload velocity direction (pass the line omega);
+ *              used only for timeToSolution pacing, not correctness.
  *
  * Returns { valid, errorRad, tolRad, onSolution, interceptAngle, payloadSpeed, timeToSolution,
  *           timeOfFlight }.
  */
 export function solveThrowSolution(payload, aim, opts = {}) {
-  return solveCadenceRelease(payload, aim, opts);
+  const pv = (payload && payload.vel) || { x: 0, z: 0 };
+  const pp = (payload && payload.pos) || { x: 0, z: 0 };
+  const speed = Math.hypot(finite(pv.x), finite(pv.z));
+  if (!(speed > 1) || !aim || !aim.pos) {
+    return { valid: false, errorRad: Math.PI, tolRad: 0, onSolution: false, interceptAngle: 0, payloadSpeed: speed, timeToSolution: null, timeOfFlight: 0, predicted: null };
+  }
+
+  // Standard 2-pass intercept: the payload is the projectile, at its current speed.
+  const av = aim.vel || { x: 0, z: 0 };
+  const px = aim.pos.x - pp.x, pz = aim.pos.z - pp.z;
+  const rvx = finite(av.x), rvz = finite(av.z);
+  let t = 0;
+  for (let i = 0; i < 2; i++) {
+    const ix = px + rvx * t, iz = pz + rvz * t;
+    t = Math.hypot(ix, iz) / speed;
+  }
+  const ix = px + rvx * t, iz = pz + rvz * t;
+  const interceptAngle = Math.atan2(iz, ix);
+  const distance = Math.hypot(ix, iz);
+
+  const headingAngle = Math.atan2(pv.z, pv.x);
+  const errorRad = wrapPi(interceptAngle - headingAngle);
+  const tolRad = solutionToleranceRad(aim.radius, distance, opts.forgiveness);
+
+  // Pacing read for the indicator: with the velocity direction rotating at omega, how long until
+  // the error sweeps through zero (approaching side only — receding reads as most of a lap).
+  const omega = finite(opts.omega, 0);
+  let timeToSolution = null;
+  if (Math.abs(omega) > 1e-3) {
+    let sweep = errorRad / omega; // error decreases as the heading rotates toward intercept
+    if (sweep < 0) sweep += TWO_PI / Math.abs(omega);
+    timeToSolution = sweep;
+  }
+
+  const ballistic = {
+    valid: true,
+    errorRad,
+    tolRad,
+    onSolution: Math.abs(errorRad) <= tolRad,
+    interceptAngle,
+    payloadSpeed: speed,
+    timeToSolution,
+    timeOfFlight: t,
+    predicted: { x: pp.x + ix, z: pp.z + iz },
+    fieldAware: false,
+    projectedPath: null,
+    fieldDistortionRad: 0,
+  };
+
+  // Field-aware refinement (PQ-012 req 9). When the caller injects a pure field sampler
+  // `(px,pz,vx,vz) -> {ax,az}` (only present when continuous fields are actually active), the
+  // payload's release path is BENT: forward-integrate from its current state with the same
+  // semi-implicit Euler shape the sim uses, and let the bent path — not the straight ballistic
+  // line — decide the predicted landing and the on-solution gate. Absent a sampler this branch is
+  // skipped and the result is byte-identical to the pure ballistic model (existing throw tests).
+  if (typeof opts.fieldSampler !== 'function') return ballistic;
+  const dt = finite(opts.fieldDt, 1 / 60) > 0 ? finite(opts.fieldDt, 1 / 60) : 1 / 60;
+  const steps = Math.max(1, Math.min(600, Math.trunc(finite(opts.fieldSteps, Math.min(90, Math.ceil((t + 0.2) / dt))))));
+  let bx = pp.x, bz = pp.z, bvx = finite(pv.x), bvz = finite(pv.z);
+  const path = [{ x: bx, z: bz }];
+  let cDist = Infinity, cX = bx, cZ = bz, cT = 0;
+  for (let i = 1; i <= steps; i++) {
+    const acc = opts.fieldSampler(bx, bz, bvx, bvz);
+    bvx += finite(acc && acc.ax) * dt; bvz += finite(acc && acc.az) * dt;
+    bx += bvx * dt; bz += bvz * dt;
+    path.push({ x: bx, z: bz });
+    const tt = i * dt;
+    const aimX = aim.pos.x + rvx * tt, aimZ = aim.pos.z + rvz * tt;
+    const d = Math.hypot(bx - aimX, bz - aimZ);
+    if (d < cDist) { cDist = d; cX = bx; cZ = bz; cT = tt; }
+  }
+  const hitTol = Math.max(0.5, finite(aim.radius, 0.5)) * Math.max(0.1, finite(opts.forgiveness, ASSIST_FORGIVENESS));
+  // Distortion = angular gap between the straight ballistic aim and the bent closest approach, as
+  // seen from the payload — the truthful "field distortion" magnitude for the HUD indicator.
+  const ballAng = interceptAngle;
+  const bentAng = Math.atan2(cZ - pp.z, cX - pp.x);
+  return {
+    ...ballistic,
+    onSolution: cDist <= hitTol,
+    predicted: { x: cX, z: cZ },
+    fieldAware: true,
+    projectedPath: path,
+    fieldClosestDist: cDist,
+    fieldClosestTime: cT,
+    fieldDistortionRad: wrapPi(bentAng - ballAng),
+  };
 }
 
 /**
- * Keep the established sample metadata, but never extrapolate an old heading into a new HIT.
- * Ballistic contact is O(1) and read from current endpoints every fixed tick. Field trajectories
- * are sampled at the existing cadence for preview; requireFresh=true forces a current solve for
- * an armed/manual decision. Stale field previews are explicitly ineligible to auto-cut.
+ * Deterministically sample and project the shared throw solution.
+ *
+ * `cache` is caller-owned mutable storage; no module-global state or wall time participates. A new
+ * solve occurs at 15 Hz by default, immediately after a tick rewind, or when `identity` changes.
+ * Every other fixed tick projects the sampled angular error with the live line omega. The returned
+ * record is newly allocated so receipts may retain it without later cache updates rewriting history.
  */
 export function sampleThrowSolution(cache, payload, aim, opts = {}) {
   const host = cache && typeof cache === 'object' ? cache : {};
   const tick = Math.max(0, Math.trunc(finite(opts.tick, 0)));
-  const sampleIntervalTicks = Math.max(1, Math.trunc(finite(opts.sampleIntervalTicks, RELEASE_PREDICTOR_SAMPLE_TICKS)));
+  const tickRate = Math.max(1, finite(opts.tickRate, 60));
+  const sampleIntervalTicks = Math.max(1, Math.trunc(finite(
+    opts.sampleIntervalTicks,
+    RELEASE_PREDICTOR_SAMPLE_TICKS,
+  )));
   const identity = opts.identity == null ? '' : String(opts.identity);
   const previousTick = Number.isFinite(host.sampleTick) ? host.sampleTick : -Infinity;
-  const needsSample = !host.sample || host.identity !== identity || tick < previousTick
-    || tick - previousTick >= sampleIntervalTicks
-    || opts.requireFresh === true && typeof opts.fieldSampler === 'function';
-  let current;
+  const needsSample = !host.sample
+    || host.identity !== identity
+    || tick < previousTick
+    || tick - previousTick >= sampleIntervalTicks;
+
   if (needsSample) {
-    current = solveThrowSolution(payload, aim, opts);
-    host.sample = current;
+    const solved = solveThrowSolution(payload, aim, opts);
+    host.sample = {
+      valid: solved.valid,
+      errorRad: solved.errorRad,
+      tolRad: solved.tolRad,
+      onSolution: solved.onSolution,
+      interceptAngle: solved.interceptAngle,
+      payloadSpeed: solved.payloadSpeed,
+      timeToSolution: solved.timeToSolution,
+      timeOfFlight: solved.timeOfFlight,
+      predicted: solved.predicted ? { ...solved.predicted } : null,
+      // Field-aware carry-through (PQ-012). projectedPath is the bent release trajectory the HUD
+      // draws; fieldAware/onSolution/distortion travel with the cached sample between solves.
+      fieldAware: !!solved.fieldAware,
+      projectedPath: solved.projectedPath || null,
+      fieldClosestDist: finite(solved.fieldClosestDist, 0),
+      fieldDistortionRad: finite(solved.fieldDistortionRad, 0),
+    };
     host.identity = identity;
     host.sampleTick = tick;
     host.sampleSequence = Math.max(0, Math.trunc(finite(host.sampleSequence, 0))) + 1;
-  } else if (typeof opts.fieldSampler === 'function') {
-    current = { ...host.sample, onSolution: false, timeToSolution: null, decisionStale: true };
-  } else {
-    current = solveThrowSolution(payload, aim, opts);
   }
-  return { ...current, sampleTick: host.sampleTick, sampleAgeTicks: Math.max(0, tick - host.sampleTick),
-    sampleIntervalTicks, sampleSequence: host.sampleSequence, sampled: needsSample,
-    decisionTick: tick, decisionStale: current.decisionStale === true };
+
+  const sample = host.sample;
+  const sampleAgeTicks = Math.max(0, tick - host.sampleTick);
+  const omega = finite(opts.omega, 0);
+  const projectedError = sample.valid
+    ? wrapPi(sample.errorRad - omega * (sampleAgeTicks / tickRate))
+    : sample.errorRad;
+  let timeToSolution = null;
+  if (sample.valid && Math.abs(omega) > 1e-3) {
+    let sweep = projectedError / omega;
+    if (sweep < 0) sweep += TWO_PI / Math.abs(omega);
+    timeToSolution = sweep;
+  }
+
+  // A field-aware sample's on-solution is decided by the BENT path's closest approach, not by the
+  // omega-projected heading error (which is a straight-line concept). Keep the freshly-solved gate
+  // for those; the ballistic path keeps its inter-sample omega projection exactly as before.
+  const onSolution = sample.fieldAware
+    ? !!(sample.valid && sample.onSolution)
+    : !!(sample.valid && Math.abs(projectedError) <= sample.tolRad);
+  return {
+    ...sample,
+    errorRad: projectedError,
+    onSolution,
+    timeToSolution,
+    sampleTick: host.sampleTick,
+    sampleAgeTicks,
+    sampleIntervalTicks,
+    sampleSequence: host.sampleSequence,
+    sampled: needsSample,
+  };
 }

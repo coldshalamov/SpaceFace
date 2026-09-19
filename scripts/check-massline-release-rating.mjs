@@ -23,7 +23,7 @@ const TETHER_DEF_ID = 'tether_standard';
 // --- formula unit tests (assertions 1-3) ---
 await assertTangentialLoadedReleaseClassifiesCleanOrRazor();
 await assertRadialLoadedReleaseClassifiesLowerThanTangential();
-await assertHighOverloadStrainIsPenalized();
+await assertHighOverloadStrainDoesNotMoveTheTechniqueScore();
 await assertMissingTelemetryStillEmitsMessy();
 
 // --- integration tests against real tetherGameplay.update (assertions 4-5 + break path) ---
@@ -35,11 +35,11 @@ console.log('Massline release rating checks OK');
 
 // 1. A tangential loaded release classifies "clean" or "razor".
 function assertTangentialLoadedReleaseClassifiesCleanOrRazor() {
-  // Spec formula:
-  //   tangentQuality = 80/(80+2) = 0.976
-  //   usefulLoad     = clamp(0.5/0.65,0,1) = 0.769
-  //   overloadPenalty= clamp((0.5-0.85)/0.35,0,1) = 0
-  //   releaseScore   = 0.976 * 0.769 * 1 = 0.750  -> "clean"
+  // CADENCE formula (scoringVersion 'cadence.v1') replacing the old strain spec:
+  //   tangency       = 80/hypot(80,2) ≈ 0.9997
+  //   speedReadiness = smoothstep(15..95, 80) ≈ 0.9076
+  //   grip           = 1 (phase 'loaded')
+  //   releaseScore   ≈ 0.907 -> "razor" (bar unchanged: clean or razor)
   const rated = rateRelease(stateWithTelemetry({
     targetId: TARGET_ID,
     tangentialSpeed: 80,
@@ -55,6 +55,7 @@ function assertTangentialLoadedReleaseClassifiesCleanOrRazor() {
 
   assert.ok(rated.classification === 'clean' || rated.classification === 'razor',
     `tangential loaded release should rate clean or razor; got ${rated.classification} (${rated.releaseScore})`);
+  assert.equal(rated.scoringVersion, 'cadence.v1', 'the cadence scoring version is declared');
   assertRoundedEqual(rated.tangentialSpeed, 80, 'tangentialSpeed');
   assertRoundedEqual(rated.radialSpeed, 2, 'radialSpeed');
   assertRoundedEqual(rated.strain, 0.5, 'strain');
@@ -77,23 +78,27 @@ function assertRadialLoadedReleaseClassifiesLowerThanTangential() {
     `radial-dominant cut should land in messy/good band; got ${radialRating.classification}`);
 }
 
-// 3. A high-overload strain release is penalized.
-function assertHighOverloadStrainIsPenalized() {
-  const baselineScore = rateRelease(stateWithTelemetry({
+// 3. CADENCE authored change ("strain is not skill", DESIGN §5): the old pin expected deep
+//    overload strain to cut the technique score. Strain is deliberately excluded from the
+//    cadence score — standard line ratings are enormous, so strain-based scoring labelled a
+//    skilled swing "messy". The reviewed invariant: at fixed kinematics the score is identical,
+//    while the physical strain still rides the payload for equipment warnings.
+function assertHighOverloadStrainDoesNotMoveTheTechniqueScore() {
+  const baseline = rateRelease(stateWithTelemetry({
     targetId: TARGET_ID, tangentialSpeed: 80, radialSpeed: 2, strain: 0.7,
-  }), TARGET_ID).releaseScore;
+  }), TARGET_ID);
 
-  // Same kinematics but strain deep into the overload band (>=0.85) — overloadPenalty kicks in.
-  const overloadScore = rateRelease(stateWithTelemetry({
+  // Same kinematics but strain deep into the old overload band (>=0.85).
+  const overload = rateRelease(stateWithTelemetry({
     targetId: TARGET_ID, tangentialSpeed: 80, radialSpeed: 2, strain: 1.0,
-  }), TARGET_ID).releaseScore;
+  }), TARGET_ID);
 
-  assert.ok(overloadScore < baselineScore,
-    `high-overload strain should be penalized vs loaded; overload=${overloadScore} loaded=${baselineScore}`);
-  // At strain = 1.0 the overload penalty is (1.0-0.85)/0.35 ≈ 0.429, so the score must drop by
-  // at least that fraction relative to the no-penalty ceiling.
-  assert.ok(overloadScore <= baselineScore * (1 - 0.42),
-    `overload penalty should materially reduce the score; overload=${overloadScore} baseline=${baselineScore}`);
+  assert.equal(overload.releaseScore, baseline.releaseScore,
+    `overload strain must NOT move the technique score; overload=${overload.releaseScore} baseline=${baseline.releaseScore}`);
+  assert.equal(overload.classification, baseline.classification,
+    'the classification must not move with strain at fixed kinematics');
+  assert.ok(overload.strain > baseline.strain,
+    'the physical strain still rides the rating payload for equipment warnings');
 }
 
 // Spec: if telemetry is missing, still emit tether:releaseRated with classification "messy" and
@@ -179,7 +184,21 @@ function stateWithTelemetry(overrides) {
     latchTick: 100,
     latchTime: 100 / 60,
   };
-  state.player.masslineTelemetry = { ...base, ...overrides };
+  const telemetry = { ...base, ...overrides };
+  // CADENCE contract change: rateRelease scores the pair's LIVE kinematics (readCadencePair over
+  // both endpoints' pos/vel), so the state must carry entities whose motion matches the telemetry
+  // it declares. The rating is translation/velocity-invariant, so placing the player at rest at
+  // the origin and the full relative motion (radial·x̂ + tangential·ẑ) on the target is exact.
+  state.playerId = PLAYER_ID;
+  state.entities = new Map([
+    [PLAYER_ID, { id: PLAYER_ID, alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } }],
+    [TARGET_ID, {
+      id: TARGET_ID, alive: true,
+      pos: { x: telemetry.distance, z: 0 },
+      vel: { x: telemetry.radialSpeed, z: telemetry.tangentialSpeed },
+    }],
+  ]);
+  state.player.masslineTelemetry = telemetry;
   return state;
 }
 

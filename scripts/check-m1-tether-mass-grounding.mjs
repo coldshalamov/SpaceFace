@@ -153,7 +153,12 @@ assert.deepEqual(spoolStats(['mod_massline_spool_m', 'mod_winch_hd', 'mod_massli
   const reeled = tetherGameplay._reelActive.call({
     _active: { attachmentId: attachment.id },
     registry: { get() { return { kernel: { catalog: { attachments: new Map([[standard.id, standard]]) } } }; } },
-  }, attachments, -999, 1);
+    // CADENCE contract change: _reelActive now runs the winch through the cadence runtime, which
+    // lives on state.masslineCadence (created/kept by these two methods). This authored drill-
+    // style WORLD-UNIT reel stays on the exact clamp path the old pin tested (rate × 1.8).
+    _ensureCadenceRuntime: tetherGameplay._ensureCadenceRuntime,
+    _resetCadenceRuntime: tetherGameplay._resetCadenceRuntime,
+  }, attachments, -999, 1, {});
   // _reelActive returns a truthful receipt since the PQ-003/PQ-006 pay-out work; success is the
   // receipt's changed flag, same strength as the old boolean.
   assert.equal(reeled && reeled.changed, true, 'live player reel applies and reports a changed receipt');

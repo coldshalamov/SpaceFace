@@ -11,7 +11,7 @@ import { masslineThrow } from '../src/systems/masslineThrow.js';
 import * as cameraModule from '../src/render/camera.js';
 import * as masslineHudModule from '../src/ui/masslineHud.js';
 
-test('PQ-006 release prediction samples at 15 Hz and exposes one shared deterministic sample', () => {
+test('PQ-006 release prediction samples at 15 Hz and recomputes contact honestly between samples', () => {
   assert.equal(typeof fireControl.sampleThrowSolution, 'function');
   assert.equal(fireControl.RELEASE_PREDICTOR_SAMPLE_TICKS, 4);
 
@@ -37,20 +37,33 @@ test('PQ-006 release prediction samples at 15 Hz and exposes one shared determin
   assert.equal(first.sampleSequence, 1);
   assert.equal(first.sampleAgeTicks, 0);
   assert.equal(first.onSolution, false);
+  assert.equal(first.decisionTick, 100, 'the decision tick is the tick that decided');
 
   payload.vel.x = 0;
   payload.vel.z = 120;
-  const projected = fireControl.sampleThrowSolution(cache, payload, aim, {
+  const between = fireControl.sampleThrowSolution(cache, payload, aim, {
     tick: 102,
     omega: 0.9,
     identity: 'payload-2:aim-3',
   });
-  assert.equal(projected.sampled, false, 'intervening fixed ticks consume the cached sample');
-  assert.equal(projected.sampleTick, first.sampleTick);
-  assert.equal(projected.sampleSequence, first.sampleSequence);
-  assert.equal(projected.sampleAgeTicks, 2);
-  assert.ok(Math.abs(projected.errorRad) < 1e-9, 'the cached error projects across fixed ticks');
-  assert.equal(projected.onSolution, true, 'the release window can open between expensive solves');
+  // CADENCE semantic change: the old pin asserted the cached ANGULAR error was extrapolated
+  // across fixed ticks with omega (projected.errorRad ~ 0, onSolution opening between solves) —
+  // the inflated-gate lie this delivery removes. The 15 Hz sample metadata persists, but the
+  // DECISION is recomputed from CURRENT state every tick: a changed velocity is judged now.
+  assert.equal(between.sampled, false, 'intervening fixed ticks consume the cached metadata sample');
+  assert.equal(between.sampleTick, first.sampleTick);
+  assert.equal(between.sampleSequence, first.sampleSequence);
+  assert.equal(between.sampleAgeTicks, 2);
+  assert.equal(between.decisionTick, 102, 'decisionTick identifies the CURRENT decision, not the 15 Hz sample');
+  assert.equal(between.decisionStale, false, 'ballistic contact is cheap: it is never stale');
+  assert.equal(between.onSolution, false,
+    'a changed velocity is judged by current geometry NOW — a stale sample can never open the window');
+  // payload now travels parallel to +z while the target sits at +x: an honest ~398 WU miss
+  // (closest approach ~399.82 minus the target's 2 WU radius), not a projected near-zero error.
+  assert.ok(Math.abs(between.clearance + 397.8200135) < 1e-4,
+    'signed clearance reports the CURRENT miss distance in world units');
+  assert.ok(Math.abs(between.errorRad) > 1,
+    'the raw angular error is reported honestly instead of being extrapolated toward zero');
 
   const refreshed = fireControl.sampleThrowSolution(cache, payload, aim, {
     tick: 104,
@@ -84,7 +97,7 @@ test('PQ-006 predictor resamples immediately when the armed release identity cha
   assert.equal(changed.sampleSequence, 2);
 });
 
-test('PQ-006 Arm, HUD mirror, and release validation consume the same projected sample', () => {
+test('PQ-006 Arm, HUD mirror, and release validation consume the same current-contact decision', () => {
   withMasslineFlags(() => {
     const harness = makeThrowHarness({ assist: 'arm', aimAngle: 0.03, omega: 0.9 });
     masslineThrow.init(harness.ctx);
@@ -93,32 +106,37 @@ test('PQ-006 Arm, HUD mirror, and release validation consume the same projected 
     assert.equal(harness.cuts.length, 0);
     assert.equal(harness.state.massline2.throw.solution.sampleTick, 100);
     assert.equal(harness.state.massline2.throw.solution.sampled, true);
+    assert.equal(harness.state.massline2.throw.solution.onSolution, false,
+      'off-vector: no release yet');
 
+    // CADENCE semantic change: the old pin held that arm cut one tick LATER on the PROJECTED
+    // window (extrapolated from the cached angular sample). Cadence authorizes on CURRENT
+    // contact — a fresh held-button authorization plus this tick's honest geometry — so the
+    // release fires as soon as the swung heading genuinely intersects the target.
     harness.advanceSwing(101, 0.015);
     masslineThrow.update(1 / 60, harness.state);
-    assert.equal(harness.cuts.length, 0);
-    assert.equal(harness.state.massline2.throw.solution.sampleTick, 100);
-    assert.equal(harness.state.massline2.throw.solution.sampled, false);
-
-    harness.advanceSwing(102, 0.03);
-    masslineThrow.update(1 / 60, harness.state);
-    assert.equal(harness.cuts.length, 1, 'Arm cuts on the projected window between solves');
-    assert.equal(harness.state.massline2.throw.lastThrow.prediction.sampleTick, 100);
-    assert.equal(harness.state.massline2.throw.lastThrow.prediction.sampleSequence, 1);
-    assert.equal(harness.state.massline2.throw.lastThrow.prediction.onSolution, true);
+    assert.equal(harness.cuts.length, 1, 'Arm cuts on CURRENT contact with a held authorization');
+    const lastThrow = harness.state.massline2.throw.lastThrow;
+    assert.equal(lastThrow.mode, 'arm');
+    assert.equal(lastThrow.prediction.sampleTick, 100, 'the 15 Hz metadata provenance is retained');
+    assert.equal(lastThrow.prediction.sampleSequence, 1);
+    assert.equal(lastThrow.prediction.onSolution, true,
+      'the receipt records the CURRENT decision that authorized the cut');
 
     harness.state.tick = 103;
     harness.state.simTime = 103 / 60;
     masslineThrow.update(1 / 60, harness.state);
     const receipt = harness.state.massline2.throw.lastReleaseValidation;
-    assert.equal(receipt.releaseId, harness.state.massline2.throw.lastThrow.releaseId);
-    assert.equal(receipt.prediction.sampleTick, 100);
-    assert.equal(receipt.releaseTick, 102);
+    assert.equal(receipt.releaseId, lastThrow.releaseId);
+    assert.equal(receipt.releaseTick, 101);
     assert.equal(receipt.validatedTick, 103);
     assert.equal(receipt.withinTolerance, true);
-    assert.ok(Math.abs(receipt.divergenceRad) < 1e-9);
-    assert.ok(receipt.trajectory.divergenceWU < 1e-9,
-      'the post-authority exit vector reaches the same predicted point');
+    // The validation is honest about the actual flight: the heading advanced 0.015 rad between
+    // the decision sample and the release, and the receipt says exactly that.
+    assert.ok(Math.abs(receipt.divergenceRad - 0.015) < 1e-9,
+      'the receipt reports the real angular divergence, not a projected zero');
+    assert.equal(receipt.trajectory.divergenceWU, 0,
+      'CADENCE: the exact ballistic model means the earned exit reproduces the predicted point — no steering, no lying');
     assert.equal(harness.events.filter((event) => event.type === 'massline:releaseValidated').length, 1);
 
     masslineThrow.destroy();
@@ -148,8 +166,15 @@ test('PQ-029 Snap may time the cut but never steers the payload exit', () => {
     assert.ok(Math.abs(lastThrow.errorRad) > 0, "the receipt should retain the player's late release error");
     assert.ok(Math.abs(receipt.divergenceRad) > 0,
       'validation should report the uncorrected late-release divergence honestly');
-    assert.ok(receipt.trajectory.divergenceWU > 0,
-      'the receipt must not pretend assistance rewrote the earned trajectory');
+    assert.equal(receipt.trajectory.divergenceWU, 0,
+      // CADENCE semantic change: the old pin required divergenceWU > 0, which was an artifact of
+      // the OLD predictor's moving-target iteration and angular extrapolation — its "predicted
+      // point" did not even lie on the payload's earned ballistic path. The exact disk model
+      // predicts exactly the earned trajectory, so the honest receipt shows ZERO position
+      // divergence while the MISS stays honestly recorded in divergenceRad/withinTolerance.
+      'the predicted point must lie on the earned ballistic path (zero invented steering)');
+    assert.equal(receipt.withinTolerance, false,
+      'the missed shot is still a miss: tolerance is not laundered after the fact');
 
     masslineThrow.destroy();
   });
@@ -306,7 +331,7 @@ test('PQ-006 corrupt release-assist profile values fail closed to Snap', () => {
   });
 });
 
-test('PQ-006 self-sling publishes earned-speed provenance and one explicit impulse ledger', () => {
+test('PQ-006/CADENCE self-sling keeps earned-speed provenance with an EMPTY impulse ledger', () => {
   withMasslineFlags(() => {
     const player = {
       id: 1, type: 'ship', alive: true, mass: 20, radius: 8,
@@ -350,11 +375,14 @@ test('PQ-006 self-sling publishes earned-speed provenance and one explicit impul
     assert.match(sling.releaseId, /^massline:self-sling:/);
     assert.equal(sling.prediction.sampleTick, 300);
     assert.ok(Math.abs(sling.prediction.payloadSpeed - sling.exitSpeed) < 1e-9,
-      'the shared self-sling predictor includes the earned-speed impulse');
-    assert.equal(sling.impulses.length, 1);
-    assert.equal(sling.impulses[0].reason, 'massline_sling_bonus');
-    assert.equal(sling.impulses[0].accepted, true);
-    assert.equal(queued.length, 1, 'the explicit ledger matches authority commands one-for-one');
+      'the shared self-sling predictor reports the earned exit speed');
+    // CADENCE authored change (the old pins asserted a granted 'massline_sling_bonus' impulse and
+    // a one-command ledger): a cut removes a constraint and adds ZERO momentum. The event stays as
+    // feedback with physicsEarned: true, bonusDv: 0 and an empty impulses array — no energy is
+    // granted on release, so no authority command is queued at all.
+    assert.equal(sling.bonusDv, 0, 'the free release bonus is zero by authored decision');
+    assert.deepEqual(sling.impulses, [], 'the ledger is empty: no impulse is granted or queued');
+    assert.equal(queued.length, 0, 'combat physics never sees a sling command');
     assert.equal(state.massline2.throw.lastSelfSling.releaseId, sling.releaseId);
 
     state.player.tether.active = false;
@@ -364,7 +392,8 @@ test('PQ-006 self-sling publishes earned-speed provenance and one explicit impul
     const validated = state.massline2.throw.lastReleaseValidation;
     assert.equal(validated.releaseId, sling.releaseId);
     assert.equal(validated.source, 'massline');
-    assert.equal(validated.impulses.length, 1);
+    assert.deepEqual(validated.impulses, [],
+      'validation confirms the same empty ledger: earned momentum only');
     assert.equal(validated.actual.speed, sling.exitSpeed);
     assert.ok(validated.trajectory.divergenceWU < 1e-9,
       'earned speed follows the course presented before release');
@@ -422,7 +451,11 @@ test('PQ-006 earned Massline release adds a bounded camera push with a reduced-m
   assert.deepEqual(unearnedCalls, [], 'correction-only releases do not borrow earned-speed camera language');
 
   const rendererSource = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(rendererSource, /bus\.on\('massline:selfSling',[\s\S]*applyMasslineReleaseCameraCue/);
+  // Pin repair (predates the Cadence overlay): renderer.js renamed its bus handle `bus` -> `onBus`
+  // (commit c11d40af3 line of work), so the old literal `bus\.on\('massline:selfSling'` matched
+  // nothing and this assertion failed against HEAD before the overlay landed. The wiring itself is
+  // unchanged; pin the registration against the cue call, whichever handle name owns the bus.
+  assert.match(rendererSource, /onBus\('massline:selfSling',[\s\S]{0,80}applyMasslineReleaseCameraCue/);
 });
 
 function makeThrowHarness({ assist, aimAngle, omega }) {

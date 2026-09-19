@@ -187,7 +187,14 @@ test('latched precision intent paints the release target before throw-arm is hel
   const system = startThrowSystem(h.state);
   let runtime = stepThrowSystem(system, h.state, false);
   assert.equal(runtime.releaseTarget.targetId, freighter.id, 'the latch captures selection truth');
-  assert.equal(runtime.solution, null, 'unarmed input must not wake the release solver');
+  // CADENCE semantic change: the old pin held that an unarmed tether never wakes the release
+  // solver (solution === null until armed). Cadence's point is a readable PRE-release instrument:
+  // the solution mirror is now populated whenever a release target exists, unarmed or not. What
+  // is unchanged — and pinned below — is that an unarmed preview authorizes NOTHING.
+  assert.equal(runtime.armed, false, 'unarmed input must not present as armed');
+  assert.ok(runtime.solution, 'the pre-release read is live for a latched target (Cadence)');
+  assert.equal(runtime.solution.decisionTick, h.state.tick,
+    'the unarmed read is a current decision, not a cached sample');
 
   h.state.input.aimIntentActive = true;
   h.state.input.aimWorld = { x: 460, z: -340 };
@@ -198,7 +205,9 @@ test('latched precision intent paints the release target before throw-arm is hel
     kind: 'point', source: 'pointer', targetId: null,
     pos: { x: 460, z: -340 }, radius: 2,
   });
-  assert.equal(runtime.solution, null, 'painting alone never arms or solves a throw');
+  assert.equal(runtime.armed, false, 'painting alone never arms a throw');
+  assert.ok(runtime.solution, 'painting keeps the (non-authorizing) preview alive');
+  assert.equal(runtime.solution.decisionTick, h.state.tick);
   const retainedTarget = runtime.releaseTarget;
   const retainedPoint = runtime.releaseTarget.pos;
 
@@ -215,8 +224,15 @@ test('latched precision intent paints the release target before throw-arm is hel
   h.state.simTime = h.state.tick / 60;
   runtime = stepThrowSystem(system, h.state, true);
   assert.equal(runtime.aimSynthetic, true);
-  assert.equal(runtime.solution.sampleTick, h.state.tick,
-    'arming consumes the destination already painted by input ownership');
+  // CADENCE semantic change: the old pin required the FIRST solve to happen at the arming tick
+  // (sampleTick === tick), because unarmed input never woke the solver. The unarmed previews now
+  // run, and the pointer-paint at tick 101 re-identified the target, so the 15 Hz metadata sample
+  // already consumed the painted destination THEN. The armed tick still decides on CURRENT
+  // geometry — decisionTick names that decision — and the destination is the painted one.
+  assert.equal(runtime.solution.sampleTick, 101,
+    'the sample was taken when the pointer painted the destination, not before it');
+  assert.ok(runtime.solution.sampleTick > 100, 'arming never consumes the pre-paint selection sample');
+  assert.equal(runtime.solution.decisionTick, h.state.tick, 'the armed decision is a current decision');
   system.destroy();
 });
 

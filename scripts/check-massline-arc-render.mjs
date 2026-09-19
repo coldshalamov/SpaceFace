@@ -37,7 +37,13 @@ function createHarness({
   };
   const target = {
     id: 2, type: 'ship', alive: true,
-    pos: { x: 96, z: 24 }, vel: { x: 72, z: 36 }, rot: 0, radius: 8, mass: 45,
+    // CADENCE fixture retune: rateRelease now scores the pair's live technique (tangency ×
+    // speed-readiness). The old velocity (72,36) gave v_t ≈ 32 WU/s — a genuinely slow swing,
+    // which the cadence ladder honestly rates 'messy', so the clean-release VFX path below could
+    // never trigger. (49.6, 74.7) makes the SAME scenario a genuine clean technique: relative to
+    // the player, the target sweeps at v_t ≈ 75 WU/s with v_r ≈ 8 WU/s (tangency 0.994,
+    // readiness 0.844, score 0.839 — clean, just under the razor edge).
+    pos: { x: 96, z: 24 }, vel: { x: 49.6, z: 74.7 }, rot: 0, radius: 8, mass: 45,
     data: {},
   };
   const destination = {

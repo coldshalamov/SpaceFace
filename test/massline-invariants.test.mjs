@@ -412,25 +412,69 @@ test('band ordering is monotone under a sweep, not merely ordered in the table',
 // behavioural pinning against the real (non-importable) implementations
 // ---------------------------------------------------------------------------------------------
 
-test('tetherGameplay.rateRelease flips classification at the schema release bands', () => {
-  // rateRelease: score = tangentQuality * clamp01(strain/usefulLoad) * (1 - overloadPenalty).
-  // With radialSpeed 0 the tangent quality is 1 and, below the overload knee, score = strain/0.65.
-  const useful = toleranceOf('releaseQuality', 'usefulLoad');
-  const knee = toleranceOf('releaseQuality', 'overloadKnee');
+test('tetherGameplay.rateRelease flips classification at the schema release bands on the technique score', () => {
+  // CADENCE (scoringVersion 'cadence.v1') semantic change: releaseScore is TECHNIQUE —
+  // tangency * smoothstep(15..95, |v_t|) * grip — and physical strain deliberately does not move
+  // it ("strain is not skill", DESIGN §5). The old pin drove the ladder with strain alone
+  // (score = strain/usefulLoad); the classification now climbs the SAME schema ladder
+  // (razor 0.85 / clean 0.65 / good 0.35) as the pair's technique improves.
+  const pairState = ({ tangentialSpeed, radialSpeed = 0, distance = 100, strain = 0.3 }) => ({
+    playerId: 'p',
+    tick: 7,
+    player: { masslineTelemetry: { strain } },
+    entities: new Map([
+      ['p', { id: 'p', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } }],
+      ['t', { id: 't', pos: { x: distance, z: 0 }, vel: { x: radialSpeed, z: tangentialSpeed } }],
+    ]),
+  });
+  const rated = (vt) => rateRelease(pairState({ tangentialSpeed: vt }), 't');
 
+  assert.equal(rated(50).scoringVersion, 'cadence.v1', 'the new scoring version is declared');
+
+  // Strain independence at fixed kinematics: the authored "strain is not skill" rule.
+  const lowStrain = rateRelease(pairState({ tangentialSpeed: 60, strain: 0 }), 't');
+  const highStrain = rateRelease(pairState({ tangentialSpeed: 60, strain: 9 }), 't');
+  assert.equal(lowStrain.classification, highStrain.classification,
+    'physical strain must NOT move the technique classification at fixed kinematics');
+  assert.equal(lowStrain.releaseScore, highStrain.releaseScore,
+    'strain must not move the release score at all');
+
+  // Sweep the technique score through its full range and require an exact schema-ladder
+  // agreement at every step, with a real traversal (so the flips below prove something).
+  const seen = new Set();
+  for (let vt = 0; vt <= 100; vt += 0.05) {
+    const r = rated(vt);
+    seen.add(r.classification);
+    assert.equal(bandOf('release.quality', r.releaseScore), r.classification,
+      `schema and rateRelease disagree on the technique score at v_t ${vt}`);
+  }
   for (const tier of MASSLINE_BAND_SETS['release.quality'].tiers) {
     if (tier.min === null) continue;
-    const strainAtEdge = tier.min * useful;
-    assert.ok(strainAtEdge < knee, 'fixture must stay below the overload knee for this algebra');
-
-    const above = rateRelease(releaseState(strainAtEdge + 1e-6), 'fixture-target');
-    const below = rateRelease(releaseState(strainAtEdge - 1e-6), 'fixture-target');
-
-    assert.equal(above.classification, tier.id, `rateRelease just above ${tier.min} must be '${tier.id}'`);
-    assert.notEqual(below.classification, tier.id, `rateRelease just below ${tier.min} must not be '${tier.id}'`);
-    assert.equal(bandOf('release.quality', above.releaseScore), above.classification);
-    assert.equal(bandOf('release.quality', below.releaseScore), below.classification);
+    assert.ok(seen.has(tier.id), `the technique sweep must reach the '${tier.id}' band`);
   }
+
+  // Boundary flips: the first v_t that enters each band must land ON the declared edge, and a
+  // stationary pair must stay in the bottom band. Same boundary contract the old pin held against
+  // strain, now held against the technique score it actually scores.
+  const firstEntry = (id) => {
+    for (let vt = 0; vt <= 100; vt += 0.01) {
+      const r = rated(vt);
+      if (r.classification === id) return { vt, r };
+    }
+    return null;
+  };
+  for (const tier of MASSLINE_BAND_SETS['release.quality'].tiers) {
+    if (tier.min === null) continue;
+    const entry = firstEntry(tier.id);
+    assert.ok(entry, `the sweep reaches '${tier.id}'`);
+    assert.ok(Math.abs(entry.r.releaseScore - tier.min) < 0.005,
+      `entering '${tier.id}' must land at the declared edge ${tier.min}, got ${entry.r.releaseScore}`);
+    assert.equal(bandOf('release.quality', entry.r.releaseScore), entry.r.classification);
+  }
+  const stationary = rated(0);
+  assert.equal(stationary.classification, 'messy',
+    'a stationary pair is unambiguously not a technique release');
+  assert.equal(bandOf('release.quality', stationary.releaseScore), 'messy');
 });
 
 test('rateRelease and the schema agree across a full strain sweep', () => {

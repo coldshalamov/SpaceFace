@@ -145,7 +145,11 @@ test('PQ-003 quick attached tap cuts on release while a hold enters line control
   assert.equal(state.input.actions.massline.cut, false, 'release after line control never cuts');
 });
 
-test('an attached Massline held without a line command still disconnects on release', () => {
+test('CADENCE: a motionless hold past the tap window never cuts on release (holds are safe)', () => {
+  // Cadence grammar change (Massline Cadence overlay, DESIGN §1): a hold of >= 0.16 s is never
+  // reclassified as a tap-cut merely because the pilot moved no axis. The old pin asserted the
+  // opposite — that a motionless hold still disconnected on release — which is exactly the
+  // accidental-cut failure mode Cadence removes. Disconnect remains available via a quick tap.
   const host = makeInput();
   const state = makeState();
   state.player.tether.active = true;
@@ -153,20 +157,38 @@ test('an attached Massline held without a line command still disconnects on rele
 
   host._keys.Space = true;
   step(host, state, 30);
-  assert.equal(state.input.actions.massline.lineControl, false,
-    'holding the Massline key alone must not silently enter another control mode');
+  // CADENCE authored change: the old pin required lineControl to stay false for a motionless hold.
+  // A hold past the 0.16 s window now IS line control — a positive hold command whose axes sit at
+  // neutral — not a silent entry into some other control mode; no reel/orbit axis is commanded.
+  assert.equal(state.input.actions.massline.lineControl, true,
+    'a motionless hold is line control holding position: mode entered, axes neutral');
+  assert.equal(state.input.actions.massline.lineLength, 0, 'no reel axis was commanded');
+  assert.equal(state.input.actions.massline.orbitDirection, 0, 'no orbit axis was commanded');
   host._keys.Space = false;
   step(host, state);
-  assert.equal(state.input.actions.massline.cut, true,
-    'release must remain a dependable disconnect when no reel/orbit command occurred');
+  assert.equal(state.input.actions.massline.cut, false,
+    'a 0.5 s hold is a hold, not a tap: releasing it must NOT cut (Cadence authored change)');
+  assert.equal(state.input.actions.massline.lineControl, false,
+    'release also clears the line-control mirror');
 });
 
-test('PQ-003 200 ms history joins turn-before-press and press-before-turn into one line-control intent', () => {
+test('CADENCE: hold-entry consumes nearby turn intent once; neutral after entry stays neutral', () => {
+  // Cadence grammar change: pre-gesture directional memory is consumed ONCE on the tick the hold
+  // enters line control (preserving turn-before-press and press-before-turn joining), but it is
+  // never replayed afterwards — the old pin asserted the remembered orbit kept substituting for a
+  // neutral axis for the whole hold, which is the winding-after-neutral defect Cadence removes.
   for (const order of ['turn-first', 'press-first']) {
     const host = makeInput();
     const state = makeState();
     state.player.tether.active = true;
     state.player.tether.targetId = 'rock';
+
+    const ticks = [];
+    const record = () => ticks.push({
+      lineControl: state.input.actions.massline.lineControl,
+      orbitDirection: state.input.actions.massline.orbitDirection,
+      buffered: state.input.actions.massline.buffered,
+    });
 
     if (order === 'turn-first') {
       host._keys.ArrowLeft = true;
@@ -180,15 +202,19 @@ test('PQ-003 200 ms history joins turn-before-press and press-before-turn into o
       step(host, state);
       host._keys.ArrowRight = false;
     }
-    step(host, state, 10);
+    // Step one tick at a time past the 0.16 s hold threshold and watch the entry tick.
+    for (let i = 0; i < 12; i++) { step(host, state); record(); }
 
     assert.ok(state.input.actions.massline, 'input must publish the normalized Massline packet');
-    assert.equal(state.input.actions.massline.lineControl, true, `${order} reaches line control`);
-    assert.equal(
-      state.input.actions.massline.orbitDirection,
-      order === 'turn-first' ? -1 : 1,
-      `${order} retains the nearby ship-local orbit intent`,
-    );
+    const entry = ticks.find((t) => t.lineControl);
+    assert.ok(entry, `${order} still reaches line control after the hold window`);
+    assert.equal(entry.orbitDirection, order === 'turn-first' ? -1 : 1,
+      `${order}: the nearby turn intent IS joined into line control on the entry tick`);
+    assert.equal(entry.buffered, true, `${order}: the joined intent is marked as buffered at entry`);
+    const after = ticks[ticks.length - 1];
+    assert.equal(after.lineControl, true, `${order}: the hold keeps line control`);
+    assert.equal(after.orbitDirection, 0,
+      `${order}: after the one-shot consumption, a neutral axis commands neutral — memory is not replayed`);
     assert.equal(state.input.turnIntent, 0,
       'remembered line intent must not manufacture yaw after the physical key is released');
   }

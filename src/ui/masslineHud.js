@@ -14,6 +14,10 @@
 //   3. METER CHIPS — bullet-time and cloak energy as sf-chip pills with micro-fills, in a
 //      standalone cluster beside the bottom-left stack (its own container; the three-anchor
 //      layout contract is untouched).
+//   4. CADENCE READOUT — the Massline Cadence overlay's pre-release instrument (phase, ON VECTOR
+//      status, conditional coast-window strip), mounted in a mid-left instrument slot. Mounted,
+//      fed and disposed by this system per the delivery's INTEGRATION-NOTES §6; it renders the
+//      same solution mirror the throw diamond reads, so there is exactly one release authority.
 //
 // Reads only: state.massline2.*, state.player.tether, entities, helpers.worldToScreen. Writes
 // nothing but its own DOM. Runs late in UPDATE_ORDER; every update exits immediately when the
@@ -24,6 +28,13 @@ import {
   clearHudSignatures,
   hudFieldsUnchanged,
 } from './hudSkipUnchanged.js';
+// Massline Cadence v1 overlay: the pre-release instrument (phase, ON VECTOR status, conditional
+// coast-window strip, exit speed / signed clearance / line length). This module is the mount
+// owner per the delivery's INTEGRATION-NOTES §6: we create it in _ensureDom, feed it state in
+// update, and destroy it on disposal. It reads the SAME new solution mirror this file already
+// consumes (state.massline2.throw.solution) — one authority, two surfaces: the world diamond
+// below names WHERE the intercept sits, the panel names WHEN/status. No second model exists.
+import { createMasslineCadenceReadout } from './masslineCadenceReadout.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -108,6 +119,15 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-pill.ml2-on { box-shadow:var(--dp-plate-bevel, none), 0 0 8px var(--dp-lamp-bloom, rgba(95,215,255,.3)); color:var(--dp-lamp-hot, #e0f6ff); }
 #sf-ml2 .ml2-pill.ml2-cloak .ml2-fill i { background:#9f8bff; }
 #sf-ml2 .ml2-pill.ml2-cloak.ml2-on { box-shadow:var(--dp-plate-bevel, none), 0 0 8px rgba(159,139,255,.3); color:#efeaff; }
+/* Cadence instrument slot: mid-LEFT column — away from the central playfield, clear of the comms
+   strip (top-left), the vitals cluster (bottom-left), the FOCUS/CLOAK pills (bottom-centre), the
+   objective/band HUD (top-right) and the radar dock (bottom-right). The side columns are the
+   flight deck's cue space (see pinToCueRing below), so an instrument belongs there. */
+#sf-ml2 .ml2-cadence-slot { position:absolute;
+  left:calc(22px + var(--sf-safe-inset-x, 0px)); top:46%; transform:translateY(-50%); }
+@media (max-height: 760px) {
+  #sf-ml2 .ml2-cadence-slot { top:30%; }
+}
 #sf-ml2.ml2-reduced-motion .ml2-mark,
 #sf-ml2.ml2-reduced-motion .ml2-preview-mark { transition:none; }
 #sf-ml2.ml2-reduced-motion .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
@@ -264,6 +284,21 @@ function writeMasslineHudFields(fields, state, player) {
   fields[index++] = selfSolution.targetId;
   fields[index++] = selfSolution.targetPos && selfSolution.targetPos.x;
   fields[index++] = selfSolution.targetPos && selfSolution.targetPos.z;
+  // Cadence readout strip: the panel repaints only when this signature rolls, so every value it
+  // renders rides here. (Massline Cadence overlay — solution mirror gained payloadSpeed,
+  // clearance, decisionStale, fieldAware and the conditional coast `window`.)
+  fields[index++] = solution.payloadSpeed;
+  fields[index++] = solution.clearance;
+  fields[index++] = !!solution.decisionStale;
+  fields[index++] = !!solution.fieldAware;
+  const cadenceWindow = solution.window;
+  fields[index++] = !!cadenceWindow && !!cadenceWindow.reliable;
+  fields[index++] = cadenceWindow && cadenceWindow.enterS;
+  fields[index++] = cadenceWindow && cadenceWindow.exitS;
+  fields[index++] = cadenceWindow ? cadenceWindow.reason : null;
+  fields[index++] = playerState.tether && playerState.tether.cadence
+    ? playerState.tether.cadence.phase : null;
+  fields[index++] = playerState.tether && playerState.tether.restLength;
   fields[index++] = !!cloak.active;
   fields[index++] = !!cloak.available;
   fields[index++] = cloak.energy;
@@ -331,6 +366,7 @@ export const masslineHud = {
     this.state = ctx.state;
     this.helpers = ctx.helpers;
     this._dom = null;
+    this._cadenceReadout = null;
     // M3: every denied latch gets words — the bus event is the one seam all six emit sites share.
     // The denial lands on a state field so it joins the HUD signature and redraws on arrival/expiry.
     if (ctx.bus && typeof ctx.bus.on === 'function') {
@@ -346,6 +382,10 @@ export const masslineHud = {
   },
 
   destroy() {
+    if (this._cadenceReadout) {
+      this._cadenceReadout.destroy();
+      this._cadenceReadout = null;
+    }
     if (this._dom && this._dom.root && this._dom.root.parentNode) {
       this._dom.root.parentNode.removeChild(this._dom.root);
     }
@@ -378,6 +418,7 @@ export const masslineHud = {
     this._updateSelfMark(dom, ml2.throw, state, w2s);
     this._updateCloakRing(dom, ml2.cloak, player, w2s);
     this._updateMeters(dom, ml2);
+    this._updateCadenceReadout(state);
   },
 
   // The pre-latch answer to "what will the Massline grab?" (PHYSICAL_PLAY_GRAMMAR §7.1, rule 2).
@@ -751,6 +792,15 @@ export const masslineHud = {
     }
   },
 
+  // Cadence instrument (Massline Cadence overlay). Pure DOM view over the new preview/window
+  // mirror; visible whenever a tether is active — including BEFORE the throw is armed, which is
+  // the whole point: the pre-release cue must be readable, not only the armed diamond. Every
+  // value it renders is in the HUD signature above, so this runs only on real changes.
+  _updateCadenceReadout(state) {
+    if (!this._cadenceReadout) return;
+    this._cadenceReadout.update(state);
+  },
+
   _hideAll() {
     const dom = this._dom;
     if (!dom) return;
@@ -764,6 +814,9 @@ export const masslineHud = {
     this._hideAcquisitionPreview(dom);
     setStyle(dom.btPill, 'display', 'none');
     setStyle(dom.ckPill, 'display', 'none');
+    // The panel gates itself on tether.active, not on flight/docked — hide it explicitly here so
+    // it never outlives the flight HUD (docked, flag off, dead player).
+    if (this._cadenceReadout) this._cadenceReadout.element.hidden = true;
   },
 
   _ensureDom() {
@@ -881,6 +934,27 @@ export const masslineHud = {
     const bt = makePill('FOCUS', 'ml2-bt');
     const ck = makePill('CLOAK', 'ml2-cloak');
     root.appendChild(meters);
+
+    // Cadence instrument slot (mid-left column). The component owns its subtree; this system owns
+    // its lifecycle: create here, update in update(), destroy in destroy() and on rebuild below.
+    // OPTIONAL by contract (INTEGRATION-NOTES §6): headless partial-DOM stubs (documented above)
+    // provide createElement but no ownerDocument/append/querySelector on their nodes — the
+    // readout needs a real document, so its absence degrades to "no panel" and never takes the
+    // registry step down. The other three surfaces stay fully headless-safe.
+    if (this._cadenceReadout) {
+      this._cadenceReadout.destroy();
+      this._cadenceReadout = null;
+    }
+    let cadenceReadout = null;
+    try {
+      const cadenceSlot = document.createElement('div');
+      cadenceSlot.className = 'ml2-cadence-slot';
+      cadenceReadout = createMasslineCadenceReadout(cadenceSlot);
+      root.appendChild(cadenceSlot);
+      this._cadenceReadout = cadenceReadout;
+    } catch {
+      this._cadenceReadout = null;   // no real DOM: the instrument is simply not mounted
+    }
 
     host.appendChild(root);
     this._dom = {

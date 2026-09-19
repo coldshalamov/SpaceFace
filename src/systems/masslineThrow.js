@@ -5,7 +5,7 @@
 // of angular momentum through the Rapier constraint); this system supplies ONLY the release
 // precision the player's hardware can't: a solution read each tick (mirrored for the HUD/VFX
 // indicator) and an auto-cut on the solution frame while the throw is explicitly armed. Manual
-// self-sling cuts preserve their real exit direction and receive only the load-scaled flourish.
+// self-sling cuts preserve their real exit vector; release never grants a hidden speed bonus.
 //
 // Runs AFTER tetherGameplay/masslineTelemetry/masslineImpacts in UPDATE_ORDER so it reads settled
 // tether state. NOT in the sf-sim curated harness; every behavioral path is additionally gated on
@@ -16,11 +16,12 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { forecastCadenceWindow } from '../combat/masslineReleaseGeometry.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
-const SNAP_WINDOW_MS = 90;          // manual-release forgiveness half-window
+const SNAP_WINDOW_MS = 90;          // forward-only queue ceiling; 5 fixed ticks at 60 Hz
 const CURSOR_AIM_GRACE = 48;        // wu of surface miss that still soft-snaps the throw aim
-const SLING_RELEASE_SPEED_FRACTION = 0.15; // small game-feel flourish on top of a real taut swing
+const SLING_RELEASE_SPEED_FRACTION = 0; // compatibility export: no free release energy
 const SLING_MIN_EXIT_SPEED = 25;    // "genuinely moving" bar (mirrors SNAP_CATCH_MIN_SPEED)
 const THROW_MIN_PAYLOAD_SPEED = 25; // don't auto-cut a parked payload — no throw below this
 const AIM_QUERY_RADIUS = 220;       // cursor-aim entity search radius around aimWorld
@@ -43,6 +44,7 @@ export const masslineThrow = {
   name: 'masslineThrow',
 
   init(ctx) {
+    this.destroy(); // Reinitialisation must not duplicate bus listeners.
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -64,9 +66,15 @@ export const masslineThrow = {
     // Swing cache: telemetry wipes on the cut tick (the mirror is already inactive when it runs),
     // so the release consumers read last tick's settled swing from here.
     this._swing = null;
+    this._armAuthorized = false;
+    this._windowForecast = null;
+    this._releaseAttemptTick = -1;
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('tether:cut', (p) => this._onManualCut(p || {})));
+      for (const name of ['save:loaded', 'game:new', 'game:started', 'sector:exit', 'sector:enter']) {
+        this._unsubs.push(this.bus.on(name, () => this._resetCadenceThrow(this.state)));
+      }
     }
   },
 
@@ -75,151 +83,130 @@ export const masslineThrow = {
     this._unsubs = [];
   },
 
+  _resetCadenceThrow(state) {
+    if (state) writeIdle(ensureThrowSubtree(state));
+    this._clearReleaseLatch();
+    this._throwPrediction = {}; this._selfPrediction = {};
+    this._swing = null; this._pendingSnap = null; this._windowForecast = null;
+    this._pendingReleaseValidation = null; this._armAuthorized = false;
+    this._releaseAttemptTick = -1; this._solutionWasOn = false;
+    // A held input across a menu/load/latch boundary is NOT a new throw press.
+    this._throwArmWasHeld = !!(state && state.input && state.input.actions && state.input.actions.throwArm);
+  },
+
   update(dt, state) {
     const runtime = ensureThrowSubtree(state);
     this._settleReleaseValidation(state, runtime);
-    if (!massline2Flag('throw') || state.mode !== 'flight') {
-      writeIdle(runtime);
-      this._clearReleaseLatch();
-      this._throwPrediction = {};
-      this._selfPrediction = {};
-      this._swing = null;
-      this._throwArmWasHeld = false;
-      this._pendingSnap = null;
-      return;
-    }
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     const tether = state.player && state.player.tether;
-    const active = !!(player && player.alive && tether && tether.active && tether.targetId != null);
-    if (!active) {
-      writeIdle(runtime);
-      this._clearReleaseLatch();
-      this._throwPrediction = {};
-      this._selfPrediction = {};
-      this._swing = null;
-      this._throwArmWasHeld = false;
-      this._pendingSnap = null;
+    if (!massline2Flag('throw') || state.mode !== 'flight' || !player || !player.alive
+        || !tether || !tether.active || tether.targetId == null) {
+      this._resetCadenceThrow(state);
       return;
     }
     const payload = state.entities.get(tether.targetId);
     if (!payload || payload.alive === false || !payload.pos || !payload.vel) {
-      writeIdle(runtime);
-      this._clearReleaseLatch();
+      this._resetCadenceThrow(state);
       return;
     }
-
     this._syncReleaseTargetOnLatch(state, player, payload, tether, runtime);
-
-    // Cache the live swing for the release consumers (see _onManualCut).
     const kin = tetherPairKinematics(player, payload);
-    this._swing = {
-      anchorId: payload.id,
-      playerMass: Math.max(0.1, finite(player.mass, 1)),
+    this._swing = { anchorId: payload.id, playerMass: Math.max(0.1, finite(player.mass, 1)),
       taut: String(tether.phase || 'slack') !== 'slack',
-      load: String(tether.phase || 'slack') === 'slack' ? 0 : clamp01(finite(tether.load, 0)),
-    };
-
+      load: String(tether.phase || 'slack') === 'slack' ? 0 : clamp01(finite(tether.load, 0)) };
     const armed = !!(state.input && state.input.actions && state.input.actions.throwArm);
     const pressed = armed && !this._throwArmWasHeld;
     this._throwArmWasHeld = armed;
+    if (!armed) this._armAuthorized = false;
+    if (pressed) this._armAuthorized = true;
     runtime.armed = armed || !!this._pendingSnap;
     runtime.payloadId = payload.id;
-
-    // Self-sling read (case B) is always live while latched: YOUR exit solution toward the
-    // selected target, consumed by the indicator and release predictor.
     runtime.selfSolution = this._selfSolution(state, player, kin.omega);
-
-    // Precision-input provenance is per tick, not per throw-arm hold. Let a genuine mouse,
-    // gamepad, or touch aim paint the transient destination as soon as the line is latched; the
-    // solver below still stays asleep until the player arms the throw.
     const aim = this._resolveThrowAim(state, player, payload, runtime);
-
-    if (!armed && !this._pendingSnap) {
-      runtime.aimTargetId = null;
-      runtime.aimSynthetic = false;
-      runtime.solution = null;
-      this._throwPrediction = {};
+    const mode = releaseAssistMode(state);
+    const identity = releasePredictionIdentity(payload.id, runtime.releaseTarget);
+    if (this._pendingSnap && (this._pendingSnap.identity !== identity
+        || this._pendingSnap.attachmentId !== tether.attachmentId || !aim)) {
+      this.bus.emit('massline:releaseCancelled', { sourceId: player.id, payloadId: payload.id,
+        reason: 'release_identity_changed', tick: state.tick });
+      this._pendingSnap = null;
+      runtime.armed = armed;
+      this._armAuthorized = false;
+      runtime.solution = null; this._throwPrediction = {}; this._windowForecast = null;
       this._solutionWasOn = false;
-      return;
+      return; // A changed pointer/target never redirects an already queued release.
     }
-
-    // Release aim is captured once when the line latches. Gun/UI selection may continue to change,
-    // but it never continuously steers an armed throw. Only a current input-owned precision intent
-    // may repaint the release target while the line remains live.
     if (!aim) {
-      runtime.aimTargetId = null;
-      runtime.aimSynthetic = false;
-      runtime.solution = null;
-      this._throwPrediction = {};
-      this._solutionWasOn = false;
+      runtime.aimTargetId = null; runtime.aimSynthetic = false; runtime.solution = null;
+      this._windowForecast = null; this._solutionWasOn = false;
+      // A manual throw without a selected target is still a legal cut, not a swallowed input.
+      if (pressed && mode !== 'arm') this._executeThrow(state, player, payload, { entity: null }, {
+        valid: false, errorRad: Math.PI, tolRad: 0, onSolution: false, interceptAngle: Math.atan2(payload.vel.z, payload.vel.x),
+        payloadSpeed: Math.hypot(payload.vel.x, payload.vel.z), timeOfFlight: 0,
+      }, mode === 'off' ? 'off' : 'snap-manual');
       return;
     }
     runtime.aimTargetId = aim.entity ? aim.entity.id : null;
     runtime.aimSynthetic = !aim.entity;
-    // Field-aware release (PQ-012): when continuous fields are active, inject a pure sampler so the
-    // predictor shows the BENT release path (a throw released inside a Well curves). Only built when
-    // a field snapshot exists — absent it, the predictor is byte-identical to the ballistic model.
     const fieldSampler = this._buildFieldSampler(state, payload);
-    const solution = sampleThrowSolution(
-      this._throwPrediction,
-      { pos: payload.pos, vel: payload.vel },
-      aim.target,
-      {
-        tick: state.tick,
-        omega: kin.omega,
-        identity: releasePredictionIdentity(payload.id, runtime.releaseTarget),
-        fieldSampler,
-      },
-    );
+    const solution = sampleThrowSolution(this._throwPrediction, payload, aim.target, {
+      tick: state.tick, omega: kin.omega, identity, fieldSampler,
+      requireFresh: armed || !!this._pendingSnap,
+    });
+    // The player gets a release read BEFORE committing, not only while the release is armed.
+    // Forecast cost is bounded and runs at 15 Hz. The contact gate above is current-tick truth.
+    const movingWinch = Math.abs(finite(tether.cadence && tether.cadence.reelVelocity)) > 2;
+    if (!this._windowForecast || this._windowForecast.identity !== identity
+        || this._windowForecast.coasting !== !movingWinch
+        || state.tick < this._windowForecast.tick || state.tick - this._windowForecast.tick >= 4) {
+      const nextWindow = movingWinch
+        ? { model: 'coast', reliable: false, reason: 'coast_required', enterS: null, exitS: null, widthS: null }
+        : forecastCadenceWindow(player, payload, aim.target, { restLength: tether.restLength, fieldAware: !!fieldSampler });
+      this._windowForecast = { identity, tick: state.tick, coasting: !movingWinch, ...nextWindow };
+    }
+    const forecast = this._windowForecast;
+    const ageS = Math.max(0, state.tick - forecast.tick) / 60;
+    const window = { ...forecast,
+      reliable: forecast.reliable && !movingWinch,
+      reason: movingWinch ? 'coast_required' : forecast.reason,
+      enterS: forecast.enterS == null ? null : Math.max(0, forecast.enterS - ageS),
+      exitS: forecast.exitS == null ? null : Math.max(0, forecast.exitS - ageS) };
+    if (!window.reliable || window.exitS === 0 && !solution.onSolution) window.enterS = null;
+    solution.window = window;
+    solution.timeToSolution = solution.onSolution ? 0 : window.enterS;
     runtime.solution = mirrorSolution(runtime.solution, solution);
-
-    // Solution-lock cue: one clean blip the first frame the window opens (rising edge only), so
-    // the ear learns the release rhythm even before the eye finds the indicator.
-    const onNow = !!(solution.valid && solution.onSolution);
-    if (onNow && !this._solutionWasOn) this.bus.emit('audio:cue', { id: 'massline.solutionLock' });
+    const onNow = !!(solution.valid && solution.onSolution && !solution.decisionStale);
+    if (onNow !== this._solutionWasOn) {
+      if (onNow) this.bus.emit('audio:cue', { id: 'massline.solutionLock' });
+      this.bus.emit('massline:releaseWindow', { sourceId: player.id, payloadId: payload.id,
+        targetId: runtime.aimTargetId, open: onNow, tick: state.tick,
+        clearance: solution.clearance, relativeSpeed: solution.relativeSpeed });
+    }
     this._solutionWasOn = onNow;
-
-    // Hold-to-arm release (default assist mode): the line cuts itself on the first solution
-    // frame. Entirely early-side — a missed window costs one revolution, never the setup.
-    const assistMode = releaseAssistMode(state);
-    if (assistMode === 'arm') {
-      if (armed && solution.valid && solution.onSolution && solution.payloadSpeed >= THROW_MIN_PAYLOAD_SPEED) {
+    if (mode === 'arm') {
+      if (armed && this._armAuthorized && onNow && solution.relativeSpeed >= THROW_MIN_PAYLOAD_SPEED) {
         this._executeThrow(state, player, payload, aim, solution, 'arm');
       }
       return;
     }
-
-    // `off` and `snap` are press-to-throw modes. OFF means no precision help, not "RMB does
-    // nothing". SNAP keeps the same manual decision, but an early press inside the 90 ms window
-    // waits for the exact frame. A late press cuts immediately and preserves the payload's earned
-    // exit vector; release assistance never steers either endpoint.
-    if (assistMode === 'off') {
-      if (pressed && solution.valid) this._executeThrow(state, player, payload, aim, solution, 'off');
+    if (mode === 'off') {
+      if (pressed) this._executeThrow(state, player, payload, aim, solution, 'off');
       return;
     }
-
-    const now = finite(state.simTime, state.tick / 60);
     if (this._pendingSnap) {
-      if (solution.valid && solution.onSolution) {
-        this._executeThrow(state, player, payload, aim, solution, 'snap');
-      } else if (now >= this._pendingSnap.until) {
-        this._executeThrow(state, player, payload, aim, solution, 'snap-manual');
+      if (onNow || state.tick >= this._pendingSnap.deadlineTick) {
+        this._executeThrow(state, player, payload, aim, solution, onNow ? 'snap' : 'snap-manual');
       }
       return;
     }
-    if (!pressed || !solution.valid) return;
-
-    if (solution.onSolution) {
-      this._executeThrow(state, player, payload, aim, solution, 'snap');
-      return;
-    }
-    if (solution.timeToSolution != null && solution.timeToSolution > 0
-      && solution.timeToSolution <= SNAP_WINDOW_MS / 1000) {
-      this._pendingSnap = { until: now + SNAP_WINDOW_MS / 1000 + 1 / 30 };
+    if (!pressed) return;
+    if (onNow) { this._executeThrow(state, player, payload, aim, solution, 'snap'); return; }
+    if (window.reliable && window.enterS > 0 && window.enterS <= SNAP_WINDOW_MS / 1000) {
+      this._pendingSnap = { identity, attachmentId: tether.attachmentId,
+        deadlineTick: state.tick + Math.floor(SNAP_WINDOW_MS / 1000 * 60) };
       runtime.armed = true;
       return;
     }
-
     this._executeThrow(state, player, payload, aim, solution, 'snap-manual');
   },
 
@@ -252,6 +239,7 @@ export const masslineThrow = {
       || (attachmentId != null && this._releaseLatchAttachmentId !== attachmentId);
     if (!isNewLatch) return;
 
+    this._pendingSnap = null; this._windowForecast = null; this._armAuthorized = false; this._solutionWasOn = false;
     this._releaseLatchActive = true;
     this._releaseLatchPayloadId = payload.id;
     this._releaseLatchAttachmentId = attachmentId;
@@ -279,7 +267,7 @@ export const masslineThrow = {
         if (e.id === player.id || e.id === payload.id) continue;
         if (!AIMABLE_TYPES.has(e.type)) continue;
         const miss = Math.max(0, Math.hypot(e.pos.x - aimWorld.x, e.pos.z - aimWorld.z) - Math.max(0, finite(e.radius, 0)));
-        if (miss <= CURSOR_AIM_GRACE && miss < bestMiss) { best = e; bestMiss = miss; }
+        if (miss <= CURSOR_AIM_GRACE && (miss < bestMiss || miss === bestMiss && String(e.id) < String(best && best.id))) { best = e; bestMiss = miss; }
       }
       if (best) {
         const target = this._pointerEntityReleaseTarget;
@@ -341,6 +329,7 @@ export const masslineThrow = {
       this._selfPrediction,
       {
         pos: player.pos,
+        radius: player.radius,
         vel: {
           x: finite(player.vel && player.vel.x) * speedScale,
           z: finite(player.vel && player.vel.z) * speedScale,
@@ -417,12 +406,15 @@ export const masslineThrow = {
   // throw. masslineImpacts arms its sling tracker off the latch transition automatically, so the
   // shipped whip-impact/whip-damage chain composes with zero extra wiring.
   _executeThrow(state, player, payload, aim, solution, mode) {
+    if (this._releaseAttemptTick === state.tick) return false;
     const attachments = combatAttachments(this);
     const attachmentId = state.player.tether.attachmentId;
     if (!attachments || attachmentId == null) return false;
     const result = attachments.cut(attachmentId, player.id, 'tether_cut');
     if (!result || !result.ok) return false;
 
+    this._releaseAttemptTick = state.tick;
+    this._armAuthorized = false;
     const runtime = ensureThrowSubtree(state);
     const releaseId = `massline:throw:${state.tick}:${payload.id}`;
     const prediction = predictionReceipt(solution);
@@ -516,80 +508,31 @@ export const masslineThrow = {
     this.bus.emit('massline:releaseValidated', receipt);
   },
 
-  // Manual cut preserves the player's real exit direction. The only addition is a load-scaled
-  // percentage of actual exit speed, so a slack or stationary release adds exactly nothing.
+  // Cut changes the constraint topology, not either body's velocity. Winch work/thrust already
+  // earned the exit speed. Repeated cut/regrab is no longer a free 15%-per-cycle propulsion pump.
   _onManualCut() {
     const state = this.state;
-    if (!massline2Flag('throw') || !state || state.mode !== 'flight') return;
-    const swing = this._swing;
-    if (!swing) return;
-    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!massline2Flag('throw') || !state || state.mode !== 'flight' || !this._swing) return;
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     if (!player || !player.alive || !player.vel) return;
     const speed = Math.hypot(finite(player.vel.x), finite(player.vel.z));
-    if (speed < SLING_MIN_EXIT_SPEED) return;
-
-    const physics = this.helpers && this.helpers.combatPhysics;
-    if (!physics || typeof physics.applyImpulse !== 'function' || !swing.taut) return;
-    const exitAngle = Math.atan2(player.vel.z, player.vel.x);
+    if (speed < SLING_MIN_EXIT_SPEED || !this._swing.taut) return;
     const runtime = ensureThrowSubtree(state);
-    const self = runtime.selfSolution;
-    const proposedBonusDv = selfSlingBonusDv(speed, swing.load, swing.taut);
-    if (!(proposedBonusDv > 0)) return;
-    const impulse = {
-      x: Math.cos(exitAngle) * proposedBonusDv * swing.playerMass,
-      z: Math.sin(exitAngle) * proposedBonusDv * swing.playerMass,
-    };
-    const accepted = !!physics.applyImpulse({
-      entityId: player.id,
-      impulse,
-      point: null,
-      reason: 'massline_sling_bonus',
-      tick: state.tick,
-    });
-    if (accepted) {
-      const bonusDv = proposedBonusDv;
-      const impulses = [{
-        entityId: player.id,
-        reason: 'massline_sling_bonus',
-        accepted: true,
-        impulse,
-        deltaSpeed: bonusDv,
-        load: swing.load,
-        tick: state.tick,
-      }];
-      const releaseId = `massline:self-sling:${state.tick}:${player.id}`;
-      const prediction = predictionReceipt(self || {});
-      const receipt = {
-        releaseId,
-        source: 'massline',
-        physicsEarned: bonusDv > 0,
-        targetId: self ? self.targetId : null,
-        anchorId: swing.anchorId,
-        corrected: false,
-        bonusDv,
-        load: swing.load,
-        exitAngle,
-        exitSpeed: speed + bonusDv,
-        tick: state.tick,
-        prediction,
-        impulses,
-        releasePosition: { x: finite(player.pos && player.pos.x), z: finite(player.pos && player.pos.z) },
-      };
-      runtime.lastSelfSling = receipt;
-      this._pendingReleaseValidation = {
-        releaseId,
-        kind: 'self-sling',
-        entityId: player.id,
-        source: 'massline',
-        releaseTick: state.tick,
-        prediction,
-        impulses,
-        releasePosition: { ...receipt.releasePosition },
-      };
-      this.bus.emit('massline:selfSling', receipt);
-      this.bus.emit('audio:cue', { id: 'massline.sling', position: { x: player.pos.x, z: player.pos.z } });
-    }
+    const prediction = predictionReceipt(runtime.selfSolution || {});
+    const releaseId = `massline:self-sling:${state.tick}:${player.id}`;
+    const receipt = { releaseId, source: 'massline', physicsEarned: true,
+      targetId: runtime.selfSolution && runtime.selfSolution.targetId,
+      anchorId: this._swing.anchorId, corrected: false, bonusDv: 0, load: this._swing.load,
+      exitAngle: Math.atan2(player.vel.z, player.vel.x), exitSpeed: speed, tick: state.tick,
+      prediction, impulses: [], releasePosition: { x: finite(player.pos.x), z: finite(player.pos.z) } };
+    runtime.lastSelfSling = receipt;
+    this._pendingReleaseValidation = { releaseId, kind: 'self-sling', entityId: player.id,
+      source: 'massline', releaseTick: state.tick, prediction, impulses: [],
+      releasePosition: { ...receipt.releasePosition } };
+    this.bus.emit('massline:selfSling', receipt);
+    this.bus.emit('audio:cue', { id: 'massline.sling', position: { x: player.pos.x, z: player.pos.z } });
   },
+
 };
 
 function combatAttachments(host) {
@@ -602,7 +545,7 @@ function combatAttachments(host) {
 export function releaseAssistMode(state) {
   const raw = state && state.settings && state.settings.gameplay
     && state.settings.gameplay.masslineReleaseAssist;
-  // M5: 'snap' is the default — the throw releases on the player's press with a 90 ms forgiveness
+  // CADENCE retains M5: 'snap' is the default — the throw releases on the player's press with a 90 ms forgiveness
   // window, never silently on the first solution frame. 'arm' and 'off' remain authored choices.
   return raw === 'arm' || raw === 'off' ? raw : 'snap';
 }
@@ -623,6 +566,16 @@ function ensureThrowSubtree(state) {
 function mirrorSolution(existing, solution) {
   const out = existing && typeof existing === 'object' ? existing : {};
   out.valid = solution.valid;
+  out.relativeSpeed = solution.relativeSpeed;
+  out.missDistance = solution.missDistance;
+  out.clearance = solution.clearance;
+  out.impactTime = solution.impactTime;
+  out.model = solution.model;
+  out.decisionTick = solution.decisionTick;
+  out.decisionStale = solution.decisionStale === true;
+  out.window = solution.window || null;
+  out.fieldAware = !!solution.fieldAware;
+  out.projectedPath = solution.projectedPath || null;
   out.errorRad = solution.errorRad;
   out.tolRad = solution.tolRad;
   out.onSolution = solution.onSolution;

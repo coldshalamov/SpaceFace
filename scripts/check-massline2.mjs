@@ -189,8 +189,12 @@ section('registry order: cloak<aiSlot, aiPorts<tumbleStates<weapons, masslineImp
 });
 
 section('release-assist setting and slow-time indicator presentation are reachable and motion-safe', () => {
-  assert.equal(releaseAssistMode({ settings: { gameplay: {} } }), 'arm');
+  // CADENCE pin repair: an unset setting now fails closed to 'snap' (release on the player's
+  // press, 90 ms forgiveness). The old pin expected the pre-M5 'arm' fallback — the exact
+  // silent-solution-frame release M5 and Cadence both forbid as a default.
+  assert.equal(releaseAssistMode({ settings: { gameplay: {} } }), 'snap');
   assert.equal(releaseAssistMode({ settings: { gameplay: { masslineReleaseAssist: 'snap' } } }), 'snap');
+  assert.equal(releaseAssistMode({ settings: { gameplay: { masslineReleaseAssist: 'arm' } } }), 'arm');
   assert.equal(releaseAssistMode({ settings: { gameplay: { masslineReleaseAssist: 'off' } } }), 'off');
   const settingsSrc = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
   assert.match(settingsSrc, /Massline release assist/);
@@ -280,10 +284,26 @@ section('throw solution opens once per revolution with size-honest tolerance', (
     { pos: { x: 0, z: 0 }, vel: { x: 0, z: speed } }, { ...aim, radius: 4 }, {});
   assert.ok(bigger.tolRad > smaller.tolRad, 'bigger targets must be more forgiving');
 
+  // CADENCE pin repair: the old pin expected the predictor's ANGULAR ETA — with omega=1 the
+  // heading rotates onto the target in π/2 s, and the old angular gate opened on that projected
+  // future. Cadence replaced the angular gate with an exact constant-velocity disk sweep: THIS
+  // velocity (+x, abeam of an aim at +z) never touches the disk, so it is honestly off-vector
+  // with no invented ETA; timing comes from the separately gated coast forecast, not the ray.
   const quarterTurn = solveThrowSolution(
     { pos: { x: 0, z: 0 }, vel: { x: speed, z: 0 } }, aim, { omega: 1 });
-  assert.ok(Math.abs(quarterTurn.timeToSolution - Math.PI / 2) < 0.02,
-    `positive rotation must reach a +90deg aim in one quarter-turn (got ${quarterTurn.timeToSolution})`);
+  assert.equal(quarterTurn.onSolution, false,
+    'a heading perpendicular to the target bearing never contacts the disk');
+  assert.equal(quarterTurn.timeToSolution, null,
+    'an off-vector plain ray has no projected angular ETA any more');
+  assert.ok(Math.abs(quarterTurn.missDistance - 288) < 1e-6,
+    'the miss distance is the physical closest approach beyond the summed radii (300 - 12)');
+  // A heading pointed straight at the disk is contact NOW — no future window needed.
+  const aimed = solveThrowSolution(
+    { pos: { x: 0, z: 0 }, vel: { x: 0, z: speed } }, aim, { omega: 1 });
+  assert.equal(aimed.onSolution, true, 'a heading at the disk is current contact');
+  assert.equal(aimed.timeToSolution, 0, 'current contact has no future ETA: the solution is now');
+  assert.ok(Math.abs(aimed.clearance - 12) < 1e-6,
+    'clearance reads the physical radius overlap margin');
 });
 
 // ── 5. Flag-on system behaviors ───────────────────────────────────────────────────────────────

@@ -25,6 +25,8 @@ import { isMassSeedTetherEligible } from './massSeed.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { lineSweepContact } from './masslineImpacts.js';
 
+import { createCadenceWinch, stepCadenceWinch, readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
+
 const TETHER_DEF_ID = 'tether_standard';
 // PQ-137.09 — the tag a shared helm loss carries, and the loop guard. A shared tumble never
 // propagates again: one hit crosses the rope once, in the direction the rope actually runs.
@@ -129,6 +131,7 @@ export const tetherGameplay = {
     this._ignoreReleaseCutUntilReelIdle = false;
     this._latchGraceUntil = 0;
     this._reelStrength = 0;
+    this._resetCadenceRuntime(this.state);
     this._lastLineControlDenial = null;
     this._lastLatchDenial = null;
     this._bridleSetup = null;
@@ -146,6 +149,7 @@ export const tetherGameplay = {
     this._resetAcquisitionRuntime(this.state);
     this._resetTwinBridleRuntime(this.state, null, true);
     const resetAfterLoad = () => {
+      this._resetCadenceRuntime(this.state);
       // Combat persistence restores attachment ids but remaps their live endpoints. Drop the
       // outgoing run's private endpoint cache so _adoptExisting reads the canonical restored line;
       // otherwise an id-stable attachment can keep steering/mirroring the stale target id.
@@ -163,6 +167,7 @@ export const tetherGameplay = {
       this._resetTwinBridleRuntime(this.state, 'save_loaded', true);
     };
     const resetForNewGame = () => {
+      this._resetCadenceRuntime(this.state);
       this._cancelDrillApproach('new_game');
       this._npcBridleCutTicks.clear();
       this._monofilamentCutIds.clear();
@@ -173,6 +178,7 @@ export const tetherGameplay = {
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
     };
     const endForSectorBoundary = (reason) => {
+      this._resetCadenceRuntime(this.state);
       this._cancelDrillApproach(reason);
       this._resetAcquisitionRuntime(this.state);
       this._endTwinBridleForBoundary(this.state, reason);
@@ -263,6 +269,8 @@ export const tetherGameplay = {
       ? finite(masslineCommand.lineLength, 0)
       : finite(actions && actions.reelDelta, 0);
     const reelHeld = lineLengthCommand < 0;
+    const cadence = this._ensureCadenceRuntime(state, this._active && this._active.attachmentId);
+    if (lineLengthCommand === 0) { cadence.winch.velocity = 0; cadence.winch.lastDelta = 0; cadence.phase = 'coast'; }
 
     // The normalized input grammar has already resolved tap vs hold. Execute its cut in this same
     // tether tick; the legacy pending-cut path below remains for old tapes/direct harnesses.
@@ -1301,61 +1309,85 @@ export const tetherGameplay = {
     return true;
   },
 
+  _resetCadenceRuntime(state) {
+    if (!state) return;
+    state.masslineCadence = { version: 1, attachmentId: null, winch: createCadenceWinch(), phase: 'coast' };
+    this._cadenceLastPhase = null;
+  },
+
+  _ensureCadenceRuntime(state, attachmentId) {
+    const id = attachmentId == null ? null : attachmentId;
+    if (!state.masslineCadence || state.masslineCadence.version !== 1
+        || state.masslineCadence.attachmentId !== id) {
+      this._resetCadenceRuntime(state);
+      state.masslineCadence.attachmentId = id;
+    }
+    return state.masslineCadence;
+  },
+
   _reelActive(attachments, reelDelta, dt, state, player, target, options = null) {
     if (!this._active || !Number.isFinite(reelDelta) || reelDelta === 0) return { changed: false, reason: null, attachment: null };
     const attachment = attachments.get(this._active.attachmentId);
     if (!attachment || attachment.state !== 'active') return { changed: false, reason: 'attachment_missing', attachment };
-    const kernel = combatKernel(this);
-    const def = attachmentDef(kernel, attachment.defId);
+    const def = attachmentDef(combatKernel(this), attachment.defId);
     if (!def) return { changed: false, reason: 'unknown_attachment_def', attachment };
-
     const policy = typeof attachments.reelPolicy === 'function' ? attachments.reelPolicy(attachment.id) : null;
     const reelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
-    const maxStep = positive(reelRate, 0) * Math.max(0, Number(dt) || 0);
+    const maxStep = positive(reelRate, 0) * Math.max(0, finite(dt));
     if (!(maxStep > 0)) return { changed: false, reason: 'reel_unavailable', attachment };
-    const requested = options && options.normalizedAxis === true
-      ? clamp(reelDelta, -1, 1) * maxStep
-      : clamp(reelDelta, -maxStep, maxStep);
     const minLength = positive(def.minLength, 0);
     const maxLength = positive(policy && policy.maxLength, positive(def.maxLength, Infinity));
-    const before = attachment.restLength || 0;
-
-    // An explicitly breakable extreme-load operation protects its line by denying further reel-in
-    // near the physical ceiling; paying out remains available. An ordinary standard Massline does
-    // not auto-break, so its nominal rating must never create a fictitious reel-in failure.
-    const breakPolicy = policy && policy.break;
-    const maxTension = positive(breakPolicy && breakPolicy.maxTension, Infinity);
+    const before = finite(attachment.restLength);
+    const maxTension = positive(policy && policy.break && policy.break.maxTension, Infinity);
     const automaticBreakAllowed = automaticMasslineBreakAllowed(def, player, target);
-    if (automaticBreakAllowed
-        && requested < 0
-        && Number.isFinite(maxTension)
-        && finite(attachment.lastTension, 0) >= maxTension * 0.9) {
-      return { changed: false, reason: 'load_limit', attachment, before, after: before };
+    const normalized = options && options.normalizedAxis === true;
+    const runtime = this._ensureCadenceRuntime(state, attachment.id);
+    let proposal = null, requested;
+    if (normalized) {
+      const command = state.input && state.input.actions && state.input.actions.massline;
+      proposal = stepCadenceWinch(runtime.winch, {
+        dt, axis: reelDelta, restLength: before, minLength, maxLength, reelRate,
+        tension: finite(attachment.lastTension), maxTension, automaticBreakAllowed,
+        pair: readCadencePair(player, target, before),
+        orbit: !!(command && command.lineControl && Math.abs(finite(command.orbitDirection)) > 0.08),
+        pump: !!(command && command.lineControl && command.pump),
+      });
+      requested = proposal.delta;
+      runtime.phase = proposal.phase;
+      if (proposal.reason) {
+        runtime.winch.velocity = 0; runtime.winch.lastDelta = 0;
+        return { changed: false, reason: proposal.reason, attachment, before, after: before };
+      }
+      if (Math.abs(requested) <= 1e-9) {
+        runtime.winch = proposal.runtime;
+        return { changed: false, reason: null, attachment, before, after: before };
+      }
+    } else {
+      // The authored drill-approach operation requests world-unit DELTAS, not a player axis.
+      // Keep its exact service contract and do not reshape it into a second approach controller.
+      runtime.winch.velocity = 0;
+      requested = clamp(reelDelta, -maxStep, maxStep);
+      if (automaticBreakAllowed && requested < 0 && finite(attachment.lastTension) >= maxTension * 0.9) {
+        return { changed: false, reason: 'load_limit', attachment, before, after: before };
+      }
     }
-
-    const next = clamp(before + requested, minLength, maxLength);
-    const delta = next - before;
-    if (Math.abs(delta) <= 1e-6) {
-      return {
-        changed: false,
-        reason: requested < 0 ? 'minimum_length' : 'maximum_length',
-        attachment,
-        before,
-        after: before,
-      };
-    }
+    const delta = clamp(before + requested, minLength, maxLength) - before;
+    if (Math.abs(delta) <= 1e-6) return { changed: false,
+      reason: requested < 0 ? 'minimum_length' : 'maximum_length', attachment, before, after: before };
     const result = attachments.reel(attachment.id, delta, minLength);
     if (!result || !result.ok) {
+      runtime.winch.velocity = 0; runtime.winch.lastDelta = 0;
       return { changed: false, reason: result && result.reason || 'reel_rejected', attachment, before, after: before };
     }
-    const after = result.attachment && result.attachment.restLength;
-    return {
-      changed: Number.isFinite(after) && Math.abs(after - before) > 1e-6,
-      reason: null,
-      attachment: result.attachment || attachment,
-      before,
-      after: Number.isFinite(after) ? after : before,
-    };
+    const after = finite(result.attachment && result.attachment.restLength, finite(attachment.restLength, before));
+    if (proposal) {
+      proposal.runtime.velocity = (after - before) / dt;
+      proposal.runtime.lastDelta = after - before;
+      proposal.runtime.appliedWork = runtime.winch.appliedWork + Math.max(0, finite(attachment.lastTension)) * Math.max(0, before - after);
+      runtime.winch = proposal.runtime;
+    }
+    return { changed: Math.abs(after - before) > 1e-6, reason: null,
+      attachment: result.attachment || attachment, before, after };
   },
 
   _emitLineControlDenied(state, reason, lineLengthCommand, attachment) {
@@ -1658,13 +1690,20 @@ export const tetherGameplay = {
     if (!this._active) return false;
     const targetId = this._active.targetId;
     const cutPayload = this._cutPayload(state, player, targetId);
-    this._emitWhipSnapIfStored(state, targetId);
+    const releaseRating = rateRelease(state, targetId);
     const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
+    if (!result || !result.ok) {
+      this._pendingCut = null;
+      this.bus.emit('tether:cutDenied', { targetId, attachmentId: this._active.attachmentId,
+        reason: result && result.reason || 'cut_rejected' });
+      return false;
+    }
     if (result && result.ok) {
+      this._emitWhipSnapIfStored(state, targetId);
       if (cutPayload.slingshot) this._grantSlingshotState(state, SLINGSHOT_STATE_S);
       this.bus.emit('tether:cut', cutPayload);
       this.bus.emit('tether:released', { targetId });
-      this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
+      this.bus.emit('tether:releaseRated', releaseRating);
     }
     this._active = null;
     this._pendingCut = null;
@@ -1876,6 +1915,17 @@ export const tetherGameplay = {
     t.storedEnergy = storedEnergy;
     t.strainGlow = strainGlow;
     t.spentEnergy = t.active ? finite(telemetry && telemetry.spentEnergy, 0) : 0;
+    const cadence = this._ensureCadenceRuntime(state, t.active ? t.attachmentId : null);
+    const view = t.cadence || (t.cadence = {});
+    view.version = 1;
+    view.phase = t.active ? cadence.phase : 'idle';
+    view.reelVelocity = t.active ? cadence.winch.velocity : 0;
+    view.appliedWork = t.active ? cadence.winch.appliedWork : 0;
+    if (t.active && this._cadenceLastPhase !== view.phase) {
+      this._cadenceLastPhase = view.phase;
+      this.bus.emit('massline:cadenceChanged', { sourceId: state.playerId, targetId,
+        attachmentId: t.attachmentId, phase: view.phase, tick: state.tick });
+    }
     if (t.active && t.headId === ELASTIC_WHIP_HEAD_ID) {
       t.load = Math.max(t.load, strainGlow);
     }
@@ -2534,12 +2584,9 @@ export function computeTetherLoad(phase, strain) {
   return clamp(Math.max(s * LOAD_STRAIN_GAIN, base), 0, 1);
 }
 
-// Release rating (Prompt 02). Reads state.player.masslineTelemetry, which masslineTelemetry.js
-// writes immediately after tetherGameplay in UPDATE_ORDER. Because telemetry runs after this
-// system, at cut time the subtree reflects the most recent observed tick — exactly what the spec
-// means by "use the current state.player.masslineTelemetry if available." If telemetry is absent
-// (no system ran, fresh state, etc.) we still emit a release rating with classification "messy"
-// and zeroed numeric fields, per spec.
+// CADENCE release rating reads the current pair, before cut authority clears its mirror.
+// Technique is tangency and earned relative speed; the physical break rating remains telemetry.
+// No claim about hitting a victim is made here: the throw forecast owns that separate question.
 //
 // sourceId — WHY IT IS HERE, do not drop it. A release rating is a judgement of the PLAYER'S
 // technique; the tethered body is the cue's target, but the player is its source. The presentation
@@ -2552,55 +2599,22 @@ export function computeTetherLoad(phase, strain) {
 // ZERO. Grammar rule 2: if the player cannot see it, it does not exist.
 export function rateRelease(state, targetId) {
   const telemetry = state && state.player && state.player.masslineTelemetry;
-  const sourceId = state && state.playerId != null ? state.playerId : null;
-  if (!telemetry) {
-    return {
-      targetId,
-      sourceId,
-      classification: 'messy',
-      releaseScore: 0,
-      radialSpeed: 0,
-      tangentialSpeed: 0,
-      angularSpeed: 0,
-      strain: 0,
-      distance: 0,
-      restLength: 0,
-      playerSpeed: 0,
-      maxStrainSinceLatch: 0,
-      maxTangentialSpeedSinceLatch: 0,
-      maxAngularSpeedSinceLatch: 0,
-    };
-  }
-
-  const strain = finite(telemetry.strain, 0);
-  const absTangential = Math.abs(finite(telemetry.tangentialSpeed, 0));
-  const absRadial = Math.abs(finite(telemetry.radialSpeed, 0));
-  const tangentQuality = absTangential / Math.max(absTangential + absRadial, 1e-6);
-  const usefulLoad = clamp01(strain / 0.65);
-  const overloadPenalty = clamp01((strain - 0.85) / 0.35);
-  const releaseScore = clamp01(tangentQuality * usefulLoad * (1 - overloadPenalty));
-
-  let classification;
-  if (releaseScore >= 0.85) classification = 'razor';
-  else if (releaseScore >= 0.65) classification = 'clean';
-  else if (releaseScore >= 0.35) classification = 'good';
-  else classification = 'messy';
-
+  const tether = state && state.player && state.player.tether;
+  const owner = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  const payload = state && state.entities && state.entities.get && state.entities.get(targetId);
+  const restLength = finite(tether && tether.restLength, finite(telemetry && telemetry.restLength));
+  const pair = readCadencePair(owner, payload, restLength);
+  const rating = rateCadenceTechnique(pair, { phase: tether && tether.phase });
   return {
-    targetId,
-    sourceId,
-    classification,
-    releaseScore,
-    radialSpeed: finite(telemetry.radialSpeed, 0),
-    tangentialSpeed: finite(telemetry.tangentialSpeed, 0),
-    angularSpeed: finite(telemetry.angularSpeed, 0),
-    strain,
-    distance: finite(telemetry.distance, 0),
-    restLength: finite(telemetry.restLength, 0),
-    playerSpeed: finite(telemetry.playerSpeed, 0),
-    maxStrainSinceLatch: finite(telemetry.maxStrainSinceLatch, 0),
-    maxTangentialSpeedSinceLatch: finite(telemetry.maxTangentialSpeedSinceLatch, 0),
-    maxAngularSpeedSinceLatch: finite(telemetry.maxAngularSpeedSinceLatch, 0),
+    targetId, sourceId: state && state.playerId != null ? state.playerId : null,
+    ...rating, scoringVersion: 'cadence.v1', observedTick: state && state.tick,
+    radialSpeed: pair.radialSpeed, tangentialSpeed: pair.tangentialSpeed,
+    angularSpeed: pair.omega, distance: pair.distance, restLength,
+    strain: finite(tether && tether.strain, finite(telemetry && telemetry.strain)),
+    playerSpeed: Math.hypot(finite(owner && owner.vel && owner.vel.x), finite(owner && owner.vel && owner.vel.z)),
+    maxStrainSinceLatch: finite(telemetry && telemetry.maxStrainSinceLatch),
+    maxTangentialSpeedSinceLatch: finite(telemetry && telemetry.maxTangentialSpeedSinceLatch),
+    maxAngularSpeedSinceLatch: finite(telemetry && telemetry.maxAngularSpeedSinceLatch),
   };
 }
 
