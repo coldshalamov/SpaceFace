@@ -174,6 +174,101 @@ export const BREAKAWAY_FORK_COLLIDERS = Object.freeze({
 export const HEIST_CAPSULE_RUN_VARIANT_ID = 'capsule_run';
 export const BREAKAWAY_THIRD_SHIFT_VARIANT_ID = 'breakaway_third_shift';
 
+// ── BREAKAWAY: Berth Three and its stalled industrial worker (PQ-195.04) ───────────────────────
+//
+// The local consequence of the Third Shift. Beside the lawful catcher, Berth Three's industrial
+// hauler cannot run its circuit without the replacement assembly; it waits, parked, until a lawful
+// delivery reaches the catcher fork. The berth is deliberately NOT a member of PQ019_FACILITIES:
+// those are the three destination facilities with authored POI anchors and static custody heads.
+// Berth Three is a worker site BESIDE the catcher, so it stays out of that catalog and out of
+// facility materialization counting.
+//
+// This module owns the AUTHORED site, the worker hull identity and the two service circuits. It
+// owns no berth state: whether the berth is activated lives in the serialized state.npcJobs record
+// (npcJobsRuntime), which is what makes the consequence survive save/load.
+//
+// The condition threshold is an authored candidate, kept as a named constant and consulted through
+// berthServiceTier() so the activation seam and any consumer agree on exactly one number.
+export const BREAKAWAY_BERTH_RESUME_MIN_CONDITION01 = 0.6;
+
+export const BREAKAWAY_BERTH = Object.freeze({
+  id: 'berth_three',
+  name: 'Berth Three',
+  // The lawful catcher the berth serves; also the only facility whose committed handoff activates it.
+  facilityId: 'lawful_catcher',
+  // Sector-local parked position of the worker hull, north of the catcher and clear of the fork's
+  // delivery corridor (the fork faces the launcher, roughly west/south of the catcher).
+  workerLocalPos: Object.freeze({ x: -400, z: -1080 }),
+  worker: Object.freeze({
+    shipId: 'ship_mule',
+    team: 2,
+    factionId: 'faction_mts',
+    // Stable per-seed join key between the worker hull (spawned by heistFacilities) and its job
+    // record (owned by npcJobsRuntime). Never a live entity id.
+    worldRecordSlotId: 'breakaway:berth-three:worker',
+    label: 'Berth Three hauler',
+  }),
+  // Two circuits over the SAME worker. `resumed` is the berth's real haul; `reduced` is the bounded
+  // repair shuttle it can still run on a damaged assembly. Both are MINER-phased cargo cycles (WORK
+  // at the far mark, UNLOAD back at the berth), so "working" is a real advancing cargo task in
+  // state.npcJobs, and the two tiers are distinguishable by route, speed and phase durations.
+  serviceTiers: Object.freeze({
+    resumed: Object.freeze({
+      tier: 'resumed',
+      speed: 30,
+      commissionS: 2,
+      approachS: 4,
+      workS: 30,
+      unloadS: 6,
+      waypoints: Object.freeze([
+        Object.freeze({
+          id: 'berth_three',
+          label: 'Berth Three',
+          localPos: Object.freeze({ x: -400, z: -1080 }),
+        }),
+        Object.freeze({
+          id: 'berth_three_yard',
+          label: 'Tethys service yard',
+          localPos: Object.freeze({ x: -980, z: -820 }),
+        }),
+      ]),
+    }),
+    reduced: Object.freeze({
+      tier: 'reduced',
+      speed: 16,
+      commissionS: 2,
+      approachS: 6,
+      workS: 54,
+      unloadS: 10,
+      waypoints: Object.freeze([
+        Object.freeze({
+          id: 'berth_three',
+          label: 'Berth Three',
+          localPos: Object.freeze({ x: -400, z: -1080 }),
+        }),
+        Object.freeze({
+          id: 'berth_three_shuttle',
+          label: 'Berth Three repair shuttle',
+          localPos: Object.freeze({ x: -760, z: -1000 }),
+        }),
+      ]),
+    }),
+  }),
+});
+
+/**
+ * The authored service tier for an assembly delivered in `condition01`.
+ *
+ * `null` means the caller did not carry a measured condition (the Quiet fence does not grade), so
+ * there is no service tier to choose. At or above the named threshold the berth resumes its haul;
+ * below it the berth runs the reduced repair shuttle.
+ */
+export function berthServiceTier(condition01) {
+  const value = Number(condition01);
+  if (!Number.isFinite(value)) return null;
+  return value >= BREAKAWAY_BERTH_RESUME_MIN_CONDITION01 ? 'resumed' : 'reduced';
+}
+
 // PQ-195.00: presentation identity of the capture fork receiver extension. The fork is a static
 // machine placed at the mouth projected by projectBreakawayForkMouth(), at unit scale in WU —
 // the GLB's origin IS the mouth plane and its inward axis is +X, so no recentering offset.

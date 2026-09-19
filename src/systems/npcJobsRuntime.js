@@ -66,6 +66,13 @@ import {
 } from '../data/sectorActivityPockets.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
+import {
+  BREAKAWAY_BERTH,
+  BREAKAWAY_SP07,
+  PQ019_HEIST_SECTOR_ID,
+  berthServiceTier,
+} from '../data/heistFacilities.js';
+import { berthWorkerRecordId } from './heistFacilities.js';
 import { findLivingWorldActor, forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { getAsteroidFieldRock } from '../world/asteroidField.js';
 import {
@@ -703,6 +710,9 @@ export const npcJobsRuntime = {
         this._onEntityGone(payload);
       });
       this.bus.on('fieldDepletion:changed', (p) => this._onFieldDepletionChanged(p || {}));
+      // PQ-195.04: the local consequence. Berth Three's stalled worker resumes (or runs its reduced
+      // repair shuttle) on the receiver's OWN committed handoff receipt — never a timer or a cue.
+      this.bus.on('heist:receiverCommitted', (receipt) => this._onBerthHandoff(receipt || {}));
     }
 
     // Producer-facing API. Traffic (and any future civilian producer) calls assign() at spawn.
@@ -728,6 +738,8 @@ export const npcJobsRuntime = {
         // Read-on-demand performance evidence. The returned object is a detached scalar snapshot;
         // callers cannot mutate the retained hot-path counters or request scratch.
         threatQueryDiagnostics: () => this.threatQueryDiagnostics(),
+        // PQ-195.04: read-only berth service projection for the flight HUD and focused tests.
+        berthStatus: () => this.berthStatus(),
       };
     }
   },
@@ -1712,6 +1724,141 @@ export const npcJobsRuntime = {
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     this._refreshCeresRealTargetsForEntry(entry, entity);
     return jobId;
+  },
+
+  // ── PQ-195.04: Berth Three's local consequence ───────────────────────────────────────────────
+  //
+  // ONE berth, ONE worker, THREE states. The berth's state is not a flag: it is whether a berth
+  // worker job exists in state.npcJobs, and if so, which authored service circuit it runs. That is
+  // what makes it survive save/load for free — `serialize()`/`deserialize()` already carry this bag,
+  // and the worker hull re-links to it by the stable worldRecordId heistFacilities stamps.
+  //
+  // Activation is bound to the receiver's committed handoff receipt and fires ONLY for the lawful
+  // catcher and the breakaway payload. A fence handoff carries no condition and a different
+  // facilityId; a destroyed/stolen/expired load never reaches a commit at all. So "machine repaired"
+  // can never play over a load that went to the Quiet or ceased to exist.
+  _berthWorkerJobId() {
+    return 'job:' + berthWorkerRecordId(this.state.meta && this.state.meta.seed);
+  },
+
+  /** Translate the authored local circuit into the global route the movement owner flies. */
+  _berthWorkerSpec(tier, condition01, receiptId) {
+    const route = tier.waypoints.map((waypoint) => ({
+      id: waypoint.id,
+      label: waypoint.label,
+      pos: sectorLocalToGlobalForSector(waypoint.localPos, PQ019_HEIST_SECTOR_ID),
+    }));
+    return {
+      kind: NPC_JOB_KIND.MINER,
+      sectorId: PQ019_HEIST_SECTOR_ID,
+      speed: tier.speed,
+      commissionS: tier.commissionS,
+      approachS: tier.approachS,
+      workS: tier.workS,
+      unloadS: tier.unloadS,
+      route,
+      payload: {
+        berthId: BREAKAWAY_BERTH.id,
+        berthService: tier.tier,
+        facilityId: BREAKAWAY_BERTH.facilityId,
+        payloadStableId: BREAKAWAY_SP07.stableId,
+        condition01,
+        receiptId,
+        binding: 'heist:receiverCommitted',
+      },
+    };
+  },
+
+  /** Consume a committed receiver handoff. Idempotent: the binding receiptId lives on the record. */
+  _onBerthHandoff(receipt) {
+    if (!receipt || receipt.facilityId !== BREAKAWAY_BERTH.facilityId) return null;
+    if (receipt.payloadStableId !== BREAKAWAY_SP07.stableId) return null;
+    const condition01 = Number(receipt.condition01);
+    if (!Number.isFinite(condition01)) return null;
+    const receiptId = typeof receipt.receiptId === 'string' && receipt.receiptId
+      ? receipt.receiptId : null;
+    if (!receiptId) return null;
+    const tierId = berthServiceTier(condition01);
+    if (!tierId) return null;
+    return this._activateBerthWorker(tierId, condition01, receiptId);
+  },
+
+  /**
+   * Create the berth worker's job from a committed handoff, exactly once.
+   *
+   * A second commit (replay) or a reload finds the record already present and returns it untouched:
+   * the binding receiptId on the payload is the proof, and no tier is ever re-chosen. If the worker
+   * hull is not materialized yet, the record is created VIRTUAL and `_tryRelink` binds it on the next
+   * materialize — the same contract every restored job uses.
+   */
+  _activateBerthWorker(tierId, condition01, receiptId) {
+    const tier = BREAKAWAY_BERTH.serviceTiers[tierId];
+    if (!tier) return null;
+    const jobId = this._berthWorkerJobId();
+    const existing = this._byId()[jobId];
+    if (existing && existing.job) return existing;
+    const worldRecordId = jobId.slice('job:'.length);
+    const spec = this._berthWorkerSpec(tier, condition01, receiptId);
+
+    const entity = this._findEntityByRecordId(worldRecordId);
+    if (entity) {
+      const assigned = this.assign(entity, spec);
+      if (assigned) return this._byId()[assigned] || null;
+    }
+
+    let job;
+    try {
+      job = createJob({ ...spec, id: jobId }, (this.state.meta && this.state.meta.seed) || 0);
+    } catch {
+      return null;
+    }
+    const entry = {
+      job,
+      kind: job.kind,
+      sectorId: PQ019_HEIST_SECTOR_ID,
+      worldRecordId,
+      entityId: null,
+      lastAdvanceSimT: finite(this.state.simTime, 0),
+      threatId: null,
+      towAttachmentId: null,
+      towTargetId: null,
+      towOwnerRef: null,
+      towTargetRef: null,
+      towNextScanSimT: 0,
+    };
+    this._byId()[jobId] = entry;
+    this._threatQueryDirty = true;
+    return entry;
+  },
+
+  /**
+   * Read-only projection of Berth Three for the flight HUD and focused tests.
+   *
+   * `stalled` is the absence of a berth worker job — the legitimate operation still waiting. A
+   * present job reports its authored tier, the receipt that activated it and its live phase.
+   */
+  berthStatus() {
+    const jobId = this._berthWorkerJobId();
+    const entry = this._byId()[jobId];
+    if (!entry || !entry.job) {
+      return {
+        berthId: BREAKAWAY_BERTH.id, active: false, stalled: true, jobId,
+        tier: null, receiptId: null, condition01: null, phase: null, materialized: false, entityId: null,
+      };
+    }
+    const payload = entry.job.payload || {};
+    return {
+      berthId: BREAKAWAY_BERTH.id,
+      active: true,
+      stalled: false,
+      jobId,
+      tier: typeof payload.berthService === 'string' ? payload.berthService : null,
+      receiptId: typeof payload.receiptId === 'string' ? payload.receiptId : null,
+      condition01: Number.isFinite(payload.condition01) ? payload.condition01 : null,
+      phase: entry.job.phase,
+      materialized: entry.job.materialized === true,
+      entityId: entry.entityId,
+    };
   },
 
   _combatAttachments() {

@@ -9,6 +9,7 @@ import { Masks } from '../core/entity.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import {
+  BREAKAWAY_BERTH,
   BREAKAWAY_CAPTURE_FORK,
   BREAKAWAY_FORK_COLLIDERS,
   BREAKAWAY_FORK_VISUAL,
@@ -21,6 +22,8 @@ import {
   projectBreakawayForkMouth,
   projectPq019FacilitySocket,
 } from '../data/heistFacilities.js';
+import { makeShipEntitySpec } from './ships.js';
+import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import {
   captureCandidate,
   createCaptureOutput,
@@ -128,7 +131,25 @@ function makeState() {
     capsuleEntityId: null,
     candidateReceipts: [],
     candidateIds: {},
+    // PQ-195.04: the berth worker hull this owner materializes with the sector. Transient by
+    // design — the ACTIVATED/consequence state lives in the serialized npcJobs record, never here.
+    berth: { workerEntityId: null },
   };
+}
+
+/**
+ * Stable per-seed worldRecordId of Berth Three's worker hull.
+ *
+ * Exported so npcJobsRuntime derives the exact same join key for the berth job entry. Both callers
+ * must use this helper, never their own copy of the formula.
+ */
+export function berthWorkerRecordId(seed) {
+  return stableRecordId(
+    (Number(seed) >>> 0) || 1,
+    PQ019_HEIST_SECTOR_ID,
+    RECORD_KIND.NPC,
+    BREAKAWAY_BERTH.worker.worldRecordSlotId,
+  );
 }
 
 function finite(value, fallback = 0) {
@@ -339,7 +360,65 @@ export const heistFacilities = {
         created += this._materializeForkColliders(facility, record);
       }
     }
+    // PQ-195.04: Berth Three's stalled industrial worker. It is an ordinary hull that lives beside
+    // the catcher whether or not the berth is activated (a job-bound one is re-linked by
+    // npcJobsRuntime on the same entry), so its presence is materialization, not consequence state.
+    created += this._materializeBerthWorker();
     return created;
+  },
+
+  /**
+   * Spawn (or adopt) Berth Three's worker hull.
+   *
+   * The hull carries a stable `worldRecordId` — the join key npcJobsRuntime binds a berth job to —
+   * plus `persistenceOwner: 'heistFacilities'`, which tells the world-record owner this hull's
+   * lifecycle belongs to us. So it is never captured into world.records and never respawned twice;
+   * it is re-created here on every sector materialize, exactly like the facility heads.
+   */
+  _materializeBerthWorker() {
+    const worker = BREAKAWAY_BERTH.worker;
+    const worldRecordId = berthWorkerRecordId(this.state.meta && this.state.meta.seed);
+    let entity = this._findBerthWorker(worldRecordId);
+    let created = 0;
+    if (!entity) {
+      // An extant live durable record means another owner already holds this hull; never spawn a
+      // second copy over it.
+      const record = this.state.world?.records?.byId?.[worldRecordId];
+      if (record && record.alive !== false && record.outcome !== 'destroyed') return 0;
+      const spec = makeShipEntitySpec(worker.shipId, {
+        team: worker.team,
+        factionId: worker.factionId,
+        pos: this._global(BREAKAWAY_BERTH.workerLocalPos),
+        ai: { archetype: 'passive', passive: true, spawnContext: 'berth_worker' },
+      });
+      spec.homeSectorId = PQ019_HEIST_SECTOR_ID;
+      spec.data.worldRecordId = worldRecordId;
+      spec.data.persistenceOwner = 'heistFacilities';
+      spec.data.berthWorkerId = BREAKAWAY_BERTH.id;
+      spec.data.identityKey = worker.worldRecordSlotId;
+      spec.data.sectorId = PQ019_HEIST_SECTOR_ID;
+      spec.data.homeSectorId = PQ019_HEIST_SECTOR_ID;
+      spec.data.berthName = BREAKAWAY_BERTH.name;
+      spec.data.trafficLabel = worker.label;
+      entity = this.helpers.spawnEntity(spec);
+      if (!entity) return 0;
+      created = 1;
+    }
+    this.state.heistFacilities.berth.workerEntityId = entity.id;
+    return created;
+  },
+
+  /** The live berth worker hull, matched by its stable record id (never a recycled numeric id). */
+  _findBerthWorker(worldRecordId) {
+    const list = (this.state && this.state.entityList) || [];
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (entity?.alive !== false && entity.data?.worldRecordId === worldRecordId
+        && entity.data?.berthWorkerId === BREAKAWAY_BERTH.id) {
+        return entity;
+      }
+    }
+    return null;
   },
 
   requestLaunchSchedule(request = {}) {
@@ -395,6 +474,10 @@ export const heistFacilities = {
     if (!owned.facilities || typeof owned.facilities !== 'object') owned.facilities = {};
     if (!Array.isArray(owned.candidateReceipts)) owned.candidateReceipts = [];
     if (!owned.candidateIds || typeof owned.candidateIds !== 'object') owned.candidateIds = {};
+    if (!owned.berth || typeof owned.berth !== 'object') owned.berth = { workerEntityId: null };
+    if (owned.berth.workerEntityId == null || !Number.isInteger(Number(owned.berth.workerEntityId))) {
+      owned.berth.workerEntityId = null;
+    }
     if (owned.capsuleEntityId != null
       && !Number.isInteger(Number(owned.capsuleEntityId))) {
       owned.capsuleEntityId = null;
@@ -656,6 +739,14 @@ export const heistFacilities = {
       record.headEntityId = null;
       record.forkVisualEntityId = null;
     }
+    // PQ-195.04: the berth worker is ours to remove here; it is deliberately not world-durable
+    // (`persistenceOwner: 'heistFacilities'`), so no other owner will take it. Its job record stays
+    // in state.npcJobs and re-links to the fresh hull on the next materialize.
+    const berth = this.state.heistFacilities.berth;
+    if (berth && berth.workerEntityId != null) {
+      this.helpers.removeEntity(berth.workerEntityId);
+      berth.workerEntityId = null;
+    }
   },
 
   _launchScheduledCapsule(schedule) {
@@ -815,6 +906,12 @@ export const heistFacilities = {
       ]) {
         if (facility && record[idKey] === id && !stillOurs(current, role)) record[idKey] = null;
       }
+    }
+    // PQ-195.04: clear the berth worker handle when its hull is gone, so a later materialize
+    // re-spawns instead of trusting a dead id.
+    if (owned.berth && owned.berth.workerEntityId === id
+      && !(current && current.alive !== false && current.data?.berthWorkerId === BREAKAWAY_BERTH.id)) {
+      owned.berth.workerEntityId = null;
     }
   },
 
