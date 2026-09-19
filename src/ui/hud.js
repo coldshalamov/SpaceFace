@@ -42,6 +42,7 @@ import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
+import { createForkInstrument } from './forkInstrument.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
 import {
@@ -1156,6 +1157,12 @@ export function createHud(ctx, alerts) {
   // together they made the screen bottom-heavy and pushed the column off the top at 1280x720.
   // Modules that adopt into the column find it by class, so its parent is free to change.
   root.appendChild(leftContext);
+
+  // PQ-195.02: the capture-fork instrument is a TRANSIENT contextual entry, not an anchor. It
+  // attaches itself into this existing column only while the SP-07 load is the player's situation
+  // (towing it, or bringing it to the catcher fork) and fully detaches when it is not.
+  const forkInstrument = createForkInstrument();
+  forkInstrument.mount(leftContext);
 
   // Lamina: authored hull laminae + a split, globally driven shield envelope.
   // The view reads the same authoritative entity as all other vitals; it owns no simulation state.
@@ -4567,6 +4574,9 @@ export function createHud(ctx, alerts) {
     // The cooldown sweep is a CSS animation, so a cooling slot needs no per-frame work either —
     // the rail genuinely stops costing anything once the numbers settle.
     if (slow) powerRail.update(readRailModel(state, state.simTime || 0), Date.now());
+    // PQ-195.02: the fork instrument rides the slow clock like the rail — its own change detection
+    // means a settled reading costs nothing, and a fast approach is heard within a tenth of a second.
+    if (slow) forkInstrument.update(state);
 
     // --- integrity + arcs + micro-bars (existing frame owner; no independent animation loop) ---
     if (!p) updateShipCondition(schematic, null, frameDt, getMotionReduced(), getFlashReduced());
@@ -5138,6 +5148,7 @@ export function createHud(ctx, alerts) {
       clearCargoGaugeSettle(cargoGaugeSettle.used);
       clearCargoGaugeSettle(cargoGaugeSettle.risk);
       powerRail.destroy();
+      forkInstrument.destroy();
       threatHalo.destroy();
       if (clusterSizeObserver) clusterSizeObserver.disconnect();
     },
