@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { meshopt } from '@gltf-transform/functions';
-import { ktx2 } from 'ktx2-encoder/gltf-transform';
+import { cachedKtx2 as ktx2 } from './lib/cachedKtx2.mjs';
 import JPEG from 'jpeg-js';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import { PNG } from 'pngjs';
@@ -119,7 +119,7 @@ export const PACK_RELEASE_ASSETS = Object.freeze(buildReleaseCatalog());
 
 if (isMainModule()) {
   try {
-    await buildPackReleaseAssets();
+    await buildPackReleaseAssets(parsePackReleaseArgs(process.argv.slice(2)));
   } catch (error) {
     console.error(`[pack-release] FAIL: ${errorMessage(error)}`);
     process.exitCode = 1;
@@ -127,12 +127,13 @@ if (isMainModule()) {
 }
 
 export async function buildPackReleaseAssets(options = {}) {
+  const selectedAssets = selectPackReleaseAssets(options.onlyIds);
   const root = resolve(options.root || ROOT);
   const releaseManifestPath = resolve(root, RELEASE_MANIFEST);
   const manifestBytesBeforeBuild = readFileSync(releaseManifestPath);
   const manifestBeforeBuild = JSON.parse(manifestBytesBeforeBuild.toString('utf8'));
   const manifestSha256 = sha256(manifestBytesBeforeBuild);
-  const initialReleaseHashes = Object.fromEntries(PACK_RELEASE_ASSETS.map((asset) => [
+  const initialReleaseHashes = Object.fromEntries(selectedAssets.map((asset) => [
     asset.id,
     currentSha256(resolve(root, asset.release)),
   ]));
@@ -150,7 +151,7 @@ export async function buildPackReleaseAssets(options = {}) {
     });
 
   try {
-    for (const [index, asset] of PACK_RELEASE_ASSETS.entries()) {
+    for (const [index, asset] of selectedAssets.entries()) {
       try {
         const entry = await stageReleaseAsset(asset, {
           root,
@@ -159,7 +160,7 @@ export async function buildPackReleaseAssets(options = {}) {
         });
         built.push(entry);
         console.log(
-          `[pack-release] ${index + 1}/${PACK_RELEASE_ASSETS.length} ${asset.id}: `
+          `[pack-release] ${index + 1}/${selectedAssets.length} ${asset.id}: `
           + `${formatBytes(entry.sourceBytes)} -> ${formatBytes(entry.releaseBytes)} `
           + `(${sizeDelta(entry.sourceBytes, entry.releaseBytes)}; `
           + `ktx2=${entry.ktx2Textures}/${entry.textures}, `
@@ -182,14 +183,14 @@ export async function buildPackReleaseAssets(options = {}) {
 
     if (failures.length) {
       throw new Error(
-        `${failures.length}/${PACK_RELEASE_ASSETS.length} source model(s) could not be processed; `
+        `${failures.length}/${selectedAssets.length} source model(s) could not be processed; `
         + `nothing was published\n${JSON.stringify(failures, null, 2)}`,
       );
     }
 
-    validateCompletePackBuild(built);
-    const nextManifest = patchPackManifestRows(manifestBeforeBuild, built);
-    validatePatchedPackManifest(manifestBeforeBuild, nextManifest, built);
+    validateCompletePackBuild(built, selectedAssets);
+    const nextManifest = patchPackManifestRows(manifestBeforeBuild, built, selectedAssets);
+    validatePatchedPackManifest(manifestBeforeBuild, nextManifest, built, selectedAssets);
     const nextManifestBytes = Buffer.from(`${JSON.stringify(nextManifest, null, 2)}\n`);
 
     // Source files are read-only and are never transaction destinations. Bind publication to
@@ -212,7 +213,7 @@ export async function buildPackReleaseAssets(options = {}) {
           expectedCurrentSha256: manifestSha256,
           validate: async (_stagedPath, stagedBytes) => {
             const parsed = JSON.parse(Buffer.from(stagedBytes).toString('utf8'));
-            validatePatchedPackManifest(manifestBeforeBuild, parsed, built);
+            validatePatchedPackManifest(manifestBeforeBuild, parsed, built, selectedAssets);
           },
         },
       ],
@@ -342,14 +343,59 @@ async function stageReleaseAsset(asset, { root, buildRoot, io }) {
   };
 }
 
-export function validateCompletePackBuild(builtEntries) {
-  if (!Array.isArray(builtEntries) || builtEntries.length !== EXPECTED_RELEASE_COUNT) {
+export function selectPackReleaseAssets(onlyIds) {
+  if (onlyIds === undefined) return PACK_RELEASE_ASSETS;
+  if (!Array.isArray(onlyIds) || onlyIds.length === 0) {
+    throw new TypeError('onlyIds must be a non-empty array of canonical asset IDs');
+  }
+  const ids = onlyIds.map((id) => {
+    if (typeof id !== 'string' || !id.trim()) throw new Error('pack release selection contains an empty asset ID');
+    return id.trim();
+  });
+  if (new Set(ids).size !== ids.length) throw new Error('pack release selection contains duplicate asset IDs');
+  const knownIds = new Set(PACK_RELEASE_ASSETS.map((asset) => asset.id));
+  const unknownIds = ids.filter((id) => !knownIds.has(id));
+  if (unknownIds.length) throw new Error(`unknown pack release asset IDs: ${unknownIds.join(', ')}`);
+  const selectedIds = new Set(ids);
+  return PACK_RELEASE_ASSETS.filter((asset) => selectedIds.has(asset.id));
+}
+
+export function parsePackReleaseArgs(args) {
+  let onlyIds;
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === '--only' || arg.startsWith('--only=')) {
+      if (onlyIds !== undefined) throw new Error('--only may be provided once');
+      const value = arg === '--only' ? args[++i] : arg.slice('--only='.length);
+      if (typeof value !== 'string' || value.startsWith('--')) throw new Error('--only requires comma-separated asset IDs');
+      onlyIds = value.split(',');
+    } else {
+      throw new Error(`unknown pack release option: ${arg}`);
+    }
+  }
+  // Validate before opening manifests or staging files, including an empty CLI value.
+  const selected = selectPackReleaseAssets(onlyIds);
+  return onlyIds === undefined ? {} : { onlyIds: selected.map((asset) => asset.id) };
+}
+
+function validateExpectedCatalog(expectedCatalog) {
+  if (!Array.isArray(expectedCatalog)) throw new TypeError('expected pack catalog must be an array');
+  const canonical = selectPackReleaseAssets(expectedCatalog.map((entry) => entry?.id));
+  if (expectedCatalog.some((entry, index) => entry.id !== canonical[index].id
+      || entry.source !== canonical[index].source || entry.release !== canonical[index].release)) {
+    throw new Error('expected pack catalog differs from canonical order or bindings');
+  }
+}
+
+export function validateCompletePackBuild(builtEntries, expectedCatalog = PACK_RELEASE_ASSETS) {
+  validateExpectedCatalog(expectedCatalog);
+  if (!Array.isArray(builtEntries) || builtEntries.length !== expectedCatalog.length) {
     throw new Error(
-      `pack release build must contain all ${EXPECTED_RELEASE_COUNT} assets; `
+      `pack release build must contain all ${expectedCatalog.length} selected assets; `
       + `found ${Array.isArray(builtEntries) ? builtEntries.length : 0}`,
     );
   }
-  const expectedIds = PACK_RELEASE_ASSETS.map((entry) => entry.id);
+  const expectedIds = expectedCatalog.map((entry) => entry.id);
   const builtIds = builtEntries.map((entry) => entry?.id);
   if (new Set(builtIds).size !== builtIds.length
       || JSON.stringify(builtIds) !== JSON.stringify(expectedIds)) {
@@ -383,11 +429,11 @@ export function validateCompletePackBuild(builtEntries) {
   return true;
 }
 
-export function patchPackManifestRows(previousManifest, builtEntries) {
+export function patchPackManifestRows(previousManifest, builtEntries, expectedCatalog = PACK_RELEASE_ASSETS) {
   if (!previousManifest || !Array.isArray(previousManifest.assets)) {
     throw new TypeError('release manifest requires an assets array');
   }
-  validateCompletePackBuild(builtEntries);
+  validateCompletePackBuild(builtEntries, expectedCatalog);
   const next = structuredClone(previousManifest);
   assertUniqueManifestIds(next.assets, 'current release manifest');
   const indexById = new Map(next.assets.map((row, index) => [row.id, index]));
@@ -408,24 +454,22 @@ export function patchPackManifestRows(previousManifest, builtEntries) {
   return next;
 }
 
-export function validatePatchedPackManifest(previousManifest, nextManifest, builtEntries) {
+export function validatePatchedPackManifest(previousManifest, nextManifest, builtEntries, expectedCatalog = PACK_RELEASE_ASSETS) {
   if (!previousManifest || !Array.isArray(previousManifest.assets)
       || !nextManifest || !Array.isArray(nextManifest.assets)) {
     throw new TypeError('pack manifest validation requires previous and next assets arrays');
   }
   assertUniqueManifestIds(previousManifest.assets, 'previous release manifest');
   assertUniqueManifestIds(nextManifest.assets, 'next release manifest');
+  validateCompletePackBuild(builtEntries, expectedCatalog);
   const builtById = new Map(builtEntries.map((entry) => [entry.id, entry]));
-  if (builtById.size !== EXPECTED_RELEASE_COUNT) {
-    throw new Error(`pack manifest patch requires ${EXPECTED_RELEASE_COUNT} unique built rows`);
-  }
 
   const previousIds = previousManifest.assets.map((row) => row.id);
   const nextIds = nextManifest.assets.map((row) => row.id);
   const previousPackIds = new Set(previousIds.filter((id) => builtById.has(id)));
   const expectedIds = [
     ...previousIds,
-    ...PACK_RELEASE_ASSETS.map((entry) => entry.id).filter((id) => !previousPackIds.has(id)),
+    ...expectedCatalog.map((entry) => entry.id).filter((id) => !previousPackIds.has(id)),
   ];
   if (JSON.stringify(nextIds) !== JSON.stringify(expectedIds)) {
     throw new Error('pack manifest patch changed existing order or appended the wrong membership');

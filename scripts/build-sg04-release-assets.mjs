@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { meshopt } from '@gltf-transform/functions';
-import { ktx2 } from 'ktx2-encoder/gltf-transform';
+import { cachedKtx2 as ktx2 } from './lib/cachedKtx2.mjs';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import JPEG from 'jpeg-js';
 import { PNG } from 'pngjs';
