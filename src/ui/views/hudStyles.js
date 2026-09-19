@@ -1360,7 +1360,10 @@ export function injectHudCss() {
   .sf-pslot[data-state="cooling"] .sf-pslot__name,
   .sf-pslot[data-state="unaffordable"] .sf-pslot__name,
   .sf-pslot[data-state="locked"] .sf-pslot__name { color:var(--k-bone-62); }
-  .sf-pslot[data-state="empty"] .sf-pslot__name { display:none; }
+  /* an empty socket (no charges, nothing armed) still names its verb, dim: a bare icon under a key says
+     nothing. Only a prompt that has borrowed the whole rail blanks the names. */
+  .sf-pslot[data-state="empty"] .sf-pslot__name { color:var(--dp-ink-mute, #96948e); }
+  .sf-prail[data-claimed="FULL"] .sf-pslot[data-state="empty"] .sf-pslot__name { display:none; }
   .sf-prail[data-claimed] .sf-pslot__name { color:var(--k-signal, var(--hud-amber)); }
   .sf-prail[data-claimed="FULL"] .sf-prail__label { opacity:.5; }
 

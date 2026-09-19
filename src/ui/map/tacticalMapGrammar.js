@@ -299,15 +299,16 @@ export function drawPlayerHull(g, x, y, rotation = 0, { label = true } = {}) {
   g.fill();
   g.stroke();
 
-  // White nose notch: self remains identifiable in monochrome and against station infrastructure.
-  g.fillStyle = TACTICAL_MAP_PALETTE.ink;
+  // The nose notch is cut to the ground: self keeps a second channel (shape) in monochrome, and a
+  // bone notch on a bone hull (the deckplate player) would not read at all.
+  g.fillStyle = TACTICAL_MAP_PALETTE.ground;
   g.beginPath();
   g.moveTo(11, 0);
   g.lineTo(5.2, -2.2);
   g.lineTo(5.2, 2.2);
   g.closePath();
   g.fill();
-  g.strokeStyle = 'rgba(174,212,177,0.78)';
+  g.strokeStyle = 'rgba(232,226,212,0.72)';
   g.lineWidth = 1.2;
   g.beginPath();
   g.moveTo(-8.8, 0);
@@ -317,7 +318,7 @@ export function drawPlayerHull(g, x, y, rotation = 0, { label = true } = {}) {
 
   // Non-rotating centre brackets make self-location instantaneous while the hull turns.
   g.save();
-  g.strokeStyle = 'rgba(174,212,177,0.82)';
+  g.strokeStyle = 'rgba(232,226,212,0.78)';
   g.lineWidth = 1.25;
   drawOpenCorners(g, x, y, 15, 4.5);
   if (label) {

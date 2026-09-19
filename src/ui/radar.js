@@ -1179,7 +1179,9 @@ export function createRadar(ctx) {
       g.restore();
     }
 
-    drawPlayerHull(g, center, center, player.rot, { label: !expanded });
+    // Self is the bracketed filled hull at the centre; a YOU caption under it collided with the
+    // nearest contacts at every radar size, so the scope draws none.
+    drawPlayerHull(g, center, center, player.rot, { label: false });
     drawThreatRing(g, metrics, hostileCount, now, reducedMotion);
     drawRangePlate(g, metrics, range, expanded);
 
