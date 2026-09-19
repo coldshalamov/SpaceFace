@@ -35,7 +35,7 @@ import { barkDirector } from '../systems/barkDirector.js';
 import { stuntGrammar } from '../systems/stuntGrammar.js';
 import { aiPorts } from '../systems/aiPorts.js';
 import { ai } from '../systems/ai.js';
-import { createTacticalAISystem } from '../systems/tacticalAI.js';
+import { createTacticalAISystem, PRODUCTION_ENEMY_MIND_CONFIG } from '../systems/tacticalAI.js';
 import { aiEncounter } from '../systems/aiEncounter.js';
 import { actions } from '../systems/actions.js';
 import { flight } from '../systems/flight.js';
@@ -866,7 +866,7 @@ export function createRegistry(ctx) {
 function selectAISystem(ctx) {
   const gameplay = ctx && ctx.state && ctx.state.settings && ctx.state.settings.gameplay || {};
   if (gameplay.aiBackend === 'sg06-tactical' && gameplay.physicsBackend === 'rapier-dynamic') {
-    return createTacticalAISystem();
+    return createTacticalAISystem({ config: { enemyMind: PRODUCTION_ENEMY_MIND_CONFIG } });
   }
   return ai;
 }

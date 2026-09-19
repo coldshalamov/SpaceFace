@@ -1,3 +1,5 @@
+import { applyEnemyMindBehavior, applyEnemyMindDirective, applyEnemyMindSelection,
+  enemyMindDecisionChanged, enemyMindDirectiveInput } from './enemyMind/adapter.js';
 import {
   AI_CONTRACT_VERSION,
   NORMALIZED_THRUSTER_REQUEST_FLAG,
@@ -34,6 +36,7 @@ export class TacticalAIStack {
   constructor({ seed = 1, ports, config = {} } = {}) {
     this.seed = (Number(seed) >>> 0) || 1;
     this.ports = assertAIPorts(ports);
+    this.enemyMind = this.ports.enemyMind || null;
     const traceConfig = config.trace === undefined ? { enabled: true, layers: ['behavior'], capacity: 512 } : (config.trace || {});
     this.trace = config.trace instanceof ExplainabilityTrace
       ? config.trace
@@ -125,8 +128,29 @@ export class TacticalAIStack {
     squads.length = 0;
     decisions.length = 0;
 
+    // Freeze the command/perception boundary before any pilot acts. Enemy Mind exchanges only
+    // delayed self-reports; it never receives the director, action port or authoritative world.
+    let preparedSquads = null;
+    let mindPlans = null;
+    if (this.enemyMind) {
+      preparedSquads = new Map();
+      const directivesByEntity = new Map();
+      for (const squadDef of roster) {
+        const result = this.commander.update(squadDef.id, tick, perceptionsByEntity, director);
+        preparedSquads.set(squadDef.id, result);
+        for (const member of squadDef.members) {
+          const perception = perceptionsByEntity.get(member.id);
+          const directive = result.directives.get(member.id);
+          if (perception && directive) directivesByEntity.set(member.id, enemyMindDirectiveInput(
+            overrideDirectiveForWingOrder(directive, perception, freeze), perception));
+        }
+      }
+      mindPlans = this.enemyMind.update({ tick, roster, perceptionsByEntity, directivesByEntity });
+    }
+
     for (const squadDef of roster) {
-      const squadResult = this.commander.update(squadDef.id, tick, perceptionsByEntity, director);
+      const squadResult = preparedSquads ? preparedSquads.get(squadDef.id)
+        : this.commander.update(squadDef.id, tick, perceptionsByEntity, director);
       squads.push(freeze({
         squadId: squadResult.squadId,
         tick: squadResult.tick,
@@ -138,7 +162,9 @@ export class TacticalAIStack {
         const perception = perceptionsByEntity.get(member.id);
         const squadDirective = squadResult.directives.get(member.id);
         if (!perception || !squadDirective) continue;
-        const directive = overrideDirectiveForWingOrder(squadDirective, perception, freeze);
+        const mind = mindPlans && mindPlans.get(member.id) || null;
+        const directive = applyEnemyMindDirective(
+          overrideDirectiveForWingOrder(squadDirective, perception, freeze), mind, freeze);
         const doctrineId = normalizeCombatDoctrineId(directive.combatDoctrineId, perception.self && perception.self.combatDoctrineId);
         const retreatOrdered = directive.objective && directive.objective.kind === ObjectiveKind.RETREAT;
         const objectiveKind = directive.objective && directive.objective.kind;
@@ -163,20 +189,32 @@ export class TacticalAIStack {
             ? undefined
             : disabledNonlethalTarget && disabledNonlethalTarget.id,
         }) : null;
+        const effectiveDirective = applyEnemyMindDirective(
+          combatDoctrine ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine) : directive, mind, freeze);
         const priorDecision = this.lastDecisionByEntity.get(member.id);
         if (this.memberBatchEnabled && !retreatOrdered && !memberRefreshDue(member, tick, activeMembers)
-          && priorDecision && !doctrineDecisionChanged(priorDecision.combatDoctrine, combatDoctrine)) {
-          const cached = retickDecision(priorDecision, tick, combatDoctrine);
+          && priorDecision && !doctrineDecisionChanged(priorDecision.combatDoctrine, combatDoctrine)
+          && !enemyMindDecisionChanged(priorDecision.enemyMind || null, mind)) {
+          let cached = retickDecision(priorDecision, tick, combatDoctrine);
+          if (mind) {
+            // Keep tactical waypoints live without re-running action selection. This is motor
+            // control, not another utility think; the accepted action and its gates stay intact.
+            const action = applyEnemyMindBehavior(cached.action, mind, freeze);
+            const request = mind.ownManeuver ? this.maneuver.plan({
+              tick, entityId: member.id, perception, behavior: action, directive: effectiveDirective,
+            }) : cached.maneuver;
+            cached = freeze({ ...cached, directive: effectiveDirective, action, maneuver: request, enemyMind: mind });
+            this.lastDecisionByEntity.set(member.id, cached);
+          }
           this.ports.maneuver.request(cached.maneuver);
           decisions.push(cached);
           continue;
         }
-        const effectiveDirective = combatDoctrine ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine) : directive;
         const actionDefs = this.ports.actions.list(member.id, this._actionContext(tick, perception, effectiveDirective)) || [];
         const current = !this.freezeResults && typeof this.executor.current === 'function'
           ? this.executor.current(member.id)
           : this.executor.inspect(member.id);
-        const selected = this.selector.select({
+        const selected = applyEnemyMindSelection(this.selector.select({
           tick,
           entityId: member.id,
           perception,
@@ -184,8 +222,9 @@ export class TacticalAIStack {
           actionDefs,
           current,
           combatDoctrine,
-        });
-        const behavior = this.executor.update({ tick, entityId: member.id, selected, directive: effectiveDirective, perception });
+        }), mind);
+        const behavior = applyEnemyMindBehavior(
+          this.executor.update({ tick, entityId: member.id, selected, directive: effectiveDirective, perception }), mind, freeze);
         const request = this.maneuver.plan({ tick, entityId: member.id, perception, behavior, directive: effectiveDirective });
         this.ports.maneuver.request(request);
         const decision = freeze({
@@ -195,8 +234,9 @@ export class TacticalAIStack {
           action: behavior,
           maneuver: request,
           combatDoctrine,
+          ...(mind ? { enemyMind: mind } : {}),
         });
-        if (this.memberBatchEnabled) this.lastDecisionByEntity.set(member.id, decision);
+        if (this.memberBatchEnabled || mind) this.lastDecisionByEntity.set(member.id, decision);
         decisions.push(decision);
       }
     }
@@ -233,6 +273,7 @@ export class TacticalAIStack {
       behavior: entityId == null ? this.executor.inspect() : this.executor.inspect(entityId),
       maneuver: entityId == null ? this.maneuver.inspect() : this.maneuver.inspect(entityId),
       combatDoctrine: this.combatDoctrine.inspect(entityId),
+      enemyMind: this.enemyMind ? this.enemyMind.inspect(entityId ?? null) : null,
       trace: this.trace.query({
         ...traceQuery,
         entityId: entityId === undefined ? traceQuery.entityId : entityId,
@@ -247,6 +288,7 @@ export class TacticalAIStack {
     this.executor.forget(entityId);
     this.maneuver.forget(entityId);
     this.combatDoctrine.forget(entityId);
+    if (this.enemyMind) this.enemyMind.forget(entityId);
     if (typeof this.ports.actions.forget === 'function') this.ports.actions.forget(entityId);
     this.perceptionCache.delete(entityId);
     this.lastDecisionByEntity.delete(entityId);

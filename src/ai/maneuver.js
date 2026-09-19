@@ -131,7 +131,10 @@ export class ManeuverPlanner {
       this.byEntity.set(entityId, runtime);
     }
 
-    const choreo = this.squadFrames ? this.squadFrames.planFor(entityId) : null;
+    // Tactical Enemy Mind waypoints take locomotion ownership explicitly. Authored formations
+    // remain in charge for unmodified pilots and ordinary hull-doctrine PRESS behavior.
+    const mindOwned = behavior && behavior.maneuver && behavior.maneuver.enemyMindOwned === true;
+    const choreo = !mindOwned && this.squadFrames ? this.squadFrames.planFor(entityId) : null;
     const selfPose = choreo && choreo.live ? overlaySelf(self, choreo.live) : self;
     const baseIntent = behavior && behavior.maneuver ? behavior.maneuver : {
       kind: ManeuverKind.HOLD,
@@ -418,7 +421,9 @@ function predictFormationSlot(intent, predictionTicks) {
 
 function desiredForIntent(intent, self, target, contactIndex, seed, entityId, config, counters, hullScale) {
   if (intent.flightPoint && Number.isFinite(intent.flightPoint.x) && Number.isFinite(intent.flightPoint.z)) {
-    return commitPoint(self, intent.flightPoint, config.interceptSpeed * (hullScale && hullScale.speed || 1));
+    const speed = intent.enemyMindOwned && intent.kind === ManeuverKind.RETREAT
+      ? config.retreatSpeed : config.interceptSpeed;
+    return commitPoint(self, intent.flightPoint, speed * (hullScale && hullScale.speed || 1));
   }
   switch (intent.kind) {
     case ManeuverKind.INTERCEPT:
@@ -740,7 +745,11 @@ function motionEnvelope(kind, intent, arrival, formationDistance, formationBound
       maxClosingSpeed = config.maxApproachClosingSpeed;
       break;
     case ManeuverKind.FORMATION:
-      maxSpeed = clamp(Math.max(config.patrolSpeed, formationDistance * 0.42), config.patrolSpeed, config.formationSpeed);
+      // Tactical waypoints are combat maneuvers, not slow formation rejoin. Reuse the existing
+      // intercept envelope; never invent extra speed or alter the hull-relative physics scale.
+      maxSpeed = intent.enemyMindOwned === true && intent.flightPoint
+        ? config.interceptSpeed
+        : clamp(Math.max(config.patrolSpeed, formationDistance * 0.42), config.patrolSpeed, config.formationSpeed);
       maxClosingSpeed = config.maxApproachClosingSpeed;
       break;
     case ManeuverKind.SCREEN:

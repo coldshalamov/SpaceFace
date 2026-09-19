@@ -1,3 +1,5 @@
+import { createEnemyMindPort } from '../ai/enemyMind/port.js';
+import { enemyMindAllowsFire } from '../ai/enemyMind/adapter.js';
 import { AIInspectionEndpoint } from '../ai/inspection.js';
 import { createSG03ActionPort } from '../ai/sg03ActionPort.js';
 import { TacticalAIStack } from '../ai/stack.js';
@@ -51,6 +53,26 @@ const DEFAULT_HEAVY_MOTION = Object.freeze({
   turnCarryForward: 0.12,
 });
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
+
+/**
+ * Production Enemy Mind configuration (packet 05 overlay). Applied at both production construction
+ * sites (browser registry selectAISystem and the Node production-fidelity factory table) so every
+ * client runs the same pilot mind. The doctrine→profile mapping is the packet's example: motives
+ * are authored independently of combat strength, unmapped doctrines fall back to 'crew', and the
+ * specialist doctrines (tether/anchor/capital/screen/mine/shield-breaker) are reserved by the
+ * adapter regardless of this table. Passing `{ enabled: false }` at a construction site is the
+ * exact no-new-RNG-draw rollback switch.
+ */
+export const PRODUCTION_ENEMY_MIND_CONFIG = Object.freeze({
+  enabled: true,
+  profile: 'crew',
+  profilesByDoctrine: Object.freeze({
+    interceptor_flyby: 'raider',
+    brawler_commit: 'rookie',
+    ranged_disengager: 'veteran',
+  }),
+  tuning: Object.freeze({ maxThinksPerUpdate: 8, telegraph: 0.45 }),
+});
 
 /**
  * Keep a moving heavy's momentum while it slews onto a new line. The maneuver planner already
@@ -171,6 +193,14 @@ export function createTacticalAISystem({
       encounter: encounter || helpers.aiEncounter || null,
       actions: actionPortFactory(ctxRef),
     };
+    // Injected-port fixtures keep their legacy behavior unless explicitly enabled. Production
+    // opts in; config.enemyMind.enabled=false is an exact no-RNG-draw rollback switch.
+    const mindConfig = { enabled: productionPortDefaults, ...(config.enemyMind || {}) };
+    if (mindConfig.enabled) ports.enemyMind = createEnemyMindPort({
+      stateProvider: () => ctxRef && ctxRef.state,
+      emit: (event, payload) => ctxRef && ctxRef.bus && ctxRef.bus.emit(event, payload),
+      config: mindConfig,
+    });
     stack = new TacticalAIStack({
       seed: seed == null ? (state && state.meta && state.meta.seed) || 1 : seed,
       ports,
@@ -297,7 +327,10 @@ export function createTacticalAISystem({
       helpers.traceAI = (request = {}) => handleInspection({ method: 'ai.trace', params: request });
       helpers.inspectAIContract = () => handleInspection({ method: 'ai.contract' });
       if (ctx.bus && typeof ctx.bus.on === 'function') {
-        listenLifecycle(ctx.bus, 'game:started', resetRuntime);
+        listenLifecycle(ctx.bus, 'game:started', () => {
+          if (ctxRef && ctxRef.state) delete ctxRef.state.enemyMind;
+          resetRuntime();
+        });
         listenLifecycle(ctx.bus, 'save:loaded', resetRuntime);
         listenLifecycle(ctx.bus, 'entity:spawned', invalidateLifecycleEntity);
         listenLifecycle(ctx.bus, 'entity:destroyed', invalidateDestroyedLifecycleEntity);
@@ -381,7 +414,7 @@ export function createTacticalAISystem({
         }
         applyChoreographyFireWindow(liveStack, decision);
         applyEngagementPosture(entity, decision.combatDoctrine || null, state);
-        applyAIFiringIntent(decision, state);
+        applyMindAwareFiringIntent(decision, state);
         const enemyId = entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
         const fieldsSys = ctxRef && ctxRef.registry && typeof ctxRef.registry.get === 'function'
           ? ctxRef.registry.get('fields')
@@ -436,6 +469,19 @@ export function createTacticalAISystem({
  * Re-apply only the final firing adapter on skipped decision ticks so live target, hostility, ROE,
  * engagement, and friendly-fire state can revoke a cached fire request before weapons consumes it.
  */
+/** A veto only: the ordinary intent writer still owns action admission, ROE and friendly lanes. */
+export function applyMindAwareFiringIntent(decision, state) {
+  if (!enemyMindAllowsFire(decision, state && state.simTime)) {
+    const entity = state && state.entities && state.entities.get(decision && decision.entityId);
+    if (!entity || entity.id === state.playerId || !entity.data) return;
+    let intent = entity.data.intent;
+    if (intent && Object.isFrozen(intent)) intent = entity.data.intent = { ...intent };
+    if (intent) clearAIFiringIntent(intent, 'enemy_mind_hold');
+    return;
+  }
+  applyAIFiringIntent(decision, state);
+}
+
 export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = null) {
   const decisions = liveStack && liveStack.lastResult && liveStack.lastResult.decisions;
   if (!Array.isArray(decisions)) return 0;
@@ -447,7 +493,7 @@ export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = n
     const expectedEntity = entityRefs && typeof entityRefs.get === 'function' ? entityRefs.get(id) : null;
     if (expectedEntity && entity !== expectedEntity) continue;
     if (entity && entityNeedsAiThink(entity, state) === false) continue;
-    applyAIFiringIntent(decision, state);
+    applyMindAwareFiringIntent(decision, state);
   }
   return decisions.length;
 }
@@ -864,10 +910,12 @@ function applyChoreographyFireWindow(liveStack, decision) {
   if (!plan || !decision.combatDoctrine) return;
   const doctrine = decision.combatDoctrine;
   if (!Object.isFrozen(doctrine)) {
-    doctrine.fireWindow = !!plan.fireAuthorized;
+    doctrine.fireWindow = decision.enemyMind
+      ? doctrine.fireWindow && !!plan.fireAuthorized : !!plan.fireAuthorized;
     return;
   }
-  decision.combatDoctrine = { ...doctrine, fireWindow: !!plan.fireAuthorized };
+  decision.combatDoctrine = { ...doctrine, fireWindow: decision.enemyMind
+    ? doctrine.fireWindow && !!plan.fireAuthorized : !!plan.fireAuthorized };
 }
 
 function applySquadTokenFireGate(liveStack, state, shipLikeList = indexedShipLikeScan(state)) {
