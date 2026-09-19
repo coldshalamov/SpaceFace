@@ -42,19 +42,9 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
   helios_core: freezeProfile({
     id: 'helios_core',
     skyPalette: 'AZURE',
-    // Stronger restrained key/rim/fill so station + long-ship stay readable on motion route.
-    //
-    // rim 0.72 -> 1.15. At 0.72 the rim was 22% of key and did not separate the hull from the void.
-    // 1.15 is still ~36% of key, so the terminator and the key's authority are preserved; this is
-    // separation, not a second key light. The key >= ambient*6 and ambient <= 0.25 assertions in
-    // test/sector-visual-profiles.test.mjs are untouched (3.2 >= 0.9, 0.15 <= 0.25) and rim carries
-    // no pin.
-    // fill 0.32 -> 0.60: renderer.js places fill as PLANET BOUNCE (landmark side, low and wide)
-    // rather than a generic frontal lift, so it needs enough strength to lift the shadowed hull off
-    // pure black. Still under a fifth of key, so the terminator survives — this replaces ambient's
-    // missing job without raising `ambient` itself, which is authored at 0.15 precisely to keep space
-    // truly black.
-    lighting: { ambient: 0.15, key: 3.2, rim: 1.15, fill: 0.60 },
+    // Broad sunlight and cool planet bounce reveal the painted fleet without filling its
+    // mechanical recesses. The rim describes the silhouette against the dark stellar field.
+    lighting: { ambient: 0.20, key: 3.4, rim: 1.65, fill: 0.72 },
     background: {
       // True blacks + projection-safe gas giant; no explicit macro (planet + star clusters carry far field).
       intensity: 0.80,
@@ -99,12 +89,12 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 0.96, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
+    post: { exposure: 1.02, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0, grade: 0.32, vignette: 0.12 },
   }),
   core: freezeProfile({
     id: 'core',
     skyPalette: 'AZURE',
-    lighting: { ambient: 0.13, key: 2.3, rim: 0.26, fill: 0.06 },
+    lighting: { ambient: 0.18, key: 2.8, rim: 1.15, fill: 0.52 },
     background: {
       intensity: 0.58,
       // Authored star associations/landmarks carry the composition; no procedural full-field veil.
@@ -127,12 +117,12 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         cometInterval: [30, 72], signatureHero: null,
       },
     },
-    post: { exposure: 0.96, bloomStrengthScale: 1.04, bloomThresholdBias: -0.02 },
+    post: { exposure: 0.96, bloomStrengthScale: 1.04, bloomThresholdBias: -0.02, grade: 0.24, vignette: 0.10 },
   }),
   belt: freezeProfile({
     id: 'belt',
     skyPalette: 'EMBER',
-    lighting: { ambient: 0.15, key: 2.35, rim: 0.3, fill: 0.08 },
+    lighting: { ambient: 0.18, key: 2.75, rim: 1.10, fill: 0.50 },
     background: {
       intensity: 0.55,
       // The broken dust lane is explicit geometry with authored silhouette and occlusion.
@@ -159,13 +149,13 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         cometInterval: [22, 58], signatureHero: null,
       },
     },
-    post: { exposure: 0.95, bloomStrengthScale: 1.10, bloomThresholdBias: -0.06 },
+    post: { exposure: 0.95, bloomStrengthScale: 1.10, bloomThresholdBias: -0.06, grade: 0.18, vignette: 0.10 },
   }),
   fringe: freezeProfile({
     id: 'fringe',
     skyPalette: 'CRIMSON',
     // Slightly stronger key/rim/fill so station + long-ship keep two readable planes.
-    lighting: { ambient: 0.12, key: 3.25, rim: 1.08, fill: 0.18 },
+    lighting: { ambient: 0.16, key: 3.10, rim: 1.20, fill: 0.46 },
     background: {
       intensity: 0.72,
       // Full-field L1/L2 contribution forced off — macro geometry + stars only.
@@ -203,12 +193,12 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 0.94, bloomStrengthScale: 1.08, bloomThresholdBias: -0.04 },
+    post: { exposure: 0.94, bloomStrengthScale: 1.08, bloomThresholdBias: -0.04, grade: 0.16, vignette: 0.12 },
   }),
   anomaly: freezeProfile({
     id: 'anomaly',
     skyPalette: 'ION',
-    lighting: { ambient: 0.16, key: 2.05, rim: 0.55, fill: 0.1 },
+    lighting: { ambient: 0.18, key: 2.40, rim: 1.10, fill: 0.42 },
     background: {
       intensity: 0.6,
       // Local electromagnetic scar + wormhole replace the former fullscreen violet wash.
@@ -240,7 +230,7 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 0.95, bloomStrengthScale: 1.16, bloomThresholdBias: -0.10 },
+    post: { exposure: 0.95, bloomStrengthScale: 1.16, bloomThresholdBias: -0.10, grade: 0.12, vignette: 0.12 },
   }),
 });
 

@@ -1,64 +1,50 @@
-// PQ-190.00 — named industrial material families for the style slice's six named things.
-//
-// WHY THIS EXISTS
-// `authoredMaterialProfiles.js` gives every solid role one reflection number: envMapIntensity 2.1,
-// or 2.8 for `mechanical`/`drive`. Its roughness/metalness clamps are all guarded by
-// `if (!authoredSurface)` and these six assets all ship complete PBR map sets, so the clamps never
-// run on them. These families distinguish coating, bare armour, brushed steel, refractory ceramic,
-// rubber and printed markings while retaining their maps. The shipping-camera review decides
-// whether that separation improves the image; uniform values alone cannot establish that result.
-//
-// WHAT A FAMILY IS
-// Only a bounded response record: (envMapIntensity, roughness x, metalness x, emissiveIntensity).
-// `roughness` and `metalness` are MULTIPLIERS over the authored map, not replacements —
-// `partsLibrary.js` `installSingleSamplePackedOrmShader` emits `roughnessFactor *= texel.g` and
-// `metalnessFactor *= texel.b`, matching stock three.js. Every one of these assets ships
-// `metallicFactor = 1, roughnessFactor = 1`, so the factor slot is free and the texture carries
-// 100% of the response. Scaling the factor shifts the whole surface while preserving every texel of
-// authored wear. No map is ever assigned, cleared, retinted or re-baked here.
-//
-// HARD CONSTRAINTS
-//   * No `material.clone()` — the `cloneMaterialPreservingShaderHooks` contract is never entered.
-//   * No `onBeforeCompile` / `customProgramCacheKey` read or write; no forced `needsUpdate`. Every
-//     property set here is a uniform, so nothing recompiles against the roughness-breakup or
-//     packed-ORM hooks.
-//   * Applied ONCE at the authored swap / blueprint load. No per-frame traversal, no per-frame
-//     material mutation, no allocation in an update path.
-//   * Idempotent and reversible: the authored values are snapshotted on first touch and every later
-//     application derives from that snapshot, so f(f(x)) === f(x).
-//   * An asset outside the six-item table, or a material outside its asset's table, is left exactly
-//     as authored. There is no global material-name guess.
+// Shared Lacquer & Starlight finishes. Roles cover the fleet; exact material names
+// refine special machinery, markings and light sources. Authored maps remain intact.
+// Response factors are applied once at admission from an immutable baseline, with no
+// material clones, shader variants, per-frame traversal or additional texture reads.
 const BASE_STAMP = 'sfIndustrialBase';
 const FAMILY_STAMP = 'sfIndustrialFamily';
 
-/**
- * The eleven families. `env` is anchored to the existing SOLID_ENV_INTENSITY (2.1) /
- * SOLID_ENV_INTENSITY_METAL (2.8) ceiling in `authoredMaterialProfiles.js`, so this table
- * REDISTRIBUTES reflection rather than amplifying it: painted mass drops, tool edges rise. The
- * intent is contrast between substances. Live comparison owns brightness and legibility acceptance.
- *
- * Substance classification follows the material-truth preflight: intact paint/coating is dielectric,
- * bare steel is metallic, refractory ceramic is non-metallic and dry, glass is not dark polished metal.
- */
+// Fleet-wide finish, applied at material admission. Asset-specific mappings below refine this
+// vocabulary; they no longer form an exclusive club that leaves the rest of Helios unstyled.
+const ROLE_FAMILIES = Object.freeze({
+  hull: 'painted_shell', accent: 'painted_shell', repair: 'painted_shell_worn',
+  service: 'painted_shell_worn', mechanical: 'worn_tool_metal', docking: 'bare_structure',
+  radiator: 'radiator_fin', ceramic: 'thermal_ceramic', rubber: 'matte_seal',
+  engine_ceramic: 'thermal_ceramic',
+  glass: 'controlled_glass', warning: 'industrial_marking',
+});
+
+export function applyIllustratedMaterialResponse(material, role) {
+  const name = String(material?.userData?.spacefaceAuthoredMaterialName || material?.name || '');
+  // Printed paint and dark exposed armour must retain their distinction after shared-material
+  // batching replaces names with shader-family names.
+  const family = /decal|stencil|marking/i.test(name) ? 'industrial_marking'
+    : /armor.?dark|armour.?dark|bare.?plate/i.test(name) ? 'bare_structure'
+    : ROLE_FAMILIES[role];
+  return family ? applyMaterialFamily(material, family) : false;
+}
+
+/** Coatings carry colour, bare mechanisms catch highlights, ceramics and seals stay dry. */
 export const MATERIAL_FAMILIES = Object.freeze({
   // Intact coating over plate. The coating is dielectric, so metalness is pulled well down and the
   // surface reads as a satin colour mass instead of a mirror wearing a hull texture.
   painted_shell: Object.freeze({
-    id: 'painted_shell', substance: 'coating-over-metal', env: 1.15, roughness: 1.06, metalness: 0.55,
+    id: 'painted_shell', substance: 'coating-over-metal', env: 1.65, roughness: 0.76, metalness: 0.42,
   }),
   // Coating partly lost — field repair, service panels, a scavenger's plate. Still dielectric, but
   // the exposed metal underneath earns some of its reflection back.
   painted_shell_worn: Object.freeze({
-    id: 'painted_shell_worn', substance: 'worn-coating', env: 1.35, roughness: 1.10, metalness: 0.72,
+    id: 'painted_shell_worn', substance: 'worn-coating', env: 1.45, roughness: 0.90, metalness: 0.64,
   }),
   // Bare armour and salvage plate: metallic, but structural mass is never glossy.
   bare_structure: Object.freeze({
-    id: 'bare_structure', substance: 'bare-plate', env: 1.85, roughness: 0.98, metalness: 1.00,
+    id: 'bare_structure', substance: 'bare-plate', env: 1.95, roughness: 0.88, metalness: 1.00,
   }),
   // Machinery, brushed steel, fasteners, exposed hardware. THIS is where the controlled highlight
   // lives — worn tool edges catch the light that the painted mass no longer does.
   worn_tool_metal: Object.freeze({
-    id: 'worn_tool_metal', substance: 'machined-steel', env: 2.55, roughness: 0.86, metalness: 1.00,
+    id: 'worn_tool_metal', substance: 'machined-steel', env: 2.55, roughness: 0.70, metalness: 1.00,
   }),
   // Refractory liner: non-metal and dry. It must not pick up an environment sheen.
   thermal_ceramic: Object.freeze({
@@ -105,17 +91,7 @@ export const MATERIAL_FAMILIES = Object.freeze({
   }),
 });
 
-/**
- * Per-asset surfacing, keyed by the exact authored glTF material names read out of the shipped
- * release GLBs. Nothing outside these five tables is ever touched.
- *
- * `byMaterialName` is the precise mapping. `byRole` is the fallback for the ship route, where
- * `partsLibrary.js` renames shared materials to a program-family token and only the semantic role
- * survives — see `resolveMaterialFamilyId`. Each `byRole` entry is written so the coarser answer is
- * still the right substance for that asset; where it costs a distinction (the Kestrel's armour plate
- * collapsing into its painted shell, its stencils into the same) that is stated here rather than
- * being a silent surprise at the camera.
- */
+/** Precise authored-name overrides, with semantic-role fallbacks for legacy materials. */
 export const INDUSTRIAL_ASSET_SURFACING = Object.freeze({
   // ---- 1. the starter -------------------------------------------------------------------------
   kestrel: Object.freeze({
@@ -141,9 +117,7 @@ export const INDUSTRIAL_ASSET_SURFACING = Object.freeze({
       Material_Emissive_Cyan: 'state_emission_trim',
       Material_Emissive_Orange: 'state_emission_trim',
     }),
-    // COST OF THE COARSE KEY: `hull` covers Material_Hull, Material_ArmorDark, Material_Decal_Stencils
-    // and Material_V6_MarkingIvory, so on the renamed path the armour plate and the stencils read as
-    // painted shell. `warning` covers both Material_Accent_WarningOrange and Material_Decal_Hazard.
+    // Original names survive batching; roles remain a fallback for old compiled assets.
     byRole: Object.freeze({
       hull: 'painted_shell',
       accent: 'painted_shell',
@@ -364,7 +338,7 @@ function authoredBaseline(material) {
 export function resolveMaterialFamilyId(material, assetKey) {
   const surfacing = INDUSTRIAL_ASSET_SURFACING[assetKey];
   if (!surfacing || !material) return null;
-  const byName = surfacing.byMaterialName[String(material.name || '')];
+  const byName = surfacing.byMaterialName[String(material.userData?.spacefaceAuthoredMaterialName || material.name || '')];
   if (byName) return byName;
   const role = String(material.userData?.spacefaceMaterialRole || '').trim().toLowerCase();
   return (role && surfacing.byRole[role]) || null;

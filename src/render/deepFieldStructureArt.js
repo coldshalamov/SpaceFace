@@ -56,10 +56,11 @@ export function structureValueRamp(hex) {
     deep: shade(rgb, 0.30),
     shadow: shade(rgb, 0.54),
     base: shade(rgb, 0.84),
-    plate: shade(rgb, 1.02),
-    lit: shade(rgb, 1.22),
-    edge: shade(rgb, 1.45),
-    hot: shade(rgb, 2.0),
+    plate: shade(rgb, 1.16),
+    lit: shade(rgb, 1.85),
+    edge: shade(rgb, 2.20),
+    // Tiny window/service strips carry a warm accent. The structural mass remains in shadow.
+    hot: shade([Math.max(92, rgb[0] * 2.8), Math.max(70, rgb[1] * 1.8), Math.max(45, rgb[2])], 1),
   };
 }
 

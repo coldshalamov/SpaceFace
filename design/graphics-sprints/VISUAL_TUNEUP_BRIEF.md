@@ -2,6 +2,10 @@
 # Visual tuneup brief — the 3D graphics consistency pass
 
 **Written:** 2026-09-19. **Audience:** the agent handed "make it look better."
+**Owner-directed update:** the owner explicitly superseded this brief's frozen/ratified art
+constraints and requested an artsy, inhabited indie world using the existing models. The active
+direction and first-sector handoff are now [Lacquer & Starlight](../../docs/visual-assets/ILLUSTRATED_GRAPHICS_STANDARD.md).
+The original inventory below remains useful orientation, not a constraint on design judgment.
 **Prepared by:** groundwork pass (file map + live captures) so this agent spends its budget
 on judgment, not on grepping or running heavy scripts.
 
@@ -12,13 +16,10 @@ on judgment, not on grepping or running heavy scripts.
 One pass over the 3D game's look — models, materials, lighting, post/filters, VFX, background —
 with three outcomes:
 
-1. **Find the style, don't invent it.** The ratified direction already exists:
-   [Illustrated industrial space](../../docs/visual-assets/ILLUSTRATED_GRAPHICS_STANDARD.md)
-   (September 2026). Painted sci-fi machinery: readable construction, broad light/shadow shapes,
-   four-value illumination, energetic plasma, no chrome-everywhere, no clay toys. Your job is to
-   find every place the **live picture deviates from that standard** and pull it into line.
-   If you conclude the standard itself must change, say so with captured evidence — never
-   silently re-style.
+1. **Make the world worth inhabiting.** Follow the owner's current direction: colored working
+   vessels, warm inhabited details, deep colored shadows, polished edges and energetic plasma.
+   Use the shared treatment before rebuilding models. The standard records the current design
+   and implementation; it does not claim an owner-approved frame or prohibit improvements.
 2. **Bring up the outliers.** Quality varies across models and effect families (see §5).
    Equalize *upward*, at the shared-lever level (grade, lighting, material profiles, VFX
    language) before touching individual assets.

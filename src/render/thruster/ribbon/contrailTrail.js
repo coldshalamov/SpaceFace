@@ -198,8 +198,10 @@ const TRAIL_VERT = /* glsl */`
     // Every geometric variation is keyed to immutable data: recorded world position, segment and
     // sheet id. There is deliberately no time uniform and no age-driven position deformation.
     float sheetSeed = hash11(aStrand * 7.13 + segment * 0.37 + 1.7);
-    float worldSeed = hash31(floor(p * 0.31) + vec3(aStrand * 0.17, segment * 0.11, 9.4));
-    float staticTexture = hash31(p * 0.067 + vec3(aStrand * 3.1, segment * 0.7, 17.0));
+    // Continuous, world-fixed folds. Independent hashes per sample made straight flight
+    // look like stacked rectangular splinters. Nothing here moves an old path or adds a clock.
+    float worldSeed = 0.5 + 0.5 * sin(dot(p, vec3(0.037, 0.021, 0.053)) + aStrand * 2.3 + segment * 0.11);
+    float staticTexture = 0.5 + 0.5 * sin(dot(p, vec3(0.061, 0.033, 0.047)) + aStrand * 3.1 + segment * 0.7);
 
     float radius = mix(uRadiusHead, uRadiusTail, 0.20 + worldSeed * 0.62);
     radius *= 0.90 + sheetSeed * 0.16;
@@ -274,7 +276,8 @@ const TRAIL_FRAG = /* glsl */`
     float graze = min(uGrazeGain, 1.0 / max(facing, uGrazeFloor));
     float spec = pow(graze, 2.0);
 
-    float across = 1.0 - pow(abs(vSide), 3.6);
+    float fold = 0.5 + 0.5 * cos(vSide * 5.3 + vStaticTexture * 2.0);
+    float across = (1.0 - smoothstep(0.72, 1.0, abs(vSide))) * (0.32 + 0.85 * fold * fold);
 
     // TIME IS THE ONLY TERMINATOR. This is monotonic in sample age and contains no spatial length,
     // current drive, speed, pulse phase, or current-nozzle term.
@@ -361,7 +364,7 @@ function makePathTexture(T, data, samples) {
 export function createContrailMaterial(T, opts = {}) {
   const coreCol = opts.coreColor || [1.0, 0.99, 0.97];
   const midCol = opts.midColor || [0.10, 0.62, 1.0];
-  const edgeCol = opts.edgeColor || [0.02, 0.10, 0.78];
+  const edgeCol = opts.edgeColor || [0.12, 0.07, 0.70];
 
   return new T.ShaderMaterial({
     uniforms: {

@@ -207,6 +207,16 @@ function packagedPropSpec(entity) {
       hideImmediately: true,
     };
   }
+  // Opening-rescue actors share the finished civilian rescue hardware. Keep the simulation's
+  // cargo identity and 60 WU arrival zone; neither is an appropriate model scale.
+  // An explicit authored package above remains authoritative.
+  if (entity.type === 'payload' && (data.distressBeacon || data.rescuePriority)) {
+    return { file: 'places/place_47a_rescue_capsule.glb', slot: 'place',
+      radius: Math.min(12, Math.max(4, Number(entity.radius) || 6)), hideImmediately: true };
+  }
+  if (entity.type === 'beacon' && data.rescueExit) {
+    return { file: 'places/place_lane_beacon.glb', slot: 'place', radius: 14, hideImmediately: true };
+  }
   if (entity.type === 'payload' && !data.distressBeacon && !data.rescuePriority) {
     return {
       file: GENERIC_TOW_PACKAGED_PROP.file,

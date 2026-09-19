@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
+import { MATERIAL_FAMILIES } from '../src/render/industrialMaterialFamilies.js';
 
 import {
   applyAuthoredMaterialProfile,
@@ -69,7 +70,7 @@ test('authored functional signals preserve distinct cyan and orange hues', () =>
   assert.notEqual(cyan.emissive.getHex(), orange.emissive.getHex());
 });
 
-test('textured material profiles preserve authored maps, color, and calibrated PBR factors', () => {
+test('textured profiles preserve maps and color while applying the shared lacquer response once', () => {
   const map = new THREE.Texture();
   const normalMap = new THREE.Texture();
   const roughnessMap = new THREE.Texture();
@@ -87,8 +88,12 @@ test('textured material profiles preserve authored maps, color, and calibrated P
   assert.strictEqual(hull.roughnessMap, roughnessMap);
   assert.strictEqual(hull.metalnessMap, metalnessMap);
   assert.equal(hull.color.getHex(), beforeColor);
-  assert.equal(hull.roughness, 0.92);
-  assert.equal(hull.metalness, 0.8);
+  assert.equal(hull.roughness, 0.92 * MATERIAL_FAMILIES.painted_shell.roughness);
+  assert.equal(hull.metalness, 0.8 * MATERIAL_FAMILIES.painted_shell.metalness);
+  const response = [hull.roughness, hull.metalness, hull.envMapIntensity];
+  applyAuthoredMaterialProfile(hull);
+  assert.deepEqual([hull.roughness, hull.metalness, hull.envMapIntensity], response,
+    'readmission must not compound the finish');
   assert.equal(hull.dithering, true);
   assert.equal(hull.userData.spacefacePbrCoverage.complete, true);
   assert.equal(hull.userData.spacefacePbrRemasterRequired, false);

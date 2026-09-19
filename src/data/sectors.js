@@ -20,19 +20,18 @@ export const HAZARD_TYPES  = ['dense_asteroid', 'nebula', 'radiation', 'debris']
 export const POI_TYPES     = ['beacon', 'derelict', 'cache', 'colony', 'anomaly', 'wormhole', 'wreck'];
 
 export const SECTOR_PALETTE_CLASSES = {
-  // Helios / core — neutral photographic rig with true-black negative space.
+  // Lacquer & Starlight: warm keys, blue-violet shadows, dark negative space.
   core: {
-    // Civilized space uses a neutral photographic rig. Sector identity comes from authored
-    // landmarks and localized background structure, not a cyan wash painted over every hull.
-    key: 0xe8edf4, rim: 0x8fa4bf, fill: 0xb8c2cc, ambient: 0x3e4652,
+    // Sun-warmed inhabited machinery; cooler reflected light separates its shadow planes.
+    key: 0xffe2bd, rim: 0x82baf0, fill: 0xa3b4dd, ambient: 0x45516f,
     fog: 0x05070b, fogDensity: 0, nebulaTint: 0x2450a0, dust: 0x8ec0e8,
   },
   belt: {
-    key: 0xffd59a, rim: 0xb56d2f, fill: 0xffb13d, ambient: 0x594a42,
+    key: 0xffd59a, rim: 0x71a4bf, fill: 0xbca58d, ambient: 0x594a52,
     fog: 0x090705, fogDensity: 0.00002, nebulaTint: 0x8a4a1e, dust: 0xc0793d,
   },
   fringe: {
-    key: 0xffb07a, rim: 0xff3f2d, fill: 0xffaa66, ambient: 0x584343,
+    key: 0xffb07a, rim: 0x9875ce, fill: 0xbc91a6, ambient: 0x51435d,
     fog: 0x090504, fogDensity: 0.00003, nebulaTint: 0x8a1e1e, dust: 0xc15032,
   },
   anomaly: {

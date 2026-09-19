@@ -10329,6 +10329,9 @@ export function applyAuthoredSurfaceTint(material, hex, role, explicitOverride =
   if (material.color) {
     if (explicitOverride && (role === 'hull' || role === 'accent')) {
       material.color.copy(tint);
+      // Player paint is authoritative. The fleet's neutral-paint pigment is only a default;
+      // retaining it here would turn an explicit white/grey choice back into occupational colour.
+      material.userData.spacefaceIllustratedPigment = null;
     } else if (role === 'accent' || role === 'thruster') {
       const sourceLuminance = 0.2126 * material.color.r + 0.7152 * material.color.g + 0.0722 * material.color.b;
       material.color.copy(tint).multiplyScalar(Math.max(0.72, Math.min(1.08, 0.62 + sourceLuminance * 0.52)));

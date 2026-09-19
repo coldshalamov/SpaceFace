@@ -435,7 +435,7 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
   // stays put — the surviving red is what decides how saturated the plume reads. Lift red anywhere
   // near green and the whole thing desaturates to pale grey on the way through ACES.
   const mid = opts.midColor || [0.09, 0.55, 1.0];
-  const edge = opts.edgeColor || [0.015, 0.08, 0.86];
+  const edge = opts.edgeColor || [0.12, 0.07, 0.70];
   return new T.ShaderMaterial({
     uniforms: {
       uStationCount: { value: STATION_COUNT },

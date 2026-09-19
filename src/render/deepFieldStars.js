@@ -139,11 +139,89 @@ const FRAGMENT = /* glsl */`
 
 const sizeScratch = new THREE.Vector2();
 
+// Unresolved stellar light joins the resolved stars into a painted formation. These bounded
+// sky-depth discs share the stars' projection, parallax and crossfade; no screen-wide haze,
+// texture bake, light, extra target, or animated noise. One combined mesh for all six regions.
+const PAINT_VERTEX = /* glsl */`
+  attribute vec2 aFormationUv;
+  attribute float aStellarFamily;
+  uniform float uWeights[${FAMILIES}];
+  uniform float uPhaseX[${FAMILIES}];
+  uniform float uPhaseZ[${FAMILIES}];
+  uniform vec2 uRootOffset;
+  varying vec2 vFormationUv;
+  varying float vWeight;
+  varying float vFamily;
+  void main() {
+    int f = int(aStellarFamily + 0.5);
+    vWeight = uWeights[f]; vFamily = aStellarFamily;
+    vFormationUv = aFormationUv;
+    vec3 p = position;
+    p.xz += uRootOffset - vec2(uPhaseX[f], uPhaseZ[f]);
+    gl_Position = vWeight < 0.00001 ? vec4(2.0, 2.0, 2.0, 1.0)
+      : projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  }
+`;
+const PAINT_FRAGMENT = /* glsl */`
+  varying vec2 vFormationUv;
+  varying float vWeight;
+  varying float vFamily;
+  void main() {
+    vec2 p = vFormationUv;
+    float r = length(p);
+    float angle = atan(p.y, p.x);
+    bool spiral = vFamily < 0.5 || abs(vFamily - 2.0) < 0.5 || abs(vFamily - 4.0) < 0.5;
+    float curl = angle * 2.0 - 4.5 * log(1.0 + r * 5.0);
+    float stroke = pow(0.5 + 0.5 * cos(curl), 5.0);
+    float grain = 0.84 + 0.10 * sin(p.x * 31.0 + sin(p.y * 23.0))
+      + 0.06 * sin(p.y * 57.0 + p.x * 19.0);
+    float edge = 1.0 - smoothstep(0.60, 1.0, r);
+    float nucleus = exp(-r * 17.0);
+    float disk = spiral ? (0.14 + stroke * 0.40) * exp(-r * 2.8)
+      : exp(-pow((p.y - 0.12 * sin(p.x * 4.0)) * 8.0, 2.0)) * 0.36;
+    // A broken ink-coloured lane crosses the light. Its asymmetry makes the disc a place,
+    // not a radial glow. Broad value shoulders read as gouache at the shipping camera.
+    float dust = smoothstep(0.02, 0.08, abs(p.y + 0.025 + 0.025 * sin(p.x * 13.0)));
+    float pigment = (disk * mix(0.34, 1.0, dust) + nucleus * 0.85) * edge * grain;
+    float painted = mix(pigment, floor(pigment * 16.0) / 16.0, 0.20);
+    vec3 cold = vec3(0.19, 0.34, 0.56);
+    vec3 warm = vec3(0.87, 0.62, 0.34);
+    if (abs(vFamily - 1.0) < 0.5) cold = vec3(0.38, 0.24, 0.16);
+    if (abs(vFamily - 3.0) < 0.5) cold = vec3(0.32, 0.24, 0.53);
+    vec3 colour = mix(cold, warm, smoothstep(0.15, 0.80, nucleus));
+    float opacity = min(0.92, painted * vWeight * 2.2);
+    if (opacity < 0.001) discard;
+    gl_FragColor = vec4(colour, opacity);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+function createPaintedFormation(uniforms) {
+  const geometry = new THREE.BufferGeometry();
+  const vertices = FAMILIES * 96 * 3;
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices * 3), 3));
+  geometry.setAttribute('aFormationUv', new THREE.BufferAttribute(new Float32Array(vertices * 2), 2));
+  geometry.setAttribute('aStellarFamily', new THREE.BufferAttribute(new Float32Array(vertices), 1));
+  const mesh = new THREE.Mesh(geometry, new THREE.ShaderMaterial({
+    name: 'SpaceFace_PaintedStellarLight', uniforms, vertexShader: PAINT_VERTEX,
+    fragmentShader: PAINT_FRAGMENT, transparent: true, depthTest: true, depthWrite: false,
+    side: THREE.DoubleSide, fog: false,
+  }));
+  mesh.name = 'DeepField_PaintedStellarLight';
+  mesh.renderOrder = -84;
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
 function retireFormation(record) {
   if (!record) return;
   if (record.points.parent) record.points.parent.remove(record.points);
   record.points.geometry.dispose();
   record.points.material.dispose();
+  record.paint.removeFromParent();
+  record.paint.geometry.dispose();
+  record.paint.material.dispose();
 }
 
 /** What the placement depends on. Same signature → the existing buffers are exactly right. */
@@ -179,9 +257,11 @@ function createFormationRecord(background) {
   points.renderOrder = -85;
   points.frustumCulled = false;
   const record = {
-    points, family: -1, lastTime: null, activeStars: 0, attributeBytes: count * 8 * 4,
+    points, paint: createPaintedFormation(uniforms), family: -1, lastTime: null, activeStars: 0, attributeBytes: count * 8 * 4,
+    paintAttributeBytes: FAMILIES * 96 * 3 * 6 * 4,
     signature: null, anchorX: 0, anchorZ: 0, rebuilds: 0, refills: 0,
   };
+  points.add(record.paint);
   const period = Math.max(4000, (Number(background.H) || 0) * 80);
   function phase(value) { return ((value + period * 0.5) % period + period) % period - period * 0.5; }
   points.onBeforeRender = (renderer, scene, renderCamera) => {
@@ -209,6 +289,7 @@ function createFormationRecord(background) {
     const perFamily = background.lowTier ? 2048 : background.tierName === 'mid' ? 4096 : 8192;
     // A region with no formation submits no vertices: draw range zero, not 49k early-outs.
     geometry.setDrawRange(0, lit ? perFamily * FAMILIES : 0);
+    record.paint.geometry.setDrawRange(0, lit ? FAMILIES * 96 * 3 : 0);
     record.activeStars = next < 0 ? 0 : perFamily;
     uniforms.uDensity.value = STELLAR_CAPACITY_PER_FORMATION / perFamily;
     uniforms.uRootOffset.value.set(renderCamera.position.x - background.group.position.x,
@@ -259,14 +340,31 @@ function fillFormation(record, background, camera, pixelScale) {
       colors[index * 3] = (cool.r + (warm.r - cool.r) * central) * energy;
       colors[index * 3 + 1] = (cool.g + (warm.g - cool.g) * central) * energy;
       colors[index * 3 + 2] = (cool.b + (warm.b - cool.b) * central) * energy;
-      sizes[index] = (2.5 + random() * 1.3) * Math.max(1, -projected.z) / Math.max(1, pixelScale);
+      sizes[index] = (0.75 + random() * 0.95) * Math.max(1, -projected.z) / Math.max(1, pixelScale);
       families[index] = family;
+    }
+    const paint = record.paint.geometry.attributes;
+    for (let segment = 0; segment < 96; segment++) {
+      for (let corner = 0; corner < 3; corner++) {
+        const angle = (segment + (corner === 2 ? 1 : 0)) / 96 * Math.PI * 2;
+        const sx = corner === 0 ? 0 : Math.cos(angle);
+        const sy = corner === 0 ? 0 : Math.sin(angle);
+        const nx = spec.anchor[0] + (sx * ct - sy * spec.flatten * st) * spec.span;
+        const ny = spec.anchor[1] + (sx * st + sy * spec.flatten * ct) * spec.span * camera.aspect;
+        point.set(nx, ny, 0.5).unproject(camera).sub(camera.position);
+        point.multiplyScalar((depth - camera.position.y) / Math.min(-1e-5, point.y)).add(camera.position);
+        const index = (family * 96 + segment) * 3 + corner;
+        paint.position.setXYZ(index, point.x - camera.position.x, SKY_DEPTH - 0.2, point.z - camera.position.z);
+        paint.aFormationUv.setXY(index, sx, sy);
+        paint.aStellarFamily.setX(index, family);
+      }
     }
   }
   for (const name of ['position', 'aStellarColor', 'aStellarSize', 'aStellarFamily']) {
     geometry.getAttribute(name).needsUpdate = true;
   }
   record.points.material.uniforms.uPixelScale.value = pixelScale;
+  for (const attribute of Object.values(record.paint.geometry.attributes)) attribute.needsUpdate = true;
 }
 
 /**

@@ -71,7 +71,7 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     float y = dot(c, vec3(0.2126, 0.7152, 0.0722));
     float ink = smoothstep(0.28, 0.85, fwidth(y) / (0.08 + y));
     float solid = smoothstep(0.008, 0.045, y) * (1.0 - smoothstep(0.8, 1.8, y));
-    return c * (1.0 - ink * solid * 0.24);
+    return c * (1.0 - ink * solid * 0.16);
   }
 
   vec3 spaceAcesFilmic(vec3 x) {
@@ -87,6 +87,13 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     vec3 safe = max(c, vec3(0.0));
     return mix(1.055 * pow(safe, vec3(1.0 / 2.4)) - vec3(0.055),
       safe * 12.92, step(safe, vec3(0.0031308)));
+  }
+
+  // Compress luminous colour as a ratio, rather than clipping R/G/B independently to white.
+  // Neutral hot cores stay neutral; blue plasma, amber sparks and violet fields retain pigment.
+  vec3 spaceRadianceShoulder(vec3 radiance) {
+    float peak = max(radiance.r, max(radiance.g, radiance.b));
+    return radiance * (spaceAcesFilmic(vec3(peak)).r / max(peak, 0.00001));
   }
 
   float spaceGrainNoise(vec2 p) {
@@ -138,7 +145,9 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     float grainFrame
   ) {
     vec3 hdr = max(scene, vec3(0.0)) * exposure;
-    vec3 color = mix(clamp(hdr, 0.0, 1.0), spaceAcesFilmic(hdr), acesAmount);
+    vec3 filmic = mix(spaceAcesFilmic(hdr), spaceRadianceShoulder(hdr),
+      0.55 * smoothstep(0.65, 2.5, max(hdr.r, max(hdr.g, hdr.b))));
+    vec3 color = mix(clamp(hdr, 0.0, 1.0), filmic, acesAmount);
     // Broad perceptual value steps unify photographed sky and authored 3D. Blend the
     // shoulders so movement does not turn into flickering hard posterization. Do this
     // before additive bloom, keeping the luminous history continuous and the void black.
@@ -146,10 +155,14 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     float inkValue = sqrt(max(inkY, 0.0));
     float inkStep = inkValue * 7.0;
     float inkBand = (floor(inkStep) + smoothstep(0.28, 0.72, fract(inkStep))) / 7.0;
-    float inkMix = 0.48 * smoothstep(0.035, 0.12, inkValue);
+    // The surface shader owns strong bands. A softer screen finish preserves painted skies,
+    // thin markings and moving highlights rather than quantizing those a second time.
+    float inkMix = 0.24 * smoothstep(0.035, 0.12, inkValue);
     float inkPaint = mix(inkValue, inkBand, inkMix);
     color *= (inkY > 0.00001 ? inkPaint * inkPaint / inkY : 1.0);
-    color = applySpacePostPresentation(max(color + max(bloom, vec3(0.0)), vec3(0.0)),
+    vec3 spill = max(bloom, vec3(0.0));
+    spill /= 1.0 + max(spill.r, max(spill.g, spill.b));
+    color = applySpacePostPresentation(max(color + spill * (1.0 - color * 0.65), vec3(0.0)),
       uv, gradeAmount, toeAmount, vignetteAmount);
     vec3 srgb = spaceLinearToSrgb(color);
     if (grainAmount > 0.001) {

@@ -81,6 +81,10 @@ test('a rebuild with unchanged placement is free, and a resize refills in place 
   const background = makeBackground();
   const { camera, renderer } = background;
   const first = rebuildDeepFieldStars(background);
+  const paintPositions = first.paint.geometry.getAttribute('position');
+  const paintVersion = paintPositions.version;
+  assert.strictEqual(first.paint.material.uniforms, first.points.material.uniforms,
+    'paint and resolved stars share their phase and region crossfade');
   let disposed = 0;
   first.points.geometry.addEventListener('dispose', () => disposed++);
   first.points.material.addEventListener('dispose', () => disposed++);
@@ -91,6 +95,7 @@ test('a rebuild with unchanged placement is free, and a resize refills in place 
   assert.equal(again, first, 'same placement inputs return the same record');
   assert.equal(positionAttr.version, 0, 'no buffer upload when nothing changed');
   assert.equal(disposed, 0);
+  assert.equal(paintPositions.version, paintVersion, 'unchanged placement does not upload the painted body');
 
   // Carry a live crossfade into the resize: the weights must survive the refill.
   background.bgTime = 1;
@@ -106,6 +111,8 @@ test('a rebuild with unchanged placement is free, and a resize refills in place 
   assert.equal(resized.refills, 1);
   assert.equal(resized.rebuilds, 1);
   assert.equal(disposed, 0, 'no dispose, no recompile on resize');
+  assert.strictEqual(resized.paint.geometry.getAttribute('position'), paintPositions);
+  assert.equal(paintPositions.version, paintVersion + 1);
   assert.equal(positionAttr.version, 1, 'the refilled buffer is uploaded once');
   assert.notDeepEqual(positionAttr.array, positionsBefore, 'placement follows the new aspect');
   assert.equal(first.points.material.uniforms.uWeights.value[0], weightBefore, 'crossfade survives');
@@ -124,6 +131,7 @@ test('a region with no formation submits no vertices instead of 49k early-outs',
   record.points.onBeforeRender(renderer, null, camera);
   assert.equal(record.activeStars, 0);
   assert.equal(record.points.geometry.drawRange.count, 0, 'dark sky draws nothing');
+  assert.equal(record.paint.geometry.drawRange.count, 0, 'an unknown region does not retain painted light');
   assert.ok(record.points.material.uniforms.uWeights.value.every((w) => w === 0));
   // The layer stays visible so onBeforeRender keeps running and can light up on the next recipe.
   assert.equal(record.points.visible, true);

@@ -180,7 +180,7 @@ test('live bloom defaults resolve through renderer and render-graph behavior for
   const state = createGameState(0x046);
   const profiles = Object.values(SECTOR_VISUAL_PROFILES);
   const expected = {
-    helios_core: { bloomStrength: 0.52, bloomThreshold: 1.00, exposure: 0.96 },
+    helios_core: { bloomStrength: 0.52, bloomThreshold: 1.00, exposure: 1.02 },
     core: { bloomStrength: 0.5408, bloomThreshold: 0.98, exposure: 0.96 },
     belt: { bloomStrength: 0.572, bloomThreshold: 0.94, exposure: 0.95 },
     fringe: { bloomStrength: 0.5616, bloomThreshold: 0.96, exposure: 0.94 },
