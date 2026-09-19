@@ -124,6 +124,33 @@ const BARK_MIN_GAP_S = 4;          // per-encounter bark spacing (danger 'alert'
 const NOISE_DECAY_PER_S = 0.02;    // mining-noise half-life ~35s
 const PROX_SLACK = 600;            // "on the zone" slack for proximity-gated shapes
 
+// Proximity-starved combat beats come to the player. Measured failure: every combat shape in the
+// frontier decks is proximity-gated to its authored zone; a player parked far from every zone
+// (mining a deep field, pinned by salvage, or simply off-lane) fizzle-dropped every combat beat
+// at MAX_GATE_DEFERS while prop-only ambients kept the telegraph counter alive — 0 spawned
+// encounters for hours 5–9, both hunter seeds. After PROXIMITY_RELOCATE_DEFERS the squad
+// re-anchors deterministically near the player instead of dissolving. Pacing law is untouched:
+// gaps, window quotas, pressure, cooldowns, and admission all still gate the fire.
+const PROXIMITY_RELOCATE_DEFERS = 8;   // ~2.8 min of unreachable-zone defer before relocation
+const RELOCATE_MIN_DIST_WU = 520;      // off the player's bearing, readable but not on top of them
+const RELOCATE_MAX_DIST_WU = 900;
+
+// ── harassment mercy (unresolvable-pin release valve) ────────────────────────────────────────────
+// Measured worst case: a prospector pinned by one harasser for seven straight sim-hours (29,535
+// damage, no possible resolution — the pilot won't fight and the threat never leaves). The watch
+// is not a raw dps test: a regen-stabilized pin keeps the player's pool flat while damage flows,
+// and a thick-target pecker makes progress so slow it can never resolve. Mercy fires when either
+// stall or hopelessness holds for an engagement old enough to have earned a resolution.
+const HARASS_TRACK_CAP = 16;          // bounded attacker watch (oldest-by-recency evicted)
+const HARASS_FORGET_S = 150;          // attacker silent this long drops off the watch
+const HARASS_MIN_ENGAGE_S = 240;      // a pin must persist this long before mercy may fire
+const HARASS_REPEAT_ENGAGE_S = 90;    // a repeat offender re-qualifies this fast
+const HARASS_TTK_WINDOW_S = 120;      // trailing window for damage rate and pool-stall reads
+const HARASS_MIN_WINDOW_DMG = 40;     // less than this in the window reads as "not really engaging"
+const HARASS_STALL_TOL = 0.02;        // pool within 2% of window-start counts as not losing ground
+const HARASS_TTK_S = 420;             // implied seconds-to-kill above this = unresolvable
+const HARASS_COOLDOWN_S = 600;        // a mercied harasser holds off the player this long
+
 const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
 const CERES_ACTIVITY_AMBUSH_ZONE_ID = 'zone_ceres_ambush';
 const CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID = 'ceres:activity:throughline-ambush';
@@ -241,6 +268,7 @@ export const encounterDirector = {
     this._tickEscalationSeeds(dir, state, now);
     if (!isDocked(state) && !isTutorialActive(state)) this._pump(dir, state, now);
     this._tickLive(dir, state, now);
+    this._tickHarassMercy(dir, state, now);
     this._springCeresActivityAmbushOnPrey();
   },
 
@@ -508,7 +536,14 @@ export const encounterDirector = {
     // crossing is the eligibility proof for only the catalog's generic min-sector-tier rule. Every
     // other current/future authored gate remains enforced through the same fail-closed evaluator.
     if (!this._gatesPass(shape, state, { ignoreMinSectorTier: ceresActivityAmbush })) return gateDefer();
-    if (shape.proximity && !this._playerNearItemZone(item)) return gateDefer();
+    if (shape.proximity && !this._playerNearItemZone(item)) {
+      // Proximity-starved combat beats relocate to the player instead of dissolving: a hunter
+      // parked far from every authored zone (deep mining field, salvage pin, off-lane drift)
+      // must still be offered fights. Civilian/ambient props keep their zone anchoring.
+      if (shape.deck !== 'combat' || !this._relocateProximityStarvedItem(dir, state, item)) {
+        return gateDefer();
+      }
+    }
     if (ceresActivityAmbush && !this._ceresActivityAmbushCohort().length) {
       return defer();
     }
@@ -569,6 +604,34 @@ export const encounterDirector = {
     const r = (item.zoneRadius || 400) + PROX_SLACK;
     const dx = p.pos.x - item.zoneCenter.x, dz = p.pos.z - item.zoneCenter.z;
     return dx * dx + dz * dz <= r * r;
+  },
+
+  /** Re-anchor a proximity-gated combat item beside the player after its authored zone proved
+   * unreachable. Deterministic (seeded by the encounter identity), formation-preserving, and
+   * paced: every other fire gate still applies before the squad materializes. Returns false when
+   * the item has not yet earned relocation. */
+  _relocateProximityStarvedItem(dir, state, item) {
+    if ((item.defers | 0) < PROXIMITY_RELOCATE_DEFERS) return false;
+    const p = this.player();
+    if (!p || !p.pos) return false;
+    const seed = (state.meta && state.meta.seed) || 0;
+    const rng = mulberry32(hash32(seed, String(item.encounterId || item.shapeId), 'enc-relocate'));
+    const ang = rng() * Math.PI * 2;
+    const dist = RELOCATE_MIN_DIST_WU + rng() * (RELOCATE_MAX_DIST_WU - RELOCATE_MIN_DIST_WU);
+    const oldCenter = item.zoneCenter && Number.isFinite(item.zoneCenter.x)
+      ? { x: item.zoneCenter.x, z: item.zoneCenter.z }
+      : { x: p.pos.x, z: p.pos.z };
+    const anchor = { x: p.pos.x + Math.cos(ang) * dist, z: p.pos.z + Math.sin(ang) * dist };
+    const dx = anchor.x - oldCenter.x, dz = anchor.z - oldCenter.z;
+    item.zoneCenter = anchor;
+    if (Array.isArray(item.ships)) {
+      for (const sh of item.ships) {
+        if (sh && sh.pos && Number.isFinite(sh.pos.x)) { sh.pos.x += dx; sh.pos.z += dz; }
+      }
+    }
+    if (!Number.isFinite(item.zoneRadius) || item.zoneRadius < 80) item.zoneRadius = 400;
+    item.relocated = true;   // telemetry only; zoneId/zoneName keep the authored fiction
+    return true;
   },
 
   _spawnAdmissionAvailable(item, shape) {
@@ -739,6 +802,7 @@ export const encounterDirector = {
       encounterId: live.id, kind: live.shapeId, tier: live.tier, deck: live.deck,
       sectorId: live.sectorId, zoneId: live.zoneId, zoneName: live.zoneName,
       pos: live.anchor ? { x: live.anchor.x, z: live.anchor.z } : null,
+      relocated: item.relocated === true,
       causality: { ...live.causality },
     });
     const script = encounterScriptFor(live);
@@ -1554,15 +1618,149 @@ export const encounterDirector = {
   },
 
   _onCombatDamage(p) {
-    if (!p || p.attackerId == null || p.attackerId !== this.state.playerId) return;
+    if (!p || p.attackerId == null) return;
+    if (p.attackerId === this.state.playerId) {
+      const dir = ensureDirectorState(this.state);
+      for (const lid of Object.keys(dir.live)) {
+        const live = dir.live[lid];
+        if (p.targetId != null && live.ids.includes(p.targetId)) {
+          this._scriptEvent(live, 'playerHitSquad', p);
+          return;
+        }
+      }
+      return;
+    }
+    // NPC → player damage feeds the harassment-mercy watch: a pin the attacker can never resolve
+    // gets a deterministic break-off instead of running forever (see HARASS_* contract above).
+    if (p.targetId != null && p.targetId === this.state.playerId) this._watchHarassDamage(p);
+  },
+
+  _watchHarassDamage(p) {
     const dir = ensureDirectorState(this.state);
-    for (const lid of Object.keys(dir.live)) {
-      const live = dir.live[lid];
-      if (p.targetId != null && live.ids.includes(p.targetId)) {
-        this._scriptEvent(live, 'playerHitSquad', p);
-        return;
+    const watch = dir.harassWatch || (dir.harassWatch = {});
+    const key = String(p.attackerId);
+    const now = this.now();
+    let row = watch[key];
+    if (!row) {
+      // Bounded: evict the stalest attacker when the watch is full.
+      const keys = Object.keys(watch);
+      if (keys.length >= HARASS_TRACK_CAP) {
+        let stalest = keys[0];
+        for (const k of keys) if (watch[k].lastAt < watch[stalest].lastAt) stalest = k;
+        delete watch[stalest];
+      }
+      row = watch[key] = { attackerId: p.attackerId, firstAt: now, lastAt: now, total: 0, ring: [] };
+    }
+    row.lastAt = now;
+    row.total += Math.max(0, Number(p.amount) || 0);
+    row.ring.push({ t: now, amt: Math.max(0, Number(p.amount) || 0) });
+    while (row.ring.length && now - row.ring[0].t > HARASS_TTK_WINDOW_S * 2) row.ring.shift();
+  },
+
+  _tickHarassMercy(dir, state, now) {
+    const watch = dir.harassWatch || (dir.harassWatch = {});
+    const rearm = dir.mercyRearm || (dir.mercyRearm = []);
+    // Stand-downs expire: restore the attacker's own passivity setting, not a permanent pacify.
+    for (let i = rearm.length - 1; i >= 0; i--) {
+      const rowR = rearm[i];
+      const ent = state.entities && state.entities.get(rowR.id);
+      if (!ent || ent.alive === false) { rearm.splice(i, 1); continue; }
+      if (now >= rowR.until) {
+        const ai = ent.data && ent.data.ai;
+        // Only un-stamp if nobody else re-stamped mercy on this attacker meanwhile.
+        if (ai && ai.mercyDisengageUntil === rowR.until) {
+          ai.passive = rowR.hadPassive === true;
+          delete ai.mercyDisengageUntil;
+        }
+        rearm.splice(i, 1);
       }
     }
+    if (!Object.keys(watch).length) return;
+    // Player-pool sample for the stall read (1 Hz; ring trimmed to the read window).
+    const pool = this._playerDamageablePool(state);
+    const samples = dir.harassPool || (dir.harassPool = []);
+    samples.push({ t: now, pool });
+    while (samples.length && now - samples[0].t > HARASS_TTK_WINDOW_S + 5) samples.shift();
+    for (const key of Object.keys(watch)) {
+      const row = watch[key];
+      if (now - row.lastAt > HARASS_FORGET_S) { delete watch[key]; continue; }
+      const attacker = state.entities ? state.entities.get(row.attackerId) : null;
+      if (!attacker || attacker.alive === false
+        || (attacker.type !== 'ship' && attacker.type !== 'drone')) { delete watch[key]; continue; }
+      const ai = attacker.data && attacker.data.ai;
+      if (!ai) { delete watch[key]; continue; }                 // mercy semantics only exist for driven ships
+      if (ai.mercyDisengageUntil != null && ai.mercyDisengageUntil > now) continue;
+      if (ai.namedAceId || attacker.data.encounterBoss || attacker.data.isBoss) {
+        delete watch[key]; continue;                            // authored duels own their resolution
+      }
+      // Lawful pressure on a wanted player is the law lane's jurisdiction, not mercy's.
+      if (ai.lawful && isWanted(state)) { delete watch[key]; continue; }
+      const minEngage = (ai.mercyStrikes | 0) > 0 ? HARASS_REPEAT_ENGAGE_S : HARASS_MIN_ENGAGE_S;
+      if (now - row.firstAt < minEngage) continue;
+      if (pool <= 0) continue;                                  // already terminal; nothing to resolve
+      let windowDmg = 0;
+      for (const e of row.ring) if (now - e.t <= HARASS_TTK_WINDOW_S) windowDmg += e.amt;
+      if (windowDmg < HARASS_MIN_WINDOW_DMG) continue;          // not really engaging right now
+      // STALLED: damage keeps landing but the player's pool is not being driven down (regen
+      // outpaces the attack) — this fight cannot resolve by attrition.
+      let poolStart = null;
+      for (const s of samples) if (now - s.t <= HARASS_TTK_WINDOW_S && (poolStart == null || s.t < poolStart.t)) poolStart = s;
+      const stallFloor = poolStart ? poolStart.pool * (1 - HARASS_STALL_TOL) : 0;
+      const stalled = poolStart != null && poolStart.pool > 0 && pool >= stallFloor;
+      // HOPELESS: the pool IS draining but at a rate that could not finish inside the contract.
+      const dps = windowDmg / Math.min(HARASS_TTK_WINDOW_S, Math.max(1, now - row.firstAt));
+      const hopeless = pool > 0 && dps > 0 && pool / dps > HARASS_TTK_S;
+      if (!stalled && !hopeless) continue;                      // the fight can still resolve
+      this._applyHarassMercy(dir, state, attacker, row, now);
+      delete watch[key];
+    }
+  },
+
+  _playerDamageablePool(state) {
+    const p = this.player();
+    if (!p) return 0;
+    return Math.max(0, (p.hull || 0) + (p.shield || 0));
+  },
+
+  _applyHarassMercy(dir, state, attacker, row, now) {
+    const playerId = state.playerId;
+    const data = attacker.data || (attacker.data = {});
+    const ai = data.ai || (data.ai = {});
+    ai.mercyStrikes = (ai.mercyStrikes | 0) + 1;   // persists on the attacker: repeat pins re-qualify fast
+    // An encounter-owned squad resolves through its own script machinery; the ambient harasser
+    // gets the same stand-down the encounter scripts use (ai.passive + motive spent).
+    let encounterId = null;
+    let encounterOwned = false;
+    for (const lid of Object.keys(dir.live)) {
+      const live = dir.live[lid];
+      if (live.ids.includes(attacker.id)) {
+        encounterOwned = true;
+        if (live.data && live.data.adoptedWorldActors === true) break;
+        if (live.phase !== 'done') {
+          encounterId = live.id;
+          this.resolve(live, 'escaped');
+        }
+        break;
+      }
+    }
+    if (!encounterOwned) {
+      const hadPassive = ai.passive === true;
+      ai.passive = true;                    // engagementAuthority denies fire; the stack resumes patrol
+      ai.motiveSatisfied = true;
+      ai.forcePlayerTarget = false;
+      ai.huntPlayer = false;
+      const combat = data.combat || (data.combat = {});
+      if (combat.targetId === playerId) combat.targetId = null;
+      ai.mercyDisengageUntil = now + HARASS_COOLDOWN_S;
+      const rearm = dir.mercyRearm || (dir.mercyRearm = []);
+      rearm.push({ id: attacker.id, until: ai.mercyDisengageUntil, hadPassive });
+    }
+    this.emit('harasser:disengaged', {
+      attackerId: attacker.id, targetId: playerId, encounterId,
+      pinnedS: Math.round(now - row.firstAt), totalDamage: Math.round(row.total),
+      strikes: ai.mercyStrikes, sectorId: this._currentSectorId(), t: now,
+    });
+    this.emit('toast', { text: 'The harasser breaks off — the chase is going nowhere.', kind: 'info', ttl: 4 });
   },
 
   _routeToScript(scriptName, eventName, payload) {
@@ -2778,6 +2976,13 @@ function freshState() {
     lastMajorAt: -1e9,
     lastEndAt: -1e9,
     escalationSeeds: [],
+    // Harassment-mercy transients (never saved): attackerId → damage watch, the player-pool
+    // samples backing the stall read, and mercied attackers awaiting their stand-down expiry.
+    // Entity ids are live references, so a load rebuilds all three empty and the watchdog
+    // re-arms naturally if a pin resumes.
+    harassWatch: {},
+    harassPool: [],
+    mercyRearm: [],
     _accum: 0,
   };
 }
