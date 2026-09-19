@@ -627,6 +627,7 @@ function normalizeMarker(input) {
     headline: boundedIdentityText(input.headline),
     structurePatch: normalizeStructurePatch(input.structurePatch),
   };
+  if (input.pinWreck === true) marker.pinWreck = true;
   if (input.playerWreck === true || input.kind === PLAYER_WRECK_KIND) {
     marker.playerWreck = true;
     marker.kind = PLAYER_WRECK_KIND;
@@ -779,6 +780,89 @@ export const aftermathWrecks = {
     });
     if (remembered) {
       const current = this.state && this.state.world && this.state.world.currentSectorId;
+      if (remembered.sectorId && remembered.sectorId === current) {
+        this._spawnForSector(remembered.sectorId);
+        this._syncEcologyForSector(remembered.sectorId);
+      }
+    }
+    return remembered;
+  },
+
+  /**
+   * PQ-195.06: a mission-owned destruction (the SP-07 breakaway assembly) asks for ONE bounded
+   * reduced-value recovery — an ordinary marker that materializes as an ordinary wreck carrying
+   * the payload's own reduced pool. Two deliberate differences from `entity:killed`:
+   *   - the victim need not be shiplike: the caller explicitly offers it, so SHIPLIKE_TYPES stays;
+   *   - the markerId is deterministic per (sector, victim) with NO tick/killer, so a duplicate
+   *     offer converges on the same marker through rememberMarker's own dedupe instead of
+   *     stacking a second opportunity.
+   * Everything after that is the stock path: `aftermathWreck:recorded`, a headline, and
+   * `_spawnForSector` materialization into the shipped scanner/salvage flow.
+   */
+  offerRecoveryWreck(payload = {}) {
+    const state = this.state;
+    if (!state || !payload || typeof payload !== 'object') return null;
+    const sectorId = payload.sectorId
+      || (state.world && state.world.currentSectorId) || null;
+    const pos = payload.pos && typeof payload.pos === 'object' ? payload.pos : null;
+    const x = pos ? Number(pos.x) : NaN;
+    const z = pos ? Number(pos.z) : NaN;
+    if (!sectorId || payload.victimId == null || !Number.isFinite(x) || !Number.isFinite(z)) {
+      return null;
+    }
+    const local = globalToSectorLocalForSector({ x, z }, sectorId);
+    const zone = local ? zoneAt(sectorId, local.x, local.z) : null; // zone-less death is tolerated
+    const cls = wreckClassById(payload.wreckClass) || wreckClassById('fresh');
+    const markerId = 'aft_' + hash32(
+      seedOf(state), sectorId, 'recovery_wreck', String(payload.victimId),
+    ).toString(36);
+    const marker = {
+      schemaVersion: STATE_VERSION,
+      markerId,
+      sectorId,
+      zoneId: zone && zone.id || null,
+      zoneName: zone && (zone.name || zone.id) || 'open space',
+      zoneType: zone && zone.type || null,
+      zoneThreat: zone ? zoneThreat(zone) : 0,
+      pos: { x, z },
+      victimId: payload.victimId,
+      victimClass: payload.victimClass || 'payload',
+      victimVel: boundedDriftVel(payload.victimVel),
+      victimAngVel: boundedTumble(payload.victimAngVel),
+      victimMass: boundedVictimMass(payload.victimMass),
+      victimRot: boundedPoseAngle(payload.victimRot),
+      victimPitch: boundedPoseAngle(payload.victimPitch),
+      victimBank: boundedPoseAngle(payload.victimBank),
+      victimLabel: boundedIdentityText(payload.victimLabel) || 'Recovered Assembly',
+      victimFactionId: payload.victimFactionId || null,
+      killerId: payload.killerId == null ? null : payload.killerId,
+      tick: state.tick || 0,
+      t: Number(state.simTime || 0),
+      wreckClass: cls ? cls.id : 'fresh',
+      wreckClassLabel: cls ? cls.label : 'Fresh Wreck',
+      source: payload.source || 'recovery_offer',
+      encounterId: payload.encounterId || null,
+      encounterFingerprint: null,
+      motiveId: payload.motiveId || null,
+      freightIdentity: null,
+      cause: null,
+      headline: null,
+      structurePatch: null,
+      // A recovery wreck is a mission-owned object, not ambient residue: pin it so the far-actor
+      // table never shelves it — shelving leans the data block and would lose the pool/binding the
+      // opportunity IS. One pinned wreck per destruction, bounded by the one-marker guarantee.
+      pinWreck: true,
+    };
+    marker.salvagePool = normalizeSalvagePool(payload.salvagePool) || initialPoolForMarker(marker);
+    marker.headline = newsLine(marker);
+    const remembered = rememberMarker(state, this.bus, marker, (evicted) => {
+      if (!this._spawned) return;
+      for (const item of evicted) {
+        if (item && item.markerId) this._spawned.delete(item.markerId);
+      }
+    });
+    if (remembered) {
+      const current = state.world && state.world.currentSectorId;
       if (remembered.sectorId && remembered.sectorId === current) {
         this._spawnForSector(remembered.sectorId);
         this._syncEcologyForSector(remembered.sectorId);
@@ -1081,6 +1165,9 @@ export const aftermathWrecks = {
         markerId: marker.markerId,
         encounterFingerprint: marker.encounterFingerprint,
         causeContract: marker.cause ? clonePlain(marker.cause) : null,
+        // Recovery-offer wrecks are mission-owned objects: keep them materialized — a shelved
+        // far row leans this whole data block away, and the pool/binding IS the opportunity.
+        ...(marker.pinWreck === true ? { missionPinned: true } : {}),
       },
     };
   },

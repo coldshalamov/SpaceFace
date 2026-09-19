@@ -69,6 +69,7 @@ import {
 import { receiverCommitGate } from '../physicalCargo/breakaway/settlementGate.js';
 import {
   BREAKAWAY_PRESSURE,
+  BREAKAWAY_WRECK_RECOVERY,
   PQ019C_HEIST_TUNING,
   PQ019C_RECOVERABLE_OUTCOMES,
   heistMissionPolicy,
@@ -155,6 +156,10 @@ export function createHeistRecord({
     // not get a second element — its raiders were transient anyway); the entity ids are stripped
     // on serialize like every other live handle.
     ...(scoped ? { pressureSpawned: false, pressureEntityIds: [] } : {}),
+    // PQ-195.06: the ONE bounded wreck recovery a destroyed assembly may leave. Durable — the
+    // marker id recorded here is the idempotency key, so a duplicate destroy callback or a
+    // reloaded record can never offer the recovery twice.
+    ...(scoped ? { recoveryWreckMarkerId: null } : {}),
     scheduleRequested: false,
     launchAtSimT: null,
     launchTick: null,
@@ -577,6 +582,31 @@ export const heistMissionRuntime = {
     if (record) record.pressureEntityIds = [];
   },
 
+  // ── PQ-195.06: Losing it leaves something to do ──────────────────────────────────────────────
+  //
+  // The aftermath owner records the wreck; this seam only translates the record's last-known live
+  // body state (tracked every live tick in `drive`) into its offer vocabulary. The marker — not
+  // the payload — is what the player salvages, and the durable `recoveryWreckMarkerId` on the
+  // record is the once-per-destruction bound.
+
+  /** Ask the aftermath owner for the destroyed assembly's one reduced-value recovery wreck. */
+  _offerWreckRecovery(ctx, record, receipt) {
+    const owner = ownerOf(ctx, 'aftermathWrecks');
+    if (!owner || typeof owner.offerRecoveryWreck !== 'function') return null;
+    return owner.offerRecoveryWreck({
+      sectorId: PQ019_HEIST_SECTOR_ID,
+      victimId: heistPayloadStableIdFor(record),
+      pos: record.capsuleLastPos || null,
+      victimVel: record.capsuleLastVel || null,
+      victimMass: record.capsuleLastMass != null ? record.capsuleLastMass : null,
+      victimLabel: BREAKAWAY_WRECK_RECOVERY.victimLabel,
+      wreckClass: BREAKAWAY_WRECK_RECOVERY.wreckClass,
+      salvagePool: BREAKAWAY_WRECK_RECOVERY.salvagePool,
+      source: `heist:${record.missionId}`,
+      motiveId: 'bounded_recovery',
+    });
+  },
+
   /** `heist:facilityCandidate` — a real Rapier contact at the catcher or the fence. */
   onFacilityCandidate(ctx, record, receipt = {}) {
     if (!record || record.settled) return false;
@@ -681,12 +711,20 @@ export const heistMissionRuntime = {
     if (record.capsuleEntityId == null || entityId !== record.capsuleEntityId) return false;
     record.possessed = false;
     const absent = record.sectorExitedAtTick != null;
+    // PQ-195.06: where the assembly died, journalled on the candidate's proof. `liveEntity`
+    // refuses the just-killed body, so it is read directly — and when the sweep already removed
+    // it, `capsuleLastPos` (tracked every live tick in `drive`) still says where it was.
+    const dead = ctx?.state?.entities?.get?.(entityId) || null;
+    const pos = dead && dead.pos ? { x: dead.pos.x, z: dead.pos.z }
+      : record.capsuleLastPos ? { x: record.capsuleLastPos.x, z: record.capsuleLastPos.z }
+      : null;
     submitHeistCandidate(record, {
       kind: absent ? 'unresolved_absent' : 'payload_destroyed',
       causalTick: intTick(ctx?.state?.tick),
       sourceStableId: 'entity:destroyed',
       proof: {
         entityId: String(entityId),
+        ...(pos ? { pos } : {}),
         ...(absent ? { reason: 'sector_exit' } : {}),
       },
     });
@@ -746,6 +784,11 @@ export const heistMissionRuntime = {
       const capsule = liveEntity(ctx, record.capsuleEntityId);
       if (capsule) {
         record.absenceGraceTicks = 0;
+        // PQ-195.06: last-known live body state, so a destroy callback that finds the body
+        // already swept can still place the wreck recovery where — and how — the assembly died.
+        if (capsule.pos) record.capsuleLastPos = { x: capsule.pos.x, z: capsule.pos.z };
+        if (capsule.vel) record.capsuleLastVel = { x: capsule.vel.x, z: capsule.vel.z };
+        if (Number.isFinite(capsule.mass)) record.capsuleLastMass = capsule.mass;
         this._updatePursuit(ctx, record, capsule, tick);
       } else if (!record.arbiter.receipt) {
         // ABSENCE, not destruction. A capsule can leave the field without dying — the player left
@@ -962,6 +1005,20 @@ export const heistMissionRuntime = {
     //     (`release` is a no-op on an unknown requester); no journal key needed — same precedent
     //     as the schedule release above. Surviving raiders become ordinary hostiles.
     this._releasePressure(ctx, record);
+
+    // 3d. PQ-195.06: a genuinely destroyed assembly leaves ONE bounded reduced-value recovery —
+    //     its wreck through the ordinary aftermath owner, where `drive` last saw the body alive.
+    //     `record.recoveryWreckMarkerId` is the durable idempotency key (same precedent as
+    //     `pressureSpawned`): a duplicate destroy callback or a reloaded record can never offer
+    //     it twice, and the marker is never the original payload resurrected — it is a wreck
+    //     entity with a reduced commodity pool, salvageable through the stock scanner/salvage
+    //     path. Absent/expired/abandoned never reach here with this outcome.
+    if (outcome === 'payload_destroyed'
+        && heistLaunchVariant(record.variantId).id === BREAKAWAY_THIRD_SHIFT_VARIANT_ID
+        && !record.recoveryWreckMarkerId) {
+      const marker = this._offerWreckRecovery(ctx, record, receipt);
+      if (marker && marker.markerId) record.recoveryWreckMarkerId = marker.markerId;
+    }
 
     // 4. Mission settlement — exactly once, recorded BEFORE the call so a synchronous listener that
     //    re-enters this path finds the key already taken and cannot settle a second time.

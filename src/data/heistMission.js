@@ -291,6 +291,23 @@ export const BREAKAWAY_PRESSURE = Object.freeze({
   motive: 'contested_recovery',
 });
 
+/**
+ * PQ-195.06 — Losing it leaves something to do. A genuinely destroyed SP-07 assembly leaves ONE
+ * bounded reduced-value recovery: its wreck, recorded by the ordinary aftermath owner and
+ * salvageable through the shipped scanner/salvage path (01_FEATURE_SPEC §104). The pool is a
+ * rotor's worth of scrap and electronics — a fraction of the lawful delivery, never a second
+ * full reward, and never a resurrection of the original payload. The Capsule Run keeps its
+ * historical "nothing left to sell" semantics and is deliberately NOT covered here.
+ */
+export const BREAKAWAY_WRECK_RECOVERY = Object.freeze({
+  /** The reduced-value pool the wreck carries — commodity salvage, not credits. */
+  salvagePool: Object.freeze({ cmdty_scrap_metal: 4, cmdty_salvage_electronics: 2 }),
+  /** Fresh, not battlefield: it just died here and the hull is still largely intact. */
+  wreckClass: 'fresh',
+  /** Scan/provenance label the materialized wreck reads as. */
+  victimLabel: 'SP-07 Assembly',
+});
+
 /** Terminal outcome -> settlement for the lawful recovery. A settled arrival is the only payday. */
 export const BREAKAWAY_TERMINAL_SETTLEMENT = Object.freeze({
   lawful_arrival_observed: Object.freeze({ settlement: 'complete', reason: null }),
