@@ -373,8 +373,8 @@ function collectCandidates(state, options = {}) {
   const seen = new Set();
   // PQ-207.00 — presence mode. The dock berth asks "does the ledger hold a fact that is not hull
   // history?" on the station's 18-frame refresh. A probe walks the same sources under the same
-  // admission rules and stops at the first admitted row outside `exclude`, so it builds no
-  // candidate prose, no receipt ids, and no page. Read-only, like every other path here.
+  // admission rules and stops at the first admitted row outside `exclude`: no candidate objects,
+  // no page, and prose paid for at most the row that answers. Read-only, like every other path.
   const probe = options.probe && options.probe.exclude instanceof Set
     ? { exclude: options.probe.exclude, hit: false, done: false }
     : null;
@@ -417,14 +417,14 @@ function collectCandidates(state, options = {}) {
         cargo: humanizeId(entry.cargoHint, 'the listed cargo'),
       },
     });
+    if (probe && probe.done) return probeResult();
   }
-  if (probe && probe.done) return probeResult();
 
   const tradeLedger = sourceArray(state && state.player && state.player.tradeLedger);
   // The live economy ledger predates receipt ids. Count identical rows oldest-first so two UI
   // actions in one fixed sim tick remain two receipts instead of collapsing at the projection seam.
-  // A future canonical receiptId wins immediately without changing this reader. Presence mode
-  // builds no receipt id, so the pre-pass does not run there.
+  // A future canonical receiptId wins immediately without changing this reader. Presence mode needs
+  // no occurrence suffix, so the pre-pass does not run there.
   const tradeOccurrenceByIndex = new Map();
   const tradeOccurrenceCounts = new Map();
   if (!probe) {
@@ -468,6 +468,17 @@ function collectCandidates(state, options = {}) {
     const kind = text(record.kind, '');
     const cause = text(record.cause, '');
     if (!kind || !cause) continue;
+    // A session sink is a witness fact by construction: presence answers on the row itself,
+    // before the receipt below is built.
+    if (probe) {
+      observed++;
+      if (observed <= SHIP_LEDGER_MAX_SOURCE_RECORDS && !probe.exclude.has('witness')) {
+        probe.hit = true;
+        probe.done = true;
+        return probeResult();
+      }
+      continue;
+    }
     const sourceId = text(record.id, `sink:${kind}:${record.at || 0}:${record.reason || ''}`);
     const at = Math.max(0, finite(record.at, 0));
     const credits = Math.round(Math.abs(finite(record.amount, 0))).toLocaleString('en-US');
@@ -497,14 +508,6 @@ function collectCandidates(state, options = {}) {
       },
     };
     observed++;
-    if (probe) {
-      if (observed <= SHIP_LEDGER_MAX_SOURCE_RECORDS && !probe.exclude.has(candidate.type)) {
-        probe.hit = true;
-        probe.done = true;
-        return probeResult();
-      }
-      continue;
-    }
     if (observed > SHIP_LEDGER_MAX_SOURCE_RECORDS || seen.has(candidate.id)) continue;
     seen.add(candidate.id);
     candidates.push(candidate);
@@ -569,8 +572,8 @@ function collectCandidates(state, options = {}) {
           what: SCAR_SURFACE_PHRASE[scar.surface] || SCAR_SURFACE_PHRASE.other,
         },
       });
+      if (probe && probe.done) return probeResult();
     }
-    if (probe && probe.done) return probeResult();
     for (const act of livingHullRenown(activeHull.livingHull)) {
       add({
         type: 'renown',
@@ -583,6 +586,7 @@ function collectCandidates(state, options = {}) {
           sector: sectorName(act.sectorId),
         },
       });
+      if (probe && probe.done) return probeResult();
     }
     if (probe && probe.done) return probeResult();
   }
@@ -601,6 +605,7 @@ function collectCandidates(state, options = {}) {
         outcome: humanizeId(vestaReceipt.outcome, 'recorded'),
       },
     });
+    if (probe && probe.done) return probeResult();
   }
 
   const pallasCache = state && state.world && state.world.pallasHiddenCache;
@@ -617,6 +622,7 @@ function collectCandidates(state, options = {}) {
         outcome: humanizeId(pallasReceipt.outcome, 'recorded'),
       },
     });
+    if (probe && probe.done) return probeResult();
   }
 
   const escalationSeeds = sourceArray(state && state.encounterDirector && state.encounterDirector.escalationSeeds);

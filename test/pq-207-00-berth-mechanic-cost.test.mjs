@@ -152,6 +152,12 @@ test('the probe agrees with the page it replaces wherever the window decides', (
     longSession: berthState({ tradeLedger: tradeRows(900) }),
     losses: berthState({ extra: { lossLedger: { entries: [{ lossId: 'l1', source: 'combat', assetId: 'ship_wasp', t: 300, killedByPlayer: true }] } } }),
     titles: berthState({ extra: { story: { titlesSeen: [{ id: 't1', title: 'Passing Title', seenAt: 800 }] } } }),
+    sessionSink: berthState({ extra: { player: { ...berthState().player, sessionSinks: [{ id: 's1', kind: 'repair', cause: 'gunfire', at: 700, amount: 420 }] } } }),
+    recoveredName: berthState({ extra: { story: { recoveredNames: [{ id: 'n1', name: 'Ada Venn', recoveredAt: 1200 }] } } }),
+    stunt: berthState({ extra: { story: { titles: { stuntIncidents: [{ id: 'st1', rootId: 'r1', tick: 3000, name: 'Thrown Hull', visibility: 'witnessed', witnesses: [] }] } } } }),
+    escalation: berthState({ extra: { encounterDirector: { escalationSeeds: [{ id: 'e1', cause: 'witness', beat: 'bounty', arrivedAt: 1500, place: { name: 'Ceres' } }] } } }),
+    bearing: berthState({ extra: { player: { ...berthState().player, uniqueWrecks: { bearings: { wreck_a: { wreckId: 'wreck_a', heardAtS: 900, phase: 'rumor', sectorId: 'sector_helios_prime' } } } } } }),
+    vestaCache: berthState({ extra: { world: { vestaOreCache: { recordId: 'rec_v', receipt: { id: 'vesta:1', choiceId: 'kept', outcome: 'recorded', resolvedAt: 1700 } } } } }),
   };
   for (const [name, state] of Object.entries(corpus)) {
     const window = buildShipLedger(state, PAGE).entries.some((entry) => !HULL_TYPES.has(entry.type));
@@ -159,6 +165,9 @@ test('the probe agrees with the page it replaces wherever the window decides', (
   }
   assert.equal(shipLedgerHasFactOutside(corpus.scarredOnly, HULL_TYPES), false);
   assert.equal(shipLedgerHasFactOutside(corpus.scarredTrader, HULL_TYPES), true);
+  for (const name of Object.keys(corpus).filter((key) => key !== 'empty' && key !== 'scarredOnly')) {
+    assert.equal(shipLedgerHasFactOutside(corpus[name], HULL_TYPES), true, `${name} is a ledger fact`);
+  }
 });
 
 test('the berth refresh stays inside its budget on a long-session ledger', () => {
