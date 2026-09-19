@@ -8529,6 +8529,38 @@ export const render = {
     stats.queuedOther += otherCandidates.length;
     shipCandidates.length = 0;
     otherCandidates.length = 0;
+    // Enqueue order is captured once; an entity admitted at the prefetch rim can still
+    // accelerate toward the glass while older far entries sit ahead of it. Re-hoist
+    // already-queued ids whose deadline is now inside the urgent window so the bounded
+    // drain always serves the nearest deadline, not the order entities happened to
+    // become relevant in.
+    const pendingBuilds = this._meshBuildQueue;
+    if (pendingBuilds && this._meshBuildQueueHead < pendingBuilds.length) {
+      const urgentNow = this._meshResidencyRehoistUrgent
+        || (this._meshResidencyRehoistUrgent = []);
+      const restNow = this._meshResidencyRehoistRest
+        || (this._meshResidencyRehoistRest = []);
+      urgentNow.length = 0;
+      restNow.length = 0;
+      for (let index = this._meshBuildQueueHead; index < pendingBuilds.length; index++) {
+        const entity = resolveWorldPresentationEntity(state, pendingBuilds[index]);
+        if (entity && entityTimeToGlassSeconds(entity, env, state) <= TABLE_BUILD_URGENT_SECONDS) {
+          urgentNow.push(pendingBuilds[index]);
+        } else {
+          restNow.push(pendingBuilds[index]);
+        }
+      }
+      if (urgentNow.length > 0) {
+        pendingBuilds.splice(
+          this._meshBuildQueueHead,
+          pendingBuilds.length - this._meshBuildQueueHead,
+          ...urgentNow,
+          ...restNow,
+        );
+      }
+      urgentNow.length = 0;
+      restNow.length = 0;
+    }
     stats.built = this._drainMeshBuildQueue(RUNTIME_MESH_BUILD_BUDGET);
     this._publishAssetResidencyDiagnostics();
     return stats;

@@ -659,6 +659,21 @@ test('mesh build candidates drain nearest-deadline-first inside each tier', () =
     'the full reconcile must pass the same deadline ordering');
 });
 
+// Enqueue order is captured once; an entity admitted at the prefetch rim can still accelerate
+// toward the glass while older far entries sit ahead of it. The poll must re-hoist already-queued
+// ids whose deadline moved inside the urgent window, not only sort new candidates.
+test('the poll re-hoists queued builds whose deadline moved inside the urgent window', () => {
+  const pollStart = RENDERER_SOURCE.indexOf('reconcileMeshResidency() {');
+  assert.ok(pollStart >= 0, 'the residency poll must exist');
+  const drainIndex = RENDERER_SOURCE.indexOf('stats.built = this._drainMeshBuildQueue', pollStart);
+  assert.ok(drainIndex > pollStart, 'the poll must drain builds after enqueueing');
+  const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
+  assert.match(between, /pendingBuilds\.splice\(/,
+    'the already-queued tail must be repartitioned, not just newly enqueued candidates');
+  assert.match(between, /entityTimeToGlassSeconds\(entity, env, state\) <= TABLE_BUILD_URGENT_SECONDS/,
+    'the hoist must use the same urgent deadline as the enqueue tiers');
+});
+
 // The exempt set only changes on sim ticks and spawn events; a full entity scan every display
 // frame is wasted work through the whole 20 s first-flight hold — the busiest window the game
 // has. The first frame of the hold still collects immediately.
