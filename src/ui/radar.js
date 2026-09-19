@@ -1190,8 +1190,8 @@ export function createRadar(ctx) {
     canvas.setAttribute(
       'aria-label',
       waypoint
-        ? `Local tactical radar. You are the cyan centre hull. Objective ${label}, ${formatRadarDistance(cue && cue.distance)}.`
-        : 'Local tactical radar. You are the cyan centre hull. Hostiles are red chevrons, stations are cyan berth hexagons, and gates are violet double rings.',
+        ? `Local tactical radar. You are the lit centre hull. Objective ${label}, ${formatRadarDistance(cue && cue.distance)}.`
+        : 'Local tactical radar. You are the lit centre hull. Hostiles are red chevrons, stations are pale berth hexagons, and gates are steel double rings.',
     );
   }
 

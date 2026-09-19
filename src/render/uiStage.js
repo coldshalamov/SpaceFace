@@ -57,20 +57,24 @@ const SCENES = Object.freeze({
   // A working hull seated on rock under a low sun, a mast and a worklight on the far claim, cargo
   // staged on the saddle between them, and the sky going cold above the warm band.
   'title-field': {
+    // FRONTEND_PROGRAM 2026-09-19: the dusk moved from a brown haze to deep cold space. The whole
+    // frame read one warm-brown value (the owner's "strange wood look"); now the WARM key light is
+    // reserved for the subject — hull, rock face, cargo — and the sky, fog and bounce are cold,
+    // so the lit machine pops against the void instead of dissolving into it.
     sky: {
-      zenith: 0x241f33, horizon: 0x7d4614, ground: 0x351d08,
-      horizonSoftness: 0.11, stars: 0.85, starSeed: 2947,
+      zenith: 0x080b14, horizon: 0x2c2733, ground: 0x0c0e15,
+      horizonSoftness: 0.13, stars: 0.95, starSeed: 2947,
     },
-    fog: { color: 0x5c3310, density: 0.0016 },
+    fog: { color: 0x131722, density: 0.0011 },
     lights: {
       // The low sun sits off the camera's LEFT SHOULDER, not behind the hull. Putting it behind
       // turned the whole composition into a silhouette: the hull is the subject, and the frame
       // this scene is built from shows its flank and deck catching a warm raking light.
-      key: { color: 0xffb473, intensity: 2.9, dir: [-0.74, 0.22, 0.62], shadow: true },
+      key: { color: 0xffb473, intensity: 3.2, dir: [-0.74, 0.22, 0.62], shadow: true },
       // The cold sky opposite it, which is what makes a dusk read as dusk.
-      rim: { color: 0x8fa8dc, intensity: 0.85, dir: [0.66, 0.4, -0.62] },
-      hemi: { sky: 0x3d3552, ground: 0x4a2408, intensity: 0.52 },
-      ambient: { color: 0x2c2536, intensity: 0.28 },
+      rim: { color: 0x9fb6e6, intensity: 1.15, dir: [0.66, 0.4, -0.62] },
+      hemi: { sky: 0x2a3150, ground: 0x17130f, intensity: 0.5 },
+      ambient: { color: 0x1c2131, intensity: 0.3 },
       // The claim's own lamps: the mast head and the worklight the frame shows burning.
       practicals: [
         { color: 0xbfd8ff, intensity: 22, at: [-27, 10, -14], distance: 70 },

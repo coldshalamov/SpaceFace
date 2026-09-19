@@ -485,7 +485,8 @@ export function flightDestinationSurface(state, command) {
     let line = formatDestinationLine({
       action,
       distanceText: travel.distanceText,
-      etaText: travel.etaText,
+      // An unknown ETA is left out, not printed as a placeholder dash.
+      etaText: travel.etaS == null ? '' : travel.etaText,
       bearing: objectiveBearingGlyph(state, waypoint),
     });
     let urgent = false;
@@ -505,7 +506,7 @@ export function flightDestinationSurface(state, command) {
       line: formatDestinationLine({
         action: mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp),
         distanceText: travel.distanceText,
-        etaText: travel.etaText,
+        etaText: travel.etaS == null ? '' : travel.etaText,
         bearing: objectiveBearingGlyph(state, wp),
       }) + (routeGuide && routeGuide.summary ? ` · ${routeGuide.summary}` : ''),
       urgent: false,
@@ -1268,10 +1269,15 @@ export function createHud(ctx, alerts) {
   threatRing.className = 'sf-threat-ring';
   threatRing.setAttribute('aria-hidden', 'true');
   threatRing.innerHTML = '<svg viewBox="-60 -60 120 120" focusable="false">'
+    + '<circle class="sf-threat-ring__halo" r="48"></circle>'
+    + '<path class="sf-threat-ring__ticks" d="M0 -51V-45M51 0H45M0 51V45M-51 0H-45"></path>'
+    + '<path class="sf-threat-ring__track" d="' + threatArcPath(Math.PI / 2, 48, 0.7) + '"></path>'
+    + '<path class="sf-threat-ring__tether" d="' + threatArcPath(Math.PI / 2, 48, 0.7) + '" stroke-dasharray="0 200"></path>'
     + '<path class="sf-threat-ring__arc" d=""></path><path class="sf-threat-ring__arc" d=""></path>'
     + '<path class="sf-threat-ring__arc" d=""></path></svg>';
   root.appendChild(threatRing);
   const threatArcs = threatRing.querySelectorAll('.sf-threat-ring__arc');
+  const tetherArc = threatRing.querySelector('.sf-threat-ring__tether');
 
   // Weak-point reveals (BP-02): a scan pulse exposes a large hostile's soft spot. We keep this UI-side
   // (keyed by entity id, expiring) rather than on the sim entity — the target panel reads it to show
@@ -1396,7 +1402,10 @@ export function createHud(ctx, alerts) {
       + '<span class="sf-fc-r" data-k="fctrange"></span></div>'
     + '<div class="sf-fc-row" data-k="fctether" data-state="idle"><i class="sf-fc-led" aria-hidden="true"></i>'
       + '<span class="sf-fc-k">Tether</span><span class="sf-fc-v" data-k="fclname">Idle</span>'
-      + '<span class="sf-fc-r" data-k="fclmass"></span></div>';
+      + '<span class="sf-fc-r" data-k="fclmass"></span></div>'
+    + '<div class="sf-fc-row" data-k="fcthreat" data-state="clear"><i class="sf-fc-led" aria-hidden="true"></i>'
+      + '<span class="sf-fc-k">Threat</span><span class="sf-fc-v" data-k="fchname">Clear</span>'
+      + '<span class="sf-fc-r" data-k="fchrange"></span></div>';
   commandDeck.prepend(fcStrip);
   const fc = {
     targetRow: fcStrip.querySelector('[data-k=fctarget]'),
@@ -1405,8 +1414,17 @@ export function createHud(ctx, alerts) {
     tetherRow: fcStrip.querySelector('[data-k=fctether]'),
     lname: fcStrip.querySelector('[data-k=fclname]'),
     lmass: fcStrip.querySelector('[data-k=fclmass]'),
+    threatRow: fcStrip.querySelector('[data-k=fcthreat]'),
+    hname: fcStrip.querySelector('[data-k=fchname]'),
+    hrange: fcStrip.querySelector('[data-k=fchrange]'),
   };
+  // Written by the roster scan (5 Hz), read by fire control (10 Hz): no second hostile scan.
+  const threatReadout = { state: 'clear', count: 0, nearest: Infinity };
   function updateFireControl(p, tether, latching, ml) {
+    setAttr(fc.threatRow, 'data-state', threatReadout.state);
+    setText(fc.hname, threatReadout.state === 'clear' ? 'Clear'
+      : threatReadout.count + ' hostile' + (threatReadout.count === 1 ? '' : 's'));
+    setText(fc.hrange, Number.isFinite(threatReadout.nearest) ? Math.round(threatReadout.nearest) + ' WU' : '');
     const tid = state.player && state.player.targetId;
     const t = tid != null && state.entities && typeof state.entities.get === 'function' ? state.entities.get(tid) : null;
     if (t && t.pos && p.pos) {
@@ -1422,10 +1440,15 @@ export function createHud(ctx, alerts) {
     if (latching && tether) {
       const status = masslineTetherStatus(tether);
       setText(fc.lname, status.text);
-      setText(fc.lmass, ml ? Math.round(ml.length) + ' u' : '');
+      setText(fc.lmass, ml ? Math.round(ml.length) + ' WU' : '');
       setAttr(fc.tetherRow, 'data-state', status.warn ? 'strain' : 'latched');
+      setAttr(root, 'data-tether', status.warn ? 'strain' : 'latched');
+      // The ring's tether arc fills with the line's load (0..1); 67 is the arc's drawn length.
+      const load = ml && Number.isFinite(ml.load) ? Math.max(0, Math.min(1, ml.load)) : 0;
+      setAttr(tetherArc, 'stroke-dasharray', `${(load * 67).toFixed(1)} 200`);
       return;
     }
+    setAttr(tetherArc, 'stroke-dasharray', '0 200');
     const sel = state.masslineAcquisition && state.masslineAcquisition.selected;
     if (sel) {
       const cand = state.entities && typeof state.entities.get === 'function' ? state.entities.get(sel.targetId) : null;
@@ -1433,10 +1456,12 @@ export function createHud(ctx, alerts) {
       setText(fc.lname, String(sel.targetLabel || sel.targetType || 'Target'));
       setText(fc.lmass, mass > 0 ? mass + ' t' : '');
       setAttr(fc.tetherRow, 'data-state', sel.status === 'ready' ? 'ready' : 'blocked');
+      setAttr(root, 'data-tether', sel.status === 'ready' ? 'ready' : 'idle');
     } else {
       setText(fc.lname, 'Idle');
       setText(fc.lmass, '');
       setAttr(fc.tetherRow, 'data-state', 'idle');
+      setAttr(root, 'data-tether', 'idle');
     }
   }
   const vt = {
@@ -4105,6 +4130,11 @@ export function createHud(ctx, alerts) {
     // publishes one state the threat lamp and the red-only marks read — clear / contact / near.
     const threatState = nearbyHostile ? 'near' : (hostileContacts ? 'contact' : 'clear');
     if (root.dataset.threat !== threatState) root.dataset.threat = threatState;
+    let nearestHostile = Infinity;
+    for (const c of contacts) if (c.hostile && c.dist < nearestHostile) nearestHostile = c.dist;
+    threatReadout.state = threatState;
+    threatReadout.count = hostileContacts;
+    threatReadout.nearest = nearestHostile;
     // Threat bearings: a red arc on the ring around the ship points at each near hostile. The chase
     // view has a fixed orientation (tacticalMapGrammar projectRadarPoint: a world offset dx,dz
     // lies on screen toward -dx,-dz), so bearing needs no per-contact screen projection.
@@ -4948,6 +4978,8 @@ export function createHud(ctx, alerts) {
     } else if (rightBox && edgeX > rightBox.left && edgeY > rightBox.top - 14 && edgeY < rightBox.bottom + 14) {
       edgeX = rightBox.left - 18;
     }
+    const edgeSafeInset = Math.max(0, (w - h * 16 / 9) / 2);
+    if (edgeSafeInset > 0) edgeX = Math.min(Math.max(edgeX, edgeSafeInset + 34), w - edgeSafeInset - 34);
     setClass(arrow, 'sf-objarrow--compact', true);
     setDataEdge(arrow, edgePlacement.edge);
     setCssVar(arrow, '--sf-arrow-angle', `${edgePlacement.angleRad}rad`);

@@ -147,7 +147,7 @@ export function createContactHailPrompt(ctx) {
   function applyAvailability(payload) {
     availability = payload || { enabled: false, targetId: null, kind: null, label: 'HAIL' };
     hailButton.disabled = !availability.enabled;
-    hailButton.textContent = availability.enabled ? 'HAIL' : 'HAIL —';
+    hailButton.textContent = 'HAIL';   // unavailable reads as a disabled key (and its aria-label), not a dash
     hailButton.setAttribute('aria-label', availability.enabled
       ? availability.label
       : 'Hail unavailable for selected contact');

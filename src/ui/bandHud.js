@@ -105,8 +105,8 @@ export function createBandHud(ctx, options = {}) {
         : channel && channel.label || 'OFF';
     const census = sourceId === 'landmark_quiessence' ? quiessenceCensusProgress(state) : null;
     const censusText = census ? `  CENSUS ${census.scanned}/${census.total}` : '';
-    const meter = channelId ? signalMeter(strength, silence) : '---';
-    const text = `BAND  ${label}${censusText}  ${meter}`;
+    const meter = channelId ? signalMeter(strength, silence) : '';   // off: no dashed placeholder, the word says it
+    const text = `BAND  ${label}${censusText}${meter ? `  ${meter}` : ''}`;
     const dataOff = channelId ? 'false' : 'true';
     const dataSilence = silence ? 'true' : 'false';
     const censusAria = census ? ` Census ${census.scanned} of ${census.total}${census.complete ? ', complete' : ''}.` : '';

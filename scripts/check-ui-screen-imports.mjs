@@ -281,7 +281,9 @@ if (!bindingsSrc.includes("techTree: { key: 't', code: 'KeyT', label: 'T' }")
   ok++;
 }
 if (!localizedCoreCopySrc.includes("missionLog: { label: 'Mission Log ({key})' }") ||
-    !pauseSrc.includes("mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'))")) {
+    // The row may carry display options (group legend, icon) after the action; the contract is the
+    // label and the route, not the argument count.
+    !/mk\(coreText\('missionLog', \{ key: BINDINGS\.missionLog\.label \}\), \(\) => nav\(ctx, 'pushScreen', 'missionLog'\)[,)]/.test(pauseSrc)) {
   console.log('FAIL pauseScreen - controller-friendly pause menu must expose Mission Log');
   fail++;
 } else if (!helpSrc.includes("['Open mission log', null, 'Start / Options → Pause → Mission Log']")) {

@@ -71,16 +71,16 @@ def scratches(size: int = 1024) -> Image.Image:
     rng = np.random.default_rng(31)
     layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
-    for i in range(300):
+    for i in range(170):
         x, y = rng.uniform(0, size, 2)
         angle = rng.normal(0.0, 0.22) if i % 7 else rng.uniform(-math.pi, math.pi)
         length = rng.uniform(10, 90) if i % 11 else rng.uniform(90, 260)
         x1, y1 = x + math.cos(angle) * length, y + math.sin(angle) * length
-        bright = i % 31 == 0
-        alpha = int(rng.uniform(44, 78) if bright else rng.uniform(8, 22))
+        bright = i % 41 == 0
+        alpha = int(rng.uniform(18, 30) if bright else rng.uniform(5, 12))
         _wrap_line(draw, size, (x, y), (x1, y1), (255, 255, 255, alpha), 1)
     # A handful of dark gouges (paint pushed into the scratch).
-    for _ in range(40):
+    for _ in range(16):
         x, y = rng.uniform(0, size, 2)
         angle = rng.normal(0.0, 0.3)
         length = rng.uniform(6, 30)

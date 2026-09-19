@@ -1,4 +1,5 @@
 import { createTitleFrame, TITLE_PLATE_SRC } from '../views/menuFrames.js';
+import { injectDeckplate } from '../deckplate/index.js';
 // Main Menu / title screen (ARCHITECTURE §1.3 step 6, §5; design/specs/09).
 // The sheet's title line (design/frontend/direction/DIRECTION_SHEET.md, title screen): the starter
 // hull in its hangar fills the frame, the game's name enormous top-left, a column of words down the
@@ -275,6 +276,7 @@ export const mainMenuScreen = {
   // approved picture at zero frame cost.
 
   mount(rootEl, ctx) {
+    injectDeckplate();   // the title can mount before the HUD that otherwise injects the system
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage');
     rootEl.dataset.kReady = '0';

@@ -298,14 +298,16 @@
   }
 }
 
-/* ══ Deckplate (FRONTEND_PROGRAM Wave 1) ═══════════════════════════════════════════════════════
-   The comms fan is one glass column: the contact is a glass readout (crest, callsign, class, the
-   signal trace in bone), and each verb is a command key — keycap hardware, LED pip, the filled
-   icon family. A refused verb stays reachable (it explains why) but its pip stays dark. ══════ */
+/* ══ Deckplate (FRONTEND_PROGRAM Wave 1, critic pass 2026-09-19) ═══════════════════════════════
+   The comms fan is a selector: the contact reads on a glass scope (crest, callsign, class and the
+   signal trace drawn over its graticule), and the verbs are short glass keys riding one curved
+   track, each key's lamp a detent on it. Selection is the kit's one language: the lamp lights,
+   the legend goes amber, the key takes an amber inner edge. A refused verb stays reachable (it
+   says why) but its lamp stays dark. ═══════════════════════════════════════════════════════ */
 #sf-commsfan .sf-commsfan__hub {
   border:5px solid transparent; border-radius:0;
   border-image:url("/assets/ui/deckplate/hw/bezel-thin.svg") 12 / 12px / 0 stretch;
-  background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
+  background:var(--dp-glass-solid), var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-2);
   box-shadow:0 10px 24px rgb(0 0 0 / .5), var(--dp-glass-depth);
   color:var(--dp-ink);
 }
@@ -320,35 +322,61 @@
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 68;
   letter-spacing:.16em; text-transform:uppercase; color:var(--dp-ink-mute);
 }
-#sf-commsfan .sf-commsfan__ribbon { color:var(--dp-ink-dim); filter:drop-shadow(0 0 4px rgb(205 222 255 / .25)); }
+/* the scope: the live trace over a fine graticule and a centre line, inside a recessed window */
+#sf-commsfan .sf-commsfan__ribbon {
+  height:30px; box-sizing:border-box; padding:3px 0; margin-top:4px; border-radius:2px; color:var(--dp-ink);
+  background:
+    linear-gradient(0deg, transparent calc(50% - .5px), rgb(232 226 212 / .16) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
+    repeating-linear-gradient(90deg, rgb(232 226 212 / .075) 0 1px, transparent 1px 19px),
+    repeating-linear-gradient(0deg, rgb(232 226 212 / .05) 0 1px, transparent 1px 7.5px),
+    var(--bg);
+  box-shadow:inset 0 1px 3px rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .06);
+  filter:drop-shadow(0 0 3px rgb(205 222 255 / .18));
+}
+#sf-commsfan .sf-commsfan__ribbon path { stroke-width:1.5; }
+/* the track: one curved rail down the lamp column; keys bow along it */
+#sf-commsfan .sf-commsfan__wedgehost { position:relative; padding-left:24px; gap:5px; }
+#sf-commsfan .sf-commsfan__rail { position:absolute; left:0; top:0; overflow:visible; pointer-events:none; }
+#sf-commsfan .sf-commsfan__rail path { fill:none; stroke:var(--bg); stroke-width:5; stroke-linecap:round; }
+#sf-commsfan .sf-commsfan__rail { filter:drop-shadow(0 1px 0 rgb(255 236 204 / .1)); }
 #sf-commsfan .sf-commsfan__wedge {
-  position:relative; box-sizing:border-box; min-height:44px;
-  border-style:solid; border-color:transparent; border-width:8px 10px 10px; border-radius:0;
-  border-image:url("/assets/ui/deckplate/hw/keycap.svg") 10 10 12 / 8px 10px 10px / 0 stretch;
-  background:var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:0 4px 12px rgb(0 0 0 / .45);
-  padding:0 8px 0 20px; color:var(--dp-ink-dim);
+  position:relative; box-sizing:border-box; height:38px; min-height:0; transform:translateX(var(--bow, 0px));
+  border:0; border-radius:2px; padding:0 12px 0 10px; gap:10px; color:var(--dp-ink-dim);
+  background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth), 0 6px 14px rgb(0 0 0 / .4);
+  transition:color var(--dp-d-cut, .1s) var(--dp-ease-lamp, ease), box-shadow var(--dp-d-cut, .1s) var(--dp-ease-lamp, ease);
 }
 #sf-commsfan .sf-commsfan__wedge::before {
-  content:""; position:absolute; left:0; top:50%; width:7px; height:7px; margin-top:-3.5px; border-radius:50%;
+  content:""; position:absolute; left:-17px; top:50%; width:9px; height:9px; margin-top:-4.5px; border-radius:50%;
   background:radial-gradient(circle at 42% 36%, #3b352c, #17140f 70%);
-  box-shadow:inset 0 1px 1.5px rgb(0 0 0 / .85), 0 0 0 1px rgb(0 0 0 / .6);
+  box-shadow:inset 0 1px 1.5px rgb(0 0 0 / .85), 0 0 0 1.5px var(--bg), 0 1px 0 1.5px rgb(255 236 204 / .1);
 }
-#sf-commsfan .sf-commsfan__wedge:hover:not(.is-dim), #sf-commsfan .sf-commsfan__wedge:focus-visible { color:var(--dp-ink); filter:brightness(1.12); background:var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3); }
-#sf-commsfan .sf-commsfan__wedge:hover:not(.is-dim)::before, #sf-commsfan .sf-commsfan__wedge:focus-visible:not(.is-dim)::before {
+#sf-commsfan .sf-commsfan__wedge:is(:hover, :focus-visible):not(.is-dim) {
+  color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .45), inset 3px 0 0 var(--dp-lamp), 0 8px 16px -10px var(--dp-lamp-bloom), 0 6px 14px rgb(0 0 0 / .4);
+}
+#sf-commsfan .sf-commsfan__wedge:is(:hover, :focus-visible):not(.is-dim)::before {
   background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
-  box-shadow:0 0 6px var(--dp-lamp-bloom), 0 0 14px var(--dp-lamp-bloom-soft);
+  box-shadow:0 0 7px var(--dp-lamp-bloom), 0 0 16px var(--dp-lamp-bloom-soft), 0 0 0 1.5px var(--bg);
 }
 #sf-commsfan .sf-commsfan__wedge:focus, #sf-commsfan .sf-commsfan__wedge:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:3px; }
-#sf-commsfan .sf-commsfan__wedge.is-dim { opacity:.55; filter:saturate(.5); color:var(--dp-ink-mute); }
+#sf-commsfan .sf-commsfan__wedge:active:not(.is-dim) { translate:0 1px; }
+#sf-commsfan .sf-commsfan__wedge.is-dim { color:var(--dp-ink-mute); opacity:1; filter:none; }
+#sf-commsfan .sf-commsfan__wedge.is-dim .sf-commsfan__verb { text-decoration:line-through; text-decoration-color:rgb(150 148 142 / .5); text-decoration-thickness:1px; }
 #sf-commsfan .sf-commsfan__glyph { color:inherit; }
-#sf-commsfan .sf-commsfan__glyph .accent { fill:var(--dp-lamp-dim); }
-#sf-commsfan .sf-commsfan__wedge:hover:not(.is-dim) .sf-commsfan__glyph .accent { fill:var(--dp-lamp); }
+#sf-commsfan .sf-commsfan__glyph .accent { fill:var(--dp-ink-mute); }
+#sf-commsfan .sf-commsfan__wedge:is(:hover, :focus-visible):not(.is-dim) .sf-commsfan__glyph .accent { fill:var(--dp-lamp); }
 #sf-commsfan .sf-commsfan__verb {
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 75;
-  font-size:13px; letter-spacing:.12em; text-transform:uppercase;
+  font-size:13px; letter-spacing:.12em; text-transform:uppercase; white-space:nowrap;
 }
-#sf-commsfan .sf-commsfan__why { font-family:var(--dp-face-read); color:var(--dp-ink-mute); }
+#sf-commsfan .sf-commsfan__why {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 650, "wdth" 68; font-size:12px; letter-spacing:.1em;
+  color:var(--dp-ink-mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:none;
+}
+@media (forced-colors: active) {
+  #sf-commsfan .sf-commsfan__rail path { stroke:CanvasText; }
+  #sf-commsfan .sf-commsfan__ribbon { background:Canvas; forced-color-adjust:auto; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   #sf-commsfan,

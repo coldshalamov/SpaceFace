@@ -2392,8 +2392,6 @@ export function injectHudCss() {
   #hud .sf-integrity:is([data-hull="critical"], [data-hull="destroyed"]) .sf-integrity__gradient-core { stop-color:var(--dp-danger-hot); }
   /* the radar's north mark was the brightest mark on the scope; it is a bearing, not a signal */
   #hud .sf-kit-radar__n { opacity:.55; filter:sepia(.5) saturate(.6); }
-  /* the law card's jurisdiction line wrapped a single word; one line, ellipsis if it must */
-  #hud #sf-sector-law .sf-law__meta { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* the right dock's readouts are the same glass as the comms strip (the radar keeps its round
      binnacle): one material per function, left and right */
@@ -2417,6 +2415,96 @@ export function injectHudCss() {
   #hud .sf-overview--count .sf-overview-footer { color:var(--dp-ink); }
   #hud .sf-overview--count .sf-overview-footer[data-hostile="true"] { color:var(--dp-danger-hot); text-shadow:0 0 10px var(--dp-danger-bloom); }
   #hud .sf-overview--count .sf-overview-footer[data-hostile="true"]::before { border-color:var(--dp-danger); }
+
+  /* ══ HUD PASS 5 — sleek glass in flight (critic, 2026-09-19): the flight layer loses the
+     fasteners and scratches the menus keep; wells are smoked glass with a lit rim; the area
+     around the ship is the glance instrument (threat arcs + the tether arc); no plate touches an
+     edge; one legend voice in every instrument. ══ */
+  #hud .sf-cluster-chassis {
+    border:10px solid transparent;
+    border-image:url("/assets/ui/deckplate/hw/bezel-thin.svg") 12 / 12px / 0 stretch;
+    background:var(--dp-key-pool) border-box, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-tex-grain) 0 0 / 256px repeat border-box, var(--dp-metal-2);
+    padding:3px;
+  }
+  #hud .sf-threat-lamp { top:-11px; }
+  #hud > .sf-leftcontext, #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel {
+    background:var(--dp-glass-solid), var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-2);
+  }
+  /* the threat row: dark lens when clear, the lamp driven red with contacts, bright when near */
+  #hud .sf-fc-row[data-state="contact"] .sf-fc-led { background:radial-gradient(circle at 42% 34%, var(--dp-danger-hot), var(--dp-danger) 45%, #5c140c); box-shadow:0 0 5px rgb(255 80 56 / .3); }
+  #hud .sf-fc-row[data-state="near"] .sf-fc-led {
+    background:radial-gradient(circle at 42% 34%, #fff1ea, var(--dp-danger-hot) 26%, var(--dp-danger) 60%, #6b1a10);
+    box-shadow:0 0 8px var(--dp-danger-bloom), 0 0 16px rgb(255 80 56 / .3);
+  }
+  #hud .sf-fc-row[data-state="clear"] .sf-fc-v { color:var(--dp-ink-mute); font-weight:500; text-shadow:none; }
+  #hud .sf-fc-row:is([data-state="contact"], [data-state="near"]) .sf-fc-v { color:var(--dp-danger-hot); text-shadow:0 0 10px var(--dp-danger-bloom); }
+  #hud .sf-cluster-chassis .sf-kit-gauge.sf-speed { flex:0 0 auto; }
+  #hud .sf-cluster-chassis .sf-fc-strip { flex:1 1 auto; justify-content:space-evenly; }
+  /* The approach tape is invisible between approaches but held ~48px of the column open; it
+     leaves layout until it lights. Stacked (narrow) clusters float it beside the chassis, so it
+     lighting never grows the column into the comms strip. */
+  #hud .sf-cluster-chassis .sf-vtape:not(.sf-vtape--on) { display:none; }
+  @media (max-width:1759px) {
+    #hud .sf-cluster-chassis .sf-vtape { position:absolute; left:calc(100% + 12px); bottom:calc(120px * var(--k-s, 1)); width:min(300px, 36vw); margin:0; }
+  }
+  /* contextual chips (cargo, credits, class) surface as nameplate rows under the weapon plate,
+     in the same legend voice - never a loose caption in amber display type */
+  #hud .sf-cluster-chassis .sf-stat--chip.sf-chip-show {
+    display:flex; align-items:baseline; gap:14px; box-sizing:border-box; width:100%; min-width:0;
+    padding:5px 12px 6px; margin:4px 0 0; border-radius:2px;
+    background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
+  }
+  #hud .sf-cluster-chassis .sf-stat--chip .sf-stat__k {
+    font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 62; font-size:12px;
+    letter-spacing:.18em; text-transform:uppercase; color:var(--dp-ink-mute);
+  }
+  #hud .sf-cluster-chassis .sf-stat--chip .sf-stat__v {
+    font-family:var(--dp-face-read); font-size:13px; font-weight:650; color:var(--dp-ink); text-shadow:none;
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  /* the ring around the ship: a faint track, the tether's load filling in amber along the bottom */
+  /* The ring circles the hull, not the reticle: the chase view draws the ship at a fixed share of
+     the viewport height, so the ring is sized in vmin to clear the silhouette at every resolution.
+     Strokes are in the 120-unit viewBox (x ~2.5 on screen). */
+  #hud .sf-threat-ring {
+    width:clamp(220px, 30vmin, 420px); height:clamp(220px, 30vmin, 420px); margin:0; transform:translate(-50%, -50%);
+  }
+  #hud .sf-threat-ring__arc { stroke-width:1.6; }
+  #hud:is([data-tether="ready"], [data-tether="latched"], [data-tether="strain"]) .sf-threat-ring { opacity:1; }
+  /* the halo: a hairline ring with four bearing ticks, so the arcs read as marks on one instrument */
+  #hud .sf-threat-ring__halo { fill:none; stroke:rgb(232 226 212 / .09); stroke-width:.6; }
+  #hud .sf-threat-ring__ticks { fill:none; stroke:rgb(232 226 212 / .24); stroke-width:.8; stroke-linecap:round; }
+  #hud .sf-threat-ring__track { fill:none; stroke:rgb(232 226 212 / .14); stroke-width:1.1; stroke-linecap:round; opacity:0; }
+  #hud:is([data-tether="ready"], [data-tether="latched"], [data-tether="strain"]) .sf-threat-ring__track { opacity:1; }
+  #hud[data-tether="ready"] .sf-threat-ring__track { stroke:rgb(242 185 80 / .35); }
+  #hud .sf-threat-ring__tether { fill:none; stroke:var(--dp-lamp); stroke-width:1.6; stroke-linecap:round; filter:drop-shadow(0 0 4px var(--dp-lamp-bloom)); }
+  #hud[data-tether="strain"] .sf-threat-ring__tether { stroke:var(--dp-danger); filter:drop-shadow(0 0 4px var(--dp-danger-bloom)); }
+  /* the contact count is engraved on the radar bezel, not a plate of its own */
+  #hud .sf-overview.sf-overview--count {
+    border:0; border-image:none; background:none; box-shadow:none; padding:0; margin-bottom:-22px; position:relative; z-index:3;
+  }
+  #hud .sf-overview--count .sf-overview-footer {
+    font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 70; font-size:12px; letter-spacing:.18em;
+    text-transform:uppercase; text-shadow:var(--dp-etch-shadow);
+  }
+  /* no plate touches the screen edge: the dock and its radar caption stand off the bottom */
+  #hud .sf-rightdock { padding-bottom:calc(10px * var(--k-s, 1)); }
+  #hud .sf-radar-objective-key { margin-top:6px; position:relative; z-index:2; }
+  /* the law card's jurisdiction line sets on one line in the condensed legend voice */
+  #hud #sf-sector-law .sf-law__meta {
+    font-family:var(--dp-face-etch); font-variation-settings:"wght" 650, "wdth" 68; letter-spacing:.06em;
+  }
+  /* one legend voice inside the speed instrument: condensed etched caps, readings in bone */
+  #hud .sf-speed :is(.sf-speed__label, .sf-speed__reference, .sf-speed__unit, .sf-speed__extent, .sf-speed__zero) {
+    font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 68; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--dp-ink-mute);
+  }
+  #hud .sf-speed .sf-speed__reference b { color:var(--dp-ink); }
+  /* at 1280 the comms strip must stop short of the stacked cluster, whatever the log holds */
+  @media (max-width:1759px) { #hud > .sf-leftcontext { max-height:calc(100vh - 540px * var(--k-s, 1)); overflow:hidden; } }
+  /* the world tow tag names WHICH body; mass keeps its unit case, READY lights amber */
+  html #sf-ml2 .ml2-preview { text-transform:none; letter-spacing:.06em; background:rgb(8 11 16 / .84); border-color:rgb(232 226 212 / .16); }
+  html #sf-ml2 .ml2-preview.ml2-preview-ready { color:var(--dp-lamp-hot); border-color:rgb(242 185 80 / .6); }
 
   /* --- high contrast: the token remap (deckplate/tokens.js) flattens the plates; keep the
          surfaces opaque so the remapped ink keeps its ratio --- */

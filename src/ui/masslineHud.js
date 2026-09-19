@@ -437,8 +437,15 @@ export const masslineHud = {
     // Keep the caption beside the mark and inside the frame. The estimate only decides which SIDE
     // of the mark it sits on; a wrong guess shifts the caption, it never hides information.
     const captionWidth = estimateCaptionWidth(text);
-    const preferLeft = cueX + 20 + captionWidth > viewportWidth - 12;
-    const labelX = clampRange(preferLeft ? cueX - 20 - captionWidth : cueX + 20, 8, Math.max(8, viewportWidth - 12 - captionWidth));
+    // The ship sits at screen centre: the caption goes on the side of the mark AWAY from it (so it
+    // never lies across the hull), unless that side has no room.
+    const preferLeft = cueX < viewportWidth / 2
+      ? (cueX - 20 - captionWidth >= 8 || cueX + 20 + captionWidth > viewportWidth - 12)
+      : cueX + 20 + captionWidth > viewportWidth - 12;
+    const labelX = preferLeft
+      ? Math.max(8 + captionWidth, cueX - 20)
+      : clampRange(cueX + 20, 8, Math.max(8, viewportWidth - 12 - captionWidth));
+    const labelShift = preferLeft ? ' translateX(-100%)' : '';
     const labelY = clampRange(cueY - 14, 8, viewportHeight - 40);
 
     setStyle(dom.previewMark, 'display', 'block');
@@ -454,7 +461,7 @@ export const masslineHud = {
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
     setClass(dom.previewSvg, 'ml2-bridle-preview', false);
     setStyle(dom.previewSvg, 'display', 'none');
-    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)${labelShift}`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
     setAttr(dom.previewEl, 'aria-label', `Massline ${intent} ${label}, ${targetMass > 0 ? `${targetMass} tonnes` : 'unknown mass'}, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
     setAttr(dom.previewEl, 'data-receipt-id', String(receipt.id || ''));
@@ -485,8 +492,15 @@ export const masslineHud = {
     const status = previewStatusCopy('invalid', denial.reason);
     const text = `MASSLINE · ${status}`;
     const captionWidth = estimateCaptionWidth(text);
-    const preferLeft = cueX + 20 + captionWidth > viewportWidth - 12;
-    const labelX = clampRange(preferLeft ? cueX - 20 - captionWidth : cueX + 20, 8, Math.max(8, viewportWidth - 12 - captionWidth));
+    // The ship sits at screen centre: the caption goes on the side of the mark AWAY from it (so it
+    // never lies across the hull), unless that side has no room.
+    const preferLeft = cueX < viewportWidth / 2
+      ? (cueX - 20 - captionWidth >= 8 || cueX + 20 + captionWidth > viewportWidth - 12)
+      : cueX + 20 + captionWidth > viewportWidth - 12;
+    const labelX = preferLeft
+      ? Math.max(8 + captionWidth, cueX - 20)
+      : clampRange(cueX + 20, 8, Math.max(8, viewportWidth - 12 - captionWidth));
+    const labelShift = preferLeft ? ' translateX(-100%)' : '';
     const labelY = clampRange(cueY - 14, 8, viewportHeight - 40);
     setStyle(dom.previewMark, 'display', denied ? 'block' : 'none');
     if (denied) {
@@ -500,7 +514,7 @@ export const masslineHud = {
     setStyle(dom.previewSvg, 'display', 'none');
     setStyle(dom.previewEl, 'display', 'block');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
-    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)${labelShift}`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
     setAttr(dom.previewEl, 'aria-label', `Massline denied, ${status.toLowerCase()}`);
     setAttr(dom.previewEl, 'data-receipt-id', '');
@@ -927,7 +941,7 @@ function worldEntityLabel(entity) {
 // caption sits on, so an imprecise glyph metric shifts it, never truncates or hides it. 10px
 // system-ui at 0.075em tracking averages ~5.9px per character; the padding+border is 20px.
 function estimateCaptionWidth(text) {
-  return Math.max(94, 20 + String(text || '').length * 5.9);
+  return Math.max(94, 20 + String(text || '').length * 7.8);
 }
 
 function viewportExtent(windowKey, documentKey, fallback) {

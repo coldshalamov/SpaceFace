@@ -184,18 +184,15 @@ html.sf-high-contrast :focus-visible { outline-color:#fff !important; }
 .dp-key:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:3px; color:var(--dp-ink); }
 .dp-key[aria-pressed="true"], .dp-key.is-on { color:var(--dp-ink); }
 .dp-key[aria-pressed="true"]::before, .dp-key.is-on::before, .dp-key--primary::before { background:${LED_ON}; box-shadow:${LED_ON_GLOW}; }
-/* The screen's ONE primary command is backlit: the cap face is a lit amber window, legend dark. */
+/* The screen's ONE primary command wears the selection language permanently: lit LED, amber
+   legend, amber inner edge and a faint bloom — the same signal a selected row or tab shows. */
 .dp-key--primary {
-  color:#1c1307; text-shadow:0 1px 0 rgb(255 240 210 / .35);
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / .3), transparent 42%) border-box,
-    linear-gradient(180deg, #ffe0a0 0%, var(--dp-lamp) 50%, #b98029 100%) border-box;
-  box-shadow:0 0 20px var(--dp-lamp-bloom-soft), 0 0 5px var(--dp-lamp-bloom);
-  padding-left:10px;
+  color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .5), inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
 }
-.dp-key--primary::before { display:none; }
-.dp-key--primary:hover { filter:brightness(1.07); color:#120b03; }
-.dp-key--primary .dp-icon, .dp-key--primary .dp-icon .accent { color:#1c1307; fill:#1c1307; }
+.dp-key--primary:hover { filter:brightness(1.1); }
+.dp-key--primary .dp-icon { color:var(--dp-lamp-hot); }
+.dp-key--primary .dp-icon .accent { fill:var(--dp-lamp); }
 .dp-key--primary .dp-kbd { margin-left:4px; }
 /* Destructive: a hazard band painted on the cap, the pip becomes the lamp driven red. */
 .dp-key--hazard { padding-left:36px; color:var(--dp-ink); }
@@ -280,7 +277,8 @@ button.dp-row, a.dp-row, .dp-row[tabindex] { cursor:pointer; width:100%; text-al
 .dp-row__name { display:block; font-family:var(--dp-face-read); font-size:var(--dp-fs-data); font-weight:600; color:inherit; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dp-row__sub { display:block; margin-top:2px; font-family:var(--dp-face-read); font-size:12px; color:var(--dp-ink-mute); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dp-row__read { font-family:var(--dp-face-read); font-variant-numeric:tabular-nums; font-size:var(--dp-fs-data); font-weight:600; color:var(--dp-ink); text-align:right; white-space:nowrap; }
-.dp-row[aria-selected="true"] .dp-row__read, .dp-row.is-selected .dp-row__read { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
+.dp-row[aria-selected="true"] .dp-row__read, .dp-row.is-selected .dp-row__read,
+.dp-row[aria-selected="true"] .dp-row__name, .dp-row.is-selected .dp-row__name { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
 .dp-row .dp-icon { color:var(--dp-ink-dim); }
 .dp-row .dp-icon .accent { fill:var(--dp-lamp-dim); }
 .dp-row:hover .dp-icon, .dp-row.is-selected .dp-icon, .dp-row[aria-selected="true"] .dp-icon { color:var(--dp-ink); }
@@ -415,7 +413,7 @@ button.dp-row, a.dp-row, .dp-row[tabindex] { cursor:pointer; width:100%; text-al
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 800, "wdth" 75; font-size:12px; line-height:1; letter-spacing:.04em;
   color:var(--dp-ink); text-transform:uppercase; vertical-align:middle; text-shadow:none;
 }
-.dp-key--primary .dp-kbd { background:rgb(0 0 0 / .78); color:var(--dp-lamp-hot); border-image:none; border:0; border-radius:2px; padding:0 6px; }
+.dp-key--primary .dp-kbd { color:var(--dp-lamp-hot); }
 .dp-prompt { display:inline-flex; align-items:center; gap:8px; font-family:var(--dp-face-read); font-size:12px; color:var(--dp-ink-dim); }
 
 /* ══ Entry choreography: the bezel settles, the glass lights, the content types on. ══ */

@@ -9,6 +9,7 @@ export { bindCommittedRange } from '../views/settingsControls.js';
 // UI reads state.settings for display; the write to state.settings is the UI/settings
 // module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
 
+import { injectDeckplate } from '../deckplate/index.js';
 import {
   DEFAULTS as INPUT_DEFAULTS,
   formatBindingCode,
@@ -261,6 +262,7 @@ export const settingsScreen = {
   id: 'settings',
 
   mount(rootEl, ctx) {
+    injectDeckplate();
     ensureSettingsStyles();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-narrow');

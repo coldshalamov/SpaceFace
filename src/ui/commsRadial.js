@@ -245,6 +245,36 @@ function wedgeIconSvg(actionId) {
   return `<svg class="sf-commsfan__glyph" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${icon}</svg>`;
 }
 
+// The verbs ride a curved selector track (FRONTEND_PROGRAM, critic 2026-09-19): every key keeps its
+// own row, so labels never collide, but the rows bow along one arc and each key's lamp sits on the
+// track as a detent. Keys have a fixed height, so the arc needs no layout read.
+const FAN_KEY_H = 38;
+const FAN_KEY_GAP = 5;
+function layoutSelectorArc(host, buttons) {
+  const n = buttons.length;
+  if (!host || !n) return;
+  const total = n * FAN_KEY_H + (n - 1) * FAN_KEY_GAP;
+  const bow = n > 1 ? Math.min(26, 10 + 5 * (n - 1)) : 0;
+  const half = total / 2;
+  for (let i = 0; i < n; i++) {
+    const y = i * (FAN_KEY_H + FAN_KEY_GAP) + FAN_KEY_H / 2;
+    const s = half > 0 ? (y - half) / half : 0;
+    buttons[i].style.setProperty('--bow', `${(bow * s * s).toFixed(1)}px`);
+  }
+  // x = bow * s^2 over the whole track is exactly this quadratic curve; +11 = the lamp column.
+  const rail = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  rail.setAttribute('class', 'sf-commsfan__rail');
+  rail.setAttribute('aria-hidden', 'true');
+  rail.setAttribute('focusable', 'false');
+  rail.setAttribute('width', String(bow + 24));
+  rail.setAttribute('height', String(total));
+  rail.setAttribute('viewBox', `0 0 ${bow + 24} ${total}`);
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', `M${bow + 11} 0Q${11 - bow} ${half} ${bow + 11} ${total}`);
+  rail.appendChild(path);
+  host.insertBefore(rail, host.firstChild);
+}
+
 function nearestHailAvailability(state) {
   const playerEntity = entityById(state, state && state.playerId);
   if (!playerEntity || !playerEntity.pos || !state || !state.player) return null;
@@ -490,6 +520,7 @@ export function createCommsRadial(ctx) {
       wedgeHost.appendChild(button);
       wedgeButtons.push(button);
     }
+    layoutSelectorArc(wedgeHost, wedgeButtons);
     focusSafely(wedgeButtons.find((el) => !el.classList.contains('is-dim')) || wedgeButtons[0]);
   }
 

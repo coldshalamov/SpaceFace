@@ -18,7 +18,9 @@ export const TACTICAL_MAP_PALETTE = Object.freeze({
   objective: '#f2b950',
   hostile: '#ff5038',
   station: '#c9bda4',
-  gate: '#a8844c',
+  /* Gates are passive infrastructure: cold steel, so the scope's only amber marks are the ones the
+     pilot acts on (self, objective). Shape (the double ring) still carries the identity. */
+  gate: '#8ea3bd',
   neutral: '#6f7076',
   asteroid: '#4a5162',
 });
@@ -204,9 +206,9 @@ export function formatRadarDistance(worldUnits) {
   if (!Number.isFinite(d) || d < 0) return 'ROUTE PENDING';
   if (d >= 1000) {
     const digits = d >= 10000 ? 0 : 1;
-    return `${(d / 1000).toFixed(digits)}K`;
+    return `${(d / 1000).toFixed(digits)}k WU`;
   }
-  return `${Math.round(d)}U`;
+  return `${Math.round(d)} WU`;
 }
 
 export function relativeLuminance(hex) {
