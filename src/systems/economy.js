@@ -1827,9 +1827,20 @@ export const economy = {
       if (realUnits <= 0) { this.bus.emit('toast', { text: 'Insufficient credits for fuel', kind: 'error', ttl: 2 }); return; }
       const realCost = round(realUnits * FUEL_UNIT_CR);
       this.chargeCredits(realCost, 'service:refuel');
-      fuel.current = Math.min(fuel.max, fuel.current + realUnits);
-      this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
-      this.bus.emit('toast', { text: `${realUnits < units ? 'Partial refuel' : 'Refueled'} (${round(realUnits)}u, ${realCost}cr)`, kind: realUnits < units ? 'warn' : 'success', ttl: 2 });
+      // The yard owns timed delivery when the player is on a live dock (fuel is a pump, not an
+      // instant fill). Harness docks without the production latch keep the instant path below.
+      const fuelYard = this._serviceYard();
+      if (fuelYard && fuelYard.enqueuePlayerJob({
+        type: 'refuel', units: realUnits,
+        stationId: (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null,
+        meta: { cost: realCost },
+      })) {
+        this.bus.emit('toast', { text: `Refuel underway (${round(realUnits)}u, ${realCost}cr)`, kind: 'success', ttl: 2 });
+      } else {
+        fuel.current = Math.min(fuel.max, fuel.current + realUnits);
+        this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
+        this.bus.emit('toast', { text: `${realUnits < units ? 'Partial refuel' : 'Refueled'} (${round(realUnits)}u, ${realCost}cr)`, kind: realUnits < units ? 'warn' : 'success', ttl: 2 });
+      }
     } else if (type === 'repair') {
       const e = state.entities && state.entities.get(state.playerId);
       if (!e) return;
@@ -1845,31 +1856,58 @@ export const economy = {
       if (totalMiss <= 0.5) { this.bus.emit('toast', { text: 'Hull already intact', kind: 'info', ttl: 2 }); return; }
       const cost = round(totalMiss * REPAIR_HP_CR);
       const credits = normalizeCredits(state.player.credits);
-      let actualCost = cost;
-      if (credits < cost) {
-        // partial repair up to what the player can afford
-        const frac = cost > 0 ? credits / cost : 0;
-        e.hull = Math.min(e.hullMax, (e.hull || 0) + missHull * frac);
-        e.armorHp = Math.min(e.armorMax, (e.armorHp || 0) + missArmor * frac);
-        actualCost = credits;
-        this.chargeCredits(credits, 'service:repair');
-        this.bus.emit('toast', { text: 'Partial repair (out of credits)', kind: 'warn', ttl: 2 });
-      } else {
-        e.hull = e.hullMax; e.armorHp = e.armorMax;
-        this.chargeCredits(cost, 'service:repair');
-        this.bus.emit('toast', { text: `Repaired (${cost}cr)`, kind: 'success', ttl: 2 });
-      }
-      this.bus.emit('service:completed', {
+      const repairYard = this._serviceYard();
+      const yardUnits = credits < cost ? totalMiss * (cost > 0 ? credits / cost : 0) : totalMiss;
+      if (repairYard && repairYard.enqueuePlayerJob({
         type: 'repair',
-        cost: actualCost,
-        restoredHull: Math.max(0, (Number(e.hull) || 0) - beforeHull),
-        restoredArmor: Math.max(0, (Number(e.armorHp) || 0) - beforeArmor),
-        hullMax,
-        armorMax,
-        beforeProtection,
+        units: yardUnits,
         stationId: (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null,
-        atT: Number(state.simTime) || 0,
-      });
+        meta: {
+          cost: credits < cost ? credits : cost,
+          shares: { hull: totalMiss > 0 ? missHull / totalMiss : 0, armor: totalMiss > 0 ? missArmor / totalMiss : 0 },
+          restoredHull: credits < cost ? missHull * (cost > 0 ? credits / cost : 0) : missHull,
+          restoredArmor: credits < cost ? missArmor * (cost > 0 ? credits / cost : 0) : missArmor,
+          hullMax, armorMax, beforeProtection,
+        },
+      })) {
+        // Paid up front; the yard works the queue and fires service:completed when the weld is
+        // actually done. Harness docks keep the synchronous apply in the else path.
+        let actualCost = cost;
+        if (credits < cost) {
+          actualCost = credits;
+          this.chargeCredits(credits, 'service:repair');
+          this.bus.emit('toast', { text: 'Partial repair booked (out of credits)', kind: 'warn', ttl: 2 });
+        } else {
+          this.chargeCredits(cost, 'service:repair');
+          this.bus.emit('toast', { text: `Repair underway (${cost}cr)`, kind: 'success', ttl: 2 });
+        }
+      } else {
+        let actualCost = cost;
+        if (credits < cost) {
+          // partial repair up to what the player can afford
+          const frac = cost > 0 ? credits / cost : 0;
+          e.hull = Math.min(e.hullMax, (e.hull || 0) + missHull * frac);
+          e.armorHp = Math.min(e.armorMax, (e.armorHp || 0) + missArmor * frac);
+          actualCost = credits;
+          this.chargeCredits(credits, 'service:repair');
+          this.bus.emit('toast', { text: 'Partial repair (out of credits)', kind: 'warn', ttl: 2 });
+        } else {
+          e.hull = e.hullMax; e.armorHp = e.armorMax;
+          this.chargeCredits(cost, 'service:repair');
+          this.bus.emit('toast', { text: `Repaired (${cost}cr)`, kind: 'success', ttl: 2 });
+        }
+        this.bus.emit('service:completed', {
+          type: 'repair',
+          cost: actualCost,
+          restoredHull: Math.max(0, (Number(e.hull) || 0) - beforeHull),
+          restoredArmor: Math.max(0, (Number(e.armorHp) || 0) - beforeArmor),
+          hullMax,
+          armorMax,
+          beforeProtection,
+          stationId: (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null,
+          atT: Number(state.simTime) || 0,
+        });
+      }
     } else if (type === 'hull_wash') {
       const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
       const info = stationInfo(state, stationId);
@@ -2274,6 +2312,12 @@ export const economy = {
   registryGet(name) {
     if (this._registry && this._registry.get) return this._registry.get(name);
     return null;
+  },
+
+  /** The station yard, when a build registers it — owns timed service delivery (queue + pump). */
+  _serviceYard() {
+    const sys = this.registryGet('stationServices');
+    return sys && typeof sys.enqueuePlayerJob === 'function' ? sys : null;
   },
 
   /** public getters for UI / route-planner. */

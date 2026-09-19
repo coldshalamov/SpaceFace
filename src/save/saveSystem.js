@@ -401,6 +401,7 @@ export const save = {
       ['signalInvestigation', () => this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {})],
       ['recoveryEncounters', () => this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {})],
       ['regionalEcology', () => this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {})],
+      ['stationServices', () => this._callSerialize('stationServices') || {}],
       ['encounterDirector', () => this._serializeEncounterDirector()],
       ['flight', () => this._serializeFlight()],
       ['nav', () => this._serializeNav()],
@@ -453,6 +454,7 @@ export const save = {
     data.signalInvestigation = this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {});
     data.recoveryEncounters = this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {});
     data.regionalEcology = this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {});
+    data.stationServices = this._callSerialize('stationServices') || {};
     data.encounterDirector = this._serializeEncounterDirector();
     data.flight = this._serializeFlight();
     data.nav = this._serializeNav();
@@ -2929,6 +2931,10 @@ export const save = {
       this._callDeserialize('provenanceLedger', data.provenance);
       this._callDeserialize('aftermathWrecks', data.aftermathWrecks);
       this._callDeserialize('fieldDepletion', data.fieldDepletion);
+      // Station-yard service jobs (repair/refuel booked before the save). Restores the parked
+      // player block only — NPC client traffic is re-derived from the seeded schedule, and the
+      // job stays parked until the player re-docks at that yard (ui.docked clears on load).
+      this._callDeserialize('stationServices', data.stationServices);
       // Campaign-director durable state. Staged here so the director's save:loaded handler can
       // durable-merge it (named captains persist; transients rebuild). Absent in old saves → null
       // → the director starts fresh (migration-safe absence handling).

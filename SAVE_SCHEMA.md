@@ -42,6 +42,7 @@ Current save version: `14`
 - `signalInvestigation`
 - `recoveryEncounters`
 - `regionalEcology`
+- `stationServices`
 - `encounterDirector`
 - `flight`
 - `nav`
@@ -367,6 +368,7 @@ Current save version: `14`
 | `$.settings.video.vsync` | boolean | true |
 | `$.signalInvestigation` | object | {} |
 | `$.sites` | object | {} |
+| `$.stationServices` | object | {} |
 | `$.stunts` | null | null |
 | `$.traffic` | object | {} |
 | `$.uiScreenMemory` | object | {} |

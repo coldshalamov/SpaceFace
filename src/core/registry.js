@@ -153,6 +153,7 @@ import { recoveryEncounter } from '../systems/recoveryEncounter.js';   // physic
 import { stationSideEventDirector } from '../systems/stationSideEventDirector.js'; // A6: seeded station side-events director (spawnBudget client)
 import { stationContacts } from '../systems/stationContacts.js';                   // contact memory + read-only freight receipts
 import { stationContactLoadBoundary } from '../systems/stationContactLoadBoundary.js'; // clear/normalize continuity at restore edge
+import { stationServices } from '../systems/stationServices.js';                   // station yard: berths, crews, service queue + timed repair/refuel delivery
 import { gateControlDirector } from '../systems/gateControlDirector.js';          // A8: seeded gate traffic-control director (toll via economy:chargeCredits)
 import { render } from '../render/renderer.js';
 import { vfx } from '../render/vfx.js';
@@ -430,6 +431,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['stationSideEventDirector', stationSideEventDirector],
     ['stationContacts', stationContacts],
     ['stationContactLoadBoundary', stationContactLoadBoundary],
+    ['stationServices', stationServices],
     ['gateControlDirector', gateControlDirector],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
