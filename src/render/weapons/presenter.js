@@ -343,14 +343,15 @@ export class WeaponVfxPresenter {
       ? index.projectiles
       : ((this.state && this.state.entityList) || []);
     ageShieldContacts(dt);
-    this.discharges.update(dt, this._dischargePoseResolver, this._a11y());
+    const accessibilityProfile = this._a11y();
+    this.discharges.update(dt, this._dischargePoseResolver, accessibilityProfile);
     this.bolts.setCamera(camera, viewportHeight);
     this.bolts.setDepthTexture(
       context.depthTexture || null,
       context.depthWidth,
       context.depthHeight,
     );
-    this._syncBolts(entities, alpha, camera, dt);
+    this._syncBolts(entities, alpha, camera, dt, accessibilityProfile);
     this._updateNearMiss(dt, entities, alpha, camera);
     this.scorches.update(dt, this._scorchPoseCallback);
     this._syncWellDistortion();
@@ -360,8 +361,8 @@ export class WeaponVfxPresenter {
     if (this.quarks) this.quarks.update(dt);
   }
 
-  _syncBolts(entities, alpha, camera, dt = 0) {
-    this.bolts.beginFrame(dt);
+  _syncBolts(entities, alpha, camera, dt = 0, accessibilityProfile = this._a11y()) {
+    this.bolts.beginFrame(dt, accessibilityProfile);
     _seen.clear();
     const camPos = camera && camera.position;
     const state = this.state;

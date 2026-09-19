@@ -188,15 +188,20 @@ const VOLUME_FRAGMENT = /* glsl */`
       float blocker=frameDensity(filmPoint+0.5+key,f0).r
         +frameDensity(filmPoint+0.5+key*2.4,f0).r;
       float light=exp(-blocker*2.2);
+      // Match hulls: rounded ink-shadow masses, a warm middle plane and a clean lit lip.
+      // Density still owns actual volume/occlusion; only illumination is illustrated.
+      float paintedLight=0.09+0.40*smoothstep(0.18,0.38,light)
+        +0.55*smoothstep(0.60,0.77,light);
       float hot=smoothstep(0.02,0.76,field.g);
       float ridge=clamp(density*2.1,0.0,1.0);
-      vec3 soot=vSpriteColor*(0.14+1.02*light)*(0.64+0.36*ridge);
+      vec3 pigment=mix(vec3(0.43,0.40,0.70),vec3(1.10,0.98,0.83),smoothstep(0.26,0.65,light));
+      vec3 soot=vSpriteColor*pigment*(0.10+1.04*paintedLight)*(0.64+0.36*ridge);
       vec3 fire=mix(vSpriteColor*0.14, vSpriteColor*1.75,pow(hot,.75));
       // Preserve the event's hue; only the hottest, unoccluded shoulders desaturate.
       float peak=pow(hot,3.0)*(0.25+0.75*light);
       float familyPeak=max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b));
       fire=mix(fire,mix(vSpriteColor,vec3(familyPeak),.64)*2.4,peak*.66);
-      fire*=0.32+0.68*light;
+      fire*=0.24+0.76*paintedLight;
       sum+=transmittance*absorb*mix(soot,fire,uCombustion);
       transmittance*=1.0-absorb;
       if (transmittance<0.018) break;

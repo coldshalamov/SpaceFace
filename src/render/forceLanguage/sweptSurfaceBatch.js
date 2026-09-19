@@ -139,9 +139,11 @@ void main(){
   float pixel=max(fwidth(v)*1.15,0.055);
   float fold=exp(-pow((v+0.40)/max(0.13,pixel),2.0));
   float rim=exp(-pow((v-0.68)/max(0.08,pixel),2.0));
-  float groove=0.5+0.5*sin(t*62.0+v*8.0+vFlow.y*9.0);
+  // Broad pigment folds survive play scale. A high-frequency sine comb used to make
+  // every force resemble corrugated ribbon irrespective of its physical construction.
+  float groove=0.5+0.5*sin(t*18.0+v*4.0+vFlow.y*9.0);
   float packet=pow(0.5+0.5*cos(t*16.0-vCycle.z*vFlow.x*5.0+vFlow.y*6.283),3.0);
-  float body=0.30+0.18*groove;
+  float body=0.12+0.38*smoothstep(0.28,0.64,groove);
   float hot=(fold*(0.75+0.48*packet)+rim*0.58)*uFlash;
   if(vFlow.z>0.5 && vFlow.z<1.5){
     // Compression shell: one outward-facing crest over a broad, descending pressure skirt.
@@ -166,7 +168,9 @@ void main(){
     hot*=1.0-0.88*vCycle.y;
     body*=1.0-0.45*vCycle.y;
   }
-  vec3 color=vTint.rgb*(body+hot*1.5)+vec3(0.55,0.68,0.78)*pow(fold,3.0)*hot*0.40;
+  float shadowPool=1.0-smoothstep(0.20,0.55,groove);
+  vec3 pigment=mix(vTint.rgb,vTint.rgb*vec3(0.30,0.24,0.68),shadowPool*0.78);
+  vec3 color=pigment*body+vTint.rgb*hot*1.5+vec3(0.55,0.68,0.78)*pow(fold,3.0)*hot*0.40;
   float alpha=edge*tips*reveal*vTint.a*vFront*fracture*(0.57+0.43*max(fold,rim));
   if(alpha<0.003)discard;
   gl_FragColor=vec4(color,alpha);

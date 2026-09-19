@@ -1910,7 +1910,7 @@ function transformCommonRockUvs(geometry, variantIdx) {
 }
 
 function astDisplacedGeometry(typeId, def, variantIdx) {
-  const key = `ast:geology-v4:${typeId}:${variantIdx}`;
+  const key = `ast:geology-v5:${typeId}:${variantIdx}`;
   return getGeometry(key, () => {
     const geo = new THREE.IcosahedronGeometry(1, def.detail + 1);
     const uvTransform = typeId === 'ast_common_rock' ? transformCommonRockUvs(geo, variantIdx) : null;
@@ -2001,6 +2001,7 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
       denseSmooth.computeBoundingSphere();
       denseSmooth.userData.spacefaceGeology = {
         schema: 'spaceface.commonRockGeology.v4',
+        surfaceRevision: 'pooled-fracture-mineral-v5',
         variantIndex: variantIdx,
         variantName: COMMON_ROCK_VARIANTS[variantIdx].name,
         materialRoles: Object.keys(COMMON_ROCK_MATERIAL_ROLES),
@@ -2036,7 +2037,7 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
   });
 }
 
-const COMMON_ROCK_PBR_SHADER_KEY = 'spaceface-common-rock-geology-pbr-v4';
+const COMMON_ROCK_PBR_SHADER_KEY = 'spaceface-common-rock-geology-pbr-v5';
 
 function replaceRequiredShaderSource(source, needle, replacement, label) {
   if (typeof source !== 'string' || !source.includes(needle)) {
@@ -2046,7 +2047,7 @@ function replaceRequiredShaderSource(source, needle, replacement, label) {
 }
 
 function configureCommonRockPbr(material) {
-  material.name = 'SF_CommonRock_GeologicalPBR_v4';
+  material.name = 'SF_CommonRock_GeologicalPBR_v5';
   material.userData.spacefaceMaterialRoles = Object.keys(COMMON_ROCK_MATERIAL_ROLES);
   material.userData.spacefacePbrAttribute = 'sfGeologyPbr';
   material.userData.spacefaceSurfaceModel = 'macro-object-space+variant-uv+micro-texture';
@@ -2086,6 +2087,19 @@ function configureCommonRockPbr(material) {
       '#include <normal_fragment_maps>',
       geologyNormalChunk,
       'fragment normal chunk',
+    );
+    shader.fragmentShader = replaceRequiredShaderSource(
+      shader.fragmentShader,
+      '#include <map_fragment>',
+      [
+        '#include <map_fragment>',
+        '// Retain the scanned substrate while letting broad authored geology lead the read.',
+        'float sfRockLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));',
+        'diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma), 0.28);',
+        'float sfMineralExposure = smoothstep(0.10, 0.55, vSfGeologyPbr.b);',
+        'diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma) * vec3(0.63, 0.94, 1.04), sfMineralExposure * 0.68);',
+      ].join('\n'),
+      'fragment substrate color chunk',
     );
     shader.fragmentShader = replaceRequiredShaderSource(
       shader.fragmentShader,
@@ -2177,7 +2191,7 @@ function astMaterial(typeId, def, tint) {
       color,
       map: commonSurface && commonSurface.baseColor || null,
       normalMap: commonSurface && commonSurface.normal || null,
-      normalScale: commonSurface ? new THREE.Vector2(0.96, 0.96) : new THREE.Vector2(1, 1),
+      normalScale: commonSurface ? new THREE.Vector2(0.72, 0.72) : new THREE.Vector2(1, 1),
       aoMap: commonSurface && commonSurface.orm || null,
       aoMapIntensity: commonSurface ? 0.78 : 1,
       roughness: commonSurface ? 1 : def.rough,

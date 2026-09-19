@@ -2,7 +2,7 @@
 // Runs inside the existing opaque material pass, with no targets, extra draws or textures.
 import { Color, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v7';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v8';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -12,20 +12,24 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
   // gradients and material differences intact instead of posterizing final RGB.
   float sfPaintLuma = max(dot(diffuseColor.rgb * (1.0 - metalnessFactor), vec3(0.2126, 0.7152, 0.0722)), 0.025);
   float sfLight = dot(reflectedLight.directDiffuse + reflectedLight.indirectDiffuse, vec3(0.2126, 0.7152, 0.0722)) / sfPaintLuma;
-  float sfWidth = max(fwidth(sfLight) * 1.35, 0.035);
-  float sfBands = 0.10
-    + 0.23 * smoothstep(0.20 - sfWidth, 0.20 + sfWidth, sfLight)
-    + 0.35 * smoothstep(0.48 - sfWidth, 0.48 + sfWidth, sfLight)
-    + 0.44 * smoothstep(0.86 - sfWidth, 0.86 + sfWidth, sfLight);
-  // The continuous component keeps rotating hulls smooth across the painted terminators.
-  float sfShaped = mix(sfLight, sfBands, 0.74);
-  vec3 sfInkTint = mix(vec3(0.66, 0.65, 1.26), vec3(1.10, 1.02, 0.91), smoothstep(0.16, 0.86, sfLight));
+  // Compress irradiance before shaping it: the sunlit roof receives >1.0 in the live
+  // rig. Thresholding raw irradiance below 0.86 left almost the whole fleet in one band.
+  // Rounded transitions describe pools of ink, with a broad lacquer light above them.
+  float sfExposure = sfLight / (0.85 + sfLight);
+  float sfWidth = max(fwidth(sfExposure) * 1.25, 0.018);
+  float sfPenumbra = smoothstep(0.28 - sfWidth, 0.39 + sfWidth, sfExposure);
+  float sfBodyLight = smoothstep(0.47 - sfWidth, 0.56 + sfWidth, sfExposure);
+  float sfSunlight = smoothstep(0.65 - sfWidth, 0.70 + sfWidth, sfExposure);
+  float sfBands = 0.11 + 0.235 * sfPenumbra + 0.64 * sfBodyLight + 0.64 * sfSunlight;
+  // Keep a little continuous light so animation never becomes a hard toon switch.
+  float sfShaped = mix(sfLight, sfBands, 0.88);
+  vec3 sfInkTint = mix(vec3(0.61, 0.55, 1.13), vec3(1.11, 1.025, 0.88), sfBodyLight);
   vec3 sfLightScale = sfInkTint * (sfShaped / max(sfLight, 0.025));
   reflectedLight.directDiffuse *= sfLightScale;
   reflectedLight.indirectDiffuse *= sfLightScale;
   // Geometric normals, not normal-map scratches: contours belong to the hull form.
   float sfFacing = abs(dot(nonPerturbedNormal, geometryViewDir));
-  float sfContour = 1.0 - 0.38 * (1.0 - smoothstep(0.08, 0.32, sfFacing));
+  float sfContour = 1.0 - 0.57 * (1.0 - smoothstep(0.09, 0.38, sfFacing));
 `;
 
 const THREE_DEFAULT_PROGRAM_KEY_PARTS = new Set([

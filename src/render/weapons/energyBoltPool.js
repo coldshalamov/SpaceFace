@@ -65,7 +65,11 @@ const VERTEX_SHADER = /* glsl */`
     // Default contract remains worldPerPx * uMinPixels; authored recipes may
     // override it per instance through aBoltMinPixels.
     float minPixels = aBoltMinPixels > 0.0 ? aBoltMinPixels : uMinPixels;
-    float width = max(aBoltSize.y, worldPerPx * minPixels);
+    // Narrow ballistic bodies in world space, before enforcing their readability
+    // floor. Scaling geometry after max() made distant rail shots subpixel.
+    float ballisticWidth = aBoltSize.w >= 1.5 && aBoltSize.w < 3.5
+      ? (aBoltSize.w < 2.5 ? 0.32 : 0.22) : 1.0;
+    float width = max(aBoltSize.y * ballisticWidth, worldPerPx * minPixels);
     float dash = max(aBoltSize.x + smear, worldPerPx * uMinLengthPixels);
 
     // Stable 3D orthonormal frame around velocity axis (no camera-facing billboarding)
@@ -73,10 +77,29 @@ const VERTEX_SHADER = /* glsl */`
     vec3 r1 = normalize(cross(axis, up));
     vec3 r2 = cross(axis, r1);
 
-    // True volumetric 3D orientation: position.x along flight axis, position.y & position.z are radial
+    // Each family has an actual cross-section, not just a different tint on the same dart.
+    // The hollow pulse lip cups forward; plasma has rolling lobes; induction tears into
+    // opposed forks. All deformation lives in the velocity frame, never the camera frame.
+    float t = uv.x;
+    float side = uv.y * 2.0 - 1.0;
+    float bow = sin(t * 3.14159265);
+    vec3 shaped = position;
+    if (aBoltSize.w < 0.5) {
+      shaped.x += (1.0 - side * side) * bow * 0.19;
+      shaped.yz *= 0.70 + smoothstep(0.35, 0.80, t) * 0.62;
+    } else if (aBoltSize.w < 1.5) {
+      shaped.yz *= 1.10 + 0.24 * sin(t * 12.56637 + side * 2.2);
+      shaped.x += bow * side * 0.12;
+    } else if (aBoltSize.w >= 3.5 && aBoltSize.w < 4.5) {
+      shaped.yz *= 0.8 + 0.6 * sin(t * 3.14159265);
+      shaped.x += abs(side) * bow * 0.20;
+    } else if (aBoltSize.w >= 4.5 && aBoltSize.w < 5.5) {
+      shaped.x = (t - 0.5) * 0.6 + side * side * bow * 0.28;
+      shaped.yz *= 1.65;
+    }
     vec3 world = mid
-      + axis * position.x * dash
-      + (r1 * position.y + r2 * position.z) * width;
+      + axis * shaped.x * dash
+      + (r1 * shaped.y + r2 * shaped.z) * width;
     gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
   }
 `;
@@ -98,6 +121,7 @@ const FRAGMENT_SHADER = /* glsl */`
   uniform float uSoftDistance;
   // B16: the cross-section patterns must travel with the round instead of riding a still image.
   uniform float uBoltTime;
+  uniform float uBoltFlicker;
 
   float linearDepth(float depth01) {
     float z = depth01 * 2.0 - 1.0;
@@ -108,20 +132,21 @@ const FRAGMENT_SHADER = /* glsl */`
   void main() {
     float across = abs(vUv.y * 2.0 - 1.0);
     float core = pow(max(0.0, 1.0 - across), 6.0);
-    float sheath = pow(max(0.0, 1.0 - across), 1.7);
+    float sheath = 1.0 - smoothstep(0.72, 1.0, across);
     float tip = smoothstep(0.0, 0.16, vAlong) * smoothstep(1.0, 0.68, vAlong);
     float body = (sheath * 0.55 + core * 0.85) * tip;
     if (body < 0.004) discard;
 
     vec3 col = mix(vSheath, vColor, clamp(core * 1.15, 0.0, 1.0));
 
-    // Variant 0: Pulse - laser dielectric dart with brilliant electric-cyan punch
+    // Variant 0: Pulse - a cupped dielectric lip with an electric-cyan punch.
     float pulse = 1.0 - step(0.5, vVariant);
     float pulseTip = smoothstep(0.0, 0.1, vAlong) * smoothstep(1.0, 0.88, vAlong);
     float pulseHead = smoothstep(0.40, 0.76, vAlong);
-    float pulseFlute = 0.5 + 0.5 * cos(vUv.y * 12.56637 + vAlong * 4.0);
-    body = mix(body, (sheath * (0.28 + pulseFlute * 0.34) + core * (0.50 + pulseHead * 0.85)) * pulseTip, pulse);
-    col = mix(col, vec3(0.92, 0.98, 1.0), core * pulse * pulseHead * 0.58);
+    float pulseLip = exp(-pow((across - (0.57 + 0.13 * sin(vAlong * 5.0))) / 0.13, 2.0));
+    body = mix(body, (sheath * 0.20 + pulseLip * (0.72 + pulseHead * 0.95)
+      + core * (0.25 + pulseHead * 0.58)) * pulseTip, pulse);
+    col = mix(col, vec3(0.92, 0.98, 1.0), pulseLip * pulse * pulseHead * 0.67);
 
     // Variant 1: Plasma - superheated incandescent convection with boiling edges
     float plasma = step(0.5, vVariant) * (1.0 - step(1.5, vVariant));
@@ -139,7 +164,7 @@ const FRAGMENT_SHADER = /* glsl */`
     float machHead = smoothstep(0.55, 1.0, vAlong);
     float machTail = smoothstep(0.5, 0.0, vAlong);
     float machCore = pow(max(0.0, 1.0 - across), 12.0);
-    float machDiamonds = 0.82 + 0.18 * sin(vAlong * 46.0 - uBoltTime * 55.0);
+    float machDiamonds = 0.82 + uBoltFlicker * 0.18 * sin(vAlong * 46.0 - uBoltTime * 55.0);
     body = mix(body, (machCore * 1.5 + sheath * 0.28) * machDiamonds * (0.75 + machHead * 0.9), kinetic);
     col = mix(col, vec3(1.0, 0.97, 0.9), machCore * machHead * kinetic * 0.95);
     col = mix(col, vec3(1.0, 0.62, 0.22), machTail * kinetic * 0.85);
@@ -150,17 +175,21 @@ const FRAGMENT_SHADER = /* glsl */`
     float rail = step(2.5, vVariant) * (1.0 - step(3.5, vVariant));
     float railNeedle = pow(max(0.0, 1.0 - across), 10.0);
     float railHalo = pow(max(0.0, 1.0 - across), 2.6);
-    float railRings = 0.86 + 0.14 * sin(vAlong * 44.0 - uBoltTime * 62.0);
+    float railRings = 0.86 + uBoltFlicker * 0.14 * sin(vAlong * 44.0 - uBoltTime * 62.0);
     float railHead = smoothstep(0.35, 1.0, vAlong);
     body = mix(body, (railNeedle * 1.7 + railHalo * 0.4) * railRings * (0.7 + railHead * 0.8), rail);
     col = mix(col, vec3(1.0, 0.99, 0.96), railNeedle * rail * 0.95);
 
     // Variant 4: EMP - bifurcated electric arcs crackling across fins
     float emp = step(3.5, vVariant) * (1.0 - step(4.5, vVariant));
-    float fork = abs(vUv.y - 0.5) * 2.0;
-    float empArc = step(0.32, fork) * (1.0 - smoothstep(0.55, 0.95, fork));
-    float empCrackle = 0.78 + 0.22 * sin(vAlong * 24.0 - uBoltTime * 33.0);
-    body *= mix(1.0, (0.55 + 0.55 * empArc) * empCrackle, emp);
+    float forkCenter = 0.43 + 0.15 * sin(vAlong * 6.28318 - uBoltTime * 5.0);
+    float empArc = exp(-pow((across - forkCenter) / 0.17, 2.0));
+    float empCrackle = 0.78 + uBoltFlicker * 0.22 * sin(vAlong * 24.0 - uBoltTime * 33.0);
+    // Open air between the two branches is a silhouette feature, not a pale stripe
+    // painted over the pulse body. A short root joins them at the trailing heel.
+    float empRoot = (1.0 - smoothstep(0.12, 0.30, vAlong)) * core;
+    body = mix(body, (empArc * 1.28 + empRoot * 0.55) * tip * empCrackle, emp);
+    if (emp > 0.5 && empArc + empRoot < 0.12) discard;
     col = mix(col, vec3(0.75, 0.88, 1.0), empArc * emp * 0.8);
 
     // Variant 5: Concussion - dense shockwave compression slug
@@ -175,7 +204,11 @@ const FRAGMENT_SHADER = /* glsl */`
     col = mix(col, vec3(1.0, 0.9, 0.6), core * flak * 0.8);
 
     float radiance = body * vIntensity;
-    float alpha = body;
+    // A dark saturated outer enamel is part of the energy object. Normal blending lets
+    // that lip separate it from a bright sky; only the hot fold feeds the bloom shoulder.
+    float inkLip = smoothstep(0.69, 0.88, across) * (1.0 - smoothstep(0.95, 1.0, across));
+    col = mix(col, vSheath * 0.065, inkLip * 0.88);
+    float alpha = clamp(max(body, inkLip * tip * 0.82), 0.0, 1.0);
 
     if (uDepthEnabled > 0.5) {
       vec2 screenUv = gl_FragCoord.xy / max(uResolution, vec2(1.0));
@@ -229,11 +262,12 @@ export class EnergyBoltPool {
         uCameraFar: { value: 4000 },
         uSoftDistance: { value: 1.4 },
         uBoltTime: { value: 0 },
+        uBoltFlicker: { value: 1 },
       },
       vertexShader: VERTEX_SHADER,
       fragmentShader: FRAGMENT_SHADER,
       transparent: true,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
       depthWrite: false,
       depthTest: true,
       side: THREE.DoubleSide,
@@ -256,6 +290,18 @@ export class EnergyBoltPool {
     this.byEntity = new Map();
     this.writeCount = 0;
     this._color = new THREE.Color();
+    this._camera = null;
+    this._time = 0;
+    this._instanceAttributes = [
+      this.pos, this.prev, this.axis, this.size, this.color, this.sheath, this.minPixels,
+    ];
+    this._sortDepth = new Float64Array(this.capacity);
+    this._sortOrder = new Uint32Array(this.capacity);
+    this._sortOrderScratch = new Uint32Array(this.capacity);
+    this._sortDestinations = new Uint32Array(this.capacity);
+    this._sortAttributeScratch = new Float32Array(this.capacity * 4);
+    this._sortEntityScratch = new Int32Array(this.capacity);
+    this._remapEntity = (index, id) => this.byEntity.set(id, this._sortDestinations[index]);
     this.dynamicBufferOwner = scene ? registerDynamicBufferOwner(scene, {
       id: 'weapon-energy-bolts',
       mesh: this.mesh,
@@ -273,6 +319,7 @@ export class EnergyBoltPool {
   }
 
   setCamera(camera, viewportHeight) {
+    this._camera = camera || null;
     const u = this.material.uniforms;
     u.uTanHalfFov.value = tanHalfFov(camera && camera.fov);
     u.uViewportHeight.value = Math.max(1, viewportHeight || 1000);
@@ -289,10 +336,13 @@ export class EnergyBoltPool {
     u.uResolution.value.set(Math.max(1, width || 1), Math.max(1, height || 1));
   }
 
-  beginFrame(dt = 0) {
-    this._time = (Number.isFinite(this._time) ? this._time : 0)
-      + (Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.1) : 0);
+  beginFrame(dt = 0, accessibilityProfile = null) {
+    const profileId = accessibilityProfile && accessibilityProfile.id;
+    const reducedMotion = profileId === 'reduced-motion' || profileId === 'reduced-motion-and-flash';
+    const reducedFlash = profileId === 'reduced-flash' || profileId === 'reduced-motion-and-flash';
+    if (!reducedMotion && Number.isFinite(dt) && dt > 0) this._time += Math.min(dt, 0.1);
     this.material.uniforms.uBoltTime.value = this._time;
+    this.material.uniforms.uBoltFlicker.value = reducedFlash ? 0 : 1;
     this.writeCount = 0;
     this.byEntity.clear();
   }
@@ -340,7 +390,72 @@ export class EnergyBoltPool {
     return index;
   }
 
+  _sortBackToFront() {
+    const count = this.writeCount;
+    const camera = this._camera;
+    if (count < 2 || !camera || !camera.matrixWorldInverse) return false;
+    // Presentation can run before renderer.render refreshes a moved camera's inverse.
+    if (typeof camera.updateWorldMatrix === 'function') camera.updateWorldMatrix(true, false);
+    const view = camera.matrixWorldInverse.elements;
+    const pos = this.pos.array;
+    const prev = this.prev.array;
+    const depth = this._sortDepth;
+    let order = this._sortOrder;
+    let scratch = this._sortOrderScratch;
+    let sorted = true;
+    for (let i = 0; i < count; i++) {
+      const offset = i * 3;
+      // Camera-space Z increases towards the camera: most negative draws first.
+      // Use the shader's swept midpoint, not distance or only the current endpoint.
+      depth[i] = 0.5 * ((pos[offset] + prev[offset]) * view[2]
+        + (pos[offset + 1] + prev[offset + 1]) * view[6]
+        + (pos[offset + 2] + prev[offset + 2]) * view[10]) + view[14];
+      order[i] = i;
+      if (i > 0 && depth[i - 1] > depth[i]) sorted = false;
+    }
+    if (sorted) return false;
+
+    // Stable merge sort bounds dense volleys at O(n log n), with no per-frame arrays.
+    for (let width = 1; width < count; width *= 2) {
+      for (let start = 0; start < count; start += width * 2) {
+        const middle = Math.min(start + width, count);
+        const end = Math.min(start + width * 2, count);
+        let left = start;
+        let right = middle;
+        for (let out = start; out < end; out++) {
+          scratch[out] = right >= end || (left < middle && depth[order[left]] <= depth[order[right]])
+            ? order[left++] : order[right++];
+        }
+      }
+      const swap = order;
+      order = scratch;
+      scratch = swap;
+    }
+    for (let i = 0; i < count; i++) {
+      this._sortDestinations[order[i]] = i;
+      this._sortEntityScratch[i] = this.entityIds[order[i]];
+    }
+    for (let i = 0; i < count; i++) this.entityIds[i] = this._sortEntityScratch[i];
+    // Preserve the original map keys, including callers that use string entity IDs.
+    this.byEntity.forEach(this._remapEntity);
+    const values = this._sortAttributeScratch;
+    for (let attrIndex = 0; attrIndex < this._instanceAttributes.length; attrIndex++) {
+      const attribute = this._instanceAttributes[attrIndex];
+      const { array, itemSize } = attribute;
+      for (let i = 0; i < count; i++) {
+        const source = order[i] * itemSize;
+        const target = i * itemSize;
+        for (let c = 0; c < itemSize; c++) values[target + c] = array[source + c];
+      }
+      for (let i = 0; i < count * itemSize; i++) array[i] = values[i];
+      if (this.dynamicBufferOwner) markDynamicBufferItems(this.dynamicBufferOwner, attrIndex, 0, count);
+    }
+    // instanceMatrix is deliberately identical for every slot; the shader uses the attributes above.
+    return true;
+  }
+
   commit() {
+    this._sortBackToFront();
     if (this.dynamicBufferOwner) {
       commitDynamicBufferOwner(this.dynamicBufferOwner, this.writeCount);
     } else {

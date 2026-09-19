@@ -46,9 +46,9 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
     // mechanical recesses. The rim describes the silhouette against the dark stellar field.
     lighting: { ambient: 0.20, key: 3.4, rim: 1.65, fill: 0.72 },
     background: {
-      // The painted Amber Estuary frames a quiet flight corridor. Live stars, the ringed
-      // landmark and distant orbital hardware sit at independent depths over this art.
-      paintedSky: { strength: 0.52, parallax: 0.003 },
+      // The original stellar island and ringed planet remain the landmarks. The painted
+      // estuary is distant atmosphere around them, held below the lit machinery.
+      paintedSky: { strength: 0.16, parallax: 0.003 },
       intensity: 0.80,
       nebulaOpacity: 0.0,
       structure: {

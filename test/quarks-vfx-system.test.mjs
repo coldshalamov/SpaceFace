@@ -7,16 +7,24 @@ import { EnergyBoltPool } from '../src/render/weapons/energyBoltPool.js';
 
 test('createSpindleGeometry produces 3D multi-planar vertices and indices', () => {
   const geo = createSpindleGeometry(3);
-  assert.equal(geo.type, 'PlaneGeometry');
-  assert.equal(geo.attributes.position.count, 12);
-  assert.equal(geo.attributes.uv.count, 12);
-  assert.equal(geo.index.count, 18);
+  const positions = geo.attributes.position;
+  assert.equal(geo.type, 'BufferGeometry');
+  assert.equal(geo.attributes.uv.count, positions.count);
+  assert.ok(geo.index.count / 3 <= 240, 'shared folded body stays within its volley geometry budget');
+  assert.ok(positions.array.every(Number.isFinite));
+  assert.ok(geo.index.array.every((index) => index < positions.count));
+  geo.computeBoundingBox();
+  assert.equal(geo.boundingBox.min.x, -0.5);
+  assert.equal(geo.boundingBox.max.x, 0.5);
+  assert.ok(geo.boundingBox.max.y - geo.boundingBox.min.y > 0.5);
+  assert.ok(geo.boundingBox.max.z - geo.boundingBox.min.z > 0.5, 'cross-section occupies both transverse axes');
+  geo.dispose();
 });
 
 test('EnergyBoltPool integrates 3D spindle geometry and non-billboard shader', () => {
   const pool = new EnergyBoltPool(null, { capacity: 4 });
-  assert.equal(pool.geometry.attributes.position.count, 12);
-  assert.ok(pool.material.vertexShader.includes('r1 * position.y + r2 * position.z'));
+  assert.ok(pool.geometry.attributes.position.count > 12, 'folds have actual cross-section geometry');
+  assert.ok(pool.material.vertexShader.includes('r1 * shaped.y + r2 * shaped.z'));
   assert.ok(!pool.material.vertexShader.includes('cross(axis, toCam)'), 'billboard cross-product must be removed');
   pool.dispose();
 });

@@ -455,7 +455,10 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     float age = 1.0 - w;
     float ringR = 0.035 + age * 0.62;
     float ringW = 0.030 + age * 0.085;
-    float s = (d - ringR) / ringW;
+    // The travelling wave gathers along manufactured panel directions. This gives
+    // each hit a scalloped liquid-glass edge instead of another perfect neon circle.
+    float scallop = 1.0 + 0.16 * sin(N.x * 21.0 + N.z * 13.0) * sin(N.y * 17.0 - N.z * 9.0);
+    float s = (d - ringR * scallop) / ringW;
     float ring = exp(-s * s) * w * (0.35 + 0.65 * w);
     float core = exp(-d / (0.016 + age * 0.020)) * w * w;
     return vec2(core, ring);
@@ -483,7 +486,8 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
 
     float alpha = clamp(limb + wall * 0.62 + shoulder + ring * 0.55 + core * 0.85, 0.0, 1.0);
     float heat = clamp(core * 1.25 + ring * 0.45 + seam * panelCharge * 0.55 + flash * 0.22, 0.0, 1.0);
-    vec3 col = mix(tint, vec3(1.0), heat);
+    vec3 glassTint = mix(tint * vec3(0.50, 0.47, 0.94), tint, smoothstep(0.10, 0.45, heat));
+    vec3 col = mix(glassTint, vec3(0.90, 0.98, 1.0), heat * heat);
     // Deliberate bloom headroom: an impact core leaves this shader well above 1.0.
     vec3 rgb = col * (0.85 + 0.65 * seam * panelCharge + 1.35 * core + 0.45 * ring + 0.35 * rim);
     return vec4(rgb, alpha);

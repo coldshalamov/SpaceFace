@@ -163,7 +163,7 @@ export class PlasmaStreamSystem {
       throatRadius: rib.throatRadius != null ? rib.throatRadius : 1.32,
       spread: rib.spread != null ? rib.spread : 2.6,
       radiance: rib.radiance != null ? rib.radiance : 1.12,
-      opacity: rib.opacity != null ? rib.opacity : 0.055,
+      opacity: rib.opacity != null ? rib.opacity : 0.10,
     };
   }
 

@@ -14,20 +14,26 @@ export function createSpindleGeometry(planes = 3) {
 
   for (let p = 0; p < planes; p++) {
     const base = positions.length / 3;
-    const stations = [[0, 0.03], [0.20, 0.24], [0.55, 0.48], [0.78, 0.40], [1, 0.0]];
+    // Enough cross-section for each dialect to curl its lip in the vertex stage. This
+    // remains one immutable shared mesh; a dense firefight uploads instances, not vertices.
+    const acrossCount = 5;
+    const stations = Array.from({ length: 9 }, (_, s) => {
+      const t = s / 8;
+      return [t, Math.sin(Math.PI * t) * (0.24 + 0.28 * t)];
+    });
     for (let s = 0; s < stations.length; s++) {
       const [t, width] = stations[s];
       const angle = p * Math.PI / planes + (t - 0.5) * 0.7;
       const cy = Math.cos(angle), cz = Math.sin(angle);
-      for (let k = 0; k < 3; k++) {
-        const side = k - 1;
+      for (let k = 0; k < acrossCount; k++) {
+        const side = k / (acrossCount - 1) * 2 - 1;
         const fold = (1 - side * side) * width * 0.24;
         positions.push(t - 0.5, side * width * cy - fold * cz, side * width * cz + fold * cy);
-        uvs.push(t, k / 2);
+        uvs.push(t, k / (acrossCount - 1));
       }
-      if (s < stations.length - 1) for (let k = 0; k < 2; k++) {
-        const a = base + s * 3 + k;
-        indices.push(a, a + 1, a + 3, a + 1, a + 4, a + 3);
+      if (s < stations.length - 1) for (let k = 0; k < acrossCount - 1; k++) {
+        const a = base + s * acrossCount + k;
+        indices.push(a, a + 1, a + acrossCount, a + 1, a + acrossCount + 1, a + acrossCount);
       }
     }
   }

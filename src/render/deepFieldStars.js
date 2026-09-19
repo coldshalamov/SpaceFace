@@ -8,8 +8,8 @@ import * as THREE from 'three';
 // band. Anchor/span are NDC at the shipping camera; parallax is the sky's slide per WU flown.
 export const STELLAR_FORMATIONS = Object.freeze([
   Object.freeze({ recipe: 'helios_orbital_void', name: 'distant-edge-on-spiral', shape: 'spiral',
-    anchor: [-0.56, 0.40], span: 0.38, tilt: -0.20, flatten: 0.24,
-    cool: '#7698c9', warm: '#e9c796', intensity: 0.25, parallax: 0.012 }),
+    anchor: [-0.49, 0.42], span: 0.53, tilt: -0.20, flatten: 0.28,
+    cool: '#7698c9', warm: '#e9c796', intensity: 0.48, parallax: 0.012 }),
   Object.freeze({ recipe: 'belt_broken_dust_lane', name: 'amber-stellar-river', shape: 'stream',
     anchor: [-0.16, 0.52], span: 0.76, tilt: 0.13, flatten: 0.58,
     cool: '#b29c82', warm: '#eed0a0', intensity: 0.40, parallax: 0.016 }),

@@ -127,9 +127,11 @@ export function applyAuthoredMaterialProfile(material, explicitRole = null, opti
     spacefaceAuthoredMaterialName: material.userData?.spacefaceAuthoredMaterialName || material.name,
   };
   const layout = hullLayoutForAsset(options.assetId);
+  const authoredConstruction = material.userData.spacefaceRemasterGeometry === true;
   const layoutSurface = (role === 'hull' || role === 'accent' || role === 'service' || role === 'docking')
     && !/decal|stencil|marking|cyan|(?:^|_)warm(?:_|$)|glow|emissive/i.test(material.userData.spacefaceAuthoredMaterialName);
-  if (layout && layoutSurface && options.bounds) {
+  if (authoredConstruction) delete material.userData.spacefaceHullLayout;
+  if (layout && layoutSurface && options.bounds && !authoredConstruction) {
     material.userData.spacefaceHullLayout = { ...layout, center: [...options.bounds.center], size: [...options.bounds.size] };
   }
   material.dithering = true;

@@ -290,6 +290,147 @@ test('presenter clears stale depth and carries recipe pixel floors per bolt', ()
   pool.dispose();
 });
 
+function sortableBolt(entityId, currentX, previousX, lateralZ = 10) {
+  return {
+    entityId, x: currentX, y: 0, z: lateralZ, prevX: previousX, prevY: 0, prevZ: lateralZ,
+    ax: currentX + 1, ay: 0.2, az: previousX + 2,
+    length: currentX + 3, width: 1.1, intensity: previousX + 4, variant: 4,
+    coreR: currentX / 100, coreG: 0.3, coreB: previousX / 100,
+    sheathR: 0.1, sheathG: previousX / 100, sheathB: currentX / 100,
+    minPixels: currentX / 100 + 2,
+  };
+}
+
+test('normal-blended bolts sort swept midpoints in camera depth with every slot attribute and mapping', () => {
+  const scene = new THREE.Scene();
+  const pool = new EnergyBoltPool(scene, { capacity: 8 });
+  const camera = new THREE.PerspectiveCamera();
+  camera.position.set(0, 0, 10);
+  camera.lookAt(1, 0, 10);
+  camera.updateMatrixWorld();
+  pool.setCamera(camera, 1000);
+  pool.beginFrame();
+  const bolts = [
+    sortableBolt(11, 8, 2),             // midpoint depth 5, nearest
+    sortableBolt(22, 2, 58),            // midpoint depth 30, farthest despite near endpoint
+    sortableBolt(33, 34, 6),            // midpoint depth 20
+    sortableBolt('lateral', 13, 7, 210), // radial distance is farthest, camera depth is only 10
+  ];
+  for (const bolt of bolts) pool.writeBolt(bolt);
+  const attributes = Object.entries(pool.geometry.attributes).filter(([, attr]) => attr.isInstancedBufferAttribute);
+  const original = attributes.map(([name, attr]) => [name, attr.array.slice()]);
+  const buffers = attributes.map(([, attr]) => attr.array);
+  const scratch = [pool._sortOrder, pool._sortOrderScratch, pool._sortAttributeScratch];
+  pool.commit();
+  const order = [1, 2, 3, 0];
+  assert.equal(scene.children.filter((child) => child.isInstancedMesh).length, 1);
+  assert.equal(pool.mesh.count, 4);
+  assert.equal(pool.material.blending, THREE.NormalBlending);
+  assert.deepEqual(Array.from(pool.entityIds.slice(0, 4)), [22, 33, 0, 11]);
+  for (let slot = 0; slot < order.length; slot++) {
+    assert.equal(pool.byEntity.get(bolts[order[slot]].entityId), slot);
+    for (const [name, values] of original) {
+      const attr = pool.geometry.getAttribute(name);
+      const source = order[slot] * attr.itemSize;
+      const target = slot * attr.itemSize;
+      assert.deepEqual(Array.from(attr.array.slice(target, target + attr.itemSize)),
+        Array.from(values.slice(source, source + attr.itemSize)), `${name} follows entity into slot ${slot}`);
+    }
+  }
+  assert.equal(pool._sortBackToFront(), false, 'already-sorted active slots skip permutation');
+  for (let i = 0; i < attributes.length; i++) {
+    assert.equal(attributes[i][1].array, buffers[i], 'GPU attribute storage is retained');
+    assert.deepEqual(Array.from(buffers[i].slice(4 * attributes[i][1].itemSize)),
+      Array.from(original[i][1].slice(4 * attributes[i][1].itemSize)), 'inactive capacity stays untouched');
+  }
+  assert.equal(pool._sortOrder, scratch[0]);
+  assert.equal(pool._sortOrderScratch, scratch[1]);
+  assert.equal(pool._sortAttributeScratch, scratch[2]);
+  // A camera turn reverses depth even without a projectile rewrite.
+  camera.lookAt(-1, 0, 10);
+  pool.commit();
+  assert.deepEqual([11, 'lateral', 33, 22].map((id) => pool.byEntity.get(id)), [0, 1, 2, 3]);
+  pool.beginFrame();
+  pool.commit();
+  assert.equal(pool.mesh.count, 0);
+  assert.equal(pool.byEntity.size, 0);
+  pool.dispose();
+});
+
+test('equal-depth bolts retain write order and a reused pool handles partial and full volleys', () => {
+  const pool = new EnergyBoltPool(null, { capacity: 17 });
+  const camera = new THREE.PerspectiveCamera();
+  camera.updateMatrixWorld();
+  pool.setCamera(camera, 1000);
+  for (const count of [17, 6, 1, 0, 13]) {
+    pool.beginFrame();
+    const expected = [];
+    for (let id = 1; id <= count; id++) {
+      const z = -((id * 7) % 5 + 1);
+      pool.writeBolt(sortableBolt(id, id, id, z));
+      expected.push({ id, z });
+    }
+    expected.sort((a, b) => a.z - b.z);
+    pool.commit();
+    assert.deepEqual(Array.from(pool.entityIds.slice(0, count)), expected.map(({ id }) => id));
+    for (let index = 0; index < count; index++) assert.equal(pool.byEntity.get(expected[index].id), index);
+    assert.equal(pool.mesh.count, count);
+  }
+  pool.dispose();
+});
+
+test('shared accessibility freezes bolt decoration and removes crackle without stopping EMP travel', () => {
+  const presenter = new WeaponVfxPresenter({ scene: new THREE.Scene() });
+  const projectile = pulseProjectile(77, 0, 0);
+  projectile.data.weaponId = 'wpn_emp_disruptor_m';
+  const state = {
+    entityList: [projectile], entities: new Map(), settings: {}, render: { meshes: new Map() },
+  };
+  const advance = () => {
+    projectile.prevPos.x = projectile.pos.x;
+    projectile.pos.x += 5;
+    presenter.update(1 / 60, { state, interpolationAlpha: 1 });
+    assert.equal(presenter.bolts.pos.getX(0), projectile.pos.x);
+    assert.equal(presenter.bolts.prev.getX(0), projectile.prevPos.x);
+    assert.equal(presenter.bolts.size.getW(0), 4, 'EMP family remains selected');
+    assert.equal(presenter.bolts.live, 1);
+  };
+  const uniforms = presenter.bolts.material.uniforms;
+  advance();
+  const fullTime = uniforms.uBoltTime.value;
+  assert.ok(fullTime > 0);
+  assert.equal(uniforms.uBoltFlicker.value, 1);
+  state.settings.video = { motionReduce: true };
+  advance();
+  advance();
+  assert.equal(uniforms.uBoltTime.value, fullTime, 'only decorative time freezes');
+  state.settings.accessibility = { flashReduce: true };
+  advance();
+  assert.equal(uniforms.uBoltTime.value, fullTime);
+  assert.equal(uniforms.uBoltFlicker.value, 0);
+  state.settings.video.motionReduce = false;
+  advance();
+  assert.ok(uniforms.uBoltTime.value > fullTime, 'reduced flash permits arc drift');
+  assert.equal(uniforms.uBoltFlicker.value, 0);
+  const flashTime = uniforms.uBoltTime.value;
+  state.settings.accessibility.flashReduce = false;
+  advance();
+  assert.ok(uniforms.uBoltTime.value > flashTime);
+  assert.equal(uniforms.uBoltFlicker.value, 1);
+  assert.match(presenter.bolts.material.fragmentShader, /empCrackle = 0\.78 \+ uBoltFlicker \*/,
+    'accessibility uniform controls the rapid EMP brightness term');
+  presenter.dispose();
+});
+
+test('ballistic narrowing precedes the pixel floor and concussion deformation excludes kinetic and rail', () => {
+  const pool = new EnergyBoltPool(null);
+  const shader = pool.material.vertexShader;
+  assert.match(shader, /float width = max\(aBoltSize\.y \* ballisticWidth, worldPerPx \* minPixels\)/);
+  assert.match(shader, /else if \(aBoltSize\.w >= 4\.5 && aBoltSize\.w < 5\.5\)/);
+  assert.doesNotMatch(shader, /else if \(aBoltSize\.w < 5\.5\)/);
+  pool.dispose();
+});
+
 test('weapon ribbons stay on WebGL1-compatible uint16 indices', () => {
   const ribbon = new WeaponRibbonPool(null);
   assert.ok(ribbon.geometry.index.array instanceof Uint16Array);

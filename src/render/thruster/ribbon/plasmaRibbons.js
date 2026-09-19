@@ -47,7 +47,7 @@
 import * as THREE from 'three';
 
 /** Streamer sheets in the jet. Each has its own flow rate, phase and breakup behaviour. */
-export const RIBBON_COUNT = 28;
+export const RIBBON_COUNT = 12;
 /**
  * Vertices across each sheet's width.
  *
@@ -56,7 +56,7 @@ export const RIBBON_COUNT = 28;
  * wire. With a curved cross-section the normal rotates from one edge to the other, so a bright crease
  * appears where the surface turns edge-on while the rest stays dim.
  */
-export const RIBBON_ACROSS = 5;
+export const RIBBON_ACROSS = 7;
 /** Stations along the jet axis. */
 export const STATION_COUNT = 56;
 
@@ -252,7 +252,7 @@ const RIBBON_VERT = /* glsl */`
     halfWidth *= 0.75 + tongue * 0.5;
     // Sheets are not all the same size to begin with. Identical sheets read as a manufactured fan;
     // a spread of widths is most of what makes a plume look like it has depth in it.
-    halfWidth *= 0.32 + hash11(aRibbon * 4.11 + 2.9) * 0.68;
+    halfWidth *= 0.62 + hash11(aRibbon * 4.11 + 2.9) * 0.38;
     halfWidth *= 1.0 + uDash * 1.6;
 
     vec3 sheetN = normalize(cross(tangent, wide));
@@ -330,8 +330,9 @@ const RIBBON_FRAG = /* glsl */`
     float graze = min(uGrazeGain, 1.0 / max(facing, uGrazeFloor));
 
     // ---- how much material is here (alpha) --------------------------------------------------
-    // Dilution by billowing: material spread over a column of radius r is thinner by (r0/r)^2.
-    float dilute = 1.0 / max(vRadiusRatio * vRadiusRatio, 1.0);
+    // Broad folded ribbons carry mass farther than hairline streamers. Keep the
+    // expanding body readable, then let each sheet's own runout break its tail.
+    float dilute = 1.0 / max(vRadiusRatio * sqrt(vRadiusRatio), 1.0);
     // The sheet runs out at its rim, so the rim is where you can see through it and the body is not.
     // Deliberately not a gaussian (ban B6) — flat across the body, hard fall at the very edge.
     float across = 1.0 - pow(abs(vSide), 4.0);
@@ -377,7 +378,9 @@ const RIBBON_FRAG = /* glsl */`
     col = mix(col, uCoreColor, clamp(uDash * 0.8, 0.0, 1.0));
 
     // HDR headroom on purpose: cores must exceed 1.0 for bloom to have anything to catch (ban B8).
-    float rad = uRadiance * (emit + graze * 0.16 + uBoost * 0.40 + uDash * 3.0);
+    float fold = smoothstep(0.32, 0.78, facing);
+    col *= mix(vec3(0.29, 0.24, 0.70), vec3(1.0), fold * 0.65 + sear * 0.35);
+    float rad = uRadiance * (emit + graze * 0.22 + uBoost * 0.40 + uDash * 3.0);
     gl_FragColor = vec4(col * rad, alpha);
   }
 `;
@@ -464,8 +467,8 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
       // as separate strands, they read as wires: each one becomes a bright line with a gap either side
       // and the plume turns into pen-and-ink. Overlapping sheets build a continuous volume, and what
       // the eye then picks out is the creases where individual sheets turn edge-on.
-      uWidthNear: { value: 0.88 },
-      uWidthFar: { value: 3.05 },
+      uWidthNear: { value: 1.25 },
+      uWidthFar: { value: 5.4 },
       uCurve: { value: 1.55 },
       uDrive: { value: 0 },
       uBoost: { value: 0 },
@@ -474,11 +477,10 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
       uCoreColor: { value: new T.Color(core[0], core[1], core[2]) },
       uMidColor: { value: new T.Color(mid[0], mid[1], mid[2]) },
       uEdgeColor: { value: new T.Color(edge[0], edge[1], edge[2]) },
-      // Opacity is per-sheet and RIBBON_COUNT sheets overlap additively, so this is roughly a
-      // twentieth of what a single-layer effect would use. Set it at single-layer values and the jet
-      // saturates to a white sausage before any structure can be seen.
+      // Twelve broad folds share the column. Normal blending preserves a cool dark
+      // back face while the hot creases remain HDR; fewer overlaps also cut fill cost.
       uRadiance: { value: 1.08 },
-      uOpacity: { value: 0.036 },
+      uOpacity: { value: 0.085 },
       uGrazeGain: { value: 5.0 },
       uGrazeFloor: { value: 0.22 },
       uCamPos: { value: new T.Vector3() },
@@ -488,7 +490,7 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
     transparent: true,
     depthWrite: false,
     depthTest: true,
-    blending: T.AdditiveBlending,
+    blending: T.NormalBlending,
     side: T.DoubleSide,
     toneMapped: false,
   });

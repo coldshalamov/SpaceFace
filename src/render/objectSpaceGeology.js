@@ -15,10 +15,10 @@ export const COMMON_ROCK_VARIANTS = Object.freeze([
 // in several PBR dimensions so a fracture wall cannot become "matrix, but darker" and a ferrite
 // inclusion cannot become an orange emissive ore cue.
 export const COMMON_ROCK_MATERIAL_ROLES = Object.freeze({
-  matrix: Object.freeze({ color: [1.08, 1.04, 0.96], roughness: 0.78, metalness: 0.025, ao: 0.98, normalStrength: 0.74 }),
-  fracture: Object.freeze({ color: [0.48, 0.52, 0.56], roughness: 0.965, metalness: 0.012, ao: 0.58, normalStrength: 1.2 }),
+  matrix: Object.freeze({ color: [1.04, 1.02, 0.99], roughness: 0.74, metalness: 0.025, ao: 0.98, normalStrength: 0.56 }),
+  fracture: Object.freeze({ color: [0.42, 0.46, 0.59], roughness: 0.965, metalness: 0.012, ao: 0.50, normalStrength: 1.1 }),
   regolith: Object.freeze({ color: [1.19, 1.1, 0.88], roughness: 0.985, metalness: 0.006, ao: 0.84, normalStrength: 0.5 }),
-  ferrite: Object.freeze({ color: [0.72, 0.61, 0.48], roughness: 0.38, metalness: 0.58, ao: 0.9, normalStrength: 0.34 }),
+  ferrite: Object.freeze({ color: [0.78, 1.03, 1.10], roughness: 0.25, metalness: 0.64, ao: 0.9, normalStrength: 0.26 }),
 });
 
 // UV transforms live on the five shared geometries, not on the shared material. This keeps a single
@@ -55,6 +55,20 @@ export function strataField(x, y, z, variantIndex = 0) {
   return clamp01(0.5 + 0.5 * layers * variant.strataAmp);
 }
 
+/** One coherent broken bedding plane, broad enough to survive the gameplay camera.
+ *  Its gentle shear is shared by the mesh relief and substance fields; no UV seam or animation.
+ */
+export function structuralFaultDistance(x, y, z, variantIndex = 0) {
+  const variant = variantAt(variantIndex);
+  const shear = Math.sin(x * 2.3 + z * 3.1 + variantIndex * 0.7) * 0.045
+    + Math.sin(y * 4.2 - z * 1.4) * 0.024;
+  return dot(x, y, z, variant.jointA) + shear - Math.sin(variantIndex * 2.7) * 0.10;
+}
+
+export function structuralFaultField(x, y, z, variantIndex = 0) {
+  return 1 - smoothstep(0.035, 0.17, Math.abs(structuralFaultDistance(x, y, z, variantIndex)));
+}
+
 export function fractureField(x, y, z, variantIndex = 0) {
   const variant = variantAt(variantIndex);
   const nearestPlane = (axis, spacing, sharpness) => {
@@ -66,7 +80,8 @@ export function fractureField(x, y, z, variantIndex = 0) {
   const secondary = nearestPlane(variant.jointB, variant.spacing * 1.35, variant.sharp * 0.85);
   // Plane fields are intentionally narrowed after the smooth distance evaluation. Without this
   // threshold almost half the body reads as a crack and "fracture" becomes a blanket material.
-  return smoothstep(0.56, 0.96, Math.max(primary, secondary * 0.84));
+  const smallJoints = smoothstep(0.56, 0.96, Math.max(primary, secondary * 0.84));
+  return Math.max(smallJoints * 0.72, structuralFaultField(x, y, z, variantIndex));
 }
 
 export function sampleGeology(x, y, z, variantIndex = 0) {
@@ -81,13 +96,19 @@ export function sampleGeology(x, y, z, variantIndex = 0) {
   const mx = x - alongMineral * variant.mineralAxis[0];
   const my = y - alongMineral * variant.mineralAxis[1];
   const mz = z - alongMineral * variant.mineralAxis[2];
-  const inclusion = Math.exp(-(mx * mx + my * my + mz * mz) * 6.5)
+  const polarInclusion = Math.exp(-(mx * mx + my * my + mz * mz) * 6.5)
     * (0.82 + 0.18 * Math.sin(alongMineral * 5.5 + variantIndex));
+  // Exposed altered pockets follow one shoulder of the break. They are sparse,
+  // non-emissive and smoother than the matrix, so movement reveals a mineral glint.
+  const shoulderDistance = (Math.abs(structuralFaultDistance(x, y, z, variantIndex)) - 0.18) / 0.115;
+  const faultInclusion = Math.exp(-shoulderDistance * shoulderDistance)
+    * smoothstep(0.05, 0.58, alongMineral) * 0.94;
+  const inclusion = Math.max(polarInclusion, faultInclusion);
   const inclusionThreshold = 0.73 - variant.mineral * 1.15;
   const mineral = smoothstep(inclusionThreshold, inclusionThreshold + 0.18, inclusion);
   const height = Math.max(-0.38, Math.min(0.45,
     (strata - 0.5) * variant.strataAmp * 0.42
-      - fracture * 0.11
+      - fracture * 0.11 - structuralFaultField(x, y, z, variantIndex) * 0.075
       + regolith * 0.035
       + mineral * 0.045));
   return { strata, fracture, regolith, mineral, height, variantName: variant.name };

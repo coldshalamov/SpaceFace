@@ -4,7 +4,7 @@ import { BufferGeometry, Float32BufferAttribute } from 'three';
 
 export function createToolConduitGeometry() {
   const positions = [], uvs = [], strands = [], index = [];
-  const stations = 32, across = 3;
+  const stations = 32, across = 7;
   for (let strand = 0; strand < 3; strand++) {
     const base = positions.length / 3;
     for (let s = 0; s <= stations; s++) {
@@ -64,7 +64,7 @@ export function installToolConduitShader(material, shared, role) {
         vec3 folded = across * -sin(phase) + up * cos(phase);
         vec3 transformed = mix(uSfBeamStart, uSfBeamEnd, along)
           + radial * uSfBeamRadius * envelope * 0.78
-          + folded * side * uSfBeamRadius * (0.14 + envelope * 0.12)
+          + folded * side * uSfBeamRadius * (0.20 + envelope * 0.18)
           + radial * (1.0 - side * side) * uSfBeamRadius * 0.14;
         vSfBeam = uv;
         vSfConduitFold = abs(dot(radial, normalize(cameraPosition - transformed)));
@@ -80,15 +80,17 @@ export function installToolConduitShader(material, shared, role) {
         float work = smoothstep(0.91, 0.99, vSfBeam.x);
         float transport = vSfBeam.x * uSfBeamFlow * 31.4159 - uSfBeamTime * 16.0 * uSfBeamMotion;
         float packet = pow(0.5 + 0.5 * sin(transport), 6.0);
-        float crease = pow(1.0 - across, 3.0);
+        float crease = exp(-pow((across - 0.32) * 5.0, 2.0));
         float energy = (0.48 + packet * 1.2 + work * 1.4) * (0.35 + vSfConduitFold * 0.65);
         if (uSfBeamVerb < 0.5) energy *= 0.40 + packet * 2.4;
         else if (uSfBeamVerb < 1.5) energy = 0.85 + work * 2.5;
         else if (uSfBeamVerb < 2.5) energy *= 0.65 + work * 0.65;
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.88, 0.61), crease * (work + packet * 0.35));
-        diffuseColor.rgb *= (0.35 + crease * ${role === 'core' ? '1.6' : '0.7'}) * energy * uSfBeamPower;
+        float inkyBack = smoothstep(0.60, 0.90, across);
+        diffuseColor.rgb *= mix(vec3(1.0), vec3(0.22, 0.18, 0.52), inkyBack * 0.75);
+        diffuseColor.rgb *= (0.28 + crease * ${role === 'core' ? '1.6' : '0.7'}) * energy * uSfBeamPower;
         diffuseColor.a *= (1.0 - smoothstep(0.65, 1.0, across)) * uSfBeamPower;
       `);
   };
-  material.customProgramCacheKey = () => `sf-tool-conduit-v1-${role}`;
+  material.customProgramCacheKey = () => `sf-tool-conduit-v2-${role}`;
 }

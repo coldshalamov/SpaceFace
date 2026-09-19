@@ -153,20 +153,16 @@ test('common-rock PBR maps are decoded and GPU-warmed before publication', async
     `macro strata and fractures must affect grazing light instead of retaining sphere normals: ${normalDeviation}`);
 
   const shader = {
-    vertexShader: '#include <common>\n#include <begin_vertex>',
-    fragmentShader: [
-      '#include <common>',
-      '#include <normal_fragment_maps>',
-      '#include <roughnessmap_fragment>',
-      '#include <metalnessmap_fragment>',
-      '#include <aomap_fragment>',
-    ].join('\n'),
+    vertexShader: THREE.ShaderLib.standard.vertexShader,
+    fragmentShader: THREE.ShaderLib.standard.fragmentShader,
   };
   body.material.onBeforeCompile(shader);
   assert.match(shader.vertexShader, /attribute vec4 sfGeologyPbr/);
   assert.match(shader.fragmentShader, /mapN\.xy \*= normalScale \* vSfGeologyPbr\.a/);
   assert.match(shader.fragmentShader, /roughnessFactor = clamp\(mix/);
   assert.match(shader.fragmentShader, /metalnessFactor = clamp\(mix/);
+  assert.match(shader.fragmentShader, /sfMineralExposure = smoothstep\(0\.10, 0\.55, vSfGeologyPbr\.b\)/,
+    'mineral sheen follows the attached geological substance field');
   assert.match(shader.fragmentShader, /reflectedLight\.indirectDiffuse \*= vSfGeologyPbr\.r/);
   assert.throws(() => body.material.onBeforeCompile({
     vertexShader: '#include <common>',
