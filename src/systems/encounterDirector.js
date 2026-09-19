@@ -135,6 +135,15 @@ const PROX_SLACK = 600;            // "on the zone" slack for proximity-gated sh
 const PROXIMITY_STARVE_S = 90;         // zone-unreachable this long → beats relocate to the player
 const RELOCATE_MIN_DIST_WU = 520;      // off the player's bearing, readable but not on top of them
 const RELOCATE_MAX_DIST_WU = 900;
+// "Never two combat shapes at once" means never two FIGHTS at once. A live combat encounter that
+// is neither close to the player nor exchanging damage (a stalled relocated convoy, a stalker
+// circling far out) is not a fight, and must not veto every future combat beat via combat_busy.
+const COMBAT_BUSY_RANGE_WU = 2200;     // squad this close counts as an active fight
+const COMBAT_BUSY_EXCHANGE_S = 240;    // recent damage either way counts as an active fight
+// A combat encounter with no player exchange for this long is a stalemate, not a story: the
+// director resolves it escaped so the lane can offer the next thing. Named captains are exempt
+// (their grudges carry their own depart/deadline lifecycle).
+const STALE_ENCOUNTER_S = 420;
 
 // ── harassment mercy (unresolvable-pin release valve) ────────────────────────────────────────────
 // Measured worst case: a prospector pinned by one harasser for seven straight sim-hours (29,535
@@ -269,8 +278,30 @@ export const encounterDirector = {
     this._tickEscalationSeeds(dir, state, now);
     if (!isDocked(state) && !isTutorialActive(state)) this._pump(dir, state, now);
     this._tickLive(dir, state, now);
+    this._tickStaleEncounters(dir, state, now);
     this._tickHarassMercy(dir, state, now);
     this._springCeresActivityAmbushOnPrey();
+  },
+
+  /** A combat encounter the player has neither damaged nor been damaged by for STALE_ENCOUNTER_S
+   * is a stalemate, not a story — resolve it escaped so combat_busy releases the lane. Named
+   * captains are exempt: their grudges carry their own depart/deadline lifecycle. */
+  _tickStaleEncounters(dir, state, now) {
+    for (const lid of Object.keys(dir.live)) {
+      const live = dir.live[lid];
+      if (!live || live.phase === 'done' || live.deck !== 'combat') continue;
+      if (live.script === 'namedHunter') continue;
+      if (live.data && live.data.adoptedWorldActors === true) continue;
+      const lastTouch = Math.max(live.startedAt || 0, live.lastPlayerExchangeAt || 0);
+      if (now - lastTouch <= STALE_ENCOUNTER_S) continue;
+      const squadAlive = this.aliveCount(live) > 0;
+      if (!squadAlive) continue;                       // kill/teardown paths own these
+      this.resolve(live, 'escaped');
+      this.emit('encounter:stale', {
+        encounterId: lid, shapeId: live.shapeId, staleS: Math.round(now - lastTouch),
+        sectorId: live.sectorId, t: now,
+      });
+    }
   },
 
   _tickSessionRhythm(dir, state, now) {
@@ -1633,11 +1664,13 @@ export const encounterDirector = {
 
   _onCombatDamage(p) {
     if (!p || p.attackerId == null) return;
+    const dir = ensureDirectorState(this.state);
+    const now = this.now();
     if (p.attackerId === this.state.playerId) {
-      const dir = ensureDirectorState(this.state);
       for (const lid of Object.keys(dir.live)) {
         const live = dir.live[lid];
         if (p.targetId != null && live.ids.includes(p.targetId)) {
+          live.lastPlayerExchangeAt = now;   // the player is fighting this encounter
           this._scriptEvent(live, 'playerHitSquad', p);
           return;
         }
@@ -1646,7 +1679,13 @@ export const encounterDirector = {
     }
     // NPC → player damage feeds the harassment-mercy watch: a pin the attacker can never resolve
     // gets a deterministic break-off instead of running forever (see HARASS_* contract above).
-    if (p.targetId != null && p.targetId === this.state.playerId) this._watchHarassDamage(p);
+    if (p.targetId != null && p.targetId === this.state.playerId) {
+      for (const lid of Object.keys(dir.live)) {
+        const live = dir.live[lid];
+        if (live.ids.includes(p.attackerId)) live.lastPlayerExchangeAt = now;
+      }
+      this._watchHarassDamage(p);
+    }
   },
 
   _watchHarassDamage(p) {
@@ -3318,7 +3357,7 @@ export function encounterPacingBlockReason(dir, state, shape, now) {
   if ((dir.pressure[shape.deck] || 0) < shape.pressureCost) return 'pressure';
 
   const liveList = Object.values(dir.live).filter(Boolean);
-  const liveCombat = liveList.some((live) => live.deck === 'combat');
+  const liveCombat = liveList.some((live) => live.deck === 'combat' && encounterEngagesPlayer(live, state, now));
   const liveMeaningful = liveList.filter((live) => live.tier !== 'ambient').length;
   const liveAmbient = liveList.length - liveMeaningful;
   if (shape.tier === 'ambient') {
@@ -3342,6 +3381,24 @@ export function encounterPacingBlockReason(dir, state, shape, now) {
 
 function isDocked(state) {
   return !!((state.player && state.player.flags && state.player.flags.docked) || (state.ui && state.ui.docked));
+}
+
+/** A live combat encounter counts as "a fight in progress" only while it is actually engaging
+ * the player: a squad entity within COMBAT_BUSY_RANGE_WU, or damage exchanged either way inside
+ * COMBAT_BUSY_EXCHANGE_S. Distant stalkers and stalled squads must not veto future combat. */
+function encounterEngagesPlayer(live, state, now) {
+  const exchangeAt = Math.max(live.startedAt || 0, live.lastPlayerExchangeAt || 0);
+  if (now - exchangeAt <= COMBAT_BUSY_EXCHANGE_S) return true;
+  const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  if (!player || !player.pos) return false;
+  const r2 = COMBAT_BUSY_RANGE_WU * COMBAT_BUSY_RANGE_WU;
+  for (const id of live.ids) {
+    const e = state.entities.get(id);
+    if (!e || e.alive === false || !e.pos) continue;
+    const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
+    if (dx * dx + dz * dz <= r2) return true;
+  }
+  return false;
 }
 
 function isTutorialActive(state) {
