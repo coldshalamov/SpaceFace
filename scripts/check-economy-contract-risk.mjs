@@ -187,8 +187,19 @@ function testThresholdDeterministicDeduped() {
 
     const bus = makeBus();
     const state = makeState(scarce, { seed: 42, simTime: 100 });
+    // Economy Pulse: scarcity relief is OUTBOUND — it originates at the supplier and targets a
+    // different distressed neighbor, so the fixture seeds one (Helios neighbors HOME/ceres).
+    // The first-trade teach contract is pre-satisfied below: it shares the fuel-run offer class
+    // and would suppress this dock's field offer.
+    state.sectorSim.field.nodes.sector_helios_prime = fieldNode({
+      pricePressure: 0.45,
+      driver: { pricePressure: 'route_scarcity' },
+    });
     const sys = { ...economyContracts };
     sys.init({ state, bus, helpers: { voice: { say() { return true; } } } });
+    // init() starts a fresh contracts record; pre-satisfy the teach contract AFTER init so the
+    // field offer's class is not suppressed by the first-trade offer posted at this same dock.
+    state.economyContracts = { evaluatedEpochByStation: {}, firstTradeOffered: true };
 
     bus.emit('dock:docked', { stationId: STATION.id });
     bus.emit('dock:docked', { stationId: STATION.id });

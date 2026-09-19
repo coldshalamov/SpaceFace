@@ -105,7 +105,8 @@ test('persistent demand responds to averaged conflict state and ignores visible 
   const warEntry = warRun.state.economy.markets[stationId][commodityId];
   const calmEntry = calmRun.state.economy.markets[stationId][commodityId];
   assert.ok(warEntry.lastMid > calmEntry.lastMid);
-  assert.equal(warEntry.demandMult, 1.22);
+  // Economy Pulse: the war premium is model-derived (war military delta 0.213917).
+  assert.equal(warEntry.demandMult, 1.213917);
   assert.equal(calmEntry.demandMult, 1);
 
   warRun.state.conflicts['faction_reach:faction_scn'].state = 'cold';
@@ -132,7 +133,7 @@ test('save restoration rebuilds derived demand after faction and sector owners r
   restored.bus.emit('save:loaded', { slot: 'demand-integration' });
   const after = restored.econ.quote(stationId, commodityId, 'buy', 4);
 
-  assert.equal(restored.state.economy.markets[stationId][commodityId].demandMult, 1.22);
+  assert.equal(restored.state.economy.markets[stationId][commodityId].demandMult, 1.213917);
   assert.equal(after.total, before.total);
   assert.equal(after.unitAvg, before.unitAvg);
   economy._instance = null;
@@ -192,7 +193,7 @@ test('sector offline catch-up reconciles demand after the real save listener ord
 
   // In the registry, economy handles save:loaded before sectorSim performs its offline catch-up.
   restored.bus.emit('save:loaded', { slot: 'offline-demand-order' });
-  assert.ok(Math.abs(entry.demandMult - 1.14) < 1e-9,
+  assert.ok(Math.abs(entry.demandMult - 1.13821) < 1e-9,
     'the pre-catch-up field contains only the war premium');
 
   // sectorSim mutates its averaged field and then emits this receipt. Economy must reconcile from
@@ -206,7 +207,7 @@ test('sector offline catch-up reconciles demand after the real save listener ord
   };
   restored.bus.emit('sectorsim:offlineSummary', { elapsedSec: 86_400, days: 1 });
 
-  assert.ok(Math.abs(entry.demandMult - 1.34) < 1e-9,
+  assert.ok(Math.abs(entry.demandMult - 1.335757) < 1e-9,
     'war and blockade demand are both current immediately');
   assert.deepEqual(entry.demandDrivers.map((driver) => driver.id), ['war-footing', 'blockade-relief']);
   economy._instance = null;

@@ -1,0 +1,1303 @@
+{
+  "commodities": [
+    {
+      "id": "cmdty_ore_iron",
+      "name": "Iron Ore",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 0.8,
+      "fineMult": 0,
+      "marketTier": 0,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "trade_hub"
+      ]
+    },
+    {
+      "id": "cmdty_ore_copper",
+      "name": "Copper Ore",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 0.9,
+      "fineMult": 0,
+      "marketTier": 1,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "fab"
+      ]
+    },
+    {
+      "id": "cmdty_ore_titanium",
+      "name": "Titanium Ore",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 0.7,
+      "fineMult": 0,
+      "marketTier": 2,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery"
+      ]
+    },
+    {
+      "id": "cmdty_silicate",
+      "name": "Silicate Rock",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 0.6,
+      "fineMult": 0,
+      "marketTier": 0,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "fab",
+        "trade_hub"
+      ]
+    },
+    {
+      "id": "cmdty_ice_water",
+      "name": "Water Ice",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1.4,
+      "massPerU": 0.5,
+      "fineMult": 0,
+      "marketTier": 0,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "trade_hub",
+        "military",
+        "research"
+      ]
+    },
+    {
+      "id": "cmdty_volatiles",
+      "name": "Ice Volatiles",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1.4,
+      "massPerU": 0.5,
+      "fineMult": 0,
+      "marketTier": 1,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "military",
+        "trade_hub"
+      ]
+    },
+    {
+      "id": "cmdty_ore_platinoid",
+      "name": "Platinoid Ore",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 1.4,
+      "fineMult": 0,
+      "marketTier": 3,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery"
+      ]
+    },
+    {
+      "id": "cmdty_ore_bronzium",
+      "name": "Nickel Ore",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 0.9,
+      "fineMult": 0,
+      "marketTier": 1,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "trade_hub",
+        "fab"
+      ]
+    },
+    {
+      "id": "cmdty_ore_silverium",
+      "name": "Silver Ore",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 0.7,
+      "fineMult": 0,
+      "marketTier": 2,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "trade_hub"
+      ]
+    },
+    {
+      "id": "cmdty_ore_goldium",
+      "name": "Gold Ore",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 1.1,
+      "fineMult": 0,
+      "marketTier": 2,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "trade_hub"
+      ]
+    },
+    {
+      "id": "cmdty_ore_platinium",
+      "name": "Platinum Ore",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 1.4,
+      "fineMult": 0,
+      "marketTier": 3,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "trade_hub"
+      ]
+    },
+    {
+      "id": "cmdty_ore_einsteinium",
+      "name": "Stellarite Ore",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 1.5,
+      "fineMult": 0,
+      "marketTier": 3,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "trade_hub"
+      ]
+    },
+    {
+      "id": "cmdty_gem_emerald",
+      "name": "Raw Emerald",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 0.8,
+      "massPerU": 0.8,
+      "fineMult": 0,
+      "marketTier": 3,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "trade_hub",
+        "refinery"
+      ]
+    },
+    {
+      "id": "cmdty_gem_ruby",
+      "name": "Raw Ruby",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 0.8,
+      "massPerU": 0.8,
+      "fineMult": 0,
+      "marketTier": 4,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "trade_hub",
+        "refinery"
+      ]
+    },
+    {
+      "id": "cmdty_gem_diamond",
+      "name": "Raw Diamond",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 0.8,
+      "massPerU": 0.8,
+      "fineMult": 0,
+      "marketTier": 4,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "trade_hub",
+        "refinery"
+      ]
+    },
+    {
+      "id": "cmdty_exotic_amazonite",
+      "name": "Prism Shard",
+      "category": "raw ore",
+      "legality": "legal",
+      "volPerU": 0.8,
+      "massPerU": 0.8,
+      "fineMult": 0,
+      "marketTier": 4,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "trade_hub",
+        "research"
+      ]
+    },
+    {
+      "id": "cmdty_gas_hydrogen",
+      "name": "Hydrogen Gas",
+      "category": "gas",
+      "legality": "legal",
+      "volPerU": 2.5,
+      "massPerU": 0.1,
+      "fineMult": 0,
+      "marketTier": 0,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "trade_hub"
+      ]
+    },
+    {
+      "id": "cmdty_gas_helium3",
+      "name": "Helium-3",
+      "category": "gas",
+      "legality": "legal",
+      "volPerU": 2.5,
+      "massPerU": 0.1,
+      "fineMult": 0,
+      "marketTier": 2,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "research"
+      ]
+    },
+    {
+      "id": "cmdty_crystal_silica",
+      "name": "Silica Crystal",
+      "category": "crystal",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 1.1,
+      "fineMult": 0,
+      "marketTier": 1,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "fab",
+        "research"
+      ]
+    },
+    {
+      "id": "cmdty_crystal_lumin",
+      "name": "Phosphor Crystal",
+      "category": "crystal",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 1,
+      "fineMult": 0,
+      "marketTier": 2,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "fab",
+        "research"
+      ]
+    },
+    {
+      "id": "cmdty_exotic_xenium",
+      "name": "Xenium",
+      "category": "exotic",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 1.2,
+      "fineMult": 0,
+      "marketTier": 4,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "research",
+        "blackmarket"
+      ]
+    },
+    {
+      "id": "cmdty_refined_metals",
+      "name": "Refined Metals",
+      "category": "refined",
+      "legality": "legal",
+      "volPerU": 0.5,
+      "massPerU": 0.7,
+      "fineMult": 0,
+      "producedBy": [
+        "refinery"
+      ],
+      "consumedBy": [
+        "fab",
+        "military"
+      ]
+    },
+    {
+      "id": "cmdty_alloys",
+      "name": "Composite Alloys",
+      "category": "refined",
+      "legality": "legal",
+      "volPerU": 0.5,
+      "massPerU": 0.6,
+      "fineMult": 0,
+      "producedBy": [
+        "refinery",
+        "fab"
+      ],
+      "consumedBy": [
+        "fab",
+        "military"
+      ]
+    },
+    {
+      "id": "cmdty_polymers",
+      "name": "Polymers",
+      "category": "refined",
+      "legality": "legal",
+      "volPerU": 1.2,
+      "massPerU": 0.7,
+      "fineMult": 0,
+      "producedBy": [
+        "refinery"
+      ],
+      "consumedBy": [
+        "fab",
+        "trade_hub"
+      ]
+    },
+    {
+      "id": "cmdty_fuel_cells",
+      "name": "Fuel Cells",
+      "category": "refined",
+      "legality": "legal",
+      "volPerU": 0.8,
+      "massPerU": 0.6,
+      "fineMult": 0,
+      "producedBy": [
+        "refinery"
+      ],
+      "consumedBy": [
+        "trade_hub",
+        "military",
+        "mining"
+      ]
+    },
+    {
+      "id": "cmdty_purified_silica",
+      "name": "Purified Silica",
+      "category": "refined",
+      "legality": "legal",
+      "volPerU": 0.8,
+      "massPerU": 0.9,
+      "fineMult": 0,
+      "producedBy": [
+        "refinery",
+        "fab"
+      ],
+      "consumedBy": [
+        "fab",
+        "research"
+      ]
+    },
+    {
+      "id": "cmdty_regocrete",
+      "name": "Regocrete",
+      "category": "component",
+      "legality": "legal",
+      "volPerU": 1.5,
+      "massPerU": 1.8,
+      "fineMult": 0,
+      "producedBy": [
+        "fab",
+        "trade_hub"
+      ],
+      "consumedBy": [
+        "mining",
+        "fab"
+      ]
+    },
+    {
+      "id": "cmdty_control_unit",
+      "name": "Machine Control Unit",
+      "category": "tech",
+      "legality": "legal",
+      "volPerU": 1.2,
+      "massPerU": 0.8,
+      "fineMult": 0,
+      "producedBy": [
+        "fab",
+        "trade_hub"
+      ],
+      "consumedBy": [
+        "mining",
+        "fab"
+      ]
+    },
+    {
+      "id": "cmdty_comp_hullplate",
+      "name": "Hull Plate",
+      "category": "component",
+      "legality": "legal",
+      "volPerU": 0.7,
+      "massPerU": 1,
+      "fineMult": 0,
+      "producedBy": [
+        "fab",
+        "refinery"
+      ],
+      "consumedBy": [
+        "military",
+        "fab"
+      ]
+    },
+    {
+      "id": "cmdty_comp_circuitry",
+      "name": "Circuitry",
+      "category": "component",
+      "legality": "legal",
+      "volPerU": 0.6,
+      "massPerU": 0.3,
+      "fineMult": 0,
+      "producedBy": [
+        "fab"
+      ],
+      "consumedBy": [
+        "research",
+        "military"
+      ]
+    },
+    {
+      "id": "cmdty_microchips",
+      "name": "Microchips",
+      "category": "tech",
+      "legality": "legal",
+      "volPerU": 0.7,
+      "massPerU": 0.2,
+      "fineMult": 0,
+      "producedBy": [
+        "fab"
+      ],
+      "consumedBy": [
+        "military",
+        "trade_hub",
+        "research"
+      ]
+    },
+    {
+      "id": "cmdty_electronics",
+      "name": "Electronics",
+      "category": "tech",
+      "legality": "legal",
+      "volPerU": 0.9,
+      "massPerU": 0.5,
+      "fineMult": 0,
+      "producedBy": [
+        "fab"
+      ],
+      "consumedBy": [
+        "trade_hub",
+        "military"
+      ]
+    },
+    {
+      "id": "cmdty_quantum_cores",
+      "name": "Quantum Cores",
+      "category": "tech",
+      "legality": "legal",
+      "volPerU": 0.9,
+      "massPerU": 0.3,
+      "fineMult": 0,
+      "producedBy": [
+        "research"
+      ],
+      "consumedBy": [
+        "military",
+        "fab"
+      ]
+    },
+    {
+      "id": "cmdty_consumer_goods",
+      "name": "Consumer Goods",
+      "category": "consumer",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 0.5,
+      "fineMult": 0,
+      "producedBy": [
+        "fab",
+        "trade_hub"
+      ],
+      "consumedBy": [
+        "trade_hub",
+        "mining"
+      ]
+    },
+    {
+      "id": "cmdty_textiles",
+      "name": "Textiles",
+      "category": "consumer",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 0.6,
+      "fineMult": 0,
+      "producedBy": [
+        "fab"
+      ],
+      "consumedBy": [
+        "trade_hub"
+      ]
+    },
+    {
+      "id": "cmdty_luxury_goods",
+      "name": "Luxury Goods",
+      "category": "luxury",
+      "legality": "legal",
+      "volPerU": 0.9,
+      "massPerU": 0.4,
+      "fineMult": 0,
+      "producedBy": [
+        "trade_hub",
+        "fab"
+      ],
+      "consumedBy": [
+        "trade_hub",
+        "blackmarket"
+      ]
+    },
+    {
+      "id": "cmdty_art",
+      "name": "Art & Antiques",
+      "category": "luxury",
+      "legality": "restricted",
+      "volPerU": 0.7,
+      "massPerU": 0.3,
+      "fineMult": 0.8,
+      "producedBy": [
+        "trade_hub"
+      ],
+      "consumedBy": [
+        "trade_hub",
+        "blackmarket"
+      ]
+    },
+    {
+      "id": "cmdty_food",
+      "name": "Provisions",
+      "category": "food",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 0.7,
+      "fineMult": 0,
+      "producedBy": [
+        "trade_hub"
+      ],
+      "consumedBy": [
+        "mining",
+        "military",
+        "blackmarket"
+      ]
+    },
+    {
+      "id": "cmdty_medical",
+      "name": "Medical Supplies",
+      "category": "med",
+      "legality": "legal",
+      "volPerU": 0.8,
+      "massPerU": 0.4,
+      "fineMult": 0,
+      "producedBy": [
+        "research",
+        "fab"
+      ],
+      "consumedBy": [
+        "trade_hub",
+        "mining",
+        "military"
+      ]
+    },
+    {
+      "id": "cmdty_scrap_metal",
+      "name": "Scrap Metal",
+      "category": "salvage",
+      "legality": "legal",
+      "volPerU": 1,
+      "massPerU": 0.9,
+      "fineMult": 0,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "refinery",
+        "fab"
+      ]
+    },
+    {
+      "id": "cmdty_salvage_electronics",
+      "name": "Salvage Electronics",
+      "category": "salvage",
+      "legality": "legal",
+      "volPerU": 0.6,
+      "massPerU": 0.4,
+      "fineMult": 0,
+      "producedBy": [
+        "mining"
+      ],
+      "consumedBy": [
+        "fab",
+        "military"
+      ]
+    },
+    {
+      "id": "cmdty_classified_salvage",
+      "name": "Classified Salvage",
+      "category": "salvage",
+      "legality": "restricted",
+      "volPerU": 0.6,
+      "massPerU": 0.4,
+      "fineMult": 0.8,
+      "producedBy": [
+        "blackmarket"
+      ],
+      "consumedBy": [
+        "military",
+        "blackmarket",
+        "fab"
+      ]
+    },
+    {
+      "id": "cmdty_narcotics",
+      "name": "Narcotics",
+      "category": "contraband",
+      "legality": "contraband",
+      "volPerU": 0.6,
+      "massPerU": 0.2,
+      "fineMult": 1.2,
+      "producedBy": [
+        "blackmarket"
+      ],
+      "consumedBy": [
+        "blackmarket"
+      ]
+    },
+    {
+      "id": "cmdty_stolen_goods",
+      "name": "Stolen Goods",
+      "category": "contraband",
+      "legality": "contraband",
+      "volPerU": 1,
+      "massPerU": 0.8,
+      "fineMult": 1.5,
+      "producedBy": [
+        "blackmarket"
+      ],
+      "consumedBy": [
+        "blackmarket"
+      ]
+    },
+    {
+      "id": "cmdty_weapons",
+      "name": "Weapon Systems",
+      "category": "military",
+      "legality": "restricted",
+      "volPerU": 0.9,
+      "massPerU": 1.5,
+      "fineMult": 1.2,
+      "producedBy": [
+        "military"
+      ],
+      "consumedBy": [
+        "military",
+        "blackmarket"
+      ]
+    },
+    {
+      "id": "cmdty_munitions",
+      "name": "Munitions",
+      "category": "military",
+      "legality": "restricted",
+      "volPerU": 0.6,
+      "massPerU": 1.1,
+      "fineMult": 0.8,
+      "producedBy": [
+        "military",
+        "fab"
+      ],
+      "consumedBy": [
+        "military",
+        "blackmarket"
+      ]
+    },
+    {
+      "id": "cmdty_impulse_charge",
+      "name": "Impulse Charge",
+      "category": "military",
+      "legality": "restricted",
+      "volPerU": 2,
+      "massPerU": 2,
+      "fineMult": 1,
+      "producedBy": [
+        "military",
+        "fab"
+      ],
+      "consumedBy": [
+        "military",
+        "blackmarket"
+      ]
+    }
+  ],
+  "tech": [
+    {
+      "id": "tech_combat_basics",
+      "name": "Combat Basics",
+      "branch": "combat",
+      "prereqs": [],
+      "unlocks": {
+        "ships": [
+          "ship_wasp"
+        ],
+        "modules": [
+          "wpn_pulse_laser_s",
+          "wpn_autocannon_s"
+        ]
+      }
+    },
+    {
+      "id": "tech_beam_focusing",
+      "name": "Beam Focusing",
+      "branch": "combat",
+      "prereqs": [
+        "tech_combat_basics"
+      ],
+      "unlocks": {
+        "modules": [
+          "wpn_pulse_laser_m",
+          "wpn_beam_laser_m",
+          "mod_thermal_sink_m"
+        ]
+      }
+    },
+    {
+      "id": "tech_kinetic_drivers",
+      "name": "Kinetic Drivers",
+      "branch": "combat",
+      "prereqs": [
+        "tech_combat_basics"
+      ],
+      "unlocks": {
+        "modules": [
+          "wpn_autocannon_m",
+          "wpn_railgun_m",
+          "wpn_concussion_cannon_m"
+        ]
+      }
+    },
+    {
+      "id": "tech_guided_ordnance",
+      "name": "Guided Ordnance",
+      "branch": "combat",
+      "prereqs": [
+        "tech_combat_basics"
+      ],
+      "unlocks": {
+        "modules": [
+          "wpn_missile_rack_m",
+          "wpn_vector_mine_m"
+        ]
+      }
+    },
+    {
+      "id": "tech_plasma_dynamics",
+      "name": "Plasma Dynamics",
+      "branch": "combat",
+      "prereqs": [
+        "tech_kinetic_drivers",
+        "tech_beam_focusing"
+      ],
+      "unlocks": {
+        "modules": [
+          "wpn_plasma_cannon_m",
+          "wpn_emp_disruptor_m",
+          "wpn_rcs_disruptor_m"
+        ]
+      }
+    },
+    {
+      "id": "tech_deflector_theory",
+      "name": "Deflector Theory",
+      "branch": "combat",
+      "prereqs": [],
+      "unlocks": {
+        "modules": [
+          "mod_shield_capacitor_m",
+          "mod_shield_hardener_m",
+          "mod_chaff_dispenser_m",
+          "mod_decoy_buoy_s"
+        ]
+      }
+    },
+    {
+      "id": "tech_hardened_deflectors",
+      "name": "Hardened Deflectors",
+      "branch": "combat",
+      "prereqs": [
+        "tech_deflector_theory"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_shield_aegis_l"
+        ],
+        "efficiency": {
+          "shieldRegenMult": 0.05
+        }
+      }
+    },
+    {
+      "id": "tech_strike_craft",
+      "name": "Strike Craft",
+      "branch": "combat",
+      "prereqs": [
+        "tech_combat_basics"
+      ],
+      "unlocks": {
+        "ships": [
+          "ship_hornet"
+        ]
+      }
+    },
+    {
+      "id": "tech_fire_control",
+      "name": "Fire Control",
+      "branch": "combat",
+      "prereqs": [
+        "tech_strike_craft"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_targeting_computer_m",
+          "mod_ecm_jammer_l",
+          "mod_monofilament_sweep_m",
+          "mod_transverse_snare_m",
+          "mod_twin_bridle_m",
+          "mod_massline_spool_l",
+          "mod_pds_servo_s"
+        ]
+      }
+    },
+    {
+      "id": "tech_warship_license",
+      "name": "Warship License",
+      "branch": "combat",
+      "prereqs": [
+        "tech_strike_craft"
+      ],
+      "unlocks": {
+        "ships": [
+          "ship_bastion"
+        ]
+      }
+    },
+    {
+      "id": "tech_capital_weapons",
+      "name": "Capital Weapons",
+      "branch": "combat",
+      "prereqs": [
+        "tech_warship_license",
+        "tech_fire_control"
+      ],
+      "unlocks": {
+        "ships": [
+          "ship_warden"
+        ],
+        "modules": [
+          "wpn_heavy_beam_l",
+          "wpn_torpedo_l"
+        ]
+      }
+    },
+    {
+      "id": "tech_capital_hulls",
+      "name": "Capital Hulls",
+      "branch": "combat",
+      "prereqs": [
+        "tech_capital_weapons"
+      ],
+      "unlocks": {
+        "ships": [
+          "ship_colossus"
+        ]
+      }
+    },
+    {
+      "id": "tech_flagship_command",
+      "name": "Flagship Command",
+      "branch": "combat",
+      "prereqs": [
+        "tech_capital_hulls",
+        "tech_graviton_drives"
+      ],
+      "unlocks": {
+        "ships": [
+          "ship_leviathan"
+        ],
+        "modules": [
+          "wpn_siege_lance_l"
+        ]
+      }
+    },
+    {
+      "id": "tech_attack_topology",
+      "name": "Attack Topology",
+      "branch": "combat",
+      "prereqs": [
+        "tech_combat_basics"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_twin_mount",
+          "mod_triad_mount",
+          "mod_piercing_core",
+          "mod_forked_core",
+          "mod_herald_fan"
+        ]
+      }
+    },
+    {
+      "id": "tech_ricochet_ballistics",
+      "name": "Ricochet Ballistics",
+      "branch": "combat",
+      "prereqs": [
+        "tech_attack_topology"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_bank_shot",
+          "mod_smart_bank",
+          "mod_bank_relay"
+        ]
+      }
+    },
+    {
+      "id": "tech_payload_conduction",
+      "name": "Payload Conduction",
+      "branch": "combat",
+      "prereqs": [
+        "tech_attack_topology",
+        "tech_plasma_dynamics"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_ion_payload",
+          "mod_incendiary_payload",
+          "mod_gravity_tag",
+          "mod_relay_arc",
+          "mod_conductive_path",
+          "mod_cryo_payload"
+        ]
+      }
+    },
+    {
+      "id": "tech_orbit_cryo",
+      "name": "Cryo Orbitals",
+      "branch": "combat",
+      "prereqs": [
+        "tech_payload_conduction"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_cryo_gyros"
+        ]
+      }
+    },
+    {
+      "id": "tech_industrial_mining",
+      "name": "Industrial Mining",
+      "branch": "industry",
+      "prereqs": [],
+      "unlocks": {
+        "ships": [
+          "ship_ironback"
+        ]
+      }
+    },
+    {
+      "id": "tech_focused_extraction",
+      "name": "Focused Extraction",
+      "branch": "industry",
+      "prereqs": [
+        "tech_industrial_mining"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_mining_beam_m"
+        ],
+        "efficiency": {
+          "miningYieldMult": 0.1
+        }
+      }
+    },
+    {
+      "id": "tech_deep_core_mining",
+      "name": "Deep-Core Mining",
+      "branch": "industry",
+      "prereqs": [
+        "tech_focused_extraction"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_mining_pulverizer_l",
+          "mod_mining_industrial_l"
+        ],
+        "efficiency": {
+          "miningYieldMult": 0.15
+        }
+      }
+    },
+    {
+      "id": "tech_bulk_logistics",
+      "name": "Bulk Logistics",
+      "branch": "industry",
+      "prereqs": [],
+      "unlocks": {
+        "ships": [
+          "ship_atlas"
+        ],
+        "modules": [
+          "mod_cargo_expander_l",
+          "mod_massline_spool_m",
+          "mod_smuggler_hold_m"
+        ]
+      }
+    },
+    {
+      "id": "tech_matter_compression",
+      "name": "Matter Compression",
+      "branch": "industry",
+      "prereqs": [
+        "tech_bulk_logistics"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_cargo_compactor_l"
+        ]
+      }
+    },
+    {
+      "id": "tech_drive_tuning",
+      "name": "Drive Tuning",
+      "branch": "drives",
+      "prereqs": [],
+      "unlocks": {
+        "modules": [
+          "mod_engine_fusion_m",
+          "mod_afterburner_m",
+          "mod_jump_drive_m",
+          "mod_cloak_mk2",
+          "mod_sensor_scrambler_m",
+          "mod_swing_drive_m"
+        ]
+      }
+    },
+    {
+      "id": "tech_impulse_ballistics",
+      "name": "Impulse Ballistics",
+      "branch": "drives",
+      "prereqs": [
+        "tech_drive_tuning"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_charge_vector_rack"
+        ]
+      }
+    },
+    {
+      "id": "tech_graviton_drives",
+      "name": "Graviton Drives",
+      "branch": "drives",
+      "prereqs": [
+        "tech_drive_tuning"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_engine_warp_l",
+          "wpn_gravity_marker_s",
+          "wpn_momentum_sink_s",
+          "wpn_inertial_shunt_s",
+          "wpn_gravity_well_m"
+        ],
+        "efficiency": {
+          "energyRegenMult": 0.08
+        }
+      }
+    },
+    {
+      "id": "tech_long_range_survey",
+      "name": "Long-Range Survey",
+      "branch": "drives",
+      "prereqs": [
+        "tech_drive_tuning"
+      ],
+      "unlocks": {
+        "ships": [
+          "ship_ranger"
+        ],
+        "modules": [
+          "mod_sensor_array_l",
+          "mod_sensor_post",
+          "mod_triangulation_suite_s"
+        ],
+        "flags": [
+          "wormhole_access"
+        ],
+        "efficiency": {
+          "jumpRangeMult": 0.2,
+          "jumpCooldownMult": -0.15
+        }
+      }
+    },
+    {
+      "id": "tech_tractor_systems",
+      "name": "Tractor Systems",
+      "branch": "logistics",
+      "prereqs": [],
+      "unlocks": {
+        "ships": [
+          "ship_hawser"
+        ],
+        "modules": [
+          "mod_tractor_beam_m",
+          "mod_elastic_whip_m",
+          "mod_frame_coupler_m",
+          "mod_tether_capacitor",
+          "mod_loot_magnet_s",
+          "mod_mass_flail_rig_m"
+        ]
+      }
+    },
+    {
+      "id": "tech_drone_control",
+      "name": "Drone Control",
+      "branch": "logistics",
+      "prereqs": [
+        "tech_tractor_systems"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_drone_bay_l"
+        ],
+        "droneTierCap": 1
+      }
+    },
+    {
+      "id": "tech_drone_swarm",
+      "name": "Drone Swarm",
+      "branch": "logistics",
+      "prereqs": [
+        "tech_drone_control"
+      ],
+      "unlocks": {
+        "droneTierCap": 2,
+        "extraDronePerBay": 1
+      }
+    },
+    {
+      "id": "tech_autonomous_fleets",
+      "name": "Autonomous Fleets",
+      "branch": "logistics",
+      "prereqs": [
+        "tech_drone_swarm"
+      ],
+      "unlocks": {
+        "droneTierCap": 3,
+        "npcTraderHiring": true
+      }
+    },
+    {
+      "id": "tech_nanofabrication",
+      "name": "Nanofabrication",
+      "branch": "logistics",
+      "prereqs": [
+        "tech_drone_control"
+      ],
+      "unlocks": {
+        "modules": [
+          "mod_repair_nanobots_m"
+        ]
+      }
+    },
+    {
+      "id": "tech_outpost_charter",
+      "name": "Outpost Charter",
+      "branch": "logistics",
+      "prereqs": [
+        "tech_autonomous_fleets"
+      ],
+      "unlocks": {
+        "droneTierCap": 4,
+        "outpostConstruction": true
+      }
+    }
+  ],
+  "missionTypes": [
+    "cargo_delivery",
+    "bulk_trade",
+    "bounty_hunt",
+    "mining_quota",
+    "salvage_retrieval",
+    "escort",
+    "patrol_clear",
+    "smuggling_run",
+    "passenger_transport",
+    "recon_scan",
+    "tow_recovery",
+    "demolition",
+    "rescue_under_fire",
+    "authored_set_piece",
+    "capital_boss",
+    "breakaway_recovery",
+    "heist_intercept"
+  ]
+}

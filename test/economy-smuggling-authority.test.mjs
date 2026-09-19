@@ -43,7 +43,8 @@ const CMDTY_NARC = COMMODITIES.find((c) => c.id === 'cmdty_narcotics');
 assert.ok(CMDTY_NARC, 'catalog has cmdty_narcotics');
 assert.equal(CMDTY_NARC.legality, 'contraband');
 assert.equal(CMDTY_NARC.volPerU, 0.6);
-assert.equal(CMDTY_NARC.basePrice, 220);
+// Economy Pulse repricing: the model-derived narcotics base price (was 220).
+assert.equal(CMDTY_NARC.basePrice, 576);
 
 const HOME = SECTORS.find((s) => (s.stations || []).length > 0);
 assert.ok(HOME, 'catalog has a sector with stations');
@@ -300,7 +301,8 @@ test('fine projection only counts exposed illicit (never hidden remainder)', () 
     const stacks = [{
       commodityId: 'cmdty_narcotics',
       qty: 20,
-      basePrice: 220,
+      // Economy Pulse repricing: must mirror the live catalog def the economy resolves.
+      basePrice: 576,
       legality: 'contraband',
       volPerU: 0.6,
     }];
@@ -314,9 +316,9 @@ test('fine projection only counts exposed illicit (never hidden remainder)', () 
     const hiddenFine = estimatedFine(rem.hiddenStacks);
 
     assert.equal(FINE_MULT.contraband, 1.5);
-    assert.equal(fullFine, 220 * 20 * 1.5); // 6600
-    assert.equal(exposedFine, 220 * 17 * 1.5); // 5610
-    assert.equal(hiddenFine, 220 * 3 * 1.5); // 990
+    assert.equal(fullFine, 576 * 20 * 1.5); // 17280 (Economy Pulse repricing)
+    assert.equal(exposedFine, 576 * 17 * 1.5); // 14688
+    assert.equal(hiddenFine, 576 * 3 * 1.5); // 2592
     assert.equal(exposedFine + hiddenFine, fullFine);
     assert.ok(exposedFine < fullFine, 'projection must not charge hidden units');
 
@@ -399,7 +401,7 @@ test('mission preflight consumes active entity derived ratings over efficiency b
 
     // With derived 0.50 on 10u cap → hide 5 vol → floor(5/0.6)=8 units of 20; expose 12.
     assert.equal(risk.remaining.exposedStacks[0].qty, 12);
-    assert.equal(risk.estFine, 220 * 12 * 1.5);
+    assert.equal(risk.estFine, 576 * 12 * 1.5); // Economy Pulse repricing
 
     // Bag-only path when derived ratings are absent.
     const bagOnly = makeState({
@@ -439,54 +441,57 @@ test('economyContracts serialize/deserialize preserves station-epoch dedupe', ()
     });
 
     const own = ensureFieldContractState(state);
-    markStationEpochEvaluated(own, 'station_alpha', 3);
-    markStationEpochEvaluated(own, 'station_beta', 7);
+    markStationEpochEvaluated(own, 'station_ceres', 3);
+    markStationEpochEvaluated(own, 'station_tethys', 7);
+    // Economy Pulse: deserialize() now discards NON-CANONICAL station ids (STATION_INFO gate),
+    // so this round-trip uses real catalog stations.
     markStationEpochEvaluated(own, STATION.id, 1);
 
-    assert.equal(isStationEpochEvaluated(own, 'station_alpha', 3), true);
-    assert.equal(sys.hasEvaluated('station_alpha', 3), true);
-    assert.equal(sys.hasEvaluated('station_alpha', 4), false);
-    assert.equal(sys.hasEvaluated('station_beta', 7), true);
+    assert.equal(isStationEpochEvaluated(own, 'station_ceres', 3), true);
+    assert.equal(sys.hasEvaluated('station_ceres', 3), true);
+    assert.equal(sys.hasEvaluated('station_ceres', 4), false);
+    assert.equal(sys.hasEvaluated('station_tethys', 7), true);
 
     const blob = sys.serialize();
     assert.deepEqual(blob.evaluatedEpochByStation, {
-      station_alpha: 3,
-      station_beta: 7,
+      station_ceres: 3,
+      station_tethys: 7,
       [STATION.id]: 1,
     });
 
     // Mutate live bag, then restore from blob.
-    markStationEpochEvaluated(own, 'station_alpha', 99);
-    assert.equal(sys.hasEvaluated('station_alpha', 3), false);
+    markStationEpochEvaluated(own, 'station_ceres', 99);
+    assert.equal(sys.hasEvaluated('station_ceres', 3), false);
 
     sys.deserialize(blob);
-    assert.equal(sys.hasEvaluated('station_alpha', 3), true);
-    assert.equal(sys.hasEvaluated('station_beta', 7), true);
+    assert.equal(sys.hasEvaluated('station_ceres', 3), true);
+    assert.equal(sys.hasEvaluated('station_tethys', 7), true);
     assert.equal(sys.hasEvaluated(STATION.id, 1), true);
-    assert.equal(sys.hasEvaluated('station_alpha', 99), false);
+    assert.equal(sys.hasEvaluated('station_ceres', 99), false);
 
     // Round-trip identity.
     assert.deepEqual(sys.serialize().evaluatedEpochByStation, blob.evaluatedEpochByStation);
 
     // Non-finite / non-numeric epochs dropped; finite Number(...) values floor.
     // Number(null) === 0 is finite, so null coerces to epoch 0 (live deserialize contract).
+    // Unknown station keys are discarded by the same canonical gate.
     sys.deserialize({
       evaluatedEpochByStation: {
-        keep: 2.7, // floored
-        drop_nan: Number.NaN,
-        drop_str: 'nope',
-        null_as_zero: null,
+        station_forge: 2.7, // floored
+        station_alpha: Number.NaN, // non-finite dropped
+        station_beta: 'nope', // non-numeric dropped
+        station_ceres: null, // canonical + null coerces to epoch 0
       },
     });
     assert.deepEqual(sys.serialize().evaluatedEpochByStation, {
-      keep: 2,
-      null_as_zero: 0,
+      station_forge: 2,
+      station_ceres: 0,
     });
 
     // Empty / missing payload resets cleanly.
     sys.deserialize(null);
     assert.deepEqual(sys.serialize().evaluatedEpochByStation, {});
     sys.deserialize(blob);
-    assert.equal(sys.hasEvaluated('station_beta', 7), true);
+    assert.equal(sys.hasEvaluated('station_tethys', 7), true);
   });
 });

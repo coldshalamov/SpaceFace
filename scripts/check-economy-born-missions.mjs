@@ -14,11 +14,14 @@
 //     field driver (roll-free), never a free roll. No Math.random / no wall clock.
 import assert from 'node:assert/strict';
 
-import { economyContracts } from '../src/systems/economyContracts.js';
+import { economyContracts, stableFieldOfferId, fieldContractEpoch } from '../src/systems/economyContracts.js';
 import { selectEconContract, ECON_CONTRACT_TEMPLATES } from '../src/data/economyContractTemplates.js';
 import { missions } from '../src/systems/missions.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { COMMODITIES } from '../src/data/commodities.js';
+import { MISSION_TUNING } from '../src/data/missions.js';
+
+const REFRESH_SEC = MISSION_TUNING.refreshSec;
 
 assert.equal(typeof window, 'undefined', 'this check must run headless');
 
@@ -52,8 +55,14 @@ function fieldNode({ pricePressure = 0, priceTag = 'market_balance', danger = 0.
   };
 }
 
-function makeState(node, { seed = 7, simTime = 100 } = {}) {
+function makeState(node, { seed = 7, simTime = 100, distressedNeighbor = true, neighborPressure = 0.45 } = {}) {
   const player = { id: 1, type: 'ship', alive: true, team: 1, pos: { x: 0, z: 0 } };
+  // Economy Pulse: scarcity relief is OUTBOUND — the run originates here and delivers to a
+  // different distressed neighbor, so scarcity fixtures seed one (Helios neighbors HOME).
+  const nodes = { [HOME.id]: node };
+  if (distressedNeighbor) {
+    nodes.sector_helios_prime = fieldNode({ pricePressure: neighborPressure, priceTag: 'route_scarcity' });
+  }
   return {
     mode: 'flight', simTime, playerId: 1, meta: { seed },
     world: { currentSectorId: HOME.id, sectors: {} },
@@ -65,7 +74,7 @@ function makeState(node, { seed = 7, simTime = 100 } = {}) {
     },
     factions: { [STATION.factionId || HOME.factionId]: { rep: 50 } },
     nav: {}, ui: {},
-    sectorSim: { field: { version: 1, epochDays: 2, nodes: { [HOME.id]: node } }, sectors: {}, meta: {} },
+    sectorSim: { field: { version: 1, epochDays: 2, nodes }, sectors: {}, meta: {} },
   };
 }
 
@@ -140,7 +149,12 @@ function testEmitOnlyOfferNamesCommodityAndCause() {
   assert.ok(/scarcity/i.test(offer.title), `title names the cause: "${offer.title}"`);
   assert.ok(offer.summary.includes(fuelName), `summary names the commodity: "${offer.summary}"`);
   assert.equal(offer.cause.tag, 'route_scarcity', 'machine-traceable cause = the enumerated driver tag');
-  assert.equal(offer.destStationId, STATION.id, 'the fuel run delivers TO the scarce station');
+  // Economy Pulse: the fuel run is OUTBOUND relief — it loads here and delivers to the
+  // distressed neighbor seeded by the fixture (sector_helios_prime, id-sorted first station),
+  // not to the docked station.
+  const HELIOS = SECTORS.find((s) => s.id === 'sector_helios_prime');
+  const neighborTarget = [...HELIOS.stations].sort((a, b) => a.id.localeCompare(b.id))[0].id;
+  assert.equal(offer.destStationId, neighborTarget, 'the fuel run delivers to the distressed neighbor');
   assert.equal(offer.id, `eco_${STATION.id}_0`, 'stable station-epoch offer id');
   assert.equal(voice.calls.length, 1, 'one news line per offer');
   assert.equal(voice.calls[0].channel, 'news', 'spoken on the news channel');
@@ -188,17 +202,21 @@ function testDedupePerStationEpoch() {
   bus.emit('dock:docked', { stationId: STATION.id });
   assert.equal(bus.emitLog.filter((e) => e.evt === 'mission:offered').length, 1,
     're-dock inside the epoch → NO double-offer');
-  state.simTime += 600; // next refresh epoch
+  state.simTime += 600; // next refresh epoch (generated refreshSec is 300, so this skips ahead two epochs)
   bus.emit('dock:docked', { stationId: STATION.id });
   const offers = bus.emitLog.filter((e) => e.evt === 'mission:offered');
   assert.equal(offers.length, 2, 'a new epoch re-evaluates the field');
-  assert.equal(offers[1].payload.id, `eco_${STATION.id}_1`, 'epoch-stamped id');
+  assert.equal(offers[1].payload.id,
+    stableFieldOfferId(STATION.id, fieldContractEpoch(state.simTime, REFRESH_SEC)),
+    'epoch-stamped id');
 }
 
 // ── 6. calm field → STRICT no-op (golden-sim safe) ─────────────────────────────────────────────
 function testCalmFieldStrictNoOp() {
   const bus = makeBus();
-  const state = makeState(fieldNode());
+  // No distressed neighbor: a calm field with a starving neighbor would legitimately post
+  // outbound relief — this section pins the calm-field no-op in isolation.
+  const state = makeState(fieldNode(), { distressedNeighbor: false });
   const voice = makeVoice();
   const sys = freshSys();
   sys.init({ bus, state, helpers: { voice } });
@@ -213,7 +231,9 @@ function testCalmFieldStrictNoOp() {
 function testPayTetheredToField() {
   const at = (pressure) => {
     const sys = freshSys();
-    sys.init({ bus: makeBus(), state: makeState(fieldNode({ pricePressure: pressure, priceTag: 'route_scarcity' })), helpers: {} });
+    // Economy Pulse: the priced field pressure is the DESTINATION's distress (the hungry
+    // neighbor pays war-prices), so the fixture varies the neighbor's scarcity.
+    sys.init({ bus: makeBus(), state: makeState(SCARCITY(), { neighborPressure: pressure }), helpers: {} });
     const info = { id: STATION.id, name: STATION.name, type: STATION.type, factionId: STATION.factionId || HOME.factionId, sectorId: HOME.id };
     return sys.planOffer(info, 0);
   };

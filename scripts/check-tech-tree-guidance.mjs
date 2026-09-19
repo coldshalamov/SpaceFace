@@ -29,12 +29,13 @@ assert.equal(readiness.actionLabel, 'Research Beam Focusing first');
 
 readiness = describeTechNodeReadiness(node('tech_combat_basics'), state(), TECH_NODES);
 assert.equal(readiness.state, 'funding');
-assert.equal(readiness.actionLabel, 'Need 6,000 cr / 10 RP');
-assert.deepEqual(readiness.missingCost, ['6,000 cr', '10 RP']);
+// Economy Pulse: root costs are model-derived saving-time budgets (combat basics 1,200 cr, 0 RP).
+assert.equal(readiness.actionLabel, 'Need 1,200 cr');
+assert.deepEqual(readiness.missingCost, ['1,200 cr']);
 
 readiness = describeTechNodeReadiness(node('tech_combat_basics'), state({
-  credits: 6000,
-  researchPoints: 10,
+  credits: 1200,
+  researchPoints: 0,
 }), TECH_NODES);
 assert.equal(readiness.state, 'available');
 assert.equal(readiness.actionLabel, `${String.fromCharCode(0x27eb)} Research`);

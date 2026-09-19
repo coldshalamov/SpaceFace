@@ -255,6 +255,12 @@ test('threshold gates are deterministic and field offers dedupe per station+epoc
         sectorId: 'sector_ceres_belt',
         station: NON_HELIOS_STATION,
       });
+      // Economy Pulse: scarcity relief is OUTBOUND — the run targets a different distressed
+      // neighbor, so the fixture seeds one (Helios neighbors ceres).
+      state.sectorSim.field.nodes.sector_helios_prime = fieldNode({
+        pricePressure: 0.40,
+        driver: { pricePressure: 'route_scarcity' },
+      });
       const sys = { ...economyContracts };
       sys.init({ state, bus, helpers: { voice: { say() { return true; } } } });
       bus.emit('dock:docked', { stationId: NON_HELIOS_STATION.id });

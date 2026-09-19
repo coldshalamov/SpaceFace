@@ -20,12 +20,14 @@ function sineCycle(phase) {
 }
 
 test('cycle weight demotes the formula wave to a short-term overlay', () => {
-  assert.equal(CYCLE_WEIGHT, 0.5);
+  // Economy Pulse: the cycle weight is model-derived (ECONOMY_BALANCE.market.cycleWeight = 0.35);
+  // the overlay intent is unchanged, only the reviewed weight moved from the authored 0.5.
+  assert.equal(CYCLE_WEIGHT, 0.35);
 
   const high = sineCycle(Math.PI / 2);
   const low = sineCycle(-Math.PI / 2);
   assert.ok(Math.abs(rawCycleFactorAt(high, 0) - 1.28) < 1e-9);
   assert.ok(Math.abs(rawCycleFactorAt(low, 0) - 0.72) < 1e-9);
-  assert.ok(Math.abs(cycleFactorAt(high, 0) - 1.14) < 1e-9);
-  assert.ok(Math.abs(cycleFactorAt(low, 0) - 0.86) < 1e-9);
+  assert.ok(Math.abs(cycleFactorAt(high, 0) - 1.098) < 1e-9);
+  assert.ok(Math.abs(cycleFactorAt(low, 0) - 0.902) < 1e-9);
 });

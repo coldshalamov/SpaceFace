@@ -117,14 +117,27 @@ function testPayScalesWithLiveScarcity() {
   const info = { id: st.id, name: st.name, type: st.type, factionId: st.factionId || sec.factionId, sectorId: sec.id };
   const stateAt = (pp) => ({
     simTime: 1000, meta: { seed: 42 }, world: { sectors: {}, currentSectorId: sec.id },
+    // The planner sizes the sealed relief manifest from the player's free hold, so the fixture
+    // carries a real cargo hold like the live ship does.
+    player: { credits: 50000, cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 50, capMass: 500 }, efficiencyMods: {}, stats: {} },
     sectorSim: { field: { version: 1, epochDays: 5, nodes: { [sec.id]: {
-      danger: 0.7, pricePressure: pp, influence: {}, dominantFactionId: sec.factionId || 'faction_scn',
+      // The supplying field stays fed at a fixed level; the DESTINATION's distress varies —
+      // under the outbound-relief design the live field pressure that prices the run is the
+      // hungry neighbor's (that is the station paying war-prices).
+      danger: 0.7, pricePressure: 0.5, influence: {}, dominantFactionId: sec.factionId || 'faction_scn',
       trend: { danger: 0.01, pricePressure: 0.05, influence: 0 },
+      driver: { danger: 'infrastructure_disruption', pricePressure: 'infrastructure_disruption', influence: 'territorial_anchor' },
+    },
+    // Economy Pulse: relief runs are OUTBOUND (supplier here → distressed neighbor), so the
+    // planner fixture seeds a distressed Ceres node as the delivery target.
+    sector_ceres_belt: {
+      danger: 0.5, pricePressure: pp, influence: {}, dominantFactionId: 'faction_scn',
+      trend: { danger: 0, pricePressure: 0.02, influence: 0 },
       driver: { danger: 'infrastructure_disruption', pricePressure: 'infrastructure_disruption', influence: 'territorial_anchor' },
     } } }, sectors: {}, meta: {} }, missions: {},
   });
   const sys = { ...economyContracts };
-  sys.state = stateAt(0.5); sys.bus = { on() {}, off() {}, emit() {} }; sys.helpers = { voice: { say: () => true } };
+  sys.state = stateAt(0.55); sys.bus = { on() {}, off() {}, emit() {} }; sys.helpers = { voice: { say: () => true } };
   if (sys._ensureState) sys._ensureState();
   const lo = sys.planOffer(info, 1);
   sys.state = stateAt(0.8);
