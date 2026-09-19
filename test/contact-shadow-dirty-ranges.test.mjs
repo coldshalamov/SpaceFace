@@ -207,6 +207,59 @@ test('contact shadows publish retained matrix ranges and retire the owner throug
   pool.mesh.dispose();
 });
 
+test('deferred growth clamps the frame, then activates an uploaded replacement', async () => {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const yields = [];
+  const prepared = [];
+  const pool = createContactShadowPool(scene, {
+    deferGrowth: true,
+    yieldToPostPaint: () => { yields.push(1); return Promise.resolve(); },
+    prepareGpuResidency: (roots) => {
+      prepared.push(roots.map((root) => root.count));
+      return Promise.resolve();
+    },
+    shouldDeferGrowth: () => true,
+  });
+  const fixtures = Array.from({ length: 12 }, (_, index) => createShadowFixture(index + 1));
+  const meshes = new Map(fixtures.map(({ entity, mesh }) => [entity.id, mesh]));
+
+  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  assert.equal(pool.mesh.count, 12);
+  const firstMesh = pool.mesh;
+
+  // Demand beyond capacity must not swap the mesh inside the sync pass — it clamps the frame
+  // and queues detached growth instead.
+  for (let id = 13; id <= 300; id++) {
+    const fixture = createShadowFixture(id);
+    fixtures.push(fixture);
+    meshes.set(id, fixture.mesh);
+  }
+  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  assert.equal(pool.mesh, firstMesh, 'overflow demand leaves the live mesh in place');
+  assert.equal(pool.mesh.count, 256, 'the frame clamps at current capacity');
+  assert.equal(pool.capacity, 256);
+  assert.ok(pool.pendingGrowth, 'a deferred growth admission is queued');
+
+  await pool.pendingGrowth;
+  assert.equal(yields.length, 1, 'growth yields past the present before building');
+  assert.deepEqual(prepared, [[1]], 'the detached proxy is uploaded before activation');
+  assert.notEqual(pool.mesh, firstMesh);
+  assert.equal(pool.capacity, 512);
+  assert.equal(pool.mesh.count, 0, 'the replacement activates unpublished, not mid-frame');
+  assert.equal(pool.records.size, 0, 'stale CPU pose cache is invalidated on activation');
+
+  // The next sync republishes every shadow into the grown buffer.
+  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  assert.equal(pool.mesh.count, 300);
+  assert.equal(pool.records.size, 300);
+  assert.equal(pool.pendingGrowth, null);
+
+  assert.equal(unregisterDynamicBufferOwner(pool.dynamicBufferOwner), true);
+  assert.equal(coordinator.getDiagnostics().registeredOwners, 0);
+  pool.mesh.dispose();
+});
+
 test('contact-shadow range validation fails before matrix or cache mutation', () => {
   const scene = new THREE.Scene();
   const coordinator = createDynamicBufferCoordinator(scene);

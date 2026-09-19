@@ -1412,8 +1412,24 @@ function attachContactShadow(mesh, entity) {
   mesh.userData.hasContactShadow = true;
 }
 
-export function createContactShadowPool(scene) {
-  const pool = { scene, capacity: 0, mesh: null, records: new Map(), seen: new Set() };
+export function createContactShadowPool(scene, options = {}) {
+  const pool = {
+    scene,
+    capacity: 0,
+    mesh: null,
+    records: new Map(),
+    seen: new Set(),
+    deferGrowth: options.deferGrowth === true,
+    yieldToPostPaint: typeof options.yieldToPostPaint === 'function'
+      ? options.yieldToPostPaint : null,
+    prepareGpuResidency: typeof options.prepareGpuResidency === 'function'
+      ? options.prepareGpuResidency : null,
+    shouldDeferGrowth: typeof options.shouldDeferGrowth === 'function'
+      ? options.shouldDeferGrowth : () => true,
+    requestedCapacity: 0,
+    pendingGrowth: null,
+    _destroyed: false,
+  };
   ensureContactShadowCapacity(pool, CONTACT_SHADOW_INITIAL_CAPACITY);
   return pool;
 }
@@ -1461,12 +1477,99 @@ function ensureContactShadowCapacity(pool, desired) {
   if (pool.scene) pool.scene.add(mesh);
 }
 
+// Mirror the record filters in syncContactShadowPool so growth demand counts only the records
+// that can actually occupy a slot — filtered records must not trigger a pool swap.
+function contactShadowCapacityDemand(records, meshes) {
+  let demand = 0;
+  for (const item of records) {
+    const entity = item && item.entity || item;
+    if (!entity || entity.alive === false || entity._noShadow) continue;
+    if (entity.type !== 'ship' && entity.type !== 'station') continue;
+    const mesh = item && item.mesh || (meshes && meshes.get(entity.id));
+    if (!mesh || mesh.visible === false || !(mesh.userData && mesh.userData.hasContactShadow)) continue;
+    demand++;
+  }
+  return demand;
+}
+
+function queueContactShadowGrowth(pool, demand) {
+  if (!pool || pool._destroyed === true || pool.deferGrowth !== true) return null;
+  if (pool.shouldDeferGrowth() !== true) return null;
+  pool.requestedCapacity = Math.max(pool.requestedCapacity || 0, demand || 0);
+  if (pool.pendingGrowth) return pool.pendingGrowth;
+  const yieldToPostPaint = pool.yieldToPostPaint;
+  const prepareGpuResidency = pool.prepareGpuResidency;
+  if (typeof yieldToPostPaint !== 'function' || typeof prepareGpuResidency !== 'function') return null;
+
+  const growth = Promise.resolve().then(async () => {
+    await yieldToPostPaint();
+    if (pool._destroyed === true || pool.shouldDeferGrowth() !== true) return false;
+    const detached = { capacity: 0, mesh: null, scene: null, records: null };
+    // A detached pool starts empty, so its internal doubling would bottom out at the initial
+    // capacity — drive the desired size from the live pool to preserve amortized doubling.
+    ensureContactShadowCapacity(
+      detached,
+      Math.max(pool.requestedCapacity || 0, (pool.capacity || 0) * 2),
+    );
+    const mesh = detached.mesh;
+    if (!mesh) return false;
+    let owner = null;
+    try {
+      // The residency pass rejects zero-count InstancedMesh roots because they cannot submit;
+      // give only the detached proxy one instance, then restore before activation.
+      mesh.count = 1;
+      try {
+        await prepareGpuResidency([mesh]);
+      } finally {
+        mesh.count = 0;
+      }
+      if (pool._destroyed === true) {
+        mesh.dispose();
+        return false;
+      }
+      owner = registerContactShadowDynamicOwner(pool.scene, mesh);
+      const previous = pool.mesh;
+      if (pool.dynamicBufferOwner) unregisterDynamicBufferOwner(pool.dynamicBufferOwner);
+      pool.mesh = mesh;
+      pool.capacity = detached.capacity;
+      pool.dynamicBufferOwner = owner;
+      owner = null;
+      if (pool.records) pool.records.clear();
+      if (previous && pool.scene) pool.scene.remove(previous);
+      if (pool.scene) pool.scene.add(mesh);
+      if (previous && typeof previous.dispose === 'function') previous.dispose();
+      return true;
+    } catch (error) {
+      if (owner) unregisterDynamicBufferOwner(owner);
+      mesh.dispose();
+      pool.requestedCapacity = pool.capacity;
+      console.warn('[render] deferred contact shadow pool admission failed', error);
+      return false;
+    }
+  }).finally(() => {
+    if (pool.pendingGrowth === growth) pool.pendingGrowth = null;
+    if (pool._destroyed === true) return;
+    if ((pool.requestedCapacity || 0) > pool.capacity) queueContactShadowGrowth(pool, pool.requestedCapacity);
+  });
+  pool.pendingGrowth = growth;
+  return growth;
+}
+
 export function syncContactShadowPool(pool, frameOrRecords, meshes) {
   if (!pool || !pool.mesh) return;
   const records = frameOrRecords && Array.isArray(frameOrRecords.contactShadows)
     ? frameOrRecords.contactShadows
     : (Array.isArray(frameOrRecords) ? frameOrRecords : []);
-  ensureContactShadowCapacity(pool, records.length);
+  // Synchronous growth uploads the new instance buffer inside the presented pass. During flight
+  // the pool defers: demand beyond capacity queues a detached replacement that is uploaded
+  // post-paint and activated atomically; this frame's overflow simply skips a shadow.
+  const deferred = pool.deferGrowth === true && pool.shouldDeferGrowth() === true;
+  if (deferred) {
+    const demand = contactShadowCapacityDemand(records, meshes);
+    if (demand > pool.capacity) queueContactShadowGrowth(pool, demand);
+  } else {
+    ensureContactShadowCapacity(pool, records.length);
+  }
   assertDynamicBufferOwnerWritable(pool.dynamicBufferOwner);
   let count = 0;
   let dirty = false;
@@ -1479,7 +1582,11 @@ export function syncContactShadowPool(pool, frameOrRecords, meshes) {
     if (entity.type !== 'ship' && entity.type !== 'station') continue;
     const mesh = item && item.mesh || (meshes && meshes.get(entity.id));
     if (!mesh || mesh.visible === false || !(mesh.userData && mesh.userData.hasContactShadow)) continue;
-    ensureContactShadowCapacity(pool, count + 1);
+    if (deferred) {
+      if (count >= pool.capacity) break;
+    } else {
+      ensureContactShadowCapacity(pool, count + 1);
+    }
     const radius = Number(mesh.userData.contactShadowRadius) || Math.max(16, (entity.radius || 28) * 1.4);
     // Prefer mesh frame-local pose (authoritative for Three.js after syncEntityViews).
     const x = Number.isFinite(mesh.position.x) ? mesh.position.x : 0;
@@ -4272,7 +4379,19 @@ export const render = {
     this._shadowReceiverTally = createShadowReceiverTally();
     this._w2sCamCache = null; // see _syncProjectionCamera(): decomposed chase-camera transform
     this._ensureKeyLightShadows();
-    this._contactShadowPool = createContactShadowPool(scene);
+    this._contactShadowPool = createContactShadowPool(scene, {
+      deferGrowth: true,
+      yieldToPostPaint: yieldToNextPresent,
+      prepareGpuResidency: (roots) => prepareStartupGpuResidency(renderer, roots, {
+        includeGeometry: true,
+        includeEmpty: true,
+        yieldToMain: yieldToBrowser,
+      }),
+      shouldDeferGrowth: () => (
+        state.mode === 'flight'
+        && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+      ),
+    });
     this._shipAuxPool = createShipAuxPool(scene, {
       deferGrowth: true,
       yieldToPostPaint: yieldToNextPresent,
