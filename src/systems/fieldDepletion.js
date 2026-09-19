@@ -9,6 +9,18 @@ export const FIELD_DEPLETION_MAX_DELTA = 0.08;
 export const FIELD_DEPLETION_RECOVERY_PER_S = 1 / (45 * 60);
 export const FIELD_DEPLETION_RECOVERY_STEP_S = 5;
 export const FIELD_DEPLETION_MAX_RECEIPTS = 24;
+// Field regrowth clock (program-compass economy heartbeat). A worked field is memory, not a
+// graveyard: once depletion passes the "worked" band a fresh seam opens on a slow sim-time clock,
+// so a cleared starter belt keeps a heartbeat instead of forcing a 14,000 WU dead haul. The world
+// owns the physical rocks; this module owns only the durable clock so save/load cannot re-roll it.
+export const FIELD_REGROWTH_INTERVAL_S = 9 * 60;
+export const FIELD_REGROWTH_MIN_DEPLETION = 0.35;
+// Loose lifetime bound only (18 h at the 9 min clock); depletion recovery, not this cap, is the
+// governor that stops a field from reopening once it heals below the worked band.
+export const FIELD_REGROWTH_MAX_BATCHES = 120;
+export const FIELD_REGROWTH_BATCH_MIN = 3;
+export const FIELD_REGROWTH_BATCH_MAX = 6;
+export const FIELD_REGROWTH_YIELD_SCALE = 0.9;
 export const RICH_SEAM_OPPORTUNITY_SCHEMA = 'spaceface.richSeamOpportunity.v1';
 export const RICH_SEAM_OPPORTUNITY_WINDOW_S = 180;
 export const RICH_SEAM_BONUS_U = 8;
@@ -318,6 +330,10 @@ function normalizeFieldRecord(input, fieldId) {
     depletion,
     richnessMult: richnessMultiplierForDepletion(depletion),
     lastChangedT: round6(Math.max(0, Number(rec.lastChangedT) || 0)),
+    // Additive regrowth memory: how many seams this field has reopened and when the last one
+    // opened. Absent in pre-regrowth saves and defaults to "never regrown" (due at first read).
+    regrownBatches: Math.max(0, Math.floor(Number(rec.regrownBatches) || 0)),
+    lastRegrowT: round6(Math.max(0, Number(rec.lastRegrowT) || 0)),
   };
 }
 
@@ -362,6 +378,8 @@ export function fieldMemoryReadout(state, fieldId) {
     richnessMult: rec.richnessMult,
     extractedU: rec.extractedU,
     destroyedCount: rec.destroyedCount,
+    regrownBatches: rec.regrownBatches,
+    lastRegrowT: rec.lastRegrowT,
     band,
     label: band === 'rich' ? 'Rich field' : band === 'worked' ? 'Worked field' : band === 'thin' ? 'Thinning field' : 'Depleted field',
   };
@@ -422,6 +440,75 @@ export function recoverFieldDepletion(state, dt) {
     if (rec.depletion !== before) changed.push({ ...rec, delta: round6(rec.depletion - before) });
   }
   return changed;
+}
+
+/**
+ * Whether a worked field has a fresh seam due on the slow regrowth clock. Pure read: the world
+ * owns the physical rocks and calls `recordFieldRegrowth` once it has spawned them. A field that
+ * has never regrown is due as soon as it reads "worked" (depletion >= FIELD_REGROWTH_MIN_DEPLETION).
+ *
+ * @returns {{fieldId:string,sectorId:string|null,depletion:number,richnessMult:number,band:string,batches:number}|null}
+ */
+export function fieldRegrowthDue(state, fieldId, simTime = state && state.simTime) {
+  const own = ensureFieldDepletionState(state);
+  const id = fieldIdOf(fieldId);
+  const rec = id && own.fields[id] ? normalizeFieldRecord(own.fields[id], id) : null;
+  if (!rec) return null;
+  if (rec.depletion < FIELD_REGROWTH_MIN_DEPLETION) return null;
+  if (rec.regrownBatches >= FIELD_REGROWTH_MAX_BATCHES) return null;
+  const now = Number.isFinite(simTime) ? simTime : 0;
+  if (now < rec.lastRegrowT + FIELD_REGROWTH_INTERVAL_S) return null;
+  return {
+    fieldId: id,
+    sectorId: rec.sectorId,
+    depletion: rec.depletion,
+    richnessMult: rec.richnessMult,
+    band: fieldMemoryBand(rec.depletion),
+    batches: rec.regrownBatches,
+  };
+}
+
+/** Advance the durable regrowth clock after the world has spawned the seam's rocks. */
+export function recordFieldRegrowth(state, payload = {}) {
+  const own = ensureFieldDepletionState(state);
+  const id = fieldIdOf(payload.fieldId);
+  if (!id) return null;
+  const rec = fieldRecord(own, id, payload.sectorId || null);
+  const simTime = round6(payload.simTime != null ? payload.simTime : state && state.simTime);
+  rec.regrownBatches = Math.max(0, Math.floor(Number(rec.regrownBatches) || 0))
+    + Math.max(1, Math.floor(Number(payload.batches) || 1));
+  rec.lastRegrowT = simTime;
+  rec.lastChangedT = simTime;
+  return { ...rec };
+}
+
+/**
+ * Averaged local depletion for one sector: the demand model's regional scarcity input and the
+ * world's "which seam is worth leading to" input. Weighted by extracted units so a heavily worked
+ * belt outweighs a field that was scratched once. Never counts entities, wall time, or rng.
+ */
+export function sectorDepletionPressure(state, sectorId) {
+  const own = ensureFieldDepletionState(state);
+  let fields = 0;
+  let extractedU = 0;
+  let depletionU = 0;
+  let peak = 0;
+  for (const fieldId of Object.keys(own.fields)) {
+    const rec = normalizeFieldRecord(own.fields[fieldId], fieldId);
+    if (sectorId && rec.sectorId !== sectorId) continue;
+    fields++;
+    if (rec.depletion > peak) peak = rec.depletion;
+    const weight = Math.max(1, rec.extractedU);
+    extractedU += weight;
+    depletionU += rec.depletion * weight;
+  }
+  if (!fields) return { fields: 0, depletion: 0, peak: 0, extractedU: 0 };
+  return {
+    fields,
+    depletion: clamp01(round6(depletionU / extractedU)),
+    peak: clamp01(round6(peak)),
+    extractedU: round6(Math.max(0, extractedU - fields)), // undo the weight floor for readable units
+  };
 }
 
 function clonePlain(value) {

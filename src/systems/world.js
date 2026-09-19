@@ -23,6 +23,8 @@
 //   routed through the combat kernel (shield then hull); isolated ticks fall back to the same
 //   vitals order and may kill.
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
+import { createSectorArranger } from '../world/arranger.js';
+import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
 import {
   FRONTIER_RUMOR_RECEIPT_LIMIT,
@@ -62,6 +64,14 @@ import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
+import {
+  FIELD_REGROWTH_BATCH_MAX,
+  FIELD_REGROWTH_BATCH_MIN,
+  FIELD_REGROWTH_YIELD_SCALE,
+  fieldMemoryBand,
+  fieldRegrowthDue,
+  recordFieldRegrowth,
+} from './fieldDepletion.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
@@ -207,9 +217,13 @@ const FUEL_REFUND_FRAC = 0.5;   // refunded on aborted charge
 
 // Free-flight membership hysteresis. The Voronoi membership test is a knife edge; a player
 // patrolling rocks on a border used to flip residency every oscillation across it (measured:
-// 38 continuous enter/exits in one hour), and each flip re-runs the residency plan. A switch now
-// requires the player to sit LEAD_WU inside the candidate cell and hold that lead for DWELL_S.
-const MEMBERSHIP_LEAD_WU = 150;
+// 38 continuous enter/exits in one hour, each leg penetrating ~5.4k WU past the edge), and each
+// flip re-runs the residency plan. The switch margin scales with the origin pair: the player
+// must sit a fraction of the inter-origin span past the edge — penetration the measured border
+// patrol never reached — and hold that lead for DWELL_S. Genuine inter-sector transits still
+// flip: once, mid-transit.
+const MEMBERSHIP_SWITCH_FRACTION = 0.35;
+const MEMBERSHIP_MIN_PENETRATION_WU = 2500;
 const MEMBERSHIP_DWELL_S = 8;
 
 // Jump-drive tiers (design 05). Resolved from the equipped module; defaults to T1.
@@ -228,6 +242,14 @@ for (const sector of SECTORS) {
 }
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+
+// Screen-space compass for scan text (XZ plane: +x = East, +z = South).
+const COMPASS_POINTS = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+function compassLabel(dx, dz) {
+  const tau = Math.PI * 2;
+  const angle = ((Math.atan2(dz, dx) % tau) + tau) % tau;
+  return COMPASS_POINTS[Math.round(angle / (Math.PI / 4)) % 8];
+}
 
 /** Squared distance from a global pose to a sector's galactic origin (membership hysteresis). */
 function _dist2ToSectorOrigin(pos, sectorId) {
@@ -261,6 +283,11 @@ const AMBIENT_HEADROOM = 8; // REVAMP 2.1 — max live-ship slots ambient may re
 const CRITICAL_SPAWN_RETRY_TICKS = 15;
 const WORLD_RECORD_GC_TICKS = 60;
 const ARRIVAL_RESIDENCY_BUDGET = 1;
+// Field regrowth: the memory clock lives in fieldDepletion (slow, durable); the world only decides
+// where the fresh rocks land and caps how many may stand. A worked field reopens a seam batch on
+// that clock, so a cleared belt keeps paying while the scan readout calls out the freshest seam.
+const FIELD_REGROWTH_SCAN_TICKS = 300; // evaluate the slow clock at 5 s cadence
+const FIELD_REGROWTH_LIVE_CAP = 24;    // live rocks per field before the seam waits for the player
 const PALETTE_CLASS_BY_REF = new Map(Object.entries(SECTOR_PALETTE_CLASSES).map(([key, value]) => [value, key]));
 const DRESSING_RADIUS = Object.freeze({
   place_lane_beacon: 18,
@@ -362,6 +389,9 @@ export const world = {
 
     const state = this.state;
     const bus = this.bus;
+
+    // Generation policy is save-versioned, never inferred from browser/headless environment.
+    state.world.arrangementVersion = readArrangementVersion(state.world.arrangementVersion, ARRANGEMENT_VERSION);
 
     // Load a mutable copy of the static graph into world.sectors (owner field stays mutable).
     if (!state.world.sectors || Object.keys(state.world.sectors).length === 0) {
@@ -1142,6 +1172,13 @@ export const world = {
       if (captured.kind === RECORD_KIND.CONVOY && !bag.byId[captured.recordId]) {
         if (countAliveConvoyRecords() >= MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR) {
           if (e.data && e.data.worldRecordId === captured.recordId) delete e.data.worldRecordId;
+          // The hull's job is keyed on that record id and re-enters the world ONLY through a
+          // persisted record — npcJobsRuntime restores every job VIRTUAL and re-links it by
+          // worldRecordId — so a refused record leaves a job nothing will ever bind. Release it
+          // here or the bag grows ~+4 phantom convoy jobs per save/load roundtrip until the save
+          // quota refuses writes (release soak: 5 MB of storage by cycle 42). The hull itself
+          // stays live ambience under the ordinary traffic stepper, exactly as before.
+          this.helpers?.npcJobs?.release?.(`job:${captured.recordId}`);
           return;
         }
         aliveConvoyRecords++;
@@ -1570,11 +1607,15 @@ export const world = {
     if (!next || next === current) { this._membershipCandidate = null; return; }
     // Only auto-switch when both current and next are corridor (or current is unset/corridor).
     if (current && !isCorridorSector(current)) return;
-    // Hysteresis: the candidate must lead the current cell by MEMBERSHIP_LEAD_WU and hold the
-    // lead for MEMBERSHIP_DWELL_S continuously before the residency plan re-runs.
+    // Hysteresis: the player must penetrate a pair-scaled margin past the Voronoi edge and hold
+    // that lead for MEMBERSHIP_DWELL_S continuously before the residency plan re-runs. On the
+    // bisector, dCur² - dNext² = 2·span·y (y = perpendicular penetration past the edge), so the
+    // condition below is exactly y ≥ max(MIN_PENETRATION, SWITCH_FRACTION·span).
     const dNext = _dist2ToSectorOrigin(player.pos, next);
     const dCur = current ? _dist2ToSectorOrigin(player.pos, current) : Infinity;
-    const lead = dNext + MEMBERSHIP_LEAD_WU * MEMBERSHIP_LEAD_WU <= dCur;
+    const span = current ? Math.sqrt(_dist2ToSectorOrigin(sectorGlobalOrigin(next), current)) : 0;
+    const penetrationNeeded = Math.max(MEMBERSHIP_MIN_PENETRATION_WU, MEMBERSHIP_SWITCH_FRACTION * span);
+    const lead = dCur - dNext >= 2 * span * penetrationNeeded;
     if (!lead) { this._membershipCandidate = null; return; }
     const now = state.simTime || 0;
     if (!this._membershipCandidate || this._membershipCandidate.sectorId !== next) {
@@ -1602,6 +1643,48 @@ export const world = {
   },
 
   // --- spawn helpers ------------------------------------------------------------------------
+  // Arranger contexts exist only for a synchronous spawn pass. No registry entry, live cache,
+  // renderer write, event subscription or per-tick work is added. Authored Ceres marks are reserved
+  // BEFORE the first movable rock, including collision slots that materialize later in the loop.
+  _arrangerForSector(sector, active) {
+    if (readArrangementVersion(this.state.world.arrangementVersion, ARRANGEMENT_VERSION) === 0) return null;
+    const reservations = [];
+    if (sector.id === CERES_ACTIVITY_SECTOR_ID) {
+      const asteroidRadiusFor = (fieldId) => {
+        const field = (sector.fields || []).find((row) => row.id === fieldId);
+        const def = AST_BY_ID.get(field && field.type) || AST_BY_ID.get('ast_common_rock');
+        const sizes = def && def.sizeRange;
+        return Array.isArray(sizes) && sizes.every(Number.isFinite) ? Math.max(1, ...sizes) : 30;
+      };
+      for (const { pocket, slot } of CERES_ACTIVITY_OBJECT_SLOTS.values()) {
+        const presentation = CERES_ACTIVITY_DRONE_SLOT_PRESENTATION[slot.id];
+        const placeId = presentation && presentation.placeId
+          || (slot.id === 'ceres_refinery_cargo_pod' ? 'place_conveyor_barge'
+            : slot.id === 'ceres_ambush_distress_beacon' ? 'place_nav_buoy' : null);
+        // Read the owner's real radii: a 48-WU bait hull must not get a 36-WU reservation.
+        const radius = slot.id === 'ceres_seam_ore_clast'
+          ? asteroidRadiusFor('f_ceres_1') : (DRESSING_RADIUS[placeId] || 48);
+        reservations.push({
+          pos: this._toGlobal({
+            x: pocket.activityAnchor.localPos.x + slot.offset.x,
+            z: pocket.activityAnchor.localPos.z + slot.offset.z,
+          }, sector.id),
+          radius,
+        });
+      }
+      for (const { pocket, slot } of CERES_ACTIVITY_COLLISION_ANCHORS.values()) {
+        reservations.push({
+          pos: this._toGlobal({
+            x: pocket.activityAnchor.localPos.x + slot.offset.x,
+            z: pocket.activityAnchor.localPos.z + slot.offset.z,
+          }, sector.id),
+          radius: asteroidRadiusFor(slot.sourceFieldId),
+        });
+      }
+    }
+    return createSectorArranger(sector, { origin: this._sectorOrigin(sector.id), active, reservations });
+  },
+
   _spawnStations(sector, active, rng) {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
     const stations = sector.stations || [];
@@ -1674,6 +1757,7 @@ export const world = {
     };
     const fieldDefs = sector.fields || [];
     if (!fieldDefs.length) return;
+    const arranger = this._arrangerForSector(sector, active);
 
     // Split the sector's asteroid budget across its declared fields, weighted by countWeight.
     const totalWeight = fieldDefs.reduce((s, f) => s + (f.countWeight || 1), 0) || 1;
@@ -1695,6 +1779,7 @@ export const world = {
       const center = this._toGlobal(centerLocal, sector.id);
       const clusterR = fdef.clusterRadius || params.clusterRadius || 450;
       const astIds = [];
+      const arrangement = arranger && arranger.createField(fdef, center, clusterR);
       const authoredGeologyPlaceId = authoredGeologyPlaceForField(fdef);
       for (let i = 0; i < count; i++) {
         const activityBinding = sector.id === CERES_ACTIVITY_SECTOR_ID
@@ -1725,6 +1810,7 @@ export const world = {
           activityBinding,
           collisionAnchorBinding,
           i,
+          arrangement,
         );
         if (a) {
           this._stampHomeSector(a, sector.id);
@@ -1745,6 +1831,7 @@ export const world = {
     activityBinding = null,
     collisionAnchorBinding = null,
     slotIndex = 0,
+    arrangement = null,
   ) {
     const def = AST_BY_ID.get(fdef.type) || AST_BY_ID.get('ast_common_rock');
     // disc-uniform scatter inside the cluster (center is already galactic-global)
@@ -1769,9 +1856,13 @@ export const world = {
     // Activity bindings substitute existing-budget slots only after consuming every original
     // asteroid draw. They must not alter count, spawn order, geology index 0, or the later stream.
     const positionBinding = activityBinding || collisionAnchorBinding;
-    const pos = positionBinding && positionBinding.pos
+    const originalPos = positionBinding && positionBinding.pos
       ? { x: positionBinding.pos.x, z: positionBinding.pos.z }
       : scatteredPos;
+    // Map positions only, after every legacy draw. Pinned geology/activity/collision slots win.
+    const pos = arrangement
+      ? arrangement.place(originalPos, size, slotIndex, !!(positionBinding || authoredGeologyPlaceId))
+      : originalPos;
 
     const data = {
       typeId: def.id, tier: def.tierCap, tierCap,
@@ -1824,7 +1915,13 @@ export const world = {
       hash32: this.helpers.hash32,
       mulberry32: this.helpers.mulberry32,
     });
+    const generatedX = pos.x, generatedZ = pos.z;
     this._restoreResourceBody(ent);
+    // A mined/moved durable body remains authoritative. Reserve its restored pose as well so
+    // later generated rocks do not crowd it; never pull it back into the composition.
+    if (arrangement && ent.pos && (ent.pos.x !== generatedX || ent.pos.z !== generatedZ || ent.radius !== size)) {
+      arrangement.reserveRestored(ent.pos, ent.radius);
+    }
     return ent;
   },
 
@@ -2089,15 +2186,16 @@ export const world = {
   },
 
   _spawnDressing(sector, active, rng) {
+    const arranger = this._arrangerForSector(sector, active);
     const paletteClass = paletteClassForSector(sector);
     if (paletteClass === 'core') {
-      this._spawnCoreDressing(sector, active, rng, paletteClass);
+      this._spawnCoreDressing(sector, active, rng, paletteClass, arranger);
     } else if (paletteClass === 'belt') {
-      this._spawnBeltDressing(sector, active, rng, paletteClass);
+      this._spawnBeltDressing(sector, active, rng, paletteClass, arranger);
     } else if (paletteClass === 'fringe') {
-      this._spawnFringeDressing(sector, active, rng, paletteClass);
+      this._spawnFringeDressing(sector, active, rng, paletteClass, arranger);
     } else if (paletteClass === 'anomaly') {
-      this._spawnAnomalyDressing(sector, active, rng, paletteClass);
+      this._spawnAnomalyDressing(sector, active, rng, paletteClass, arranger);
     }
     this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
@@ -2220,7 +2318,7 @@ export const world = {
     }
   },
 
-  _spawnCoreDressing(sector, active, rng, paletteClass) {
+  _spawnCoreDressing(sector, active, rng, paletteClass, arranger = null) {
     const gates = active.gates || [];
     const stations = active.stations || [];
     const origin = this._sectorOrigin(sector.id);
@@ -2231,7 +2329,7 @@ export const world = {
       const side = i % 2 === 0 ? 1 : -1;
       const pos = offsetAlongRadial(gate.pos, t, side * (95 + rng() * 35), origin);
       this._spawnPlaceProp(active, sector, 'place_lane_beacon', pos, {
-        paletteClass,
+        paletteClass, arranger,
         rot: bearingFromOrigin(pos, origin),
         name: 'Lane Beacon',
         placeScale: 1,
@@ -2242,7 +2340,7 @@ export const world = {
       if (!station || !station.pos) continue;
       const pos = offsetAlongRadial(station.pos, 1.0, 150 + rng() * 70, origin);
       this._spawnPlaceProp(active, sector, 'place_station_billboard', pos, {
-        paletteClass,
+        paletteClass, arranger,
         // The authored display face is local +Z; renderer applies -entity.rot, so turn it
         // stationward instead of leaving it edge-on to the station bearing.
         rot: bearingToward(station.pos, pos) + Math.PI / 2,
@@ -2252,7 +2350,7 @@ export const world = {
     }
   },
 
-  _spawnBeltDressing(sector, active, rng, paletteClass) {
+  _spawnBeltDressing(sector, active, rng, paletteClass, arranger = null) {
     const fields = active.fields || [];
     const stations = active.stations || [];
     const ceresActivity = sector.id === CERES_ACTIVITY_SECTOR_ID;
@@ -2282,7 +2380,7 @@ export const world = {
         'place_nav_buoy',
         navBinding ? navBinding.pos : originalNavPos,
         {
-          paletteClass,
+          paletteClass, arranger,
           rot: ang + Math.PI * 0.5,
           name: navBinding ? 'Throughline Distress Beacon' : 'Belt Survey Buoy',
           placeScale: 1,
@@ -2299,7 +2397,7 @@ export const world = {
         dronePresentation ? dronePresentation.placeId : 'place_mining_drone',
         droneBinding ? droneBinding.pos : originalDronePos,
         {
-          paletteClass,
+          paletteClass, arranger,
           rot: ang,
           name: dronePresentation ? dronePresentation.name : 'Prospecting Drone',
           placeScale: 1,
@@ -2311,7 +2409,7 @@ export const world = {
       const originalPos = midpoint(stations[0].pos, fields[0].center, 0.58);
       const cargoBinding = activityBinding('ceres_refinery_cargo_pod');
       this._spawnPlaceProp(active, sector, 'place_conveyor_barge', cargoBinding ? cargoBinding.pos : originalPos, {
-        paletteClass,
+        paletteClass, arranger,
         rot: bearingToward(fields[0].center, stations[0].pos),
         name: cargoBinding ? 'Refinery Cargo Staging Pod' : 'Ore Conveyor',
         placeScale: 1,
@@ -2320,7 +2418,7 @@ export const world = {
     }
   },
 
-  _spawnFringeDressing(sector, active, rng, paletteClass) {
+  _spawnFringeDressing(sector, active, rng, paletteClass, arranger = null) {
     const fields = active.fields || [];
     const gates = active.gates || [];
     const pois = active.pois || [];
@@ -2328,7 +2426,7 @@ export const world = {
     if (gates[0] && gates[0].pos) {
       const pos = offsetAlongRadial(gates[0].pos, 0.76, 120 + rng() * 60, origin);
       this._spawnPlaceProp(active, sector, 'place_nav_buoy', pos, {
-        paletteClass,
+        paletteClass, arranger,
         rot: bearingFromOrigin(pos, origin),
         name: 'Flickering Nav Buoy',
       });
@@ -2338,12 +2436,12 @@ export const world = {
       const anchor = hulkAnchor.pos || hulkAnchor.center;
       const ang = rng() * Math.PI * 2;
       this._spawnPlaceProp(active, sector, 'place_dead_hulk', polarOffset(anchor, ang, 140 + rng() * 120), {
-        paletteClass,
+        paletteClass, arranger,
         rot: ang,
         name: 'Dead Hulk',
       });
       this._spawnPlaceProp(active, sector, 'place_debris_chunk', polarOffset(anchor, ang + 0.8, 220 + rng() * 90), {
-        paletteClass,
+        paletteClass, arranger,
         rot: ang + Math.PI * 0.35,
         name: 'Debris Chunk',
       });
@@ -2351,14 +2449,14 @@ export const world = {
     if (fields[0] && fields[0].center) {
       const ang = rng() * Math.PI * 2;
       this._spawnPlaceProp(active, sector, 'place_mining_drone', polarOffset(fields[0].center, ang, 250 + rng() * 120), {
-        paletteClass,
+        paletteClass, arranger,
         rot: ang,
         name: 'Fringe Prospecting Drone',
       });
     }
   },
 
-  _spawnAnomalyDressing(sector, active, rng, paletteClass) {
+  _spawnAnomalyDressing(sector, active, rng, paletteClass, arranger = null) {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
     const pois = active.pois || [];
     const anchor = pois[0] && pois[0].pos
@@ -2366,17 +2464,17 @@ export const world = {
       : this._toGlobal({ x: wr * 0.24, z: -wr * 0.18 }, sector.id);
     const base = rng() * Math.PI * 2;
     this._spawnPlaceProp(active, sector, 'place_nav_buoy', polarOffset(anchor, base, 180 + rng() * 80), {
-      paletteClass,
+      paletteClass, arranger,
       rot: base,
       name: 'Quiet Nav Buoy',
     });
     this._spawnPlaceProp(active, sector, 'place_debris_chunk', polarOffset(anchor, base + 1.7, 260 + rng() * 110), {
-      paletteClass,
+      paletteClass, arranger,
       rot: base + 0.5,
       name: 'Drifting Debris',
     });
     this._spawnPlaceProp(active, sector, 'place_mining_drone', polarOffset(anchor, base + 3.0, 330 + rng() * 140), {
-      paletteClass,
+      paletteClass, arranger,
       rot: base + Math.PI,
       name: 'Anomaly Survey Drone',
     });
@@ -2396,6 +2494,20 @@ export const world = {
       && options.activityObjectSlotId.length > 0
       ? options.activityObjectSlotId
       : null;
+    let propRot = Number.isFinite(options.rot) ? options.rot : 0;
+    if (options.arranger && !activityObjectSlotId && !options.worldOneOff
+        && !options.everydaySpaceKit && !options.wreckAftermath) {
+      const arranged = options.arranger.placeProp(placeId, pos, radius, propRot);
+      // Keep the original admission decision: a rejected baseline prop stays rejected, and an
+      // accepted prop never disappears because a new candidate crosses a runtime POI exclusion.
+      const admitted = !(active.pois || []).some((poi) => {
+        const carrier = this._poiCarrier(poi && poi.id);
+        const exclusionRadius = Number(carrier && carrier.data && carrier.data.dressingExclusionRadius);
+        return Number.isFinite(exclusionRadius) && exclusionRadius > 0 && carrier.pos
+          && dist2(arranged.pos, carrier.pos) < (exclusionRadius + radius) ** 2;
+      });
+      if (admitted) { pos = arranged.pos; propRot = arranged.rot; }
+    }
     const data = {
       placeId,
       placeScale: finitePositive(options.placeScale) ? Number(options.placeScale) : 1,
@@ -2413,7 +2525,7 @@ export const world = {
     };
     const spec = {
       pos,
-      rot: Number.isFinite(options.rot) ? options.rot : 0,
+      rot: propRot,
       radius,
       homeSectorId: sector.id,
       data,
@@ -3015,6 +3127,7 @@ export const world = {
     this._tickPOIScan(state);
     this._tickWorldOneOffSpin(dt, state);
     this._tickAsteroidFieldInteractions(state);
+    this._tickFieldRegrowth(state);
     tickFarActors(state, this.helpers, this.bus);
     // 180 s expiry window: a 1 Hz sweep is exact enough and removes a per-tick Object.keys +
     // full-bag scan. Tick-modulo gating keeps the sweep deterministic across replays and catch-up.
@@ -3038,6 +3151,122 @@ export const world = {
         promoteAsteroidFieldRock(state, rec.id, this.helpers, 'ram');
       }
     }
+  },
+
+  /**
+   * Slow field replenishment. The durable clock is fieldDepletion's; this method only turns a due
+   * seam into real rocks the player (and NPC miners) can work. Fresh rocks materialize live rather
+   * than dormant so the existing scan/beam/traffic surfaces see them the same tick — that is the
+   * readable "the belt is breathing again" signal, alongside `field:regrown` for presentation.
+   */
+  _tickFieldRegrowth(state) {
+    if ((state.tick | 0) % FIELD_REGROWTH_SCAN_TICKS !== 0) return 0;
+    const sectorId = state.world && state.world.currentSectorId;
+    const active = state.world && state.world.activeSector;
+    if (!sectorId || !active || !Array.isArray(active.fields) || !active.fields.length) return 0;
+    const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    if (!sector) return 0;
+    let grown = 0;
+    for (const field of active.fields) {
+      if (!field || !field.id || !field.center) continue;
+      const due = fieldRegrowthDue(state, field.id, state.simTime);
+      if (!due) continue;
+      grown += this._growFieldSeam(state, sector, field, due);
+    }
+    return grown;
+  },
+
+  _growFieldSeam(state, sector, field, due) {
+    const helpers = this.helpers;
+    if (!helpers || typeof helpers.spawnEntity !== 'function') return 0;
+    const live = this._liveFieldRockCount(state, field.id);
+    if (live >= FIELD_REGROWTH_LIVE_CAP) {
+      // The belt is already standing at cap; restart the slow clock so the next seam waits for the
+      // player to make room instead of spawning into a full field.
+      recordFieldRegrowth(state, { fieldId: field.id, sectorId: sector.id, simTime: state.simTime });
+      return 0;
+    }
+    const fdefs = sector.fields || [];
+    const fdef = fdefs.find((f) => f && f.id === field.id) || null;
+    const tierParams = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1] || {};
+    const clusterR = (fdef && fdef.clusterRadius) || tierParams.clusterRadius || 450;
+    const def = AST_BY_ID.get((fdef && fdef.type) || field.type) || AST_BY_ID.get('ast_common_rock');
+    const seed = Number(state.meta && state.meta.seed) || 1;
+    const rng = helpers.mulberry32(helpers.hash32(seed, sector.id, field.id, 'field-regrowth', due.batches));
+    const batch = FIELD_REGROWTH_BATCH_MIN
+      + Math.floor(rng() * (FIELD_REGROWTH_BATCH_MAX - FIELD_REGROWTH_BATCH_MIN + 1));
+    const richness = Number.isFinite(due.richnessMult) && due.richnessMult > 0 ? due.richnessMult : 1;
+    let grown = 0;
+    for (let i = 0; i < batch; i++) {
+      const ang = rng() * Math.PI * 2;
+      const r = clusterR * Math.sqrt(rng());
+      const [hpLo, hpHi] = def.hp || [120, 520];
+      const oreHP = Math.round(hpLo + (hpHi - hpLo) * rng());
+      const [szLo, szHi] = def.sizeRange || [6, 14];
+      const size = szLo + (szHi - szLo) * rng();
+      const [yLo, yHi] = def.yieldU || [8, 22];
+      const t = hpHi === hpLo ? 1 : (oreHP - hpLo) / (hpHi - hpLo);
+      const baseYieldU = Math.max(1, Math.round(yLo + (yHi - yLo) * t));
+      const yieldU = Math.max(1, Math.round(baseYieldU * richness * FIELD_REGROWTH_YIELD_SCALE));
+      const ent = helpers.spawnEntity({
+        type: 'asteroid',
+        pos: { x: field.center.x + Math.cos(ang) * r, z: field.center.z + Math.sin(ang) * r },
+        radius: size,
+        mass: 200 + size * 40,
+        angVel: (rng() - 0.5) * 0.35,
+        hull: oreHP,
+        hullMax: oreHP,
+        collides: true,
+        data: {
+          typeId: def.id, tier: def.tierCap, tierCap: def.tierCap,
+          oreHP, oreHPMax: oreHP, yieldU,
+          size, pctEjected: 0,
+          respawnSec: tierParams.respawnSec || 120,
+          fieldId: field.id,
+          asteroidSlotId: `regrow:${due.batches}:${i}`,
+          regrown: true,
+          regrownAtT: state.simTime,
+        },
+      });
+      if (!ent) continue;
+      this._stampHomeSector(ent, sector.id);
+      ent.data.seams = deriveAsteroidSeams(seed, ent.id, ent.radius, {
+        hash32: helpers.hash32,
+        mulberry32: helpers.mulberry32,
+      });
+      grown++;
+    }
+    if (!grown) return 0;
+    recordFieldRegrowth(state, {
+      fieldId: field.id, sectorId: sector.id, simTime: state.simTime, batches: 1,
+    });
+    const payload = {
+      fieldId: field.id,
+      sectorId: sector.id,
+      rocks: grown,
+      batch: due.batches + 1,
+      depleted: due.depletion,
+      richnessMult: due.richnessMult,
+      band: due.band,
+      center: { x: field.center.x, z: field.center.z },
+      reason: 'slow_clock',
+    };
+    this.bus.emit('field:regrown', payload);
+    return grown;
+  },
+
+  _liveFieldRockCount(state, fieldId) {
+    const list = (state.entityIndex && state.entityIndex.asteroids)
+      || (state.entityIndex && state.entityIndex.mineables)
+      || state.entityList
+      || [];
+    let live = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false || e.type !== 'asteroid') continue;
+      if (e.data && e.data.fieldId === fieldId) live++;
+    }
+    return live;
   },
 
   _clearAdventureCombatantsForRun() {
@@ -3587,6 +3816,35 @@ export const world = {
     this._scanT = 0;
   },
 
+  /**
+   * Readable scan hint: when the sector's freshest seam is not rich, name it with a range and
+   * bearing from the player. Existing toast chrome only — the scan was already the surface that
+   * reveals fields, and this makes its line lead to the next one instead of just counting them.
+   */
+  _scanFieldLead(state) {
+    const active = state.world && state.world.activeSector;
+    const player = state.entities && state.entities.get(state.playerId);
+    const fields = (active && active.fields) || [];
+    if (!player || !player.pos || !fields.length) return null;
+    let best = null;
+    for (const f of fields) {
+      if (!f || !f.id || !f.center) continue;
+      const rec = state.fieldDepletion && state.fieldDepletion.fields
+        ? state.fieldDepletion.fields[f.id] : null;
+      const depletion = rec && Number.isFinite(rec.depletion) ? rec.depletion : 0;
+      const dx = f.center.x - player.pos.x;
+      const dz = f.center.z - player.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (!best || depletion < best.depletion - 1e-9
+        || (Math.abs(depletion - best.depletion) <= 1e-9 && d < best.d)) {
+        best = { id: f.id, depletion, dx, dz, d, regrown: !!(rec && rec.regrownBatches > 0) };
+      }
+    }
+    if (!best || best.depletion < 0.12) return null; // every seam still rich; nothing to lead to
+    const reopen = best.regrown ? ', reopening' : '';
+    return `freshest seam ${Math.round(best.d)} WU ${compassLabel(best.dx, best.dz)}${reopen}`;
+  },
+
   _tickScan(dt, state) {
     if (!this._scanning) return;
     this._scanT += dt;
@@ -3604,8 +3862,10 @@ export const world = {
     const stationCount = (state.world.activeSector.stations || []).length;
     const fieldCount = (state.world.activeSector.fields || []).length;
     this.bus.emit('scan:completed', { targetId: null });
+    const fieldLead = this._scanFieldLead(state);
     this.bus.emit('toast', {
-      text: `Sector scanned: ${stationCount} stations, ${fieldCount} fields, ${revealedPois} POIs`,
+      text: `Sector scanned: ${stationCount} stations, ${fieldCount} fields, ${revealedPois} POIs`
+        + (fieldLead ? ` — ${fieldLead}` : ''),
       kind: 'info', ttl: 4,
     });
   },
@@ -4595,6 +4855,8 @@ export const world = {
       frontierRumors: cloneSaveTree(this._frontierRumorState()),
       vestaOreCache: cloneSaveTree(this._vestaOreCacheState()),
       pallasHiddenCache: cloneSaveTree(this._pallasHiddenCacheState()),
+      // Arrangement v0 preserves old saves; v1 is a generation policy, not saved geometry.
+      arrangementVersion: readArrangementVersion(state.world.arrangementVersion, ARRANGEMENT_VERSION),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
       resourceBodies: serializeResourceBodyBag(ensureResourceBodies(state.world)),
@@ -4624,7 +4886,10 @@ export const world = {
 
   deserialize(data) {
     if (!data) return;
+    // Reject unknown future layouts BEFORE any state mutation. Missing means legacy geometry.
+    const arrangementVersion = readArrangementVersion(data.arrangementVersion);
     const state = this.state;
+    state.world.arrangementVersion = arrangementVersion;
     // Sector entities are runtime-only and save load clears them before re-entering the saved
     // sector. Drop all residency bags as well, otherwise stale structural IDs make the
     // materializer believe stations/gates are still live and the loaded sector appears empty.
@@ -4701,6 +4966,7 @@ export const world = {
     this._tethysRunEntities = {};
     state.world.vestaOreCache = freshVestaOreCacheState();
     state.world.pallasHiddenCache = freshPallasHiddenCacheState();
+    state.world.arrangementVersion = ARRANGEMENT_VERSION;
     state.world.records = createEmptyRecordsBag();
     state.world.resourceBodies = createEmptyResourceBodyBag();
     state.world.embodiment = createEmptyEmbodimentCache();

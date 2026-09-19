@@ -14,7 +14,8 @@ import {
   sectorMembershipAtGlobal,
 } from '../src/data/sectorCoordinates.js';
 
-const LEAD_WU = 150;
+const SWITCH_FRACTION = 0.35;
+const MIN_PENETRATION_WU = 2500;
 const DWELL_S = 8;
 
 function originsPair() {
@@ -45,9 +46,9 @@ function makeHarness({ current, probe }) {
   const oto = from === a ? ob : oa;
   const ux = (oto.x - ofrom.x) / d;
   const uz = (oto.z - ofrom.z) / d;
-  // The bisector sits at distance d/2 from each origin; the lead commitment point is where
-  // (d/2 - x)^2 + LEAD^2 <= (d/2 + x)^2, i.e. x >= LEAD^2 / (2d) past the midpoint.
-  const commit = (LEAD_WU * LEAD_WU) / (2 * d);
+  // The bisector sits at distance d/2 from each origin; the commitment point is the pair-scaled
+  // penetration margin past the edge (the same law _tickResidency applies).
+  const commit = Math.max(MIN_PENETRATION_WU, SWITCH_FRACTION * d);
   const posAt = (offset) => ({ x: ofrom.x + ux * (d / 2 + offset), z: ofrom.z + uz * (d / 2 + offset) });
   const state = {
     mode: 'flight',
@@ -120,4 +121,21 @@ test('a lead that lapses resets the dwell', () => {
   assert.equal(h.calls.length, 0, 'lapsed lead must not bank the old dwell');
   h.tickAt(29.5, offset);
   assert.equal(h.calls.length, 1, 'flip only after the restarted dwell');
+});
+
+test('a border-straddling patrol at the measured loop scale never flips', () => {
+  const h = makeHarness({ probe: 0 });
+  // The measured failure: hunter s4242 h3 commuted between two origins with legs penetrating
+  // ~30% of the inter-origin span past the edge, flipping membership every ~59-118 s. A patrol
+  // that deep must hold membership on the first side; only past the 35% margin does it switch.
+  const deep = Math.floor(0.30 * h.pair.d);
+  for (let s = 0; s <= 3600; s += 15) {
+    h.tickAt(s, (s % 120 < 60) ? deep : -deep);
+  }
+  assert.equal(h.calls.length, 0, 'straddling patrol must not flip residency');
+  // Just past the margin, a hold flips exactly once per genuine transit.
+  const committed = h.commit + 60;
+  h.tickAt(3700, committed);
+  h.tickAt(3712, committed);
+  assert.equal(h.calls.length, 1, 'a genuinely committed transit still switches');
 });
