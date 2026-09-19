@@ -171,6 +171,34 @@ export const BREAKAWAY_FORK_COLLIDERS = Object.freeze({
   arrestorAxialCenter: BREAKAWAY_CAPTURE_FORK.depth + BREAKAWAY_CAPTURE_FORK.rearClearanceWu + 5,
 });
 
+// ── PQ-195.08: the moving carrier the breakaway releases FROM ──────────────────────────────────
+//
+// Slice C (01_FEATURE_SPEC §74): the SP-07 starts CLAMPED to an actual moving carrier — a yard tug
+// hauling the caged assembly down the same off-line heading the free launch used. The clamp is a
+// transport attachment owned by the carrier, released three ways: voluntarily at the authored
+// route point, by disabling the carrier's `subsystem_transport_clamp`, or by losing the carrier.
+// Every release path only removes the constraint — the released body keeps whatever velocity and
+// spin it already had; nothing ever adds an impulse for the camera.
+export const BREAKAWAY_CARRIER = Object.freeze({
+  // The yard tug: sustained axial force is its whole job ("a drive with a frame").
+  shipId: 'ship_hawser',
+  // MTS logistics runs the shipment — the load's legal owner.
+  factionId: 'faction_mts',
+  // Sustained pace with a 180-mass cage on the bolt: close to the free launch's 60 WU/s so the
+  // encounter's motion scale is unchanged after release.
+  cruiseSpeedWu: 55,
+  // Clear gap between the tug's aft clamp socket and the cage — enough that rail collision is a
+  // physical fact, not an overlap.
+  clampStandoffWu: 8,
+  // The carrier lets go when it has carried the cage this far down the breakaway heading — a
+  // progress crossing, not an arrival: the tug flies straight through, the freed body keeps the
+  // lane's momentum, and the encounter's corridor stays the one the free launch crossed.
+  routeReleaseWu: 1200,
+  // After letting go the tug keeps its lane and is removed this far downrange — a bounded
+  // transient, never permanent traffic.
+  departureWu: 2400,
+});
+
 export const HEIST_CAPSULE_RUN_VARIANT_ID = 'capsule_run';
 export const BREAKAWAY_THIRD_SHIFT_VARIANT_ID = 'breakaway_third_shift';
 

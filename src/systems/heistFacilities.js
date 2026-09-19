@@ -11,11 +11,13 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import {
   BREAKAWAY_BERTH,
   BREAKAWAY_CAPTURE_FORK,
+  BREAKAWAY_CARRIER,
   BREAKAWAY_FORK_COLLIDERS,
   BREAKAWAY_FORK_VISUAL,
   PQ019_FACILITIES,
   PQ019_HEIST_SECTOR_ID,
   HEIST_CAPSULE_RUN_VARIANT_ID,
+  BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
   heistLaunchVariant,
   isHeistPayloadStableId,
   isKnownHeistLaunchVariantId,
@@ -134,6 +136,18 @@ function makeState() {
     // PQ-195.04: the berth worker hull this owner materializes with the sector. Transient by
     // design — the ACTIVATED/consequence state lives in the serialized npcJobs record, never here.
     berth: { workerEntityId: null },
+    // PQ-195.08: the Third Shift carrier + its transport clamp. Transient ids only — the carrier
+    // is a live ship hull, never serialized; on save/load the run resumes with the load already
+    // free (the fiction: the shipment went on without it).
+    carrierEntityId: null,
+    clampAttachmentId: null,
+    carrierPendingClamp: false,
+    carrierClampAttempts: 0,
+    carrierReleased: false,
+    carrierHeading: null,
+    carrierLaunchPos: null,
+    carrierReleaseAnchor: null,
+    carrierDepartAnchor: null,
   };
 }
 
@@ -211,6 +225,7 @@ export const heistFacilities = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this.registry = ctx.registry;
     ctx.heistFacilities = this;
 
     if (!this.state.heistFacilities
@@ -255,6 +270,7 @@ export const heistFacilities = {
     if (schedule.status === 'launched') {
       if (state.world?.currentSectorId !== PQ019_HEIST_SECTOR_ID) return;
       if (heistLaunchVariant(schedule.variantId).custody === 'capture_fork') {
+        this._stepCarrier(state);
         this._stepCaptureFork(schedule, state);
       }
       return;
@@ -481,6 +497,16 @@ export const heistFacilities = {
     if (owned.capsuleEntityId != null
       && !Number.isInteger(Number(owned.capsuleEntityId))) {
       owned.capsuleEntityId = null;
+    }
+    // PQ-195.08: a saved game never carries a live carrier — entity ids are transient, so a stale
+    // restore drops every carrier/clamp reference. The load it carried persists independently.
+    if (owned.carrierEntityId != null
+      && !Number.isInteger(Number(owned.carrierEntityId))) {
+      owned.carrierEntityId = null;
+    }
+    if (owned.clampAttachmentId != null
+      && typeof owned.clampAttachmentId !== 'string') {
+      owned.clampAttachmentId = null;
     }
   },
 
@@ -747,6 +773,21 @@ export const heistFacilities = {
       this.helpers.removeEntity(berth.workerEntityId);
       berth.workerEntityId = null;
     }
+    // PQ-195.08: the carrier is ours too — a transient hull that never survives a sector exit.
+    // Removing it here makes `breakOrphans` release the clamped load before the sweep; the
+    // mission runtime's suspension path has already snapshotted that load's state.
+    if (owned.carrierEntityId != null) {
+      this.helpers.removeEntity(owned.carrierEntityId);
+      owned.carrierEntityId = null;
+    }
+    owned.clampAttachmentId = null;
+    owned.carrierPendingClamp = false;
+    owned.carrierClampAttempts = 0;
+    owned.carrierReleased = false;
+    owned.carrierHeading = null;
+    owned.carrierLaunchPos = null;
+    owned.carrierReleaseAnchor = null;
+    owned.carrierDepartAnchor = null;
   },
 
   _launchScheduledCapsule(schedule) {
@@ -779,20 +820,60 @@ export const heistFacilities = {
       nz = Math.sin(heading);
     }
     const clearance = launcher.radius + payload.radius + 2;
-    const capsule = this.helpers.spawnEntity({
+    const spawnPos = {
+      x: launcher.pos.x + nx * clearance,
+      z: launcher.pos.z + nz * clearance,
+    };
+    const capsule = variant.id === BREAKAWAY_THIRD_SHIFT_VARIANT_ID
+      ? this._spawnCarrierCagedLoad(schedule, variant, nx, nz, spawnPos)
+      : this.helpers.spawnEntity(this._payloadSpawnSpec({
+        payload,
+        schedule,
+        variant,
+        pos: spawnPos,
+        vel: { x: nx * payload.launchSpeed, z: nz * payload.launchSpeed },
+        rot: Math.atan2(nz, nx),
+      }));
+    if (!capsule) return null;
+    // Release spin is written by the owner that created the body, before its first physics step —
+    // an initial condition of a new body, not a write to one already in flight.
+    const spin = Number(payload.launchSpinRadS) || 0;
+    if (spin !== 0) capsule.angVel = spin;
+
+    owned.capsuleEntityId = capsule.id;
+    schedule.capsuleEntityId = capsule.id;
+    schedule.status = 'launched';
+    schedule.launchedAtTick = this.state.tick | 0;
+    this.bus.emit('heist:capsuleLaunched', Object.freeze({
+      scheduleId: schedule.scheduleId,
+      capsuleEntityId: capsule.id,
+      payloadStableId: payload.stableId,
+      launchedAtTick: schedule.launchedAtTick,
+      ...(schedule.variantId ? { variantId: schedule.variantId } : {}),
+      source: 'heistFacilities',
+    }));
+    // Closes the countdown on the same stable voice id, so the last thing the player heard about
+    // this schedule is that the capsule is real and where it is headed. The rebind path above
+    // returns before this point: recovering a still-live capsule is not a fresh launch.
+    this._sayLaunchCue({
+      scheduleId: schedule.scheduleId,
+      moment: 'away',
+      tMinusS: 0,
+      text: launchCueAwayText(schedule.variantId),
+    });
+    return capsule;
+  },
+
+  /** The authored payload entity spec — one shape for the free launch and the carrier's caged load. */
+  _payloadSpawnSpec({ payload, schedule, variant, pos, vel, rot }) {
+    return {
       type: 'payload',
       factionId: payload.legalOwnerFactionId,
       ownerId: payload.ownerId,
       team: 2,
-      pos: {
-        x: launcher.pos.x + nx * clearance,
-        z: launcher.pos.z + nz * clearance,
-      },
-      vel: {
-        x: nx * payload.launchSpeed,
-        z: nz * payload.launchSpeed,
-      },
-      rot: Math.atan2(nz, nx),
+      pos,
+      vel,
+      rot,
       radius: payload.radius,
       mass: payload.mass,
       hull: payload.hull,
@@ -825,34 +906,216 @@ export const heistFacilities = {
         transientSector: true,
         ...(variant.id !== HEIST_CAPSULE_RUN_VARIANT_ID ? { heistVariantId: variant.id } : {}),
       },
-    });
-    // Release spin is written by the owner that created the body, before its first physics step —
-    // an initial condition of a new body, not a write to one already in flight.
-    const spin = Number(payload.launchSpinRadS) || 0;
-    if (spin !== 0) capsule.angVel = spin;
+    };
+  },
 
-    owned.capsuleEntityId = capsule.id;
-    schedule.capsuleEntityId = capsule.id;
-    schedule.status = 'launched';
-    schedule.launchedAtTick = this.state.tick | 0;
-    this.bus.emit('heist:capsuleLaunched', Object.freeze({
-      scheduleId: schedule.scheduleId,
-      capsuleEntityId: capsule.id,
-      payloadStableId: payload.stableId,
-      launchedAtTick: schedule.launchedAtTick,
-      ...(schedule.variantId ? { variantId: schedule.variantId } : {}),
-      source: 'heistFacilities',
-    }));
-    // Closes the countdown on the same stable voice id, so the last thing the player heard about
-    // this schedule is that the capsule is real and where it is headed. The rebind path above
-    // returns before this point: recovering a still-live capsule is not a fresh launch.
-    this._sayLaunchCue({
-      scheduleId: schedule.scheduleId,
-      moment: 'away',
-      tMinusS: 0,
-      text: launchCueAwayText(schedule.variantId),
+  /**
+   * PQ-195.08: the Third Shift load does not start free. A real yard tug (a `ship_hawser` hull with
+   * ordinary flight fields and `data.intent`) hauls the assembly out of the same launch mouth on the
+   * same heading, clamped by the ordinary attachment service — `attachment_transport_clamp` between
+   * the carrier's aft `transport_clamp` socket and the load's tether socket. The clamp is what is
+   * physical here: it is cut at the authored route point, when the carrier's clamp subsystem is
+   * disabled, or when the carrier is lost (`breakOrphans`), and cutting only removes the joint —
+   * the released body keeps whatever momentum it already had.
+   *
+   * Fail-closed: if the attachment service or physics port is absent the launch returns null and
+   * retries next tick; we never fake a release the player did not see.
+   */
+  _spawnCarrierCagedLoad(schedule, variant, nx, nz, loadPos) {
+    const owned = this.state.heistFacilities;
+    const payload = variant.payload;
+    const carrierDef = BREAKAWAY_CARRIER;
+    const heading = Math.atan2(nz, nx);
+    const attachments = this._combatAttachments();
+    if (!attachments) {
+      // The constraint owner is absent (headless sims without combat). The load still physically
+      // exists — it degrades to the historical free launch rather than vanish.
+      return this.helpers.spawnEntity(this._payloadSpawnSpec({
+        payload,
+        schedule,
+        variant,
+        pos: { x: loadPos.x, z: loadPos.z },
+        vel: { x: nx * payload.launchSpeed, z: nz * payload.launchSpeed },
+        rot: heading,
+      }));
+    }
+
+    const carrierSpec = makeShipEntitySpec(carrierDef.shipId, {
+      team: 2,
+      factionId: carrierDef.factionId,
+      pos: { x: 0, z: 0 },
+      rot: heading,
     });
+    const gap = payload.radius + carrierSpec.radius + carrierDef.clampStandoffWu;
+    carrierSpec.pos = { x: loadPos.x + nx * gap, z: loadPos.z + nz * gap };
+    carrierSpec.vel = { x: nx * carrierDef.cruiseSpeedWu, z: nz * carrierDef.cruiseSpeedWu };
+    carrierSpec.ttl = Infinity;
+    carrierSpec.collides = true;
+    carrierSpec.flags = { missionPinned: true };
+    carrierSpec.homeSectorId = PQ019_HEIST_SECTOR_ID;
+    carrierSpec.data = Object.assign(carrierSpec.data || {}, {
+      heistFacilityRole: 'transport_carrier',
+      combatProfileId: 'combat_profile_heist_carrier',
+      launchScheduleId: schedule.scheduleId,
+      missionPinned: true,
+      runtimeOwner: 'heistFacilities',
+      sectorId: PQ019_HEIST_SECTOR_ID,
+      homeSectorId: PQ019_HEIST_SECTOR_ID,
+      transientSector: true,
+    });
+    const carrier = this.helpers.spawnEntity(carrierSpec);
+
+    // The caged load leaves at the same mouth position the free launch used, already moving with
+    // the tug — the constraint holds it there, nothing teleports it during transit.
+    const capsule = this.helpers.spawnEntity(this._payloadSpawnSpec({
+      payload,
+      schedule,
+      variant,
+      pos: { x: loadPos.x, z: loadPos.z },
+      vel: { x: nx * carrierDef.cruiseSpeedWu, z: nz * carrierDef.cruiseSpeedWu },
+      rot: heading,
+    }));
+
+    // The physics bodies for these brand-new entities register on the NEXT physics step, so the
+    // joint cannot be created here — `_stepCarrier` binds it once the records exist.
+    owned.carrierEntityId = carrier.id;
+    owned.clampAttachmentId = null;
+    owned.carrierPendingClamp = true;
+    owned.carrierClampAttempts = 0;
+    owned.carrierReleased = false;
+    owned.carrierHeading = { x: nx, z: nz };
+    owned.carrierLaunchPos = { x: loadPos.x, z: loadPos.z };
+    owned.carrierReleaseAnchor = {
+      x: loadPos.x + nx * carrierDef.routeReleaseWu,
+      z: loadPos.z + nz * carrierDef.routeReleaseWu,
+    };
+    owned.carrierDepartAnchor = null;
     return capsule;
+  },
+
+  /**
+   * The combat kernel's attachment service — the same seam player tethers use. Optional chaining:
+   * headless sims may run without combat registered, in which case the carrier launch refuses.
+   */
+  _combatAttachments() {
+    const combat = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('combat')
+      : null;
+    return combat && combat.kernel && combat.kernel.attachments ? combat.kernel.attachments : null;
+  },
+
+  /**
+   * Drive the carrier's ordinary NPC intent while the run is live: transit to the release anchor,
+   * voluntary cut on arrival, then the departure lane and a bounded despawn. Written every step by
+   * this owner — `flightV3` executes the intent; nothing here touches position or velocity.
+   */
+  _stepCarrier(state) {
+    const owned = this.state.heistFacilities;
+    if (!owned || owned.carrierEntityId == null) return;
+    const carrier = state.entities.get(owned.carrierEntityId);
+    // Verify identity, not just presence: after a reload a stale serialized id could point at a
+    // recycled entity. The carrier is never serialized, so a mismatched row means it is gone.
+    const isOurs = carrier && carrier.alive !== false
+      && carrier.data?.heistFacilityRole === 'transport_carrier'
+      && carrier.data?.launchScheduleId === owned.schedule?.scheduleId;
+    if (!isOurs) {
+      // Lost mid-run: breakOrphans already removed the joint; the load is free with whatever
+      // momentum it had. Nothing here fabricates a release or a payout.
+      owned.carrierEntityId = null;
+      owned.clampAttachmentId = null;
+      return;
+    }
+    const anchor = owned.carrierReleaseAnchor;
+    const heading = owned.carrierHeading || { x: 1, z: 0 };
+    const attachments = this._combatAttachments();
+
+    // The joint is bound one step after spawn: the physics bodies for the new entities only
+    // register on the first physics step after creation, so `create` cannot succeed in the same
+    // tick. A real refusal (socket missing, limit, dead endpoint) ends the cage — the load
+    // continues free, honestly; a physics-port rejection just means the records are not up yet.
+    if (owned.carrierPendingClamp) {
+      const load = this._activeScheduleCapsule(owned.schedule);
+      const result = attachments && load && load.alive !== false
+        ? attachments.create({ defId: 'attachment_transport_clamp', ownerId: carrier.id, targetId: load.id })
+        : null;
+      if (result && result.ok) {
+        owned.clampAttachmentId = result.attachment.id;
+        owned.carrierPendingClamp = false;
+      } else if (!result || (result.reason !== 'physics_port_unavailable' && result.reason !== 'physics_create_rejected')) {
+        owned.carrierPendingClamp = false;
+        owned.carrierReleased = true;
+      } else {
+        owned.carrierClampAttempts = (owned.carrierClampAttempts | 0) + 1;
+        if (owned.carrierClampAttempts > 120) {
+          owned.carrierPendingClamp = false;
+          owned.carrierReleased = true;
+        }
+      }
+      return;
+    }
+
+    // The tug flies ONE straight lane down the breakaway heading — steering to a far point keeps
+    // it on the line instead of orbiting an arrival anchor at cruise speed. Release and despawn
+    // are progress crossings, never arrivals.
+    const launchPos = owned.carrierLaunchPos || anchor;
+    const laneEnd = owned.carrierDepartAnchor || (owned.carrierDepartAnchor = launchPos
+      ? { x: launchPos.x + heading.x * BREAKAWAY_CARRIER.departureWu, z: launchPos.z + heading.z * BREAKAWAY_CARRIER.departureWu }
+      : null);
+    const progress = launchPos
+      ? (carrier.pos.x - launchPos.x) * heading.x + (carrier.pos.z - launchPos.z) * heading.z
+      : 0;
+
+    if (!owned.carrierReleased) {
+      const clamp = owned.clampAttachmentId != null && attachments
+        ? attachments.get(owned.clampAttachmentId)
+        : null;
+      const clampLive = clamp && clamp.state === 'active' && clamp.ownerId === carrier.id;
+      if (!clampLive) {
+        // The joint is gone — subsystem disabled, or an external break we did not order. Either
+        // way the physics already released the load; the tug just flies its departure lane.
+        owned.carrierReleased = true;
+        owned.clampAttachmentId = null;
+      } else if (progress >= BREAKAWAY_CARRIER.routeReleaseWu) {
+        // The authored voluntary release: the carrier's own cut removes the joint as it crosses
+        // the release line. Both bodies keep their momentum; `cut` never writes velocity.
+        attachments.cut(clamp.id, carrier.id, 'transport_release');
+        owned.carrierReleased = true;
+        owned.clampAttachmentId = null;
+      } else {
+        this._driveCarrier(carrier, laneEnd || anchor, BREAKAWAY_CARRIER.cruiseSpeedWu);
+        return;
+      }
+    }
+
+    // Post-release: the tug keeps its lane past the release line and is removed once it is clear —
+    // a bounded transient, never permanent traffic.
+    if (progress >= BREAKAWAY_CARRIER.departureWu) {
+      this.helpers.removeEntity(carrier.id);
+      owned.carrierEntityId = null;
+      return;
+    }
+    if (laneEnd) this._driveCarrier(carrier, laneEnd, BREAKAWAY_CARRIER.cruiseSpeedWu);
+  },
+
+  /**
+   * Write the carrier's `data.intent` exactly like a civilian mover: forward throttle toward an
+   * aim angle. Throttle is the target pace as a fraction of governed speed, so a heavier hull
+   * settles at the authored cruise instead of sprinting.
+   */
+  _driveCarrier(carrier, target, speedWu) {
+    const dx = target.x - carrier.pos.x;
+    const dz = target.z - carrier.pos.z;
+    const dist = Math.hypot(dx, dz);
+    const data = carrier.data || (carrier.data = {});
+    const intent = data.intent || (data.intent = {});
+    const governed = Math.max(1, Number(carrier.maxSpeed) || 1);
+    intent.moveX = 0;
+    intent.moveZ = Math.min(1, speedWu / governed);
+    intent.boost = false;
+    intent.brake = false;
+    intent.fire = false;
+    intent.fireGroup = null;
+    intent.aimAngle = dist > 1e-6 ? Math.atan2(dz, dx) : Number(carrier.rot) || 0;
   },
 
   /**
@@ -1280,6 +1543,17 @@ export const heistFacilities = {
     owned.candidateIds = {};
     if (owned.receiverHandoff !== undefined) delete owned.receiverHandoff;
     this._clearCaptureFork(owned);
+    // PQ-195.08: the carrier and its clamp are live-run ids that never serialize — a restored
+    // game has no tug at all, so every reference is stale by definition.
+    owned.carrierEntityId = null;
+    owned.clampAttachmentId = null;
+    owned.carrierPendingClamp = false;
+    owned.carrierClampAttempts = 0;
+    owned.carrierReleased = false;
+    owned.carrierHeading = null;
+    owned.carrierLaunchPos = null;
+    owned.carrierReleaseAnchor = null;
+    owned.carrierDepartAnchor = null;
   },
 
   /**

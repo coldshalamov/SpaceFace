@@ -57,7 +57,7 @@ export const COMBAT_CUE_IDS = Object.freeze([
   'presentation.tether.attach', 'presentation.tether.break',
   'combat.subsystem.drive.disabled', 'combat.subsystem.weapon.disabled',
   'combat.subsystem.sensor.disabled', 'combat.subsystem.tether.disabled',
-  'combat.subsystem.power.disabled', 'combat.subsystem.restored',
+  'combat.subsystem.power.disabled', 'combat.subsystem.clamp.disabled', 'combat.subsystem.restored',
   'combat.status.ionized', 'combat.status.burning', 'combat.status.overheated',
   'combat.status.scrambled', 'combat.status.gravity_marked', 'combat.status.momentum_sink',
   'combat.status.cryo_lock', 'combat.status.goo',
@@ -305,6 +305,23 @@ export const SUBSYSTEM_DEFS = Object.freeze([
     disabledBehavior: { capabilities: { power: false }, multipliers: { capRegen: 0.20 } },
     repair: { fieldRatePerTick: 0.10, dockRatePerTick: 1.5 }, cueId: 'combat.subsystem.power.disabled',
   },
+  {
+    // PQ-195.08: the transport clamp — the cage bolt a carrier holds its load with. Aft-mounted,
+    // small, and the authored interception target: shooting the CLAMP (not the hull) frees the
+    // load. Disabling it breaks only the carrier's owned attachments through the ordinary
+    // subsystem machinery — the released body keeps its real momentum; nothing adds an impulse.
+    // The tug keeps its drive: a dead clamp does not strand the hauler.
+    id: 'subsystem_transport_clamp', version: 1, tags: ['transport_clamp'],
+    volume: { shape: 'box', space: 'normalized', center: [-0.72, 0], halfExtents: [0.18, 0.30] },
+    health: 34, armor: { flat: 1, multipliers: { kinetic: 1.0, thermal: 1.0, ion: 1.15, plasma: 1.0, phase: 1.0 } },
+    dependencies: ['subsystem_power'],
+    disabledBehavior: {
+      capabilities: { transport_clamp: false },
+      breakOwnedAttachments: true,
+    },
+    // Field-unrepairable by design: a clamp bolt is either whole or gone.
+    repair: { fieldRatePerTick: 0, dockRatePerTick: 2 }, cueId: 'combat.subsystem.clamp.disabled',
+  },
 ]);
 
 export const ATTACHMENT_DEFS = Object.freeze([
@@ -383,6 +400,21 @@ export const ATTACHMENT_DEFS = Object.freeze([
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },
+  {
+    // PQ-195.08: the transport clamp — a carrier's cage bolt, not a rope. A near-rigid cradle
+    // spring holds the load at standoff; ordinary thrust, collision load, or the load's own
+    // inertia can NEVER sever it (the break envelope is infrastructure-grade, same order as the
+    // standard line's). Release is intentional only: the clamp subsystem disabled, the carrier
+    // lost, or the owner's voluntary release at its route point. Cutting removes the constraint
+    // and nothing else — both bodies keep whatever momentum they already had.
+    id: 'attachment_transport_clamp', version: 1,
+    sourceSocketTags: ['transport_clamp'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    break: { maxTension: 10500000, maxImpulse: 190000, maxYank: 150000, graceTicks: 4 },
+    spring: { K: 640, zeta: 1.15, captureS: 0.15, maxStretchRatio: 0.35 },
+    limits: { maxPerOwner: 1 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
 ]);
 
 export const COMBAT_PROFILES = Object.freeze([
@@ -426,6 +458,23 @@ export const COMBAT_PROFILES = Object.freeze([
     subsystemIds: ['subsystem_weapon', 'subsystem_sensor', 'subsystem_power'],
     sockets: [{ id: 'socket_hull', tags: ['tether'], localPos: [0, 0], maxAttachments: 8 }],
     capabilities: { drive: false, weapon: true, sensor: true, tether: false, power: true },
+  },
+  {
+    // PQ-195.08: a transport carrier — an ordinary ship that additionally wears its cage bolt on
+    // the aft hull. The clamp is a hittable subsystem, and its socket is the source end of the
+    // transport attachment. Explicitly opted in via entity.data.combatProfileId; ordinary ships
+    // never grow a clamp.
+    id: 'combat_profile_heist_carrier', version: 1, entityTypes: ['ship'],
+    heat: { max: 100, dissipationPerTick: 0.50 },
+    immunityTags: [],
+    subsystemIds: ['subsystem_drive', 'subsystem_weapon', 'subsystem_sensor', 'subsystem_tether_spool', 'subsystem_power', 'subsystem_transport_clamp'],
+    sockets: [
+      { id: 'socket_massline', tags: ['massline'], localPos: [-0.25, 0.42], maxAttachments: 1 },
+      { id: 'socket_tether_spool', tags: ['tether_spool'], localPos: [0.50, 0], maxAttachments: 1 },
+      { id: 'socket_hull', tags: ['tether'], localPos: [0, 0], maxAttachments: 2 },
+      { id: 'socket_transport_clamp', tags: ['transport_clamp'], localPos: [-0.62, 0], maxAttachments: 1 },
+    ],
+    capabilities: { drive: true, weapon: true, sensor: true, tether: true, power: true, transport_clamp: true },
   },
 ]);
 
