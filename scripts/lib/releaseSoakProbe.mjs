@@ -1059,12 +1059,16 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
     return readPlayerSnapshot(page);
   };
   let afterInput = await driveInput();
-  if (afterInput.tick <= beforeInput.tick) {
-    // A suspended presentation (document.hidden) or a transient main-thread stall can starve one
-    // 450 ms input window without being a gameplay defect — wait for visibility once, re-drive once.
+  // A suspended presentation (document.hidden) or a transient main-thread stall can starve one
+  // 450 ms input window without being a gameplay defect — wait for visibility, then re-drive. The
+  // Electron host has no equivalent of the browser's --disable-backgrounding-occluded-windows, so a
+  // covering window can throttle its rAF; the sim is still the same sim. Bounded at three attempts:
+  // a genuinely frozen sim still fails with the full diag.
+  for (let attempt = 0; attempt < 2 && afterInput.tick <= beforeInput.tick; attempt += 1) {
     try {
       await page.waitForFunction(() => document.visibilityState === 'visible', null, { timeout: 10_000 });
     } catch (_) { /* the assert below reports the still-frozen state with the full diag */ }
+    await page.waitForTimeout(500);
     afterInput = await driveInput();
   }
   assert(afterInput.tick > beforeInput.tick, 'flight input must advance simulation ticks');

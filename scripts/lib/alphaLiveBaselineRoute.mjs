@@ -7,6 +7,7 @@ import {
   validateComputedUndockRoleProofs,
   validateFinalStationFrameSuffix,
 } from './alphaLiveBaselineContracts.mjs';
+import { consumePageConditionValue } from './playwrightCspPolling.mjs';
 
 export {
   evaluateCanonicalUrlAcceptance,
@@ -157,7 +158,10 @@ export async function runBrowserPublicRoute({
         return false;
       }
       return simNow - probe.simTime >= 0.75 ? { x, z } : false;
-    }, null, { timeout: 30_000, polling: 100 }).then((handle) => handle.jsonValue());
+      // Electron installs the CSP-safe polling wrapper (playwrightCspPolling), whose
+      // waitForFunction resolves the VALUE, not a JSHandle; a real Playwright handle still needs
+      // jsonValue(). consumePageConditionValue accepts both, so the same route runs on both hosts.
+    }, null, { timeout: 30_000, polling: 100 }).then((valueOrHandle) => consumePageConditionValue(valueOrHandle));
 
     // The baseline sample must itself be settle-confirmed: a positional correction that starts
     // between the gate and the read would land inside the measured window unobserved. Verify the
