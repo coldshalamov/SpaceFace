@@ -46,3 +46,15 @@ docs). Base packet and interface commit verified by the author against 94f38d342
 - `state.tensionDirector` enters sim-snapshot hashes once active (same class as
   `state.encounterDirector`); determinism holds — no RNG input — but full-state goldens should
   be re-recorded only through the standing re-record decision process, never silently.
+
+## Verification addendum (owner ruling: minutes, not hours)
+
+Production acceptance was verified with short runs, not multi-hour batteries: a standalone
+probe (seconds — full story/news/radio emission from kill->wreck->salvage->trade) and a 2-hour
+directed session (~17 min wall; td=live every hour, 7,201 tension:policy, 1,448 decisions, 76
+phase changes, 4 chapter changes, 25 honest starvation notices, news:headline reacting). The
+tutorial-gate integration defect (a permanently unfinished rail holds the director's
+suspension) was found and fixed via the game's own settings.gameplay.tutorialHints opt-out.
+Long-horizon 10h A/B measurement belongs to the standing compass-battery cadence if/when
+wanted — it is not a build-correctness gate and must never run for hours unattended on this
+shared machine.
