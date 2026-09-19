@@ -9,7 +9,7 @@ implementationCommit: this_receipt_commit
 routeClaim: integrated_structural_green
 acceptanceClaim: historical_focused_buffer_lifecycle_green_native_unproven
 disposition: PARTIAL
-nativeAttemptDisposition: CAPTURED_DEMOTED_BY_ENVIRONMENT
+nativeAttemptDisposition: BLOCKED
 qualityInvariant: preserved
 ```
 
@@ -305,6 +305,75 @@ Also corrected here: the earlier energy-card culling pin (adc7ab7a7) asserted
 a contract that lives in a still-uncommitted `presenter.js` diff — it failed
 on any clean checkout and was reverted (07f724ffb). The coverage now rides the
 shared working tree until the presenter change lands.
+
+## Native acceptance attempt — 2026-09-19
+
+The manifest fast gate had gone red again at `master`: 19 of 55 tests failed in
+the first declared gate. All four failure classes were stale fixtures left by
+commits that landed after the 09-15 repair — the force-language swept-surface
+rewrite (`d94e8d995`) replaced the eight per-role field instanced meshes with one
+swept-surface batch owner; the shell gained `userContentStore.cjs` /
+`workshopMods.cjs` requires, three workshop IPC channels, and three preload
+bridge methods; and the Tier-1 Electron reload now installs two init scripts
+(counter flag plus the GL program-query trap). The fixtures were retargeted to
+the live contracts and committed as `f301d627e`; the field-geometry test now
+pins the batch registration, its force-full first eligible publication, the
+visible-prefix republication when fields move, and zero publication on an
+unchanged frame. All three manifest fast gates are green in the candidate:
+55/55, 6/6, and the render hot-path contract.
+
+The isolated candidate was re-established at `f301d627e` in
+`.worktrees/pq040-acceptance` (junctioned `node_modules`, fresh broker state).
+Two structural blockers were found and fixed for the certification path:
+
+- a detached HEAD fails the closure contract's `worktree branch is required`
+  (`performanceClosureContracts.mjs`); the candidate now sits on branch
+  `pq040-native-acceptance`;
+- the Electron route crashed at `flight-input` with `handle.jsonValue is not a
+  function`: the Electron launch installs the CSP-safe polling wrapper whose
+  `waitForFunction` resolves the value, while the 09-15 settle gate consumed a
+  Playwright handle. The owning lane has the exact `consumePageConditionValue`
+  fix as an uncommitted hunk in the shared tree (mtime 10:33 local); the
+  Electron acceptance must run on a candidate that includes it.
+
+A Browser diagnostic on the candidate (14:25Z) ran the complete public route and
+both attribution variants. The comparator passed with a wide margin — **94.1%
+owner requested-byte reduction and 70.7% driver upload-byte reduction** against
+the causal full-span control (threshold 25%) — with zero page errors. Every
+remaining demotion was host contention: `dynResScale` drifted inside both
+capture windows, the first pipeline warmup was unsettled, the 20 s opening GPU
+cook timed out with first-flight build diagnostics, a 4.7 s bloomScene GPU brick
+fired, and the process census was active.
+
+The exact Browser broker command was invoked once and stopped at preflight with
+`PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED`; the recorded census shows 2.73
+foreign CPU cores aggregate, with a foreign Playwright renderer at 1.36 cores.
+No claim was consumed and no acceptance runtime launched — this is an
+environment block, not a Browser failure. A quiet-window watch over the
+following 25 minutes never saw the foreign chrome/electron load fall below 1.6
+cores.
+
+```yaml
+unit: PQ-040.native-acceptance
+candidateBranch: pq040-native-acceptance
+candidateHead: f301d627ef5ac340d6cfe0bb668e9c08d9b0bbd6
+candidateWorktree: .worktrees/pq040-acceptance
+fastGateResult: 55 pass / 0 fail + 6 pass / 0 fail + render hot-path OK
+browserManifestInvocations: 1
+browserAcceptanceRuntimeLaunches: 0
+browserBrokerResult: PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED
+browserDiagnosticComparatorPass: true
+browserDiagnosticOwnerByteReduction: 0.9414
+browserDiagnosticDriverByteReduction: 0.7069
+browserDiagnosticDemotions: dynResScale drift, warmup unsettled, 20s cook timeout, bloomScene brick, census
+electronDiagnosticResult: flight-input handle.jsonValue crash (route fix in flight, foreign hunk)
+numericAcceptance: unproven
+```
+
+Disposition: **BLOCKED**. Nothing about the implementation, harness, or
+candidate blocks the acceptance now — the remaining requirement is one quiet
+machine window (no foreign Chrome/Electron/Blender CPU) long enough to run
+Browser then Electron on a candidate that includes the route fix.
 
 ## Implemented architecture
 
