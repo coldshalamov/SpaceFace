@@ -18642,7 +18642,7 @@
       "priority": 498,
       "title": "Two destinations for one body",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "heist-breakaway"
@@ -18660,7 +18660,10 @@
         "npm run check:pq019c:mission",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-195.03-REPORT.md"
+      ],
+      "partialIntegration": "2026-09-19 leaf integrated on master at 3eb061ce (worker candidate e9bd8046 on pq195-third-shift, opencode-go/deepseek-v4.1-flash; independent review opencode-go/glm-5.3 VERDICT: ACCEPT). Quiet fence is a real second destination: fence_contact -> fenced_success -> complete at flat fencePayoutCr 1200 (no condition grade); facility-specific custody keeps catcher-head touches refused for fork variants; latch never reports theft; no double-settle either direction; capsule matrix byte-identical. Foreign missions.js hunk preserved via patch-revert-commit-reapply. Tests: pq195-03 9/9, leaf regression 10/10, pq019c 67/67, baseline 15/15.",
       "brief": "A lawful recovery and an illicit handoff over one physical object and one mechanical receiver — two policies, not two implementations; the law owner decides witnesses and heat. DONE WHEN: both routes complete on the ordinary route from one accepted contract, the same assembly is never paid for twice by relabelling its destination, and latching alone never raises WANTED. The Capsule Run keeps its historical semantics."
     },
     {
