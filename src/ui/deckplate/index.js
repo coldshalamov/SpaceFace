@@ -10,11 +10,14 @@
 import { DECKPLATE_TOKENS_CSS } from './tokens.js';
 import { DECKPLATE_MATERIALS_CSS } from './materials.js';
 import { DECKPLATE_COMPONENTS_CSS, DECKPLATE_COMPONENTS_FORCED_CSS } from './components.js';
+import { DECKPLATE_HARDWARE_CSS } from './hardware.js';
 
 export { DECKPLATE_TOKENS_CSS } from './tokens.js';
 export { DECKPLATE_MATERIALS_CSS } from './materials.js';
 export { DECKPLATE_COMPONENTS_CSS, DECKPLATE_COMPONENTS_FORCED_CSS } from './components.js';
+export { DECKPLATE_HARDWARE_CSS } from './hardware.js';
 export { DP_MOTION, replayDpAnimation, dpReducedMotion } from './motion.js';
+export { dpIcon, hasDpIcon, DP_ICON_NAMES } from './icons.js';
 
 const STYLE_ID = 'sf-deckplate-style';
 
@@ -23,6 +26,7 @@ export const DECKPLATE_CSS =
   DECKPLATE_TOKENS_CSS + '\n' +
   DECKPLATE_MATERIALS_CSS + '\n' +
   DECKPLATE_COMPONENTS_CSS + '\n' +
+  DECKPLATE_HARDWARE_CSS + '\n' +
   DECKPLATE_COMPONENTS_FORCED_CSS;
 
 export function injectDeckplate(doc = globalThis.document) {

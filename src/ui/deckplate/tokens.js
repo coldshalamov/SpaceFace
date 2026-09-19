@@ -31,8 +31,11 @@ export const DECKPLATE_TOKENS_CSS = `
 
   /* ── Ink: warm bone, for text that is printed ON the machine. ── */
   --dp-ink:#e8e2d4;        /* primary readings — warm paper white */
-  --dp-ink-dim:#a9a696;    /* secondary data */
-  --dp-ink-mute:#6f7076;   /* etched legends, idle hardware marks */
+  --dp-ink-dim:#b7b4a6;    /* secondary data */
+  /* Etched legends and idle hardware marks. Raised 2026-09-19 from #6f7076, which measured
+     2.99–3.74:1 on the deck's surfaces — under the 4.5:1 floor for 12 px text. #96948e is
+     4.87:1 on the brightest raised metal (--dp-metal-3) and 6.09:1 on glass. */
+  --dp-ink-mute:#96948e;
 
   /* ── THE LAMP — the one accent. A warm filament, three heats. ── */
   --dp-lamp-dim:#8a6b3a;   /* idle hardware: the lamp you could wake */
@@ -56,7 +59,8 @@ export const DECKPLATE_TOKENS_CSS = `
   /* ── Type. Aliases onto the kit scale so the 12 px floor and the viewport factor hold.
         Two voices only: the etched legend (condensed, tracked, uppercase) and the reading
         (tabular, warm bone). The reading face at numeral sizes is the display moment. ── */
-  --dp-face-etch:var(--k-display, "Bricolage Grotesque"), var(--k-text, "Instrument Sans"), system-ui, sans-serif;
+  --dp-face-etch:"Archivo", var(--k-display, "Bricolage Grotesque"), var(--k-text, "Instrument Sans"), system-ui, sans-serif;
+  --dp-face-display:"Archivo", var(--k-display, "Bricolage Grotesque"), system-ui, sans-serif;
   --dp-face-read:var(--k-text, "Instrument Sans"), system-ui, -apple-system, "Segoe UI", sans-serif;
   --dp-fs-etch:max(12px, var(--k-fs-fine, 12px));
   --dp-fs-data:max(12px, var(--k-fs-data, 14px));

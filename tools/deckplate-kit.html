@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Deckplate kit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/styles/fonts.css">
+<link rel="stylesheet" href="/styles/kit.css">
+<style>
+  /* Page furniture only. Everything inside #stage is the design system. */
+  html, body { margin:0; height:100%; background:#050608; }
+  body { overflow:hidden; }
+  #stage {
+    position:relative; width:100vw; height:100vh; overflow:hidden;
+    background:
+      radial-gradient(ellipse at 50% 38%, rgb(0 0 0 / 0), rgb(0 0 0 / .5) 90%),
+      url("/assets/ui/kit/assets/plates/plate.backdrop.hangar-wall-cold.png") center / cover no-repeat;
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script type="module" src="./deckplate-kit.js"></script>
+</body>
+</html>
