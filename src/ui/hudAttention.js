@@ -100,7 +100,7 @@ export function formatRosterCount(contacts = []) {
   const total = contacts.length;
   if (!total) return '';
   if (hostile) return `${hostile} HOSTILE · ${total}`;
-  return `${total}`;
+  return `${total} CONTACT${total === 1 ? '' : 'S'}`;
 }
 
 export function masslineInstrumentVisible(tether) {

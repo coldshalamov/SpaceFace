@@ -5346,7 +5346,13 @@ export const galaxyMapScreen = {
     if (selectionHtml) return selectionHtml;
     const nav = this._navContext(state);
     const rows = (nav && Array.isArray(nav.rows)) ? nav.rows : [];
-    const navHtml = rows.map((row) => {
+    // The cartouche already paints these four rows on the chart itself; repeating them verbatim
+    // made the same sentence read twice on one screen. Keep the DOM copy only as the fallback
+    // for windows too small to carry the cartouche (navCartoucheBounds returns null there).
+    const w = this._canvas ? this._canvas.width / this._dpr : 0;
+    const h = this._canvas ? this._canvas.height / this._dpr : 0;
+    const cartoucheVisible = !!navCartoucheBounds(rows.length, w, h);
+    const navHtml = cartoucheVisible ? '' : rows.map((row) => {
       const detail = row.detail
         ? `<div class="gm-nav-row-d">${escapeMapHtml(row.detail)}</div>`
         : '';
@@ -5361,9 +5367,7 @@ export const galaxyMapScreen = {
     // no-selection panel never grows a block that says nothing.
     const careersHtml = careersOverviewLineHtml(state, currentSectorId(state));
     return `
-      <div class="gm-ins-section">
-        ${navHtml}
-      </div>
+      ${navHtml ? `<div class="gm-ins-section">${navHtml}</div>` : ''}
       ${careersHtml}
       <div class="gm-ins-section">
         <div class="gm-ins-note">Click a sector, station or contact to inspect it. <b>Double-click</b> any mark to lay a course. Other tabs hold trade, threat, careers and survey depth.</div>
@@ -7811,7 +7815,6 @@ export const galaxyMapScreen = {
           });
         }
 
-        const labelX = fixed ? x : x + Math.min(Math.max(12, radiusPx), 64);
         const phaseLabel = bearing.statusLabel || (bearing.manualSearch ? 'RUMOR SEARCH'
           : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING');
         labelCandidates.push(makeMapLabelCandidate(g, {
@@ -7819,9 +7822,12 @@ export const galaxyMapScreen = {
           kind: 'bearing',
           text: `${phaseLabel} · ${bearing.name}`,
           lines: [`${phaseLabel} · ${bearing.name}`],
-          x: labelX,
+          x,
           y,
-          anchorRadius: fixed ? 10 : 5,
+          // Anchor is the ring CENTRE with clearance covering the whole dashed ring: the old
+          // capped 64px x-offset parked the label inside any ring >64px and text sat on the
+          // dashes. radiusPx + 6 keeps the text just outside the ring at any zoom.
+          anchorRadius: fixed ? 10 : radiusPx + 6,
           color: INK.warn,
           selected,
           named: true,
@@ -8176,7 +8182,6 @@ export const galaxyMapScreen = {
           });
         }
 
-        const labelX = fixed ? x : x + Math.min(Math.max(12, radiusPx), 64);
         const phaseLabel = bearing.statusLabel || (bearing.manualSearch ? 'RUMOR SEARCH'
           : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING');
         labelCandidates.push(makeMapLabelCandidate(g, {
@@ -8184,9 +8189,12 @@ export const galaxyMapScreen = {
           kind: 'bearing',
           text: `${phaseLabel} · ${bearing.name}`,
           lines: [`${phaseLabel} · ${bearing.name}`],
-          x: labelX,
+          x,
           y,
-          anchorRadius: fixed ? 10 : 5,
+          // Anchor is the ring CENTRE with clearance covering the whole dashed ring: the old
+          // capped 64px x-offset parked the label inside any ring >64px and text sat on the
+          // dashes. radiusPx + 6 keeps the text just outside the ring at any zoom.
+          anchorRadius: fixed ? 10 : radiusPx + 6,
           color: INK.gold,
           selected,
           named: true,

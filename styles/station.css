@@ -155,6 +155,15 @@ button.sx-ct-row { width: 100%; background: none; border-left: 0; border-right: 
 .sx-job__track { flex: none; }
 .sx-job.is-tracked .sx-job__title { color: var(--k-text-live); }
 
+/* Job titles run 30-45 chars while the hang column only fits ~24 — a single-line ellipsis
+   clipped EVERY row (including the 15-char tracked contract), which read as a broken list.
+   Wrap to two data-size lines so the full title lands; the ellipsis still clamps line 2 as the
+   fallback for genuinely oversized names. */
+.sx-ct-row__title, .sx-job__title {
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  font-size: var(--k-fs-data); line-height: 1.25;
+}
+
 /* The stage: the dossier reads top-down; the corner column (credits + vitals) stays clear. */
 .sx-ct__dossier { min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; padding-right: calc(420px * var(--k-s)); }
 .sx-dossier > * + * { margin-top: calc(16px * var(--k-s)); }
@@ -915,6 +924,19 @@ html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-berth__n
 html[data-k-temp="wanted"] #screens .sx-berth:not(.sx-observatory) .sxb-event {
   color: var(--k-text-live);
   border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-white.png");
+}
+
+/* ───────────── shared scroll-edge fade ───────────── */
+/* Same contract as the kit rule (kit.css §1.3): a scrolling region never hard-clips a text
+   line at its edge. The mask fades the trailing ~20px into a continuation cue; the matching
+   bottom padding keeps the fade on empty space once scrolled to the end. */
+.sx-comms__history, .sx-ledger .st-ledger-list, .sx-ct__board, .sx-ct__dossier,
+.sx-fac__rows, .sx-fac__stage, .sx-ind__list, .sx-ind__stage,
+.sx-bar__hang, .sx-bar__stage, .sx-sw__gauges, .sx-sw__stats,
+.sx-sw__list, .sx-chooser__list, .sx-sw__side {
+  padding-bottom: calc(20px * var(--k-s));
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
 }
 
 @media (max-height: 780px) and (min-width: 900px) {
