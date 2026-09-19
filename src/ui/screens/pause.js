@@ -10,6 +10,7 @@ import { createPauseFrame } from '../views/menuFrames.js';
 // ScreenManager owns aggregate pause/resume events and the time-effects request. This screen owns
 // only pause-mode presentation and navigation intents.
 
+import { injectDeckplate } from '../deckplate/index.js';
 import { confirm } from '../confirm.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS } from '../../data/sectors.js';
@@ -616,6 +617,7 @@ export const pauseScreen = {
   id: 'pause',
 
   mount(rootEl, ctx) {
+    injectDeckplate();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-narrow');
     rootEl.classList.add('k-screen', 'k-screen--stage');
@@ -640,15 +642,17 @@ export const pauseScreen = {
     const stage = el('section', 'k-stage');
     const items = [];
     const handlers = new Map();
-    const mk = (label, fn, { primary = false, danger = false, dev = false, current = false } = {}) => {
+    // Deckplate (FRONTEND_PROGRAM Wave 2): verbs are grouped under etched legends and carry a kit
+    // glyph; the order and every label are unchanged, so one roving list still reaches them all.
+    const mk = (label, fn, { primary = false, danger = false, dev = false, current = false, group = null, icon = null } = {}) => {
       const action = 'pause-' + items.length;
-      items.push({ label, action, primary, danger, current });
+      items.push({ label, action, primary, danger, current, group, icon });
       handlers.set(action, fn);
       return action;
     };
-    const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true, current: true });
-    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'));
-    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'));
+    const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true, current: true, icon: 'chevron-right' });
+    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'), { group: 'Game', icon: 'settings' });
+    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { group: 'Game', icon: 'install' });
     // Load discards unsaved current progress after a slot is chosen — confirm with the live run context first.
     mk(coreText('load'), async () => {
       const ok = await confirm({
@@ -657,34 +661,34 @@ export const pauseScreen = {
         confirmLabel: 'Open Load', danger: true,
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
-    });
-    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'));
+    }, { group: 'Game', icon: 'remove' });
+    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', icon: 'missions' });
     // THE SHIP (F2 in flight; SCREENS_B §1.2 route wiring). From pause the same instrument opens
     // with its pause-menu entry; the key case lives in the flight-only key router.
-    mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'));
+    mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', icon: 'shipworks' });
     // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
     // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
     // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
     // UI-polish scope this cycle; a first-class station tab would be promotion).
-    mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'));
+    mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', icon: 'industry' });
     const mapAction = pauseMapAction(ctx && ctx.state);
-    if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction));
-    mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'));
-    mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'));
+    if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', icon: 'route' });
+    mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'), { group: 'Reference', icon: 'help' });
+    mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', icon: 'info' });
+    // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
+    mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', icon: 'ready' });
     // Photo mode (Task B §1.7 / PQ-159.03): HUD gone, free camera, exposure, capture for store
     // assets; filters off by default. Esc returns here. Do not restyle this sheet.
-    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx));
+    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: 'Media', icon: 'scan' });
     // Replay (PQ-160.00): the deterministic last thirty seconds, played back with the photo-mode
     // presentation. Opens over this sheet; Esc or Exit returns to pause.
-    mk(REPLAY_LABEL, () => openReplay(rootEl, ctx));
+    mk(REPLAY_LABEL, () => openReplay(rootEl, ctx), { group: 'Media', icon: 'clock' });
     // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
     // Esc or Exit returns. This screen owns presentation only, not export encoding.
-    mk(CLIPS_LABEL, () => openClips(rootEl, ctx));
-    // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
-    mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'));
+    mk(CLIPS_LABEL, () => openClips(rootEl, ctx), { group: 'Media', icon: 'record' });
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
-    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true });
+    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', icon: 'utility' });
     // Main Menu discards the current session entirely — confirm with the live run context first.
     mk(coreText('mainMenu'), async () => {
       const ok = await confirm({
@@ -693,7 +697,7 @@ export const pauseScreen = {
         confirmLabel: 'Main Menu', danger: true,
       });
       if (ok) this._toMenu(ctx);
-    }, { danger: true });
+    }, { danger: true, group: 'Exit', icon: 'undock' });
 
     mk(coreText('quitGame'), async () => {
       const lines = pauseStatusLines(ctx && ctx.state);
@@ -703,7 +707,7 @@ export const pauseScreen = {
         confirmLabel: coreText('quitGame'), danger: true,
       });
       if (ok) requestQuit(ctx);
-    }, { danger: true });
+    }, { danger: true, group: 'Exit', icon: 'abandon' });
 
     // One list, in the sheet's order. `current` lights Resume's row while focus is outside the
     // list; the kit's roving focus then moves the same light down the column.

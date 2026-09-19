@@ -11,6 +11,7 @@ import { DECKPLATE_TOKENS_CSS } from './tokens.js';
 import { DECKPLATE_MATERIALS_CSS } from './materials.js';
 import { DECKPLATE_COMPONENTS_CSS, DECKPLATE_COMPONENTS_FORCED_CSS } from './components.js';
 import { DECKPLATE_HARDWARE_CSS } from './hardware.js';
+import { DECKPLATE_SCREENS_CSS } from './screens.js';
 
 export { DECKPLATE_TOKENS_CSS } from './tokens.js';
 export { DECKPLATE_MATERIALS_CSS } from './materials.js';
@@ -27,6 +28,7 @@ export const DECKPLATE_CSS =
   DECKPLATE_MATERIALS_CSS + '\n' +
   DECKPLATE_COMPONENTS_CSS + '\n' +
   DECKPLATE_HARDWARE_CSS + '\n' +
+  DECKPLATE_SCREENS_CSS + '\n' +
   DECKPLATE_COMPONENTS_FORCED_CSS;
 
 export function injectDeckplate(doc = globalThis.document) {

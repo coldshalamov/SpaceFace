@@ -24,7 +24,7 @@ const rowHtml = rows.map(([icon, name, sub, read, supply, demand, sel], i) => `
   <button class="dp-row kit-row${sel ? ' is-selected' : ''}" style="--dp-i:${i}" ${sel ? 'aria-selected="true"' : ''}>
     ${dpIcon(icon, 24)}
     <span><span class="dp-row__name">${name}</span><span class="dp-row__sub">${sub}</span></span>
-    <span class="kit-meters"><span class="dp-legend">Supply</span><span class="dp-meter"><i style="--v:${supply}%"></i></span><span class="dp-legend">Demand</span><span class="dp-meter dp-meter--lamp"><i style="--v:${demand}%"></i></span></span>
+    <span class="kit-meters"><span class="dp-legend">Supply</span><span class="dp-meter"><i style="--v:${supply}%"></i></span><span class="dp-legend">Demand</span><span class="dp-meter"><i style="--v:${demand}%"></i></span></span>
     <span class="dp-row__read">${read}</span>
   </button>`).join('');
 
@@ -51,7 +51,7 @@ stage.innerHTML = `
   .kit__credits { display:flex; align-items:center; gap:14px; padding:10px 18px; }
   .kit__credits .dp-icon { color:var(--dp-ink-dim); }
   .kit__credits .dp-icon .accent { fill:var(--dp-lamp); }
-  .kit__num { font-family:var(--dp-face-display); font-variation-settings:"wght" 760, "wdth" 110; font-size:26px; color:var(--dp-lamp-hot); text-shadow:0 0 14px var(--dp-lamp-bloom); font-variant-numeric:tabular-nums; }
+  .kit__num { font-family:var(--dp-face-display); font-variation-settings:"wght" 760, "wdth" 110; font-size:26px; color:var(--dp-ink); text-shadow:var(--dp-emit); font-variant-numeric:tabular-nums; }
   .kit__main { display:grid; grid-template-rows:auto auto minmax(0, 1fr); gap:12px; min-height:0; padding-top:12px; }
   .kit__main .dp-rows { overflow:hidden; min-height:0; }
   .kit-row { grid-template-columns:auto minmax(0, 1fr) minmax(0, 220px) 90px; }
@@ -60,11 +60,13 @@ stage.innerHTML = `
   @media (max-width:1400px) { .kit-meters { display:none; } .kit-row { grid-template-columns:auto minmax(0, 1fr) 90px; } }
   .kit__side { display:grid; grid-template-rows:auto auto minmax(150px, 1fr); gap:calc(16px * var(--k-s, 1)); min-height:0; }
   .kit__side > * { min-height:0; overflow:hidden; }
+  .kit__side > .dp-mfd { padding:14px 18px; }
+  @media (max-height:800px) { .kit__console { display:none; } .kit__side { grid-template-rows:auto minmax(120px, 1fr); } .kit__detail { padding:10px 14px; } .kit__stats { margin:8px 0 10px; } .kit__qty { margin-bottom:10px; } }
   .kit__detail h2 { margin:0; font-family:var(--dp-face-display); font-variation-settings:"wght" 800, "wdth" 112; font-size:28px; letter-spacing:.04em; text-transform:uppercase; }
   .kit__stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin:14px 0 16px; }
   .kit__stat .dp-legend { display:block; margin-bottom:4px; }
   .kit__stat b { font-family:var(--dp-face-read); font-weight:650; font-size:22px; font-variant-numeric:tabular-nums; color:var(--dp-ink); }
-  .kit__stat b.lamp { color:var(--dp-lamp-hot); text-shadow:0 0 12px var(--dp-lamp-bloom-soft); }
+  .kit__stat b.lamp { color:var(--dp-ink); }
   .kit__qty { display:grid; grid-template-columns:1fr auto; gap:14px; align-items:center; margin-bottom:16px; }
   .kit__keys { display:flex; gap:10px; flex-wrap:wrap; }
   .kit__prefs { display:grid; grid-template-columns:1fr auto; gap:10px 18px; align-items:center; }
@@ -90,7 +92,7 @@ stage.innerHTML = `
   </section>
 
   <aside class="kit__side">
-    <section class="dp-glass kit__detail dp-enter">
+    <section class="dp-mfd kit__detail dp-enter">
       <div class="dp-section-head"><span class="dp-legend">Selected line</span></div>
       <h2>Fuel Cells</h2>
       <div class="kit__stats">
@@ -108,7 +110,7 @@ stage.innerHTML = `
         <button class="dp-key dp-key--hazard">Jettison</button>
       </div>
     </section>
-    <section class="dp-glass dp-enter">
+    <section class="dp-mfd kit__console dp-enter">
       <div class="dp-section-head"><span class="dp-legend">Console</span></div>
       <div class="kit__prefs">
         <label>Auto-sell ore on dock</label><button class="dp-switch" role="switch" aria-checked="true"><span>Off</span><span>On</span></button>
@@ -116,7 +118,7 @@ stage.innerHTML = `
         <label>Price alert threshold</label><input class="dp-range" type="range" value="70" aria-label="Threshold" style="--dp-range-pct:70%;width:200px">
       </div>
     </section>
-    <section class="dp-glass dp-enter">
+    <section class="dp-mfd kit__console dp-enter">
       <div class="dp-section-head"><span class="dp-legend">Contract board</span></div><div class="dp-empty"><div class="dp-empty__head">Board empty</div><div class="dp-empty__read">Refresh in 04:12</div><div class="dp-empty__body">The Concord posts new haul work at the next cycle. Ceres Belt is posting now.</div></div>
     </section>
   </aside>

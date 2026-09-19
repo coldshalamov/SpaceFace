@@ -49,11 +49,27 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
   const list = el('ul', row ? 'k-words k-words--row' : 'k-words');
   list.setAttribute('aria-label', ariaLabel);
   const buttons = [];
+  let group = null;
   for (const item of items) {
+    // Deckplate (FRONTEND_PROGRAM Wave 2): optional `group` heads a run of verbs with an etched
+    // legend (a presentation row, never a focus stop), `icon` names a kit glyph drawn as a mask
+    // (no text node, so the verb's label and accessible name are unchanged), and `hint` is the
+    // verb's key, printed by CSS from a data attribute for the same reason.
+    if (item.group && item.group !== group) {
+      const head = el('li', 'k-words__group', item.group);
+      head.setAttribute('role', 'presentation');
+      list.append(head);
+    }
+    group = item.group || group;
     const li = el('li');
     const button = el('button', 'k-word' + (size === 'menu' ? '' : ` k-word--${size}`)
       + (item.primary ? ' k-word--primary' : '') + (item.danger ? ' k-word--danger' : ''), item.label);
     button.type = 'button'; button.dataset.action = String(item.action);
+    if (item.icon) {
+      button.dataset.icon = String(item.icon);
+      button.style?.setProperty?.('--k-icon', `url("/assets/ui/kit/icons/24/icon-${item.icon}.svg")`);
+    }
+    if (item.hint) button.dataset.hint = String(item.hint);
     // aria-disabled only (spec §6.5): the word stays clickable so a refused pick can sound `deny`.
     if (item.disabled) button.setAttribute('aria-disabled', 'true');
     if (item.current) button.setAttribute('aria-current', 'true');

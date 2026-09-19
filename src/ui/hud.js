@@ -754,6 +754,14 @@ export function consumeContactRosterClock(clock, dt) {
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+/** One threat-bearing arc on the ring around the ship: screen angle `a` (radians), ±`s` wide. */
+function threatArcPath(a, r = 48, s = 0.28) {
+  const x0 = (r * Math.cos(a - s)).toFixed(1);
+  const y0 = (r * Math.sin(a - s)).toFixed(1);
+  const x1 = (r * Math.cos(a + s)).toFixed(1);
+  const y1 = (r * Math.sin(a + s)).toFixed(1);
+  return `M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}`;
+}
 function hudEntityName(entity) {
   return (entity && (entity.name || (entity.data && entity.data.name))) || (entity ? entity.type : '');
 }
@@ -1138,7 +1146,11 @@ export function createHud(ctx, alerts) {
   leftStack.className = 'sf-leftstack';
   const leftContext = document.createElement('div');
   leftContext.className = 'sf-leftcontext';
-  leftStack.appendChild(leftContext);
+  // FRONTEND_PROGRAM Wave 1: the contextual column (comms tape, log, objective, first-use card) is
+  // ONE comms strip anchored top-left, and the instrument cluster owns the bottom-left. Stacked
+  // together they made the screen bottom-heavy and pushed the column off the top at 1280x720.
+  // Modules that adopt into the column find it by class, so its parent is free to change.
+  root.appendChild(leftContext);
 
   // Lamina: authored hull laminae + a split, globally driven shield envelope.
   // The view reads the same authoritative entity as all other vitals; it owns no simulation state.
@@ -1175,7 +1187,13 @@ export function createHud(ctx, alerts) {
     numEls[key] = row.querySelector('.sf-barrow__num');
     rowEls[key] = row;
   }
-  leftStack.appendChild(bars);   // bars below the contextual column
+  // One instrument cluster (FRONTEND_PROGRAM Wave 1): integrity, vitals and the speed deck are
+  // seated in ONE machined chassis with one baseline, instead of three plates that float apart.
+  // The chassis is paint and layout only; every instrument keeps its own contract DOM.
+  const clusterChassis = document.createElement('div');
+  clusterChassis.className = 'sf-cluster-chassis';
+  clusterChassis.appendChild(bars);
+  leftStack.appendChild(clusterChassis);   // the speed deck and threat lamp join it below
   root.appendChild(leftStack);
   // Comms is initialized a few lines before createHud() by uiRoot. Adopt the existing feed into the
   // context rail now that its stable home exists; the module keeps an absolute fallback for boot.
@@ -1224,6 +1242,7 @@ export function createHud(ctx, alerts) {
   const heatSettle = createGaugeSettleSpring(0);
   const boostSettle = createGaugeSettleSpring(0);
   const fuelSettle = createGaugeSettleSpring(1);
+  let gaugesPrimed = false;
   for (const key of ['energy', 'heat', 'boost', 'fuel']) {
     if (fillEls[key]) setStyle(fillEls[key], 'transition', 'none');
   }
@@ -1238,7 +1257,21 @@ export function createHud(ctx, alerts) {
   // Contextual mode prompts (Massline while latched) still surface below the instrument row.
   const commandDeck = document.createElement('div');
   commandDeck.className = 'sf-command-deck';
-  root.appendChild(commandDeck);
+  clusterChassis.appendChild(commandDeck);   // seated beside integrity in the cluster
+  const threatLamp = document.createElement('div');
+  threatLamp.className = 'sf-threat-lamp';
+  threatLamp.setAttribute('aria-hidden', 'true');   // alerts announce threats; this is the glance
+  threatLamp.innerHTML = '<i class="sf-threat-lamp__lens"></i>';
+  clusterChassis.appendChild(threatLamp);
+  // The threat ring around the ship: bearing arcs to near hostiles (red is threat-only).
+  const threatRing = document.createElement('div');
+  threatRing.className = 'sf-threat-ring';
+  threatRing.setAttribute('aria-hidden', 'true');
+  threatRing.innerHTML = '<svg viewBox="-60 -60 120 120" focusable="false">'
+    + '<path class="sf-threat-ring__arc" d=""></path><path class="sf-threat-ring__arc" d=""></path>'
+    + '<path class="sf-threat-ring__arc" d=""></path></svg>';
+  root.appendChild(threatRing);
+  const threatArcs = threatRing.querySelectorAll('.sf-threat-ring__arc');
 
   // Weak-point reveals (BP-02): a scan pulse exposes a large hostile's soft spot. We keep this UI-side
   // (keyed by entity id, expiring) rather than on the sim entity — the target panel reads it to show
@@ -1348,6 +1381,64 @@ export function createHud(ctx, alerts) {
       '<span class="sf-vtape__brakeglyph" aria-hidden="true">▲</span>' +
       '<span class="mono">BRAKE NOW</span></div>';
   commandDeck.prepend(vtape);
+
+  // ---- fire control: TARGET and TETHER at a glance, seated above the speed window ----
+  // FRONTEND_PROGRAM Wave 1: speed, target, threat and tether must be one glance, in one place.
+  // The cluster already holds speed and the threat lamp; this strip adds the other two as
+  // instrument rows, each with its LED. Informational text, so no live region (alerts speak).
+  const fcStrip = document.createElement('div');
+  fcStrip.className = 'sf-fc-strip';
+  fcStrip.setAttribute('role', 'group');
+  fcStrip.setAttribute('aria-label', 'Fire control');
+  fcStrip.innerHTML =
+    '<div class="sf-fc-row" data-k="fctarget" data-state="none"><i class="sf-fc-led" aria-hidden="true"></i>'
+      + '<span class="sf-fc-k">Target</span><span class="sf-fc-v" data-k="fctname">No lock</span>'
+      + '<span class="sf-fc-r" data-k="fctrange"></span></div>'
+    + '<div class="sf-fc-row" data-k="fctether" data-state="idle"><i class="sf-fc-led" aria-hidden="true"></i>'
+      + '<span class="sf-fc-k">Tether</span><span class="sf-fc-v" data-k="fclname">Idle</span>'
+      + '<span class="sf-fc-r" data-k="fclmass"></span></div>';
+  commandDeck.prepend(fcStrip);
+  const fc = {
+    targetRow: fcStrip.querySelector('[data-k=fctarget]'),
+    tname: fcStrip.querySelector('[data-k=fctname]'),
+    trange: fcStrip.querySelector('[data-k=fctrange]'),
+    tetherRow: fcStrip.querySelector('[data-k=fctether]'),
+    lname: fcStrip.querySelector('[data-k=fclname]'),
+    lmass: fcStrip.querySelector('[data-k=fclmass]'),
+  };
+  function updateFireControl(p, tether, latching, ml) {
+    const tid = state.player && state.player.targetId;
+    const t = tid != null && state.entities && typeof state.entities.get === 'function' ? state.entities.get(tid) : null;
+    if (t && t.pos && p.pos) {
+      const d = t.data || {};
+      setText(fc.tname, String(d.callsign || d.name || t.name || d.trafficRole || d.role || t.type || 'Contact'));
+      setText(fc.trange, Math.round(Math.hypot(t.pos.x - p.pos.x, t.pos.z - p.pos.z)) + ' u');
+      setAttr(fc.targetRow, 'data-state', isHostileToPlayer(t, p.team, state) ? 'hostile' : 'locked');
+    } else {
+      setText(fc.tname, 'No lock');
+      setText(fc.trange, '');
+      setAttr(fc.targetRow, 'data-state', 'none');
+    }
+    if (latching && tether) {
+      const status = masslineTetherStatus(tether);
+      setText(fc.lname, status.text);
+      setText(fc.lmass, ml ? Math.round(ml.length) + ' u' : '');
+      setAttr(fc.tetherRow, 'data-state', status.warn ? 'strain' : 'latched');
+      return;
+    }
+    const sel = state.masslineAcquisition && state.masslineAcquisition.selected;
+    if (sel) {
+      const cand = state.entities && typeof state.entities.get === 'function' ? state.entities.get(sel.targetId) : null;
+      const mass = Math.round(Number((cand && ((cand.physicsBody && cand.physicsBody.mass) || cand.mass)) || 0));
+      setText(fc.lname, String(sel.targetLabel || sel.targetType || 'Target'));
+      setText(fc.lmass, mass > 0 ? mass + ' t' : '');
+      setAttr(fc.tetherRow, 'data-state', sel.status === 'ready' ? 'ready' : 'blocked');
+    } else {
+      setText(fc.lname, 'Idle');
+      setText(fc.lmass, '');
+      setAttr(fc.tetherRow, 'data-state', 'idle');
+    }
+  }
   const vt = {
     root: vtape,
     state: vtape.querySelector('[data-k=tstate]'),
@@ -4003,11 +4094,30 @@ export function createHud(ctx, alerts) {
     const curIds = _overviewIdScratch;
     curIds.clear();
     let nearbyHostile = false;
+    let hostileContacts = 0;
     for (const c of contacts) {
       curIds.add(c.e.id);
+      if (c.hostile) hostileContacts += 1;
       if (c.hostile && c.dist < OVERVIEW_HOSTILE_REVEAL_R) nearbyHostile = true;
       if (!_knownContactIds.has(c.e.id) && (c.hostile || c.isWreck)) revealOverview(OVERVIEW_CONTACT_REVEAL_MS);
     }
+    // The threat channel (FRONTEND_PROGRAM §2, option B): red is reserved for threat, so the HUD
+    // publishes one state the threat lamp and the red-only marks read — clear / contact / near.
+    const threatState = nearbyHostile ? 'near' : (hostileContacts ? 'contact' : 'clear');
+    if (root.dataset.threat !== threatState) root.dataset.threat = threatState;
+    // Threat bearings: a red arc on the ring around the ship points at each near hostile. The chase
+    // view has a fixed orientation (tacticalMapGrammar projectRadarPoint: a world offset dx,dz
+    // lies on screen toward -dx,-dz), so bearing needs no per-contact screen projection.
+    let threatArcIdx = 0;
+    if (nearbyHostile && player.pos) {
+      for (const c of contacts) {
+        if (threatArcIdx >= threatArcs.length) break;
+        if (!c.hostile || !(c.dist < OVERVIEW_HOSTILE_REVEAL_R) || !c.e || !c.e.pos) continue;
+        setAttr(threatArcs[threatArcIdx++], 'd',
+          threatArcPath(Math.atan2(-(c.e.pos.z - player.pos.z), -(c.e.pos.x - player.pos.x))));
+      }
+    }
+    for (let i = threatArcIdx; i < threatArcs.length; i++) setAttr(threatArcs[i], 'd', '');
     _overviewIdScratch = _knownContactIds;
     _knownContactIds = curIds;
 
@@ -4040,6 +4150,7 @@ export function createHud(ctx, alerts) {
         overviewFooter.className = 'sf-overview-footer';
       }
       setText(overviewFooter, countText);
+      setAttr(overviewFooter, 'data-hostile', hostileContacts ? 'true' : 'false');
       if (!overviewFooter.parentNode) elOverview.appendChild(overviewFooter);
       overviewFooterAttached = true;
       for (const rec of overviewRows.values()) {
@@ -4421,6 +4532,17 @@ export function createHud(ctx, alerts) {
       settleMotion.reducedMotion = getMotionReduced();
       settleMotion.shieldRegenRate = p.shieldRegenRate;
       settleMotion.inertia = p.flightModel && p.flightModel.inertia;
+      // A gauge never boots empty: the settle springs start at 0 and used to climb for seconds
+      // while the number beside them already read the true value ("DRIVE 100 ▸" over one lit
+      // segment). The first read of the ship primes every spring at its true value; the springs
+      // then only animate real changes.
+      if (!gaugesPrimed) {
+        gaugesPrimed = true;
+        energySettle.snap(capFrac);
+        heatSettle.snap(wpnHeat.frac);
+        fuelSettle.snap((state.fuel || defaultFuel).max > 0 ? clamp01((state.fuel || defaultFuel).current / (state.fuel || defaultFuel).max) : 1);
+        if (p.boost && p.boost.max > 0) boostSettle.snap(clamp01(p.boost.energy / p.boost.max));
+      }
       const capVisual = energySettle.step(capFrac, frameDt, settleMotion);
       const heatVisual = heatSettle.step(heatFrac, frameDt, settleMotion);
       const fuelState = state.fuel || defaultFuel;
@@ -4579,6 +4701,7 @@ export function createHud(ctx, alerts) {
         setStyle(elTetherStat, 'display', 'none');
         setHidden(elTetherKeys, true);
       }
+      updateFireControl(p, tether, latching, ml);
       const ws = p.data && p.data.weapons;
       const nGuns = ws ? ws.length : 0;
       const auto = !!(state.input && state.input.autoFire);
@@ -4931,7 +5054,7 @@ export function createHud(ctx, alerts) {
     arriveTimers = [];
     const steps = [
       [leftStack, 'bottom'],
-      [commandDeck, 'bottom'],
+      [leftContext, 'left'],
       [powerRail.el, 'bottom'],
       [rightDock, 'right'],
     ];

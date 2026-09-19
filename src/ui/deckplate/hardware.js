@@ -37,49 +37,68 @@ export const DECKPLATE_HARDWARE_CSS = `
   --dp-tex-scratch:url("${TEX}scratches.png");
   --dp-tex-grain:url("${TEX}grain.png");
   --dp-tex-scan:url("${TEX}scanlines.png");
-  /* Smoked glass, lifted above the void so a panel reads against a dark world (the owner's
-     "not visible against the backdrop" was a glass face at the backdrop's own value). */
-  --dp-glass-0:#0c1118;
-  --dp-glass-1:#161e2a;
+  /* THE key light. One warm source at the screen's upper-left, attached to the VIEWPORT (fixed),
+     so every glass face and bezel is lit by the same light: a continuous sweep across the whole
+     screen, never a streak stamped separately on each panel. */
+  --dp-key-sweep:linear-gradient(113deg, transparent 10%, rgb(255 238 210 / .018) 24%, rgb(255 238 210 / .05) 30%, rgb(255 238 210 / .014) 36%, transparent 46%) fixed;
+  --dp-key-pool:radial-gradient(95% 85% at 0% 0%, rgb(255 224 178 / .075), transparent 62%) fixed;
+  /* Smoked glass: translucent, so the world shows through (blurred and darkened by the glass
+     itself, --dp-glass-see), and lifted above the void so a panel still reads on a dark world. */
+  --dp-glass-0:rgb(9 13 20 / .80);
+  --dp-glass-1:rgb(17 24 35 / .72);
+  --dp-glass-see:blur(14px) saturate(1.2) brightness(.6);
   --dp-glass-layers:
-    linear-gradient(113deg, transparent 16%, rgb(255 255 255 / .022) 28%, rgb(255 255 255 / .062) 33%, rgb(255 255 255 / .018) 39%, transparent 50%) padding-box,
-    linear-gradient(180deg, rgb(255 255 255 / .065) 0%, rgb(255 255 255 / .016) 16%, transparent 34%) padding-box,
+    var(--dp-key-sweep) padding-box,
+    var(--dp-key-pool) padding-box,
+    linear-gradient(180deg, rgb(255 255 255 / .06) 0%, rgb(255 255 255 / .014) 14%, transparent 30%) padding-box,
     var(--dp-tex-scan) repeat padding-box,
-    radial-gradient(130% 90% at 50% 0%, rgb(120 150 205 / .085), transparent 72%) padding-box,
     linear-gradient(180deg, var(--dp-glass-1), var(--dp-glass-0)) padding-box;
+  /* The same glass over a solid dark plate, for surfaces that must not see through (the flight
+     HUD, which owns no backdrop blur, and glass windows seated in a metal chassis). */
+  --dp-glass-solid:var(--dp-glass-layers), linear-gradient(180deg, #121925, #0a0e14) padding-box;
   --dp-metal-layers:
+    var(--dp-key-pool) border-box,
     var(--dp-tex-scratch) 0 0 / 1024px repeat border-box,
     var(--dp-tex-brushed) 0 0 / 512px repeat border-box,
     var(--dp-tex-grain) 0 0 / 256px repeat border-box;
-  /* The bezel's lip shadows the glass from the key light (top-left); light leaks out bottom-right. */
-  --dp-glass-depth:inset 6px 8px 14px rgb(0 0 0 / .58), inset 0 1px 0 rgb(0 0 0 / .85), inset -1px -1px 0 rgb(185 205 235 / .09);
+  /* The pane sits in the bezel with a visible dark gap and a thin lit rim; the bezel's lip
+     shadows it from the key light (top-left) and light leaks out bottom-right. */
+  --dp-glass-depth:inset 0 0 0 2px rgb(2 3 5 / .92), inset 0 0 0 3px rgb(200 216 240 / .075), inset 6px 8px 16px rgb(0 0 0 / .45), inset -1px -1px 0 rgb(185 205 235 / .06);
   --dp-stand-off:0 14px 34px rgb(0 0 0 / .5), 0 2px 6px rgb(0 0 0 / .55);
   /* Emission: data on glass glows faintly cool; lamp readings glow warm. */
   --dp-emit:0 0 10px rgb(205 222 255 / .16), 0 0 1px rgb(0 0 0 / .6);
   --dp-emit-lamp:0 0 12px var(--dp-lamp-bloom), 0 0 2px rgb(255 217 140 / .45);
 }
+/* One accent, focus included. styles/ui.css forces every ring to the retired blue --accent with
+   *:focus-visible {… !important}; only the COLOUR is restated here (one step more specific), so
+   width and offset stay theirs. The game's own high-contrast mode keeps a white ring. */
+:root :focus-visible { outline-color:var(--dp-lamp) !important; }
+html.sf-high-contrast :focus-visible { outline-color:#fff !important; }
 
-/* ══ dp-mfd — the instrument: a heavy machined bezel with fasteners around a smoked-glass face.
-   Every screen's primary display is one of these. ══ */
-.dp-mfd {
-  position:relative; box-sizing:border-box; isolation:isolate;
-  border:14px solid transparent;
-  border-image:url("${HW}bezel.svg") 30 / 30px / 0 stretch;
-  background:var(--dp-glass-layers), var(--dp-metal-layers), var(--dp-metal-2);
+/* ══ dp-mfd / dp-glass — an instrument: ONE bezel design (fastened, machined) around a pane of
+   smoked glass. The pane is translucent and blurs the world behind it; the metal ring is its own
+   masked layer (::before), so the glass shows the world, not the metal. dp-mfd is the primary
+   display (14 px ring); dp-glass the secondary (10 px ring, same hardware scaled). ══ */
+.dp-mfd, .dp-glass {
+  --dp-ring:14px; --dp-ring-img:30px;
+  position:relative; box-sizing:border-box; isolation:isolate; color:var(--dp-ink);
+  border:var(--dp-ring) solid transparent;
+  background:var(--dp-glass-layers);
+  -webkit-backdrop-filter:var(--dp-glass-see); backdrop-filter:var(--dp-glass-see);
   box-shadow:var(--dp-stand-off), var(--dp-glass-depth);
   padding:18px 22px;
-  color:var(--dp-ink);
 }
-/* ══ dp-glass — a secondary display: the same glass in a thin bezel, no fasteners. ══ */
-.dp-glass {
-  position:relative; box-sizing:border-box;
-  border:5px solid transparent;
-  border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
-  background:var(--dp-glass-layers), var(--dp-metal-layers), var(--dp-metal-2);
-  box-shadow:0 8px 22px rgb(0 0 0 / .45), var(--dp-glass-depth);
-  padding:12px 14px;
-  color:var(--dp-ink);
+.dp-glass { --dp-ring:10px; --dp-ring-img:22px; padding:12px 14px; box-shadow:0 8px 22px rgb(0 0 0 / .45), var(--dp-glass-depth); }
+.dp-mfd::before, .dp-glass::before {
+  content:""; position:absolute; inset:calc(var(--dp-ring) * -1); box-sizing:border-box; pointer-events:none;
+  border:var(--dp-ring) solid transparent;
+  border-image:url("${HW}bezel.svg") 30 / var(--dp-ring-img) / 0 stretch;
+  background:var(--dp-metal-layers), var(--dp-metal-2);
+  -webkit-mask:linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
 }
+/* In flight the HUD owns no backdrop blur (perf floor): the same glass, opaque over a dark plate. */
+#hud .dp-mfd, #hud .dp-glass { -webkit-backdrop-filter:none; backdrop-filter:none; background:var(--dp-glass-layers), #0b0f16; }
 /* A plain machined face (no glass) for hardware that holds keys: rails, trays, key banks. */
 .dp-plate-hw {
   box-sizing:border-box;
@@ -169,12 +188,12 @@ export const DECKPLATE_HARDWARE_CSS = `
 .dp-key--primary {
   color:#1c1307; text-shadow:0 1px 0 rgb(255 240 210 / .35);
   background:
-    linear-gradient(180deg, rgb(255 255 255 / .28), transparent 38%) padding-box,
-    linear-gradient(180deg, #ffe0a0 0%, var(--dp-lamp) 48%, #c48a2c 100%) padding-box,
-    var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:0 0 18px var(--dp-lamp-bloom-soft), 0 0 4px var(--dp-lamp-bloom);
-  padding-left:22px;
+    linear-gradient(180deg, rgb(255 255 255 / .3), transparent 42%) border-box,
+    linear-gradient(180deg, #ffe0a0 0%, var(--dp-lamp) 50%, #b98029 100%) border-box;
+  box-shadow:0 0 20px var(--dp-lamp-bloom-soft), 0 0 5px var(--dp-lamp-bloom);
+  padding-left:10px;
 }
+.dp-key--primary::before { display:none; }
 .dp-key--primary:hover { filter:brightness(1.07); color:#120b03; }
 .dp-key--primary .dp-icon, .dp-key--primary .dp-icon .accent { color:#1c1307; fill:#1c1307; }
 .dp-key--primary .dp-kbd { margin-left:4px; }
@@ -206,15 +225,15 @@ export const DECKPLATE_HARDWARE_CSS = `
 /* ══ dp-selector — navigation. Legends on a machined rail; the active one is lit and its glass
    below glows, so "go to" never reads as "do". Single row: legends compress, never wrap. ══ */
 .dp-selector {
-  display:flex; align-items:stretch; gap:2px; box-sizing:border-box; min-width:0;
+  display:flex; align-items:stretch; justify-content:space-evenly; gap:2px; box-sizing:border-box; min-width:0;
   border:5px solid transparent;
   border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
   background:var(--dp-metal-layers), var(--dp-metal-2);
   padding:3px;
 }
 .dp-selector__tab {
-  -webkit-appearance:none; appearance:none; position:relative; flex:1 1 0; min-width:0;
-  display:flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:0 8px;
+  -webkit-appearance:none; appearance:none; position:relative; flex:0 1 auto; min-width:0;
+  display:flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:0 12px;
   border:0; border-radius:2px; cursor:pointer; background:transparent;
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 750, "wdth" 70;
   font-size:var(--dp-fs-etch); letter-spacing:.14em; text-transform:uppercase; white-space:nowrap;
@@ -227,8 +246,7 @@ export const DECKPLATE_HARDWARE_CSS = `
 .dp-selector__tab:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:-2px; }
 .dp-selector__tab[aria-selected="true"], .dp-selector__tab[aria-current="page"] {
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
-  background:linear-gradient(180deg, rgb(242 185 80 / .05), rgb(242 185 80 / .16));
-  box-shadow:inset 0 -2px 0 var(--dp-lamp), inset 0 -8px 14px -8px var(--dp-lamp-bloom);
+  box-shadow:inset 0 -2px 0 var(--dp-lamp), 0 8px 16px -10px var(--dp-lamp-bloom);
 }
 .dp-selector__tab[aria-selected="true"]::before, .dp-selector__tab[aria-current="page"]::before { background:${LED_ON}; box-shadow:${LED_ON_GLOW}; }
 
@@ -249,15 +267,13 @@ button.dp-row, a.dp-row, .dp-row[tabindex] { cursor:pointer; width:100%; text-al
   background:${LED_OFF}; box-shadow:${LED_RIM};
   transition:background var(--dp-d-cut) var(--dp-ease-lamp), box-shadow var(--dp-d-cut) var(--dp-ease-lamp);
 }
-.dp-row:hover { background:linear-gradient(90deg, rgb(242 185 80 / .07), transparent 70%); color:var(--dp-ink); }
+.dp-row:hover { background:linear-gradient(90deg, rgb(255 255 255 / .04), transparent 70%); color:var(--dp-ink); }
 .dp-row:hover::before { background:radial-gradient(circle at 42% 36%, #8a6b3a, #3d2f19 75%); }
 .dp-row:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:-2px; color:var(--dp-ink); }
 .dp-row[aria-selected="true"], .dp-row.is-selected, .dp-row[aria-current="true"] {
   color:var(--dp-ink);
-  background:
-    linear-gradient(180deg, rgb(255 217 140 / .06), transparent 45%, rgb(0 0 0 / .12)),
-    linear-gradient(90deg, rgb(242 185 80 / .21), rgb(242 185 80 / .075) 42%, rgb(242 185 80 / .015) 88%);
-  box-shadow:inset 0 1px 0 rgb(255 217 140 / .2), inset 0 -1px 0 rgb(255 217 140 / .09);
+  background:linear-gradient(90deg, rgb(255 255 255 / .05), rgb(255 255 255 / .014) 60%, transparent);
+  box-shadow:inset 3px 0 0 var(--dp-lamp), inset 0 -1px 0 rgb(255 217 140 / .28), 0 10px 18px -14px var(--dp-lamp-bloom);
 }
 .dp-row[aria-selected="true"]::before, .dp-row.is-selected::before, .dp-row[aria-current="true"]::before { background:${LED_ON}; box-shadow:${LED_ON_GLOW}; }
 .dp-row--danger::before { background:radial-gradient(circle at 42% 34%, #fff1ea, var(--dp-danger-hot) 26%, var(--dp-danger) 60%, #6b1a10); box-shadow:0 0 7px var(--dp-danger-bloom); }
@@ -270,9 +286,11 @@ button.dp-row, a.dp-row, .dp-row[tabindex] { cursor:pointer; width:100%; text-al
 .dp-row:hover .dp-icon, .dp-row.is-selected .dp-icon, .dp-row[aria-selected="true"] .dp-icon { color:var(--dp-ink); }
 .dp-row.is-selected .dp-icon .accent, .dp-row[aria-selected="true"] .dp-icon .accent { fill:var(--dp-lamp); }
 /* A small meter inside a row: supply, demand, stock — a lit track in a recessed channel. */
-.dp-meter { position:relative; height:5px; min-width:60px; border-radius:1px; background:rgb(0 0 0 / .55); box-shadow:inset 0 1px 1px rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .06); overflow:hidden; }
-.dp-meter > i { position:absolute; inset:0 auto 0 0; width:var(--v, 50%); background:linear-gradient(180deg, #f3eee2, #b9b09c); box-shadow:0 0 6px rgb(232 226 212 / .25); }
-.dp-meter--lamp > i { background:linear-gradient(180deg, var(--dp-lamp-hot), var(--dp-lamp) 60%, var(--dp-lamp-dim)); box-shadow:0 0 6px var(--dp-lamp-bloom); }
+.dp-meter { position:relative; height:8px; min-width:60px; border-radius:1px; overflow:hidden;
+  background:repeating-linear-gradient(90deg, rgb(255 236 204 / .16) 0 1px, transparent 1px 10%) 0 0 / 100% 2px no-repeat, linear-gradient(180deg, rgb(0 0 0 / .7), rgb(0 0 0 / .35));
+  box-shadow:inset 0 1px 2px rgb(0 0 0 / .85), 0 1px 0 rgb(255 236 204 / .07); }
+.dp-meter > i { position:absolute; left:0; bottom:1px; height:3px; width:var(--v, 50%); background:linear-gradient(90deg, #8c8576, #d8d0bd); box-shadow:0 0 5px rgb(232 226 212 / .2); }
+.dp-meter--lamp > i { background:linear-gradient(90deg, var(--dp-lamp-dim), var(--dp-lamp-hot)); box-shadow:0 0 6px var(--dp-lamp-bloom); }
 .dp-meter--danger > i { background:linear-gradient(180deg, var(--dp-danger-hot), var(--dp-danger)); box-shadow:0 0 6px var(--dp-danger-bloom); }
 
 /* ══ dp-switch — a machined rocker. The pressed side sinks; its LED pip is lit. ══ */
@@ -286,15 +304,15 @@ button.dp-row, a.dp-row, .dp-row[tabindex] { cursor:pointer; width:100%; text-al
 }
 .dp-switch > span {
   display:flex; align-items:center; justify-content:center; gap:6px; border-radius:2px; color:var(--dp-ink-mute);
-  background:linear-gradient(180deg, #454c59, #2a303a 55%, #20252d);
-  box-shadow:inset 0 1px 0 rgb(255 236 204 / .22), inset 0 -2px 0 rgb(0 0 0 / .45);
+  background:linear-gradient(180deg, #20252d, #181c22);
+  box-shadow:inset 0 1px 0 rgb(255 236 204 / .07);
   transition:background var(--dp-d-cut) var(--dp-ease-lamp), box-shadow var(--dp-d-cut) var(--dp-ease-lamp), color var(--dp-d-cut) var(--dp-ease-lamp);
 }
 .dp-switch > span::before { content:""; width:6px; height:6px; border-radius:50%; background:${LED_OFF}; box-shadow:${LED_RIM}; }
 .dp-switch[aria-checked="false"] > span:first-child,
 .dp-switch[aria-checked="true"] > span:last-child {
-  color:var(--dp-ink); background:linear-gradient(180deg, #14171c, #1c2027);
-  box-shadow:inset 0 2px 4px rgb(0 0 0 / .85), inset 0 -1px 0 rgb(255 236 204 / .06);
+  color:var(--dp-ink); background:linear-gradient(180deg, #2a303a, #20252d);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .22), inset 0 1px 0 rgb(255 236 204 / .14);
 }
 .dp-switch[aria-checked="true"] > span:last-child::before { background:${LED_ON}; box-shadow:${LED_ON_GLOW}; }
 .dp-switch[aria-checked="false"] > span:first-child::before { background:radial-gradient(circle at 42% 34%, #fbf5e8, #bdb6a5 55%, #6b675d); box-shadow:0 0 5px rgb(232 226 212 / .3); }
@@ -329,7 +347,7 @@ button.dp-row, a.dp-row, .dp-row[tabindex] { cursor:pointer; width:100%; text-al
 
 /* ══ dp-stepper — [−] reading [+] on keys. ══ */
 .dp-stepper { display:inline-flex; align-items:center; gap:4px; }
-.dp-stepper__read { min-width:64px; text-align:center; font-family:var(--dp-face-read); font-variant-numeric:tabular-nums; font-weight:650; color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
+.dp-stepper__read { min-width:64px; text-align:center; font-family:var(--dp-face-read); font-variant-numeric:tabular-nums; font-weight:650; color:var(--dp-ink); text-shadow:var(--dp-emit); }
 
 /* ══ dp-tile — a keyart card: a produced render framed as an instrument, a placard caption.
    Selection is light bleeding out of the bezel, never an outline outside the column. ══ */
@@ -373,26 +391,17 @@ button.dp-row, a.dp-row, .dp-row[tabindex] { cursor:pointer; width:100%; text-al
 
 /* ══ dp-empty — a designed empty slot: a stencilled bay, what is missing, when it comes back. ══ */
 .dp-empty {
-  position:relative; display:grid; justify-items:center; align-content:center; gap:8px; min-height:140px;
-  margin:6px; padding:22px 18px; text-align:center; color:var(--dp-ink-mute);
-  background:
-    linear-gradient(var(--dp-ink-mute), var(--dp-ink-mute)) 0 0 / 14px 2px no-repeat,
-    linear-gradient(var(--dp-ink-mute), var(--dp-ink-mute)) 0 0 / 2px 14px no-repeat,
-    linear-gradient(var(--dp-ink-mute), var(--dp-ink-mute)) 100% 0 / 14px 2px no-repeat,
-    linear-gradient(var(--dp-ink-mute), var(--dp-ink-mute)) 100% 0 / 2px 14px no-repeat,
-    linear-gradient(var(--dp-ink-mute), var(--dp-ink-mute)) 0 100% / 14px 2px no-repeat,
-    linear-gradient(var(--dp-ink-mute), var(--dp-ink-mute)) 0 100% / 2px 14px no-repeat,
-    linear-gradient(var(--dp-ink-mute), var(--dp-ink-mute)) 100% 100% / 14px 2px no-repeat,
-    linear-gradient(var(--dp-ink-mute), var(--dp-ink-mute)) 100% 100% / 2px 14px no-repeat,
-    repeating-linear-gradient(135deg, rgb(255 255 255 / .025) 0 6px, transparent 6px 14px);
-  box-shadow:inset 0 2px 8px rgb(0 0 0 / .45);
+  position:relative; display:grid; justify-items:center; align-content:center; gap:8px; min-height:120px;
+  margin:4px; padding:20px 18px; text-align:center; color:var(--dp-ink-mute); border-radius:2px;
+  background:linear-gradient(180deg, rgb(0 0 0 / .42), rgb(0 0 0 / .2));
+  box-shadow:inset 0 3px 10px rgb(0 0 0 / .65), inset 0 -1px 0 rgb(255 236 204 / .05), 0 1px 0 rgb(255 255 255 / .03);
 }
 .dp-empty__head {
-  font-family:var(--dp-face-etch); font-variation-settings:"wght" 850, "wdth" 75; font-size:var(--dp-fs-data);
-  letter-spacing:.22em; text-transform:uppercase; color:var(--dp-ink-dim); text-shadow:var(--dp-etch-shadow);
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 900, "wdth" 62; font-size:var(--dp-fs-read);
+  letter-spacing:.32em; text-transform:uppercase; color:rgb(150 148 142 / .85); text-shadow:0 1px 0 rgb(0 0 0 / .8);
 }
 .dp-empty__body { max-width:40ch; font-family:var(--dp-face-read); font-size:12px; line-height:1.5; color:var(--dp-ink-mute); }
-.dp-empty__read { font-family:var(--dp-face-read); font-variant-numeric:tabular-nums; font-weight:650; font-size:var(--dp-fs-data); color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
+.dp-empty__read { font-family:var(--dp-face-read); font-variant-numeric:tabular-nums; font-weight:650; font-size:var(--dp-fs-data); color:var(--dp-ink); text-shadow:var(--dp-emit); }
 .dp-loading { position:relative; height:3px; overflow:hidden; background:rgb(255 255 255 / .06); border-radius:2px; }
 .dp-loading::after { content:""; position:absolute; inset:0 60% 0 0; background:linear-gradient(90deg, transparent, var(--dp-lamp), transparent); animation:dp-loading 1.2s var(--dp-ease-lamp) infinite; }
 @keyframes dp-loading { from { transform:translateX(-100%); } to { transform:translateX(260%); } }
@@ -430,12 +439,15 @@ html.sf-reduce-motion .dp-enter, html.sf-reduce-motion .dp-enter .dp-stagger > *
 html.sf-reduce-motion .dp-enter.dp-mfd::after, html.sf-reduce-motion .dp-enter.dp-glass::after { animation:none; }
 
 /* ══ High contrast (the game's own mode) and forced colours (the OS's). ══ */
+html.sf-high-contrast .dp-mfd::before, html.sf-high-contrast .dp-glass::before { display:none; }
 html.sf-high-contrast .dp-mfd, html.sf-high-contrast .dp-glass, html.sf-high-contrast .dp-placard,
 html.sf-high-contrast .dp-plate-hw, html.sf-high-contrast .dp-tile, html.sf-high-contrast .dp-selector {
   border-image:none; border-color:rgb(255 255 255 / .85); border-width:2px; background:#000; box-shadow:none;
 }
 html.sf-high-contrast .dp-key { border-image:none; border:2px solid #fff; background:#000; color:#fff; }
 @media (forced-colors:active) {
+  .dp-mfd::before, .dp-glass::before { display:none; }
+  .dp-mfd, .dp-glass { backdrop-filter:none; }
   .dp-mfd, .dp-glass, .dp-placard, .dp-plate-hw, .dp-tile, .dp-selector {
     border-image:none; border:1px solid CanvasText; background:Canvas; box-shadow:none; forced-color-adjust:none; color:CanvasText;
   }

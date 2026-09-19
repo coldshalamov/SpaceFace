@@ -2205,6 +2205,219 @@ export function injectHudCss() {
   .sf-alert--dock { padding:9px 24px; }
   .sf-toast { padding:6px 10px; }
 
+  /* ══ WAVE 1 STRUCTURE (FRONTEND_PROGRAM 2026-09-19) — fewer, bigger instruments ═════════════
+     Both independent critics asked for the same three things: one instrument cluster instead of
+     eight boxes, a channel reserved for threat, and material that differs by function. The
+     cluster is a heavy machined chassis (deckplate hardware: bezel.svg + brushed gunmetal) whose
+     instruments are glass windows; the comms column is ONE glass strip, top-left; the threat lamp
+     is a lens set into the chassis. Amber (the lamp) stays on what the pilot acts on — speed,
+     objective, aim, armed sockets; information reads in bone; red is threat only. ════════════ */
+
+  /* the instrument cluster: bottom-left anchor, one chassis, one baseline */
+  html #hud:has(.sf-cluster-chassis) > .sf-leftstack {
+    width:auto; max-width:none;
+    left:calc(14px * var(--k-s, 1) + var(--sf-safe-inset-x, 0px));
+    bottom:calc(14px * var(--k-s, 1));
+  }
+  #hud .sf-cluster-chassis {
+    position:relative; display:flex; align-items:stretch; gap:calc(8px * var(--k-s, 1));
+    box-sizing:border-box; width:max-content; max-width:calc(100vw - 28px);
+    border:14px solid transparent;
+    border-image:url("/assets/ui/deckplate/hw/bezel.svg") 30 / 30px / 0 stretch;
+    background:var(--dp-metal-layers), var(--dp-metal-2);
+    box-shadow:var(--dp-stand-off);
+    padding:4px; pointer-events:auto;
+  }
+  @media (max-width:1759px) {
+    #hud .sf-cluster-chassis { flex-direction:column; }
+  }
+  /* instruments are glass windows seated in the chassis, not plates of their own */
+  #hud .sf-cluster-chassis > .sf-bars {
+    margin:0; max-width:272px; border-radius:2px;
+    background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
+  }
+  #hud .sf-cluster-chassis > .sf-command-deck {
+    position:static; left:auto; right:auto; bottom:auto; transform:none;
+    flex:0 0 auto; width:calc(284px * clamp(.86, var(--k-s, 1), 1.15)); max-width:none; min-width:0;
+    margin:0; padding:0; align-self:stretch;
+    display:flex; flex-direction:column; justify-content:flex-end;
+  }
+  /* Contextual chips (cargo, credits, class) are invisible at rest but used to hold their width,
+     which stretched the chassis across the screen; inside the cluster they leave layout until shown. */
+  #hud .sf-cluster-chassis .sf-stat--chip:not(.sf-chip-show) { display:none; }
+  #hud .sf-cluster-chassis .sf-kit-gauge.sf-speed {
+    background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth); border-radius:2px 2px 0 0;
+  }
+  #hud .sf-cluster-chassis .sf-cluster { justify-content:flex-start; }
+
+  /* the threat lamp: a lens set into the chassis's top ring, legend etched beside it.
+     clear = a dark lens; contact = the lamp driven red, dim and steady; near = full red, beating.
+     Brightness differs at every step, so the state never rests on hue alone. */
+  #hud .sf-threat-lamp {
+    position:absolute; top:-12px; right:18px; display:flex; align-items:center; gap:7px; pointer-events:none;
+  }
+  #hud .sf-threat-lamp::after {
+    content:"THREAT"; font-family:var(--dp-face-etch); font-variation-settings:"wght" 750, "wdth" 62;
+    font-size:12px; letter-spacing:.2em; color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow);
+  }
+  #hud .sf-threat-lamp__lens {
+    display:block; width:10px; height:10px; border-radius:50%;
+    background:radial-gradient(circle at 40% 35%, #3a1a15, #140807 70%);
+    box-shadow:inset 0 1px 2px rgb(0 0 0 / .8), 0 0 0 1.5px #06080a, 0 1px 0 1.5px rgb(255 236 204 / .12);
+  }
+  #hud[data-threat="contact"] .sf-threat-lamp__lens {
+    background:radial-gradient(circle at 40% 35%, var(--dp-danger-hot), var(--dp-danger) 45%, #5c140c);
+    box-shadow:0 0 6px rgb(255 80 56 / .3), 0 0 0 1.5px #06080a;
+  }
+  #hud[data-threat="contact"] .sf-threat-lamp::after { color:var(--dp-ink-dim); }
+  #hud[data-threat="near"] .sf-threat-lamp__lens {
+    background:radial-gradient(circle at 40% 35%, #fff1ea, var(--dp-danger-hot) 30%, var(--dp-danger) 70%);
+    box-shadow:0 0 10px var(--dp-danger-bloom), 0 0 22px rgb(255 80 56 / .3), 0 0 0 1.5px #06080a;
+    animation:sf-threat-beat 1.1s steps(1, end) infinite;
+  }
+  #hud[data-threat="near"] .sf-threat-lamp::after { color:var(--dp-danger-hot); }
+  @keyframes sf-threat-beat { 0%, 60% { opacity:1; } 61%, 100% { opacity:.45; } }
+  @media (prefers-reduced-motion:reduce) { #hud[data-threat="near"] .sf-threat-lamp__lens { animation:none; } }
+  html.sf-reduce-motion #hud[data-threat="near"] .sf-threat-lamp__lens { animation:none; }
+
+  /* the expanded roster: rows on glass; hover and selection are an edge light, never a wash */
+  #hud .sf-overview-row {
+    position:relative; border-bottom:1px solid rgb(255 255 255 / .04); border-left:0;
+    padding-left:14px; background:none;
+  }
+  #hud .sf-overview-row:hover { background:linear-gradient(90deg, rgb(255 255 255 / .05), transparent 70%); }
+  #hud .sf-overview-row.selected {
+    background:linear-gradient(90deg, rgb(255 255 255 / .05), transparent 70%);
+    box-shadow:inset 3px 0 0 var(--dp-lamp), 0 8px 14px -12px var(--dp-lamp-bloom);
+  }
+  #hud .sf-overview-row__name { color:var(--dp-ink); font-weight:600; }
+  #hud .sf-overview-row.selected .sf-overview-row__name { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
+  #hud .sf-overview-row__detail { color:var(--dp-ink-mute); font-style:normal; letter-spacing:.04em; }
+  #hud .sf-overview-row.unscanned .sf-overview-row__name { color:var(--dp-ink-dim); }
+
+  /* the world-anchored tow mark stays (it names WHICH body the line would take), but quietly:
+     the tether's state now lives in the cluster's fire-control strip */
+  #sf-ml2 .ml2-preview-mark { color:var(--dp-lamp); }
+  #sf-ml2 .ml2-preview { color:var(--dp-ink-dim); border-color:rgb(242 185 80 / .35); }
+
+  /* the threat ring: red bearing arcs around the ship, visible only while a hostile is near */
+  #hud .sf-threat-ring {
+    position:absolute; left:50%; top:50%; width:120px; height:120px; margin:-60px 0 0 -60px;
+    pointer-events:none; opacity:0; transition:opacity var(--dp-d-settle) var(--dp-ease-lamp);
+  }
+  #hud[data-threat="near"] .sf-threat-ring { opacity:1; }
+  #hud .sf-threat-ring svg { display:block; width:100%; height:100%; overflow:visible; }
+  #hud .sf-threat-ring__arc {
+    fill:none; stroke:var(--dp-danger); stroke-width:3.5; stroke-linecap:round;
+    filter:drop-shadow(0 0 4px rgb(255 80 56 / .6));
+  }
+  @media (prefers-reduced-motion:reduce) { #hud .sf-threat-ring { transition:none; } }
+  @media (forced-colors:active) { #hud .sf-threat-ring__arc { stroke:CanvasText; filter:none; } }
+
+  /* the comms strip: ONE glass panel, top-left; it disappears when every section is hidden */
+  #hud > .sf-leftcontext {
+    position:absolute; left:calc(14px * var(--k-s, 1) + var(--sf-safe-inset-x, 0px)); top:calc(18px * var(--k-s, 1));
+    width:calc(292px * clamp(.9, var(--k-s, 1), 1.15)); max-width:calc(100vw - 28px);
+    display:flex; flex-direction:column; gap:0; box-sizing:border-box; pointer-events:auto;
+    border:5px solid transparent;
+    border-image:url("/assets/ui/deckplate/hw/bezel-thin.svg") 12 / 12px / 0 stretch;
+    background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
+    box-shadow:0 10px 24px rgb(0 0 0 / .45), var(--dp-glass-depth);
+    padding:4px 0;
+  }
+  #hud > .sf-leftcontext:not(:has(> :not([hidden], [style*="display: none"], [style*="display:none"]))) { display:none; }
+  /* sections inside the strip are not plates: flush, separated by an etched hairline */
+  #hud > .sf-leftcontext > *,
+  #hud > .sf-leftcontext #sf-onboarding .sf-ob-card {
+    background:none !important; background-image:none !important; box-shadow:none !important;
+    border:0 !important; border-radius:0 !important; margin:0 !important; max-width:none !important;
+  }
+  #hud > .sf-leftcontext > * { padding:8px 12px !important; }
+  #hud > .sf-leftcontext > * + * { border-top:1px solid rgb(255 255 255 / .045) !important; box-shadow:inset 0 1px 0 rgb(0 0 0 / .55) !important; }
+  #hud > .sf-leftcontext #sf-onboarding .sf-ob-card { padding:0 !important; }
+  #hud > .sf-leftcontext > .sf-mission-tracker { border-left:0 !important; position:relative; padding-left:18px !important; }
+  #hud > .sf-leftcontext > .sf-mission-tracker::before {
+    content:""; position:absolute; left:6px; top:10px; bottom:10px; width:3px; border-radius:1px;
+    background:var(--dp-lamp); box-shadow:0 0 8px var(--dp-lamp-bloom);
+  }
+
+  /* the speed column starts level with integrity: fire control on top, speed, the nameplate */
+  #hud .sf-cluster-chassis > .sf-command-deck { justify-content:flex-start; gap:6px; }
+  /* the speed reading keeps its size, not the lamp: it is information, so it glows cool bone */
+  #hud .sf-cluster-chassis .sf-speed .sf-speed__digits { color:var(--dp-ink); filter:drop-shadow(0 0 8px rgb(205 222 255 / .2)); }
+
+  /* fire control: TARGET and TETHER rows on glass, each with its LED */
+  #hud .sf-fc-strip {
+    display:flex; flex-direction:column; gap:1px; padding:5px 10px 6px; border-radius:2px;
+    background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
+  }
+  #hud .sf-fc-row { display:grid; grid-template-columns:7px auto minmax(0, 1fr) auto; align-items:center; gap:8px; min-height:22px; }
+  #hud .sf-fc-led {
+    display:block; width:7px; height:7px; border-radius:50%;
+    background:radial-gradient(circle at 42% 36%, #3b352c, #17140f 70%);
+    box-shadow:inset 0 1px 1.5px rgb(0 0 0 / .85), 0 0 0 1px rgb(0 0 0 / .6);
+  }
+  #hud .sf-fc-k {
+    font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 62; font-size:12px;
+    letter-spacing:.18em; text-transform:uppercase; color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow);
+  }
+  #hud .sf-fc-v {
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    font-family:var(--dp-face-read); font-size:13px; font-weight:650; color:var(--dp-ink); text-shadow:var(--dp-emit);
+  }
+  #hud .sf-fc-r { font-family:var(--dp-face-read); font-variant-numeric:tabular-nums; font-size:12px; color:var(--dp-ink-dim); }
+  #hud .sf-fc-row[data-state="none"] .sf-fc-v, #hud .sf-fc-row[data-state="idle"] .sf-fc-v,
+  #hud .sf-fc-row[data-state="blocked"] .sf-fc-v { color:var(--dp-ink-mute); font-weight:500; text-shadow:none; }
+  #hud .sf-fc-row:is([data-state="locked"], [data-state="ready"], [data-state="latched"]) .sf-fc-led {
+    background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
+    box-shadow:0 0 6px var(--dp-lamp-bloom), 0 0 14px var(--dp-lamp-bloom-soft);
+  }
+  #hud .sf-fc-row[data-state="latched"] .sf-fc-v { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
+  #hud .sf-fc-row:is([data-state="hostile"], [data-state="strain"]) .sf-fc-led {
+    background:radial-gradient(circle at 42% 34%, #fff1ea, var(--dp-danger-hot) 26%, var(--dp-danger) 60%, #6b1a10);
+    box-shadow:0 0 8px var(--dp-danger-bloom);
+  }
+  #hud .sf-fc-row:is([data-state="hostile"], [data-state="strain"]) .sf-fc-v { color:var(--dp-danger-hot); text-shadow:0 0 10px var(--dp-danger-bloom); }
+
+  /* integrity: bone while whole — the shield ring, shield rail, state word and the hull glyph are
+     information. The glyph warms to the lamp when damaged and burns red when critical, so the
+     Kestrel silhouette IS the damage display. The decorative chevrons carried no reading. */
+  html #hud .sf-schematic.sf-integrity { --si-signal:var(--dp-ink); --si-blue:var(--dp-ink-dim); }
+  #hud .sf-integrity .sf-integrity__signal-mark { display:none; }
+  #hud .sf-integrity .sf-integrity__gradient-edge { stop-color:#6f6a5f; }
+  #hud .sf-integrity .sf-integrity__gradient-core { stop-color:#e9e2d2; }
+  #hud .sf-integrity[data-hull="damaged"] .sf-integrity__gradient-edge { stop-color:var(--dp-lamp-dim); }
+  #hud .sf-integrity[data-hull="damaged"] .sf-integrity__gradient-core { stop-color:var(--dp-lamp-hot); }
+  #hud .sf-integrity:is([data-hull="critical"], [data-hull="destroyed"]) .sf-integrity__gradient-edge { stop-color:var(--dp-danger); }
+  #hud .sf-integrity:is([data-hull="critical"], [data-hull="destroyed"]) .sf-integrity__gradient-core { stop-color:var(--dp-danger-hot); }
+  /* the radar's north mark was the brightest mark on the scope; it is a bearing, not a signal */
+  #hud .sf-kit-radar__n { opacity:.55; filter:sepia(.5) saturate(.6); }
+  /* the law card's jurisdiction line wrapped a single word; one line, ellipsis if it must */
+  #hud #sf-sector-law .sf-law__meta { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* the right dock's readouts are the same glass as the comms strip (the radar keeps its round
+     binnacle): one material per function, left and right */
+  #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel {
+    border:5px solid transparent;
+    border-image:url("/assets/ui/deckplate/hw/bezel-thin.svg") 12 / 12px / 0 stretch;
+    background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
+    box-shadow:0 10px 24px rgb(0 0 0 / .45), var(--dp-glass-depth);
+    border-radius:0;
+  }
+  #hud .sf-overview--count { padding:6px 10px; }
+
+  /* option B: information reads in bone; the lamp stays on what the pilot acts on */
+  #hud .sf-kit-seg.is-on {
+    background:linear-gradient(180deg, #f3eee2 0%, #d2c9b5 55%, #948c7b 100%);
+    box-shadow:0 0 5px rgb(232 226 212 / .22), inset 0 1px 0 rgb(255 255 255 / .45);
+  }
+  #hud .sf-kit-bar > .sf-bar__fill { background:linear-gradient(180deg, #f3eee2, #d2c9b5 55%, #948c7b); }
+  #hud .sf-integrity { --si-signal:var(--dp-ink); }
+  #hud #sf-wpnstat .sf-stat__v { color:var(--dp-ink); text-shadow:none; }
+  #hud .sf-overview--count .sf-overview-footer { color:var(--dp-ink); }
+  #hud .sf-overview--count .sf-overview-footer[data-hostile="true"] { color:var(--dp-danger-hot); text-shadow:0 0 10px var(--dp-danger-bloom); }
+  #hud .sf-overview--count .sf-overview-footer[data-hostile="true"]::before { border-color:var(--dp-danger); }
+
   /* --- high contrast: the token remap (deckplate/tokens.js) flattens the plates; keep the
          surfaces opaque so the remapped ink keeps its ratio --- */
   html.sf-high-contrast #hud .sf-bars, html.sf-high-contrast #hud .sf-overview,

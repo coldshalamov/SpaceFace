@@ -298,6 +298,58 @@
   }
 }
 
+/* ══ Deckplate (FRONTEND_PROGRAM Wave 1) ═══════════════════════════════════════════════════════
+   The comms fan is one glass column: the contact is a glass readout (crest, callsign, class, the
+   signal trace in bone), and each verb is a command key — keycap hardware, LED pip, the filled
+   icon family. A refused verb stays reachable (it explains why) but its pip stays dark. ══════ */
+#sf-commsfan .sf-commsfan__hub {
+  border:5px solid transparent; border-radius:0;
+  border-image:url("/assets/ui/deckplate/hw/bezel-thin.svg") 12 / 12px / 0 stretch;
+  background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
+  box-shadow:0 10px 24px rgb(0 0 0 / .5), var(--dp-glass-depth);
+  color:var(--dp-ink);
+}
+#sf-commsfan .sf-commsfan__hub:hover { filter:brightness(1.08); }
+#sf-commsfan .sf-commsfan__hub:focus-visible { outline:2px solid var(--dp-lamp); }
+#sf-commsfan .sf-commsfan__crest { color:var(--dp-ink-dim); }
+#sf-commsfan .sf-commsfan__pilot {
+  font-family:var(--dp-face-display); font-variation-settings:"wght" 760, "wdth" 105;
+  font-size:16px; letter-spacing:.04em; text-transform:uppercase; color:var(--dp-ink); text-shadow:var(--dp-emit);
+}
+#sf-commsfan .sf-commsfan__class, #sf-commsfan .sf-commsfan__freq {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 68;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--dp-ink-mute);
+}
+#sf-commsfan .sf-commsfan__ribbon { color:var(--dp-ink-dim); filter:drop-shadow(0 0 4px rgb(205 222 255 / .25)); }
+#sf-commsfan .sf-commsfan__wedge {
+  position:relative; box-sizing:border-box; min-height:44px;
+  border-style:solid; border-color:transparent; border-width:8px 10px 10px; border-radius:0;
+  border-image:url("/assets/ui/deckplate/hw/keycap.svg") 10 10 12 / 8px 10px 10px / 0 stretch;
+  background:var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  box-shadow:0 4px 12px rgb(0 0 0 / .45);
+  padding:0 8px 0 20px; color:var(--dp-ink-dim);
+}
+#sf-commsfan .sf-commsfan__wedge::before {
+  content:""; position:absolute; left:0; top:50%; width:7px; height:7px; margin-top:-3.5px; border-radius:50%;
+  background:radial-gradient(circle at 42% 36%, #3b352c, #17140f 70%);
+  box-shadow:inset 0 1px 1.5px rgb(0 0 0 / .85), 0 0 0 1px rgb(0 0 0 / .6);
+}
+#sf-commsfan .sf-commsfan__wedge:hover:not(.is-dim), #sf-commsfan .sf-commsfan__wedge:focus-visible { color:var(--dp-ink); filter:brightness(1.12); background:var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3); }
+#sf-commsfan .sf-commsfan__wedge:hover:not(.is-dim)::before, #sf-commsfan .sf-commsfan__wedge:focus-visible:not(.is-dim)::before {
+  background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
+  box-shadow:0 0 6px var(--dp-lamp-bloom), 0 0 14px var(--dp-lamp-bloom-soft);
+}
+#sf-commsfan .sf-commsfan__wedge:focus, #sf-commsfan .sf-commsfan__wedge:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:3px; }
+#sf-commsfan .sf-commsfan__wedge.is-dim { opacity:.55; filter:saturate(.5); color:var(--dp-ink-mute); }
+#sf-commsfan .sf-commsfan__glyph { color:inherit; }
+#sf-commsfan .sf-commsfan__glyph .accent { fill:var(--dp-lamp-dim); }
+#sf-commsfan .sf-commsfan__wedge:hover:not(.is-dim) .sf-commsfan__glyph .accent { fill:var(--dp-lamp); }
+#sf-commsfan .sf-commsfan__verb {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 75;
+  font-size:13px; letter-spacing:.12em; text-transform:uppercase;
+}
+#sf-commsfan .sf-commsfan__why { font-family:var(--dp-face-read); color:var(--dp-ink-mute); }
+
 @media (prefers-reduced-motion: reduce) {
   #sf-commsfan,
   .sf-commsfan__wedge,
@@ -309,11 +361,16 @@
 @media (forced-colors: active) {
   .sf-commsfan__hub,
   .sf-commsfan__wedge,
-  .sf-haildeck__link {
-    border-color: CanvasText;
+  .sf-haildeck__link,
+  #sf-commsfan .sf-commsfan__hub,
+  #sf-commsfan .sf-commsfan__wedge {
+    border-image: none;
+    border: 1px solid CanvasText;
     background: Canvas;
     color: CanvasText;
+    box-shadow: none;
   }
+  #sf-commsfan .sf-commsfan__wedge::before { forced-color-adjust: none; background: CanvasText; box-shadow: none; }
 
   .sf-commsfan__ribbon,
   .sf-haildeck__ribbon {

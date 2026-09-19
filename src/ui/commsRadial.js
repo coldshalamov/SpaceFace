@@ -21,6 +21,7 @@ import { isUiInteractionFenced, spatialFocusTarget } from './input.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { createMorphLabel } from './effects/morphLabel.js';
 import { factionIcon, icon as stationIcon } from './station/icons.js';
+import { dpIcon } from './deckplate/icons.js';
 import { FACTION_META } from '../data/factions.js';
 import { tierFor, factionStandingGuidance } from './factionStanding.js';
 import { resolveEntity } from './entityResolver.js';
@@ -229,7 +230,16 @@ function actionReason(actionId, availability, state, target) {
   return '';
 }
 
+// Deckplate (FRONTEND_PROGRAM Wave 1): comms verbs draw from the kit's filled family, like every
+// other command in the game; the line glyphs below remain only as the fallback for a new verb.
+const DP_ACTION_ICON = Object.freeze({
+  status: 'info', identify: 'scan', route: 'route', manifest: 'cargo', heave_to: 'brake', help: 'help',
+  escort: 'patrol', recover: 'pod', steal: 'pirate', abandon: 'abandon', assist: 'repair',
+});
+
 function wedgeIconSvg(actionId) {
+  const filled = DP_ACTION_ICON[actionId] ? dpIcon(DP_ACTION_ICON[actionId], 24, { className: 'sf-commsfan__glyph' }) : '';
+  if (filled) return filled;
   const icon = ACTION_ICON[actionId];
   if (!icon) return stationIcon('info', 24);
   return `<svg class="sf-commsfan__glyph" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${icon}</svg>`;
