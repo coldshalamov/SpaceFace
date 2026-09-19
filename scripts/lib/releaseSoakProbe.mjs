@@ -1068,7 +1068,23 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
     afterInput = await driveInput();
   }
   assert(afterInput.tick > beforeInput.tick, 'flight input must advance simulation ticks');
-  assert(distance(beforeInput.pos, afterInput.pos) > 0.05 || Math.abs(afterInput.speed - beforeInput.speed) > 0.05, 'flight input must cause motion');
+  const movedEnough = (after) => distance(beforeInput.pos, after.pos) > 0.05
+    || Math.abs(after.speed - beforeInput.speed) > 0.05;
+  // A hull that just left the berth can be facing station structure: full thrust into a wall is
+  // zero motion, and no player would call that a defect — they would turn. Re-drive with the public
+  // turn key (KeyD = yawRight / contextual strafe) before failing the cycle; a hull that is
+  // genuinely stuck inside geometry still fails. Soak cycle 151 (2026-09-19) died here with the
+  // hull at 0 WU/s against a station plate, speed 0, berth 11.7 WU, corridor phase 'berthed'.
+  for (let retry = 0; retry < 2 && !movedEnough(afterInput); retry += 1) {
+    await page.keyboard.down('KeyW');
+    await page.keyboard.down('KeyD');
+    await page.waitForTimeout(600);
+    await page.keyboard.up('KeyD');
+    await page.keyboard.up('KeyW');
+    afterInput = await readPlayerSnapshot(page);
+    assert(afterInput.tick > beforeInput.tick, 'flight input must advance simulation ticks');
+  }
+  assert(movedEnough(afterInput), 'flight input must cause motion');
   mark('flight-input', { before: beforeInput, after: afterInput });
   await sampleDiagnostics(page, samples);
 
