@@ -99,7 +99,8 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
     background: 'transparent',
     'box-sizing': 'border-box',
     padding: '10px 14px',
-    ...(variant === 'paper' ? { color: '#22201C' } : {}),
+    // Deckplate: the paper card is a glass reader now, so its ink is the light text token.
+    ...(variant === 'paper' ? { color: 'var(--fh-text)' } : {}),
     ...extra,
   });
 }
@@ -539,7 +540,7 @@ function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', n
   }
   const heading = el('h2', 'k-display k-t-title fh-title');
   paintMarking(heading);
-  pin(heading, { color: '#22201C' });
+  pin(heading, { color: 'var(--fh-text)' });
   heading.appendChild(el('span', signal ? 'k-signal' : (locked ? 'k-38' : ''), title != null ? title : name));
   article.appendChild(heading);
   if (meta != null && meta !== '') {
@@ -550,7 +551,7 @@ function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', n
     article.appendChild(metaEl);
   }
   const measure = el('div', 'k-measure fh-body');
-  pin(measure, { color: '#22201C', 'max-width': '64ch' });
+  pin(measure, { color: 'var(--fh-text)', 'max-width': '64ch' });
   for (const para of String(body || '').split('\n')) {
     if (para.trim()) measure.appendChild(el('p', 'k-sentence' + (locked ? ' k-38' : ''), para));
   }

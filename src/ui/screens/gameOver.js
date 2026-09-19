@@ -192,7 +192,7 @@ export const gameOverScreen = {
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-gameover');
     // k-screen--cold: the one screen that deepens the menu scrim to the wanted blue (Task B §1.5).
-    rootEl.classList.add('k-screen', 'k-screen--stage', 'k-screen--cold');
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'k-screen--cold', 'sf-gameover');
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
     rootEl.setAttribute('aria-labelledby', 'sf-gameover-title');

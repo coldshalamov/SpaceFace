@@ -317,9 +317,60 @@ function drawNineSlice(g, img, dx, dy, dw, dh, slice) {
   }
   return true;
 }
+function drawGlassTile(g, x, y, w, h, state, sel, hov, zoom) {
+  const lw = 1 / zoom;
+  const body = g.createLinearGradient(x, y, x, y + h);
+  body.addColorStop(0, state === 'locked' ? '#12161c' : '#1b212a');
+  body.addColorStop(1, state === 'locked' ? '#090b0f' : '#0b0e13');
+  g.fillStyle = body;
+  g.fillRect(x, y, w, h);
+  const spec = g.createLinearGradient(x, y, x + w * 0.2, y + h);
+  spec.addColorStop(0, 'rgba(255,250,240,0.075)');
+  spec.addColorStop(0.3, 'rgba(255,250,240,0.028)');
+  spec.addColorStop(0.315, 'rgba(255,250,240,0)');
+  g.fillStyle = spec;
+  g.fillRect(x, y, w, h);
+  if (hov && !sel) { g.fillStyle = 'rgba(255,255,255,0.04)'; g.fillRect(x, y, w, h); }
+  g.lineWidth = lw;
+  g.strokeStyle = 'rgba(2,3,5,0.92)';
+  g.strokeRect(x + lw / 2, y + lw / 2, w - lw, h - lw);
+  g.strokeStyle = 'rgba(255,244,222,0.12)';
+  g.beginPath();
+  g.moveTo(x + lw * 1.5, y + h - lw);
+  g.lineTo(x + lw * 1.5, y + lw * 1.5);
+  g.lineTo(x + w - lw, y + lw * 1.5);
+  g.stroke();
+  g.strokeStyle = 'rgba(0,0,0,0.45)';
+  g.beginPath();
+  g.moveTo(x + lw * 1.5, y + h - lw * 1.5);
+  g.lineTo(x + w - lw * 1.5, y + h - lw * 1.5);
+  g.lineTo(x + w - lw * 1.5, y + lw * 1.5);
+  g.stroke();
+  if (state === 'locked' && !sel) {
+    g.setLineDash([3 / zoom, 3 / zoom]);
+    g.strokeStyle = 'rgba(232,226,212,0.14)';
+    g.strokeRect(x + lw * 2.5, y + lw * 2.5, w - lw * 5, h - lw * 5);
+    g.setLineDash([]);
+  }
+  if (sel) {
+    g.strokeStyle = 'rgba(255,217,140,0.5)';
+    g.strokeRect(x + lw * 1.5, y + lw * 1.5, w - lw * 3, h - lw * 3);
+    g.fillStyle = KIT_INK.signal;
+    g.fillRect(x, y, 3 / zoom, h);
+  }
+}
 function drawEtchLine(g, x1, y, x2) {
-  const img = kitImage('tiles/tile.etch.hairline.png');
   const yy = Math.round(y);
+  // Deckplate: an etched groove is a dark cut with a lit lip under it, drawn, not a sprite.
+  if (!forcedColorsActive()) {
+    g.lineWidth = 1;
+    g.strokeStyle = 'rgba(0,0,0,0.6)';
+    g.beginPath(); g.moveTo(x1, yy + 0.5); g.lineTo(x2, yy + 0.5); g.stroke();
+    g.strokeStyle = 'rgba(255,236,204,0.07)';
+    g.beginPath(); g.moveTo(x1, yy + 1.5); g.lineTo(x2, yy + 1.5); g.stroke();
+    return;
+  }
+  const img = kitImage('tiles/tile.etch.hairline.png');
   if (imgReady(img)) {
     const w = img.naturalWidth;
     const h = img.naturalHeight;
@@ -337,6 +388,26 @@ function drawEtchLine(g, x1, y, x2) {
   g.stroke();
 }
 function drawLight(g, kind, x, y) {
+  if (!forcedColorsActive()) {
+    const cx = x + 6, cy = y + 6;
+    const lens = g.createRadialGradient(cx - 1, cy - 1.2, 0, cx, cy, 4.5);
+    if (kind === 'off') {
+      lens.addColorStop(0, '#3b352c'); lens.addColorStop(1, '#17140f');
+    } else if (kind === 'good') {
+      lens.addColorStop(0, '#fffaf0'); lens.addColorStop(0.45, '#d8d2c4'); lens.addColorStop(1, '#6b675d');
+    } else if (kind === 'dim') {
+      lens.addColorStop(0, '#c9a25a'); lens.addColorStop(0.55, '#8a6b3a'); lens.addColorStop(1, '#3d2f19');
+    } else {
+      lens.addColorStop(0, '#fff6df'); lens.addColorStop(0.22, '#ffd98c'); lens.addColorStop(0.55, '#f2b950'); lens.addColorStop(1, '#8a6b3a');
+    }
+    if (kind === 'on') { g.save(); g.shadowColor = 'rgba(242,185,80,0.5)'; g.shadowBlur = 6; }
+    g.fillStyle = lens;
+    g.beginPath(); g.arc(cx, cy, 4, 0, Math.PI * 2); g.fill();
+    if (kind === 'on') g.restore();
+    g.strokeStyle = 'rgba(6,8,10,0.9)'; g.lineWidth = 1;
+    g.beginPath(); g.arc(cx, cy, 4.5, 0, Math.PI * 2); g.stroke();
+    return;
+  }
   const file = kind === 'good'
     ? 'lights/light.dot.good.on.png'
     : kind === 'on'
@@ -363,13 +434,13 @@ const KIT_INK = Object.freeze({
   bone38: 'rgba(234,230,223,0.38)',
   hair: 'rgba(234,230,223,0.14)',
   signal: '#f2b950',
-  legend: '#ffb347',
+  legend: '#e8e2d4',
   red: '#ff4d3d',
-  good: '#9bd8a0',
+  good: '#d8d2c4',
   ink: '#0c0a08',
-  available: '#26211b',
-  researched: '#1a1714',
-  locked: '#100e0c',
+  available: '#151a21',
+  researched: '#11151b',
+  locked: '#0c0f13',
 });
 // The kit's text face (styles/kit.css --k-text / --fh-face-text), spelled out because ctx.font
 // cannot resolve var(). Lane legends use the display face.
@@ -923,8 +994,10 @@ export const techTreeScreen = {
       const plateImg = sel ? stripSel : strip;
       const slice = sel ? SELECTED_SLICE : STRIP_SLICE;
       g.globalAlpha = stt === 'locked' && !sel ? 0.62 : 1;
-      const plated = !forcedColorsActive() && drawNineSlice(g, plateImg, px, py, pw, ph, slice);
-      if (!plated) {
+      // Deckplate: smoked glass tiles drawn here; forced colours keeps the flat system rendering.
+      const plated = !forcedColorsActive();
+      if (plated) drawGlassTile(g, px, py, pw, ph, stt, sel, hov, zoom);
+      else {
         g.fillStyle = KIT_INK[stt];
         g.fillRect(px, py, pw, ph);
         g.strokeStyle = sel ? KIT_INK.signal : KIT_INK.hair;
