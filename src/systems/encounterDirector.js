@@ -128,10 +128,11 @@ const PROX_SLACK = 600;            // "on the zone" slack for proximity-gated sh
 // frontier decks is proximity-gated to its authored zone; a player parked far from every zone
 // (mining a deep field, pinned by salvage, or simply off-lane) fizzle-dropped every combat beat
 // at MAX_GATE_DEFERS while prop-only ambients kept the telegraph counter alive — 0 spawned
-// encounters for hours 5–9, both hunter seeds. After PROXIMITY_RELOCATE_DEFERS the squad
-// re-anchors deterministically near the player instead of dissolving. Pacing law is untouched:
-// gaps, window quotas, pressure, cooldowns, and admission all still gate the fire.
-const PROXIMITY_RELOCATE_DEFERS = 8;   // ~2.8 min of unreachable-zone defer before relocation
+// encounters for hours 5–9, both hunter seeds. After the sector has seen the player fail every
+// zone reach check for PROXIMITY_STARVE_S, each gate-passing combat beat re-anchors beside the
+// player instead of dissolving. Pacing law is untouched: gaps, window quotas, pressure,
+// cooldowns, and admission all still gate the fire.
+const PROXIMITY_STARVE_S = 90;         // zone-unreachable this long → beats relocate to the player
 const RELOCATE_MIN_DIST_WU = 520;      // off the player's bearing, readable but not on top of them
 const RELOCATE_MAX_DIST_WU = 900;
 
@@ -544,6 +545,11 @@ export const encounterDirector = {
         return gateDefer();
       }
     }
+    if (shape.proximity && shape.deck === 'combat') {
+      // The player reached an authored zone: the starvation clock resets.
+      const starve = dir.proxStarve || (dir.proxStarve = {});
+      delete starve[this._currentSectorId() || 'sector'];
+    }
     if (ceresActivityAmbush && !this._ceresActivityAmbushCohort().length) {
       return defer();
     }
@@ -606,12 +612,20 @@ export const encounterDirector = {
     return dx * dx + dz * dz <= r * r;
   },
 
-  /** Re-anchor a proximity-gated combat item beside the player after its authored zone proved
-   * unreachable. Deterministic (seeded by the encounter identity), formation-preserving, and
-   * paced: every other fire gate still applies before the squad materializes. Returns false when
-   * the item has not yet earned relocation. */
+  /** Re-anchor a proximity-gated combat item beside the player once the sector has seen the
+   * player fail every zone reach check for PROXIMITY_STARVE_S. The starvation clock is keyed by
+   * sector (it survives the sector-day replan that resets per-item defer counts) and refreshes on
+   * each relocation, so the fire rate stays bounded by the ordinary pacing law. Deterministic
+   * (seeded by the encounter identity), formation-preserving. Returns false while the starvation
+   * window is still open. */
   _relocateProximityStarvedItem(dir, state, item) {
-    if ((item.defers | 0) < PROXIMITY_RELOCATE_DEFERS) return false;
+    const now = this.now();
+    const starve = dir.proxStarve || (dir.proxStarve = {});
+    const key = this._currentSectorId() || 'sector';
+    const rec = starve[key];
+    if (!rec) { starve[key] = { sinceT: now }; return false; }
+    if (now - rec.sinceT < PROXIMITY_STARVE_S) return false;
+    rec.sinceT = now;
     const p = this.player();
     if (!p || !p.pos) return false;
     const seed = (state.meta && state.meta.seed) || 0;
@@ -2979,10 +2993,11 @@ function freshState() {
     // Harassment-mercy transients (never saved): attackerId → damage watch, the player-pool
     // samples backing the stall read, and mercied attackers awaiting their stand-down expiry.
     // Entity ids are live references, so a load rebuilds all three empty and the watchdog
-    // re-arms naturally if a pin resumes.
+    // re-arms naturally if a pin resumes. proxStarve tracks per-sector zone-unreachability.
     harassWatch: {},
     harassPool: [],
     mercyRearm: [],
+    proxStarve: {},
     _accum: 0,
   };
 }

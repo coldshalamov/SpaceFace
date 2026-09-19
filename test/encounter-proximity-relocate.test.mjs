@@ -1,7 +1,8 @@
 // Proximity-starved combat beats relocate to the player. A player parked far from every authored
 // zone used to fizzle-drop every combat beat (measured: 0 encounter:spawned for hours 5–9, both
-// hunter seeds) while prop-only ambients kept the telegraph counter alive. Real director pump,
-// real pirate_toll shape, compressed clock.
+// hunter seeds) while prop-only ambients kept the telegraph counter alive. The relocation clock
+// is per-sector (it survives the sector-day replan that resets per-item defer counts). Real
+// director pump, real pirate_toll shape, compressed clock.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -10,8 +11,6 @@ import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { ENCOUNTER_SCRIPTS } from '../src/systems/encounterScripts.js';
-
-const SEED = 8008;
 
 function makeHarness() {
   const entities = new Map();
@@ -29,7 +28,7 @@ function makeHarness() {
     onboarding: { active: false, finished: true },
     ui: {},
     world: { currentSectorId: 'sector_nyx_march' },
-    meta: { seed: SEED },
+    meta: { seed: 8008 },
     story: { beatIndex: 3 },
   };
   // A sellable cargo hold worth well above pirate_toll's minCargoValue gate.
@@ -52,15 +51,14 @@ function makeHarness() {
     named: {}, externalNamed: {}, receipts: [],
     stats: { fired: 0, resolved: 0, fizzled: 0 },
     lastMeaningfulAt: -1e9, lastAmbientAt: -1e9, lastMajorAt: -1e9, lastEndAt: -1e9,
-    escalationSeeds: [], _accum: 0,
+    escalationSeeds: [], _accum: 0, proxStarve: {},
   };
-  function pendingItem() {
-    const zoneRadius = 620;
+  function pendingItem(zoneCenter) {
     return {
       encounterId: 'enc_test_1', shapeId: 'pirate_toll', script: 'toll',
       tier: 'minor', deck: 'combat', squadId: 'enc_test_1',
       sectorId: 'sector_nyx_march', zoneId: 'zone_nyx_cutlane', zoneName: 'Nyx Cutlane',
-      zoneCenter: { x: 20000, z: 0 }, zoneRadius,          // 20k WU from the parked player
+      zoneCenter: zoneCenter || { x: 20000, z: 0 }, zoneRadius: 620,   // 20k WU from the parked player
       factionId: 'faction_reach', bark: null, motive: null, engagementTrigger: null,
       variantKind: null, levelBand: [2, 4], delay: 0,
       ships: [
@@ -76,28 +74,28 @@ function makeHarness() {
       dir._pump(state.encounterDirector, state, t);
     }
   }
-  return { state, player, entities, events, dir, pendingItem, pumpUntil };
+  const disengagements = () => events.filter((e) => e.name === 'harasser:disengaged');
+  return { state, player, entities, events, dir, pendingItem, pumpUntil, disengagements };
 }
 
-test('a far-from-zone combat beat relocates beside the player and fires instead of fizzling', () => {
+test('a far-from-zone combat beat relocates beside the player once the sector starvation clock opens', () => {
   const h = makeHarness();
   const item = h.pendingItem();
   h.state.encounterDirector.pending.push(item);
-  h.pumpUntil(189); // 9 gate defers at 21 s: past the relocation threshold
+  h.pumpUntil(84); // first proximity failure stamps the clock at t=21; 63 s of starvation so far
+  assert.equal(h.events.filter((e) => e.name === 'encounter:telegraph').length, 0, 'no fire while the starvation window is open');
+  h.pumpUntil(147); // > 90 s of zone-unreachability on the 21 s pump grid
   const tele = h.events.find((e) => e.name === 'encounter:telegraph');
   assert.ok(tele, 'the beat fired instead of dissolving');
   assert.equal(tele.payload.relocated, true, 'the fire is a relocation');
   assert.ok(tele.payload.pos, 'the telegraph carries the new anchor');
-  const dx = tele.payload.pos.x - h.player.pos.x;
-  const dz = tele.payload.pos.z - h.player.pos.z;
-  const dist = Math.hypot(dx, dz);
+  const dist = Math.hypot(tele.payload.pos.x - h.player.pos.x, tele.payload.pos.z - h.player.pos.z);
   assert.ok(dist >= 500 && dist <= 950, `relocated anchor sits off the player's bow (got ${Math.round(dist)} WU)`);
   const spawned = h.events.find((e) => e.name === 'encounter:spawned');
   assert.ok(spawned, 'ships actually materialized (encounter:spawned)');
   assert.equal(spawned.payload.count, 2, 'the whole squad spawned');
   assert.ok(!h.state.encounterDirector.pending.includes(item), 'item left the pending queue');
-  // The whole squad is physically present around the parked player (the toll script cuts the
-  // lane in front of them at fire time).
+  // The squad is physically present around the parked player.
   const ents = [...h.entities.values()].filter((e) => e.type === 'ship' && e.id !== 1);
   assert.equal(ents.length, 2, 'two hostile entities exist');
   for (const e of ents) {
@@ -106,24 +104,30 @@ test('a far-from-zone combat beat relocates beside the player and fires instead 
   }
 });
 
-test('relocation waits: young defers still gate-defer without firing', () => {
+test('the starvation clock survives the sector-day replan that resets per-item defers', () => {
   const h = makeHarness();
   const item = h.pendingItem();
   h.state.encounterDirector.pending.push(item);
-  h.pumpUntil(147); // 7 defers — one short of the threshold
-  assert.equal(h.events.filter((e) => e.name === 'encounter:telegraph').length, 0, 'no fire below the threshold');
-  assert.equal(h.events.filter((e) => e.name === 'encounter:spawned').length, 0);
-  assert.ok(h.state.encounterDirector.pending.includes(item), 'item still pending');
-  assert.ok((item.defers | 0) >= 7, 'defers accumulated');
+  h.pumpUntil(84);
+  assert.equal(h.events.filter((e) => e.name === 'encounter:telegraph').length, 0);
+  // A sector-day replan wipes the pending queue (600 s cadence) and the clock must persist.
+  h.state.encounterDirector.pending = [];
+  const item2 = h.pendingItem();
+  item2.encounterId = 'enc_test_2';
+  item2.squadId = 'enc_test_2';
+  h.state.encounterDirector.pending.push(item2);
+  h.pumpUntil(147);
+  const tele = h.events.find((e) => e.name === 'encounter:telegraph');
+  assert.ok(tele && tele.payload.relocated, 'relocation fires despite the replan');
 });
 
-test('a player near the authored zone fires in place without relocation', () => {
+test('a player near the authored zone fires in place, without relocation or starvation stamping', () => {
   const h = makeHarness();
-  const item = h.pendingItem();
-  item.zoneCenter = { x: 400, z: 0 }; // inside the reach band of the parked player
+  const item = h.pendingItem({ x: 400, z: 0 }); // inside the reach band of the parked player
   h.state.encounterDirector.pending.push(item);
   h.pumpUntil(30);
   const tele = h.events.find((e) => e.name === 'encounter:telegraph');
   assert.ok(tele, 'the authored-zone beat fires immediately');
   assert.equal(tele.payload.relocated, false, 'no relocation when the zone is reachable');
+  assert.equal(h.state.encounterDirector.proxStarve.sector_nyx_march, undefined, 'no starvation stamp while zones are reachable');
 });
