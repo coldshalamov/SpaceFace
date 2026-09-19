@@ -254,6 +254,14 @@ export const BREAKAWAY_HEIST_TUNING = Object.freeze({
   rewardCr: 960,
   /** Packet ceiling for the careful-handling bonus: at most 15% of base, scaled by condition. */
   qualityBonusFraction: 0.15,
+  /**
+   * CANDIDATE 1200 cr. The Quiet's flat price for the SAME assembly: cash, no condition grading, no
+   * Concord rep. A premium over the lawful base (960) because they want the machine, and below the
+   * best honest tier-3 board contract (1320) so the illicit lane is not strictly dominant. This is a
+   * NEW variant policy over one physical object (02_ENGINEERING §8), not a rewrite of the terminal
+   * matrix — the Capsule Run's own `fenced_success` row and payout are untouched.
+   */
+  fencePayoutCr: 1200,
   riskTier: 2,
   /** Concord will not hand a logged recovery to a pilot it considers hostile. */
   minRep: -10,
@@ -264,9 +272,11 @@ export const BREAKAWAY_HEIST_TUNING = Object.freeze({
 /** Terminal outcome -> settlement for the lawful recovery. A settled arrival is the only payday. */
 export const BREAKAWAY_TERMINAL_SETTLEMENT = Object.freeze({
   lawful_arrival_observed: Object.freeze({ settlement: 'complete', reason: null }),
-  // Not reachable by construction (a fork load never takes custody at the fence or from a touch);
-  // mapped so an unexpected receipt can never pay.
-  fenced_success: Object.freeze({ settlement: 'fail', reason: 'wrong_receiver' }),
+  // PQ-195.03: the Quiet fence is a REAL second destination for the SAME physical assembly — the
+  // lawful run logs Concord's machine at the fork, the illicit handoff sells it to the fence at the
+  // fence's own flat terms. A variant POLICY over one arbiter, one receiver family and one object,
+  // not a matrix rewrite; `PQ019C_TERMINAL_SETTLEMENT` is deliberately unchanged.
+  fenced_success: Object.freeze({ settlement: 'complete', reason: 'fenced' }),
   lawful_confiscation: Object.freeze({ settlement: 'fail', reason: 'confiscated' }),
   payload_destroyed: Object.freeze({ settlement: 'fail', reason: 'payload_destroyed' }),
   expired: Object.freeze({ settlement: 'fail', reason: 'window_expired' }),
@@ -284,6 +294,7 @@ export const BREAKAWAY_CUE_TEXT = Object.freeze({
   launched: 'SP-07 assembly broke away off the catcher line — recover it before it drifts out of reach',
   possessed: 'Assembly on your line — bring it through the Concord catcher fork under 100 WU/s',
   lawful_arrival: 'Assembly settled in the Concord catcher fork — recovery logged and paid',
+  fenced: 'The Quiet took the SP-07 at their fence — cash paid on the spot, Concord\'s logged recovery left open',
   destroyed: 'SP-07 assembly destroyed — there is nothing left to deliver',
   expired: 'Recovery window closed — the assembly drifted out of reach',
   absent: 'Assembly lost from the field — the recovery cannot be settled',
@@ -335,7 +346,9 @@ export function buildBreakawayOffer({ epoch = 0 } = {}) {
     description: 'The SP-07 flywheel assembly left the Tethys Surface Launcher off its line and is tumbling '
       + 'toward open space. Latch it, tow it or shove it home, and bring it through the open end of the '
       + 'Concord Lawful Catcher fork under 100 WU/s. The fork brakes the load itself; custody passes only '
-      + 'once it comes to rest. Deliver it in good condition and Concord adds a bonus.',
+      + 'once it comes to rest. Deliver it in good condition and Concord adds a bonus. The Quiet want the '
+      + 'same assembly at their own receiver and pay cash off the books, but the lawful contract logs the '
+      + 'recovery — their money leaves that log open.',
     authorization: 'CONCORD — LOGGED RECOVERY',
     adminField: 'MANIFEST SP-07 · LAWFUL SALVAGE',
     expiresAtEpoch: null,
@@ -356,6 +369,9 @@ export const HEIST_MISSION_POLICIES = Object.freeze({
     reportsTheft: true,
     cueText: null,
     qualityBonusFraction: 0,
+    // The Capsule Run's fence payout is its matrix-selected `reward_cr`, carried by the offer; this
+    // variant-policy override stays off for it.
+    fencePayoutCr: 0,
   }),
   [BREAKAWAY_THIRD_SHIFT_VARIANT_ID]: Object.freeze({
     variantId: BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
@@ -363,6 +379,7 @@ export const HEIST_MISSION_POLICIES = Object.freeze({
     reportsTheft: false,
     cueText: BREAKAWAY_CUE_TEXT,
     qualityBonusFraction: BREAKAWAY_HEIST_TUNING.qualityBonusFraction,
+    fencePayoutCr: BREAKAWAY_HEIST_TUNING.fencePayoutCr,
   }),
 });
 

@@ -12,7 +12,6 @@ import {
   BREAKAWAY_CAPTURE_FORK,
   BREAKAWAY_FORK_COLLIDERS,
   BREAKAWAY_FORK_VISUAL,
-  PQ019_CAPSULE,
   PQ019_FACILITIES,
   PQ019_HEIST_SECTOR_ID,
   HEIST_CAPSULE_RUN_VARIANT_ID,
@@ -834,25 +833,29 @@ export const heistFacilities = {
       ? a
       : (b.id === activeCapsule.id ? b : null);
     if (!capsule) return;
-    // A capture-fork variant never takes custody from a touch: bumping the catcher head (which is
-    // the fork's rear stop) or the fence is a collision, not a delivery.
-    if (heistLaunchVariant(schedule.variantId).custody !== 'contact') return;
     const head = capsule === a ? b : a;
     const facilityId = head.data?.heistFacilityId;
     if (!facilityId || head.data?.heistFacilityRole !== `${facilityId}_head`) return;
     if (facilityId !== 'lawful_catcher' && facilityId !== 'fence_receiver') return;
     if (!head.collides || head.collisionMask !== Masks.PAYLOAD
       || head.physicsBody?.dynamic !== false) return;
+    // CONTACT CUSTODY IS FACILITY-SPECIFIC. A capture-fork variant never takes custody from a touch
+    // of the catcher head — that head is the fork's rear stop and only the fork kernel settles a
+    // delivery there. The Quiet fence is a plain contact receiver for EVERY payload, so the SAME
+    // physical body can still be handed over at the fence. That is PQ-195.03's second destination.
+    const variant = heistLaunchVariant(schedule.variantId);
+    if (variant.custody !== 'contact' && facilityId !== 'fence_receiver') return;
 
     const kind = facilityId === 'lawful_catcher'
       ? 'lawful_catch_contact'
       : 'fence_contact';
     const tick = Math.max(0, Math.trunc(finite(impact.tick, this.state.tick)));
     const scheduleId = schedule.scheduleId;
+    const payloadStableId = variant.payload.stableId;
     const receiptId = [
       'pq019a',
       scheduleId,
-      PQ019_CAPSULE.stableId,
+      payloadStableId,
       facilityId,
       tick,
     ].join(':');
@@ -864,7 +867,7 @@ export const heistFacilities = {
       source: 'physics:impact',
       scheduleId,
       payloadEntityId: capsule.id,
-      payloadStableId: PQ019_CAPSULE.stableId,
+      payloadStableId,
       facilityId,
       physicsImpactDp: stableNumber(impact.dp),
       tick,
@@ -1042,12 +1045,19 @@ export const heistFacilities = {
   },
 
   /**
-   * FRESH custody for a fork variant, evaluated now. Called at prepare AND at commit: a load that
+   * FRESH custody for a delivery, evaluated now. Called at prepare AND at commit: a load that
    * settled once and was then dragged, shot or knocked out of the bay has no custody left to pass.
+   *
+   * Fork custody is proven by live mechanical state, and ONLY at the fork. A contact receiver (the
+   * Quiet fence) proves custody with its own recorded contact receipt, so an SP-07 handoff there is
+   * a contact delivery even though the same variant uses the fork arc elsewhere (PQ-195.03).
    */
-  _forkCustodyProof(schedule, load) {
+  _forkCustodyProof(schedule, load, facilityId = null) {
     const variant = heistLaunchVariant(schedule?.variantId);
-    if (variant.custody !== 'capture_fork') return { ok: true, reason: 'contact_custody' };
+    if (variant.custody !== 'capture_fork'
+      || (facilityId && facilityId !== variant.fork?.facilityId)) {
+      return { ok: true, reason: 'contact_custody' };
+    }
     const capture = this.state.heistFacilities.capture;
     if (!capture || !load) return { ok: false, reason: 'not_ready_or_stale' };
     return validateCaptureProof(capture, this._forkSample(load, this.state), this._forkReceiver(variant), true);
@@ -1209,9 +1219,11 @@ export const heistFacilities = {
     const variant = heistLaunchVariant(schedule.variantId);
     if (payloadStableId !== variant.payload.stableId) return receiverDenial('invalid_handoff', receiptId);
 
-    // Physical proof: this facility must already own a custody candidate for this capsule. A fork
-    // variant accepts only its own settled-capture receipt, never a touch.
-    const forkCustody = variant.custody === 'capture_fork';
+    // Physical proof: this facility must already own a custody candidate for this capsule. A FORK
+    // delivery accepts only its own settled-capture receipt, never a touch; the fork's own facility
+    // is the only place that holds. The Quiet fence is a contact receiver, so an SP-07 handoff there
+    // is earned by its `fence_contact` receipt (PQ-195.03 — one object, two destinations).
+    const forkCustody = variant.custody === 'capture_fork' && facilityId === variant.fork?.facilityId;
     const contact = owned.candidateReceipts.find((row) => (
       row && row.facilityId === facilityId && row.payloadStableId === payloadStableId
       && row.scheduleId === schedule.scheduleId
@@ -1220,7 +1232,7 @@ export const heistFacilities = {
     if (!contact) return receiverDenial('no_custody_contact', receiptId);
     // ...and a fork's custody must still be physically true NOW, not merely have been true once.
     if (forkCustody) {
-      const proof = this._forkCustodyProof(schedule, capsule);
+      const proof = this._forkCustodyProof(schedule, capsule, facilityId);
       if (!proof.ok) return receiverDenial(proof.reason, receiptId);
     }
 
@@ -1271,15 +1283,16 @@ export const heistFacilities = {
     }
     // Fresh custody is re-proven immediately before consumption: listeners of `receiverPrepared`
     // run synchronously and may have moved the load since prepare checked it.
-    const proof = this._forkCustodyProof(owned.schedule, capsule);
+    const proof = this._forkCustodyProof(owned.schedule, capsule, handoff.facilityId);
     if (!proof.ok) {
       handoff.status = 'aborted';
       handoff.abortReason = proof.reason;
       return { committed: false, reason: proof.reason, handoff };
     }
-    // A fork delivery records the load's condition at the instant custody passes, before the body
-    // is consumed — the mission's quality quote reads this, never a later guess.
-    if (heistLaunchVariant(owned.schedule?.variantId).custody === 'capture_fork') {
+    // A FORK delivery records the load's condition at the instant custody passes, before the body
+    // is consumed — the mission's quality quote reads this, never a later guess. The Quiet fence does
+    // not grade condition (PQ-195.03), so a fence handoff records none.
+    if (handoff.facilityId === heistLaunchVariant(owned.schedule?.variantId).fork?.facilityId) {
       const hullMax = Number(capsule.hullMax);
       handoff.condition01 = hullMax > 0
         ? Math.max(0, Math.min(1, Number(capsule.hull) / hullMax))

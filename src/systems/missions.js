@@ -1484,11 +1484,18 @@ export const missions = {
         // BREAKAWAY: the bounded careful-handling bonus is folded into THIS mission's own reward
         // before the one ordinary completion pays it — never a second grant, never a new currency.
         // The condition is the physical owner's measurement at the instant custody passed.
-        const bonusFraction = heistMissionPolicy(m.heist && m.heist.variantId).qualityBonusFraction;
+        //
+        // PQ-195.03: a FENCED outcome is the second destination over the same physical object and
+        // pays the fence's own flat terms. No condition grade — that quote is Concord's for its own
+        // machine, and the Quiet did not buy one to repair. `fencePayoutCr` is 0 for the Capsule Run,
+        // whose matrix-selected reward and null-bonus path are unchanged.
+        const policy = heistMissionPolicy(m.heist && m.heist.variantId);
         const condition = Number(m.heist && m.heist.deliveredCondition);
-        if (bonusFraction > 0 && Number.isFinite(condition)) {
+        if (outcome === 'fenced_success' && policy.fencePayoutCr > 0) {
+          m.reward_cr = policy.fencePayoutCr;
+        } else if (policy.qualityBonusFraction > 0 && Number.isFinite(condition)) {
           const base = Math.max(0, Math.round(Number(m.reward_cr) || 0));
-          m.reward_cr = deliveryQuote(base, Math.max(0, Math.min(1, condition)), bonusFraction).totalCredits;
+          m.reward_cr = deliveryQuote(base, Math.max(0, Math.min(1, condition)), policy.qualityBonusFraction).totalCredits;
         }
         this._completeMission(m, index);
       } else {
