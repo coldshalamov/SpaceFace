@@ -18,13 +18,15 @@
 //   • Rewards are cosmetic-faction rep only (offer.factionId = the station's faction, exactly like
 //     board offers) — hostility never couples to factionId (scanner.isHostileToPlayer owns that).
 //   • Payout is tethered to the LIVE field (scarcity pay scales with modeled pricePressure).
-//   • A calm field emits NOTHING — strict no-op, golden-sim safe.
+//   • A calm field may post one bounded maintenance recovery; it never grants idle income.
 //
 // noTouch honored: missions.js / sectorSim.js / economy.js / dangerModel.js are imported read-only
 // (their exported contracts), never edited. Budget: spawn:none at offer time · voice: one 'news'
 // line per offer · draw:none.
 
 import { SECTORS } from '../data/sectors.js';
+import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
+import { quoteMissionEconomics, affordableContractQuantity, economicRiskTier } from '../economy/economyMissionTerms.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { MISSION_TYPES, MISSION_TUNING } from '../data/missions.js';
@@ -46,7 +48,7 @@ const STATION_INFO = new Map();
 for (const sec of SECTORS) {
   for (const st of (sec.stations || [])) {
     STATION_INFO.set(st.id, {
-      id: st.id, name: st.name, type: st.type,
+      id: st.id, name: st.name, type: st.type, tier: sec.tier || 0, size: st.size || 'M',
       factionId: st.factionId || sec.factionId, sectorId: sec.id,
     });
   }
@@ -161,7 +163,8 @@ export const economyContracts = {
     this._onDocked = (p) => this._handleDock(p && p.stationId);
     this.bus.on('dock:docked', this._onDocked);
     // Fresh runs reset dedupe. Loads restore it through deserialize before save:loaded fires.
-    this.bus.on('game:started', () => this.newGame());
+    this._onStarted = () => this.newGame();
+    this.bus.on('game:started', this._onStarted);
   },
 
   newGame() {
@@ -186,7 +189,7 @@ export const economyContracts = {
     if (source && typeof source === 'object') {
       for (const stationId of Object.keys(source).sort()) {
         const epoch = Number(source[stationId]);
-        if (Number.isFinite(epoch)) evaluatedEpochByStation[stationId] = Math.floor(epoch);
+        if (STATION_INFO.has(stationId) && Number.isFinite(epoch)) evaluatedEpochByStation[stationId] = Math.floor(epoch);
       }
     }
     this.state.economyContracts = {
@@ -240,8 +243,8 @@ export const economyContracts = {
       if (isStationEpochEvaluated(own, stationId, epoch)) return;
       markStationEpochEvaluated(own, stationId, epoch);
 
-      const offer = this.planOffer(info, epoch);
-      if (!offer) return; // calm field → strict no-op
+      const offer = this.planOffer(info, epoch) || this.planMaintenanceOffer(info, epoch);
+      if (!offer) return;
       const fieldClass = offerClassFor(offer);
       if (fieldClass && emittedClasses.has(fieldClass)) return;
 
@@ -267,9 +270,25 @@ export const economyContracts = {
    */
   planOffer(info, epoch) {
     const state = this.state;
-    const local = sectorSignalFor(state, info.sectorId);
-    if (!local) return null;
-    const selected = selectEconContract(local);
+    let local = sectorSignalFor(state, info.sectorId);
+    let selected = local ? selectEconContract(local) : null;
+    // Relief is a sealed OUTBOUND shipment from this supplier to a distressed neighbor.
+    // Posting "bring fuel here" while already docked here allowed a zero-travel self-delivery.
+    const reliefKeys = new Set(['blockade_relief', 'scarcity_fuel_run']);
+    let reliefDestination = null;
+    if (!selected || reliefKeys.has(selected.template.key)) {
+      for (const id of [...(SECTOR_BY_ID.get(info.sectorId)?.neighbors || [])].sort()) {
+        const signal = sectorSignalFor(state, id);
+        const candidate = signal ? selectEconContract(signal) : null;
+        const target = (SECTOR_BY_ID.get(id)?.stations || []).slice().sort((a,b) => a.id.localeCompare(b.id))[0];
+        if (!candidate || !reliefKeys.has(candidate.template.key) || !target) continue;
+        if (!reliefDestination || signal.pricePressure > local.pricePressure) {
+          selected = candidate; local = signal;
+          reliefDestination = { stationId: target.id, sectorId: id };
+        }
+      }
+      if (!reliefDestination) return null;
+    }
     if (!selected) return null;
 
     const seed = (state.meta && state.meta.seed) || 1;
@@ -285,20 +304,20 @@ export const economyContracts = {
 
     // ── destination + commodity, per template (neighbor signals read HERE) ─────────────────────
     const sector = SECTOR_BY_ID.get(info.sectorId);
-    let destStationId = info.id;
-    let destSectorId = info.sectorId;
+    let destStationId = reliefDestination?.stationId || info.id;
+    let destSectorId = reliefDestination?.sectorId || info.sectorId;
     let cmdtyId = null;
     if (selected.template.key === 'blockade_relief') {
       // BP-12 BLOCKADE_RELIEF: relief cargo (medical/food/fuel) INTO the besieged station. The
       // destination is the station itself (the player picks the cargo up at a neighbor and runs it
       // in past the interdiction). Seeded pick from the relief pool.
       cmdtyId = BLOCKADE_RELIEF_CMDTYS[Math.floor(rng() * BLOCKADE_RELIEF_CMDTYS.length)];
-      destStationId = info.id; // relief runs INTO the besieged station
-      destSectorId = info.sectorId;
+      // Destination is the actually disrupted neighbor, selected above.
     } else if (selected.template.key === 'scarcity_fuel_run') {
       cmdtyId = FUEL_CMDTY; // the fuel run: bring fuel IN to the scarce station
     } else if (selected.template.key === 'surplus_haul_out') {
-      cmdtyId = LEGAL_TRADE_CMDTYS[Math.floor(rng() * LEGAL_TRADE_CMDTYS.length)] || FUEL_CMDTY;
+      const eligible = LEGAL_TRADE_CMDTYS.filter((id) => (CMDTY_BY_ID.get(id)?.marketTier || 0) <= info.tier);
+      cmdtyId = eligible[Math.floor(rng() * eligible.length)] || FUEL_CMDTY;
       // Haul TO the neighbor most in need: highest neighbor pricePressure wins (deterministic,
       // neighbor-id tie-break) — the "trade ahead of the field" read made actionable.
       let bestNeighbor = null;
@@ -318,6 +337,8 @@ export const economyContracts = {
       cmdtyId = SALVAGE_CMDTYS[Math.floor(rng() * SALVAGE_CMDTYS.length)];
     }
 
+    if (typeId === 'cargo_delivery' && destStationId === info.id) return null;
+
     // ── params: EXACTLY the shapes missions._rollParams produces for these types ───────────────
     const distance = sectorDistanceWu(info.sectorId, destSectorId);
     const def = TYPE_BY_ID.get(typeId) || {};
@@ -325,7 +346,11 @@ export const economyContracts = {
     const riskTier = clamp(effectiveDangerTierFor(state, destSectorId), rLo, rHi);
     let params;
     if (typeId === 'cargo_delivery') {
-      const qty = 6 + Math.floor(rng() * 16);
+      const cargo = state.player?.cargo || {};
+      const qty = affordableContractQuantity({desired:6+Math.floor(rng()*16),
+        freeVolume:(cargo.capVolume || 0)-(cargo.usedVolume || 0),
+        volumePerUnit:CMDTY_BY_ID.get(cmdtyId)?.volPerU || 1});
+      if (qty < 1) return null;
       const unitVal = (CMDTY_BY_ID.get(cmdtyId) && CMDTY_BY_ID.get(cmdtyId).basePrice) || 50;
       const cargoValue = unitVal * qty;
       params = { cmdtyId, qty, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: 20, passengers: 0 };
@@ -346,29 +371,22 @@ export const economyContracts = {
       params = { targetStrength, fValue: targetStrength, taskTime: 90 };
     }
 
-    // ── reward: the missions multiplicative family, PAY TETHERED TO THE LIVE FIELD ─────────────
-    const base = (cfg.BASE && cfg.BASE[typeId]) || 100;
-    const fDist = 1 + distance / (cfg.distDivisor || 2000);
-    const fRisk = (cfg.RISK_MULT && cfg.RISK_MULT[riskTier]) || 1;
-    // Scarcity premium scales with the modeled pressure (never a constant): +0% at the 0.25
-    // threshold up to ~+105% at full pressure. BP-12 BLOCKADE_RELIEF pays the war-profiteer premium
-    // (BLOCKADE_PAY_SCALE) on the LIVE scarcity — the relief run's pay must read the field, not a
-    // constant (the packet's named failureMode). Other templates pay the standard family.
-    const fField = selected.template.key === 'scarcity_fuel_run'
-      ? 1 + Math.max(0, local.pricePressure) * SCARCITY_PAY_SCALE
-      : selected.template.key === 'blockade_relief'
-        ? 1 + Math.max(0, local.pricePressure) * BLOCKADE_PAY_SCALE
-        : 1;
-    const reward_cr = round(base * fDist * fRisk * params.fValue * fField);
-    const travel = distance / (cfg.cruiseSpeedRef || 140);
-    const time_limit_s = round((travel + params.taskTime) * (cfg.slackDefault || 2.2));
-    const collateral_cr = def.collateral ? round((cfg.collateralPct || 0.25) * reward_cr) : 0;
+    // Canonical expected-net inversion. Sealed client cargo is not the player's principal.
+    const preloadedCargo = typeId === 'cargo_delivery';
+    const economyTerms = quoteMissionEconomics({type:typeId,
+      tier:Math.max(info.tier || 0,STATION_INFO.get(destStationId)?.tier || 0,riskTier),
+      riskTier,distance,params,preloadedCargo,fieldPressure:Math.max(0,local.pricePressure || 0)});
+    const reward_cr = economyTerms.rewardCr;
+    const time_limit_s = economyTerms.deadlineS;
+    const collateral_cr = def.collateral ? economyTerms.collateralCr : 0;
 
     // ── prose: the offer NAMES the commodity and the cause ─────────────────────────────────────
-    const sectorName = (sector && sector.name) || info.sectorId;
+    const causeSector = reliefDestination ? SECTOR_BY_ID.get(destSectorId) : sector;
+    const sectorName = causeSector?.name || info.sectorId;
     const commodity = cmdtyId ? cmdtyName(cmdtyId) : null;
     const causeLine = fillCause(selected.template.cause, {
-      commodity, sector: sectorName, station: info.name,
+      commodity, sector: sectorName, station: reliefDestination
+        ? (STATION_INFO.get(destStationId)?.name || sectorName) : info.name,
     });
     const title = this._titleFor(typeId, selected.template.key, params, info, destStationId, commodity);
 
@@ -379,7 +397,8 @@ export const economyContracts = {
       type: typeId,
       stationId: info.id,
       factionId: info.factionId, // cosmetic + kill-rep only, exactly like board offers
-      reward_cr, time_limit_s, collateral_cr, riskTier,
+      reward_cr, time_limit_s, duration_s: time_limit_s, collateral_cr, riskTier, preloadedCargo,
+      economyTerms,
       destStationId, destSectorId, distance,
       params,
       title,
@@ -388,6 +407,34 @@ export const economyContracts = {
       expiresAtEpoch: epoch + 1,
       storyTag: null,
     };
+  },
+
+  /** Local recovery is a real physical mission, not a cash stipend or an asteroid respawn.
+   * No live or retained maintenance job anywhere => at most one invitation this cadence.
+   * The canonical missions owner spawns the slag core only after acceptance.
+   */
+  planMaintenanceOffer(info, epoch) {
+    if (isOnboardingActive(this.state)) return null;
+    if (!Number.isFinite(this.state.simTime) || this.state.simTime < BALANCE.mission.maintenanceCadenceS) return null;
+    const period = Math.max(1,Math.ceil(BALANCE.mission.maintenanceCadenceS/(((this.state.missions || {}).config || MISSION_TUNING).refreshSec || 300)));
+    if (epoch % period !== 0) return null;
+    const active = this.state.missions?.active || [];
+    if (active.some((m) => m?.source === 'economyMaintenance' && m.status === 'active')) return null;
+    const boards = Object.values(this.state.missions?.boards || {});
+    if (boards.some((b) => (b?.slots || []).some((m) => m?.source === 'economyMaintenance'
+      && Number(m.expiresAtEpoch) > epoch))) return null;
+    const riskTier = Math.max(0,Math.min(4,effectiveDangerTierFor(this.state,info.sectorId) || 0));
+    const params = {massU:28+Math.min(4,info.tier || 0)*4,taskTime:220,physicalVerb:'tow',
+      completionMethods:['tow_in','sling_in'],fValue:1};
+    const terms = quoteMissionEconomics({type:'tow_recovery',tier:info.tier || 0,
+      riskTier,distance:600,params});
+    return {id:`eco_maintenance_${info.id}_${epoch}`,type:'tow_recovery',source:'economyMaintenance',
+      stationId:info.id,factionId:info.factionId,destStationId:info.id,destSectorId:info.sectorId,
+      distance:600,riskTier,params,reward_cr:terms.rewardCr,collateral_cr:0,
+      duration_s:terms.deadlineS,time_limit_s:terms.deadlineS,expiresAtEpoch:epoch+period,
+      economyTerms:terms,storyTag:null,title:`Clear the approach: recovery at ${info.name}`,
+      brief:'Recover a slag core from the approach and land it at the station. Paid on recovery, not attendance.',
+      summary:'Standing port-maintenance work; a physical recovery, not a claim about a new local disaster.'};
   },
 
   _titleFor(typeId, templateKey, params, info, destStationId, commodity) {
@@ -416,6 +463,8 @@ export const economyContracts = {
 
   destroy() {
     if (this.bus && this.bus.off && this._onDocked) this.bus.off('dock:docked', this._onDocked);
+    if (this.bus && this._onStarted) this.bus.off('game:started', this._onStarted);
+    this._onStarted = null;
     this._onDocked = null;
   },
 };

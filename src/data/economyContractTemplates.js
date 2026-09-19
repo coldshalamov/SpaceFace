@@ -19,6 +19,9 @@
 // by definition; surplus picks are seeded from the legal-trade catalog; salvage pools mirror
 // missions.js's own salvage_retrieval commodity pair).
 
+import { ECONOMY_BALANCE as BALANCE } from './economyDerived.js';
+import { quoteMissionEconomics } from '../economy/economyMissionTerms.js';
+
 /** Field thresholds that gate an offer at all (a calm field offers NOTHING — golden-sim safe). */
 export const ECON_CONTRACT_THRESHOLDS = Object.freeze({
   scarcityPressure: 0.25,   // pricePressure above → scarcity fuel run (the packet's acceptance bar)
@@ -231,7 +234,8 @@ export const FIRST_TRADE_CONTRACT = Object.freeze({
   reason: 'Helios logistics needs one reliable corridor haul — deliver sealed Fuel Cells to Ceres Refinery so the first trade ledger closes cleanly.',
   preloadedCargo: true,
   terms: Object.freeze({
-    paysCr: 420,
+    paysCr: quoteMissionEconomics({type:'cargo_delivery',tier:0,riskTier:0,distance:1800,
+      params:{cmdtyId:'cmdty_fuel_cells',qty:8},preloadedCargo:true}).rewardCr,
     clockS: 1200,
     riskTier: 0,
     stakeCr: 0,
@@ -265,7 +269,7 @@ export function buildFirstTradeOffer(seed = 1, options = {}) {
   const id = `first_trade_${seedN.toString(16)}_${nonce}`;
   const qty = template.cargo.qty;
   const cmdtyId = template.cargo.cmdtyId;
-  const unitVal = 50; // Fuel Cells catalog baseline; value is cosmetic for preflight cargoValue
+  const unitVal = BALANCE.commodities[cmdtyId].basePrice; // sealed client principal, never paid twice
   const cargoValue = unitVal * qty;
   const reward_cr = template.terms.paysCr;
   const time_limit_s = template.terms.clockS;

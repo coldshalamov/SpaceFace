@@ -15,6 +15,7 @@
 // Pure math + state helpers only. Economy owns lifecycle (create / tick advance / serialize).
 
 import { COMMODITIES } from '../data/commodities.js';
+import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
@@ -31,19 +32,19 @@ const REGIME_MAX_S = 5400;       // ~90 min sim
 const REGIME_BLEND_MIN_S = 120;  // ~2 min crossfade
 const REGIME_BLEND_MAX_S = 300;  // ~5 min crossfade
 // Soft factor band applied on top of stock mid. Stacked with stock mult, then absolute-clamped.
-export const CYCLE_FACTOR_LO = 0.58;
-export const CYCLE_FACTOR_HI = 1.72;
+export const CYCLE_FACTOR_LO = BALANCE.market.cycleFactorLo;
+export const CYCLE_FACTOR_HI = BALANCE.market.cycleFactorHi;
 // Structural stock, station role, and persistent sector demand establish the strategic price
 // level. Formula cycles remain readable and learnable, but contribute only half their authored
 // deviation so they no longer drown those persistent signals.
-export const CYCLE_WEIGHT = 0.5;
+export const CYCLE_WEIGHT = BALANCE.market.cycleWeight;
 // Final mid vs basePrice (after stock × cycle). Never below 1 credit unit after rounding.
 export const CYCLE_MID_LO_MULT = 0.35;
 export const CYCLE_MID_HI_MULT = 2.80;
 
 // Wave periods inside a regime (readable on a ~minutes-long chart, not hours).
-const PERIOD_LO_S = 240;         // 4 min full cycle
-const PERIOD_HI_S = 1200;        // 20 min full cycle
+const PERIOD_LO_S = BALANCE.market.cyclePeriodLoS;         // 4 min full cycle
+const PERIOD_HI_S = BALANCE.market.cyclePeriodHiS;        // 20 min full cycle
 
 /** Player-facing + news-template keys. New poly families extend the set. */
 export const CYCLE_REGIMES = Object.freeze([

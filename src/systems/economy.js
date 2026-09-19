@@ -23,6 +23,10 @@
 //   stock target. We honor the schema field names (equilibrium = role-modified drift target,
 //   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
+import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
+import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock } from '../economy/economyMath.js';
+import { resourceIntent, restoreResourceWork, serializeResourceWork } from '../economy/economyResources.js';
+import { createEconomyPulse, recordEconomyPulse, recordEconomyCash, restoreEconomyPulse, economyPulseReport } from '../economy/economyPulse.js';
 import { presenceServiceForStation } from '../data/factionPresence.js';
 import { hasTethysBlackMarketAccess, TETHYS_BLACK_MARKET_RUN } from '../data/frontierRumors.js';
 import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
@@ -66,14 +70,14 @@ import { livingHullGrimeAt } from '../core/livingHull.js';
 //   1) milder produce/consume stock targets compress structural route spreads;
 //   2) moderately shallower baseEq makes freighter lots move the book (capacity sweet spot);
 //   3) slightly slower drift keeps flooded/drained lanes cooler between hauls.
-const BASE_EQ_DEFAULT = 720;       // was 1000; still deep enough for early hauls, thin enough for impact
-const ROLE_FACTOR = { produce: 1.58, consume: 0.50, none: 0 };
+// Generated work-budget projections. Stock depth varies by commodity, not just station size.
+const BASE_EQ_DEFAULT = BALANCE.market.baseEqDefault;
+const ROLE_FACTOR = BALANCE.market.roleFactor;
 const SIZE_FACTOR = { S: 0.5, M: 1, L: 2 };
-const PRICE_MULT_LO = 0.40, PRICE_MULT_HI = 2.60;
-const SPREAD_BASE = 0.085;         // mild house edge (was 0.08)
+const PRICE_MULT_LO = BALANCE.market.priceLo, PRICE_MULT_HI = BALANCE.market.priceHi;
+const SPREAD_BASE = BALANCE.market.spread;
 const SPREAD_LO = 0.04, SPREAD_HI = 0.40;
-const FRONTIER_SPREAD_BONUS = 0.06; // low-wealth stations widen the spread up to +6%
-const DRIFT_RATE = 0.0006;         // per-second; half-life ~19 min (was ~11.6): lanes cool between hauls
+const FRONTIER_SPREAD_BONUS = 0.06;
 const ECON_TICK_S = 5;             // economy ticks every 5s of sim time
 const EVENT_INTERVAL_S = 90;       // average seconds between spontaneous economic events (game-wide)
 const EQ_MULT_CLAMP = [0.25, 4.0]; // clamp net event/propagation eq multiplier per (station,cmdty)
@@ -327,14 +331,7 @@ export function priceMult(stock, baseEq, elasticity) {
  *  mid(s) = basePrice * baseEq^el * s^(-el); ∫ s^-el ds = s^(1-el)/(1-el).
  *  avg = basePrice*baseEq^el/((1-el)*ΔN) * (sHi^(1-el) - sLo^(1-el)); el==1 -> ln form. */
 export function avgMid(basePrice, baseEq, el, sLo, sHi) {
-  sLo = Math.max(sLo, 1); sHi = Math.max(sHi, sLo);
-  const N = sHi - sLo;
-  if (N <= 0) return basePrice * priceMult(sLo, baseEq, el);
-  if (Math.abs(1 - el) < 1e-6) {
-    return (basePrice * Math.pow(baseEq, el) / N) * Math.log(sHi / sLo);
-  }
-  const coef = basePrice * Math.pow(baseEq, el) / ((1 - el) * N);
-  return coef * (Math.pow(sHi, 1 - el) - Math.pow(sLo, 1 - el));
+  return averageBoundedPrice(basePrice, baseEq, el, sLo, sHi, PRICE_MULT_LO, PRICE_MULT_HI);
 }
 
 /** Product of active eventMod multipliers on a market entry for a given field. */
@@ -715,6 +712,8 @@ export const economy = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this._registry = ctx.registry || null;
+    // Fresh session: the per-listing demand-shift marks are derived read state, not save state.
+    if (this._demandShiftMarks) this._demandShiftMarks.clear();
     this._lastDockedStation = null;
     this._stationServiceBerth = null;
     this._syntheticHistoryKeys = new Set();
@@ -728,6 +727,7 @@ export const economy = {
     if (!state.economy.econClock) state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     if (!state.economy.marketIntel) state.economy.marketIntel = {};
     ensureSalvageIntakeState(state.economy);
+    state.economy.pulse ||= createEconomyPulse(state.simTime);
     ensurePlayerMarketMemory(state.player);
     ensurePlayerTradeState(state.player);
     ensureSessionSinkLedger(state.player);
@@ -737,6 +737,27 @@ export const economy = {
 
     // dedicated seeded RNG stream (§0.5) so scan checks + event rolls don't disturb other streams.
     this.resetRng();
+
+    // Work budgets are economy-owned; world/mining owners still own physical entities.
+    // A grant is a reservation of extraction work, NEVER a cargo or credit grant.
+    for (const action of ['reserve', 'settle', 'cancel']) {
+      bus.on(`economy:resourceWork:${action}`, (payload) => {
+        if (!payload || typeof payload !== 'object') return;
+        const sector = SECTORS.find((row) => row.id === payload.sectorId);
+        payload.result = sector
+          ? resourceIntent(state, action, payload, { maxTier: sector.tier || 0 })
+          : { ok: false, reason: 'unknown_sector' };
+        const r = payload.result;
+        recordEconomyPulse(state.economy, state.simTime, {
+          resourceWorkS: action === 'reserve' && r.ok && !r.duplicate ? r.workS : 0,
+          publishedUnits: action === 'settle' && r.ok ? r.producedQty : 0,
+          depletedRequests: r.reason === 'work_depleted' ? 1 : 0,
+        });
+      });
+    }
+
+    bus.on('mission:offered', () => recordEconomyPulse(state.economy, state.simTime, { offers: 1 }));
+    bus.on('mission:accepted', () => recordEconomyPulse(state.economy, state.simTime, { accepts: 1 }));
 
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
     bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
@@ -883,8 +904,8 @@ export const economy = {
         const liveCycle = state.economy.cycles[sid][cid] || nextCycle || cycle;
         const eff = effectiveEq(entry, state, sid, cid);
         const driftMod = eventModMult(entry, 'drift'); // BLOCKADE freezes drift (mult 0.1)
-        // stock' = clamp(stock + DRIFT_RATE*driftMod*(eff - stock)*dt, 0, cap)
-        entry.stock = Math.max(0, entry.stock + DRIFT_RATE * driftMod * (eff - entry.stock) * tickDt);
+        // Exact recovery: stable for large dt; constant-target split ticks commute.
+        entry.stock = recoverStock(entry.stock, eff, tickDt, BALANCE.commodities[cid]?.recoveryHalfLifeS || BALANCE.market.halfLifeS, driftMod);
         this.recomputePrices(entry, def, frontier, liveCycle, state.simTime);
         this.recordPriceHistory(entry, def, liveCycle, state.simTime);
       }
@@ -1025,16 +1046,54 @@ export const economy = {
     } else {
       result = effectiveDemandFor({ state: this.state, sectorId, commodity: def });
     }
+    const prevMult = Number(entry.demandMult) || 1;
     const nextMult = Number(result.multiplier) || 1;
     // demandModel returns fresh frozen driver rows per projection and every consumer reads or
     // clones them — nothing mutates — so store the projection's rows directly instead of
     // re-cloning them into every listing on every tick.
     const nextDrivers = Array.isArray(result.drivers) ? result.drivers : EMPTY_DRIVERS;
-    const changed = Math.abs((Number(entry.demandMult) || 1) - nextMult) > 1e-9
+    const changed = Math.abs(prevMult - nextMult) > 1e-9
       || !demandDriversEqual(entry.demandDrivers, nextDrivers);
     entry.demandMult = nextMult;
     entry.demandDrivers = nextDrivers;
+    // A material move is worth a traceable receipt (depletion intensity crossing its gate is the
+    // mid-game case); the baseline observation is marked silently.
+    if (changed) this._noteDemandShift(stationId, def, prevMult, nextMult, nextDrivers, result);
     return changed;
+  },
+
+  /**
+   * Publish a material demand move so the long-session ledger can trace *why* a market repriced.
+   * Material means at least a 2% move or a changed cause set; the per-listing mark remembers the
+   * last announced level so slow depletion intensity drift does not flood the event stream. This
+   * is a read-model receipt: it writes no stock, price, or credits.
+   */
+  _noteDemandShift(stationId, def, prevMult, nextMult, drivers, result) {
+    const bus = this.bus;
+    if (!bus || typeof bus.emit !== 'function' || !stationId || !def) return;
+    const marks = this._demandShiftMarks || (this._demandShiftMarks = new Map());
+    const key = `${stationId}\u001f${def.id}`;
+    const causeIds = (drivers || []).map((d) => d && d.id).filter(Boolean).sort();
+    const causeKey = causeIds.join('+');
+    const prior = marks.get(key);
+    if (!prior) {
+      // First observation is the baseline, never an "event": a fresh market must not announce
+      // a shift just because it was built. Later observations measure from this mark.
+      marks.set(key, { to: nextMult, causes: causeKey });
+      return;
+    }
+    const material = Math.abs(nextMult - prior.to) >= 0.02 || prior.causes !== causeKey;
+    if (!material) return; // slow drift keeps accumulating against the same mark
+    marks.set(key, { to: nextMult, causes: causeKey });
+    const round3 = (v) => Math.round((Number(v) || 1) * 1000) / 1000;
+    bus.emit('economy:demandShift', {
+      stationId,
+      commodityId: def.id,
+      from: round3(prevMult),
+      to: round3(nextMult),
+      causes: causeKey || null,
+      depletion: !!(result && result.context && result.context.depletion),
+    });
   },
 
   /** Refresh a station atomically so its board, executable quotes, history, and route intel agree. */
@@ -1103,11 +1162,11 @@ export const economy = {
     const info = stationInfo(state, stationId);
     const type = stationTypeId || (info && info.type) || 'trade_hub';
     const sz = size || (info && info.size) || 'M';
-    const baseEqRef = economyBaseEqForSize(sz); // fixed pricing reference
     const allowContraband = toleratesContraband(info);
 
     const market = {};
     for (const def of COMMODITIES) {
+      const baseEqRef = (BALANCE.commodities[def.id]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[sz] || 1);
       const role = roleFor(def, type);
       // Every legal commodity trades at every station — role only drives price/stock target, not
       // availability. A 'none'-role commodity (e.g. iron ore at a military station) still gets an
@@ -1245,13 +1304,15 @@ export const economy = {
   // QUOTE / EXECUTE  (the public trade API; UI calls quote() live, execute() on confirm)
   // -------------------------------------------------------------------------------------------
   /** quote(stationId, cmdtyId, side, qty) -> { ok, unitAvg, total, priceImpactPct, stockAfter,
-   *  legalityWarning, reason } — pure (does not mutate). side = 'buy' | 'sell'. */
+   *  legalityWarning, reason } — no transaction writes; may initialize a lazy market/cycle. side = 'buy' | 'sell'. */
   quote(stationId, commodityId, side, qty) {
+    qty = normalizedTradeQuantity(qty);
+    if (side !== 'buy' && side !== 'sell') return { ok: false, reason: 'side' };
+    if (qty === null) return { ok: false, reason: 'qty' };
     const state = this.state;
     if (stationId === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state)) {
       return { ok: false, reason: 'black_market_locked', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     }
-    qty = Math.max(0, Math.floor(qty || 0));
     const market = state.economy.markets[stationId] || this.ensureMarket(stationId);
     const entry = market && market[commodityId];
     const def = commodityDef(state, commodityId);
@@ -1280,6 +1341,12 @@ export const economy = {
       const u = side === 'buy' ? entry.lastBuy * standing.buy : entry.lastSell * standing.sell;
       return { ok: false, reason: 'qty', unitAvg: u, total: 0, priceImpactPct: 0, stockAfter: entry.stock, legalityWarning: def.legality !== 'legal' ? def.legality : null };
     }
+    if (!Number.isFinite(entry.stock) || entry.stock < 0 || !(entry.baseEq > 0)) {
+      return { ok: false, reason: 'invalid_market' };
+    }
+    const requestedQty = qty;
+    if (side === 'buy') qty = Math.min(qty, Math.max(0, Math.floor(entry.stock - 1)));
+    if (qty <= 0) return { ok: false, reason: 'no_stock' };
     const frontier = info ? this.frontierPenalty(info) : 0;
     const spread = spreadOf(entry, frontier);
     const el = def.elasticity;
@@ -1291,24 +1358,18 @@ export const economy = {
       state.simTime || 0,
     );
     const tNow = state.simTime || 0;
-    let avgMidPrice, stockAfter;
-    if (side === 'buy') {
-      const sHi = entry.stock, sLo = Math.max(1, entry.stock - qty);
-      avgMidPrice = avgMid(def.basePrice, entry.baseEq, el, sLo, sHi);
-      stockAfter = sLo;
-    } else { // sell floods stock up
-      const sLo = entry.stock, sHi = entry.stock + qty;
-      avgMidPrice = avgMid(def.basePrice, entry.baseEq, el, sLo, sHi);
-      stockAfter = sHi;
-    }
-    // Market fundamentals share the chart/lastMid formula. Standing then personalizes the
-    // executable quote; Choice A can remove only an above-base buy markup.
-    avgMidPrice = applyPersistentDemand(avgMidPrice, entry.demandMult);
-    avgMidPrice = applyCycleToMid(def.basePrice, avgMidPrice, cycle, tNow);
+    const stockAfter = side === 'buy' ? entry.stock - qty : entry.stock + qty;
+    const avgMidPrice = averageLivePrice({
+      basePrice: def.basePrice, baseEq: entry.baseEq, elasticity: el,
+      stockLo: Math.min(entry.stock, stockAfter), stockHi: Math.max(entry.stock, stockAfter),
+      demand: applyPersistentDemand(1, entry.demandMult), cycle: cycleFactorAt(cycle, tNow),
+      priceLo: PRICE_MULT_LO, priceHi: PRICE_MULT_HI,
+    });
     const standingPriceMultiplier = side === 'buy' ? standing.buy : standing.sell;
     const marketUnitAvg = side === 'buy' ? avgMidPrice * (1 + spread / 2) : avgMidPrice * (1 - spread / 2);
     const unitAvg = marketUnitAvg * standingPriceMultiplier;
-    const total = round(unitAvg * qty);
+    const total = settleCredits(unitAvg * qty, side);
+    if (total === null) return { ok: false, reason: 'invalid_total' };
     const beforeMid = applyCycleToMid(
       def.basePrice,
       applyPersistentDemand(economyMidPrice(def, entry.stock, entry.baseEq), entry.demandMult),
@@ -1323,7 +1384,7 @@ export const economy = {
     );
     const priceImpactPct = beforeMid > 0 ? ((afterMid - beforeMid) / beforeMid) * 100 : 0;
     return {
-      ok: true, stationId, commodityId, side, qty,
+      ok: true, stationId, commodityId, side, qty, requestedQty, partial: qty !== requestedQty,
       unitAvg, total,
       priceImpactPct, stockAfter,
       standingPriceMultiplier,
@@ -1389,15 +1450,30 @@ export const economy = {
     if (stationId === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state)) {
       return { ok: false, reason: 'black_market_locked' };
     }
-    qty = Math.max(0, Math.floor(qty || 0));
+    qty = normalizedTradeQuantity(qty);
+    if (side !== 'buy' && side !== 'sell') return { ok: false, reason: 'side' };
+    if (qty === null) return { ok: false, reason: 'qty' };
     const intentId = opts && typeof opts.intentId === 'string' && opts.intentId
       ? opts.intentId
       : null;
+    if (intentId && (intentId.length > 256 || ['__proto__','constructor','prototype'].includes(intentId))) {
+      return { ok: false, reason: 'bad_intent_id' };
+    }
+    const requestedQty = qty;
+    this._tradeIntentsInFlight ||= new Set();
+    if (intentId && this._tradeIntentsInFlight.has(intentId)) return { ok: false, reason: 'intent_pending' };
+    if (this._tradeExecutionInFlight) return { ok: false, reason: 'trade_pending' };
     const intents = intentId ? ensureCommittedIntents(state) : null;
-    if (intentId && intents && intents[intentId]) {
+    if (intentId && intents && Object.hasOwn(intents,intentId)) {
       const prior = intents[intentId];
+      if (prior.receipt && (prior.receipt.stationId !== stationId || prior.receipt.good !== commodityId
+          || prior.receipt.side !== side
+          || (prior.receipt.requestedQty != null && prior.receipt.requestedQty !== requestedQty))) return { ok: false, reason: 'intent_conflict' };
       return { ...(prior.result || {}), duplicate: true, receipt: prior.receipt };
     }
+    if (intentId) this._tradeIntentsInFlight.add(intentId);
+    this._tradeExecutionInFlight = true;
+    try {
     // Enforce sealed-freight authority at execution as well as quote. This is the final shared
     // boundary for every station UI (legacy and Orbital Command) and keeps a stale or custom quote
     // adapter from turning mission cargo into credits.
@@ -1406,6 +1482,7 @@ export const economy = {
     }
     const q = this.quote(stationId, commodityId, side, qty);
     if (!q.ok) return { ok: false, reason: q.reason || 'invalid' };
+    qty = q.qty;
     const market = state.economy.markets[stationId];
     const entry = market && market[commodityId];
     const def = commodityDef(state, commodityId);
@@ -1417,10 +1494,6 @@ export const economy = {
     if (side === 'buy') {
       if (entry.stock - qty < 1) qty = Math.max(0, Math.floor(entry.stock - 1)); // can't drain below 1u
       if (qty <= 0) return { ok: false, reason: 'no_stock' };
-      // re-quote at the (possibly reduced) qty
-      const qq = this.quote(stationId, commodityId, 'buy', qty);
-      const total = round(qq.total);
-      if (normalizeCredits(state.player.credits) < total) return { ok: false, reason: 'credits', need: total };
       // cargo volume check (volume is the ONLY hard cap §0.13)
       const free = state.player.cargo.capVolume - state.player.cargo.usedVolume;
       const canFit = Math.floor(free / (def.volPerU > 0 ? def.volPerU : 1));
@@ -1442,7 +1515,7 @@ export const economy = {
       this.afterTrade(state, stationId, commodityId, 'buy', realQty, unitAvg, realCost, fq.priceImpactPct, def);
       return this._sealTradeIntent(intentId, {
         ok: true, qty: realQty, unitAvg, total: realCost, priceImpactPct: fq.priceImpactPct,
-      }, { stationId, commodityId, side: 'buy' });
+      }, { stationId, commodityId, side: 'buy', requestedQty });
     } else {
       // SELL — need the stock in cargo
       const have = state.player.cargo.items[commodityId] || 0;
@@ -1450,6 +1523,7 @@ export const economy = {
       if (qty > have) qty = have;
       const fq = this.quote(stationId, commodityId, 'sell', qty);
       const gross = round(fq.total);
+      if (normalizeCredits(state.player.credits) > CREDITS_MAX - gross) return { ok: false, reason: 'credits_cap' };
       // APPLY
       const removed = this.removeFromCargo(cargoSys, state, commodityId, qty);
       if (removed <= 0) return { ok: false, reason: 'no_cargo' };
@@ -1474,7 +1548,11 @@ export const economy = {
       const profit = receipt ? receipt.profit : 0;
       return this._sealTradeIntent(intentId, {
         ok: true, qty: realQty, unitAvg, total: realGross, priceImpactPct: fq.priceImpactPct, profit,
-      }, { stationId, commodityId, side: 'sell' });
+      }, { stationId, commodityId, side: 'sell', requestedQty });
+    }
+    } finally {
+      this._tradeExecutionInFlight = false;
+      if (intentId) this._tradeIntentsInFlight.delete(intentId);
     }
   },
 
@@ -1488,6 +1566,7 @@ export const economy = {
       good: meta.commodityId,
       side: meta.side,
       quantity: result.qty,
+      requestedQty: meta.requestedQty,
       unitPrice: result.unitAvg,
       total: result.total,
       quoteVersion: result.unitAvg,
@@ -1638,6 +1717,7 @@ export const economy = {
 
   /** Move stock without crediting anyone (automation trade pressure). */
   applyStockPressure(stationId, commodityId, side, qty, options = null) {
+    if (!Number.isFinite(qty) || qty <= 0 || qty > 1_000_000 || (side !== 'buy' && side !== 'sell')) return;
     const state = this.state;
     const market = state.economy.markets[stationId] || this.ensureMarket(stationId);
     const entry = market && market[commodityId];
@@ -1736,20 +1816,23 @@ export const economy = {
   // -------------------------------------------------------------------------------------------
   grantCredits(amount, reason) {
     amount = Math.round(amount || 0);
-    if (amount <= 0) return this.state.player.credits;
+    if (!Number.isSafeInteger(amount) || amount <= 0) return this.state.player.credits;
     const p = this.state.player;
-    p.credits = normalizeCredits(normalizeCredits(p.credits) + amount);
-    this.bus.emit('credits:changed', { delta: amount, reason: reason || 'grant', total: p.credits });
+    const before = normalizeCredits(p.credits);
+    p.credits = normalizeCredits(before + amount);
+    recordEconomyCash(this.state.economy, this.state.simTime, p.credits - before, reason);
+    this.bus.emit('credits:changed', { delta: p.credits - before, reason: reason || 'grant', total: p.credits });
     return p.credits;
   },
 
   chargeCredits(amount, reason, extra) {
     amount = Math.round(amount || 0);
-    if (amount <= 0) return this.state.player.credits;
+    if (!Number.isSafeInteger(amount) || amount <= 0) return this.state.player.credits;
     const p = this.state.player;
     const before = normalizeCredits(p.credits);
     p.credits = normalizeCredits(before - amount); // clamp ≥0 (§ spec)
     const delta = p.credits - before;          // actual change (may be smaller if it floored at 0)
+    recordEconomyCash(this.state.economy, this.state.simTime, delta, reason);
     this.bus.emit('credits:changed', { delta, reason: reason || 'charge', total: p.credits });
     const charged = -delta;
     if (charged > 0) {
@@ -2320,6 +2403,9 @@ export const economy = {
     return sys && typeof sys.enqueuePlayerJob === 'function' ? sys : null;
   },
 
+  /** Read-only production acceptance telemetry; no inferred activity or paid faucets. */
+  getPulse() { return economyPulseReport(this.state.economy, this.state.simTime); },
+
   /** public getters for UI / route-planner. */
   getMarket(stationId) {
     return this.state.economy.markets[stationId] || this.ensureMarket(stationId);
@@ -2359,6 +2445,9 @@ export const economy = {
   newGame() {
     const state = this.state;
     state.economy.markets = {};
+    state.economy.resourceWork = {};
+    state.economy.pulse = createEconomyPulse(state.simTime);
+    state.economy.balanceVersion = BALANCE.version;
     state.economy.cycles = {};
     state.economy.econEvents = [];
     state.economy.econClock = { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
@@ -2406,6 +2495,9 @@ export const economy = {
       markets[sid] = out;
     }
     const data = {
+      balanceVersion: BALANCE.version,
+      resourceWork: serializeResourceWork(econ.resourceWork),
+      pulse: cloneSaveTree(econ.pulse || createEconomyPulse(this.state.simTime)),
       markets,
       cycles: serializeCycles(this.state),
       econEvents: (econ.econEvents || []).map((e) => ({
@@ -2440,6 +2532,9 @@ export const economy = {
   deserialize(data) {
     if (!data) return;
     const econ = this.state.economy;
+    econ.resourceWork = restoreResourceWork(data.resourceWork, SECTORS.map((s) => s.id));
+    econ.pulse = restoreEconomyPulse(data.pulse, this.state.simTime);
+    econ.balanceVersion = BALANCE.version;
     this._syntheticHistoryKeys = new Set();
     // Restore formula state before pricing so mid includes the saved wave, not a fresh invent.
     deserializeCycles(this.state, data.cycles);
@@ -2458,6 +2553,12 @@ export const economy = {
           lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: deserializeEventMods(e.eventMods),
         };
         if (def) {
+          entry.stock = Number.isFinite(entry.stock) ? Math.max(0, entry.stock) : 0;
+          if (data.balanceVersion !== BALANCE.version || !(entry.baseEq > 0)) {
+            const info = stationInfo(this.state, sid);
+            entry.baseEq = (BALANCE.commodities[cid]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[info?.size] || 1);
+            entry.equilibrium = economyEquilibriumForListing(info, cid, entry.role, entry.baseEq);
+          }
           this.recomputeLivePrices(entry, def, sid, cid);
           const cycle = getCycleCore(this.state, sid, cid, () => this._rng(), this.state.simTime || 0);
           const restoredHistory = sanitizeHistory(e.history);
@@ -2530,6 +2631,8 @@ economy.getCycle = function (stationId, commodityId) {
   return getCycleCore(state, stationId, commodityId, () => this._rng(), state.simTime || 0);
 };
 
+// ---- LEGACY PQ-155 accounting projection; assumed faucets, NOT production acceptance evidence.
+// New reproducible market/reservoir fixtures live in scripts/economy-fixture.mjs.
 // ---- PQ-155.01 ten-hour economy-time curve (headless accounting, not Rapier) ---------------
 export const ECONOMY_CURVE_SEED = 15510;
 export const ECONOMY_CURVE_HOURS = 10;
