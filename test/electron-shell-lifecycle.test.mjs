@@ -75,6 +75,13 @@ async function loadMain({
       return Promise.resolve({ canceled: true, filePath: '' });
     },
   };
+  const workshop = {
+    created: 0,
+    userContentDir: undefined,
+    publishes: [],
+    statusCalls: 0,
+    syncCalls: 0,
+  };
   const app = emitter({
     isPackaged: false,
     commandLine: { appendSwitch() {} },
@@ -245,6 +252,9 @@ async function loadMain({
         };
       }
       if (specifier === '../scripts/lib/gameServer.cjs') return { createGameServer };
+      if (specifier === '../scripts/lib/userContentStore.cjs') {
+        return { resolveMountedUserContentDir() { return null; } };
+      }
       if (specifier === '../scripts/lib/playerSaveStore.cjs') {
         return {
           LOCAL_STORAGE_DUMP_SOURCE: '({})',
@@ -269,6 +279,31 @@ async function loadMain({
           resolveWebRoot({ projectRoot }) { return projectRoot; },
         };
       }
+      if (specifier === './workshopMods.cjs') {
+        return {
+          WORKSHOP_STATUS_CHANNEL: 'spaceface:workshop-status',
+          WORKSHOP_PUBLISH_CHANNEL: 'spaceface:workshop-publish',
+          WORKSHOP_SYNC_CHANNEL: 'spaceface:workshop-sync',
+          createWorkshopBridge({ userContentDir }) {
+            workshop.created += 1;
+            workshop.userContentDir = userContentDir;
+            return {
+              status() {
+                workshop.statusCalls += 1;
+                return { available: false, reason: 'test-no-steam', items: 0 };
+              },
+              publishMod(payload) {
+                workshop.publishes.push(payload);
+                return { ok: false, available: false, reason: 'test-no-steam', modId: payload?.modId ?? null };
+              },
+              syncSubscribed() {
+                workshop.syncCalls += 1;
+                return { ok: false, available: false, reason: 'test-no-steam', synced: 0 };
+              },
+            };
+          },
+        };
+      }
       throw new Error(`unexpected require: ${specifier}`);
     },
   };
@@ -282,7 +317,7 @@ async function loadMain({
   }
   await settle();
   assert.equal(windows.length, 1);
-  return { app, powerMonitor, crashReporter, ipcMain, ipcHandlers, dialog, win: windows[0], windows, commands, receipts, security, serverStats };
+  return { app, powerMonitor, crashReporter, ipcMain, ipcHandlers, dialog, win: windows[0], windows, commands, receipts, security, serverStats, workshop };
 }
 
 function loadPreload() {
@@ -656,6 +691,9 @@ test('main accepts only the documented quit send channel and invoke IPC set', as
     'spaceface:build-info',
     'spaceface:save-clip',
     'spaceface:steam-status',
+    'spaceface:workshop-publish',
+    'spaceface:workshop-status',
+    'spaceface:workshop-sync',
   ]);
 
   h.ipcMain.emit('spaceface:shell-lifecycle');
@@ -679,6 +717,20 @@ test('main accepts only the documented quit send channel and invoke IPC set', as
   assert.deepEqual(status, {
     available: false, reason: 'test-no-steam', distribution: 'direct', achievements: 0, cloud: null,
   });
+
+  // Workshop channels route to the one bridge with the shell-resolved directory; only a mod id crosses.
+  assert.equal(h.workshop.created, 1);
+  assert.equal(typeof h.workshop.userContentDir, 'function');
+  assert.equal(h.workshop.userContentDir(), null);
+  const workshopStatus = await h.ipcMain.invokeHandler('spaceface:workshop-status', {});
+  assert.deepEqual(workshopStatus, { available: false, reason: 'test-no-steam', items: 0 });
+  const workshopPublish = await h.ipcMain.invokeHandler('spaceface:workshop-publish', {}, { modId: 'content-pack.01' });
+  assert.deepEqual(workshopPublish, { ok: false, available: false, reason: 'test-no-steam', modId: 'content-pack.01' });
+  const workshopSync = await h.ipcMain.invokeHandler('spaceface:workshop-sync', {});
+  assert.deepEqual(workshopSync, { ok: false, available: false, reason: 'test-no-steam', synced: 0 });
+  assert.deepEqual(h.workshop.publishes, [{ modId: 'content-pack.01' }]);
+  assert.equal(h.workshop.statusCalls, 1);
+  assert.equal(h.workshop.syncCalls, 1);
 });
 
 test('preload exposes one monotonic one-way subscription and replays the latest command', () => {
@@ -689,7 +741,7 @@ test('preload exposes one monotonic one-way subscription and replays the latest 
   assert.deepEqual(Object.keys(lifecycle), ['subscribe', 'quit']);
   assert.deepEqual(
     Object.keys(h.exposed.get('spacefaceShell')),
-    ['quit', 'saveClip', 'buildInfo', 'unlockAchievement', 'steamStatus'],
+    ['quit', 'saveClip', 'buildInfo', 'unlockAchievement', 'steamStatus', 'workshopStatus', 'workshopPublish', 'workshopSync'],
   );
   assert.equal(typeof h.exposed.get('spacefaceQuit'), 'function');
 
@@ -723,10 +775,16 @@ test('preload exposes one monotonic one-way subscription and replays the latest 
   shell.buildInfo();
   shell.unlockAchievement('x'.repeat(80));
   shell.steamStatus();
+  shell.workshopStatus();
+  shell.workshopPublish('pack.' + 'x'.repeat(90));
+  shell.workshopSync();
   assert.deepEqual(h.invocations(), [
     ['spaceface:save-clip', { filename: 'clip.gif', bytesB64: 'QUJD' }],
     ['spaceface:build-info', undefined],
     ['spaceface:achievement-unlock', { id: 'x'.repeat(64) }],
     ['spaceface:steam-status', undefined],
+    ['spaceface:workshop-status', undefined],
+    ['spaceface:workshop-publish', { modId: ('pack.' + 'x'.repeat(90)).slice(0, 80) }],
+    ['spaceface:workshop-sync', undefined],
   ]);
 });

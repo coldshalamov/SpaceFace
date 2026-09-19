@@ -1193,66 +1193,64 @@ test('active field-device geometry publishes each visible instance prefix', () =
   };
   fixture._initFieldGeometry();
 
-  const fg = fixture._fieldGeom;
-  const expected = [
-    ['vane', fg.vaneMesh, 6],
-    ['pip', fg.pipMesh, 12],
-    ['knot', fg.knotMesh, 1],
-    ['dome', fg.domeMesh, 1],
-    ['rib', fg.ribMesh, 8],
-    ['berm', fg.bermMesh, 14],
-    ['chevron', fg.chevronMesh, 20],
-    ['bank', fg.bankMesh, 10],
-  ];
-  for (const [name] of expected) {
-    assert.ok(fg.dynamicBufferOwners?.[name], `${name} field geometry must register for ranged publication`);
-  }
+  const batch = fixture._fieldGeom.batch;
+  assert.equal(fixture._fieldGeom.mesh, batch.mesh);
+  assert.ok(batch.owner, 'field force geometry must register for ranged publication');
+  assert.equal(batch.attributes.length, 9);
+  assert.equal(batch.capacity, 224);
+  const fullBytes = batch.attributes.reduce((sum, attribute) => sum + attribute.array.byteLength, 0);
+  assert.equal(fullBytes, 9 * 224 * 4 * Float32Array.BYTES_PER_ELEMENT);
 
+  // Nothing draws before the first active field commits, so an ineligible traversal leaves the
+  // registration force-full without publishing or retiring dirty state.
   let epoch = coordinator.arm();
   scene.onBeforeRender({}, scene, camera, null);
-  for (const [, mesh] of expected) {
-    const attributes = [mesh.instanceMatrix, mesh.instanceColor].filter(Boolean);
-    for (const attribute of attributes) {
-      assert.deepEqual(attribute.updateRanges, [{ start: 0, count: attribute.array.length }]);
-      acknowledgeInitial(attribute);
-    }
-  }
+  for (const attribute of batch.attributes) assert.deepEqual(attribute.updateRanges, []);
   coordinator.disarm(epoch);
+  assert.equal(batch.owner.diagnostics.requestedUploadBytes, 0);
 
-  const requestedBefore = expected.reduce((sum, [name]) => (
-    sum + fg.dynamicBufferOwners[name].diagnostics.requestedUploadBytes
-  ), 0);
   fixture._updateFieldGeometry(1 / 60);
-  for (const [, mesh, count] of expected) assert.equal(mesh.count, count);
+  assert.equal(batch.count, 56, 'three active fields publish their full surface recipe');
+  assert.equal(batch.mesh.count, 56);
 
+  // The first processing-eligible traversal force-publishes each complete initialized attribute.
   epoch = coordinator.arm();
   scene.onBeforeRender({}, scene, camera, null);
-  let expectedBytes = 0;
-  let fullBytes = 0;
-  for (const [, mesh, count] of expected) {
-    const attributes = [mesh.instanceMatrix, mesh.instanceColor].filter(Boolean);
-    for (const attribute of attributes) {
-      assert.deepEqual(attribute.updateRanges, [{ start: 0, count: count * attribute.itemSize }]);
-      expectedBytes += count * attribute.itemSize * Float32Array.BYTES_PER_ELEMENT;
-      fullBytes += attribute.array.byteLength;
-      acknowledgeUpdate(attribute);
-    }
+  for (const attribute of batch.attributes) {
+    assert.deepEqual(attribute.updateRanges, [{ start: 0, count: attribute.array.length }]);
+    acknowledgeInitial(attribute);
   }
   coordinator.disarm(epoch);
+  const requestedBefore = batch.owner.diagnostics.requestedUploadBytes;
+  assert.equal(requestedBefore, fullBytes);
 
-  const requestedAfter = expected.reduce((sum, [name]) => (
-    sum + fg.dynamicBufferOwners[name].diagnostics.requestedUploadBytes
-  ), 0);
-  assert.equal(requestedAfter - requestedBefore, expectedBytes);
-  assert.equal(expectedBytes, 5_448);
-  assert.equal(fullBytes, 33_760);
-  assert.ok(expectedBytes / fullBytes < 0.162,
-    'one active field of each kind requests more than 83.8% fewer geometry bytes');
-
-  for (const [, mesh] of expected) {
-    mesh.geometry.dispose();
-    mesh.material.dispose();
+  // Moving every field marks only the two position-bearing attributes, and each republishes the
+  // visible 56-instance prefix rather than the 224-instance allocation.
+  for (const field of fixture.state.fields.active) { field.center.x += 10; field.center.z += 5; }
+  fixture._updateFieldGeometry(1 / 60);
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  const republished = batch.attributes.filter((attribute) => attribute.updateRanges.length > 0);
+  assert.equal(republished.length, 2, 'only the moved position attributes republish');
+  for (const attribute of republished) {
+    assert.deepEqual(attribute.updateRanges, [{ start: 0, count: batch.count * attribute.itemSize }]);
+    acknowledgeUpdate(attribute);
   }
+  coordinator.disarm(epoch);
+  const movedBytes = batch.owner.diagnostics.requestedUploadBytes - requestedBefore;
+  assert.equal(movedBytes, 2 * batch.count * 4 * Float32Array.BYTES_PER_ELEMENT);
+  assert.ok(movedBytes / fullBytes < 0.06,
+    'one moved field set requests more than 94% fewer geometry bytes than the allocated buffers');
+
+  // An unchanged frame republishes nothing and requests no further bytes.
+  fixture._updateFieldGeometry(1 / 60);
+  epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  for (const attribute of batch.attributes) assert.deepEqual(attribute.updateRanges, []);
+  coordinator.disarm(epoch);
+  assert.equal(batch.owner.diagnostics.requestedUploadBytes, requestedBefore + movedBytes);
+
+  batch.dispose();
 });
 
 test('tether topology coordinates stay resident while the rope positions move', () => {

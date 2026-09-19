@@ -181,7 +181,9 @@ test('Electron Tier-1 reload owns expected navigation and releases it on failure
     reloadElectronWithTier1Counters(page, tracker, { timeoutMs: 4321 }),
     /injected reload failure/,
   );
+  // Two init scripts install before the reload: the Tier-1 counter flag and the GL program-query trap.
   assert.deepEqual(events, [
+    'init',
     'init',
     ['begin', 'tier1-counter-install'],
     ['reload', { waitUntil: 'domcontentloaded', timeout: 4321 }],
@@ -248,6 +250,7 @@ test('Electron Tier-1 reload waits for the initial canonical load to settle in m
     ['main-turn', rootUrl],
     'window-handle-disposed',
     'ownership-ready',
+    'init',
     'init',
     ['begin', 'tier1-counter-install'],
     ['reload', { waitUntil: 'domcontentloaded', timeout: 4321 }],
