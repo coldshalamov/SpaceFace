@@ -288,6 +288,17 @@ const ARRIVAL_RESIDENCY_BUDGET = 1;
 // that clock, so a cleared belt keeps paying while the scan readout calls out the freshest seam.
 const FIELD_REGROWTH_SCAN_TICKS = 300; // evaluate the slow clock at 5 s cadence
 const FIELD_REGROWTH_LIVE_CAP = 24;    // live rocks per field before the seam waits for the player
+// Economy resource-work publication (work-reservation contract). The world owner is the physical
+// publisher: when the depleted-field seam clock surfaces a replenishment opportunity the player can
+// actually reach, the fresh seam may be published under an economy work lease before rocks exist.
+// A missing economy subscriber (module absent) means free regrowth exactly as before; a present
+// subscriber that refuses means the seam waits — denial never bypasses the economic budget.
+const RESOURCE_WORK_APPROACH_MAX_WU = 2700;  // admission: player approach to the seam EDGE, not centre
+const RESOURCE_WORK_PUBLISHED_CAP = 48;      // unmined published rocks per sector before restraint
+const RESOURCE_WORK_PROP_MARGIN_WU = 40;     // station/gate/POI disc margin for published candidates
+const RESOURCE_WORK_SHIP_CLEARANCE_WU = 60;  // never publish a rock on top of a live hull
+const RESOURCE_WORK_RECHECK_S = 30;          // denied leases retry through this scheduler cadence
+const RESOURCE_WORK_LEDGER_LIMIT = 64;       // durable publication receipts kept per world
 const PALETTE_CLASS_BY_REF = new Map(Object.entries(SECTOR_PALETTE_CLASSES).map(([key, value]) => [value, key]));
 const DRESSING_RADIUS = Object.freeze({
   place_lane_beacon: 18,
@@ -405,6 +416,7 @@ export const world = {
     state.world.frontierRumors = normalizeFrontierRumorState(state.world.frontierRumors);
     state.world.vestaOreCache = normalizeVestaOreCacheState(state.world.vestaOreCache);
     state.world.pallasHiddenCache = normalizePallasHiddenCacheState(state.world.pallasHiddenCache);
+    state.world.resourceWork = normalizeResourceWorkState(state.world.resourceWork);
     // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
     ensureWorldRecords(state.world);
     ensureResourceBodies(state.world);
@@ -3196,47 +3208,76 @@ export const world = {
     const batch = FIELD_REGROWTH_BATCH_MIN
       + Math.floor(rng() * (FIELD_REGROWTH_BATCH_MAX - FIELD_REGROWTH_BATCH_MIN + 1));
     const richness = Number.isFinite(due.richnessMult) && due.richnessMult > 0 ? due.richnessMult : 1;
+    // Economy work-reservation contract: ask the economy budget only once the world owns a legal
+    // physical opportunity (accessible approach, clearances, budgets checked below/in admission).
+    const work = this._resourceWorkLeaseForSeam(state, sector, field, def, batch, clusterR);
+    if (work.blocked) return 0; // present economy refused (or published cap full): retry later
+    const lease = work.lease;   // null → the world's own free seam, exactly as before the contract
     let grown = 0;
-    for (let i = 0; i < batch; i++) {
-      const ang = rng() * Math.PI * 2;
-      const r = clusterR * Math.sqrt(rng());
-      const [hpLo, hpHi] = def.hp || [120, 520];
-      const oreHP = Math.round(hpLo + (hpHi - hpLo) * rng());
-      const [szLo, szHi] = def.sizeRange || [6, 14];
-      const size = szLo + (szHi - szLo) * rng();
-      const [yLo, yHi] = def.yieldU || [8, 22];
-      const t = hpHi === hpLo ? 1 : (oreHP - hpLo) / (hpHi - hpLo);
-      const baseYieldU = Math.max(1, Math.round(yLo + (yHi - yLo) * t));
-      const yieldU = Math.max(1, Math.round(baseYieldU * richness * FIELD_REGROWTH_YIELD_SCALE));
-      const ent = helpers.spawnEntity({
-        type: 'asteroid',
-        pos: { x: field.center.x + Math.cos(ang) * r, z: field.center.z + Math.sin(ang) * r },
-        radius: size,
-        mass: 200 + size * 40,
-        angVel: (rng() - 0.5) * 0.35,
-        hull: oreHP,
-        hullMax: oreHP,
-        collides: true,
-        data: {
-          typeId: def.id, tier: def.tierCap, tierCap: def.tierCap,
-          oreHP, oreHPMax: oreHP, yieldU,
-          size, pctEjected: 0,
-          respawnSec: tierParams.respawnSec || 120,
-          fieldId: field.id,
-          asteroidSlotId: `regrow:${due.batches}:${i}`,
-          regrown: true,
-          regrownAtT: state.simTime,
-        },
-      });
-      if (!ent) continue;
-      this._stampHomeSector(ent, sector.id);
-      ent.data.seams = deriveAsteroidSeams(seed, ent.id, ent.radius, {
-        hash32: helpers.hash32,
-        mulberry32: helpers.mulberry32,
-      });
-      grown++;
+    let sawThrow = false; // a throw mid-creation leaves that unit uncertain: it may exist physically
+    try {
+      // A lease publishes only the ACCEPTED quantity; the free seam keeps its full batch.
+      const units = lease ? Math.min(batch, lease.qty) : batch;
+      for (let i = 0; i < units; i++) {
+        const ang = rng() * Math.PI * 2;
+        const r = clusterR * Math.sqrt(rng());
+        const [hpLo, hpHi] = def.hp || [120, 520];
+        const oreHP = Math.round(hpLo + (hpHi - hpLo) * rng());
+        const [szLo, szHi] = def.sizeRange || [6, 14];
+        const size = szLo + (szHi - szLo) * rng();
+        const [yLo, yHi] = def.yieldU || [8, 22];
+        const t = hpHi === hpLo ? 1 : (oreHP - hpLo) / (hpHi - hpLo);
+        const baseYieldU = Math.max(1, Math.round(yLo + (yHi - yLo) * t));
+        const yieldU = Math.max(1, Math.round(baseYieldU * richness * FIELD_REGROWTH_YIELD_SCALE));
+        const px = field.center.x + Math.cos(ang) * r;
+        const pz = field.center.z + Math.sin(ang) * r;
+        // Clearance applies to published rocks only; the free seam keeps its authored scatter.
+        if (lease && !this._resourceWorkCandidateClear(state, sector, px, pz, size)) continue;
+        const ent = helpers.spawnEntity({
+          type: 'asteroid',
+          pos: { x: px, z: pz },
+          radius: size,
+          mass: 200 + size * 40,
+          angVel: (rng() - 0.5) * 0.35,
+          hull: oreHP,
+          hullMax: oreHP,
+          collides: true,
+          data: {
+            typeId: def.id, tier: def.tierCap, tierCap: def.tierCap,
+            oreHP, oreHPMax: oreHP, yieldU,
+            size, pctEjected: 0,
+            respawnSec: tierParams.respawnSec || 120,
+            fieldId: field.id,
+            asteroidSlotId: `regrow:${due.batches}:${i}`,
+            regrown: true,
+            regrownAtT: state.simTime,
+            ...(lease ? { resourceWork: { leaseId: lease.leaseId, seq: lease.seq, commodityId: lease.commodityId } } : {}),
+          },
+        });
+        if (!ent) continue;
+        this._stampHomeSector(ent, sector.id);
+        ent.data.seams = deriveAsteroidSeams(seed, ent.id, ent.radius, {
+          hash32: helpers.hash32,
+          mulberry32: helpers.mulberry32,
+        });
+        grown++;
+      }
+    } catch (err) {
+      sawThrow = true;
     }
-    if (!grown) return 0;
+    if (!grown) {
+      if (lease && !sawThrow) {
+        // Every unit was refused before creation: a known, uncommitted publication.
+        this._emitResourceWorkCancel(state, sector.id, lease);
+      }
+      // An uncertain throw with zero committed units expires silently — never cancel it.
+      return 0;
+    }
+    if (lease) {
+      // Durable publication committed (live entities + receipt below); settle only the committed
+      // quantity. An ack failure is reconciled through the receipt, never by re-spawning.
+      this._emitResourceWorkSettle(state, sector, field, lease, grown, sawThrow);
+    }
     recordFieldRegrowth(state, {
       fieldId: field.id, sectorId: sector.id, simTime: state.simTime, batches: 1,
     });
@@ -3250,6 +3291,7 @@ export const world = {
       band: due.band,
       center: { x: field.center.x, z: field.center.z },
       reason: 'slow_clock',
+      ...(lease ? { published: true, leaseId: lease.leaseId, seq: lease.seq } : {}),
     };
     this.bus.emit('field:regrown', payload);
     return grown;
@@ -3267,6 +3309,169 @@ export const world = {
       if (e.data && e.data.fieldId === fieldId) live++;
     }
     return live;
+  },
+
+  // --- economy resource-work publisher (physical side of the work-reservation contract) ------
+
+  _resourceWorkState() {
+    const own = normalizeResourceWorkState(this.state.world.resourceWork);
+    this.state.world.resourceWork = own;
+    return own;
+  },
+
+  /**
+   * Ask the economy budget for permission to publish a fresh seam. Runs entirely inside the
+   * world's deterministic update pass: a synchronous `economy:resourceWork:reserve` emit whose
+   * `payload.result` is read back immediately (the intent convention — never a deferred queue).
+   *
+   * - `{}`            → not an accessible opportunity (no player, or approach beyond budget):
+   *                      the free seam proceeds; the economy contract is not engaged at all.
+   * - `{ blocked }`   → an economy subscriber exists and refused, or unmined published inventory
+   *                      is at cap: the seam waits and the scheduler retries. Denial is never
+   *                      permission to bypass the budget.
+   * - `{ lease }`     → accepted: publish the seam under this lease identity.
+   * A missing subscriber (economy modules absent) leaves `result` undefined → free seam. That
+   * makes this wiring no-subscriber-tolerant by construction.
+   */
+  _resourceWorkLeaseForSeam(state, sector, field, def, qty, clusterR) {
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || !player.pos) return {};
+    const dx = field.center.x - player.pos.x;
+    const dz = field.center.z - player.pos.z;
+    const approach = Math.hypot(dx, dz) - clusterR; // nearest seam edge, not the centre
+    if (!(approach <= RESOURCE_WORK_APPROACH_MAX_WU)) return {};
+    const rw = this._resourceWorkState();
+    const now = Math.max(0, Number(state.simTime) || 0);
+    const coolingUntil = Number(rw.deniedUntilBySector[sector.id]) || 0;
+    if (coolingUntil > now) return { blocked: true };
+    if (this._resourceWorkPublishedCount(state, sector.id) >= RESOURCE_WORK_PUBLISHED_CAP) {
+      return { blocked: true };
+    }
+    // One sector-wide allocator shared by every commodity; monotonically increasing and persisted
+    // (state.world.resourceWork.seq rides the world save). Allocated BEFORE the emit so a crash
+    // mid-attempt can never reuse a sequence the economy may have already recorded.
+    rw.seq = (rw.seq | 0) + 1;
+    const request = {
+      sectorId: sector.id,
+      commodityId: dominantOreCommodity(def),
+      qty: Math.max(1, Math.floor(Number(qty) || 1)),
+      seq: rw.seq,
+    };
+    this.bus.emit('economy:resourceWork:reserve', request);
+    const result = request.result;
+    if (!result) return {}; // no subscriber mounted: the world's own seam, unbilled
+    if (!result.ok) {
+      rw.deniedUntilBySector[sector.id] = now + RESOURCE_WORK_RECHECK_S;
+      return { blocked: true };
+    }
+    return {
+      lease: {
+        leaseId: String(result.id || `rw:${sector.id}:${request.seq}`),
+        seq: request.seq,
+        commodityId: request.commodityId,
+        // The economy may accept FEWER units than requested (bounded grant). Publishing more than
+        // the accepted quantity would make the settle ack a bad_production reject.
+        qty: Math.max(1, Math.floor(Number(result.qty) || 1)),
+      },
+    };
+  },
+
+  /** Unmined published rocks standing in the sector right now (the world's own inventory cap). */
+  _resourceWorkPublishedCount(state, sectorId) {
+    const list = (state.entityIndex && state.entityIndex.asteroids)
+      || (state.entityIndex && state.entityIndex.mineables)
+      || state.entityList
+      || [];
+    let count = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false || e.type !== 'asteroid') continue;
+      if (e.data && e.data.resourceWork && (e.homeSectorId === sectorId || (e.data && e.data.homeSectorId) === sectorId)) count++;
+    }
+    return count;
+  },
+
+  /**
+   * Clearance for a published candidate: inside the sector envelope, clear of station/gate/POI
+   * discs and approach halos, and never on top of a live hull. Bounded by the small authored
+   * anchor tables; ships are capped by the entity budget the scan already walks.
+   */
+  _resourceWorkCandidateClear(state, sector, x, z, radius) {
+    const active = state.world && state.world.activeSector;
+    const origin = this._sectorOrigin(sector.id);
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const odx = x - origin.x;
+    const odz = z - origin.z;
+    if (odx * odx + odz * odz > (wr - radius) * (wr - radius)) return false;
+    const anchorGroups = [active && active.stations, active && active.gates, active && active.pois];
+    for (const group of anchorGroups) {
+      if (!Array.isArray(group)) continue;
+      for (const anchor of group) {
+        if (!anchor || !anchor.pos) continue;
+        const keep = (anchor.radius || 40) + radius + RESOURCE_WORK_PROP_MARGIN_WU;
+        const adx = x - anchor.pos.x;
+        const adz = z - anchor.pos.z;
+        if (adx * adx + adz * adz < keep * keep) return false;
+      }
+    }
+    const list = state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.alive === false || (e.type !== 'ship' && e.type !== 'drone')) continue;
+      if (!e.pos) continue;
+      const keep = (e.radius || 8) + radius + RESOURCE_WORK_SHIP_CLEARANCE_WU;
+      const sdx = x - e.pos.x;
+      const sdz = z - e.pos.z;
+      if (sdx * sdx + sdz * sdz < keep * keep) return false;
+    }
+    return true;
+  },
+
+  /** Acknowledge a committed publication with the physical units actually created. */
+  _emitResourceWorkSettle(state, sector, field, lease, producedQty, uncertain) {
+    const ack = {
+      sectorId: sector.id,
+      leaseId: lease.leaseId,
+      producedQty: Math.max(0, Math.floor(Number(producedQty) || 0)),
+    };
+    this.bus.emit('economy:resourceWork:settle', ack);
+    this._resourceWorkRecord(state, {
+      kind: 'settle',
+      seq: lease.seq,
+      leaseId: lease.leaseId,
+      sectorId: sector.id,
+      fieldId: field.id,
+      commodityId: lease.commodityId,
+      producedQty: ack.producedQty,
+      uncertain: uncertain ? 1 : 0,
+      ackOk: !!(ack.result && ack.result.ok),
+      atT: Math.max(0, Number(state.simTime) || 0),
+    });
+  },
+
+  /** Retract a lease whose publication is KNOWN never to have committed. Uncertain never cancels. */
+  _emitResourceWorkCancel(state, sectorId, lease) {
+    const payload = { sectorId: sectorId, leaseId: lease.leaseId };
+    this.bus.emit('economy:resourceWork:cancel', payload);
+    this._resourceWorkRecord(this.state, {
+      kind: 'cancel',
+      seq: lease.seq,
+      leaseId: lease.leaseId,
+      sectorId: sectorId,
+      fieldId: '',
+      commodityId: lease.commodityId,
+      producedQty: 0,
+      uncertain: 0,
+      ackOk: !!(payload.result && payload.result.ok),
+      atT: Math.max(0, Number(this.state.simTime) || 0),
+    });
+  },
+
+  /** Durable publication receipt: the world's authority on whether the physical object exists. */
+  _resourceWorkRecord(state, row) {
+    const rw = this._resourceWorkState();
+    rw.ledger.push(row);
+    while (rw.ledger.length > RESOURCE_WORK_LEDGER_LIMIT) rw.ledger.shift();
   },
 
   _clearAdventureCombatantsForRun() {
@@ -4855,6 +5060,8 @@ export const world = {
       frontierRumors: cloneSaveTree(this._frontierRumorState()),
       vestaOreCache: cloneSaveTree(this._vestaOreCacheState()),
       pallasHiddenCache: cloneSaveTree(this._pallasHiddenCacheState()),
+      // Economy resource-work publisher: persisted seq allocator + denied cooldowns + receipts.
+      resourceWork: cloneSaveTree(this._resourceWorkState()),
       // Arrangement v0 preserves old saves; v1 is a generation policy, not saved geometry.
       arrangementVersion: readArrangementVersion(state.world.arrangementVersion, ARRANGEMENT_VERSION),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
@@ -4905,6 +5112,9 @@ export const world = {
     this._tethysRunEntities = {};
     state.world.vestaOreCache = normalizeVestaOreCacheState(data.vestaOreCache);
     state.world.pallasHiddenCache = normalizePallasHiddenCacheState(data.pallasHiddenCache);
+    // Publication ledger + allocator restore BEFORE any seam can publish again, so a reloaded
+    // world never reuses a sequence the economy already recorded.
+    state.world.resourceWork = normalizeResourceWorkState(data.resourceWork);
     this._vestaDecisionSignature = null;
     this._vestaDecisionNeedsRebind = true;
     this._pallasDecisionSignature = null;
@@ -4966,6 +5176,7 @@ export const world = {
     this._tethysRunEntities = {};
     state.world.vestaOreCache = freshVestaOreCacheState();
     state.world.pallasHiddenCache = freshPallasHiddenCacheState();
+    state.world.resourceWork = freshResourceWorkState();
     state.world.arrangementVersion = ARRANGEMENT_VERSION;
     state.world.records = createEmptyRecordsBag();
     state.world.resourceBodies = createEmptyResourceBodyBag();
@@ -5006,6 +5217,65 @@ function cloneSaveTree(value) {
   const out = {};
   for (const key of Object.keys(value)) out[key] = cloneSaveTree(value[key]);
   return out;
+}
+
+// Economy resource-work publisher state (module-private, like the vesta/pallas cache states).
+// `seq` is THE world's publication allocator: one monotonic counter shared by every commodity and
+// every field in the world (per-commodity counters could collide across publishers). It persists
+// with the world save so a save/load cycle can never hand the economy a reused sequence.
+function freshResourceWorkState() {
+  return { seq: 0, deniedUntilBySector: {}, ledger: [] };
+}
+
+function normalizeResourceWorkState(input) {
+  const out = freshResourceWorkState();
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return out;
+  out.seq = Math.max(0, Math.floor(Number(input.seq) || 0));
+  if (input.deniedUntilBySector && typeof input.deniedUntilBySector === 'object'
+    && !Array.isArray(input.deniedUntilBySector)) {
+    for (const key of Object.keys(input.deniedUntilBySector)) {
+      if (typeof key !== 'string' || key.length > 64) continue;
+      const until = Number(input.deniedUntilBySector[key]);
+      if (Number.isFinite(until) && until >= 0) out.deniedUntilBySector[key] = until;
+      if (Object.keys(out.deniedUntilBySector).length >= RESOURCE_WORK_LEDGER_LIMIT) break;
+    }
+  }
+  if (Array.isArray(input.ledger)) {
+    for (const row of input.ledger) {
+      if (!row || typeof row !== 'object') continue;
+      const leaseId = typeof row.leaseId === 'string' ? row.leaseId.slice(0, 96) : '';
+      if (!leaseId) continue;
+      out.ledger.push({
+        kind: row.kind === 'cancel' ? 'cancel' : 'settle',
+        seq: Math.max(0, Math.floor(Number(row.seq) || 0)),
+        leaseId,
+        sectorId: typeof row.sectorId === 'string' ? row.sectorId.slice(0, 64) : '',
+        fieldId: typeof row.fieldId === 'string' ? row.fieldId.slice(0, 64) : '',
+        commodityId: typeof row.commodityId === 'string' ? row.commodityId.slice(0, 64) : '',
+        producedQty: Math.max(0, Math.floor(Number(row.producedQty) || 0)),
+        uncertain: row.uncertain ? 1 : 0,
+        ackOk: row.ackOk ? 1 : 0,
+        atT: Math.max(0, Number(row.atT) || 0),
+      });
+      if (out.ledger.length >= RESOURCE_WORK_LEDGER_LIMIT) break;
+    }
+  }
+  return out;
+}
+
+/** Dominant ore of a seam's asteroid definition — one commodity per publication request. */
+function dominantOreCommodity(def) {
+  const table = def && def.oreTable;
+  if (table && typeof table === 'object' && !Array.isArray(table)) {
+    let best = null;
+    let bestP = -Infinity;
+    for (const commodityId of Object.keys(table)) {
+      const p = Number(table[commodityId]);
+      if (Number.isFinite(p) && p > bestP) { bestP = p; best = commodityId; }
+    }
+    if (best) return best;
+  }
+  return 'cmdty_silicate';
 }
 
 // Module-private helper (kept out of the singleton so `this` stays simple in callers).
