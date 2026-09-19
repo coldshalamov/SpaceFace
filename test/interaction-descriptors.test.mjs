@@ -112,11 +112,13 @@ test('resolveComponentForVerb: destroyed subsystem is not serviceable (falls bac
 });
 
 test('capability flags: known profile/gate asymmetries are surfaced faithfully (findings)', () => {
-  // profile.destructible=true for asteroid/payload, yet weapon-damage membership excludes them.
+  // profile.destructible=true for asteroid/payload. Weapon-damage membership still excludes
+  // asteroids; payloads joined the damage set when the heist load became a real cargo body
+  // (a 480-hull cage that can be destroyed on the ordinary route — PQ-195.09).
   assert.equal(capabilityFlagsForEntity(rock()).destructible, true);
   assert.equal(verbAcceptsType('damage', 'asteroid'), false);
   assert.equal(capabilityFlagsForEntity({ type: 'payload' }).destructible, true);
-  assert.equal(verbAcceptsType('damage', 'payload'), false);
+  assert.equal(verbAcceptsType('damage', 'payload'), true);
   // massSeed has no presentation profile (kind 'unknown') yet IS tether/damage eligible.
   assert.equal(capabilityFlagsForEntity({ type: 'massSeed' }).kind, 'unknown');
   assert.equal(verbAcceptsType('damage', 'massSeed'), true);

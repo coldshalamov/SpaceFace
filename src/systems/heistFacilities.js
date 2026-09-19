@@ -879,6 +879,10 @@ export const heistFacilities = {
       hull: payload.hull,
       hullMax: payload.hull,
       collides: true,
+      // A heist load is a damageable cargo body, not a ghost: the default payload mask leaves
+      // projectiles broadphase-blind to it, which made the load unkillable on the ordinary
+      // route. Adding PROJECTILE is what a 480-hull cage is FOR — durable, not invulnerable.
+      collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.STATION | Masks.PROJECTILE,
       ttl: Infinity,
       // A durable load is a physical obligation the save owner carries across a reload; the
       // historical capsule stays transient.
@@ -1150,6 +1154,8 @@ export const heistFacilities = {
       hull: Number.isFinite(snapshot.hull) ? snapshot.hull : payload.hull,
       hullMax: Number.isFinite(snapshot.hullMax) ? snapshot.hullMax : payload.hull,
       collides: true,
+      // Same mask as `_payloadSpawnSpec`: the resumed body stays a damageable cargo body.
+      collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.STATION | Masks.PROJECTILE,
       ttl: Infinity,
       flags: variant.durableLoad ? { missionPinned: true, persistent: true } : { missionPinned: true },
       homeSectorId: PQ019_HEIST_SECTOR_ID,

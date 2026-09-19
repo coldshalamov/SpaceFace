@@ -44,7 +44,7 @@ export const VERB_OWNERS = Object.freeze({
 //   target   uiRoot.js:965          e.type !== 'ship' && e.type !== 'drone'
 //   tether   — NOT an allowlist any more; see VERB_TYPE_DENYLIST below
 //   mine     mining.js:160,187      type === 'asteroid' || type === 'wreck'
-//   damage   damage.js:43           ['ship','station','drone','mine','massSeed']
+//   damage   damage.js:43           ['ship','station','drone','mine','massSeed','payload']
 //   salvage  scanner isWreckLike + salvageActions actionForWreck (wreck family)
 //   dock     dockDeny/physics       station only
 //   contact  hud.js:3050-3052       (ship|drone) OR wreck-like
@@ -54,7 +54,7 @@ export const VERB_OWNERS = Object.freeze({
 export const VERB_TYPE_MEMBERSHIP = Object.freeze({
   target: Object.freeze(new Set(['ship', 'drone'])),
   mine: Object.freeze(new Set(['asteroid', 'wreck'])),
-  damage: Object.freeze(new Set(['ship', 'station', 'drone', 'mine', 'massSeed'])),
+  damage: Object.freeze(new Set(['ship', 'station', 'drone', 'mine', 'massSeed', 'payload'])),
   salvage: Object.freeze(new Set(['wreck'])),
   dock: Object.freeze(new Set(['station'])),
   contact: Object.freeze(new Set(['ship', 'drone', 'wreck'])),

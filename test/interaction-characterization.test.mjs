@@ -307,7 +307,8 @@ test('contract table: verb × type membership matrix is stable and internally co
   assert.equal(table.ship.mine, false);
   assert.equal(table.station.damage, true, 'station IS in the weapon allowlist (profile.destructible=false notwithstanding)');
   assert.equal(table.station.dock, true, 'station is the dock verb type');
-  assert.equal(table.payload.damage, false, 'payload profile.destructible=true but NOT in weapon allowlist');
+  assert.equal(table.payload.damage, true,
+    'payload profile.destructible=true and IS weapon-damageable — a cargo body can be destroyed (PQ-195.09)');
   assert.equal(table.massSeed.damage, true);
   assert.equal(table.mine.damage, true);
 
