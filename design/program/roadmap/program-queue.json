@@ -18793,7 +18793,7 @@
       "priority": 503,
       "title": "The breakaway from a moving carrier",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "heist-breakaway"
@@ -18811,7 +18811,10 @@
         "npm run check:pq019c:mission",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-195.08-REPORT.md"
+      ],
+      "partialIntegration": "2026-09-19 leaf integrated on master at bfac61b73 (controller direct implementation + self-review — opencode provider quota exhausted). The SP-07 now launches clamped to a real ship_hawser tug via attachment_transport_clamp (ordinary attachment service, deferred one tick for Rapier body registration); the tug flies one lane down the breakaway heading through data.intent/flightV3 and voluntarily cuts the joint at the authored routeReleaseWu progress crossing — release never writes momentum, the released body is the same entity/custody, subsystem disable and carrier loss free it through the same machinery. Carrier is a bounded transient cleared on exit/restore. Tests: pq195-08 7/7, leaf regressions 60/60, breakaway+contact chain 74/74, pq019c 67/67, baseline 15/15.",
       "brief": "The spindle starts clamped to an actual moving carrier through the existing physics/attachment owner; an authored transport clamp becomes a combat subsystem whose disabling releases a real body. DONE WHEN: the released body keeps the velocity and spin it already had, the release itself adds no cinematic impulse, ordinary Masslines stay unbreakable, and player collision immunity is untouched."
     },
     {
