@@ -168,6 +168,7 @@ import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
 import { applySectorExitResidency, getAssetResidency } from './assetResidency.js';
 import {
+  ADMISSION_SLICE_TARGET_MS,
   shouldContinueAdmissionSlice,
   shouldStartHeavyAdmissionEventually,
 } from './admissionSliceBudget.js';
@@ -222,6 +223,7 @@ import {
 import { FIRST_FLIGHT_PIPELINE_HOLD_S, shouldDeferPipelineAutoFlush } from './pipelineAutoFlushPolicy.js';
 import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
 import {
+  collectUnresidentInstancedDrawables,
   prepareStartupGeometryResidency,
   prepareStartupGpuResidency,
   yieldToBrowser,
@@ -4256,7 +4258,12 @@ export const render = {
         && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
       ),
     });
-    this._asteroidInstancePool = createAsteroidInstancePool(scene);
+    this._asteroidInstancePool = createAsteroidInstancePool(scene, {
+      // New variant InstancedMeshes carry a never-linked instanced program. Route each through
+      // the admission latch — the 771 ms bloomScene brick was one uncompiled SF_CommonRock
+      // instanced variant linking inside the presented pass on first live draw.
+      onMeshCreated: (mesh) => { void admitSubjectPipelines(mesh); },
+    });
     this._entityFrame = createRenderEntityFrame();
     this._presentationWorld = createPresentationWorld();
     this._presentationPublisher = createPresentationPublisher(
@@ -4902,26 +4909,34 @@ export const render = {
       onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
       getLastPresentDtMs: () => state.render && state.render.lastPresentDtMs,
     });
-    const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject, admissionOptions = {}) => (
-      prepareStartupGpuResidency(renderer, subject, {
+    const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject, admissionOptions = {}) => {
+      // A per-item yield to the next present cost one frame per texture and per geometry batch:
+      // a 20-map hull waited ~20 presents (~0.4 s) hidden behind the pending latch before it
+      // could publish — that wait IS the late-hull problem. Slice the yields like the cook
+      // lanes do so several small uploads share one frame gap; the latch still holds the
+      // subject until residency settles, and real yields still land between presents.
+      const yieldSlice = createSlicedYield(async () => {
+        if (state.mode === 'flight' && Number.isFinite(state.render && state.render.firstPlayableFrameAt)) {
+          await yieldToNextPresent();
+        } else {
+          await yieldToBrowser();
+        }
+      }, { sliceMs: ADMISSION_SLICE_TARGET_MS });
+      return prepareStartupGpuResidency(renderer, subject, {
         includeGeometry: true,
         // Late-admitted roots carry dormant pools (plume/RCS layers sit at count 0 until
         // thrust). Skipping them leaves the full-capacity instance buffers unuploaded, so the
         // first 0->N activation pays the upload inside a presented frame — the mid-flight brick.
         includeEmpty: true,
         yieldToMain: async () => {
-          if (state.mode === 'flight' && Number.isFinite(state.render && state.render.firstPlayableFrameAt)) {
-            await yieldToNextPresent();
-          } else {
-            await yieldToBrowser();
-          }
+          await yieldSlice();
           if (typeof admissionOptions.isActive === 'function' && admissionOptions.isActive() !== true) {
             throw new Error('Authored GPU residency owner became inactive before texture upload');
           }
         },
         onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
-      })
-    ));
+      });
+    });
     this._gpuResidencyAdmissions = gpuResidencyAdmissions;
     const openingCohort = createOpeningAdmissionCohort();
     const openingStillBlocking = () => (
@@ -5936,25 +5951,29 @@ export const render = {
           }
           recordOpeningCookStep(state.render, 'live.postOpeningPipelines', postStarted, postOutcome);
         }
-        if (ownsFirstPictureBarrier) {
-          let firstFrameResidency = null;
-          if (prepareNow() - prepareStarted < PREPARE_BUDGET_MS) {
-            try {
-              firstFrameResidency = await prepareStartupGpuResidency(renderer, scene, {
-                yieldToMain: yieldToBrowser,
-                includeEmpty: true,
-                onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
-              });
-            } catch (error) {
-              firstFrameResidency = { skipped: true, reason: String(error && error.message || error) };
-            }
-          }
-          recordOpeningCookStep(state.render, 'live.firstFramePoolCensus', censusStarted,
-            firstPictureError ? 'error' : (firstFrameResidency && firstFrameResidency.skipped === true ? 'skipped' : 'resolved'), {
-              error: firstPictureError || undefined,
-              reason: firstFrameResidency && firstFrameResidency.reason,
-            });
+        // The pool/buffer seal is the LAST barrier before flight, not an optional extra.
+        // shouldAwaitOpeningGpuCook is false without KHR_parallel_shader_compile, so the old
+        // guard skipped this sweep on exactly the hardware that bricks worst — the Intel/ANGLE
+        // run showed a 116 ms bloomScene full of unstamped Atlas pool chunks drawn inside the
+        // presented pass. The prepare-budget gate made the same trade silently: an over-budget
+        // cook recorded 'resolved' while the seal never ran. Skipping the seal does not save
+        // wall time — the outer wait tolerates overrun and this drains in bounded yielded
+        // batches — it only moves the uploads into the first presented frames. Always seal.
+        let firstFrameResidency = null;
+        try {
+          firstFrameResidency = await prepareStartupGpuResidency(renderer, scene, {
+            yieldToMain: yieldToBrowser,
+            includeEmpty: true,
+            onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+          });
+        } catch (error) {
+          firstFrameResidency = { skipped: true, reason: String(error && error.message || error) };
         }
+        recordOpeningCookStep(state.render, 'live.firstFramePoolCensus', censusStarted,
+          firstPictureError ? 'error' : (firstFrameResidency && firstFrameResidency.skipped === true ? 'skipped' : 'resolved'), {
+            error: firstPictureError || undefined,
+            reason: firstFrameResidency && firstFrameResidency.reason,
+          });
       }
       // The opening receipt froze inside prepareOpeningGpuResources while authored upgrades were
       // still in flight — the capturedPipelineDrain above can only wait on the queue it captured.
@@ -6535,6 +6554,30 @@ export const render = {
           holdLeftoverFx: true,
           yieldToMain: yieldLiveSectorGpu,
         });
+        // cook.buffers stays skipped for the run70 TDR, but scene-level instance pools have no
+        // per-subject admission owner: chunks published during this window would otherwise first
+        // upload inside a presented post-jump bloomScene — the same brick class the opening
+        // census exists to prevent. Seal only what is still unstamped: a bounded, yielded sweep
+        // over instanced drawables, a fraction of the full-scene buffer pass.
+        const poolSealStarted = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now();
+        let poolSeal = null;
+        try {
+          const unresidentPools = collectUnresidentInstancedDrawables(scene);
+          poolSeal = unresidentPools.length > 0
+            ? await prepareStartupGpuResidency(renderer, unresidentPools, {
+              yieldToMain: yieldLiveSectorGpu,
+              includeEmpty: true,
+              onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+            })
+            : { skipped: true, reason: 'no-unresident-instances' };
+        } catch (error) {
+          poolSeal = { skipped: true, reason: String(error && error.message || error) };
+        }
+        recordOpeningCookStep(state.render, 'jump.instancePoolSeal', poolSealStarted,
+          poolSeal && poolSeal.skipped === true ? 'skipped' : 'resolved', {
+            reason: poolSeal && poolSeal.reason,
+          });
         const leftover = { skipped: true, reason: 'jump-hold-leftover-fx' };
         return {
           skipped: false,

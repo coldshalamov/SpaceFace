@@ -27,7 +27,7 @@ function createVariantStats(variant) {
   return { variant, registered: 0, submitted: 0, capacity: 0, uploads: 0, reuses: 0 };
 }
 
-export function createAsteroidInstancePool(scene) {
+export function createAsteroidInstancePool(scene, options = {}) {
   const variants = new Array(ASTEROID_INSTANCE_VARIANT_COUNT);
   const variantStats = new Array(ASTEROID_INSTANCE_VARIANT_COUNT);
   for (let variant = 0; variant < ASTEROID_INSTANCE_VARIANT_COUNT; variant++) {
@@ -45,6 +45,10 @@ export function createAsteroidInstancePool(scene) {
   }
   const pool = {
     scene,
+    // A freshly created variant InstancedMesh carries a never-compiled instanced program. The
+    // renderer's hook routes it through the admission latch so its first live draw is not a
+    // synchronous link inside a presented pass.
+    onMeshCreated: typeof options.onMeshCreated === 'function' ? options.onMeshCreated : null,
     variants,
     byEntity: new Map(),
     stats: {
@@ -396,6 +400,11 @@ function ensureCapacity(pool, bucket, required) {
   bucket.capacity = capacity;
   pool.dirty = true;
   if (pool.scene) pool.scene.add(mesh);
+  // The instanced program variant this mesh needs has never been linked when the mesh is new:
+  // without the admission latch its first visible draw links it inside the presented pass.
+  if (typeof pool.onMeshCreated === 'function') {
+    try { pool.onMeshCreated(mesh); } catch { /* admission must never break the sync pass */ }
+  }
   bucket.dynamicBufferOwner = registerDynamicBufferOwner(pool.scene, {
     id: `common-rock-instances-v${bucket.variant}`,
     mesh,

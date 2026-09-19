@@ -8634,8 +8634,15 @@ function admitRenderPackageShipPoolCandidate(
   // admitted chunk transfer succeeded, while new chunks remain direct until exact GPU admission.
   if (first && state.packageCandidates.get(key) === first) state.packageCandidates.delete(key);
 
+  const orphanOptions = livePoolAdmissionOptions();
   for (const allocation of allocations) {
-    if (allocation?.admission) poolAdmissions?.add(allocation.admission);
+    if (!allocation?.admission) continue;
+    poolAdmissions?.add(allocation.admission);
+    // The boundary prepare normally claims these admissions, but this promotion path can also
+    // run for an owner whose boundary never reaches prepareAuthoredShipVisualPipelines — then
+    // the chunk would sit unpublished forever and the pool never forms. The orphan lane is
+    // memoized on admission.preparation, so racing a real boundary prepare is safe.
+    drivePoolAdmissionIfUnclaimed(allocation.admission, orphanOptions);
   }
   return object;
 }

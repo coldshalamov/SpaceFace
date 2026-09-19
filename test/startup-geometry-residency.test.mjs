@@ -9,6 +9,7 @@ import {
 } from '../src/render/openingGpuAdmission.js';
 import {
   collectStartupGeometryDrawables,
+  collectUnresidentInstancedDrawables,
   prepareStartupGeometryResidency,
   prepareStartupGpuResidency,
 } from '../src/render/startupGpuResidency.js';
@@ -453,4 +454,76 @@ test('a failed geometry batch restores every renderer owner before rejecting', a
   assert.equal(harness.renderer.xr.enabled, true);
   assert.equal(harness.renderer.shadowMap.autoUpdate, true);
   assert.equal(harness.renderer.shadowMap.needsUpdate, true);
+});
+
+// Scene-level instance pools have no per-subject admission owner — the only stamp they ever get
+// comes from a whole-scene seal. The bounded post-cook seal collects exactly the unstamped set.
+test('unresident instanced census picks out only unstamped instanced drawables', () => {
+  const stampedGeometry = new THREE.BoxGeometry();
+  stampedGeometry.userData.spacefaceGpuResident = true;
+  const unstampedGeometry = new THREE.BoxGeometry();
+  const stampedPool = new THREE.InstancedMesh(stampedGeometry, new THREE.MeshBasicMaterial(), 4);
+  const unresidentPool = new THREE.InstancedMesh(unstampedGeometry, new THREE.MeshBasicMaterial(), 4);
+  const ordinary = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  const root = new THREE.Group();
+  root.add(stampedPool, unresidentPool, ordinary);
+
+  assert.deepEqual(collectUnresidentInstancedDrawables(root), [unresidentPool],
+    'stamped instanced owners and ordinary meshes stay out of the seal work list');
+  assert.deepEqual(collectUnresidentInstancedDrawables([unresidentPool]), [unresidentPool],
+    'a bare instanced subject works without a traversable root');
+});
+
+// The 116 ms first-flight bloomScene brick on Intel/ANGLE: shouldAwaitOpeningGpuCook is false
+// without KHR_parallel_shader_compile, so the old guard skipped the pool/buffer seal on exactly
+// the hardware that bricks worst, and the prepare budget made the same skip silent. The seal is
+// the last barrier before flight — it must run on every non-recook cook.
+test('the first-frame pool census seal is not gated on KHR or the prepare budget', () => {
+  const prepareStart = RENDERER_SOURCE.indexOf('state.render.prepareLiveSectorBeforeFlight = async');
+  const receiptStart = RENDERER_SOURCE.indexOf('buildOpeningSubmissionPlan()', prepareStart);
+  assert.ok(prepareStart >= 0 && receiptStart > prepareStart,
+    'the live-sector prepare body must exist');
+  const body = RENDERER_SOURCE.slice(prepareStart, receiptStart);
+  const sealIndex = body.indexOf('firstFrameResidency = await prepareStartupGpuResidency');
+  assert.ok(sealIndex >= 0, 'the pool/buffer seal call must exist');
+  const barrierIndex = body.indexOf('ownsFirstPictureBarrier');
+  assert.ok(barrierIndex >= 0, 'the KHR first-picture barrier must still exist');
+  assert.ok(sealIndex > barrierIndex,
+    'the seal must run after the barrier decision, not inside it');
+  const between = body.slice(barrierIndex, sealIndex);
+  assert.doesNotMatch(between, /PREPARE_BUDGET_MS/,
+    'no prepare-budget gate may sit between the barrier decision and the seal');
+});
+
+// Sector jumps publish pool chunks inside liveSectorGpuAdmission while cook.buffers stays
+// skipped for the run70 TDR. Without a seal those chunks first upload inside a presented
+// post-jump bloomScene — the same brick class, at every sector arrival.
+test('the jump cook seals unstamped instance pools inside its admission window', () => {
+  const jumpStart = RENDERER_SOURCE.indexOf('state.render.prepareLiveSectorAfterJump = async');
+  assert.ok(jumpStart >= 0, 'the jump cook must exist');
+  const jumpEnd = RENDERER_SOURCE.indexOf('const runPostOpeningPipelines', jumpStart);
+  const body = RENDERER_SOURCE.slice(jumpStart, jumpEnd > jumpStart ? jumpEnd : jumpStart + 9000);
+  assert.match(body, /collectUnresidentInstancedDrawables\(scene\)/,
+    'the jump cook must collect the unstamped instanced set');
+  assert.match(body, /prepareStartupGpuResidency\(renderer, unresidentPools/,
+    'the jump cook must upload only the unresident pools, not re-run the full buffer pass');
+  assert.match(body, /jump\.instancePoolSeal/,
+    'the jump seal must land in the cook ledger');
+  const sealIndex = body.indexOf('collectUnresidentInstancedDrawables(scene)');
+  const flagReset = body.indexOf("state.render.liveSectorGpuAdmission = false");
+  assert.ok(sealIndex >= 0 && flagReset > sealIndex,
+    'the seal must run while liveSectorGpuAdmission is still true');
+});
+
+// A per-item yield to the next present cost one frame per texture and per geometry batch —
+// a 20-map hull waited ~20 presents hidden behind the pending latch. Flight residency slices
+// several small uploads into one frame gap instead.
+test('flight GPU residency admission slices yields instead of yielding per item', () => {
+  const trackerStart = RENDERER_SOURCE.indexOf('const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker(');
+  assert.ok(trackerStart >= 0, 'the GPU residency admission tracker must exist');
+  const tracker = RENDERER_SOURCE.slice(trackerStart, trackerStart + 2600);
+  assert.match(tracker, /createSlicedYield\(/,
+    'the residency lane must share one frame gap across several small uploads');
+  assert.match(tracker, /sliceMs:\s*ADMISSION_SLICE_TARGET_MS/,
+    'the slice window must stay at the admission slice target, not a per-item present');
 });

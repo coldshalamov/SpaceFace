@@ -120,6 +120,29 @@ export function collectStartupGeometryDrawables(subjects, options = {}) {
   return drawables;
 }
 
+/**
+ * Instanced drawables whose backing geometry never passed a residency prepare. Scene-level
+ * instance pools (authored package pools, asteroid batches) have no per-subject admission
+ * owner: the only stamp they ever get comes from a whole-scene seal, so a cook that skips or
+ * bounds that seal leaves them to upload inside the first presented pass. Collecting just the
+ * unstamped instanced set gives the bounded post-cook seal its exact work list.
+ */
+export function collectUnresidentInstancedDrawables(subjects) {
+  const drawables = [];
+  for (const root of subjectRoots(subjects)) {
+    if (!root) continue;
+    const visit = (object) => {
+      if (!object || object.isInstancedMesh !== true || !object.geometry) return;
+      const data = object.geometry.userData;
+      if (data && data.spacefaceGpuResident === true) return;
+      drawables.push(object);
+    };
+    if (typeof root.traverse === 'function') root.traverse(visit);
+    else visit(root);
+  }
+  return drawables;
+}
+
 function attributeByteLength(attribute) {
   const array = attribute && (attribute.array || attribute.data && attribute.data.array);
   return Number(array && array.byteLength) || 0;
