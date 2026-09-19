@@ -205,7 +205,8 @@ function paintKey(button, kind = 'legend') {
       'max-width': '100%',
       'min-width': spec.minW,
       'min-height': spec.minH,
-      padding: spec.pad,
+      // a key's padding is the sheet's (room for its lamp); a legend tab keeps the kit's
+      ...(kind === 'legend' ? { padding: spec.pad } : {}),
       'font-size': spec.typeSize,
       'text-transform': 'uppercase',
       'justify-content': 'center',
@@ -1460,7 +1461,7 @@ export const rangeScreen = {
     for (const button of verbs.querySelectorAll('.k-word')) {
       button.setAttribute('data-range-action', button.dataset.action);
       const action = button.dataset.action;
-      paintKey(button, action === 'return' ? 'primary' : action === 'next' ? 'legend' : 'small');
+      paintKey(button, action === 'return' ? 'primary' : 'small');
     }
     title.appendChild(verbs);
     rootEl.appendChild(title);

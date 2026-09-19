@@ -172,23 +172,21 @@ function paintKey(button, kind = 'legend') {
       });
       return;
     }
+    // A key's width, type and ink are the keycap's (the deckplate sheet); the pin keeps its footprint.
     pin(button, {
       display: 'inline-flex',
-      width: 'max-content',
+      // a choice segment fills its slot in the selector track; every other key is its own width
+      ...(kind === 'legend' ? {} : { width: 'max-content' }),
       'max-width': '100%',
       'min-width': spec.minW,
       'min-height': spec.minH,
-      padding: spec.pad,
+      // a key's padding is the sheet's (room for its lamp); a legend tab keeps the kit's
+      ...(kind === 'legend' ? { padding: spec.pad } : {}),
       'font-size': spec.font,
-      'font-family': 'var(--fh-face-display)',
-      'font-variation-settings': "'wght' 600, 'wdth' 62",
-      'letter-spacing': 'var(--fh-track-legend)',
       'text-transform': 'uppercase',
       'justify-content': 'center',
       'align-items': 'center',
       'box-sizing': 'border-box',
-      background: 'transparent',
-      color: 'var(--fh-text)',
       'border-style': 'solid',
       'border-width': spec.width,
       'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',

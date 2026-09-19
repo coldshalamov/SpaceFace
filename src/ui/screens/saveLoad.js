@@ -125,7 +125,8 @@ function paintKey(button, kind = 'legend') {
       'max-width': '100%',
       'min-width': spec.minW,
       'min-height': spec.minH,
-      padding: spec.pad,
+      // a key's padding is the sheet's (room for its lamp); a legend tab keeps the kit's
+      ...(kind === 'legend' ? { padding: spec.pad } : {}),
       'font-size': spec.font,
       'font-family': 'var(--fh-face-display)',
       'font-variation-settings': "'wght' 600, 'wdth' 62",

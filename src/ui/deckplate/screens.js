@@ -223,8 +223,10 @@ html body #screens > :not(.sx-observatory) .fh-rail {
   background:var(--dp-metal-layers), linear-gradient(90deg, #232833, #171b22);
 }
 /* keys: keycap hardware on the key's edge, brushed metal cap, the lamp set in the cap's border */
+/* the keycap art is a thin machined edge: the key's border is that edge (8/10/10), so the lit rim of a
+   primary key sits on the cap face, not 18px inside it as an inner frame */
 html body #screens > :not(.sx-observatory) .fh-key {
-  border-style:solid; border-color:transparent; border-width:18px;
+  border-style:solid; border-color:transparent; border-width:8px 10px 10px; padding:0 16px 0 30px;
   border-image:url("${HW}keycap.svg") 10 10 12 / 8px 10px 10px / 0 stretch;
   background:${KEY_LED_OFF_BB}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 78; letter-spacing:.14em;
@@ -255,7 +257,7 @@ html body #screens > :not(.sx-observatory) .fh-key.fh-key--hazard:is(:hover, :fo
   background:${KEY_LED_RED_BB}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
   box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), 0 8px 16px -10px var(--dp-danger-bloom);
 }
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--small { border-width:12px; border-image:url("${HW}keycap.svg") 10 10 12 / 6px 7px 8px / 0 stretch; }
+html body #screens > :not(.sx-observatory) .fh-key.fh-key--small { padding:0 10px; border-width:12px; border-image:url("${HW}keycap.svg") 10 10 12 / 6px 7px 8px / 0 stretch; }
 /* a key-binding cap is a legend, not a command: metal, no lamp */
 html body #screens > :not(.sx-observatory) .fh-key.fh-key--small, html body #screens > :not(.sx-observatory) .fh-key.fh-key--small:is(:hover, :focus-visible) {
   background:var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3); color:var(--dp-ink); text-shadow:0 -1px 0 rgb(0 0 0 / .7); box-shadow:none;
@@ -1060,6 +1062,18 @@ ${SEL}[data-screen="footprint"] .fp-statehost:not([hidden]) {
 }
 ${dpKey(`${SEL}[data-screen="footprint"] > .k-foot .k-word`)}
 ${SEL}[data-screen="footprint"] > .k-foot .k-word { min-height:40px; font-size:12px; }
+/* tertiary text (the kit's 38 % bone) reads at the muted ink, which clears 4.5:1 on the glass: a
+   locked codex entry or a quiet reason must still be readable */
+${SEL} .k-38 { color:var(--dp-ink-mute); }
+/* new game: the hull and difficulty choices are equal selector segments that shrink before they
+   wrap, each caption centred under its own segment */
+${SEL} .sf-ng-body .k-words.k-words--row.of-pause { display:flex; flex-wrap:nowrap; width:100%; max-width:100%; box-sizing:border-box; }
+${SEL} .sf-ng-body .k-words.k-words--row.of-pause > li { flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:2px; }
+${SEL} .sf-ng-body .k-words.k-words--row.of-pause .fh-key.fh-key--legend {
+  width:100%; min-width:0; min-height:38px; border-width:6px; justify-content:center; text-align:center;
+  letter-spacing:.06em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+${SEL} .sf-ng-body .k-words.k-words--row.of-pause .k-word-sub { text-align:center; padding:2px 4px 5px; font-size:12px; color:var(--dp-ink-mute); }
 /* keys drawn by the bridge: the lit cap is the focus */
 ${SEL} .fh-key:not(.fh-key--legend):focus-visible { outline:0 solid transparent !important; }
 /* a small key in a screen's foot is a command (export, import): the one keycap with its lamp */
