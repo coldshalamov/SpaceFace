@@ -18733,7 +18733,7 @@
       "priority": 501,
       "title": "Losing it leaves something to do",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "heist-breakaway"
@@ -18751,7 +18751,10 @@
         "npm run check:pq019c:mission",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-195.06-REPORT.md"
+      ],
+      "partialIntegration": "2026-09-19 leaf integrated on master at 0a8618f66 (controller direct implementation + self-review — opencode provider quota exhausted). Destroyed SP-07 leaves ONE deterministic (sector,victim) aftermath marker through offerRecoveryWreck; missionPinned wreck carries authored reduced commodity pool at the death site; absent/expired/abandoned and Capsule Run unaffected; save/load idempotent. Tests: pq195-06 6/6, leaf regression 36/36, aftermath suite 51/51, pq019c 67/67, baseline 15/15.",
       "brief": "A genuinely destroyed assembly produces one bounded reduced-value recovery through existing aftermath and salvage ownership. DONE WHEN: the reduced recovery is offered once per destruction, a duplicate destroy callback or a reload never duplicates it, and it is never a second full reward or a resurrection of the original payload."
     },
     {
