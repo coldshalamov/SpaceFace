@@ -18672,7 +18672,7 @@
       "priority": 499,
       "title": "One visible local consequence",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "heist-breakaway"
@@ -18690,7 +18690,10 @@
         "npm run check:pq019c:mission",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-195.04-REPORT.md"
+      ],
+      "partialIntegration": "2026-09-19 leaf integrated on master at a7b1e4f36 (worker candidates ffe5ba07b + d1d0b3d1c on pq195-third-shift, opencode-go/deepseek-v4.1-flash; controller self-review — opencode provider quota exhausted mid-review). Berth Three consequence bound to receiverCommitted receipt: resumed/reduced/stalled via serialized npcJobs record + stable worldRecordId hull relink; fence/destroyed/expired/abandoned never activate; replay/reload idempotent. Also repaired pq019-facility-embodiment stale counts (was red since .01). Tests: pq195-04 11/11, leaf regression 19/19, pq019c 67/67, baseline 15/15.",
       "brief": "A lawful accepted receipt restarts the stalled local work once (Berth Three resumes); the fence route leaves it unresolved; a damaged return restores partial service. DONE WHEN: flying past after each of the three outcomes shows three different states, the state is bound to the receipt rather than a timer, it survives save and load, and the repaired-machine presentation never plays after a destroyed or stolen load."
     },
     {
