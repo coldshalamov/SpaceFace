@@ -241,8 +241,19 @@ export const save = {
     bus.on('game:started', clearPlayerDeathGate);
     // Registered during system init, before main installs its new-game bootstrap listener, so old
     // run work is invalidated synchronously at the route boundary.
-    bus.on('game:new', () => this._beginRunEpoch('game:new'));
-    bus.on('game:newGame', () => this._beginRunEpoch('game:newGame'));
+    bus.on('game:new', () => {
+      this._epochOpenedByNew = true;
+      this._beginRunEpoch('game:new');
+    });
+    bus.on('game:newGame', () => {
+      // Public New Game already opened the epoch on `game:new`. The live route now also emits
+      // the legacy `game:newGame` alias so VFX/title listeners reset; a second bump would
+      // orphan the autosave generation started by `game:new`.
+      if (this._epochOpenedByNew) return;
+      this._beginRunEpoch('game:newGame');
+    });
+    bus.on('game:started', () => { this._epochOpenedByNew = false; });
+    bus.on('save:loaded', () => { this._epochOpenedByNew = false; });
 
     // Autosave triggers (§4.5): major progression milestones. Debounced ≤1/10s unless forced.
     bus.on('dock:docked', () => this.requestAutosave('dock'));
@@ -400,6 +411,10 @@ export const save = {
       ['livingPoiBehaviors', () => this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {})],
       ['signalInvestigation', () => this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {})],
       ['recoveryEncounters', () => this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {})],
+      // Genie 01: world memory + inbox (inbox is part of the save; serialize() does not drain it).
+      ['chronicler', () => this._callSerialize('chronicler') || clonePlain(state.chronicler || {})],
+      // Genie 02: session-drama arc state (engine state subtree; schema-validated on restore).
+      ['tensionDirector', () => clonePlain(state.tensionDirector || null)],
       ['regionalEcology', () => this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {})],
       ['stationServices', () => this._callSerialize('stationServices') || {}],
       ['encounterDirector', () => this._serializeEncounterDirector()],
@@ -453,6 +468,8 @@ export const save = {
     data.livingPoiBehaviors = this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {});
     data.signalInvestigation = this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {});
     data.recoveryEncounters = this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {});
+    data.chronicler = this._callSerialize('chronicler') || clonePlain(state.chronicler || {});
+    data.tensionDirector = clonePlain(state.tensionDirector || null);
     data.regionalEcology = this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {});
     data.stationServices = this._callSerialize('stationServices') || {};
     data.encounterDirector = this._serializeEncounterDirector();
@@ -2931,6 +2948,9 @@ export const save = {
       this._callDeserialize('provenanceLedger', data.provenance);
       this._callDeserialize('aftermathWrecks', data.aftermathWrecks);
       this._callDeserialize('fieldDepletion', data.fieldDepletion);
+      // Genie 01: world memory. deserialize() validates a detached candidate and re-derives its
+      // graph BEFORE adopting; null/absent starts an empty archive (old saves migrate cleanly).
+      this._callDeserialize('chronicler', data.chronicler);
       // Station-yard service jobs (repair/refuel booked before the save). Restores the parked
       // player block only — NPC client traffic is re-derived from the seeded schedule, and the
       // job stays parked until the player re-docks at that yard (ui.docked clears on load).
@@ -2940,6 +2960,11 @@ export const save = {
       // → the director starts fresh (migration-safe absence handling).
       this.state.encounterDirector = (data.encounterDirector && typeof data.encounterDirector === 'object')
         ? data.encounterDirector
+        : null;
+      // Genie 02: session-drama arc state rides the save:loaded payload — the owner's handler
+      // schema-checks it against the restored sim clock and honestly resets when incompatible.
+      this.state.tensionDirector = (data.tensionDirector && typeof data.tensionDirector === 'object')
+        ? data.tensionDirector
         : null;
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
@@ -2974,6 +2999,9 @@ export const save = {
         slot,
         visualGatePending: !!finalizeLoadedGame,
         recovered: options.recovered === true,
+        // Genie 02: arc snapshot for the tension director's save:loaded handler (schema-checked,
+        // clock-guarded; non-exact resets are emitted as tension:reset, never silently dropped).
+        tensionDirector: data.tensionDirector || null,
       });
       this.primeAutosaveCapture();
       if (finalizeLoadedGame) {

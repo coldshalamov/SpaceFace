@@ -41,6 +41,8 @@ Current save version: `14`
 - `livingPoiBehaviors`
 - `signalInvestigation`
 - `recoveryEncounters`
+- `chronicler`
+- `tensionDirector`
 - `regionalEcology`
 - `stationServices`
 - `encounterDirector`
@@ -118,6 +120,7 @@ Current save version: `14`
 | `$.cargo.capMass` | number | 60 |
 | `$.cargo.capVolume` | number | 40 |
 | `$.cargo.items` | object | {} |
+| `$.chronicler` | object | {} |
 | `$.claims` | object | {} |
 | `$.claims.bodies` | array | length 0 |
 | `$.combat` | object | {} |
@@ -370,6 +373,7 @@ Current save version: `14`
 | `$.sites` | object | {} |
 | `$.stationServices` | object | {} |
 | `$.stunts` | null | null |
+| `$.tensionDirector` | null | null |
 | `$.traffic` | object | {} |
 | `$.uiScreenMemory` | object | {} |
 | `$.uiScreenMemory.bags` | object | {} |

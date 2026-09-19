@@ -8,6 +8,7 @@ import { normalizeFact } from '../chronicler/normalize.js';
 import { ingestBatch, resolveLineage, pruneMemory } from '../chronicler/ledger.js';
 import { buildStoryView, semanticSignature, rankViews, recallText } from '../chronicler/narrative.js';
 import { restoreMemory } from '../chronicler/persistence.js';
+import { createChroniclerVoiceBridge } from '../chronicler/voiceBridge.js';
 
 function priority(f) {
   if (['recovered', 'sold', 'law', 'remedy'].includes(f.stage)) return 100;
@@ -69,6 +70,13 @@ export function createChronicler(options = {}) {
       this._listen('sector:enter', p => this.requestRecall({
         context: 'sector', sectorId: p?.sectorId || p?.id || this._state.world?.currentSectorId,
       }));
+      // Presentation adapter: old-story radio offers ride the band channel, station/sector
+      // recollections ride comms — through the arbiter when one exists. helpers is held by
+      // reference, so a voice attaching later still works; the bridge guards per-offer and
+      // acceptance is arbiter acceptance, never playback. Destroyed with the owner below.
+      if (ctx.helpers && typeof ctx.helpers === 'object') {
+        this._voiceBridge = createChroniclerVoiceBridge({ bus: ctx.bus, helpers: ctx.helpers });
+      }
       return this;
     },
     _listen(event, fn) {
@@ -312,6 +320,7 @@ export function createChronicler(options = {}) {
       this._restoring = false; this._clockBlocked = false;
     },
     destroy() {
+      if (this._voiceBridge) { this._voiceBridge.destroy(); this._voiceBridge = null; }
       for (const off of this._subs || []) off();
       this._subs = [];
       this._bus = null; this._state = null; this._memory = null;
