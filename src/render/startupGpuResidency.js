@@ -143,6 +143,24 @@ export function collectUnresidentInstancedDrawables(subjects) {
   return drawables;
 }
 
+/**
+ * Whether any drawable under root holds geometry the residency lane has never uploaded.
+ * Shared cached geometries carry the stamp from their first admission, so live-built
+ * meshes that reuse them stay instantly drawable; only meshes that would pay a real
+ * upload inside the presented pass report unready.
+ */
+export function hasUnresidentGeometry(root) {
+  let unready = false;
+  const visit = (object) => {
+    if (unready || !object || !object.geometry) return;
+    if (!(object.geometry.userData
+        && object.geometry.userData.spacefaceGpuResident === true)) unready = true;
+  };
+  if (root && typeof root.traverse === 'function') root.traverse(visit);
+  else visit(root);
+  return unready;
+}
+
 function attributeByteLength(attribute) {
   const array = attribute && (attribute.array || attribute.data && attribute.data.array);
   return Number(array && array.byteLength) || 0;

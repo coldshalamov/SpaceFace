@@ -224,6 +224,7 @@ import { FIRST_FLIGHT_PIPELINE_HOLD_S, shouldDeferPipelineAutoFlush } from './pi
 import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
 import {
   collectUnresidentInstancedDrawables,
+  hasUnresidentGeometry,
   prepareStartupGeometryResidency,
   prepareStartupGpuResidency,
   yieldToBrowser,
@@ -6106,8 +6107,13 @@ export const render = {
         // Touch only late entity roots and instance pools. A whole-scene material
         // walk issued too many exact-target draws on Intel/ANGLE and lost the context
         // before the first three flight seconds could be scored.
-        const openingSubjects = (state.render.openingSubmissionPlan
-          && state.render.openingSubmissionPlan.compileSubjects) || [];
+        // A stored openingSubmissionPlan exists only where the non-KHR warmup publishes it;
+        // the KHR self-build in prepareOpeningGpuResources stays local, and any stored plan is
+        // the opening picture — stale for a jump cook. Census the picture this cook is about
+        // to present directly so the compile/touch order below warms exactly the leaves the
+        // next presented frames will draw.
+        const cookPicturePlan = buildOpeningSubmissionPlan();
+        const openingSubjects = (cookPicturePlan && cookPicturePlan.compileSubjects) || [];
         const openingRoots = [];
         const seenOpening = new Set();
         for (const entity of collectFirstFlightCookEntities(state)) {
@@ -8551,7 +8557,16 @@ export const render = {
       const holdFirstFlightBuffers = (e.type === 'asteroid' || e.type === 'payload')
         && !(m.userData && m.userData.spacefaceGeometryResident === true)
         && !isFirstFlightProtectedEntity(e);
-      if (holdFirstFlightBuffers) {
+      // compile() never uploads vertex buffers: a live-built mesh with unuploaded geometry used to
+      // attach drawable-immediately and pay its upload inside the presented bloomScene (the 129 ms
+      // multi-primitive structure brick). Hold every unready live build behind the same latch the
+      // first-flight rocks use — hidden until the per-entity residency queue stamps it. Shared
+      // cached geometries carry the stamp from earlier admissions, so live builds that reuse them
+      // still appear instantly.
+      const holdLiveBuildBuffers = this.state.mode === 'flight'
+        && !isFirstFlightProtectedEntity(e)
+        && hasUnresidentGeometry(m);
+      if (holdFirstFlightBuffers || holdLiveBuildBuffers) {
         const data = m.userData || (m.userData = {});
         data.geometryPending = true;
       } else {
@@ -8636,6 +8651,11 @@ export const render = {
     this._meshes.set(id, m);
     this.scene.add(m);
     this._bindPresentationMesh(e, m);
+    if (this.state.mode === 'flight'
+        && !isFirstFlightProtectedEntity(e)
+        && hasUnresidentGeometry(m)) {
+      (m.userData || (m.userData = {})).geometryPending = true;
+    }
     if (this.state.render && typeof this.state.render.compileObjectPipelines === 'function') {
       void this.state.render.compileObjectPipelines(m);
     }

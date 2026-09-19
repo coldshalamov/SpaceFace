@@ -10,6 +10,7 @@ import {
 import {
   collectStartupGeometryDrawables,
   collectUnresidentInstancedDrawables,
+  hasUnresidentGeometry,
   prepareStartupGeometryResidency,
   prepareStartupGpuResidency,
 } from '../src/render/startupGpuResidency.js';
@@ -527,11 +528,66 @@ test('the cook warms first-picture subjects before beyond-runway subjects', () =
   assert.ok(compileLoopIndex > unitsIndex, 'the compile cohort loop must exist');
   const between = RENDERER_SOURCE.slice(unitsIndex, compileLoopIndex);
   assert.match(between, /openingSubjects\.map\(\(subject, index\) => \[subject, index\]\)/,
-    'the ordering key must come from the opening submission plan order');
+    'the ordering key must come from the first-picture census order');
   assert.match(between, /units\.programSubjects\.sort\(/,
     'programSubjects must be sorted before the compile and touch loops consume it');
   const touchLoopIndex = RENDERER_SOURCE.indexOf('for (const subject of units.programSubjects)', compileLoopIndex + 1);
   assert.ok(touchLoopIndex > compileLoopIndex, 'the touch loop must consume the same ordered list');
+});
+
+// compile() never uploads vertex buffers: a live-built mesh with unuploaded geometry used to
+// attach drawable-immediately and pay its upload inside the presented bloomScene (the 129 ms
+// multi-primitive structure brick). Shared cached geometries carry the stamp from their first
+// admission, so only meshes that would pay a real upload report unready.
+test('hasUnresidentGeometry reports only meshes that would upload inside a presented pass', () => {
+  const shared = new THREE.BoxGeometry();
+  shared.userData.spacefaceGpuResident = true;
+  const fresh = new THREE.BoxGeometry();
+  const stamped = new THREE.Group();
+  stamped.add(new THREE.Mesh(shared), new THREE.Mesh(shared));
+  const unready = new THREE.Group();
+  unready.add(new THREE.Mesh(shared), new THREE.Mesh(fresh));
+  assert.equal(hasUnresidentGeometry(stamped), false,
+    'a mesh built entirely from stamped shared geometry must stay instantly drawable');
+  assert.equal(hasUnresidentGeometry(unready), true,
+    'one unuploaded leaf geometry makes the whole build unready');
+  assert.equal(hasUnresidentGeometry(new THREE.Mesh(fresh)), true,
+    'a bare unstamped mesh reports unready');
+  assert.equal(hasUnresidentGeometry(new THREE.Group()), false,
+    'a geometry-less group has nothing to upload');
+});
+
+// The build queue used to flag geometryPending only for first-flight asteroids and payloads —
+// every other live build attached drawable-immediately, and a multi-primitive structure's ~24
+// unstamped leaves paid 129 ms inside one bloomScene. Any live build with unuploaded geometry
+// must hold the same latch until the per-entity residency queue stamps it.
+test('live mesh builds hold unready geometry behind the residency latch', () => {
+  const buildStart = RENDERER_SOURCE.indexOf('const m = this.vf.build(e);');
+  assert.ok(buildStart >= 0, 'the live mesh build must exist');
+  const body = RENDERER_SOURCE.slice(buildStart, buildStart + 4000);
+  const flagIndex = body.indexOf('data.geometryPending = true');
+  assert.ok(flagIndex >= 0, 'the pending latch must still be armed');
+  const before = body.slice(0, flagIndex);
+  assert.match(before, /hasUnresidentGeometry\(m\)/,
+    'the latch must test the build for unuploaded geometry, not just its entity type');
+  assert.match(before, /mode === 'flight'/,
+    'the live-build latch must be scoped to flight — loading builds are sealed by the census');
+});
+
+// state.render.openingSubmissionPlan is null at cook time on KHR runners (the warmup never
+// publishes there; prepareOpeningGpuResources self-builds into a local) and stale on jump
+// cooks (it is the opening picture, not the arrival picture). The cook must census the
+// picture itself rather than read the stored manifest.
+test('the cook censuses the presented picture instead of reading the stored opening plan', () => {
+  const cookStart = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async');
+  assert.ok(cookStart >= 0, 'the live cook must exist');
+  const unitsIndex = RENDERER_SOURCE.indexOf('const units = uniqueAdmissionUnits([', cookStart);
+  assert.ok(unitsIndex > cookStart, 'the cook admission units must exist');
+  const between = RENDERER_SOURCE.slice(cookStart, unitsIndex);
+  assert.match(between, /buildOpeningSubmissionPlan\(\)/,
+    'the cook must census the picture it is about to present');
+  assert.doesNotMatch(between, /state\.render\.openingSubmissionPlan/,
+    'the cook must not depend on the stored opening manifest');
 });
 
 // A per-item yield to the next present cost one frame per texture and per geometry batch —
