@@ -18,6 +18,7 @@ const PAYLOAD = {
   drillInvalid: { reason: 'dry' },
   shieldBreak: { entityId: 'player' },
   weaponVent: { ownerId: 'player', phase: 'end' },
+  latchDenied: { targetId: 'rock-1', reason: 'out-of-range' },
   engineMode: { shipId: 'player', mode: 'boost' },
   purchase: { player: true, kind: 'buy' },
   blockedProduction: { siteId: 'works-1', machineId: 'mill-1', state: 'starved' },
@@ -42,7 +43,7 @@ function hostStub(tick = 120) {
 }
 
 test('PQ-158.06 each named action requests a recipe within 0.1s of the receipt', () => {
-  assert.equal(MINIMAL_ACTION_AUDIO.length, 10);
+  assert.equal(MINIMAL_ACTION_AUDIO.length, 11);
   for (const spec of MINIMAL_ACTION_AUDIO) {
     const recipe = RECIPES.find((row) => row.id === spec.recipeId);
     assert.ok(recipe, `${spec.id} recipe ${spec.recipeId} exists`);

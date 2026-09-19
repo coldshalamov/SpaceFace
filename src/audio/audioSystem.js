@@ -156,6 +156,11 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
   [CombatDoctrineId.INTERCEPTOR_FLYBY]: Object.freeze({
     recipeId: 'sfx_doctrine_flyby', fireRate: 1.16, fireGain: 0.78, fireDetune: 7,
   }),
+  [CombatDoctrineId.SWARM_PACK]: Object.freeze({
+    // Tight pass rhythm, not a siege: the fastest, lightest flyby voice so a swarm reads as a
+    // school of strikes instead of one heavier interceptor (combat-variety vertical 2026-09-18).
+    recipeId: 'sfx_doctrine_flyby', fireRate: 1.24, fireGain: 0.7, fireDetune: 12,
+  }),
   [CombatDoctrineId.BRAWLER_COMMIT]: Object.freeze({
     // Heavy hull pressure recipe (not a retuned flyby pass).
     recipeId: 'sfx_doctrine_brawler_commit', fireRate: 0.78, fireGain: 1.0, fireDetune: -18,
@@ -163,8 +168,18 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
   [CombatDoctrineId.TETHER_CONTROL_RAIDER]: Object.freeze({
     recipeId: 'sfx_doctrine_tether_spool', fireRate: 0.86, fireGain: 0.92, fireDetune: -9,
   }),
+  [CombatDoctrineId.MINE_LAYER_WAKE]: Object.freeze({
+    // The wake belongs to the winch: a slow mechanical churn under the drop line, distinct
+    // from the raider's higher spool.
+    recipeId: 'sfx_doctrine_tether_spool', fireRate: 0.74, fireGain: 0.82, fireDetune: -6,
+  }),
   [CombatDoctrineId.RANGED_DISENGAGER]: Object.freeze({
     recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.94, fireGain: 0.84, fireDetune: -2,
+  }),
+  [CombatDoctrineId.SHIELD_BREAKER]: Object.freeze({
+    // The lance telegraph is a charge-up into an ion burst: brighter and faster than the
+    // kiter's standoff charge, so the peel window is heard.
+    recipeId: 'sfx_doctrine_ranged_charge', fireRate: 1.08, fireGain: 0.9, fireDetune: 22,
   }),
   [CombatDoctrineId.FIELD_ANCHOR_CONTROLLER]: Object.freeze({
     // Hold-the-ring language: lower charge than ranged, distinct from brawler growl.
@@ -172,6 +187,14 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
   }),
   [CombatDoctrineId.CAPITAL_BROADSIDE]: Object.freeze({
     recipeId: 'sfx_doctrine_capital_broadside', fireRate: 0.62, fireGain: 1.08, fireDetune: -30,
+  }),
+  [CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN]: Object.freeze({
+    // The Tollman act tolls slower and heavier than the stock broadside.
+    recipeId: 'sfx_doctrine_capital_broadside', fireRate: 0.56, fireGain: 1.12, fireDetune: -14,
+  }),
+  [CombatDoctrineId.CAPITAL_BROADSIDE_ALA]: Object.freeze({
+    // The ALA act is the sharpest capital voice: higher and tighter as the grave pull opens.
+    recipeId: 'sfx_doctrine_capital_broadside', fireRate: 0.68, fireGain: 1.04, fireDetune: -44,
   }),
   [CombatDoctrineId.ESCORT_SCREEN]: Object.freeze({
     // Even, unhurried defensive fire — a guard's cadence, not a hunter's.

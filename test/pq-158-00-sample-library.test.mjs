@@ -22,6 +22,7 @@ import {
 } from '../src/audio/sampleLibrary.js';
 import { createGameState } from '../src/core/gameState.js';
 import { playRecipe, releaseVoice } from '../src/audio/synth.js';
+import { BLIND_REGISTER_CLIPS, enumerateDeliveredBarkWavs } from '../src/audio/barkVoice.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MEASURE_SEED = 15800;
@@ -68,6 +69,18 @@ test('every manifest sample exists on disk as a valid PCM WAV', () => {
 
 test('no orphan wav files drift outside the manifest', () => {
   const manifestFiles = new Set([...SAMPLE_MANIFEST.values()].map((e) => e.file.replaceAll('\\', '/')));
+  // The eight blind register clips are PQ-158.04 acceptance fixtures (barkVoice exports their
+  // table; only the naming bench reads them), not runtime cue samples. They are still tracked
+  // here so an untracked wav dropped into assets/audio fails this guard.
+  const blindFiles = new Set(BLIND_REGISTER_CLIPS.map((c) => c.file.replaceAll('\\', '/')));
+  assert.ok(blindFiles.size >= 8, `blind register clip table must cover eight registers, got ${blindFiles.size}`);
+  for (const file of blindFiles) {
+    assert.ok(existsSync(path.join(ROOT, file)), `blind register clip "${file}" is missing`);
+  }
+  // The delivered bark corpus (the `--all` output of generate-bark-voice.mjs) is generated asset
+  // payload, not a residency manifest table. barkVoice owns the canonical enumeration.
+  const deliveredFiles = new Set(enumerateDeliveredBarkWavs().map((row) => row.file.replaceAll('\\', '/')));
+  assert.ok(deliveredFiles.size > 0, 'delivered bark corpus enumeration must not be empty');
   const audioRoot = path.join(ROOT, 'assets/audio');
   const walk = (dir) => {
     for (const name of readdirSync(dir)) {
@@ -75,7 +88,7 @@ test('no orphan wav files drift outside the manifest', () => {
       if (statSync(p).isDirectory()) { walk(p); continue; }
       if (name.endsWith('.mjs')) continue; // the generator pipeline itself
       const rel = path.relative(ROOT, p).replaceAll('\\', '/');
-      assert.ok(manifestFiles.has(rel), `assets/audio file "${rel}" is not in SAMPLE_MANIFEST`);
+      assert.ok(manifestFiles.has(rel) || blindFiles.has(rel) || deliveredFiles.has(rel), `assets/audio file "${rel}" is not in SAMPLE_MANIFEST`);
     }
   };
   walk(audioRoot);

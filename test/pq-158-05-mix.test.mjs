@@ -175,7 +175,7 @@ test(`seed ${MEASURE_SEED}: live presentation:vfxCue ids resolve; graph listens 
   const live = [
     ['combat.damage.shield', 'vfx.shieldHit'],
     ['combat.damage.hull', 'vfx.hullHit'],
-    ['combat.damage.armor', 'vfx.hullHit'],
+    ['combat.damage.armor', 'vfx.armorHit'],
     ['combat.damage.kill', 'vfx.kill'],
     ['combat.damage.charge', 'vfx.explosion'],
     ['combat.weakPoint', 'vfx.explosion'],
