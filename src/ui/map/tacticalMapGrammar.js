@@ -7,17 +7,20 @@ import { canvasFont } from '../canvasFonts.js';
 // rather than the only way to tell "me", "goal", "threat", and "infrastructure" apart.
 
 export const TACTICAL_MAP_PALETTE = Object.freeze({
-  ground: '#101916',
-  groundPlate: 'rgba(16, 25, 22, 0.96)',
-  ink: '#f0eee1',
-  inkDim: '#b8c3b5',
-  player: '#aed4b1',
-  objective: '#e6b478',
-  hostile: '#ee9d83',
-  station: '#bacbc1',
-  gate: '#c4b4d8',
-  neutral: '#b5bbaa',
-  asteroid: '#788475',
+  /* Deckplate register (2026-09-18): the contact grammar moves onto the ONE warm accent. The map
+     reads as an etched plate under the lamp — warm bone ink, lamp amber for live/selected, the
+     same lamp driven red for hostiles. Cyan/green sprite marks are the retired glass HUD. */
+  ground: '#0b0d10',
+  groundPlate: 'rgba(11, 13, 16, 0.96)',
+  ink: '#e8e2d4',
+  inkDim: '#a9a696',
+  player: '#ffd98c',
+  objective: '#f2b950',
+  hostile: '#ff5038',
+  station: '#c9bda4',
+  gate: '#a8844c',
+  neutral: '#6f7076',
+  asteroid: '#4a5162',
 });
 
 export const TACTICAL_SYMBOLS = Object.freeze({

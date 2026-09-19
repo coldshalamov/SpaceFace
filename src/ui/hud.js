@@ -4813,15 +4813,40 @@ export function createHud(ctx, alerts) {
     }
     setClass(arrow, 'sf-objarrow--edge', true);
     setClass(arrow, 'sf-objarrow--onscreen', false);
-    const edgeOverlapsLeftAnchor = edgePlacement.x < 370 && edgePlacement.y > h - 400;
-    const edgeOverlapsRightAnchor = edgePlacement.x > w - 300 && edgePlacement.y > h - 520;
-    const edgeOverlapsActionAnchor = edgePlacement.y > h - 135
-      && edgePlacement.x > w * 0.27 && edgePlacement.x < w * 0.73;
+    // The edge arrow never lands on a machined plate: the left column and the right dock own
+    // their edges, so an arrow that would sit on one steps just inboard of it.
+    let edgeX = edgePlacement.x;
+    const edgeY = edgePlacement.y;
+    const obstacles = objectiveEdgeObstacles(performance.now());
+    const leftBox = obstacles.left;
+    const rightBox = obstacles.right;
+    if (leftBox && edgeX < leftBox.right && edgeY > leftBox.top - 14 && edgeY < leftBox.bottom + 14) {
+      edgeX = leftBox.right + 18;
+    } else if (rightBox && edgeX > rightBox.left && edgeY > rightBox.top - 14 && edgeY < rightBox.bottom + 14) {
+      edgeX = rightBox.left - 18;
+    }
     setClass(arrow, 'sf-objarrow--compact', true);
     setDataEdge(arrow, edgePlacement.edge);
     setCssVar(arrow, '--sf-arrow-angle', `${edgePlacement.angleRad}rad`);
     setDisplay(arrow, true);
-    setStyle(arrow, 'transform', `translate3d(${edgePlacement.x}px,${edgePlacement.y}px,0)`);
+    setStyle(arrow, 'transform', `translate3d(${edgeX}px,${edgeY}px,0)`);
+  }
+
+  // Plate boxes for the objective edge arrow, read at most every 500 ms and only while the arrow
+  // rides an edge — one layout read, never per frame.
+  const objectiveEdgeBoxes = { at: -Infinity, left: null, right: null };
+  function plateBox(el) {
+    if (!el || !el.isConnected || typeof el.getBoundingClientRect !== 'function') return null;
+    const box = el.getBoundingClientRect();
+    return box && box.width > 0 && box.height > 0 ? box : null;
+  }
+  function objectiveEdgeObstacles(nowMs) {
+    if (nowMs - objectiveEdgeBoxes.at > 500) {
+      objectiveEdgeBoxes.at = nowMs;
+      objectiveEdgeBoxes.left = plateBox(leftStack);
+      objectiveEdgeBoxes.right = plateBox(rightDock);
+    }
+    return objectiveEdgeBoxes;
   }
 
   function placeReceiptLane() {

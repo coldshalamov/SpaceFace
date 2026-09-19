@@ -35,8 +35,9 @@ export const VELOCITY_RAIL_CSS = `
 .sf-speed .sf-speed__label { left:6.75%; top:6.3%; font-weight:700; letter-spacing:.16em; }
 .sf-speed .sf-speed__reference { right:6.4%; top:6.3%; letter-spacing:.02em; }
 .sf-speed .sf-speed__reference b { font-weight:600; color:var(--sv-ink); }
+/* The reading is the instrument's display moment: the largest numeral on the flight deck. */
 .sf-speed .sf-speed__digits {
-  position:absolute; display:block; left:6.75%; top:22.4%; width:68%; height:45%;
+  position:absolute; display:block; left:6.75%; top:19%; width:68%; height:54%;
   overflow:visible; fill:currentColor; color:var(--sv-signal); pointer-events:none;
 }
 .sf-speed .sf-speed__unit { right:6.4%; top:51.7%; color:var(--sv-ink); letter-spacing:.075em; }
@@ -92,7 +93,9 @@ export const VELOCITY_RAIL_CSS = `
   width:max-content; max-width:calc(284px * clamp(.86, var(--k-s, 1), 1.15));
 }
 @media (min-width:1760px) {
-  .sf-command-deck:has(.sf-speed) { --sf-deck-inset:clamp(284px, 16vw, 520px); }
+  /* 16 % of the 16:9 safe box, not of the raw width: at 2560x1080 the HUD lives in a centred
+     1920-wide box, and 16vw pushed the plate ~100 px under the ordnance tray. */
+  .sf-command-deck:has(.sf-speed) { --sf-deck-inset:clamp(284px, calc((100vw - 2 * var(--sf-safe-inset-x, 0px)) * .16), 520px); }
 }
 @media (max-width:900px), (max-height:650px) {
   .sf-kit-gauge.sf-speed, #hud .sf-kit-gauge.sf-speed { --sv-scale:.86; }

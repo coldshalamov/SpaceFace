@@ -39,39 +39,39 @@ export const MASSLINE_HUD_CSS = `
   transition:transform 60ms linear; }
 #sf-ml2 .ml2-mark.ml2-offscreen { filter:drop-shadow(0 0 7px rgba(2,6,11,0.92)); }
 #sf-ml2 .ml2-mark-label { position:absolute; left:50%; top:calc(100% + 7px); transform:translateX(-50%);
-  padding:2px 5px; border:1px solid currentColor; background:rgba(4,14,24,0.82); color:var(--ml2-c,#5fd7ff);
+  padding:2px 5px; border:1px solid currentColor; background:rgba(4,14,24,0.82); color:var(--ml2-c,var(--dp-lamp, #f2b950));
   font:750 12px/1.2 system-ui,sans-serif; letter-spacing:.06em; text-shadow:0 1px 2px #02060b;
   white-space:nowrap; }
 #sf-ml2 .ml2-preview-link { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
-#sf-ml2 .ml2-preview-line { stroke:rgba(125,224,255,0.62); stroke-width:1.5; stroke-dasharray:4 6;
+#sf-ml2 .ml2-preview-line { stroke:rgba(242,185,80,0.6); stroke-width:1.5; stroke-dasharray:4 6;
   vector-effect:non-scaling-stroke; }
-#sf-ml2 .ml2-preview-link.ml2-snare-preview .ml2-preview-line { stroke:rgba(125,224,255,0.92);
-  stroke-width:2.25; stroke-dasharray:10 5 2 5; filter:drop-shadow(0 0 5px rgba(125,224,255,0.72)); }
+#sf-ml2 .ml2-preview-link.ml2-snare-preview .ml2-preview-line { stroke:rgba(255,217,140,0.92);
+  stroke-width:2.25; stroke-dasharray:10 5 2 5; filter:drop-shadow(0 0 5px rgba(242,185,80,0.72)); }
 #sf-ml2 .ml2-preview-link.ml2-bridle-preview .ml2-preview-line { stroke:rgba(255,181,71,0.9);
-  stroke-width:2; stroke-dasharray:7 5; filter:drop-shadow(0 0 4px rgba(125,224,255,0.55)); }
+  stroke-width:2; stroke-dasharray:7 5; filter:drop-shadow(0 0 4px rgba(242,185,80,0.55)); }
 #sf-ml2 .ml2-preview.ml2-preview-snare { border-style:solid; border-left-width:1px; }
 /* The acquisition MARK is the world anchor: it sits on the candidate itself, so the preview never
    needs a player-to-target link line (see _updateAcquisitionPreview). Shape, not colour, carries
    the state — diamond = ready, circle = protected, dashed = unavailable. */
 #sf-ml2 .ml2-preview-mark { position:absolute; left:0; top:0; width:24px; height:24px;
   margin:-12px 0 0 -12px; will-change:transform; transition:transform 60ms linear;
-  color:var(--ml2-p,#7de0ff); }
+  color:var(--ml2-p,var(--dp-lamp-hot, #ffd98c)); }
 #sf-ml2 .ml2-preview-mark i { position:absolute; inset:0; border:2px solid currentColor;
   transform:rotate(45deg); box-shadow:0 0 9px currentColor; }
 #sf-ml2 .ml2-preview-mark.ml2-mark-protected i { border-radius:50%; transform:none; }
-#sf-ml2 .ml2-preview-mark.ml2-mark-unavailable { color:#ffd08a; }
+#sf-ml2 .ml2-preview-mark.ml2-mark-unavailable { color:var(--dp-ink-dim, #a9a696); }
 #sf-ml2 .ml2-preview-mark.ml2-mark-unavailable i { border-style:dashed; box-shadow:none; }
-#sf-ml2 .ml2-preview-mark.ml2-bridle-source { color:#7de0ff; }
+#sf-ml2 .ml2-preview-mark.ml2-bridle-source { color:var(--dp-lamp, #f2b950); }
 #sf-ml2 .ml2-preview-mark.ml2-bridle-source i { inset:2px; transform:none; box-shadow:0 0 9px currentColor; }
 #sf-ml2 .ml2-preview-mark.ml2-bridle-target { color:#ffb547; }
 #sf-ml2 .ml2-preview-mark.ml2-offscreen { filter:drop-shadow(0 0 7px rgba(2,6,11,0.92)); }
 #sf-ml2 .ml2-preview { position:absolute; left:0; top:0; min-width:94px;
   transform:translate3d(-9999px,-9999px,0); padding:6px 9px 5px 9px;
-  border:1px solid rgba(125,224,255,0.88); border-left-width:1px;
-  background:linear-gradient(90deg,rgba(4,14,24,0.82),rgba(4,14,24,0.36));
+  border:1px solid var(--dp-lamp-dim, #8a6b3a); border-left-width:1px;
+  background:linear-gradient(90deg,rgba(11,13,16,0.86),rgba(11,13,16,0.4));
   clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
-  color:#e5f8ff; text-shadow:0 1px 2px #02060b; white-space:nowrap;
-  font:650 12px/1.28 system-ui,sans-serif; letter-spacing:.06em;
+  color:var(--dp-ink, #e8e2d4); text-shadow:0 1px 2px #02060b; white-space:nowrap;
+  font:650 12px/1.28 var(--dp-face-read, system-ui), sans-serif; letter-spacing:.1em; text-transform:uppercase;
   animation:ml2preview 1.3s ease-in-out infinite; }
 #sf-ml2 .ml2-preview.ml2-preview-blocked,
 #sf-ml2 .ml2-preview.ml2-preview-protected,
@@ -81,30 +81,33 @@ export const MASSLINE_HUD_CSS = `
 @keyframes ml2preview { 0%,100% { opacity:0.78; } 50% { opacity:1; } }
 #sf-ml2 .ml2-throw { width:26px; height:26px; margin:-13px 0 0 -13px; }
 #sf-ml2 .ml2-throw .ml2-diamond { width:100%; height:100%; transform:rotate(45deg);
-  border:2px solid var(--ml2-c,#5fd7ff); box-shadow:0 0 10px var(--ml2-c,#5fd7ff);
+  border:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); box-shadow:0 0 10px var(--ml2-c,var(--dp-lamp, #f2b950));
   transition:border-color 80ms linear, box-shadow 80ms linear; }
-#sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { outline:2px solid var(--ml2-c,#5fd7ff); outline-offset:4px; }
+#sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { outline:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); outline-offset:4px; }
 #sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { animation:ml2pulse 0.5s ease-in-out infinite; }
 @keyframes ml2pulse { 0%,100% { transform:rotate(45deg) scale(1); } 50% { transform:rotate(45deg) scale(1.3); } }
 #sf-ml2 .ml2-self { width:0; height:0; margin:-7px 0 0 -7px;
   border-left:7px solid transparent; border-right:7px solid transparent;
-  border-bottom:12px solid var(--ml2-c,#5fd7ff); opacity:0.7; filter:drop-shadow(0 0 6px var(--ml2-c,#5fd7ff)); }
+  border-bottom:12px solid var(--ml2-c,var(--dp-lamp, #f2b950)); opacity:0.7; filter:drop-shadow(0 0 6px var(--ml2-c,var(--dp-lamp, #f2b950))); }
 #sf-ml2 .ml2-self .ml2-mark-label { top:17px; }
-#sf-ml2 .ml2-self.ml2-hot { outline:2px solid var(--ml2-c,#5fd7ff); outline-offset:5px; opacity:1; }
+#sf-ml2 .ml2-self.ml2-hot { outline:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); outline-offset:5px; opacity:1; }
 #sf-ml2 svg.ml2-ring { position:absolute; left:0; top:0; overflow:visible; }
-#sf-ml2 .ml2-ring circle { fill:rgba(95,215,255,0.04); stroke:#5fd7ff; stroke-width:1.4;
+#sf-ml2 .ml2-ring circle { fill:rgba(242,185,80,0.05); stroke:var(--dp-lamp, #f2b950); stroke-width:1.4;
   stroke-dasharray:10 7; opacity:0.55; }
-#sf-ml2 .ml2-meters { position:absolute; left:22px; bottom:158px; display:flex; flex-direction:column;
-  gap:6px; align-items:flex-start; }
-#sf-ml2 .ml2-pill { display:flex; align-items:center; gap:7px; padding:3px 9px; border-radius:999px;
-  background:rgba(10,16,24,0.62); border:1px solid rgba(148,163,184,0.28);
-  font:600 12px/1.4 system-ui, sans-serif; letter-spacing:.06em; color:#cbd5e1; }
-#sf-ml2 .ml2-pill .ml2-fill { width:64px; height:4px; border-radius:2px; background:rgba(148,163,184,0.22);
+#sf-ml2 .ml2-meters { position:absolute; left:50%; bottom:120px; transform:translateX(-50%);
+  display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center;
+  gap:6px 10px; align-items:center; max-width:min(560px, 60vw); }
+#sf-ml2 .ml2-pill { display:flex; align-items:center; gap:7px; padding:3px 9px;
+  border-radius:var(--dp-r-instrument, 3px);
+  background-color:var(--dp-metal-1, #12151a); background-image:var(--dp-plate-img, none);
+  border:0; box-shadow:var(--dp-plate-bevel, 0 2px 10px rgb(0 0 0 / .5));
+  font:600 12px/1.4 system-ui, sans-serif; letter-spacing:.06em; color:var(--dp-ink-dim, #cbd5e1); }
+#sf-ml2 .ml2-pill .ml2-fill { width:64px; height:4px; border-radius:2px; background:var(--dp-metal-3, rgba(148,163,184,0.22));
   position:relative; overflow:hidden; }
-#sf-ml2 .ml2-pill .ml2-fill i { position:absolute; inset:0; transform-origin:left center; background:#5fd7ff; }
-#sf-ml2 .ml2-pill.ml2-on { border-color:#5fd7ff; color:#e0f6ff; }
+#sf-ml2 .ml2-pill .ml2-fill i { position:absolute; inset:0; transform-origin:left center; background:var(--dp-lamp, var(--dp-lamp, #f2b950)); }
+#sf-ml2 .ml2-pill.ml2-on { box-shadow:var(--dp-plate-bevel, none), 0 0 8px var(--dp-lamp-bloom, rgba(95,215,255,.3)); color:var(--dp-lamp-hot, #e0f6ff); }
 #sf-ml2 .ml2-pill.ml2-cloak .ml2-fill i { background:#9f8bff; }
-#sf-ml2 .ml2-pill.ml2-cloak.ml2-on { border-color:#9f8bff; color:#efeaff; }
+#sf-ml2 .ml2-pill.ml2-cloak.ml2-on { box-shadow:var(--dp-plate-bevel, none), 0 0 8px rgba(159,139,255,.3); color:#efeaff; }
 #sf-ml2.ml2-reduced-motion .ml2-mark,
 #sf-ml2.ml2-reduced-motion .ml2-preview-mark { transition:none; }
 #sf-ml2.ml2-reduced-motion .ml2-throw.ml2-hot .ml2-diamond { animation:none; }
@@ -417,8 +420,9 @@ export const masslineHud = {
     const offscreen = !targetScreen.onScreen
       || targetScreen.x < 0 || targetScreen.x > viewportWidth
       || targetScreen.y < 0 || targetScreen.y > viewportHeight;
-    const cueX = offscreen ? clampRange(targetScreen.x, 30, viewportWidth - 30) : targetScreen.x;
-    const cueY = offscreen ? clampRange(targetScreen.y, 30, viewportHeight - 30) : targetScreen.y;
+    const pinned = offscreen ? pinToCueRing(targetScreen.x, targetScreen.y, viewportWidth, viewportHeight) : null;
+    const cueX = pinned ? pinned.x : targetScreen.x;
+    const cueY = pinned ? pinned.y : targetScreen.y;
     const ready = selected.status === 'ready';
     // M4: print the body's mass, not the disambiguation confidence — "640 t" reads as the load
     // the line will couple into the helm; the old floored percent never meant that.
@@ -475,8 +479,9 @@ export const masslineHud = {
     const offscreen = !screen.onScreen
       || screen.x < 0 || screen.x > viewportWidth
       || screen.y < 0 || screen.y > viewportHeight;
-    const cueX = offscreen ? clampRange(screen.x, 30, viewportWidth - 30) : screen.x;
-    const cueY = offscreen ? clampRange(screen.y, 30, viewportHeight - 30) : screen.y;
+    const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
+    const cueX = pinned ? pinned.x : screen.x;
+    const cueY = pinned ? pinned.y : screen.y;
     const status = previewStatusCopy('invalid', denial.reason);
     const text = `MASSLINE · ${status}`;
     const captionWidth = estimateCaptionWidth(text);
@@ -936,6 +941,23 @@ function viewportExtent(windowKey, documentKey, fallback) {
 
 function finiteProjection(value) {
   return !!(value && Number.isFinite(value.x) && Number.isFinite(value.y));
+}
+
+// Offscreen acquisition cues ride an ellipse around the reticle, not the screen rectangle. Every
+// corner of the flight deck holds an instrument (integrity, speed, power rail, radar), so a
+// rectangle clamp parked the cue on top of hardware; the ellipse keeps the side columns and the
+// bottom deck clear at every viewport while still pointing the way to the target.
+function pinToCueRing(rawX, rawY, viewportWidth, viewportHeight) {
+  const cx = viewportWidth / 2;
+  const cy = viewportHeight / 2;
+  const rx = Math.max(60, cx - Math.max(220, viewportWidth * 0.17));
+  const ry = Math.max(60, cy - Math.max(110, viewportHeight * 0.15));
+  const dx = finite(rawX) - cx;
+  const dy = finite(rawY) - cy;
+  const reach = Math.hypot(dx / rx, dy / ry);
+  if (!(reach > 0)) return { x: cx, y: cy + ry };
+  const scale = reach > 1 ? 1 / reach : 1;
+  return { x: cx + dx * scale, y: cy + dy * scale };
 }
 
 function clampRange(value, min, max) {

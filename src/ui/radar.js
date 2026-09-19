@@ -59,15 +59,20 @@ const MAX_SEMANTIC_INFRASTRUCTURE = 20;
 const ASTEROID_FIELD_CELLS = 9;
 const ASTEROID_DOT_LIMIT = 14;
 
+/* Deckplate one-accent law (2026-09-18): the radar scope is an instrument of THIS ship, not a
+   multicolor sticker chart. Friendly/faction contacts read as warm bone; the lamp itself is kept for
+   the objective and the selection, and hostile is the lamp driven red. Shape carries role. The keys
+   stay: shipState() uses membership here to decide "friendly". */
+const FRIENDLY_CONTACT = '#d6c8a6';
 const FACTION_COLOR = Object.freeze({
-  faction_scn: '#5b93d6',
-  faction_mts: '#4fbf8f',
-  faction_dmc: '#C9772E',
-  faction_reach: '#d95f6a',
-  faction_quiet: '#a78bca',
-  faction_vael: '#46b98c',
-  faction_free: '#5aa8c9',
-  faction_choir: '#c987b5',
+  faction_scn: FRIENDLY_CONTACT,
+  faction_mts: FRIENDLY_CONTACT,
+  faction_dmc: FRIENDLY_CONTACT,
+  faction_reach: FRIENDLY_CONTACT,
+  faction_quiet: FRIENDLY_CONTACT,
+  faction_vael: FRIENDLY_CONTACT,
+  faction_free: FRIENDLY_CONTACT,
+  faction_choir: FRIENDLY_CONTACT,
 });
 
 const CAPITAL_ROLES = new Set(['battlecruiser', 'flagship', 'gunship', 'carrier', 'dreadnought']);

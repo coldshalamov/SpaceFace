@@ -85,22 +85,22 @@ export const DECKPLATE_TOKENS_CSS = `
   /* ── Composite material bundles: a surface applies the material with TWO declarations
         (background-image + box-shadow, or text-shadow). The recipe lives exactly here. ── */
   --dp-plate-img:
-    radial-gradient(140% 120% at 18% 0%, var(--dp-key) 0%, rgb(255 224 178 / .04) 34%, transparent 62%),
-    linear-gradient(178deg, var(--dp-metal-2) 0%, var(--dp-metal-1) 52%, var(--dp-metal-0) 100%),
-    repeating-linear-gradient(0deg, rgb(255 255 255 / .018) 0 1px, transparent 1px 3px);
+    radial-gradient(150% 130% at 14% 0%, var(--dp-key) 0%, rgb(255 224 178 / .055) 34%, transparent 60%),
+    linear-gradient(178deg, var(--dp-metal-3) 0%, var(--dp-metal-2) 40%, var(--dp-metal-1) 74%, var(--dp-metal-0) 100%),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / .02) 0 1px, transparent 1px 3px);
   --dp-plate-bevel:
     inset 0 1px 0 var(--dp-key-edge),
-    inset 1px 0 0 rgb(255 232 190 / .12),
+    inset 1px 0 0 rgb(255 232 190 / .18),
     inset 0 -1px 0 var(--dp-shade-edge),
-    inset -1px 0 0 rgb(0 0 0 / .3),
-    0 2px 10px rgb(0 0 0 / .38);
+    inset -1px 0 0 rgb(0 0 0 / .42),
+    0 2px 12px rgb(0 0 0 / .5);
   --dp-plate-bevel-raised:
     inset 0 1px 0 var(--dp-key-edge),
-    inset 1px 0 0 rgb(255 232 190 / .14),
+    inset 1px 0 0 rgb(255 232 190 / .22),
     inset 0 -1px 0 var(--dp-shade-edge),
-    inset -1px 0 0 rgb(0 0 0 / .3),
-    0 1px 0 rgb(255 255 255 / .04),
-    0 6px 18px rgb(0 0 0 / .5);
+    inset -1px 0 0 rgb(0 0 0 / .46),
+    0 1px 0 rgb(255 255 255 / .05),
+    0 8px 22px rgb(0 0 0 / .58);
   --dp-channel-img:
     linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .18) 55%, rgb(255 255 255 / .03));
   --dp-channel-bevel:

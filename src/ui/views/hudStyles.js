@@ -1728,6 +1728,14 @@ export function injectHudCss() {
        fixed 311 px reserve inside a 600 px-tall window would push the left column off the top. */
     .sf-leftstack { bottom:min(calc(22px + 385px * var(--k-s, 1)), 38vh); }
   }
+  /* 2026-09-18: the deck no longer stacks four rows under the gauge — the readouts flow, and the
+     weapon readout is a nameplate bolted to the gauge. The 385 px reserve left ~90 px of dead band
+     at 1280x720 and pushed the column's top plate off the screen. The reserve is now the deck's
+     own parts: the gauge at its own clamp (velocityRailStyles --sv-scale, 116 px tall) plus the
+     nameplate + one flowed chip row + one tether row of slack, scaled by the kit factor. */
+  @media (max-width:1759px) and (min-height:651px) {
+    .sf-leftstack { bottom:min(calc(40px + 116px * clamp(.86, var(--k-s, 1), 1.15) + 70px * var(--k-s, 1)), 38vh); }
+  }
   @media (min-width:1760px) {
     /* The frame puts the plate's left edge at 19.3 % of the width (371 px of 1920). Below that it
        must still clear the left column's 284 px right edge. */
@@ -1895,7 +1903,7 @@ export function injectHudCss() {
   .sf-alert,
   .sf-toast {
     box-sizing:border-box;
-    background-color:var(--dp-metal-1);
+    background-color:var(--dp-metal-2);
     background-image:var(--dp-plate-img);
     border:0;
     border-radius:var(--dp-r-plate);
@@ -2003,7 +2011,11 @@ export function injectHudCss() {
       inset 1px 0 0 rgb(0 0 0 / .4), inset -1px 0 0 rgb(0 0 0 / .4);
     color:var(--dp-ink-dim); opacity:1;
   }
-  #hud .sf-pslot__key { color:var(--dp-ink-mute); opacity:1; text-shadow:var(--dp-etch-shadow); }
+  #hud .sf-pslot__key {
+    color:var(--dp-ink-mute); opacity:1; text-shadow:var(--dp-etch-shadow);
+    font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 62; letter-spacing:.04em;
+    max-width:calc(100% - 6px); overflow:hidden; white-space:nowrap;
+  }
   #hud .sf-pslot__name { bottom:-17px; color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow); }
   #hud .sf-pslot__sweep circle { stroke:var(--dp-lamp); }
   #hud .sf-pslot[data-state="armed"] {
@@ -2025,16 +2037,6 @@ export function injectHudCss() {
   #hud .sf-pslot[data-state="empty"] { background:var(--dp-metal-0); }
   #hud .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.22; }
   #hud .sf-prail[data-claimed] .sf-pslot__name { color:var(--dp-lamp); }
-  #hud .sf-pslot[data-state="armed"] .sf-pslot__name { color:rgb(214 238 255); }
-  #hud .sf-pslot[data-state="cooling"] { opacity:.86; }
-  #hud .sf-pslot[data-state="cooling"] .sf-pslot__art { opacity:.6; }
-  #hud .sf-pslot[data-state="unaffordable"] { opacity:.62; }
-  #hud .sf-pslot[data-state="unaffordable"] .sf-pslot__art { opacity:.4; }
-  #hud .sf-pslot[data-state="locked"] { border-color:rgb(188 220 255 / .13); }
-  #hud .sf-pslot[data-state="locked"] .sf-pslot__art { opacity:.36; }
-  #hud .sf-pslot[data-state="empty"] { border-color:rgb(188 220 255 / .10); background:rgb(9 14 22 / .40); }
-  #hud .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.22; }
-  #hud .sf-prail[data-claimed] .sf-pslot__name { color:var(--glass-neon); }
 
   /* --- radar: the instrument binnacle — a machined ring, dark lens, warm rose --- */
   #hud .sf-kit-radar__bezel {
@@ -2049,13 +2051,35 @@ export function injectHudCss() {
   }
   #hud .sf-kit-radar__n { filter:none; }
 
+  /* --- integrity: quiet while the hull is whole, steps forward the moment it is not. The speed
+         reading is the deck's display numeral; a healthy hull must not out-shout it. --- */
+  /* Only the figures scale — the legends (HULL, %, STABLE) keep the 12 px type floor. */
+  #hud .sf-integrity .sf-integrity__figures {
+    transform-origin:0 100%; transition:transform var(--dp-d-settle) var(--dp-ease-snap);
+  }
+  #hud .sf-integrity[data-hull="stable"] .sf-integrity__figures { transform:scale(.7); fill:var(--dp-ink-dim); }
+  #hud .sf-integrity[data-hull="stable"] .sf-integrity__percent { right:auto; left:59%; }
+  @media (prefers-reduced-motion:reduce) { #hud .sf-integrity .sf-integrity__figures { transition:none; } }
+  html.sf-reduce-motion #hud .sf-integrity .sf-integrity__figures { transition:none; }
+
   /* --- right dock: roster, target card, sector law --- */
   #hud .sf-overview { overflow:hidden; }
+  #hud .sf-radar-objective-key { white-space:pre; overflow:hidden; text-overflow:ellipsis; }
   #hud .sf-overview-row { border-bottom:1px solid var(--dp-metal-3); transition:background var(--dp-d-cut) var(--dp-ease-lamp); }
   #hud .sf-overview-row:hover { background:rgb(242 185 80 / .09); }
   #hud .sf-overview-row__name { color:var(--hud-paper); }
   #hud .sf-overview-row__right, #hud .sf-overview-row__detail,
   #hud .sf-overview-row__state, #hud .sf-overview-row__tier, #hud .sf-overview-footer { color:var(--hud-muted); }
+  /* Collapsed roster: the count line (no instrument title — j07 contract). An etched contact
+     diamond, the radar's own mark, sits before the reading so "24" reads as a scope count. */
+  #hud .sf-overview--count .sf-overview-footer {
+    display:flex; align-items:center; justify-content:center; gap:9px; width:100%;
+    box-sizing:border-box; padding:0 12px; color:var(--dp-lamp-hot); font-variant-numeric:tabular-nums;
+  }
+  #hud .sf-overview--count .sf-overview-footer::before {
+    content:""; flex:0 0 auto; width:6px; height:6px; transform:rotate(45deg);
+    border:1.5px solid var(--dp-ink-dim); box-shadow:0 1px 0 rgb(0 0 0 / .6);
+  }
   #hud .sf-target { padding:10px 12px; border-radius:var(--dp-r-instrument); box-shadow:var(--dp-plate-bevel-raised); }
   #hud .sf-target__name { color:var(--hud-paper); text-shadow:0 0 10px var(--dp-lamp-bloom-soft); }
   #hud .sf-target__faction, #hud .sf-target__meta, #hud .sf-target__dist,
@@ -2067,6 +2091,8 @@ export function injectHudCss() {
   #hud #sf-sector-law { padding:10px 12px; }
   #hud .sf-law__head, #hud .sf-law__meta, #hud .sf-law__detail, #hud .sf-law__jurisdiction { color:var(--hud-muted); }
   #hud .sf-law__headline { color:var(--hud-paper); }
+  #hud #sf-sector-law.sf-law--entry .sf-law__detail { display:none; }
+  #hud #sf-sector-law .sf-law__head { font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 62; letter-spacing:.16em; text-shadow:var(--dp-etch-shadow); }
 
   /* --- left contextual column: mission, nav, comms tape, first-use --- */
   #hud .sf-mission-tracker { padding:8px 12px 9px; border-left:2px solid var(--dp-lamp); }
@@ -2077,7 +2103,15 @@ export function injectHudCss() {
   #hud .sf-nav-label { color:var(--hud-paper); }
   #hud .sf-nav-meta { color:var(--hud-muted); }
   #hud .sf-obj { color:var(--hud-paper); }
-  #hud .sf-commtape { padding:6px 10px; border-bottom:0; border-radius:var(--dp-r-plate); }
+  #hud .sf-commtape {
+    padding:5px 2px 6px; border-bottom:0; border-radius:0;
+    background-color:transparent; background-image:none;
+    box-shadow:inset 0 -1px 0 var(--dp-metal-4), inset 0 -2px 0 rgb(0 0 0 / .5);
+  }
+  #hud .sf-commtape__band, #hud .sf-commtape .sf-comm-backlog-btn, #hud .sf-commtape .sf-contact-hail__button {
+    font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 62; letter-spacing:.14em;
+    text-transform:uppercase; text-shadow:var(--dp-etch-shadow), 0 0 6px rgb(0 0 0 / .8);
+  }
   #hud .sf-commtape__band, #hud .sf-commtape .sf-comm-backlog-btn,
   #hud .sf-commtape .sf-contact-hail__button, #hud .sf-commtape .sf-fx-comms-trace__wave {
     color:var(--hud-muted);
@@ -2085,14 +2119,43 @@ export function injectHudCss() {
   #hud .sf-commtape .sf-comm-backlog-btn:hover, #hud .sf-commtape .sf-contact-hail__button:hover { color:var(--dp-lamp-hot); }
   #hud .sf-news-ticker { color:var(--hud-paper); }
   #hud .sf-firstuse { color:var(--hud-paper); }
-  #hud .sf-band-hud__button { color:var(--hud-muted); }
-  #hud .sf-band-hud__button:hover, #hud .sf-band-hud__button:focus-visible { color:var(--dp-lamp-hot); }
 
-  /* --- command deck readouts --- */
-  #hud .sf-stat__k { color:var(--hud-muted); }
-  #hud .sf-stat__v { color:var(--hud-paper); }
+  /* --- command deck readouts: etched keys, lamp-lit values --- */
+  #hud .sf-stat__k { color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow); }
+  #hud .sf-stat__v { color:var(--dp-lamp-hot); text-shadow:0 0 10px var(--dp-lamp-bloom-soft); }
   #hud .sf-tchip__verb, #hud .sf-tchip__hint, #hud .sf-tchip { color:var(--hud-muted); }
   #hud .sf-tchip__bind { color:var(--hud-paper); }
+  /* The weapon readout is the speed instrument's nameplate: same width, bolted under it, so the
+     two read as one unit of hardware instead of a caption floating in space. */
+  #hud #sf-wpnstat {
+    flex:0 0 calc(284px * clamp(.86, var(--k-s, 1), 1.15)); box-sizing:border-box;
+    /* Reading sits beside its legend, not at the far end: the deck's plate is allowed to tuck its
+       right edge under the rail's bracket (see .sf-command-deck max-width), and at 2560x1080 a
+       right-aligned reading landed exactly under it. */
+    justify-content:flex-start; gap:14px; margin-top:0; padding:5px 12px 6px;
+    background-color:var(--dp-metal-1); background-image:var(--dp-plate-img);
+    border-radius:0 0 var(--dp-r-instrument) var(--dp-r-instrument); box-shadow:var(--dp-plate-bevel);
+  }
+  #hud #sf-wpnstat .sf-stat__k {
+    font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 62;
+    font-size:var(--dp-fs-etch); letter-spacing:.18em; text-transform:uppercase;
+  }
+  #hud #sf-wpnstat .sf-stat__v { font-size:var(--dp-fs-data); font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+
+  /* --- comms band key: a raised machined key, not a caption --- */
+  #hud .sf-band-hud__button {
+    background-color:var(--dp-metal-2); background-image:var(--dp-plate-img);
+    border:0; border-radius:var(--dp-r-instrument); box-shadow:var(--dp-plate-bevel-raised);
+    min-width:0; padding:7px 14px;
+    font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 62;
+    letter-spacing:.16em; color:var(--dp-ink-dim); text-shadow:var(--dp-etch-shadow);
+    transition:color var(--dp-d-cut) var(--dp-ease-lamp), box-shadow var(--dp-d-cut) var(--dp-ease-lamp);
+  }
+  #hud .sf-band-hud__button[data-off="true"] { color:var(--dp-ink-mute); }
+  #hud .sf-band-hud__button:hover, #hud .sf-band-hud__button:focus-visible {
+    color:var(--dp-lamp-hot); background-color:var(--dp-metal-2);
+    box-shadow:var(--dp-plate-bevel-raised), 0 0 0 2px var(--dp-lamp);
+  }
 
   /* --- onboarding card lives in a stylesheet injected later; the plate re-stated at ID weight --- */
   #hud #sf-onboarding .sf-ob-card,
@@ -2109,6 +2172,18 @@ export function injectHudCss() {
   #hud #sf-onboarding .sf-ob-hint, #hud #sf-onboarding .sf-ob-flavor { color:var(--hud-muted); }
   #hud #sf-onboarding .sf-ob-progress { color:var(--dp-lamp); }
 
+  /* --- aim reticle: the gunsight is the lamp, not a stray blue. CSS paint outranks the SVG's
+         presentation attributes (uiRoot.js RETICLE_SVG), so the art stays one shared source.
+         Hit confirm keeps its three distinct scales (styles/ui.css) and moves onto the ramp:
+         shield = bone ink (deflected), hull = the lamp driven red, kill = the filament core. --- */
+  #aim-reticle .sf-reticle-shape { stroke:var(--dp-lamp); }
+  #aim-reticle > svg > circle { fill:var(--dp-lamp-hot); }
+  #aim-reticle > svg { filter:drop-shadow(0 0 3px var(--dp-lamp-bloom-soft)); }
+  #aim-reticle[data-hit="shield"] .sf-reticle-hit-ticks { stroke:var(--dp-ink); filter:drop-shadow(0 0 3px rgb(232 226 212 / .4)); }
+  #aim-reticle[data-hit="hull"] .sf-reticle-hit-ticks { stroke:var(--dp-danger); filter:drop-shadow(0 0 4px var(--dp-danger-bloom)); }
+  #aim-reticle[data-hit="kill"] .sf-reticle-hit-ticks { stroke:var(--dp-lamp-hot); filter:drop-shadow(0 0 7px var(--dp-lamp-bloom)); }
+  #aim-reticle[data-hit="kill"] > svg > circle:last-of-type { fill:var(--dp-lamp-hot); }
+
   /* --- world marks near the reticle ride the lamp ramp --- */
   #hud .sf-lockring .sf-lockring__fill { stroke:var(--dp-lamp); }
   #hud .sf-lockring .sf-lockring__track { stroke:var(--dp-metal-4); }
@@ -2123,6 +2198,10 @@ export function injectHudCss() {
 
   /* --- alerts and receipts: one machined strip each (the annunciator's plate) --- */
   .sf-alert { padding:7px 18px; }
+  .sf-alert.sf-alert--floor {
+    padding:4px 14px; font-size:var(--dp-fs-data); font-weight:500; letter-spacing:.02em;
+    color:var(--dp-ink-dim); background-color:var(--dp-metal-1); box-shadow:var(--dp-plate-bevel);
+  }
   .sf-alert--dock { padding:9px 24px; }
   .sf-toast { padding:6px 10px; }
 
@@ -2133,6 +2212,7 @@ export function injectHudCss() {
   html.sf-high-contrast #hud .sf-nav-readout,   html.sf-high-contrast #hud #sf-sector-law,
   html.sf-high-contrast #hud .sf-commtape, html.sf-high-contrast #hud .sf-prail__slots,
   html.sf-high-contrast #hud .sf-pslot, html.sf-high-contrast #hud .sf-kit-gauge,
+  html.sf-high-contrast #hud #sf-wpnstat, html.sf-high-contrast #hud .sf-band-hud__button,
   html.sf-high-contrast .sf-alert, html.sf-high-contrast .sf-toast {
     background:rgb(0 0 0 / .95); background-image:none;
     border-color:rgb(255 255 255 / .85); box-shadow:none;
@@ -2164,6 +2244,11 @@ export function injectHudCss() {
     #hud .sf-kit-gauge__arc { background:none; filter:none; -webkit-mask-image:none; mask-image:none; }
     #hud .sf-kit-gauge__needle, #hud .sf-kit-gauge__num { color:CanvasText; text-shadow:none; }
     #hud .sf-sch-ship--fill .sf-sch-hull { fill:none; }
+    #hud #sf-wpnstat { background:Canvas; background-image:none; border:1px solid CanvasText; box-shadow:none; forced-color-adjust:none; }
+    #hud .sf-band-hud__button { background:ButtonFace; background-image:none; color:ButtonText; border:1px solid ButtonText; box-shadow:none; }
+    #hud .sf-band-hud__button:focus-visible { outline:2px solid Highlight; outline-offset:2px; }
+    #aim-reticle .sf-reticle-shape { stroke:CanvasText; }
+    #aim-reticle > svg > circle { fill:CanvasText; }
   }
   `;
   document.head.appendChild(s);
