@@ -1074,6 +1074,36 @@ ${SEL} .sf-ng-body .k-words.k-words--row.of-pause .fh-key.fh-key--legend {
   letter-spacing:.06em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 ${SEL} .sf-ng-body .k-words.k-words--row.of-pause .k-word-sub { text-align:center; padding:2px 4px 5px; font-size:12px; color:var(--dp-ink-mute); }
+/* achievements: a trophy wall. Each deed is a glass tile: its emblem in a medallion that lights
+   amber when earned (bone when not), the name in the etched voice, what it asks, a status chip. */
+${SEL}.of-achievements > .k-stage { max-width:none; }
+${SEL}.of-achievements .of-achievements-rows { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:12px; }
+${SEL}.of-achievements .k-row.of-achievements-row {
+  grid-template-columns:56px minmax(0, 1fr); grid-template-rows:auto auto; align-items:start; column-gap:14px; row-gap:6px;
+  min-height:0; padding:14px 16px; border-radius:3px; background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
+}
+${SEL}.of-achievements .of-achievements-light { display:none; }
+${SEL}.of-achievements .of-achievements-emblem {
+  grid-row:1 / span 2; display:grid; place-items:center; width:52px; height:52px; border-radius:50%; color:var(--dp-ink-mute);
+  background:radial-gradient(circle at 42% 34%, #2a2f37, #12151a 70%); box-shadow:inset 0 1px 2px rgb(0 0 0 / .9), 0 0 0 1px rgb(0 0 0 / .7), 0 1px 0 1px rgb(255 236 204 / .08);
+}
+${SEL}.of-achievements .of-achievements-emblem .dp-icon .accent { fill:currentColor; }
+${SEL}.of-achievements .of-achievements-row[data-state="unlocked"] .of-achievements-emblem {
+  color:var(--dp-lamp-hot); background:radial-gradient(circle at 42% 34%, #3a2f1c, #17120a 72%);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .45), 0 0 16px var(--dp-lamp-bloom), 0 0 0 1px rgb(0 0 0 / .7);
+}
+${SEL}.of-achievements .of-achievements-row[data-state="unlocked"] .of-achievements-emblem .dp-icon .accent { fill:var(--dp-lamp); }
+${SEL}.of-achievements .of-achievements-text { grid-column:2; min-width:0; }
+${SEL}.of-achievements .of-achievements-text .k-row__name { display:block; font-family:var(--dp-face-etch); font-variation-settings:"wght" 780, "wdth" 84; letter-spacing:.05em; text-transform:uppercase; color:var(--dp-ink); }
+${SEL}.of-achievements .of-achievements-row[data-state="locked"] .of-achievements-text .k-row__name { color:var(--dp-ink-dim); }
+${SEL}.of-achievements .of-achievements-text .k-row__sub { margin-top:4px; color:var(--dp-ink-dim); }
+${SEL}.of-achievements .of-achievements-row .k-row__num {
+  grid-column:2; justify-self:start; display:inline-grid; place-items:center; min-height:22px; padding:2px 8px; border-radius:2px;
+  background:rgb(0 0 0 / .32); box-shadow:inset 0 0 0 1px rgb(232 226 212 / .14);
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 74; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dp-ink-mute);
+}
+${SEL}.of-achievements .of-achievements-row[data-state="unlocked"] .k-row__num { color:var(--dp-lamp-hot); box-shadow:inset 0 0 0 1px rgb(255 217 140 / .35); }
+@media (forced-colors:active) { ${SEL}.of-achievements .k-row.of-achievements-row { border:1px solid CanvasText; background:Canvas; } ${SEL}.of-achievements .of-achievements-emblem { border:1px solid CanvasText; background:Canvas; } }
 /* keys drawn by the bridge: the lit cap is the focus */
 ${SEL} .fh-key:not(.fh-key--legend):focus-visible { outline:0 solid transparent !important; }
 /* a small key in a screen's foot is a command (export, import): the one keycap with its lamp */

@@ -6,7 +6,7 @@
 import { ACHIEVEMENT_CATEGORIES } from '../../data/achievements.js';
 import { ACHIEVEMENT_UNLOCKED_EVENT, readAchievementRows } from '../../systems/achievements.js';
 import { el, words, settle, cue } from '../kit/index.js';
-import { injectDeckplate } from '../deckplate/index.js';
+import { injectDeckplate, dpIcon } from '../deckplate/index.js';
 
 const ACHIEVEMENTS_SHEET_ID = 'of-achievements-css';
 
@@ -49,7 +49,15 @@ export function rowsForSection(rows, sectionId) {
   return sectionId === 'all' ? list : list.filter((row) => row.category === sectionId);
 }
 
-/** One engraved fact row: a lit light when earned, the name and what it asks, then status. */
+/** Each achievement's emblem: a glyph from the one kit family, chosen by what the deed is. */
+const ACHIEVEMENT_EMBLEM = Object.freeze({
+  berth_assigned: 'dock', rock_has_a_price: 'ore', paper_trail: 'market', signed_and_delivered: 'check',
+  out_of_the_pocket: 'gate', made_contact: 'line', light_ships_are_ammunition: 'tow', razor_release: 'target',
+  keep_the_speed: 'boost', into_the_crucible: 'fire', tenth_wave: 'shield', better_than_last_time: 'record',
+  same_seed_same_day: 'seed', walked_out: 'undock', paperwork_filed: 'ledger', six_figures: 'credits',
+});
+
+/** One trophy tile: its emblem in a medallion (lit when earned), the name and what it asks, then status. */
 function achievementRow(row) {
   const item = el('li', 'k-row k-row--static fh-row of-achievements-row');
   item.dataset.id = row.id;
@@ -59,6 +67,10 @@ function achievementRow(row) {
   if (row.unlocked) light.dataset.colour = 'good';
   light.setAttribute('aria-hidden', 'true');
   item.appendChild(light);
+  const emblem = el('span', 'of-achievements-emblem');
+  emblem.setAttribute('aria-hidden', 'true');
+  emblem.innerHTML = dpIcon(ACHIEVEMENT_EMBLEM[row.id] || 'check', 28);
+  item.appendChild(emblem);
   const text = el('div', 'of-achievements-text');
   text.appendChild(el('span', 'k-row__name fh-emphasis', row.name));
   text.appendChild(el('div', 'k-row__sub fh-fine', row.description));
