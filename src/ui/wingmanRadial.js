@@ -30,7 +30,7 @@ const DIAL = 400;
 const C = DIAL / 2;
 const R_IN = 74;
 const R_OUT = 166;
-const HALF_SPAN = (42 * Math.PI) / 180;   // 84-degree keys, 6-degree seams
+const HALF_SPAN = (44 * Math.PI) / 180;   // 88-degree keys, 2-degree hairline seams
 const R_FACE = 120;                       // where each key's legend sits
 const R_LAMP = 178;                       // the bezel lamps, one per key
 const POS_ANGLE = { top: -Math.PI / 2, right: 0, bottom: Math.PI / 2, left: Math.PI };
@@ -56,12 +56,20 @@ function graticulePath() {
 const DIAL_SVG = '<svg class="sf-wradial__dial" viewBox="0 0 400 400" aria-hidden="true" focusable="false">'
   + '<defs>'
   + '<radialGradient id="sf-wr-glass" cx="200" cy="200" r="170" gradientUnits="userSpaceOnUse">'
-  + '<stop offset="0.42" stop-color="#0d131c" stop-opacity="0.9"/><stop offset="1" stop-color="#151d29" stop-opacity="0.86"/></radialGradient>'
+  + '<stop offset="0.42" stop-color="#0c1117" stop-opacity="0.8"/><stop offset="1" stop-color="#18202a" stop-opacity="0.74"/></radialGradient>'
   + '<linearGradient id="sf-wr-metal" x1="0" y1="0" x2="0" y2="1">'
   + '<stop offset="0" stop-color="#6a7281"/><stop offset="0.38" stop-color="#2f3540"/><stop offset="1" stop-color="#12151b"/></linearGradient>'
+  // the chamfer catches the key light at the upper left and falls into shadow lower right
+  + '<linearGradient id="sf-wr-lip" x1="0" y1="0" x2="1" y2="1">'
+  + '<stop offset="0" stop-color="#fff4de" stop-opacity="0.55"/><stop offset="0.45" stop-color="#fff4de" stop-opacity="0.08"/>'
+  + '<stop offset="1" stop-color="#000" stop-opacity="0.5"/></linearGradient>'
+  + '<pattern id="sf-wr-brush" patternUnits="userSpaceOnUse" width="512" height="512">'
+  + '<image href="/assets/ui/deckplate/tex/brushed.png" width="512" height="512"/></pattern>'
   + '</defs>'
   + `<circle class="sf-wradial__bed" cx="${C}" cy="${C}" r="171"/>`
   + `<circle class="sf-wradial__bezel" cx="${C}" cy="${C}" r="${R_LAMP}"/>`
+  + `<circle class="sf-wradial__bezel-grain" cx="${C}" cy="${C}" r="${R_LAMP}"/>`
+  + `<circle class="sf-wradial__bezel-lip" cx="${C}" cy="${C}" r="173.5"/>`
   + `<circle class="sf-wradial__bezel-edge" cx="${C}" cy="${C}" r="183"/>`
   + `<path class="sf-wradial__graticule" d="${graticulePath()}"/>`
   + '</svg>';
@@ -82,11 +90,13 @@ export function createWingmanRadial(ctx) {
   hub.type = 'button';
   hub.className = 'sf-wradial__hub';
   hub.setAttribute('aria-label', 'Cycle wingman command scope');
-  hub.innerHTML = '<span class="sf-wradial__hub-title">ALL WINGS</span><span class="sf-wradial__hub-count mono">0</span><span class="sf-wradial__hub-scope mono">TAB</span>';
+  hub.innerHTML = '<span class="sf-wradial__hub-title">ALL WINGS</span><span class="sf-wradial__hub-pips" aria-hidden="true"></span>'
+    + '<span class="sf-wradial__hub-count mono">0</span><span class="sf-wradial__hub-scope mono">TAB</span>';
   overlay.insertAdjacentHTML('beforeend', DIAL_SVG);
   overlay.appendChild(hub);
   const hubTitle = hub.querySelector('.sf-wradial__hub-title');
   const hubCount = hub.querySelector('.sf-wradial__hub-count');
+  const hubPips = hub.querySelector('.sf-wradial__hub-pips');
   hub.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); cycleScope(); });
 
   const wedgeEls = [];
@@ -210,7 +220,15 @@ export function createWingmanRadial(ctx) {
     const f = fleet();
     const selected = f[selectedIndex] || null;
     hubTitle.textContent = scope === 'all' ? 'ALL WINGS' : 'ONE WING';
-    hubCount.textContent = scope === 'all' ? String(f.length) : `${selectedIndex + 1}/${f.length}`;
+    // One lamp per wingman (up to eight), lit for every recipient of the next order.
+    const shown = Math.min(8, f.length);
+    let pips = '';
+    for (let i = 0; i < shown; i++) pips += `<i class="${scope === 'all' || i === selectedIndex ? 'is-on' : ''}"></i>`;
+    hubPips.innerHTML = pips;
+    const who = selected && (selected.name || selected.id);
+    hubCount.textContent = scope === 'all'
+      ? `${f.length} CRAFT`
+      : String(who || `WING ${selectedIndex + 1}`).toUpperCase();
     hub.setAttribute('aria-label', scope === 'all'
       ? `Command all ${f.length} wingmen; activate to select one`
       : `Command selected wingman ${selected && (selected.name || selected.id) || selectedIndex + 1}; activate to cycle`);
@@ -259,8 +277,10 @@ function injectCss() {
   .sf-wradial[hidden] { display:none; }
   .sf-wradial.sf-wradial--in { opacity:1; }
   .sf-wradial__dial { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-  .sf-wradial__bed { fill:rgb(4 6 9 / .78); stroke:#05070a; stroke-width:2; }
+  .sf-wradial__bed { fill:rgb(8 11 15 / .62); stroke:#05070a; stroke-width:2; }
   .sf-wradial__bezel { fill:none; stroke:url(#sf-wr-metal); stroke-width:10; }
+  .sf-wradial__bezel-grain { fill:none; stroke:url(#sf-wr-brush); stroke-width:10; opacity:.9; }
+  .sf-wradial__bezel-lip { fill:none; stroke:url(#sf-wr-lip); stroke-width:1.4; }
   .sf-wradial__bezel-edge { fill:none; stroke:rgb(255 236 204 / .14); stroke-width:1; }
   .sf-wradial__graticule { fill:none; stroke:rgb(232 226 212 / .3); stroke-width:1.2; stroke-linecap:round; }
 
@@ -276,9 +296,12 @@ function injectCss() {
   .sf-wradial--in .sf-wradial__wedge { transform:none; opacity:1; }
   .sf-wradial__seg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
   .sf-wradial__seg path { fill:url(#sf-wr-glass); stroke:rgb(255 236 204 / .13); stroke-width:2; transition:stroke .12s; }
-  /* the glass catches the key light along its top edge */
+  /* one sheet of glass, one reflection: a crisp-edged plane across the upper dial, so the top key
+     catches most of it, the side keys its lower edge, the bottom key none; plus an inner shadow
+     where the key seats into the ring */
   .sf-wradial__wedge::after { content:""; position:absolute; inset:0; pointer-events:none;
-    background:radial-gradient(60% 45% at 38% 18%, rgb(255 244 222 / .07), transparent 70%); }
+    background:linear-gradient(168deg, rgb(255 250 240 / .09) 0%, rgb(255 250 240 / .035) 36%, rgb(255 250 240 / 0) 37.5%),
+      radial-gradient(circle at 200px 200px, transparent 150px, rgb(0 0 0 / .32) 166px); }
   .sf-wradial__face { position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column;
     align-items:center; gap:5px; width:112px; pointer-events:none; text-align:center; }
   .sf-wradial__glyph { width:24px; height:24px; display:flex; align-items:center; justify-content:center; color:var(--dp-ink, #e8e2d4); }
@@ -330,8 +353,14 @@ function injectCss() {
   .sf-wradial__hub:focus-visible { outline:2px solid var(--dp-lamp, #f2b950); outline-offset:3px; }
   .sf-wradial__hub-title { font-family:var(--dp-face-etch, sans-serif); font-variation-settings:"wght" 760, "wdth" 66;
     font-size:var(--wr-type); letter-spacing:.18em; color:var(--dp-ink-dim, #b7b4a6); text-shadow:0 1px 0 rgb(0 0 0 / .8); }
-  .sf-wradial__hub-count { font-family:var(--dp-face-read, sans-serif); font-weight:650; font-size:24px; line-height:1;
+  .sf-wradial__hub-count { font-family:var(--dp-face-etch, sans-serif); font-variation-settings:"wght" 700, "wdth" 70; font-size:var(--wr-type);
+    letter-spacing:.12em; line-height:1; max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     font-variant-numeric:tabular-nums; color:var(--dp-ink, #e8e2d4); text-shadow:0 0 10px rgb(205 222 255 / .18); }
+  .sf-wradial__hub-pips { display:flex; gap:5px; justify-content:center; min-height:8px; }
+  .sf-wradial__hub-pips i { display:block; width:7px; height:7px; border-radius:50%;
+    background:radial-gradient(circle at 42% 36%, #3b352c, #17140f 70%); box-shadow:inset 0 1px 1.5px rgb(0 0 0 / .85), 0 0 0 1px rgb(0 0 0 / .6); }
+  .sf-wradial__hub-pips i.is-on { background:radial-gradient(circle at 42% 34%, #fffaf0 0%, #d8d2c4 45%, #6b675d 100%);
+    box-shadow:0 0 5px rgb(232 226 212 / .3), 0 0 0 1px #06080a; }
   .sf-wradial__hub:hover .sf-wradial__hub-scope, .sf-wradial__hub:focus-visible .sf-wradial__hub-scope { color:var(--dp-lamp-hot, #ffd98c); }
 
   @media (prefers-reduced-motion:reduce) { .sf-wradial, .sf-wradial__hub, .sf-wradial__wedge { transition:none; } }

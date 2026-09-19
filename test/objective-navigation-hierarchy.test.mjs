@@ -36,9 +36,12 @@ function bearingState(x, z) {
 }
 
 test('goal bearing is an explicit eight-way direction, not an unlabeled color', () => {
+  // The glyph must agree with the screen and the radar: the chase camera draws world +Z up and
+  // world +X to the LEFT (projectRadarPoint's atan2(-dz, -dx); verified through the live camera).
+  // The previous table read -Z as up and pointed every arrow the opposite way.
   for (const [x, z, glyph] of [
-    [0, -100, '↑'], [100, -100, '↗'], [100, 0, '→'], [100, 100, '↘'],
-    [0, 100, '↓'], [-100, 100, '↙'], [-100, 0, '←'], [-100, -100, '↖'],
+    [0, 100, '↑'], [-100, 100, '↗'], [-100, 0, '→'], [-100, -100, '↘'],
+    [0, -100, '↓'], [100, -100, '↙'], [100, 0, '←'], [100, 100, '↖'],
   ]) {
     const { playerId, entities, waypoint } = bearingState(x, z);
     assert.equal(objectiveBearingGlyph({ playerId, entities }, waypoint), glyph);

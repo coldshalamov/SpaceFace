@@ -644,9 +644,9 @@ export const pauseScreen = {
     const handlers = new Map();
     // Deckplate (FRONTEND_PROGRAM Wave 2): verbs are grouped under etched legends and carry a kit
     // glyph; the order and every label are unchanged, so one roving list still reaches them all.
-    const mk = (label, fn, { primary = false, danger = false, dev = false, current = false, group = null, icon = null } = {}) => {
+    const mk = (label, fn, { primary = false, danger = false, dev = false, current = false, group = null, icon = null, keycap = false } = {}) => {
       const action = 'pause-' + items.length;
-      items.push({ label, action, primary, danger, current, group, icon });
+      items.push({ label, action, primary, danger, current, group, icon, keycap });
       handlers.set(action, fn);
       return action;
     };
@@ -662,7 +662,7 @@ export const pauseScreen = {
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
     }, { group: 'Game', icon: 'remove' });
-    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', icon: 'missions' });
+    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', icon: 'missions', keycap: true });
     // THE SHIP (F2 in flight; SCREENS_B §1.2 route wiring). From pause the same instrument opens
     // with its pause-menu entry; the key case lives in the flight-only key router.
     mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', icon: 'shipworks' });
@@ -672,7 +672,7 @@ export const pauseScreen = {
     // UI-polish scope this cycle; a first-class station tab would be promotion).
     mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', icon: 'industry' });
     const mapAction = pauseMapAction(ctx && ctx.state);
-    if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', icon: 'route' });
+    if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', icon: 'route', keycap: true });
     mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'), { group: 'Reference', icon: 'help' });
     mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', icon: 'info' });
     // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.

@@ -43,13 +43,16 @@ def _overlay(field: np.ndarray, strength: float, gamma: float = 1.0) -> Image.Im
 
 
 def brushed(size: int = 512) -> Image.Image:
-    """Anodised gunmetal, brushed along x: long fine streaks over a faint slow mottle."""
-    streaks = _periodic_noise(size, sigma_x=0.0035, sigma_y=0.30, seed=11)
-    fibres = _periodic_noise(size, sigma_x=0.0012, sigma_y=0.45, seed=12)
-    mottle = _periodic_noise(size, sigma_x=0.010, sigma_y=0.010, seed=13)
-    field = 0.55 * streaks + 0.30 * fibres + 0.25 * mottle
+    """Anodised gunmetal, brushed along x: dense hair-fine streaks of mixed length, low contrast.
+    The first bake's long fibres (~130 px correlation) and strong streaks lined up into rows that
+    read as CRT scanlines (critic, 2026-09-19). Real brushing is fine and irregular; the plate's
+    light comes from the anisotropic sheen in CSS (--dp-metal-sheen), not from the tile."""
+    fine = _periodic_noise(size, sigma_x=0.010, sigma_y=0.48, seed=11)
+    streaks = _periodic_noise(size, sigma_x=0.0045, sigma_y=0.42, seed=12)
+    mottle = _periodic_noise(size, sigma_x=0.012, sigma_y=0.012, seed=13)
+    field = 0.50 * fine + 0.38 * streaks + 0.18 * mottle
     field = np.clip(field / np.percentile(np.abs(field), 99.5), -1, 1)
-    return _overlay(field, strength=0.085, gamma=1.15)
+    return _overlay(field, strength=0.055, gamma=1.25)
 
 
 def grain(size: int = 256) -> Image.Image:

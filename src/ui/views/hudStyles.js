@@ -2501,10 +2501,72 @@ export function injectHudCss() {
   }
   #hud .sf-speed .sf-speed__reference b { color:var(--dp-ink); }
   /* at 1280 the comms strip must stop short of the stacked cluster, whatever the log holds */
-  @media (max-width:1759px) { #hud > .sf-leftcontext { max-height:calc(100vh - 540px * var(--k-s, 1)); overflow:hidden; } }
+  #hud > .sf-leftcontext {
+    max-height:calc(100vh - var(--sf-cluster-h, 0px) - 44px * var(--k-s, 1)); overflow:hidden; padding-top:0;
+  }
+  /* what to do now reads first: the tracked objective and its nav line head the strip, the
+     status, band and log follow (a short screen clips the log, never the objective) */
+  #hud > .sf-leftcontext > :is(.sf-mission-tracker, .sf-objectives, .sf-nav-readout) { order:-1; }
+  #hud > .sf-leftcontext > * { border-top:1px solid rgb(255 255 255 / .045) !important; box-shadow:inset 0 1px 0 rgb(0 0 0 / .55) !important; }
+  /* a short, narrow screen stacks the cluster: tighten it so it and the strip both fit 720 */
+  @media (max-width:1759px) and (max-height:820px) {
+    #hud .sf-cluster-chassis { gap:5px; }
+    #hud .sf-cluster-chassis > .sf-bars { max-width:236px; }
+    #hud .sf-cluster-chassis > .sf-command-deck { gap:4px; }
+    #hud .sf-cluster-chassis .sf-fc-row { min-height:20px; }
+    #hud .sf-cluster-chassis .sf-fc-strip { padding:3px 10px 4px; }
+  }
   /* the world tow tag names WHICH body; mass keeps its unit case, READY lights amber */
   html #sf-ml2 .ml2-preview { text-transform:none; letter-spacing:.06em; background:rgb(8 11 16 / .84); border-color:rgb(232 226 212 / .16); }
   html #sf-ml2 .ml2-preview.ml2-preview-ready { color:var(--dp-lamp-hot); border-color:rgb(242 185 80 / .6); }
+
+  /* ══ HUD PASS 6 — critic round 7 (2026-09-19): the flight layer is translucent smoke lit from
+     one side (no backdrop blur in flight: the smoke is darker instead), the cluster frame is glass
+     not a brushed plate, threat shows once, amber marks only what the pilot acts on, and the whole
+     layer stands off the screen edge. ══ */
+  #hud { --dp-glass-solid:var(--dp-glass-flight); --sf-hud-edge:clamp(14px, 2.3vh, 30px); }
+  #hud .sf-cluster-chassis {
+    background:var(--dp-glass-spec) padding-box, linear-gradient(180deg, rgb(8 10 14 / .46), rgb(4 5 8 / .6)) padding-box;
+    box-shadow:0 14px 30px rgb(0 0 0 / .3);
+  }
+  #hud .sf-threat-lamp { display:none; }
+  /* free-standing readouts are glass over the world, not glass over a metal plate */
+  #hud > .sf-leftcontext, #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel { background:var(--dp-glass-flight); }
+  #hud #sf-wpnstat { background:var(--dp-glass-flight); box-shadow:var(--dp-glass-depth); }
+  html #hud:has(.sf-cluster-chassis) > .sf-leftstack { left:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); bottom:var(--sf-hud-edge); }
+  #hud > .sf-leftcontext {
+    left:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); top:var(--sf-hud-edge);
+    max-height:calc(100vh - var(--sf-cluster-h, 0px) - var(--sf-hud-edge) * 3);
+  }
+  #hud .sf-rightdock { right:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); bottom:var(--sf-hud-edge); padding-bottom:0; }
+  #hud .sf-prail { bottom:var(--sf-hud-edge); }
+  #hud .sf-band-hud { top:var(--sf-hud-edge); right:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); }
+  /* a stacked (narrow) cluster is one column: every instrument takes the column's width */
+  @media (max-width:1759px) {
+    #hud .sf-cluster-chassis { width:calc(284px * clamp(.86, var(--k-s, 1), 1.15) + 26px); }
+    #hud .sf-cluster-chassis > .sf-bars { max-width:none; width:auto; }
+    #hud .sf-cluster-chassis > .sf-command-deck { width:auto; }
+    #hud .sf-cluster-chassis .sf-schematic.sf-integrity { max-width:none; }
+  }
+  /* the contact count sits above the scope, clear of its north notch */
+  #hud .sf-overview.sf-overview--count { margin-bottom:2px; }
+  /* the power rail: glass wells in a smoke frame. A ready power's mark is amber (it is the thing
+     the key fires), an armed one burns, and anything that cannot fire drops to bone and dims. */
+  #hud .sf-prail__slots { background:var(--dp-glass-flight); box-shadow:var(--dp-glass-depth), 0 12px 26px rgb(0 0 0 / .3); }
+  #hud .sf-pslot { background:linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .18) 60%, rgb(255 255 255 / .03)); }
+  #hud .sf-pslot[data-state="ready"] .sf-pslot__art { color:var(--dp-lamp); }
+  #hud .sf-pslot[data-state="ready"] .fh-glyph .accent { fill:var(--dp-lamp-hot); }
+  #hud .sf-pslot:is([data-state="cooling"], [data-state="unaffordable"], [data-state="locked"], [data-state="empty"]) .sf-pslot__art { color:var(--dp-ink-dim); }
+  /* alerts, toasts, the edge-arrow caption: the same flight glass, one lit rim */
+  html .sf-alert, html .sf-alert.sf-alert--floor, html .sf-toast, html #hud .sf-objarrow__label, html #hud .sf-commtape {
+    background:var(--dp-glass-flight); background-color:transparent;
+    box-shadow:var(--dp-glass-depth), 0 10px 22px rgb(0 0 0 / .32);
+  }
+  /* an information line lights a bone lens; amber is for a warning the pilot must act on */
+  html .sf-alert--info .dp-annunc__lens {
+    background:radial-gradient(circle at 42% 34%, #fffaf0 0%, #d8d2c4 38%, transparent 72%);
+    box-shadow:0 0 5px rgb(232 226 212 / .22), inset 0 -1px 1px rgb(0 0 0 / .35);
+  }
 
   /* --- high contrast: the token remap (deckplate/tokens.js) flattens the plates; keep the
          surfaces opaque so the remapped ink keeps its ratio --- */

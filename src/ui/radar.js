@@ -406,28 +406,24 @@ function drawObjectiveLabel(g, cue) {
 
 function drawRangePlate(g, metrics, range, expanded) {
   g.save();
-  const text = `RANGE ${(range / 1000).toFixed(range >= 10000 ? 0 : 1)}K`;
+  const text = `RANGE ${formatRadarDistance(range)}`;
   g.font = canvasFont(700, 12, 'data');
   const width = Math.ceil(g.measureText(text).width) + 12;
   const height = 18;
-  // The visible radar is a CIRCLE masked out of the square canvas (overflow:hidden on a 50%
-  // radius box). A corner-anchored plate sits outside the inscribed circle, so the mask shears
-  // it to "RANG". Inset the plate's outer corner onto the 45° chord with margin.
-  // Anchor at the TOP-right: the bottom edge shares its lane with the command deck, which can
-  // cover the plate's tail mid-word. Verify the plate's outer corner sits inside the inscribed
-  // circle (the canvas is circle-masked) and grow the inset until it does.
-  let inset = Math.round(metrics.size * 0.18);
+  // The range is the scope's scale legend: set on the BOTTOM rim, centred, where contacts are
+  // thinnest and nothing else is drawn (critic 2026-09-19: at the top-right it sat on the
+  // contacts). The canvas is circle-masked, so lift the plate until both lower corners sit inside
+  // the inscribed circle with margin.
   const radius = metrics.size / 2;
+  let lift = 8;
   for (let i = 0; i < 40; i++) {
-    const cornerX = metrics.size - inset;
-    const cornerY = inset + height;
-    const dx = cornerX - radius;
-    const dy = cornerY - radius;
+    const dx = width / 2;
+    const dy = radius - lift;
     if (Math.hypot(dx, dy) <= radius - 4) break;
-    inset += 4;
+    lift += 2;
   }
-  const x = metrics.size - width - inset;
-  const y = inset;
+  const x = Math.round(radius - width / 2);
+  const y = metrics.size - lift - height;
   g.fillStyle = 'rgba(11,13,16,0.90)';
   g.fillRect(x, y, width, height);
   g.strokeStyle = 'rgba(174,183,182,0.42)';
@@ -495,7 +491,7 @@ function drawBackground(g, center, radius) {
   g.beginPath();
   g.arc(center, center, radius, 0, Math.PI * 2);
   g.clip();
-  g.strokeStyle = 'rgba(79,143,221,0.05)';
+  g.strokeStyle = 'rgba(232,226,212,0.04)';
   g.lineWidth = 1;
   const step = radius / 3;
   for (let d = step; d <= radius; d += step) {
@@ -512,14 +508,14 @@ function drawBackground(g, center, radius) {
   }
   for (const fraction of [0.25, 0.5, 1]) {
     g.strokeStyle = fraction === 1
-      ? 'rgba(242,185,80,0.16)'
-      : 'rgba(242,185,80,0.07)';
+      ? 'rgba(232,226,212,0.16)'
+      : 'rgba(232,226,212,0.065)';
     g.lineWidth = fraction === 1 ? 1.25 : 1;
     g.beginPath();
     g.arc(center, center, radius * fraction, 0, Math.PI * 2);
     g.stroke();
   }
-  g.strokeStyle = 'rgba(242,185,80,0.09)';
+  g.strokeStyle = 'rgba(232,226,212,0.08)';
   g.beginPath();
   g.moveTo(center, center - radius);
   g.lineTo(center, center + radius);
@@ -776,7 +772,7 @@ export function createRadar(ctx) {
     // One crisp sweep line preserves sensor motion without washing the entire instrument in bloom.
     const sweepAngle = reducedMotion ? -Math.PI / 2 : ((now % 3600) / 3600) * Math.PI * 2;
     g.save();
-    g.strokeStyle = 'rgba(242,185,80,0.12)';
+    g.strokeStyle = 'rgba(232,226,212,0.12)';
     g.lineWidth = 1;
     g.beginPath();
     g.moveTo(center, center);
@@ -785,7 +781,7 @@ export function createRadar(ctx) {
     g.restore();
 
     g.save();
-    g.fillStyle = 'rgba(255,217,140,0.72)';
+    g.fillStyle = 'rgba(232,226,212,0.62)';
     g.font = canvasFont(700, 12, 'data');
     g.textAlign = 'center';
     g.textBaseline = 'bottom';
@@ -973,7 +969,7 @@ export function createRadar(ctx) {
         const pulse = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.005);
         g.save();
         g.globalAlpha = 0.7 + 0.3 * pulse;
-        g.fillStyle = '#ffe36b';
+        g.fillStyle = '#ffd98c';
         g.translate(x, y);
         if (!reducedMotion) g.rotate((now * 0.0008) % (Math.PI * 2));
         g.beginPath();

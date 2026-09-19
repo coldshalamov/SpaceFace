@@ -331,9 +331,10 @@
     repeating-linear-gradient(0deg, rgb(232 226 212 / .05) 0 1px, transparent 1px 7.5px),
     var(--bg);
   box-shadow:inset 0 1px 3px rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .06);
-  filter:drop-shadow(0 0 3px rgb(205 222 255 / .18));
+  filter:drop-shadow(0 0 2px rgb(232 226 212 / .55)) drop-shadow(0 0 7px rgb(205 222 255 / .22));
 }
-#sf-commsfan .sf-commsfan__ribbon path { stroke-width:1.5; }
+/* the trace is a phosphor line: a bright core with its own glow over the graticule */
+#sf-commsfan .sf-commsfan__ribbon path { stroke-width:1.7; stroke-linejoin:round; stroke-linecap:round; }
 /* the track: one curved rail down the lamp column; keys bow along it */
 #sf-commsfan .sf-commsfan__wedgehost { position:relative; padding-left:24px; gap:5px; }
 #sf-commsfan .sf-commsfan__rail { position:absolute; left:0; top:0; overflow:visible; pointer-events:none; }

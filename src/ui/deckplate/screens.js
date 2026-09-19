@@ -12,6 +12,10 @@ const KIT_TILE = '/assets/ui/kit/assets/tiles/';
 const LED_OFF = 'radial-gradient(circle at 12px 50%, #3b352c 0, #17140f 3.5px, rgb(0 0 0 / .7) 4.5px, transparent 5px)';
 const LED_ON = 'radial-gradient(circle at 12px 50%, #fff6df 0, var(--dp-lamp-hot) 1.5px, var(--dp-lamp) 3.5px, rgb(242 185 80 / .35) 5px, rgb(242 185 80 / .12) 9px, transparent 12px)';
 const LED_RED = 'radial-gradient(circle at 12px 50%, #fff1ea 0, var(--dp-danger-hot) 1.5px, var(--dp-danger) 3.5px, rgb(255 80 56 / .35) 5px, rgb(255 80 56 / .12) 9px, transparent 12px)';
+// The same lens set in a key's top-left corner (keys in a row carry their LED there).
+const LED_OFF_TL = LED_OFF.replace('12px 50%', '9px 9px');
+const LED_ON_TL = LED_ON.replace('12px 50%', '9px 9px');
+const LED_RED_TL = LED_RED.replace('12px 50%', '9px 9px');
 
 /* The verb list, as any kit words column inside a deckplate menu: grouped, iconed, LED-lit. */
 const WORDS = `
@@ -29,6 +33,17 @@ const WORDS = `
   background:currentColor; opacity:.8;
   -webkit-mask:var(--k-icon) center / contain no-repeat; mask:var(--k-icon) center / contain no-repeat;
 }
+/* A verb whose label ends in its key ("Mission Log (J)") draws the key as a keycap; the
+   parentheses stay in the DOM for the accessible name, visually hidden. */
+#screens .k-word .k-kbd {
+  display:inline-grid; place-items:center; min-width:22px; height:22px; margin-left:10px; padding:0 6px 2px; box-sizing:border-box;
+  border-style:solid; border-color:transparent; border-width:3px 4px 5px;
+  border-image:url("${HW}keycap.svg") 10 10 12 / 3px 4px 5px / 0 stretch;
+  background:var(--dp-metal-3); color:var(--dp-ink); text-shadow:none;
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 800, "wdth" 75; font-size:12px; line-height:1; letter-spacing:.04em;
+}
+#screens .k-word .k-kbd__paren { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+@media (forced-colors:active) { #screens .k-word .k-kbd { border-image:none; border:1px solid CanvasText; background:Canvas; color:CanvasText; } }
 #screens :is(.of-pause) .k-word[data-hint]::after {
   content:attr(data-hint); display:inline-grid; place-items:center; position:static; transform:none;
   margin-left:auto; min-width:22px; height:22px; padding:0 6px 2px; box-sizing:border-box; width:auto;
@@ -39,96 +54,114 @@ const WORDS = `
 }
 `;
 
-/* ── PAUSE — the held world on the right, the ship's console bulkhead on the left. ── */
 const PAUSE = `
-/* One console, two instruments: the verbs on one pane of glass and the flight brief on another,
-   set side by side in one fastened bulkhead that is only as wide as its instruments. */
+/* ── PAUSE — one narrow console against the left edge, over the held world, dimmed. ──
+   Critic round 7: the two-pane bulkhead was 47% of a 1920 frame with ~440x650 px dead; now the
+   console is only as wide as its words, the brief sits on top of the verbs, and the less-used
+   verbs (reference, media, exits) are rows of keys instead of full-width rows. */
 #screens .of-pause.k-screen {
-  width:auto; max-width:min(900px, 96vw); box-sizing:border-box;
-  grid-template-columns:minmax(300px, 360px) minmax(300px, 440px);
-  grid-template-areas:'title title' 'stage brief' 'foot foot';
-  grid-template-rows:auto minmax(0, 1fr) auto; column-gap:clamp(14px, 1.4vw, 22px);
-  background:
-    radial-gradient(90% 60% at 0% 0%, rgb(255 224 178 / .07), transparent 60%),
-    var(--dp-tex-brushed) 0 0 / 512px repeat,
-    var(--dp-tex-grain) 0 0 / 256px repeat,
-    linear-gradient(180deg, #1b2028, #12161c 55%, #0d1015);
+  width:clamp(340px, 23vw, 440px); max-width:96vw; box-sizing:border-box;
+  grid-template-columns:minmax(0, 1fr);
+  grid-template-areas:'title' 'brief' 'stage' 'foot';
+  grid-template-rows:auto auto minmax(0, 1fr) auto; row-gap:clamp(10px, 1.5vh, 18px);
+  padding:clamp(22px, 4.2vh, 46px) clamp(16px, 1.3vw, 24px) clamp(16px, 2.6vh, 30px);
+  background:var(--dp-metal-layers), linear-gradient(180deg, #1c2129, #12161c 55%, #0c0f13);
   border-image:url("${HW}bezel.svg") 30 / 30px / 0 stretch;
   border-width:0 14px 0 0; border-style:solid; border-color:transparent;
-  box-shadow:18px 0 40px rgb(0 0 0 / .55);
-  --ofp-row-h:clamp(30px, min(3vw, 3.4vh), 38px);
+  /* the held world dims behind the console: one spread shadow, no extra element */
+  box-shadow:18px 0 40px rgb(0 0 0 / .55), 0 0 0 100vmax rgb(3 5 8 / .42);
+  --ofp-row-h:clamp(28px, min(2.4vw, 3.3vh), 36px);
+  --ofp-menu-size:clamp(13px, min(.85vw, 1.5vh), 16px);
 }
 #screens .of-pause.k-screen::before { opacity:0; }
 #screens .of-pause .k-title { display:contents; }
-#screens .of-pause .k-title > h1 { grid-area:title; }
+#screens .of-pause .k-title > h1 { grid-area:title; margin:0; }
 #screens .of-pause .k-t-title {
   font-family:var(--dp-face-display); font-variation-settings:"wght" 900, "wdth" 125;
-  color:var(--dp-ink); letter-spacing:.05em;
+  font-size:clamp(28px, min(2.3vw, 4.2vh), 44px); line-height:1; color:var(--dp-ink); letter-spacing:.05em;
   text-shadow:0 -1px 0 rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .12);
 }
-/* The two panes of glass: the verbs and the brief, each seated in the bulkhead with a lit rim. */
+/* The brief and the verbs: two panes of glass seated in the console. */
 #screens .of-pause .k-stage, #screens .of-pause .sf-pause-brief {
   border:0; border-image:none; border-radius:2px;
   background:var(--dp-glass-solid);
-  box-shadow:var(--dp-glass-depth), 0 1px 0 rgb(255 255 255 / .05);
+  box-shadow:var(--dp-glass-depth);
 }
-#screens .of-pause .k-stage { grid-area:stage; padding:10px 6px 10px 4px; }
-#screens .of-pause .sf-pause-brief {
-  grid-area:brief; align-self:start; margin:0; padding:14px 18px;
-}
+#screens .of-pause .sf-pause-brief { grid-area:brief; align-self:start; margin:0; padding:12px 14px; }
+#screens .of-pause .k-stage { grid-area:stage; padding:8px 6px; min-height:0; overflow:hidden auto; scrollbar-width:thin; }
 #screens .of-pause .sf-pause-brief .sf-slot-sub:first-child {
-  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 62; letter-spacing:.22em;
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 62; font-size:12px; letter-spacing:.22em;
   color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow);
 }
-#screens .of-pause .sf-pause-brief .sf-slot-name { color:var(--dp-ink); text-shadow:var(--dp-emit); }
-#screens .of-pause .sf-pause-brief .sf-muted { color:var(--dp-ink-dim); }
+#screens .of-pause .sf-pause-brief .sf-slot-name { color:var(--dp-ink); text-shadow:var(--dp-emit); font-size:15px; line-height:1.3; }
+#screens .of-pause .sf-pause-brief .sf-muted { color:var(--dp-ink-dim); font-size:13px; }
 #screens .of-pause .sf-pause-brief .sf-slot-sub:last-child {
-  color:var(--dp-ink-mute); background:linear-gradient(180deg, rgb(0 0 0 / .6) 0 1px, rgb(255 236 204 / .07) 1px 2px) top / 100% 2px no-repeat;
+  color:var(--dp-ink-mute); font-size:12px; margin-top:8px; padding-top:8px;
+  background:linear-gradient(180deg, rgb(0 0 0 / .6) 0 1px, rgb(255 236 204 / .07) 1px 2px) top / 100% 2px no-repeat;
 }
 /* Verbs: one selection language — the LED lit, the legend amber, an amber inner edge. */
+#screens .of-pause .k-words { display:flex; flex-direction:row; flex-wrap:wrap; align-content:flex-start; gap:0 6px; }
+#screens .of-pause .k-words > li { flex:1 1 100%; min-width:0; }
 #screens .of-pause .k-word {
-  border:0; border-image:none; border-radius:2px;
+  border:0; border-image:none; border-radius:2px; width:100%;
   background:${LED_OFF};
   padding:0 10px 0 26px; min-height:var(--ofp-row-h);
-  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 88;
-  font-size:var(--ofp-menu-size); letter-spacing:.1em; color:var(--dp-ink-dim);
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 740, "wdth" 80;
+  font-size:var(--ofp-menu-size); letter-spacing:.12em; color:var(--dp-ink-dim);
+  transform:translateZ(0);
   transition:color var(--dp-d-cut) var(--dp-ease-lamp), background var(--dp-d-cut) var(--dp-ease-lamp), box-shadow var(--dp-d-cut) var(--dp-ease-lamp);
 }
 #screens .of-pause .k-word:is(:hover, :focus-visible),
 #screens .of-pause .k-words:not(:focus-within) .k-word[aria-current='true'] {
   color:var(--dp-lamp-hot); border-image-source:none; text-shadow:var(--dp-emit-lamp);
-  background:${LED_ON}, linear-gradient(90deg, rgb(255 255 255 / .05), transparent 75%);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .38), 0 10px 18px -14px var(--dp-lamp-bloom);
+  background:${LED_ON}, linear-gradient(90deg, rgb(255 238 210 / .06), transparent 75%);
+  box-shadow:inset 3px 0 0 var(--dp-lamp), inset 0 0 0 1px rgb(255 217 140 / .22), 0 10px 18px -14px var(--dp-lamp-bloom);
 }
-#screens .of-pause .k-word:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:2px; }
-/* Resume is the primary verb: the same treatment, a size up, lit from the start. */
-#screens .of-pause .k-word--primary { font-variation-settings:"wght" 860, "wdth" 110; margin-bottom:6px; }
+/* ui.css forces a ring on every :focus-visible with !important; the lit row is this list's ring */
+#screens .of-pause .k-word:focus-visible { outline:0 solid transparent !important; }
+/* Resume is the primary verb: the same treatment, one weight heavier, lit from the start. */
+#screens .of-pause .k-word--primary { font-variation-settings:"wght" 860, "wdth" 84; margin-bottom:4px; }
 #screens .of-pause .k-word--primary[data-icon]::before { opacity:1; }
-/* Exits: a red legend at rest, the lamp driven red on focus. */
-#screens .of-pause .k-word--danger { color:color-mix(in srgb, var(--dp-danger-hot) 55%, var(--dp-ink-dim)); }
-#screens .of-pause .k-word--danger:is(:hover, :focus-visible) {
-  color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
-  background:${LED_RED}, linear-gradient(90deg, rgb(255 80 56 / .07), transparent 70%);
-  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .4), 0 10px 18px -14px var(--dp-danger-bloom);
-}
 #screens .of-pause .k-word.k-38 { color:var(--dp-ink-mute); }
-#screens .of-pause .k-fine { color:var(--dp-ink-mute); font-family:var(--dp-face-etch); grid-area:foot; }
-@media (max-width:1100px) {
-  #screens .of-pause.k-screen { grid-template-columns:minmax(0, 1fr); grid-template-areas:'title' 'brief' 'stage' 'foot'; }
+/* Reference, media and the exits: keys in a row — icon over an etched legend, LED in the corner. */
+#screens .of-pause .k-words > li:is([data-group="Reference"], [data-group="Media"], [data-group="Exit"]) { flex:1 1 0; margin-top:2px; }
+#screens .of-pause .k-words > li:is([data-group="Reference"], [data-group="Media"], [data-group="Exit"]) .k-word {
+  flex-direction:column; justify-content:center; gap:5px; min-height:52px; padding:7px 4px 6px;
+  font-size:12px; letter-spacing:.08em; font-variation-settings:"wght" 720, "wdth" 72; text-align:center; white-space:normal; line-height:1.1;
+  background:${LED_OFF_TL}, linear-gradient(180deg, rgb(255 255 255 / .035), rgb(0 0 0 / .22));
+  box-shadow:inset 0 1px 0 rgb(255 244 222 / .07), inset 0 0 0 1px rgb(0 0 0 / .55);
 }
+#screens .of-pause .k-words > li:is([data-group="Reference"], [data-group="Media"], [data-group="Exit"]) .k-word[data-icon]::before { margin:0; width:18px; height:18px; }
+#screens .of-pause .k-words > li:is([data-group="Reference"], [data-group="Media"], [data-group="Exit"]) .k-word:is(:hover, :focus-visible) {
+  background:${LED_ON_TL}, linear-gradient(180deg, rgb(255 238 210 / .07), rgb(0 0 0 / .18));
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .42), inset 0 -3px 0 var(--dp-lamp), 0 10px 18px -14px var(--dp-lamp-bloom);
+}
+/* The exits discard the run: bone at rest (they are not threats), the lamp driven red on focus. */
+#screens .of-pause .k-word--danger { color:var(--dp-ink-dim); }
+#screens .of-pause .k-words > li[data-group="Exit"] .k-word--danger:is(:hover, :focus-visible) {
+  color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
+  background:${LED_RED_TL}, linear-gradient(180deg, rgb(255 80 56 / .08), rgb(0 0 0 / .18));
+  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), inset 0 -3px 0 var(--dp-danger), 0 10px 18px -14px var(--dp-danger-bloom);
+}
+#screens .of-pause .k-fine { color:var(--dp-ink-mute); font-family:var(--dp-face-etch); grid-area:foot; position:static; font-size:12px; }
 @media (max-height:760px) {
-  #screens .of-pause.k-screen { --ofp-row-h:25px; --ofp-menu-size:14px; }
-  #screens .of-pause .k-word { border-width:0; }
+  #screens .of-pause.k-screen { --ofp-row-h:25px; --ofp-menu-size:13px; row-gap:8px; }
   #screens .of-pause .k-word--primary { margin-bottom:2px; }
   #screens .of-pause .k-words__group { margin:5px 0 1px; }
   #screens .of-pause .k-word[data-icon]::before { width:16px; height:16px; margin-right:10px; }
+  /* short frames: the keys drop their glyphs and sit one line high, so the exits stay in view */
+  #screens .of-pause .k-words > li:is([data-group="Reference"], [data-group="Media"], [data-group="Exit"]) .k-word { min-height:30px; padding:4px 4px 3px; gap:0; }
+  #screens .of-pause .k-words > li:is([data-group="Reference"], [data-group="Media"], [data-group="Exit"]) .k-word[data-icon]::before { display:none; }
+  #screens .of-pause .sf-pause-brief .sf-slot-sub:first-child { display:none; }
+  #screens .of-pause .sf-pause-brief { padding:9px 12px; }
+  #screens .of-pause .sf-pause-brief .sf-slot-sub:last-child { display:none; }
 }
 @media (prefers-reduced-motion:reduce) { #screens .of-pause .k-word { transition:none; } }
 @media (forced-colors:active) {
-  #screens .of-pause.k-screen { background:Canvas; border-image:none; border-right:1px solid CanvasText; }
+  #screens .of-pause.k-screen { background:Canvas; border-image:none; border-right:1px solid CanvasText; box-shadow:none; }
   #screens .of-pause .k-stage, #screens .of-pause .sf-pause-brief { background:Canvas; border:1px solid CanvasText; box-shadow:none; }
   #screens .of-pause .k-word { background:none; box-shadow:none; }
-  #screens .of-pause .k-word:is(:hover, :focus-visible) { outline:2px solid Highlight; }
+  #screens .of-pause .k-word:is(:hover, :focus-visible) { outline:2px solid Highlight !important; }
   #screens :is(.of-pause) .k-word[data-icon]::before { forced-color-adjust:none; background:CanvasText; }
   #screens :is(.of-pause) .k-word[data-hint]::after { border-image:none; border:1px solid CanvasText; background:Canvas; color:CanvasText; }
 }
@@ -146,25 +179,40 @@ const TITLE = `
   background:var(--dp-metal-layers), linear-gradient(90deg, #232833, #171b22);
   box-shadow:6px 0 18px rgb(0 0 0 / .45);
 }
+/* Type law (critic round 7): the display face is for titles; anything you act on is the
+   condensed etched caps every other menu uses. The default verb (Continue, or New Game with no
+   save) leads a size up; the rest step down, so the column has a hierarchy. */
+#screens .of-title.k-screen {
+  --fht-menu-size:clamp(15px, min(1.3vw, 2.3vh), 25px);
+  --fht-row-h:calc(var(--fht-menu-size) * 2.3);
+}
+#screens .of-title .k-t-name { width:clamp(320px, 44vw, 860px); margin-bottom:clamp(18px, 5vh, 72px); }
 #screens .of-title .k-word {
   border-image-source:none; color:var(--dp-ink-dim);
-  font-family:var(--dp-face-display); font-variation-settings:"wght" 820, "wdth" 125;
-  text-shadow:0 2px 12px rgb(0 0 0 / .55);
-  background:none;
-  transition:color var(--dp-d-cut) var(--dp-ease-lamp), background var(--dp-d-cut) var(--dp-ease-lamp), box-shadow var(--dp-d-cut) var(--dp-ease-lamp);
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 82; letter-spacing:.16em;
+  text-shadow:0 2px 10px rgb(0 0 0 / .6);
+  background:none; box-shadow:none;
+  /* grayscale antialiasing: a lit word on its own layer never picks up LCD colour fringes */
+  transform:translateZ(0);
+  transition:color var(--dp-d-cut) var(--dp-ease-lamp), background var(--dp-d-cut) var(--dp-ease-lamp);
 }
-/* The lit word: an edge light off the rail, the LED on the rail lit, the glass behind it lifted. */
+#screens .of-title .k-word[aria-current='true'] { font-size:calc(var(--fht-menu-size) * 1.3); font-variation-settings:"wght" 820, "wdth" 86; }
+/* The lit word: the rail's LED lit, the legend amber, an amber inner edge where the word meets the
+   rail, a faint lift behind the legend — the same four signals as every deckplate row. */
 #screens .of-title :is(.k-word:hover, .k-word:focus-visible),
 #screens .of-title .k-words:not(:focus-within) .k-word[aria-current='true'] {
-  border-image-source:none; color:var(--dp-ink);
+  border-image-source:none; color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:
     radial-gradient(circle at calc(var(--fht-rail-w) * .5) 50%, #fff6df 0, var(--dp-lamp-hot) 2px, var(--dp-lamp) 5px, rgb(242 185 80 / .35) 8px, rgb(242 185 80 / .1) 16px, transparent 22px),
-    linear-gradient(90deg, rgb(255 238 210 / .10), rgb(255 238 210 / .03) 55%, transparent 85%);
-  box-shadow:inset 0 1px 0 rgb(255 236 204 / .12), inset 0 -1px 0 rgb(255 217 140 / .3), 0 14px 22px -18px var(--dp-lamp-bloom);
+    linear-gradient(90deg, transparent calc(var(--fht-rail-w) + 6px), var(--dp-lamp) calc(var(--fht-rail-w) + 6px) calc(var(--fht-rail-w) + 9px), transparent calc(var(--fht-rail-w) + 9px)) 0 22% / 100% 56% no-repeat,
+    linear-gradient(90deg, transparent calc(var(--fht-rail-w) + 9px), rgb(255 238 210 / .07) calc(var(--fht-rail-w) + 9px), transparent 70%);
+  box-shadow:none;
 }
-#screens .of-title .k-words:not(:focus-within) .k-word[aria-current='true'] { color:var(--dp-lamp-hot); text-shadow:0 0 18px var(--dp-lamp-bloom-soft), 0 2px 12px rgb(0 0 0 / .55); }
-#screens .of-title .k-word:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:2px; }
+/* the lit row IS the focus indicator (lamp, amber legend, amber edge); a ring around the whole
+   row box crossed the rail. Forced colours, where the row light is stripped, gets the ring back. */
+#screens .of-title .k-word:focus-visible { outline:0 solid transparent !important; }
 #screens .of-title .k-word--danger { color:var(--dp-ink-dim); }
+#screens .of-title .k-word[aria-disabled='true'] { color:color-mix(in srgb, var(--dp-ink) 48%, transparent); text-shadow:none; }
 #screens .of-title .k-word--danger:is(:hover, :focus-visible) {
   color:var(--dp-danger-hot);
   background:radial-gradient(circle at calc(var(--fht-rail-w) * .5) 50%, #fff1ea 0, var(--dp-danger-hot) 2px, var(--dp-danger) 5px, rgb(255 80 56 / .3) 8px, transparent 20px),
@@ -173,7 +221,14 @@ const TITLE = `
 }
 #screens .of-title .k-word[aria-disabled='true']:hover { background:none; box-shadow:none; }
 /* The save readout under Continue, and the status strip: glass readouts with a lit LED. */
-#screens .of-title .k-word-sub { color:var(--dp-ink-dim); font-family:var(--dp-face-read); }
+#screens .of-title .k-word-sub { color:var(--dp-ink-mute); font-family:var(--dp-face-read); font-size:13px; }
+/* With no save, the helper line under Continue already says so: the status chip would repeat it. */
+#screens .of-title:has(.k-word[data-action='continue'][aria-disabled='true']) .of-title-line { display:none; }
+/* The build light is a bone LED lens, not a green square. */
+#screens .of-title .k-fine .fh-light {
+  width:7px; height:7px; border-radius:50%; background:radial-gradient(circle at 42% 36%, #fffaf0 0%, #d8d2c4 45%, #6b675d 100%);
+  box-shadow:0 0 5px rgb(232 226 212 / .25), 0 0 0 1px #06080a;
+}
 #screens .of-title .of-title-line {
   border:0; border-image:none; border-radius:2px; min-height:28px; padding:0 14px 0 26px;
   background:
@@ -190,6 +245,7 @@ const TITLE = `
   #screens .of-title .of-title-rail { border-image:none; background:Canvas; border:1px solid CanvasText; }
   #screens .of-title .k-word { background:none; box-shadow:none; }
   #screens .of-title .of-title-line { background:Canvas; border:1px solid CanvasText; }
+  #screens .of-title .k-word:is(:hover, :focus-visible) { outline:2px solid Highlight !important; outline-offset:2px; }
 }
 `;
 
@@ -232,7 +288,15 @@ ${S} .sf-settings-pane, ${S} #sf-settings-pane {
   box-shadow:var(--dp-stand-off), var(--dp-glass-depth);
   padding:10px 22px;
 }
-${S} .sf-settings-pane .k-rows { max-width:1040px; }
+${S} .sf-settings-pane, ${S} #sf-settings-pane { align-self:start; justify-self:start; width:min(100%, 780px); max-height:100%; }
+${S} .of-settings-switch { justify-self:start; width:auto; }
+${S} .sf-settings-pane .k-rows { max-width:none; }
+/* label, then its control right beside it: the eye no longer crosses the pane to find a fader */
+${S} .sf-settings-pane .k-row { --k-row-cols:minmax(150px, 230px) minmax(0, 1fr); }
+${S} .sf-settings-pane .k-row > .k-t-body, ${S} .sf-settings-pane .k-row__name {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 78; font-size:13px;
+  letter-spacing:.13em; text-transform:uppercase; color:var(--dp-ink);
+}
 ${S} .sf-settings-pane .k-row {
   background-image:linear-gradient(180deg, rgb(0 0 0 / .6) 0 1px, rgb(255 236 204 / .06) 1px 2px); background-size:100% 2px;
   color:var(--dp-ink-dim); min-height:50px;
@@ -284,9 +348,9 @@ ${S} .of-settings-switch .k-word {
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 70; letter-spacing:.16em; font-size:12px; color:var(--dp-ink-mute);
 }
 ${S} .of-settings-switch .k-word[aria-pressed='true'] {
-  color:var(--dp-ink);
-  background:radial-gradient(circle at 11px 50%, #fbf5e8 0, #bdb6a5 2px, #6b675d 3.5px, transparent 4.5px), linear-gradient(180deg, #2a303a, #20252d);
-  box-shadow:inset 0 0 0 1px rgb(232 226 212 / .22), inset 0 1px 0 rgb(255 236 204 / .14);
+  color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+  background:radial-gradient(circle at 11px 50%, #fff6df 0, var(--dp-lamp-hot) 1.5px, var(--dp-lamp) 3px, rgb(242 185 80 / .35) 4.5px, transparent 7px), linear-gradient(180deg, #2a303a, #20252d);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .28), inset 0 1px 0 rgb(255 236 204 / .14);
 }
 ${S} .of-settings-switch.is-on .k-word[data-action='on'][aria-pressed='true'] {
   background:radial-gradient(circle at 11px 50%, #fff6df 0, var(--dp-lamp-hot) 1.5px, var(--dp-lamp) 3px, rgb(242 185 80 / .35) 4.5px, transparent 7px), linear-gradient(180deg, #2a303a, #20252d);
@@ -320,6 +384,13 @@ ${S} .k-foot .fh-key--primary {
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 78; letter-spacing:.14em;
 }
 ${S} .k-foot .fh-key--primary:is(:hover, :focus-visible) { filter:brightness(1.12); color:var(--dp-lamp-hot); }
+/* Back names its key: an Esc keycap beside the legend (decorative; the key is in the help). */
+${S} .k-foot .fh-key--primary::after {
+  content:"ESC" / ""; position:static; transform:none; left:auto; bottom:auto; width:auto; opacity:1;
+  display:inline-grid; place-items:center; min-width:22px; height:22px; margin-left:12px; padding:0 6px 2px; box-sizing:border-box;
+  border-style:solid; border-color:transparent; border-width:3px 4px 5px; border-image:url("${HW}keycap.svg") 10 10 12 / 3px 4px 5px / 0 stretch;
+  background:var(--dp-metal-3); color:var(--dp-ink-dim); font-family:var(--dp-face-etch); font-variation-settings:"wght" 800, "wdth" 75; font-size:12px; letter-spacing:.04em;
+}
 @media (forced-colors:active) {
   ${S} .sf-settings-pane, ${S} select.k-select, ${S} .of-settings-rail, ${S} .sf-bind-btn,
   ${S} .sf-settings-pane .k-words--row:not(.of-settings-switch) .k-word, ${S} .k-foot .fh-key--primary {

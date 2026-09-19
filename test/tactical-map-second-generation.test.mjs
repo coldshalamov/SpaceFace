@@ -144,8 +144,12 @@ test('the public radar is a native crisp renderer, not a blurred legacy canvas c
   assert.match(radar, /prefersReducedMotion\(\)/);
   assert.match(radar, /`◆ AMBER DIAMOND · \$\{wpLabel\}`/);
 
-  const textSizes = [...radar.matchAll(/(?:font-size:|\.font\s*=\s*['"`][^'"`]*?)(\d+(?:\.\d+)?)px/g)]
-    .map((match) => Number(match[1]));
+  // Radar text is set through canvasFont(weight, size, role) (src/ui/canvasFonts.js), which also
+  // clamps to 12px itself; literal CSS/canvas font strings are still read the old way.
+  const textSizes = [
+    ...[...radar.matchAll(/(?:font-size:|\.font\s*=\s*['"`][^'"`]*?)(\d+(?:\.\d+)?)px/g)],
+    ...[...radar.matchAll(/canvasFont\(\s*[^,()]*,\s*(\d+(?:\.\d+)?)/g)],
+  ].map((match) => Number(match[1]));
   assert.ok(textSizes.length > 0);
   assert.ok(textSizes.every((size) => size >= 12), `radar text below 12px: ${textSizes}`);
 });

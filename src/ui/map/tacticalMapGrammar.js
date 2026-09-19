@@ -14,13 +14,15 @@ export const TACTICAL_MAP_PALETTE = Object.freeze({
   groundPlate: 'rgba(11, 13, 16, 0.96)',
   ink: '#e8e2d4',
   inkDim: '#a9a696',
-  player: '#ffd98c',
+  /* Self is information, not a command: bone, told apart by its filled hull and brackets. The
+     scope's only amber is the objective (and pickups, which the pilot flies to collect). */
+  player: '#e8e2d4',
   objective: '#f2b950',
   hostile: '#ff5038',
   station: '#c9bda4',
-  /* Gates are passive infrastructure: cold steel, so the scope's only amber marks are the ones the
-     pilot acts on (self, objective). Shape (the double ring) still carries the identity. */
-  gate: '#8ea3bd',
+  /* Gates are passive infrastructure: a quiet bone, so amber stays on what the pilot acts on.
+     Shape (the double ring) carries the identity. */
+  gate: '#a3a092',
   neutral: '#6f7076',
   asteroid: '#4a5162',
 });

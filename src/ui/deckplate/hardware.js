@@ -37,33 +37,53 @@ export const DECKPLATE_HARDWARE_CSS = `
   --dp-tex-scratch:url("${TEX}scratches.png");
   --dp-tex-grain:url("${TEX}grain.png");
   --dp-tex-scan:url("${TEX}scanlines.png");
+  --dp-tex-smudge:url("${TEX}smudge.png");
   /* THE key light. One warm source at the screen's upper-left, attached to the VIEWPORT (fixed),
      so every glass face and bezel is lit by the same light: a continuous sweep across the whole
      screen, never a streak stamped separately on each panel. */
   --dp-key-sweep:linear-gradient(113deg, transparent 10%, rgb(255 238 210 / .018) 24%, rgb(255 238 210 / .05) 30%, rgb(255 238 210 / .014) 36%, transparent 46%) fixed;
-  --dp-key-pool:radial-gradient(95% 85% at 0% 0%, rgb(255 224 178 / .075), transparent 62%) fixed;
-  /* Smoked glass: translucent, so the world shows through (blurred and darkened by the glass
-     itself, --dp-glass-see), and lifted above the void so a panel still reads on a dark world. */
-  --dp-glass-0:rgb(9 13 20 / .80);
-  --dp-glass-1:rgb(17 24 35 / .72);
+  --dp-key-pool:radial-gradient(95% 85% at 0% 0%, rgb(255 224 178 / .10), transparent 62%) fixed;
+  /* Smoked glass (critic pass 2026-09-19: the first glass read "flat navy"). What sells glass is
+     not the tint, it is light: a crisp reflection plane across the upper face (--dp-glass-spec),
+     falloff from the key light (--dp-glass-fall), handling haze that only shows where the light
+     crosses it (smudge), a lit top-left rim and a shadowed lip (--dp-glass-depth). The tint is a
+     neutral smoke, not navy, and no phosphor scanlines: those read as a cheap CRT filter. */
+  --dp-glass-0:rgb(8 10 14 / .84);
+  --dp-glass-1:rgb(20 25 31 / .74);
   --dp-glass-see:blur(14px) saturate(1.2) brightness(.6);
+  --dp-glass-spec:linear-gradient(168deg, rgb(255 250 240 / .075) 0%, rgb(255 250 240 / .028) 27%, rgb(255 250 240 / 0) 28.5%);
+  --dp-glass-fall:linear-gradient(135deg, rgb(255 244 222 / .04), transparent 42%, rgb(0 0 0 / .22));
   --dp-glass-layers:
     var(--dp-key-sweep) padding-box,
-    var(--dp-key-pool) padding-box,
-    linear-gradient(180deg, rgb(255 255 255 / .06) 0%, rgb(255 255 255 / .014) 14%, transparent 30%) padding-box,
-    var(--dp-tex-scan) repeat padding-box,
+    var(--dp-glass-spec) padding-box,
+    var(--dp-glass-fall) padding-box,
+    var(--dp-tex-smudge) 0 0 / 512px repeat padding-box,
     linear-gradient(180deg, var(--dp-glass-1), var(--dp-glass-0)) padding-box;
-  /* The same glass over a solid dark plate, for surfaces that must not see through (the flight
-     HUD, which owns no backdrop blur, and glass windows seated in a metal chassis). */
-  --dp-glass-solid:var(--dp-glass-layers), linear-gradient(180deg, #121925, #0a0e14) padding-box;
+  /* The same glass over a solid dark plate: a window seated in a metal chassis (behind it is the
+     instrument, not the world). */
+  --dp-glass-solid:var(--dp-glass-layers), linear-gradient(180deg, #151a21, #090c10) padding-box;
+  /* Flight glass: the HUD owns no backdrop blur, so its glass is translucent without it — the
+     world shows through a darker smoke, and the same reflection and falloff light it. */
+  --dp-glass-flight:
+    var(--dp-glass-spec) padding-box,
+    var(--dp-glass-fall) padding-box,
+    linear-gradient(180deg, rgb(18 23 29 / .80), rgb(7 9 13 / .86)) padding-box;
+  /* Brushed metal is lit by an anisotropic sheen: horizontal brushing throws a soft VERTICAL band
+     where the key light catches it, fixed to the viewport so every plate shares one light; each
+     plate also falls off away from the light (--dp-metal-fall). The tile carries the grain only. */
+  --dp-metal-sheen:linear-gradient(90deg, transparent 0%, rgb(255 240 215 / .02) 20%, rgb(255 240 215 / .055) 31%, rgb(255 240 215 / .018) 41%, transparent 58%) fixed;
+  --dp-metal-fall:radial-gradient(130% 110% at 0% 0%, transparent 45%, rgb(0 0 0 / .3) 100%);
   --dp-metal-layers:
     var(--dp-key-pool) border-box,
+    var(--dp-metal-sheen) border-box,
     var(--dp-tex-scratch) 0 0 / 1024px repeat border-box,
     var(--dp-tex-brushed) 0 0 / 512px repeat border-box,
-    var(--dp-tex-grain) 0 0 / 256px repeat border-box;
-  /* The pane sits in the bezel with a visible dark gap and a thin lit rim; the bezel's lip
-     shadows it from the key light (top-left) and light leaks out bottom-right. */
-  --dp-glass-depth:inset 0 0 0 2px rgb(2 3 5 / .92), inset 0 0 0 3px rgb(200 216 240 / .075), inset 6px 8px 16px rgb(0 0 0 / .45), inset -1px -1px 0 rgb(185 205 235 / .06);
+    var(--dp-tex-grain) 0 0 / 256px repeat border-box,
+    var(--dp-metal-fall) border-box;
+  /* The pane sits in the bezel: a dark seat line, then a lit top-left rim and a dark bottom-right
+     rim (one light, upper left), the bezel lip's shadow falling on the top of the face, and a
+     faint internal glow so the glass has depth rather than a flat fill. */
+  --dp-glass-depth:inset 0 0 0 1px rgb(2 3 5 / .92), inset 1px 1px 0 1px rgb(255 244 222 / .10), inset -1px -1px 0 1px rgb(0 0 0 / .42), inset 0 14px 22px -16px rgb(0 0 0 / .75), inset 0 0 30px rgb(120 150 190 / .035);
   --dp-stand-off:0 14px 34px rgb(0 0 0 / .5), 0 2px 6px rgb(0 0 0 / .55);
   /* Emission: data on glass glows faintly cool; lamp readings glow warm. */
   --dp-emit:0 0 10px rgb(205 222 255 / .16), 0 0 1px rgb(0 0 0 / .6);

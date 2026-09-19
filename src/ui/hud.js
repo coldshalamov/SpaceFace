@@ -379,8 +379,12 @@ export function objectiveBearingGlyph(state, wp) {
   const dx = Number(pos.x) - Number(player.pos.x);
   const dz = Number(pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return '•';
-  // North/up is -Z in the map/radar presentation; advance clockwise in 45-degree sectors.
-  const octant = Math.round((Math.atan2(dx, -dz) / (Math.PI * 2)) * 8);
+  // The chase camera shows world +Z as screen UP and world +X as screen LEFT (projected through the
+  // live camera 2026-09-19: +200 WU east landed at x=-577 on a 1280 frame, +200 WU north at
+  // y=-229) — the same orientation projectRadarPoint draws the radar in. The glyph used to read -Z
+  // as up, which pointed every objective arrow 180 degrees away from the radar and the edge arrow.
+  // Screen bearing, clockwise from up: atan2(screenRight = -dx, screenUp = dz).
+  const octant = Math.round((Math.atan2(-dx, dz) / (Math.PI * 2)) * 8);
   return ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(octant + 8) % 8];
 }
 
@@ -1194,6 +1198,19 @@ export function createHud(ctx, alerts) {
   const clusterChassis = document.createElement('div');
   clusterChassis.className = 'sf-cluster-chassis';
   clusterChassis.appendChild(bars);
+  // The comms strip shares the left edge with the cluster. Publish the cluster's height so the
+  // strip always stops short of it; a ResizeObserver fires only when the size changes, so this
+  // costs no per-frame layout read.
+  let clusterSizeObserver = null;
+  if (typeof ResizeObserver === 'function') {
+    clusterSizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[entries.length - 1];
+      const box = entry && entry.borderBoxSize && entry.borderBoxSize[0];
+      const h = box ? box.blockSize : (entry && entry.contentRect ? entry.contentRect.height : 0);
+      root.style.setProperty('--sf-cluster-h', `${Math.ceil(h)}px`);
+    });
+    clusterSizeObserver.observe(clusterChassis);
+  }
   leftStack.appendChild(clusterChassis);   // the speed deck and threat lamp join it below
   root.appendChild(leftStack);
   // Comms is initialized a few lines before createHud() by uiRoot. Adopt the existing feed into the
@@ -5122,6 +5139,7 @@ export function createHud(ctx, alerts) {
       clearCargoGaugeSettle(cargoGaugeSettle.risk);
       powerRail.destroy();
       threatHalo.destroy();
+      if (clusterSizeObserver) clusterSizeObserver.disconnect();
     },
   };
 }
