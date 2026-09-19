@@ -18610,7 +18610,7 @@
       "priority": 497,
       "title": "The instrument says what the machine is doing",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "heist-breakaway"
@@ -18630,7 +18630,10 @@
         "npm run check:baseline",
         "npm run check:ui:control-labels"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-195.02-REPORT.md"
+      ],
+      "partialIntegration": "2026-09-19 leaf integrated on master at 55daa6e7 (worker candidate 05f77f47 on pq195-third-shift, opencode-go/deepseek-v4.1-flash; independent review opencode-go/glm-5.3 VERDICT: ACCEPT). Transient .sf-leftcontext instrument: identity, NN/100 WU/s, mouth alignment, kernel phase in §5 vocabulary; too-fast wording before contact; detaches when not live; controller fix: tether read from state.player.tether mirror. Tests: pq195-02 6/6, pq195-01 4/4, pq019c 67/67, control-labels + player-facing-labels OK, baseline 15/15.",
       "brief": "Bind approach speed against the 100 WU/s limit, mouth alignment and the settle into the established contextual EDGE surface, reconciled with the approved Field Hardware frames (PQ-194). DONE WHEN: a player who has never read this packet aborts a too-fast approach because the instrument said so in words, not colour; no fourth permanent HUD anchor is added; the lab's standalone load card is not installed in the game."
     },
     {
