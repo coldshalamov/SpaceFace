@@ -119,7 +119,7 @@ export const aceMemory = {
     let applied = 0;
     for (const carried of grudges) {
       const ace = aceById(carried && carried.aceId);
-      if (!ace) continue;
+      if (!ace || ace.lifecycleOwner === 'nemesis') continue;
       const rec = recordFor(memory, ace);
       rec.encountered = true;
       rec.fled = true;
@@ -186,6 +186,8 @@ export const aceMemory = {
     rec.lastSectorId = sectorOf(this.state, payload);
     this._completePlanetChallenge(ace.id, 'appeared', payload);
     if (first) this._emitTransition('encountered', ace, rec);
+    // Nemesis owns its refits and authored voice; the shared ledger still records the sighting.
+    if (ace.lifecycleOwner === 'nemesis') return;
     if (payload && payload.signatureSpoken === true) rec.signatureSpoken = true;
     const style = escalatedStyleFromMemory(ensureMemory(this.state), ace);
     if (style && rec.styleTauntSpoken !== true) {
@@ -211,6 +213,16 @@ export const aceMemory = {
 
     if (transition === 'fled') {
       if (rec.defeated === true) return;
+      // A lifecycle-owned rival must never also enter the generic promoted-return queue.
+      if (ace.lifecycleOwner === 'nemesis') {
+        rec.fled = true;
+        rec.fledAt = now;
+        rec.fleeCount = (rec.fleeCount | 0) + 1;
+        rec.returnScheduled = false;
+        rec.returnsBigger = false;
+        rec.returnAt = null;
+        return;
+      }
       this._suppressCultureIntro(ace.id);
       const first = rec.fled !== true;
       rec.fled = true;
@@ -591,12 +603,13 @@ export const aceMemory = {
       if (Number.isFinite(rec.nextReturnAttemptAt) && rec.nextReturnAttemptAt > now) continue;
       if (!Number.isFinite(rec.returnAt) || rec.returnAt > now) continue;
       const ace = aceById(id);
-      if (!ace) continue;
+      if (!ace || ace.lifecycleOwner === 'nemesis') continue;
       this._spawnReturn(ace, rec, now);
     }
   },
 
   _spawnReturn(ace, rec, now) {
+    if (ace && ace.lifecycleOwner === 'nemesis') return;
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     const budget = this.helpers && this.helpers.spawnBudget;
     const stance = stanceForRecord(rec);

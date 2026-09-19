@@ -117,6 +117,9 @@ import { spawnBudget } from '../systems/spawnBudget.js';            // single sh
 import { regionalEcology } from '../systems/regionalEcology.js';     // M4 persistent regional simulation inputs
 import { tensionDirector } from '../systems/tensionDirector.js'; // session-scale pacing owner
 import { encounterDirector } from '../systems/encounterDirector.js'; // zone-anchored living-universe encounters
+import { nemesis } from '../systems/nemesis.js'; // adaptive named-rival arc engine (state.nemesis)
+import { nemesisEncounter } from '../systems/nemesisEncounter.js'; // spawn-host adapter (state.nemesisDeployment)
+import { nemesisSignals } from '../systems/nemesisSignals.js'; // event-only voice/toast router
 import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js'; // M4 six causal POI behavior families
 import { pirateRumor } from '../systems/pirateRumor.js';             // BP-13/B12 zone pirate rumors from real events
 import { ambushSignatures } from '../systems/ambushSignatures.js';   // BP-13/B14 passive pre-ambush scan tells
@@ -435,6 +438,11 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['regionalEcology', regionalEcology],
     ['tensionDirector', tensionDirector],
     ['encounterDirector', encounterDirector],
+    // Nemesis packet (Counterexample): engine -> encounter host -> tacticalAI fixed-step order
+    // is owned by the authoritative manifest; nemesisSignals is event-only (init, no update).
+    ['nemesis', nemesis],
+    ['nemesisEncounter', nemesisEncounter],
+    ['nemesisSignals', nemesisSignals],
     ['routeFollower', routeFollower],
     ['travelLanes', travelLanes],
     ['livingPoiBehaviors', livingPoiBehaviors],

@@ -37,7 +37,11 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
-  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'routeFollower',
+  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector',
+  // Nemesis packet: the arc engine (nemesis) decides and schedules, the encounter host
+  // (nemesisEncounter) drains one spawn request per fixed step, and nemesisSignals routes
+  // voice/toast receipts — event-only, registered but never ticked.
+  'nemesis', 'nemesisEncounter', 'nemesisSignals', 'routeFollower',
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
@@ -62,7 +66,10 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
 export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak', 'lawSecurity', 'scanner',
   'scanReveal', 'buildIdentity', 'pirateDisguise', 'pirateParley', 'pirateDisengage',
-  'aceMemory', 'factionPresence', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
+  'aceMemory', 'factionPresence',
+  // Nemesis ordering contract (integration notes §2): engine → encounter host → tacticalAI,
+  // so the AI sees spawned rival entities and current fire gates on the same fixed tick.
+  'nemesis', 'nemesisEncounter', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
   'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
   // Bombs read the shared chargeDetonate edge before impulseCharges consumes it.
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'impulseCharges', 'mines', 'massSeed',

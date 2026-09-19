@@ -66,6 +66,7 @@ import { createToasts } from './toasts.js';
 import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
 import { createAlerts } from './alerts.js';
 import { createComms } from './comms.js';
+import { mountNemesisComms } from './nemesisComms.js';
 import { createWingmanRadial } from './wingmanRadial.js';
 
 // id-of-export → { load, export }. Order matters only for nicer console logs.
@@ -457,6 +458,39 @@ export const ui = {
 
     // comms / graffiti / endgame narrative overlay (story system drives it via events)
     replaceCommsOwner(this, ctx);
+    // Nemesis packet (Counterexample): optional edge comms panel + surrender button, mounted into
+    // the flight UI layer like the comms backlog button. Fail-safe: a missing #ui-root (headless
+    // boot, test harness) or a mount error is contained and leaves the sim untouched.
+    if (this.nemesisComms && typeof this.nemesisComms.dispose === 'function') this.nemesisComms.dispose();
+    this.nemesisComms = null;
+    try {
+      this.nemesisComms = mountNemesisComms({
+        root: document.getElementById('ui-root'),
+        bus: this.bus,
+        state: this.state,
+        claimInput: (panel) => {
+          // Production input gate, documented: flight keys ignore any target inside #ui-root
+          // (systems/input.js isUiCommandTarget), and flight mouse buttons bind to the canvas
+          // element only (systems/input.js mousedown `e.target !== this._canvas` bail), so a
+          // panel inside #ui-root can never emit firing/steering input — the same exclusion the
+          // comms backlog button relies on. Pointer lock (auto-target assist) is released so the
+          // surrender button stays physically clickable. The gate is structural, so there is
+          // nothing to unregister, but the contract requires the exact unregister function.
+          if (!panel || typeof panel.closest !== 'function' || !panel.closest('#ui-root')) {
+            throw new Error('nemesis comms panel must mount inside #ui-root to fence flight input');
+          }
+          if (document.pointerLockElement && typeof document.exitPointerLock === 'function') {
+            try { document.exitPointerLock(); } catch (_) { /* best effort */ }
+          }
+          return () => {};
+        },
+      });
+      this.bus.on('game:newGame', () => {
+        if (this.nemesisComms && typeof this.nemesisComms.refresh === 'function') {
+          this.nemesisComms.refresh();
+        }
+      });
+    } catch (e) { console.warn('[ui] nemesis comms mount failed', e); }
     // ONE decision surface for the whole flight layer (promptDeck): the encounter/inspection/
     // parley/signal/recovery/customs adapters below subscribe to their events and render INTO it.
     this.promptDeck = createPromptDeck(ctx);
@@ -1285,6 +1319,8 @@ export const ui = {
     this.promptDeck = null;
     destroyCommsOwner(this);
     destroyMarketNewsOwner(this);
+    if (this.nemesisComms && typeof this.nemesisComms.dispose === 'function') this.nemesisComms.dispose();
+    this.nemesisComms = null;
     if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
     this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();

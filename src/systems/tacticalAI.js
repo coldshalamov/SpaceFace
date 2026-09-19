@@ -1,5 +1,6 @@
 import { createEnemyMindPort } from '../ai/enemyMind/port.js';
 import { enemyMindAllowsFire } from '../ai/enemyMind/adapter.js';
+import { shapeNemesisManeuverRequest, nemesisFireAllowed } from '../ai/nemesisTactics.js';
 import { AIInspectionEndpoint } from '../ai/inspection.js';
 import { createSG03ActionPort } from '../ai/sg03ActionPort.js';
 import { TacticalAIStack } from '../ai/stack.js';
@@ -216,7 +217,17 @@ export function createTacticalAISystem({
     return {
       request(request) {
         const state = typeof stateProvider === 'function' ? stateProvider() : null;
-        return basePort.request(shapeHeavyManeuverRequest(request, state));
+        // Nemesis counter maneuver: a pure, denial-free shaping stage over the tagged active
+        // rival wing only. It runs BEFORE heavy-ship shaping, never touches other hulls, keeps
+        // forces/torques in [-1, 1], and always yields to brake / tether-escape / deadlock kinds.
+        const actor = entityForManeuver(state, request && request.entityId);
+        const actorIsNemesis = actor && actor.data && actor.data.nemesis;
+        const sensorPort = sensors || (ctxRef && ctxRef.helpers && ctxRef.helpers.aiSensors);
+        const frame = actorIsNemesis && sensorPort && typeof sensorPort.frameFor === 'function'
+          ? sensorPort.frameFor(request.entityId, state.tick) : null;
+        return basePort.request(shapeHeavyManeuverRequest(
+          actorIsNemesis ? shapeNemesisManeuverRequest(request, state, frame) : request, state,
+        ));
       },
     };
   }
@@ -415,11 +426,12 @@ export function createTacticalAISystem({
         applyChoreographyFireWindow(liveStack, decision);
         applyEngagementPosture(entity, decision.combatDoctrine || null, state);
         applyMindAwareFiringIntent(decision, state);
+        applyNemesisFireGate(entity, state);
         const enemyId = entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
         const fieldsSys = ctxRef && ctxRef.registry && typeof ctxRef.registry.get === 'function'
           ? ctxRef.registry.get('fields')
           : null;
-        if (entity && specialistPlanByEnemyId(enemyId) && ctxRef) {
+        if (entity && nemesisFireAllowed(entity, state) && specialistPlanByEnemyId(enemyId) && ctxRef) {
           const kernel = getCombatKernel(ctxRef);
           applySpecialistCounterplay({
             state,
@@ -433,7 +445,7 @@ export function createTacticalAISystem({
         }
         // The mine-layer's area-denial verb: the doctrine telegraphed `wake_mines` and is flying
         // its drop line; this port releases real mines behind the hull through the mines system.
-        if (entity && doctrine && doctrine.doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) {
+        if (entity && nemesisFireAllowed(entity, state) && doctrine && doctrine.doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) {
           applyMineLayerVerb({
             state,
             entity,
@@ -442,7 +454,7 @@ export function createTacticalAISystem({
             placeMine: ctxRef.helpers && ctxRef.helpers.placeMine,
           });
         }
-        if (entity && fieldsSys) applyNpcFieldDeploy(entity, state, fieldsSys);
+        if (entity && fieldsSys && nemesisFireAllowed(entity, state)) applyNpcFieldDeploy(entity, state, fieldsSys);
       }
       driveChoreographyMembers(liveStack, state, tick, result.decisions || [], shipLikeList);
       driveCohortMembers(liveStack, state, tick, shipLikeList);
@@ -494,6 +506,7 @@ export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = n
     if (expectedEntity && entity !== expectedEntity) continue;
     if (entity && entityNeedsAiThink(entity, state) === false) continue;
     applyMindAwareFiringIntent(decision, state);
+    applyNemesisFireGate(entity, state);
   }
   return decisions.length;
 }
@@ -510,6 +523,20 @@ const POSTURE_EGRESS_PHASES = new Set([
   'disengage', 'peel',
 ]);
 const POSTURE_REASON_PREFIX = 'combat_doctrine:';
+
+/**
+ * Nemesis fire gate (packet: Counterexample). Denial only — it can never open the enemy-mind
+ * veto, ROE, hostility, action admission, friendly-fire or token gates. Runs AFTER the fresh
+ * firing decision AND on cached decisions (revalidateCachedAIFiringIntents) so a skipped
+ * decision frame cannot keep firing through a cease-fire/telegraph window. Previously launched
+ * ordnance is not erased.
+ */
+function applyNemesisFireGate(entity, state) {
+  const intent = entity && entity.data && entity.data.intent;
+  if (intent && !nemesisFireAllowed(entity, state)) {
+    clearAIFiringIntent(intent, 'nemesis_telegraph_or_retreat');
+  }
+}
 
 export function applyEngagementPosture(entity, doctrine, state) {
   if (!entity || !entity.data) return;

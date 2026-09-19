@@ -36,8 +36,12 @@ test('production init + update order lengths match the live browser baseline', (
   // both orders — both tick real per-second work, so init and update move together again.
   // 150 -> 152: genie packet arrivals — the Chronicler (world memory; init+update, 60 Hz table)
   // and the tension director (pacing policy over the encounter owner; init+update+calendar).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 152);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 114);
+  // 152 -> 155 init / 114 -> 116 update: the nemesis packet (Counterexample). The arc engine
+  // (nemesis) and the encounter host (nemesisEncounter) join both orders immediately before the
+  // AI slot (engine → host → tacticalAI); nemesisSignals routes voice/toast receipts and is
+  // event-only, so init grows by three while update grows by two.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 155);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 116);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -58,6 +62,14 @@ test('production init + update order lengths match the live browser baseline', (
   const regionalEcologyIndex = PRODUCTION_UPDATE_ORDER.indexOf('regionalEcology');
   assert.ok(worldIndex < heistFacilitiesIndex);
   assert.ok(heistFacilitiesIndex < regionalEcologyIndex);
+  // Nemesis packet ordering contract: engine -> encounter host -> tactical AI, and the
+  // event-only signals adapter never enters the update order.
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('nemesis')
+    < PRODUCTION_UPDATE_ORDER.indexOf('nemesisEncounter'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('nemesisEncounter')
+    < PRODUCTION_UPDATE_ORDER.indexOf('aiSlot'));
+  assert.ok(!PRODUCTION_UPDATE_ORDER.includes('nemesisSignals'));
+  assert.ok(PRODUCTION_INIT_ORDER.includes('nemesisSignals'));
 });
 
 // J6: every system in update order must also be initialized (update ⊆ init).
@@ -155,8 +167,9 @@ test('browser production system set is unchanged vs production manifest constant
   // Full init list length and terminal platform systems preserved. 147 since PQ-146.02 registered
   // the existing stuntGrammar observer so trick receipts reach titles and barks; 148 with the
   // drift-bomb bay (one system, both orders); 150 with the station yard and the pacing director;
-  // 152 with the Chronicler and the tension director (genie packet returns).
-  assert.equal(registry.systems.length, 152);
+  // 152 with the Chronicler and the tension director (genie packet returns); 155 with the
+  // nemesis packet (nemesis + nemesisEncounter + event-only nemesisSignals).
+  assert.equal(registry.systems.length, 155);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

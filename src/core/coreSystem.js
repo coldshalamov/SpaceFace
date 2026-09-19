@@ -106,6 +106,41 @@ export const core = {
     const player = () => state.entities.get(state.playerId) || null;
     ensureEntityIndex(state);
 
+    // INTERIM pacing policy for the nemesis packet (Counterexample), pending the tension-director
+    // deliverable. Deterministic, read-only over state: it approves or refuses a reserved
+    // named-rival beat and NEVER spawns ships or spends the ship budget itself — the encounter
+    // host owns spawning and separately re-checks budget/placement. All time is simulation time.
+    // Refusals are fail-closed: the engine waits and retries (15 s) rather than spawning.
+    const NEMESIS_MIN_SIM_TIME = 180; // earliest first announcement (LIMITS contract, seconds)
+    const canStartNemesisEncounter = (request, currentState) => {
+      const s = currentState || state;
+      if (!s || s.mode !== 'flight') return false;
+      if (!(Number(s.simTime) >= NEMESIS_MIN_SIM_TIME)) return false;
+      // Same-sector token: the request is anchored to the sector it was announced in.
+      const currentSector = s.world && s.world.currentSectorId || '';
+      if (!currentSector || !request || request.sectorId !== currentSector) return false;
+      // Living player above the 45% recovery threshold (the host re-checks this independently).
+      const self = s.entities && s.entities.get(s.playerId);
+      if (!self || self.alive === false) return false;
+      const hullMax = Number.isFinite(self.hullMax) && self.hullMax > 0 ? self.hullMax : self.hull;
+      if (!(Number(self.hull) > 0) || !(self.hull / Math.max(1, hullMax) > 0.45)) return false;
+      // Protected onboarding (read-only check): the tutorial rail owns the opening minutes.
+      const onboarding = s.onboarding;
+      if (onboarding && onboarding.active && !onboarding.finished) return false;
+      // Docked or dock-adjacent: never open a boss beat at the station's doorstep.
+      if (self.flags && self.flags.docked) return false;
+      if (s.ui && s.ui.docked === true) return false;
+      const corridor = s.dockingCorridor;
+      if (corridor && corridor.phase && corridor.phase !== 'none') return false;
+      // No other major encounter: survival/crucible/swarm runs and an already-live rival beat
+      // each veto. Mission-owned set pieces stay authored by their own directors this interim.
+      const run = s.run;
+      if (run && run.kind && run.phase !== 'inactive') return false;
+      const rivalMemory = s.nemesis;
+      if (rivalMemory && (rivalMemory.active || rivalMemory.pending)) return false;
+      return true;
+    };
+
     const markEntityVisualChanged = (entityOrId) => {
       const entity = typeof entityOrId === 'object'
         ? entityOrId
@@ -118,6 +153,7 @@ export const core = {
       markEntityVisualChanged,
       requestPresentationRebuild,
       mulberry32, hash32, wrapAngle,
+      canStartNemesisEncounter,
     });
     this.helpers = ctx.helpers;
 

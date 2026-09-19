@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nemesis comms fixture</title><style>body{margin:0;background:#091212;color:#cfddd5;font:16px/1.5 monospace;padding:48px}h1{font-size:24px}main{max-width:950px}#mount{margin:32px 0}#result{white-space:pre-wrap;max-width:800px;color:#b3d6a3}small{color:#a1aca5}button{font:inherit}</style><main><small>SPACEFACE / FOCUSED UI FIXTURE / NOT A GAMEPLAY CAPTURE</small><h1>Counterexample / surrender channel</h1><p>This is the shipped DOM view attached to the shipped nemesis engine.</p><div id="mount"></div><pre id="result">RUNNING</pre></main><script type="module">
+import { playStyle } from './harness.mjs';
+import { mountNemesisComms } from '../../src/ui/nemesisComms.js';
+const out = document.querySelector('#result');
+try {
+  const t = playStyle('fling');
+  const count = t.bus.count();
+  let gates = 0, released = 0;
+  const view = mountNemesisComms({ root: document.querySelector('#mount'), bus: t.bus, state: t.state,
+    claimInput(panel) {
+      gates++; const isolate = (e) => e.stopPropagation();
+      for(const name of ['click','pointerdown','pointerup','keydown','keyup']) panel.addEventListener(name,isolate);
+      return () => { released++; for(const name of ['click','pointerdown','pointerup','keydown','keyup']) panel.removeEventListener(name,isolate); };
+    } });
+  const boss = t.state.entities.get(t.state.nemesis.active.bossId);
+  boss.hull = 17; t.advance(.3);
+  const button = view.element.querySelector('button');
+  if(button.hidden || view.element.hidden) throw new Error('Surrender is not reachable');
+  const safety = [];
+  const assert = (v,label) => { if(!v) throw new Error(label); safety.push(label); };
+  assert(view.element.querySelector('.nm-status').textContent.includes('CEASE FIRE'),'surrender state is rendered');
+  assert(view.element.querySelector('.nm-fit').textContent.includes('Massline'),'actual locked fit is shown');
+  assert(view.element.getBoundingClientRect().width <= 320, 'view respects 320px maximum width');
+  if(new URL(location.href).searchParams.has('verify')) {
+    button.click(); assert(t.state.nemesis.ending === 'spared','real button resolves the real engine');
+    assert(view.element.hidden,'resolved channel closes');
+    view.dispose(); view.dispose();
+    assert(t.bus.count() === count, 'all event listeners are released');
+    assert(gates === 1 && released === 1, 'input claim is released exactly once');
+    assert(!document.querySelector('[data-nemesis-comms]'),'DOM is removed on dispose');
+  }
+  out.textContent = JSON.stringify({ok:true,evidenceClass:'focused-ui',checks:safety},null,2);
+  document.documentElement.dataset.test = 'passed';
+} catch(error) { out.textContent = error.stack; document.documentElement.dataset.test = 'failed'; }
+</script></html>

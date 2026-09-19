@@ -3,6 +3,7 @@
 // Pure roster + deterministic readers. Runtime memory lives in systems/aceMemory.js.
 import { FACTION_LABELS, NAMED_CAPTAINS } from './encounters.js';
 import { hash32 } from '../core/rng.js';
+import { NEMESIS_RIVAL } from './nemesisRival.js';
 
 const RETURN_MIN_S = 360;
 const RETURN_SPAN_S = 420;
@@ -251,7 +252,7 @@ const CAPTAIN_ALIASES = Object.freeze(NAMED_CAPTAINS.map((cap) => Object.freeze(
 
 const ALL_KNOWN_ACES = Object.freeze([
   ...CORE_ROSTER, ...REACH_CULTURE_ROSTER, ...VARIETY_ROSTER,
-  ...RIVAL_ROSTER, ...MECHANIC_ROSTER, ...CAPTAIN_ALIASES,
+  ...RIVAL_ROSTER, ...MECHANIC_ROSTER, ...CAPTAIN_ALIASES, NEMESIS_RIVAL,
 ]);
 const ACE_BY_ID = new Map(ALL_KNOWN_ACES.map((ace) => [ace.id, ace]));
 const ACE_BY_NAME = new Map(ALL_KNOWN_ACES.map((ace) => [normalizeName(ace.name), ace]));

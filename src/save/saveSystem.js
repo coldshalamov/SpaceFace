@@ -401,6 +401,11 @@ export const save = {
       ['sites', () => this._callSerialize('asteroidSites') || clonePlain(state.sites || {})],
       ['formations', () => this._callSerialize('asteroidFormations') || clonePlain(state.formations || {})],
       ['aceMemory', () => this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {})],
+      // Nemesis packet: rival arc memory (owner-serialized) + spawn reservation ledger, and the
+      // SG-06 Enemy Mind cognition namespace (plain state subtree, version 1).
+      ['nemesis', () => this._callSerialize('nemesis') || clonePlain(state.nemesis || null)],
+      ['nemesisDeployment', () => this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null)],
+      ['enemyMind', () => clonePlain(state.enemyMind || null)],
       ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
       ['provenance', () => this._callSerialize('provenanceLedger') || clonePlain(state.provenance || {})],
       ['factionPresence', () => this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {})],
@@ -458,6 +463,9 @@ export const save = {
     data.sites = this._callSerialize('asteroidSites') || clonePlain(state.sites || {});
     data.formations = this._callSerialize('asteroidFormations') || clonePlain(state.formations || {});
     data.aceMemory = this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {});
+    data.nemesis = this._callSerialize('nemesis') || clonePlain(state.nemesis || null);
+    data.nemesisDeployment = this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null);
+    data.enemyMind = clonePlain(state.enemyMind || null);
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
     data.provenance = this._callSerialize('provenanceLedger') || clonePlain(state.provenance || {});
     data.factionPresence = this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {});
@@ -2966,6 +2974,23 @@ export const save = {
       this.state.tensionDirector = (data.tensionDirector && typeof data.tensionDirector === 'object')
         ? data.tensionDirector
         : null;
+      // Nemesis packet: restore both slices through their owners BEFORE the save:loaded emission
+      // so the owners' reconcile handlers run against the restored entity/world state. Unknown
+      // future schema versions throw inside normalize (fail loudly, never erase a campaign);
+      // absent slices (old saves) initialize an empty arc / empty deployment ledger.
+      this._callDeserialize('nemesis', data.nemesis);
+      this._callDeserialize('nemesisEncounter', data.nemesisDeployment);
+      // Enemy Mind cognition namespace (version 1). Absent in older saves → cleared, so cognition
+      // starts fresh at the resumed clock (the port lazily re-creates it). A future unknown
+      // version throws rather than corrupting the runtime mid-sim.
+      if (data.enemyMind == null) {
+        this.state.enemyMind = null;
+      } else {
+        if (typeof data.enemyMind !== 'object' || data.enemyMind.version !== 1) {
+          throw new Error(`Unsupported enemyMind save version: ${String(data.enemyMind && data.enemyMind.version)}`);
+        }
+        this.state.enemyMind = data.enemyMind;
+      }
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
       // reconstructed from the live director. Clear tracking so stale cross-save references and

@@ -116,6 +116,9 @@ import { spawnBudget } from '../systems/spawnBudget.js';
 import { regionalEcology } from '../systems/regionalEcology.js';
 import { tensionDirector } from '../systems/tensionDirector.js';
 import { encounterDirector } from '../systems/encounterDirector.js';
+import { nemesis } from '../systems/nemesis.js';
+import { nemesisEncounter } from '../systems/nemesisEncounter.js';
+import { nemesisSignals } from '../systems/nemesisSignals.js';
 import { createChronicler } from '../systems/chronicler.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js';
@@ -258,6 +261,9 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['regionalEcology', regionalEcology],
     ['tensionDirector', tensionDirector],
     ['encounterDirector', encounterDirector],
+    ['nemesis', nemesis],
+    ['nemesisEncounter', nemesisEncounter],
+    ['nemesisSignals', nemesisSignals],
     ['routeFollower', routeFollower],
     ['travelLanes', travelLanes],
     ['livingPoiBehaviors', livingPoiBehaviors],

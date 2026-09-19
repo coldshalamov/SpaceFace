@@ -31,6 +31,9 @@ Current save version: `14`
 - `sites`
 - `formations`
 - `aceMemory`
+- `nemesis`
+- `nemesisDeployment`
+- `enemyMind`
 - `lossLedger`
 - `provenance`
 - `factionPresence`
@@ -142,6 +145,7 @@ Current save version: `14`
 | `$.economy` | object | {} |
 | `$.economyContracts` | object | {} |
 | `$.encounterDirector` | object | {} |
+| `$.enemyMind` | null | null |
 | `$.entities` | object | {} |
 | `$.entities.persistent` | array | length 0 |
 | `$.entities.player` | object | {} |
@@ -234,6 +238,8 @@ Current save version: `14`
 | `$.nav.autoTravel` | boolean | false |
 | `$.nav.route` | null | null |
 | `$.nav.waypoint` | null | null |
+| `$.nemesis` | null | null |
+| `$.nemesisDeployment` | null | null |
 | `$.npcJobs` | object | {} |
 | `$.player` | object | {} |
 | `$.player.activeShipIndex` | number | 0 |
