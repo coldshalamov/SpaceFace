@@ -772,7 +772,7 @@ export const saveLoadScreen = {
     const fileIn = el('input'); fileIn.type = 'file'; fileIn.accept = '.json,application/json'; fileIn.hidden = true;
     foot.appendChild(fileIn);
     const back = footWord('Back');
-    paintKey(back, 'legend');
+    back.classList.add('sf-back');
     rootEl.appendChild(foot);
 
     bExport.addEventListener('click', () => { cue('confirm'); this._export(ctx); });

@@ -633,8 +633,7 @@ export const newGameScreen = {
       foot.appendChild(b);
       return b;
     };
-    const back = footWord('back', coreText('back'));
-    paintKey(back, 'legend');
+    const back = footWord('back', coreText('back'), 'sf-back');
     const launch = footWord('launch', coreText('launch'), 'k-word--primary sf-ng-launch');
     paintKey(launch, 'primary');
     launch.addEventListener('click', () => {

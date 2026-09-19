@@ -103,7 +103,7 @@ export const creditsScreen = {
     rootEl.appendChild(stage);
 
     const foot = el('footer', 'k-foot');
-    const back = words([{ label: 'Back', action: 'back', primary: true }], {
+    const back = words([{ label: 'Back', action: 'back' }], {
       size: 'emph',
       ariaLabel: 'Credits actions',
       onPick: () => {
@@ -112,6 +112,7 @@ export const creditsScreen = {
         else ctx.bus.emit('ui:popScreen', {});
       },
     });
+    back.querySelector('.k-word')?.classList.add('sf-back');
     for (const b of back.querySelectorAll('.k-word')) b.classList.add('fh-key', 'fh-key--primary');
     foot.appendChild(back);
     rootEl.appendChild(foot);

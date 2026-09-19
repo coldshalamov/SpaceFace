@@ -601,7 +601,8 @@ export const codexScreen = {
     pin(hang, { position: 'relative', background: 'transparent' });
     const rail = el('div', 'fh-rail');
     rail.setAttribute('aria-hidden', 'true');
-    pin(rail, { position: 'absolute', inset: '0 auto 0 0', width: '28px', 'pointer-events': 'none' });
+    // The rail stands in the well's border gap beside the list, never over its first letters.
+    pin(rail, { position: 'absolute', inset: '0 auto 0 -20px', width: '12px', 'pointer-events': 'none' });
     hang.appendChild(rail);
     const searchWrap = el('div');
     // `k-input` restates the search field in kit clothes; `sf-codex-search` is the inert hook.
@@ -651,9 +652,8 @@ export const codexScreen = {
 
     // Foot: Close as a key; the unlock-status strip in fine print beside it.
     const foot = el('footer', 'k-foot');
-    const close = el('button', 'k-word k-word--emph', 'Close');
+    const close = el('button', 'k-word k-word--emph sf-back', 'Close');
     close.type = 'button'; close.dataset.action = 'close';
-    paintKey(close, 'primary');
     close.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
     foot.appendChild(close);
     const statusWrap = el('div');

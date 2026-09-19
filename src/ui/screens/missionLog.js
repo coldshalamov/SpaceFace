@@ -1786,7 +1786,7 @@ export const missionLogScreen = {
 
     // Back word: the one mouse-reachable way out (Esc / the log key / gamepad B also pop).
     const foot = el('footer', 'k-foot');
-    const back = el('button', 'k-word k-word--emph sf-mlog-close', 'Back');
+    const back = el('button', 'k-word k-word--emph sf-mlog-close sf-back', 'Back');
     back.type = 'button';
     back.setAttribute('aria-label', 'Close Mission Log');
     back.addEventListener('click', () => {

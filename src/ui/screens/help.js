@@ -541,10 +541,9 @@ export const helpScreen = {
     // Foot: Close.
     const foot = el('footer', 'k-foot of-pause');
     pin(foot, { 'border-top': '0' });
-    const close = el('button', 'k-word k-word--emph', 'Close');
+    const close = el('button', 'k-word k-word--emph sf-back', 'Close');
     close.type = 'button';
     close.dataset.action = 'close';
-    paintKey(close, 'primary');
     close.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
     foot.appendChild(close);
     rootEl.appendChild(foot);

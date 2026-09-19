@@ -249,6 +249,9 @@ export function createScreenManager(ctx) {
     const topEl = topRec && topRec.el ? topRec.el : null;
     document.body.classList.toggle('k-screen-top', !!topEl && topEl.classList.contains('k-screen'));
     document.body.dataset.kScreen = topEl ? (topEl.dataset.screen || '') : '';
+    // The shell ground (deckplate SHELL): in the menu, with no run in progress, a shell screen stands
+    // on the title's world out of focus; in a run it keeps the held world. CSS reads the mode here.
+    document.body.dataset.gameMode = String((state && state.mode) || '');
     if (bus && typeof bus.emit === 'function') bus.emit('ui:screenTop', { id: document.body.dataset.kScreen || null });
     // When no modal is open, hide the #screens container ENTIRELY — it carries a full-screen
     // background image (the menu art) at z-index 100, which would otherwise sit on top of the

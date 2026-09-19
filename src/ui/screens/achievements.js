@@ -105,7 +105,7 @@ export const achievementsScreen = {
     rootEl.appendChild(stage);
 
     const foot = el('footer', 'k-foot');
-    const back = words([{ label: 'Back', action: 'back', primary: true }], {
+    const back = words([{ label: 'Back', action: 'back' }], {
       size: 'emph',
       ariaLabel: 'Achievements actions',
       onPick: () => {
@@ -114,6 +114,7 @@ export const achievementsScreen = {
         else if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:popScreen', {});
       },
     });
+    back.querySelector('.k-word')?.classList.add('sf-back');
     for (const b of back.querySelectorAll('.k-word')) b.classList.add('fh-key', 'fh-key--primary');
     foot.appendChild(back);
     rootEl.appendChild(foot);

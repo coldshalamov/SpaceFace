@@ -487,7 +487,7 @@ export function createShipPreviewMount(canvas, opts) {
   renderer.debug.checkShaderErrors = false;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(W, H, false);
-  renderer.setClearColor(useDock ? 0x05070d : 0x000000, useDock ? 1 : 0);
+  renderer.setClearColor(useDock ? 0x0a0908 : 0x000000, useDock ? 1 : 0);
   // Match flight: tone-map so materials don't read as flat gray slabs.
   if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
   if ('toneMapping' in renderer) {
@@ -496,18 +496,20 @@ export function createShipPreviewMount(canvas, opts) {
   }
 
   const scene = new THREE.Scene();
-  if (useDock) scene.fog = new THREE.FogExp2(0x0a1426, 0.012);
-  // Hangar rig: warmer key from dock lamps + cool rim from bay glass when a dock shell is present.
-  scene.add(new THREE.AmbientLight(0x607087, useDock ? 0.34 : 0.38));
-  scene.add(new THREE.HemisphereLight(useDock ? 0xb9d8df : 0xbcdde6, 0x24170f, useDock ? 0.36 : 0.48));
-  const key = new THREE.DirectionalLight(useDock ? 0xffd9b0 : 0xf2e0c6, useDock ? 1.85 : 2.05);
+  // Hangar rig (frontend program Wave 2, 2026-09-19): the dock is lit like the title — one warm key
+  // from the dock lamps, a cool steel rim from the bay glass, neutral fog and bounce. The old navy fog,
+  // cyan sky fill and cyan rim read as a cold teal blockout next to the warm menus.
+  if (useDock) scene.fog = new THREE.FogExp2(0x0e0d0c, 0.010);
+  scene.add(new THREE.AmbientLight(useDock ? 0x57544e : 0x607087, useDock ? 0.30 : 0.38));
+  scene.add(new THREE.HemisphereLight(useDock ? 0xc9c4b6 : 0xbcdde6, 0x24170f, useDock ? 0.30 : 0.48));
+  const key = new THREE.DirectionalLight(useDock ? 0xffc98f : 0xf2e0c6, useDock ? 2.35 : 2.05);
   key.position.set(-0.55, 1.1, 0.75); scene.add(key);
-  const rim = new THREE.DirectionalLight(0x69cde0, useDock ? 0.88 : 1.05);
+  const rim = new THREE.DirectionalLight(useDock ? 0x9fb6e6 : 0x69cde0, useDock ? 0.78 : 1.05);
   rim.position.set(0.75, 0.35, -0.55); scene.add(rim);
-  const fill = new THREE.DirectionalLight(0x7193b2, useDock ? 0.38 : 0.48);
+  const fill = new THREE.DirectionalLight(useDock ? 0x8a8478 : 0x7193b2, useDock ? 0.30 : 0.48);
   fill.position.set(0.5, -0.25, 0.45); scene.add(fill);
   if (useDock) {
-    const pad = new THREE.PointLight(0xf0a94d, 0.62, 80);
+    const pad = new THREE.PointLight(0xf0a94d, 0.95, 80);
     pad.position.set(0, -1, 0); scene.add(pad);
   }
 
@@ -1121,7 +1123,7 @@ export function createShipPreviewMount(canvas, opts) {
     const next = typeof id === 'string' && id.length > 0 ? id : null;
     if (next === dockId) return;
     dockId = next;
-    renderer.setClearColor(dockId ? 0x05070d : 0x000000, dockId ? 1 : 0);
+    renderer.setClearColor(dockId ? 0x0a0908 : 0x000000, dockId ? 1 : 0);
     if (!dockId) {
       dockLoadGen++;
       if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }

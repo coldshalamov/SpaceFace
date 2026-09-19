@@ -493,6 +493,86 @@ html body #screens .of-help .k-row__num.fh-data {
 }
 `;
 
+/* ── SHELL — what every shell screen shares (critic, shell round 1). ──
+   1. The ground: in the menu (no run in progress) a non-staged shell screen stands on the title's
+      world out of focus (backdrop-shell.jpg, cut from the title render), never on a flat fill. In a
+      run, the same screens keep the held world behind them.
+   2. One way back: .sf-back is the same plain keycap everywhere — the lamp in its cap, an ESC chip,
+      bottom-left — never a primary amber key.
+   3. One title: every shell screen title is the same display size; content headers inside a pane
+      step down to the condensed voice at about half that.
+   4. Scroll regions end in a fade over a padded foot and carry a thin bone scrollbar, so no line is
+      ever cut in half at a hard edge. */
+const SHELL_SCREENS = 'html body #screens > .k-screen:not(.sx-observatory):not([data-screen="mainMenu"])';
+const SHELL = `
+html body[data-game-mode="menu"] #screens > .k-screen:not([data-k-stage]):not(.sx-observatory) {
+  background:url("/assets/ui/backdrops/backdrop-shell.jpg") center / cover no-repeat;
+}
+/* in a run the same screens hold the world, dimmed, so the panels read first (pause and the loss
+   report carry their own dim) */
+html body:not([data-game-mode="menu"]) #screens > .k-screen:not([data-k-stage]):not(.sx-observatory):not(.of-pause):not(.sf-gameover) {
+  background:radial-gradient(120% 90% at 0% 0%, rgb(12 11 10 / .42), rgb(4 6 9 / .66) 70%);
+}
+html body #screens .k-screen .k-foot .sf-back.k-word, html body #screens .k-screen .sf-back.k-word {
+  position:relative; box-sizing:border-box; display:inline-flex; align-items:center; gap:0; width:auto; min-width:0; min-height:40px;
+  margin:0; padding:0 12px 0 30px; border-style:solid; border-color:transparent; border-width:8px 10px 10px; border-radius:0;
+  border-image:url("${HW}keycap.svg") 10 10 12 / 8px 10px 10px / 0 stretch;
+  background:${KEY_LED_OFF_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 78; font-size:13px; line-height:1;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--dp-ink); text-shadow:0 -1px 0 rgb(0 0 0 / .7); box-shadow:none; filter:none;
+}
+html body #screens .k-screen .k-foot .sf-back.k-word::after, html body #screens .k-screen .sf-back.k-word::after {
+  content:"ESC" / ""; position:static; transform:none; left:auto; bottom:auto; width:auto; height:22px; opacity:1;
+  display:inline-grid; place-items:center; min-width:22px; margin-left:12px; padding:0 6px 2px; box-sizing:border-box;
+  border-style:solid; border-color:transparent; border-width:3px 4px 5px; border-image:url("${HW}keycap.svg") 10 10 12 / 3px 4px 5px / 0 stretch;
+  background:var(--dp-metal-3); color:var(--dp-ink-dim); font-size:12px; letter-spacing:.04em; text-shadow:none;
+}
+html body #screens .k-screen .k-foot .sf-back.k-word:is(:hover, :focus-visible), html body #screens .k-screen .sf-back.k-word:is(:hover, :focus-visible) {
+  color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+  background:${KEY_LED_ON_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
+  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .35), 0 8px 16px -10px var(--dp-lamp-bloom);
+}
+html body #screens .k-screen .sf-back.k-word:focus-visible { outline:0 solid transparent !important; }
+${SHELL_SCREENS} > .k-title .k-t-title {
+  font-size:clamp(40px, min(3.9vw, 7vh), 76px); line-height:.95; letter-spacing:.04em; text-transform:uppercase;
+  font-family:var(--dp-face-display); font-variation-settings:"wght" 900, "wdth" 125;
+}
+/* content headers inside a pane: the condensed voice at about half a screen title */
+html body #screens .k-screen .sf-codex-entry .k-t-title,
+html body #screens .k-screen .fh-plate--edge .fh-title {
+  font-size:clamp(24px, min(2vw, 3.6vh), 38px); line-height:1.05;
+}
+${SHELL_SCREENS} :is(.k-stage--scroll, .sf-mlog-body, .tt-scroll, .tt-side, .sf-settings-pane) {
+  scrollbar-width:thin; scrollbar-color:rgb(232 226 212 / .28) transparent;
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 26px), transparent);
+  mask-image:linear-gradient(180deg, #000 calc(100% - 26px), transparent);
+  padding-bottom:30px;
+}
+/* help: the register is only as wide as a reader needs, so each key sits beside its action */
+html body #screens .of-help .k-stage--scroll { max-width:min(1040px, 100%); }
+/* mission log: path choices stand clear of the text above them; entity links read as one kind of
+   link (an amber hairline: you can act on it), never a web underline on some and not others */
+html body #screens .sf-mlog .sf-mlog-career-choices { margin-top:10px; }
+html body #screens .sf-mlog :is(a, .sf-entity-link) { text-decoration:none; box-shadow:inset 0 -1px 0 rgb(242 185 80 / .45); color:var(--dp-ink); }
+/* a text field has ONE focus signal: its lit rim (the global ring stacked three amber layers) */
+html body #screens .k-screen :is(.fh-input, .k-input):focus-visible { outline:0 solid transparent !important; box-shadow:inset 0 0 0 1px var(--dp-lamp), 0 0 12px var(--dp-lamp-bloom-soft); }
+/* research: each legend word wears the lens its nodes wear; the three stats sit in one row above
+   the inspector instead of a tall card hanging over it */
+html body #screens [data-swatch] { display:inline-flex; align-items:center; gap:8px; color:var(--dp-ink-dim); }
+html body #screens [data-swatch]::before { content:""; flex:0 0 auto; width:9px; height:9px; border-radius:50%; box-shadow:0 0 0 1px #06080a; }
+html body #screens [data-swatch="available"]::before { background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%); box-shadow:0 0 6px var(--dp-lamp-bloom), 0 0 0 1px #06080a; }
+html body #screens [data-swatch="researched"]::before { background:radial-gradient(circle at 42% 34%, #fffaf0 0%, #d8d2c4 45%, #6b675d 100%); }
+html body #screens [data-swatch="locked"]::before { background:radial-gradient(circle at 42% 36%, #3b352c, #17140f 70%); }
+html body #screens .k-screen:has(.tt-side) > .k-corner { flex-direction:row; align-items:flex-end; gap:28px; }
+html body #screens .k-screen:has(.tt-side) .tt-side { margin-top:clamp(64px, 9vh, 104px); }
+@media (forced-colors:active) {
+  html body #screens .k-screen :is(.fh-input, .k-input):focus-visible { outline:2px solid Highlight !important; }
+  html body #screens .k-screen .sf-back.k-word { border-image:none; border:1px solid ButtonText; background:ButtonFace; color:ButtonText; }
+  html body #screens .k-screen .sf-back.k-word::after { border-image:none; border:1px solid ButtonText; background:ButtonFace; }
+  ${SHELL_SCREENS} :is(.k-stage--scroll, .sf-mlog-body, .tt-scroll, .tt-side, .sf-settings-pane) { -webkit-mask-image:none; mask-image:none; }
+}
+`;
+
 /* ── TITLE — POSTER register: the live stage, the produced logotype, a machined rail, big words. ── */
 const TITLE = `
 #screens .of-title.k-screen[data-screen]::before {
@@ -727,4 +807,4 @@ ${S} .k-foot .fh-key--primary::after {
 }
 `;
 
-export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS;
+export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL;

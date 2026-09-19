@@ -321,3 +321,8 @@ html body #screens .of-credits .k-foot .k-word:active { border-image-source: url
   html body #screens .of-credits > .k-hang .k-word::before { forced-color-adjust: none; background: CanvasText; box-shadow: none; }
   html body #screens .of-credits .k-foot .k-word { border-image: none; border-color: CanvasText; background: Canvas; color: CanvasText; }
 }
+/* the name sits inside its card at every width (it was clipped at the card's right edge) */
+html body #screens .of-credits .of-credits-name {
+  font-size: clamp(34px, min(4.2vw, 7.4vh), 80px); line-height: .95; overflow-wrap: anywhere;
+  font-family: var(--dp-face-display); font-variation-settings: 'wght' 900, 'wdth' 118; color: var(--dp-ink);
+}

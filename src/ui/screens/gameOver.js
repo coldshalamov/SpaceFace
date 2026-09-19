@@ -379,6 +379,9 @@ export const gameOverScreen = {
       const text = key === 'insurance' ? LABEL.insurance + ': ' + values[key] : values[key];
       if (els[key] && els[key].textContent !== text) els[key].textContent = text;
     }
+    // No recovery cost to report: the readout leaves the report instead of showing a lone dash.
+    const costHero = els.cost && typeof els.cost.closest === 'function' ? els.cost.closest('.k-hero') : null;
+    if (costHero) costHero.hidden = values.cost === '-';
     // The display line is the cause itself; the caps kicker above it carries the verdict.
     const verdict = ironman ? 'Run Over' : 'Ship Lost';
     if (this._kickerEl) {
@@ -387,16 +390,18 @@ export const gameOverScreen = {
     }
     if (this._titleEl) {
       const cause = String(values.cause || '');
-      const text = cause && !/^unknown loss$/i.test(cause) ? cause : verdict;
+      // With no recorded cause the title says so (the kicker above already carries the verdict).
+      const text = cause && !/^unknown loss$/i.test(cause) ? cause : 'Cause unrecorded';
       if (this._titleEl.textContent !== text) this._titleEl.textContent = text;
     }
     if (this._lineEl) {
-      const pairs = [
-        LABEL.lifespan + ' ' + values.lifespan,
-        lower(LABEL.damage) + ' ' + lower(values.damage || ''),
-      ];
+      // A missing value drops its pair; an empty line hides, never prints a dash as data.
+      const pairs = [];
+      if (values.lifespan && values.lifespan !== '-') pairs.push(LABEL.lifespan + ' ' + values.lifespan);
+      if (values.damage && values.damage !== 'Unresolved') pairs.push(lower(LABEL.damage) + ' ' + lower(values.damage));
       const text = pairs.join(' · ');
       if (this._lineEl.textContent !== text) this._lineEl.textContent = text;
+      this._lineEl.hidden = !text;
     }
     if (this._subEl) {
       this._subEl.textContent = ironman

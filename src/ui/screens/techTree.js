@@ -740,6 +740,10 @@ export const techTreeScreen = {
     researchedWord.setAttribute('data-fh-lit', 'on');
     const lockedWord = el('span', 'k-word--fine k-38 fh-legend', 'locked');
     paintLegend(lockedWord, false);
+    // Each legend word carries the lens its nodes wear (deckplate: drawn by the sheet).
+    availableWord.dataset.swatch = 'available';
+    researchedWord.dataset.swatch = 'researched';
+    lockedWord.dataset.swatch = 'locked';
     foot.appendChild(availableWord);
     foot.appendChild(researchedWord);
     foot.appendChild(lockedWord);
@@ -1028,7 +1032,7 @@ export const techTreeScreen = {
         g.fillText('researched', p.x, p.y + boxH);
       } else {
         const cost = n.cost || {};
-        g.fillText(fmtCr(cost.credits || 0) + ' cr · ' + (cost.rp || 0) + ' RP', p.x, p.y + boxH);
+        g.fillText(fmtCostCompact(cost.credits || 0) + ' cr · ' + Math.round(cost.rp || 0).toLocaleString() + ' RP', p.x, p.y + boxH);
       }
     }
   },
@@ -1249,6 +1253,13 @@ export function unlockDisplayName(id) {
   return authored ? escapeHtml(authored) : cleanId(id);
 }
 
+/** One compact cost voice on the tiles: 6k, 12k, 2.5M (fmtCr keeps exact thousands elsewhere). */
+function fmtCostCompact(v) {
+  v = Math.round(v || 0);
+  if (v >= 1e6) return (v / 1e6).toFixed(v % 1e6 === 0 || v >= 1e7 ? 0 : 1) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(v % 1e3 === 0 || v >= 1e4 ? 0 : 1) + 'k';
+  return String(v);
+}
 function fmtCr(v) {
   v = Math.round(v || 0);
   if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 1) + 'M';

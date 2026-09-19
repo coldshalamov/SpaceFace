@@ -306,7 +306,7 @@ export const settingsScreen = {
     rootEl.appendChild(pane);
 
     const foot = el('footer', 'k-foot');
-    const back = el('button', 'k-word k-word--emph fh-key fh-key--primary', 'Back');
+    const back = el('button', 'k-word k-word--emph sf-back', 'Back');
     back.type = 'button'; back.dataset.action = 'back';
     back.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
     foot.appendChild(back);
