@@ -28,11 +28,11 @@ export const TRAIL_SECONDS = 1.2;
  */
 export const SAMPLE_COUNT = 384;
 /** Overlapping plasma sheets around the recorded centerline. */
-export const SHEET_COUNT = 16;
+export const SHEET_COUNT = 8;
 /** Stable alias retained for callers and tests. */
 export const STRAND_COUNT = SHEET_COUNT;
 /** Vertices across each sheet, allowing a curved luminous cross-section. */
-export const STRAND_ACROSS = 5;
+export const STRAND_ACROSS = 7;
 /** Minimum movement before another exact nozzle position is committed. */
 export const MIN_STEP_WU = 0.12;
 
@@ -203,10 +203,15 @@ const TRAIL_VERT = /* glsl */`
     float worldSeed = 0.5 + 0.5 * sin(dot(p, vec3(0.037, 0.021, 0.053)) + aStrand * 2.3 + segment * 0.11);
     float staticTexture = 0.5 + 0.5 * sin(dot(p, vec3(0.061, 0.033, 0.047)) + aStrand * 3.1 + segment * 0.7);
 
-    float radius = mix(uRadiusHead, uRadiusTail, 0.20 + worldSeed * 0.62);
-    radius *= 0.90 + sheetSeed * 0.16;
-    float theta = (aStrand / max(uStrandCount, 1.0)) * 6.2831853
-      + (worldSeed - 0.5) * 0.42;
+    // Four interlaced wakes with space BETWEEN them. A constant-radius sixteen-sheet tube
+    // saturated into a ruler-straight white bar. These long folds are fixed to the recorded
+    // positions, so turning or releasing thrust never drags an old curl along with the ship.
+    float braid = floor(aStrand / 2.0);
+    float flowCoordinate = dot(p, vec3(0.073, 0.019, 0.051));
+    float radius = mix(uRadiusHead, uRadiusTail, worldSeed) * (1.1 + sheetSeed * 0.6);
+    float theta = braid * 1.5707963 + flowCoordinate
+      + sin(flowCoordinate * 0.53 + braid * 1.7) * 0.65
+      + mod(aStrand, 2.0) * 0.26;
 
     // Collapse both rows surrounding a segment break. This prevents the fixed index buffer from
     // drawing a bridge across a teleport or a period when the engine was not emitting. Rows beyond
@@ -217,10 +222,10 @@ const TRAIL_VERT = /* glsl */`
     vec3 center = p + ref * (cos(theta) * radius) + up * (sin(theta) * radius);
 
     float halfWidth = mix(uWidthHead, uWidthTail, 0.18 + staticTexture * 0.66) * 0.5;
-    halfWidth *= 0.68 + sheetSeed * 0.64;
+    halfWidth *= 1.3 + sheetSeed * 0.9;
     halfWidth *= segmentEdge;
 
-    float twist = aStrand * 2.399 + worldSeed * 1.3 + segment * 0.071;
+    float twist = theta + 0.8 + sin(flowCoordinate * 0.7 + braid) * 1.1;
     vec3 wide = normalize(ref * cos(twist) + up * sin(twist));
     vec3 sheetN = normalize(cross(tangent, wide));
 
@@ -274,10 +279,10 @@ const TRAIL_FRAG = /* glsl */`
     vec3 N = normalize(vNormal);
     float facing = abs(dot(N, V));
     float graze = min(uGrazeGain, 1.0 / max(facing, uGrazeFloor));
-    float spec = pow(graze, 2.0);
+    float spec = smoothstep(1.4, 4.8, graze);
 
-    float fold = 0.5 + 0.5 * cos(vSide * 5.3 + vStaticTexture * 2.0);
-    float across = (1.0 - smoothstep(0.72, 1.0, abs(vSide))) * (0.32 + 0.85 * fold * fold);
+    float fold = 0.5 + 0.5 * cos(vSide * 4.3 + vStaticTexture * 2.0);
+    float across = (1.0 - smoothstep(0.68, 1.0, abs(vSide))) * (0.48 + 0.95 * fold * fold);
 
     // TIME IS THE ONLY TERMINATOR. This is monotonic in sample age and contains no spatial length,
     // current drive, speed, pulse phase, or current-nozzle term.
@@ -286,18 +291,18 @@ const TRAIL_FRAG = /* glsl */`
     float birthEnergy = 0.55 + vDrive * 0.45 + vBoost * 0.18 + vDash * 0.34;
     float density = across * life * filament * birthEnergy;
 
-    float alpha = clamp(uOpacity * 1.35 * density * (0.46 + graze * 0.54), 0.0, 1.0);
+    float alpha = clamp(uOpacity * 2.0 * density * (0.6 + spec * 1.1), 0.0, 1.0);
     if (alpha < 0.0015) discard;
 
     // Cooling is also monotonic in age. Birth state is immutable metadata; the ship's current
     // throttle can never brighten or dim an old sample.
     float heat = exp(-vAge * 3.4) * birthEnergy;
-    float sear = exp(-vAge * 7.5) * birthEnergy;
+    float sear = exp(-vAge * 22.0) * birthEnergy;
     vec3 col = mix(uEdgeColor, uMidColor, smoothstep(0.08, 0.62, heat));
     col = mix(col, uCoreColor, smoothstep(0.35, 0.9, sear));
 
     float rad = uRadiance * life
-      * (0.78 + heat * 0.95 + sear * 0.62 + spec * 0.42 + vStaticTexture * 0.18);
+      * (0.9 + heat * 0.85 + sear * 0.62 + spec * 1.25 + vStaticTexture * 0.18);
     gl_FragColor = vec4(col * rad, alpha);
   }
 `;

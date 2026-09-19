@@ -171,7 +171,8 @@ export function installDeepFieldPresentation(Background) {
         deepFieldPresentation: 'clip-proof-fractured-v1',
         skyCarrierTriangles: 1,
         voidTextureBytes: rgbaMipBytes(DEEP_FIELD_VOID_SIZE),
-        clearSectorTextureReads: 1,
+        clearSectorTextureReads: this._paintedSkyStrength > 0 ? 2 : 1,
+        paintedSky: this._paintedSkyStrength > 0 ? 'helios-amber-estuary' : null,
       };
     };
   }

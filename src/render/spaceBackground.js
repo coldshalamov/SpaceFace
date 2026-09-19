@@ -342,10 +342,12 @@ const QUAD_VERT = /* glsl */`
 // independent tiling, drift, tint, and blend semantics survive without the redundant overdraw.
 const LAYER_COMPOSITE_VERT = /* glsl */`
   varying vec3 vWorldPosition;
+  varying vec4 vSkyClip;
   void main() {
     vec4 worldPosition = modelMatrix * vec4(position, 1.0);
     vWorldPosition = worldPosition.xyz;
     gl_Position = projectionMatrix * viewMatrix * worldPosition;
+    vSkyClip = gl_Position;
   }
 `;
 const LAYER_COMPOSITE_FRAG = /* glsl */`
@@ -353,6 +355,10 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
   uniform sampler2D uL0;
   uniform sampler2D uL1;
   uniform sampler2D uL2;
+  uniform sampler2D uPaintedSky;
+  uniform float uPaintedSkyStrength;
+  uniform vec2 uPaintedSkyOffset;
+  uniform vec2 uPaintedSkyScale;
   uniform vec2 uRepeat0;
   uniform vec2 uRepeat1;
   uniform vec2 uRepeat2;
@@ -367,6 +373,7 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
   uniform vec3 uTintB;
   uniform float uNebulaOpacity;
   varying vec3 vWorldPosition;
+  varying vec4 vSkyClip;
 
   vec2 uvAtDepth(float depth, vec2 repeatUv, vec2 offsetUv) {
     vec3 ray = vWorldPosition - cameraPosition;
@@ -392,6 +399,13 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
     vec3 color = l0.rgb;
     color = mix(color, l1.rgb * uTintA * 1.15, nebulaAlpha);
     color += l2.rgb * uTintB * wispsAlpha;
+    // Authored wide composition behind the independent star/planet layers. A single sample in
+    // the existing opaque sky pass; travel offsets the art slowly, independently of near stars.
+    if (uPaintedSkyStrength > 0.0) {
+      vec2 skyUv = (vSkyClip.xy / vSkyClip.w) * 0.5 + 0.5;
+      skyUv = (skyUv - 0.5) * uPaintedSkyScale + 0.5 + uPaintedSkyOffset;
+      color = mix(color, texture2D(uPaintedSky, skyUv).rgb, uPaintedSkyStrength);
+    }
     gl_FragColor = vec4(max(color, vec3(0.0)), 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -1179,6 +1193,17 @@ export class SpaceBackground {
     this.planetCache = new Map();
     this.paintedPlanets = typeof document !== 'undefined' && typeof document.createElementNS === 'function'
       ? new PaintedPlanets() : null;
+    this.paintedSky = null;
+    this._paintedSkyReady = false;
+    this._paintedSkyStrength = 0;
+    if (typeof document !== 'undefined' && typeof document.createElementNS === 'function') {
+      this.paintedSky = new THREE.TextureLoader().load('/assets/background/helios-amber-estuary.png',
+        () => { if (!this._disposed) this._paintedSkyReady = true; }, undefined,
+        (error) => console.error('[background] Helios painted sky failed to load', error));
+      this.paintedSky.colorSpace = THREE.SRGBColorSpace;
+      this.paintedSky.wrapS = this.paintedSky.wrapT = THREE.RepeatWrapping;
+      this.paintedSky.name = 'Helios_Amber_Estuary';
+    }
     // Shared sprite materials, one per baked texture — never disposed during flight. Disposing a
     // sprite material releases the shared sprite GL program once its last user dies; the next
     // impostor spawn then re-links it inside renderBufferDirect (a 50-300 ms draw-time stall).
@@ -1800,6 +1825,10 @@ export class SpaceBackground {
         uL0: { value: l0.tex },
         uL1: { value: l1.tex },
         uL2: { value: l2.tex },
+        uPaintedSky: { value: this.paintedSky || l0.tex },
+        uPaintedSkyStrength: { value: this._paintedSkyStrength },
+        uPaintedSkyOffset: { value: new THREE.Vector2() },
+        uPaintedSkyScale: { value: new THREE.Vector2(0.88, 0.88) },
         uRepeat0: { value: new THREE.Vector2(this.quadSize / l0.tile, this.quadSize / l0.tile) },
         uRepeat1: { value: new THREE.Vector2(this.quadSize / l1.tile, this.quadSize / l1.tile) },
         uRepeat2: { value: new THREE.Vector2(this.quadSize / l2.tile, this.quadSize / l2.tile) },
@@ -2761,6 +2790,20 @@ export class SpaceBackground {
       const un = this.layerMaterial.uniforms;
       un.uGroupOrigin.value.copy(this.group.position);
       un.uNebulaOpacity.value = this.nebulaOpacity;
+      const skyArt = this._visualProfile?.background?.paintedSky;
+      const skyTarget = this._paintedSkyReady ? (skyArt?.strength || 0) : 0;
+      this._paintedSkyStrength += (skyTarget - this._paintedSkyStrength) * Math.min(1, dt * 1.8);
+      un.uPaintedSkyStrength.value = this._paintedSkyStrength;
+      const skyParallax = skyArt?.parallax || 0.003;
+      // The frame-coordinate bridge already supplies global XZ here, just like the tile layers.
+      un.uPaintedSkyOffset.value.set((cx * skyParallax / this.H) % 1, (-cz * skyParallax / this.H) % 1);
+      // Cover the viewport without stretching the painted forms on wide or tall displays.
+      const canvas = this.renderer?.domElement;
+      const aspect = canvas?.height ? canvas.width / canvas.height : 16 / 9;
+      const skyImage = this.paintedSky?.image;
+      const imageAspect = skyImage?.height ? skyImage.width / skyImage.height : 16 / 9;
+      un.uPaintedSkyScale.value.set(0.88 * Math.min(1, aspect / imageAspect),
+        0.88 * Math.min(1, imageAspect / aspect));
     }
 
     // pixel scale can change with dynamic resolution — one scalar, cheap to refresh
@@ -3096,6 +3139,8 @@ export class SpaceBackground {
     // one that would keep reading "32.2 MB" no matter how much was reclaimed. 1.34 is the mip tail.
     const texMB = [this.l0Target, this.l1Target, this.l2Target]
       .reduce((bytes, t) => bytes + (t ? t.width * t.height * 4 * 1.34 : 0), 0) / (1024 * 1024);
+    const paintedSkyMB = this._paintedSkyReady
+      ? this.paintedSky.image.width * this.paintedSky.image.height * 4 * 1.34 / (1024 * 1024) : 0;
     return {
       tier: this.tierName,
       H_world: this.H,
@@ -3115,6 +3160,7 @@ export class SpaceBackground {
       wormhole: !!this.wormhole,
       heroCandidates: this.heroPlacement.length,
       bakedTexMB: Math.round(texMB * 10) / 10,
+      paintedSkyTexMB: Math.round(paintedSkyMB * 10) / 10,
       nebulaDeferred: this._nebulaBakePending
         ? [this._nebulaBakePending.L1 ? 'L1' : null, this._nebulaBakePending.L2 ? 'L2' : null].filter(Boolean)
         : [],
@@ -3132,6 +3178,8 @@ export class SpaceBackground {
   }
 
   dispose() {
+    this._disposed = true;
+    this.paintedSky?.dispose();
     this.paintedPlanets?.dispose();
     this._disposeStructureMacro();
     this._disposeStructureTextures();

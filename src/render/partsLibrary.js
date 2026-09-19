@@ -8072,7 +8072,7 @@ function promoteStaticPositionToFloat(geometry) {
   return geometry;
 }
 
-function normalizeStaticBatchGeometries(geometries, options = {}) {
+export function normalizeStaticBatchGeometries(geometries, options = {}) {
   const available = geometries.filter(Boolean);
   // BufferGeometryUtils can merge an all-indexed set directly. Only explicitly qualified,
   // topology-proven place paths opt in; any mixed set still normalizes to the established
@@ -8147,7 +8147,8 @@ function normalizeStaticAttributeConflicts(geometries, specs, conflicts) {
 }
 
 function isPromotableStaticAttribute(name) {
-  return name === 'position' || name === 'normal' || name === 'uv' || name === 'uv1' || name === 'uv2';
+  return name === 'position' || name === 'normal' || name === 'uv' || name === 'uv1' || name === 'uv2'
+    || name === 'sfHullPosition';
 }
 
 function firstAttributeItemSize(geometries, name) {
@@ -8159,7 +8160,7 @@ function firstAttributeItemSize(geometries, name) {
 }
 
 function defaultAttributeItemSize(name) {
-  if (name === 'position' || name === 'normal') return 3;
+  if (name === 'position' || name === 'normal' || name === 'sfHullPosition') return 3;
   return 2;
 }
 
@@ -8180,21 +8181,9 @@ function normalizedAttributeComponent(attr, index, component) {
   else if (component === 1 && typeof attr.getY === 'function') value = attr.getY(index);
   else if (component === 2 && typeof attr.getZ === 'function') value = attr.getZ(index);
   else if (component === 3 && typeof attr.getW === 'function') value = attr.getW(index);
-  const array = attributeArray(attr);
-  if (!attr.normalized || !array) return value;
-  const scale = normalizedAttributeScale(array);
-  if (!scale) return value;
-  return scale.signed ? Math.max(-1, value / scale.max) : value / scale.max;
-}
-
-function normalizedAttributeScale(array) {
-  if (array instanceof Int8Array) return { max: 127, signed: true };
-  if (array instanceof Int16Array) return { max: 32767, signed: true };
-  if (array instanceof Int32Array) return { max: 2147483647, signed: true };
-  if (array instanceof Uint8Array || array instanceof Uint8ClampedArray) return { max: 255, signed: false };
-  if (array instanceof Uint16Array) return { max: 65535, signed: false };
-  if (array instanceof Uint32Array) return { max: 4294967295, signed: false };
-  return null;
+  // getX/Y/Z/W in the shipping Three revision already apply this scale; dividing again would
+  // collapse mixed quantized/float positions (including the hull's paint coordinates) to zero.
+  return value;
 }
 
 function canMergeStaticBatchGeometries(geometries) {

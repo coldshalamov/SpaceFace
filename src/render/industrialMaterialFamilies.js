@@ -30,12 +30,12 @@ export const MATERIAL_FAMILIES = Object.freeze({
   // Intact coating over plate. The coating is dielectric, so metalness is pulled well down and the
   // surface reads as a satin colour mass instead of a mirror wearing a hull texture.
   painted_shell: Object.freeze({
-    id: 'painted_shell', substance: 'coating-over-metal', env: 1.65, roughness: 0.76, metalness: 0.42,
+    id: 'painted_shell', substance: 'coating-over-metal', env: 1.40, roughness: 0.54, metalness: 0.30,
   }),
   // Coating partly lost — field repair, service panels, a scavenger's plate. Still dielectric, but
   // the exposed metal underneath earns some of its reflection back.
   painted_shell_worn: Object.freeze({
-    id: 'painted_shell_worn', substance: 'worn-coating', env: 1.45, roughness: 0.90, metalness: 0.64,
+    id: 'painted_shell_worn', substance: 'worn-coating', env: 1.45, roughness: 0.78, metalness: 0.64,
   }),
   // Bare armour and salvage plate: metallic, but structural mass is never glossy.
   bare_structure: Object.freeze({

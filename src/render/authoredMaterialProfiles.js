@@ -1,6 +1,7 @@
 import { canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
 import { applyIllustratedMaterialResponse } from './industrialMaterialFamilies.js';
 import { illustratedPigmentForMaterial } from './illustratedLivery.js';
+import { hullLayoutForAsset } from './illustratedHullLayout.js';
 
 const ROLE_RULES = Object.freeze([
   ['glass', /canopy|cockpit.?glass|material_glass|window/i],
@@ -105,12 +106,32 @@ const SOLID_ENV_INTENSITY_METAL = 2.8;
 
 export function applyAuthoredMaterialProfile(material, explicitRole = null, options = {}) {
   if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)) return false;
-  const role = explicitRole || authoredMaterialRole(material.name);
+  let role = explicitRole || authoredMaterialRole(material.name);
+  // The liner's release table predates these descriptive material names. Ceramic *paint* is a
+  // coating, not a heat shield; its safety glazing and forged frame are separate substances.
+  if (/massline_express_liner/i.test(options.assetId || '')) {
+    if (/CeramicPaint/i.test(material.name)) role = 'hull';
+    else if (/Glazing/i.test(material.name)) role = 'glass';
+    else if (/Frame_|Keel_|Throat_/i.test(material.name)) role = 'mechanical';
+    else if (/Wayfinding/i.test(material.name)) role = 'signal';
+  }
+  if (/^wrk_/i.test(material.name)) {
+    // Aftermath packages declared every surface mechanical, including intact paint and soot.
+    if (/paint/i.test(material.name)) role = 'hull';
+    else if (/scorch/i.test(material.name)) role = 'rubber';
+    else if (/glass|glaz/i.test(material.name)) role = 'glass';
+  }
   if (!role) return false;
   material.userData = {
     ...(material.userData || {}), spacefaceMaterialRole: role,
     spacefaceAuthoredMaterialName: material.userData?.spacefaceAuthoredMaterialName || material.name,
   };
+  const layout = hullLayoutForAsset(options.assetId);
+  const layoutSurface = (role === 'hull' || role === 'accent' || role === 'service' || role === 'docking')
+    && !/decal|stencil|marking|cyan|(?:^|_)warm(?:_|$)|glow|emissive/i.test(material.userData.spacefaceAuthoredMaterialName);
+  if (layout && layoutSurface && options.bounds) {
+    material.userData.spacefaceHullLayout = { ...layout, center: [...options.bounds.center], size: [...options.bounds.size] };
+  }
   material.dithering = true;
   const coverage = inspectAuthoredPbrCoverage(material);
   material.userData.spacefacePbrCoverage = coverage;
@@ -240,7 +261,7 @@ export function inspectAuthoredPbrCoverage(material) {
  * and ship them as data, letting the shipping loader apply profiles by declaration instead of
  * re-running the two scene traversals and the name-based role inference below.
  */
-export function configureAuthoredMaterialProfiles(root, { assetId = null, record = null } = {}) {
+export function configureAuthoredMaterialProfiles(root, { assetId = null, bounds = null, record = null } = {}) {
   const configured = new Set();
   const uvMaterials = new Set();
   const roles = {};
@@ -273,11 +294,13 @@ export function configureAuthoredMaterialProfiles(root, { assetId = null, record
         || inferredAssetMaterialRole(material, assetId);
       if (!role || !applyAuthoredMaterialProfile(material, role, {
         assetId,
+        bounds,
         allowTextures: uvMaterials.has(material),
       })) continue;
       configured.add(material);
-      roles[role] = (roles[role] || 0) + 1;
-      if (record) record(material, role, uvMaterials.has(material));
+      const effectiveRole = material.userData.spacefaceMaterialRole || role;
+      roles[effectiveRole] = (roles[effectiveRole] || 0) + 1;
+      if (record) record(material, effectiveRole, uvMaterials.has(material));
     }
   });
   return { materials: configured.size, roles };

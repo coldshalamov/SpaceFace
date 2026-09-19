@@ -169,8 +169,12 @@ test('pulse chase-camera evidence: dash, barrel flipbook, and contact survive bl
     interpolationAlpha: 1,
     viewportHeight: 1000,
   });
-  assert.equal(presenter.bolts.live, 1, 'flight is the energy-card pool, not a tube mesh');
-  assert.equal(presenter.bolts.mesh.geometry.type, 'PlaneGeometry');
+  assert.equal(presenter.bolts.live, 1, 'flight uses the pooled energy presentation');
+  const boltGeometry = presenter.bolts.mesh.geometry;
+  boltGeometry.computeBoundingBox();
+  assert.ok(boltGeometry.boundingBox.max.y > 0 && boltGeometry.boundingBox.min.y < 0
+    && boltGeometry.boundingBox.max.z > 0 && boltGeometry.boundingBox.min.z < 0,
+  'folded projectile has thickness in both transverse directions');
   assert.equal(presenter.ribbons.byEntity.has(7), true, 'pulse keeps a ribbon wake');
   assert.ok(presenter.discharges.mesh.count >= 1, 'source surfaces are live at the chase camera');
   assert.equal(presenter.bolts.material.uniforms.uMinPixels.value, DEFAULT_BOLT_MIN_PIXELS);

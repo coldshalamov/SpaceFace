@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { applyAuthoredMaterialProfile, configureAuthoredMaterialProfiles } from './authoredMaterialProfiles.js';
 import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
+import { prepareHullLayoutGeometry } from './illustratedHullLayout.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 import {
   disposeAssetResidency,
@@ -1060,6 +1061,7 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
       const material = canopy ? makeCanopyMaterial(node.material) : node.material;
       if (canopy) node.material = material;
       validatePrimitive(node, material, canopy, gltf, metadata, errors, warnings);
+      node.geometry = prepareHullLayoutGeometry(node.geometry, _relative, metadata.assetId || fileStem(url));
       const primitiveTags = buildPrimitiveTags(tags, metadata, canopy);
       node.userData = {
         ...(node.userData || {}),
@@ -1116,6 +1118,7 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
   // once to cached blueprint materials while preserving all authored maps, UV transforms, and tints.
   const materialProfile = configureAuthoredMaterialProfiles(scene, {
     assetId: metadata.assetId || fileStem(url),
+    bounds: { center: _boundsCenter.toArray(), size: _boundsSize.toArray() },
   });
   canonicalizeObjectSurfaceProgramKeys(scene);
 
@@ -1255,6 +1258,7 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
   if (!Array.isArray(nodes)) throw new AssetContractError(url, ['instance plan exposed no entries']);
 
   const metadata = readAssetMetadata(gltf, scene, expectedSlot);
+  const assetId = metadata.assetId || fileStem(url);
   const nodeAt = (entry, kind) => {
     const planEntry = nodes[entry.planIndex];
     if (!planEntry) {
@@ -1274,6 +1278,8 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
 
   const primitives = (table.primitives || []).map((entry) => {
     const node = nodeAt(entry, 'primitive');
+    const matrix = new THREE.Matrix4().fromArray(entry.matrix);
+    node.geometry = prepareHullLayoutGeometry(node.geometry, matrix, assetId);
     const material = entry.canopy ? makeCanopyMaterial(node.material) : node.material;
     if (entry.canopy) node.material = material;
     const tags = Object.freeze(reviveRuntimeTags(entry.tags));
@@ -1283,7 +1289,7 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
       name: entry.name,
       geometry: node.geometry,
       material,
-      matrix: new THREE.Matrix4().fromArray(entry.matrix),
+      matrix,
       tags,
     });
   });
@@ -1303,7 +1309,6 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
   // Declared, not derived: the package already resolved which material carries which authored role,
   // so apply them by plan index. This is what keeps the two `root.traverse()` calls and the
   // name-based role inference inside configureAuthoredMaterialProfiles off the shipping load path.
-  const assetId = metadata.assetId || fileStem(url);
   const profiledRoles = {};
   const profiled = new Set();
   for (const entry of table.materialProfiles || []) {
@@ -1313,9 +1318,10 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
     const materials = Array.isArray(object.material) ? object.material : (object.material ? [object.material] : []);
     for (const material of materials) {
       if (!material || profiled.has(material)) continue;
-      if (!applyAuthoredMaterialProfile(material, entry.role, { assetId, allowTextures: entry.allowTextures })) continue;
+      if (!applyAuthoredMaterialProfile(material, entry.role, { assetId, bounds: table.bounds, allowTextures: entry.allowTextures })) continue;
       profiled.add(material);
-      profiledRoles[entry.role] = (profiledRoles[entry.role] || 0) + 1;
+      const effectiveRole = material.userData.spacefaceMaterialRole || entry.role;
+      profiledRoles[effectiveRole] = (profiledRoles[effectiveRole] || 0) + 1;
     }
   }
   canonicalizeObjectSurfaceProgramKeys(scene);

@@ -61,9 +61,11 @@ export const DEEP_FIELD_VERTEX = /* glsl */`
   uniform mat4 uSkyProjectionInverse;
   uniform mat4 uSkyCameraWorld;
   varying vec3 vSkyRay;
+  varying vec2 vSkyUv;
   void main() {
     vec4 viewRay = uSkyProjectionInverse * vec4(position.xy, 1.0, 1.0);
     vSkyRay = mat3(uSkyCameraWorld) * viewRay.xyz;
+    vSkyUv = position.xy * 0.5 + 0.5;
     gl_Position = vec4(position.xy, 1.0, 1.0);
   }
 `;
@@ -73,6 +75,10 @@ export const DEEP_FIELD_FRAGMENT = /* glsl */`
   uniform sampler2D uL0;
   uniform sampler2D uL1;
   uniform sampler2D uL2;
+  uniform sampler2D uPaintedSky;
+  uniform float uPaintedSkyStrength;
+  uniform vec2 uPaintedSkyOffset;
+  uniform vec2 uPaintedSkyScale;
   uniform vec2 uRepeat0, uRepeat1, uRepeat2;
   uniform vec2 uOffset0, uOffset1, uOffset2;
   uniform vec3 uGroupOrigin, uDepths;
@@ -80,6 +86,7 @@ export const DEEP_FIELD_FRAGMENT = /* glsl */`
   uniform vec3 uTintA, uTintB;
   uniform float uNebulaOpacity;
   varying vec3 vSkyRay;
+  varying vec2 vSkyUv;
 
   vec2 uvAtDepth(float depth, vec2 repeatUv, vec2 offsetUv) {
     // Supported chase views look down. The horizon guard in main keeps the division finite.
@@ -105,6 +112,10 @@ export const DEEP_FIELD_FRAGMENT = /* glsl */`
         color = mix(color, l1.rgb * uTintA * 1.15, nebulaAlpha);
         color += l2.rgb * uTintB * wispsAlpha;
       }
+    }
+    if (uPaintedSkyStrength > 0.0) {
+      vec2 skyUv = (vSkyUv - 0.5) * uPaintedSkyScale + 0.5 + uPaintedSkyOffset;
+      color = mix(color, texture2D(uPaintedSky, skyUv).rgb, uPaintedSkyStrength);
     }
     gl_FragColor = vec4(max(color, vec3(0.0)), 1.0);
     #include <tonemapping_fragment>

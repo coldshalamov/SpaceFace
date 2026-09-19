@@ -29,6 +29,7 @@
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
+import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { fieldSignature } from './forceLanguage/catalog.js';
 import { createForceSurfacePrecompileMesh } from './forceLanguage/sweptSurfaceBatch.js';
@@ -939,49 +940,6 @@ export function resolveRicochet(ax, az, nx, nz, out = null) {
 export const MINING_BEAM_ATTACK_S = 0.07;
 export const MINING_BEAM_RELEASE_S = 0.10;
 
-// Mining beam shader structure. The flat additive quad becomes an energy conduit with a real
-// cross-section (hot centerline running out to soft edges, M2), packets of work travelling
-// along the beam (E3), and a bright work-face where the beam meets rock. uSfFlow carries the
-// verb's fiction: extraction pulls matter target -> ship (-1), cut/repair/transfer push energy
-// ship -> target (+1), so the player can read which way value is moving. uSfBeamPower is the
-// shared attack/release radiance scalar; it reaches zero before the meshes are hidden.
-function _applyMiningBeamStructure(material, shared, role) {
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.uSfBeamTime = shared.time;
-    shader.uniforms.uSfBeamFlow = shared.flow;
-    shader.uniforms.uSfBeamPower = shared.power;
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfBeam = uv;');
-    if (role === 'core') {
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfBeamTime;\nuniform float uSfBeamFlow;\nuniform float uSfBeamPower;')
-        .replace('#include <color_fragment>', `#include <color_fragment>
-{
-  float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
-  float sfFilament = pow(1.0 - sfAcross, 1.7);
-  float sfU = uSfBeamFlow > 0.0 ? vSfBeam.x : 1.0 - vSfBeam.x;
-  float sfPackets = 0.5 + 0.5 * sin(sfU * 19.0 - uSfBeamTime * 30.0);
-  float sfWorkFace = smoothstep(0.82, 1.0, vSfBeam.x);
-  float sfMuzzle = smoothstep(0.1, 0.0, vSfBeam.x);
-  diffuseColor.rgb *= (sfFilament * (0.7 + 0.55 * sfPackets) + 0.5 * sfWorkFace + 0.25 * sfMuzzle)
-    * uSfBeamPower;
-}`);
-    } else {
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfBeamTime;\nuniform float uSfBeamFlow;\nuniform float uSfBeamPower;')
-        .replace('#include <color_fragment>', `#include <color_fragment>
-{
-  float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
-  float sfSheath = pow(1.0 - sfAcross, 2.9);
-  float sfU = uSfBeamFlow > 0.0 ? vSfBeam.x : 1.0 - vSfBeam.x;
-  float sfWave = 0.5 + 0.5 * sin(sfU * 7.0 - uSfBeamTime * 11.0);
-  diffuseColor.rgb *= sfSheath * (0.45 + 0.55 * sfWave) * uSfBeamPower;
-}`);
-    }
-  };
-  material.customProgramCacheKey = () => `sf-mining-beam-${role}`;
-}
 
 export const vfx = {
   name: 'vfx',
@@ -2227,6 +2185,12 @@ export const vfx = {
           slot.obj.position.x += ox;
           slot.obj.position.z += oz;
         }
+      }
+      // Endpoints live in uniforms now. Carry the short shutdown tail across a frame rebase too.
+      const conduit = this._miningBeam?.shaderShared;
+      if (conduit) {
+        conduit.start.value.x += ox; conduit.start.value.z += oz;
+        conduit.end.value.x += ox; conduit.end.value.z += oz;
       }
       // The release annulus writes frame-local vertices directly into one shared mesh.
       const releaseArc = this._masslineReleaseArc;
@@ -7336,16 +7300,7 @@ export const vfx = {
   _miningBeam: null,
   _initMiningBeam() {
     if (!this._scene) return;
-    // Flat ribbon quad stretched between two endpoints; additive-blended, ore-tinted.
-    // 4 vertices forming a thin quad (2 triangles) — width controlled per-update.
-    const geo = new THREE.BufferGeometry();
-    const pos = new Float32Array(4 * 3); // 4 verts, xyz
-    const uv = new Float32Array([0, 0, 0, 1, 1, 0, 1, 1]);
-    const posAttr = new THREE.BufferAttribute(pos, 3);
-    posAttr.usage = THREE.DynamicDrawUsage;
-    geo.setAttribute('position', posAttr);
-    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    geo.setIndex([0, 1, 2, 1, 3, 2]);
+    const geo = createToolConduitGeometry();
 
     const mat = new THREE.MeshBasicMaterial({
       color: new THREE.Color('#60d0ff'),
@@ -7373,9 +7328,14 @@ export const vfx = {
     glow.visible = false;
     this._scene.add(glow);
 
-    const shaderShared = { time: { value: 0 }, flow: { value: 1 }, power: { value: 0 } };
-    _applyMiningBeamStructure(mat, shaderShared, 'core');
-    _applyMiningBeamStructure(mat2, shaderShared, 'sheath');
+    const shaderShared = {
+      time: { value: 0 }, flow: { value: 1 }, power: { value: 0 }, motion: { value: 1 },
+      verb: { value: 0 },
+      start: { value: new THREE.Vector3() }, end: { value: new THREE.Vector3() },
+      coreRadius: { value: 0.8 }, sheathRadius: { value: 2.5 },
+    };
+    installToolConduitShader(mat, shaderShared, 'core');
+    installToolConduitShader(mat2, shaderShared, 'sheath');
 
     this._miningBeam = {
       mesh, glow, active: false, t: 0, attack: 0, release: 0, color: '#60d0ff', shaderShared,
@@ -7396,6 +7356,7 @@ export const vfx = {
     beam.t = 0;
     this._miningBeam.targetId = (p && p.targetId) || null;
     this._miningBeam.verb = (p && p.verb) || 'extract';
+    beam.shaderShared.verb.value = beam.verb === 'cut' ? 1 : beam.verb === 'repair' ? 2 : beam.verb === 'transfer' ? 3 : 0;
     const target = p && p.targetId ? this._ent(p.targetId) : null;
     let col = '#60d0ff';
     if (this._miningBeam.verb === 'cut') {
@@ -7420,15 +7381,16 @@ export const vfx = {
     this._miningBeam.release = 1;
   },
 
-  // Called each frame from update() to reposition the beam quad between ship and contact.
+  // Called each frame from update() to move conduit endpoints between ship and contact.
   _updateMiningBeam(dt) {
     const beam = this._miningBeam;
     if (!beam) return;
+    const flashScale = this.state?.settings?.accessibility?.flashReduce ? 0.58 : 1;
     if (!beam.active) {
       // Release tail: no geometry chase and no transport advance; the shared power scalar winds
       // down and the pair is hidden when it reaches zero.
       beam.release = Math.max(0, beam.release - dt / MINING_BEAM_RELEASE_S);
-      if (beam.shaderShared) beam.shaderShared.power.value = beam.release;
+      if (beam.shaderShared) beam.shaderShared.power.value = beam.release * flashScale;
       if (beam.release <= 0) {
         beam.mesh.visible = false;
         beam.glow.visible = false;
@@ -7439,7 +7401,7 @@ export const vfx = {
     beam.attack = Math.min(1, beam.attack + dt / MINING_BEAM_ATTACK_S);
     if (beam.shaderShared) {
       beam.shaderShared.time.value = beam.t;
-      beam.shaderShared.power.value = beam.attack;
+      beam.shaderShared.power.value = beam.attack * flashScale;
       // extract draws refined matter into the hold; every other verb delivers energy to the rock.
       beam.shaderShared.flow.value = (beam.verb === 'extract') ? -1 : 1;
     }
@@ -7492,23 +7454,14 @@ export const vfx = {
     w *= beam.attack;
     gw *= beam.attack;
 
-    const corePos = beam.mesh.geometry.attributes.position.array;
-    corePos[0] = sx + nx * w; corePos[1] = 1.5; corePos[2] = sz + nz * w;
-    corePos[3] = sx - nx * w; corePos[4] = 1.5; corePos[5] = sz - nz * w;
-    corePos[6] = tx + nx * w; corePos[7] = 1.5; corePos[8] = tz + nz * w;
-    corePos[9] = tx - nx * w; corePos[10] = 1.5; corePos[11] = tz - nz * w;
-    beam.mesh.geometry.attributes.position.needsUpdate = true;
-    beam.mesh.visible = true;
-    beam.mesh.material.opacity = verb === 'cut' ? 0.9 : (0.6 + 0.2 * Math.sin(beam.t * 8));
-
-    const glowPos = beam.glow.geometry.attributes.position.array;
-    glowPos[0] = sx + nx * gw; glowPos[1] = 1.5; glowPos[2] = sz + nz * gw;
-    glowPos[3] = sx - nx * gw; glowPos[4] = 1.5; glowPos[5] = sz - nz * gw;
-    glowPos[6] = tx + nx * gw; glowPos[7] = 1.5; glowPos[8] = tz + nz * gw;
-    glowPos[9] = tx - nx * gw; glowPos[10] = 1.5; glowPos[11] = tz - nz * gw;
-    beam.glow.geometry.attributes.position.needsUpdate = true;
-    beam.glow.visible = true;
-    beam.glow.material.opacity = verb === 'cut' ? 0.3 : (0.15 + 0.1 * Math.sin(beam.t * 6));
+    beam.shaderShared.start.value.set(sx, 1.5, sz);
+    beam.shaderShared.end.value.set(tx, 1.5, tz);
+    beam.shaderShared.coreRadius.value = w;
+    beam.shaderShared.sheathRadius.value = gw;
+    beam.shaderShared.motion.value = reduced ? 0 : 1;
+    beam.mesh.visible = beam.glow.visible = true;
+    beam.mesh.material.opacity = verb === 'cut' ? 0.9 : 0.68;
+    beam.glow.material.opacity = verb === 'cut' ? 0.24 : 0.30;
 
     if (verb === 'cut') {
       if (Math.random() < (reduced ? 0.3 : 0.7)) {

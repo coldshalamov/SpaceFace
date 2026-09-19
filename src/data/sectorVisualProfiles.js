@@ -46,16 +46,16 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
     // mechanical recesses. The rim describes the silhouette against the dark stellar field.
     lighting: { ambient: 0.20, key: 3.4, rim: 1.65, fill: 0.72 },
     background: {
-      // True blacks + projection-safe gas giant; no explicit macro (planet + star clusters carry far field).
+      // The painted Amber Estuary frames a quiet flight corridor. Live stars, the ringed
+      // landmark and distant orbital hardware sit at independent depths over this art.
+      paintedSky: { strength: 0.52, parallax: 0.003 },
       intensity: 0.80,
       nebulaOpacity: 0.0,
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'helios_orbital_void',
         structureKind: 'void',
-        // Preserve the measured starter-sector vertex budget. A single Points draw still pays per-star
-        // vertex/fragment cost; 1.85 would raise every quality tier by 65% without matched target-GPU
-        // evidence. Clustering supplies the denser-band read within the prior 1.12 budget.
+        // Stellar associations retain fine scale over the broad painted shapes.
         starDensity: 1.12,
         clusterCount: 8,
         clusterStrength: 1.4,

@@ -118,8 +118,10 @@ const FRAGMENT_SHADER = /* glsl */`
     // Variant 0: Pulse - laser dielectric dart with brilliant electric-cyan punch
     float pulse = 1.0 - step(0.5, vVariant);
     float pulseTip = smoothstep(0.0, 0.1, vAlong) * smoothstep(1.0, 0.88, vAlong);
-    body = mix(body, (sheath * 0.4 + core * 1.2) * pulseTip, pulse);
-    col = mix(col, vec3(0.92, 0.98, 1.0), core * pulse * 0.7);
+    float pulseHead = smoothstep(0.40, 0.76, vAlong);
+    float pulseFlute = 0.5 + 0.5 * cos(vUv.y * 12.56637 + vAlong * 4.0);
+    body = mix(body, (sheath * (0.28 + pulseFlute * 0.34) + core * (0.50 + pulseHead * 0.85)) * pulseTip, pulse);
+    col = mix(col, vec3(0.92, 0.98, 1.0), core * pulse * pulseHead * 0.58);
 
     // Variant 1: Plasma - superheated incandescent convection with boiling edges
     float plasma = step(0.5, vVariant) * (1.0 - step(1.5, vVariant));

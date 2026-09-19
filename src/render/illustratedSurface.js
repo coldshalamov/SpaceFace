@@ -1,7 +1,8 @@
 // Illustrated industrial surfaces: shape the light, never quantize the texture.
 // Runs inside the existing opaque material pass, with no targets, extra draws or textures.
-import { Color } from 'three';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v6';
+import { Color, Vector3 } from 'three';
+import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v7';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -18,7 +19,7 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
     + 0.44 * smoothstep(0.86 - sfWidth, 0.86 + sfWidth, sfLight);
   // The continuous component keeps rotating hulls smooth across the painted terminators.
   float sfShaped = mix(sfLight, sfBands, 0.74);
-  vec3 sfInkTint = mix(vec3(0.66, 0.80, 1.20), vec3(1.10, 1.02, 0.91), smoothstep(0.16, 0.86, sfLight));
+  vec3 sfInkTint = mix(vec3(0.66, 0.65, 1.26), vec3(1.10, 1.02, 0.91), smoothstep(0.16, 0.86, sfLight));
   vec3 sfLightScale = sfInkTint * (sfShaped / max(sfLight, 0.025));
   reflectedLight.directDiffuse *= sfLightScale;
   reflectedLight.indirectDiffuse *= sfLightScale;
@@ -135,9 +136,28 @@ export function installIllustratedSurface(material) {
     shader.uniforms ??= {};
     shader.uniforms.sfPaintPigment = { value: new Color(pigment?.color || '#ffffff') };
     shader.uniforms.sfPaintStrength = { value: pigment?.strength || 0 };
+    const layout = this.userData?.spacefaceHullLayout;
+    shader.uniforms.sfLayoutKind = { value: layout?.kind || 0 };
+    shader.uniforms.sfLayoutStrength = { value: layout?.strength || 0 };
+    shader.uniforms.sfLayoutAccent = { value: new Color(layout?.accent || '#ffffff') };
+    shader.uniforms.sfHullCenter = { value: new Vector3().fromArray(layout?.center || [0, 0, 0]) };
+    shader.uniforms.sfHullSize = { value: new Vector3().fromArray(layout?.size || [1, 1, 1]) };
+    if (shader.vertexShader) shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec3 sfHullPosition;\nvarying vec3 vSfHullPosition;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfHullPosition = sfHullPosition;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 sfPaintPigment;\nuniform float sfPaintStrength;')
+      .replace('#include <common>', `#include <common>
+        uniform vec3 sfPaintPigment;
+        uniform float sfPaintStrength;
+        uniform float sfLayoutKind;
+        uniform float sfLayoutStrength;
+        uniform vec3 sfLayoutAccent;
+        uniform vec3 sfHullCenter;
+        uniform vec3 sfHullSize;
+        varying vec3 vSfHullPosition;
+      `)
       .replace('#include <color_fragment>', `#include <color_fragment>
+        float sfSurfaceRelief = 0.0;
         float sfAlbedoY = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
         float sfChroma = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))
           - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b));
@@ -146,6 +166,18 @@ export function installIllustratedSurface(material) {
         // clips the coloured channels into pastel under the sector key light.
         vec3 sfLacquer = sfPaintPigment * (1.65 * sfAlbedoY / (0.32 + sfAlbedoY));
         diffuseColor.rgb = mix(diffuseColor.rgb, sfLacquer, sfNeutralPaint * sfPaintStrength);
+        if (sfLayoutStrength > 0.0) { ${HULL_LAYOUT_GLSL} }
+      `)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        // Recessed paint-panel joints catch light through the existing material normal. Their
+        // relief disappears before becoming subpixel; source normal-map manufacture remains.
+        if (sfLayoutStrength > 0.0) {
+          vec3 sfDx = dFdx(-vViewPosition), sfDy = dFdy(-vViewPosition);
+          vec3 sfR1 = cross(sfDy, normal), sfR2 = cross(normal, sfDx);
+          float sfDet = dot(sfDx, sfR1);
+          vec3 sfGradient = sign(sfDet) * (dFdx(sfSurfaceRelief) * sfR1 + dFdy(sfSurfaceRelief) * sfR2);
+          normal = normalize(max(abs(sfDet), 0.000001) * normal - sfGradient);
+        }
       `)
       // Illustrated metal retains a small diffuse response so its silhouette and paint read
       // against space even when the reflected environment is nearly black. Texture metal masks

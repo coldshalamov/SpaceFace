@@ -120,7 +120,7 @@ export const DEEP_FIELD_STRUCTURE_RECIPES = deepFreeze({
         // engine bells and severed midsection are all legible at distance.
         id: 'helios-derelict-hauler',
         art: { kind: 'derelict_hauler' },
-        scale: 0.215, offset: [0.84, 0.11], opacity: 0.9, color: '#1b212b',
+        scale: 0.17, offset: [1.30, -0.18], opacity: 0.9, color: '#253141',
       },
       {
         // Relay mast: a tapering lattice tower with cross-arms, a parabolic dish and an apex beacon.
@@ -128,7 +128,7 @@ export const DEEP_FIELD_STRUCTURE_RECIPES = deepFreeze({
         // into a sense of depth.
         id: 'helios-relay-mast',
         art: { kind: 'relay_mast' },
-        scale: 0.30, offset: [0.52, 0.26], opacity: 0.9, color: '#1d242e',
+        scale: 0.22, offset: [0.80, -0.10], opacity: 0.9, color: '#263644',
       },
     ],
   }),

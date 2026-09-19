@@ -45,6 +45,12 @@ test('background procedural coordinates remain global while the render root rema
   const expected = layerUvOffset(8193, -3200, layer.par, layer.tile);
   assert.equal(layer.offset.x, expected.u, 'deep-field U remains the same global closed form');
   assert.equal(layer.offset.y, expected.v, 'deep-field V remains the same global closed form');
+  const art = background.layerMaterial.uniforms;
+  assert.equal(art.uPaintedSkyOffset.value.x, (8193 * 0.003 / background.H) % 1,
+    'painted art crosses a rebase without doubling the origin');
+  assert.equal(art.uPaintedSkyOffset.value.y, (3200 * 0.003 / background.H) % 1);
+  assert.equal(art.uPaintedSkyScale.value.x, 0.88);
+  assert.equal(art.uPaintedSkyScale.value.y, 0.88);
 });
 
 test('global camera projection reuses caller storage and adds only frame origin', () => {
@@ -106,6 +112,9 @@ function frameHarness() {
     bgY: -220,
     bgIntensity: 0.7,
     nebulaOpacity: 0,
+    H: 480,
+    _paintedSkyReady: true,
+    _paintedSkyStrength: 0,
     group: { position },
     _sectorTransition: { active: false },
     _streamPrimed: false,
@@ -125,6 +134,9 @@ function frameHarness() {
       uniforms: {
         uGroupOrigin: { value: rootUniform },
         uNebulaOpacity: { value: 0 },
+        uPaintedSkyStrength: { value: 0 },
+        uPaintedSkyOffset: { value: vector2() },
+        uPaintedSkyScale: { value: vector2() },
       },
     },
     stars: {

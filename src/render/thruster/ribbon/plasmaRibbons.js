@@ -191,7 +191,10 @@ const RIBBON_VERT = /* glsl */`
     float coreR = uThroatRadius * 0.62 * (0.86 + seedB * 0.28);
     float breakup = smoothstep(uCoherence, min(uCoherence * 3.5 + 0.22, 1.0), s);
     float fan = mix(1.0, 0.30 + seedA * 1.7, breakup);
-    float radius = coreR + uSpread * pow(s, 0.7) * fan;
+    // Compression cells followed by opening, folded streamers. The mouth stays compact while
+    // the blue body has a scalloped silhouette and visible dark gaps between its hot creases.
+    float compression = 0.72 + 0.28 * cos(s * 24.0 - 0.45);
+    float radius = coreR * compression + uSpread * pow(s, 0.7) * fan * 1.55;
 
     // Kelvin-Helmholtz roll-up: the shear layer curls into rings that grow as they convect. Amplitude
     // grows downstream, and because it rides the flow term the curls visibly travel.
@@ -249,7 +252,7 @@ const RIBBON_VERT = /* glsl */`
     halfWidth *= 0.75 + tongue * 0.5;
     // Sheets are not all the same size to begin with. Identical sheets read as a manufactured fan;
     // a spread of widths is most of what makes a plume look like it has depth in it.
-    halfWidth *= 0.55 + hash11(aRibbon * 4.11 + 2.9) * 1.05;
+    halfWidth *= 0.32 + hash11(aRibbon * 4.11 + 2.9) * 0.68;
     halfWidth *= 1.0 + uDash * 1.6;
 
     vec3 sheetN = normalize(cross(tangent, wide));
@@ -360,17 +363,17 @@ const RIBBON_FRAG = /* glsl */`
     // colour; keeping it short stops the tone mapper rendering the whole jet white. The burn term is
     // the luminous body. Both are keyed to axial position, and the jet's LENGTH is what the throttle
     // moves, so a light touch gives a genuinely short jet rather than a full-length faint one.
-    float sear = exp(-vAxial * 5.0);
+    float sear = exp(-vAxial * 15.0);
     float burn = exp(-vAxial * 1.5);
     // Combustion is rough, and the tongues are what is actually alight at this instant.
     float alight = 0.35 + vTongue * 1.15;
-    float emit = (sear * 1.5 + burn * 1.5) * alight * uFlicker;
+    float emit = (sear * 1.7 + burn * 1.3) * alight * uFlicker;
 
     // Temperature ramp. The steps are far apart on purpose: with this many thin additive sheets a
     // narrow ramp averages to pale grey, and the character being aimed at is the distance between a
     // white throat and a deep saturated blue fringe.
     vec3 col = mix(uEdgeColor, uMidColor, smoothstep(0.05, 0.55, burn * alight));
-    col = mix(col, uCoreColor, smoothstep(0.30, 0.85, sear * (0.6 + uDrive * 0.55)));
+    col = mix(col, uCoreColor, smoothstep(0.45, 0.94, sear * (0.6 + uDrive * 0.55)));
     col = mix(col, uCoreColor, clamp(uDash * 0.8, 0.0, 1.0));
 
     // HDR headroom on purpose: cores must exceed 1.0 for bloom to have anything to catch (ban B8).

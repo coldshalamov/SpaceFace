@@ -12,6 +12,7 @@ export const ILLUSTRATED_LIVERIES = Object.freeze({
   authority: Object.freeze({ hull: '#728baa', accent: '#d8b576' }),
   heavyPatrol: Object.freeze({ hull: '#526d89', accent: '#d8b576', hullStrength: 0.96 }),
   salvage: Object.freeze({ hull: '#927062', accent: '#cda257' }),
+  wreck: Object.freeze({ hull: '#594638', accent: '#778581', hullStrength: 0.98 }),
   habitat: Object.freeze({ hull: '#b6b6a3', accent: '#568e9c' }),
 });
 
@@ -25,6 +26,7 @@ export function illustratedLiveryForAsset(assetId = '') {
   if (/repair_tender|survey_pin/.test(id)) return ILLUSTRATED_LIVERIES.service;
   if (/rescue|capsule/.test(id)) return ILLUSTRATED_LIVERIES.rescue;
   if (/bastion/.test(id)) return ILLUSTRATED_LIVERIES.heavyPatrol;
+  if (/aftermath|dead_hulk|debris_chunk/.test(id)) return ILLUSTRATED_LIVERIES.wreck;
   if (/inspection|wasp|hornet|military|warden/.test(id)) return ILLUSTRATED_LIVERIES.authority;
   if (/ashline|salvage|scrap|aftermath|dead_hulk|debris|drifter/.test(id)) return ILLUSTRATED_LIVERIES.salvage;
   if (/station|gate|lane_|support_gantry|tally|claim_mark|cold_locker|ash_pin|whistle|memorial|pod_/.test(id)) return ILLUSTRATED_LIVERIES.habitat;

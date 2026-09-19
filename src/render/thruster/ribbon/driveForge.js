@@ -31,7 +31,8 @@ const FORGE_VERT = /* glsl */`
 
   void main() {
     vTube = aTube;
-    float radius = mix(uMouthRadius, uAftRadius, aTube);
+    float radius = mix(uMouthRadius, uAftRadius, aTube)
+      * (0.76 + 0.24 * cos(aTube * 9.424778));
     vec3 local = vec3(position.x * radius, position.y * radius, aTube * uLength);
     vec4 world = modelMatrix * vec4(local, 1.0);
     vWorldPos = world.xyz;
@@ -59,10 +60,10 @@ const FORGE_FRAG = /* glsl */`
     vec3 V = normalize(uCamPos - vWorldPos);
     float facing = abs(dot(normalize(vNormal), V));
     float graze = clamp(1.0 - facing, 0.0, 1.0);
-    float shell = 0.30 + pow(graze, 1.7) * 1.35;
+    float shell = 0.18 + pow(graze, 2.4) * 1.35;
 
     float lip = exp(-vTube * vTube * 58.0);
-    float body = exp(-vTube * 2.35);
+    float body = exp(-vTube * 3.4) * (0.40 + 0.60 * pow(abs(cos(vTube * 9.424778)), 4.0));
 
     float energy = (lip * 1.15 + body * 0.5) * (0.30 + uDrive * 0.95 + uBoost * 0.55);
     energy *= shell;

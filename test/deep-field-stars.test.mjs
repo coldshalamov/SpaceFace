@@ -101,7 +101,8 @@ test('a rebuild with unchanged placement is free, and a resize refills in place 
   background.bgTime = 1;
   first.points.onBeforeRender(renderer, null, camera);
   const weightBefore = first.points.material.uniforms.uWeights.value[0];
-  assert.ok(weightBefore > 0.5);
+  assert.ok(Number.isFinite(weightBefore) && weightBefore > 0,
+    'the active formation has a live weight before resize, independent of its art-directed brightness');
   const positionsBefore = positionAttr.array.slice();
 
   camera.aspect = 2.35; camera.updateProjectionMatrix();

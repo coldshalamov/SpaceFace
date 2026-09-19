@@ -28,7 +28,7 @@ import {
 } from './objectSpaceGeology.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
-import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
+import { canonicalizeObjectSurfaceProgramKeys, installIllustratedSurface } from './illustratedSurface.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import {
@@ -255,7 +255,13 @@ function getGeometry(key, build) {
 }
 function getMaterial(key, build) {
   let m = _mat.get(key);
-  if (!m) { m = noDispose(build()); _mat.set(key, m); }
+  if (!m) {
+    m = noDispose(build());
+    // Procedural rocks, worksite fittings and faction-built hulls share the same illustrated
+    // lighting as release models. Their own geology/texture hooks are already installed here.
+    installIllustratedSurface(m);
+    _mat.set(key, m);
+  }
   return m;
 }
 
