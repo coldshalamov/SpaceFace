@@ -539,9 +539,9 @@ function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', n
     img.style.height = '320px';
     article.appendChild(img);
   }
+  // A content header, not a screen title: the sheet sets it in the condensed header voice at about
+  // half a title (the display face is for the screen's own title only).
   const heading = el('h2', 'k-display k-t-title fh-title');
-  paintMarking(heading);
-  pin(heading, { color: 'var(--fh-text)' });
   heading.appendChild(el('span', signal ? 'k-signal' : (locked ? 'k-38' : ''), title != null ? title : name));
   article.appendChild(heading);
   if (meta != null && meta !== '') {
@@ -575,6 +575,7 @@ export const codexScreen = {
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-codex');
     rootEl.classList.add('k-screen', 'of-codex');
+    this._codexRoot = rootEl;
     rootEl.dataset.kReady = '0';
     delete rootEl.dataset.stamp;
     rootEl.setAttribute('data-fh-register', 'bench');
@@ -759,6 +760,8 @@ export const codexScreen = {
     this._sections = [];
     this._entries = [];
     this._syncTabs();
+    // The open tab rides on the root so the sheet can set the entry pane's emblem for its kind.
+    if (this._codexRoot && this._codexRoot.dataset) this._codexRoot.dataset.tab = String(this._activeTab || '').toLowerCase();
     // Archive + Ledger are media/panel surfaces, not searchable narrative — hide the chrome.
     const isChromeLess = this._activeTab === 'Archive' || this._activeTab === 'Ledger';
     this._searchWrap.hidden = isChromeLess;
@@ -791,7 +794,6 @@ export const codexScreen = {
     const article = el('article', 'sf-codex-entry fh-plate fh-plate--sunk');
     paintPlate(article, 'sunk');
     const heading = el('h2', 'k-display k-t-title fh-title', 'Signal Archive');
-    paintMarking(heading);
     article.appendChild(heading);
     const count = el('p', 'k-t-fine k-38 fh-legend', SIGNAL_ARCHIVE.length + ' recovered signals');
     paintLegend(count, false);

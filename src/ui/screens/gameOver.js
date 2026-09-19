@@ -236,6 +236,15 @@ export const gameOverScreen = {
     this._recoveryEl = recovery;
     stage.appendChild(recovery);
     rootEl.appendChild(stage);
+    // The career record beside the loss report: what this pilot had done before the hull went, so
+    // the screen reads as the end of a chapter, not a receipt alone. Refilled on every show.
+    const recap = el('aside', 'sf-go-recap');
+    recap.setAttribute('aria-label', 'Career record');
+    recap.appendChild(el('p', 'k-caps sf-go-recap__title', 'Career record'));
+    const recapRows = el('dl', 'sf-go-recap__rows');
+    recap.appendChild(recapRows);
+    this._recapRows = recapRows;
+    rootEl.appendChild(recap);
     // Cause, sortie and damage read in the title; they are kept as summary keys for the refresh.
     this._summaryEls.cause = h;
     this._summaryEls.lifespan = el('span');
@@ -339,7 +348,31 @@ export const gameOverScreen = {
   onHide() {},
   refresh(ctx) { this._refreshSummary(ctx); },
 
+  /** The career record: lifetime figures the player earned before this loss. */
+  _refreshRecap(ctx) {
+    const rows = this._recapRows;
+    if (!rows) return;
+    const state = ctx && ctx.state || {};
+    const stats = state.player && state.player.stats || {};
+    const count = (n) => Math.max(0, Math.round(Number(n) || 0)).toLocaleString();
+    const items = [
+      ['Time flown', fmtTime(state.meta && state.meta.playtimeS)],
+      ['This hull lasted', lastDeathSummary(ctx).lifespan],
+      ['Contracts done', count(stats.missionsDone)],
+      ['Kills', count(stats.kills)],
+      ['Trades', count(stats.tradesCount)],
+      ['Lifetime profit', fmtCr(stats.lifetimeProfit)],
+      ['Best single trade', fmtCr(stats.biggestSingleProfit)],
+    ];
+    rows.textContent = '';
+    for (const [label, value] of items) {
+      rows.appendChild(el('dt', 'sf-go-recap__k', label));
+      rows.appendChild(el('dd', 'sf-go-recap__v', value));
+    }
+  },
+
   _refreshSummary(ctx) {
+    this._refreshRecap(ctx);
     const els = this._summaryEls;
     if (!els) return;
     const state = ctx && ctx.state || {};

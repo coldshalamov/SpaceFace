@@ -718,8 +718,8 @@ export const saveLoadScreen = {
     const { stage, caption, shipName, portrait, scars, titles, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
     pin(stage, { background: 'transparent', 'border-width': '0' });
     paintPlate(caption, 'edge', { 'max-width': '100%', background: 'transparent' });
-    paintMarking(shipName);
-    shipName.classList.add('fh-title');
+    // The slot card's name is a content header (the header voice, set by the sheet), not a title.
+    shipName.classList.add('fh-title', 'sf-slot-card-title');
     if (portrait) pin(portrait, { 'border-left': '0' });
     if (objective) objective.classList.add('sf-slot-detail');
     if (fine) fine.classList.add('sf-slot-context');

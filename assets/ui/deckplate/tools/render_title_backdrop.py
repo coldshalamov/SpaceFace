@@ -264,20 +264,69 @@ pm.use_nodes = True
 pn, pl = pm.node_tree.nodes, pm.node_tree.links
 pb = pn["Principled BSDF"]
 ptc = pn.new("ShaderNodeTexCoord")
+# Weather, not stripes: a large 4D noise (fixed W, so the render is deterministic) warps the band
+# coordinate, so the belts meander, pinch and break the way a real gas giant's do. Critic round 2
+# read the old single wave as "ribbed, repeating stripes ... a placeholder".
+warp = pn.new("ShaderNodeTexNoise")
+warp.noise_dimensions = "4D"
+warp.inputs["W"].default_value = 3.7
+warp.inputs["Scale"].default_value = 1.9
+warp.inputs["Detail"].default_value = 9.0
+warp.inputs["Roughness"].default_value = 0.64
+wsub = pn.new("ShaderNodeVectorMath"); wsub.operation = "SUBTRACT"
+wsub.inputs[1].default_value = (0.5, 0.5, 0.5)
+wscale = pn.new("ShaderNodeVectorMath"); wscale.operation = "SCALE"
+wscale.inputs["Scale"].default_value = 0.10
+wadd = pn.new("ShaderNodeVectorMath"); wadd.operation = "ADD"
+pl.new(warp.outputs["Color"], wsub.inputs[0])
+pl.new(wsub.outputs["Vector"], wscale.inputs[0])
+pl.new(ptc.outputs["Generated"], wadd.inputs[0])
+pl.new(wscale.outputs["Vector"], wadd.inputs[1])
 wave = pn.new("ShaderNodeTexWave")
 wave.wave_type = "BANDS"
 wave.bands_direction = "Z"
-wave.inputs["Scale"].default_value = 11.0
-wave.inputs["Distortion"].default_value = 2.2
+wave.inputs["Scale"].default_value = 2.6
+wave.inputs["Distortion"].default_value = 2.4
 wave.inputs["Detail"].default_value = 6.0
-wave.inputs["Detail Scale"].default_value = 1.6
-pl.new(ptc.outputs["Generated"], wave.inputs["Vector"])
+wave.inputs["Detail Scale"].default_value = 1.4
+wave.inputs["Detail Roughness"].default_value = 0.62
+pl.new(wadd.outputs["Vector"], wave.inputs["Vector"])
 pr = pn.new("ShaderNodeValToRGB")
-pr.color_ramp.elements[0].color = (0.034, 0.036, 0.042, 1)
-pr.color_ramp.elements[1].color = (0.062, 0.058, 0.054, 1)
-pr.color_ramp.elements.new(0.55).color = (0.046, 0.045, 0.046, 1)
+# broad belts, low contrast: a gas giant reads by its soft zones, not by stripes
+pr.color_ramp.elements[0].color = (0.046, 0.046, 0.050, 1)
+pr.color_ramp.elements[1].color = (0.064, 0.060, 0.056, 1)
+pr.color_ramp.elements.new(0.45).color = (0.058, 0.055, 0.053, 1)
 pl.new(wave.outputs["Fac"], pr.inputs["Fac"])
-pl.new(pr.outputs["Color"], pb.inputs["Base Color"])
+# a fine, faint band texture riding over the belts (15 % mix)
+fine = pn.new("ShaderNodeTexWave")
+fine.wave_type = "BANDS"
+fine.bands_direction = "Z"
+fine.inputs["Scale"].default_value = 13.0
+fine.inputs["Distortion"].default_value = 7.0
+fine.inputs["Detail"].default_value = 4.0
+pl.new(wadd.outputs["Vector"], fine.inputs["Vector"])
+fmix = pn.new("ShaderNodeMix"); fmix.data_type = "RGBA"; fmix.blend_type = "OVERLAY"
+fmix.inputs["Factor"].default_value = 0.15
+pl.new(pr.outputs["Color"], fmix.inputs[6])
+pl.new(fine.outputs["Color"], fmix.inputs[7])
+# storms: a few broad dark ovals riding the belts
+storm = pn.new("ShaderNodeTexNoise")
+storm.noise_dimensions = "4D"
+storm.inputs["W"].default_value = 11.2
+storm.inputs["Scale"].default_value = 4.5
+storm.inputs["Detail"].default_value = 3.0
+sramp = pn.new("ShaderNodeValToRGB")
+sramp.color_ramp.elements[0].position = 0.58
+sramp.color_ramp.elements[0].color = (1, 1, 1, 1)
+sramp.color_ramp.elements[1].position = 0.74
+sramp.color_ramp.elements[1].color = (0.62, 0.62, 0.64, 1)
+pl.new(wadd.outputs["Vector"], storm.inputs["Vector"])
+pl.new(storm.outputs["Fac"], sramp.inputs["Fac"])
+smul = pn.new("ShaderNodeMix"); smul.data_type = "RGBA"; smul.blend_type = "MULTIPLY"
+smul.inputs["Factor"].default_value = 1.0
+pl.new(fmix.outputs[2], smul.inputs[6])
+pl.new(sramp.outputs["Color"], smul.inputs[7])
+pl.new(smul.outputs[2], pb.inputs["Base Color"])
 pb.inputs["Roughness"].default_value = 0.85
 planet.data.materials.append(pm)
 # the atmosphere: a thin shell that glows cold where the view grazes it

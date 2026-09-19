@@ -500,9 +500,22 @@ ${GO} .k-hero__w {
   text-transform:uppercase; color:var(--dp-ink-mute);
 }
 ${GO} .sf-go-foot .k-words--row { gap:12px; flex-wrap:wrap; }
+/* the career record stands to the right of the report, spanning the title and the stage */
+${GO}.k-screen { grid-template-columns:minmax(0, 1fr) minmax(280px, 400px); grid-template-areas:"title recap" "stage recap" "foot foot"; column-gap:clamp(24px, 3vw, 64px); }
+${GO} .sf-go-recap {
+  grid-area:recap; align-self:start; box-sizing:border-box; margin-top:clamp(40px, 8vh, 120px); padding:18px 22px;
+  border:12px solid transparent; border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
+  background:var(--dp-glass-bb); box-shadow:0 14px 34px rgb(0 0 0 / .5);
+}
+${GO} .sf-go-recap__title { margin:0 0 10px; font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 70; font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--dp-ink-mute); }
+${GO} .sf-go-recap__rows { display:grid; grid-template-columns:minmax(0, 1fr) auto; margin:0; }
+${GO} :is(.sf-go-recap__k, .sf-go-recap__v) { margin:0; padding:9px 0; background:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px) left top / 100% 2px no-repeat; }
+${GO} .sf-go-recap__k { font-family:var(--dp-face-read); font-size:14px; color:var(--dp-ink-dim); }
+${GO} .sf-go-recap__v { text-align:right; font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 84; font-size:15px; letter-spacing:.04em; color:var(--dp-ink); font-variant-numeric:tabular-nums; }
+@media (max-width:1100px) { ${GO}.k-screen { grid-template-columns:minmax(0, 1fr); grid-template-areas:"title" "stage" "recap" "foot"; } ${GO} .sf-go-recap { margin-top:0; max-width:520px; } }
 ${dpKey(`${GO} .sf-go-foot .k-word`)}
 @media (forced-colors:active) {
-  ${GO} .k-stage { border-image:none; border:1px solid CanvasText; background:Canvas; box-shadow:none; }
+  ${GO} .k-stage, ${GO} .sf-go-recap { border-image:none; border:1px solid CanvasText; background:Canvas; box-shadow:none; }
   ${GO} .k-title .k-t-title { background:none; border-bottom:4px solid CanvasText; }
 }
 `;
@@ -1104,6 +1117,24 @@ ${SEL}.of-achievements .of-achievements-row .k-row__num {
 }
 ${SEL}.of-achievements .of-achievements-row[data-state="unlocked"] .k-row__num { color:var(--dp-lamp-hot); box-shadow:inset 0 0 0 1px rgb(255 217 140 / .35); }
 @media (forced-colors:active) { ${SEL}.of-achievements .k-row.of-achievements-row { border:1px solid CanvasText; background:Canvas; } ${SEL}.of-achievements .of-achievements-emblem { border:1px solid CanvasText; background:Canvas; } }
+/* codex: the entry fills its column, its sentences at reading size, and a large faint emblem of the
+   tab's kind sits in the pane's lower right, so a short entry is still a composed page */
+${SEL}.of-codex .sf-codex-entry { position:relative; min-height:100%; box-sizing:border-box; }
+${SEL}.of-codex .sf-codex-entry .k-sentence { font-size:17px; line-height:1.55; }
+${SEL}.of-codex .sf-codex-entry::after {
+  content:""; position:absolute; right:32px; bottom:28px; width:220px; height:220px; pointer-events:none;
+  background:var(--dp-ink); opacity:.05;
+  -webkit-mask:var(--sf-codex-mark, url("/assets/ui/kit/icons/48/icon-missions.svg")) center / contain no-repeat; mask:var(--sf-codex-mark, url("/assets/ui/kit/icons/48/icon-missions.svg")) center / contain no-repeat;
+}
+${SEL}.of-codex[data-tab="comms"] { --sf-codex-mark:url("/assets/ui/kit/icons/48/icon-hail.svg"); }
+${SEL}.of-codex[data-tab="discoveries"] { --sf-codex-mark:url("/assets/ui/kit/icons/48/icon-scan.svg"); }
+${SEL}.of-codex[data-tab="graffiti"] { --sf-codex-mark:url("/assets/ui/kit/icons/48/icon-warning.svg"); }
+${SEL}.of-codex[data-tab="figures"] { --sf-codex-mark:url("/assets/ui/kit/icons/48/icon-factions.svg"); }
+${SEL}.of-codex[data-tab="ship"] { --sf-codex-mark:url("/assets/ui/kit/icons/48/icon-shipworks.svg"); }
+${SEL}.of-codex[data-tab="archive"] { --sf-codex-mark:url("/assets/ui/kit/icons/48/icon-record.svg"); }
+${SEL}.of-codex[data-tab="ledger"] { --sf-codex-mark:url("/assets/ui/kit/icons/48/icon-ledger.svg"); }
+@media (forced-colors:active) { ${SEL}.of-codex .sf-codex-entry::after { display:none; } }
+${SEL} .sf-slot-card-title { font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 86; font-size:clamp(22px, min(1.9vw, 3.4vh), 36px); line-height:1.05; letter-spacing:.06em; text-transform:uppercase; color:var(--dp-ink); }
 /* keys drawn by the bridge: the lit cap is the focus */
 ${SEL} .fh-key:not(.fh-key--legend):focus-visible { outline:0 solid transparent !important; }
 /* a small key in a screen's foot is a command (export, import): the one keycap with its lamp */
