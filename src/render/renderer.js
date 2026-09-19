@@ -6166,6 +6166,17 @@ export const render = {
           ...shadowSensitiveLeftovers,
           ...neverDrawnPools,
         ]);
+        // Compile and touch both consume this list front-to-back under one shared budget. Order it
+        // by the opening submission plan so the exact first-picture leaves (player, background,
+        // visible entities, pools) warm before any beyond-runway subject — a timed-out pass then
+        // leaves first-draw pipeline cost only on objects that cannot be on screen yet.
+        const firstPictureOrder = new Map(openingSubjects.map((subject, index) => [subject, index]));
+        if (firstPictureOrder.size > 0) {
+          units.programSubjects.sort((a, b) => (
+            (firstPictureOrder.has(a) ? firstPictureOrder.get(a) : openingSubjects.length)
+            - (firstPictureOrder.has(b) ? firstPictureOrder.get(b) : openingSubjects.length)
+          ));
+        }
         const touch = (subject) => (
           this.bloom && typeof this.bloom.touchScenePipelines === 'function'
             ? this.bloom.touchScenePipelines(subject, cam.obj, scene)
@@ -6293,6 +6304,11 @@ export const render = {
           recordOpeningCookStep(state.render, 'cook.touch', touchStarted,
             touched < units.programSubjects.length ? 'timeout' : 'resolved', {
             subjects: units.programSubjects.length,
+            firstPicture: firstPictureOrder.size > 0
+              ? units.programSubjects.reduce((count, subject) => (
+                count + (firstPictureOrder.has(subject) ? 1 : 0)
+              ), 0)
+              : undefined,
             touched,
             notReady,
             noProgram,

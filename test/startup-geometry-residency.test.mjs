@@ -515,6 +515,25 @@ test('the jump cook seals unstamped instance pools inside its admission window',
     'the seal must run while liveSectorGpuAdmission is still true');
 });
 
+// Compile and touch consume programSubjects front-to-back under one shared budget, and a
+// timed-out pass used to leave first-picture leaves unwarmed in census order — their first
+// draws then created D3D11 pipeline state inside early presented frames (~78–155 ms bloomScene
+// residuals after the 772 ms link brick closed). Order the list by the opening submission plan
+// so a capped pass warms exactly the leaves the first frames will draw.
+test('the cook warms first-picture subjects before beyond-runway subjects', () => {
+  const unitsIndex = RENDERER_SOURCE.indexOf('const units = uniqueAdmissionUnits([');
+  assert.ok(unitsIndex >= 0, 'the cook admission units must exist');
+  const compileLoopIndex = RENDERER_SOURCE.indexOf('for (const subject of units.programSubjects)', unitsIndex);
+  assert.ok(compileLoopIndex > unitsIndex, 'the compile cohort loop must exist');
+  const between = RENDERER_SOURCE.slice(unitsIndex, compileLoopIndex);
+  assert.match(between, /openingSubjects\.map\(\(subject, index\) => \[subject, index\]\)/,
+    'the ordering key must come from the opening submission plan order');
+  assert.match(between, /units\.programSubjects\.sort\(/,
+    'programSubjects must be sorted before the compile and touch loops consume it');
+  const touchLoopIndex = RENDERER_SOURCE.indexOf('for (const subject of units.programSubjects)', compileLoopIndex + 1);
+  assert.ok(touchLoopIndex > compileLoopIndex, 'the touch loop must consume the same ordered list');
+});
+
 // A per-item yield to the next present cost one frame per texture and per geometry batch —
 // a 20-map hull waited ~20 presents hidden behind the pending latch. Flight residency slices
 // several small uploads into one frame gap instead.
