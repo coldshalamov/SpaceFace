@@ -1,6 +1,6 @@
 # Progression Vertical Audit — Scalar vs Verb
 
-Generated **2026-09-18** by `scripts/check-progression-verb-audit.mjs` — this file is GENERATED, do not hand-edit. Regenerate with `npm run check:progression:verbs -- --write=design/program/PROGRESSION_VERTICAL_AUDIT.md`.
+Generated **2026-09-19** by `scripts/check-progression-verb-audit.mjs` — this file is GENERATED, do not hand-edit. Regenerate with `npm run check:progression:verbs -- --write=design/program/PROGRESSION_VERTICAL_AUDIT.md`.
 
 A module is **verb** when it grants a capability or state change (tether head, cloak, countermeasure, drone bay, jump, impulse charge, attack-trait rig, …), **intel** when it is a read (reveal cargo, market data, scan bonuses), and **scalar** when it only moves numbers (shieldFlat, *Mult, *Pct, …). Precedence per module: verb > intel > scalar; secondary classes are listed in the row. Tech classification is imported verbatim from the committed ladder (`src/data/techVerbLadder.js`), not re-derived.
 
@@ -128,8 +128,8 @@ Modules classified scalar on top-level stat fields alone (no mods, no id-verb): 
 | `wpn_rcs_disruptor_m` | impulsePerHit, subsystemShare/shieldBypass, control-gun token |
 | `unique_mirrorjaw_pulse` | impulsePerHit, attackTraits (mod_bank_shot, mod_bank_relay) |
 
-Declared-but-unwired verb keys (in data, no live systems consumer yet): `microJumpBlink`, `reactiveMissileKnockback`.
+Declared-but-unwired verb keys (registered verbs whose mods key no system reads — honestly labeled, tracked by the packet leaf that will wire or reclassify each): `microJumpBlink` (tracked by PQ-208.01), `reactiveMissileKnockback` (tracked by PQ-208.01).
 
 ## Vocabulary contract
 
-The drift guard knows 18 verb mods keys, 10 intel keys, 25 scalar keys, 16 id-matched attack-trait rigs, massline heads {tractor, elastic_whip, frame_coupler, monofilament_sweep, transverse_snare, twin_bridle}, countermeasure kinds {chaff, ecm, decoy}, and deploy kinds {vector_mine, gravity_well}. A mods key outside these sets fails this check — register new keys in `scripts/check-progression-verb-audit.mjs` in the same packet that introduces them.
+The drift guard knows 18 verb mods keys, 10 intel keys, 25 scalar keys, 16 id-matched attack-trait rigs, massline heads {tractor, elastic_whip, frame_coupler, monofilament_sweep, transverse_snare, twin_bridle}, countermeasure kinds {chaff, ecm, decoy}, and deploy kinds {vector_mine, gravity_well}. A mods key outside these sets fails this check — register new keys in `scripts/check-progression-verb-audit.mjs` in the same packet that introduces them. Every verb key also carries consumer evidence verified on every run (PQ-208.00): 16 keys verified against live source, 2 declared-only pending their tracked leaf. A declared verb key that names no implemented behaviour fails the run.
