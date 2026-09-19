@@ -855,6 +855,103 @@ export const heistFacilities = {
     return capsule;
   },
 
+  /**
+   * PQ-195.07: re-embody a suspended run's load on sector re-entry. The body the run left behind
+   * comes back as the SAME body — the snapshot the runtime took at the boundary, not a fresh
+   * launch: no arc, no launch cue, no `heist:capsuleLaunched` (the run's own bookkeeping, e.g.
+   * `pressureSpawned`, must not re-arm). The schedule, when it survives, is relinked; the durable
+   * `launchScheduleId` in the data block is the custody identity either way.
+   */
+  respawnSuspendedCapsule({ scheduleId = null, variantId = null, snapshot = null } = {}) {
+    const owned = this.state.heistFacilities;
+    if (!owned || !snapshot || !snapshot.pos) return null;
+    const x = Number(snapshot.pos.x);
+    const z = Number(snapshot.pos.z);
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+    const variant = heistLaunchVariant(variantId);
+    const payload = variant.payload;
+    this.materializeForSector(PQ019_HEIST_SECTOR_ID);
+    const capsule = this.helpers.spawnEntity({
+      type: 'payload',
+      factionId: payload.legalOwnerFactionId,
+      ownerId: payload.ownerId,
+      team: 2,
+      pos: { x, z },
+      vel: {
+        x: Number(snapshot.vel && snapshot.vel.x) || 0,
+        z: Number(snapshot.vel && snapshot.vel.z) || 0,
+      },
+      rot: Number.isFinite(snapshot.rot) ? snapshot.rot : 0,
+      radius: payload.radius,
+      mass: payload.mass,
+      hull: Number.isFinite(snapshot.hull) ? snapshot.hull : payload.hull,
+      hullMax: Number.isFinite(snapshot.hullMax) ? snapshot.hullMax : payload.hull,
+      collides: true,
+      ttl: Infinity,
+      flags: variant.durableLoad ? { missionPinned: true, persistent: true } : { missionPinned: true },
+      homeSectorId: PQ019_HEIST_SECTOR_ID,
+      physicsBody: {
+        dynamic: true,
+        radius: payload.radius,
+        mass: payload.mass,
+        inertiaY: 0.5 * payload.mass * payload.radius * payload.radius,
+        ccd: true,
+        material: 'payload',
+      },
+      data: {
+        heistFacilityRole: 'cargo_capsule',
+        heistPayloadStableId: payload.stableId,
+        authoredPayloadAssetId: payload.authoredPayloadAssetId,
+        legalOwnerFactionId: payload.legalOwnerFactionId,
+        ownerId: payload.ownerId,
+        launchScheduleId: scheduleId,
+        missionPinned: true,
+        runtimeOwner: 'heistFacilities',
+        sectorId: PQ019_HEIST_SECTOR_ID,
+        homeSectorId: PQ019_HEIST_SECTOR_ID,
+        transientSector: true,
+        resumedFromSuspension: true,
+        ...(variant.id !== HEIST_CAPSULE_RUN_VARIANT_ID ? { heistVariantId: variant.id } : {}),
+      },
+    });
+    if (!capsule) return null;
+    if (Number.isFinite(snapshot.angVel)) capsule.angVel = snapshot.angVel;
+    // The approach is part of the run too: restore the capture the snapshot carried onto the
+    // body (the same shape `adoptRestoredLoad` reads after a reload), and relink the live fork
+    // record when the schedule survived the boundary. A mismatch restarts the approach — the
+    // same rule the restore path already applies; custody is never assumed.
+    if (variant.custody === 'capture_fork') {
+      const receiver = this._forkReceiver(variant);
+      let capture = null;
+      try {
+        capture = snapshot.capture ? restoreCaptureState(snapshot.capture) : null;
+      } catch {
+        capture = null;
+      }
+      if (!capture || capture.payloadId !== payload.stableId || capture.receiverId !== receiver.id) {
+        capture = createCaptureState(payload.stableId, receiver.id);
+      }
+      capsule.data.breakawayCapture = capture;
+      if (owned.schedule && owned.schedule.scheduleId === scheduleId) {
+        owned.capture = capture;
+        owned.capturePrev = null;
+      }
+    }
+    owned.capsuleEntityId = capsule.id;
+    if (owned.schedule && owned.schedule.scheduleId === scheduleId) {
+      owned.schedule.capsuleEntityId = capsule.id;
+    }
+    this.bus.emit('heist:capsuleResumed', Object.freeze({
+      scheduleId,
+      capsuleEntityId: capsule.id,
+      payloadStableId: payload.stableId,
+      resumedAtTick: this.state.tick | 0,
+      ...(variantId ? { variantId } : {}),
+      source: 'heistFacilities',
+    }));
+    return capsule;
+  },
+
   _facilityHead(facilityId) {
     const facility = PQ019_FACILITIES[facilityId];
     if (!facility) return null;

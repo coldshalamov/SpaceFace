@@ -160,6 +160,10 @@ export function createHeistRecord({
     // marker id recorded here is the idempotency key, so a duplicate destroy callback or a
     // reloaded record can never offer the recovery twice.
     ...(scoped ? { recoveryWreckMarkerId: null } : {}),
+    // PQ-195.07: leaving Tethys suspends a live run rather than failing it. `suspendedLoad` is
+    // the body snapshot the facility re-embodies on return — plain durable data riding the
+    // already-serialized record, so no new top-level save key is needed.
+    ...(scoped ? { suspended: false, suspendedAtTick: null, suspendedLoad: null } : {}),
     scheduleRequested: false,
     launchAtSimT: null,
     launchTick: null,
@@ -696,6 +700,78 @@ export const heistMissionRuntime = {
     // PQ-195.05: the pressure element's budget slots go back on the way out. The raider hulls
     // themselves dematerialize with the sector like every other transient.
     this._releasePressure(ctx, record);
+    // PQ-195.07: a live Third Shift run SUSPENDS at the boundary instead of failing — snapshot
+    // the body before the facility dematerializes it, then `drive` freezes the run's clocks and
+    // `onEntityDestroyed` below declines to classify the routine transient removal.
+    this._suspendRun(ctx, record);
+    return true;
+  },
+
+  /**
+   * PQ-195.07: park a launched, undecided run at the sector boundary. The snapshot IS the body —
+   * position, velocity, pose, spin and hull — and lives in the durable record, so a suspended
+   * run survives save/load without any facility-state capture. Capsule Run and unlaunched
+   * records keep their existing semantics (absent / permanently active).
+   */
+  _suspendRun(ctx, record) {
+    if (!record || record.suspended) return false;
+    if (heistLaunchVariant(record.variantId).id !== BREAKAWAY_THIRD_SHIFT_VARIANT_ID) return false;
+    if (record.launchTick == null || record.capsuleEntityId == null) return false;
+    // The facility's own `sector:exit` listener registers first and marks the body dead before
+    // this sees the event — `liveEntity` would say it's already gone. The map entry still exists
+    // until the end-of-step sweep, so read it raw; the drive()-tracked last-known state is the
+    // same body truth if it was removed `immediate` or the exit raced a kill.
+    const entity = ctx?.state?.entities?.get?.(record.capsuleEntityId);
+    const pos = entity?.pos || record.capsuleLastPos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+    const vel = entity?.vel || record.capsuleLastVel;
+    record.suspendedLoad = {
+      pos: { x: pos.x, z: pos.z },
+      vel: vel && Number.isFinite(vel.x) ? { x: vel.x, z: vel.z } : { x: 0, z: 0 },
+      rot: Number.isFinite(entity?.rot) ? entity.rot : 0,
+      angVel: Number.isFinite(entity?.angVel) ? entity.angVel : 0,
+      hull: Number.isFinite(entity?.hull) ? entity.hull : entity?.hullMax,
+      hullMax: entity?.hullMax,
+      mass: Number.isFinite(entity?.mass) ? entity.mass : record.capsuleLastMass,
+      // A capture approach in progress is part of the same run: the facility mirrors it onto the
+      // body for durable loads, so it rides the snapshot (deep-copied — the live object is about
+      // to be deleted with the dematerialized entity).
+      capture: entity?.data?.breakawayCapture
+        ? JSON.parse(JSON.stringify(entity.data.breakawayCapture))
+        : null,
+    };
+    record.suspended = true;
+    record.suspendedAtTick = intTick(ctx?.state?.tick);
+    record.possessed = false;
+    return true;
+  },
+
+  /**
+   * PQ-195.07: re-embody the parked body through the facility owner and resume the SAME run.
+   * The remaining window is preserved by shifting `launchTick` forward across the suspended
+   * stretch — the boundary never counted against the contract. A respawn refusal keeps the
+   * record suspended; a fabricated absence would be a lie the settlement would repeat.
+   */
+  _resumeSuspended(ctx, record) {
+    if (!record || !record.suspended) return false;
+    const facilities = ownerOf(ctx, 'heistFacilities');
+    if (!facilities || typeof facilities.respawnSuspendedCapsule !== 'function') return false;
+    const capsule = facilities.respawnSuspendedCapsule({
+      scheduleId: record.scheduleId,
+      variantId: record.variantId,
+      snapshot: record.suspendedLoad,
+    });
+    if (!capsule) return false;
+    const tick = intTick(ctx?.state?.tick);
+    record.capsuleEntityId = capsule.id;
+    record.capsuleSeen = true;
+    const awayTicks = Math.max(0, tick - intTick(record.suspendedAtTick));
+    if (awayTicks > 0 && record.launchTick != null) record.launchTick += awayTicks;
+    record.suspended = false;
+    record.suspendedAtTick = null;
+    record.suspendedLoad = null;
+    record.sectorExitedAtTick = null;
+    record.absenceGraceTicks = 0;
     return true;
   },
 
@@ -709,6 +785,9 @@ export const heistMissionRuntime = {
   onEntityDestroyed(ctx, record, entityId) {
     if (!record || record.settled) return false;
     if (record.capsuleEntityId == null || entityId !== record.capsuleEntityId) return false;
+    // PQ-195.07: a suspended run EXPECTS this removal — the facility dematerialized the body for
+    // the boundary, not the world. Consume it silently; nothing is decided.
+    if (record.suspended) return true;
     record.possessed = false;
     const absent = record.sectorExitedAtTick != null;
     // PQ-195.06: where the assembly died, journalled on the candidate's proof. `liveEntity`
@@ -752,6 +831,17 @@ export const heistMissionRuntime = {
   drive(ctx, record, { decisionTick = null } = {}) {
     if (!record || record.settled) return null;
     const tick = intTick(ctx?.state?.tick);
+
+    // PQ-195.07: a suspended run freezes every clock — it is parked at the boundary, not
+    // expiring. Back in the heist sector the first drive re-embodies the body through the
+    // facility owner; routing resume through `drive` (not the enter event) also covers a
+    // reload INTO the sector, where no `sector:enter` ever fires.
+    if (record.suspended) {
+      const sectorId = ctx?.state?.world?.currentSectorId;
+      if (sectorId !== PQ019_HEIST_SECTOR_ID) return null;
+      if (!this._resumeSuspended(ctx, record)) return null;
+      // Resumed this tick — fall through and drive normally from here.
+    }
 
     if (!record.scheduleRequested) this.requestSchedule(ctx, record);
     // Before any absence rule can read a missing capsule id as a lost load. A durable load is
