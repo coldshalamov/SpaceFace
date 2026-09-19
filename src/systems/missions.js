@@ -120,6 +120,7 @@ import {
   createHeistRecord,
   sayHeistCue,
 } from '../missions/heistMissionRuntime.js';
+import { priceProceduralOffer, offerMixForTier, economicRiskTier, standingWorkTier } from '../economy/economyMissionTerms.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
@@ -1858,7 +1859,7 @@ export const missions = {
     const sizeTier = SIZE_TIER[info.size] != null ? SIZE_TIER[info.size] : 1;
     const S = clamp(3 + sizeTier, 3, 9);
     const profile = info.missionProfile || info.type;
-    const weights = OFFER_MIX[profile] || OFFER_MIX[info.type] || OFFER_MIX.trade_hub;
+    const weights = offerMixForTier(profile, Math.max(info.sectorTier || 0, standingWorkTier(this._repOf(info.factionId))));
     // Loyalty boost: friendly players see more of the station faction's signature types.
     const rep = this._repOf(info.factionId);
     const repBoost = 1 + Math.max(0, rep) / 100;
@@ -1899,7 +1900,7 @@ export const missions = {
    *  seam. Board generation is a dock-side boundary; per-tick simulation never sees it. Same
    *  'YYYY-MM-DD' UTC key the Crucible daily board uses, so "today" means one thing everywhere. */
   _dayKey() {
-    return new Date().toISOString().slice(0, 10);
+    return `sim-day:${Math.floor(Math.max(0, Number(this.state.simTime) || 0) / 86400)}`;
   },
 
   /** One generated offer per station per day bucket pays the featured premium. The pick is a
@@ -1982,32 +1983,23 @@ export const missions = {
       sectorRisk = destSector ? dangerTier(destSector) : 1;
     }
     const [rLo, rHi] = def.riskTierRange || [0, 1];
-    const riskTier = clamp(sectorRisk, rLo, rHi);
+    const riskTier = clamp(economicRiskTier(typeId, sectorRisk, this._repOf(info.factionId)), rLo, rHi);
 
     // Per-type params (quota qty, target strength, scan count, commodity, …) + cargo value.
     const params = this._rollParams(typeId, info, dest, riskTier, rng);
 
-    // ── reward (one multiplicative family) ──
-    const fDist = 1 + distance / (cfg.distDivisor || 2000);
-    const fRisk = (cfg.RISK_MULT && cfg.RISK_MULT[riskTier]) || 1;
-    const fValue = params.fValue;
-    const fFaction = (this._repOf(info.factionId) >= (cfg.faction.friendlyThreshold || 25))
-      ? (cfg.faction.loyaltyBonus || 1.15) : 1.0;
-    const fTime = 1.0; // rush is opt-in at accept time (UI), default normal
-    const base = (cfg.BASE && cfg.BASE[typeId]) || 100;
-    const reward_cr = round(base * fDist * fRisk * fValue * fFaction * fTime);
-
-    // ── time limit ──
-    const travel = distance / (cfg.cruiseSpeedRef || 140);
-    const slack = cfg.slackDefault || 2.2;
-    const time_limit_s = round((travel + params.taskTime) * slack);
-
-    // ── collateral (anti accept-then-dump on bulk_trade / smuggling) ──
-    const collateral_cr = def.collateral ? round((cfg.collateralPct || 0.25) * reward_cr) : 0;
+    // Economy Pulse: pay the net work budget, not a product of unbounded multipliers.
+    const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier,distance,params,
+      loyaltyMultiplier:this._repOf(info.factionId) >= (cfg.faction.friendlyThreshold || 25)
+        ? (cfg.faction.loyaltyBonus || 1.15) : 1});
+    const reward_cr = economyTerms.rewardCr;
+    const time_limit_s = economyTerms.deadlineS;
+    const collateral_cr = def.collateral ? economyTerms.collateralCr : 0;
     const id = `mo_${info.id}_${epoch}_${idx}`;
     const offer = {
       id, type: typeId, stationId: info.id, factionId: info.factionId,
-      reward_cr, time_limit_s, collateral_cr, riskTier,
+      reward_cr, time_limit_s, duration_s:time_limit_s, collateral_cr, riskTier,
+      economyTerms,
       destStationId, destSectorId, distance,
       params,
       title: this._titleFor(typeId, params, dest),
@@ -2169,21 +2161,21 @@ export const missions = {
     switch (typeId) {
       case 'cargo_delivery':
       case 'passenger_transport': {
-        const cmdtyId = typeId === 'cargo_delivery' ? pick(LEGAL_TRADE_CMDTYS) : null;
+        const cmdtyId = typeId === 'cargo_delivery' ? pick(LEGAL_TRADE_CMDTYS.filter((id) => (CMDTY_BY_ID.get(id)?.marketTier || 0) <= Math.max(info.sectorTier || 0,dest?.sectorTier || 0))) : null;
         const qty = typeId === 'cargo_delivery' ? (6 + Math.floor(rng() * 16)) : 1; // 6..21u or 1 passenger
         const unitVal = cmdtyId ? (CMDTY_BY_ID.get(cmdtyId).basePrice || 50) : 0;
         const cargoValue = cmdtyId ? unitVal * qty : 800;
         return { cmdtyId, qty, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: 20, passengers: typeId === 'passenger_transport' ? 1 : 0 };
       }
       case 'bulk_trade': {
-        const cmdtyId = pick(LEGAL_TRADE_CMDTYS);
+        const cmdtyId = pick(LEGAL_TRADE_CMDTYS.filter((id) => (CMDTY_BY_ID.get(id)?.marketTier || 0) <= Math.max(info.sectorTier || 0,dest?.sectorTier || 0)));
         const qty = 12 + Math.floor(rng() * 28); // 12..39u quota to sell at dest
         const unitVal = CMDTY_BY_ID.get(cmdtyId).basePrice || 50;
         const cargoValue = unitVal * qty;
         return { cmdtyId, qty, progress: 0, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: qty * 1.5 };
       }
       case 'mining_quota': {
-        const cmdtyId = pick(MINEABLE_CMDTYS);
+        const cmdtyId = pick(MINEABLE_CMDTYS.filter((id) => (CMDTY_BY_ID.get(id)?.marketTier || 0) <= Math.max(info.sectorTier || 0,dest?.sectorTier || 0)));
         const qty = 10 + Math.floor(rng() * 30); // 10..39u
         const unitVal = CMDTY_BY_ID.get(cmdtyId).basePrice || 30;
         const cargoValue = unitVal * qty;
@@ -2637,6 +2629,7 @@ export const missions = {
         ? Math.max(0, Number(state.simTime) || 0) + durationS : null,
       reward_cr: offer.reward_cr, collateral_cr: offer.collateral_cr,
       riskTier: offer.riskTier,
+      ...(offer.economyTerms ? { economyTerms: JSON.parse(JSON.stringify(offer.economyTerms)) } : {}),
       destStationId: offer.destStationId, destSectorId: offer.destSectorId,
       distance: offer.distance,
       targetEntityIds: [],          // runtime entity ids (NOT serialized — re-spawned on load)

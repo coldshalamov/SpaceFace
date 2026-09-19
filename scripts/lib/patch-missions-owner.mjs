@@ -1,6 +1,14 @@
 /** Exact seams read from coldshalamov/SpaceFace@de9f3f1fc, missions.js blob below.
  * This is NOT a replacement for the large missions owner. Refuse drift, then patch its seams.
  */
+/** Accepted pre-patch bases, both verified against these exact seams:
+ *  - b46f9406: the pristine packet baseline (de9f3f1fc).
+ *  - 472182fd: the committed mid-game offer-history overlay (b65ad1f40), whose hunks are
+ *    textually disjoint from every seam below (composition verified both application orders). */
+export const MISSIONS_BASE_BLOBS = new Set([
+  'b46f9406e2570ecea69fe0cca0a52242b1e58bf4',
+  '472182fdafa9b548151b6265c5be0b2bf85a9f1d',
+]);
 export const MISSIONS_BASE_BLOB = 'b46f9406e2570ecea69fe0cca0a52242b1e58bf4';
 export const REWARD_BEFORE = `    // ── reward (one multiplicative family) ──
     const fDist = 1 + distance / (cfg.distDivisor || 2000);
