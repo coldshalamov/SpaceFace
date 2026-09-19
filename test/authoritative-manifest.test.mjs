@@ -32,8 +32,10 @@ test('production init + update order lengths match the live browser baseline', (
   // in the update order, and the two figures move by different amounts on purpose.
   // 147 -> 148: the drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md) joins both orders as one
   // input-gated deployable owner, so init and update move together this time.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 148);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 110);
+  // 148 -> 150: the station yard (berths/crews/service queue) and the pacing director join
+  // both orders — both tick real per-second work, so init and update move together again.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 150);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 112);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -150,8 +152,8 @@ test('browser production system set is unchanged vs production manifest constant
 
   // Full init list length and terminal platform systems preserved. 147 since PQ-146.02 registered
   // the existing stuntGrammar observer so trick receipts reach titles and barks; 148 with the
-  // drift-bomb bay (one system, both orders).
-  assert.equal(registry.systems.length, 148);
+  // drift-bomb bay (one system, both orders); 150 with the station yard and the pacing director.
+  assert.equal(registry.systems.length, 150);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

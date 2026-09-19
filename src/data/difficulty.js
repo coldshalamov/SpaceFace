@@ -75,10 +75,29 @@ export function defeatMercyScale(state, profile = difficultyProfile(state)) {
   return DEFEAT_STREAK_MERCY_SCALE;
 }
 
+// Pacing director scale. systems/difficultyDirector publishes `state.difficulty.pacing`
+// ({ stance, pressureMult, opportunityMult, ... }) from live player-state reads; combat folds it
+// in here on every packet involving the local player. The clamps are the contract bounds: the
+// incoming side can ease a spiraling pilot's pressure but can never reach zero (the world keeps
+// its teeth), and the outgoing side only ever opens opportunity — pacing can never raise the
+// incoming scale above the profile baseline nor push the player's own damage below it, so the
+// director can never make a fight unwinnable in either direction.
+export const PACING_INCOMING_FLOOR = 0.55; // ~45% max ease on incoming player damage
+export const PACING_OUTGOING_CAP = 1.25;   // cruising lift on player outgoing damage
+
+export function pacingScale(state) {
+  const p = state && state.difficulty && state.difficulty.pacing;
+  if (!p || typeof p !== 'object') return { incoming: 1, outgoing: 1 };
+  const incoming = Math.max(PACING_INCOMING_FLOOR, Math.min(1, Number(p.pressureMult) || 1));
+  const outgoing = Math.max(1, Math.min(PACING_OUTGOING_CAP, Number(p.opportunityMult) || 1));
+  return { incoming, outgoing };
+}
+
 export function difficultyDamageScale(state, attackerId, targetId) {
   if (!state) return 1;
   const profile = difficultyProfile(state);
-  if (targetId === state.playerId) return profile.playerIncomingDamage * defeatMercyScale(state, profile);
-  if (attackerId === state.playerId) return profile.playerOutgoingDamage;
+  const pacing = pacingScale(state);
+  if (targetId === state.playerId) return profile.playerIncomingDamage * defeatMercyScale(state, profile) * pacing.incoming;
+  if (attackerId === state.playerId) return profile.playerOutgoingDamage * pacing.outgoing;
   return 1;
 }
