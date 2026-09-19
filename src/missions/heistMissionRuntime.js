@@ -60,6 +60,7 @@ import {
   applyTransition,
 } from './heistArbiter.js';
 import {
+  BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
   HEIST_CAPSULE_RUN_VARIANT_ID,
   PQ019_CAPSULE,
   PQ019_HEIST_SECTOR_ID,
@@ -67,10 +68,12 @@ import {
 } from '../data/heistFacilities.js';
 import { receiverCommitGate } from '../physicalCargo/breakaway/settlementGate.js';
 import {
+  BREAKAWAY_PRESSURE,
   PQ019C_HEIST_TUNING,
   PQ019C_RECOVERABLE_OUTCOMES,
   heistMissionPolicy,
 } from '../data/heistMission.js';
+import { makeEnemySpawnSpec } from '../systems/combat.js';
 
 export const HEIST_RECORD_SCHEMA = 'spaceface.heistMission.v1';
 export const HEIST_LAW_KIND = 'payload_theft';
@@ -148,6 +151,10 @@ export function createHeistRecord({
     // Authored per-run policy rather than a read of the frozen tuning at settlement time, so the
     // decision travels with the contract that was accepted and survives the save with it.
     recoveryAllowed: !!recoveryAllowed,
+    // PQ-195.05: the bounded pressure element. `pressureSpawned` is durable (a reloaded run does
+    // not get a second element — its raiders were transient anyway); the entity ids are stripped
+    // on serialize like every other live handle.
+    ...(scoped ? { pressureSpawned: false, pressureEntityIds: [] } : {}),
     scheduleRequested: false,
     launchAtSimT: null,
     launchTick: null,
@@ -352,6 +359,7 @@ export const heistMissionRuntime = {
     record.capsuleEntityId = payload.capsuleEntityId == null ? null : payload.capsuleEntityId;
     record.capsuleSeen = true;
     applyTransition(record.arbiter, 'launched');
+    this._spawnPressure(ctx, record, liveEntity(ctx, record.capsuleEntityId));
     sayHeistCue(ctx, record, 'launched');
     return true;
   },
@@ -473,6 +481,102 @@ export const heistMissionRuntime = {
     return released;
   },
 
+  // ── PQ-195.05: Someone else wants it ─────────────────────────────────────────────────────────
+  //
+  // ONE bounded pressure element per run, spawned the moment the assembly is physically loose.
+  // At most two light hulls plus ONE optional specialist — the third spawn-budget grant, when the
+  // sector can afford it, is the tether-control raider. Every hull goes through the ordinary
+  // arbiter (request → bindEntity → releaseSome on partial failure) and the existing tactical
+  // owner: an ATTACK_RUN activity naming the tug is an authoritative assignment the doctrine
+  // already honors, and its own disengage/retreat machinery owns abandoning a bad attack — no
+  // never-retreat flags are set here.
+  //
+  // The payload entity cannot be an AI target (engagementAuthority requires ship-to-ship), so the
+  // assignment names the tug and anchors on the assembly: the raider's run crosses the load's
+  // line whether it is loose or on the player's tether — "going for the spindle" reads the same.
+
+  /** Spawn the run's pressure element. Bounded once per run by `record.pressureSpawned`. */
+  _spawnPressure(ctx, record, capsule) {
+    if (!record || record.settled || !capsule) return 0;
+    if (heistLaunchVariant(record.variantId).id !== BREAKAWAY_THIRD_SHIFT_VARIANT_ID) return 0;
+    if (record.pressureSpawned) return 0;
+    record.pressureSpawned = true;
+    const helpers = ctx?.helpers || {};
+    const spawn = helpers.spawnEntity;
+    const budget = helpers.spawnBudget;
+    // Pressure goes through the ordinary arbiter BY CONTRACT — without it there is no element,
+    // not an unbudgeted one.
+    if (typeof spawn !== 'function' || !budget || typeof budget.request !== 'function') return 0;
+    const requester = `heist:${record.missionId}`;
+    const want = BREAKAWAY_PRESSURE.lightCount + 1; // two lights + the one optional specialist
+    const grant = budget.request(want, requester);
+    if (grant <= 0) return 0;
+    const rng = ctx?.state?.rng;
+    const bearing = typeof rng === 'function' ? rng() * Math.PI * 2 : Math.PI / 4;
+    const anchor = { x: capsule.pos.x, z: capsule.pos.z };
+    const spawned = [];
+    try {
+      for (let i = 0; i < grant; i++) {
+        const specialist = i >= BREAKAWAY_PRESSURE.lightCount;
+        const typeId = specialist
+          ? BREAKAWAY_PRESSURE.specialistTypeId
+          : BREAKAWAY_PRESSURE.lightPool[i % BREAKAWAY_PRESSURE.lightPool.length];
+        const level = specialist ? BREAKAWAY_PRESSURE.specialistLevel : BREAKAWAY_PRESSURE.lightLevel;
+        // Each hull enters on its own bearing around the assembly so the pressure reads as a run
+        // on the load, not a stacked formation.
+        const angle = bearing + (i * Math.PI * 2) / grant;
+        const pos = {
+          x: anchor.x + Math.cos(angle) * BREAKAWAY_PRESSURE.spawnDistanceWu,
+          z: anchor.z + Math.sin(angle) * BREAKAWAY_PRESSURE.spawnDistanceWu,
+        };
+        const spec = makeEnemySpawnSpec(typeId, level, pos, {
+          startedTick: intTick(ctx?.state?.tick),
+          motive: BREAKAWAY_PRESSURE.motive,
+        });
+        spec.data = spec.data || {};
+        spec.data.missionTag = record.missionId;
+        const ent = spawn(spec);
+        if (!ent) continue;
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+        // Authoritative assignment through the existing tactical owner: commit the approach on
+        // the tug, anchored on the assembly, weapons free. The doctrine's own disengage/retreat
+        // rules stay enabled — a raider still abandons a bad attack.
+        const ai = ent.data && ent.data.ai;
+        if (ai && ai.activity) {
+          ai.activity = {
+            ...ai.activity,
+            kind: 'attack_run',
+            reason: `heist:pressure:${record.missionId}`,
+            targetId: ctx?.state?.playerId == null ? null : ctx.state.playerId,
+            anchor: { x: anchor.x, z: anchor.z },
+            startedTick: intTick(ctx?.state?.tick),
+          };
+        }
+        spawned.push(ent.id);
+      }
+    } finally {
+      const shortfall = grant - spawned.length;
+      if (shortfall > 0 && budget && typeof budget.releaseSome === 'function') {
+        budget.releaseSome(requester, shortfall);
+      }
+    }
+    record.pressureEntityIds = spawned;
+    return spawned.length;
+  },
+
+  /**
+   * Hand the pressure element's budget slots back. Idempotent and safe on every exit path —
+   * `spawnBudget.release` is a no-op on an unknown requester. Surviving raiders simply become
+   * ordinary hostiles under their own AI lifecycle; they are never force-despawned mid-combat.
+   */
+  _releasePressure(ctx, record) {
+    const budget = ctx?.helpers?.spawnBudget;
+    if (budget && typeof budget.release === 'function') {
+      budget.release(`heist:${record?.missionId}`);
+    }
+    if (record) record.pressureEntityIds = [];
+  },
+
   /** `heist:facilityCandidate` — a real Rapier contact at the catcher or the fence. */
   onFacilityCandidate(ctx, record, receipt = {}) {
     if (!record || record.settled) return false;
@@ -559,6 +663,9 @@ export const heistMissionRuntime = {
     if (!record || record.settled) return false;
     if (sectorId !== PQ019_HEIST_SECTOR_ID) return false;
     if (record.sectorExitedAtTick == null) record.sectorExitedAtTick = intTick(ctx?.state?.tick);
+    // PQ-195.05: the pressure element's budget slots go back on the way out. The raider hulls
+    // themselves dematerialize with the sector like every other transient.
+    this._releasePressure(ctx, record);
     return true;
   },
 
@@ -851,6 +958,11 @@ export const heistMissionRuntime = {
       facilityOwner.releaseSchedule(record.scheduleId);
     }
 
+    // 3c. PQ-195.05: the pressure element's spawn-budget slots go back with the run. Idempotent
+    //     (`release` is a no-op on an unknown requester); no journal key needed — same precedent
+    //     as the schedule release above. Surviving raiders become ordinary hostiles.
+    this._releasePressure(ctx, record);
+
     // 4. Mission settlement — exactly once, recorded BEFORE the call so a synchronous listener that
     //    re-enters this path finds the key already taken and cannot settle a second time.
     //
@@ -928,10 +1040,11 @@ export const heistMissionRuntime = {
     if (!record) return null;
     const {
       leases, capsuleEntityId, possessed, escapeHoldTicks, absenceGraceTicks, pursuitStarted,
+      pressureEntityIds,
       ...durable
     } = record;
     void leases; void capsuleEntityId; void possessed; void escapeHoldTicks; void absenceGraceTicks;
-    void pursuitStarted;
+    void pursuitStarted; void pressureEntityIds;
     return { ...durable, arbiter: serializeArbiter(record.arbiter) };
   },
 
@@ -986,6 +1099,9 @@ export const heistMissionRuntime = {
     restored.pursuitStarted = false;
     restored.capsuleEntityId = null;
     restored.possessed = false;
+    // PQ-195.05: the raider hulls were transient and are gone after a reload; the durable
+    // `pressureSpawned` flag (kept above) is what stops a second element spawning.
+    restored.pressureEntityIds = [];
     restored.cues = { ...(record.cues || {}) };
 
     if (!restored.arbiter) {

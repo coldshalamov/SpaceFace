@@ -269,6 +269,28 @@ export const BREAKAWAY_HEIST_TUNING = Object.freeze({
   recoveryEnabled: false,
 });
 
+/**
+ * PQ-195.05 — Someone else wants it. The bounded pressure element a live Third Shift run draws:
+ * at most two pursuing light hulls plus ONE optional specialist, through the ordinary spawn-budget
+ * arbiter (01_FEATURE_SPEC §11). Composition is authored here, not rolled: the third grant — when
+ * the sector's budget can afford it — is the tether-control specialist that contests the line.
+ * Pressure is spawned ONCE per run at launch, never in proportion to how efficiently the player
+ * clears it, and its slots are released when the run settles or the sector is left.
+ */
+export const BREAKAWAY_PRESSURE = Object.freeze({
+  /** Light raider archetypes, reused as shipped (ENEMY catalog ids). */
+  lightPool: Object.freeze(['wasp_swarmer', 'reaver_pirate']),
+  lightCount: 2,
+  lightLevel: 3,
+  /** The ONE optional specialist: a tether-control raider that can threaten the player's line. */
+  specialistTypeId: 'tether_control_raider',
+  specialistLevel: 5,
+  /** Spawn ring around the launched assembly — close enough to read, far enough to intercept. */
+  spawnDistanceWu: 720,
+  /** Motive read by the tactical owner and any inspector of the spawned hull. */
+  motive: 'contested_recovery',
+});
+
 /** Terminal outcome -> settlement for the lawful recovery. A settled arrival is the only payday. */
 export const BREAKAWAY_TERMINAL_SETTLEMENT = Object.freeze({
   lawful_arrival_observed: Object.freeze({ settlement: 'complete', reason: null }),
