@@ -34,7 +34,6 @@ import {
   FIRST_TRADE_CONTRACT_SOURCE,
 } from '../data/economyContractTemplates.js';
 import {
-  FLIGHT_DRILL_BEATS,
   FLIGHT_DRILL_BRAKE_WU,
   FLIGHT_DRILL_BURST_SHOTS,
   FLIGHT_DRILL_DISENGAGE_RANGE_WU,
@@ -94,15 +93,26 @@ const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
 const TAU = Math.PI * 2;
 
-// ── FIRST-HOUR PACING (spec2/03) ────────────────────────────────────────────────
+// ── FIRST-HOUR PACING (spec2/03, reworked 2026-09-18: the thesis-first route) ────
 // The fix for "the open teaches five things at once" is PACING, not deletion: one beat → one verb
 // → ≥4 s of silence → next beat. This BEATS table is the single source of truth for the first 15
-// minutes. All tutorial lines are imperative, name ONE verb, and are ≤12 words (spec2/00 §5).
-// Each beat fires only when the previous beat's DONE fired AND ≥SILENCE_S of text silence passed.
+// minutes (the runtime order is authored HERE; flightDrill.js remains the shared drill contract
+// for its constants and audit consumers). All tutorial lines are imperative, name ONE verb, and
+// are ≤12 words (spec2/00 §5). Each beat fires only when the previous beat's DONE fired AND
+// ≥SILENCE_S of text silence passed.
+//
+// THESIS-FIRST ORDER (design/VISION.md "the 60-second fantasy"): the player DOES the fantasy
+// before anything else — first Massline attach inside the first minute, a raid tableau where the
+// taught swing turns an enemy into a projectile, then the consequence: claimed salvage, a law
+// witness, and a real WANTED search ring to outrun. Flight-control drills follow the attach (the
+// player is already flying); the economy on-ramp (seam → dock → choice) closes the hour. The
+// sandbox stays intact: every beat guides, none walls — a player who ignores the raid or leaves
+// the claimed salvage is never blocked, and the rail simply moves on.
 //
 // `line`  : the verb bark shown at beat entry (the single tutorial voice in its window).
 // `followups` : extra barks gated on in-beat events (latch/reel/cut, scan/seam/vent, sell/board).
-// `done`  : the kind of DONE condition this beat resolves on (handled in _resolveBeatDone).
+// `done`  : the kind of DONE condition this beat resolves on (handled in _resolveBeatDone and,
+//           for raid/claimed, the dedicated _onRaid*/_onClaimed* handlers).
 // Handoff: completing B5 (accepting any of three offers) calls _finish() → story-mode panel.
 const SILENCE_S = 4;          // ≥4 s of text silence between a beat's DONE and the next beat's text
 const TETHER_REEL_MAX_WU = 60;// B1: reel target distance
@@ -113,6 +123,24 @@ const TRAINER_BURST_OFFSET_WU = 260;
 const TRAINER_FLYBY_SPEED_WU = 118;
 const TRAINER_FLYBY_OFFSET_WU = 52;
 
+// Raid tableau (the momentum kill). The raider is a real, hostile pirate hull — the taught swing
+// turns it into a projectile against the rescue asteroid wall. Hull sits above a starter-gun
+// burst (a gun kill is a long, deliberate refusal of the lesson) but under one honest throw into
+// rock: whip recoil + tumble contact do the work the moment the player lets go at speed.
+const RAID_RAIDER_HULL = 150;
+const RAID_RAIDER_OFFSET_WU = 240;   // from the player, near the rescue wall bearing
+const RAID_HAULER_OFFSET_WU = 190;   // the civilian the raider is working over (scene dressing)
+const RAID_WHIP_KILL_WINDOW_S = 12;  // kill credited to the throw inside this window after a whip
+// Claimed-salvage tableau (the wanted beat). Spilled cargo from the raid is lawfully claimed; a
+// law cutter stands witness. Taking it reports the theft through the real law owner entry
+// (lawSecurity.reportIncident → heat.applyIncidentReceipt), so the player EXPERIENCES the search
+// ring instead of reading a warning. Leaving it is a first-class choice: the tableau stands down
+// after CLAIMED_WINDOW_S and the rail moves on — no wall.
+const CLAIMED_WINDOW_S = 120;
+const CLAIMED_PICKUP_COUNT = 3;
+const CLAIMED_WITNESS_OFFSET_WU = 380; // inside LAW_INCIDENT_WITNESS_RADIUS (450)
+const CLAIMED_CLEAR_GRACE_S = 2;       // level-0 heat must hold this long before DONE resolves
+
 // B0 one-verb hierarchy (UIUX-B0-ONE-VERB):
 //   1. HUD mission tracker (.sf-mission-tracker) is the sole persistent actionable objective
 //      (fed by nav.waypoint.reason while onboarding waypoint is active).
@@ -120,9 +148,71 @@ const TRAINER_FLYBY_OFFSET_WU = 52;
 //   3. Transient tutorial voice (_sayTutorial) speaks the beat line once.
 //   4. firstFlight control-hint wall is deferred until the staged rail is finished.
 //   5. Mission Log / story longform stay on-demand context (not a second primary command).
-const BEATS = [
-  ...FLIGHT_DRILL_BEATS,
-  { // B2 FIRST SEAM (~3:00) — scan + mine; modality-neutral verbs
+// The authored first-hour route. Exported for focused tests that drive the beat FSM by key;
+// the static pacing/one-voice checks still read this literal from source so the audit sees the
+// authored copy, not the imported object.
+export const BEATS = [
+  { // FIRST TETHER — the signature verb leads. Attach lands inside the first minute of control.
+    key: 'tether',
+    line: 'Target the marked derelict.',
+    followups: [
+      { on: 'target:acquired', line: 'Latch it. Massline.' },
+      { on: 'tether:latched', line: 'Winch in. Hold tether to reel.' },
+      { on: 'tether:nearBreak', line: 'Ease off. Let the line settle.' },
+      { on: 'tether:reel', line: 'Cut and coast. Tap tether to cut.' },
+    ],
+    done: 'tether:released',
+  },
+  { // THE RAID — enemy becomes a projectile: latch, swing, release into the rock.
+    key: 'raid',
+    line: 'Latch the raider. Swing him into the rock.',
+    followups: [
+      { on: 'raid:latched', line: 'Build speed. Let go at the big rock.' },
+    ],
+    done: 'raidKill',
+  },
+  { // THE CONSEQUENCE — claimed salvage, a law witness, a real search ring to outrun.
+    key: 'claimed',
+    line: 'Claimed salvage. Take it anyway, or leave it.',
+    followups: [
+      { on: 'claimed:taken', line: "You're marked. Outrun the search ring." },
+    ],
+    done: 'wantedCleared',
+  },
+  { // The player is already flying; the speed drill formalizes what the attach just used.
+    key: 'thrust',
+    line: 'Thrust until speed passes forty.',
+    done: 'speedUp',
+  },
+  {
+    key: 'brake',
+    line: 'Brake below ten.',
+    done: 'speedDown',
+  },
+  {
+    key: 'marker',
+    line: 'Follow the amber diamond to the trainer.',
+    done: 'trainerRange',
+  },
+  {
+    key: 'focus',
+    line: 'Hold course. Let the trainer cross your bow.',
+    done: 'flybyFocus:start',
+  },
+  {
+    key: 'burst',
+    line: 'Fire a short burst into the trainer.',
+    followups: [
+      { on: 'burst:ready', line: 'Release. Let the heat bar clear.' },
+    ],
+    done: 'burstCooled',
+  },
+  {
+    key: 'disengage',
+    line: 'Thrust away until the trainer leaves scope.',
+    done: 'disengaged',
+  },
+  { // B2 FIRST SEAM — scan + mine; modality-neutral verbs
     key: 'seam',
     line: 'Pulse the scanner.',
     followups: [
@@ -130,7 +220,7 @@ const BEATS = [
     ],
     done: 'oreCollected',
   },
-  { // B4 DOCK (~7:00) — sell flow + ONE recommended contract
+  { // B4 DOCK — sell flow + ONE recommended contract
     key: 'dock',
     line: 'Helios. Dock when close.',
     followups: [
@@ -138,7 +228,7 @@ const BEATS = [
     ],
     done: 'recommendedCompleted',
   },
-  { // B5 CHOICE (~12:00) — three side-by-side offers; accept any → ends tutorial
+  { // B5 CHOICE — three side-by-side offers; accept any → ends tutorial
     key: 'choice',
     line: 'Pick the work that fits.',
     done: 'mission:accepted',
@@ -146,6 +236,16 @@ const BEATS = [
 ];
 // Beat index for the choice beat (B5) — accepting its offer ends tutorial mode permanently.
 const CHOICE_BEAT_INDEX = BEATS.length - 1;
+
+// The rescue verbs fill the new order's gaps: swing opens right after the first attach (the
+// player immediately re-uses the latch on a live rock), shove rides the gun lesson's exit, and
+// grab-and-run fills the gap before the raid. Composed here — rescueOpening.js's own map stays
+// untouched for its audit consumers; the onboarding route owns which drill beat each verb gates.
+const RESCUE_GATE_ROUTE = Object.freeze({
+  swing: 'raid',       // while the rock swing is current, the raid waits its turn
+  shove: 'disengage',
+  grab: 'seam',        // while the pod run is current, the seam lesson waits
+});
 
 // Cold-open premise (spec2/03 B0 "no modal"): the tutorial voice frames the 47-A contract at the
 // opening beat rather than via a modal. This carries the 47-A intent that the intro card used to own.
@@ -277,6 +377,18 @@ export const onboarding = {
     bus.on('range:opened', (p) => this._onRangeOpened(p || {}));
     bus.on('ship:boostStart', (p) => this._onMissingThreeBoostStart(p || {}));
     bus.on('fields:deployed', (p) => this._onMissingThreeWell(p || {}));
+
+    // ── Raid + claimed tableau (thesis-first route, 2026-09-18) ─────────────────────────
+    // The momentum kill reads the production whip/tumble event stream; the wanted beat rides
+    // the real heat owner (lawSecurity.reportIncident → heat.applyIncidentReceipt → heat:changed).
+    bus.on('tether:latched', (p) => this._onRaidLatched(p || {}));
+    bus.on('tether:released', (p) => this._onRaidReleased(p || {}));
+    bus.on('tether:cut', (p) => this._onRaidReleased(p || {}));
+    bus.on('tether:whipImpact', (p) => this._onRaidWhipImpact(p || {}));
+    bus.on('entity:killed', (p) => this._onRaidKilled(p || {}));
+    bus.on('player:death', () => this._onRaidPlayerDeath());
+    bus.on('pickup:collected', (p) => this._onClaimedPickup(p || {}));
+    bus.on('heat:changed', (p) => this._onClaimedHeat(p || {}));
 
     // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
     // These are independent of the tutorial chain: they fire for all players whose
@@ -489,6 +601,10 @@ export const onboarding = {
       rangePromptRungId: null,
       startedAt: st.simTime || 0,
     };
+    // Thesis-first tableau state (raid + claimed). Only staged on the default route — see
+    // _beginRescue for the scenario-payload carve-out the 47-A slice harness depends on.
+    st.onboarding.raid = null;
+    st.onboarding.claimed = null;
     // A fresh new game starts in tutorial mode (not story mode).
     this._storyMode = false;
     this._lastTextAtS = -Infinity;
@@ -538,7 +654,11 @@ export const onboarding = {
       this._removeTrainingActors();
       this._removeRescueActors();
       this._removeMissingThreeActors();
+      this._removeRaidActors();
+      this._removeClaimedActors();
     }
+    if (ob && ob.raid) ob.raid.active = false;
+    if (ob && ob.claimed) ob.claimed.active = false;
     this._trainerId = this._derelictId = this._miningRockId = null;
     if (this._panel) { this._panel.remove(); this._panel = null; }
     this._bodyEl = null;
@@ -582,6 +702,17 @@ export const onboarding = {
     if (!said) this.bus.emit('toast', { text, kind: 'info', ttl: 6 });
   },
 
+  // Fixed-seed proof events for the thesis-first route (measured by the public playthrough
+  // pilot driver's ledger). Emitted only on real completions: first attach, the swing payoff,
+  // the momentum kill, the wanted beat, and its resolution.
+  _emitMilestone(milestone, extra = {}) {
+    this.bus.emit('firsthour:milestone', {
+      milestone: String(milestone),
+      atS: this.state.simTime || 0,
+      ...extra,
+    });
+  },
+
   // Try to advance to the next beat if the silence gate has passed since the previous beat's DONE.
   // Called from update(). Fires the new beat's entry line + spawns the beat's world content.
   _tryAdvanceBeat() {
@@ -610,8 +741,13 @@ export const onboarding = {
     // waits. The rescue speaks through the same one-voice chokepoint, so the ≥4 s cadence the
     // silence gate enforces below already covers the rescue line — no second timer needed.
     // Inactive rescue (harness boots, opted-out pilots, finished rails) never gates anything.
+    // The route gate (RESCUE_GATE_ROUTE) keeps the verbs inside the thesis-first order's gaps;
+    // rescueOpening.js's own map stays untouched for its audit consumers.
     const rescueKey = this._rescueCurrentKey();
-    if (rescueKey && RESCUE_GATE[rescueKey] === BEATS[nextIndex].key) return;
+    const rescueGate = RESCUE_GATE_ROUTE[rescueKey] != null
+      ? RESCUE_GATE_ROUTE[rescueKey]
+      : (rescueKey ? RESCUE_GATE[rescueKey] : null);
+    if (rescueGate != null && rescueGate === BEATS[nextIndex].key) return;
     // Missing-three gate (PQ-163.02): boost, stroke, and the well occupy the grab → seam gap.
     const three = this._missingThree();
     if (three && !three.completed && (MISSING_THREE_GATE[three.current] || 'seam') === BEATS[nextIndex].key) return;
@@ -658,6 +794,8 @@ export const onboarding = {
       this._sayTutorial(STARTER_WEAPON_HINT, { visual: false });
     }
     else if (beat.key === 'disengage') this._setObjectiveWaypoint(true);
+    else if (beat.key === 'raid') this._enterRaidBeat();
+    else if (beat.key === 'claimed') this._enterClaimedBeat();
     else if (beat.key === 'seam') {
       this._spawnMiningRock();
       this._setObjectiveWaypoint(true);
@@ -841,8 +979,12 @@ export const onboarding = {
     this._removeTrainingActors();
     this._removeRescueActors();
     this._removeMissingThreeActors();
+    this._removeRaidActors();
+    this._removeClaimedActors();
     if (ob.rescue) ob.rescue.active = false;
     if (ob.missingThree) ob.missingThree.active = false;
+    if (ob.raid) ob.raid.active = false;
+    if (ob.claimed) ob.claimed.active = false;
     ob.finished = true;
     ob.active = false; // tutorial mode ends permanently (spec2/03 B5)
     this._clearObjectiveWaypoint();
@@ -865,7 +1007,7 @@ export const onboarding = {
   // dock screen hides the panel via CSS, we also mark it aria-hidden so screen readers do not
   // traverse the hidden content; removing the class restores it accurately.
   _syncModalAccessibility() {
-    if (!this._panel) return;
+    if (!this._panel || typeof document === 'undefined') return;
     // Both pausing modals and live overlays hide the onboarding panel (CSS), so both count here.
     const modalOpen = !!(document.body && (document.body.classList.contains('ui-modal-open')
       || document.body.classList.contains('ui-live-screen')));
@@ -899,6 +1041,8 @@ export const onboarding = {
       this._tryAdvanceBeat();
       this._resolveProximityDone();
       this._resolveRescueDone();
+      this._resolveRaidDone();
+      this._tickClaimed();
       this._maybeAdvanceMissingThree();
       this._resolveMissingThreeDone();
       this._setObjectiveWaypoint(false);
@@ -1207,6 +1351,7 @@ export const onboarding = {
     // Remove any previous tableau before staging a fresh one (fail recovery, never a dupe).
     this._removeRescueActors();
     const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st));
+    makeRescueRockTowable(specs.rock);
     for (const slot of Object.keys(specs)) {
       const spawned = this.helpers.spawnEntity(specs[slot]);
       rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
@@ -1361,6 +1506,7 @@ export const onboarding = {
     if (!ob.firstLatchDone) {
       ob.firstLatchDone = true;
       ob.firstLatchAt = this.state.simTime || 0;
+      this._emitMilestone('attach', { beat: ob.currentBeat >= 0 ? BEATS[ob.currentBeat].key : null });
       ob.rangePromptActive = true;
       ob.pointedAtRange = true;
       ob.rangePrompt = RANGE_POINTER_LINE;
@@ -1465,10 +1611,18 @@ export const onboarding = {
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
     if (!player || !player.pos) return;
     if (key === 'swing') {
-      if (!rescue.rockReleasedAfterReel) return;
       const rock = this._rescueActor('rock');
       const derelict = this._rescueActor('derelict');
       if (!rock || !derelict) { this._rescueFail('swing', 'rock lost'); return; }
+      // A rock punted clear of the pocket (a wild release, a chance collision) is gone for
+      // good at these speeds: restage it near the pilot — retry, never a wall.
+      const playerPos = this.state.entities.get(this.state.playerId);
+      if (playerPos && playerPos.pos
+        && Math.hypot(rock.pos.x - playerPos.pos.x, rock.pos.z - playerPos.pos.z) > 1800) {
+        this._rescueFail('swing', 'rock drifted out of reach');
+        return;
+      }
+      if (!rescue.rockReleasedAfterReel) return;
       if (rescueRockHitDerelict(rock, derelict, RESCUE_ROCK_HIT_MIN_SPEED_WU)) {
         this._dropRescueScrap(derelict);
         this._rescueDone('swing');
@@ -1486,6 +1640,12 @@ export const onboarding = {
       const pod = this._rescueActor('pod');
       const beacon = this._rescueActor('beacon');
       if (!pod || !beacon) { this._rescueFail('grab', 'pod lost'); return; }
+      // A pod punted clear of the pocket (ram, stray shot) is unrecoverable where it is:
+      // restage it near the pilot — retry, never a wall.
+      if (Math.hypot(pod.pos.x - player.pos.x, pod.pos.z - player.pos.z) > 3000) {
+        this._rescueFail('grab', 'pod drifted out of reach');
+        return;
+      }
       const latched = rescue.podLatched
         || rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.pod);
       if (latched) rescue.podLatched = true;
@@ -1579,6 +1739,7 @@ export const onboarding = {
       this.helpers.removeEntity(oldId);
     }
     const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st));
+    makeRescueRockTowable(specs.rock);
     const spawned = this.helpers.spawnEntity(specs[slot]);
     rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
   },
@@ -1598,6 +1759,436 @@ export const onboarding = {
         data: { kind: 'cargo', commodityId: 'cmdty_salvage_electronics', amount: 1, despawnAt: (st.simTime || 0) + 60 },
       });
     }
+  },
+
+  // ── Raid beat (thesis-first route) — the enemy becomes a projectile ──────────────────
+  // A real raider is working over a civilian hauler beside the rescue wall. The taught swing
+  // applies unchanged: latch the raider, reel, orbit for speed, release at the rock. Whip
+  // recoil + tumble contact (masslineImpactDamage, production flags) do the killing; the beat
+  // resolves only on that momentum kill. A gun kill restages the raider once — the lesson
+  // retries, it never walls; a second refusal resolves the beat and the rail moves on.
+
+  _raid() {
+    const ob = this.state && this.state.onboarding;
+    return ob && ob.raid && ob.raid.active && !ob.finished ? ob.raid : null;
+  },
+
+  _raidActor(slot) {
+    const raid = this._raid();
+    if (!raid) return null;
+    const id = raid.ids && raid.ids[slot];
+    if (id == null || !this.state.entities) return null;
+    const entity = this.state.entities.get(id);
+    return entity && entity.alive !== false ? entity : null;
+  },
+
+  _enterRaidBeat() {
+    const st = this.state;
+    const ob = st.onboarding;
+    if (!ob) return;
+    // Scenario slices (47-A harness, lab boots) keep their own cast: resolve the beat silently
+    // so the drill advances without staging anything.
+    if (!ob.rescue) {
+      ob.beatDoneAt.raid = st.simTime || 0;
+      return;
+    }
+    ob.raid = {
+      active: true,
+      enteredAt: st.simTime || 0,
+      ids: { raider: null, hauler: null, throwRock: null },
+      lastWhipAt: null,
+      gunKills: 0,
+    };
+    this._spawnRaidCast();
+  },
+
+  _spawnRaidCast() {
+    const st = this.state;
+    const raid = this._raid();
+    if (!raid || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos) return;
+    this._removeRaidActors();
+    // Reuse the rescue wall's bearing so the release line reads: raider between the player and
+    // the big rock, the hauler dressed just off the raider's beam.
+    const wall = st.onboarding.rescue && st.onboarding.rescue.ids
+      ? st.entities.get(st.onboarding.rescue.ids.asteroid)
+      : null;
+    const ang = wall && wall.pos
+      ? Math.atan2(wall.pos.z - player.pos.z, wall.pos.x - player.pos.x)
+      : onboardingRandom(st) * TAU;
+    const at = (range, bearing) => ({
+      x: player.pos.x + Math.cos(ang + bearing) * range,
+      z: player.pos.z + Math.sin(ang + bearing) * range,
+    });
+    const raiderPos = at(RAID_RAIDER_OFFSET_WU, 0);
+    const haulerPos = at(RAID_HAULER_OFFSET_WU, 0.5);
+    const raiderSpec = makeEnemySpawnSpec('reaver_pirate', 1, raiderPos, { startedTick: st.tick });
+    if (raiderSpec) {
+      raiderSpec.name = 'Claim Jumper';
+      // Lesson body: real enough to be the fantasy (a hostile mid-raid), tuned so the taught
+      // throw kills and a starter-gun refusal is a long deliberate grind.
+      raiderSpec.hull = raiderSpec.hullMax = RAID_RAIDER_HULL;
+      // Crippled by the ram attempt: a slow drifter the starter hull can actually catch.
+      raiderSpec.maxSpeed = 45;
+      raiderSpec.combatSpeed = 40;
+      // Real mass so the taught throw carries momentum: whip recoil scales with it
+      // (momentum = mass x relSpeed), and a near-massless raider shrugs the lesson off.
+      raiderSpec.mass = 220;
+      raiderSpec.shield = raiderSpec.shieldMax = 0;
+      raiderSpec.shieldRegenRate = 0;
+      raiderSpec.data = raiderSpec.data || {};
+      raiderSpec.data.onboarding = true;
+      raiderSpec.data.onboardingRaid = true;
+      raiderSpec.data.weapons = [];
+      // Dead in space after the ram attempt: no drive (a live AI velocity-drives the
+      // hull every tick and cancels any tow), no guns — a drifting hulk to throw.
+      raiderSpec.data.ai = {
+        ...(raiderSpec.data.ai || {}),
+        passive: true, roe: 'hold_fire', spawnContext: 'onboarding_raid', motive: 'crippled',
+      };
+      const raider = this.helpers.spawnEntity(raiderSpec);
+      raid.ids.raider = raider && raider.id != null ? raider.id : null;
+    }
+    // A throw-target rock right downrange of the raider: the tow pass distance stays short
+    // and readable, and the thrown body always has a solid near its release line.
+    const throwRock = this.helpers.spawnEntity({
+      type: 'asteroid',
+      pos: at(RAID_RAIDER_OFFSET_WU + 150, 0),
+      vel: { x: 0, z: 0 },
+      radius: 26,
+      mass: 4000,
+      hull: 5000,
+      hullMax: 5000,
+      data: {
+        onboarding: true, raidRole: 'throwRock',
+        typeId: 'ast_raid_throw_rock',
+      },
+    });
+    raid.ids.throwRock = throwRock && throwRock.id != null ? throwRock.id : null;
+    const hauler = this.helpers.spawnEntity({
+      type: 'drone',
+      name: 'Nervous Hauler',
+      team: 2,
+      factionId: 'faction_free',
+      pos: haulerPos,
+      vel: { x: 0, z: 0 },
+      radius: 12,
+      mass: 260,
+      hull: 900,
+      hullMax: 900,
+      data: {
+        weapons: [],
+        ai: { passive: true, roe: 'hold_fire', spawnContext: 'onboarding_raid', motive: 'flee' },
+        onboarding: true, raidRole: 'hauler',
+      },
+    });
+    raid.ids.hauler = hauler && hauler.id != null ? hauler.id : null;
+    raid.lastWhipAt = null;
+  },
+
+  _removeRaidActors() {
+    const raid = this.state && this.state.onboarding && this.state.onboarding.raid;
+    if (!raid || !raid.ids) return;
+    const player = this.state && this.state.player;
+    for (const slot of Object.keys(raid.ids)) {
+      const id = raid.ids[slot];
+      if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+        this.helpers.removeEntity(id);
+      }
+      if (player && id != null && player.targetId === id) player.targetId = null;
+      raid.ids[slot] = null;
+    }
+  },
+
+  _onRaidLatched(payload) {
+    const raid = this._raid();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!raid || !ob || !beat || beat.key !== 'raid') return;
+    if (payload.targetId !== raid.ids.raider) return;
+    this._onBeatEvent('raid:latched', payload);
+  },
+
+  _onRaidWhipImpact(payload) {
+    const raid = this._raid();
+    if (!raid) return;
+    if (payload.targetId !== raid.ids.raider && payload.victimId !== raid.ids.raider) return;
+    raid.lastWhipAt = this.state.simTime || 0;
+    // THE THESIS MOMENT: the thrown raider struck the rock as a projectile. A solid or
+    // crushing impact on the throw-target rock completes the lesson — the enemy became a
+    // projectile, whether or not the hull finally caves.
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat || beat.key !== 'raid') return;
+    const wallId = raid.ids.throwRock != null ? raid.ids.throwRock : (ob.rescue && ob.rescue.ids ? ob.rescue.ids.asteroid : null);
+    if (payload.victimId !== wallId) return;
+    if (payload.rating !== 'solid' && payload.rating !== 'crushing') return;
+    if (!ob.beatDoneAt.raid) {
+      this._beatDone(beat);
+      this._emitMilestone('momentumKill', { cause: 'throwImpact', rating: payload.rating, beat: 'raid' });
+    }
+  },
+
+  // A release is the throw: stamp it too, because the fatal tumble impact can kill before
+  // masslineImpacts' observer scan emits the whip event for that same contact tick.
+  _onRaidReleased(payload) {
+    const raid = this._raid();
+    if (!raid) return;
+    if (payload.targetId !== raid.ids.raider) return;
+    const raider = this._raidActor('raider');
+    const speed = raider && raider.vel
+      ? Math.hypot(Number(raider.vel.x) || 0, Number(raider.vel.z) || 0)
+      : 0;
+    // A dropped line that barely moved is not a throw; anything genuinely moving counts.
+    if (speed < 25) return;
+    raid.lastWhipAt = this.state.simTime || 0;
+  },
+
+  _onRaidKilled(payload) {
+    const raid = this._raid();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!raid || !ob || !beat || beat.key !== 'raid' || !payload) return;
+    if (payload.id !== raid.ids.raider) return;
+    const credited = payload.killerId === this.state.playerId || payload.ownerId === this.state.playerId;
+    if (!credited) { this._respawnRaidRaider('the raider broke off'); return; }
+    const now = this.state.simTime || 0;
+    const fromThrow = raid.lastWhipAt != null && (now - raid.lastWhipAt) <= RAID_WHIP_KILL_WINDOW_S;
+    if (fromThrow) {
+      this._beatDone(beat);
+      this._emitMilestone('momentumKill', { cause: 'throw', beat: 'raid' });
+      return;
+    }
+    // Gun kill: retry the lesson once; a second refusal resolves the beat — the world moves on.
+    raid.gunKills += 1;
+    if (raid.gunKills === 1) {
+      this._respawnRaidRaider('Another one, then. Latch him this time.');
+      return;
+    }
+    this._beatDone(beat);
+    this._emitMilestone('momentumKill', { cause: 'guns', beat: 'raid' });
+  },
+
+  _respawnRaidRaider(line) {
+    const raid = this._raid();
+    if (!raid) return;
+    this._spawnRaidCast();
+    if (line) {
+      this.state.onboarding.beatAction = line;
+      this._sayTutorial(line);
+    }
+    this._refreshBeatPanel();
+  },
+
+  _onRaidPlayerDeath() {
+    const raid = this._raid();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!raid || !beat || beat.key !== 'raid') return;
+    this._respawnRaidRaider('Back in one piece. Latch the raider. Swing him into the rock.');
+  },
+
+  _resolveRaidDone() {
+    const raid = this._raid();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!raid || !beat || beat.key !== 'raid') return;
+    const wallId = raid.ids.throwRock != null ? raid.ids.throwRock : (ob.rescue && ob.rescue.ids ? ob.rescue.ids.asteroid : null);
+    if (!player || !player.pos) return;
+    // A raider that somehow drifts clear restages near the wall — retry, never a wall.
+    if (Math.hypot(raider.pos.x - player.pos.x, raider.pos.z - player.pos.z) > 3000) {
+      this._respawnRaidRaider('He ran. Follow the diamond and latch him.');
+    }
+  },
+
+  // ── Claimed beat (thesis-first route) — the wanted consequence, experienced ──────────
+  // The wreck's spill is lawfully claimed; a law cutter stands witness. Taking it reports a
+  // payload_theft through the real law owner entry; heat (the only heat writer) raises the
+  // search ring and the player outruns it. Leaving it is a first-class choice: after
+  // CLAIMED_WINDOW_S the tableau stands down and the rail moves on. No walls either way.
+
+  _claimed() {
+    const ob = this.state && this.state.onboarding;
+    return ob && ob.claimed && ob.claimed.active && !ob.finished ? ob.claimed : null;
+  },
+
+  _claimedActor(slot) {
+    const claimed = this._claimed();
+    if (!claimed) return null;
+    const id = claimed.ids && claimed.ids[slot];
+    if (id == null || !this.state.entities) return null;
+    const entity = this.state.entities.get(id);
+    return entity && entity.alive !== false ? entity : null;
+  },
+
+  _enterClaimedBeat() {
+    const st = this.state;
+    const ob = st.onboarding;
+    if (!ob) return;
+    if (!ob.rescue) {
+      ob.beatDoneAt.claimed = st.simTime || 0;
+      return;
+    }
+    ob.claimed = {
+      active: true,
+      enteredAt: st.simTime || 0,
+      ids: { patrol: null, pickups: [] },
+      taken: false,
+      wantedFired: false,
+      clearSince: null,
+      resolved: false,
+    };
+    this._spawnClaimedCast();
+  },
+
+  _spawnClaimedCast() {
+    const st = this.state;
+    const claimed = this._claimed();
+    if (!claimed || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos) return;
+    this._removeClaimedActors();
+    // Spill site: ahead of the player, on the raid bearing — the wreck the player just made.
+    const raid = st.onboarding.raid;
+    const raider = raid && raid.ids && raid.ids.raider != null && st.entities.get(raid.ids.raider);
+    const wall = st.onboarding.rescue && st.onboarding.rescue.ids
+      ? st.entities.get(st.onboarding.rescue.ids.asteroid)
+      : null;
+    const anchor = raider && raider.pos ? raider
+      : (wall && wall.pos ? wall : player);
+    const ang = Math.atan2(anchor.pos.z - player.pos.z, anchor.pos.x - player.pos.x);
+    const at = (range, bearing) => ({
+      x: player.pos.x + Math.cos(ang + bearing) * range,
+      z: player.pos.z + Math.sin(ang + bearing) * range,
+    });
+    const despawnAt = (st.simTime || 0) + CLAIMED_WINDOW_S + 90;
+    for (let i = 0; i < CLAIMED_PICKUP_COUNT; i++) {
+      const ang2 = onboardingRandom(st) * TAU;
+      const pos = at(150 + i * 14, (i - 1) * 0.12);
+      const pickup = this.helpers.spawnEntity({
+        type: 'pickup',
+        pos,
+        vel: { x: Math.cos(ang2) * 3, z: Math.sin(ang2) * 3 },
+        radius: 3,
+        data: {
+          kind: 'cargo', commodityId: 'cmdty_salvage_electronics', amount: 4,
+          onboarding: true, claimedCargo: true, despawnAt,
+        },
+      });
+      if (pickup && pickup.id != null) claimed.ids.pickups.push(pickup.id);
+    }
+    const patrolSpec = makeEnemySpawnSpec('patrol_lawman', 1, at(CLAIMED_WITNESS_OFFSET_WU, 0.35),
+      { startedTick: st.tick });
+    if (patrolSpec) {
+      patrolSpec.name = 'Helios Claims Cutter';
+      patrolSpec.team = 1;
+      patrolSpec.data = patrolSpec.data || {};
+      patrolSpec.data.ai = {
+        ...(patrolSpec.data.ai || {}),
+        passive: true, roe: 'hold_fire', spawnContext: 'onboarding_claims', lawful: true,
+      };
+      patrolSpec.data.lawWitness = true;
+      patrolSpec.data.onboarding = true;
+      patrolSpec.data.claimsCutter = true;
+      const patrol = this.helpers.spawnEntity(patrolSpec);
+      claimed.ids.patrol = patrol && patrol.id != null ? patrol.id : null;
+    }
+  },
+
+  _removeClaimedActors() {
+    const claimed = this.state && this.state.onboarding && this.state.onboarding.claimed;
+    if (!claimed || !claimed.ids) return;
+    const player = this.state && this.state.player;
+    const patrolId = claimed.ids.patrol;
+    if (patrolId != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+      this.helpers.removeEntity(patrolId);
+    }
+    if (player && patrolId != null && player.targetId === patrolId) player.targetId = null;
+    claimed.ids.patrol = null;
+    for (const id of claimed.ids.pickups || []) {
+      if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+        this.helpers.removeEntity(id);
+      }
+    }
+    claimed.ids.pickups = [];
+  },
+
+  _onClaimedPickup(payload) {
+    const claimed = this._claimed();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!claimed || !ob || !beat || beat.key !== 'claimed' || claimed.taken) return;
+    if (!payload || payload.collectorId !== this.state.playerId) return;
+    if (!claimed.ids.pickups.includes(payload.pickupId)) return;
+    claimed.taken = true;
+    this._onBeatEvent('claimed:taken', payload);
+    // Report through the real law owner entry. Law alone decides jurisdiction and witnesses;
+    // heat alone consumes an accepted receipt (heat:changed drives the rest of this beat).
+    const law = this.registry && this.registry.get && this.registry.get('lawSecurity');
+    const reportId = `onboarding:${hash32(String(payload.pickupId), 'claimed')}:payload_theft`;
+    const receipt = law && typeof law.reportIncident === 'function'
+      ? law.reportIncident({
+        reportId,
+        kind: 'payload_theft',
+        offenderStableId: 'player',
+        offenderEntityId: this.state.playerId,
+        payloadStableId: `onboarding_claimed:${payload.pickupId}`,
+        causalTick: Number.isInteger(this.state.tick) ? Math.max(0, this.state.tick) : 0,
+        pos: payload.pos && Number.isFinite(payload.pos.x)
+          ? { x: payload.pos.x, z: payload.pos.z }
+          : { x: 0, z: 0 },
+      })
+      : null;
+    if (receipt && receipt.accepted === true) return; // heat:changed completes the experience
+    // Law declined (witness lost, jurisdiction gone): no crime recognized, no wall — move on.
+    this._finishClaimed('reportDenied');
+  },
+
+  _onClaimedHeat(payload) {
+    const claimed = this._claimed();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!claimed || !ob || !beat || beat.key !== 'claimed') return;
+    const level = Number(payload && (payload.level ?? payload.heat ?? payload.wanted));
+    if (!Number.isFinite(level)) return;
+    if (level > 0) {
+      if (!claimed.wantedFired) claimed.wantedFired = true;
+      return;
+    }
+    // Level 0: the search ring cleared. Hold a short grace so a flicker cannot fake the escape.
+    if (!claimed.wantedFired) return;
+    if (claimed.clearSince == null) claimed.clearSince = this.state.simTime || 0;
+  },
+
+  _tickClaimed() {
+    const claimed = this._claimed();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!claimed || !ob || !beat || beat.key !== 'claimed' || claimed.resolved) return;
+    const now = this.state.simTime || 0;
+    if (!claimed.wantedFired) {
+      // Decline path: the player left the claimed cargo. Stand the tableau down, move on.
+      // (A taken cargo with an accepted receipt guarantees the heat event — that state is
+      // the wanted experience in progress, never a decline.)
+      if (!claimed.taken && now - claimed.enteredAt >= CLAIMED_WINDOW_S) this._finishClaimed('declined');
+      return;
+    }
+    if (claimed.clearSince != null && now - claimed.clearSince >= CLAIMED_CLEAR_GRACE_S) {
+      this._finishClaimed('cleared');
+    }
+  },
+
+  _finishClaimed(how) {
+    const claimed = this._claimed();
+    const ob = this.state.onboarding;
+    if (!claimed || !ob || claimed.resolved) return;
+    claimed.resolved = true;
+    claimed.active = false;
+    const beat = BEATS[ob.currentBeat];
+    this._removeClaimedActors();
+    if (beat && beat.key === 'claimed') this._beatDone(beat);
+    this._emitMilestone('wantedBeat', { how, beat: 'claimed' });
   },
 
   // ── Missing three (PQ-163.02) — boost, stroke, well in the grab → seam gap ───────────────
@@ -1628,6 +2219,10 @@ export const onboarding = {
       this._missingThreeAllDone();
       return;
     }
+    // The thesis-first route runs the raid + claimed beats between the rescue grab and the
+    // movement trio: the wanted consequence is the spine, the missing three follow it.
+    const ob = this.state.onboarding;
+    if (ob && ob.beatDoneAt.claimed == null) return;
     const prereq = MISSING_THREE_PREREQ[next];
     if (prereq === 'grab') {
       const rescue = this.state.onboarding && this.state.onboarding.rescue;
@@ -1824,13 +2419,67 @@ export const onboarding = {
     if (this._setRescueWaypoint(force)) return;
     if (this._setMissingThreeWaypoint(force)) return;
     const beat = BEATS[ob.currentBeat];
+    const existing = st.nav.waypoint;
+    // The raid diamond tracks the raider; the claimed diamond tracks the spill until taken.
+    if (beat && beat.key === 'raid') {
+      const raid = this._raid();
+      const raider = this._raidActor('raider');
+      if (!raid || !raider) {
+        if (existing && existing.onboarding && String(existing.markerId || '').startsWith('onboarding:raid')) {
+          st.nav.waypoint = null;
+        }
+        return;
+      }
+      st.nav.waypoint = {
+        onboarding: true,
+        pos: { x: raider.pos.x, z: raider.pos.z },
+        label: 'Raider',
+        reason: ob.beatAction || beat.line,
+        markerId: 'onboarding:raid',
+        markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
+        mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
+      };
+      return;
+    }
+    if (beat && beat.key === 'claimed') {
+      const claimed = this._claimed();
+      const wantedFired = claimed && claimed.wantedFired;
+      let target = null;
+      if (!wantedFired) {
+        const pickups = claimed && claimed.ids ? claimed.ids.pickups : [];
+        let best = null, bestD = Infinity;
+        const p = st.entities && st.entities.get(st.playerId);
+        for (const id of pickups || []) {
+          const e = id != null && st.entities ? st.entities.get(id) : null;
+          if (!e || e.alive === false || !e.pos) continue;
+          const d = p && p.pos ? Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) : 0;
+          if (d < bestD) { bestD = d; best = e; }
+        }
+        if (best) target = { pos: best.pos, label: 'Claimed Cargo' };
+      }
+      if (!target) {
+        if (existing && existing.onboarding && String(existing.markerId || '').startsWith('onboarding:claimed')) {
+          st.nav.waypoint = null;
+        }
+        return;
+      }
+      st.nav.waypoint = {
+        onboarding: true,
+        pos: { x: target.pos.x, z: target.pos.z },
+        label: target.label,
+        reason: ob.beatAction || beat.line,
+        markerId: 'onboarding:claimed',
+        markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
+        mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
+      };
+      return;
+    }
     // The B4 flight lesson ends at acceptance. Keep the tutorial state alive for completion/B5,
     // but never reclaim the real delivery's route with the old Helios docking marker.
     if (beat && beat.key === 'dock' && ob.recommendedMissionId) {
       if (st.nav.waypoint && st.nav.waypoint.onboarding) st.nav.waypoint = null;
       return;
     }
-    const existing = st.nav.waypoint;
     // While teaching, reclaim mission/story claims so the opening marker stays onboarding-owned.
     // Leave player-set local/trade/autopilot courses alone unless force-stamping a lesson target.
     if (existing && !existing.onboarding && !force) {
@@ -1929,7 +2578,10 @@ export const onboarding = {
   },
 
   // ---- DOM ------------------------------------------------------------------------------------
+  // All DOM surfaces are browser sugar around the sim-side beat FSM; headless hosts (probes,
+  // playthrough pilots) run the same state machine with the panel absent.
   _injectStyle() {
+    if (typeof document === 'undefined') return;
     if (document.getElementById(STYLE_ID)) return;
     const s = document.createElement('style');
     s.id = STYLE_ID;
@@ -1961,6 +2613,7 @@ export const onboarding = {
   },
 
   _buildPanel() {
+    if (typeof document === 'undefined') return;
     if (this._panel) this._panel.remove();
     const root = document.querySelector('.sf-leftcontext') || document.getElementById('ui-root') || document.body;
     const el = document.createElement('div');
@@ -2093,6 +2746,15 @@ export const onboarding = {
     }
   },
 };
+
+// The swing lesson's rock must be a DYNAMIC body or the tether can never move it:
+// physicsAuthority.defaultDynamic only promotes asteroids flagged isChunk/tetherPayload.
+// The rescue pod already carries tetherPayload (that is why grab-and-run works); the rock
+// gets the same flag so the taught swing is physically possible, not just authored.
+function makeRescueRockTowable(rockSpec) {
+  if (rockSpec && rockSpec.data) rockSpec.data.tetherPayload = true;
+  return rockSpec;
+}
 
 function onboardingRandom(state) {
   if (state && typeof state.rng === 'function') return state.rng();

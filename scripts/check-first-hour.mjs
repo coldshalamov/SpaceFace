@@ -67,14 +67,10 @@ function extractBeats(src) {
   return beats;
 }
 
-const BEATS = [
-  ...FLIGHT_DRILL_BEATS.map((beat) => ({
-    key: beat.key,
-    line: beat.line,
-    followups: [...(beat.followups || [])],
-  })),
-  ...extractBeats(onboardingSrc),
-];
+// The thesis-first route (2026-09-18): the full first-hour table is authored as literals in
+// onboarding.js — the tether attach leads, the raid + claimed beats carry the thesis spine, and
+// the movement drills plus seam/dock/choice follow.
+const BEATS = extractBeats(onboardingSrc);
 // ── B1 control truth: massline verb + production tether:reel ─────────────────────────────────
 assert.doesNotMatch(authoredOnboardingSrc, /Latch it\. G\./, 'B1 must not teach Latch it. G. (G is combat computer)');
 assert.doesNotMatch(authoredOnboardingSrc, /tether:reelMax/, 'B1 must not listen for dead tether:reelMax');
@@ -82,10 +78,10 @@ assert.match(flightDrillSrc, /Latch it\. Massline\./, 'B1 entry must teach massl
 assert.match(flightDrillSrc, /on:\s*'tether:reel'/, 'B1 cut follow-up must use production tether:reel');
 assert.match(onboardingSrc, /_onTetherReel/, 'B1 must gate reel follow-up on tether:reel payload');
 
-assert.equal(BEATS.length, 10, 'flight drill plus seam/dock/choice must have exactly 10 paced beats');
+assert.equal(BEATS.length, 12, 'the thesis-first route authors exactly 12 paced beats');
 
-// Spec §2 beat keys in order.
-const EXPECTED_KEYS = ['thrust', 'brake', 'marker', 'focus', 'tether', 'burst', 'disengage', 'seam', 'dock', 'choice'];
+// Spec §2 beat keys in the thesis-first order: attach → raid → wanted → drills → seam → dock → choice.
+const EXPECTED_KEYS = ['tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage', 'seam', 'dock', 'choice'];
 assert.deepEqual(
   BEATS.map((b) => b.key),
   EXPECTED_KEYS,

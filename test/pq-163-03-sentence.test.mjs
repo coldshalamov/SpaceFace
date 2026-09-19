@@ -190,7 +190,9 @@ function rescueActor(h, slot) {
   return id == null ? null : h.state.entities.get(id);
 }
 
-const DRILL_KEYS = ['thrust', 'brake', 'marker', 'focus', 'tether', 'burst', 'disengage'];
+// Production route order (onboarding.js BEATS): the tether attach leads; the movement
+// drills follow it. Raid/claimed sit between disengage and seam for the full-route tests.
+const DRILL_KEYS = ['tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
 function driveDrillTo(h, beatKey) {
   const st = h.state;
   const player = st.entities.get(st.playerId);
@@ -219,6 +221,7 @@ function driveDrillTo(h, beatKey) {
       h.bus.emit('flybyFocus:start', { targetId: trainer.id });
       tick(h);
     } else if (key === 'tether') {
+      tick(h); // the route opens on the tether beat: one tick stages its derelict
       const derelict = derelictOf();
       assert.ok(derelict, 'tether lesson must stage its derelict');
       st.player.targetId = derelict.id;
@@ -233,11 +236,40 @@ function driveDrillTo(h, beatKey) {
       }
       player.data.weapons[0]._heat = 2;
       tick(h);
+    } else if (key === 'raid') {
+      // The raid beat: latch the staged raider, fling him, and the throw-kill resolves it.
+      advanceTime(h);
+      tick(h);
+      const raid = h.state.onboarding.raid;
+      assert.ok(raid && raid.ids.raider != null, 'raid lesson stages its raider');
+      const raider = h.state.entities.get(raid.ids.raider);
+      raider.vel.x = 200;
+      h.bus.emit('tether:latched', { targetId: raider.id });
+      h.bus.emit('tether:released', { targetId: raider.id });
+      h.bus.emit('entity:killed', { id: raider.id, killerId: st.entities.get(st.playerId).id, type: 'ship' });
+      tick(h);
     } else if (key === 'disengage') {
       const trainer = trainerOf();
       assert.ok(trainer, 'disengage lesson needs its trainer');
       trainer.pos.x = player.pos.x + 901;
       trainer.pos.z = player.pos.z;
+      tick(h);
+    } else if (key === 'claimed') {
+      advanceTime(h);
+      tick(h);
+      const claimed = h.state.onboarding.claimed;
+      assert.ok(claimed == null || claimed.resolved || (claimed.ids && claimed.ids.pickups.length >= 1), 'claimed lesson stages its spill');
+  if (claimed && claimed.active) {
+    assert.ok(claimed.ids.pickups.length >= 1, 'claimed spill present');
+  }
+      h.bus.emit('pickup:collected', {
+        pickupId: claimed.ids.pickups[0],
+        collectorId: h.state.playerId,
+        kind: 'cargo',
+        amount: 4,
+        commodityId: 'cmdty_salvage_electronics',
+        pos: { x: h.state.entities.get(h.state.playerId).pos.x, z: h.state.entities.get(h.state.playerId).pos.z },
+      });
       tick(h);
     }
   };
@@ -299,6 +331,44 @@ function completeLeftoverBoost(h) {
   tick(h);
 }
 
+// Thesis-first route: raid + claimed run between the rescue grab and the movement verbs.
+function completeRaid(h) {
+  const st = h.state;
+  advanceTime(h);
+  tick(h);
+  const raid = st.onboarding.raid;
+  assert.ok(raid && raid.ids.raider != null, 'raid lesson stages its raider');
+  const player = st.entities.get(st.playerId);
+  const raider = st.entities.get(raid.ids.raider);
+  h.bus.emit('tether:latched', { targetId: raider.id });
+  raider.vel.x = 200;
+  h.bus.emit('tether:released', { targetId: raider.id });
+  h.bus.emit('entity:killed', { id: raider.id, killerId: player.id, type: 'ship' });
+  tick(h);
+  assert.ok(st.onboarding.beatDoneAt.raid != null, 'a throw kill completes the raid');
+}
+
+function completeClaimed(h) {
+  const st = h.state;
+  advanceTime(h);
+  tick(h);
+  const claimed = st.onboarding.claimed;
+  assert.ok(claimed == null || claimed.resolved || (claimed.ids && claimed.ids.pickups.length >= 1), 'claimed lesson stages its spill');
+  if (claimed && claimed.active) {
+    assert.ok(claimed.ids.pickups.length >= 1, 'claimed spill present');
+  }
+  h.bus.emit('pickup:collected', {
+    pickupId: claimed.ids.pickups[0],
+    collectorId: st.playerId,
+    kind: 'cargo',
+    amount: 4,
+    commodityId: 'cmdty_salvage_electronics',
+    pos: { x: st.entities.get(st.playerId).pos.x, z: st.entities.get(st.playerId).pos.z },
+  });
+  tick(h);
+  assert.ok(st.onboarding.beatDoneAt.claimed != null, 'the claimed beat resolves');
+}
+
 function driveLeftoverRescueAndBoost(h) {
   driveDrillTo(h, 'tether');
   completeSwing(h);
@@ -310,6 +380,8 @@ function driveLeftoverRescueAndBoost(h) {
   tick(h);
   driveDrillTo(h, 'disengage');
   completeGrab(h);
+  completeRaid(h);
+  completeClaimed(h);
   completeLeftoverBoost(h);
 }
 

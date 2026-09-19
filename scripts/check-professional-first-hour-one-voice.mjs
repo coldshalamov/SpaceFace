@@ -313,23 +313,23 @@ check('objective hierarchy remains legible and quiet for assistive technology', 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 4. B0 → B1 SILENCE
 // ═══════════════════════════════════════════════════════════════════════════════
-check('inter-beat silence gate is ≥4s and preserves the shared drill order', 'SOURCE', () => {
+check('inter-beat silence gate is ≥4s and preserves the authored thesis-first route order', 'SOURCE', () => {
   assert.match(onboardingSrc, /SILENCE_S\s*=\s*4/, 'SILENCE_S must be 4 seconds');
   assert.match(onboardingSrc, /_tryAdvanceBeat/, 'beat advance engine must exist');
   assert.match(onboardingSrc,
     /now - Math\.max\(prevDoneAt, this\._lastTextAtS\) < SILENCE_S/,
     'advance must require DONE + silence since last text');
-  // The deterministic flight drill is data-owned; onboarding appends seam, dock, and choice.
+  // The full first-hour table is authored as literals in onboarding.js (thesis-first route,
+  // 2026-09-18): the tether attach leads, raid + claimed carry the thesis spine.
   const beatsBlock = onboardingSrc.match(/const BEATS = \[([\s\S]*?)\n\];/);
   assert.ok(beatsBlock, 'BEATS table must exist');
-  assert.match(beatsBlock[1], /\.\.\.FLIGHT_DRILL_BEATS/,
-    'onboarding must consume the shared flight-drill sequence');
-  const localKeys = [...beatsBlock[1].matchAll(/key:\s*'([a-z_]+)'/g)].map((m) => m[1]);
-  const keys = [...FLIGHT_DRILL_BEATS.map((beat) => beat.key), ...localKeys];
+  assert.doesNotMatch(beatsBlock[1], /\.\.\.FLIGHT_DRILL_BEATS/,
+    'the route table is authored inline, not spread from the drill module');
+  const keys = [...beatsBlock[1].matchAll(/key:\s*'([a-z_]+)'/g)].map((m) => m[1]);
   assert.deepEqual(keys, [
-    'thrust', 'brake', 'marker', 'focus', 'tether', 'burst', 'disengage',
-    'seam', 'dock', 'choice',
-  ], 'ten first-hour beats must stay in the production drill order');
+    'tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst',
+    'disengage', 'seam', 'dock', 'choice',
+  ], 'twelve first-hour beats must stay in the authored thesis-first order');
 });
 
 check('story/missions yield the opening channel to the tutorial (no parallel cold-start voice)', 'SOURCE', () => {

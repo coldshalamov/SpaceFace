@@ -9,7 +9,15 @@ import {
   maxWeaponHeatFraction,
 } from '../src/onboarding/flightDrill.js';
 import { flybyFocus, pickFlybyTarget } from '../src/systems/flybyFocus.js';
-import { onboarding } from '../src/systems/onboarding.js';
+import { onboarding, BEATS as ROUTE_BEATS } from '../src/systems/onboarding.js';
+
+// The route table is authored in onboarding.js; drive the FSM by key so the test tracks the
+// lesson content, not the production order (the order audits live in check-first-hour).
+const beatIndex = (key) => {
+  const idx = ROUTE_BEATS.findIndex((beat) => beat.key === key);
+  assert.ok(idx >= 0, `route beat "${key}" must exist`);
+  return idx;
+};
 
 test('flight drill teaches one clear lesson at a time in the required order', () => {
   assert.deepEqual(
@@ -120,17 +128,17 @@ test('nonlethal trainer and real event receipts complete the hands-on drill', ()
   state.onboarding = freshOnboarding();
 
   const player = state.entities.get(state.playerId);
-  state.onboarding.currentBeat = 0;
+  state.onboarding.currentBeat = beatIndex('thrust');
   player.vel.x = 41;
   sys._resolveProximityDone();
   assert.ok(state.onboarding.beatDoneAt.thrust != null);
 
-  state.onboarding.currentBeat = 1;
+  state.onboarding.currentBeat = beatIndex('brake');
   player.vel.x = 0;
   sys._resolveProximityDone();
   assert.ok(state.onboarding.beatDoneAt.brake != null);
 
-  state.onboarding.currentBeat = 2;
+  state.onboarding.currentBeat = beatIndex('marker');
   const trainer = sys._spawnTrainer('marker');
   assert.ok(trainer);
   assert.equal(trainer.type, 'drone');
@@ -145,11 +153,11 @@ test('nonlethal trainer and real event receipts complete the hands-on drill', ()
   sys._resolveProximityDone();
   assert.ok(state.onboarding.beatDoneAt.marker != null);
 
-  state.onboarding.currentBeat = 3;
+  state.onboarding.currentBeat = beatIndex('focus');
   bus.emit('flybyFocus:start', { targetId: trainer.id });
   assert.ok(state.onboarding.beatDoneAt.focus != null);
 
-  state.onboarding.currentBeat = 4;
+  state.onboarding.currentBeat = beatIndex('tether');
   const derelict = sys._spawnDerelict() || state.entities.get(sys._derelictId);
   assert.ok(derelict);
   player.data.targetId = 'wrong-target';
@@ -171,7 +179,7 @@ test('nonlethal trainer and real event receipts complete the hands-on drill', ()
   bus.emit('tether:released', { targetId: derelict.id });
   assert.ok(state.onboarding.beatDoneAt.tether != null);
 
-  state.onboarding.currentBeat = 5;
+  state.onboarding.currentBeat = beatIndex('burst');
   player.data.weapons[0]._heat = 36;
   for (let i = 0; i < FLIGHT_DRILL_BURST_SHOTS; i++) {
     bus.emit('combat:fire', { ownerId: player.id, weaponId: 'pulse_laser_s' });
@@ -182,7 +190,7 @@ test('nonlethal trainer and real event receipts complete the hands-on drill', ()
   sys._resolveProximityDone();
   assert.ok(state.onboarding.beatDoneAt.burst != null);
 
-  state.onboarding.currentBeat = 6;
+  state.onboarding.currentBeat = beatIndex('disengage');
   trainer.pos.x = 901;
   trainer.pos.z = 0;
   sys._resolveProximityDone();
@@ -191,7 +199,7 @@ test('nonlethal trainer and real event receipts complete the hands-on drill', ()
   assert.equal(spawned.some((entity) => entity.data?.weapons?.length), false,
     'no training actor can shoot the player');
 
-  state.onboarding.currentBeat = 7;
+  state.onboarding.currentBeat = beatIndex('seam');
   state.onboarding.beatAction = 'Pulse the scanner.';
   const rock = sys._spawnMiningRock();
   assert.ok(rock && rock.data.trainingMining, 'seam lesson owns a marked mineable rock');

@@ -8,6 +8,7 @@ import test from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { makeEntity } from '../src/core/entity.js';
 import { FLIGHT_DRILL_BEATS } from '../src/onboarding/flightDrill.js';
+import { BEATS as ROUTE_BEATS } from '../src/systems/onboarding.js';
 import {
   RESCUE_PROOF_SEED,
   rescueBeatLine,
@@ -162,7 +163,9 @@ function rescueActor(h, slot) {
   return id == null ? null : h.state.entities.get(id);
 }
 
-const DRILL_KEYS = ['thrust', 'brake', 'marker', 'focus', 'tether', 'burst', 'disengage'];
+// Production route order (onboarding.js BEATS): the tether attach leads; the movement
+// drills follow it. Raid/claimed sit between disengage and seam for the full-route tests.
+const DRILL_KEYS = ['tether', 'raid', 'claimed', 'thrust', 'brake', 'marker', 'focus', 'burst', 'disengage'];
 function driveDrillTo(h, beatKey) {
   const st = h.state;
   const player = st.entities.get(st.playerId);
@@ -190,7 +193,12 @@ function driveDrillTo(h, beatKey) {
       assert.ok(trainer, 'focus lesson needs its trainer');
       h.bus.emit('flybyFocus:start', { targetId: trainer.id });
       tick(h);
+    } else if (key === 'claimed') {
+      advanceTime(h);
+      tick(h);
+      completeClaimed(h, { heatPath: true });
     } else if (key === 'tether') {
+      tick(h); // the route opens on the tether beat: one tick stages its derelict
       const derelict = derelictOf();
       assert.ok(derelict, 'tether lesson must stage its derelict');
       st.player.targetId = derelict.id;
@@ -205,6 +213,10 @@ function driveDrillTo(h, beatKey) {
       }
       player.data.weapons[0]._heat = 2;
       tick(h);
+    } else if (key === 'raid') {
+      advanceTime(h);
+      tick(h);
+      completeRaid(h);
     } else if (key === 'disengage') {
       const trainer = trainerOf();
       assert.ok(trainer, 'disengage lesson needs its trainer');
@@ -255,6 +267,58 @@ function completeGrab(h) {
   tick(h);
 }
 
+
+// Thesis-first route: the raid + claimed beats now sit between the rescue grab and the missing
+// three. Drive them with real event receipts (throw-kill; heat clear through the law path).
+function completeRaid(h) {
+  const st = h.state;
+  advanceTime(h);
+  tick(h); // the raid beat enters and stages its cast
+  const raid = st.onboarding.raid;
+  assert.ok(raid && raid.ids.raider != null, 'raid lesson stages its raider');
+  const player = st.entities.get(st.playerId);
+  const raider = st.entities.get(raid.ids.raider);
+  h.bus.emit('tether:latched', { targetId: raider.id });
+  raider.vel.x = 200; // the fling: a genuine release at speed
+  h.bus.emit('tether:released', { targetId: raider.id });
+  h.bus.emit('entity:killed', { id: raider.id, killerId: player.id, type: 'ship' });
+  tick(h);
+  assert.ok(st.onboarding.beatDoneAt.raid != null, 'a throw kill completes the raid');
+}
+
+function completeClaimed(h, { heatPath = false } = {}) {
+  const st = h.state;
+  advanceTime(h);
+  tick(h); // the claimed beat enters and stages the spill + witness
+  const claimed = st.onboarding.claimed;
+  if (claimed == null || claimed.resolved) {
+    // The driver's earlier pass already collected the spill and resolved the beat.
+    assert.ok(st.onboarding.beatDoneAt.claimed != null, 'the claimed beat resolved');
+    return;
+  }
+  assert.ok(claimed.ids && claimed.ids.pickups.length >= 1, 'claimed lesson stages its spill');
+  h.bus.emit('pickup:collected', {
+    pickupId: claimed.ids.pickups[0],
+    collectorId: st.playerId,
+    kind: 'cargo',
+    amount: 4,
+    commodityId: 'cmdty_salvage_electronics',
+    pos: { x: st.entities.get(st.playerId).pos.x, z: st.entities.get(st.playerId).pos.z },
+  });
+  tick(h);
+  if (heatPath && !claimed.resolved) {
+    // An accepted law receipt raises the wanted state; the escape clears it with a grace.
+    h.bus.emit('heat:changed', { value: 0.22, level: 2, zone: { level: 2 } });
+    assert.equal(claimed.wantedFired, true, 'an accepted law receipt raises the wanted state');
+    h.bus.emit('heat:changed', { value: 0, level: 0, zone: { level: 0 } });
+    advanceTime(h, 1);
+    tick(h);
+    assert.ok(st.onboarding.beatDoneAt.claimed == null, 'the clear grace holds before DONE');
+    advanceTime(h, 3);
+    tick(h);
+  }
+  assert.ok(st.onboarding.beatDoneAt.claimed != null, 'the claimed beat resolves');
+}
 function driveRescueToGrab(h) {
   driveDrillTo(h, 'tether');
   completeSwing(h);
@@ -355,9 +419,17 @@ test('Range fallback lands on the current missing-three rung', () => {
 
 test('the three verbs complete in play after the rescue grab, then seam may start', () => {
   const h = boot();
+  // Stub the law owner so the theft receipt is ACCEPTED and the heat path runs end to end.
+  h.sys.registry = { get: () => ({ reportIncident: () => ({
+    accepted: true, source: 'lawSecurity', incidentReceiptId: 'test:claimed:1',
+    validatedWitnessedTheft: true, kind: 'payload_theft',
+  }) }) };
   launchDefaultRoute(h);
   driveRescueToGrab(h);
+  completeRaid(h);
+  completeClaimed(h, { heatPath: true });
   const st = h.state;
+  if (process.env.MT_PROBE) console.log('PROBE3 rescue=', JSON.stringify(st.onboarding.rescue.beats), 'cur=', st.onboarding.rescue.current, 'beat=', st.onboarding.currentBeat, 'claimed=', st.onboarding.beatDoneAt.claimed, 'raid=', st.onboarding.beatDoneAt.raid);
   assert.equal(st.onboarding.rescue.completed, true);
   assert.equal(st.onboarding.missingThree.current, 'boost');
   assert.equal(tutorialLines(h).at(-1), missingThreeBeatLine('boost'));
@@ -415,7 +487,7 @@ test('the three verbs complete in play after the rescue grab, then seam may star
 
   advanceTime(h);
   tick(h);
-  const seam = FLIGHT_DRILL_BEATS.length; // seam is the first beat after the drill
+  const seam = ROUTE_BEATS.findIndex((b) => b.key === 'seam'); // seam follows the raid + claimed beats
   assert.equal(st.onboarding.currentBeat, seam, 'seam opens after the three verbs and silence');
 });
 
@@ -423,6 +495,8 @@ test('a later unprompted use is recorded without inventing a tester percentage',
   const h = boot();
   launchDefaultRoute(h);
   driveRescueToGrab(h);
+  completeRaid(h);
+  completeClaimed(h);
   h.state.input.boost = true;
   tick(h);
   h.state.input.boost = false;
