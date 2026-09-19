@@ -602,3 +602,77 @@ test('flight GPU residency admission slices yields instead of yielding per item'
   assert.match(tracker, /sliceMs:\s*ADMISSION_SLICE_TARGET_MS/,
     'the slice window must stay at the admission slice target, not a per-item present');
 });
+
+// A latched root is invisible until admitted, so it is deadline work — yet it used to ride the
+// ambient compile lane's quiet window and first-flight auto-flush hold, adding ~50-250 ms of pure
+// waiting to its time-to-visible. The explicit lane flushes the ambient queue and serializes the
+// subject on the shared compile tail; in flight the compile is still present-sliced, so the link
+// lands on its own beats.
+test('latched geometry roots compile on the explicit lane, not the ambient quiet window', () => {
+  const queueStart = RENDERER_SOURCE.indexOf('this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({');
+  assert.ok(queueStart >= 0, 'the live geometry admission queue must exist');
+  const queueBlock = RENDERER_SOURCE.slice(queueStart, queueStart + 2600);
+  assert.match(queueBlock, /compile:\s*\(root\)\s*=>\s*state\.render\.compileObjectPipelines\(root,\s*\{\s*explicit:\s*true\s*\}\)/,
+    'latched roots must bypass the ambient compile queue');
+  const admitStart = RENDERER_SOURCE.indexOf('const admitSubjectPipelines = (subject');
+  assert.ok(admitStart >= 0, 'the subject admission must exist');
+  const admitBlock = RENDERER_SOURCE.slice(admitStart, admitStart + 1400);
+  assert.match(admitBlock, /explicit === true\s*\?\s*pipelineAdmissions\.compileExplicit\(subject\)\s*:\s*pipelineAdmissions\.compile\(subject\)/,
+    'the explicit flag must route to compileExplicit, not the quiet-window queue');
+});
+
+// One root per present is the GPU-pacing contract; WHICH root drains next is a deadline choice.
+// A hull crossing the screen edge must not sit behind a background prop that merely enqueued
+// first — the queue re-grades the pending set on every pick by explicit focus then
+// predicted time-to-glass.
+test('the live geometry admission queue drains nearest-deadline-first', () => {
+  const queueStart = RENDERER_SOURCE.indexOf('this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({');
+  assert.ok(queueStart >= 0, 'the live geometry admission queue must exist');
+  const queueBlock = RENDERER_SOURCE.slice(queueStart, queueStart + 2600);
+  assert.match(queueBlock, /priorityOf:\s*\(entity\)\s*=>/,
+    'the queue must grade pending roots instead of draining strict FIFO');
+  assert.match(queueBlock, /entityIsExplicitRenderFocus\(entity, state\)/,
+    'explicit focus (player, target, forced roots) must outrank every deadline');
+  assert.match(queueBlock, /entityTimeToGlassSeconds\(entity, env, state/,
+    'ordinary roots must be graded by predicted time-to-glass');
+  const queueSource = readFileSync(new URL('../src/render/liveGeometryAdmission.js', import.meta.url), 'utf8');
+  assert.match(queueSource, /priorityOf/,
+    'the queue itself must accept a grading function');
+  assert.match(queueSource, /pending\.splice\(bestIndex, 1\)/,
+    'each drain round must pick the best pending entry, not the oldest');
+});
+
+// Within each build tier the drain used to be FIFO, so collection order — not the deadline —
+// decided which of several same-tier candidates spent the bounded per-frame build budget.
+test('mesh build candidates drain nearest-deadline-first inside each tier', () => {
+  const pollStart = RENDERER_SOURCE.indexOf('reconcileMeshResidency() {');
+  assert.ok(pollStart >= 0, 'the residency poll must exist');
+  const drainIndex = RENDERER_SOURCE.indexOf('stats.built = this._drainMeshBuildQueue', pollStart);
+  assert.ok(drainIndex > pollStart, 'the poll must drain builds after enqueueing');
+  const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
+  assert.match(between, /entityTimeToGlassSeconds\(a, env, state\) - entityTimeToGlassSeconds\(b, env, state\)/,
+    'each tier must be sorted by predicted time-to-glass before enqueue');
+  const reconcileStart = RENDERER_SOURCE.indexOf('enqueueMissingMeshBuilds(\n      presentationList');
+  assert.ok(reconcileStart >= 0, 'the full reconcile enqueue must exist');
+  const reconcileCall = RENDERER_SOURCE.slice(reconcileStart, reconcileStart + 900);
+  assert.match(reconcileCall, /\(entity\) => entityTimeToGlassSeconds\(entity, env, state\),\s*\)/,
+    'the full reconcile must pass the same deadline ordering');
+});
+
+// The exempt set only changes on sim ticks and spawn events; a full entity scan every display
+// frame is wasted work through the whole 20 s first-flight hold — the busiest window the game
+// has. The first frame of the hold still collects immediately.
+test('the first-flight hold collects the exempt build set on a cadence, not every frame', () => {
+  const holdStart = RENDERER_SOURCE.indexOf('if (holdFirstFlightStreaming(owner.state)) {');
+  assert.ok(holdStart >= 0, 'the first-flight streaming hold must exist');
+  const holdEnd = RENDERER_SOURCE.indexOf("return 'held-first-flight';", holdStart);
+  assert.ok(holdEnd > holdStart, 'the hold branch must return');
+  const holdBlock = RENDERER_SOURCE.slice(holdStart, holdEnd);
+  assert.match(holdBlock, /_holdExemptCollectS\s*<=\s*0/,
+    'the exempt collection must be gated on a countdown');
+  assert.match(holdBlock, /HOLD_EXEMPT_COLLECT_SECONDS/,
+    'the cadence must be a named constant, not a magic number');
+  const afterHold = RENDERER_SOURCE.slice(holdEnd, holdEnd + 300);
+  assert.match(afterHold, /_holdExemptCollectS\s*=\s*0/,
+    'the cadence must reset when the hold releases so the next hold starts fresh');
+});

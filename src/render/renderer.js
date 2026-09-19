@@ -410,6 +410,8 @@ const RENDER_STREAM_EVICT_RADIUS = residencyEvictRadius();
 // ship speeds this provides several seconds of runway, while current-sector objects farther away
 // remain dormant instead of replacing procedural placeholders during unrelated play.
 const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
+/** Hold-exempt discovery cadence: fast enough for the rescue set piece, slow enough to skip the scan. */
+const HOLD_EXEMPT_COLLECT_SECONDS = 0.1;
 // Decoded packages whose presentation owner is gone keep only a soft cache lease, which the
 // sector-exit sweep was the sole release point for — inside one sector every archetype ever
 // admitted stayed GPU-resident forever. A slow sweep with an idle-age gate keeps short oscillation
@@ -578,30 +580,46 @@ function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
   queuedIds.add(entity.id);
 }
 
+const _enqueuePassShips = [];
+const _enqueuePassOthers = [];
+
 /**
  * Queue authored-readiness-critical ships before bulk world geometry while retaining the same
  * bounded per-frame build budget. New Game can spawn hundreds of asteroids/props before its late
  * traffic and 47-A ships; FIFO entity order otherwise strands those ships behind non-gating meshes.
+ * `urgencyOf` (seconds-to-glass, lower is sooner) orders candidates inside each tier so the
+ * bounded drain always spends the build budget on the nearest deadline first.
  */
-export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue, shouldQueue = null, isUrgent = null) {
+export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue, shouldQueue = null, isUrgent = null, urgencyOf = null) {
   // When isUrgent is supplied, urgent candidates (about to cross the glass) drain
   // ahead of ordinary ones within the same per-frame budget; ships keep their
   // lead inside each urgency tier.
   const passes = isUrgent ? 2 : 1;
+  const byUrgency = typeof urgencyOf === 'function'
+    ? (a, b) => urgencyOf(a) - urgencyOf(b)
+    : null;
   for (let pass = 0; pass < passes; pass++) {
     const urgentPass = isUrgent ? pass === 0 : false;
+    _enqueuePassShips.length = 0;
+    _enqueuePassOthers.length = 0;
     for (const entity of entityList) {
       if (!entity || entity.type !== 'ship') continue;
       if (shouldQueue && !shouldQueue(entity)) continue;
       if (isUrgent && urgentPass !== isUrgent(entity)) continue;
-      enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
+      _enqueuePassShips.push(entity);
     }
     for (const entity of entityList) {
       if (!entity || entity.type === 'ship') continue;
       if (shouldQueue && !shouldQueue(entity)) continue;
       if (isUrgent && urgentPass !== isUrgent(entity)) continue;
-      enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
+      _enqueuePassOthers.push(entity);
     }
+    if (byUrgency) {
+      _enqueuePassShips.sort(byUrgency);
+      _enqueuePassOthers.sort(byUrgency);
+    }
+    for (const entity of _enqueuePassShips) enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
+    for (const entity of _enqueuePassOthers) enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
   }
 }
 
@@ -1053,10 +1071,19 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // from +1 s and were built at +20.3 s. Everything else keeps the hold.
     // The queue is empty under the hold (reconcile/poll never run here), so enqueue the exempt
     // set — rescue actors, explicit focus, on-glass rows — before draining, or the drain no-ops.
-    enqueueHoldExemptMeshBuilds(owner);
+    // The exempt set only changes on sim ticks and spawn events, so a full entity scan every
+    // display frame is wasted work through the whole hold — the busiest window the game has.
+    // Cadence it to the same 100 ms beat the rest of the streaming polls use; the first frame
+    // of the hold still collects immediately.
+    owner._holdExemptCollectS = (Number(owner._holdExemptCollectS) || 0) - dt;
+    if (owner._holdExemptCollectS <= 0) {
+      owner._holdExemptCollectS = HOLD_EXEMPT_COLLECT_SECONDS;
+      enqueueHoldExemptMeshBuilds(owner);
+    }
     if (typeof owner._drainProtectedFirstFlightBuilds === 'function') owner._drainProtectedFirstFlightBuilds();
     return 'held-first-flight';
   }
+  owner._holdExemptCollectS = 0;
   owner._renderResidencyPollS -= dt;
   let pollDue = false;
   if (owner._renderResidencyPollS <= 0) {
@@ -4979,9 +5006,19 @@ export const render = {
       data.pipelinesPending = false;
       pendingPipelineSubjects.delete(subject);
     };
-    const admitSubjectPipelines = (subject) => {
+    const admitSubjectPipelines = (subject, admissionOptions = {}) => {
       markSubjectPipelinesPending(subject, true);
-      return pipelineAdmissions.compile(subject)
+      // Latched roots (geometryPending, still invisible) are deadline work, not
+      // ambient work: the tracker's quiet window and first-flight auto-flush
+      // hold exist to coalesce background compiles, but a root that cannot
+      // become visible until this compile lands just pays the wait as late
+      // appearance. compileExplicit flushes the ambient queue and serializes
+      // the subject on the shared compile tail — still present-sliced in
+      // flight, so the link lands on its own beats rather than inside a draw.
+      const compilation = admissionOptions && admissionOptions.explicit === true
+        ? pipelineAdmissions.compileExplicit(subject)
+        : pipelineAdmissions.compile(subject);
+      return compilation
         .then((result) => {
           // A linked program still stalls inside the presented frame while its
           // textures/geometry upload. Run the residency pass behind the same
@@ -5027,7 +5064,7 @@ export const render = {
           markSubjectPipelinesPending(subject, false);
         });
     };
-    state.render.compileObjectPipelines = (subject) => {
+    state.render.compileObjectPipelines = (subject, admissionOptions = {}) => {
       // Loading first-picture wait must not join this queue: captureOpeningPipelinePlan still
       // ignores it, and the exact leaf plan compiles opening programs. Queue every other root
       // without awaiting so preparePostOpeningPipelines can link them behind the loading shell.
@@ -5051,7 +5088,7 @@ export const render = {
         }
       }
       if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
-      return admitSubjectPipelines(subject);
+      return admitSubjectPipelines(subject, admissionOptions);
     };
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
       // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
@@ -5101,9 +5138,26 @@ export const render = {
       return flushed;
     };
     this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({
-      compile: (root) => state.render.compileObjectPipelines(root),
+      // Latched roots are deadline work: skip the ambient compile queue's quiet
+      // window and first-flight auto-flush hold via the explicit lane. The
+      // compile still lands present-sliced, just without the coalescing wait.
+      compile: (root) => state.render.compileObjectPipelines(root, { explicit: true }),
       prepare: (root, options) => state.render.prepareAuthoredGpuResidency(root, options),
       yieldToMain: yieldToNextPresent,
+      // One root per present is the GPU-pacing contract; WHICH root drains next
+      // is a deadline choice. Explicit focus first, then earliest
+      // time-to-glass — a hull crossing the screen edge must not sit behind a
+      // background prop that merely enqueued first.
+      priorityOf: (entity) => {
+        if (!entity || entity.alive === false) return 99;
+        if (entityIsExplicitRenderFocus(entity, state)) return 0;
+        const env = renderAdmissionEnv(state);
+        const seconds = entityTimeToGlassSeconds(entity, env, state, TABLE_COLLECT_HORIZON_SECONDS);
+        return 1 + Math.min(
+          Number.isFinite(seconds) ? seconds : TABLE_COLLECT_HORIZON_SECONDS,
+          TABLE_COLLECT_HORIZON_SECONDS,
+        );
+      },
       isActive: (entity, root) => lifecycle.isActive() && entity.alive !== false
         && this._meshes.get(entity.id) === root && state.mode === 'flight',
       onReady: (entity, root) => {
@@ -8346,6 +8400,7 @@ export const render = {
       (entity) => !this._sectorBoundaryPreparations?.has(entity.id)
         && isEntityRenderRelevant(entity, state),
       (entity) => entityTimeToGlassSeconds(entity, env, state) <= TABLE_BUILD_URGENT_SECONDS,
+      (entity) => entityTimeToGlassSeconds(entity, env, state),
     );
     const built = this._drainMeshBuildQueue(buildBudget);
     // Existing fallback boundaries may have crossed the authored prefetch radius since the last
@@ -8423,6 +8478,17 @@ export const render = {
       if (entity.type === 'ship') (urgent ? urgentShips : shipCandidates).push(entity);
       else (urgent ? urgentOthers : otherCandidates).push(entity);
     }
+    // Within each tier the drain is still FIFO, so collection order used to decide which
+    // of several same-tier candidates spent the bounded per-frame build budget — a distant
+    // prop collected early could outrank a hull crossing the runway. Order every tier by
+    // predicted time-to-glass so the nearest deadline always drains first.
+    const byTimeToGlass = (a, b) => (
+      entityTimeToGlassSeconds(a, env, state) - entityTimeToGlassSeconds(b, env, state)
+    );
+    urgentShips.sort(byTimeToGlass);
+    urgentOthers.sort(byTimeToGlass);
+    shipCandidates.sort(byTimeToGlass);
+    otherCandidates.sort(byTimeToGlass);
     stats.queuedShips += urgentShips.length;
     stats.queuedOther += urgentOthers.length;
     for (let index = 0; index < urgentShips.length; index++) {
