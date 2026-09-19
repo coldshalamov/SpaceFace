@@ -144,6 +144,33 @@ export const BREAKAWAY_CAPTURE_FORK = Object.freeze({
   rearClearanceWu: 4,
 });
 
+// PQ-195.01: the fork's static collider set, derived from BREAKAWAY_CAPTURE_FORK and reconciled with
+// the authored machine (`place_breakaway_fork.glb`, bounds x −3.5..89.5, z −37.5..37.5, origin at the
+// mouth, inward +X):
+//   * RAILS are the machine's graphite structures at |z| = 31 with half-extents [37.5, 3.5, 4], from
+//     x = −1.5 to 73.5 (75 WU, centred on x = 36). Their INNER face is the authored clear half-width
+//     (|z| = 27), so a 16 WU load keeps the authored 22 WU of total lateral clearance. The 10 WU
+//     capsule thickness reaches the machine's outer greebles (|z| = 37, inside the 37.5 GLB bound).
+//   * the ARRESTOR is the transverse rear structure at x = 77 (75 WU wide) and its energy sinks out to
+//     x = 89.5. Its leading face is anchored to the bay's rear clearance plane that the catcher's
+//     custody head already defines (`depth + rearClearanceWu`), so a refused load still reaches the
+//     same rear-stop depth the existing physics contract measures.
+// Capsules: length runs along the entity's local +X axis and the cap radius is the half-thickness.
+// `data.proportions` is consumed by buildCraftCapsuleColliderDesc at a unit reference radius, so these
+// numbers are absolute WU; the system picks the body yaw the physics build convention requires.
+export const BREAKAWAY_FORK_COLLIDERS = Object.freeze({
+  railLength: 75,
+  railThickness: 10,
+  railAxialCenter: 36,
+  // inner face at `halfWidth` → centre at halfWidth + thickness/2.
+  railLateralOffset: BREAKAWAY_CAPTURE_FORK.halfWidth + 5,
+  // spans the full bay, meeting both rails.
+  arrestorLength: 2 * (BREAKAWAY_CAPTURE_FORK.halfWidth + 10),
+  arrestorThickness: 10,
+  // leading face at depth + rearClearance (the catcher head's leading face) → centre + thickness/2.
+  arrestorAxialCenter: BREAKAWAY_CAPTURE_FORK.depth + BREAKAWAY_CAPTURE_FORK.rearClearanceWu + 5,
+});
+
 export const HEIST_CAPSULE_RUN_VARIANT_ID = 'capsule_run';
 export const BREAKAWAY_THIRD_SHIFT_VARIANT_ID = 'breakaway_third_shift';
 

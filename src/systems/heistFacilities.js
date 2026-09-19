@@ -10,6 +10,7 @@ import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsA
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import {
   BREAKAWAY_CAPTURE_FORK,
+  BREAKAWAY_FORK_COLLIDERS,
   BREAKAWAY_FORK_VISUAL,
   PQ019_CAPSULE,
   PQ019_FACILITIES,
@@ -326,8 +327,8 @@ export const heistFacilities = {
 
       // PQ-195.00: the capture fork machine is a static dressing visual at the mouth the
       // capture kernel samples — the same placement math, so the seen machine and the
-      // physical capture volume cannot disagree. It never collides (rails become real
-      // colliders in leaf .01); the custody head above stays the physical rear stop.
+      // physical capture volume cannot disagree. The visual never collides; PQ-195.01 adds
+      // the real rails and rear arrestor below, and the custody head stays the rear stop.
       if (facility.id === BREAKAWAY_CAPTURE_FORK.facilityId) {
         let fork = liveOwnedThing(this.state, record.forkVisualEntityId)
           || this._findOwnedEntity(facility.id, `${facility.role}_fork`);
@@ -336,6 +337,7 @@ export const heistFacilities = {
           created++;
         }
         record.forkVisualEntityId = fork.id;
+        created += this._materializeForkColliders(facility, record);
       }
     }
     return created;
@@ -410,6 +412,10 @@ export const heistFacilities = {
         // PQ-195.00: restored pre-fork records lack this key; materialize treats a
         // missing id as "not yet spawned" and fills it in, so no migration is needed.
         forkVisualEntityId: null,
+        // PQ-195.01: the fork's static steel. Same "missing id means not yet spawned" rule.
+        forkRailAEntityId: null,
+        forkRailBEntityId: null,
+        forkArrestorEntityId: null,
       };
     }
     return records[facilityId];
@@ -496,6 +502,93 @@ export const heistFacilities = {
     });
   },
 
+  /**
+   * PQ-195.01: the fork's static steel — two rails and a rear arrestor. Spawned through the ordinary
+   * entity path and recorded on the facility record exactly like the custody head, so sector hops and
+   * re-materializes reuse the same bodies instead of orphaning or duplicating them. Position and yaw
+   * come from projectBreakawayForkMouth() — the same projection the kernel receiver and the visual use
+   * — so colliders, capture volume and machine cannot disagree.
+   */
+  _materializeForkColliders(facility, record) {
+    const mouth = projectBreakawayForkMouth(BREAKAWAY_CAPTURE_FORK);
+    // Lateral axis is the inward normal rotated a quarter turn. A capsule built through the craft
+    // recipe runs its length along local +X, whose world direction for a body yaw of θ is
+    // (cosθ, −sinθ) — so the rail yaw is atan2(−nz, nx), not the visual's atan2(nz, nx).
+    const lx = -mouth.nz;
+    const lz = mouth.nx;
+    const railRot = Math.atan2(-mouth.nz, mouth.nx);
+    const arrestorRot = Math.atan2(-lz, lx);
+    const spec = BREAKAWAY_FORK_COLLIDERS;
+    const at = (depth, lateral) => this._global({
+      x: mouth.x + mouth.nx * depth + lx * lateral,
+      z: mouth.z + mouth.nz * depth + lz * lateral,
+    });
+    const rows = [
+      [`${facility.role}_rail_a`, 'forkRailAEntityId',
+        at(spec.railAxialCenter, spec.railLateralOffset), railRot,
+        spec.railLength, spec.railThickness / 2],
+      [`${facility.role}_rail_b`, 'forkRailBEntityId',
+        at(spec.railAxialCenter, -spec.railLateralOffset), railRot,
+        spec.railLength, spec.railThickness / 2],
+      [`${facility.role}_arrestor`, 'forkArrestorEntityId',
+        at(spec.arrestorAxialCenter, 0), arrestorRot,
+        spec.arrestorLength, spec.arrestorThickness / 2],
+    ];
+    let created = 0;
+    for (const [role, idKey, pos, rot, length, halfWidth] of rows) {
+      let collider = entityIsAlive(this.state, record[idKey])
+        || this._findOwnedEntity(facility.id, role);
+      if (!collider) {
+        collider = this._spawnForkCollider(facility, role, pos, rot, length, halfWidth);
+        created++;
+      }
+      record[idKey] = collider.id;
+    }
+    return created;
+  },
+
+  _spawnForkCollider(facility, role, pos, rot, length, halfWidth) {
+    const mass = 1e9;
+    const envelope = Math.max(length * 0.5, halfWidth);
+    return this.helpers.spawnEntity({
+      type: 'fx',
+      _noMesh: true,
+      factionId: facility.factionId,
+      pos,
+      rot,
+      radius: envelope,
+      mass,
+      hull: 1e9,
+      hullMax: 1e9,
+      collides: true,
+      collisionMask: Masks.PAYLOAD,
+      ttl: Infinity,
+      flags: { noInterp: true, invuln: true, missionPinned: true },
+      homeSectorId: facility.sectorId,
+      physicsBody: {
+        dynamic: false,
+        shape: 'capsule',
+        // Unit reference radius: data.proportions carry absolute WU, so the capsule is exactly the
+        // authored machine dimensions rather than a multiple of the broadphase envelope.
+        radius: 1,
+        mass,
+        inertiaY: 0.5 * mass * envelope * envelope,
+        ccd: false,
+        material: 'station',
+      },
+      data: {
+        proportions: { length, halfWidth },
+        heistFacilityId: facility.id,
+        heistFacilityRole: role,
+        runtimeOwner: 'heistFacilities',
+        sectorId: facility.sectorId,
+        homeSectorId: facility.sectorId,
+        // Receipt semantics, not a physics filter: collisionMask does not filter Rapier contacts.
+        payloadCustodyOnly: true,
+      },
+    });
+  },
+
   _spawnFacilityHead(facility) {
     const socketLocal = projectPq019FacilitySocket(facility);
     const mass = 1e9;
@@ -555,6 +648,10 @@ export const heistFacilities = {
         if (!dropDressingRow(this.state, record.forkVisualEntityId)) {
           this.helpers.removeEntity(record.forkVisualEntityId);
         }
+      }
+      for (const idKey of ['forkRailAEntityId', 'forkRailBEntityId', 'forkArrestorEntityId']) {
+        if (record[idKey] != null) this.helpers.removeEntity(record[idKey]);
+        record[idKey] = null;
       }
       record.visualEntityId = null;
       record.headEntityId = null;
@@ -709,6 +806,15 @@ export const heistFacilities = {
         && !stillOurs(current, forkRole)
         && !stillOurs(dressing, forkRole)) {
         record.forkVisualEntityId = null;
+      }
+      // PQ-195.01 static steel: the record id clears when its body is gone, so a later materialize
+      // re-spawns instead of trusting a dead id.
+      for (const [idKey, role] of [
+        ['forkRailAEntityId', `${facility?.role}_rail_a`],
+        ['forkRailBEntityId', `${facility?.role}_rail_b`],
+        ['forkArrestorEntityId', `${facility?.role}_arrestor`],
+      ]) {
+        if (facility && record[idKey] === id && !stillOurs(current, role)) record[idKey] = null;
       }
     }
   },
