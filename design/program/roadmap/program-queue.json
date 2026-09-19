@@ -18763,7 +18763,7 @@
       "priority": 502,
       "title": "Leaving suspends the job instead of ending it",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "heist-breakaway"
@@ -18781,7 +18781,10 @@
         "npm run check:pq019c:mission",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-195.07-REPORT.md"
+      ],
+      "partialIntegration": "2026-09-19 leaf integrated on master at 1ada5b474 (controller direct implementation + self-review — opencode provider quota exhausted). Launched undecided Third Shift run suspends at the Tethys boundary: body snapshot (pos/vel/pose/spin/hull/capture) rides the serialized mission record — no new save key, facility state still uncaptured; drive() freezes all clocks, resume re-embodies the SAME body via respawnSuspendedCapsule with custody identity intact; Capsule Run and unlaunched runs keep existing semantics. Tests: pq195-07 7/7, leaf regressions all green, pq019c 67/67, baseline 15/15.",
       "brief": "Flying out of Tethys mid-recovery currently removes the load and fails the contract; the fiction promises a suspension. DONE WHEN: leaving and returning resumes the same run with the same body, and the contract neither pays nor silently fails on a sector boundary. Facility state (launcher schedules, capture) is NOT in the save capture plan today — a new top-level save key is an integrator decision, so raise it as a shared change rather than adding a second writer."
     },
     {
