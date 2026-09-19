@@ -12,7 +12,7 @@ import {
   livingHullScars,
 } from '../core/livingHull.js';
 import { isPlayerWanted } from '../systems/heat.js';
-import { SHIP_LEDGER_MAX_PAGE_SIZE, buildShipLedger } from '../systems/shipLedger.js';
+import { shipLedgerHasFactOutside } from '../systems/shipLedger.js';
 import { LEDGER_SPEAKER } from './storyLedger.js';
 
 export const MECHANIC_KIND = 'mechanic-hull';
@@ -67,9 +67,9 @@ function leftoverRapLine(state, hull) {
   // A clean plate is a hull file. Trade, renown, and loss rows are not scars —
   // naming them here made the mechanic contradict himself after the first sale.
   if (!livingHullScars(hull).length) return null;
-  const page = buildShipLedger(state || {}, { page: 0, pageSize: SHIP_LEDGER_MAX_PAGE_SIZE });
-  const fact = (page.entries || []).find((entry) => entry && !HULL_HISTORY_TYPES.has(entry.type));
-  if (!fact) return null;
+  // Presence, not a page: the berth refresh runs this every 18 frames, and building the ledger
+  // page here measured ~3.7 ms per refresh on a scarred hull with a traded ledger (PQ-207.00).
+  if (!shipLedgerHasFactOutside(state || {}, HULL_HISTORY_TYPES)) return null;
   return leftoverLine('The ship ledger already has a fact on this hull.');
 }
 

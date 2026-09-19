@@ -368,20 +368,40 @@ function makeCandidate(seed, input, gateOpen) {
   return candidate;
 }
 
-function collectCandidates(state) {
+function collectCandidates(state, options = {}) {
   const candidates = [];
   const seen = new Set();
+  // PQ-207.00 — presence mode. The dock berth asks "does the ledger hold a fact that is not hull
+  // history?" on the station's 18-frame refresh. A probe walks the same sources under the same
+  // admission rules and stops at the first admitted row outside `exclude`, so it builds no
+  // candidate prose, no receipt ids, and no page. Read-only, like every other path here.
+  const probe = options.probe && options.probe.exclude instanceof Set
+    ? { exclude: options.probe.exclude, hit: false, done: false }
+    : null;
   const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0 || 1;
   const gateOpen = volsLedgerGateOpen(state);
   let observed = 0;
   const add = (input) => {
     observed++;
     if (!input || !SHIP_LEDGER_TEMPLATES[input.type] || observed > SHIP_LEDGER_MAX_SOURCE_RECORDS) return;
+    if (probe) {
+      if (!probe.exclude.has(input.type)) { probe.hit = true; probe.done = true; }
+      return;
+    }
     const candidate = makeCandidate(seed, input, gateOpen);
     if (seen.has(candidate.id)) return;
     seen.add(candidate.id);
     candidates.push(candidate);
   };
+  // A probe answers as soon as it has a hit: no later source can un-file a fact, and the page
+  // fields a probe never reads stay empty rather than being paid for.
+  const probeResult = () => ({
+    candidates,
+    observed,
+    gateOpen,
+    evidenceConflicts: [],
+    probeHit: probe.hit,
+  });
 
   for (const entry of sourceArray(state && state.lossLedger && state.lossLedger.entries)) {
     if (!entry) continue;
@@ -398,28 +418,32 @@ function collectCandidates(state) {
       },
     });
   }
+  if (probe && probe.done) return probeResult();
 
   const tradeLedger = sourceArray(state && state.player && state.player.tradeLedger);
   // The live economy ledger predates receipt ids. Count identical rows oldest-first so two UI
   // actions in one fixed sim tick remain two receipts instead of collapsing at the projection seam.
-  // A future canonical receiptId wins immediately without changing this reader.
+  // A future canonical receiptId wins immediately without changing this reader. Presence mode
+  // builds no receipt id, so the pre-pass does not run there.
   const tradeOccurrenceByIndex = new Map();
   const tradeOccurrenceCounts = new Map();
-  for (let index = tradeLedger.length - 1; index >= 0; index--) {
-    const entry = tradeLedger[index];
-    if (!entry) continue;
-    const side = entry.side === 'sell' ? 'sell' : 'buy';
-    const base = tradeReceiptBase(entry, side);
-    const occurrence = (tradeOccurrenceCounts.get(base) || 0) + 1;
-    tradeOccurrenceCounts.set(base, occurrence);
-    tradeOccurrenceByIndex.set(index, occurrence);
+  if (!probe) {
+    for (let index = tradeLedger.length - 1; index >= 0; index--) {
+      const entry = tradeLedger[index];
+      if (!entry) continue;
+      const side = entry.side === 'sell' ? 'sell' : 'buy';
+      const base = tradeReceiptBase(entry, side);
+      const occurrence = (tradeOccurrenceCounts.get(base) || 0) + 1;
+      tradeOccurrenceCounts.set(base, occurrence);
+      tradeOccurrenceByIndex.set(index, occurrence);
+    }
   }
   for (const [index, entry] of tradeLedger.entries()) {
     if (!entry) continue;
     const side = entry.side === 'sell' ? 'sell' : 'buy';
     const base = tradeReceiptBase(entry, side);
     const receiptIdentity = text(entry.receiptId, '')
-      || `${base}:occurrence-${tradeOccurrenceByIndex.get(index) || 1}`;
+      || (probe ? base : `${base}:occurrence-${tradeOccurrenceByIndex.get(index) || 1}`);
     add({
       type: 'trade',
       sourceId: receiptIdentity,
@@ -434,6 +458,7 @@ function collectCandidates(state) {
         credits: Math.round(Math.abs(finite(entry.total, 0))).toLocaleString('en-US'),
       },
     });
+    if (probe && probe.done) return probeResult();
   }
 
   // PQ-155.02 — session sinks are durable economy receipts. This projector only reads them.
@@ -472,6 +497,14 @@ function collectCandidates(state) {
       },
     };
     observed++;
+    if (probe) {
+      if (observed <= SHIP_LEDGER_MAX_SOURCE_RECORDS && !probe.exclude.has(candidate.type)) {
+        probe.hit = true;
+        probe.done = true;
+        return probeResult();
+      }
+      continue;
+    }
     if (observed > SHIP_LEDGER_MAX_SOURCE_RECORDS || seen.has(candidate.id)) continue;
     seen.add(candidate.id);
     candidates.push(candidate);
@@ -513,6 +546,7 @@ function collectCandidates(state) {
         },
       });
     }
+    if (probe && probe.done) return probeResult();
   }
 
   // PQ-142.01 — the hull the player is flying reads its own history into the same archive. The
@@ -536,6 +570,7 @@ function collectCandidates(state) {
         },
       });
     }
+    if (probe && probe.done) return probeResult();
     for (const act of livingHullRenown(activeHull.livingHull)) {
       add({
         type: 'renown',
@@ -549,6 +584,7 @@ function collectCandidates(state) {
         },
       });
     }
+    if (probe && probe.done) return probeResult();
   }
 
   const vestaCache = state && state.world && state.world.vestaOreCache;
@@ -602,6 +638,7 @@ function collectCandidates(state) {
         beat: record.beat,
       },
     });
+    if (probe && probe.done) return probeResult();
   }
 
   const encounterHistory = sourceArray(state && state.story && state.story.depthProgramEncounters
@@ -619,6 +656,7 @@ function collectCandidates(state) {
         outcome: humanizeId(record.outcome, 'unresolved'),
       },
     });
+    if (probe && probe.done) return probeResult();
   }
 
   // Named dead are the smallest and most important receipt family. Project them before the future
@@ -631,6 +669,7 @@ function collectCandidates(state) {
       at: record.recoveredAt == null ? record.at : record.recoveredAt,
       tokens: { name: text(record.name, 'an unnamed dead') },
     });
+    if (probe && probe.done) return probeResult();
   }
 
   const stuntIncidents = sourceArray(state && state.story && state.story.titles
@@ -662,6 +701,7 @@ function collectCandidates(state) {
         evidence,
       },
     });
+    if (probe && probe.done) return probeResult();
   }
 
   for (const record of titleRecords(state)) {
@@ -675,6 +715,7 @@ function collectCandidates(state) {
       tokens: { title: text(title) },
       trickId: record && record.trickId,
     });
+    if (probe && probe.done) return probeResult();
   }
 
   // Five physically earned Cathedral evidence pages, projected as witness-type rows carrying an
@@ -684,6 +725,15 @@ function collectCandidates(state) {
   for (const item of evidence.winners) {
     const at = Math.max(0, finite(item.receipt.earnedAtS, 0));
     const pageId = item.pageId;
+    if (probe) {
+      observed++;
+      if (observed <= SHIP_LEDGER_MAX_SOURCE_RECORDS && !probe.exclude.has('witness')) {
+        probe.hit = true;
+        probe.done = true;
+        return probeResult();
+      }
+      continue;
+    }
     candidates.push({
       id: `ledger_evidence_${pageId}`,
       schemaVersion: SHIP_LEDGER_SCHEMA_VERSION,
@@ -715,7 +765,7 @@ function collectCandidates(state) {
   }
 
   candidates.sort((a, b) => b.at - a.at || b.cycle - a.cycle || a.id.localeCompare(b.id));
-  return { candidates, observed, gateOpen, evidenceConflicts: evidence.conflicts };
+  return { candidates, observed, gateOpen, evidenceConflicts: evidence.conflicts, probeHit: probe ? probe.hit : false };
 }
 
 function quoteCandidates(entries, enabled) {
@@ -874,6 +924,19 @@ export function buildShipLedger(state, options = {}) {
 
 export function shipLedgerGraffitiQuotes(state) {
   return buildShipLedger(state, { page: 0, pageSize: SHIP_LEDGER_MAX_PAGE_SIZE }).endgameQuotes;
+}
+
+/**
+ * Cheap presence probe over the same walk `buildShipLedger` uses: true when the ledger holds at
+ * least one admitted row whose type is outside `excludeTypes`. The walk stops at the first such
+ * row, so a caller on a frame cadence pays for one row, not for a page. Read-only.
+ *
+ * The dock berth's mechanic asks this every 18 frames (PQ-207.00); building the page there cost
+ * ~3.7 ms per refresh on a scarred hull with a traded ledger.
+ */
+export function shipLedgerHasFactOutside(state, excludeTypes) {
+  const exclude = excludeTypes instanceof Set ? excludeTypes : new Set(excludeTypes || []);
+  return collectCandidates(state || {}, { probe: { exclude } }).probeHit;
 }
 
 export default buildShipLedger;
