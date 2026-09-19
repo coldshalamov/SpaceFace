@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-15",
+  "updatedAt": "2026-09-19",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -4086,6 +4086,157 @@
       ],
       "evidence": [],
       "brief": "ADMITTED 2026-09-16: ship always-on spatial hash, combat SoA, dirty journal, NEAR token budget, save-safe Rapier sleep, off-glass NPC outcomes, packed-ORM family keys, after-present compile, and snapshot lean columns. Quiet-machine census is not a gate. Same picture; no dummy prewarm; GPU batching and Worker/WebGPU stay off. See design/program/PERF_ADVANCED_CAMPAIGN.md."
+    },
+    {
+      "id": "PQ-205",
+      "priority": 1002,
+      "title": "Ordnance bombs refinement follow-on",
+      "state": "ready",
+      "canonical": [
+        "ORDNANCE-BOMBS-REFINEMENT"
+      ],
+      "aliases": [
+        "bomb-bay-refinement"
+      ],
+      "dependsOn": [],
+      "mutexes": [
+        "browser-gpu"
+      ],
+      "sources": [
+        "design/ORDNANCE_BOMBS_REFINEMENT.md",
+        "design/ORDNANCE_BOMBS_SPEC.md"
+      ],
+      "checks": [
+        "node --test test/bombs.test.mjs"
+      ],
+      "evidence": [
+        "design/ORDNANCE_BOMBS_REFINEMENT.md"
+      ],
+      "brief": "Take the live drift-bomb bay from source-fit to reviewed: default-route look/feel and frame pacing across all eight states, the real audio cue IDs with victim-attached statuses, one telegraphed NPC pursuit-lane doctrine with a shootable projectile-sweep proxy, and the rack economy/loadout decision. No second ordnance sim, HUD, or target-scan loop."
+    },
+    {
+      "id": "PQ-206",
+      "priority": 1003,
+      "title": "Combat variety residuals",
+      "state": "ready",
+      "canonical": [
+        "COMBAT-VARIETY-RESIDUALS"
+      ],
+      "aliases": [
+        "combat-audit-followups"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "design/program/roadmap/receipts/combat-audit/2026-09-18-combat-variety-vertical.md"
+      ],
+      "checks": [
+        "node --test test/combat-ecology-roles.test.mjs"
+      ],
+      "evidence": [
+        "design/program/roadmap/receipts/combat-audit/2026-09-18-combat-variety-vertical.md"
+      ],
+      "brief": "Close the combat-variety vertical’s honest gaps: the ~12 s boss 2v2 resolution (the capital dies to something other than pilot DPS), the wasp swarm’s one-pass lifespan, the degenerate flee cells, B13’s headed jitter pass, and the two pre-existing combat-ecology-roles pin failures."
+    },
+    {
+      "id": "PQ-207",
+      "priority": 1004,
+      "title": "People-who-remember residuals",
+      "state": "ready",
+      "canonical": [
+        "PEOPLE-WHO-REMEMBER-RESIDUALS"
+      ],
+      "aliases": [
+        "pq-150-followups"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "design/program/roadmap/receipts/PQ-150.01-REPORT.md",
+        "design/program/roadmap/receipts/PQ-150.02-REPORT.md",
+        "docs/program-compass/2026-09-ACTUAL-GAME.md"
+      ],
+      "checks": [
+        "node --test test/pq-150-01-mechanic.test.mjs"
+      ],
+      "evidence": [
+        "design/program/roadmap/receipts/PQ-150.01-REPORT.md"
+      ],
+      "brief": "Resolve the mechanic-berth leftovers (double Mechanic speaker, the unmeasured buildShipLedger call on the 18-frame berth refresh, and whether the third article crowds the stage) and prove the radio layer actually reaches a live open-world session, where the compass measured bark:shown 0 in ten hours."
+    },
+    {
+      "id": "PQ-208",
+      "priority": 1005,
+      "title": "Build-identity drift guard and unwired verb keys",
+      "state": "ready",
+      "canonical": [
+        "BUILD-IDENTITY-DRIFT-GUARD"
+      ],
+      "aliases": [
+        "progression-verb-guard"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "design/program/PROGRESSION_VERTICAL_2026-09-18.md",
+        "design/program/PROGRESSION_VERTICAL_AUDIT.md"
+      ],
+      "checks": [
+        "npm run check:progression:verbs",
+        "npm run check:build-identities"
+      ],
+      "evidence": [
+        "design/program/PROGRESSION_VERTICAL_2026-09-18.md"
+      ],
+      "brief": "Keep the verb ladder honest: add a drift guard so a module cannot declare a verb key nothing implements, and either wire or reclassify the two declared-but-unwired keys (microJumpBlink, reactiveMissileKnockback). Do not weaken the generated audit."
+    },
+    {
+      "id": "PQ-209",
+      "priority": 1006,
+      "title": "Actual-game defects from the program compass",
+      "state": "ready",
+      "canonical": [
+        "ACTUAL-GAME-DEFECTS"
+      ],
+      "aliases": [
+        "compass-top-10"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "docs/program-compass/2026-09-ACTUAL-GAME.md"
+      ],
+      "checks": [
+        "node scripts/run-actual-game-playthrough.mjs"
+      ],
+      "evidence": [
+        "docs/program-compass/2026-09-ACTUAL-GAME.md"
+      ],
+      "brief": "Move the measured open-world shape: restore encounter supply in hours 5–9, close the combat→salvage→economy→law chain at least once, and give income a curve past the first-hour cliff. Rerun the six-session battery and diff the hourly tables; sector-boundary flapping is already fixed by 3e84b438e."
+    },
+    {
+      "id": "PQ-210",
+      "priority": 1007,
+      "title": "Mining-prop stragglers re-author",
+      "state": "ready",
+      "canonical": [
+        "MINING-PROP-STRAGGLERS"
+      ],
+      "aliases": [
+        "place-mining-drone",
+        "place-conveyor-barge"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "design/program/02_REMAINING_WORK.md",
+        "docs/visual-assets/README.md"
+      ],
+      "checks": [],
+      "evidence": [
+        "design/program/02_REMAINING_WORK.md"
+      ],
+      "brief": "Re-author place_mining_drone and place_conveyor_barge through the material-truth V2 Blender pipeline — the last two live world-dressing props on the 2026-07-05 bevel pass — then promote release GLBs, manifests, and LOD/collision evidence on the standard visual-asset route."
     }
   ],
   "dispatchUnits": [
@@ -18823,7 +18974,7 @@
       "priority": 504,
       "title": "A player has actually played it",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-195.00",
         "PQ-195.01",
@@ -18849,7 +19000,10 @@
         "npm run check:pq019c:mission",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-195.09-REPORT.md"
+      ],
+      "partialIntegration": "2026-09-19 leaf integrated on master at 130f09b8b (controller direct implementation + self-review — opencode provider quota exhausted). Route acceptance exposed and closed a real production gap: the SP-07 load was categorically invulnerable (projectile mask carries no payload membership; damage verb excluded the type), so the failed-then-reduced-recovery route could never fire. The load's collision mask gains Masks.PROJECTILE in both fresh and resumed spawn specs and the catalog admits payload into the damage verb — a 480-hull cage: durable, not invulnerable. All four DONE-WHEN routes proven unaided on the ordinary route through public inputs only: lawful Concord fork delivery, Quiet fence delivery via real contact-force receipts (weaponImpulseConsequences, the PRODUCTION_FEATURES configuration), destroyed-assembly reduced wreck mined by the beam, and unattended bounded resolution. Frame evidence: runtime-witness on the owner's machine (Ultra 7 155U, Intel iGPU ANGLE/D3D11, 1832x973 @1.25, default route, New Game seed 47, commit 32a5c6c83+diff): presentation p95 13.9/avg 8.7/max 19.1 ms, render p95 9.9, sim p95 5.3, worst long-task 1169 ms during flight-entry load, 89.1% named hitch coverage, largest live cost presentation/bloom+external scheduling. Tests: pq195-09 4/4, leaf regressions 56/56, interaction-descriptors 30/30, pq019c 67/67, playable 16/16, baseline 15/15 green (wall-clock budget exceeded ~2.5s, all checks green).",
       "brief": "Route acceptance for the finished feature. DONE WHEN: protect-and-deliver, fence, and failed-then-reduced-recovery each complete unaided on the ordinary route; the event left alone still has understandable actors; frame-time distribution and worst hitch are named with hardware, resolution, settings, seed and commit on the owner's target machine; and a fresh player finishes it without being taught the solution."
     },
     {
@@ -19032,6 +19186,370 @@
       ],
       "receiptRefs": [],
       "brief": "Fence packs bank/pitch. Present applies hull lean from snapshot columns. WASM SIMD, Worker, and WebGPU are not started."
+    },
+    {
+      "id": "PQ-205.00",
+      "parentId": "PQ-205",
+      "priority": 9820,
+      "title": "Bomb-bay route acceptance and look/feel",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "browser-gpu"
+      ],
+      "paths": [
+        "design/ORDNANCE_BOMBS_REFINEMENT.md",
+        "test/fixtures/bomb-choreography/presentation.html"
+      ],
+      "checks": [
+        "node --test test/bombs.test.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Walk the default Browser/Electron route with an isolated save across all eight safe/armed/committed/burst states plus gravity/tar fields at normal and minimum zoom and reduced motion/flash; capture a fixed-seed hitch and frame-pacing number for 0/6/24 bombs."
+    },
+    {
+      "id": "PQ-205.01",
+      "parentId": "PQ-205",
+      "priority": 9821,
+      "title": "Bomb audio catalog and victim-attached statuses",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-205.00"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/audio/",
+        "src/data/bombs.js"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Adopt the real bomb cue IDs into the existing catalog, give the slug a bounded source-following inhale/collapse, terminate loops on every fieldEnded/cleanup path, and share thermite burn duration through the existing status owner."
+    },
+    {
+      "id": "PQ-205.02",
+      "parentId": "PQ-205",
+      "priority": 9822,
+      "title": "NPC bomb mirror and shootable projectile proxy",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-205.00"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/systems/bombs.js",
+        "src/ai/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "One telegraphed pursuit-lane doctrine calling bombs.drop/commandDetonate, plus a moving projectile-sweep proxy with an authoritative pose adapter; destroying it retires the bomb exactly once. No second integrator."
+    },
+    {
+      "id": "PQ-205.03",
+      "parentId": "PQ-205",
+      "priority": 9823,
+      "title": "Bomb rack economy and loadout orchestration",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-205.00"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/data/bombs.js",
+        "src/systems/economy.js"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Decide a fitted rack / small loadout / combat resupply rather than eight mandatory consumables; preserve cooldowns across selection and keep economy/cargo/unlock owners authoritative."
+    },
+    {
+      "id": "PQ-206.00",
+      "parentId": "PQ-206",
+      "priority": 9830,
+      "title": "Dreadnought 2v2 ~12 s resolution investigation",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/combat/runtime.js",
+        "src/data/missions.js"
+      ],
+      "checks": [
+        "node --test test/combat-ecology-roles.test.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Find what kills the capital in the ~12 s wing cell (non-pilot-DPS), decide authored gank versus bug, and pin it with a fixed-seed scenario. Stat owners are combat.js/missions.js."
+    },
+    {
+      "id": "PQ-206.01",
+      "parentId": "PQ-206",
+      "priority": 9831,
+      "title": "Swarm one-pass lifespan combat value",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/ai/combatDoctrine.js"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "The wasp swarm dies in ~4.5 s having flown one pass and deals ~0 damage in 1v1; the fire chain works on the passive probe. Raise the one-pass combat value without a generic HP bump."
+    },
+    {
+      "id": "PQ-206.02",
+      "parentId": "PQ-206",
+      "priority": 9832,
+      "title": "Degenerate flee-cell egress",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/ai/",
+        "src/systems/tacticalAI.js"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Low-hull morale flee plus 960 WU egress stacks when the pilot cannot finish the wing; bound the degenerate cells without removing authored flee behaviour."
+    },
+    {
+      "id": "PQ-206.03",
+      "parentId": "PQ-206",
+      "priority": 9833,
+      "title": "B13 headed jitter + combat-ecology-roles pin",
+      "kind": "acceptance_repair",
+      "state": "planned",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "test/combat-ecology-roles.test.mjs",
+        "src/data/enemies.js"
+      ],
+      "checks": [
+        "node --test test/combat-ecology-roles.test.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Complete B13 by measuring jitter on the headed route, and repair the two pre-existing combat-ecology-roles failures (ghost preferredRange data vs pin) without re-recording a golden to hide drift."
+    },
+    {
+      "id": "PQ-207.00",
+      "parentId": "PQ-207",
+      "priority": 9840,
+      "title": "Mechanic berth per-refresh ledger cost",
+      "kind": "performance",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/story/mechanicVoice.js",
+        "src/ui/dockArrival.js"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Measurement and removal of the per-18-frame buildShipLedger call the mechanic rap line added on the common clean-hull path; the repo has a known GC-churn hitch history."
+    },
+    {
+      "id": "PQ-207.01",
+      "parentId": "PQ-207",
+      "priority": 9841,
+      "title": "Mechanic berth double speaker and crowding",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/story/storyLedger.js",
+        "src/ui/views/stationFrames.js",
+        "styles/orbital.css"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Decide and land whether one Mechanic should carry both the ledger and hull articles in one header, and whether the third article crowds the narrow-breakpoint stage."
+    },
+    {
+      "id": "PQ-207.02",
+      "parentId": "PQ-207",
+      "priority": 9842,
+      "title": "Bark/radio online census on the live route",
+      "kind": "acceptance_review",
+      "state": "planned",
+      "dependsOn": [],
+      "mutexes": [
+        "browser-gpu"
+      ],
+      "paths": [
+        "src/systems/barkDirector.js",
+        "src/data/bandRadio.js"
+      ],
+      "checks": [
+        "node --test test/pq-150-02-radio.test.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Explain bark:shown 0 across ten live hours while comms popups run ~50/hour, then either wire the layer or correct the compass finding on the audio bus."
+    },
+    {
+      "id": "PQ-207.03",
+      "parentId": "PQ-207",
+      "priority": 9843,
+      "title": "Blind mechanic readback percentage",
+      "kind": "acceptance_review",
+      "state": "planned",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "test/pq-150-01-mechanic.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq-150-01-mechanic.test.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Re-run the packet test in a live environment and produce the blind readback percentage the receipt refused to invent."
+    },
+    {
+      "id": "PQ-208.00",
+      "parentId": "PQ-208",
+      "priority": 9850,
+      "title": "Progression verb drift guard",
+      "kind": "program_control",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "scripts/check-progression-verb-audit.mjs",
+        "src/data/modules.js"
+      ],
+      "checks": [
+        "npm run check:progression:verbs"
+      ],
+      "receiptRefs": [],
+      "brief": "Extend the existing audit so a declared verb key with no implemented capability fails, rather than silently classifying as a verb."
+    },
+    {
+      "id": "PQ-208.01",
+      "parentId": "PQ-208",
+      "priority": 9851,
+      "title": "Wire or reclassify unwired verb keys",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-208.00"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/data/modules.js",
+        "src/combat/"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "microJumpBlink (unique_pale_coil_warp_drive) and reactiveMissileKnockback (unique_choir_bell_aegis) are declared as verbs but name no shipped capability; wire them or reclassify honestly."
+    },
+    {
+      "id": "PQ-209.00",
+      "parentId": "PQ-209",
+      "priority": 9860,
+      "title": "Encounter supply hours 5-9",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/systems/world.js",
+        "src/data/encounters.js"
+      ],
+      "checks": [
+        "node scripts/run-actual-game-playthrough.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Restore encounter:spawned in hours 5-9 (currently 0 both seeds while the director issues ~160 commands/hour); rerun the six-session battery and diff the hourly tables."
+    },
+    {
+      "id": "PQ-209.01",
+      "parentId": "PQ-209",
+      "priority": 9861,
+      "title": "Close the combat->salvage->economy chain",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-209.00"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/systems/economy.js",
+        "src/systems/missions.js"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "The signature chain occurred zero times in ~60 hours; make mined/looted goods and the combat aftermath meet the economy at least once on the scripted battery, and make progression spend reachable."
+    },
+    {
+      "id": "PQ-209.02",
+      "parentId": "PQ-209",
+      "priority": 9862,
+      "title": "Income curve past hour 0",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-209.00"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/systems/economy.js",
+        "src/systems/fieldDepletion.js"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "The starter field depletes and the next reachable field is ~14,000 WU away with nothing on the way; give income a curve, and address the ~92-shots-per-rock mining click-farm."
+    },
+    {
+      "id": "PQ-210.00",
+      "parentId": "PQ-210",
+      "priority": 9870,
+      "title": "Re-author place_mining_drone (material-truth V2)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "browser-gpu"
+      ],
+      "paths": [
+        "assets/ships/parts/places/place_mining_drone.glb",
+        "assets/ships/release/parts/places/place_mining_drone.glb",
+        "assets/ships/parts/parts_manifest.json"
+      ],
+      "checks": [
+        "npm run check:graphics:asset-receipts"
+      ],
+      "receiptRefs": [],
+      "brief": "Material-truth preflight, authored bevels/weighted normals, UV-authored PBR, top-down silhouette read, LOD0/1/2 in prop budget, authored colliders; promote release GLBs and manifests."
+    },
+    {
+      "id": "PQ-210.01",
+      "parentId": "PQ-210",
+      "priority": 9871,
+      "title": "Re-author place_conveyor_barge (material-truth V2)",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-210.00"
+      ],
+      "mutexes": [
+        "browser-gpu"
+      ],
+      "paths": [
+        "assets/ships/parts/places/place_conveyor_barge.glb",
+        "assets/ships/release/parts/places/place_conveyor_barge.glb",
+        "assets/ships/release/release_manifest.json"
+      ],
+      "checks": [
+        "npm run check:graphics:asset-receipts"
+      ],
+      "receiptRefs": [],
+      "brief": "Same material-truth V2 route for the 73 m industrial barge; keep the Abandoned Mining Colony landmark binding and world dressing counts honest."
     }
   ]
 }
