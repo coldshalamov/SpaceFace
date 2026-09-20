@@ -1,4 +1,5 @@
 import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import {
   OCCUPATIONAL_ROLE_IDS,
   OCCUPATIONAL_SILHOUETTE_TOKENS,
@@ -207,12 +208,19 @@ function edgeToIndex(edge) {
   return 3;
 }
 
-function betterHostile(aTier, aDist, bTier, bDist) {
-  return aTier > bTier || (aTier === bTier && aDist < bDist);
-}
+// INF-052 ranking. The set already had a small cap and a scanner-range knowledge gate; what it
+// ranked by was mass class and then RAW distance, rebuilt every overlay tick. A fighter burning
+// down on the player lost the slot to a bigger drifter, and two near-equidistant contacts traded
+// arcs tick after tick. Rank is now lexicographic with coarse keys so small jitter cannot
+// reshuffle: tier → an announced attacker → a closing bucket → a distance band → entity id.
+const CLOSING_BUCKET_AT_YOU = 90;   // WU/s relative closure: at/above this they are flying at you
+const CLOSING_BUCKET_CLOSING = 12;  // above this reads as drifting closed, below as station-keeping
+const DIST_BAND_WU = 650;           // ~1/8 of scanner range; ranking flips only on a real crossing
 
-function worseHostile(aTier, aDist, bTier, bDist) {
-  return aTier < bTier || (aTier === bTier && aDist > bDist);
+function closingBucketOf(closing) {
+  if (closing >= CLOSING_BUCKET_AT_YOU) return 2;
+  if (closing >= CLOSING_BUCKET_CLOSING) return 1;
+  return 0;
 }
 
 function buildMissileGlyph() {
@@ -302,7 +310,9 @@ export function createThreatHalo(root, busOrOpts) {
   const hostileX = new Float64Array(HOSTILE_LIMIT);
   const hostileY = new Float64Array(HOSTILE_LIMIT);
   const hostileTier = new Int16Array(HOSTILE_LIMIT);
-  const hostileDist = new Float64Array(HOSTILE_LIMIT);
+  const hostileTele = new Int16Array(HOSTILE_LIMIT);
+  const hostileBucket = new Int16Array(HOSTILE_LIMIT);
+  const hostileBand = new Int16Array(HOSTILE_LIMIT);
   const hostileOpacity = new Float64Array(HOSTILE_LIMIT);
   const hostileRole = new Array(HOSTILE_LIMIT);
   const hostileToken = new Array(HOSTILE_LIMIT);
@@ -326,7 +336,8 @@ export function createThreatHalo(root, busOrOpts) {
   let viewportW = 0;
   let viewportH = 0;
   const clearRect = { x: 0, y: 0, width: 0, height: 0 };
-  // Order: left stack, right dock, one-voice floor, power rail, drive band, massline lane.
+  // Order: left stack, right dock, one-voice floor, power rail, drive band, massline lane, and
+  // the live objective marker — re-projected every update, since it moves with the player.
   const reservedRects = [
     { x: 0, y: 0, width: 0, height: 0 },
     { x: 0, y: 0, width: 0, height: 0 },
@@ -334,7 +345,32 @@ export function createThreatHalo(root, busOrOpts) {
     { x: 0, y: 0, width: 0, height: 0 },
     { x: 0, y: 0, width: 0, height: 0 },
     { x: 0, y: 0, width: 0, height: 0 },
+    { x: 0, y: 0, width: 0, height: 0 },
   ];
+  const OBJECTIVE_RECT_W = 104;
+  const OBJECTIVE_RECT_H = 60;
+
+  function updateObjectiveReservation(state, worldToScreen, width, height) {
+    const rect = reservedRects[6];
+    const waypoint = state && state.nav && state.nav.waypoint;
+    const pos = resolveWaypointPresentationPosition(state, waypoint);
+    if (!pos) { rect.width = 0; rect.height = 0; return; }
+    projectionWorld.x = pos.x;
+    projectionWorld.y = 0;
+    projectionWorld.z = pos.z;
+    const projected = worldToScreen(projectionWorld, projectionScreen);
+    if (!projected || !Number.isFinite(projected.x) || !Number.isFinite(projected.y)) {
+      rect.width = 0; rect.height = 0; return;
+    }
+    // The objective arrow clamps to the same screen edges the arcs patrol (hud.js clamps to
+    // 18..w-18 on-screen and hugs the edge band off-screen), so reserve around the clamped point.
+    const x = clamp(projected.x, 24, width - 24);
+    const y = clamp(projected.y, 24, height - 24);
+    rect.width = OBJECTIVE_RECT_W;
+    rect.height = OBJECTIVE_RECT_H;
+    rect.x = x - rect.width * 0.5;
+    rect.y = y - rect.height * 0.5;
+  }
 
   const occupiedCount = new Int16Array(4);
   const occupiedCoord = [
@@ -694,13 +730,34 @@ export function createThreatHalo(root, busOrOpts) {
     setDisplay(layer, false);
   }
 
-  function pushHostileCandidate(x, y, tier, dist, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null, id = null) {
+  // Full lexicographic rank over the parallel candidate arrays. Every key after tier is coarse
+  // (a boolean, a 3-step bucket, a 650 WU band) or the immutable id, so two candidates that swap
+  // raw distance inside one band keep their order — the arcs stop reshuffling.
+  function candidateOutranks(i, j) {
+    if (hostileTier[i] !== hostileTier[j]) return hostileTier[i] > hostileTier[j];
+    if (hostileTele[i] !== hostileTele[j]) return hostileTele[i] > hostileTele[j];
+    if (hostileBucket[i] !== hostileBucket[j]) return hostileBucket[i] > hostileBucket[j];
+    if (hostileBand[i] !== hostileBand[j]) return hostileBand[i] < hostileBand[j];
+    return String(hostileId[i]) < String(hostileId[j]);
+  }
+
+  function outranksSlot(i, tier, tele, bucket, band, id) {
+    if (tier !== hostileTier[i]) return tier > hostileTier[i];
+    if (tele !== hostileTele[i]) return tele > hostileTele[i];
+    if (bucket !== hostileBucket[i]) return bucket > hostileBucket[i];
+    if (band !== hostileBand[i]) return band < hostileBand[i];
+    return String(id) < String(hostileId[i]);
+  }
+
+  function pushHostileCandidate(x, y, tier, tele, bucket, band, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null, id = null) {
     if (hostileCount < HOSTILE_LIMIT) {
       const i = hostileCount++;
       hostileX[i] = x;
       hostileY[i] = y;
       hostileTier[i] = tier;
-      hostileDist[i] = dist;
+      hostileTele[i] = tele;
+      hostileBucket[i] = bucket;
+      hostileBand[i] = band;
       hostileOpacity[i] = opacity;
       hostileRole[i] = role;
       hostileToken[i] = token;
@@ -711,14 +768,16 @@ export function createThreatHalo(root, busOrOpts) {
 
     let worst = 0;
     for (let i = 1; i < HOSTILE_LIMIT; i++) {
-      if (worseHostile(hostileTier[i], hostileDist[i], hostileTier[worst], hostileDist[worst])) worst = i;
+      if (candidateOutranks(worst, i)) worst = i;
     }
-    if (!betterHostile(tier, dist, hostileTier[worst], hostileDist[worst])) return;
+    if (!outranksSlot(worst, tier, tele, bucket, band, id)) return;
 
     hostileX[worst] = x;
     hostileY[worst] = y;
     hostileTier[worst] = tier;
-    hostileDist[worst] = dist;
+    hostileTele[worst] = tele;
+    hostileBucket[worst] = bucket;
+    hostileBand[worst] = band;
     hostileOpacity[worst] = opacity;
     hostileRole[worst] = role;
     hostileToken[worst] = token;
@@ -750,13 +809,15 @@ export function createThreatHalo(root, busOrOpts) {
     for (let i = 0; i < hostileCount - 1; i++) {
       let best = i;
       for (let j = i + 1; j < hostileCount; j++) {
-        if (betterHostile(hostileTier[j], hostileDist[j], hostileTier[best], hostileDist[best])) best = j;
+        if (candidateOutranks(j, best)) best = j;
       }
       if (best === i) continue;
       const tx = hostileX[i];
       const ty = hostileY[i];
       const tt = hostileTier[i];
-      const td = hostileDist[i];
+      const tl = hostileTele[i];
+      const tb = hostileBucket[i];
+      const td = hostileBand[i];
       const to = hostileOpacity[i];
       const tr = hostileRole[i];
       const tk = hostileToken[i];
@@ -765,7 +826,9 @@ export function createThreatHalo(root, busOrOpts) {
       hostileX[i] = hostileX[best];
       hostileY[i] = hostileY[best];
       hostileTier[i] = hostileTier[best];
-      hostileDist[i] = hostileDist[best];
+      hostileTele[i] = hostileTele[best];
+      hostileBucket[i] = hostileBucket[best];
+      hostileBand[i] = hostileBand[best];
       hostileOpacity[i] = hostileOpacity[best];
       hostileRole[i] = hostileRole[best];
       hostileToken[i] = hostileToken[best];
@@ -774,7 +837,9 @@ export function createThreatHalo(root, busOrOpts) {
       hostileX[best] = tx;
       hostileY[best] = ty;
       hostileTier[best] = tt;
-      hostileDist[best] = td;
+      hostileTele[best] = tl;
+      hostileBucket[best] = tb;
+      hostileBand[best] = td;
       hostileOpacity[best] = to;
       hostileRole[best] = tr;
       hostileToken[best] = tk;
@@ -842,7 +907,11 @@ export function createThreatHalo(root, busOrOpts) {
       const role = occRule ? occRule.role : (entity.role || (entity.data && (entity.data.role || entity.data.trafficRole)) || 'unknown');
       const token = occRule ? occRule.silhouetteToken : 'token_silhouette_standard';
       const faction = entity.factionId || (entity.data && entity.data.factionId) || null;
-      pushHostileCandidate(projected.x, projected.y, tier, dist, opacity, role, token, faction, entity.id);
+      pushHostileCandidate(
+        projected.x, projected.y, tier,
+        telegraphed ? 1 : 0, closingBucketOf(closing), Math.floor(dist / DIST_BAND_WU),
+        opacity, role, token, faction, entity.id,
+      );
     }
 
     sortHostileCandidates();
@@ -959,6 +1028,7 @@ export function createThreatHalo(root, busOrOpts) {
         ? window.innerHeight
         : 720;
       refreshLayout(width, height);
+      updateObjectiveReservation(state, worldToScreen, width, height);
       resetOccupancy();
       collectHostiles(player, state, worldToScreen);
       collectMissiles(player, state, worldToScreen);
