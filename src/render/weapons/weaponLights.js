@@ -79,7 +79,10 @@ export class WeaponLightPool {
         continue;
       }
       const t = slot.age / slot.life;
-      slot.light.intensity = slot.peak * (1 - t) * (1 - t);
+      // A discharge is an impulse, not a lamp. The hard leading spike means an automatic burst
+      // reads as a stutter of separate shots rather than one held glow, without widening the
+      // strict 2-slot pool or raising the peak the accessibility profile already scaled.
+      slot.light.intensity = slot.peak * (1 - t) * (1 - t) * (0.62 + 0.38 * Math.exp(-t * 11));
     }
   }
 
