@@ -14037,6 +14037,21 @@ export function createVfxPrecompileSalvo() {
   });
   commitInstancedSpriteBuckets(spriteBatches);
 
+  // A GL program links on first DRAW, and the gas pool is empty until something explodes - so
+  // without a staged draw here the first burst in flight would link a raymarch program mid-frame.
+  // One body per family, because the family index selects different uniform-array branches.
+  // The gas textures are refcounted and shared, so this warm-up costs no extra GPU memory.
+  const gasWarm = createGasSystem(group);
+  gasWarm.emitCombustion({ x: -6, y: 1.2, z: -11, scale: 3, severity: 1, heading: 0.2 });
+  gasWarm.emitFractureDust({ x: -2, y: 1.2, z: -11, scale: 2.4, severity: 0.8, heading: 1.0 });
+  gasWarm.emitVent({
+    x: 2, y: 1.2, z: -11, scale: 2, severity: 0.7, heading: 2.0,
+    occluderX: 1, occluderY: 1.2, occluderZ: -11, occluderRadius: 1.2,
+  });
+  gasWarm.emitAmbient({ x: 6, y: 1.2, z: -11, scale: 5, severity: 1 });
+  gasWarm.update(0, null);
+  gasWarm.update(0.016, null);
+
   const weaponBolts = createEnergyBoltPrecompileMesh();
   weaponBolts.name = 'SF_Precompile_WeaponEnergyBolts';
   weaponBolts.position.set(0, 2, -8);
