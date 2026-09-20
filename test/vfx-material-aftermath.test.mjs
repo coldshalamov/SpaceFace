@@ -20,6 +20,11 @@ function fixture() {
     _weaponPresenter: { quarks: {
       spawnMiningEjecta: (...args) => solids.push({ kind: 'ore', args }),
       spawnCollisionSpall: (...args) => solids.push({ kind: 'rock', args }),
+      // The debris layer is now a SUPPORTING pass of the composed impact recipe rather than a
+      // direct call: one contact fills an impact record and arcadeStructuralFx hands it to this
+      // entry point. Recording by materialId keeps the assertions about MATTER, not about which
+      // function happened to spawn it.
+      emitFromImpact: (rec) => { solids.push({ kind: rec.materialId, args: [rec] }); return 1; },
     } },
   });
   return { system, sparks, solids, surfaces };
@@ -28,9 +33,11 @@ function fixture() {
 test('mining contact ejects brief cutting sparks off the work face and delegates mineral mass to lit solids', () => {
   const { system, sparks, solids, surfaces } = fixture();
   system._onMiningTick({ pos: { x: 0, z: 0 }, oreType: 'iron' });
-  assert.equal(solids.length, 1);
-  assert.equal(solids[0].kind, 'ore');
-  assert.ok(solids[0].args[3] < 0, 'chips leave the rock face toward the source, not through the rock');
+  // One contact, one composed recipe: the mineral yield AND the cut-face spall, which are
+  // different materials, not the same burst emitted twice.
+  assert.deepEqual(solids.map((s) => s.kind), ['ore', 'rock']);
+  const ore = solids.find((s) => s.kind === 'ore');
+  assert.ok(ore.args[3] < 0, 'chips leave the rock face toward the source, not through the rock');
   assert.ok(sparks.length > 0 && sparks.length <= 5, 'hot cutting accent is distinct from the mineral fragments');
   assert.ok(sparks.every((s) => s[2] < 0 && s[4] <= 0.28 && s[5] < 1));
   assert.ok(surfaces.length >= 2, 'contact and evolving dust remain');

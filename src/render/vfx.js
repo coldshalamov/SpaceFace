@@ -160,6 +160,14 @@ import {
   explosionPatternSigned,
   PhasedExplosionLifecycle,
 } from './combat/phasedExplosions.js';
+// IMPACTS LANE. One contact becomes ONE composed recipe: authored structure, then the gas layer's
+// material, then the debris layer's solids. Those two layers must never subscribe to a simulation
+// event themselves; they are called from `emitImpact`, which is the sole trigger.
+import {
+  createImpactRecordPool,
+  makeImpactRecord,
+} from './combat/impactEventRecord.js';
+import { markKindForMaterial } from './weapons/contactMarks.js';
 import { ArcadeStructuralFx } from './combat/arcadeStructuralFx.js';
 import { TetherWebFx } from './combat/tetherWebFx.js';
 import {
@@ -537,6 +545,13 @@ function hashVfxId(id) {
   return h;
 }
 const _arcadeStructuralCullPos = { x: 0, z: 0 };
+// Resident default options for _composeImpact, so a contact allocates nothing.
+const _emptyImpactOpts = Object.freeze({
+  vx: 0, vy: 0, vz: 0, serial: 0, targetId: null, eventClass: undefined, priority: 0.5, hero: false,
+});
+const _impactOpts = {
+  vx: 0, vy: 0, vz: 0, serial: 0, targetId: null, eventClass: undefined, priority: 0.5, hero: false,
+};
 const _arcadeStructuralBurstReq = {
   x: 0,
   z: 0,
@@ -1053,7 +1068,11 @@ export const vfx = {
       depthHeight: 0,
     };
     this._beamDamageCueNext = new Map();
-    this._explosions = new PhasedExplosionLifecycle({ capacity: 24 });
+    // Raised from 24. Eviction is now class-aware (a small death cannot interrupt a capital
+    // breakup), but headroom is still what keeps a genuine massacre from clipping its own tail.
+    this._explosions = new PhasedExplosionLifecycle({ capacity: 40 });
+    this._impactRecords = createImpactRecordPool(8);
+    this._impactView = { x: 0, y: 0.4, z: 0, priority: 0.5, reduced: false, forcedColors: false, hero: false };
     this._arcadeStructural = null;
     this._arcadeStructuralSerial = 0;
     this._collisionContactTicks = new Map();
@@ -2937,6 +2956,16 @@ export const vfx = {
   _initArcadeStructural() {
     if (!this._scene || this._arcadeStructural) return;
     this._arcadeStructural = new ArcadeStructuralFx(this._scene);
+    // The gas and debris lanes are SUPPORTING layers of the impact recipe, not independent
+    // subscribers. Binding them here is what makes one contact draw one burst instead of three.
+    // Both are bound as RESOLVERS, not as objects: the renderer builds these subsystems in an
+    // order no single lane controls, and binding the value would pin whatever happened to exist at
+    // this moment -- usually null -- for the rest of the session. Both calls inside emitImpact are
+    // guarded, so a layer that never arrives costs nothing.
+    this._arcadeStructural.attachSupportingLayers({
+      gas: () => this._gas || null,
+      debris: () => (this._weaponPresenter && this._weaponPresenter.quarks) || null,
+    });
     this._tetherWebFx = new TetherWebFx(this._scene, this._combatBeamLocalizer);
     this._bindArcadeContextLoss();
   },
@@ -3716,6 +3745,21 @@ export const vfx = {
 
     this._emitJuiceCue('combat.weakPoint', p, 2);
 
+    // IMPACTS: an exposed weak point is the clearest legitimate SIGNED normal in the game — the
+    // breach faces outward by construction. Composed first so the recipe owns the timing; the
+    // authored shard fan below remains as the weak-point's own signature on top of it.
+    _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
+    _impactOpts.serial = hashVfxId('wp:' + String(p.targetId));
+    _impactOpts.targetId = p.targetId ?? null;
+    _impactOpts.eventClass = 'breach';
+    _impactOpts.priority = 0.72;
+    _impactOpts.hero = false;
+    this._composeImpact(
+      pos.x, 0.22, pos.z, nx, 0, nz, true,
+      Math.max(0.3, Math.min(0.56, 0.3 + (mult - 1) * 0.18)),
+      'hull', Math.max(1.4, ((target && target.radius) || 6) * 0.34), _impactOpts,
+    );
+
     // Shards are instanced swept geometry, so the fan remains readable as metal even when the
     // camera catches the surface edge. Fixed offsets keep the receipt visually stable without
     // touching the deterministic simulation RNG.
@@ -3869,11 +3913,29 @@ export const vfx = {
     }
     if (p.armorHit) {
       this._emitJuiceCue('combat.damage.armor', p, 1);
-      // Material response is a tight, cool-metal reflected fan. Weapon color remains in the
-      // preceding contact event instead of recoloring every hull into the same orange spray.
-      const count = Math.max(5, Math.min(10, Math.round(8 * (this._burst || 1))));
-      this._impactParticleCone(pos.x, pos.z, normalAngle, 0.82, 24, 56, count,
-        0.23, 0.82, '#f6ead2', '#514c46', 2.8);
+      // IMPACTS: armour is the hard-surface case. A signed normal is legitimate here — a projectile
+      // contact normal really does face the side the round came from — so the spall fan is
+      // reflected off the ACTUAL incoming path rather than blown symmetrically off the surface.
+      // The `_impactParticleCone` fallback below runs only if the structural mount is unavailable;
+      // it is the generic Math.random cone this recipe replaces.
+      _impactOpts.vx = (p.approach && Number(p.approach.x)) || 0;
+      _impactOpts.vy = 0;
+      _impactOpts.vz = (p.approach && Number(p.approach.z)) || 0;
+      _impactOpts.serial = hashVfxId(String(p.attackerId) + ':' + String(p.targetId));
+      _impactOpts.targetId = p.targetId ?? null;
+      _impactOpts.eventClass = undefined;
+      _impactOpts.priority = 0.45;
+      _impactOpts.hero = false;
+      const armored = this._composeImpact(
+        pos.x, 0.18, pos.z, nx, 0, nz, true,
+        Math.max(0.05, Math.min(0.26, 0.05 + (Number(p.amount) || 0) * 0.004)),
+        'armor', Math.max(0.8, ((tgt && tgt.radius) || 6) * 0.22), _impactOpts,
+      );
+      if (!armored) {
+        const count = Math.max(5, Math.min(10, Math.round(8 * (this._burst || 1))));
+        this._impactParticleCone(pos.x, pos.z, normalAngle, 0.82, 24, 56, count,
+          0.23, 0.82, '#f6ead2', '#514c46', 2.8);
+      }
       this._spawnProjectileTrailStreak(pos.x, 0.16, pos.z, 0.17, 0.18, 2.2,
         0.44, '#b7aa96', 0, 0, nx, nz);
       this._flashLight({ x: pos.x, z: pos.z }, '#d8c39e', 1.6, 13, 72);
@@ -3887,9 +3949,26 @@ export const vfx = {
       this._spawnSprite(SPR_COMBUSTION, pos.x, 0.14, pos.z, 0.22, 0.55, 1.35,
         0.42, 0, impactProfile.family === 'plasma' ? '#ff6a24' : '#d87332',
         nx * 2, nz * 2, 1.7, normalAngle);
-      this._impactParticleCone(pos.x, pos.z, normalAngle, 0.95, 9, 24,
-        Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
-        '#ffb36a', '#3a1710', 1.2);
+      // IMPACTS: a hull penetration is a BREACH — the event's subject is the hole. Hot interior
+      // vents out of it and a torn flap stays on the rim, instead of another orange spray.
+      _impactOpts.vx = (p.approach && Number(p.approach.x)) || 0;
+      _impactOpts.vy = 0;
+      _impactOpts.vz = (p.approach && Number(p.approach.z)) || 0;
+      _impactOpts.serial = hashVfxId(String(p.attackerId) + ':h:' + String(p.targetId));
+      _impactOpts.targetId = p.targetId ?? null;
+      _impactOpts.eventClass = undefined;
+      _impactOpts.priority = 0.55;
+      _impactOpts.hero = false;
+      const breached = this._composeImpact(
+        pos.x, 0.2, pos.z, nx, 0, nz, true,
+        Math.max(0.28, Math.min(0.55, 0.28 + (Number(p.amount) || 0) * 0.006)),
+        'hull', Math.max(1.2, ((tgt && tgt.radius) || 6) * 0.3), _impactOpts,
+      );
+      if (!breached) {
+        this._impactParticleCone(pos.x, pos.z, normalAngle, 0.95, 9, 24,
+          Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
+          '#ffb36a', '#3a1710', 1.2);
+      }
       this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 2.2, 11, 90);
       if (this._weaponPresenter && this._weaponPresenter.quarks && tgt && tgt.hp != null && tgt.maxHp != null && tgt.hp / tgt.maxHp < 0.35) {
         const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
@@ -4529,11 +4608,76 @@ export const vfx = {
         '#786a5b', nx * side * 1.2, nz * side * 1.2, 2.2, base,
       );
     }
-    if (this._weaponPresenter && this._weaponPresenter.quarks) {
+    // IMPACTS: the composed contact. axisSigned is FALSE — an SG-02 solver normal is an axis, and
+    // its sign is an artifact of collider ordering. The recipe therefore draws a mirrored pair.
+    // The legacy quarks spall call above is superseded by the debris layer that emitImpact
+    // composes; drop the block below once the debris lane's entry point is wired.
+    _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
+    _impactOpts.serial = serial;
+    _impactOpts.targetId = p.aId ?? p.targetId ?? null;
+    _impactOpts.eventClass = undefined;
+    _impactOpts.priority = 0.35;
+    _impactOpts.hero = false;
+    const composed = this._composeImpact(
+      p.pos.x, 0.2, p.pos.z, nx, 0, nz, false, 0.08, 'hull', 1.6, _impactOpts,
+    );
+    if (!composed && this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(p.pos.x, p.pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnCollisionSpall(local.x, 0.2, local.z, nx, 0.4, nz, reduced ? 6 : 12);
     }
     return true;
+  },
+
+  // THE contact entry point. Everything at and after a contact is this lane's: the weapons lane
+  // emits nothing here, and gas/debris are composed rather than triggered. Returns false when the
+  // renderer has no structural mount yet, so every caller can fall through to its legacy path.
+  //
+  // `axisSigned` is the load-bearing argument. Pass true ONLY when the normal genuinely points
+  // from the struck surface toward the side the energy came from (a projectile's contact normal,
+  // a weak point's outward face). Pass false for a solver contact axis, whose sign depends on
+  // which collider was listed first. Passing true for one of those manufactures a force that did
+  // not happen, which is the defect standard rule E2 exists to prevent.
+  _composeImpact(worldX, worldY, worldZ, nx, ny, nz, axisSigned, severity, materialId, radiusWU, opts) {
+    if (!this._scene) return false;
+    this._initArcadeStructural();
+    const fx = this._arcadeStructural;
+    if (!fx || typeof fx.emitImpact !== 'function') return false;
+    if (this.state && this.state.render && this.state.render.openingVfxFrozen === true) return false;
+    const options = opts || _emptyImpactOpts;
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    // _composeImpact can be reached before _initPools on partial/staged instances, so the pool
+    // is created on demand rather than assumed. Same fixed ring of 8 either way.
+    const recPool = this._impactRecords || (this._impactRecords = createImpactRecordPool(8));
+    const rec = makeImpactRecord(recPool.acquire(), {
+      x: worldX,
+      y: Number.isFinite(worldY) ? worldY : 0.2,
+      z: worldZ,
+      nx,
+      ny,
+      nz,
+      axisSigned,
+      severity,
+      materialId,
+      radiusWU,
+      simTime: Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : (this._t || 0),
+      vx: options.vx,
+      vy: options.vy,
+      vz: options.vz,
+      serial: options.serial,
+      targetId: options.targetId,
+      eventClass: options.eventClass,
+    });
+    const local = this._toLocalXZ(worldX, worldZ, this._spawnLocalXZ);
+    const view = this._impactView || (this._impactView = { x: 0, y: 0.4, z: 0, priority: 0.5, reduced: false, forcedColors: false, hero: false });
+    view.x = local.x;
+    view.y = rec.y;
+    view.z = local.z;
+    view.priority = normalizeVfxAdmissionPriority(options.priority);
+    view.reduced = acc.flashOpacityScale < 1 || this._isReduced();
+    view.forcedColors = !!(this.state && this.state.settings && this.state.settings.accessibility
+      && this.state.settings.accessibility.forcedColors);
+    view.hero = !!options.hero;
+    return fx.emitImpact(rec, view) > 0;
   },
 
   _onPhysicsImpact(p) {
@@ -4664,6 +4808,24 @@ export const vfx = {
     req.dv = 0;
     req.terrain = 0;
     this._admitAndSpawnArcadeStructural('entity:killed', p || {});
+    // IMPACTS: a large death EXPOSES structure. The breakup sheet parts plates first, shows the hot
+    // interior between them, parts more, and only then settles -- instead of hiding the ship inside
+    // a white ball. Only ordinary and capital classes qualify; a small hull keeps its existing
+    // phased beats untouched.
+    if (classId !== 'small') {
+      _impactOpts.vx = req.velX; _impactOpts.vy = req.velY; _impactOpts.vz = req.velZ;
+      _impactOpts.serial = mixArcadeVictimId(p && p.id);
+      _impactOpts.targetId = (p && p.id) ?? null;
+      _impactOpts.eventClass = 'breakup';
+      _impactOpts.priority = admission.admissionPriority;
+      _impactOpts.hero = classId === 'capital';
+      this._composeImpact(
+        pos.x, 0.4, pos.z,
+        direction && Number.isFinite(direction.x) ? direction.x : 0, 0,
+        direction && Number.isFinite(direction.z) ? direction.z : 1,
+        false, classId === 'capital' ? 0.95 : 0.84, 'hull', radius, _impactOpts,
+      );
+    }
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnExplosion(
@@ -8783,6 +8945,16 @@ export const vfx = {
     this._spawnSprite(SPR_FLASH, pos.x, 0.16, pos.z, 0.10,
       2.4 * coreScale, 0.85 * coreScale, 0.92, 0, '#ffffff', 0, 0, 1.15, 0);
     this._emitDirectionalShoveSheets(pos, p.shoves, profile, reduced, Math.max(0.85, coreScale));
+    // IMPACTS: a carried charge releases in STAGES -- contact, first internal release, ejecta,
+    // second internal release, separation, then the cooling settle -- rather than as one flat
+    // bloom. No shove receipt means no signed side, so the recipe stays symmetric.
+    _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
+    _impactOpts.serial = hashVfxId('charge:' + String(p.id ?? p.ownerId));
+    _impactOpts.targetId = p.id ?? null;
+    _impactOpts.eventClass = 'detonation';
+    _impactOpts.priority = 0.7;
+    _impactOpts.hero = false;
+    this._composeImpact(pos.x, 0.2, pos.z, 0, 0, 1, false, 0.62, 'hull', r * 0.45, _impactOpts);
     if (acc.eventLightPeakScale > 0) {
       this._flashLight({ x: pos.x, z: pos.z }, profile.accentColor || '#39d0ff',
         4.2 * neon.lightPeak * acc.eventLightPeakScale, 8, 180);
@@ -9075,7 +9247,23 @@ export const vfx = {
     req.dv = dv;
     req.terrain = terrain ? 1 : 0;
     this._admitAndSpawnArcadeStructural('combat:collisionConsequence', p);
-    if (this._weaponPresenter && this._weaponPresenter.quarks) {
+    // IMPACTS: a heavy contact is a SLAM — it compresses along the surface and stops hard before
+    // any matter leaves. Unsigned axis again, so the compression lip is mirrored. Terrain reads as
+    // rock and cleaves; a ship reads as hull and tears.
+    _impactOpts.vx = req.velX; _impactOpts.vy = req.velY; _impactOpts.vz = req.velZ;
+    _impactOpts.serial = this._collisionPatternSerial(p);
+    _impactOpts.targetId = p.targetId ?? null;
+    _impactOpts.eventClass = undefined;
+    _impactOpts.priority = 0.62;
+    _impactOpts.hero = false;
+    const slammed = this._composeImpact(
+      pos.x, 0.22, pos.z, axisX, 0, axisZ, false,
+      Math.max(0.16, Math.min(0.72, 0.16 + dv * 0.012)),
+      terrain ? 'rock' : 'hull',
+      Math.max(2, Number(victim && victim.radius) || 6),
+      _impactOpts,
+    );
+    if (!slammed && this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnCollisionSpall(
         local.x, 0.2, local.z,
@@ -9637,6 +9825,23 @@ export const vfx = {
       const nz = backA != null ? Math.sin(backA) : 1;
       this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, nx, 0.4, nz, 8);
     }
+    // IMPACTS: the worked face. A CUT has no ignition beat anywhere in its sheet -- the heat is the
+    // cut, not a fire -- and its two ejecta beats stage so the second is slower and duller than the
+    // first, which is what makes the face read as PROGRESSING. The normal points at the tool, which
+    // is a real signed direction, so the chips leave toward it and never into the rock. This adds
+    // no radial reward flash of any kind.
+    if (backA != null) {
+      _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
+      _impactOpts.serial = hashVfxId('mine:' + String(this._miningBeam && this._miningBeam.targetId));
+      _impactOpts.targetId = (this._miningBeam && this._miningBeam.targetId) ?? null;
+      _impactOpts.eventClass = 'cut';
+      _impactOpts.priority = 0.4;
+      _impactOpts.hero = false;
+      this._composeImpact(
+        pos.x, 0.25, pos.z, Math.cos(backA), 0, Math.sin(backA), true,
+        0.1, 'rock', 2.4, _impactOpts,
+      );
+    }
     // Carve a molten work-face into the rock at a slow cadence. The shared 32-scar ring
     // absorbs combat and mining together, oldest first; the beam target id comes from the
     // retained mining beam (drone ticks stamp world-anchored instead — still attached).
@@ -9650,8 +9855,24 @@ export const vfx = {
         const scarLocal = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
         const nx = backA != null ? Math.cos(backA + Math.PI) : 0;
         const nz = backA != null ? Math.sin(backA + Math.PI) : 1;
+        // IMPACTS: a mined face is chipped rock, not molten metal. The scar pool now takes a mark
+        // kind; `gouge` gives a dark rim around a fresh pale face with radial cracks, and the
+        // fracture channel grows the crack count as the body is worked down.
+        // NOTE FOR THE LEAD: stampMiningScar lives in weapons/presenter.js (your seam) and must
+        // forward { markKind, fracture } into HullScorchPool.spawn for this to take effect. The
+        // extra arguments are ignored harmlessly until it does.
+        const scarRock = targetId != null ? this._ent(targetId) : null;
+        const scarData = (scarRock && scarRock.data) || {};
+        const scarFracture = scarRock
+          ? resolveFractureProgress(
+            Number.isFinite(scarData.oreHP) ? scarData.oreHP : scarRock.hull,
+            Number.isFinite(scarData.oreHPMax) ? scarData.oreHPMax : scarRock.hullMax,
+          )
+          : 0;
         this._weaponPresenter.stampMiningScar(
           targetId, scarLocal.x, 0.3, scarLocal.z, nx, 0.4, nz, 1.7, 1.0,
+          markKindForMaterial('rock'),
+          scarFracture,
         );
       }
     }
@@ -9686,7 +9907,19 @@ export const vfx = {
     }
     if (!pos) return;
     const col = oreColor(p.commodityId || p.typeId);
-    if (this._weaponPresenter && this._weaponPresenter.quarks) {
+    // IMPACTS: brittle failure. A rock does not explode -- it opens conchoidal cleavage planes in
+    // sequence, cold, with the dust lagging behind them. No ignition, no reward firework.
+    _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
+    _impactOpts.serial = hashVfxId('shatter:' + String(p.chunkId ?? p.id ?? p.commodityId));
+    _impactOpts.targetId = p.chunkId ?? p.id ?? null;
+    _impactOpts.eventClass = chunked ? 'fracture' : undefined;
+    _impactOpts.priority = chunked ? 0.5 : 0.66;
+    _impactOpts.hero = false;
+    const fractured = this._composeImpact(
+      pos.x, 0.3, pos.z, 0, 0, 1, false,
+      chunked ? 0.34 : 0.62, 'rock', chunked ? 4 : 9, _impactOpts,
+    );
+    if (!fractured && this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnCollisionSpall(
         local.x, 0.3, local.z, 0, 1, 0, chunked ? 6 : 10,
