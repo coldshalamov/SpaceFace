@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createStructuredBurstGeometry } from './structuredBurstGeometry.js';
+import { spawnImpactStructuralBeats } from './causalStructuralBurst.js';
 import { createStructuralSurfaceMaterial } from './transientVfxMaterials.js';
 import { worldSizeForPixels } from '../weapons/pixelFloor.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
@@ -8,6 +9,7 @@ export const ARCADE_STRUCTURAL_FX_CAPACITY = Object.freeze({
   blades: 128,
   arcs: 48,
   shards: 64,
+  plates: 32,
 });
 
 const DEFAULT_PRIORITY = 0.5;
@@ -66,6 +68,10 @@ function createSlot() {
   return {
     alive: false,
     age: 0,
+    // Seconds this element waits, held at zero scale, before its own life begins. One spawn call
+    // can therefore author a whole beat sheet — contact, then compression, then the matter finally
+    // leaving — without a second pool, a scheduler, or a per-frame revisit of the event.
+    delay: 0,
     life: 0.1,
     priority: DEFAULT_PRIORITY,
     serial: -1,
@@ -108,6 +114,9 @@ function makeInstanceColor(capacity) {
 class StructuralPool {
   constructor({ name, geometry, material, capacity, scene, kind }) {
     this.kind = kind;
+    // Shards and plates are lit matter, not impulse light: they share the solid spawn defaults,
+    // carry no shader phase channel, and draw before the additive surfaces.
+    this.solid = kind === 'shard' || kind === 'plate';
     this.capacity = capacity;
     this.slots = Array.from({ length: capacity }, createSlot);
     this.cursor = 0;
@@ -122,14 +131,14 @@ class StructuralPool {
     this.mesh.frustumCulled = false;
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.mesh.instanceColor = makeInstanceColor(capacity);
-    this.phase = kind === 'shard' ? null
+    this.phase = this.solid ? null
       : new THREE.InstancedBufferAttribute(new Float32Array(capacity * 2), 2);
     if (this.phase) {
       this.phase.setUsage(THREE.DynamicDrawUsage);
       geometry.setAttribute('aStructuralPhase', this.phase);
     }
     this.mesh.userData.spacefaceArcadeStructuralFx = true;
-    this.mesh.renderOrder = kind === 'shard' ? 9 : 13;
+    this.mesh.renderOrder = this.solid ? 9 : 13;
     this._matrix = new THREE.Matrix4();
     this._position = new THREE.Vector3();
     this._quaternion = new THREE.Quaternion();
@@ -169,7 +178,10 @@ class StructuralPool {
     let victimProgress = -Infinity;
     for (let i = 0; i < this.capacity; i++) {
       const slot = this.slots[i];
-      const progress = slot.life > 1e-6 ? slot.age / slot.life : 1;
+      // Progress runs from its own start, so a beat still waiting out its delay reads as negative
+      // progress and is the LAST thing recycled. A later beat of an event in flight is never
+      // cannibalised to draw the opening beat of the next one.
+      const progress = slot.life > 1e-6 ? (slot.age - slot.delay) / slot.life : 1;
       if (slot.priority < victimPriority
         || (slot.priority === victimPriority && progress > victimProgress)) {
         victim = i;
@@ -192,17 +204,18 @@ class StructuralPool {
     const slot = this.slots[index];
     slot.alive = true;
     slot.age = 0;
+    slot.delay = Math.max(0, finite(spec.delay, 0));
     slot.life = Math.max(0.03, finite(spec.life, 0.12));
     slot.priority = clamp01(finite(spec.priority, DEFAULT_PRIORITY));
     slot.serial = this.serial++;
     slot.x = finite(spec.x);
-    slot.y = finite(spec.y, this.kind === 'shard' ? 0.65 : 0.45);
+    slot.y = finite(spec.y, this.solid ? 0.65 : 0.45);
     slot.z = finite(spec.z);
     slot.vx = finite(spec.vx);
     slot.vy = finite(spec.vy);
     slot.vz = finite(spec.vz);
-    slot.drag = Math.max(0, finite(spec.drag, this.kind === 'shard' ? 1.4 : 3.5));
-    slot.gravity = finite(spec.gravity, this.kind === 'shard' ? -9 : 0);
+    slot.drag = Math.max(0, finite(spec.drag, this.solid ? 1.4 : 3.5));
+    slot.gravity = finite(spec.gravity, this.solid ? -9 : 0);
     slot.angle = finite(spec.angle);
     slot.angularVelocity = finite(spec.angularVelocity);
     slot.pitch = finite(spec.pitch);
@@ -233,9 +246,18 @@ class StructuralPool {
       const slot = this.slots[i];
       if (!slot.alive) continue;
       slot.age += step;
-      if (slot.age >= slot.life) {
+      if (slot.age >= slot.delay + slot.life) {
         slot.alive = false;
         this.live = Math.max(0, this.live - 1);
+        this._matrix.compose(this._position.set(0, -10000, 0), this._quaternion.identity(), ZERO_SCALE);
+        this.mesh.setMatrixAt(i, this._matrix);
+        this.mesh.setColorAt(i, BLACK);
+        changed = true;
+        continue;
+      }
+      if (slot.age < slot.delay) {
+        // Reserved, not yet born: held off-stage at zero scale so the slot it already owns cannot
+        // show the previous occupant, and its motion does not start integrating early.
         this._matrix.compose(this._position.set(0, -10000, 0), this._quaternion.identity(), ZERO_SCALE);
         this.mesh.setMatrixAt(i, this._matrix);
         this.mesh.setColorAt(i, BLACK);
@@ -254,7 +276,7 @@ class StructuralPool {
       slot.pitch += slot.pitchVelocity * step;
       slot.roll += slot.rollVelocity * step;
 
-      const t = clamp01(slot.age / slot.life);
+      const t = clamp01((slot.age - slot.delay) / slot.life);
       if (this.phase) this.phase.setXY(i, t, (slot.serial * 0.618033988749895) % 1);
       const shaped = easeOutCubic(t);
       const length = slot.length0 + (slot.length1 - slot.length0) * shaped;
@@ -276,7 +298,7 @@ class StructuralPool {
       );
 
       let envelope;
-      if (this.kind === 'shard') {
+      if (this.solid) {
         envelope = 1 - smoothstep(0.78, 1, t);
       } else {
         const attack = smoothstep(0, 0.03, t);
@@ -290,11 +312,14 @@ class StructuralPool {
       this._color.setRGB(r * radiance, g * radiance, b * radiance);
 
       this._position.set(slot.x, slot.y, slot.z);
-      if (this.kind === 'shard') {
+      if (this.solid) {
         this._euler.set(slot.pitch, -slot.angle, slot.roll);
         this._quaternion.setFromEuler(this._euler);
         const shrink = Math.max(0.02, envelope);
-        this._scale.set(visibleLength * shrink, visibleWidth * shrink, visibleWidth * shrink);
+        // A plate is a SHEET: it keeps its span and stays thin through the thickness, so tumbling
+        // alternately shows a broad lit face and a near-invisible edge. A shard is a lump.
+        const through = this.kind === 'plate' ? Math.max(0.02, visibleWidth * 0.16) : visibleWidth;
+        this._scale.set(visibleLength * shrink, through * shrink, visibleWidth * shrink);
       } else {
         this._quaternion.setFromAxisAngle(Y_AXIS, -slot.angle);
         const thickness = this.kind === 'arc' ? Math.max(0.35, visibleWidth) : 1;
@@ -310,6 +335,9 @@ class StructuralPool {
       this.mesh.instanceMatrix.needsUpdate = true;
       this.mesh.instanceColor.needsUpdate = true;
     }
+    // An idle pool costs nothing. Parked zero-scale instances still cost a draw call and a full
+    // instance-buffer traversal every frame; four pools that are quiet most of the time do not.
+    this.mesh.visible = this.live > 0;
   }
 
   reproject(dx, dz) {
@@ -325,8 +353,13 @@ class StructuralPool {
 
   clear() {
     this.live = 0;
-    for (const slot of this.slots) slot.alive = false;
+    for (const slot of this.slots) {
+      slot.alive = false;
+      slot.delay = 0;
+      slot.age = 0;
+    }
     this._initializeDeadInstances();
+    this.mesh.visible = false;
   }
 
   inspect() {
@@ -351,6 +384,23 @@ class StructuralPool {
 }
 
 function arcadeAdditiveMaterial(name) { return createStructuralSurfaceMaterial(name); }
+
+function createStructuralPlateGeometryForPool() { return createStructuredBurstGeometry('plate'); }
+
+function arcadePlateMaterial() {
+  // Structural sheet stock. Smoother and more metallic than a shard, so a tumbling panel sweeps a
+  // real highlight across its face instead of reading as one more grey chip.
+  const material = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.62,
+    metalness: 0.34,
+    flatShading: true,
+    side: THREE.DoubleSide,
+  }), SHARED_MATERIAL_ROLE.HULL);
+  material.name = 'SF_StructuralPlateMaterial';
+  material.userData.spacefaceArcadeVfxMaterial = true;
+  return material;
+}
 
 function arcadeShardMaterial() {
   const material = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
@@ -395,33 +445,103 @@ export class ArcadeStructuralFx {
       scene: this.group,
       kind: 'shard',
     });
+    this.plates = new StructuralPool({
+      name: 'SF_StructuralPlatePool',
+      geometry: createStructuralPlateGeometryForPool(),
+      material: arcadePlateMaterial(),
+      capacity: capacities.plates,
+      scene: this.group,
+      kind: 'plate',
+    });
+    // Supporting layers, attached by the renderer. They are composed BY the impact recipe and must
+    // never subscribe to the same simulation event themselves — that is what used to stack three
+    // bursts on one contact.
+    this._gas = null;
+    this._debris = null;
+    // One resident spawn spec so composing an impact allocates nothing per element.
+    this._impactSpec = {
+      priority: DEFAULT_PRIORITY, life: 0.12, delay: 0,
+      x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
+      drag: NaN, gravity: NaN,
+      angle: 0, angularVelocity: 0, pitch: 0, pitchVelocity: 0, roll: 0, rollVelocity: 0,
+      length0: 1, length1: 1, width0: 1, width1: 1,
+      minWidthPixels: 0, minLengthPixels: 0,
+      intensity: 1, color: 0xffffff, endColor: 0xffffff,
+    };
     this._disposed = false;
   }
 
   spawnBlade(spec) { return this.blades.spawn(spec); }
   spawnArc(spec) { return this.arcs.spawn(spec); }
   spawnShard(spec) { return this.shards.spawn(spec); }
+  spawnPlate(spec) { return this.plates.spawn(spec); }
+
+  /**
+   * Bind the gas and debris layers. Both are optional and both are called through a guarded
+   * optional call, so this lane's work lands whether or not they exist yet.
+   * @param {{gas?: {emitFromImpact?: Function}, debris?: {emitFromImpact?: Function}}} layers
+   */
+  attachSupportingLayers(layers = {}) {
+    this._gas = layers.gas || null;
+    this._debris = layers.debris || null;
+    return this;
+  }
+
+  /**
+   * THE composition point for a contact. One simulation event becomes ONE recipe: this lane's
+   * authored ignition and structure first, then the gas layer's material, then the debris layer's
+   * solids. Primary structure is admitted before decorative residue, so under saturation the thing
+   * that carries the meaning of the hit is the thing that survives.
+   *
+   * @param {object} rec an impact record, WORLD space (see `impactEventRecord.js`). Passed to the
+   *   supporting layers untouched — they localise for themselves.
+   * @param {object} [view] caller-owned, reused: `{ x, y, z, priority, reduced, forcedColors,
+   *   hero }` where x/y/z are the contact point already in the renderer's local (floating-origin)
+   *   frame. Omit it and the record's own world coordinates are used.
+   * @returns {number} primitives this lane spawned.
+   */
+  emitImpact(rec, view) {
+    if (!rec) return 0;
+    const spawned = spawnImpactStructuralBeats({
+      fx: this,
+      rec,
+      spec: this._impactSpec,
+      lx: view && Number.isFinite(view.x) ? view.x : rec.x,
+      ly: view && Number.isFinite(view.y) ? view.y : rec.y,
+      lz: view && Number.isFinite(view.z) ? view.z : rec.z,
+      priority: view && Number.isFinite(view.priority) ? view.priority : DEFAULT_PRIORITY,
+      reduced: !!(view && view.reduced),
+      forcedColors: !!(view && view.forcedColors),
+      hero: !!(view && view.hero),
+    });
+    if (this._gas?.emitFromImpact) this._gas.emitFromImpact(rec);
+    if (this._debris?.emitFromImpact) this._debris.emitFromImpact(rec);
+    return spawned;
+  }
 
   update(dt, camera = null, viewportHeight = 1000) {
     this.blades.update(dt, camera, viewportHeight);
     this.arcs.update(dt, camera, viewportHeight);
     this.shards.update(dt, camera, viewportHeight);
+    this.plates.update(dt, camera, viewportHeight);
   }
 
   reproject(dx, dz) {
     this.blades.reproject(dx, dz);
     this.arcs.reproject(dx, dz);
     this.shards.reproject(dx, dz);
+    this.plates.reproject(dx, dz);
   }
 
   clear() {
     this.blades.clear();
     this.arcs.clear();
     this.shards.clear();
+    this.plates.clear();
   }
 
   getMeshes() {
-    return [this.blades.mesh, this.arcs.mesh, this.shards.mesh];
+    return [this.blades.mesh, this.arcs.mesh, this.shards.mesh, this.plates.mesh];
   }
 
   getOwnerRoots() {
@@ -454,6 +574,14 @@ export class ArcadeStructuralFx {
         evicted: this.shards.evicted,
         rejected: this.shards.rejected,
       },
+      plates: {
+        highWater: this.plates.highWater,
+        live: this.plates.live,
+        capacity: this.plates.capacity,
+        spawned: this.plates.spawned,
+        evicted: this.plates.evicted,
+        rejected: this.plates.rejected,
+      },
     };
   }
 
@@ -464,17 +592,20 @@ export class ArcadeStructuralFx {
         blades: this.blades.live,
         arcs: this.arcs.live,
         shards: this.shards.live,
+        plates: this.plates.live,
       },
       highWater: {
         blades: this.blades.highWater,
         arcs: this.arcs.highWater,
         shards: this.shards.highWater,
+        plates: this.plates.highWater,
       },
       stats: this.stats(),
       pools: {
         blades: this.blades.inspect(),
         arcs: this.arcs.inspect(),
         shards: this.shards.inspect(),
+        plates: this.plates.inspect(),
       },
     };
   }
@@ -485,6 +616,7 @@ export class ArcadeStructuralFx {
       this.blades.mesh, this.blades.mesh.geometry, this.blades.mesh.material,
       this.arcs.mesh, this.arcs.mesh.geometry, this.arcs.mesh.material,
       this.shards.mesh, this.shards.mesh.geometry, this.shards.mesh.material,
+      this.plates.mesh, this.plates.mesh.geometry, this.plates.mesh.material,
     ];
   }
 
@@ -498,6 +630,9 @@ export class ArcadeStructuralFx {
     this.blades.dispose();
     this.arcs.dispose();
     this.shards.dispose();
+    this.plates.dispose();
+    this._gas = null;
+    this._debris = null;
     if (this.group.parent) this.group.parent.remove(this.group);
   }
 }
