@@ -66,6 +66,7 @@ wait for, so content cannot be handed out before the ship handles.
 
 | Phase | Gate it serves (§15.1) | Packets, in order |
 |---|---|---|
+| **0 · The playable demo** (first; owner, 2026-09-20) | DEMO | `PQ-210` smooth, solid, answering, hardware: `.00` Crucible roster prewarm · `.01` a fight fits the frame · `.02` the first 20 seconds · `.03` nothing on screen unloads · `.04` every hit answers, with sound · `.05` the demo HUD · `.06` a quiet machine · `.07` ask once about motion · `.08` the fifteen-minute demo. Target, evidence and bars: [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) |
 | **A · The toy works** (now) | ALPHA | `PQ-173` the fun-loop instrument · `PQ-167` telemetry and the weekly playtest · `PQ-137` the guts (`.03`–`.11`) · `PQ-189` **correct the compass** (controls contract, stale diagnoses retired) · `PQ-174` the swarm fun contract (with `.08` earned breathing room) · `PQ-139` impacts answer · `PQ-158.06` minimal action audio · `PQ-165.03` reduced motion keeps information · `PQ-138` the world reacts · `PQ-140` roster as physical problems · `PQ-146` stunt grammar · `PQ-186` the regression fortress · `PQ-180` the frontend grammar matrix · `PQ-144.01` the production baseline · `PQ-163` the first ten minutes · `PQ-141` **the 60-second proof (gate)** |
 | **B · The swarm and the world** | BETA | `PQ-190` **the style slice** (stylized industrial energy, approved at the shipping camera before any fleet pass) · `PQ-193` **the 3D picture never looks broken** (complete bodies, opening flyby, tubes, shelf, places) · `PQ-175` swarm content at craft · `PQ-029` `PQ-030` `PQ-031` `PQ-026` heads and coupling · `PQ-147` field toys · `PQ-027` `PQ-028` machinery and infrastructure · `PQ-148` cargo is physics · `PQ-149` the storyteller · `PQ-150` people who remember · `PQ-151` the wanted loop · `PQ-154` wrecks as terrain · `PQ-161` readable at zoom · `PQ-169` Crucible as replay surface |
 | **C · Adventure depth** | BETA | `PQ-177.06`/`.07` cargo custody and visible industrial limits · `PQ-145.01` the first durable site loop · `PQ-176` customization with consequences · `PQ-155` the verb curve · `PQ-156` three starters · `PQ-142` progression and my ship · `PQ-177` an economy you can read · `PQ-178` the story pipeline · `PQ-032` the linear spine · `PQ-152` set pieces from verbs · `PQ-153` six sectors · `PQ-143` ordinary life · `PQ-145` industry authorship · `PQ-171` content grammar · `PQ-195` the Third Shift finished |
@@ -181,7 +182,10 @@ procedure:
 | "swarm mode should be more fun" | §16 → `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
 | "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.15** (admitted 2026-09-10: [`FIELD_HARDWARE_PROGRAM.md`](./design/frontend/direction/FIELD_HARDWARE_PROGRAM.md)) → `--id PQ-194` (style frames → asset kits → the stage → the title live as the veto point → surfaces). §20.14 / `PQ-187` is superseded. `PQ-180` is the floor, not the gate |
-| "it's hitching / stuttering" | §8.4 → `--id PQ-129`; measure first, never cut quality |
+| "the ship jigs / jitters / doesn't know where it is", "it's not smooth" | **§21** → run `npm run probe:smooth-flight` and read `SHIP LOST ITS PLACE` (must be 0) before anything else. The loop has ONE order — simulate, then present (`check:baseline` → `smooth-flight`). Never reintroduce a draw-first frame, a pose hold against a running sim, or a sim step cap on slow frames |
+| "the attacks are limp / frozen / a swirl that doesn't spin" | **§21** → first read `state.settings.video.motionReduce`: on 2026-09-20 the owner's Windows "Animation effects: off" had silently stripped every combat effect. Then `--id PQ-210.04` (four channels, with sound) |
+| "things pop out of existence", "asteroids vanish", "it doesn't load in time" | **§21** → `--id PQ-210.03`; read `state.render.asteroidInstancePool.variants[].retiredOwners` and the console for `[asteroid-pool]` |
+| "it's hitching / stuttering" | **§21** → `npm run probe:smooth-flight:crucible` names each freeze and what paid for it, with the whole-machine CPU line; then `--id PQ-210.00`–`.02`. §8.4 / `PQ-129` holds the earlier campaign; measure first, never cut quality |
 | "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
 | "the ships / objects look like toys" | **§13D** → `--id PQ-193`; flyable remaster stays `PQ-050`; unused packs stay `PQ-136` |
 | "NPC ships look like another game / floating parts / reverse jets are needles" | **§13D** → `--id PQ-193` leaves `.01` / `.02`. Law: [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md). Hitch stays frozen. |
@@ -3681,3 +3685,40 @@ local lanes between sessions do the engine work. Build one with `node scripts/bu
 **How the owner uses this.** Say "build session S1", hand the zip in `.devshots/ui-packets/` to
 ChatGPT 6 Pro with the prompt in `design/frontend/direction/sessions/README.md`, drop the return back,
 say "review S1"; repeat through S4. The only moment that needs your eyes is `.05`.
+
+## 21. The playable demo — smooth, solid, answering, hardware (`PQ-210`) — ADMITTED 2026-09-20
+
+Owner, 2026-09-20: *"it's almost ready to demo I think, but it's not quite playable … the ship must
+fly smooth and the player have complete control over what's happening."* This is the front of the
+queue until the owner signs the five demo bars. Target, evidence, bars and the wider A-list list:
+[`design/program/DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md).
+Packet: [`PQ-210`](./design/program/roadmap/active/PQ-210.md).
+
+### 21.1 What the session of 2026-09-20 established (do not re-derive)
+
+| The owner felt | The cause, now fixed | Guard |
+|---|---|---|
+| The ship jigging back and forth | The frame loop drew first on any frame over 33.3 ms (one frame at 30 fps) and redrew an old moment: 14 % of presents at 45 fps, 26 % at 30 fps, each followed by a ~5 WU snap | `check:baseline` → `smooth-flight`; live counter `duplicateMomentPresents` |
+| Sluggish on a slow GPU | Sim step caps on slow frames ran the game at 63–83 % speed | same; game speed is 100 % down to 15 fps |
+| A jig on every heavy hit in swarm | The kinetic crunch held poses for two frames while the sim ran, then snapped | `test/feel-kinetic-crunch.test.mjs`; the beat is a hit-stop |
+| Limp, frozen effects | Windows "Animation effects: off" → `prefers-reduced-motion` → the silent `system` default stripped hit-stop, trauma, lights, haze, bolt time and field motion | Motion defaults to Full; one versioned profile migration; `test/graphics-profile-bootstrap.test.mjs` |
+| Asteroids vanishing | A retired rock batch drew nothing for the rest of the session | `test/asteroid-pool-retired-owner.test.mjs` |
+| Objects popping out on screen | Residency trusted the requested-zoom classifier over the live screen; evict sat inside prefetch while zooming | `test/presentation-residency.test.mjs` |
+
+### 21.2 The law this adds
+
+1. **The pilot lives in the frame.** A feel claim about motion closes on the frame — the
+   smooth-flight witness on the owner's GPU — never on the sim alone.
+2. **One loop order.** Simulate the time that passed, then present that moment. Only a restore
+   frame presents without advancing. No presentation path holds poses while the sim runs; weight
+   is a time dip.
+3. **A slow frame rate is not a hitch.** Steady frames keep the full catch-up ceiling (real time
+   down to 15 fps). Only a callback over 4.5 ticks late sheds, to two steps.
+4. **The live screen outranks every classifier.** Nothing on the live glass loses its mesh, waits
+   out a hold, or blanks with its batch.
+5. **Nothing follows the operating system silently.** Motion is Full unless the player chose.
+6. **Every perf number carries the machine's load beside it.** The same build read 59 fps and
+   40 fps minutes apart while other lanes ran batteries. Harnesses that run over two minutes lower
+   their own OS priority.
+7. **A test that pins what the owner forbids is the defect.** Three of the six rows above were
+   held in place by green tests. New feel tests quote the owner sentence they serve.

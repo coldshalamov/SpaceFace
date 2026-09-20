@@ -136,6 +136,23 @@ A green check is not proof: several checks here once passed by inspecting a conv
 while the real assets were corrupt for weeks. Confirm *what* a check looked at, not just that it
 passed.
 
+## This is the machine the owner plays on
+
+The owner plays the game on the same integrated-GPU laptop the agents work on, and there the CPU
+and the GPU share one power budget: background compute is paid for in the game's frame rate. On
+2026-09-20, with two 10-hour playthrough runs and other lanes live, the same build measured a
+locked 60 fps with no freezes and 40 fps with a 100–350 ms freeze every second, minutes apart. The
+owner experiences that as "the performance is weird".
+
+- Any harness that can run longer than two minutes lowers its own OS priority first
+  (`os.setPriority(os.constants.priority.PRIORITY_LOW)`), as `run-actual-game-playthrough.mjs` does.
+  The results are identical; they arrive later when someone is playing.
+- The owner's rule of 2026-09-15 still stands on top of this: no 45-minute captures, soaks or
+  batteries inside a session, by you or by a lane you launch.
+- Every performance number you report carries the whole-machine CPU line beside it
+  (`npm run probe:smooth-flight` prints it). A frame-time number without the host load cannot be
+  compared with any other run.
+
 ## Known conditions that are NOT your bug
 
 Do not stop, investigate at length, or report these as findings unless they are the actual task:

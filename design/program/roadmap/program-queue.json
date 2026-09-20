@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-19",
+  "updatedAt": "2026-09-20",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -4213,6 +4213,36 @@
         "docs/program-compass/2026-09-ACTUAL-GAME.md"
       ],
       "brief": "Move the measured open-world shape: restore encounter supply in hours 5–9, close the combat→salvage→economy→law chain at least once, and give income a curve past the first-hour cliff. Rerun the six-session battery and diff the hourly tables; sector-boundary flapping is already fixed by 3e84b438e."
+    },
+    {
+      "id": "PQ-210",
+      "priority": 116,
+      "title": "The playable demo",
+      "state": "ready",
+      "canonical": [
+        "PLAYABLE-DEMO"
+      ],
+      "aliases": [
+        "demo-readiness-2026-09-20",
+        "smooth-and-solid"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "design/program/DEMO_READINESS_2026-09-20.md",
+        "design/program/roadmap/active/PQ-210.md",
+        "build_map.md"
+      ],
+      "checks": [
+        "npm run probe:smooth-flight",
+        "npm run probe:smooth-flight:crucible",
+        "node scripts/check-baseline.mjs --only=smooth-flight"
+      ],
+      "evidence": [
+        "smooth-flight-witness",
+        "owner-iGPU"
+      ],
+      "brief": "Owner 2026-09-20: almost ready to demo but not playable. The session fixed the ship jig (loop order flip: 14-26 % frozen presents below 60 fps), slow-motion on slow GPUs, the pose-hold crunch, effects silently stripped by the Windows animation setting, blank rock batches and on-screen mesh disposal. What remains is measured on the owner's Intel iGPU: Crucible swarm 42 fps with 21 freezes over 100 ms per 30 s (wave arrivals linking programs and uploading hulls mid-fight), the first 20 s of flight at 25 % frames over 33 ms, sound off by default, and a HUD that reads as CSS. Leaves are ordered; every instrument is one minute."
     }
   ],
   "dispatchUnits": [
@@ -14224,7 +14254,7 @@
     {
       "id": "PQ-129.01",
       "parentId": "PQ-129",
-      "priority": 339,
+      "priority": 9900,
       "title": "Tabletop glass/runway/beyond census",
       "kind": "performance",
       "state": "done",
@@ -14249,7 +14279,7 @@
     {
       "id": "PQ-129.02",
       "parentId": "PQ-129",
-      "priority": 340,
+      "priority": 9901,
       "title": "Live hitch classifier on the player path",
       "kind": "performance",
       "state": "done",
@@ -14279,7 +14309,7 @@
     {
       "id": "PQ-129.03",
       "parentId": "PQ-129",
-      "priority": 341,
+      "priority": 9902,
       "title": "Honest bloom-path phase timers",
       "kind": "performance",
       "state": "done",
@@ -14306,7 +14336,7 @@
     {
       "id": "PQ-129.04",
       "parentId": "PQ-129",
-      "priority": 342,
+      "priority": 9903,
       "title": "Slice authored ship compose off the present beat",
       "kind": "implementation",
       "state": "done",
@@ -14333,7 +14363,7 @@
     {
       "id": "PQ-129.05",
       "parentId": "PQ-129",
-      "priority": 343,
+      "priority": 9904,
       "title": "Warm next-contact hulls before they hit the glass",
       "kind": "implementation",
       "state": "done",
@@ -14359,7 +14389,7 @@
     {
       "id": "PQ-129.06",
       "parentId": "PQ-129",
-      "priority": 344,
+      "priority": 9905,
       "title": "Census live shader program keys",
       "kind": "performance",
       "state": "done",
@@ -14384,7 +14414,7 @@
     {
       "id": "PQ-129.07",
       "parentId": "PQ-129",
-      "priority": 345,
+      "priority": 9906,
       "title": "Prewarm exact live shader keys",
       "kind": "implementation",
       "state": "done",
@@ -14409,7 +14439,7 @@
     {
       "id": "PQ-129.08",
       "parentId": "PQ-129",
-      "priority": 346,
+      "priority": 9907,
       "title": "Move first GPU uploads off the present beat",
       "kind": "implementation",
       "state": "done",
@@ -14434,7 +14464,7 @@
     {
       "id": "PQ-129.09",
       "parentId": "PQ-129",
-      "priority": 347,
+      "priority": 9908,
       "title": "Bound leftover Continue and sector admission",
       "kind": "implementation",
       "state": "done",
@@ -19490,6 +19520,191 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "The starter field depletes and the next reachable field is ~14,000 WU away with nothing on the way; give income a curve, and address the ~92-shots-per-rock mining click-farm."
+    },
+    {
+      "id": "PQ-210.00",
+      "parentId": "PQ-210",
+      "priority": 339,
+      "title": "Crucible roster prewarm: no wave freezes the fight",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/render/latePipelineAdmission.js",
+        "src/render/precompile.js",
+        "src/render/renderer.js",
+        "src/systems/survivalArena.js",
+        "scripts/probe-smooth-flight.mjs"
+      ],
+      "checks": [
+        "npm run probe:smooth-flight:crucible"
+      ],
+      "receiptRefs": [],
+      "brief": "Measured 2026-09-20 on the owner's Intel iGPU, Crucible seed 4242 default kit: 21 freezes over 100 ms in 30 s, worst 250 ms, made of 15-20 ms of game work plus 120-146 ms of pipeline admission and a 127 ms first-draw link, clustered inside one second. PQ-129.05 warms hulls on approach; a wave has no approach. First print wave-start times beside freeze times in the probe to prove causality. Then at run launch, behind the loading shell, route one REAL exemplar of every hull, projectile and VFX family the ruleset can spawn through the production admission path (real authored material - synthetic stand-ins never converge, measured 2026-08-28), and admit each next round's additions in the shop. Exit is a count: zero program links and zero first-draw uploads during a round; freezes over 100 ms per 30 s <= 1. Never spawn sim entities to warm; never cut quality."
+    },
+    {
+      "id": "PQ-210.01",
+      "parentId": "PQ-210",
+      "priority": 340,
+      "title": "A fight fits the frame: 60 fps with ten hostiles",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/render/weaponLights.js",
+        "src/render/vfx.js",
+        "src/ui/hud.js",
+        "src/core/flight"
+      ],
+      "checks": [
+        "npm run probe:smooth-flight:crucible"
+      ],
+      "receiptRefs": [],
+      "brief": "Crucible fight on the owner's iGPU: typical callback 13.2 ms (sim 4.8, render 6.2, ui 1.1 with 3-5 ms peaks, vfx 0.7), 11.7 % of frames over 33 ms. Take a CPU profile of probe:smooth-flight:crucible and name the top three owners before editing. Unverified suspects: 22 point lights permanently enabled at intensity 0 and baked into every lit program; HUD DOM writes every frame instead of on change; per-tick allocation in flight and AI. One change at a time, same probe before and after, keep only what moves callback <= 10 ms and long frames <= 3 %. Report the whole-machine CPU line with every number."
+    },
+    {
+      "id": "PQ-210.02",
+      "parentId": "PQ-210",
+      "priority": 341,
+      "title": "The first 20 seconds of flight are as smooth as minute two",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/render/compilePresentSlice.js",
+        "src/render/renderer.js",
+        "src/render/pipelineAutoFlushPolicy.js"
+      ],
+      "checks": [
+        "npm run probe:smooth-flight:crucible"
+      ],
+      "receiptRefs": [],
+      "brief": "probe:smooth-flight with no settle on the owner's iGPU: 36 fps, 25 % of frames over 33 ms, 7 % over 50 ms in the first 20 s; settled flight on the same run is a locked 60.0 with zero long frames. The opening admission still leaks into flight. Attribute with the probe's per-freeze table (admission vs render vs sim), then move or finish that work behind the loading shell. Exit: first-20 s frames over 33 ms <= 5 %."
+    },
+    {
+      "id": "PQ-210.03",
+      "parentId": "PQ-210",
+      "priority": 342,
+      "title": "Nothing on the live screen unloads or waits",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/render/renderer.js",
+        "src/render/entityMeshVisibility.js",
+        "src/world/presentationSources.js"
+      ],
+      "checks": [
+        "npm run probe:smooth-flight:crucible"
+      ],
+      "receiptRefs": [],
+      "brief": "Landed 2026-09-20: residency honours the live glass, evict >= prefetch, on-screen rows exempt from the first-flight hold, retired rock batches rebuild. Remaining: add a live onGlassDisposals counter in reconcileMeshResidency (mesh disposed while entityIsOnReadableGlass) and hold it at 0; entityMeshVisibility hides geometryPending roots BEFORE the onLiveGlass override, so an on-screen root waits on a one-at-a-time drain - bound that wait to 0.25 s; appendNearbyLedgerRows collects around the player while the keep radius is centred on the camera look-at (up to 400 WU apart) - give them one origin."
+    },
+    {
+      "id": "PQ-210.04",
+      "parentId": "PQ-210",
+      "priority": 343,
+      "title": "Every hit answers on four channels, with sound",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/render/feel.js",
+        "src/render/forceLanguage/weaponDischargePool.js",
+        "src/audio",
+        "src/core/graphicsProfileBootstrap.js"
+      ],
+      "checks": [
+        "npm run probe:smooth-flight:crucible"
+      ],
+      "receiptRefs": [],
+      "brief": "The owner judged combat limp with effects silently stripped (fixed 2026-09-20) and with audio muted by default (still true: AUDIO_DEFAULT_MUTE_VERSION). With effects Full, audit each default-kit weapon on Crucible seed 4242: hit-stop, event light, moved mass, and a sound inside 100 ms of contact. Land PQ-158.06 minimal action audio as on-by-default for the demo. Small visible win: weaponDischargePool writes descriptor[16] = 0, so every muzzle discharge has zero flow and is a static shape in an envelope. Never answer limp with more particles or shake."
+    },
+    {
+      "id": "PQ-210.05",
+      "parentId": "PQ-210",
+      "priority": 344,
+      "title": "The demo HUD reads as hardware, not a web page",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/ui/hud.js",
+        "src/ui/deckplate",
+        "styles"
+      ],
+      "checks": [
+        "npm run probe:smooth-flight:crucible"
+      ],
+      "receiptRefs": [],
+      "brief": "Owner 2026-09-20: the HUD and gameplay visuals are a bit cheap and css-looking like a cheap web game. Scope for the demo is three surfaces only - flight HUD, Crucible HUD, results screen - under PQ-194 Field Hardware. The flight deckplate was judged 4/10 by two critics on 2026-09-18 (needs a structural cluster and a threat channel). Prove on live ui-bench --shot= stills, never mockups. Note uncommitted deckplate work from another lane in src/ui/deckplate and styles: inspect and continue it, do not restart it."
+    },
+    {
+      "id": "PQ-210.06",
+      "parentId": "PQ-210",
+      "priority": 345,
+      "title": "A quiet machine: long harnesses yield to the game",
+      "kind": "program_control",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "scripts",
+        "docs/AGENT_OPERATIONS.md"
+      ],
+      "checks": [
+        "npm run probe:smooth-flight:crucible"
+      ],
+      "receiptRefs": [],
+      "brief": "On 2026-09-20 two 10-hour playthrough runs from another lane each pinned a core on the owner's play machine (CPU and iGPU share one power budget); the same build read 59 fps clean and 40 fps with a freeze a second, minutes apart. run-actual-game-playthrough now sets PRIORITY_LOW. Do the same in every harness that can run over two minutes (bench runners, soaks, batteries) and write the rule into docs/AGENT_OPERATIONS.md: background compute on the play machine always runs at the lowest OS priority."
+    },
+    {
+      "id": "PQ-210.07",
+      "parentId": "PQ-210",
+      "priority": 346,
+      "title": "Ask once about motion, never assume",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/ui/accessibility.js",
+        "src/ui/screens"
+      ],
+      "checks": [
+        "npm run probe:smooth-flight:crucible"
+      ],
+      "receiptRefs": [],
+      "brief": "Motion effects default to Full since 2026-09-20 because the silent OS-following default stripped combat feel from anyone with Windows Animation effects off. Close the other side: on first boot, when the OS reduced-motion hint is set and the profile has never been asked, show one plain choice - Full or Reduce - and store it. Nothing follows the OS without being asked; the explicit System option stays in Access."
+    },
+    {
+      "id": "PQ-210.08",
+      "parentId": "PQ-210",
+      "priority": 347,
+      "title": "The fifteen-minute demo, played end to end",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-210.00",
+        "PQ-210.01",
+        "PQ-210.02",
+        "PQ-210.03",
+        "PQ-210.04",
+        "PQ-210.05"
+      ],
+      "mutexes": [],
+      "paths": [
+        "design/program/DEMO_READINESS_2026-09-20.md"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Play the path in DEMO_READINESS section 5 on the owner's machine: title, Crucible rounds one to five, results, then one adventure loop. No frame over 100 ms, nothing on the glass unloads, every hit answers with sound, the three demo screens read as hardware. The owner signs the five bars. Depends on .00-.05."
     }
   ]
 }
