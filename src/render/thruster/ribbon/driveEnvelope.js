@@ -178,3 +178,186 @@ export function resolvePlumeShape(state, base, out) {
   out.emitFloor = (EMIT_FLOOR - IDLE_FLOOR) / (1 - IDLE_FLOOR);
   return out;
 }
+
+/* ============================================================================================
+ * E5 — THE APPEARANCE BOUNDARY BETWEEN THE JET AND THE RECORDED HISTORY
+ * ============================================================================================
+ *
+ * The jet owns everything from the nozzle throat to the end of the instantaneous plume. The
+ * history owns the recorded world-space path. The standard (VFX_TECHNIQUE_STANDARD §3, E5) asks
+ * both to consume ONE shared appearance boundary so the pair reads as a single continuous thing
+ * rather than two bright heads meeting at a join.
+ *
+ * This is the jet side of that boundary, published as data. It answers exactly one question:
+ * "what does the jet look like where it hands over?" — width, radiance, colour, flow phase and
+ * how many folds cross the seam. It is authoritative: the history consumer adapts to these
+ * numbers. It never reaches into the history, never moves a recorded sample, and imports nothing
+ * from the history's modules.
+ *
+ * WHERE THE BOUNDARY IS. Not at the far mesh vertex. Every sheet's material runs out before its
+ * geometry does (`runout` in plasmaRibbons.js starts at life 0.64 and reaches zero at 1.0), so
+ * the terminal vertex carries no material and describing it would hand the consumer a phantom.
+ * The boundary is the station where the jet has spent about half its remaining material — the
+ * last place it is still unambiguously the jet. That is HANDOFF_STATION below.
+ */
+
+/** Axial fraction of the designed jet length at which the jet hands over. See the note above. */
+export const HANDOFF_STATION = 0.82;
+
+/**
+ * Constants of the ribbon fragment stage, evaluated once at HANDOFF_STATION so the handoff is a
+ * derivation of the shipped shader rather than a second opinion about it. Each one names the
+ * fragment expression it comes from (plasmaRibbons.js, RIBBON_FRAG).
+ */
+export const HANDOFF_TERMS = Object.freeze({
+  /** `burn = exp(-vAxial * 1.35)` at the boundary. */
+  burn: Math.exp(-HANDOFF_STATION * 1.35),
+  /** `sear = exp(-vAxial * 9.0)` at the boundary — effectively cold. */
+  sear: Math.exp(-HANDOFF_STATION * 9.0),
+  /** `alight = 0.35 + vTongue * 1.15` at the mean tongue value of 0.5. */
+  alight: 0.35 + 0.5 * 1.15,
+  /** `emit` weights the burn term by 1.3 (the sear term contributes nothing this far out). */
+  burnWeight: 1.3,
+  /** Mean of `graze = min(5, 1/max(|N·V|, 0.22))` over a shell of sheet normals. */
+  grazeMean: 1.75,
+  /** `rad` adds `graze * 0.22`. */
+  grazeWeight: 0.22,
+  /** `rad` adds `uBoost * 0.40` and `uDash * 3.0`. */
+  boostWeight: 0.40,
+  dashWeight: 3.0,
+  /** Mean of the `fold` desaturation gate `smoothstep(0.32, 0.78, |N·V|)`. */
+  foldMean: 0.339,
+  /** `col *= mix(vec3(0.29,0.24,0.70), vec3(1.0), fold*0.65 + sear*0.35)`. */
+  foldTintFloor: Object.freeze([0.29, 0.24, 0.70]),
+  /** Radius of the jet column at the throat, as a fraction of the throat radius. */
+  coreRadiusFraction: 0.62,
+  /** Mean per-sheet fan-out once the shear layer has broken down. */
+  fanMean: 1.15,
+  /** `radius += uSpread * pow(s, 0.7) * fan * 1.3`. */
+  spreadWeight: 1.3,
+  /** Sheets are not points: the far half-width adds to the column's outer edge. */
+  sheetFarHalfWidth: 3.3 * 0.5,
+  /** Travelling-wave defaults: `flow = s * axialFreq - t * flowRate`. */
+  axialFreq: 3.2,
+  flowRate: 2.6,
+  /** Streamer sheets crossing the boundary when the recipe does not say. */
+  foldCount: 12,
+});
+
+function smoothstep01(edge0, edge1, x) {
+  if (!(edge1 > edge0)) return x >= edge1 ? 1 : 0;
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+function finite(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+/**
+ * The single reused result record.
+ *
+ * `resolveJetHandoff` is on the per-frame render path for every firing nozzle, so it allocates
+ * nothing: it fills and returns this one object, `colorRGB` included. A caller that needs the
+ * values past its own frame must copy them out — never retain the record itself.
+ */
+const HANDOFF_SCRATCH = {
+  widthWU: 0,
+  radiance: 0,
+  colorRGB: [0, 0, 0],
+  flowPhase: 0,
+  foldCount: HANDOFF_TERMS.foldCount,
+};
+
+/**
+ * Resolve the jet's appearance at its terminal station. Pure and allocation-free.
+ *
+ * @param {object|null} recipe a thruster recipe. Read, when present, in this order:
+ *   `recipe.ribbon.{throatRadius,spread,radiance,jetLength}` (player plasma stream),
+ *   then the flat `recipe.{exitRadiusWU,spread,radiance,lengthWU,ribbons}` (retro jets),
+ *   then `recipe.jet.{exitRadiusWU,lengthWU}`, then `recipe.geometry.{baseWidth,baseLength}`
+ *   (fleet family recipes). Colour comes from `recipe.volume` / the flat recipe
+ *   `{coreColor,midColor,edgeColor}` triple. Anything missing falls back to the shipped
+ *   player numbers, so a null recipe still returns a usable boundary.
+ * @param {object|null} jetState the live jet, normally the object `resolvePlumeShape` filled.
+ *   Reads `drive`, `boost`, `dash`, `jetLength`, `throatRadius`, `spread`, `radiance` and
+ *   `time` (seconds; the plume's own flow clock — pass `0` if the consumer only wants the
+ *   static part of the boundary). Every field is optional.
+ * @returns {{widthWU:number, radiance:number, colorRGB:number[], flowPhase:number,
+ *   foldCount:number}} the shared scratch record described above.
+ */
+export function resolveJetHandoff(recipe, jetState) {
+  const r = recipe || null;
+  const rib = (r && r.ribbon) || null;
+  const jet = (r && r.jet) || null;
+  const geo = (r && r.geometry) || null;
+  const vol = (r && r.volume) || r || null;
+  const s = jetState || null;
+
+  const T = HANDOFF_TERMS;
+
+  // ---- geometry of the boundary ------------------------------------------------------------
+  const recipeThroat = finite(
+    rib && rib.throatRadius,
+    finite(r && r.exitRadiusWU, finite(jet && jet.exitRadiusWU, finite(geo && geo.baseWidth, 1.32))),
+  );
+  const recipeSpread = finite(rib && rib.spread, finite(r && r.spread, 1.7));
+  const throat = Math.max(0, finite(s && s.throatRadius, recipeThroat));
+  const spread = Math.max(0, finite(s && s.spread, recipeSpread));
+  const drive = Math.max(0, Math.min(1.4, finite(s && s.drive, 1)));
+  const boost = Math.max(0, finite(s && s.boost, 0));
+  const dash = Math.max(0, finite(s && s.dash, 0));
+
+  // The column at the boundary: the collimated core, plus the billow the shear layer has opened
+  // by this station, plus the far half-width of the sheets riding on it. Boost collimates rather
+  // than inflates, exactly as the vertex stage does.
+  const column = throat * T.coreRadiusFraction
+    + spread * Math.pow(HANDOFF_STATION, 0.7) * T.fanMean * T.spreadWeight;
+  const sheetEdge = T.sheetFarHalfWidth * Math.pow(HANDOFF_STATION, 0.8);
+  HANDOFF_SCRATCH.widthWU = (column + sheetEdge) * (1 - boost * 0.14 + dash * 0.35);
+
+  // ---- how hot it still is -----------------------------------------------------------------
+  const emit = T.burn * T.burnWeight * T.alight;
+  const baseRadiance = Math.max(0, finite(
+    s && s.radiance,
+    finite(rib && rib.radiance, finite(r && r.radiance, 1.55)),
+  ));
+  HANDOFF_SCRATCH.radiance = baseRadiance
+    * (emit + T.grazeMean * T.grazeWeight + boost * T.boostWeight + dash * T.dashWeight);
+
+  // ---- what colour it is -------------------------------------------------------------------
+  // The fragment's temperature ramp, evaluated at the boundary: edge tone lifted toward the mid
+  // tone by the surviving burn, then the mean fold desaturation the shell's grazing term applies.
+  const mid = (vol && vol.midColor) || [0.09, 0.55, 1.0];
+  const edge = (vol && vol.edgeColor) || [0.12, 0.07, 0.70];
+  const core = (vol && vol.coreColor) || [1.0, 0.99, 0.97];
+  const toMid = smoothstep01(0.05, 0.55, T.burn * T.alight);
+  const toCore = Math.max(0, Math.min(1, dash * 0.8));
+  const tintMix = Math.max(0, Math.min(1, T.foldMean * 0.65 + T.sear * 0.35));
+  for (let i = 0; i < 3; i++) {
+    const e = finite(edge[i], 0);
+    const m = finite(mid[i], 0);
+    const c = finite(core[i], 1);
+    const ramp = e + (m - e) * toMid;
+    const withDash = ramp + (c - ramp) * toCore;
+    const floorC = T.foldTintFloor[i];
+    HANDOFF_SCRATCH.colorRGB[i] = withDash * (floorC + (1 - floorC) * tintMix);
+  }
+
+  // ---- where the travelling wave is --------------------------------------------------------
+  // `flow = s * axialFreq - time * flowRate`, wrapped to [0,1). A consumer that wants its own
+  // structure to line up with the jet's advances from this, rather than inventing a second clock.
+  const time = Math.max(0, finite(s && s.time, 0));
+  const raw = HANDOFF_STATION * T.axialFreq - time * T.flowRate;
+  HANDOFF_SCRATCH.flowPhase = raw - Math.floor(raw);
+
+  // ---- how many folds cross the seam -------------------------------------------------------
+  const folds = finite(rib && rib.ribbons, finite(r && r.ribbons, T.foldCount));
+  HANDOFF_SCRATCH.foldCount = Math.max(1, Math.round(folds));
+
+  // A drive that is not firing hands over nothing to blend with. Width and fold count stay
+  // truthful so a consumer can still size its own root, but the light genuinely goes out.
+  if (drive <= 0) HANDOFF_SCRATCH.radiance = 0;
+
+  return HANDOFF_SCRATCH;
+}
