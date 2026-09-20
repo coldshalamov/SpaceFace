@@ -1038,7 +1038,7 @@ export const onboarding = {
       this._accum = 0;
       this._noteMissingThreeUses();
       if (!ob.active || ob.finished) return;
-      this._tryAdvanceBeat();
+            this._tryAdvanceBeat();
       this._resolveProximityDone();
       this._resolveRescueDone();
       this._resolveRaidDone();
@@ -1046,7 +1046,7 @@ export const onboarding = {
       this._maybeAdvanceMissingThree();
       this._resolveMissingThreeDone();
       this._setObjectiveWaypoint(false);
-    } catch (_) { /* never let onboarding break the loop */ }
+      } catch (_) { /* never let onboarding break the loop */ }
   },
 
   // Resolve drill conditions from canonical sim state. No key assumptions and no wall clock.
@@ -1057,6 +1057,14 @@ export const onboarding = {
     if (!beat || ob.beatDoneAt[beat.key] != null) return;
     const player = this.state.entities.get(this.state.playerId);
     if (!player || !player.pos) return;
+    // A seam rock destroyed in crossfire (the wanted-escape chaos) restages — retry,
+    // never a wall: the seam beat respawns its marked rock the moment it is gone.
+    const beatNow = BEATS[ob.currentBeat];
+    if (beatNow && beatNow.key === 'seam'
+      && (this._miningRockId == null
+        || !(this.state.entities.get(this._miningRockId)?.alive !== false))) {
+      this._spawnMiningRock();
+    }
     const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
     let trainer = this._trainingActor();
     if (!trainer && ['marker', 'focus', 'burst', 'disengage'].includes(beat.key)) {
@@ -1083,9 +1091,11 @@ export const onboarding = {
         && heat <= Math.max(0.02, (ob.burstPeakHeat || 0) * FLIGHT_DRILL_HEAT_RECOVER_FRAC)) {
         this._beatDone(beat);
       }
-    } else if (beat.done === 'disengaged' && trainerDistance >= FLIGHT_DRILL_DISENGAGE_RANGE_WU) {
-      this._removeTrainingActors();
-      this._beatDone(beat);
+    } else if (beat.done === 'disengaged') {
+      if (trainerDistance >= FLIGHT_DRILL_DISENGAGE_RANGE_WU) {
+        this._removeTrainingActors();
+        this._beatDone(beat);
+      }
     }
   },
 
@@ -1395,6 +1405,30 @@ export const onboarding = {
       && rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.pod)) {
       rescue.podLatched = true;
     }
+    // The drills may have carried the pilot far from the original rescue site: restage the
+    // grab tableau near the pilot so the run is a rescue, not a long empty commute. Retry,
+    // never a wall — the same promise every other beat keeps.
+    if (next === 'grab') {
+      const podEnt = rescue.ids.pod != null && this.state.entities
+        ? this.state.entities.get(rescue.ids.pod) : null;
+      const beaconEnt = rescue.ids.beacon != null && this.state.entities
+        ? this.state.entities.get(rescue.ids.beacon) : null;
+      const playerNow = this.state.entities && this.state.entities.get(this.state.playerId);
+      if (playerNow && playerNow.pos && podEnt && podEnt.pos
+        && Math.hypot(podEnt.pos.x - playerNow.pos.x, podEnt.pos.z - playerNow.pos.z) > 1500) {
+        this._respawnRescueSlot('grab');
+        const newPod = rescue.ids.pod != null && this.state.entities
+          ? this.state.entities.get(rescue.ids.pod) : null;
+        if (newPod && newPod.pos && beaconEnt && beaconEnt.pos) {
+          // Keep the beacon a fixed run distance from the fresh pod position.
+          const runDx = newPod.pos.x - beaconEnt.pos.x;
+          const runDz = newPod.pos.z - beaconEnt.pos.z;
+          const runD = Math.hypot(runDx, runDz) || 1;
+          beaconEnt.pos.x = newPod.pos.x + (runDx / runD) * 700;
+          beaconEnt.pos.z = newPod.pos.z + (runDz / runD) * 700;
+        }
+      }
+    }
     if (next === 'swing' && rescue.ids.rock != null
       && rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.rock)) {
       rescue.rockLatched = true;
@@ -1626,6 +1660,15 @@ export const onboarding = {
       if (rescueRockHitDerelict(rock, derelict, RESCUE_ROCK_HIT_MIN_SPEED_WU)) {
         this._dropRescueScrap(derelict);
         this._rescueDone('swing');
+        return;
+      }
+      // Player-scale tolerance: a close shake-down pass at speed also counts — the lesson
+      // is cutting the rock across the wreck, and a near-pass shakes it just the same.
+      const dWreckRock = Math.hypot(rock.pos.x - derelict.pos.x, rock.pos.z - derelict.pos.z);
+      const rockSpeed = Math.hypot(Number(rock.vel && rock.vel.x) || 0, Number(rock.vel && rock.vel.z) || 0);
+      if (dWreckRock <= 70 && rockSpeed >= RESCUE_ROCK_HIT_MIN_SPEED_WU) {
+        this._dropRescueScrap(derelict);
+        this._rescueDone('swing');
       }
     } else if (key === 'shove') {
       const scout = this._rescueActor('scout');
@@ -1650,8 +1693,10 @@ export const onboarding = {
         || rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.pod);
       if (latched) rescue.podLatched = true;
       if (!rescue.podLatched) return;
-      const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
-      if (speed >= RESCUE_RUN_MIN_SPEED_WU && rescuePodAtBeacon(pod, beacon)) {
+      // The proof is the DELIVERY: the pod was latched (towed = the work) and now sits in
+      // the beacon ring. The old speed>=10 AND at-beacon conjunction pinned a towed pod
+      // against the beacon at ~2 wu/s forever — the tow itself is the run.
+      if (rescuePodAtBeacon(pod, beacon)) {
         this._rescueDone('grab');
       }
     }
@@ -1994,8 +2039,30 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!raid || !beat || beat.key !== 'raid') return;
-    const wallId = raid.ids.throwRock != null ? raid.ids.throwRock : (ob.rescue && ob.rescue.ids ? ob.rescue.ids.asteroid : null);
+    const raider = this._raidActor('raider');
+    if (!raider) return; // kill handling is event-driven (_onRaidKilled)
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
     if (!player || !player.pos) return;
+    // Tow-slam proof: the raider latched and CARRIED into the throw-target rock at speed.
+    // The whip observer only rates energetic contacts; a slow heavy tow that grinds the
+    // raider into the rock is the same lesson landing, so accept the plain contact read.
+    const tetherMirror = this.state.player && this.state.player.tether;
+    const towLatched = !!(tetherMirror && tetherMirror.active && tetherMirror.targetId === raider.id);
+    if (towLatched) {
+      const wallId = raid.ids.throwRock != null ? raid.ids.throwRock
+        : (ob.rescue && ob.rescue.ids ? ob.rescue.ids.asteroid : null);
+      const wallEnt = wallId != null && this.state.entities ? this.state.entities.get(wallId) : null;
+      if (wallEnt && wallEnt.pos && raider.pos) {
+        const towSpeed = Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0);
+        const dWallRaider = Math.hypot(raider.pos.x - wallEnt.pos.x, raider.pos.z - wallEnt.pos.z);
+        const contact = (Number(raider.radius) || 8) + (Number(wallEnt.radius) || 26) + 40;
+        if (dWallRaider <= contact && towSpeed >= 40) {
+          this._beatDone(beat);
+          this._emitMilestone('momentumKill', { cause: 'towSlam', beat: 'raid' });
+          return;
+        }
+      }
+    }
     // A raider that somehow drifts clear restages near the wall — retry, never a wall.
     if (Math.hypot(raider.pos.x - player.pos.x, raider.pos.z - player.pos.z) > 3000) {
       this._respawnRaidRaider('He ran. Follow the diamond and latch him.');

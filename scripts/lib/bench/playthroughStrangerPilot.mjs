@@ -1191,7 +1191,7 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               const wdx = derelict.pos.x - rock.pos.x;
               const wdz = derelict.pos.z - rock.pos.z;
               const wd = Math.hypot(wdx, wdz) || 1;
-              const launch = { x: rock.pos.x - (wdx / wd) * 150, z: rock.pos.z - (wdz / wd) * 150 };
+              const launch = { x: rock.pos.x - (wdx / wd) * 60, z: rock.pos.z - (wdz / wd) * 60 };
               if (dist(p.pos, launch) > 110) {
                 flyTo(input, launch, { arrive: 40, boost: energyFull(p) });
                 return;
@@ -1201,16 +1201,24 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               return;
             }
             if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
-              console.log(`    [swing] t=${Math.round(state.simTime)} lineAtt=${lineAttached} latched=${latchedId} rock=${rock.id} dRock=${Math.round(dist(p.pos, rock.pos))} needWinch=${needWinch} v=${Math.round(speedOf(p))} rkV=${Math.round(speedOf(rock))}`);
+              const wdx2 = derelict.pos.x - rock.pos.x;
+              const wdz2 = derelict.pos.z - rock.pos.z;
+              const wd2 = Math.hypot(wdx2, wdz2) || 1;
+              const rk2 = speedOf(rock);
+              const rkDot2 = rock.vel ? (rock.vel.x * wdx2 + rock.vel.z * wdz2) / ((rk2 || 1) * wd2) : 0;
+              console.log(`    [swing] t=${Math.round(state.simTime)} lineAtt=${lineAttached} latched=${latchedId} dRock=${Math.round(dist(p.pos, rock.pos))} needWinch=${needWinch} v=${Math.round(speedOf(p))} rkV=${Math.round(rk2)} rkDot=${rkDot2.toFixed(3)} dWreck=${Math.round(wd2)}`);
             }
             // Winch tight, then SWING exactly like the verbs-bench predator: turn across the
             // line, burn the tangent (boost pulses load the arc), and cut when the rock's
             // velocity actually points at the wreck.
             if (needWinch && (state.simTime || 0) >= winchUntil) needWinch = false;
             if (needWinch) {
-              input.brake = true;
+              // No brake here: braking anchors the hull while the winch drags a light rock
+              // into it — the yank snaps the line. Drift and reel gently instead.
+              input.brake = false;
+              input.moveZ = 0;
               cmd.lineControl = true;
-              cmd.lineLength = (state.simTime || 0) < nearBreakUntil ? 0.5 : -0.5;
+              cmd.lineLength = (state.simTime || 0) < nearBreakUntil ? 0.5 : -0.35;
               return;
             }
             const toWreck = { x: derelict.pos.x - rock.pos.x, z: derelict.pos.z - rock.pos.z };
@@ -1220,29 +1228,41 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               / ((rkSpeed || 1) * toWreckD) : 0;
             swingStartTick = swingStartTick || state.tick;
             const stretchTicks = state.tick - swingStartTick;
-            // Cut when the swing geometry lines the rock up with the wreck (or failsafe late).
+            // Pick the orbit side that carries the sweep toward the wreck first.
+            const crossWR = (rock.pos.x - p.pos.x) * (derelict.pos.z - rock.pos.z)
+              - (rock.pos.z - p.pos.z) * (derelict.pos.x - rock.pos.x);
+            orbitDir = crossWR > 0 ? -1 : 1;
+            // Cut when the swing geometry lines the rock up with the wreck. The sweep
+            // crosses the wreck direction every revolution; a mid-sweep cut flings the
+            // rock exactly the wrong way, so there is no early failsafe here.
             // Contact pad at the wreck is ~32 wu at ~230 wu range: the release needs a
             // near-exact alignment or the rock sails past. The sweep crosses this window
             // every revolution, so hold on until it truly lines up.
-            if ((rkSpeed >= 25 && rkDot > 0.995) || stretchTicks > 600) {
+            if ((rkSpeed >= 25 && rkDot > 0.995) || stretchTicks > 2400) {
               input.tetherCut = true;
               cmd.cut = true;
               unhook();
               swingStartTick = 0;
               return;
             }
-            // Burn the tangent: aim across the line (orbit side), full burn, boost pulses.
-            const linex = (rock.pos.x - p.pos.x) / (dist(p.pos, rock.pos) || 1);
-            const linez = (rock.pos.z - p.pos.z) / (dist(p.pos, rock.pos) || 1);
-            const tanx = -linez * orbitDir;
-            const tanz = linex * orbitDir;
-            input.aimAngle = Math.atan2(tanz, tanx);
-            input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(input.aimAngle - (p.rot || 0)) / 0.5));
+            // The launch sits behind the rock ON the wreck line: burn toward the wreck and the
+            // pair's velocity carries the rock straight into it. Cut when the rock is truly
+            // flying at the wreck.
+            const wreckA = Math.atan2(derelict.pos.z - p.pos.z, derelict.pos.x - p.pos.x);
+            input.aimAngle = wreckA;
+            input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(wreckA - (p.rot || 0)) / 0.5));
             input.moveZ = 1;
-            input.boost = energyFull(p) && ((stretchTicks % 90) === 20 || (stretchTicks % 90) === 60);
+            input.boost = energyFull(p);
             cmd.lineControl = true;
-            cmd.lineLength = 0;
-            return;
+            cmd.lineLength = -0.35; // keep winching while burning: rockReeled must hold at cut
+            if (r.rockReeled && rkSpeed >= 30 && rkDot > 0.9) {
+              input.tetherCut = true;
+              cmd.cut = true;
+              unhook();
+              swingStartTick = 0;
+              return;
+            }
+
           }
         } else if (r.current === 'shove') {
           const scout = rescueEntity('scout');
@@ -1307,6 +1327,9 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
         } else if (r.current === 'grab') {
           const pod = rescueEntity('pod');
           const beacon = rescueEntity('beacon');
+          if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
+            console.log(`    [grab] t=${Math.round(state.simTime)} pod=${pod ? 'live' : 'null'} dPod=${pod ? Math.round(dist(p.pos, pod.pos)) : '?'} dBeacon=${beacon ? Math.round(dist(p.pos, beacon.pos)) : '?'} lineAtt=${lineAttached} latched=${latchedId} podLatched=${r.podLatched} v=${Math.round(speedOf(p))}`);
+          }
           if (pod && beacon) {
             const latched = lineAttached && latchedId === pod.id;
             if (lineAttached && !latched) {
@@ -1315,22 +1338,20 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               return;
             }
             if (!latched) { tryLatch(input, cmd, pod, 'rescue-pod'); return; }
-            // Run the pod home: cruise far out, then brake into the beacon so the trailing
-            // pod crosses the beacon ring at a speed the tick reads can catch.
+            // Run the pod home: cruise far out, then SWEEP THROUGH the beacon ring at speed —
+            // the towed pod crosses the ring trailing the hull, and a creep would just pin
+            // the pod against the beacon's hull at 2 wu/s (below the run-speed proof).
             const dB = dist(p.pos, beacon.pos);
-            const toBx = beacon.pos.x - p.pos.x;
-            const toBz = beacon.pos.z - p.pos.z;
-            const toBd = Math.hypot(toBx, toBz) || 1;
-            const vDot = (p.vel.x * toBx + p.vel.z * toBz) / ((speedOf(p) || 1) * toBd);
-            if (vDot < 0.3) {
-              // Overshot: kill the wrong-way momentum before re-approaching.
-              input.brake = true;
-              flyTo(input, beacon.pos, { arrive: 60 });
-            } else if (dB > 700) {
-              flyTo(input, beacon.pos, { arrive: 60, boost: energyFull(p) && speedOf(p) < 150 });
-            } else {
-              flyTo(input, beacon.pos, { arrive: 40 });
-            }
+                        // Fly ONTO the beacon and winch. The final approach bypasses the chase brakes:
+            // this is a delivery bump, not a chase — the hull presses onto the ring and the
+            // full winch hauls the towed pod in (delivery is pod-in-ring while latched).
+            input.aimAngle = Math.atan2(beacon.pos.z - p.pos.z, beacon.pos.x - p.pos.x);
+            input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(input.aimAngle - (p.rot || 0)) / 0.5));
+            input.moveZ = dB > 25 ? 1 : 0;
+            input.brake = false;
+            input.boost = energyFull(p) && dB > 120;
+            cmd.lineControl = true;
+            cmd.lineLength = -1; // full winch: haul the pod home to the hull on the ring
             return;
           }
         }
@@ -1496,16 +1517,16 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             chosen: 'outrun',
           });
         }
-        const d = dist(p.pos, escapeFrom);
-        if (heat() > 0.001 && d < 2000) {
-          flyTo(input, {
-            x: escapeFrom.x + (p.pos.x - escapeFrom.x) * 10,
-            z: escapeFrom.z + (p.pos.z - escapeFrom.z) * 10,
-          }, { arrive: 400, boost: true });
-          return;
-        }
-        input.brake = true; // outside the ring: coast while the level drains
-        return;
+        const awayA = Math.atan2(p.pos.z - escapeFrom.z, p.pos.x - escapeFrom.x);
+if (heat() > 0.001) {
+  input.aimAngle = awayA;
+  input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(awayA - (p.rot || 0)) / 0.5));
+  input.moveZ = 1;
+  input.boost = energyFull(p);
+  return;
+}
+input.brake = true; // heat cleared: coast while the beat resolves
+return;
       }
 
       // ── The drill + economy beats, by what the HUD instruction says ───────────────────
@@ -1532,9 +1553,12 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
           return;
         }
         if (/leaves scope|thrust away/i.test(line) && wp.pos) {
-          // Disengage: the waypoint marks the trainer — fly directly AWAY from it.
-          const awayPoint = { x: p.pos.x + (p.pos.x - wp.pos.x), z: p.pos.z + (p.pos.z - wp.pos.z) };
-          flyTo(input, awayPoint, { arrive: 50, boost: energyFull(p) });
+          // Disengage: aim directly away from the trainer and hold the burn. (A receding
+          // relative target never opens the brake band — the hull would creep forever.)
+          input.aimAngle = Math.atan2(p.pos.z - wp.pos.z, p.pos.x - wp.pos.x);
+          input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(input.aimAngle - (p.rot || 0)) / 0.5));
+          input.moveZ = 1;
+          input.boost = energyFull(p);
           return;
         }
         if (/trainer|burst/i.test(line) && wp.pos) {
@@ -1600,6 +1624,10 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
         }
         if (/scanner|seams/i.test(line) && wp.pos) {
           const d = flyTo(input, wp.pos, { arrive: 150 });
+          if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
+            const rock9 = wp.label === 'Training Seam' ? nearestEntityTo(wp.pos, 80) : null;
+            console.log(`    [seam] t=${Math.round(state.simTime)} d=${Math.round(d)} v=${Math.round(speedOf(p))} act='${(o.beatAction || '').slice(0, 30)}' scanHi=${rock9 && rock9.data ? (rock9.data.scanHighlightUntil > (state.simTime || 0)) : '?'} fire=${input.fire}`);
+          }
           if (d <= 260 && !decided.scanPulse) {
             decided.scanPulse = true;
             ledger.recordDecision({
