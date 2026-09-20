@@ -327,8 +327,15 @@ export function classifyImpactEvent(rec) {
   if (severity >= 0.8) return 'breakup';
 
   if (!rec.axisSigned) {
-    // No outward side: two bodies met. That is a compression event whatever its size.
-    return severity >= 0.5 ? 'breakup' : 'slam';
+    // No outward side: two bodies met. That is a compression event whatever its size, and it stays
+    // one all the way up — catastrophe is already caught by the severity >= 0.8 rule above, and a
+    // caller that KNOWS the target came apart passes `eventClass: 'breakup'` explicitly.
+    //
+    // This used to promote anything at severity >= 0.5 to a breakup. The live heavy-collision route
+    // maps a 30 WU/s closing speed to 0.52, so almost every survivable collision in the game read
+    // as a ship disintegrating, and the slam recipe — compression along the surface, then shear,
+    // then the heavy matter finally leaving — had no route that actually reached it.
+    return 'slam';
   }
 
   if (severity >= 0.58) return 'detonation';

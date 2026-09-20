@@ -242,8 +242,15 @@ test('the classifier reads the physics of a contact, not its size alone', () => 
     nx: 1, nz: 0, axisSigned: true, severity: 0.08, materialId: 'hull', vx: -6, vz: 120,
   });
   assert.equal(glancing.eventClass, 'graze', 'the same severity glancing off is a different event');
-  // An unsigned axis is two bodies meeting: that is a compression event at any size.
+  // An unsigned axis is two bodies meeting: that is a compression event at any size a ship can
+  // survive. The live heavy-collision route maps a 30 WU/s closing speed to 0.52, so a mid-band
+  // promotion to 'breakup' would leave the slam recipe with no route that ever reaches it.
   assert.equal(classifyImpactEvent(record({ axisSigned: false, severity: 0.3 })), 'slam');
+  assert.equal(classifyImpactEvent(record({ axisSigned: false, severity: 0.52 })), 'slam');
+  assert.equal(classifyImpactEvent(record({ axisSigned: false, severity: 0.72 })), 'slam');
+  // Catastrophe still reads as catastrophe, and a caller that KNOWS the target came apart says so.
+  assert.equal(classifyImpactEvent(record({ axisSigned: false, severity: 0.85 })), 'breakup');
+  assert.equal(record({ axisSigned: false, severity: 0.52, eventClass: 'breakup' }).eventClass, 'breakup');
   // Brittle material never "explodes": it cuts or fractures.
   assert.equal(classifyImpactEvent(record({ materialId: 'rock', severity: 0.1 })), 'cut');
   assert.equal(classifyImpactEvent(record({ materialId: 'ice', severity: 0.5 })), 'fracture');
