@@ -100,12 +100,14 @@ test('QuarksVfxSystem families carry designed material languages, not flat primi
   // Cold solid matter is scene-lit (M1), never self-glowing additive.
   assert.equal(quarks.collisionSpall.material.type, 'MeshStandardMaterial', 'rock spall must be lit solid matter');
   assert.equal(quarks.casingEjection.material.type, 'MeshStandardMaterial', 'casings must be lit solid matter');
+  assert.equal(quarks.miningEjecta.material.type, 'MeshStandardMaterial', 'mineral chips must retain solid matter');
+  assert.equal(quarks.shrapnel.material.type, 'MeshStandardMaterial', 'hull fragments must retain solid matter');
 
   // Energy families keep HDR headroom: the generated batch material must not tone-map the
   // gradient stops back below 1.0 before bloom sees them (B8).
   const energySystems = [
     quarks.impactSpall, quarks.shieldShards, quarks.muzzleSparks,
-    quarks.retroVenting, quarks.miningEjecta, quarks.damageVenting, quarks.shrapnel,
+    quarks.retroVenting, quarks.damageVenting,
   ];
   for (const sys of energySystems) {
     const batchIndex = quarks.renderer.systemToBatchIndex.get(sys);
@@ -115,7 +117,7 @@ test('QuarksVfxSystem families carry designed material languages, not flat primi
 
   // Every family has a temporal envelope (ColorOverLife at minimum) so no burst is a uniform
   // shell fading on opacity alone (B10/B17/B18).
-  for (const sys of [...energySystems, quarks.collisionSpall, quarks.casingEjection]) {
+  for (const sys of [...energySystems, quarks.collisionSpall, quarks.casingEjection, quarks.miningEjecta, quarks.shrapnel]) {
     assert.ok(sys.behaviors.some((b) => b.type === 'ColorOverLife'), 'family needs a temperature track');
   }
 
@@ -124,5 +126,61 @@ test('QuarksVfxSystem families carry designed material languages, not flat primi
     assert.ok(sys.behaviors.some((b) => b.type === 'Rotation3DOverLife'), 'debris must tumble');
   }
 
+  quarks.dispose();
+});
+
+test('Quarks batches receive authored 3D geometry instead of the library default quad', () => {
+  const quarks = new QuarksVfxSystem({ scene: new THREE.Scene() });
+  // The old nested emission option was ignored, silently emitting ten particles per second
+  // from every idle family. Construction alone must never create an effect at world origin.
+  for (let frame = 0; frame < 12; frame++) quarks.update(0.05);
+  for (const name of ['impactSpall', 'shieldShards', 'muzzleSparks', 'casingEjection',
+    'retroVenting', 'miningEjecta', 'collisionSpall', 'damageVenting', 'shrapnel']) {
+    const sys = quarks[name];
+    assert.equal(sys.particleNum, 0, `${name} must stay empty without a causal burst`);
+    const batch = quarks.renderer.batches[quarks.renderer.systemToBatchIndex.get(sys)];
+    assert.equal(batch.geometry.getAttribute('position'), sys.instancingGeometry.getAttribute('position'));
+    sys.instancingGeometry.computeBoundingBox();
+    const extent = sys.instancingGeometry.boundingBox.getSize(new THREE.Vector3());
+    assert.ok(extent.x > 0 && extent.y > 0 && extent.z > 0, `${name} must occupy all three axes`);
+    assert.ok(sys.instancingGeometry.getAttribute('position').count > 4, `${name} cannot silently render a quad`);
+  }
+  quarks.dispose();
+});
+
+test('mineral, collision and hull fragments remain opaque lit matter through their lifetime', () => {
+  const quarks = new QuarksVfxSystem({ scene: new THREE.Scene() });
+  quarks.spawnMiningEjecta(0, 0, 0, 0, 1, 0, 8);
+  quarks.spawnCollisionSpall(0, 0, 0, 1, 0, 0, 8);
+  quarks.spawnExplosion(0, 0, 0, 8);
+  for (const sys of [quarks.miningEjecta, quarks.collisionSpall, quarks.shrapnel]) {
+    const batch = quarks.renderer.batches[quarks.renderer.systemToBatchIndex.get(sys)];
+    assert.equal(batch.material.type, 'MeshStandardMaterial');
+    assert.equal(batch.material.transparent, false);
+    assert.equal(batch.material.depthWrite, true);
+    assert.equal(batch.material.blending, THREE.NormalBlending);
+    assert.equal(batch.material.toneMapped, true);
+  }
+  for (let frame = 0; frame < 24; frame++) {
+    quarks.update(0.05);
+    for (const sys of [quarks.miningEjecta, quarks.collisionSpall, quarks.shrapnel]) {
+      for (let i = 0; i < sys.particleNum; i++) {
+        assert.equal(sys.particles[i].color.w, 1, 'solid retirement must not expose see-through fragments');
+        assert.ok(Number.isFinite(sys.particles[i].size.x));
+      }
+    }
+  }
+  assert.equal(quarks.miningEjecta.particleNum + quarks.collisionSpall.particleNum + quarks.shrapnel.particleNum, 0);
+  quarks.dispose();
+});
+
+test('shield stress fragments have an open centre instead of a filled glowing plate', () => {
+  const quarks = new QuarksVfxSystem();
+  const positions = quarks.shieldShards.instancingGeometry.getAttribute('position');
+  for (let i = 0; i < positions.count; i += 3) {
+    const x = (positions.getX(i) + positions.getX(i + 1) + positions.getX(i + 2)) / 3;
+    const z = (positions.getZ(i) + positions.getZ(i + 1) + positions.getZ(i + 2)) / 3;
+    assert.ok(Math.hypot(x, z) > 0.16, 'lattice triangles must leave the centre empty');
+  }
   quarks.dispose();
 });

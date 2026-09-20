@@ -6,20 +6,19 @@
 //   3. Muzzle sparks  — plasma needles: overexposed blue-white, gone in a tenth of a second
 //   4. Casings        — spent brass: LIT solid (MeshStandardMaterial), tumbling, cooling dark
 //   5. Retro venting  — cryogenic ice needles off the bow jets, supersonic and brief
-//   6. Mining ejecta  — glittering ore: per-chip warm/cool mineral variety over a hot-to-cold track
+//   6. Mining ejecta  — fractured ore: opaque mineral chips lit by the mining contact
 //   7. Collision spall— LIT rock/ice debris: real scene lighting, not a glow (M1 solid matter)
 //   8. Damage venting — burning coolant spray that wanders (turbulent leak, not a cone print)
-//   9. Shrapnel       — burning hull plates: flat-faceted, fast-tumbling, cooling from forge-hot
+//   9. Shrapnel       — torn hull plates: opaque, folded metal in the explosion light
 //
 // Design invariants (docs/visual-assets/VFX_TECHNIQUE_STANDARD.md):
 //   - No 2D billboards, Points, or Sprites anywhere in this file (B2/B4/B13).
-//   - Temperature, not opacity, carries the fade: ColorOverLife gradients run HDR-hot to cold
-//     while alpha holds, then cut only in the last fraction of life (B17).
+//   - Energy cools from HDR-hot to cold; solid fragments stay opaque and retire by size.
 //   - Every family has an attack/settle/cool envelope via Size/Speed/Rotation behaviors, so no
 //     burst is a uniform expanding shell (B10/B18).
 //   - Additive energy families run toneMapped:false with HDR headroom so bloom has something
 //     to catch (B8/M2); genuinely cold solid matter is scene-lit instead of self-glowing (M1).
-//   - All spawn paths reuse scratch vectors/matrices; bursts only (rateOverTime: 0).
+//   - All spawn paths reuse scratch vectors/matrices; bursts only (emissionOverTime: 0).
 
 import * as THREE from 'three';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
@@ -48,8 +47,7 @@ const _vUp = new THREE.Vector3(0, 1, 0);
 const _vForward = new THREE.Vector3(0, 0, 1);
 const _scaleOne = new THREE.Vector3(1, 1, 1);
 
-// Flat facets, not DCC-smoothed normals: a tetrahedron of rock or a plate of shield glass reads
-// as a cut object at the chase camera only when each face holds its own plane.
+// Flat facets preserve each cut plane through rotation.
 function facet(geo) {
   const g = geo.index ? geo.toNonIndexed() : geo;
   g.computeVertexNormals();
@@ -81,6 +79,77 @@ function additiveDonor() {
   });
 }
 
+// Hand-shaped fracture perimeter with offset crown and underside: broad cleavage planes,
+// a chipped shoulder and an asymmetric tip survive a tumble without becoming crystal confetti.
+function fractureGeometry(width, thickness, length) {
+  const rim = [[-0.82, -0.53], [-0.12, -0.78], [0.69, -0.47], [0.93, 0.08],
+    [0.42, 0.61], [-0.18, 0.83], [-0.74, 0.36]];
+  const positions = [];
+  const uvs = [];
+  const point = (x, y, z) => [x * width, y * thickness, z * length];
+  const top = rim.map(([x, z], i) => point(x * 0.82 + 0.06, 0.32 + (i % 3) * 0.09, z * 0.84));
+  const bottom = rim.map(([x, z], i) => point(x, -0.30 - (i % 2) * 0.09, z));
+  const crown = point(-0.14, 0.73, 0.05);
+  const base = point(0.12, -0.45, -0.08);
+  const triangle = (a, b, c) => {
+    for (const p of [a, b, c]) {
+      positions.push(...p);
+      uvs.push(p[0] / width * 0.5 + 0.5, p[2] / length * 0.5 + 0.5);
+    }
+  };
+  for (let i = 0; i < rim.length; i++) {
+    const j = (i + 1) % rim.length;
+    triangle(crown, top[j], top[i]);
+    triangle(base, bottom[i], bottom[j]);
+    triangle(top[i], top[j], bottom[j]);
+    triangle(top[i], bottom[j], bottom[i]);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// A broken, bowed lattice edge has empty space at its centre. It cannot turn into the
+// fully filled luminous hexagon that previously read as a tossed sequin.
+function shieldStressGeometry() {
+  const positions = [];
+  const uvs = [];
+  const point = (i, radius, depth) => {
+    const angle = i * Math.PI / 3;
+    return [Math.cos(angle) * radius, depth + Math.sin(angle) * 0.045, Math.sin(angle) * radius];
+  };
+  const triangle = (a, b, c) => {
+    for (const p of [a, b, c]) { positions.push(...p); uvs.push(p[0] + 0.5, p[2] + 0.5); }
+  };
+  for (let i = 0; i < 4; i++) {
+    const a = point(i, 0.28, 0.02), b = point(i + 1, 0.28, 0.02);
+    const c = point(i + 1, 0.20, -0.02), d = point(i, 0.20, -0.02);
+    triangle(a, b, c); triangle(a, c, d);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function solidDonor(color, role, metalness, roughness) {
+  return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color, metalness, roughness, transparent: false, depthWrite: true,
+  }), role);
+}
+
+// Opaque fragments retain mass through their travel, then contract out of the pool.
+// Retirement never makes the remaining world visible through a rock or hull plate.
+function solidRetirement() {
+  return new SizeOverLife(new PiecewiseBezier([
+    [new Bezier(1, 1, 1, 1), 0],
+    [new Bezier(1, 0.9, 0.35, 0), 0.82],
+  ]));
+}
+
 export class QuarksVfxSystem {
   constructor(options = {}) {
     this.scene = null;
@@ -109,11 +178,11 @@ export class QuarksVfxSystem {
       startSize: new IntervalValue(0.45, 1.35),
       startColor: new ColorRange(new THREE.Vector4(1, 1, 1, 1), new THREE.Vector4(1, 0.85, 0.62, 1)),
       worldSpace: true,
-      emission: { rateOverTime: new ConstantValue(0) },
+      emissionOverTime: new ConstantValue(0),
       shape: new ConeEmitter({ radius: 0.05, angle: 0.65 }),
       material: additiveDonor(),
       renderMode: RenderMode.Mesh,
-      mesh: spallGeo,
+      instancingGeometry: spallGeo,
       behaviors: [
         new ColorOverLife(heatGradient([[3.4, 2.7, 1.7, 0], [1.9, 0.55, 0.1, 0.45], [0.22, 0.04, 0.01, 1]])),
         new SizeOverLife(lifeCurve(0.65, 1.15, 1.0, 0.45)),
@@ -124,10 +193,12 @@ export class QuarksVfxSystem {
 
     // -------------------------------------------------------------
     // 2. Shield Shards — hexagonal field glass.
-    // Flat hex plates, not generic octahedra: the shield is a manufactured lattice and its
-    // wreckage keeps that ancestry. Edge-bright electric cyan, slow stately tumble.
+    // Bowed broken lattice edges retain the shield structure with open centres.
+    // Cyan stress cools quickly while their slow tumble leaves the body visible.
     // -------------------------------------------------------------
-    const shieldShardGeo = facet(new THREE.CylinderGeometry(0.24, 0.24, 0.06, 6));
+    const shieldShardGeo = shieldStressGeometry();
+    const shieldShardMat = additiveDonor();
+    shieldShardMat.side = THREE.DoubleSide;
     this.shieldShards = new ParticleSystem({
       duration: 1,
       looping: false,
@@ -137,11 +208,11 @@ export class QuarksVfxSystem {
       startRotation: new RandomQuatGenerator(),
       startColor: new ColorRange(new THREE.Vector4(0.85, 1, 1, 1), new THREE.Vector4(0.6, 0.9, 1.1, 1)),
       worldSpace: true,
-      emission: { rateOverTime: new ConstantValue(0) },
+      emissionOverTime: new ConstantValue(0),
       shape: new ConeEmitter({ radius: 0.1, angle: 0.85 }),
-      material: additiveDonor(),
+      material: shieldShardMat,
       renderMode: RenderMode.Mesh,
-      mesh: shieldShardGeo,
+      instancingGeometry: shieldShardGeo,
       behaviors: [
         new ColorOverLife(heatGradient([[1.7, 3.3, 4.2, 0], [0.35, 1.1, 2.4, 0.5], [0.04, 0.2, 0.7, 1]])),
         new SizeOverLife(lifeCurve(0.55, 1.1, 1.0, 0.6)),
@@ -165,11 +236,11 @@ export class QuarksVfxSystem {
       startSize: new IntervalValue(0.5, 1.3),
       startColor: new ColorRange(new THREE.Vector4(0.9, 1, 1.1, 1), new THREE.Vector4(0.7, 0.9, 1.2, 1)),
       worldSpace: true,
-      emission: { rateOverTime: new ConstantValue(0) },
+      emissionOverTime: new ConstantValue(0),
       shape: new ConeEmitter({ radius: 0.05, angle: 0.35 }),
       material: additiveDonor(),
       renderMode: RenderMode.Mesh,
-      mesh: muzzleGeo,
+      instancingGeometry: muzzleGeo,
       behaviors: [
         new ColorOverLife(heatGradient([[2.6, 3.4, 4.6, 0], [0.3, 0.9, 2.0, 0.6], [0.05, 0.15, 0.5, 1]], [[1, 0], [0.9, 0.5], [0, 1]])),
         new SizeOverLife(lifeCurve(1.0, 1.05, 0.7, 0.3)),
@@ -180,7 +251,7 @@ export class QuarksVfxSystem {
     // -------------------------------------------------------------
     // 4. Spent Shell Casings — LIT solid brass.
     // Cold manufactured matter: scene-lit (key/rim/fill + muzzle point light), tumbling end over
-    // end, warming from the chamber then cooling dark. The only family with no glow at all.
+    // end, warming from the chamber then cooling dark. Solid matter, with no self-glow.
     // -------------------------------------------------------------
     const casingGeo = facet(new THREE.CylinderGeometry(0.07, 0.07, 0.28, 6));
     casingGeo.rotateZ(Math.PI / 2);
@@ -199,11 +270,11 @@ export class QuarksVfxSystem {
       startRotation: new RandomQuatGenerator(),
       startColor: new ColorRange(new THREE.Vector4(1.35, 1.1, 0.55, 1), new THREE.Vector4(1.1, 0.9, 0.45, 1)),
       worldSpace: true,
-      emission: { rateOverTime: new ConstantValue(0) },
+      emissionOverTime: new ConstantValue(0),
       shape: new ConeEmitter({ radius: 0.05, angle: 0.4 }),
       material: casingMat,
       renderMode: RenderMode.Mesh,
-      mesh: casingGeo,
+      instancingGeometry: casingGeo,
       behaviors: [
         // Chamber-hot brass cooling to shadowed metal; alpha holds until the last breath.
         new ColorOverLife(heatGradient([[1.25, 1.05, 0.55, 0], [0.75, 0.6, 0.32, 0.55], [0.3, 0.24, 0.14, 1]], [[1, 0], [1, 0.82], [0, 1]])),
@@ -227,11 +298,11 @@ export class QuarksVfxSystem {
       startSize: new IntervalValue(0.55, 1.35),
       startColor: new ColorRange(new THREE.Vector4(1, 1, 1, 1), new THREE.Vector4(0.75, 0.9, 1.15, 1)),
       worldSpace: true,
-      emission: { rateOverTime: new ConstantValue(0) },
+      emissionOverTime: new ConstantValue(0),
       shape: new ConeEmitter({ radius: 0.2, angle: 0.28 }),
       material: additiveDonor(),
       renderMode: RenderMode.Mesh,
-      mesh: retroIceGeo,
+      instancingGeometry: retroIceGeo,
       behaviors: [
         new ColorOverLife(heatGradient([[2.3, 2.9, 3.3, 0], [0.5, 1.2, 2.2, 0.55], [0.06, 0.25, 0.8, 1]], [[1, 0], [0.85, 0.5], [0, 1]])),
         new SizeOverLife(lifeCurve(0.8, 1.1, 0.9, 0.35)),
@@ -241,11 +312,11 @@ export class QuarksVfxSystem {
     });
 
     // -------------------------------------------------------------
-    // 6. Mining Ejecta — glittering ore over a molten track.
-    // Each chip rolls warm (molten ore) or cool (glinting mineral) at spawn, then rides the same
-    // white-hot to dull track, so a single strike throws a mixed handful of matter.
+    // 6. Mining Ejecta: opaque fractured mineral.
+    // Contact light belongs to the mining owner. Cleavage planes and mineral mass remain
+    // visible as chips leave that light, without random spectral glitter.
     // -------------------------------------------------------------
-    const miningOreGeo = facet(new THREE.OctahedronGeometry(0.17));
+    const miningOreGeo = fractureGeometry(0.24, 0.18, 0.35);
     this.miningEjecta = new ParticleSystem({
       duration: 1,
       looping: false,
@@ -253,16 +324,16 @@ export class QuarksVfxSystem {
       startSpeed: new IntervalValue(8, 24),
       startSize: new IntervalValue(0.45, 1.5),
       startRotation: new RandomQuatGenerator(),
-      startColor: new ColorRange(new THREE.Vector4(1.1, 0.9, 0.55, 1), new THREE.Vector4(0.65, 0.9, 1.15, 1)),
+      startColor: new ColorRange(new THREE.Vector4(1, 0.93, 0.83, 1), new THREE.Vector4(0.78, 0.76, 0.71, 1)),
       worldSpace: true,
-      emission: { rateOverTime: new ConstantValue(0) },
+      emissionOverTime: new ConstantValue(0),
       shape: new ConeEmitter({ radius: 0.15, angle: 0.8 }),
-      material: additiveDonor(),
+      material: solidDonor(0x8f8271, SHARED_MATERIAL_ROLE.ROCK, 0.08, 0.86),
       renderMode: RenderMode.Mesh,
-      mesh: miningOreGeo,
+      instancingGeometry: miningOreGeo,
       behaviors: [
-        new ColorOverLife(heatGradient([[3.0, 2.4, 1.2, 0], [1.4, 0.55, 0.15, 0.5], [0.2, 0.08, 0.03, 1]])),
-        new SizeOverLife(lifeCurve(0.6, 1.15, 1.0, 0.55)),
+        new ColorOverLife(heatGradient([[1, 0.91, 0.77, 0], [0.87, 0.83, 0.76, 0.5], [0.64, 0.62, 0.59, 1]], [[1, 0], [1, 1]])),
+        solidRetirement(),
         new SpeedOverLife(lifeCurve(1.0, 0.7, 0.45, 0.3)),
         new Rotation3DOverLife(new AxisAngleGenerator(_vUp, new IntervalValue(2, 8))),
       ],
@@ -271,15 +342,10 @@ export class QuarksVfxSystem {
     // -------------------------------------------------------------
     // 7. Collision Spall — LIT rock and ice.
     // Cold terrain matter has no business glowing: real scene lighting on flat-faceted
-    // tetrahedra, tumbling hard off the contact plane and settling as they drag.
+    // fracture chips, tumbling hard off the contact plane and settling as they drag.
     // -------------------------------------------------------------
-    const rockShardGeo = facet(new THREE.TetrahedronGeometry(0.3));
-    const rockShardMat = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-      color: 0x9a9088,
-      metalness: 0.05,
-      roughness: 0.9,
-      transparent: true,
-    }), SHARED_MATERIAL_ROLE.ROCK);
+    const rockShardGeo = fractureGeometry(0.34, 0.28, 0.42);
+    const rockShardMat = solidDonor(0x9a9088, SHARED_MATERIAL_ROLE.ROCK, 0.05, 0.9);
     this.collisionSpall = new ParticleSystem({
       duration: 1,
       looping: false,
@@ -289,13 +355,14 @@ export class QuarksVfxSystem {
       startRotation: new RandomQuatGenerator(),
       startColor: new ColorRange(new THREE.Vector4(1.05, 1.0, 0.92, 1), new THREE.Vector4(0.8, 0.82, 0.9, 1)),
       worldSpace: true,
-      emission: { rateOverTime: new ConstantValue(0) },
+      emissionOverTime: new ConstantValue(0),
       shape: new SphereEmitter({ radius: 0.3 }),
       material: rockShardMat,
       renderMode: RenderMode.Mesh,
-      mesh: rockShardGeo,
+      instancingGeometry: rockShardGeo,
       behaviors: [
-        new ColorOverLife(heatGradient([[1.15, 1.1, 1.02, 0], [0.85, 0.82, 0.78, 0.6], [0.45, 0.43, 0.4, 1]], [[1, 0], [1, 0.78], [0, 1]])),
+        new ColorOverLife(heatGradient([[1.15, 1.1, 1.02, 0], [0.85, 0.82, 0.78, 0.6], [0.45, 0.43, 0.4, 1]], [[1, 0], [1, 1]])),
+        solidRetirement(),
         new SpeedOverLife(lifeCurve(1.0, 0.7, 0.5, 0.38)),
         new Rotation3DOverLife(new AxisAngleGenerator(_vUp, new IntervalValue(3, 10))),
       ],
@@ -316,11 +383,11 @@ export class QuarksVfxSystem {
       startSize: new IntervalValue(0.5, 1.35),
       startColor: new ColorRange(new THREE.Vector4(1.1, 0.95, 0.8, 1), new THREE.Vector4(1.0, 0.75, 0.5, 1)),
       worldSpace: true,
-      emission: { rateOverTime: new ConstantValue(0) },
+      emissionOverTime: new ConstantValue(0),
       shape: new ConeEmitter({ radius: 0.15, angle: 0.7 }),
       material: additiveDonor(),
       renderMode: RenderMode.Mesh,
-      mesh: damageSparkGeo,
+      instancingGeometry: damageSparkGeo,
       behaviors: [
         new ColorOverLife(heatGradient([[3.1, 1.7, 0.5, 0], [1.2, 0.3, 0.06, 0.5], [0.25, 0.05, 0.01, 1]])),
         new SizeOverLife(lifeCurve(0.7, 1.1, 0.95, 0.4)),
@@ -331,11 +398,10 @@ export class QuarksVfxSystem {
 
     // -------------------------------------------------------------
     // 9. Destruction Shrapnel — burning hull plates.
-    // Flattened, flat-faceted plates (not symmetric caltrops): a ship comes apart as sheets of
-    // its own skin. Forge-hot at separation, tumbling fast, cooling through ember orange.
+    // Folded, torn plates retain thickness and lit surfaces. The separate explosion core
+    // supplies heat; the wreckage recovers the solid world as it leaves that core.
     // -------------------------------------------------------------
-    const shardGeo = facet(new THREE.TetrahedronGeometry(0.42));
-    shardGeo.scale(1.35, 0.55, 1.0);
+    const shardGeo = fractureGeometry(0.65, 0.13, 0.43);
     this.shrapnel = new ParticleSystem({
       duration: 1,
       looping: false,
@@ -345,14 +411,14 @@ export class QuarksVfxSystem {
       startRotation: new RandomQuatGenerator(),
       startColor: new ColorRange(new THREE.Vector4(1.1, 1.0, 0.9, 1), new THREE.Vector4(1.0, 0.8, 0.6, 1)),
       worldSpace: true,
-      emission: { rateOverTime: new ConstantValue(0) },
+      emissionOverTime: new ConstantValue(0),
       shape: new SphereEmitter({ radius: 0.3 }),
-      material: additiveDonor(),
+      material: solidDonor(0x737b82, SHARED_MATERIAL_ROLE.HULL, 0.48, 0.64),
       renderMode: RenderMode.Mesh,
-      mesh: shardGeo,
+      instancingGeometry: shardGeo,
       behaviors: [
-        new ColorOverLife(heatGradient([[3.3, 2.0, 0.8, 0], [1.5, 0.4, 0.06, 0.5], [0.18, 0.03, 0.01, 1]], [[1, 0], [1, 0.6], [0, 1]])),
-        new SizeOverLife(lifeCurve(0.75, 1.1, 1.0, 0.7)),
+        new ColorOverLife(heatGradient([[1, 0.88, 0.72, 0], [0.82, 0.81, 0.78, 0.5], [0.54, 0.57, 0.61, 1]], [[1, 0], [1, 1]])),
+        solidRetirement(),
         new SpeedOverLife(lifeCurve(1.0, 0.7, 0.45, 0.3)),
         new Rotation3DOverLife(new AxisAngleGenerator(_vUp, new IntervalValue(4, 12))),
       ],
@@ -378,15 +444,13 @@ export class QuarksVfxSystem {
 
     // The batch renderer generates its own ShaderMaterial from each donor (default toneMapped),
     // which would crush the HDR gradient stops before bloom ever sees them. Opt the additive
-    // energy batches out of tone mapping; the two scene-lit solid families stay on ACES.
+    // energy batches out of tone mapping; scene-lit solid families stay on ACES.
     const energySystems = [
       this.impactSpall,
       this.shieldShards,
       this.muzzleSparks,
       this.retroVenting,
-      this.miningEjecta,
       this.damageVenting,
-      this.shrapnel,
     ];
     for (const sys of energySystems) {
       const batchIndex = this.renderer.systemToBatchIndex.get(sys);
@@ -470,7 +534,7 @@ export class QuarksVfxSystem {
   }
 
   /**
-   * Spawns glittering crystal chips and molten rock droplets from asteroid mining contacts.
+   * Spawns opaque fractured mineral chips from asteroid mining contacts.
    */
   spawnMiningEjecta(x, y, z, nx, ny, nz, count = 8) {
     if (!this.scene) return;
@@ -520,7 +584,7 @@ export class QuarksVfxSystem {
   }
 
   /**
-   * Spawns tumbling 3D tetrahedral debris chunks upon entity death.
+   * Spawns opaque torn hull fragments upon entity death.
    */
   spawnExplosion(x, y, z, count = 28) {
     if (!this.scene) return;

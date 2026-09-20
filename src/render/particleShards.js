@@ -1,10 +1,7 @@
-// Pooled spark/chip/ember presentation: one instanced streak-quad cloud in the shared
-// luminous-fluid language (TRAIL_GLSL_LIB), replacing the retired gaussian point-sprite cloud.
-// Each particle renders as a real world-space shard: a velocity-oriented streak quad on the play
-// plane with a hot core line, a defined lateral cutoff, flowing internal structure, and a ragged
-// per-shard runout — never a camera-facing gaussian dot.
+// Hot contact sparks only: swept, tapered folds aligned with motion in the XZ play plane.
+// Solid chips belong to the lit debris pools. A stable launch phase prevents moving sparks from
+// re-rolling their shape every frame (the old position hash turned whole bursts into glitter).
 import * as THREE from 'three';
-import { TRAIL_GLSL_LIB } from './trailTexture.js';
 
 // Dynamic-buffer owner binding contract. Names stay aligned with the packed particle channels the
 // VFX system has always uploaded: world position, color, width, intensity envelope, heading, length.
@@ -35,21 +32,21 @@ const SHARD_VERT = /* glsl */`
     vShardUv = uv;
     vShardColor = aColor;
     vShardAlpha = aAlpha;
-    vShardSeed = fract(sin(dot(aShardPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
+    vShardSeed = fract(aTrailAxis * 0.75487766 + aTrailStretch * 0.56984029);
     // Heading is the launch axis. Drag decelerates a shard without turning it, so the streak stays
     // on the flown path; length comes from aTrailStretch (speed at spawn), width from aSize.
     vec2 dir = vec2(cos(aTrailAxis), sin(aTrailAxis));
     vec2 perp = vec2(-dir.y, dir.x);
-    float along = (uv.x - 1.0) * aTrailStretch;
-    float side = (uv.y - 0.5) * aSize;
-    vec3 world = aShardPos + vec3(dir * along + perp * side, 0.0);
+    float along = (uv.x - 1.0) * aTrailStretch * (0.3 + 0.7 * aAlpha);
+    float side = position.y * aSize;
+    vec2 planar = dir * along + perp * side;
+    vec3 world = aShardPos + vec3(planar.x, position.z * aSize, planar.y);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(world, 1.0);
   }
 `;
 
 const SHARD_FRAG = /* glsl */`
   precision mediump float;
-  ${TRAIL_GLSL_LIB}
   uniform float uTrailScroll;
   uniform float uTrailTime;
 
@@ -62,50 +59,46 @@ const SHARD_FRAG = /* glsl */`
     float along = vShardUv.x;
     float side = vShardUv.y * 2.0 - 1.0;
 
-    // Structure rides a travelling wave (position minus time) with a per-shard phase, so detail
-    // flows through each streak instead of translating a frozen shape (B15/B16).
-    float flow = fract(along * 1.35 + vShardSeed * 7.31 - uTrailTime * (0.9 + vShardSeed * 0.8));
-    float body = trailSampleProcedural(flow, side, uTrailTime);
-
-    // Defined cross-section: a white-hot core line plus a fast linear sheath and a hard lateral
-    // cutoff. Not a gaussian-only falloff — the streak has an edge (B6).
-    float core = exp(-side * side * 30.0);
-    float sheath = max(0.0, 1.0 - abs(side) * 1.15);
-    float lateral = core + sheath * 0.34;
-
-    // Every shard runs out of material at its own distance before the geometry ends, so the far
-    // edge of a burst dissolves raggedly instead of stopping at one plane (B9/B18).
-    float reach = vShardSeed * 0.38;
-    float envelope = smoothstep(0.0, 0.26, along) * smoothstep(reach, reach + 0.14, along);
-
-    float intensity = body * lateral * envelope * vShardAlpha;
+    // Continuous heat moving along a folded sliver, without a scrolling noise mask or white
+    // pixels appearing/disappearing across its surface. The crease carries the hottest material.
+    float flow = 0.88 + 0.12 * sin(along * 7.0 - uTrailTime * 9.0 + vShardSeed * 6.28);
+    float crease = pow(max(0.0, 1.0 - abs(side)), 3.0);
+    float edge = 1.0 - smoothstep(0.72, 1.0, abs(side));
+    float envelope = smoothstep(vShardSeed * 0.18, 0.42, along)
+      * (1.0 - smoothstep(0.92, 1.0, along));
+    float intensity = flow * (0.22 + crease * 0.78) * edge * envelope * vShardAlpha;
     if (intensity < 0.006) discard;
 
     // Heat, not opacity: the core whitens and its radiance exceeds 1.0 so selective bloom catches
     // the hot front (B8). Cooling shrinks reach and heat with the age envelope in aAlpha.
-    vec3 hot = mix(vShardColor, vec3(1.0, 0.985, 0.92), clamp(core * 0.7, 0.0, 0.65));
-    float radiance = 0.55 + vShardAlpha * (0.9 + body * 1.5);
+    float hotTip = crease * smoothstep(0.65, 0.88, along) * pow(vShardAlpha, 3.0);
+    vec3 hot = mix(vShardColor, vec3(1.0, 0.91, 0.72), hotTip * 0.45);
+    float radiance = 0.65 + hotTip * 2.4;
     gl_FragColor = vec4(hot * intensity * radiance, intensity);
   }
 `;
 
 function createShardQuadGeometry(capacity) {
   const geometry = new THREE.InstancedBufferGeometry();
-  // Two triangles on the play plane: position.x = along (-0.5 head side .. +0.5), position.y = side.
-  const corners = new Float32Array([
-    -0.5, -0.5, 0,
-    -0.5, 0.5, 0,
-    0.5, -0.5, 0,
-    0.5, 0.5, 0,
-  ]);
-  geometry.setAttribute('position', new THREE.BufferAttribute(corners, 3));
-  geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
-    0, 0,
-    0, 1,
-    1, 0,
-    1, 1,
-  ]), 2));
-  geometry.setIndex([0, 1, 2, 2, 1, 3]);
+  // Four stations, each with two lips and a raised crease. Width grows toward the hot head
+  // and closes at both ends; the silhouette is a sliver, never a luminous rectangular card.
+  const positions = [], uvs = [], indices = [];
+  const stations = [0, 0.36, 0.82, 1];
+  const widths = [0, 0.20, 0.5, 0];
+  for (let i = 0; i < stations.length; i++) {
+    for (let j = 0; j < 3; j++) {
+      positions.push(stations[i] - 0.5, (j - 1) * widths[i], j === 1 ? widths[i] * 0.36 : 0);
+      uvs.push(stations[i], j * 0.5);
+    }
+    if (i === 0) continue;
+    for (let j = 0; j < 2; j++) {
+      const a = (i - 1) * 3 + j, b = i * 3 + j;
+      indices.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+  }
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
   geometry.setAttribute('aShardPos', shardAttribute(capacity * 3, 3));
   geometry.setAttribute('aColor', shardAttribute(capacity * 3, 3));
   geometry.setAttribute('aSize', shardAttribute(capacity, 1));
@@ -136,6 +129,7 @@ function createShardMaterial() {
     blending: THREE.AdditiveBlending,
     toneMapped: false,
     side: THREE.DoubleSide,
+    forceSinglePass: true,
   });
 }
 

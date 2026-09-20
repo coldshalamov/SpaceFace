@@ -9558,9 +9558,8 @@ export const vfx = {
     const pos = this._posFrom(p, null);
     if (!pos) return;
     const col = oreColor(p.oreType);
-    // Top-50 rank-9: denser contact spray so beam mining reads as real work, not a whisper.
-    // Spray sparks outward from the contact point, biased away from the miner so they fan
-    // off the rock face like molten chips. Bigger, brighter, more numerous than before.
+    // A cutting contact, not a fountain: a brief tangential heat fan supported by solid
+    // mineral chips and the existing fracture steam/scar. Matter has its own lit owner below.
     const miner = (p && (p.sourceEntityId || p.droneId || p.entityId) && this._ent(p.sourceEntityId || p.droneId || p.entityId))
       || (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId));
     let backA = null;
@@ -9568,33 +9567,16 @@ export const vfx = {
       const dx = miner.pos.x - pos.x, dz = miner.pos.z - pos.z;
       if (dx * dx + dz * dz > 1) backA = Math.atan2(dz, dx);
     }
-    // Hot white-to-ore sparks — wider spray, faster, longer life
-    this._c0.set('#fffaf0'); this._c1.set(col);
-    const n = Math.max(12, Math.round(22 * (this._burst || 1)));
+    this._c0.set('#ffc078'); this._c1.set('#582510');
+    const n = Math.max(2, Math.round(5 * (this._burst || 1)));
     for (let k = 0; k < n; k++) {
-      // Spray perpendicular to beam (away from rock face) for a fan effect
+      // Ejection off the work face toward the miner, with two tangential cutting lobes.
       const a = backA != null
-        ? backA + Math.PI + (Math.random() - 0.5) * 2.4  // fan away from ship
+        ? backA + (k % 2 ? 0.65 : -0.65) + (Math.random() - 0.5) * 0.3
         : Math.random() * Math.PI * 2;
-      const sp = 20 + Math.random() * 40;
+      const sp = 16 + Math.random() * 18;
       this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.38 + Math.random() * 0.22, 2.2, 0.2, this._c0, this._c1, 2.5, 0, 0);
-    }
-    // A few slow-drifting embers that linger (amber → dim)
-    this._c0.set('#ffb040'); this._c1.set('#401800');
-    for (let k = 0; k < 5; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 3 + Math.random() * 7;
-      this._spawnParticle(pos.x + (Math.random() - 0.5) * 4, pos.z + (Math.random() - 0.5) * 4,
-        Math.cos(a) * sp, Math.sin(a) * sp, 0.65 + Math.random() * 0.45, 2.0, 0.0, this._c0, this._c1, 1.5, 0, 0);
-    }
-    // Ore-chip micro chunks (heavier, slower) — readable as rock break fragments
-    this._c0.set(col); this._c1.set('#2a2018');
-    for (let k = 0; k < 4; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 6 + Math.random() * 12;
-      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.55 + Math.random() * 0.3, 2.6, 0.4, this._c0, this._c1, 1.8, 0, 2 + Math.random() * 4);
+        0.16 + Math.random() * 0.12, 0.45, 0.0, this._c0, this._c1, 2.5, 0.2, 0, a, 2.8);
     }
     // Bright contact flash — bigger, punchier
     this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.18, 2.8, 5.8, 0.85, 0.0, col, 0, 0);
@@ -9636,8 +9618,8 @@ export const vfx = {
     this._flashLight({ x: pos.x, z: pos.z }, col, 4.6, 3.8, 155);
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
-      const nx = backA != null ? Math.cos(backA + Math.PI) : 0;
-      const nz = backA != null ? Math.sin(backA + Math.PI) : 1;
+      const nx = backA != null ? Math.cos(backA) : 0;
+      const nz = backA != null ? Math.sin(backA) : 1;
       this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, nx, 0.4, nz, 8);
     }
     // Carve a molten work-face into the rock at a slow cadence. The shared 32-scar ring
@@ -9666,36 +9648,18 @@ export const vfx = {
     if (!pos) return;
     const col = oreColor(p.commodityId);
     const qty = p.qty || 1;
-    // Top-50 rank-9 ore-chunk yield: denser burst + crack ring so pickup pops.
-    const burstN = Math.min(32, 10 + qty * 3);
-    this._c0.set('#ffffff'); this._c1.set(col);
-    for (let k = 0; k < burstN; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 16 + Math.random() * 30;
-      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.35 + Math.random() * 0.25, 2.4, 0.35, this._c0, this._c1, 2.0, 0, 5 + Math.random() * 10);
-    }
-    // Chunky ore fragments (slower, larger life)
-    this._c0.set(col); this._c1.set('#1a1410');
-    const chunkN = Math.min(12, 4 + qty);
-    for (let k = 0; k < chunkN; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 8 + Math.random() * 16;
-      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.7 + Math.random() * 0.4, 3.2, 0.6, this._c0, this._c1, 1.4, 0, 3 + Math.random() * 6);
-    }
-    // Bright flash + expanding break ring to punctuate the yield
+    // The calved mineral carries the reward. One fracture flare and dust body accompany
+    // the lit chips; no second white-to-ore firework or decorative expanding ring.
     this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.35, 3.4, 7.0, 0.95, 0.0, col, 0, 0);
-    this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.45, 2.4, 14.0, 0.55, 0.0, col, 0, 0);
     this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.6, 3.0, 7.0, 0.45, 0.0, col, 0, 0);
     this._flashLight({ x: pos.x, z: pos.z }, col, 6.0, 4.5, 200);
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
-      this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, 0, 1, 0, 16);
+      this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, 0, 1, 0, Math.min(12, 4 + qty));
     }
   },
 
-  // Yield shatter — the rock gives way: basalt chunk burst, ore-gem sparkles, a break ring, and
+  // Yield shatter — the rock gives way: solid basalt fragments, fracture dust, and
   // a low thump cue pair. Fires on final depletion (asteroid:destroyed, position in payload) and
   // on every calved chunk (asteroid:chunked — position comes from the fresh chunk entity).
   _onAsteroidShatter(p, chunked) {
@@ -9707,25 +9671,13 @@ export const vfx = {
     }
     if (!pos) return;
     const col = oreColor(p.commodityId || p.typeId);
-    // Dark basalt fracture chunks — heavy, fast, upward-popping, short-lived.
-    this._c0.set('#9a8d7c'); this._c1.set('#241d16');
-    const n = Math.max(10, Math.round((chunked ? 10 : 16) * (this._burst || 1)));
-    for (let k = 0; k < n; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 10 + Math.random() * 26;
-      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.5 + Math.random() * 0.4, 2.4, 0.8, this._c0, this._c1, 1.6, 0, 3 + Math.random() * 6);
-    }
-    // Ore-gem sparkles — the exposed vein glittering as it breaks open.
-    this._c0.set('#ffffff'); this._c1.set(col);
-    for (let k = 0; k < 8; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const sp = 6 + Math.random() * 18;
-      this._spawnParticle(pos.x, pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.45 + Math.random() * 0.3, 1.6, 0.25, this._c0, this._c1, 2.2, 0, 4 + Math.random() * 8);
+    if (this._weaponPresenter && this._weaponPresenter.quarks) {
+      const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
+      this._weaponPresenter.quarks.spawnCollisionSpall(
+        local.x, 0.3, local.z, 0, 1, 0, chunked ? 6 : 10,
+      );
     }
     this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, 0.3, 3.0, 8.0, 0.8, 0.0, col, 0, 0);
-    this._spawnSprite(SPR_RING, pos.x, 0.3, pos.z, 0.5, 2.0, 16.0, 0.5, 0.0, col, 0, 0);
     this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, 3.2, 9.0, 0.4, 0.0, '#cbb9a0',
       (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
     this._flashLight({ x: pos.x, z: pos.z }, col, 5.0, 4.0, 170);
@@ -9923,9 +9875,8 @@ export const vfx = {
   },
 
   // Collection. The moment a drop lands is the payoff for the whole mining/flyby loop and it used
-  // to be a 12-particle puff. Now it reads as light ARRIVING: a stretched streak laid along the
-  // last leg of the drop's path into the hull, a hot pop at the intake, and a short spray that
-  // implodes rather than scattering — so the eye is pulled to the exact collecting hull.
+  // to be a particle puff. Light now follows the last leg of the real approach and resolves
+  // at the intake. Collection does not invent a surrounding cloud of glitter or an explosion.
   _onPickup(p) {
     if (successfulPickupAmount(p) <= 0 || !this._scene || !p.pos) return;
     const col = (p.kind === 'credits' || p.kind === 'credit_chip') ? '#ffcc44' : oreColor(p.commodityId);
@@ -9952,27 +9903,8 @@ export const vfx = {
           0.75 - k * 0.16, 0.0, k === 0 ? '#ffffff' : col,
           ux * 90, uz * 90, 3.4, roll);
       }
-      // Imploding spray: particles converge on the intake instead of scattering away from it.
-      for (let k = 0; k < 14; k++) {
-        const a = Math.random() * Math.PI * 2;
-        const r = 6 + Math.random() * 12;
-        const sx = collector.pos.x + Math.cos(a) * r;
-        const sz = collector.pos.z + Math.sin(a) * r;
-        const pull = 42 + Math.random() * 46;
-        this._spawnParticle(sx, sz, -Math.cos(a) * pull, -Math.sin(a) * pull,
-          0.20 + Math.random() * 0.12, 1.5, 0.0, this._c0, this._c1, 1.2, 1.6, 0,
-          a + Math.PI, 0.8);
-      }
       this._spawnSprite(SPR_FLASH, collector.pos.x, 1.4, collector.pos.z, 0.14, 2.6, 5.2, 0.9, 0.0, '#ffffff', 0, 0);
-      this._spawnSprite(SPR_RING, collector.pos.x, 1.0, collector.pos.z, 0.26, 1.2, 6.5, 0.5, 0.0, col, 0, 0);
       this._flashLight({ x: collector.pos.x, z: collector.pos.z }, col, 3.4, 7.0, 110);
-    } else {
-      for (let k = 0; k < 12; k++) {
-        const a = Math.random() * Math.PI * 2;
-        const sp = 12 + Math.random() * 18;
-        this._spawnParticle(p.pos.x, p.pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-          0.3 + Math.random() * 0.15, 1.8, 0.0, this._c0, this._c1, 3.0, 2, 6 + Math.random() * 10);
-      }
     }
   },
 
