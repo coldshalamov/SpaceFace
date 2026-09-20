@@ -372,6 +372,23 @@ test('one contact composes one recipe: structure first, then gas, then debris, e
   fx.dispose();
 });
 
+test('supporting layers bind as resolvers, so build order cannot silently pin them to null', () => {
+  // The renderer constructs these subsystems in an order no single lane controls. Binding the
+  // VALUE at mount time would pin whatever existed then -- usually nothing -- and quietly drop
+  // every gas pass for the rest of the session, with no error anywhere.
+  const host = { gas: null };
+  const seen = [];
+  const fx = new ArcadeStructuralFx(null);
+  fx.attachSupportingLayers({ gas: () => host.gas, debris: null });
+  fx.emitImpact(record({ severity: 0.5, radiusWU: 8 }), VIEW);
+  assert.equal(seen.length, 0, 'nothing to call yet');
+  // The gas layer arrives after the mount, as it does in the real renderer.
+  host.gas = { emitFromImpact: (rec) => seen.push(rec.eventClass) };
+  fx.emitImpact(record({ severity: 0.5, radiusWU: 8 }), VIEW);
+  assert.equal(seen.length, 1, 'a layer bound by resolver is picked up whenever it appears');
+  fx.dispose();
+});
+
 test('the recipe still lands when the gas and debris layers never arrive', () => {
   const bare = new ArcadeStructuralFx(null);
   assert.ok(bare.emitImpact(record({ severity: 0.5, radiusWU: 8 }), VIEW) > 0);

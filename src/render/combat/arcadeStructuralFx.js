@@ -477,14 +477,29 @@ export class ArcadeStructuralFx {
   spawnPlate(spec) { return this.plates.spawn(spec); }
 
   /**
-   * Bind the gas and debris layers. Both are optional and both are called through a guarded
+   * Bind the gas and debris layers. Both are optional and both are reached through a guarded
    * optional call, so this lane's work lands whether or not they exist yet.
-   * @param {{gas?: {emitFromImpact?: Function}, debris?: {emitFromImpact?: Function}}} layers
+   *
+   * Each may be the layer itself, OR a zero-argument resolver that returns it. Prefer the resolver:
+   * the renderer constructs these subsystems in an order no single lane controls, and a resolver
+   * removes the ordering hazard entirely — binding before the gas layer is built would otherwise
+   * silently pin `null` for the rest of the session and quietly drop every gas pass.
+   *
+   * @param {{gas?: object|Function, debris?: object|Function}} layers
    */
   attachSupportingLayers(layers = {}) {
     this._gas = layers.gas || null;
     this._debris = layers.debris || null;
     return this;
+  }
+
+  _resolveLayer(slot) {
+    if (!slot) return null;
+    if (typeof slot === 'function') {
+      const resolved = slot();
+      return resolved || null;
+    }
+    return slot;
   }
 
   /**
@@ -514,8 +529,11 @@ export class ArcadeStructuralFx {
       forcedColors: !!(view && view.forcedColors),
       hero: !!(view && view.hero),
     });
-    if (this._gas?.emitFromImpact) this._gas.emitFromImpact(rec);
-    if (this._debris?.emitFromImpact) this._debris.emitFromImpact(rec);
+    // Primary structure has landed; the supporting passes follow it, in this order, once each.
+    const gas = this._resolveLayer(this._gas);
+    const debris = this._resolveLayer(this._debris);
+    if (gas?.emitFromImpact) gas.emitFromImpact(rec);
+    if (debris?.emitFromImpact) debris.emitFromImpact(rec);
     return spawned;
   }
 
