@@ -1,5 +1,5 @@
 /**
- * PQ-045.causal-chain — eight ambient microevents as one authored Ceres chain.
+ * PQ-045.causal-chain — nine ambient microevents as one authored Ceres chain.
  *
  * Seconds-scale, seed-pinned characterization of the traffic-owned choreography timer.
  * Does not touch goldens, npcJobsRuntime, or render.
@@ -40,6 +40,7 @@ const TENDER_SLOT_ID = 'ceres_refinery_tender';
 const CHAIN_EVENT_IDS = Object.freeze(CERES_CAUSAL_CHAIN.map((entry) => entry.id));
 
 const EXPECTED_CHAIN = Object.freeze([
+  'ev_surveyor_probe_line',
   'ev_rich_seam_strike',
   'ev_miner_calls_hauler',
   'ev_patrol_scans_suspect',
@@ -121,6 +122,12 @@ function bootCausalHarness({ simTime = 10, npcJobs = null, withTenderCombat = fa
       dockStations: [station],
       stations: [station],
       byStationId: new Map([['station_ceres', station]]),
+      // Combat's prePhysics tick source reads index.shipLike when the marker is present; a live
+      // view keeps the pocket cast ticking (pending subsystem transitions only commit there).
+      get shipLike() {
+        return state.entityList.filter((entity) => entity && entity.alive !== false
+          && (entity.type === 'ship' || entity.type === 'drone'));
+      },
     },
     traffic: {
       freighters: [],
@@ -177,7 +184,7 @@ function bootCausalHarness({ simTime = 10, npcJobs = null, withTenderCombat = fa
     worldRecordId: tenderWorldRecordId,
     jobId: `job:${tenderWorldRecordId}`,
     activityActorSlotId: TENDER_SLOT_ID,
-    trafficRole: 'tender',
+    // No trafficRole — production's tender stamp deletes it (factionPresence owns this hull).
     durable: true,
     factionPresence: { yardTender: true },
   }, tenderPos);
@@ -337,9 +344,19 @@ function applyCeresMinerWork(traffic, state, asteroid, sequence = 1) {
   };
 }
 
+// The probe line is the authored opener: the strike cannot seed rich_seam until the surveyor's
+// wave-close plants seam_mapped, then the strike must reach its 'strike' seed phase. stepTo
+// teleports simTime and advances at most one phase per call, so this steps until the seed lands.
+function stepUntilRichSeamSeeded(traffic, state, { maxS = 400, stepS = 5 } = {}) {
+  const at = runUntil(traffic, state, (snap) => snap && snap.seeds && snap.seeds.rich_seam === true,
+    { start: state.simTime, maxS, stepS });
+  assert.ok(at != null, 'probe line → strike should seed rich_seam under zero input');
+  return at;
+}
+
 function materializeRichLoad(traffic, state, asteroid, sequence = 1, { rendezvous = true } = {}) {
   stepTo(traffic, state, 0);
-  stepTo(traffic, state, 24);
+  stepUntilRichSeamSeeded(traffic, state);
   const result = applyCeresMinerWork(traffic, state, asteroid, sequence);
   assert.equal(result.applied, true, 'authored seam work should materialize one load');
   if (rendezvous) {
@@ -363,13 +380,13 @@ function runUntil(traffic, state, predicate, { start = state.simTime, maxS = 900
   return null;
 }
 
-test('catalog order is the eight admitted microevents', () => {
+test('catalog order is the nine admitted microevents', () => {
   assert.deepEqual(CHAIN_EVENT_IDS, [...EXPECTED_CHAIN]);
   assert.equal(CERES_CAUSAL_CHAIN_MAX_CONCURRENT, 2);
   assert.equal(CERES_CAUSAL_CHAIN_SCHEMA, 'spaceface.ceresCausalChain.v1');
 });
 
-test('chain arms on ensure and starts the rich-seam link when the cast is live', () => {
+test('chain arms on ensure and opens with the probe line; the strike waits on seam_mapped', () => {
   const { traffic, receipts } = bootCausalHarness({ simTime: 10 });
   const snap0 = traffic.getCeresCausalChainSnapshot();
   assert.ok(snap0);
@@ -377,20 +394,33 @@ test('chain arms on ensure and starts the rich-seam link when the cast is live',
   assert.equal(snap0.activeCount, 0);
 
   stepTo(traffic, traffic.state, 10);
-  const snap = traffic.getCeresCausalChainSnapshot();
+  let snap = traffic.getCeresCausalChainSnapshot();
   assert.equal(snap.activeCount, 1);
-  assert.equal(snap.active[0].eventId, 'ev_rich_seam_strike');
-  assert.equal(snap.active[0].phase, 'cutting');
-  assert.equal(snap.active[0].cue, 'blind_cone');
+  assert.equal(snap.active[0].eventId, 'ev_surveyor_probe_line');
+  assert.equal(snap.active[0].phase, 'mark_run');
+  assert.equal(snap.active[0].cue, 'reading_the_dark');
   assert.ok(receipts.some((r) => r.kind === 'chain_ready'));
-  assert.ok(receipts.some((r) => r.kind === 'event_start' && r.eventId === 'ev_rich_seam_strike'));
+  assert.ok(receipts.some((r) => r.kind === 'event_start' && r.eventId === 'ev_surveyor_probe_line'));
+  assert.notEqual(snap.seeds.seam_mapped, true, 'the find lands only at the wave close');
+  assert.ok(!snap.active.some((l) => l.eventId === 'ev_rich_seam_strike'),
+    'the strike cannot start before the survey says where');
+
+  const mappedAt = runUntil(traffic, traffic.state,
+    (s) => s && s.seeds && s.seeds.seam_mapped === true,
+    { start: traffic.state.simTime, maxS: 400, stepS: 5 });
+  assert.ok(mappedAt != null, 'the wave close plants seam_mapped under zero input');
+  const struckAt = runUntil(traffic, traffic.state,
+    (s) => s && (s.active.some((l) => l.eventId === 'ev_rich_seam_strike')
+      || s.completed.includes('ev_rich_seam_strike')),
+    { start: traffic.state.simTime, maxS: 200, stepS: 2 });
+  assert.ok(struckAt != null, 'the strike opens once the probe line mapped the seam');
 });
 
 test('concurrency never exceeds two authored events', () => {
   const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
   materializeRichLoad(traffic, state, asteroid);
   let peak = 0;
-  for (let t = 24; t <= 600; t += 2) {
+  for (let t = Math.max(60, state.simTime); t <= 600; t += 2) {
     stepTo(traffic, state, t);
     const snap = traffic.getCeresCausalChainSnapshot();
     peak = Math.max(peak, snap.activeCount);
@@ -414,7 +444,7 @@ test('full chain reaches a believable terminal outcome after authored miner work
   const newsLines = [];
   bus.on('news:publish', (p) => newsLines.push(p));
   stepTo(traffic, state, 0);
-  stepTo(traffic, state, 24);
+  stepUntilRichSeamSeeded(traffic, state);
   assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
     'the authored miner work materializes the load needed by the next link');
   // Cycle re-arms clear the seed bag in the same step as the final complete, so the terminal
@@ -422,7 +452,7 @@ test('full chain reaches a believable terminal outcome after authored miner work
   let doneAt = null;
   let sawDriveDisabled = false;
   let sawRepair = false;
-  for (let t = 24; t <= 924; t += 3) {
+  for (let t = Math.max(60, state.simTime); t <= 924; t += 3) {
     // This timer-only harness has no flight integrator; keep the actual pair together after the
     // rendezvous-specific test above has already proven the hauler drives there under its intent.
     const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
@@ -477,7 +507,7 @@ test('full chain reaches a believable terminal outcome after authored miner work
   // Intermediate seeds must have been observed on the bus before the re-arm wipe.
   const seedKinds = receipts.filter((r) => r.kind === 'seed');
   for (const key of [
-    'rich_seam', 'miner_loaded', 'scan_complete',
+    'seam_mapped', 'rich_seam', 'miner_loaded', 'scan_complete',
     'miner_wear', 'miner_serviced', 'rock_calved',
   ]) {
     assert.ok(
@@ -515,17 +545,26 @@ test('full chain reaches a believable terminal outcome after authored miner work
 
 test('real miner work opens the hauler-call link while rich seam may still be active', () => {
   const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
-  // cutting 15 + strike 8 = 23s → the opportunity opens; greed still has 30s left.
+  // Probe line (~53s) → strike enters 'strike' after 15s cutting → the opportunity opens; greed
+  // still has 30s left.
   stepTo(traffic, state, 0);
-  stepTo(traffic, state, 24);
+  stepUntilRichSeamSeeded(traffic, state);
   let snap = traffic.getCeresCausalChainSnapshot();
   assert.notEqual(snap.seeds.miner_loaded, true, 'a timer cannot claim cargo exists');
   assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'open');
   assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true);
-  stepTo(traffic, state, 25);
+  stepTo(traffic, state, state.simTime + 1);
   snap = traffic.getCeresCausalChainSnapshot();
   assert.equal(snap.seeds.miner_loaded, true);
   assert.equal(snap.seeds.rich_seam, true);
+  // Both concurrency slots may still be held (probe close + strike) — the call joins when one
+  // frees, not on a timer.
+  const calledAt = runUntil(traffic, state, (s) => s
+    && (s.active.some((live) => live.eventId === 'ev_miner_calls_hauler')
+      || s.completed.includes('ev_miner_calls_hauler')),
+    { start: state.simTime, maxS: 240, stepS: 2 });
+  assert.ok(calledAt != null, 'hauler call should open once the load is real');
+  snap = traffic.getCeresCausalChainSnapshot();
   const ids = snap.active.map((live) => live.eventId).sort();
   assert.ok(ids.includes('ev_rich_seam_strike') || snap.completed.includes('ev_rich_seam_strike'));
   assert.ok(
@@ -542,7 +581,7 @@ test('miner-to-hauler handoff drives a physical rendezvous, transfers one conser
   const sourceQty = miner.data.cargoManifest.totalQty;
   assert.equal(sourceQty, 16);
 
-  stepTo(traffic, state, 25);
+  stepTo(traffic, state, state.simTime + 1);
   const requested = state.traffic.ceresMinerHaulerHandoff;
   assert.ok(requested, 'real miner work requests one durable handoff');
   assert.equal(requested.state, 'rendezvous');
@@ -557,7 +596,7 @@ test('miner-to-hauler handoff drives a physical rendezvous, transfers one conser
     traffic,
     state,
     () => state.traffic.ceresMinerHaulerHandoff.state === 'in_transit',
-    { start: 26, maxS: 180, stepS: 1 },
+    { start: state.simTime, maxS: 180, stepS: 1 },
   );
   assert.ok(transferredAt != null, 'physical range + authored transfer window should hand over the lot');
   const handoff = state.traffic.ceresMinerHaulerHandoff;
@@ -602,7 +641,7 @@ test('partial handoff survives Continue by stable identity and hauler death rout
     traffic,
     state,
     () => state.traffic.ceresMinerHaulerHandoff.transferSeq === 1,
-    { start: 25, maxS: 180, stepS: 1 },
+    { start: state.simTime, maxS: 180, stepS: 1 },
   );
   assert.ok(transferAt != null);
   const handoff = state.traffic.ceresMinerHaulerHandoff;
@@ -643,7 +682,7 @@ test('miner loss after a partial transfer preserves the live hauler fragment thr
   hauler.pos = { ...miner.pos };
   assert.ok(runUntil(traffic, state,
     () => state.traffic.ceresMinerHaulerHandoff.transferSeq === 1,
-    { start: 25, maxS: 180, stepS: 1 }) != null);
+    { start: state.simTime, maxS: 180, stepS: 1 }) != null);
   const handoff = state.traffic.ceresMinerHaulerHandoff;
   const moved = hauler.data.cargoManifest;
   const losses = [];
@@ -682,7 +721,7 @@ test('asymmetric rendezvous control acquisition releases the one lease it obtain
   };
   const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0, npcJobs });
   materializeRichLoad(traffic, state, asteroid, 4, { rendezvous: false });
-  stepTo(traffic, state, 25);
+  stepTo(traffic, state, state.simTime + 1);
   claimCount = 0;
   releases.length = 0;
   traffic._stepCeresMinerHaulerHandoffs(1 / 60);
@@ -695,7 +734,7 @@ test('malformed persisted handoff is cleared and cannot block the next real extr
   const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
   state.traffic.ceresMinerHaulerHandoff = { state: 'requested' };
   const { actor } = materializeRichLoad(traffic, state, asteroid, 5, { rendezvous: false });
-  stepTo(traffic, state, 25);
+  stepTo(traffic, state, state.simTime + 1);
   const handoff = state.traffic.ceresMinerHaulerHandoff;
   assert.equal(handoff.schema, 'spaceface.ceresMinerHaulerHandoff.v1');
   assert.equal(handoff.minerWorldRecordId, actor.data.worldRecordId);
@@ -776,7 +815,7 @@ test('real save envelope restores the in-transit lot into a fresh runtime and re
 test('rich-seam strike opens one material opportunity and exact miner work loads it once', () => {
   const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
   stepTo(traffic, state, 0);
-  stepTo(traffic, state, 24); // strike seeded
+  stepUntilRichSeamSeeded(traffic, state);
   const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
   const miner = state.entities.get(minerRec.id);
   const snap = traffic.getCeresCausalChainSnapshot();
@@ -812,7 +851,7 @@ test('rich-seam strike opens one material opportunity and exact miner work loads
 test('calving coda re-arms the rich-seam window as the fresh-face aftermath', () => {
   const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
   stepTo(traffic, state, 0);
-  stepTo(traffic, state, 24); // strike seeded → primary window open
+  stepUntilRichSeamSeeded(traffic, state);
   const strikeWindow = richSeamOpportunityForEntity(state, asteroid);
   assert.equal(strikeWindow.state, 'open');
   assert.equal(strikeWindow.sourceEventId, 'ev_rich_seam_strike');
@@ -852,7 +891,7 @@ test('calving coda re-arms the rich-seam window as the fresh-face aftermath', ()
 test('calving interrupted before its calve phase opens no fresh-face window', () => {
   const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
   stepTo(traffic, state, 0);
-  stepTo(traffic, state, 24); // strike seeded
+  stepUntilRichSeamSeeded(traffic, state);
   const work = applyCeresMinerWork(traffic, state, asteroid, state.tick);
   assert.equal(work.applied, true);
   assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'worked');
@@ -888,7 +927,7 @@ test('explicit HELP reserves the seam for the NPC owner and changes the resolved
   const depletion = { ...fieldDepletionBase };
   depletion.init({ state, bus });
   stepTo(traffic, state, 0);
-  stepTo(traffic, state, 24);
+  stepUntilRichSeamSeeded(traffic, state);
   const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
   const open = richSeamOpportunityForEntity(state, asteroid);
   assert.equal(open.state, 'open');
@@ -933,7 +972,7 @@ test('HELP reservation survives Continue rematerialization by stable miner ident
   const depletion = { ...fieldDepletionBase };
   depletion.init({ state, bus });
   stepTo(traffic, state, 0);
-  stepTo(traffic, state, 24);
+  stepUntilRichSeamSeeded(traffic, state);
   const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
   bus.emit('contactHail:response', { requestId: 'stable-help', targetId: miner.id, choice: 'help' });
   const saved = depletion.serialize();
@@ -995,7 +1034,7 @@ test('HELP reservation survives Continue rematerialization by stable miner ident
 test('reserved HELP seam resolves immediately to MISS when its stable miner dies', () => {
   const { traffic, state, bus, asteroid } = bootCausalHarness({ simTime: 0 });
   stepTo(traffic, state, 0);
-  stepTo(traffic, state, 24);
+  stepUntilRichSeamSeeded(traffic, state);
   const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
   bus.emit('contactHail:response', { requestId: 'death-help', targetId: miner.id, choice: 'help' });
   assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'open');
@@ -1008,11 +1047,16 @@ test('reserved HELP seam resolves immediately to MISS when its stable miner dies
 
 test('actor death falls back and plants interrupt seeds (divergent from complete)', () => {
   const { traffic, state } = bootCausalHarness({ simTime: 0 });
+  // The probe line is the authored opener; the strike needs its seam_mapped seed first.
   stepTo(traffic, state, 0);
+  const struckAt = runUntil(traffic, state, (s) => s
+    && s.active.some((live) => live.eventId === 'ev_rich_seam_strike'),
+    { start: 0, maxS: 400, stepS: 5 });
+  assert.ok(struckAt != null, 'strike link should be live once the probe line mapped the seam');
   const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
   const miner = state.entities.get(minerRec.id);
   miner.alive = false;
-  stepTo(traffic, state, 5);
+  stepTo(traffic, state, state.simTime + 2);
   let snap = traffic.getCeresCausalChainSnapshot();
   // Active rich-seam link should fall back; concurrency slot freed.
   assert.ok(!snap.active.some((live) => live.eventId === 'ev_rich_seam_strike'));
@@ -1038,7 +1082,7 @@ test('actor death falls back and plants interrupt seeds (divergent from complete
       || s.seeds.chain_complete === true
       || (s.cycle | 0) >= 1
     ),
-    { start: 5, maxS: 600, stepS: 3 },
+    { start: state.simTime, maxS: 600, stepS: 3 },
   );
   assert.ok(continuedAt != null, 'chain must continue after an interrupted rich-seam link');
   snap = traffic.getCeresCausalChainSnapshot();
@@ -1059,7 +1103,7 @@ test('D1: kill hauler mid-scan seeds aftermath_open, not hauler_stressed', () =>
     traffic,
     state,
     (snap) => snap && snap.active.some((l) => l.eventId === 'ev_patrol_scans_suspect'),
-    { start: 24, maxS: 400, stepS: 2 },
+    { start: state.simTime, maxS: 400, stepS: 2 },
   );
   assert.ok(entered != null, 'patrol scan link should open under zero input');
   const haulerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_refinery_hauler');
@@ -1182,7 +1226,7 @@ test('save mid-recovery clears ceresCausal stamps from a persistent civilian', (
     traffic,
     state,
     (snap) => snap && snap.active.some((l) => l.eventId === 'ev_disabled_hauler_recovery'),
-    { start: 24, maxS: 600, stepS: 2 },
+    { start: state.simTime, maxS: 600, stepS: 2 },
   );
   assert.ok(entered != null, 'recovery link should open under zero input');
   const haulerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_refinery_hauler');
@@ -1216,7 +1260,7 @@ test('traffic cleanup clears ceresCausal stamps from all entity-scoped actors', 
     traffic,
     state,
     (snap) => snap && snap.active.some((l) => l.eventId === 'ev_disabled_hauler_recovery'),
-    { start: 24, maxS: 600, stepS: 2 },
+    { start: state.simTime, maxS: 600, stepS: 2 },
   );
   assert.ok(entered != null, 'recovery link should open under zero input');
   const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
@@ -1245,7 +1289,7 @@ test('failed patrol redirect does not tear down the actor job at link terminatio
     traffic,
     state,
     (snap) => snap && snap.active.some((l) => l.eventId === 'ev_patrol_scans_suspect'),
-    { start: 24, maxS: 240, stepS: 2 },
+    { start: state.simTime, maxS: 240, stepS: 2 },
   );
   assert.ok(startedAt != null, 'patrol scan link should start');
   assert.equal(patrol.data.jobId, priorJobId, 'failed redirect should restore the prior job immediately');
@@ -1300,7 +1344,7 @@ test('patrol redirect restores the prior job id after a successful assign round 
     traffic,
     state,
     (snap) => snap && snap.completed.includes('ev_patrol_scans_suspect'),
-    { start: 24, maxS: 360, stepS: 2 },
+    { start: state.simTime, maxS: 360, stepS: 2 },
   );
 
   assert.ok(completedAt != null, 'patrol scan link should complete');
@@ -1362,10 +1406,20 @@ test('same seed and simTime path is deterministic across two harnesses', () => {
 test('visible cue stamps land on bound actors for the ordinary camera path', () => {
   const { traffic, state } = bootCausalHarness({ simTime: 0 });
   stepTo(traffic, state, 0);
+  // The probe line opens the cycle, so the surveyor carries the first visible stamp.
+  const surveyorRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_surveyor');
+  const surveyor = state.entities.get(surveyorRec.id);
+  assert.equal(surveyor.data.ceresCausalEventId, 'ev_surveyor_probe_line');
+  assert.equal(surveyor.data.ceresCausalPhase, 'mark_run');
+  assert.equal(surveyor.data.ceresCausalCue, 'reading_the_dark');
+  // Once the line closes, the strike takes over the stamp path.
+  const struckAt = runUntil(traffic, state, (snap) => snap
+    && snap.active.some((live) => live.eventId === 'ev_rich_seam_strike'),
+    { start: state.simTime, maxS: 400, stepS: 5 });
+  assert.ok(struckAt != null, 'the strike opens once the probe line mapped the seam');
   const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
   const miner = state.entities.get(minerRec.id);
   assert.equal(miner.data.ceresCausalEventId, 'ev_rich_seam_strike');
-  assert.equal(miner.data.ceresCausalPhase, 'cutting');
   assert.equal(miner.data.ceresCausalCue, 'blind_cone');
 });
 
@@ -1425,7 +1479,7 @@ test('the refinery outbound capsule leaves the station face once per link as a r
     return entity;
   };
   const capsuleDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_cargo_capsule_launch');
-  assert.ok(capsuleDef, 'the capsule link is the eighth admitted event');
+  assert.ok(capsuleDef, 'the capsule link is the ninth admitted event');
   assert.deepEqual(capsuleDef.requires, ['ore_handoff'],
     'the launch rides the custody transfer, not a cooldown draw');
   const station = state.entityList.find((entity) => entity.data
@@ -1466,4 +1520,120 @@ test('the refinery outbound capsule leaves the station face once per link as a r
   traffic._applyCeresCausalPhaseEffects(capsuleDef, liveNoFace, 'launch');
   traffic._sectorStations = realStations;
   assert.equal(capsules().length, 1, 'no face resolved → the fallback completes without a capsule');
+});
+
+test('the surveyor probe line drops three real probes at its drop phases, once each', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 100 });
+  stepTo(traffic, state, 100); // materialize the activity cast
+  // The harness stub spawns nothing; give it a minimal real spawn for this probe-only test.
+  let spawnSeq = 9700;
+  traffic.helpers.spawnEntity = (spec) => {
+    const entity = {
+      id: spawnSeq++, type: spec.type, alive: true,
+      pos: { ...spec.pos }, vel: { ...(spec.vel || {}) }, radius: spec.radius,
+      homeSectorId: spec.homeSectorId,
+      data: { ...spec.data },
+    };
+    state.entityList.push(entity);
+    state.entities.set(entity.id, entity);
+    return entity;
+  };
+  const probeDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_surveyor_probe_line');
+  assert.ok(probeDef, 'the probe line is the first admitted event');
+  assert.equal(CERES_CAUSAL_CHAIN[0].id, 'ev_surveyor_probe_line',
+    'the survey opens the cycle — the strike answers its find');
+  assert.deepEqual(probeDef.seeds, ['seam_mapped']);
+  const strike = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_rich_seam_strike');
+  assert.deepEqual([...strike.requires], ['seam_mapped'],
+    'the strike waits on the probe line, not a cooldown');
+
+  const surveyor = state.entityList.find((entity) => entity.data
+    && entity.data.activityActorSlotId === 'ceres_seam_surveyor');
+  assert.ok(surveyor, 'the surveyor cast is live in the harness');
+
+  // The authored line is the surveyor's own sweep wedge — derive the segment independently from
+  // the pocket data the harness materializes the cast from.
+  const surveyorPocket = CERES_ACTIVITY_POCKETS.find((pocket) => pocket.actorSlots
+    .some((slot) => slot.id === 'ceres_seam_surveyor'));
+  const surveyorSlot = surveyorPocket.actorSlots.find((slot) => slot.id === 'ceres_seam_surveyor');
+  const anchor = surveyorPocket.activityAnchor.localPos;
+  const ends = surveyorSlot.route.marks.map((mark) => sectorLocalToGlobalForSector({
+    x: anchor.x + mark.offset.x,
+    z: anchor.z + mark.offset.z,
+  }, CERES_ACTIVITY_SECTOR_ID));
+  const segDx = ends[1].x - ends[0].x;
+  const segDz = ends[1].z - ends[0].z;
+  const segLen = Math.hypot(segDx, segDz);
+  const distToLine = (p) => Math.abs(
+    (p.pos.x - ends[0].x) * segDz - (p.pos.z - ends[0].z) * segDx) / segLen;
+  const distTo = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+
+  const live = { eventId: probeDef.id, phase: 'drop_1', actorSlotIds: [...probeDef.actorSlots] };
+  const probes = () => [...state.entityList].filter((entity) => entity
+    && entity.type === 'pickup' && entity.data
+    && entity.data.ceresProbeSource === 'ev_surveyor_probe_line');
+  assert.equal(probes().length, 0, 'no probes before the first drop phase');
+
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'mark_run');
+  assert.equal(probes().length, 0, 'the mark_run beat drops nothing');
+
+  // The line is authored geometry, not the mover's trail — the surveyor's live position does not
+  // move the drop points (it only gates that a living planter exists).
+  surveyor.pos = { x: -400, z: 900 };
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'drop_1');
+  surveyor.pos = { x: 12, z: -77 };
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'drop_2');
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'drop_3_close');
+  const dropped = probes().sort((a, b) => a.data.ceresProbeIndex - b.data.ceresProbeIndex);
+  assert.equal(dropped.length, 3, 'three drop phases leave three probes');
+  for (let i = 0; i < dropped.length; i++) {
+    const probe = dropped[i];
+    assert.equal(probe.data.kind, 'ore', 'probes ride the standard pickup pipeline');
+    assert.equal(probe.data.commodityId, 'cmdty_electronics');
+    assert.equal(probe.data.amount, 1);
+    assert.equal(probe.data.name, 'Survey Probe');
+    assert.equal(probe.data.ceresProbeIndex, i);
+    assert.equal(probe.data.playerCollectOnly, true,
+      'NPC hulls pass through the line — only the player steals a probe');
+    assert.equal(probe.homeSectorId, CERES_ACTIVITY_SECTOR_ID,
+      'top-level residency owns the line so it cannot double-plant on sector re-entry');
+    assert.equal(probe.data.homeSectorId, CERES_ACTIVITY_SECTOR_ID);
+    assert.ok(probe.data.despawnAt > state.simTime, 'the probe persists on a session-scale TTL');
+    assert.ok(distToLine(probe) < 0.001,
+      `probe ${i} sits on the authored sweep line (off by ${distToLine(probe)})`);
+    if (i > 0) {
+      const gap = Math.hypot(probe.pos.x - dropped[i - 1].pos.x,
+        probe.pos.z - dropped[i - 1].pos.z);
+      assert.ok(Math.abs(gap - 40) < 0.01, `probes stand ${gap} wu apart, authored 40`);
+    }
+  }
+  // The line's far end is the end nearer the seam face the strike opens — pin the semantic
+  // (proximity to the ore-face mark), not the current mark order.
+  const minerPocket = CERES_ACTIVITY_POCKETS.find((pocket) => pocket.actorSlots
+    .some((slot) => slot.id === 'ceres_seam_miner'));
+  const minerSlot = minerPocket.actorSlots.find((slot) => slot.id === 'ceres_seam_miner');
+  const faceMark = minerSlot.route.marks.find((mark) => typeof mark.targetRef === 'string'
+    && mark.targetRef.indexOf('ceres_seam_ore_clast') >= 0);
+  const facePos = sectorLocalToGlobalForSector({
+    x: minerPocket.activityAnchor.localPos.x + faceMark.offset.x,
+    z: minerPocket.activityAnchor.localPos.z + faceMark.offset.z,
+  }, CERES_ACTIVITY_SECTOR_ID);
+  const nearEnd = distTo(ends[0], facePos) < distTo(ends[1], facePos) ? ends[0] : ends[1];
+  assert.ok(distTo(dropped[2].pos, nearEnd) < distTo(dropped[2].pos,
+    nearEnd === ends[0] ? ends[1] : ends[0]),
+  'the close probe marks the far end — the seam face the strike opens');
+
+  // seedAtPhase re-fires the close phase's effects on the same tick — still exactly three.
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'drop_3_close');
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'drop_2');
+  assert.equal(probes().length, 3, 'one drop per phase index, not per tick');
+
+  // A surveyor already gone (transient gap) drops nothing new; placed probes remain.
+  const surveyorRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_surveyor');
+  const realEntity = state.entities.get(surveyorRec.id);
+  state.entities.delete(surveyorRec.id);
+  const liveLate = { eventId: probeDef.id, phase: 'drop_1', actorSlotIds: [...probeDef.actorSlots] };
+  traffic._applyCeresCausalPhaseEffects(probeDef, liveLate, 'drop_1');
+  assert.equal(probes().length, 3, 'no probe without the surveyor on the lattice');
+  state.entities.set(surveyorRec.id, realEntity);
 });

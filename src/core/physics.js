@@ -294,6 +294,10 @@ export const physics = {
   },
 
   _applyPickupCollection(pk, col, bus, state) {
+    // Player-reserved pickups are authored world objects: a non-player collector (NPC hulls and
+    // drones can full-consume an ordinary pickup) leaves one in place instead of eating it.
+    if (pk && pk.data && pk.data.playerCollectOnly === true
+      && col && col.id !== (state && state.playerId)) return false;
     if (pickupAcceptanceRetryBlocks(
       pk && pk.data,
       col && col.id,

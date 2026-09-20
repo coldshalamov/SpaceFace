@@ -438,6 +438,27 @@ test('player module acceptance is explicit while NPC pickup consumers retain leg
   assert.equal('rejectedAmount' in npcHarness.events[0], false);
 });
 
+for (const spatial of [false, true]) {
+  test(`a player-reserved pickup survives NPC overlap and still collects for the player (${spatial ? 'spatial' : 'full-scan'})`, () => {
+    const h = bootPhysics({ capVolume: 5, amount: 1, spatial });
+    h.pickup.data.playerCollectOnly = true;
+    const npc = entity({ type: 'ship', team: 1, pos: { x: 0, z: 0 }, radius: 8 }, 9);
+    h.state.entities.set(npc.id, npc);
+    h.state.entityList.push(npc);
+    h.state.entityIndex.shipLike = [npc];
+    h.collect();
+    assert.equal(h.pickup.alive, true, 'an NPC hull cannot eat a reserved world object');
+    assert.equal(h.events.length, 0, 'a blocked collector fires no collection event');
+
+    h.state.entityIndex.shipLike = [npc, h.player];
+    h.collect();
+    assert.equal(h.pickup.alive, false);
+    assert.equal(h.state.player.cargo.items[COMMODITY_ID], 1);
+    assert.equal(h.events.length, 1);
+    assert.equal(h.events[0].collectorId, h.player.id);
+  });
+}
+
 test('explicit zero acceptance cannot fake progression, text, audio, or presentation activity', () => {
   const zero = {
     pickupId: 800,

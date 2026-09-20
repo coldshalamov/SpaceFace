@@ -86,7 +86,7 @@
       "fallback": "No launch face resolvable: the tractor profile plays without a capsule (today's behavior, unchanged)",
       "tier": "next20",
       "blockedOn": null,
-      "notes": "Extends the existing station-side profile with one real spawned object flying one straight line. The capsule is a pickup with velocity."
+      "notes": "Extends the existing station-side profile with one real spawned object flying one straight line. The capsule is a pickup with velocity. PQ-045.causal-chain: LIVE on Ceres as link 5; actor none (station-faced, spawn-driven); requires ore_handoff; seeds capsule_seen at coast."
     },
     {
       "id": "ev_convoy_forms_up",

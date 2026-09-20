@@ -399,6 +399,7 @@ const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
 const CERES_REFINERY_HAULER_SLOT_ID = 'ceres_refinery_hauler';
 const CERES_AMBUSH_HAULER_SLOT_ID = 'ceres_ambush_loaded_hauler';
 const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
+const CERES_SEAM_SURVEYOR_SLOT_ID = 'ceres_seam_surveyor';
 const CERES_CATHEDRAL_SALVOR_SLOT_ID = 'ceres_cathedral_salvor';
 const CERES_CATHEDRAL_PATROL_SLOT_ID = 'ceres_cathedral_patrol';
 const CERES_CINDER_HOOK_ID = 'ceres_cinder_sluice_service';
@@ -422,7 +423,7 @@ const CERES_ORE_BARGE_UNLOAD_ACTION = Object.freeze({
 });
 
 // ── PQ-045.causal-chain ──────────────────────────────────────────────────────────────────────────
-// Eight catalog microevents form ONE authored causal story in the Ceres reference sector (the
+// Nine catalog microevents form ONE authored causal story in the Ceres reference sector (the
 // last, ev_rock_calving, is the environmental coda that closes every cycle). This is a
 // choreography timer bound to the cast that already flies — not a generic ambient-event policy
 // layer. Concurrency is hard-capped at two active links; later links wait on seeds, not on a
@@ -450,6 +451,13 @@ const CERES_TENDER_SERVICE_STANDOFF_WU = 56;
 const CERES_TENDER_SERVICE_CLEARANCE_WU = 12;
 const CERES_TENDER_SERVICE_HOLD_S = 3;
 const CERES_TENDER_SERVICE_REPAIR_AMOUNT = 999;
+// ev_surveyor_probe_line drops three real probes per line at the catalog's authored spacing —
+// "three drop points 40 wu apart on a line crossing the pocket". The catalog asks for
+// session-scale persistence ("probes persist, pulsing lazily"); the TTL bounds the standing
+// count to a few lines so a long watch does not leak pickups forever.
+const CERES_PROBE_TTL_S = 1500;
+const CERES_PROBE_DROP_COUNT = 3;
+const CERES_PROBE_SPACING_WU = 40;
 // The salvor's stack phase spills its cutting count as real ore pickups (see _spillCeresCutterCount).
 const CERES_CUTTER_SPILL_PICKUPS = 3;
 const CERES_CUTTER_SPILL_QTY = 2;
@@ -499,10 +507,51 @@ const CERES_CAUSAL_STAMP_KEYS = Object.freeze([
 // npcJobsRuntime produces visible motion. Tender is factionPresence-owned and is stamp-only.
 const CERES_CAUSAL_CHAIN = Object.freeze([
   Object.freeze({
+    // ev_surveyor_probe_line (catalog work, next20 tier) opens the cycle: the seam surveyor
+    // reads the dark, then plays out three REAL probe pickups on its authored sweep line — the
+    // catalog's "treasure map drawn in public" that the strike then answers. Probes are
+    // player-reserved sector objects: physics leaves them for the player hull (NPC hulls pass
+    // through, which matters because the surveyor retraces this wedge), residency owns them via
+    // homeSectorId, and a stolen probe pays 1u electronics through the standard pickup pipeline.
+    // Catalog boundaries recorded here: the crab traversal, the lit-pin dressing, and the
+    // sequence-pulse wave close stay unwired — the surveyor reaffirms its authored sweep while
+    // the line lands on that same patrol geometry, and probes render as ordinary pickups.
+    // Interference is the authored steal (collect a probe), not shooting — projectile masks
+    // cannot hit pickups, so probes are world objects the player pockets, not targets; a taken
+    // probe is not re-dropped (the catalog's replace-on-destroy stays unwired — the line that
+    // loses a probe simply reads as interrupted).
+    id: 'ev_surveyor_probe_line',
+    actorSlots: Object.freeze([CERES_SEAM_SURVEYOR_SLOT_ID]),
+    // Cycle opener: the survey is why a strike exists at all (catalog composability hook:
+    // "a later rich-seam or anomaly event can seed AT the line's far end").
+    requires: Object.freeze([]),
+    // The wave-pulse close is the find: seam_mapped is what the strike waits on.
+    seedAtPhase: 'drop_3_close',
+    seeds: Object.freeze(['seam_mapped']),
+    // Surveyor lost mid-line: probes already down are a partial map, so the strike still
+    // finds the seam — the story does not diverge (same anti-softlock shape as the calving).
+    interruptSeeds: Object.freeze(['seam_mapped']),
+    // The surveyor's authored lattice already flies the drop geometry — reaffirm, no redirect.
+    jobHints: Object.freeze([
+      Object.freeze({
+        actorSlotId: CERES_SEAM_SURVEYOR_SLOT_ID,
+        reaffirm: true,
+        phases: Object.freeze(['mark_run', 'drop_1', 'drop_2', 'drop_3_close']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'mark_run', durationS: 25, cue: 'reading_the_dark' }),
+      Object.freeze({ name: 'drop_1', durationS: 8, cue: 'reading_the_dark', probe: 0 }),
+      Object.freeze({ name: 'drop_2', durationS: 20, cue: 'reading_the_dark', probe: 1 }),
+      Object.freeze({ name: 'drop_3_close', durationS: 25, cue: 'on_the_pin', probe: 2 }),
+    ]),
+  }),
+  Object.freeze({
     id: 'ev_rich_seam_strike',
     actorSlots: Object.freeze([CERES_SEAM_MINER_SLOT_ID]),
-    // Starts from cast live; no prior seed.
-    requires: Object.freeze([]),
+    // The strike answers the probe line's find; a skipped/interrupted survey still plants
+    // seam_mapped (the seam was already mapped) so the cycle can never stall at the head.
+    requires: Object.freeze(['seam_mapped']),
     // Seeds after the strike phase so the hauler call can overlap the greed/haul window (cap=2).
     seedAtPhase: 'strike',
     seeds: Object.freeze(['rich_seam']),
@@ -8463,6 +8512,7 @@ export const traffic = {
       seeded: false,
       redirectedSlots: null,
       serviceIncidentId: null,
+      probeDrops: null,
     };
     this._ceresCausal.active.push(live);
     // Stamp a transient presentation cue on the primary actor (not a movement intent).
@@ -8693,6 +8743,107 @@ export const traffic = {
     if (entity) live.capsuleLaunched = true;
   },
 
+  /**
+   * The catalog's drop geometry: three points at 40 wu spacing centered on the surveyor's authored
+   * wedge — the same line its job patrols, so the probes always read as a line. The segment is
+   * oriented so the LAST index lands at the end nearer the seam face the strike opens ("a later
+   * rich-seam event can seed AT the line's far end") — proximity, not mark order, decides which
+   * end is far. Derived from the live cast marks so a retuned wedge retunes the line; null when
+   * the marks cannot resolve (the caller then drops at the mover's live position instead).
+   */
+  _ceresProbeLinePoint(dropIndex) {
+    const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(CERES_SEAM_SURVEYOR_SLOT_ID);
+    const marks = entry && entry.slot && entry.slot.route && entry.slot.route.marks;
+    const anchor = entry && entry.pocket && entry.pocket.activityAnchor
+      && entry.pocket.activityAnchor.localPos;
+    if (!Array.isArray(marks) || marks.length < 2
+      || !anchor || !Number.isFinite(anchor.x) || !Number.isFinite(anchor.z)) return null;
+    const ends = [];
+    for (const mark of marks.slice(0, 2)) {
+      if (!mark || !mark.offset
+        || !Number.isFinite(mark.offset.x) || !Number.isFinite(mark.offset.z)) return null;
+      const pos = sectorLocalToGlobalForSector({
+        x: anchor.x + mark.offset.x,
+        z: anchor.z + mark.offset.z,
+      }, CERES_ACTIVITY_SECTOR_ID);
+      if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+      ends.push(pos);
+    }
+    // The catalog's "far end" is the end toward the seam face the strike opens — orient the
+    // segment by proximity to the miner's ore-face mark so a wedge-mark reorder cannot silently
+    // point the line at the wrong end.
+    const seamEntry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(CERES_SEAM_MINER_SLOT_ID);
+    const seamAnchor = seamEntry && seamEntry.pocket && seamEntry.pocket.activityAnchor
+      && seamEntry.pocket.activityAnchor.localPos;
+    const seamMarks = seamEntry && seamEntry.slot && seamEntry.slot.route
+      && seamEntry.slot.route.marks;
+    const seamMark = Array.isArray(seamMarks) && seamMarks.find((mark) => mark
+      && typeof mark.targetRef === 'string'
+      && mark.targetRef.indexOf(CERES_RICH_SEAM_OBJECT_SLOT_ID) >= 0);
+    if (seamMark && seamMark.offset
+      && Number.isFinite(seamMark.offset.x) && Number.isFinite(seamMark.offset.z)
+      && seamAnchor && Number.isFinite(seamAnchor.x) && Number.isFinite(seamAnchor.z)) {
+      const seamPos = sectorLocalToGlobalForSector({
+        x: seamAnchor.x + seamMark.offset.x,
+        z: seamAnchor.z + seamMark.offset.z,
+      }, CERES_ACTIVITY_SECTOR_ID);
+      if (seamPos && Number.isFinite(seamPos.x) && Number.isFinite(seamPos.z)) {
+        const d0 = Math.hypot(ends[0].x - seamPos.x, ends[0].z - seamPos.z);
+        const d1 = Math.hypot(ends[1].x - seamPos.x, ends[1].z - seamPos.z);
+        if (d0 < d1) ends.reverse();
+      }
+    }
+    const dx = ends[1].x - ends[0].x;
+    const dz = ends[1].z - ends[0].z;
+    const len = Math.hypot(dx, dz);
+    if (!(len > 0)) return null;
+    const along = Math.min(len * 0.95, Math.max(len * 0.05,
+      len / 2 + (dropIndex - 1) * CERES_PROBE_SPACING_WU));
+    return { x: ends[0].x + (dx / len) * along, z: ends[0].z + (dz / len) * along };
+  },
+
+  /**
+   * ev_surveyor_probe_line's drop phases: one real probe pickup plants at its authored point on
+   * the sweep line and stays — the catalog's "green pin lamp at rest" (the shared pickup render
+   * already pulses each drop lazily). Standard pickup pipeline: the collecting player owns the
+   * cargo write (a stolen probe pays 1u electronics), exactly like the cutter spill and the
+   * outbound capsule; nothing mints cargo onto a hull. Idempotent per drop index — seedAtPhase
+   * re-fires the close phase's effects on the same tick.
+   */
+  _dropCeresSurveyProbe(live, dropIndex) {
+    if (!live || !Number.isInteger(dropIndex) || dropIndex < 0 || dropIndex >= CERES_PROBE_DROP_COUNT) return;
+    if (!Array.isArray(live.probeDrops)) live.probeDrops = [];
+    if (live.probeDrops.includes(dropIndex)) return;
+    if (live.probeDrops.length >= CERES_PROBE_DROP_COUNT) return;
+    const bound = this._ceresCausalActorBySlot(CERES_SEAM_SURVEYOR_SLOT_ID);
+    if (!bound || !bound.entity || !bound.entity.pos) return;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const pos = this._ceresProbeLinePoint(dropIndex)
+      || { x: bound.entity.pos.x, z: bound.entity.pos.z };
+    const entity = this.helpers.spawnEntity({
+      type: 'pickup',
+      pos: { x: pos.x, z: pos.z },
+      vel: { x: 0, z: 0 },
+      radius: 2.0, mass: 0.4, collides: true,
+      // Residency owns the line — it despawns with the pocket instead of double-planting on
+      // sector re-entry inside the TTL.
+      homeSectorId: CERES_ACTIVITY_SECTOR_ID,
+      data: {
+        kind: 'ore', commodityId: 'cmdty_electronics', amount: 1,
+        name: 'Survey Probe',
+        despawnAt: now + CERES_PROBE_TTL_S,
+        // The line is player-reserved: NPC hulls (the surveyor retraces this wedge, and any ship
+        // crossing the pocket) pass through without silently consuming the world objects.
+        playerCollectOnly: true,
+        homeSectorId: CERES_ACTIVITY_SECTOR_ID,
+        ceresProbeSource: 'ev_surveyor_probe_line',
+        ceresProbeIndex: dropIndex,
+      },
+    });
+    if (entity) live.probeDrops.push(dropIndex);
+  },
+
   _restoreCeresCausalJobs(live) {
     if (!live || !Array.isArray(live.redirectedSlots) || !live.redirectedSlots.length) return;
     const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
@@ -8721,12 +8872,19 @@ export const traffic = {
 
   _applyCeresCausalPhaseEffects(def, live, phaseName) {
     if (!def || !live) return;
-    // Choreography-only for every link except two authored exceptions: the salvor's stack phase
-    // spills its cutting count as real pickups at the wreck (catalog: "scrap pickups persist"),
-    // and the capsule launch puts the refinery's outbound batch on the lane as one real pickup
-    // (see _launchCeresCargoCapsule). Both ride the standard pickup pipeline — the collecting
-    // player owns the cargo write, exactly like the disabled-hauler spill — so traffic mints no
-    // cargo onto any hull.
+    // Choreography-only for every link except three authored exceptions: the surveyor's drop
+    // phases plant real probe pickups on its sweep line (see _dropCeresSurveyProbe), the salvor's
+    // stack phase spills its cutting count as real pickups at the wreck (catalog: "scrap pickups
+    // persist"), and the capsule launch puts the refinery's outbound batch on the lane as one real
+    // pickup (see _launchCeresCargoCapsule). All ride the standard pickup pipeline — the
+    // collecting player owns the cargo write, exactly like the disabled-hauler spill — so
+    // traffic mints no cargo onto any hull.
+    if (def.id === 'ev_surveyor_probe_line') {
+      const phaseDef = (def.phases || []).find((phase) => phase && phase.name === phaseName);
+      if (phaseDef && Number.isSafeInteger(phaseDef.probe)) {
+        this._dropCeresSurveyProbe(live, phaseDef.probe);
+      }
+    }
     if (def.id === 'ev_cutter_strips_wreck' && phaseName === 'stack') {
       this._spillCeresCutterCount(live);
     }

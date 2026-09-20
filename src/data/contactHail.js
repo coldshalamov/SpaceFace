@@ -70,6 +70,10 @@ const SHIP_BY_ID = new Map(SHIPS.map((row) => [row.id, row]));
 
 // Player-language labels for Ceres causal-chain phases and cues (traffic stamps only).
 const CAUSAL_PHASE_LABEL = Object.freeze({
+  mark_run: 'SURVEY RUN',
+  drop_1: 'PLANTING PROBE',
+  drop_2: 'PLANTING PROBE',
+  drop_3_close: 'CLOSING LINE',
   cutting: 'CUTTING SEAM',
   strike: 'RICH STRIKE',
   greed: 'LOADING HOLD',
@@ -99,6 +103,7 @@ const CAUSAL_PHASE_LABEL = Object.freeze({
   drift: 'DRIFTING CLEAR',
 });
 const CAUSAL_CUE_LABEL = Object.freeze({
+  reading_the_dark: 'READING THE DARK',
   blind_cone: 'BLIND CONE',
   home_under_rock: 'HOME UNDER ROCK',
   heavy_burn: 'HEAVY BURN',
@@ -770,6 +775,7 @@ export function livingWorkStatusText(entity, opts = {}) {
 
 // Short tactical means for hail STATUS (opt-in goes deeper than free panel phase-only).
 const CAUSAL_MEANS = Object.freeze({
+  reading_the_dark: 'LISTENING PASS · STEADY RUN',
   blind_cone: 'SENSORS HALF-BLIND · DO NOT ENTER CUT ARC',
   home_under_rock: 'HAULING UNDER COVER · HOLD OFF BURN',
   heavy_burn: 'HARD ACCEL · WIDE WAKE',
@@ -789,6 +795,8 @@ const CAUSAL_MEANS = Object.freeze({
 // rock, not the healthy miner's drive — the shared row would put a false read on the STATUS channel.
 const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
   'ev_rock_calving:calve': 'SEAM FAILING · STAND CLEAR OF THE FACE',
+  // The surveyor's closing fix shares the patrol's pin cue but is not a law lock.
+  'ev_surveyor_probe_line:drop_3_close': 'FINAL PROBE · PINNING SEAM',
 });
 
 function workerStatusText(target, state = null) {
