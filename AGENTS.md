@@ -156,6 +156,7 @@ Run the checks the change actually needs. Fast gate first; do not loop on verifi
 | Quick sanity pass | `npm run check:baseline` (~15s) — run it when the change could plausibly break something it touches; judgment, not ritual |
 | What the running game is actually doing (freeze, hitch, "why is it slow") | `npm run probe:runtime-witness`, then read `.devshots/runtime-witness/report.md` |
 | A gameplay, feel, or content claim | The live owner plus a fixed-seed number or focused test. Do not capture to review. Owner ruling: `docs/AGENT_LESSONS.md` |
+| A session-SHAPE claim (encounter pacing, spawn policy, economy phases, director cadence, law wiring) that no focused fixture can express | ONE targeted playthrough session: one archetype, one seed, hours capped to the affected window (default 3). Multi-session batteries are L4 diagnostic instruments — never a routine gate. `docs/VALIDATION_WORKFLOW.md` |
 | Broad sweep | `npm run check:all` (not `check` — a fail-fast chain that hides failures) |
 | Middle tier | `npm run check:all:smoke` |
 

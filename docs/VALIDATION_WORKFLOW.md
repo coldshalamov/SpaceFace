@@ -45,6 +45,17 @@ Do not run the repository-wide `npm run check` while a focused owner failure is 
 use Browser/Electron as an implementation debugger when a deterministic owner-level reproduction is
 possible.
 
+**Long-horizon session batteries are L4 diagnostic instruments, never per-change gates.** The
+playthrough battery (`scripts/run-actual-game-playthrough.mjs`, multi-hour scripted sessions)
+exists to discover session-SHAPE defects that no shorter proof can express — it found the 2026-09
+hour-3 collapse that way, once. It does not verify ordinary changes: hours of compute and
+log-mountains re-proving what focused fixtures prove in seconds is verification theater, and
+agents imitating each other's battery reruns is how the culture spreads. The rule: default gate
+is L0–L1; run a battery only for a session-shape claim (encounter pacing, spawn policy, economy
+phase targets, director cadence, law-event wiring) that no focused fixture can express, narrowed
+to the affected window — one archetype, one seed, hours capped to the question (default 3), never
+a fixed multi-session matrix as a routine step.
+
 ## Continuous integration: four parallel groups
 
 `.github/workflows/check.yml` runs the repository-wide matrix as **four parallel jobs** instead of

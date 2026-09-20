@@ -119,13 +119,22 @@ freezes; verb sets repeat; encounters stop.
 - Policies are simple heuristics by design. A stronger pilot would find *more* to do, not less; the
   zero-encounter hours 4–10 would need the world to change, not the policy.
 
-## How to rerun
+## How to rerun — and when NOT to
 
 ```bash
 node scripts/run-actual-game-playthrough.mjs --archetype=prospector --seed=4242 --hours=10
 node scratch-actual-game-report.mjs   # after sessions land in .devshots/actual-game/
 ```
 
-After any content/director/economy change, rerun the six-session battery and diff the hourly tables.
-The two numbers that should move first: `encounter:spawned` in hours 5–9 (currently 0) and the
-first complete `combat_salvage_economy` chain (currently 0 ever).
+**This battery is a diagnostic instrument, not a verification gate.** It earned its keep once:
+the 2026-09 survey found the hour-3 collapse, which no focused fixture could have surfaced. It
+does not earn a rerun "after any change" — that is hours of compute and log-mountains to
+re-prove what focused fixtures already prove in seconds.
+
+Run it ONLY when all three hold: (1) the change alters session SHAPE — encounter pacing, spawn
+policy, economy phase targets, director cadence, law-event wiring; (2) no focused fixture can
+express the claim; (3) the question is narrowed to the affected window — one archetype, one
+seed, hours capped to the window (default 3), not six sessions. Everything else is the normal
+ladder: focused owner tests and `check:baseline`. The two numbers that moved first after the
+fixes — `encounter:spawned` in hours 5–9 and the first complete `combat_salvage_economy` chain —
+are asserted by focused checks in the owning lanes' suites, where they run in seconds.
