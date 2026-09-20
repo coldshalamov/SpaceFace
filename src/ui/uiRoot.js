@@ -67,6 +67,7 @@ import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy ne
 import { createAlerts } from './alerts.js';
 import { createComms } from './comms.js';
 import { mountNemesisComms } from './nemesisComms.js';
+import { mountCapitalBossOverlay } from './capitalBossOverlayMount.js';
 import { createWingmanRadial } from './wingmanRadial.js';
 
 // id-of-export → { load, export }. Order matters only for nicer console logs.
@@ -491,6 +492,23 @@ export const ui = {
         }
       });
     } catch (e) { console.warn('[ui] nemesis comms mount failed', e); }
+    // Packet 09 (Three Capitals): authored attack-warning overlay. Renderer-only: the exact
+    // world-space shapes the score evaluates, projected by the gameplay camera. Fail-safe like
+    // every DOM mount here — a missing #ui-root (headless boot) or mount error leaves the sim
+    // untouched. Voice/toast handling lives in the score system itself (helpers.voice.say with a
+    // toast fallback), not in this overlay.
+    if (this.capitalBossOverlay && typeof this.capitalBossOverlay.destroy === 'function') {
+      this.capitalBossOverlay.destroy();
+    }
+    this.capitalBossOverlay = null;
+    try {
+      this.capitalBossOverlay = mountCapitalBossOverlay({
+        root: document.getElementById('ui-root'),
+        bus: this.bus,
+        state: this.state,
+        helpers: this.helpers,
+      });
+    } catch (e) { console.warn('[ui] capital boss overlay mount failed', e); }
     // ONE decision surface for the whole flight layer (promptDeck): the encounter/inspection/
     // parley/signal/recovery/customs adapters below subscribe to their events and render INTO it.
     this.promptDeck = createPromptDeck(ctx);
@@ -551,6 +569,13 @@ export const ui = {
         if (!payload || payload.killerId !== this.state?.playerId) return;
         if (payload.id === this.state?.playerId) return;
         triggerHitTick('kill');
+      });
+
+      // INF-053: when the LOCKED target dies, say DESTROYED in the lock's own voice, whatever
+      // else the kill pays. Any killer counts — the lock's subject is a corpse either way.
+      this.bus.on('entity:killed', (payload) => {
+        const toast = destroyedLockToast(this.state, payload);
+        if (toast) this.bus.emit('toast', toast);
       });
     }
     const autoTargetFlightPath = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -1285,6 +1310,11 @@ export const ui = {
         this._hudVisibleLast = hudVisible;
       }
       if (hudVisible && this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
+      // Authored capital warnings draw over the flight picture and hold still while the sim is
+      // frozen; the mount clears its canvas outside flight so menus never inherit a stale warning.
+      if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function') {
+        this.capitalBossOverlay.draw(st);
+      }
       if (this.promptDeck && typeof this.promptDeck.tick === 'function') this.promptDeck.tick();
       if (this.toasts && this.toasts.tick) this.toasts.tick();
       // Comms fade is a flight overlay. Toasts/prompts stay alive on menus.
@@ -1321,6 +1351,8 @@ export const ui = {
     destroyMarketNewsOwner(this);
     if (this.nemesisComms && typeof this.nemesisComms.dispose === 'function') this.nemesisComms.dispose();
     this.nemesisComms = null;
+    if (this.capitalBossOverlay && typeof this.capitalBossOverlay.destroy === 'function') this.capitalBossOverlay.destroy();
+    this.capitalBossOverlay = null;
     if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();
     this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
@@ -1471,6 +1503,12 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
       // orders, self-sling aim, and future latches. Gun/tether reconciliation is unaffected —
       // `resolvePlayerGunTarget()` derives the gun target from the tether without this variable.
       return;
+    } else if (quiet && cur && cur.alive !== false) {
+      // INF-053: alive but no longer a legal lock — it left scanner range or dropped hostile
+      // intent. That is a LOST TRACK, never a kill, and it gets the info voice. Death is announced
+      // only by entity:killed (destroyedLockToast); a dead or despawned lock falls through here
+      // silently because its story was already told.
+      if (bus) bus.emit('toast', { text: 'LOCK LOST · ' + targetLabel(cur), kind: 'info', ttl: 2 });
     }
   } else if (quiet) {
     // No lock yet — quiet refresh may acquire the nearest hostile.
@@ -1507,6 +1545,22 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
   }
   state.player.targetId = best.id;
   if (bus && !quiet) bus.emit('toast', { text: 'Target: ' + targetLabel(best), kind: 'info', ttl: 2 });
+}
+
+/**
+ * INF-053: the toast for the LOCKED target's death, or null when this kill is not the lock's
+ * subject. Pure and DOM-free. Only the real entity:killed event reaches it, so a track that
+ * merely left scanner range (LOCK LOST, in targetNearestHostileToPlayer), a despawned wreck,
+ * or a sector hop can never print DESTROYED — leaving sensors is never celebrated as a kill.
+ */
+export function destroyedLockToast(state, payload) {
+  if (!payload || payload.id == null) return null;
+  const targetId = state && state.player && state.player.targetId;
+  if (targetId == null || payload.id !== targetId) return null;
+  const entity = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(targetId)
+    : null;
+  return { text: 'TARGET DESTROYED · ' + targetLabel(entity), kind: 'good', ttl: 2.5 };
 }
 
 export { cycleTarget, targetNearestHostileToPlayer };
