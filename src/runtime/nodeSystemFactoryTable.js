@@ -150,6 +150,8 @@ import { salvageActions } from '../systems/salvageActions.js';
 import { survivorPod } from '../systems/survivorPod.js';
 import { recoveryEncounter } from '../systems/recoveryEncounter.js';
 import { stationSideEventDirector } from '../systems/stationSideEventDirector.js';
+import { stationServices } from '../systems/stationServices.js';
+import { difficultyDirector } from '../systems/difficultyDirector.js';
 import { stationContacts } from '../systems/stationContacts.js';
 import { stationContactLoadBoundary } from '../systems/stationContactLoadBoundary.js';
 import { gateControlDirector } from '../systems/gateControlDirector.js';
@@ -271,6 +273,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['ambushSignatures', ambushSignatures],
     ['bountyHunt', bountyHunt],
     ['stationSideEventDirector', stationSideEventDirector],
+    ['stationServices', stationServices],
+    ['difficultyDirector', difficultyDirector],
     ['stationContacts', stationContacts],
     ['stationContactLoadBoundary', stationContactLoadBoundary],
     ['gateControlDirector', gateControlDirector],

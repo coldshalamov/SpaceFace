@@ -21,10 +21,12 @@ export const ENEMY_TYPES = [
     aiArchetype: 'swarmer', levelRange: [1, 3],
     combatDoctrineId: 'interceptor_flyby',
     hull: 55, armor: 8, armorFlat: 0, shield: 25, shieldRegen: 5, cap: 60, capRegen: 20,
-    // Overnight B1 fairness: slower zip, softer DPS so early fights are readable.
+    // A readable approach and a weak hull keep early packs answerable with movement and recoil.
     combatSpeed: 105,
     maxSpeed: 118, accel: 96, turnRate: 2.35, collisionRadius: 12, mass: 16,
-    weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 3, rofOverride: 2.4 }],
+    // A short pack strike needs a burst, not two isolated rounds. Doctrine closes the gun
+    // between passes; rounds stay below the starter's pulse damage and the hull stays fragile.
+    weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 6, rofOverride: 8 }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 180, leashRadius: 2200 },
     behavior: 'strafe/orbit, packs of 3-6',
     bountyCr: 120, shipClass: 'fighter',

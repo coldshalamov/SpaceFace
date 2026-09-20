@@ -13,6 +13,8 @@ import {
 import { isPlayerWanted } from './heat.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { queryCombatTableRadius } from '../core/combatTable.js';
+import { solveLeadAngle } from './weapons.js';
+import { combatFlag } from '../data/featureFlags.js';
 
 const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
 const FIRE_WINDOW_ADMISSION = new WeakMap();
@@ -318,6 +320,9 @@ function recentlyDamagedBy(state, entityId, targetId) {
 }
 
 function leadAngleFor(shooter, tgt, weapons) {
+  // Mounted NPC guns launch the same aim-true projectiles as the player's guns. The old
+  // relative-velocity direction compensated shooter motion twice and missed by whole hulls.
+  if (!combatFlag('momentumInherit')) return solveLeadAngle(shooter, tgt, bestProjSpeed(weapons));
   const px = tgt.pos.x - shooter.pos.x;
   const pz = tgt.pos.z - shooter.pos.z;
   const rvx = (tgt.vel.x || 0) - (shooter.vel.x || 0);

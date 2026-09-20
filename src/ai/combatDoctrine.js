@@ -66,7 +66,10 @@ const SWARM_STRIKE_MAX_TICKS = 44;
 const SWARM_EXTEND_TICKS = 30;
 const SWARM_EXTEND_MAX_TICKS = 90;
 const SWARM_REFORM_TICKS = 24;
-const SWARM_INGRESS_RANGE_WU = 200;
+// Start the full half-second cue before the close pass, while a light hull still has room to
+// line up its fixed gun. At 200 WU the target crosses most of the firing band during the cue;
+// return fire then knocks the fragile attacker off aim before its first useful salvo.
+const SWARM_INGRESS_RANGE_WU = 340;
 // Mine-layer wake: flank, telegraph the salted wake, fly the drop line, disengage. The mine
 // itself is dropped by the tacticalAI verb port (src/ai/mineLayerVerb.js) during 'mine_drop'.
 const MINE_FLANK_RANGE_WU = 340;
@@ -853,6 +856,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
   } else if (doctrineId === CombatDoctrineId.SWARM_PACK) {
     formationLocked = phase === 'ingress' || phase === 'reform';
     lateralSign = phase === 'ingress' || phase === 'reform' ? 0 : record.side;
+    faceTarget = phase === 'engine_flare' || phase === 'strike';
     if (phase === 'extend') {
       maneuverKind = ManeuverKind.INTERCEPT;
       maneuverTargetId = null;

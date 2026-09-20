@@ -19266,14 +19266,24 @@
       "priority": 9831,
       "title": "Swarm one-pass lifespan combat value",
       "kind": "implementation",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
-        "src/ai/combatDoctrine.js"
+        "src/ai/combatDoctrine.js",
+        "src/data/enemies.js",
+        "src/systems/aiFireIntent.js",
+        "src/runtime/nodeSystemFactoryTable.js",
+        "test/pq206-01-swarm-pass.test.mjs",
+        "test/ai-fire-lead-model.test.mjs"
       ],
-      "checks": [],
-      "receiptRefs": [],
+      "checks": [
+        "node --test --test-force-exit test/pq206-01-swarm-pass.test.mjs test/ai-fire-lead-model.test.mjs",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/active/PQ-206.md"
+      ],
       "brief": "The wasp swarm dies in ~4.5 s having flown one pass and deals ~0 damage in 1v1; the fire chain works on the passive probe. Raise the one-pass combat value without a generic HP bump."
     },
     {
