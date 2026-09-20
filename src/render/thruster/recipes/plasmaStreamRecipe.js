@@ -28,13 +28,14 @@ export function smoothstep(edge0, edge1, x) {
 }
 
 export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
-  id: 'player_liquid_plasma_v27.0',
+  id: 'player_liquid_plasma_v28.0',
   kind: 'raymarched_plasma_volume',
   displayName: 'Player continuous liquid plasma thruster',
-  notes: 'v27: the exhaust is a raymarched density volume (curl-warped ridged noise integrated '
-    + 'front-to-back inside an oriented proxy at each nozzle), so filaments braid and occlude each '
-    + 'other and the silhouette is where density runs out. Replaces the v26 stack of camera-facing '
-    + 'jet sheets and ejected wake parcels. Boost lengthens and collimates instead of widening.',
+  notes: 'v28: wake rework — the recorded contrail grows a searing burn core pinned on the flown '
+    + 'line (the inner strand pair) inside a tighter corded sheath, and the live jet roots inside '
+    + 'the bell (uEmbed) so exhaust visibly exits the throat instead of appearing beside it. '
+    + 'Hotter sear phase, tighter ribbon cord, lit throat. v27: raymarched density volume notes '
+    + 'below describe the retired reference block; the live jet is the swept ribbon plume.',
 
   // ---- Physical envelope of the plume -------------------------------------------------------
   jet: {
@@ -121,6 +122,18 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
     edgeColor: [0.02, 0.10, 0.72],
   },
 
+  // ---- Swept ribbon sheets (the live jet) ------------------------------------------------------
+  // Consumed by plasmaStream._ribbonBase -> resolvePlumeShape. A collimated hot cord: the jet
+  // spears out of the bell and only shreds downstream — the earlier wide fan read as gauze
+  // hanging next to the hull rather than exhaust leaving a nozzle.
+  ribbon: {
+    jetLength: 17,
+    throatRadius: 1.32,
+    spread: 1.7,
+    radiance: 1.55,
+    opacity: 0.115,
+  },
+
   // ---- Path-thread release --------------------------------------------------------------------
   // The retained live-head sampler drains after thrust stops (it also gates the cold-drive sleep
   // path). The strip mesh this timing once fed was force-hidden dead weight and is deleted.
@@ -152,9 +165,9 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
   // over-range pinpoint at the bell that an emission integral cannot reach on its own. Oversized,
   // it stops reading as a throat and becomes a white ball stuck on the back of the ship.
   throat: {
-    radiusWU: 0.9,
-    opacity: 0.35,
-    radiance: 1.4,
+    radiusWU: 1.15,
+    opacity: 0.6,
+    radiance: 2.2,
     color: [0.62, 0.93, 1.0],
   },
 });

@@ -427,6 +427,10 @@ export class PlasmaStreamSystem {
     // consumes the same shape). Silhouette, length, flow and opacity are untouched: the standard
     // forbids using alpha as a throttle channel.
     this._ribbonShape.radiance *= flashScale;
+    // The recorded burn shares the live engine's fury at the moment it is written: boost and the
+    // ignition flare sear a hotter hole, which then cools on its own age clock like any sample.
+    this._ribbonShape.trailRadiance = 2.1 * (1 + boostSm * 0.35 + ignition * 0.5) * flashScale;
+    this._ribbonShape.trailOpacity = 0.10;
 
     // Tumble corkscrew only. Passing raw angVel here made every arrow-key turn shove the
     // exhaust 6 WU off the bell, always to screen-right from a +X rest heading.

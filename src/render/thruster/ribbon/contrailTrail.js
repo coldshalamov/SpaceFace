@@ -113,6 +113,7 @@ const TRAIL_VERT = /* glsl */`
   varying float vBoost;
   varying float vDash;
   varying float vStaticTexture;
+  varying float vCore;
   varying vec3  vWorldPos;
   varying vec3  vNormal;
 
@@ -206,9 +207,14 @@ const TRAIL_VERT = /* glsl */`
     // Four interlaced wakes with space BETWEEN them. A constant-radius sixteen-sheet tube
     // saturated into a ruler-straight white bar. These long folds are fixed to the recorded
     // positions, so turning or releasing thrust never drags an old curl along with the ship.
+    // The first strand pair is the BURN CORE: pinched onto the recorded line itself, so the wake
+    // has a searing heart exactly where the bell flew, corded around by the outer sheets. Every
+    // offset below is still a function of immutable per-sheet seed, never of age or time.
+    float isCore = 1.0 - step(1.5, aStrand);
     float braid = floor(aStrand / 2.0);
     float flowCoordinate = dot(p, vec3(0.073, 0.019, 0.051));
-    float radius = mix(uRadiusHead, uRadiusTail, worldSeed) * (1.1 + sheetSeed * 0.6);
+    float radius = mix(uRadiusHead, uRadiusTail, worldSeed) * (0.55 + sheetSeed * 0.38);
+    radius = mix(radius, uRadiusHead * 0.16, isCore);
     float theta = braid * 1.5707963 + flowCoordinate
       + sin(flowCoordinate * 0.53 + braid * 1.7) * 0.65
       + mod(aStrand, 2.0) * 0.26;
@@ -222,7 +228,8 @@ const TRAIL_VERT = /* glsl */`
     vec3 center = p + ref * (cos(theta) * radius) + up * (sin(theta) * radius);
 
     float halfWidth = mix(uWidthHead, uWidthTail, 0.18 + staticTexture * 0.66) * 0.5;
-    halfWidth *= 1.3 + sheetSeed * 0.9;
+    halfWidth *= 0.62 + sheetSeed * 0.5;
+    halfWidth = mix(halfWidth, uWidthHead * 0.34, isCore);
     halfWidth *= segmentEdge;
 
     float twist = theta + 0.8 + sin(flowCoordinate * 0.7 + braid) * 1.1;
@@ -245,6 +252,7 @@ const TRAIL_VERT = /* glsl */`
     vBoost = boost;
     vDash = dash;
     vStaticTexture = staticTexture;
+    vCore = isCore;
     vWorldPos = world;
     vNormal = normalize(cross(tangent, acrossTan + vec3(1e-6)));
 
@@ -271,6 +279,7 @@ const TRAIL_FRAG = /* glsl */`
   varying float vBoost;
   varying float vDash;
   varying float vStaticTexture;
+  varying float vCore;
   varying vec3  vWorldPos;
   varying vec3  vNormal;
 
@@ -289,20 +298,25 @@ const TRAIL_FRAG = /* glsl */`
     float life = pow(max(1.0 - vLife, 0.0), 1.35);
     float filament = 0.72 + vStaticTexture * 0.48;
     float birthEnergy = 0.55 + vDrive * 0.45 + vBoost * 0.18 + vDash * 0.34;
-    float density = across * life * filament * birthEnergy;
+    float density = across * life * filament * birthEnergy * (1.0 + vCore * 0.6);
 
     float alpha = clamp(uOpacity * 2.0 * density * (0.6 + spec * 1.1), 0.0, 1.0);
     if (alpha < 0.0015) discard;
 
     // Cooling is also monotonic in age. Birth state is immutable metadata; the ship's current
-    // throttle can never brighten or dim an old sample.
+    // throttle can never brighten or dim an old sample. The sear phase is stretched so the burn
+    // reads as a white gash that then cools through cyan to the blue fringe over its full life —
+    // a hole burned in space taking about a second to close, not a tenth-of-a-second spark.
     float heat = exp(-vAge * 3.4) * birthEnergy;
-    float sear = exp(-vAge * 22.0) * birthEnergy;
+    float sear = exp(-vAge * mix(9.0, 4.5, vCore)) * birthEnergy;
     vec3 col = mix(uEdgeColor, uMidColor, smoothstep(0.08, 0.62, heat));
     col = mix(col, uCoreColor, smoothstep(0.35, 0.9, sear));
+    // The pinned core strands hold their sear longest: the line stays white-hearted after the
+    // surrounding sheets have cooled to colour.
+    col = mix(col, uCoreColor * 1.05, vCore * smoothstep(0.10, 0.75, sear + heat * 0.45));
 
     float rad = uRadiance * life
-      * (0.9 + heat * 0.85 + sear * 0.62 + spec * 1.25 + vStaticTexture * 0.18);
+      * (0.9 + heat * 0.85 + sear * 1.15 + spec * 1.25 + vStaticTexture * 0.18 + vCore * 1.6);
     gl_FragColor = vec4(col * rad, alpha);
   }
 `;
@@ -381,18 +395,20 @@ export function createContrailMaterial(T, opts = {}) {
       uTrailSeconds: { value: TRAIL_SECONDS },
       uNow: { value: 0 },
 
-      uRadiusHead: { value: opts.radiusHead != null ? opts.radiusHead : 1.42 },
-      uRadiusTail: { value: opts.radiusTail != null ? opts.radiusTail : 2.15 },
-      uWidthHead: { value: opts.widthHead != null ? opts.widthHead : 1.55 },
-      uWidthTail: { value: opts.widthTail != null ? opts.widthTail : 2.45 },
+      // The wake is a tight corded sheath around a searing core, roughly bell-radius — it must
+      // read as something the nozzle emitted, never as a field the ship is dragging alongside it.
+      uRadiusHead: { value: opts.radiusHead != null ? opts.radiusHead : 1.25 },
+      uRadiusTail: { value: opts.radiusTail != null ? opts.radiusTail : 1.95 },
+      uWidthHead: { value: opts.widthHead != null ? opts.widthHead : 1.3 },
+      uWidthTail: { value: opts.widthTail != null ? opts.widthTail : 1.8 },
       uCurve: { value: 1.25 },
 
       uCoreColor: { value: new T.Color(coreCol[0], coreCol[1], coreCol[2]) },
       uMidColor: { value: new T.Color(midCol[0], midCol[1], midCol[2]) },
       uEdgeColor: { value: new T.Color(edgeCol[0], edgeCol[1], edgeCol[2]) },
 
-      uRadiance: { value: 1.45 },
-      uOpacity: { value: 0.062 },
+      uRadiance: { value: 2.4 },
+      uOpacity: { value: 0.1 },
       uGrazeGain: { value: 5.2 },
       uGrazeFloor: { value: 0.22 },
       uCamPos: { value: new T.Vector3() },
@@ -530,9 +546,12 @@ export class ContrailTrail {
 
     const throat = env && env.throatRadius != null ? env.throatRadius : 0;
     if (throat > 0.05) {
-      u.uRadiusHead.value = throat * 1.08;
-      u.uRadiusTail.value = throat * 1.08 + 0.72;
-      u.uWidthHead.value = Math.max(1.45, throat * 1.12);
+      // Head sized to the bell, not to the hull: the burn exits the throat, so its mouth is the
+      // throat's own width. The sheath loosens downstream but stays a cord, not a gauze tube.
+      u.uRadiusHead.value = throat * 0.92;
+      u.uRadiusTail.value = throat * 0.92 + 0.6;
+      u.uWidthHead.value = Math.max(1.1, throat * 0.95);
+      u.uWidthTail.value = u.uWidthHead.value * 1.4;
     }
     if (env && env.trailRadiance != null) u.uRadiance.value = env.trailRadiance;
     if (env && env.trailOpacity != null) u.uOpacity.value = env.trailOpacity;

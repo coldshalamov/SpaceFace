@@ -123,6 +123,7 @@ const RIBBON_VERT = /* glsl */`
   uniform vec3  uSideRef;
 
   uniform float uJetLength;     // world units, current — this is what grows out of the bell
+  uniform float uEmbed;         // WU the jet root sits INSIDE the bell: exhaust is born in the throat
   uniform float uThroatRadius;
   uniform float uSpread;        // radial billow over the jet's length
   uniform float uCoherence;     // fraction of the length that stays an unbroken column
@@ -194,7 +195,7 @@ const RIBBON_VERT = /* glsl */`
     // Compression cells followed by opening, folded streamers. The mouth stays compact while
     // the blue body has a scalloped silhouette and visible dark gaps between its hot creases.
     float compression = 0.72 + 0.28 * cos(s * 24.0 - 0.45);
-    float radius = coreR * compression + uSpread * pow(s, 0.7) * fan * 1.55;
+    float radius = coreR * compression + uSpread * pow(s, 0.7) * fan * 1.3;
 
     // Kelvin-Helmholtz roll-up: the shear layer curls into rings that grow as they convect. Amplitude
     // grows downstream, and because it rides the flow term the curls visibly travel.
@@ -220,7 +221,7 @@ const RIBBON_VERT = /* glsl */`
 
     vec3 up = cross(uSideRef, uAft);
     return uNozzlePos
-      + uAft * (uJetLength * s)
+      + uAft * (uJetLength * s - uEmbed)
       + uSideRef * (cos(theta) * radius)
       + up * (sin(theta) * radius);
   }
@@ -364,11 +365,11 @@ const RIBBON_FRAG = /* glsl */`
     // colour; keeping it short stops the tone mapper rendering the whole jet white. The burn term is
     // the luminous body. Both are keyed to axial position, and the jet's LENGTH is what the throttle
     // moves, so a light touch gives a genuinely short jet rather than a full-length faint one.
-    float sear = exp(-vAxial * 15.0);
-    float burn = exp(-vAxial * 1.5);
+    float sear = exp(-vAxial * 9.0);
+    float burn = exp(-vAxial * 1.35);
     // Combustion is rough, and the tongues are what is actually alight at this instant.
     float alight = 0.35 + vTongue * 1.15;
-    float emit = (sear * 1.7 + burn * 1.3) * alight * uFlicker;
+    float emit = (sear * 2.1 + burn * 1.3) * alight * uFlicker;
 
     // Temperature ramp. The steps are far apart on purpose: with this many thin additive sheets a
     // narrow ramp averages to pale grey, and the character being aimed at is the distance between a
@@ -453,9 +454,10 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
       // Scale reference (recipe): hull ~8 WU long, bell radius ~1.35 WU, designed jet ~17 WU opening
       // to roughly a third of its length across. These are that geometry, not free parameters.
       uJetLength: { value: JET_LENGTH_WU },
+      uEmbed: { value: 1.05 },
       uThroatRadius: { value: 1.32 },
-      uSpread: { value: 2.3 },
-      uCoherence: { value: 0.30 },
+      uSpread: { value: 1.75 },
+      uCoherence: { value: 0.42 },
       // Structures per jet length, and how many of them pass a fixed point each second. Together these
       // set the visible flow speed. Too slow reads as a still image; too fast reads as strobing.
       uAxialFreq: { value: 3.2 },
@@ -467,8 +469,8 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
       // as separate strands, they read as wires: each one becomes a bright line with a gap either side
       // and the plume turns into pen-and-ink. Overlapping sheets build a continuous volume, and what
       // the eye then picks out is the creases where individual sheets turn edge-on.
-      uWidthNear: { value: 1.25 },
-      uWidthFar: { value: 5.4 },
+      uWidthNear: { value: 0.95 },
+      uWidthFar: { value: 3.3 },
       uCurve: { value: 1.55 },
       uDrive: { value: 0 },
       uBoost: { value: 0 },
@@ -479,8 +481,8 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
       uEdgeColor: { value: new T.Color(edge[0], edge[1], edge[2]) },
       // Twelve broad folds share the column. Normal blending preserves a cool dark
       // back face while the hot creases remain HDR; fewer overlaps also cut fill cost.
-      uRadiance: { value: 1.08 },
-      uOpacity: { value: 0.085 },
+      uRadiance: { value: 1.5 },
+      uOpacity: { value: 0.115 },
       uGrazeGain: { value: 5.0 },
       uGrazeFloor: { value: 0.22 },
       uCamPos: { value: new T.Vector3() },
