@@ -435,6 +435,11 @@ export class PlasmaStreamSystem {
     // Tumble corkscrew only. Passing raw angVel here made every arrow-key turn shove the
     // exhaust 6 WU off the bell, always to screen-right from a +X rest heading.
     this._ribbonShape.spin = resolveContrailSpin(owner);
+    // The jet's own flow clock, published on the shared shape. `resolveJetHandoff` needs it to
+    // report where the travelling wave has got to at the boundary; without it the handoff's
+    // flow phase is a constant and the history has nothing to line its structure up with.
+    this._ribbonShape.time = this._time;
+    this._ribbonShape.recipe = this.recipe;
 
     // The jet, standing off the bell. Short by construction. Reduced motion slows the sheet's own
     // flow clock (the same 0.12 rate the retro jets use); throttle response and length stay live.
@@ -521,6 +526,39 @@ export class PlasmaStreamSystem {
       dash: this._env.dash,
       ignition,
     };
+  }
+
+  /**
+   * Floating-origin rebase. The world shifts under the ship every 8192 WU; the live jet is
+   * nozzle-local and follows for free, but anything holding absolute positions has to be told.
+   * This system owns the call site for the wake it drives, so it owns the forwarding.
+   *
+   * Guarded on the callee side: the recorded-history owner supplies `reproject`, and a build
+   * without it falls back to clearing the diagnostic sampler rather than silently keeping stale
+   * world coordinates.
+   *
+   * @param {number} dx world-space shift applied to every retained position
+   * @param {number} dz
+   */
+  reproject(dx, dz) {
+    const x = Number.isFinite(dx) ? dx : 0;
+    const z = Number.isFinite(dz) ? dz : 0;
+    if (x === 0 && z === 0) return;
+    if (this._trails) {
+      for (let i = 0; i < this._trails.length; i++) {
+        const trail = this._trails[i];
+        if (trail && typeof trail.reproject === 'function') trail.reproject(x, z);
+        else if (trail && typeof trail.reset === 'function') trail.reset();
+      }
+    }
+    if (this.sampler) {
+      if (typeof this.sampler.reproject === 'function') this.sampler.reproject(x, z);
+      else if (typeof this.sampler.clear === 'function') this.sampler.clear();
+    }
+    if (this._hasNozzle) {
+      this._prevNx += x;
+      this._prevNz += z;
+    }
   }
 
   inspect() {

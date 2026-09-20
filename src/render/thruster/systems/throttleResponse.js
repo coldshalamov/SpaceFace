@@ -264,7 +264,13 @@ export function sampleImpulseEnvelope(age, timing) {
   if (age < a + s) return 1;
   if (age < a + s + r) {
     const u = (age - a - s) / Math.max(1e-6, r);
-    return 1 - u;
+    // BLOWDOWN, not a linear ramp. When a control valve shuts, the chamber behind it does not
+    // bleed off at a constant rate — pressure drops hard at first and then lingers. A straight
+    // line reads as a dimmer being turned down at a steady speed, which is the thing that made
+    // these pops feel like an opacity channel rather than gas leaving a nozzle. Same quadratic
+    // cooling tail the main drive's dash flare uses, for the same reason.
+    const remain = 1 - u;
+    return remain * remain;
   }
   return 0;
 }

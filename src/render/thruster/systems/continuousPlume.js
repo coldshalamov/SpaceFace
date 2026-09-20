@@ -74,6 +74,43 @@ export function spinWobbleAmp(spin, reducedMotion = false) {
 }
 
 /**
+ * PER-ENTITY PHASE.
+ *
+ * `_socketPhase` is indexed by socket NUMBER, so socket 0 of every ship in a family got the same
+ * value. Phase seeds the advection field, the flipbook cell and (now) the per-instance extent, so
+ * a formation of one hull type animated in perfect lockstep — every plume a frame-exact copy of
+ * the one beside it, all of them ending at the same station. Mixing the entity's own id in breaks
+ * that without costing a byte of bandwidth, and hands the fragment's reach hash a seed that
+ * differs per ship as well as per socket and per role.
+ *
+ * Memoized because the steady-state write path must not allocate: a Map lookup does not, and the
+ * insert happens once per entity. Cleared wholesale if it ever grows past a sane fleet, so a long
+ * session with churning ids cannot leak.
+ */
+const ENTITY_PHASE = new Map();
+const ENTITY_PHASE_MAX = 512;
+
+export function entityPhaseOffset(entityId) {
+  if (entityId == null) return 0;
+  const cached = ENTITY_PHASE.get(entityId);
+  if (cached !== undefined) return cached;
+  let h = 2166136261;
+  if (typeof entityId === 'number') {
+    h = Math.imul(h ^ ((entityId | 0) + 0x9e3779b9), 16777619);
+    h = Math.imul(h ^ (h >>> 13), 16777619);
+  } else {
+    const s = String(entityId);
+    for (let i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+    }
+  }
+  const phase = ((h >>> 0) % 977) / 977;
+  if (ENTITY_PHASE.size >= ENTITY_PHASE_MAX) ENTITY_PHASE.clear();
+  ENTITY_PHASE.set(entityId, phase);
+  return phase;
+}
+
+/**
  * Parse #RRGGBB into preallocated rgb array.
  */
 function hexToRgb(hex, out) {
@@ -361,6 +398,8 @@ export class PlumeSlotPool {
     // phase it accumulated (`spinPhase`). Zero amp at rest keeps the card bit-identical.
     const spinAmp = spinWobbleAmp(signals ? signals.spin : 0, !!flags.reducedMotion);
     const spinPhase = signals && Number.isFinite(signals.spinPhase) ? signals.spinPhase : 0;
+    // De-synchronise this ship from every other ship of its family (see entityPhaseOffset).
+    const entityPhase = entityPhaseOffset(signals ? signals.entityId : null);
 
     let writtenSockets = 0;
     for (let s = 0; s < nSockets; s++) {
@@ -377,7 +416,7 @@ export class PlumeSlotPool {
         slot.socketIndex = s;
         slot.layerIndex = li;
         slot.layerRole = role;
-        slot.phase = this._socketPhase[s];
+        slot.phase = (this._socketPhase[s] + entityPhase) % 1;
         slot.offset[0] = sock.x;
         slot.offset[1] = sock.y;
         slot.offset[2] = sock.z;

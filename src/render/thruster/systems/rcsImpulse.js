@@ -137,6 +137,10 @@ export class RcsImpulsePool {
         phase: (i % 13) * 0.05,
         color: [0.9, 0.95, 1.0],
         intensity: 1,
+        // This impulse's own clock, 0 at ignition and 1 at the end of its burst. The shader reads
+        // it to place the overpressure head, so a rapid double tap shows two heads at two
+        // distances instead of one smeared glow.
+        pulse: 0,
       };
       this._allocCount += 1;
     }
@@ -267,8 +271,19 @@ export class RcsImpulsePool {
         const motionProfile = this.recipe.accessibility?.reducedMotion;
         const reducedLength = flags.reducedMotion ? (motionProfile?.roleLengthScale?.[role] ?? 1) : 1;
         const reducedWidth = flags.reducedMotion ? (motionProfile?.roleWidthScale?.[role] ?? 1) : 1;
-        slot.length = geo.baseLength * this._layerLengthScale[li] * (0.55 + env * 0.7) * reducedLength;
+        // LENGTH IS REACHED AND THEN HELD. It used to track the envelope both ways, so the jet
+        // grew out of the nozzle and then retracted back into it — which is the shape of a short
+        // trail of where the ship had been, not of a shove. A control jet throws a packet of gas
+        // and the packet keeps going; the valve shuts behind it. So length ramps in over the
+        // attack and stays, the width narrows as chamber pressure drops, and the shader's
+        // overpressure head carries the gas out while the collar at the mouth goes dark.
+        const launch = Math.min(1, imp.age / Math.max(1e-4, this._timing.attack));
+        slot.length = geo.baseLength * this._layerLengthScale[li]
+          * (0.58 + 0.62 * launch) * reducedLength;
         slot.width = geo.baseWidth * this._layerWidthScale[li] * (0.7 + env * 0.45) * reducedWidth;
+        slot.pulse = this._totalLife > 0
+          ? Math.max(0, Math.min(1, imp.age / this._totalLife))
+          : 1;
         // Accessibility intensity belongs to the material uniform. Keeping envelope geometric
         // prevents reduced flash from being applied a second time through vThrottle.
         slot.envelope = env;
@@ -598,7 +613,10 @@ export class RcsImpulseSystem {
         batch.params[a] = s.width;
         batch.params[a + 1] = s.envelope;
         batch.params[a + 2] = s.phase;
-        batch.params[a + 3] = 0; // boost not used for impulse jets
+        // params.w carries the boost blend on a continuous drive. An impulse jet has no boost, so
+        // it carries this impulse's own pulse clock instead; the fragment splits the two on
+        // uImpulseJet so neither path can read the other's number.
+        batch.params[a + 3] = s.pulse != null ? s.pulse : 0;
         if (batch.dynamics) {
           batch.dynamics[a] = baseFlow;
           batch.dynamics[a + 1] = 0.5;
