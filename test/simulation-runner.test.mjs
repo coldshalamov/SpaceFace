@@ -4,8 +4,10 @@ import test from 'node:test';
 import {
   advanceFixedTimestep,
   createSimulationRunner,
-  LATE_PRESENT_CATCHUP_STEPS,
-  leftoverSimStepCap,
+  frameSimStepCap,
+  HITCH_CATCHUP_STEPS,
+  HITCH_FRAME_TICKS,
+  isHitchFrame,
   LOOP_FIXED_DT,
   MAX_CATCHUP_STEPS,
 } from '../src/core/simulationRunner.js';
@@ -182,27 +184,49 @@ test('prepareWithoutAdvance and interpolationAlpha retain the existing accumulat
   assert.equal(state.tick, 0);
 });
 
-test('leftover sim after a late present allows one extra catch-up step and keeps the 60 Hz ceiling', () => {
+test('a slow frame rate keeps real time; only a hitch sheds catch-up', () => {
+  // OWNER, 2026-09-20: "sometimes it hitches while I'm playing ... it's overall just not a smooth
+  // and playable experience." The old policy capped any frame over 33 ms to two steps and any
+  // frame after a slow draw to one, so a 25 fps machine ran the whole game at 40-80 % speed.
   assert.equal(MAX_CATCHUP_STEPS, 4, 'flight catch-up ceiling must stay four 60 Hz steps');
-  assert.equal(LATE_PRESENT_CATCHUP_STEPS, 1);
-  assert.equal(leftoverSimStepCap({ latePresent: false }), MAX_CATCHUP_STEPS);
-  assert.equal(leftoverSimStepCap({ latePresent: true }), LATE_PRESENT_CATCHUP_STEPS);
-  assert.equal(leftoverSimStepCap({ latePresent: true, maxSteps: 4 }), 1);
+  assert.equal(HITCH_CATCHUP_STEPS, 2);
+  assert.ok(HITCH_FRAME_TICKS > MAX_CATCHUP_STEPS,
+    'every frame the catch-up ceiling can fully serve is a slow frame, never a hitch');
+  for (const fps of [60, 45, 30, 25, 20, 15]) {
+    assert.equal(isHitchFrame(1 / fps), false, fps + ' fps is a frame rate, not a hitch');
+    assert.equal(frameSimStepCap({ frameDt: 1 / fps }), MAX_CATCHUP_STEPS);
+  }
+  assert.equal(isHitchFrame(0.12), true);
+  assert.equal(frameSimStepCap({ frameDt: 0.12 }), HITCH_CATCHUP_STEPS);
+  assert.equal(frameSimStepCap({ frameDt: 0.25, maxSteps: 1 }), 1, 'a configured ceiling is never raised');
+
+  // 25 fps for one second: the world must advance one second, not 0.4-0.8 of one.
+  const slow = createState();
+  const slowRunner = createSimulationRunner(slow, createRegistry(slow));
+  const presented = {};
+  for (let i = 0; i < 25; i++) {
+    slowRunner.advance(0.04, 1, frameSimStepCap({ frameDt: 0.04 }));
+    slowRunner.consumeLatestCompletedTick(presented);
+  }
+  assert.ok(Math.abs(slow.simTime + slow.accumulator - 1) < 1e-9,
+    'at 25 fps the game still runs at full speed');
 
   const state = createState();
   state.accumulator = LOOP_FIXED_DT * 0.25;
   const runner = createSimulationRunner(state, createRegistry(state));
-  const leftover = runner.advance(LOOP_FIXED_DT * 10.25, 1, leftoverSimStepCap({ latePresent: true }));
-  assert.equal(leftover.stepCap, 1);
-  assert.equal(leftover.steps, 1);
-  assert.equal(leftover.shedBacklog, true);
-  assert.equal(leftover.shedSteps, 9);
-  assert.ok(Math.abs(leftover.accumulator - LOOP_FIXED_DT * 0.5) < 1e-12);
+  const hitch = runner.advance(LOOP_FIXED_DT * 10.25, 1, frameSimStepCap({ frameDt: LOOP_FIXED_DT * 10.25 }));
+  assert.equal(hitch.stepCap, 2);
+  assert.equal(hitch.steps, 2);
+  assert.equal(hitch.shedBacklog, true);
+  assert.equal(hitch.shedSteps, 8);
+  assert.ok(Math.abs(hitch.accumulator - LOOP_FIXED_DT * 0.5) < 1e-12,
+    'the sub-tick phase survives a hitch so the next frame blends from the right moment');
 
   state.accumulator = 0;
-  const healthy = runner.advance(LOOP_FIXED_DT * 4.5, 1, leftoverSimStepCap({ latePresent: false }));
+  const healthy = runner.advance(LOOP_FIXED_DT * 4.25, 1, frameSimStepCap({ frameDt: LOOP_FIXED_DT * 4.25 }));
   assert.equal(healthy.stepCap, MAX_CATCHUP_STEPS);
   assert.equal(healthy.steps, 4);
+  assert.equal(healthy.shedBacklog, false);
 });
 
 test('per-call recovery cap executes one step, sheds whole debt, and preserves phase', () => {

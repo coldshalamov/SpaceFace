@@ -27,23 +27,19 @@ function createRaf() {
   };
 }
 
-test('a late present caps leftover sim on this callback and the next hitch', () => {
-  const raf = createRaf();
-  const state = {
-    accumulator: 0,
-    timeScale: 1,
-    tick: 0,
-    simTime: 0,
-    input: { actions: {} },
-  };
-  const caps = [];
-  const order = [];
-  const simulationRunner = {
+// OWNER, 2026-09-20: "the main ship I fly keeps jigging back and forth like it doesn't know its own
+// location ... the ship must fly smooth and the player have complete control." The loop has ONE
+// order — simulate the time that passed, then present that moment. Tests here used to pin the
+// opposite (draw the stale snapshot first on any frame over 33 ms, and starve the sim to one step
+// after a slow draw); that is the defect, so they now assert what the pilot needs.
+function createStubSimulationRunner(order, caps, stepsFor = () => 0) {
+  return {
     fixedDt: LOOP_FIXED_DT,
+    maxSteps: 4,
     advance(frameDt, timeScale, cap) {
       order.push('advance');
       caps.push(cap);
-      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+      return { steps: stepsFor(cap), shedBacklog: false, shedSteps: 0, accumulator: 0 };
     },
     prepareWithoutAdvance() {
       return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
@@ -54,8 +50,15 @@ test('a late present caps leftover sim on this callback and the next hitch', () 
     close() { return true; },
     getDiagnostics() { return {}; },
   };
+}
+
+test('every callback simulates the time that passed and then presents it; the order never flips', () => {
+  const raf = createRaf();
+  const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
+  const caps = [];
+  const order = [];
   let clockMs = 0;
-  const presentationCosts = [40, 0, 0];
+  const presentationCosts = [40, 0, 0, 0];
   const registry = {
     renderUpdate() {
       order.push('render');
@@ -64,7 +67,55 @@ test('a late present caps leftover sim on this callback and the next hitch', () 
     get() { return null; },
   };
   const controller = startLoop(state, registry, {
-    simulationRunner,
+    simulationRunner: createStubSimulationRunner(order, caps),
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    perfNow: () => clockMs,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  let now = 1000 + LOOP_FIXED_DT * 1000;
+  raf.flushOne(now);            // healthy 60 Hz frame whose draw then costs 40 ms
+  raf.flushOne(now += 50);      // a slow 20 fps frame right after that slow draw
+  raf.flushOne(now += 33.4);    // a 30 fps frame a hair over two ticks
+  raf.flushOne(now += 120);     // a real hitch
+
+  assert.deepEqual(order, [
+    'advance', 'render',
+    'advance', 'render',
+    'advance', 'render',
+    'advance', 'render',
+  ], 'the ship must fly smooth: no frame may draw before it simulates, whatever the frame cost');
+  assert.deepEqual(caps, [4, 4, 4, 2],
+    'a slow frame rate keeps the full catch-up ceiling so the game runs in real time; only a hitch sheds to two steps');
+  assert.equal(controller.getDiagnostics().hitchCappedFrameCount, 1);
+  assert.equal(controller.getDiagnostics().presentFirst, 'restore-only');
+  controller.destroy();
+});
+
+test('after-present compile waits for both the sim and the picture on every frame', () => {
+  const raf = createRaf();
+  const order = [];
+  const offered = [];
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+    render: {
+      drainAfterPresentCompile({ leftoverMs }) { order.push('compile'); offered.push(leftoverMs); },
+    },
+  };
+  let clockMs = 0;
+  const registry = {
+    renderUpdate() { order.push('render'); clockMs += 3; },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner: createStubSimulationRunner(order, [], () => 1),
     requestFrame: raf.requestFrame,
     cancelFrame: raf.cancelFrame,
     nowMs: () => 1000,
@@ -74,70 +125,14 @@ test('a late present caps leftover sim on this callback and the next hitch', () 
   });
 
   raf.flushOne(1000 + LOOP_FIXED_DT * 1000);
-  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 + 50);
-  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 + 100);
-
-  assert.deepEqual(order, [
-    'advance', 'render',
-    'render', 'advance',
-    'render', 'advance',
-  ], 'a healthy frame simulates then presents; a long frame or one after a late present presents first');
-  assert.deepEqual(caps, [undefined, 1, 2],
-    'a late present caps leftover sim to one step on the next callback; a long frame alone caps it to two');
-  assert.equal(controller.getDiagnostics().recoveryCappedFrameCount, 1);
-  assert.equal(controller.getDiagnostics().presentFirst, 'late-only');
-  controller.destroy();
-});
-
-test('a hitch present-first frame runs leftover sim before after-present compile', () => {
-  const raf = createRaf();
-  const state = {
-    accumulator: 0,
-    timeScale: 1,
-    tick: 0,
-    simTime: 0,
-    input: { actions: {} },
-    render: {
-      drainAfterPresentCompile() { order.push('compile'); },
-    },
-  };
-  const order = [];
-  const simulationRunner = {
-    fixedDt: LOOP_FIXED_DT,
-    advance() {
-      order.push('advance');
-      return { steps: 1, shedBacklog: false, shedSteps: 0, accumulator: 0 };
-    },
-    prepareWithoutAdvance() {
-      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
-    },
-    consumeLatestCompletedTick() { return 0; },
-    interpolationAlpha() { return 0; },
-    setLifecycleGeneration() {},
-    close() { return true; },
-    getDiagnostics() { return {}; },
-  };
-  const registry = {
-    renderUpdate() { order.push('render'); },
-    get() { return null; },
-  };
-  const controller = startLoop(state, registry, {
-    simulationRunner,
-    requestFrame: raf.requestFrame,
-    cancelFrame: raf.cancelFrame,
-    nowMs: () => 1000,
-    perfNow: () => 0,
-    visibilityTarget: null,
-    lifecyclePort: null,
-  });
-
-  raf.flushOne(1000 + LOOP_FIXED_DT * 1000);
   assert.deepEqual(order, ['advance', 'render', 'compile'],
     'a healthy frame simulates, presents, then compiles with leftover present budget');
   order.length = 0;
   raf.flushOne(1000 + LOOP_FIXED_DT * 1000 + 50);
-  assert.deepEqual(order, ['render', 'advance', 'compile'],
-    'a long frame presents, catches leftover sim, then compiles only with remaining budget');
+  assert.deepEqual(order, ['advance', 'render', 'compile'],
+    'a slow frame keeps the same order: the picture never goes out before its sim');
+  assert.ok(offered.every((ms) => ms >= 2 && ms <= LOOP_FIXED_DT * 1000),
+    'the compile drain is only ever offered time that is left inside one frame budget');
   controller.destroy();
 });
 
@@ -187,82 +182,58 @@ test('PresentationRunner consumes completed ticks without owning simulation orde
   });
 
   raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 3.25);
-  assert.deepEqual(order, ['render:0', 'step:1', 'step:2'],
-    'a long frame must present the last snapshot first and shed catch-up to two steps');
-  assert.equal(frames[0].completedTickCount, 0);
-  assert.equal(frames[0].completedTick, null);
-  assert.equal(controller.getDiagnostics().skippedPresentationTicks, 0);
-  assert.equal(controller.getDiagnostics().stepsThisFrame, 2);
-  assert.equal(controller.getDiagnostics().lastLeftoverStepCap, 2);
+  assert.deepEqual(order, ['step:1', 'step:2', 'step:3', 'render:3'],
+    'a slow frame owes three ticks: it simulates all three, then presents the newest — never the stale snapshot');
+  assert.equal(frames[0].completedTickCount, 3);
+  assert.equal(frames[0].completedTick.tick, 3);
+  assert.equal(frames[0].completedTick.inputSequence, 3,
+    'the picture reflects the input consumed by the tick completed in this same callback');
+  assert.ok(Math.abs(frames[0].alpha - 0.25) < 1e-9, 'the sub-tick remainder drives the blend');
+  assert.equal(controller.getDiagnostics().skippedPresentationTicks, 2);
+  assert.equal(controller.getDiagnostics().stepsThisFrame, 3);
+  assert.equal(controller.getDiagnostics().lastLeftoverStepCap, 4);
 
   order.length = 0;
   raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 3.25 + 4);
-  // The shed third tick is gone for good (whole-step debt beyond the cap is dropped, the
-  // sub-step remainder kept), so this healthy 4 ms frame has no step to run before it presents.
-  assert.deepEqual(order, ['render:2'],
-    'a healthy frame simulates first (nothing due here) and presents the newest completed tick');
-  assert.equal(frames[1].completedTickCount, 2);
-  assert.equal(frames[1].completedTick.tick, 2);
-  assert.equal(frames[1].completedTick.inputSequence, 2,
-    'the picture presents leftover ticks completed by the previous callback');
-  assert.equal(controller.getDiagnostics().skippedPresentationTicks, 1);
+  assert.deepEqual(order, ['render:3'],
+    'a 4 ms frame owes no tick, so it presents the same ticks further along the blend');
+  assert.equal(frames[1].completedTickCount, 0);
+  assert.ok(frames[1].alpha > frames[0].alpha, 'time passed, so the drawn moment moved on');
+  assert.equal(controller.getDiagnostics().duplicateMomentPresents, 0,
+    'while time passes, the world is never drawn at the same moment twice');
   assert.equal(raf.count(), 1);
   controller.destroy();
 });
 
-test('a late hitch presents first and leftover sim takes at most one extra catch-up step', () => {
+test('a hitch resumes the world two ticks on instead of replaying the frozen time', () => {
   const raf = createRaf();
-  const state = {
-    accumulator: 0,
-    timeScale: 1,
-    tick: 0,
-    simTime: 0,
-    input: { actions: {} },
-  };
-  const caps = [];
+  const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
   const order = [];
-  const simulationRunner = {
-    fixedDt: LOOP_FIXED_DT,
-    maxSteps: 4,
-    advance(frameDt, timeScale, cap) {
-      order.push(`advance:${cap === undefined ? 'full' : cap}`);
-      caps.push(cap);
-      return { steps: cap === 1 ? 1 : 4, shedBacklog: cap === 1, shedSteps: cap === 1 ? 3 : 0, accumulator: 0 };
-    },
-    prepareWithoutAdvance() {
-      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
-    },
-    consumeLatestCompletedTick() { return 0; },
-    interpolationAlpha() { return 0; },
-    setLifecycleGeneration() {},
-    close() { return true; },
-    getDiagnostics() { return {}; },
-  };
-  let clockMs = 0;
   const registry = {
-    renderUpdate() {
-      order.push('render');
-      clockMs += 40;
+    step(dt, tickBoundary) {
+      order.push(`step:${state.tick + 1}`);
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
     },
+    renderUpdate() { order.push(`render:${state.tick}`); },
     get() { return null; },
   };
   const controller = startLoop(state, registry, {
-    simulationRunner,
     requestFrame: raf.requestFrame,
     cancelFrame: raf.cancelFrame,
     nowMs: () => 1000,
-    perfNow: () => clockMs,
     visibilityTarget: null,
     lifecyclePort: null,
   });
 
-  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 4);
-  assert.deepEqual(order, ['render', 'advance:1'],
-    'a late present must not run 4 leftover ticks before the next picture');
-  assert.deepEqual(caps, [1]);
-  assert.equal(controller.getDiagnostics().stepsThisFrame, 1);
-  assert.equal(controller.getDiagnostics().recoveryCappedFrameCount, 1);
-  assert.equal(controller.getDiagnostics().lastLeftoverStepCap, 1);
+  raf.flushOne(1000 + 200);
+  assert.deepEqual(order, ['step:1', 'step:2', 'render:2'],
+    'the pilot could not steer during a 200 ms freeze, so the ship must not be flown 12 ticks blind');
+  assert.equal(controller.getDiagnostics().stepsThisFrame, 2);
+  assert.equal(controller.getDiagnostics().hitchCappedFrameCount, 1);
+  assert.equal(controller.getDiagnostics().shedBacklogFrames, 1);
+  assert.equal(controller.getDiagnostics().lastLeftoverStepCap, 2);
   controller.destroy();
 });
 

@@ -139,6 +139,15 @@ const LINKS = [
       + 'failed-opening-validation path.',
   },
   {
+    id: 'smooth-flight',
+    costHintMs: 1500,
+    script: 'check:smooth-flight',
+    why: 'The owner\'s "ship keeps jigging back and forth" was the frame loop drawing a stale moment on '
+      + 'any frame over 33 ms (14 % of presents at 45 fps, 26 % at 30 fps) and starving the sim to '
+      + '63-83 % speed on a slow GPU. Flies the real loop at 60/45/40/30/25/20 fps: zero frozen presents, '
+      + 'zero snap, full game speed.',
+  },
+  {
     id: 'flight-v3',
     costHintMs: 1100,
     script: 'check:flight:v3',

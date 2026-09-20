@@ -387,8 +387,10 @@ test('still NPCs do not need a flight command; live intent or residual motion do
 
 test('hitch compile waits for leftover sim and sleeping islands skip extra WASM', () => {
   const runner = fs.readFileSync(path.join(ROOT, 'src/core/presentationRunner.js'), 'utf8');
-  assert.match(runner, /if \(!presentFirst\) \{\s*drainAfterPresentCompile/);
-  assert.match(runner, /drainAfterPresentCompile\(remainMs\)/);
+  // One loop order: the sim always runs before the picture, and compile only after both. A hitch
+  // callback offers the drain what truly remains of it, never the nominal frame budget.
+  assert.match(runner, /advanceSimulation\(frameDt, false, stepCap, perf\);[\s\S]*presentLastCompletedSnapshot\(frameDt, restoring, perf, fixedDt\)/);
+  assert.match(runner, /if \(hitchFrame \|\| restoring\) \{[\s\S]*?drainAfterPresentCompile\(remainMs\)/);
   assert.match(runner, /drainArrivalSlices\(\)/);
   const owner = fs.readFileSync(path.join(ROOT, 'src/core/sg02DynamicBodyOwner.js'), 'utf8');
   assert.match(owner, /if \(!command && this\._sleepingRecordSkipsCpu\(rec, false\)\) continue/);

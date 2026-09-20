@@ -363,6 +363,7 @@
     "check:save-schema": "node scripts/generate-save-schema.mjs --check",
     "check:save-import-safety": "node --test test/save-restore-atomicity.test.mjs test/save-import-bounds.test.mjs test/save-import-html-safety.test.mjs",
     "check:opening-mesh-defer": "node --test test/opening-mesh-defer.test.mjs",
+    "check:smooth-flight": "node --test test/presentation-continuity.test.mjs test/presentation-runner.test.mjs test/simulation-runner.test.mjs test/snapshot-fence-span-alpha.test.mjs",
     "check:ci:report": "node scripts/check-ci-report.mjs",
     "check:content-census": "node scripts/report-content-census.mjs --check --summary",
     "report:content-census": "node scripts/report-content-census.mjs",

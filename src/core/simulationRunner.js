@@ -4,26 +4,36 @@ import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
 
 export const LOOP_FIXED_DT = 1 / 60;
 export const MAX_CATCHUP_STEPS = 4;
-// After a late present, leftover sim may take at most one extra TABLE catch-up step.
-// This is a per-call leftover cap. It does not lower MAX_CATCHUP_STEPS or 60 Hz flight.
-export const LATE_PRESENT_CATCHUP_STEPS = 1;
-// A long frame from any cause (GC, long task, compositor scheduling) caps catch-up at two steps.
-// Four steps of sim inside an already-late callback is what turns one hitch into the next one.
-export const LONG_FRAME_CATCHUP_STEPS = 2;
+// A SLOW FRAME RATE IS NOT A HITCH. Four catch-up steps cover every callback down to 15 fps, so
+// the world keeps real time on a weak GPU: a 30 fps frame owes two ticks and gets two. Capping
+// those frames (the old one-step cap after a late present, two after any frame over 33 ms) did
+// not make the picture arrive sooner — drawing is the cost on those machines, not the sim — it
+// ran the whole game at 40–65 % speed exactly where it was already struggling.
+//
+// A hitch is a callback that arrives more than HITCH_FRAME_TICKS late (GC, a long task, a blocked
+// present): the picture was frozen and the pilot could not steer. Replaying all of that time
+// would teleport the ship through whatever was ahead of it, so a hitch resumes the world two
+// ticks on and the rest of the debt is shed.
+export const HITCH_FRAME_TICKS = 4.5;
+export const HITCH_CATCHUP_STEPS = 2;
+
+/** True when this callback's frame delta is a hitch rather than a slow-but-steady frame rate. */
+export function isHitchFrame(frameDt, fixedDt = LOOP_FIXED_DT) {
+  const dt = Number.isFinite(fixedDt) && fixedDt > 0 ? fixedDt : LOOP_FIXED_DT;
+  return Number.isFinite(frameDt) && frameDt > dt * HITCH_FRAME_TICKS;
+}
 
 /**
- * Step cap for leftover simulation on this callback.
- * A late present sheds to one step, a long frame to two; a healthy frame keeps the 60 Hz ceiling.
+ * Step cap for this callback's simulation advance.
+ * Steady frames keep the full catch-up ceiling (real-time down to 15 fps); a hitch sheds to two.
  */
-export function leftoverSimStepCap({
-  latePresent = false,
-  longFrame = false,
+export function frameSimStepCap({
+  frameDt = 0,
+  fixedDt = LOOP_FIXED_DT,
   maxSteps = MAX_CATCHUP_STEPS,
 } = {}) {
   const configured = Math.max(1, Math.floor(Number.isFinite(maxSteps) ? maxSteps : MAX_CATCHUP_STEPS));
-  if (latePresent) return Math.min(configured, LATE_PRESENT_CATCHUP_STEPS);
-  if (longFrame) return Math.min(configured, LONG_FRAME_CATCHUP_STEPS);
-  return configured;
+  return isHitchFrame(frameDt, fixedDt) ? Math.min(configured, HITCH_CATCHUP_STEPS) : configured;
 }
 
 const DEFAULT_COMPLETED_TICK_CAPACITY = 8;

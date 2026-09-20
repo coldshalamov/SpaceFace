@@ -1,12 +1,14 @@
 // Presentation owner: requestAnimationFrame, interpolation, Browser/Electron lifecycle, and restore.
-// Each rAF presents the last completed snapshot first. Leftover callback time then advances
-// simulation. After a late present, leftover catch-up is at most one extra TABLE step.
+// Each rAF advances simulation by the time that passed, then presents that newest moment. The
+// order never changes while the game runs: a loop that simulates first on some frames and draws
+// first on others shows the world at a moment it has already shown, then leaps.
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 import { createRuntimeWitness, collectRuntimeWitnessSample } from './runtimeWitness.js';
 import {
-  LATE_PRESENT_CATCHUP_STEPS,
+  HITCH_CATCHUP_STEPS,
   LOOP_FIXED_DT,
-  leftoverSimStepCap,
+  frameSimStepCap,
+  isHitchFrame,
 } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities } from '../world/presentationSources.js';
@@ -235,7 +237,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   let pendingJournalFullRebuild = false;
   let pendingJournalRebuildGeneration = 0;
   let postRestoreFramePending = false;
-  let previousPresentationOverrun = false;
+  let lastPresentedMoment = NaN;
   let acknowledgedJournalSequence = presentationJournal
     && presentationJournal.getPendingCount?.() > 0
     && presentationJournal.getOldestSequence?.() > 0
@@ -289,8 +291,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     stepsThisFrame: 0,
     maxStepsObserved: 0,
     shedBacklogFrames: 0,
-    recoveryCappedFrameCount: 0,
-    presentFirst: 'late-only',
+    // Callbacks that arrived as a hitch and resumed the world two ticks on instead of replaying it.
+    hitchCappedFrameCount: 0,
+    // Presents that showed the same simulated moment as the present before them while time was
+    // passing. The pilot reads each one as the ship losing its place; the count must stay zero.
+    duplicateMomentPresents: 0,
+    presentFirst: 'restore-only',
     lastPresentMs: 0,
     frameCapSkips: 0,
     frameCapDebt: 0,
@@ -693,6 +699,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     }
 
     const alpha = simulationRunner.interpolationAlpha();
+    // The drawn moment is simTime + accumulator − fixedDt. While the clock runs and time passed,
+    // two presents in a row at one moment is a frozen world under a moving camera.
+    const presentedMoment = (Number(state.simTime) || 0) + (Number(state.accumulator) || 0);
+    if (!restoring && frameDt > 0 && Number(state.timeScale) > 0
+      && presentedMoment === lastPresentedMoment) {
+      diagnostics.duplicateMomentPresents++;
+    }
+    lastPresentedMoment = presentedMoment;
     presentationFrame.sequence++;
     presentationFrame.frameDt = frameDt;
     if (state && state.render) state.render.lastPresentDtMs = frameDt * 1000;
@@ -711,7 +725,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       presentationMs = measureNow() - presentationStart;
       diagnostics.lastPresentMs = presentationMs;
       perf.recordPresentationFrame?.(presentationMs);
-      previousPresentationOverrun = !restoring && presentationMs > fixedDt * 2000;
     }
     // P7: the first presented frame whose completed tick consumed a newer input command is that
     // command's photon. The stamp arrived wall-timed at the input boundary; the subtraction is
@@ -738,12 +751,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     return presentationMs;
   }
 
-  function advanceLeftoverSimulation(frameDt, restoring, leftoverStepCap, perf) {
+  function advanceSimulation(frameDt, restoring, stepCap, perf) {
     const simFrameStart = measureNow();
     const stepResult = restoring
       ? simulationRunner.prepareWithoutAdvance()
-      : simulationRunner.advance(frameDt, state.timeScale, leftoverStepCap);
-    if (leftoverStepCap === LATE_PRESENT_CATCHUP_STEPS) diagnostics.recoveryCappedFrameCount++;
+      : simulationRunner.advance(frameDt, state.timeScale, stepCap);
+    if (!restoring && stepCap === HITCH_CATCHUP_STEPS) diagnostics.hitchCappedFrameCount++;
 
     if (!restoring && postRestoreFramePending) {
       diagnostics.postRestoreFrameCount++;
@@ -771,8 +784,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
     diagnostics.executedFrames++;
     const restoring = lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING;
-    const recoverFromPresentationOverrun = !restoring && previousPresentationOverrun;
-    previousPresentationOverrun = false;
     const callbackStart = measureNow();
     let perf = null;
     let renderedSnapshot = false;
@@ -810,21 +821,30 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         registry.keepalive(0);
       }
 
-      // Ordering policy (Gap Report F2). On a healthy frame the sim advances FIRST and the
-      // picture presents the tick it just completed, so a keypress reaches the photon one
-      // frame sooner than present-then-simulate. On a long frame (any cause: GC, long task,
-      // compositor lag) or right after a late present, the last completed snapshot goes out
-      // first so the hitch does not spend 2–4 ticks before the next picture, and leftover
-      // catch-up is shed (one step after a late present, two after a long frame). A draw
-      // throw must not skip leftover sim or the 60 Hz clock stalls while the HUD keeps moving.
+      // Ordering policy: ONE order. The sim advances by the time that passed, then the picture
+      // presents that newest moment, so a keypress reaches the photon in the same callback and
+      // the drawn world always moves by exactly the time that elapsed.
+      //
+      // The order used to flip: simulate-first on a healthy frame, draw-first on any frame over
+      // 33.3 ms or after a present over 33.3 ms. A draw-first frame has no new tick and an
+      // unchanged accumulator, so it redrew the previous moment while the camera, VFX and HUD
+      // all advanced a full frame; the next frame then leapt two frames at once. 33.3 ms is
+      // exactly one frame at 30 fps on a 60 Hz display, so below 60 fps the flip was a coin toss
+      // per frame: 14 % of presents at 45 fps and 26 % at 30 fps held the hull still and then
+      // snapped it ~5 WU at fighting speed. That is the ship "jigging back and forth like it
+      // doesn't know its own location". A frozen duplicate is not a picture arriving sooner;
+      // it is the full cost of a draw spent on showing nothing new.
+      //
+      // Only a restore frame presents without advancing: its picture must go out before the
+      // clock restarts. A draw throw must not undo the sim that already ran this callback.
       let presentationMs = 0;
       let presentationError = null;
-      const longFrame = !restoring && frameDt > fixedDt * 2;
-      // A restore frame keeps present-first: its picture must go out before the clock restarts.
-      const presentFirst = restoring || longFrame || recoverFromPresentationOverrun;
-      let leftoverStepCap;
-      if (!presentFirst && !destroyed && !suspended) {
-        advanceLeftoverSimulation(frameDt, restoring, undefined, perf);
+      const hitchFrame = !restoring && isHitchFrame(frameDt, fixedDt);
+      const stepCap = restoring
+        ? undefined
+        : frameSimStepCap({ frameDt, fixedDt, maxSteps: simulationRunner.maxSteps });
+      if (!restoring && !destroyed && !suspended) {
+        advanceSimulation(frameDt, false, stepCap, perf);
       }
       const skipPresentation = destroyed || suspended
         || (!restoring && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING);
@@ -890,26 +910,19 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
           sliceBus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
         }
       };
-      // Healthy frames: sim already ran. Hitch/present-first frames still owe leftover
-      // catch-up; do not spend that budget on a shader compile.
-      if (!presentFirst) {
-        drainAfterPresentCompile(diagnostics.lastLeftoverMs);
-        drainArrivalSlices();
-      }
-      if (presentFirst) {
-        const latePresent = recoverFromPresentationOverrun || presentationMs > fixedDt * 2000;
-        leftoverStepCap = restoring ? undefined : leftoverSimStepCap({ latePresent, longFrame: true });
-        // Leftover sim may still fire a lifecycle event. The picture already went out; do not
-        // present again in this callback.
-        if (!destroyed && !suspended) {
-          advanceLeftoverSimulation(frameDt, restoring, leftoverStepCap, perf);
-        }
+      // A restore frame's picture is out; settle its accumulator without advancing the clock.
+      if (restoring && !destroyed && !suspended) advanceSimulation(frameDt, true, undefined, perf);
+      // Sim and picture are both done. A hitch or restore callback is already late, so it offers
+      // the compile drain only what truly remains of this callback, never the nominal budget.
+      if (hitchFrame || restoring) {
         const remainMs = Math.max(0, frameBudgetMs - (measureNow() - callbackStart));
         diagnostics.lastLeftoverMs = remainMs;
         drainAfterPresentCompile(remainMs);
-        drainArrivalSlices();
+      } else {
+        drainAfterPresentCompile(diagnostics.lastLeftoverMs);
       }
-      diagnostics.lastLeftoverStepCap = leftoverStepCap ?? leftoverSimStepCap({});
+      drainArrivalSlices();
+      diagnostics.lastLeftoverStepCap = stepCap ?? frameSimStepCap({ maxSteps: simulationRunner.maxSteps });
       if (presentationError) throw presentationError;
     } catch (err) {
       if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
