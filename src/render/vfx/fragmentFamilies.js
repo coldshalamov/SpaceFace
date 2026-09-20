@@ -693,6 +693,24 @@ const BUILDERS = Object.freeze({
 });
 
 /**
+ * Fold an existing geometry's 0..1 UVs into one family band of the shared atlas.
+ * Lets a pre-existing solid (a shell casing, say) join the same texture and the same shader
+ * program family without being re-authored.
+ */
+export function remapUvIntoBand(geo, family, band) {
+  const uv = geo && geo.getAttribute ? geo.getAttribute('uv') : null;
+  if (!uv) return geo;
+  const r = fragmentBandRect(family, band);
+  for (let i = 0; i < uv.count; i++) {
+    const u = Math.max(0, Math.min(1, uv.getX(i)));
+    const v = Math.max(0, Math.min(1, uv.getY(i)));
+    uv.setXY(i, r.u0 + (r.u1 - r.u0) * u, r.v0 + (r.v1 - r.v0) * v);
+  }
+  uv.needsUpdate = true;
+  return geo;
+}
+
+/**
  * Authored geometry for one family at one distance representation.
  * `scale` applies a uniform nominal size in world units (the caller's startSize rides on top).
  */

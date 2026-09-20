@@ -6,10 +6,17 @@
 //   3. Muzzle sparks  — plasma needles: overexposed blue-white, gone in a tenth of a second
 //   4. Casings        — spent brass: LIT solid (MeshStandardMaterial), tumbling, cooling dark
 //   5. Retro venting  — cryogenic ice needles off the bow jets, supersonic and brief
-//   6. Mining ejecta  — fractured ore: opaque mineral chips lit by the mining contact
-//   7. Collision spall— LIT rock/ice debris: real scene lighting, not a glow (M1 solid matter)
+//   6. Mining ejecta  — authored STONE: fracture planes and a mineral vein, lit by the contact
+//   7. Collision spall— authored STONE at rock scale: real scene lighting, not a glow (M1)
 //   8. Damage venting — burning coolant spray that wanders (turbulent leak, not a cone print)
-//   9. Shrapnel       — torn hull plates: opaque, folded metal in the explosion light
+//   9. Shrapnel       — authored METAL: torn hull plates with thickness, crease and coating
+//  10. Ice spall      — authored ICE: mirror shear plane against a terraced fracture underside
+//  11. Cargo debris   — authored CARGO: ribbed, marked, hemmed panel with one ripped end
+//
+// Families 6, 7, 9, 10 and 11 are built by src/render/vfx/fragmentFamilies.js, which owns the
+// authored geometry, the shared two-page material atlas and the per-family pool ceilings. Mining
+// ejecta and collision spall deliberately share one stone geometry AND one stone material, so
+// three.quarks merges them into a single batch: two events, one draw call.
 //
 // Design invariants (docs/visual-assets/VFX_TECHNIQUE_STANDARD.md):
 //   - No 2D billboards, Points, or Sprites anywhere in this file (B2/B4/B13).
@@ -21,7 +28,17 @@
 //   - All spawn paths reuse scratch vectors/matrices; bursts only (emissionOverTime: 0).
 
 import * as THREE from 'three';
-import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
+import { impactOutwardNormal, impactTangentFraction } from '../combat/impactEventRecord.js';
+import {
+  FRAGMENT_FAMILY,
+  FRAGMENT_DETAIL,
+  FRAGMENT_POOL_CEILING,
+  buildFragmentGeometry,
+  createFragmentAtlas,
+  createFragmentMaterial,
+  remapUvIntoBand,
+  resolveFragmentFamily,
+} from './fragmentFamilies.js';
 import {
   BatchedParticleRenderer,
   ParticleSystem,
@@ -79,38 +96,6 @@ function additiveDonor() {
   });
 }
 
-// Hand-shaped fracture perimeter with offset crown and underside: broad cleavage planes,
-// a chipped shoulder and an asymmetric tip survive a tumble without becoming crystal confetti.
-function fractureGeometry(width, thickness, length) {
-  const rim = [[-0.82, -0.53], [-0.12, -0.78], [0.69, -0.47], [0.93, 0.08],
-    [0.42, 0.61], [-0.18, 0.83], [-0.74, 0.36]];
-  const positions = [];
-  const uvs = [];
-  const point = (x, y, z) => [x * width, y * thickness, z * length];
-  const top = rim.map(([x, z], i) => point(x * 0.82 + 0.06, 0.32 + (i % 3) * 0.09, z * 0.84));
-  const bottom = rim.map(([x, z], i) => point(x, -0.30 - (i % 2) * 0.09, z));
-  const crown = point(-0.14, 0.73, 0.05);
-  const base = point(0.12, -0.45, -0.08);
-  const triangle = (a, b, c) => {
-    for (const p of [a, b, c]) {
-      positions.push(...p);
-      uvs.push(p[0] / width * 0.5 + 0.5, p[2] / length * 0.5 + 0.5);
-    }
-  };
-  for (let i = 0; i < rim.length; i++) {
-    const j = (i + 1) % rim.length;
-    triangle(crown, top[j], top[i]);
-    triangle(base, bottom[i], bottom[j]);
-    triangle(top[i], top[j], bottom[j]);
-    triangle(top[i], bottom[j], bottom[i]);
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geo.computeVertexNormals();
-  return geo;
-}
-
 // A broken, bowed lattice edge has empty space at its centre. It cannot turn into the
 // fully filled luminous hexagon that previously read as a tossed sequin.
 function shieldStressGeometry() {
@@ -135,19 +120,21 @@ function shieldStressGeometry() {
   return geo;
 }
 
-function solidDonor(color, role, metalness, roughness) {
-  return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color, metalness, roughness, transparent: false, depthWrite: true,
-  }), role);
-}
-
 // Opaque fragments retain mass through their travel, then contract out of the pool.
-// Retirement never makes the remaining world visible through a rock or hull plate.
+// Retirement never makes the remaining world visible through a rock or hull plate, and because
+// each fragment's own startLife is an interval the family never blinks out together.
 function solidRetirement() {
   return new SizeOverLife(new PiecewiseBezier([
     [new Bezier(1, 1, 1, 1), 0],
     [new Bezier(1, 0.9, 0.35, 0), 0.82],
   ]));
+}
+
+// Alpha that never leaves 1: solid matter retires by contracting, never by turning into a ghost.
+const SOLID_ALPHA = [[1, 0], [1, 1]];
+
+function clamp01(v) {
+  return v > 1 ? 1 : (v > 0 ? v : 0);
 }
 
 export class QuarksVfxSystem {
@@ -162,6 +149,21 @@ export class QuarksVfxSystem {
     this._scratchDir = new THREE.Vector3();
     this._scratchQuat = new THREE.Quaternion();
     this._scratchMatrix = new THREE.Matrix4();
+    this._scratchNormal = { x: 0, y: 0, z: 0 };
+
+    // ---- authored solid-fragment resources -------------------------------------------------
+    // Two atlas pages and four materials serve every solid family, so the debris class is one
+    // texture residency and one shader program family however many events are in flight.
+    this._fragmentDetail = options.fragmentDetail === FRAGMENT_DETAIL.FAR
+      ? FRAGMENT_DETAIL.FAR : FRAGMENT_DETAIL.NEAR;
+    this.fragmentAtlas = createFragmentAtlas();
+    this._fragmentGeo = {};
+    this._fragmentMat = {};
+    for (const family of [FRAGMENT_FAMILY.METAL, FRAGMENT_FAMILY.STONE,
+      FRAGMENT_FAMILY.ICE, FRAGMENT_FAMILY.CARGO]) {
+      this._fragmentGeo[family] = buildFragmentGeometry(family, { detail: this._fragmentDetail });
+      this._fragmentMat[family] = createFragmentMaterial(family, this.fragmentAtlas);
+    }
 
     // -------------------------------------------------------------
     // 1. Hull Impact Spall — molten armor darts.
@@ -255,12 +257,17 @@ export class QuarksVfxSystem {
     // -------------------------------------------------------------
     const casingGeo = facet(new THREE.CylinderGeometry(0.07, 0.07, 0.28, 6));
     casingGeo.rotateZ(Math.PI / 2);
-    const casingMat = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    // Spent brass joins the metal family's atlas band rather than minting its own texture and
+    // shader variant; only the tint and finish stay brass.
+    remapUvIntoBand(casingGeo, FRAGMENT_FAMILY.METAL, 'bare');
+    const casingMat = createFragmentMaterial(FRAGMENT_FAMILY.METAL, this.fragmentAtlas, {
       color: 0xc9a227,
-      metalness: 0.35,
-      roughness: 0.4,
-      transparent: true,
-    }), SHARED_MATERIAL_ROLE.HULL);
+      metalness: 0.55,
+      roughness: 0.38,
+    });
+    casingMat.transparent = true;
+    casingMat.name = 'SF_FragmentMat_casing';
+    this._casingDonor = casingMat;
     this.casingEjection = new ParticleSystem({
       duration: 1,
       looping: false,
@@ -312,27 +319,28 @@ export class QuarksVfxSystem {
     });
 
     // -------------------------------------------------------------
-    // 6. Mining Ejecta: opaque fractured mineral.
-    // Contact light belongs to the mining owner. Cleavage planes and mineral mass remain
-    // visible as chips leave that light, without random spectral glitter.
+    // 6. Mining Ejecta — authored STONE at chip scale.
+    // Contact light belongs to the mining owner. Cleavage planes, the bedding staircase and the
+    // proud mineral vein stay visible as chips leave that light, without spectral glitter.
+    // Shares its geometry AND material with collision spall, so both merge into one batch.
     // -------------------------------------------------------------
-    const miningOreGeo = fractureGeometry(0.24, 0.18, 0.35);
     this.miningEjecta = new ParticleSystem({
       duration: 1,
       looping: false,
       startLife: new IntervalValue(0.4, 0.85),
       startSpeed: new IntervalValue(8, 24),
-      startSize: new IntervalValue(0.45, 1.5),
+      // Base stone block is ~0.9 WU across; at 5.96 px/WU a chip reads from 3 to 8 px.
+      startSize: new IntervalValue(0.5, 1.6),
       startRotation: new RandomQuatGenerator(),
-      startColor: new ColorRange(new THREE.Vector4(1, 0.93, 0.83, 1), new THREE.Vector4(0.78, 0.76, 0.71, 1)),
+      startColor: new ColorRange(new THREE.Vector4(1.06, 1.0, 0.94, 1), new THREE.Vector4(0.82, 0.8, 0.76, 1)),
       worldSpace: true,
       emissionOverTime: new ConstantValue(0),
       shape: new ConeEmitter({ radius: 0.15, angle: 0.8 }),
-      material: solidDonor(0x8f8271, SHARED_MATERIAL_ROLE.ROCK, 0.08, 0.86),
+      material: this._fragmentMat[FRAGMENT_FAMILY.STONE],
       renderMode: RenderMode.Mesh,
-      instancingGeometry: miningOreGeo,
+      instancingGeometry: this._fragmentGeo[FRAGMENT_FAMILY.STONE],
       behaviors: [
-        new ColorOverLife(heatGradient([[1, 0.91, 0.77, 0], [0.87, 0.83, 0.76, 0.5], [0.64, 0.62, 0.59, 1]], [[1, 0], [1, 1]])),
+        new ColorOverLife(heatGradient([[1.08, 1.0, 0.9, 0], [0.86, 0.83, 0.79, 0.5], [0.52, 0.5, 0.48, 1]], SOLID_ALPHA)),
         solidRetirement(),
         new SpeedOverLife(lifeCurve(1.0, 0.7, 0.45, 0.3)),
         new Rotation3DOverLife(new AxisAngleGenerator(_vUp, new IntervalValue(2, 8))),
@@ -340,28 +348,27 @@ export class QuarksVfxSystem {
     });
 
     // -------------------------------------------------------------
-    // 7. Collision Spall — LIT rock and ice.
-    // Cold terrain matter has no business glowing: real scene lighting on flat-faceted
-    // fracture chips, tumbling hard off the contact plane and settling as they drag.
+    // 7. Collision Spall — the same authored STONE at rock scale.
+    // Cold terrain matter has no business glowing: real scene lighting on a block that keeps its
+    // arris and its weathered flanks through the tumble, then drags and settles.
     // -------------------------------------------------------------
-    const rockShardGeo = fractureGeometry(0.34, 0.28, 0.42);
-    const rockShardMat = solidDonor(0x9a9088, SHARED_MATERIAL_ROLE.ROCK, 0.05, 0.9);
     this.collisionSpall = new ParticleSystem({
       duration: 1,
       looping: false,
       startLife: new IntervalValue(0.45, 1.0),
+      // Asteroids run 8-20 WU of radius; a broken-off block reads at 5-17 px, not 2.
+      startSize: new IntervalValue(1.0, 3.2),
       startSpeed: new IntervalValue(6, 18),
-      startSize: new IntervalValue(0.55, 1.7),
       startRotation: new RandomQuatGenerator(),
       startColor: new ColorRange(new THREE.Vector4(1.05, 1.0, 0.92, 1), new THREE.Vector4(0.8, 0.82, 0.9, 1)),
       worldSpace: true,
       emissionOverTime: new ConstantValue(0),
       shape: new SphereEmitter({ radius: 0.3 }),
-      material: rockShardMat,
+      material: this._fragmentMat[FRAGMENT_FAMILY.STONE],
       renderMode: RenderMode.Mesh,
-      instancingGeometry: rockShardGeo,
+      instancingGeometry: this._fragmentGeo[FRAGMENT_FAMILY.STONE],
       behaviors: [
-        new ColorOverLife(heatGradient([[1.15, 1.1, 1.02, 0], [0.85, 0.82, 0.78, 0.6], [0.45, 0.43, 0.4, 1]], [[1, 0], [1, 1]])),
+        new ColorOverLife(heatGradient([[1.15, 1.1, 1.02, 0], [0.85, 0.82, 0.78, 0.6], [0.45, 0.43, 0.4, 1]], SOLID_ALPHA)),
         solidRetirement(),
         new SpeedOverLife(lifeCurve(1.0, 0.7, 0.5, 0.38)),
         new Rotation3DOverLife(new AxisAngleGenerator(_vUp, new IntervalValue(3, 10))),
@@ -397,30 +404,91 @@ export class QuarksVfxSystem {
     });
 
     // -------------------------------------------------------------
-    // 9. Destruction Shrapnel — burning hull plates.
-    // Folded, torn plates retain thickness and lit surfaces. The separate explosion core
-    // supplies heat; the wreckage recovers the solid world as it leaves that core.
+    // 9. Destruction Shrapnel — authored METAL: torn hull plates.
+    // A ship is 28-90 WU across, so the plate torn off it has to be metres of structure, not a
+    // chip: these run 1.8-4.8 WU, which is 10-29 px at the chase camera. Fewer, larger, and each
+    // one carries its crease, its coating step and its knife-edged tear. The explosion core
+    // supplies the heat; the plate cools to shadowed steel as it leaves that core.
     // -------------------------------------------------------------
-    const shardGeo = fractureGeometry(0.65, 0.13, 0.43);
     this.shrapnel = new ParticleSystem({
       duration: 1,
       looping: false,
-      startLife: new IntervalValue(0.45, 1.05),
+      startLife: new IntervalValue(0.55, 1.1),
       startSpeed: new IntervalValue(10, 32),
-      startSize: new IntervalValue(0.7, 1.9),
+      startSize: new IntervalValue(1.6, 4.4),
       startRotation: new RandomQuatGenerator(),
-      startColor: new ColorRange(new THREE.Vector4(1.1, 1.0, 0.9, 1), new THREE.Vector4(1.0, 0.8, 0.6, 1)),
+      startColor: new ColorRange(new THREE.Vector4(1.25, 1.05, 0.85, 1), new THREE.Vector4(1.0, 0.86, 0.7, 1)),
       worldSpace: true,
       emissionOverTime: new ConstantValue(0),
       shape: new SphereEmitter({ radius: 0.3 }),
-      material: solidDonor(0x737b82, SHARED_MATERIAL_ROLE.HULL, 0.48, 0.64),
+      material: this._fragmentMat[FRAGMENT_FAMILY.METAL],
       renderMode: RenderMode.Mesh,
-      instancingGeometry: shardGeo,
+      instancingGeometry: this._fragmentGeo[FRAGMENT_FAMILY.METAL],
       behaviors: [
-        new ColorOverLife(heatGradient([[1, 0.88, 0.72, 0], [0.82, 0.81, 0.78, 0.5], [0.54, 0.57, 0.61, 1]], [[1, 0], [1, 1]])),
+        // Heat lives on the fresh edge at separation and is gone by mid-life; the plate finishes
+        // as cold shadowed metal, never as a light.
+        new ColorOverLife(heatGradient([[1.35, 1.0, 0.72, 0], [0.84, 0.83, 0.8, 0.45], [0.52, 0.55, 0.6, 1]], SOLID_ALPHA)),
         solidRetirement(),
         new SpeedOverLife(lifeCurve(1.0, 0.7, 0.45, 0.3)),
-        new Rotation3DOverLife(new AxisAngleGenerator(_vUp, new IntervalValue(4, 12))),
+        // A plate that size tumbles slowly — a fast spin would read as confetti.
+        new Rotation3DOverLife(new AxisAngleGenerator(_vUp, new IntervalValue(1.6, 5.5))),
+      ],
+    });
+
+    // -------------------------------------------------------------
+    // 10. Ice Spall — authored ICE.
+    // Not a blue rock. One mirror-flat shear plane answers the key light as a single hard sheet
+    // while the terraced underside stays matte, so the material is legible from the specular
+    // behaviour alone at a handful of pixels. No heat track: ice separates cold.
+    // -------------------------------------------------------------
+    this.iceSpall = new ParticleSystem({
+      duration: 1,
+      looping: false,
+      startLife: new IntervalValue(0.5, 1.15),
+      startSpeed: new IntervalValue(7, 22),
+      startSize: new IntervalValue(0.9, 2.8),
+      startRotation: new RandomQuatGenerator(),
+      startColor: new ColorRange(new THREE.Vector4(1.0, 1.04, 1.1, 1), new THREE.Vector4(0.86, 0.94, 1.05, 1)),
+      worldSpace: true,
+      emissionOverTime: new ConstantValue(0),
+      shape: new SphereEmitter({ radius: 0.3 }),
+      material: this._fragmentMat[FRAGMENT_FAMILY.ICE],
+      renderMode: RenderMode.Mesh,
+      instancingGeometry: this._fragmentGeo[FRAGMENT_FAMILY.ICE],
+      behaviors: [
+        new ColorOverLife(heatGradient([[1.05, 1.1, 1.18, 0], [0.82, 0.9, 1.0, 0.55], [0.5, 0.58, 0.68, 1]], SOLID_ALPHA)),
+        solidRetirement(),
+        new SpeedOverLife(lifeCurve(1.0, 0.72, 0.5, 0.36)),
+        // Flat slabs scythe rather than spin: a slower tumble keeps the shear plane readable.
+        new Rotation3DOverLife(new AxisAngleGenerator(_vUp, new IntervalValue(2.2, 7))),
+      ],
+    });
+
+    // -------------------------------------------------------------
+    // 11. Cargo Debris — authored CARGO.
+    // Freight that came apart. Ribs, hem and the marked centre bay keep the manufactured
+    // ancestry; the ripped end keeps it from ever being read as a collectible. This is cosmetic
+    // matter only: it carries no value, no pickup and no physics body.
+    // -------------------------------------------------------------
+    this.cargoDebris = new ParticleSystem({
+      duration: 1,
+      looping: false,
+      startLife: new IntervalValue(0.65, 1.4),
+      startSpeed: new IntervalValue(8, 26),
+      startSize: new IntervalValue(1.3, 3.4),
+      startRotation: new RandomQuatGenerator(),
+      startColor: new ColorRange(new THREE.Vector4(1.05, 1.0, 0.96, 1), new THREE.Vector4(0.88, 0.86, 0.84, 1)),
+      worldSpace: true,
+      emissionOverTime: new ConstantValue(0),
+      shape: new SphereEmitter({ radius: 0.35 }),
+      material: this._fragmentMat[FRAGMENT_FAMILY.CARGO],
+      renderMode: RenderMode.Mesh,
+      instancingGeometry: this._fragmentGeo[FRAGMENT_FAMILY.CARGO],
+      behaviors: [
+        new ColorOverLife(heatGradient([[1.12, 1.02, 0.9, 0], [0.86, 0.83, 0.8, 0.5], [0.5, 0.49, 0.47, 1]], SOLID_ALPHA)),
+        solidRetirement(),
+        new SpeedOverLife(lifeCurve(1.0, 0.68, 0.44, 0.3)),
+        new Rotation3DOverLife(new AxisAngleGenerator(_vForward, new IntervalValue(1.8, 6))),
       ],
     });
 
@@ -435,6 +503,8 @@ export class QuarksVfxSystem {
       this.collisionSpall,
       this.damageVenting,
       this.shrapnel,
+      this.iceSpall,
+      this.cargoDebris,
     ];
 
     for (const sys of allSystems) {
@@ -458,9 +528,118 @@ export class QuarksVfxSystem {
       if (batch && batch.material) batch.material.toneMapped = false;
     }
 
+    // ---- bounded solid pools ----------------------------------------------------------------
+    // Per-family ceilings, enforced at the spawn call so a dense brawl cannot stack fragments
+    // without limit, and pushed down into the instanced buffers so the batch never reallocates
+    // mid-frame (three.quarks otherwise preallocates 1000 instances and DOUBLES on overflow).
+    // Mining ejecta and collision spall sit in one shared stone batch, so their caps sum to the
+    // stone ceiling rather than each claiming it.
+    this._solidCap = new Map([
+      [this.miningEjecta, Math.floor(FRAGMENT_POOL_CEILING[FRAGMENT_FAMILY.STONE] / 2)],
+      [this.collisionSpall, Math.ceil(FRAGMENT_POOL_CEILING[FRAGMENT_FAMILY.STONE] / 2)],
+      [this.shrapnel, FRAGMENT_POOL_CEILING[FRAGMENT_FAMILY.METAL]],
+      [this.iceSpall, FRAGMENT_POOL_CEILING[FRAGMENT_FAMILY.ICE]],
+      [this.cargoDebris, FRAGMENT_POOL_CEILING[FRAGMENT_FAMILY.CARGO]],
+      [this.casingEjection, 48],
+    ]);
+    this._boundBatch(this.miningEjecta, FRAGMENT_POOL_CEILING[FRAGMENT_FAMILY.STONE]);
+    this._boundBatch(this.shrapnel, FRAGMENT_POOL_CEILING[FRAGMENT_FAMILY.METAL]);
+    this._boundBatch(this.iceSpall, FRAGMENT_POOL_CEILING[FRAGMENT_FAMILY.ICE]);
+    this._boundBatch(this.cargoDebris, FRAGMENT_POOL_CEILING[FRAGMENT_FAMILY.CARGO]);
+    this._boundBatch(this.casingEjection, 48);
+
+    this._familySystem = {
+      [FRAGMENT_FAMILY.METAL]: this.shrapnel,
+      [FRAGMENT_FAMILY.STONE]: this.collisionSpall,
+      [FRAGMENT_FAMILY.ICE]: this.iceSpall,
+      [FRAGMENT_FAMILY.CARGO]: this.cargoDebris,
+    };
+    this._familyUsers = {
+      [FRAGMENT_FAMILY.METAL]: [this.shrapnel],
+      [FRAGMENT_FAMILY.STONE]: [this.miningEjecta, this.collisionSpall],
+      [FRAGMENT_FAMILY.ICE]: [this.iceSpall],
+      [FRAGMENT_FAMILY.CARGO]: [this.cargoDebris],
+    };
+
     if (options.scene) {
       this.attach(options.scene);
     }
+  }
+
+  /** The batch a system currently renders through, or null. */
+  _batchFor(sys) {
+    const batchIndex = this.renderer.systemToBatchIndex.get(sys);
+    return batchIndex != null ? this.renderer.batches[batchIndex] || null : null;
+  }
+
+  /** Shrink one batch's instanced buffers to a family ceiling. Idempotent, construction-time. */
+  _boundBatch(sys, ceiling) {
+    if (!(ceiling > 0)) return;
+    const batch = this._batchFor(sys);
+    if (!batch || batch.maxParticles <= ceiling) return;
+    batch.maxParticles = ceiling;
+    batch.setupBuffers();
+  }
+
+  /**
+   * Spawn against a hard ceiling. A burst that would overrun the pool is truncated rather than
+   * growing the buffers; the family keeps its oldest matter and simply throws less new matter.
+   */
+  _spawnCapped(sys, count, matrix) {
+    const cap = this._solidCap ? this._solidCap.get(sys) : null;
+    let n = Math.round(Number(count) || 0);
+    if (n <= 0) return 0;
+    if (cap != null) n = Math.min(n, Math.max(0, cap - sys.particleNum));
+    if (n <= 0) return 0;
+    sys.spawn(n, sys.emissionState, matrix);
+    return n;
+  }
+
+  /** Orient the scratch matrix from a world point plus a direction, reusing the scratch objects. */
+  _poseFrom(x, y, z, dx, dy, dz) {
+    this._scratchPos.set(x, y, z);
+    this._scratchDir.set(dx, dy, dz);
+    if (this._scratchDir.lengthSq() < 1e-8) this._scratchDir.set(0, 0, 1);
+    this._scratchDir.normalize();
+    this._scratchQuat.setFromUnitVectors(_vForward, this._scratchDir);
+    this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
+    return this._scratchMatrix;
+  }
+
+  /**
+   * Swap every authored solid family to a near or far distance representation. Silhouette and
+   * material identity are preserved; the micro-relief (coating step, weld bead, bedding steps,
+   * bracket, extra tear teeth) is what drops out. Rebuilds the affected batches, so this belongs
+   * on a quality-tier change, never in a per-frame path.
+   */
+  setFragmentDetail(detail) {
+    const next = detail === FRAGMENT_DETAIL.FAR ? FRAGMENT_DETAIL.FAR : FRAGMENT_DETAIL.NEAR;
+    if (next === this._fragmentDetail) return false;
+    this._fragmentDetail = next;
+    for (const family of Object.keys(this._familyUsers)) {
+      // Swap the attribute payload INSIDE the geometry the batch was keyed on. Assigning a new
+      // geometry object instead would re-key the system into a fresh batch and strand the old
+      // one (three.quarks never retires an emptied batch), so the buffers are rebuilt in place.
+      const source = buildFragmentGeometry(family, { detail: next });
+      const target = this._fragmentGeo[family];
+      for (const name of ['position', 'normal', 'uv']) {
+        const attribute = source.getAttribute(name);
+        if (attribute) target.setAttribute(name, attribute);
+      }
+      target.computeBoundingBox();
+      target.computeBoundingSphere();
+      target.userData.fragmentDetail = next;
+      const rebuilt = new Set();
+      for (const sys of this._familyUsers[family]) {
+        const batch = this._batchFor(sys);
+        if (batch && !rebuilt.has(batch)) {
+          // Frees the previous attribute uploads and re-reads the new ones at the bounded size.
+          batch.setupBuffers();
+          rebuilt.add(batch);
+        }
+      }
+    }
+    return true;
   }
 
   attach(scene) {
@@ -534,29 +713,43 @@ export class QuarksVfxSystem {
   }
 
   /**
-   * Spawns opaque fractured mineral chips from asteroid mining contacts.
+   * Cut mineral leaving a mining work face. `materialHint` is an optional ore/commodity id: an
+   * ice body throws its own family instead of borrowing rock. Callers that pass nothing keep
+   * exactly the previous behaviour.
    */
-  spawnMiningEjecta(x, y, z, nx, ny, nz, count = 8) {
-    if (!this.scene) return;
-    this._scratchPos.set(x, y, z);
-    this._scratchDir.set(nx, ny, nz).normalize();
-    if (this._scratchDir.lengthSq() < 1e-4) this._scratchDir.set(0, 0, 1);
-    this._scratchQuat.setFromUnitVectors(_vForward, this._scratchDir);
-    this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
-    this.miningEjecta.spawn(count, this.miningEjecta.emissionState, this._scratchMatrix);
+  spawnMiningEjecta(x, y, z, nx, ny, nz, count = 8, materialHint = null) {
+    if (!this.scene) return 0;
+    const matrix = this._poseFrom(x, y, z, nx, ny, nz);
+    const family = resolveFragmentFamily(materialHint);
+    if (family === FRAGMENT_FAMILY.ICE) return this._spawnCapped(this.iceSpall, count, matrix);
+    return this._spawnCapped(this.miningEjecta, count, matrix);
   }
 
   /**
-   * Spawns tumbling rock fragments and mineral dust upon physical ship-terrain collisions.
+   * Broken terrain from a physical contact or a shattering rock. `materialHint` routes an icy
+   * body to the ice family; anything else stays stone.
    */
-  spawnCollisionSpall(x, y, z, nx, ny, nz, count = 12) {
-    if (!this.scene) return;
-    this._scratchPos.set(x, y, z);
-    this._scratchDir.set(nx, ny, nz).normalize();
-    if (this._scratchDir.lengthSq() < 1e-4) this._scratchDir.set(0, 0, 1);
-    this._scratchQuat.setFromUnitVectors(_vForward, this._scratchDir);
-    this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
-    this.collisionSpall.spawn(count, this.collisionSpall.emissionState, this._scratchMatrix);
+  spawnCollisionSpall(x, y, z, nx, ny, nz, count = 12, materialHint = null) {
+    if (!this.scene) return 0;
+    const matrix = this._poseFrom(x, y, z, nx, ny, nz);
+    const family = resolveFragmentFamily(materialHint);
+    if (family === FRAGMENT_FAMILY.ICE) return this._spawnCapped(this.iceSpall, count, matrix);
+    return this._spawnCapped(this.collisionSpall, count, matrix);
+  }
+
+  /** Cleaved ice: a separate family, never a tinted rock. */
+  spawnIceSpall(x, y, z, nx, ny, nz, count = 10) {
+    if (!this.scene) return 0;
+    return this._spawnCapped(this.iceSpall, count, this._poseFrom(x, y, z, nx, ny, nz));
+  }
+
+  /**
+   * Freight coming apart. Purely cosmetic matter: it never creates a pickup, never carries value
+   * and never adds a physics body — authoritative cargo stays with the cargo system.
+   */
+  spawnCargoDebris(x, y, z, nx, ny, nz, count = 8) {
+    if (!this.scene) return 0;
+    return this._spawnCapped(this.cargoDebris, count, this._poseFrom(x, y, z, nx, ny, nz));
   }
 
   /**
@@ -584,14 +777,66 @@ export class QuarksVfxSystem {
   }
 
   /**
-   * Spawns opaque torn hull fragments upon entity death.
+   * Torn hull plates from a destroyed body. `count` keeps its old caller meaning (the intended
+   * violence of the death), but it no longer maps one-to-one onto instances: at 5.96 px/WU a
+   * cloud of thirty chips is static, so the same event now throws roughly half as many plates at
+   * two to three times the size. `options.cargoShare` (0..1) mixes in container panels for a
+   * hauler or a freight kill; it defaults to none, so existing callers are unchanged.
    */
-  spawnExplosion(x, y, z, count = 28) {
-    if (!this.scene) return;
+  spawnExplosion(x, y, z, count = 28, options = null) {
+    if (!this.scene) return 0;
     this._scratchPos.set(x, y, z);
     this._scratchQuat.identity();
     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
-    this.shrapnel.spawn(count, this.shrapnel.emissionState, this._scratchMatrix);
+    const requested = Math.max(0, Math.round(Number(count) || 0));
+    const cargoShare = options ? clamp01(Number(options.cargoShare) || 0) : 0;
+    const plates = Math.max(requested > 0 ? 3 : 0, Math.round(requested * 0.45 * (1 - cargoShare * 0.5)));
+    let emitted = this._spawnCapped(this.shrapnel, plates, this._scratchMatrix);
+    if (cargoShare > 0) {
+      emitted += this._spawnCapped(this.cargoDebris, Math.round(requested * 0.3 * cargoShare), this._scratchMatrix);
+    }
+    return emitted;
+  }
+
+  /**
+   * THE IMPACTS-LANE ENTRY POINT. The impacts lane owns contact timing and is the sole subscriber
+   * to the simulation event; this reads its finished record and emits solid matter only. It never
+   * subscribes to anything, never writes simulation state and never throws on a malformed record.
+   *
+   * E2: when `axisSigned` is false the normal is an unsigned collision axis whose sign is a
+   * collider-ordering artifact. `impactOutwardNormal` returns null in that case, and the answer is
+   * a symmetric pair of half-bursts about the axis — never a fabricated one-sided spall cone.
+   */
+  emitFromImpact(rec) {
+    if (!this.scene || !rec) return 0;
+    const family = resolveFragmentFamily(rec.materialId);
+    if (!family) return 0;                       // shield, energy, unknown: this lane stays silent
+    const sys = this._familySystem ? this._familySystem[family] : null;
+    if (!sys) return 0;
+
+    const severity = clamp01(Number(rec.severity) || 0);
+    if (!(severity > 0)) return 0;
+    const x = Number(rec.x) || 0;
+    const y = Number(rec.y) || 0;
+    const z = Number(rec.z) || 0;
+
+    // A skid sheds less matter than a square-on strike, and it sheds it flatter.
+    const tangent = clamp01(impactTangentFraction(rec));
+    const budget = Math.max(1, Math.round((1 + severity * 7) * (1 - tangent * 0.45)));
+
+    const outward = impactOutwardNormal(rec, this._scratchNormal);
+    if (outward) {
+      return this._spawnCapped(sys, budget, this._poseFrom(x, y, z, outward.x, outward.y, outward.z));
+    }
+
+    // Unsigned axis: throw the same total matter symmetrically about it.
+    const ax = Number(rec.nx) || 0;
+    const ay = Number(rec.ny) || 0;
+    const az = Number(rec.nz) || 1;
+    const half = Math.max(1, Math.round(budget * 0.5));
+    let emitted = this._spawnCapped(sys, half, this._poseFrom(x, y, z, ax, ay, az));
+    emitted += this._spawnCapped(sys, budget - half, this._poseFrom(x, y, z, -ax, -ay, -az));
+    return emitted;
   }
 
   reset() {
@@ -604,6 +849,8 @@ export class QuarksVfxSystem {
     this.collisionSpall.particleNum = 0;
     this.damageVenting.particleNum = 0;
     this.shrapnel.particleNum = 0;
+    this.iceSpall.particleNum = 0;
+    this.cargoDebris.particleNum = 0;
   }
 
   dispose() {
@@ -619,7 +866,7 @@ export class QuarksVfxSystem {
     for (const sys of [
       this.impactSpall, this.shieldShards, this.muzzleSparks, this.casingEjection,
       this.retroVenting, this.miningEjecta, this.collisionSpall, this.damageVenting,
-      this.shrapnel,
+      this.shrapnel, this.iceSpall, this.cargoDebris,
     ]) {
       if (sys && typeof sys.dispose === 'function') sys.dispose();
     }
@@ -630,5 +877,26 @@ export class QuarksVfxSystem {
     }
     if (this.renderer.batches) this.renderer.batches.length = 0;
     if (this.renderer.systemToBatchIndex) this.renderer.systemToBatchIndex.clear();
+    // The authored fragment resources are ours, not three.quarks': the donors and the two shared
+    // atlas pages outlive every batch and leak on presenter teardown unless we free them here.
+    for (const family of Object.keys(this._fragmentGeo || {})) {
+      const geo = this._fragmentGeo[family];
+      if (geo && typeof geo.dispose === 'function') geo.dispose();
+    }
+    for (const family of Object.keys(this._fragmentMat || {})) {
+      const mat = this._fragmentMat[family];
+      if (mat && typeof mat.dispose === 'function') mat.dispose();
+    }
+    this._fragmentGeo = {};
+    this._fragmentMat = {};
+    if (this._casingDonor && typeof this._casingDonor.dispose === 'function') {
+      this._casingDonor.dispose();
+      this._casingDonor = null;
+    }
+    if (this.fragmentAtlas) {
+      this.fragmentAtlas.dispose();
+      this.fragmentAtlas = null;
+    }
+    if (this._solidCap) this._solidCap.clear();
   }
 }
