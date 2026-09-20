@@ -19,6 +19,7 @@ const APPROACHING_PROFILE = Object.freeze({
   laneCount: 1,
   segmentCount: 16,
   dashDuty: 0.46,
+  dashTaper: 0.1,
   laneGap: 0,
   cadenceHz: 1.2,
   brightness: 0.3,
@@ -37,6 +38,7 @@ const QUALITY_PROFILES = Object.freeze({
     laneCount: 1,
     segmentCount: 12,
     dashDuty: 0.34,
+    dashTaper: 0.06,
     laneGap: 0,
     cadenceHz: 0.75,
     brightness: 0.32,
@@ -50,6 +52,7 @@ const QUALITY_PROFILES = Object.freeze({
     laneCount: 1,
     segmentCount: 18,
     dashDuty: 0.5,
+    dashTaper: 0.3,
     laneGap: 0,
     cadenceHz: 1.5,
     brightness: 0.52,
@@ -63,6 +66,7 @@ const QUALITY_PROFILES = Object.freeze({
     laneCount: 2,
     segmentCount: 26,
     dashDuty: 0.68,
+    dashTaper: 0.56,
     laneGap: 0.55,
     cadenceHz: 2.75,
     brightness: 0.76,
@@ -76,6 +80,7 @@ const QUALITY_PROFILES = Object.freeze({
     laneCount: 3,
     segmentCount: 36,
     dashDuty: 0.84,
+    dashTaper: 0.82,
     laneGap: 0.35,
     cadenceHz: 4.5,
     brightness: 1,
@@ -107,6 +112,7 @@ export function createMasslineReleaseArcPlan() {
     laneCount: 0,
     segmentCount: 0,
     dashDuty: 0,
+    dashTaper: 0,
     laneGap: 0,
     cadenceHz: 0,
     phaseRad: 0,
@@ -296,13 +302,27 @@ export function writeMasslineReleaseArcGeometry(out, plan) {
   const phase = finite(plan.phaseRad, 0);
   const start = finite(plan.startAngle, 0);
   const y = finite(plan.y, 0);
+  // Each mark is a TOOTH, not a painted rectangle: its trailing radial extent is pulled toward the
+  // lane's own centre line, so the rating is carried by the silhouette of one mark as well as by
+  // the count of them. A messy release leaves blunt stubs, a razor one a ring of needles. The taper
+  // never leaves the planned annulus, so the band's footprint is unchanged.
+  const taper = clamp(finite(plan.dashTaper, 0), 0, 0.95);
+  // Lanes interlock rather than stack: a fixed sub-step stagger turns concentric rings into a
+  // vernier, which reads as machined tooling instead of three copies of one HUD circle. The offset
+  // is a constant of the lane, never of the clock, so a frozen ring stays frozen.
+  const laneStagger = lanes > 1 ? step * 0.5 / (lanes - 1) : 0;
   let emitted = 0;
 
   for (let lane = 0; lane < lanes; lane += 1) {
     const laneInner = inner + lane * (laneWidth + Math.max(0, finite(plan.laneGap, 0)));
     const laneOuter = laneInner + laneWidth;
+    const laneMid = (laneInner + laneOuter) * 0.5;
+    const tipInner = laneMid - (laneMid - laneInner) * (1 - taper);
+    const tipOuter = laneMid + (laneOuter - laneMid) * (1 - taper);
+    // Outward lanes are the shoulder of the band, not a second copy of its crown.
+    const laneGain = 1 - Math.min(0.3, lane * 0.13);
     for (let segment = 0; segment < logicalSegments; segment += 1) {
-      const angle0 = start + phase + segment * step;
+      const angle0 = start + phase + lane * laneStagger + segment * step;
       const angle1 = angle0 + step * dashDuty;
       const cos0 = Math.cos(angle0);
       const sin0 = Math.sin(angle0);
@@ -316,22 +336,23 @@ export function writeMasslineReleaseArcGeometry(out, plan) {
       positions[offset + 3] = plan.centerX + cos0 * laneOuter;
       positions[offset + 4] = y;
       positions[offset + 5] = plan.centerZ + sin0 * laneOuter;
-      positions[offset + 6] = plan.centerX + cos1 * laneInner;
+      positions[offset + 6] = plan.centerX + cos1 * tipInner;
       positions[offset + 7] = y;
-      positions[offset + 8] = plan.centerZ + sin1 * laneInner;
-      positions[offset + 9] = plan.centerX + cos1 * laneOuter;
+      positions[offset + 8] = plan.centerZ + sin1 * tipInner;
+      positions[offset + 9] = plan.centerX + cos1 * tipOuter;
       positions[offset + 10] = y;
-      positions[offset + 11] = plan.centerZ + sin1 * laneOuter;
-      // Per-vertex radiance keeps a hot inner edge and softer outer sheath. Shape/width/cadence
-      // already carry the rating in grayscale; color is an additional authored channel, not the
-      // only one. Values stay bounded for MeshBasicMaterial's vertex-color path.
+      positions[offset + 11] = plan.centerZ + sin1 * tipOuter;
+      // Per-vertex radiance keeps a hot inner edge and softer outer sheath, and now cools toward
+      // each tooth's tip so a single mark has a direction you can see in a still frame. Shape,
+      // width, taper, count and cadence all carry the rating in grayscale; color is an additional
+      // authored channel, not the only one. Values stay bounded for the vertex-color path.
       const segmentBeat = 0.9 + 0.1 * ((segment & 1) === 0 ? 1 : 0);
-      const innerGain = clamp(plan.brightness * plan.pulse * segmentBeat, 0, 1);
-      const outerGain = innerGain * 0.62;
-      writeVertexColor(colors, offset, plan, innerGain);
-      writeVertexColor(colors, offset + 3, plan, outerGain);
-      writeVertexColor(colors, offset + 6, plan, innerGain);
-      writeVertexColor(colors, offset + 9, plan, outerGain);
+      const rootGain = clamp(plan.brightness * plan.pulse * segmentBeat * laneGain, 0, 1);
+      const tipGain = rootGain * (1 - 0.42 * taper);
+      writeVertexColor(colors, offset, plan, rootGain);
+      writeVertexColor(colors, offset + 3, plan, rootGain * 0.62);
+      writeVertexColor(colors, offset + 6, plan, tipGain);
+      writeVertexColor(colors, offset + 9, plan, tipGain * 0.62);
       emitted += 1;
     }
   }
@@ -353,6 +374,7 @@ function applyProfile(out, profile) {
   out.laneCount = profile.laneCount;
   out.segmentCount = profile.segmentCount;
   out.dashDuty = profile.dashDuty;
+  out.dashTaper = profile.dashTaper;
   out.laneGap = profile.laneGap;
   out.cadenceHz = profile.cadenceHz;
   out.brightness = profile.brightness;
@@ -366,6 +388,9 @@ function applyApproachingProfile(out, profile, proximity, windowOpen) {
   out.laneCount = windowOpen ? 2 : profile.laneCount;
   out.segmentCount = profile.segmentCount + Math.round(proximity * 8);
   out.dashDuty = profile.dashDuty + proximity * 0.2;
+  // The window closing is a SILHOUETTE event before it is a brightness one: blunt stubs sharpen
+  // into needles as the solution comes in, which survives desaturation and a frozen cadence.
+  out.dashTaper = clamp(profile.dashTaper + proximity * 0.55 + (windowOpen ? 0.14 : 0), 0, 0.92);
   out.laneGap = windowOpen ? 0.45 : profile.laneGap;
   out.cadenceHz = profile.cadenceHz + proximity * 1.8;
   out.brightness = profile.brightness + proximity * 0.38 + (windowOpen ? 0.18 : 0);
@@ -409,6 +434,7 @@ function resetPlan(out) {
   out.laneCount = 0;
   out.segmentCount = 0;
   out.dashDuty = 0;
+  out.dashTaper = 0;
   out.laneGap = 0;
   out.cadenceHz = 0;
   out.phaseRad = 0;
