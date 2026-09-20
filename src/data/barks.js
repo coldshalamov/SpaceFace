@@ -95,6 +95,12 @@ export const BARKS = {
       'Shift 14. The same corridor. The same seven seal codes. Filed.',
       'Pass. The order holds. Bring your fees current before the next cycle.',
     ],
+    distress: [
+      'Declaring emergency under Ref 77-A. All stations render aid.',
+      'Hull integrity critical. Filing the casualty pre-report now.',
+      'This vessel is going down. Witnesses are requested for the record.',
+      'Mayday logged. Next of kin will be invoiced for the filing.',
+    ],
   },
 
   // ── Meridian — smooth / mercantile ─────────────────────────────────────────
@@ -148,6 +154,12 @@ export const BARKS = {
       'Syndicate convoy passing. No fees today. Enjoy it.',
       'Good cycle. Clear Air is up. Don’t ask who it’s down on.',
     ],
+    distress: [
+      'We are losing her. Invoice the rescue to our account.',
+      'Hull failing. The Syndicate pays for recovery, not eulogies.',
+      'Breaking up. Charge the salvage to the house.',
+      'Mayday. The board reimburses whoever pulls us out.',
+    ],
   },
 
   // ── Drift — blue-collar / tired ────────────────────────────────────────────
@@ -199,6 +211,12 @@ export const BARKS = {
       'Just working the belt. You do you.',
       'Safe hauls out there. It’s a long way to anywhere.',
       'Crew of nine down Shaft Four. Two up here. Same ore. Same quotas. Fly past.',
+    ],
+    distress: [
+      'She’s coming apart. Tell the shift I stayed with her.',
+      'We’re done here. Somebody call the yard for the crew.',
+      'Hull’s gone. Get the rookies off first.',
+      'Going down. Keep my pay on the crew’s tab.',
     ],
   },
 
@@ -260,6 +278,12 @@ export const BARKS = {
       'Passing through? Fast, then. Real fast.',
       'Fly past. Our last three friends who stopped are welded into the Throne.',
     ],
+    distress: [
+      'We’re lit! Any Reach hull — pull him off us and split the salvage!',
+      'She’s breaking! Vane owes us — come collect!',
+      'Hull’s opening! Take his guns as payment for the save!',
+      'Losing her! The pack better answer for this weigh!',
+    ],
   },
 
   // ── The Quiet — terse / minimal ────────────────────────────────────────────
@@ -313,6 +337,12 @@ export const BARKS = {
       'Keep it quiet.',
       'No log. No wave. Go.',
       'Pass. The number stays the same either way.',
+    ],
+    distress: [
+      'Dying. Say nothing.',
+      'Hull open. Close the channel.',
+      'One less. Count it.',
+      'Dark now. No name.',
     ],
   },
 
@@ -372,6 +402,12 @@ export const BARKS = {
       'We sing on.',
       'Walk lightly. The Pattern does not require you to be remembered.',
     ],
+    distress: [
+      'The Pattern receives this vessel. Mark the interval.',
+      'We ascend. Sing the hull home.',
+      'The chorus opens. We enter unburdened.',
+      'Correction complete. We release the form.',
+    ],
   },
 
   // ── Free Frontier — independent / plainspoken ──────────────────────────────
@@ -425,6 +461,12 @@ export const BARKS = {
       'Just neighbors keeping an eye out. Safe travels.',
       'Wave back, friend. Few do. Makes the night shorter.',
     ],
+    distress: [
+      'We’re coming apart out here — anybody copy?',
+      'Hull’s failing. Get word to the waystation for us.',
+      'Breaking up. Tell the neighbors we tried.',
+      'Going down hard — somebody mark this lane.',
+    ],
   },
 
   // ── The Vael — alien contract-language / formal ────────────────────────────
@@ -477,6 +519,12 @@ export const BARKS = {
       'This-vessel transits under standing accord. No obligation falls to you today.',
       'Consensus observes. Your standing is neutral. Proceed.',
       'Passage granted. The clause permitting you was authored before your world formed.',
+    ],
+    distress: [
+      'Clause 23: this-vessel declares termination imminent. Assistance is owed.',
+      'Form integrity fails. The accord obligates witness.',
+      'This-vessel dissolves. The ledger must record the cause.',
+      'Termination proceeds. Custody of the record transfers.',
     ],
   },
 };
@@ -999,6 +1047,271 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
   ], true),
 });
 
+// ── Witness reaction: somebody watched the crime ────────────────────────────────────────────
+//
+// Same contract as HULL_RECOGNITION and HISTORY_RECOGNITION: an event line, not a
+// BARK_SITUATION. When lawSecurity validates a witnessed kill or theft, the receipt names the
+// witnesses; the bark director resolves one of them and lets them say what they saw. The line
+// is the ambient proof that the witness gate is real — a crime somebody watched gets talked
+// about on the channel, in the watching faction's own register.
+
+export const WITNESS_CRIME_BARKS = Object.freeze({
+  faction_scn: Object.freeze([
+    'Witness statement filed: a vessel was just destroyed in controlled space. Ref 44-C.',
+    'This channel confirms a homicide in jurisdiction. Statement logged.',
+    'Concord advisory: we watched that kill. The record watched it too.',
+    'Incident observed and timestamped. Your transponder is in the file.',
+  ]),
+  faction_mts: Object.freeze([
+    'Meridian channel: somebody just wrote a ship off the ledger. Adjusting the spread.',
+    'We saw the flash and the signature behind it. That report has a price attached.',
+    'A kill in the open market — bold, expensive, noted.',
+    'Someone is about to discover what witnesses cost. We already invoiced.',
+  ]),
+  faction_dmc: Object.freeze([
+    "Saw the flash from the rig — somebody's shift just ended permanent, calling it in.",
+    "That's a kill on my watch — great, more paperwork nobody pays me for.",
+    'Whole crew saw it. Drift crews talk, friend — that story is already moving.',
+    "Venting a ship in front of working people. Report's gone up the shaft.",
+  ]),
+  faction_reach: Object.freeze([
+    'Hooo — did you SEE that — opened like a cargo seal!',
+    'We watched you vent them. No charge for the show — the law pays for the tip.',
+    'That was ugly and we loved it. Still selling your transponder though.',
+    'Reach saw the kill — Reach always sees, and Reach always bills somebody.',
+  ]),
+  faction_quiet: Object.freeze([
+    'Seen. Reported.',
+    'Counted. One less.',
+    'We saw. The channel knows.',
+    'Logged. Nothing else needed.',
+  ]),
+  faction_choir: Object.freeze([
+    'The Pattern receives one more. We witnessed the unmaking.',
+    'A vessel returned to the chorus before its interval. We saw the hand that cut it.',
+    'The rupture was witnessed. It is notated in your name.',
+    'One more silence entered the Pattern. Your signature attends it.',
+  ]),
+  faction_free: Object.freeze([
+    "Frontier channel — I just watched a killing out here. Reporting it now.",
+    'We saw what you did to that ship, friend. Whole lane saw it.',
+    "That's a body on the board. Frontier talks fast — it's already out.",
+    'Saw the whole thing. Around here, seeing means saying.',
+  ]),
+  faction_vael: Object.freeze([
+    'Clause 14 observed: unlawful termination of a vessel. This-vessel files the breach.',
+    'The act is entered into evidence. Witness-terms satisfied.',
+    'Termination witnessed under accord. The ledger does not unsee.',
+    'This-vessel attests: the destruction was observed. Attestation is binding.',
+  ]),
+});
+
+/**
+ * Deterministically select one witness-reaction line.
+ *
+ * @param {string} factionId  one of BARK_FACTIONS (unknown ids fall back to faction_free).
+ * @param {function|number} [rng]  seeded rng fn or a numeric index. Deterministic.
+ * @returns {string} a non-empty line.
+ */
+export function witnessCrimeBarkFor(factionId, rng) {
+  const lines = (factionId && WITNESS_CRIME_BARKS[factionId]) || WITNESS_CRIME_BARKS.faction_free;
+  const line = lines[pickIndex(rng, lines.length)] || lines[0];
+  return typeof line === 'string' && line.length ? line : '...';
+}
+
+// ── Pursuit chatter: the law (or the pack) is actively running the player down ────────────────
+//
+// Same event-line contract as WITNESS_CRIME_BARKS — not a BARK_SITUATION. When a pursuit opens
+// (law:wantedWarrantPosted posts the bounty hunter), the chasing faction says what the run costs
+// the runner. Speaker = the pursuer, in its own register. barkDirector consumes this corpus.
+
+export const PURSUIT_BARKS = Object.freeze({
+  faction_scn: Object.freeze([
+    'Pursuit authorized under Ref 51-B. Your heading is already filed.',
+    'Fleeing adds a second citation. Both are already drafted.',
+    'Intercept course set. Compliance is still cheaper than capture.',
+    'All units: the fugitive’s transponder is doing our work for us.',
+  ]),
+  faction_mts: Object.freeze([
+    'Running only raises the recovery fee, friend.',
+    'Every burn you make is billable. Keep going.',
+    'We have your route on the books. The margin always collects.',
+    'Pursuit is an investment. You are the return.',
+  ]),
+  faction_dmc: Object.freeze([
+    'Hold still. I’m not chasing you past my shift.',
+    'Every rock I dodge to catch you is going on your tab.',
+    'You couldn’t outrun a loaded hauler. Stop wasting my fuel.',
+    'Fine, we chase. Somebody log my overtime.',
+  ]),
+  faction_reach: Object.freeze([
+    'Run! It only makes the weigh sweeter.',
+    'He’s burning fuel — when the tanks go dry, the scales open.',
+    'Fast little hull. We’ll weigh it slow.',
+    'Keep sprinting, friend. Tired salvage strips easier.',
+  ]),
+  faction_quiet: Object.freeze([
+    'Still.',
+    'We follow.',
+    'Nowhere to go.',
+    'The lane ends.',
+  ]),
+  faction_choir: Object.freeze([
+    'The interval shortens. Hold still for it.',
+    'Flight is only a longer verse.',
+    'The Pattern has no outside.',
+    'Your heading was notated before you chose it.',
+  ]),
+  faction_free: Object.freeze([
+    'Easy now — nobody has to get hurt worse.',
+    'You’re running toward nothing out here, friend.',
+    'We just want to talk. The talk’s shorter if you stop.',
+    'Lane’s a long dark, and we’re right behind you.',
+  ]),
+  faction_vael: Object.freeze([
+    'Clause 11: flight constitutes admission. It is entered.',
+    'Your velocity extends the term. It does not void it.',
+    'Evasion is a recognized remedy. It is also a priced one.',
+    'The pursuit interval is contractually bounded. Your hull is not.',
+  ]),
+});
+
+/** One pursuit-chatter line for the chasing faction. Deterministic; falls back to faction_free. */
+export function pursuitBarkFor(factionId, rng) {
+  const lines = (factionId && PURSUIT_BARKS[factionId]) || PURSUIT_BARKS.faction_free;
+  const line = lines[pickIndex(rng, lines.length)] || lines[0];
+  return typeof line === 'string' && line.length ? line : '...';
+}
+
+// ── Surrender: heave-to demands and yield terms ───────────────────────────────────────────────
+//
+// Event line, not a BARK_SITUATION. When the law demands a surrender — the posted nets checkpoint
+// (law:wantedCheckpointPosted) is the heave-to demand — the speaking faction states the one term
+// that matters, in its own register. barkDirector consumes this corpus from the staffing cutter.
+
+export const SURRENDER_BARKS = Object.freeze({
+  faction_scn: Object.freeze([
+    'Cut your drive and present for custody. Ref 51-B applies.',
+    'Surrender is a recognized outcome. It reduces the fine.',
+    'Power down and hold. Resistance is billable.',
+    'Heave to and live. The alternative is paperwork you will not see.',
+  ]),
+  faction_mts: Object.freeze([
+    'Surrender the hull and the account closes clean.',
+    'Yield now and we waive the pursuit surcharge.',
+    'Strike your drive. Everything else is negotiable.',
+    'Accept our terms and nobody writes a loss report.',
+  ]),
+  faction_dmc: Object.freeze([
+    'Yield and we both clock out alive.',
+    'Cut the engine, friend. Nobody’s quota includes a corpse.',
+    'Give it up. I’ve got a dinner getting cold.',
+    'Stand down. Whatever you stole isn’t worth my paperwork.',
+  ]),
+  faction_reach: Object.freeze([
+    'Strike your colors — we’ll only take the ship.',
+    'Power down and you keep breathing. Simple math.',
+    'Surrender the hold and we might forget your face.',
+    'Kill your drive before we weigh what’s left of you.',
+  ]),
+  faction_quiet: Object.freeze([
+    'Stop. Live.',
+    'Power down. Stay seen.',
+    'Yield. Once.',
+    'Engines off. Choose.',
+  ]),
+  faction_choir: Object.freeze([
+    'Kneel before the Pattern. Ascension is still permitted.',
+    'Release your name and the verse ends gently.',
+    'Submit. The chorus accepts the willing.',
+    'Cease your dissonance. Mercy is one note.',
+  ]),
+  faction_free: Object.freeze([
+    'Power down, friend — this doesn’t have to end in scrap.',
+    'Call it quits and we all go home tonight.',
+    'Stand down. Nobody out here wants your funeral.',
+    'Drop the guns and the lane stays friendly.',
+  ]),
+  faction_vael: Object.freeze([
+    'Clause 16: submission terminates the enforcement term.',
+    'Yield your form. The accord permits survival.',
+    'Surrender is a valid clause. Invoke it.',
+    'Cease propulsion. Custody is the offered remedy.',
+  ]),
+});
+
+/** One surrender line for the demanding faction. Deterministic; falls back to faction_free. */
+export function surrenderBarkFor(factionId, rng) {
+  const lines = (factionId && SURRENDER_BARKS[factionId]) || SURRENDER_BARKS.faction_free;
+  const line = lines[pickIndex(rng, lines.length)] || lines[0];
+  return typeof line === 'string' && line.length ? line : '...';
+}
+
+// ── Post-escape taunt: the pursuit resolved as escaped ────────────────────────────────────────
+//
+// Event line, not a BARK_SITUATION. When a pursuit resolves with the player away, the former
+// pursuer gets the last word — a consequence, not a eulogy. STAGED: no live emitter names an
+// unambiguous escape yet (law:wantedWarrantReleased also fires on paid/served clears), so no
+// system consumes this corpus; the coverage test above keeps every cell authored.
+
+export const ESCAPE_TAUNT_BARKS = Object.freeze({
+  faction_scn: Object.freeze([
+    'Escape logged as evasion. The next checkpoint already knows.',
+    'Your transponder stays flagged. Distance changes nothing.',
+    'Evasion surcharge applied. See you at the next corridor.',
+    'You fled a citation — now it is a warrant.',
+  ]),
+  faction_mts: Object.freeze([
+    'Run, then. Distance is just interest on the debt.',
+    'You got away in a hull that is still ours on paper.',
+    'Enjoy the head start. The margin does not expire.',
+    'Every kilometer adds a handling fee.',
+  ]),
+  faction_dmc: Object.freeze([
+    'Go on. I’ll be back on shift when your fuel runs out.',
+    'You ran. The belt’s still here when you come crawling back.',
+    'Fast bird. We’ll be at the dock when you land.',
+    'Escaped today. The rocks remember you tomorrow.',
+  ]),
+  faction_reach: Object.freeze([
+    'Counted your hull, friend. We’ll weigh it later.',
+    'You escaped this weigh-slip. There’s always a next one.',
+    'Fast prey. We like a challenge with a price tag.',
+    'Run far. Your salvage value grows with the legend.',
+  ]),
+  faction_quiet: Object.freeze([
+    'Gone. For now.',
+    'Counted anyway.',
+    'The door stays open.',
+    'We remember the shape.',
+  ]),
+  faction_choir: Object.freeze([
+    'Distance is a verse. The chorus outlasts it.',
+    'You cannot exit the Pattern. You can only delay the note.',
+    'Fled, not freed. The interval keeps your place.',
+    'Every heading curves back to the Pattern.',
+  ]),
+  faction_free: Object.freeze([
+    'Fast bird. The lanes talk — you’ll hear us again.',
+    'You made it out. Enjoy the quiet while it lasts.',
+    'Fair enough. Next time bring friends.',
+    'Escaped. The waystation will hear about this one.',
+  ]),
+  faction_vael: Object.freeze([
+    'Clause 12 applies: distance is decorative. The term persists.',
+    'Your escape is recorded as a deferral, not a release.',
+    'Flight postpones disposition. It does not amend it.',
+    'The accord closes no matter where you park.',
+  ]),
+});
+
+/** One post-escape taunt for the faction that lost the runner. Deterministic; faction_free fallback. */
+export function escapeTauntBarkFor(factionId, rng) {
+  const lines = (factionId && ESCAPE_TAUNT_BARKS[factionId]) || ESCAPE_TAUNT_BARKS.faction_free;
+  const line = lines[pickIndex(rng, lines.length)] || lines[0];
+  return typeof line === 'string' && line.length ? line : '...';
+}
+
 export default {
   BARKS,
   BARK_FACTIONS,
@@ -1006,7 +1319,15 @@ export default {
   CONTACT_VOICE_REGISTERS,
   HULL_RECOGNITION,
   HISTORY_RECOGNITION,
+  WITNESS_CRIME_BARKS,
+  PURSUIT_BARKS,
+  SURRENDER_BARKS,
+  ESCAPE_TAUNT_BARKS,
   barkFor,
   hullRecognitionBarkFor,
   historyBarkFor,
+  witnessCrimeBarkFor,
+  pursuitBarkFor,
+  surrenderBarkFor,
+  escapeTauntBarkFor,
 };

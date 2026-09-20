@@ -3,7 +3,15 @@
 // Observer-only voice surfacing for already-live ship state. It reads AI/contact transitions,
 // routes faction-specific lines through voiceArbiter's bark channel, and writes only its own
 // state.barkDirector receipt cache so combat/AI/economy behavior stays unchanged.
-import { BARK_SITUATIONS, barkFor, historyBarkFor, hullRecognitionBarkFor } from '../data/barks.js';
+import {
+  BARK_SITUATIONS,
+  barkFor,
+  historyBarkFor,
+  hullRecognitionBarkFor,
+  pursuitBarkFor,
+  surrenderBarkFor,
+  witnessCrimeBarkFor,
+} from '../data/barks.js';
 import { aceTrophyBarkFor } from '../data/conflictReactions.js';
 import { trophyFromFittings } from '../data/sectors.js';
 import { aceById, factionHistoryFromMemory } from '../data/namedAces.js';
@@ -184,6 +192,14 @@ export const barkDirector = {
     this._onCargoSpilled = (payload) => this._speakCargoSpill(payload || {}, 'freight:cargoSpilled');
     this._onCargoJettisoned = (payload) => this._speakCargoSpill(payload || {}, 'cargo:jettisoned');
     this._onCargoKilled = (payload) => this._speakCargoSpill(payload || {}, 'entity:killed');
+    // Heat/pursuit/witness moments are the law layer's natural radio cadence: a dispatched
+    // patrol hails, the warrant hunter taunts, and a witness to a validated crime says what
+    // they saw — each from the live entity that owns the voice.
+    this._onLawDispatchStarted = (payload) => this._speakLawDispatch(payload || {});
+    this._onLawWarrantPosted = (payload) => this._speakLawPursuit(payload || {});
+    this._onLawCheckpointPosted = (payload) => this._speakLawSurrender(payload || {});
+    this._onLawReportReceipt = (payload) => this._speakLawWitness(payload || {});
+    this._onHeatWantedCrossed = (payload) => this._speakWantedCrossing(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('save:loaded', this._onStuntLoad);
@@ -197,6 +213,11 @@ export const barkDirector = {
       this.bus.on('freight:cargoSpilled', this._onCargoSpilled);
       this.bus.on('cargo:jettisoned', this._onCargoJettisoned);
       this.bus.on('entity:killed', this._onCargoKilled);
+      this.bus.on('law:dispatchStarted', this._onLawDispatchStarted);
+      this.bus.on('law:wantedWarrantPosted', this._onLawWarrantPosted);
+      this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
+      this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
+      this.bus.on('heat:changed', this._onHeatWantedCrossed);
     }
   },
 
@@ -288,6 +309,131 @@ export const barkDirector = {
         factionId,
         t: rec.lastSpokenAt,
         ...(extra ? { source: extra.sourceEvent || null } : {}),
+      });
+    }
+    return !!accepted;
+  },
+
+  // ── Law radio cadence: heat, pursuit, and witnesses speak ────────────────────────────────
+  //
+  // The law layer emits receipts, not voices — these listeners give each law action leg an
+  // audible line from the live entity that owns it. None of them move gameplay state; they
+  // only spend the same per-entity-per-situation bark budget as ordinary contact chatter.
+
+  _speakLawDispatch(payload) {
+    const state = this.state;
+    if (!state || !Array.isArray(payload.responderIds)) return false;
+    for (const id of payload.responderIds) {
+      const entity = state.entities && state.entities.get && state.entities.get(id);
+      if (!entity || entity.alive === false) continue;
+      return this._speak(entity, 'warn', 'law:dispatchStarted', payload)
+        || this._speak(entity, 'attack', 'law:dispatchStarted', payload);
+    }
+    return false;
+  },
+
+  _speakLawPursuit(payload) {
+    const state = this.state;
+    const hunter = payload && payload.hunterId != null
+      && state && state.entities && state.entities.get && state.entities.get(payload.hunterId);
+    if (!hunter || hunter.alive === false) return false;
+    // The authored pursuit corpus speaks first (the chasing faction prices the run); the generic
+    // taunt/warn chain stays as the busy-channel fallback so the moment is never fully silent.
+    return this._speakEventLine(hunter, 'law-pursuit', 'law:wantedWarrantPosted', pursuitBarkFor, payload)
+      || this._speak(hunter, 'taunt', 'law:wantedWarrantPosted', payload)
+      || this._speak(hunter, 'warn', 'law:wantedWarrantPosted', payload);
+  },
+
+  // A posted nets checkpoint IS the law's heave-to demand; the staffing cutter names the one term.
+  _speakLawSurrender(payload) {
+    const state = this.state;
+    const cutter = payload && payload.cutterId != null
+      && state && state.entities && state.entities.get && state.entities.get(payload.cutterId);
+    if (!cutter || cutter.alive === false) return false;
+    return this._speakEventLine(cutter, 'law-surrender', 'law:wantedCheckpointPosted', surrenderBarkFor, payload);
+  },
+
+  _speakLawWitness(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.accepted !== true) return false;
+    const witness = this._resolveReceiptWitness(payload);
+    if (!witness) return false;
+    return this._speakEventLine(witness, 'witness-crime', 'law:reportIncidentReceipt', witnessCrimeBarkFor, payload);
+  },
+
+  _speakWantedCrossing(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.wantedCrossed !== true || payload.wanted !== true) return false;
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || !player.pos) return false;
+    const voice = nearestEntityWhere(state, player.pos, LAW_BARK_RADIUS_WU,
+      (entity) => isLawfulVoice(entity));
+    if (!voice) return false;
+    return this._speak(voice, 'warn', 'heat:changed', payload);
+  },
+
+  // The receipt names witnesses by STABLE id; `entity:N` rows resolve directly, and authored
+  // ids (world records, stations) fall back to the nearest lawful-or-civilian hull close enough
+  // to the scene to have actually seen the act. Kill receipts anchor on the victim; theft
+  // receipts (the only accepted receipts before the kill-intake lane) anchor on the offender.
+  _resolveReceiptWitness(payload) {
+    const state = this.state;
+    const entities = state && state.entities;
+    if (!entities || typeof entities.get !== 'function') return null;
+    const ids = Array.isArray(payload.witnessStableIds) ? payload.witnessStableIds : [];
+    for (const stableId of ids) {
+      if (typeof stableId !== 'string' || !stableId.startsWith('entity:')) continue;
+      const raw = stableId.slice(7);
+      const entity = entities.get(raw) || entities.get(Number(raw));
+      if (entity && entity.alive !== false) return entity;
+    }
+    const byId = (id) => (id != null ? (entities.get(id) || entities.get(Number(id))) : null);
+    const victim = byId(payload.victimEntityId);
+    const offender = byId(payload.offenderEntityId);
+    const anchor = (victim && victim.pos && victim) || (offender && offender.pos && offender) || null;
+    if (!anchor || !anchor.pos) return null;
+    return nearestEntityWhere(state, anchor.pos, LAW_BARK_RADIUS_WU,
+      (entity) => entity.id !== anchor.id
+        && !(offender && entity.id === offender.id)
+        && (isLawfulVoice(entity) || isCivilianVoice(entity)));
+  },
+
+  // Event corpus, not a BARK_SITUATION — same carve-out as hull/stunt recognition. Dedup is
+  // per-entity per-situation so a voice delivers its line once, then goes back to its own chatter.
+  _speakEventLine(entity, situation, reason, lineFor, extra = null) {
+    if (!entity || !this.state || typeof lineFor !== 'function') return false;
+    const state = this.state;
+    const own = ensureState(state);
+    const entityId = String(entity.id);
+    const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+    if (rec.said[situation]) return false;
+    const factionId = factionFor(entity);
+    const seed = state.meta && state.meta.seed;
+    const index = hash32(seed == null ? 0 : seed, 'barkDirector', entityId, situation);
+    const text = lineFor(factionId, index);
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    rec.said[situation] = true;
+    rec.lastSpokenAt = state.simTime || 0;
+    rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
+    if (rec.history.length > 8) rec.history.shift();
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'barkDirector',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:${entityId}:${situation}`,
+      factionId,
+    });
+    if (accepted) {
+      this._emit('barkDirector:voice', {
+        entityId: entity.id,
+        situation,
+        reason,
+        text,
+        factionId,
+        t: rec.lastSpokenAt,
+        ...(extra ? { source: extra.sourceEvent || extra.incidentReceiptId || null } : {}),
       });
     }
     return !!accepted;
@@ -649,6 +795,11 @@ export const barkDirector = {
       if (this._onCargoSpilled) this.bus.off('freight:cargoSpilled', this._onCargoSpilled);
       if (this._onCargoJettisoned) this.bus.off('cargo:jettisoned', this._onCargoJettisoned);
       if (this._onCargoKilled) this.bus.off('entity:killed', this._onCargoKilled);
+      if (this._onLawDispatchStarted) this.bus.off('law:dispatchStarted', this._onLawDispatchStarted);
+      if (this._onLawWarrantPosted) this.bus.off('law:wantedWarrantPosted', this._onLawWarrantPosted);
+      if (this._onLawCheckpointPosted) this.bus.off('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
+      if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
+      if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
     }
     this._onFlee = null;
     this._onReinforcement = null;
@@ -658,6 +809,11 @@ export const barkDirector = {
     this._onCargoSpilled = null;
     this._onCargoJettisoned = null;
     this._onCargoKilled = null;
+    this._onLawDispatchStarted = null;
+    this._onLawWarrantPosted = null;
+    this._onLawCheckpointPosted = null;
+    this._onLawReportReceipt = null;
+    this._onHeatWantedCrossed = null;
   },
 };
 
@@ -850,6 +1006,50 @@ function resolveNamedCargoIncident(state, payload, eventName) {
     factionId: (ownerEntity && (ownerEntity.factionId || (ownerEntity.data && ownerEntity.data.factionId)))
       || 'faction_free',
   };
+}
+
+// Law barks hail on an open channel — responders and warrant hunters speak regardless of how
+// far their hull is from the player's. Only the wanted-crossing scan picks a nearby voice,
+// and even that is generous: the law announcing itself is not a whisper.
+const LAW_BARK_RADIUS_WU = 2400;
+
+function nearestEntityWhere(state, pos, radiusWu, predicate) {
+  const anchor = pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? pos : null;
+  if (!state || !anchor || typeof predicate !== 'function') return null;
+  const limitSq = Math.max(0, Number(radiusWu) || 0) ** 2;
+  let best = null;
+  let bestD2 = limitSq;
+  forEachLivingWorldActor(state, (entity) => {
+    if (!entity || entity.alive === false || !entity.pos) return;
+    if (entity.id === state.playerId) return;
+    const dx = entity.pos.x - anchor.x;
+    const dz = entity.pos.z - anchor.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > bestD2) return;
+    if (!predicate(entity)) return;
+    bestD2 = d2;
+    best = entity;
+  });
+  return best;
+}
+
+// Light local predicates — barkDirector observes law state; it does not import the law owner.
+// CIVILIAN_VOICE_ROLES mirrors the proven civilian-role list in combat/stuntContracts.js.
+const CIVILIAN_VOICE_ROLES = Object.freeze(['hauler', 'courier', 'miner', 'trader', 'civilian', 'fleeing_trader']);
+
+function isLawfulVoice(entity) {
+  const data = entity && entity.data || {};
+  const ai = data.ai || {};
+  return ai.lawful === true || ai.motive === 'wanted_warrant' || ai.securityTargetId != null;
+}
+
+function isCivilianVoice(entity) {
+  if (!entity || entity.type !== 'ship') return false;
+  const data = entity.data || {};
+  const ai = data.ai || {};
+  const role = String(data.trafficRole || data.role || ai.role || ai.archetype || '').toLowerCase();
+  return entity.team === 2 || ai.spawnContext === 'convoy_civilian'
+    || CIVILIAN_VOICE_ROLES.some((word) => role.includes(word));
 }
 
 // Finite by construction. `postCombatSilenceUntil: 0` is the sibling convention in this same

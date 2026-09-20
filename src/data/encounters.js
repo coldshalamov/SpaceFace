@@ -416,6 +416,10 @@ export const WHISPER_LINES = Object.freeze([
   'two crews fled from you. the third is watching how you fly.',
   'the salvage rig asks after you by hull color.',
   'what the front remembers, the whisper repeats.',
+  'the toll you skipped still counts your engine note.',
+  'someone weighed your shadow at the last gate.',
+  'your name is shorter in every ledger but one.',
+  'the dark between lanes keeps a tally of the brave.',
 ]);
 
 /** What the whisper turns out to be once investigated (seeded pick per encounter). */
@@ -430,6 +434,10 @@ export const WHISPER_SOURCE_NAMES = Object.freeze([
   'a claimed seam marker with fresh welds',
   'a grudge beacon naming one transponder',
   'a yard tender\'s lost inventory drone',
+  'a toll buoy repeating a dead crew\'s tally',
+  'a Concord marker beacon still filing reports',
+  'a crashed courier\'s looping claim ping',
+  'a choir lament buoy off its interval',
 ]);
 
 /** Receipt templates keyed `shapeId.outcome`. Short, factual, never overclaiming: every line here
