@@ -433,3 +433,130 @@ function clamp01(x) {
   if (x > 1) return 1;
   return x;
 }
+
+// ---------------------------------------------------------------------------
+// Cable surface profile (VFX_TECHNIQUE_STANDARD §3 "Loaded Massline").
+//
+// The pure tension -> SHAPE mapping for the drawn line. Everything here is a geometric channel:
+// how finely the curve is sampled, how thick each cross-section is, and how the load ferrules are
+// cut. Colour is resolved elsewhere (resolveForceNeonScale + the ribbon shader) and is deliberately
+// NOT the only load read — width, ferrule profile and curve sampling all move with load on their
+// own, so the line still reads loaded in greyscale.
+//
+// No Three, no clock, no GameState. src/render/masslineCableSurface.js turns these numbers into
+// resident buffers; vfx.js owns the live endpoints and feeds them in.
+// ---------------------------------------------------------------------------
+
+/** Below this a straight span is already pixel-exact: the shader's travel is a varying, not a mesh. */
+const CABLE_SEGMENT_FLOOR = 6;
+/** Chord-to-arc error accepted per span, in world units (~0.8 px at the supported gameplay camera). */
+const CABLE_SAGITTA_TOLERANCE_WU = 0.045;
+/** Samples per spatial cycle of a travelling term that is actually running this frame. */
+const CABLE_SAMPLES_PER_CYCLE = 4;
+/** Reference tessellation the accepted collar length was authored against (the old fixed SEG). */
+const CABLE_COLLAR_LENGTH_REFERENCE = 24 * 3.2;
+
+/**
+ * Curvature-sensitive tessellation plus the cross-section and ferrule cut for one drawn cable.
+ *
+ * `out` is caller-owned so the frame path never allocates.
+ *
+ * Inputs are all already-resolved presentation truth from the live cable:
+ *   chord            world-unit distance between the two RENDERED attachment points
+ *   load / taut      the presentation load read (tether.load, phase-floored) and its taut gate
+ *   whip / reel      the latch/snap recoil envelope and the winch read, both 0..1
+ *   bowMagnitude     peak lateral slack bow, world units (already signed-away)
+ *   whipAmplitude    peak lateral whip displacement, world units
+ *   shiverAmplitude  peak lateral load shiver, world units
+ *   whipCycles       spatial cycles of the whip harmonic across the span
+ *   shiverCycles     spatial cycles of the fastest shiver term across the span
+ *   segmentCapacity  the resident buffer's span capacity
+ */
+export function resolveMasslineCableProfile(input = {}, out = {}) {
+  const chord = Math.max(0, finite(input.chord, 0));
+  const load = clamp01(finite(input.load, 0));
+  const taut = input.taut === true;
+  const whip = clamp01(finite(input.whip, 0));
+  const reel = clamp01(finite(input.reel, 0));
+  const bow = Math.abs(finite(input.bowMagnitude, 0));
+  const whipAmplitude = Math.abs(finite(input.whipAmplitude, 0));
+  const shiverAmplitude = Math.abs(finite(input.shiverAmplitude, 0));
+  const capacity = Math.max(
+    CABLE_SEGMENT_FLOOR,
+    Math.trunc(finite(input.segmentCapacity, CABLE_SEGMENT_FLOOR)),
+  );
+
+  // Two independent sampling needs, both honest about what is actually moving this frame.
+  //
+  // 1. SAGITTA. A smooth arc of height h approximated by n straight spans deviates from the true
+  //    curve by about h / n^2. A quiet, straight, taut line therefore needs almost no spans — and
+  //    it loses nothing by having few, because the shader's travelling structure rides `aAlong`,
+  //    a perspective-correct varying that is exactly linear along a straight span.
+  // 2. WAVE. The whip harmonic and the load shiver are spatial sinusoids. They alias into a
+  //    sawtooth unless sampled several times per cycle, so they set their own floor — but only
+  //    while their amplitude is non-zero. Reduced motion zeroes those amplitudes upstream, so an
+  //    accessibility profile that removes the motion also removes the cost of resolving it.
+  const deviation = bow + whipAmplitude + shiverAmplitude;
+  const sagittaNeed = deviation > 0
+    ? Math.ceil(Math.sqrt(deviation / CABLE_SAGITTA_TOLERANCE_WU))
+    : 0;
+  const whipNeed = whipAmplitude > 1e-4 ? Math.max(0, finite(input.whipCycles, 0)) : 0;
+  const shiverNeed = shiverAmplitude > 1e-4 ? Math.max(0, finite(input.shiverCycles, 0)) : 0;
+  const waveNeed = Math.ceil(CABLE_SAMPLES_PER_CYCLE * Math.max(whipNeed, shiverNeed));
+  const segments = Math.max(
+    CABLE_SEGMENT_FLOOR,
+    Math.min(capacity, Math.max(sagittaNeed, waveNeed)),
+  );
+
+  // Cross-section. The authored relation is unchanged: a taut line reads THINNER than a slack one,
+  // and load swells both draws slightly so a heavy pull is legible in silhouette alone.
+  const coreHalfWidth = (taut ? 0.26 : 0.34) + load * 0.08 + whip * 0.08;
+  const sheathHalfWidth = 0.62 + 0.55 * load + whip * 0.45 + reel * 0.30;
+
+  // Load ferrules. Length is deliberately keyed off the CHORD against a fixed reference, never off
+  // the live span count — otherwise adaptive tessellation would silently resize the hardware.
+  const collarHalfLength = Math.min(1.9, Math.max(0.5, chord / CABLE_COLLAR_LENGTH_REFERENCE))
+    * (1 + load * 0.55);
+  // The cut itself is the load read. Slack: a rounded swell barely proud of the rope. Taut: the
+  // lips undercut hard and the crown stands off, so the ferrule becomes a machined ring with a
+  // real edge. Nothing in this relation is a colour.
+  const collarCrownHalfWidth = coreHalfWidth * 1.34 + 0.08 + load * 0.30;
+  const collarLipHalfWidth = coreHalfWidth * (0.94 - 0.34 * load);
+  // Plateau fraction: how much of the ferrule's length is crown rather than ramp. A slack ferrule
+  // is a soft dome (long ramps, almost no plateau); a loaded one is a hard-shouldered ring whose
+  // crown fills its length and whose sides stand near-vertical.
+  const collarCrownFraction = 0.34 + load * 0.52;
+
+  out.segments = segments;
+  out.segmentCapacity = capacity;
+  out.sagittaSegments = sagittaNeed;
+  out.waveSegments = waveNeed;
+  out.deviation = deviation;
+  out.coreHalfWidth = coreHalfWidth;
+  out.sheathHalfWidth = sheathHalfWidth;
+  out.collarHalfLength = collarHalfLength;
+  out.collarCrownHalfWidth = collarCrownHalfWidth;
+  out.collarLipHalfWidth = collarLipHalfWidth;
+  out.collarCrownFraction = clamp01(collarCrownFraction);
+  out.load = load;
+  out.taut = taut;
+  return out;
+}
+
+/**
+ * Snarl strand lay. One physical relation: a rope's turn count is fixed by how it was laid, but a
+ * slack rope's strands bow well away from the axis and a pulled one's collapse toward it. Amplitude
+ * therefore carries the tension and turn count does not — which keeps the strand read stable while
+ * the line works, instead of appearing to re-braid itself every frame.
+ */
+export function resolveMasslineWebStrandProfile(input = {}, out = {}) {
+  const maxSlack = Math.max(1e-6, finite(input.maxSlack, 12));
+  const slack = Math.max(0, Math.min(maxSlack, finite(input.slack, 0)));
+  const slackNorm = clamp01(slack / maxSlack);
+  out.slack = slack;
+  out.slackNorm = slackNorm;
+  out.braidTurns = 3;
+  out.braidAmplitude = 0.30 + 0.62 * slackNorm;
+  out.liftAmplitude = 0.20 + 0.42 * slackNorm;
+  return out;
+}
