@@ -197,11 +197,15 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
 
     // A stress seam is a weld CARRYING load, and the travelling current is what says so. Without
     // it the whole network sits at one brightness that only ramps with the hit.
-    float wall = seam * (0.20 + 0.52 * panelCharge
-      + 0.46 * circulation * (0.40 + 0.60 * panelCharge)
-      + 0.34 * current * (0.25 + 0.75 * panelCharge)) * activity;
-    float ribLight = frame * (0.16 + 0.60 * panelCharge) * (0.45 + 0.55 * breath) * activity;
-    float shoulder = pow(1.0 - inward, 2.4) * panelCharge * 0.26;
+    //
+    // Deliberately a REDISTRIBUTION of the charge the shell already had, not an addition to it. The
+    // drive averages about 0.62 over a cycle, which pays for the machined frame below and keeps the
+    // shell's total coverage at or under what it was: the point is that the light MOVES, and a
+    // shield that answered "make it alive" by getting brighter would just be a brighter bubble.
+    float wallDrive = (0.22 + 0.78 * panelCharge) * (0.46 + 0.36 * circulation + 0.30 * current);
+    float wall = seam * wallDrive * activity;
+    float ribLight = frame * (0.16 + 0.60 * panelCharge) * (0.30 + 0.70 * breath) * activity;
+    float shoulder = pow(1.0 - inward, 2.4) * panelCharge * 0.24;
 
     // LOCAL RESPONSE. A contact energises the structure it landed on, so the impact spreads
     // through the built surface instead of floating on top of it as an unattached ring.
@@ -214,20 +218,22 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     // falls back through 1.0 the same sequence runs closed again, which is the recovery read.
     float fail = smoothstep(0.05, 0.95, rupture * 1.4 - fract(cell * 3.0 + along * 0.7));
     float intact = 1.0 - 0.92 * fail;
-    wall = wall * intact + fail * seam * (1.60 + 1.20 * current);
+    wall = wall * intact + fail * seam * (0.85 + 0.65 * current);
     ribLight *= intact;
 
-    float limb = rim * (base * 6.2 + 0.30 * load + 0.55 * rupture);
+    float limb = rim * (base * 6.2 + 0.30 * load + 0.22 * rupture);
 
-    float alpha = clamp(limb + wall * 0.62 + ribLight * 0.40 + shoulder
-      + ring * 0.55 + core * 0.85 + pane * panelCharge * 0.05, 0.0, 1.0);
+    // The pane contributes NOTHING to alpha. A shell that tints its own panes is a bubble over the
+    // hull however thin the tint is, and the hull reading through is the whole accepted reference.
+    float alpha = clamp(limb + wall * 0.62 + ribLight * 0.26 + shoulder
+      + ring * 0.55 + core * 0.85, 0.0, 1.0);
     float heat = clamp(core * 1.25 + ring * 0.45 + seam * panelCharge * 0.55
       + load * 0.22 + fail * 0.85, 0.0, 1.0);
     vec3 glassTint = mix(tint * vec3(0.50, 0.47, 0.94), tint, smoothstep(0.10, 0.45, heat));
     vec3 col = mix(glassTint, vec3(0.90, 0.98, 1.0), heat * heat);
     // Deliberate bloom headroom: an impact core leaves this shader well above 1.0.
     vec3 rgb = col * (0.85 + 0.65 * seam * panelCharge + 1.35 * core + 0.45 * ring + 0.35 * rim
-      + 0.55 * ribLight + 0.70 * fail);
+      + 0.55 * ribLight + 0.70 * fail) * (1.0 - 0.35 * pane);
     return vec4(rgb, alpha);
   }
 `;
