@@ -169,6 +169,7 @@ import {
 } from './combat/impactEventRecord.js';
 import { markKindForMaterial } from './weapons/contactMarks.js';
 import { ArcadeStructuralFx } from './combat/arcadeStructuralFx.js';
+import { createGasSystem } from './combat/gas/gasVolumeField.js';
 import { TetherWebFx } from './combat/tetherWebFx.js';
 import {
   commitInstancedSpriteBuckets,
@@ -187,7 +188,21 @@ import {
 } from './dynamicBufferRanges.js';
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
-import { resolveForceNeonScale, resolveTumbleContinuousVfxPlan } from './masslinePresentation.js';
+import {
+  resolveForceNeonScale,
+  resolveMasslineCableProfile,
+  resolveTumbleContinuousVfxPlan,
+} from './masslinePresentation.js';
+import {
+  MASSLINE_CABLE_COLLAR_COUNT,
+  MASSLINE_CABLE_SEGMENT_CAPACITY,
+  createMasslineCenterline,
+  createMasslineCollarSurface,
+  createMasslineRibbonSurface,
+  writeMasslineCenterline,
+  writeMasslineCollarSurface,
+  writeMasslineRibbonSurface,
+} from './masslineCableSurface.js';
 import { INACTIVE_TUMBLE_VFX_PLAN, tumbleVfxLooksActive } from './inactiveVfxPlan.js';
 import {
   MASSLINE_RELEASE_ARC_SEGMENT_CAPACITY,
@@ -1357,6 +1372,8 @@ export const vfx = {
     invokeVfxCall(this._unbindArcadeContextLoss, this, 'arcade context loss unbind');
     invokeVfxDisposer(this._arcadeStructural, 'arcade structural FX');
     this._arcadeStructural = null;
+    invokeVfxDisposer(this._gas, 'gas volumes');
+    this._gas = null;
     invokeVfxDisposer(this._tetherWebFx, 'Snarl cables');
     this._tetherWebFx = null;
 
@@ -1821,6 +1838,15 @@ export const vfx = {
     this._spriteBatches = createInstancedSpriteBuckets(
       scene, SPRITE_CAP,
     );
+    // Gas / smoke / dust: combustion aftermath, fracture dust, coolant venting and environmental
+    // particulate, each playing its own offline-baked density film. It owns the MATTER only -
+    // every trigger stays with the owner that already has it, and nothing under combat/gas/
+    // subscribes to the bus, so one event cannot become two bursts.
+    this._gas = createGasSystem(scene, {
+      localize: (x, z, out) => this._toLocalXZ(x, z, out),
+    });
+    this._gasVentTick = 0;
+    this._gasAblationAt = new Map();
     for (let i = 0; i < SPRITE_CAP; i++) {
       this._spr.push({
         alive: false, kind: SPR_FLASH, age: 0, life: 1, size0: 1, size1: 1,
@@ -2171,6 +2197,7 @@ export const vfx = {
     const ox = Number.isFinite(dx) ? dx : 0;
     const oz = Number.isFinite(dz) ? dz : 0;
     if (ox !== 0 || oz !== 0) {
+      if (this._gas) this._gas.reproject(ox, oz);
       // Particles
       if (this._px && this._pz && this._alive) {
         const n = this._cap || 0;
@@ -4737,8 +4764,48 @@ export const vfx = {
     this._explode(p, false);
   },
 
+  /**
+   * Combustion aftermath: the cooling body left BEHIND the flash. The explosion pool still owns
+   * the flash, the shock and the debris; this is the matter that lingers and dissipates after it,
+   * with the hot cavities cooling from the inside out.
+   */
+  _emitGasAftermath(p, radius, capital) {
+    if (!this._gas) return false;
+    const pos = this._posFrom(p, null);
+    if (!pos) return false;
+    const severity = Math.max(0.35, Math.min(1, radius / 46));
+    const bodies = capital ? 3 : (radius >= 16 ? 2 : 1);
+    let emitted = false;
+    for (let i = 0; i < bodies; i++) {
+      // Deterministic spread off the victim id. A presentation seed must not read ambient
+      // randomness, or the same death looks different on a replay of the same seed.
+      const h = (((p && p.id != null ? (p.id | 0) : 0) * 2654435761) + i * 40503) >>> 0;
+      const angle = ((h & 0xffff) / 0xffff) * Math.PI * 2;
+      const spread = radius * 0.34 * (i / Math.max(1, bodies));
+      emitted = this._gas.emitCombustion({
+        x: pos.x + Math.cos(angle) * spread,
+        y: 0.4,
+        z: pos.z + Math.sin(angle) * spread,
+        heading: angle,
+        severity: severity * (1 - i * 0.16),
+        scale: radius * (1.35 - i * 0.18),
+        seed: ((h >>> 16) & 0xffff) / 0xffff,
+        occluderX: pos.x,
+        occluderY: 0,
+        occluderZ: pos.z,
+        occluderRadius: radius * 0.55,
+      }) || emitted;
+    }
+    return emitted;
+  },
+
   _queueExplosion(p, classId, radiusOverride, causeOverride) {
     if (!this._scene || !this._explosions) return false;
+    this._emitGasAftermath(
+      p,
+      Number.isFinite(radiusOverride) ? radiusOverride : Math.max(3, (p && p.radius) || 6),
+      classId === 'capital',
+    );
     const presentation = p && p.presentation && typeof p.presentation === 'object'
       ? p.presentation
       : null;
@@ -4828,9 +4895,19 @@ export const vfx = {
     }
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
+      // A freighter coming apart throws freight. Cosmetic only: quarks cargo debris creates no
+      // pickup, carries no value and adds no body — authoritative cargo stays with the cargo system.
+      const killedEntity = this.state && this.state.entities
+        && typeof this.state.entities.get === 'function' && p && p.id != null
+        ? this.state.entities.get(p.id) : null;
+      const killedData = (killedEntity && killedEntity.data) || null;
+      const killedRole = String((killedData && (killedData.trafficRole || killedData.role || killedData.shipClass))
+        || (killedEntity && killedEntity.ai && killedEntity.ai.role) || '').toLowerCase();
+      const cargoShare = /haul|trade|freight|transport|barge|tanker|miner/.test(killedRole) ? 0.55 : 0;
       this._weaponPresenter.quarks.spawnExplosion(
         local.x, 0.4, local.z,
         Math.min(48, Math.max(12, Math.round(radius * 2.5))),
+        cargoShare > 0 ? { cargoShare } : null,
       );
     }
     return !!entry;
@@ -7683,37 +7760,15 @@ export const vfx = {
   // -------------------------------------------------------------------------
   _initTetherCable() {
     if (!this._scene) return;
-    const SEG = 24;
-    const verts = (SEG + 1) * 2;
-    const geo = new THREE.BufferGeometry();
-    const pos = new Float32Array(verts * 3);
-    const posAttr = new THREE.BufferAttribute(pos, 3);
-    posAttr.usage = THREE.DynamicDrawUsage;
-    geo.setAttribute('position', posAttr);
-    const idx = [];
-    for (let i = 0; i < SEG; i++) {
-      const a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3;
-      idx.push(a, b, c, b, d, c);
-    }
-    geo.setIndex(idx);
-    const along = new Float32Array((SEG + 1) * 2);
-    const side = new Float32Array((SEG + 1) * 2);
-    const glowAlong = new Float32Array((SEG + 1) * 2);
-    const glowSide = new Float32Array((SEG + 1) * 2);
-    for (let i = 0; i <= SEG; i++) {
-      const t = i / SEG;
-      const ai = i * 2;
-      along[ai] = t; along[ai + 1] = t;
-      side[ai] = -1; side[ai + 1] = 1;
-      glowAlong[ai] = t; glowAlong[ai + 1] = t;
-      glowSide[ai] = -1; glowSide[ai + 1] = 1;
-    }
-    const alongAttr = new THREE.BufferAttribute(along, 1);
-    const sideAttr = new THREE.BufferAttribute(side, 1);
-    alongAttr.usage = THREE.StaticDrawUsage;
-    sideAttr.usage = THREE.StaticDrawUsage;
-    geo.setAttribute('aAlong', alongAttr);
-    geo.setAttribute('aSide', sideAttr);
+    // Resident cable surface. The span count is chosen per frame from the curve's own sampling
+    // error (masslinePresentation resolveMasslineCableProfile), so a quiet or reduced-motion line
+    // draws 6 spans and a worked one draws 32-48 - which is where the old fixed 24 was
+    // under-sampling its own load shiver into the jagged read its comment set out to avoid.
+    const core = createMasslineRibbonSurface(MASSLINE_CABLE_SEGMENT_CAPACITY);
+    const sheath = createMasslineRibbonSurface(MASSLINE_CABLE_SEGMENT_CAPACITY);
+    const collars = createMasslineCollarSurface(MASSLINE_CABLE_COLLAR_COUNT);
+    const centerline = createMasslineCenterline(MASSLINE_CABLE_SEGMENT_CAPACITY);
+    const geo = core.geometry;
 
     // Core draw: the white-hot filament. `sheath: 0` selects the tight cross-section that saturates
     // to white and runs far above 1.0 in linear HDR, which is what clips through ACES and feeds the
@@ -7732,13 +7787,7 @@ export const vfx = {
     mesh.visible = false;
     this._scene.add(mesh);
 
-    const glowGeo = geo.clone();
-    const glowAlongAttr = new THREE.BufferAttribute(glowAlong, 1);
-    const glowSideAttr = new THREE.BufferAttribute(glowSide, 1);
-    glowAlongAttr.usage = THREE.StaticDrawUsage;
-    glowSideAttr.usage = THREE.StaticDrawUsage;
-    glowGeo.setAttribute('aAlong', glowAlongAttr);
-    glowGeo.setAttribute('aSide', glowSideAttr);
+    const glowGeo = sheath.geometry;
     // Halo draw: the wide saturated sheath around the core. `sheath: 1` keeps the tension colour
     // instead of washing to white, so the cable reads as a coloured volume with a white centre
     // rather than as one flat tinted stripe.
@@ -7756,23 +7805,22 @@ export const vfx = {
     glow.visible = false;
     this._scene.add(glow);
 
-    const BANDS = 10;
-    const bandGeo = new THREE.BufferGeometry();
-    const bandPos = new Float32Array(BANDS * 4 * 3);
-    const bandPosAttr = new THREE.BufferAttribute(bandPos, 3);
-    bandPosAttr.usage = THREE.DynamicDrawUsage;
-    bandGeo.setAttribute('position', bandPosAttr);
-    const bandIdx = [];
-    for (let i = 0; i < BANDS; i++) {
-      const a = i * 4;
-      bandIdx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
-    }
-    bandGeo.setIndex(bandIdx);
-    const bandMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color('#d7e6ff'),
-      transparent: true, opacity: 0.16,
-      depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-      forceSinglePass: true,
+    // Load ferrules. These were ten flat additive rectangles on a plain MeshBasicMaterial - the one
+    // named open defect left in this family (VFX_POLISH_PASS_2026-09-18, "Tether band flashes are
+    // plain additive cards"). Each is now a swept four-station profile (lip, crown, crown, lip)
+    // three vertices wide, drawn with the Massline ribbon shader so its own cross-section term
+    // gives the ring a lit centre and darker flanks instead of a uniform card. sheath 0.6 keeps it
+    // a COLOURED body rather than a second white filament competing with the rope's own core, and
+    // it shares the compiled program with the two ribbon draws.
+    const BANDS = MASSLINE_CABLE_COLLAR_COUNT;
+    const bandGeo = collars.geometry;
+    const bandMat = createMasslineRibbonMaterial({
+      name: 'sf-tether-ferrules',
+      color: 0xd7e6ff,
+      intensity: 1.6,
+      opacity: 0.22,
+      pulseSpeed: 2.4,
+      sheath: 0.6,
     });
     const band = new THREE.Mesh(bandGeo, bandMat);
     band.frustumCulled = false;
@@ -7815,8 +7863,22 @@ export const vfx = {
     this._scene.add(anchorCore);
 
     this._tetherCable = {
-      mesh, glow, band, anchorCore, SEG, BANDS,
-      along, side, glowAlong, glowSide,
+      mesh, glow, band, anchorCore, SEG: MASSLINE_CABLE_SEGMENT_CAPACITY, BANDS,
+      core, sheath, collars, centerline,
+      // Resident scratch so the frame path stays allocation-free.
+      profile: resolveMasslineCableProfile({}),
+      profileInput: {
+        chord: 0, load: 0, taut: false, whip: 0, reel: 0,
+        bowMagnitude: 0, whipAmplitude: 0, shiverAmplitude: 0,
+        whipCycles: 0, shiverCycles: 0, parting: false,
+        collarCount: MASSLINE_CABLE_COLLAR_COUNT,
+        segmentCapacity: MASSLINE_CABLE_SEGMENT_CAPACITY,
+      },
+      curveFrame: {
+        ax: 0, az: 0, dx: 0, dz: 0, px: 0, pz: 0, segments: 1, slackBow: 0,
+        whipAmplitude: 0, whipHarmonic: 3, whipPhase: 0, whipFreq: 0,
+        shiverAmplitude: 0, shiverPhase: 0, shiverPhaseFast: 0,
+      },
       wasActive: false,
       lastSourceId: null,
       lastTargetId: null,
@@ -8309,76 +8371,72 @@ export const vfx = {
       opacity: (0.24 + 0.20 * l + cable.reelGlow * 0.20 + visualWhip * 0.16)
         * cable.fade * masslineA11y.opacityScale,
     });
-    cable.band.material.color.copy(this._ctmp);
-    cable.band.material.opacity = Math.min(0.9,
-      (0.20 + 0.42 * l + cable.reelGlow * 0.22 + visualWhip * 0.2
-        + (tether && tether.phase === 'capture' ? 0.08 : 0))
-        * cable.fade * masslineA11y.opacityScale);
+    // Ferrules run on the same shader as the rope, so the load colour, the travelling pulse and the
+    // whip all arrive through one frame object rather than through a separate flat tint.
+    updateEnergyMaterial(cable.band.material, {
+      ...ribbonFrame,
+      intensity: (1.1 + l * 1.2 + cable.reelGlow * 0.9 + visualWhip * 1.3)
+        * radiance * neonMul * masslineA11y.radianceScale,
+      opacity: Math.min(0.9,
+        (0.20 + 0.42 * l + cable.reelGlow * 0.22 + visualWhip * 0.2
+          + (tether && tether.phase === 'capture' ? 0.08 : 0))
+          * cable.fade * masslineA11y.opacityScale),
+    });
 
-    // Widths, in world units, at roughly 18.7 screen px per wu at the default game camera (fov 50,
-    // zoom 72, 60-degree elevation). Read these as pixels:
-    //   core  ~0.26-0.36 wu half-width  ->  10-13 px of ribbon carrying a 3-4 px white filament
-    //   halo  ~0.62-1.20 wu half-width  ->  23-45 px of coloured sheath
-    // The taut line still reads thinner than the slack one — that intent is good and kept — and
-    // load swells both slightly so a heavy pull is legible in silhouette alone.
-    const w = (taut ? 0.26 : 0.34) + l * 0.08 + visualWhip * 0.08;
-    const gw = 0.62 + 0.55 * l + visualWhip * 0.45 + cable.reelGlow * 0.30;
-    const SEG = cable.SEG;
-    const corePos = cable.mesh.geometry.attributes.position.array;
-    const glowPos = cable.glow.geometry.attributes.position.array;
     // Visible strain, in geometry rather than in colour: a loaded line shivers. The amplitude is
-    // quadratic in LOAD (see the strain note above — physical strain is ~1e-4 in real play, so the
+    // quadratic in LOAD (see the strain note above - physical strain is ~1e-4 in real play, so the
     // old s*s term was a hard zero and this whole effect never ran). Quadratic keeps the intent: a
     // just-captured line barely trembles (~1 px), a worked line clearly does (~3 px), and a line at
-    // the edge of its envelope is unmistakably fighting (~8 px). Purely cosmetic — VFX is exempt
+    // the edge of its envelope is unmistakably fighting (~8 px). Purely cosmetic - VFX is exempt
     // from the determinism rule and this never touches sim state.
-    // Two components at different spatial frequencies. A single per-segment term aliased into a
-    // sawtooth at 40 segments and read as jagged lightning rather than a cable under load.
     const shiverAmp = l * l * TETHER_LOAD_SHIVER_WU * Math.min(1, chord / 40)
       * masslineA11y.motionAmplitudeScale;
     const shiverPhase = motionTime * 41;
     const shiverPhaseFast = motionTime * 97;
-    for (let i = 0; i <= SEG; i++) {
-      const t = i / SEG;
-      const arc = Math.sin(Math.PI * t);
-      const wave = whipAmp * Math.sin(Math.PI * whipHarmonic * t - whipT * whipFreq) * arc;
-      const shiver = shiverAmp * arc
-        * (Math.sin(shiverPhase + t * 21.7) * 0.72 + Math.sin(shiverPhaseFast + t * 47.3) * 0.28);
-      const off = slackBow * arc + wave + shiver;
-      const cx = ax + dx * t + px * off;
-      const cz = az + dz * t + pz * off;
-      const o = i * 6;
-      corePos[o] = cx + px * w; corePos[o + 1] = 1.5; corePos[o + 2] = cz + pz * w;
-      corePos[o + 3] = cx - px * w; corePos[o + 4] = 1.5; corePos[o + 5] = cz - pz * w;
-      glowPos[o] = cx + px * gw; glowPos[o + 1] = 1.4; glowPos[o + 2] = cz + pz * gw;
-      glowPos[o + 3] = cx - px * gw; glowPos[o + 4] = 1.4; glowPos[o + 5] = cz - pz * gw;
-    }
-    cable.mesh.geometry.attributes.position.needsUpdate = true;
-    cable.glow.geometry.attributes.position.needsUpdate = true;
-    const bandPos = cable.band.geometry.attributes.position.array;
-    const ux = dx / chord;
-    const uz = dz / chord;
+
+    // ONE owner for the cable's shape: cross-section, ferrule cut and span count all come from the
+    // pure profile. Widths are unchanged from the authored relation (taut reads thinner than slack;
+    // load swells both draws), and no timing constant moves.
+    const profileInput = cable.profileInput;
+    profileInput.chord = chord;
+    profileInput.load = l;
+    profileInput.taut = taut;
+    profileInput.whip = visualWhip;
+    profileInput.reel = cable.reelGlow;
+    profileInput.bowMagnitude = Math.abs(slackBow);
+    profileInput.whipAmplitude = whipAmp;
+    profileInput.shiverAmplitude = shiverAmp;
+    // The whip term spans pi*harmonic radians over the line, so harmonic/2 spatial cycles; the
+    // fastest shiver term is sin(t * 47.3), so 47.3 / 2pi.
+    profileInput.whipCycles = whipHarmonic * 0.5;
+    profileInput.shiverCycles = 47.3 / (Math.PI * 2);
+    profileInput.collarCount = MASSLINE_CABLE_COLLAR_COUNT;
+    // A BREAK is the line parting; a clean release is not. Only the break opens the ferrules' grip,
+    // and it does so purely in geometry - no burst, no light, no change to either event's timing.
+    profileInput.parting = snapping;
+    const profile = resolveMasslineCableProfile(profileInput, cable.profile);
+
+    const curve = cable.curveFrame;
+    curve.ax = ax; curve.az = az;
+    curve.dx = dx; curve.dz = dz;
+    curve.px = px; curve.pz = pz;
+    curve.segments = profile.segments;
+    curve.slackBow = slackBow;
+    curve.whipAmplitude = whipAmp;
+    curve.whipHarmonic = whipHarmonic;
+    curve.whipPhase = whipT;
+    curve.whipFreq = whipFreq;
+    curve.shiverAmplitude = shiverAmp;
+    curve.shiverPhase = shiverPhase;
+    curve.shiverPhaseFast = shiverPhaseFast;
+    writeMasslineCenterline(cable.centerline, curve);
+    writeMasslineRibbonSurface(cable.core, cable.centerline, profile.coreHalfWidth, 1.5);
+    writeMasslineRibbonSurface(cable.sheath, cable.centerline, profile.sheathHalfWidth, 1.4);
     // Strain ladder. These used to be short wide rectangles wider than the rope itself, which read
-    // as loose rungs floating alongside the cable rather than as load banding running through it.
-    // Now they hug the core (only slightly proud of it) and lengthen as the line loads.
-    const bandHalfLen = Math.min(1.9, Math.max(0.5, chord / (SEG * 3.2))) * (1 + l * 0.55);
-    const bandHalfWidth = w * 1.22 + 0.10 + l * 0.14;
-    for (let i = 0; i < cable.BANDS; i++) {
-      const t = (i + 1) / (cable.BANDS + 1);
-      const arc = Math.sin(Math.PI * t);
-      const wave = whipAmp * Math.sin(Math.PI * whipHarmonic * t - whipT * whipFreq) * arc;
-      const shiver = shiverAmp * arc
-        * (Math.sin(shiverPhase + t * 21.7) * 0.72 + Math.sin(shiverPhaseFast + t * 47.3) * 0.28);
-      const off = slackBow * arc + wave + shiver;
-      const cx = ax + dx * t + px * off;
-      const cz = az + dz * t + pz * off;
-      const o = i * 12;
-      bandPos[o] = cx - ux * bandHalfLen + px * bandHalfWidth; bandPos[o + 1] = 1.55; bandPos[o + 2] = cz - uz * bandHalfLen + pz * bandHalfWidth;
-      bandPos[o + 3] = cx - ux * bandHalfLen - px * bandHalfWidth; bandPos[o + 4] = 1.55; bandPos[o + 5] = cz - uz * bandHalfLen - pz * bandHalfWidth;
-      bandPos[o + 6] = cx + ux * bandHalfLen + px * bandHalfWidth; bandPos[o + 7] = 1.55; bandPos[o + 8] = cz + uz * bandHalfLen + pz * bandHalfWidth;
-      bandPos[o + 9] = cx + ux * bandHalfLen - px * bandHalfWidth; bandPos[o + 10] = 1.55; bandPos[o + 11] = cz + uz * bandHalfLen - pz * bandHalfWidth;
-    }
-    cable.band.geometry.attributes.position.needsUpdate = true;
+    // as loose rungs floating alongside the cable. They are now machined rings threaded on the line
+    // and spaced by ARC LENGTH, so slack visibly puts more rope between the anchors and pulling it
+    // straight draws the same ten rings together.
+    writeMasslineCollarSurface(cable.collars, cable.centerline, profile, 1.55);
     const isLargeAnchor = tr >= 18 || anchorEnt.type === 'station';
     const anchorScale = isLargeAnchor
       ? Math.max(6.5, Math.min(28, tr * 0.24))
@@ -9823,7 +9881,7 @@ export const vfx = {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       const nx = backA != null ? Math.cos(backA) : 0;
       const nz = backA != null ? Math.sin(backA) : 1;
-      this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, nx, 0.4, nz, 8);
+      this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, nx, 0.4, nz, 8, p.oreType);
     }
     // IMPACTS: the worked face. A CUT has no ignition beat anywhere in its sheet -- the heat is the
     // cut, not a fire -- and its two ejecta beats stage so the second is slower and duller than the
@@ -9888,10 +9946,28 @@ export const vfx = {
     // the lit chips; no second white-to-ore firework or decorative expanding ring.
     this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.35, 3.4, 7.0, 0.95, 0.0, col, 0, 0);
     this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.6, 3.0, 7.0, 0.45, 0.0, col, 0, 0);
+    if (this._gas) {
+      const rock = this._miningBeam ? this._ent(this._miningBeam.targetId) : null;
+      const rockPos = rock && rock.pos ? rock.pos : null;
+      const rockR = Math.max(3, (rock && rock.radius) || 8);
+      this._gas.emitFractureDust({
+        x: pos.x,
+        y: 0.3,
+        z: pos.z,
+        heading: rockPos ? Math.atan2(pos.z - rockPos.z, pos.x - rockPos.x) : 0,
+        severity: Math.min(1, 0.32 + qty * 0.07),
+        scale: rockR * 0.95,
+        seed: (((qty * 2654435761) >>> 16) & 0xffff) / 0xffff,
+        occluderX: rockPos ? rockPos.x : pos.x,
+        occluderY: 0,
+        occluderZ: rockPos ? rockPos.z : pos.z,
+        occluderRadius: rockR * 0.9,
+      });
+    }
     this._flashLight({ x: pos.x, z: pos.z }, col, 6.0, 4.5, 200);
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
-      this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, 0, 1, 0, Math.min(12, 4 + qty));
+      this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, 0, 1, 0, Math.min(12, 4 + qty), p.commodityId);
     }
   },
 
@@ -9922,12 +9998,32 @@ export const vfx = {
     if (!fractured && this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnCollisionSpall(
-        local.x, 0.3, local.z, 0, 1, 0, chunked ? 6 : 10,
+        local.x, 0.3, local.z, 0, 1, 0, chunked ? 6 : 10, p.commodityId || p.typeId,
       );
     }
     this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, 0.3, 3.0, 8.0, 0.8, 0.0, col, 0, 0);
     this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, 3.2, 9.0, 0.4, 0.0, '#cbb9a0',
       (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+    if (this._gas) {
+      // Granular fracture dust: lumpy, unlit, heavy, and it disperses instead of rising.
+      const rock = p.chunkId != null ? this._ent(p.chunkId) : null;
+      const rockR = Math.max(3, (rock && rock.radius) || 9);
+      const h = ((p.chunkId != null ? (p.chunkId | 0) : 0) * 2246822519) >>> 0;
+      const angle = ((h & 0xffff) / 0xffff) * Math.PI * 2;
+      this._gas.emitFractureDust({
+        x: pos.x,
+        y: 0.3,
+        z: pos.z,
+        heading: angle,
+        severity: chunked ? 0.55 : 0.95,
+        scale: rockR * (chunked ? 1.25 : 2.0),
+        seed: ((h >>> 16) & 0xffff) / 0xffff,
+        occluderX: pos.x,
+        occluderY: 0,
+        occluderZ: pos.z,
+        occluderRadius: rockR * 0.7,
+      });
+    }
     this._flashLight({ x: pos.x, z: pos.z }, col, 5.0, 4.0, 170);
     this._emitJuiceCue(
       chunked ? 'presentation.mining.chunk' : 'presentation.mining.shatter',
@@ -10582,6 +10678,15 @@ export const vfx = {
     } else {
       sub.combatBeams = 0;
     }
+    if (this._gas) {
+      // Phase runs on the SIM clock, never the display clock: a paused sim holds the gas still
+      // while frames keep being produced. An empty pool costs one branch and uploads nothing.
+      const gasSimTime = this.state && Number.isFinite(this.state.simTime)
+        ? this.state.simTime
+        : this._t;
+      this._gas.setAccessibility(resolveVfxAccessibilityProfile(this.state && this.state.settings));
+      this._gas.update(gasSimTime, cam);
+    }
     if (this._liveCount > 0) {
       this._integrateParticles(dt);
       sub.particles = 1;
@@ -10804,13 +10909,7 @@ export const vfx = {
         const rot = player.rot || 0;
         const rearX = -Math.cos(rot);
         const rearZ = -Math.sin(rot);
-        this._weaponPresenter.quarks.spawnDamageVenting(
-          local.x + rearX * ((player.radius || 6) * 0.5),
-          0.3,
-          local.z + rearZ * ((player.radius || 6) * 0.5),
-          rearX, 0.2, rearZ,
-          3,
-        );
+        this._emitGasVent(player, local, rearX, rearZ, 1.0);
       }
     }
 
@@ -10823,16 +10922,78 @@ export const vfx = {
           const rot = target.rot || 0;
           const rearX = -Math.cos(rot);
           const rearZ = -Math.sin(rot);
-          this._weaponPresenter.quarks.spawnDamageVenting(
-            local.x + rearX * ((target.radius || 6) * 0.5),
-            0.3,
-            local.z + rearZ * ((target.radius || 6) * 0.5),
-            rearX, 0.2, rearZ,
-            2,
-          );
+          this._emitGasVent(target, local, rearX, rearZ, 0.78);
         }
       }
     }
+  },
+
+  /**
+   * Pressurised coolant leaving a hull breach. This REPLACES the three.quarks damageVenting
+   * emitter, which the 2026-09-16 audit records as foreign work in progress: venting is
+   * participating matter, not a particle spray. It runs on a slower beat than the 0.14 s damage
+   * cadence because a volume body lives about a second - firing one every tick would fill the
+   * pool with copies of itself instead of reading as a leak.
+   */
+  _emitGasVent(entity, local, rearX, rearZ, strength) {
+    if (!this._gas || !entity) return false;
+    this._gasVentTick = ((this._gasVentTick || 0) + 1) % 3;
+    if (this._gasVentTick !== 0) return false;
+    const radius = entity.radius || 6;
+    const hp = Number.isFinite(entity.hp) && Number.isFinite(entity.maxHp) && entity.maxHp > 0
+      ? entity.hp / entity.maxHp
+      : 0.3;
+    // A breach nearly through vents harder. The hull sphere is the soft occluder, so the plume
+    // dilutes into the hull face instead of ending on a hard line across it.
+    const severity = Math.min(1, strength * (0.45 + (0.35 - Math.min(0.35, hp)) * 1.8));
+    return this._gas.emitVent({
+      world: false,
+      x: local.x + rearX * radius * 0.62,
+      y: 0.3,
+      z: local.z + rearZ * radius * 0.62,
+      heading: Math.atan2(rearZ, rearX),
+      severity,
+      scale: radius * 0.95,
+      seed: ((entity.id | 0) % 89) / 89,
+      occluderX: local.x,
+      occluderY: 0,
+      occluderZ: local.z,
+      occluderRadius: radius * 0.92,
+    });
+  },
+
+  /**
+   * Reentry ablation. The plasma sheath stays the energy shell it already is; this is the hull
+   * matter it strips off, trailing behind the nose.
+   */
+  _emitGasAblation(entity, local, rot, heat) {
+    if (!this._gas || !entity) return false;
+    const simTime = this.state && Number.isFinite(this.state.simTime)
+      ? this.state.simTime
+      : this._t;
+    if (!this._gasAblationAt) this._gasAblationAt = new Map();
+    const last = this._gasAblationAt.get(entity.id);
+    if (last != null && simTime - last < 0.5) return false;
+    this._gasAblationAt.set(entity.id, simTime);
+    if (this._gasAblationAt.size > 12) {
+      for (const [id, at] of this._gasAblationAt) {
+        if (simTime - at > 4) this._gasAblationAt.delete(id);
+      }
+    }
+    const radius = entity.radius || 8;
+    const back = rot + Math.PI;
+    return this._gas.emitAmbient({
+      world: false,
+      x: local.x + Math.cos(back) * radius * 1.6,
+      y: 0.3,
+      z: local.z + Math.sin(back) * radius * 1.6,
+      heading: back,
+      severity: Math.min(1, 0.35 + heat * 0.65),
+      scale: radius * 2.8,
+      lifeScale: 0.3,
+      opacity: 0.85,
+      seed: ((entity.id | 0) % 97) / 97,
+    });
   },
 
   // -------------------------------------------------------------------------
@@ -11378,6 +11539,7 @@ export const vfx = {
       mesh.position.set(local.x + cf * nose, 0, local.z + sf * nose);
       mesh.rotation.y = -rot;
       if (hot) {
+        this._emitGasAblation(e, local, rot, heat);
         mesh.scale.set(3.6 * k, 2.0 * k, 2.0 * k);
         const boost = Math.min(reducedFlash ? 0.6 : 1, 0.35 + heat * 0.5);
         updateEnergyMaterial(mesh.userData.energyCore.material, { time: ps.t, boost, opacity: 0.62 * profile.flashOpacityScale });
