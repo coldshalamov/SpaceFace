@@ -36,21 +36,51 @@ export function heatForWeaponVariant(variant) {
   return SCORCH_HEAT_BY_VARIANT[variant] ?? 0.8;
 }
 
+/**
+ * What kind of mark a contact leaves. Before this, every scar in the game — a slug through a hull,
+ * a mining head working an ore face, a chip off an ice body — was the same molten blackbody gouge.
+ * The mark is part of the material's identity, so it gets the same treatment the impact grammar
+ * gives the burst: rock chips out to a fresh pale face, ice frosts and sublimates, ceramic crazes.
+ *
+ * `scorch` is the default and is bit-for-bit the behaviour every existing caller already gets.
+ */
+export const CONTACT_MARK_KINDS = Object.freeze({
+  scorch: 0,
+  gouge: 1,
+  frost: 2,
+  craze: 3,
+});
+
+/** Map a material id from the impact grammar onto the mark this surface actually takes. */
+export function markKindForMaterial(materialId) {
+  switch (materialId) {
+    case 'rock': return CONTACT_MARK_KINDS.gouge;
+    case 'ice': return CONTACT_MARK_KINDS.frost;
+    case 'ceramic': return CONTACT_MARK_KINDS.craze;
+    default: return CONTACT_MARK_KINDS.scorch;
+  }
+}
+
 const VERTEX_SHADER = /* glsl */`
   attribute vec3 aPos;
   attribute vec3 aNormal;
   attribute vec4 aSize; // width, height, opacity, heat (0 cold .. 1 white-hot)
   attribute vec3 aColor;
+  attribute vec2 aMark; // x: mark kind (0 scorch, 1 gouge, 2 frost, 3 craze), y: fracture 0..1
   varying vec2 vUv;
   varying vec3 vColor;
   varying float vOpacity;
   varying float vHeat;
   varying float vSeed;
+  varying float vKind;
+  varying float vFracture;
   void main() {
     vUv = uv;
     vColor = aColor;
     vOpacity = aSize.z;
     vHeat = aSize.w;
+    vKind = aMark.x;
+    vFracture = aMark.y;
     vSeed = fract(sin(dot(aPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
     vec3 n = normalize(aNormal);
     vec3 tangent = abs(n.y) > 0.9 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
@@ -69,6 +99,8 @@ const FRAGMENT_SHADER = /* glsl */`
   varying float vOpacity;
   varying float vHeat;
   varying float vSeed;
+  varying float vKind;
+  varying float vFracture;
   // Blackbody cooling ramp: white-hot core, fiery orange, deep cherry red, ember,
   // and finally cold charcoal. Temperature, not opacity, carries the fade.
   vec3 scorchBlackbody(float h) {
@@ -83,6 +115,17 @@ const FRAGMENT_SHADER = /* glsl */`
     col = mix(col, white, smoothstep(0.66, 0.92, h));
     return col;
   }
+  // Radial crack field: straight fractures running out of the contact, their count rising with
+  // how far the surface has been worked. This is what makes a mining face read as PROGRESSING
+  // rather than as one mark getting bigger.
+  float radialCracks(vec2 d, float r, float fracture, float seed) {
+    float spokes = 3.0 + floor(fracture * 5.0);
+    float a = atan(d.y, d.x) + seed * 6.2831;
+    float ridge = abs(fract(a * spokes / 6.2831 + 0.5) - 0.5) * 2.0;
+    float line = 1.0 - smoothstep(0.0, 0.16 + 0.10 * fracture, ridge);
+    return line * smoothstep(1.05, 0.2, r) * smoothstep(0.03, 0.30, r);
+  }
+
   void main() {
     vec2 d = vUv * 2.0 - 1.0;
     // Irregular gouge edge: a carved wound, not a printed disc.
@@ -97,6 +140,37 @@ const FRAGMENT_SHADER = /* glsl */`
     float rim = smoothstep(0.9, 0.45, r) * (1.0 - smoothstep(0.5, 0.05, r));
     vec3 col = mix(molten, vColor * 0.35, rim * 0.4 * (1.0 - heat));
     float alpha = (scorch * 0.85 + rim * 0.3) * vOpacity;
+
+    if (vKind > 0.5) {
+      float cracks = radialCracks(d, r, vFracture, vSeed);
+      if (vKind < 1.5) {
+        // GOUGE. Rock does not melt, it chips: a dark shadowed rim around a FRESH pale face that
+        // the surrounding weathered surface has not had time to darken, plus radial cracks.
+        vec3 fresh = vColor * (1.15 + 0.35 * core);
+        vec3 shadow = vColor * 0.18;
+        col = mix(shadow, fresh, core);
+        col = mix(col, fresh * 1.35, cracks * 0.55);
+        // A little residual heat only where a beam actually cut. No blackbody glow.
+        col += vec3(1.0, 0.44, 0.10) * heat * 0.55 * core;
+        alpha = (scorch * 0.92 + cracks * 0.35) * vOpacity;
+      } else if (vKind < 2.5) {
+        // FROST. Ice takes a bright rime rim and a sublimated, near-transparent centre, so the
+        // mark reads as material LEAVING rather than as material charring.
+        float rime = smoothstep(0.35, 0.95, r) * (1.0 - smoothstep(0.92, 1.05, r));
+        vec3 pale = vColor * 1.25 + vec3(0.18, 0.24, 0.30);
+        col = mix(pale * 0.55, pale * 1.5, rime);
+        col = mix(col, pale * 1.8, cracks * 0.4);
+        alpha = (rime * 0.85 + cracks * 0.3 + scorch * 0.16) * vOpacity;
+      } else {
+        // CRAZE. Ceramic keeps its face and fails as a dense web of fine bright cracks.
+        float web = radialCracks(d, r, min(1.0, vFracture + 0.55), vSeed + 0.37);
+        float fine = radialCracks(d * 1.7, r, 1.0, vSeed + 0.71);
+        float net = max(web, fine * 0.7);
+        col = mix(vColor * 0.55, vColor * 1.6 + vec3(0.2), net);
+        alpha = (net * 0.9 + scorch * 0.22) * vOpacity;
+      }
+    }
+
     if (alpha < 0.01) discard;
     gl_FragColor = vec4(col, alpha);
   }
@@ -130,6 +204,8 @@ export class HullScorchPool {
       age: 0,
       opacity: 1,
       heat0: 0.8,
+      markKind: 0,
+      fracture: 0,
       r: 0.2,
       g: 0.55,
       b: 0.85,
@@ -139,10 +215,12 @@ export class HullScorchPool {
     this.normal = dynamicAttribute(this.capacity * 3, 3);
     this.size = dynamicAttribute(this.capacity * 4, 4);
     this.color = dynamicAttribute(this.capacity * 3, 3);
+    this.mark = dynamicAttribute(this.capacity * 2, 2);
     this.geometry.setAttribute('aPos', this.pos);
     this.geometry.setAttribute('aNormal', this.normal);
     this.geometry.setAttribute('aSize', this.size);
     this.geometry.setAttribute('aColor', this.color);
+    this.geometry.setAttribute('aMark', this.mark);
     this.material = new THREE.ShaderMaterial({
       vertexShader: VERTEX_SHADER,
       fragmentShader: FRAGMENT_SHADER,
@@ -171,6 +249,7 @@ export class HullScorchPool {
         { name: 'normal', attribute: this.normal },
         { name: 'size', attribute: this.size },
         { name: 'color', attribute: this.color },
+        { name: 'mark', attribute: this.mark },
       ],
     }) : null;
     if (scene) scene.add(this.mesh);
@@ -202,6 +281,9 @@ export class HullScorchPool {
     s.age = 0;
     s.opacity = Math.max(0, finiteOr(spec.opacity, 1));
     s.heat0 = Math.min(1, Math.max(0, finiteOr(spec.heat, 0.8)));
+    // Default 0 (scorch) and 0 (fresh) keep every existing caller's mark exactly as it was.
+    s.markKind = Math.max(0, Math.min(3, Math.round(finiteOr(spec.markKind, 0))));
+    s.fracture = Math.min(1, Math.max(0, finiteOr(spec.fracture, 0)));
     s.r = finiteOr(spec.r, 0.2);
     s.g = finiteOr(spec.g, 0.55);
     s.b = finiteOr(spec.b, 0.85);
@@ -237,11 +319,13 @@ export class HullScorchPool {
       this.normal.setXYZ(live, nx, ny, nz);
       this.size.setXYZW(live, s.width, s.height, fade, heat);
       this.color.setXYZ(live, s.r, s.g, s.b);
+      this.mark.setXY(live, s.markKind, s.fracture);
       if (this.dynamicBufferOwner) {
         markDynamicBufferItems(this.dynamicBufferOwner, 0, live);
         markDynamicBufferItems(this.dynamicBufferOwner, 1, live);
         markDynamicBufferItems(this.dynamicBufferOwner, 2, live);
         markDynamicBufferItems(this.dynamicBufferOwner, 3, live);
+        markDynamicBufferItems(this.dynamicBufferOwner, 4, live);
       }
       live++;
     }
@@ -254,6 +338,7 @@ export class HullScorchPool {
       this.normal.needsUpdate = true;
       this.size.needsUpdate = true;
       this.color.needsUpdate = true;
+      this.mark.needsUpdate = true;
     }
     this.mesh.visible = live > 0;
     return live;

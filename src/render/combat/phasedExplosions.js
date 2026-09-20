@@ -161,16 +161,41 @@ const EXPLOSION_CAUSE_CLASS_SCHEDULES = Object.freeze(Object.fromEntries(
   })]),
 ));
 
+/** How far through its authored schedule a live entry is, 0..1. Retired entries read as done. */
+function scheduleProgress(entry) {
+  if (!entry || !entry.active) return 1;
+  const scheduleDef = explosionScheduleFor(entry.classId, entry.cause);
+  const duration = scheduleDef.duration > 1e-6 ? scheduleDef.duration : 1;
+  const progress = entry.age / duration;
+  return progress < 0 ? 0 : (progress > 1 ? 1 : progress);
+}
+
 export function explosionScheduleFor(classId, cause = 'generic') {
   const safeClass = EXPLOSION_SCHEDULES[classId] ? classId : 'small';
   const safeCause = normalizeExplosionCause(cause);
   return EXPLOSION_CAUSE_CLASS_SCHEDULES[safeCause][safeClass];
 }
 
+// Class weight for eviction. A massacre of small deaths must not be able to interrupt the capital
+// breakup happening behind it: the audit's one named gap for this family was that the shared
+// lifecycle cap "could truncate a massacre", and the truncation that actually hurts is a big,
+// long, structurally-interesting event being recycled to draw another one-second pop.
+const CLASS_WEIGHT = Object.freeze({ small: 0, ordinary: 1, capital: 2 });
+
+function classWeight(classId) {
+  const weight = CLASS_WEIGHT[classId];
+  return Number.isFinite(weight) ? weight : 0;
+}
+
 export class PhasedExplosionLifecycle {
   constructor(options = {}) {
     this.capacity = Math.max(1, options.capacity || 24);
     this.activeCount = 0;
+    // Measured occupancy, for the cost note. `truncated` counts events the pool refused outright;
+    // `evicted` counts events cut short to make room for a more important one.
+    this.peakActive = 0;
+    this.evicted = 0;
+    this.truncated = 0;
     this._serial = 0;
     this.entries = Array.from({ length: this.capacity }, (_, slot) => ({
       slot,
@@ -208,19 +233,44 @@ export class PhasedExplosionLifecycle {
         break;
       }
     }
+    const classId = EXPLOSION_SCHEDULES[input.classId] ? input.classId : 'small';
     if (!entry) {
+      // Saturated. Choose the cheapest thing to lose, in this order:
+      //   1. lowest admission priority        — flavor before anything the player cares about;
+      //   2. lowest class weight              — a small pop before an ordinary, an ordinary before
+      //                                         a capital breakup, whatever their priorities tie at;
+      //   3. furthest through its schedule    — a burst that has already shown most of its beats,
+      //                                         never one that just started.
+      // Before this, the tiebreak was oldest-admitted, so the longest-running event — which is
+      // always the biggest one — was the first thing a crowd of small deaths took.
+      const incomingWeight = classWeight(classId);
       entry = this.entries[0];
+      let bestWeight = classWeight(entry.classId);
+      let bestProgress = scheduleProgress(entry);
       for (let i = 1; i < this.entries.length; i++) {
         const candidate = this.entries[i];
+        const weight = classWeight(candidate.classId);
+        const progress = scheduleProgress(candidate);
         if (candidate.priority < entry.priority
-          || (candidate.priority === entry.priority
-            && candidate.admissionSerial < entry.admissionSerial)) entry = candidate;
+          || (candidate.priority === entry.priority && weight < bestWeight)
+          || (candidate.priority === entry.priority && weight === bestWeight
+            && progress > bestProgress)) {
+          entry = candidate;
+          bestWeight = weight;
+          bestProgress = progress;
+        }
       }
-      if (priority < entry.priority) return null;
+      // Refuse rather than interrupt something more important than the arrival.
+      if (priority < entry.priority
+        || (priority === entry.priority && incomingWeight < bestWeight)) {
+        this.truncated++;
+        return null;
+      }
+      this.evicted++;
     } else {
       this.activeCount++;
+      if (this.activeCount > this.peakActive) this.peakActive = this.activeCount;
     }
-    const classId = EXPLOSION_SCHEDULES[input.classId] ? input.classId : 'small';
     const direction = input.direction || null;
     let dx = finite(direction && direction.x, 0);
     let dz = finite(direction && direction.z, 0);
@@ -286,6 +336,20 @@ export class PhasedExplosionLifecycle {
 
   clear() {
     for (const entry of this.entries) if (entry.active) this._release(entry);
+  }
+
+  /** Measured occupancy for the cost note and for tests. Allocates one small object per call. */
+  stats() {
+    let capitals = 0;
+    for (const entry of this.entries) if (entry.active && entry.classId === 'capital') capitals++;
+    return {
+      capacity: this.capacity,
+      active: this.activeCount,
+      peakActive: this.peakActive,
+      activeCapitals: capitals,
+      evicted: this.evicted,
+      truncated: this.truncated,
+    };
   }
 
   _release(entry) {
