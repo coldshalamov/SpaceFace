@@ -234,6 +234,12 @@ test('Ending A confirmation and owner intents apply once after Continue', () => 
   next.state.player.heat = 0.4;
   next.state.factions.faction_mts.rep = 60;
   next.state.factions.faction_scn.rep = 60;
+  // DECISION-MODEL: confirmation re-evaluates current facts after Continue — the shared
+  // history gate, the encountered desk, and Ashfall presence are part of those facts.
+  next.state.story.flags.deep_reach_operation_complete = true;
+  next.state.story.flags.kurtz_desk_opened = true;
+  next.state.world = next.state.world || {};
+  next.state.world.currentSectorId = 'sector_ashfall_reach';
   next.bus.emit('ui:endgameChoose', { choice: 'A' });
   assert.equal(next.state.story.endgameChoice, null);
   assert.equal(next.state.story.endgamePending.choice, 'A');

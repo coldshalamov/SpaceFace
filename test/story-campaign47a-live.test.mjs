@@ -496,6 +496,9 @@ check('B7 offers endgame; five endings with distinct consequences (fresh state e
     if (endingId === 'B') {
       h.state.factions.faction_free.rep = 50; // quiet alignment
       h.state.careers = { origins: { hauler: { status: 'completed' } } };
+      // DECISION-MODEL: standing alone is a career badge; B files on recorded freight.
+      h.state.player.stats = h.state.player.stats || {};
+      h.state.player.stats.smuggledValue = 4000;
     }
     if (endingId === 'D') {
       h.state.player.cargo.items.cmdty_personal_ledger = 1;
@@ -720,6 +723,11 @@ check('post-ending sandbox remains playable after Ending A', () => {
   h.state.player.ownedShips = [{ defId: 'ship_bastion', fittings: [] }];
   h.state.claims = { bodies: [{ id: 'claim_test' }] };
   h.state.careers = { origins: { hunter: { status: 'completed' } } };
+  // DECISION-MODEL: every canonical door requires the captain in Ashfall, and the shared gate
+  // requires the encountered desk — meet both the way the live route does (dock at the cache).
+  h.state.world = h.state.world || {};
+  h.state.world.currentSectorId = 'sector_ashfall_reach';
+  h.bus.emit('dock:docked', { stationId: 'station_ashcache' });
   h.story._maybeOfferEndgame();
   h.bus.emit('ui:endgameChoose', { choice: 'A', confirm: true });
   assert.equal(h.state.story.endgameChoice, 'A');

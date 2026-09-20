@@ -42,7 +42,7 @@ function stateAtB7() {
     story: {
       beatIndex: 7,
       branch: 'patrol',
-      flags: { endgame: true },
+      flags: { endgame: true, deep_reach_operation_complete: true, kurtz_desk_opened: true },
       endgameOffered: true,
       endgameResolved: false,
       endgameChoice: null,
@@ -101,10 +101,12 @@ test('final disposition remains actionable from the public Mission Log after the
   assert.deepEqual(action.routeOptions.map((route) => route.id), ['A', 'B', 'C', 'D', 'E']);
   assert.equal(action.routeOptions.find((route) => route.id === 'A').status, 'ready');
   assert.match(action.routeOptions.find((route) => route.id === 'A').interfaceLabel, /ASH CACHE MISSIONS/);
-  assert.match(action.routeOptions.find((route) => route.id === 'B').reason, /Quiet path/);
+  // DECISION-MODEL unmet reasons: B demands recorded freight; C a full hold; D real ledger
+  // custody; E an explicit decline of the one door (A) that is presently available.
+  assert.match(action.routeOptions.find((route) => route.id === 'B').reason, /recorded freight/);
   assert.match(action.routeOptions.find((route) => route.id === 'C').reason, /full cargo load/);
   assert.match(action.routeOptions.find((route) => route.id === 'D').reason, /ledger/);
-  assert.match(action.routeOptions.find((route) => route.id === 'E').reason, /Decline disposition/);
+  assert.match(action.routeOptions.find((route) => route.id === 'E').reason, /Decline THE CLEAN UNIFORM/);
 });
 
 test('final-disposition guidance promotes each ready physical interface without filing from the log', () => {
@@ -114,6 +116,8 @@ test('final-disposition guidance promotes each ready physical interface without 
   state.careers.origins = {};
   state.factions.faction_scn.rep = 0;
   state.factions.faction_free.rep = 80;
+  // DECISION-MODEL: B files on recorded freight — standing alone is a career badge.
+  state.player.stats = { smuggledValue: 4000 };
   let action = storyActionForBeat(STORY_BEATS[7], state);
   assert.equal(action.primaryEndingId, 'B');
   assert.match(action.body, /Ash Cache Missions/);

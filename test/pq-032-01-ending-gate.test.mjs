@@ -12,7 +12,6 @@ import {
   ENDGAME_NET_WORTH_CR,
   ENDGAME_REP_MIN,
   ENDING_IDS,
-  TOW_CLASS_MIN,
   evaluateEndingEligibility,
   listUniqueEndingIds,
   snapshotEndingFacts,
@@ -85,7 +84,7 @@ function printPath(kind, endingId, title) {
   console.log(`PQ-032.01 ${kind} ${endingId} ${title}`);
 }
 
-test('PQ-032.01 leftover combat-only dies on empire stake before the widen', () => {
+test('PQ-032.01 flag-less wealthy run cannot file: history, desk and a commission record are all required', () => {
   const state = leftoverB7();
   state.story.branch = 'patrol';
   state.factions.faction_scn.rep = ENDGAME_REP_MIN;
@@ -95,37 +94,67 @@ test('PQ-032.01 leftover combat-only dies on empire stake before the widen', () 
   assert.equal(facts.empireStake, false);
   assert.equal(facts.combatStake, false);
   assert.equal(a.eligible, false);
-  assert.ok(a.unmet.some((row) => row.code === 'empire_stake'), a.unmet.map((row) => row.code).join(','));
+  // DECISION-MODEL: the old universal empire-stake gate is gone. Money plus a selected origin
+  // still files nothing — the shared history gate, the encountered desk, and A's own
+  // standing+service/stake commission record are each required.
+  const codes = a.unmet.map((row) => row.code);
+  assert.ok(codes.includes('history'), codes.join(','));
+  assert.ok(codes.includes('desk'), codes.join(','));
+  assert.ok(codes.includes('commission_record'), codes.join(','));
 });
 
-test('PQ-032.01 combat-only run reaches an ending', () => {
+test('PQ-032.01 combat-only run reaches an ending once the shared history gate is met', () => {
   const state = combatOnlyState();
   const facts = snapshotEndingFacts(state);
   assert.equal(facts.empireStake, false, 'combat-only must not need capital / claim / outpost');
   assert.equal(facts.combatStake, true);
-  assert.equal(facts.towClassOk, true);
-  assert.ok(towRank(facts.towClass) >= towRank(TOW_CLASS_MIN), facts.towClass);
+  // The defeated named ace is a real world stake for A's commission route (wealth + stake).
+  assert.equal(facts.worldStake, true);
+  assert.ok(facts.careerEvidence.includes('named_combat'));
   assert.equal(facts.hasField, true);
   assert.equal(facts.acesBeaten, 1);
   assert.ok(facts.netWorthCr >= ENDGAME_NET_WORTH_CR);
   assert.ok(facts.branchRep >= ENDGAME_REP_MIN);
+  // Equipment-inferred tow class is retired: only a retained tow completion sets the diagnostic.
+  assert.equal(facts.towClassOk, false);
+  assert.equal(facts.towClass, 'none');
+  // Without the Deep Reach history the ace stake alone still files nothing.
+  const ungated = evaluateEndingEligibility(state, 'A');
+  assert.equal(ungated.eligible, false);
+  assert.ok(ungated.unmet.some((row) => row.code === 'history'), ungated.unmet.map((r) => r.code).join(','));
 
+  // The shipped place gate (Deep Reach completed, desk encountered) plus the ace stake files A.
+  state.story.flags.deep_reach_operation_complete = true;
+  state.story.flags.kurtz_desk_opened = true;
   const a = evaluateEndingEligibility(state, 'A');
   assert.equal(a.eligible, true, a.unmet.map((row) => row.code).join(',') || 'A');
+  assert.equal(a.unmet.some((row) => row.code === 'commission_record'), false,
+    'the named-combat stake satisfies A commission route alongside wealth');
   printPath('combat-only', a.id, a.def.title);
 });
 
-test('PQ-032.01 builder run reaches an ending', () => {
+test('PQ-032.01 builder run reaches an ending through retained freight, not the leftover empire stake', () => {
   const state = builderState();
   const facts = snapshotEndingFacts(state);
-  assert.equal(facts.combatStake, false, 'builder path uses leftover empire stake');
+  assert.equal(facts.combatStake, false, 'builder path uses no combat evidence');
   assert.equal(facts.empireStake, true);
   assert.equal(facts.hasClaim, true);
   assert.equal(facts.hasOutpost, true);
   assert.equal(facts.capitalOwned, false);
-  assert.equal(facts.towClassOk, true);
   assert.equal(facts.hasField, true);
+  // DECISION-MODEL: a career badge or empire stake without freight is not enough for B.
+  const ungated = evaluateEndingEligibility(state, 'B');
+  assert.equal(ungated.eligible, false);
+  assert.ok(ungated.unmet.some((row) => row.code === 'routing_record'), ungated.unmet.map((r) => r.code).join(','));
 
+  // Three retained route completions are the authored freight record, with the shared gate met.
+  state.missions.completedLog = [
+    { id: 'route_1', type: 'cargo_delivery', status: 'complete' },
+    { id: 'route_2', type: 'bulk_haul', status: 'complete' },
+    { id: 'route_3', type: 'bulk_trade', status: 'complete' },
+  ];
+  state.story.flags.deep_reach_operation_complete = true;
+  state.story.flags.kurtz_desk_opened = true;
   const b = evaluateEndingEligibility(state, 'B');
   assert.equal(b.eligible, true, b.unmet.map((row) => row.code).join(',') || 'B');
   printPath('builder', b.id, b.def.title);
@@ -179,8 +208,12 @@ test('PQ-032.01 combat stake is written by production, not stamped by the fixtur
   assert.equal(facts.combatStake, true);
   assert.deepEqual(facts.aceIdsBeaten, [ACE_ID]);
 
+  // The live-writer stake satisfies A's commission route once the shared history gate is met.
+  gate.story.flags.deep_reach_operation_complete = true;
+  gate.story.flags.kurtz_desk_opened = true;
   const a = evaluateEndingEligibility(gate, 'A');
   assert.equal(a.eligible, true, a.unmet.map((row) => row.code).join(',') || 'A');
+  assert.equal(a.unmet.some((row) => row.code === 'commission_record'), false);
   printPath('combat-only-live-writer', a.id, a.def.title);
 });
 
@@ -215,14 +248,23 @@ test('PQ-032.01 combat stake couplings — outcome word, receipt copy, payload k
 test('PQ-032.01 one linear spine — no new endings or branch menu', () => {
   assert.deepEqual(listUniqueEndingIds(), ['A', 'B', 'C', 'D', 'E']);
   assert.deepEqual(ENDING_IDS, ['A', 'B', 'C', 'D', 'E']);
-  const combat = evaluateEndingEligibility(combatOnlyState(), 'A');
-  const builder = evaluateEndingEligibility(builderState(), 'B');
+  // Both authored prototype runs file under the new model: combat via the ace stake, builder via
+  // retained freight, each on top of the shared Deep Reach history gate (see re-pointed tests).
+  const combatState = combatOnlyState();
+  combatState.story.flags.deep_reach_operation_complete = true;
+  combatState.story.flags.kurtz_desk_opened = true;
+  const builderFix = builderState();
+  builderFix.missions.completedLog = [
+    { id: 'route_1', type: 'cargo_delivery', status: 'complete' },
+    { id: 'route_2', type: 'bulk_haul', status: 'complete' },
+    { id: 'route_3', type: 'bulk_trade', status: 'complete' },
+  ];
+  builderFix.story.flags.deep_reach_operation_complete = true;
+  builderFix.story.flags.kurtz_desk_opened = true;
+  const combat = evaluateEndingEligibility(combatState, 'A');
+  const builder = evaluateEndingEligibility(builderFix, 'B');
   assert.equal(combat.eligible, true);
   assert.equal(builder.eligible, true);
   assert.equal(combat.def.boardEligible, true);
   assert.equal(builder.def.boardEligible, true);
 });
-
-function towRank(name) {
-  return name === 'heavy' ? 3 : name === 'medium' ? 2 : name === 'light' ? 1 : 0;
-}

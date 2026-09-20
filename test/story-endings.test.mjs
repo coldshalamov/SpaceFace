@@ -21,6 +21,7 @@ import {
   createPostEndingContinuity,
   endingDef,
   evaluateEndingEligibility,
+  isWrittenFinaleActive,
   listBoardEligibleEndingIds,
   listEndingEligibility,
   listUniqueEndingIds,
@@ -170,6 +171,10 @@ function qualifyFor(state, endingId) {
     state.story.branch = 'free';
     state.factions.faction_free.rep = ENDGAME_REP_MIN;
     state.careers = { origins: { hauler: { status: 'completed' } } };
+    // DECISION-MODEL: B requires recorded freight — some recorded smuggled value, three retained
+    // route completions, or trusted standing plus three trades. Standing alone is a career badge.
+    state.player.stats = state.player.stats || {};
+    state.player.stats.smuggledValue = 5000;
   }
   if (endingId === 'C') {
     state.story.branch = 'traders';
@@ -239,7 +244,7 @@ check('A/B board rows present their real issuer, filing, and continuing position
 });
 
 // ── Eligibility truth + disabled reasons ───────────────────────────────────
-check('shared gate blocks when net worth/rep/empire stake missing', () => {
+check('gate blocks on missing standing and missing commission record (DECISION-MODEL: no wealth-only route)', () => {
   const state = makeB7State(1);
   state.player.credits = 1000;
   state.player.ownedShips = [{ defId: 'ship_kestrel' }];
@@ -248,9 +253,13 @@ check('shared gate blocks when net worth/rep/empire stake missing', () => {
   const elig = evaluateEndingEligibility(state, 'A');
   assert.equal(elig.eligible, false);
   const codes = elig.unmet.map((u) => u.code);
-  assert.ok(codes.includes('net_worth'), codes.join(','));
-  assert.ok(codes.includes('branch_rep'), codes.join(','));
-  assert.ok(codes.includes('empire_stake'), codes.join(','));
+  // The old universal wealth/branch-rep/empire-stake conjunction is gone. A now demands Concord
+  // standing AND (three retained service completions OR the wealth+stake commission route); the
+  // shared history/desk gate is already satisfied by this fixture, so only specifics are unmet.
+  assert.ok(codes.includes('concord_standing'), codes.join(','));
+  assert.ok(codes.includes('commission_record'), codes.join(','));
+  assert.ok(!codes.includes('net_worth') && !codes.includes('branch_rep') && !codes.includes('empire_stake'),
+    'universal wealth/rep/stake gate codes are retired: ' + codes.join(','));
   for (const u of elig.unmet) {
     assert.ok(u.text && u.text.length > 0, 'player-visible unmet text');
   }
@@ -265,7 +274,9 @@ check('live automation outposts satisfy the empire-stake gate', () => {
   const facts = snapshotEndingFacts(state);
   assert.equal(facts.hasOutpost, true);
   assert.equal(facts.empireStake, true);
-  assert.equal(evaluateEndingEligibility(state, 'A').unmet.some((u) => u.code === 'empire_stake'), false);
+  // New contract: the outpost stake feeds A's commission route (wealth + stake), it is not a
+  // standalone universal gate — so no commission_record unmet while wealth covers the other half.
+  assert.equal(evaluateEndingEligibility(state, 'A').unmet.some((u) => u.code === 'commission_record'), false);
 });
 
 check('B7 offer uses the same capital-inclusive net worth as ending eligibility', () => {
@@ -284,29 +295,35 @@ check('B7 offer uses the same capital-inclusive net worth as ending eligibility'
     'capital-backed net worth must not be rejected by a second liquid-credit gate');
 });
 
-check('A requires lawful alignment; B requires quiet alignment', () => {
+check('A needs Concord standing (not branch/origin alignment); B needs recorded freight, not a career badge', () => {
   const state = makeB7State(2);
-  // Traders branch, MTS only — no SCN, no hunter
+  // Traders branch, MTS only — no SCN standing, no hunter origin. Origin selection alone is
+  // insufficient under DECISION-MODEL; there is no alignment code any more, only real records.
   state.story.branch = 'traders';
   state.factions.faction_mts.rep = 80;
   state.factions.faction_scn.rep = 0;
   state.factions.faction_free.rep = 0;
   state.careers = { origins: {} };
   assert.equal(evaluateEndingEligibility(state, 'A').eligible, false);
-  assert.ok(evaluateEndingEligibility(state, 'A').unmet.some((u) => u.code === 'alignment'));
+  assert.ok(evaluateEndingEligibility(state, 'A').unmet.some((u) => u.code === 'concord_standing'));
   assert.equal(evaluateEndingEligibility(state, 'B').eligible, false);
-  assert.ok(evaluateEndingEligibility(state, 'B').unmet.some((u) => u.code === 'alignment'));
+  assert.ok(evaluateEndingEligibility(state, 'B').unmet.some((u) => u.code === 'routing_record'));
 
-  // SCN standing unlocks A without patrol branch
+  // SCN standing unlocks A without patrol branch (this fixture carries the wealth+capital stake).
   state.factions.faction_scn.rep = ENDGAME_REP_MIN;
   assert.equal(evaluateEndingEligibility(state, 'A').eligible, true);
 
-  // Free standing unlocks B
+  // Free standing alone is NOT enough for B any more: a career badge without freight fails.
   state.factions.faction_free.rep = ENDGAME_REP_MIN;
+  assert.equal(evaluateEndingEligibility(state, 'B').eligible, false,
+    'trusted standing without freight must not file B');
+  // Trusted standing together with three recorded trades is the authored third route.
+  state.player.stats = state.player.stats || {};
+  state.player.stats.tradesCount = 3;
   assert.equal(evaluateEndingEligibility(state, 'B').eligible, true);
 });
 
-check('C/D/E world gates produce distinct unmet reasons', () => {
+check('C/D/E world gates produce distinct unmet reasons; E only demands declines of doors presently available', () => {
   const state = makeB7State(3);
   state.story.branch = 'traders';
   state.factions.faction_mts.rep = 60;
@@ -324,9 +341,21 @@ check('C/D/E world gates produce distinct unmet reasons', () => {
   assert.equal(d.eligible, false);
   assert.ok(d.unmet.some((u) => String(u.code).includes('cargo') || u.code === 'ledger' || u.code === 'sector'));
 
+  // Out of Ashfall no A-D door is presently available, so E gains no invisible decline
+  // prerequisites — only the shared sector requirement stands.
   const e = evaluateEndingEligibility(state, 'E');
   assert.equal(e.eligible, false);
-  assert.ok(e.unmet.some((u) => String(u.code).startsWith('decline:')));
+  assert.ok(e.unmet.some((u) => u.code === 'sector'));
+  assert.equal(e.unmet.some((u) => String(u.code).startsWith('decline:')), false,
+    'unavailable doors do not become invisible prerequisites');
+
+  // Back in Ashfall the standing+stake A door is presently available, so E now demands
+  // the explicit decline of exactly that door (B/C/D remain unavailable and unrequired).
+  state.world.currentSectorId = 'sector_ashfall_reach';
+  const eInAshfall = evaluateEndingEligibility(state, 'E');
+  assert.equal(eInAshfall.eligible, false);
+  const declineCodes = eInAshfall.unmet.map((u) => u.code).filter((code) => String(code).startsWith('decline:'));
+  assert.deepEqual(declineCodes, ['decline:A']);
 });
 
 check('listEndingEligibility returns five endings + sandbox', () => {
@@ -336,8 +365,31 @@ check('listEndingEligibility returns five endings + sandbox', () => {
   assert.deepEqual(rows.map((r) => r.id), ['A', 'B', 'C', 'D', 'E', SANDBOX_ID]);
 });
 
-check('offer surfaces sandbox when no final disposition is currently fileable', () => {
-  const h = makeLiveHarness(12);
+check('offer surfaces sandbox when the desk was met but no disposition is presently fileable (away from Ashfall)', () => {
+  // In Ashfall at the desk, E (the settlement for declining what is presently available) is
+  // fileable, so the offer does not push the sandbox continuation there.
+  const hAtDesk = makeLiveHarness(12);
+  hAtDesk.state.story.endgameOffered = false;
+  hAtDesk.state.story.branch = 'traders';
+  hAtDesk.state.factions.faction_mts.rep = ENDGAME_REP_MIN;
+  hAtDesk.state.factions.faction_scn.rep = 0;
+  hAtDesk.state.factions.faction_free.rep = 0;
+  hAtDesk.state.careers = { origins: {} };
+  hAtDesk.state.player.cargo.usedVolume = 0;
+  hAtDesk.state.player.cargo.items = {};
+  hAtDesk.state.story.endgameDeclined = [];
+  hAtDesk.state.world.currentSectorId = 'sector_ashfall_reach';
+  hAtDesk.state.story.flags.deep_reach_operation_complete = true;
+  hAtDesk.bus.emit('dock:docked', { stationId: 'station_ashcache' });
+  if (!hAtDesk.state.story.endgameOffered) hAtDesk.story._maybeOfferEndgame();
+  assert.equal(hAtDesk.state.story.endgameOffered, true);
+  assert.equal(hAtDesk.events.promptSandbox.length, 0,
+    'at the desk E is the fileable settlement, not a sandbox prompt');
+
+  // DECISION-MODEL: "Sandbox can be chosen after encountering the desk and leaving." With the
+  // history gate met and the desk already encountered, no A-E door is fileable away from Ashfall,
+  // so the periodic offer surfaces the deliberate non-ending instead.
+  const h = makeLiveHarness(13);
   h.state.story.endgameOffered = false;
   h.state.story.branch = 'traders';
   h.state.factions.faction_mts.rep = ENDGAME_REP_MIN;
@@ -347,11 +399,9 @@ check('offer surfaces sandbox when no final disposition is currently fileable', 
   h.state.player.cargo.usedVolume = 0;
   h.state.player.cargo.items = {};
   h.state.story.endgameDeclined = [];
-  // Satisfy shipped place gate via real dock path (not flag-only cheat past desk).
-  h.state.world.currentSectorId = 'sector_ashfall_reach';
   h.state.story.flags.deep_reach_operation_complete = true;
-  h.bus.emit('dock:docked', { stationId: 'station_ashcache' });
-  if (!h.state.story.endgameOffered) h.story._maybeOfferEndgame();
+  h.state.world.currentSectorId = 'sector_ceres_belt';
+  h.story._maybeOfferEndgame();
   assert.equal(h.state.story.endgameOffered, true);
   assert.equal(h.events.promptSandbox.length, 1);
 });
@@ -519,8 +569,25 @@ check('live: endings and sandbox advance distinct replay hooks while preserving 
     assert.ok(rec && rec.status === 'active', choice + ' creates active continuity');
     assert.equal(rec.choiceId, choice);
     assert.equal(h.events.continuity.length, 1, choice + ' publishes continuity on the public route');
-    assert.ok(h.state.story.scheduled.some((event) => event.id === 'post_ending_' + rec.directiveId
-      && event.text === rec.objective), choice + ' schedules one concise public objective');
+    if (choice === SANDBOX_ID) {
+      // Sandbox has no written finale and keeps its existing cadence: the objective is immediate.
+      assert.ok(h.state.story.scheduled.some((event) => event.id === 'post_ending_' + rec.directiveId
+        && event.text === rec.objective), choice + ' schedules one concise public objective');
+    } else {
+      // Written history-dependent testimony owns the channel first. The one concise public
+      // objective is scheduled only after the finale's last reading interval has elapsed.
+      assert.equal(h.state.story.scheduled.some((event) => event.id === 'post_ending_' + rec.directiveId),
+        false, choice + ' does not schedule the objective ahead of the sealed testimony');
+      for (let step = 0; step < 400 && (isWrittenFinaleActive(h.state.story.writtenFinale)
+        || h.story._writtenFinaleHoldsChannel()); step++) {
+        h.state.simTime += 1; // the narrative clock is sim time; 1 s steps cover the ~230 s finale
+        h.story.update(1, h.state);
+      }
+      assert.ok(!isWrittenFinaleActive(h.state.story.writtenFinale), choice + ' finale completes');
+      // Once the channel releases, the queued objective fires through the same comms path.
+      assert.ok(h.events.comms.some((event) => event.id === 'post_ending_' + rec.directiveId
+        && event.text === rec.objective), choice + ' delivers the public objective after the finale completes');
+    }
     seenHooks.add(rec.replayHookId);
 
     // An irrelevant event and a duplicate accepted event are stable no-ops.
@@ -528,6 +595,13 @@ check('live: endings and sandbox advance distinct replay hooks while preserving 
     for (const [event, payload] of cases[choice]) h.bus.emit(event, payload);
     const [duplicateEvent, duplicatePayload] = cases[choice][0];
     h.bus.emit(duplicateEvent, duplicatePayload);
+
+    // The completion line rides the saved narrative queue (a held finale defers it); after the
+    // channel has released, one 1 s pump delivers it through the one-voice path.
+    for (let step = 0; step < 5 && !h.events.comms.some((event) => event.id === 'replay_hook_' + rec.replayHookId); step++) {
+      h.state.simTime += 1;
+      h.story.update(1, h.state);
+    }
 
     assert.equal(rec.target, cases[choice].length);
     assert.equal(h.state.story.postEnding.progress, rec.target, choice + ' reaches its authored target');
@@ -705,15 +779,19 @@ check('20 seeds: identical eligibility + receipt ids for same facts', () => {
       seed,
       eligible: elig.map((r) => ({ id: r.id, ok: r.eligible, codes: r.unmet.map((u) => u.code) })),
       receiptId: plan.plan.receipt.id,
-      intents: plan.plan.intents.map((i) => i.event + ':' + JSON.stringify(i.payload)),
+      events: plan.plan.intents.map((i) => i.event),
+      // Effects now carry stable receipt metadata; the receipt id embeds the seed.
+      boundReceipts: plan.plan.intents.map((i) => i.payload.endingReceiptId),
     });
   }
-  // Same facts → same eligibility codes and intent list shape across seeds
+  // Same facts → same eligibility codes and intent event list shape across seeds
   const baseElig = JSON.stringify(snapshots[0].eligible);
-  const baseIntents = JSON.stringify(snapshots[0].intents);
+  const baseEvents = JSON.stringify(snapshots[0].events);
   for (const s of snapshots) {
     assert.equal(JSON.stringify(s.eligible), baseElig, `seed ${s.seed} eligibility drift`);
-    assert.equal(JSON.stringify(s.intents), baseIntents, `seed ${s.seed} intent drift`);
+    assert.equal(JSON.stringify(s.events), baseEvents, `seed ${s.seed} intent drift`);
+    // Every effect is bound to the plan's own stable receipt id.
+    for (const bound of s.boundReceipts) assert.equal(bound, s.receiptId);
     // Receipt includes seed → different seeds different ids
     assert.ok(s.receiptId.includes(`:${s.seed}`) || s.receiptId.includes('ending_receipt:C:'));
   }
