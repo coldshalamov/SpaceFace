@@ -309,13 +309,57 @@ function inspectReleaseManifestCoverage(manifest, pairs = []) {
     });
   }
   const entries = Array.isArray(manifest.assets) ? manifest.assets : [];
-  if (entries.length !== pairs.length) {
-    issues.push({
-      rule: 'release.manifest.assetCount',
-      path: 'assets/ships/release/release_manifest.json',
-      message: 'SG-04 release manifest must enumerate every validated release asset',
-      detail: `${entries.length}/${pairs.length}`,
-    });
+  // The release manifest is one shared ledger written by every release builder (SG-04 parts and
+  // whole ships, place packs, hulls). Rows beyond this checker's own pair set are legitimate -
+  // whole-ship LOD tiers and pack rows document real shipped assets - so completeness is checked
+  // per pair below, not by exact row-count equality. What must hold for EVERY row: no duplicate
+  // release paths, the release file exists, and any present source/release pair is hash-fresh.
+  const expectedReleases = new Set(pairs.map((pair) => normalizeRel(pair.release)));
+  const seenReleases = new Set();
+  for (const entry of entries) {
+    const release = normalizeRel(entry && entry.release);
+    if (!release) continue;
+    if (seenReleases.has(release)) {
+      issues.push({
+        rule: 'release.manifest.duplicateRow',
+        path: 'assets/ships/release/release_manifest.json',
+        message: 'release manifest lists the same release asset twice',
+        detail: release,
+      });
+    }
+    seenReleases.add(release);
+  }
+  for (const entry of entries) {
+    const release = normalizeRel(entry && entry.release);
+    if (!release || expectedReleases.has(release)) continue;
+    const releaseAbs = resolve(ROOT, release);
+    if (!existsSync(releaseAbs)) {
+      issues.push({
+        rule: 'release.manifest.orphanRow',
+        path: 'assets/ships/release/release_manifest.json',
+        message: 'release manifest row documents a release file that does not exist',
+        detail: release,
+      });
+      continue;
+    }
+    const source = normalizeRel(entry.source);
+    const sourceAbs = resolve(ROOT, source);
+    if (entry.releaseSha256 !== sha256(readFileSync(releaseAbs))) {
+      issues.push({
+        rule: 'release.manifest.releaseHash',
+        path: 'assets/ships/release/release_manifest.json',
+        message: 'release manifest release hash is stale',
+        detail: release,
+      });
+    }
+    if (existsSync(sourceAbs) && entry.sourceSha256 !== sha256(readFileSync(sourceAbs))) {
+      issues.push({
+        rule: 'release.manifest.sourceHash',
+        path: 'assets/ships/release/release_manifest.json',
+        message: 'release manifest source hash is stale',
+        detail: source,
+      });
+    }
   }
 
   const byRelease = new Map(entries.map((entry) => [normalizeRel(entry.release), entry]));
