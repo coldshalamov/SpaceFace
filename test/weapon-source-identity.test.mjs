@@ -424,10 +424,15 @@ test('a sustained beam can follow a moving socket without inventing its contact 
   const contactBefore = entry.toX;
 
   // The ship turns between simulation ticks; the aperture follows at display rate.
-  pool.update(1.008, local, null, 0, () => ({ x: 4, y: 0.5, z: -3 }));
+  const planeBefore = entry.y;
+  pool.update(1.008, local, null, 0, () => ({ x: 4, y: 0.82, z: -3 }));
   assert.equal(entry.fromX, 4);
   assert.equal(entry.fromZ, -3);
   assert.equal(entry.toX, contactBefore, 'the resolver must never move the simulated contact');
+  // XZ only. SOCKET_Weapon_Front sits at y 0.0 on some hulls and 0.82 on the Kestrel, but the beam
+  // quad carries one y for all four corners, so taking the socket height would lift the far end
+  // clean off the contact point and out of the plane the impact owner draws in.
+  assert.equal(entry.y, planeBefore, 'the beam must stay in the combat plane');
 
   // A resolver that cannot find the socket leaves the last authoritative origin alone.
   pool.update(1.016, local, null, 0, () => null);

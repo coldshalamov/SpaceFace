@@ -333,9 +333,13 @@ export class PersistentCombatBeamPool {
       if (socketOf && entry.ownerId != null) {
         const socket = socketOf(entry);
         if (socket && Number.isFinite(socket.x) && Number.isFinite(socket.z)) {
+          // XZ ONLY, deliberately. SOCKET_Weapon_Front sits anywhere from y 0.0 to 0.82 depending
+          // on the hull, while the beam quad carries ONE y for all four vertices. Taking the
+          // socket's height would tilt nothing and lift everything: the far end would float off
+          // the contact point and out of the plane the impact owner draws in. The aperture
+          // follows the gun across the deck; the beam stays in the combat plane.
           entry.fromX = socket.x;
           entry.fromZ = socket.z;
-          if (Number.isFinite(socket.y)) entry.y = socket.y;
         }
       }
       localize(entry.fromX, entry.fromZ, this._localA);
