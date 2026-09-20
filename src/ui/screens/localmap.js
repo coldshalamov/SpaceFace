@@ -30,6 +30,96 @@ const SECTOR_NAME = new Map(SECTORS.map((s) => [s.id, s.name]));
 const EMPTY_ROUTES = Object.freeze([]);
 const EMPTY_GEOMETRY = Object.freeze([]);
 
+// INF-054 label/hit grammar. In a dense cluster (the starting system parks three stations and the
+// mission diamond within a few hundred wu) every label used to draw at the same offset, and a
+// click grabbed whichever overlapping hit-circle CENTER was nearest — autopilot to a rock whose
+// label was not even the one on screen. Labels now place greedily in priority order (objective
+// first, stations, hostiles, ships; asteroids never label), stable by draw order within a tier,
+// and the click resolver shares that priority so a click picks the candidate the player can SEE.
+export function labelPriority(kind, hostile = false) {
+  if (kind === 'waypoint') return 0;
+  if (kind === 'station' || kind === 'gate') return 1;
+  if (kind === 'hostile' || hostile) return 2;
+  if (kind === 'asteroid') return 4;
+  return 3;
+}
+
+function labelRectsOverlap(a, b, pad) {
+  return a.x < b.x + b.w + pad && a.x + a.w + pad > b.x
+    && a.y < b.y + b.h + pad && a.y + a.h + pad > b.y;
+}
+
+/**
+ * Greedy label placement. `jobs` is any array of {x, y, dx, text, font, priority}; `measure`
+ * returns a pixel width for (text, font). Higher-priority jobs claim their spot first; within a
+ * tier the incoming order (the map model's stable sort) decides, so the same world state always
+ * produces the same visible set. Returns an array parallel to `jobs`: the placed rect, or null
+ * where the label was suppressed as an overlap.
+ */
+export function placeMapLabels(jobs, measure) {
+  const order = [];
+  for (let seq = 0; seq < jobs.length; seq++) order.push(seq);
+  order.sort((a, b) => {
+    const ja = jobs[a];
+    const jb = jobs[b];
+    if (ja.priority !== jb.priority) return ja.priority - jb.priority;
+    return a - b;
+  });
+  const placed = [];
+  const rects = new Array(jobs.length).fill(null);
+  for (const seq of order) {
+    const job = jobs[seq];
+    if (!job || !job.text) continue;
+    const width = measure(job.text, job.font);
+    if (!(width > 0)) continue;
+    const rect = {
+      x: job.x + (job.dx != null ? job.dx : 8),
+      y: job.y - 8,
+      w: width + 4,
+      h: 16,
+    };
+    let collide = false;
+    for (const r of placed) {
+      if (labelRectsOverlap(rect, r, 2)) { collide = true; break; }
+    }
+    if (collide) continue;
+    placed.push(rect);
+    rects[seq] = rect;
+  }
+  return rects;
+}
+
+/**
+ * Click resolution over the frame's collected hit targets. A candidate counts when the point is
+ * inside its marker circle OR inside its displayed label rect; among candidates the shared label
+ * priority wins, then the nearer marker center. This is what makes a click choose the displayed
+ * candidate instead of a hidden overlapping hit circle.
+ */
+export function pickClickTarget(targets, sx, sy) {
+  let best = null;
+  let bestPriority = Infinity;
+  let bestD2 = Infinity;
+  for (const t of targets || []) {
+    const dx = sx - t.sx;
+    const dy = sy - t.sy;
+    const d2 = dx * dx + dy * dy;
+    const radius = t.radiusPx || 14;
+    let within = d2 <= radius * radius;
+    if (!within && t.labelRect) {
+      const lr = t.labelRect;
+      within = sx >= lr.x && sx <= lr.x + lr.w && sy >= lr.y && sy <= lr.y + lr.h;
+    }
+    if (!within) continue;
+    const priority = t.priority != null ? t.priority : 3;
+    if (!best || priority < bestPriority || (priority === bestPriority && d2 < bestD2)) {
+      best = t;
+      bestPriority = priority;
+      bestD2 = d2;
+    }
+  }
+  return best;
+}
+
 const LOCALMAP_STYLE = `
 #sf-localmap {
   position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -550,6 +640,8 @@ export const localmapScreen = {
     const wz = (z) => C.y - (z - player.pos.z) * scale;
     this._mapTransform = { cx: C.x, cy: C.y, scale, playerX: player.pos.x, playerZ: player.pos.z };
     this._lastClickTargets.length = 0;
+    // Label jobs collected across every layer, then placed once in priority order (INF-054).
+    const labelJobs = [];
     const roles = canvasRoles();
     canvasFonts();
 
@@ -570,21 +662,29 @@ export const localmapScreen = {
     for (const lm of map.landmarks || []) {
       const x = wx(lm.position.x), y = wz(lm.position.z);
       const isGate = lm.kind === 'gate';
-      this._lastClickTargets.push({
+      const target = {
         sx: x, sy: y, radiusPx: 18,
         targetEntityId: lm.id,
         pos: { x: lm.position.x, z: lm.position.z },
         label: lm.name || (isGate ? 'Gate' : 'Station'),
         kind: isGate ? 'gate' : 'station',
         arrivalRadius: isGate ? 72 : 90,
+        priority: labelPriority(isGate ? 'gate' : 'station'),
+      };
+      this._lastClickTargets.push(target);
+      labelJobs.push({
+        x, y, dx: 8,
+        text: lm.name || lm.id,
+        font: canvasFont(500, 13, 'body'),
+        color: roles.paper,
+        priority: target.priority,
+        target,
       });
       g.save();
       g.fillStyle = roles.calm;
       g.strokeStyle = roles.calm;
       if (isGate) { g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y); g.closePath(); g.stroke(); }
       else { g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill(); }
-      g.fillStyle = roles.paper; g.font = canvasFont(500, 13, 'body'); g.textAlign = 'left';
-      g.fillText(lm.name || lm.id, x + 8, y);
       g.restore();
     }
 
@@ -594,14 +694,27 @@ export const localmapScreen = {
       const x = wx(c.position.x), y = wz(c.position.z);
       const conf = Math.max(0, Math.min(1, c.confidence || 0));
       if (conf < 0.05) continue;
-      this._lastClickTargets.push({
-        sx: x, sy: y, radiusPx: c.kind === 'asteroid' ? 12 : 16,
+      const isAsteroid = c.kind === 'asteroid';
+      const target = {
+        sx: x, sy: y, radiusPx: isAsteroid ? 12 : 16,
         targetEntityId: c.id,
         pos: { x: c.position.x, z: c.position.z },
         label: c.name || (c.hostile ? 'Hostile contact' : c.kind || 'Contact'),
         kind: c.kind || 'contact',
-        arrivalRadius: c.kind === 'asteroid' ? 64 : 48,
-      });
+        arrivalRadius: isAsteroid ? 64 : 48,
+        priority: labelPriority(isAsteroid ? 'asteroid' : (c.kind || 'contact'), c.hostile),
+      };
+      this._lastClickTargets.push(target);
+      if (!isAsteroid) {
+        labelJobs.push({
+          x, y, dx: 8,
+          text: c.name || (c.hostile ? 'HOSTILE' : 'Contact'),
+          font: canvasFont(500, 13, 'body'),
+          color: c.hostile ? roles.foe : roles.paper,
+          priority: target.priority,
+          target,
+        });
+      }
       const stale = c.lastSeenS != null && (m.timeS - c.lastSeenS) > 6;
       if (c.kind === 'asteroid') {
         g.globalAlpha = 0.3 + conf * 0.7;
@@ -656,13 +769,23 @@ export const localmapScreen = {
       const pnt = item.position;
       if (!pnt) continue;
       const x = wx(pnt.x), y = wz(pnt.z);
-      this._lastClickTargets.push({
+      const target = {
         sx: x, sy: y, radiusPx: 20,
         targetEntityId: item.id,
         pos: { x: pnt.x, z: pnt.z },
         label: item.label || item.reason || 'Objective',
         kind: item.kind || 'waypoint',
         arrivalRadius: 44,
+        priority: labelPriority('waypoint'),
+      };
+      this._lastClickTargets.push(target);
+      labelJobs.push({
+        x, y, dx: 12,
+        text: item.label || item.reason || 'Objective',
+        font: canvasFont(600, 13, 'subhead'),
+        color: roles.goal,
+        priority: target.priority,
+        target,
       });
       g.save();
       g.strokeStyle = roles.goal;
@@ -678,11 +801,25 @@ export const localmapScreen = {
       g.beginPath(); g.moveTo(C.x, C.y); g.lineTo(x, y); g.stroke();
       g.setLineDash([]);
       g.globalAlpha = 1;
-      g.font = canvasFont(600, 13, 'subhead');
-      g.textAlign = 'left';
-      g.textBaseline = 'middle';
-      g.fillText(item.label || item.reason || 'Objective', x + 12, y);
       g.restore();
+    }
+
+    // INF-054: place every label in one priority-ordered pass. The objective claims its spot
+    // first; stations, hostiles, then ships fill what remains; overlaps are suppressed, not
+    // stacked. A placed label is ALSO its target's click surface, so clicking the name selects
+    // the thing the player is reading.
+    const measure = (text, font) => { g.font = font; return g.measureText(text).width; };
+    const placedRects = placeMapLabels(labelJobs, measure);
+    g.textAlign = 'left';
+    g.textBaseline = 'middle';
+    for (let i = 0; i < labelJobs.length; i++) {
+      const job = labelJobs[i];
+      const rect = placedRects[i];
+      if (!rect) continue;
+      job.target.labelRect = rect;
+      g.font = job.font;
+      g.fillStyle = job.color;
+      g.fillText(job.text, rect.x, job.y);
     }
 
     // Player at center (heading marker) — you. Shape is the chevron; stations stay circles.
@@ -741,19 +878,9 @@ export const localmapScreen = {
   },
 
   _nearestClickTarget(sx, sy) {
-    let best = null;
-    let bestD2 = Infinity;
-    for (const t of this._lastClickTargets || EMPTY_ROUTES) {
-      const dx = sx - t.sx;
-      const dy = sy - t.sy;
-      const d2 = dx * dx + dy * dy;
-      const radius = t.radiusPx || 14;
-      if (d2 <= radius * radius && d2 < bestD2) {
-        best = t;
-        bestD2 = d2;
-      }
-    }
-    return best;
+    // INF-054: shared priority with label placement — a marker OR its displayed label counts,
+    // and the visible candidate wins over a hidden overlapping hit circle.
+    return pickClickTarget(this._lastClickTargets || EMPTY_ROUTES, sx, sy);
   },
 
   _screenToWorldFix(sx, sy) {
