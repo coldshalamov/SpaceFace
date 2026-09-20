@@ -21,7 +21,11 @@ import {
 } from '../../dynamicBufferRanges.js';
 import { impactOutwardNormal } from '../impactEventRecord.js';
 import { GAS_FAMILIES, GAS_FAMILY_BY_ID, gasFamilyForImpact, gasFilmFor } from './gasFamilies.js';
-import { createGasVolumeMaterial, createGasVolumeTextures } from './gasVolumeMaterial.js';
+import {
+  createGasVolumeMaterial,
+  createGasVolumeTextures,
+  releaseGasVolumeTextures,
+} from './gasVolumeMaterial.js';
 
 const ATTR_POSE = 0;
 const ATTR_SCALE = 1;
@@ -481,9 +485,10 @@ class GasVolumeField {
     if (this.mesh) this.mesh.onBeforeRender = null;
     if (this.geometry) this.geometry.dispose();
     if (this.material) this.material.dispose();
+    // Refcounted: the GPU copy survives until the last batch (live pool, precompile warm-up) goes.
     if (this._textures) {
-      this._textures.density.dispose();
-      this._textures.motion.dispose();
+      this._textures = null;
+      releaseGasVolumeTextures();
     }
   }
 }
