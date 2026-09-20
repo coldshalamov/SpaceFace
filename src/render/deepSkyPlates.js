@@ -134,7 +134,9 @@ export class DeepSkyPlateResidency {
     const plate = deepSkyPlate(id);
     const wanted = plate && !this.failedIds.has(plate.id) ? plate.id : null;
     if (wanted === this.activeId && !this.pendingId) return false;
-    if (wanted === this.pendingId) return false;
+    // `this.pendingId` is null when nothing is in flight, so a bare equality test would treat
+    // "release everything" as "already fetching that" and quietly keep the old plate resident.
+    if (wanted !== null && wanted === this.pendingId) return false;
     // A transition that turns around mid-flight drops the plate it was fetching, not the live one.
     this._releasePending();
     if (wanted === this.activeId) return false;
