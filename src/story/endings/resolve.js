@@ -1,335 +1,137 @@
-// Pure resolution plans for endings + sandbox.
-// Returns deterministic intents and receipts. Never mutates state or emits events.
+// Pure, one-shot plans + existing post-ending activity contracts. Only story applies them.
+import { ENDING_IDS, SANDBOX_DEF, SANDBOX_ID, endingDef, isSandboxId } from './endingDefs.js';
+import { evaluateEndingEligibility, snapshotEndingFacts, assessEndingHistory } from './eligibility.js';
+import { createWrittenFinale } from './finaleRuntime.js';
+import { number, timestamp, key, freeze, object } from './value.js';
 
-import {
-  ENDING_IDS,
-  SANDBOX_DEF,
-  SANDBOX_ID,
-  endingDef,
-  isEndingId,
-  isSandboxId,
-} from './endingDefs.js';
-import {
-  evaluateEndingEligibility,
-  snapshotEndingFacts,
-} from './eligibility.js';
-
-/**
- * Stable receipt id from simTime + ending id + seed (no Math.random).
- */
-export function endingReceiptId(endingId, simTime, seed) {
-  const t = Math.floor(Number(simTime) || 0);
-  const s = (Number(seed) >>> 0) || 0;
-  return `ending_receipt:${endingId}:${t}:${s}`;
-}
-
+export const endingReceiptId = (id, simTime, seed) => `ending_receipt:${id}:${Math.floor(Math.max(0, number(simTime)))}:${number(seed) >>> 0}`;
 export const POST_ENDING_SCHEMA = 'spaceface.postEnding.v1';
 const MAX_CONTINUITY_KEYS = 32;
-const MAX_CONTINUITY_KEY_LENGTH = 384;
-
-function validContinuitySegment(value) {
-  return typeof value === 'string'
-    && value.length > 0
-    && value.length <= 160
-    && !/[\s\u0000-\u001f:]/.test(value);
+// Preserve old evidence keys while refusing ambiguous delimiters. Numeric runtime entity ids work.
+const segment = value => {
+  const s = key(value);
+  return s && !/[\s\u0000-\u001f:]/.test(s) && s.length <= 160 ? s : null;
+};
+function signalKey(def, signal, payload) {
+  if (!def || signal !== def.signal) return null;
+  const p = object(payload);
+  if (signal === 'mission:completed') {
+    const id = segment(p.missionId);
+    return id && (!def.missionTypes.length || def.missionTypes.includes(p.type)) ? `mission:${id}` : null;
+  }
+  if (signal === 'economy:tradeCompleted') {
+    const station = segment(p.stationId), commodity = segment(p.commodityId);
+    return station && commodity && number(p.qty) > 0 && (!def.side || p.side === def.side)
+      ? `trade:${station}:${commodity}` : null;
+  }
+  if (signal === 'sector:enter') {
+    const id = segment(p.sectorId); return id ? `sector:${id}` : null;
+  }
+  if (signal === 'scan:completed') {
+    const sector = segment(p.sectorId);
+    if (!sector) return null; // target id alone can be recycled in another region; no 'current' alias
+    if (p.targetId != null) { const target = segment(p.targetId); return target ? `scan:target:${sector}:${target}` : null; }
+    return `scan:sector:${sector}`;
+  }
+  return null;
 }
-
-function validContinuityEvidenceKey(continuity, key) {
-  if (!continuity || typeof key !== 'string' || key.length > MAX_CONTINUITY_KEY_LENGTH) return false;
-  const parts = key.split(':');
-  if (continuity.signal === 'mission:completed') {
-    return parts.length === 2 && parts[0] === 'mission' && validContinuitySegment(parts[1]);
-  }
-  if (continuity.signal === 'economy:tradeCompleted') {
-    return parts.length === 3 && parts[0] === 'trade'
-      && validContinuitySegment(parts[1]) && validContinuitySegment(parts[2]);
-  }
-  if (continuity.signal === 'sector:enter') {
-    return parts.length === 2 && parts[0] === 'sector' && validContinuitySegment(parts[1]);
-  }
-  if (continuity.signal === 'scan:completed') {
-    return (parts.length === 3 && parts[0] === 'scan' && parts[1] === 'sector'
-        && validContinuitySegment(parts[2]))
-      || (parts.length === 4 && parts[0] === 'scan' && parts[1] === 'target'
-        && validContinuitySegment(parts[2]) && validContinuitySegment(parts[3]));
-  }
+function validEvidence(def, k) {
+  if (typeof k !== 'string' || k.length > 384) return false;
+  const a = k.split(':');
+  if (def.signal === 'mission:completed') return a.length === 2 && a[0] === 'mission' && !!segment(a[1]);
+  if (def.signal === 'economy:tradeCompleted') return a.length === 3 && a[0] === 'trade' && a.slice(1).every(segment);
+  if (def.signal === 'sector:enter') return a.length === 2 && a[0] === 'sector' && !!segment(a[1]);
+  if (def.signal === 'scan:completed') return (a.length === 3 && a[0] === 'scan' && a[1] === 'sector' && !!segment(a[2]))
+    || (a.length === 4 && a[0] === 'scan' && a[1] === 'target' && a.slice(2).every(segment));
   return false;
 }
-
-/** Create the durable, event-driven continuation for an ending or explicit sandbox choice. */
-export function createPostEndingContinuity(choiceId, simTime, seed) {
-  const def = endingDef(choiceId);
-  if (!def || !def.continuity) return null;
-  const t = Math.floor(Number(simTime) || 0);
-  const s = (Number(seed) >>> 0) || 0;
-  return {
-    schema: POST_ENDING_SCHEMA,
-    choiceId: def.id,
-    endingId: isSandboxId(def.id) ? null : def.id,
-    sandboxMode: def.sandboxMode,
-    directiveId: def.continuity.id,
-    title: def.continuity.title,
-    objective: def.continuity.objective,
-    signal: def.continuity.signal,
-    target: def.continuity.target,
-    replayHookId: def.continuity.replayHookId,
-    status: 'active',
-    progress: 0,
-    seenKeys: [],
-    startedAtS: t,
-    completedAtS: null,
-    seed: s,
-    receiptId: null,
-  };
+const continuityReceiptId = s => `replay_hook:${s.replayHookId}:${s.startedAtS}:${s.seed}`;
+export function createPostEndingContinuity(id, simTime, seed) {
+  const def = endingDef(id); if (!def?.continuity) return null;
+  const c = def.continuity;
+  return { schema: POST_ENDING_SCHEMA, choiceId: def.id, endingId: isSandboxId(def.id) ? null : def.id,
+    sandboxMode: def.sandboxMode, directiveId: c.id, title: c.title, objective: c.objective,
+    signal: c.signal, target: c.target, replayHookId: c.replayHookId,
+    status: 'active', progress: 0, seenKeys: [], startedAtS: Math.floor(Math.max(0, number(simTime))),
+    completedAtS: null, seed: number(seed) >>> 0, receiptId: null };
 }
-
-/** Heal save payloads and reject continuity records that no longer match authored definitions. */
 export function normalizePostEndingContinuity(raw) {
-  if (!raw || typeof raw !== 'object') return null;
-  const def = endingDef(raw.choiceId || raw.endingId || raw.sandboxMode);
-  if (!def || !def.continuity || raw.directiveId !== def.continuity.id) return null;
-  const seenKeys = Array.isArray(raw.seenKeys)
-    ? [...new Set(raw.seenKeys.filter((key) => validContinuityEvidenceKey(def.continuity, key)))]
-      .slice(-MAX_CONTINUITY_KEYS)
-    : [];
-  const out = createPostEndingContinuity(def.id, raw.startedAtS, raw.seed);
-  out.seenKeys = seenKeys;
-  // Progress is derived from durable distinct evidence keys, never trusted as a free-standing
-  // counter from a partial/older save.
-  out.progress = Math.min(out.target, seenKeys.length);
+  const r = object(raw), def = endingDef(r.choiceId || r.endingId || r.sandboxMode);
+  if (!def?.continuity || r.directiveId !== def.continuity.id) return null;
+  if (r.schema && r.schema !== POST_ENDING_SCHEMA) return null;
+  const out = createPostEndingContinuity(def.id, r.startedAtS, r.seed);
+  out.seenKeys = [...new Set((Array.isArray(r.seenKeys) ? r.seenKeys : []).filter(k => validEvidence(def.continuity, k)))].slice(0, MAX_CONTINUITY_KEYS);
+  out.progress = Math.min(out.target, out.seenKeys.length);
   out.status = out.progress >= out.target ? 'complete' : 'active';
-  const completedAtS = Math.floor(Number(raw.completedAtS));
   out.completedAtS = out.status === 'complete'
-    ? (Number.isFinite(completedAtS) && completedAtS >= out.startedAtS ? completedAtS : out.startedAtS)
-    : null;
-  out.receiptId = out.status === 'complete'
-    ? continuityReceiptId(out)
-    : null;
+    ? (timestamp(r.completedAtS) && r.completedAtS >= out.startedAtS ? r.completedAtS : out.startedAtS) : null;
+  out.receiptId = out.status === 'complete' ? continuityReceiptId(out) : null;
   return out;
 }
-
-/** Advance a continuation from normal public gameplay events; duplicates are stable no-ops. */
 export function advancePostEndingContinuity(raw, signal, payload = {}, simTime = 0) {
   const current = normalizePostEndingContinuity(raw);
   if (!current) return { changed: false, completed: false, state: null, reason: 'no_continuity' };
   if (current.status === 'complete') return { changed: false, completed: false, state: current, reason: 'complete' };
-  const def = endingDef(current.choiceId);
-  const key = continuitySignalKey(def && def.continuity, signal, payload);
-  if (!key) return { changed: false, completed: false, state: current, reason: 'signal_mismatch' };
-  if (current.seenKeys.includes(key)) return { changed: false, completed: false, state: current, reason: 'duplicate' };
-
-  const next = { ...current, seenKeys: current.seenKeys.concat(key).slice(-MAX_CONTINUITY_KEYS) };
-  next.progress = Math.min(next.target, current.progress + 1);
+  if (!timestamp(simTime) || simTime < current.startedAtS) return { changed: false, completed: false, state: current, reason: 'invalid_time' };
+  const k = signalKey(endingDef(current.choiceId).continuity, signal, payload);
+  if (!k) return { changed: false, completed: false, state: current, reason: 'signal_mismatch' };
+  if (current.seenKeys.includes(k)) return { changed: false, completed: false, state: current, reason: 'duplicate' };
+  const next = { ...current, seenKeys: [...current.seenKeys, k], progress: current.progress + 1 };
   const completed = next.progress >= next.target;
-  if (completed) {
-    next.status = 'complete';
-    next.completedAtS = Math.floor(Number(simTime) || 0);
-    next.receiptId = continuityReceiptId(next);
-  }
-  return { changed: true, completed, state: next, key };
+  if (completed) { next.status = 'complete'; next.completedAtS = simTime; next.receiptId = continuityReceiptId(next); }
+  return { changed: true, completed, state: next, key: k };
 }
 
-function continuitySignalKey(def, signal, payload) {
-  if (!def || signal !== def.signal) return null;
-  const p = payload || {};
-  if (signal === 'mission:completed') {
-    if (!p.missionId) return null;
-    if (def.missionTypes.length && !def.missionTypes.includes(p.type)) return null;
-    return 'mission:' + p.missionId;
-  }
-  if (signal === 'economy:tradeCompleted') {
-    if (def.side && p.side !== def.side) return null;
-    if (!p.stationId || !p.commodityId || !(Number(p.qty) > 0)) return null;
-    return 'trade:' + p.stationId + ':' + p.commodityId;
-  }
-  if (signal === 'sector:enter') {
-    if (!p.sectorId) return null;
-    return 'sector:' + p.sectorId;
-  }
-  if (signal === 'scan:completed') {
-    const id = p.targetId != null
-      ? 'target:' + (p.sectorId || 'current') + ':' + p.targetId
-      : p.sectorId ? 'sector:' + p.sectorId : null;
-    return id ? 'scan:' + id : null;
-  }
-  return null;
+function buildIntents(def, receiptId) {
+  const c = def.consequenceIntents, out = [];
+  for (const r of c.rep) out.push({ event: 'faction:repDelta', payload: { ...r } });
+  if (c.heatClear) out.push({ event: 'heat:clear', payload: { ...c.heatClear } });
+  if (c.credits > 0) out.push({ event: 'economy:grantCredits', payload: { amount: c.credits, reason: c.creditReason || `endgame_${def.id}` } });
+  if (c.loopBack) out.push({ event: 'endgame:loopBack', payload: {} });
+  return freeze(out.map((intent, index) => ({ ...intent,
+    payload: { ...intent.payload, endingReceiptId: receiptId, endingEffectId: `${receiptId}:effect:${index}` } })));
 }
 
-function continuityReceiptId(state) {
-  return `replay_hook:${state.replayHookId}:${state.startedAtS}:${state.seed}`;
-}
-
-/**
- * Build a resolution plan if eligible and not already resolved.
- * @returns {{ ok, reason?, plan? }}
- */
-export function planEndingResolution(state, endingId, opts = {}) {
-  const def = endingDef(endingId);
+/** No public force/skip-eligibility escape hatch: a filed life cannot receive a second payout. */
+export function planEndingResolution(state, id, opts = {}) {
+  const def = endingDef(id);
   if (!def) return { ok: false, reason: 'unknown_ending' };
-
-  const facts = snapshotEndingFacts(state);
-  if (facts.endgameResolved && !opts.force) {
-    return { ok: false, reason: 'already_resolved', facts };
-  }
-
-  // Idempotency: same choice already filed
-  if (facts.endgameChoice && facts.endgameChoice === def.id && isEndingId(def.id)) {
-    return { ok: false, reason: 'already_applied', facts };
-  }
-  if (isSandboxId(def.id) && facts.sandboxContinued) {
-    return { ok: false, reason: 'already_applied', facts };
-  }
-
-  const elig = evaluateEndingEligibility(state, def.id);
-  if (!elig.eligible && !opts.skipEligibility) {
-    return {
-      ok: false,
-      reason: 'ineligible',
-      unmet: elig.unmet,
-      facts,
-      def,
-    };
-  }
-
-  const simTime = Number(state && state.simTime) || 0;
-  const seed = (state && state.meta && state.meta.seed) || 0;
-  const receiptId = endingReceiptId(def.id, simTime, seed);
-  const intents = buildIntents(def);
-  const isSandbox = isSandboxId(def.id);
-
-  const plan = Object.freeze({
-    id: def.id,
-    key: def.key,
-    title: def.title,
-    isEnding: !isSandbox,
-    isSandbox,
-    resolution: def.resolution,
-    hudOnAccept: def.hudOnAccept,
-    graffitiBulkhead: def.graffitiBulkhead || null,
-    graffitiHome: def.graffitiHome || null,
-    sandboxMode: def.sandboxMode,
-    confirmPrompt: def.confirmPrompt,
-    confirmHint: def.confirmHint,
-    receipt: Object.freeze({
-      id: receiptId,
-      kind: isSandbox ? 'sandbox_continuation' : 'ending_resolution',
-      endingId: isSandbox ? null : def.id,
-      sandboxId: isSandbox ? SANDBOX_ID : null,
-      sandboxMode: def.sandboxMode,
-      simTime,
-      seed: seed >>> 0,
-      intents: intents.slice(),
-    }),
-    intents,
-    flagsToSet: Object.freeze(collectFlags(def)),
-    storyWrites: Object.freeze({
-      endgameChoice: isSandbox ? null : def.id,
-      endgameResolved: true,
-      endgamePending: null,
-      sandboxContinued: isSandbox,
-      identityErased: !!(def.consequenceIntents && def.consequenceIntents.identityErased),
-      stayedAtAshfall: !!(def.consequenceIntents && def.consequenceIntents.stayedAtAshfall),
-      contract47bPending: !!(def.consequenceIntents && def.consequenceIntents.contract47bPending),
-      loopBack: !!(def.consequenceIntents && def.consequenceIntents.loopBack),
-    }),
-    continuity: def.continuity || null,
+  const eligibility = evaluateEndingEligibility(state, def.id), facts = eligibility.facts;
+  if (facts.endgameResolved) return { ok: false, reason: 'already_resolved', facts };
+  if (opts.force || opts.skipEligibility) return { ok: false, reason: 'unsafe_override', facts };
+  if (!eligibility.eligible) return { ok: false, reason: 'ineligible', unmet: eligibility.unmet, facts, def };
+  const receiptId = endingReceiptId(def.id, facts.simTime, facts.seed);
+  const sandbox = isSandboxId(def.id), intents = buildIntents(def, receiptId), c = def.consequenceIntents;
+  const plan = freeze({ id: def.id, key: def.key, title: def.title, isEnding: !sandbox, isSandbox: sandbox,
+    resolution: def.resolution, hudOnAccept: def.hudOnAccept, graffitiBulkhead: def.graffitiBulkhead,
+    graffitiHome: def.graffitiHome, sandboxMode: def.sandboxMode,
+    confirmPrompt: def.confirmPrompt, confirmHint: def.confirmHint,
+    receipt: { id: receiptId, kind: sandbox ? 'sandbox_continuation' : 'ending_resolution',
+      endingId: sandbox ? null : def.id, sandboxId: sandbox ? SANDBOX_ID : null,
+      sandboxMode: def.sandboxMode, simTime: facts.simTime, seed: facts.seed, intents: intents.slice() },
+    intents, flagsToSet: [...c.flags],
+    storyWrites: { endgameChoice: sandbox ? null : def.id, endgameResolved: true, endgamePending: null,
+      sandboxContinued: sandbox, identityErased: !!c.identityErased, stayedAtAshfall: !!c.stayedAtAshfall,
+      contract47bPending: !!c.contract47bPending, loopBack: !!c.loopBack },
+    continuity: def.continuity,
+    // This frozen record must be cloned by its sole writer before adding playback cursors.
+    writtenFinale: sandbox ? null : createWrittenFinale(def.id, facts, receiptId),
+    assessment: assessEndingHistory(state),
   });
-
   return { ok: true, plan, facts, def };
 }
-
-function buildIntents(def) {
-  const c = def.consequenceIntents || {};
-  const intents = [];
-  for (const r of (c.rep || [])) {
-    intents.push(Object.freeze({
-      event: 'faction:repDelta',
-      payload: Object.freeze({
-        factionId: r.factionId,
-        delta: r.delta,
-        reason: r.reason,
-      }),
-    }));
-  }
-  if (c.heatClear) {
-    intents.push(Object.freeze({
-      event: 'heat:clear',
-      payload: Object.freeze({ reason: c.heatClear.reason }),
-    }));
-  }
-  if (c.credits && c.credits > 0) {
-    intents.push(Object.freeze({
-      event: 'economy:grantCredits',
-      payload: Object.freeze({
-        amount: c.credits,
-        reason: c.creditReason || `endgame_${def.id}`,
-      }),
-    }));
-  }
-  if (c.loopBack) {
-    intents.push(Object.freeze({
-      event: 'endgame:loopBack',
-      payload: Object.freeze({}),
-    }));
-  }
-  return Object.freeze(intents);
-}
-
-function collectFlags(def) {
-  const flags = [];
-  const c = def.consequenceIntents || {};
-  for (const f of (c.flags || [])) flags.push(f);
-  if (isSandboxId(def.id)) flags.push('sandbox_continued');
-  return flags;
-}
-
-/**
- * Stage a pending confirmation (pure descriptor — story writes state).
- */
-export function planPendingConfirmation(state, endingId) {
-  const elig = evaluateEndingEligibility(state, endingId);
-  if (!elig.eligible) {
-    return { ok: false, reason: 'ineligible', unmet: elig.unmet, def: elig.def };
-  }
+export function planPendingConfirmation(state, id) {
+  const elig = evaluateEndingEligibility(state, id);
+  if (!elig.eligible) return { ok: false, reason: 'ineligible', unmet: elig.unmet, def: elig.def };
   const def = elig.def;
-  const simTime = Number(state && state.simTime) || 0;
-  return {
-    ok: true,
-    pending: Object.freeze({
-      choice: def.id,
-      at: simTime,
-      title: def.title,
-      confirmPrompt: def.confirmPrompt,
-      confirmHint: def.confirmHint,
-    }),
-    def,
-    elig,
-  };
+  return { ok: true, pending: freeze({ choice: def.id, at: elig.facts.simTime,
+    title: def.title, confirmPrompt: def.confirmPrompt, confirmHint: def.confirmHint }), def, elig };
 }
-
-/**
- * Verify all five endings are unique packages (ids, keys, sandbox modes, titles).
- */
 export function assertEndingUniqueness() {
-  const ids = new Set();
-  const keys = new Set();
-  const modes = new Set();
-  const titles = new Set();
-  for (const id of ENDING_IDS) {
-    const d = endingDef(id);
-    if (!d) throw new Error(`missing ending ${id}`);
-    if (ids.has(d.id)) throw new Error(`dup id ${d.id}`);
-    if (keys.has(d.key)) throw new Error(`dup key ${d.key}`);
-    if (modes.has(d.sandboxMode)) throw new Error(`dup sandboxMode ${d.sandboxMode}`);
-    if (titles.has(d.title)) throw new Error(`dup title ${d.title}`);
-    ids.add(d.id);
-    keys.add(d.key);
-    modes.add(d.sandboxMode);
-    titles.add(d.title);
+  for (const field of ['id', 'key', 'sandboxMode', 'title']) {
+    const values = ENDING_IDS.map(id => endingDef(id)[field]);
+    if (new Set(values).size !== 5) throw new Error(`duplicate ending ${field}`);
   }
-  // Sandbox mode must not collide with ending modes
-  if (modes.has(SANDBOX_DEF.sandboxMode)) {
-    throw new Error('sandbox mode collides with ending');
-  }
+  if (ENDING_IDS.some(id => endingDef(id).sandboxMode === SANDBOX_DEF.sandboxMode)) throw new Error('sandbox collision');
   return true;
 }

@@ -13,7 +13,8 @@
 // endgame choice, and the wormhole-jump (Choice C) detection.
 //
 // CANONICAL SOURCE: docs/worldbuilding/story/* (STORY-SPINE, COMMS-MICRO-POPUPS, HUD-META-ARC,
-// ENDGAME-B7-REDESIGN). All text is transcribed verbatim in data/narrative.js.
+// ENDGAME-B7-REDESIGN). Existing lines remain in data/narrative.js. Written finales and testimony
+// are authored in story/endings/finaleContent.js; ending ids and owner consequences remain canonical.
 //
 // STATE: extends state.story (owned by missions.js) with narrative fields:
 //   state.story = {
@@ -72,8 +73,8 @@ import {
 } from '../story/campaign47a/index.js';
 // M5 pure endings eligibility + resolution plans (five endings + sandbox continuation).
 import {
-  ENDGAME_NET_WORTH_CR,
-  ENDGAME_REP_MIN,
+  ENDING_DEFS,
+  isEndingId,
   SANDBOX_ID,
   SANDBOX_MODE_OPEN_FRONTIER,
   advancePostEndingContinuity,
@@ -86,6 +87,15 @@ import {
   planEndingResolution,
   planPendingConfirmation,
   snapshotEndingFacts,
+  evaluateSharedGate,
+  assessEndingHistory,
+  advanceWrittenFinale,
+  normalizeWrittenFinale,
+  isWrittenFinaleActive,
+  writtenEndingArchive,
+  endingAmbientLine,
+  endingHomeGraffiti,
+  endingContinuationLine,
 } from '../story/endings/index.js';
 
 const ASHFALL = 'sector_ashfall_reach';
@@ -113,6 +123,7 @@ export const story = {
     const state = this.state, bus = this.bus;
 
     this._ensureState();
+    state.story.writtenFinale = this._validatedWrittenFinale(state.story.writtenFinale);
 
     // ── The core hook: missions advanced the story spine. Fire that beat's devices. ──────────
     bus.on('story:beatAdvanced', (p) => this._onBeatAdvanced(p || {}));
@@ -146,6 +157,11 @@ export const story = {
     bus.on('ui:endgameChoose', (p) => this._onEndgameChoose(p || {}));
     bus.on('ui:endgameConfirm', (p) => this._onEndgameConfirm(p || {}));
     bus.on('ui:endgameDecline', (p) => this._onEndgameDecline(p || {}));
+    // Read-only archive intent. The finale itself uses the existing comms/graffiti/HUD consumers.
+    bus.on('ui:endingArchiveOpen', () => {
+      const archive = this.getWrittenEndingArchive();
+      if (archive) this.bus.emit('endgame:archive', archive);
+    });
     bus.on('ui:endgameSandbox', (p) => this._onEndgameChoose({ ...(p || {}), choice: SANDBOX_ID, confirm: !!(p && p.confirm) }));
     bus.on('ui:endgameUnfiledJump', () => this._requestUnfiledJump());
     bus.on('ui:endgameUnfiledJumpConfirm', () => this.bus.emit('world:confirmUnfiledJump', { source: 'choice_c' }));
@@ -185,9 +201,13 @@ export const story = {
   // ── Per-tick: ambient + trap comms scheduling (skips while docked/paused/menu). ─────────────
   update(dt, state) {
     if (state.mode && state.mode !== 'flight') return;
-    if (state.ui && state.ui.docked) return; // comms go quiet in the dock (the board talks there)
     const s = state.story;
     if (!s) return;
+    // Sealed testimony owns the channel until its final line has had time to be read. Sim-time
+    // never advances in a paused game; docked flight may deliver if its simulation still runs.
+    this._pumpWrittenFinale();
+    if (this._writtenFinaleHoldsChannel()) return;
+    if (state.ui && state.ui.docked) return;
     this._pumpScheduled();
     s.ambientTimerS = (s.ambientTimerS || 0) - dt;
     if (s.ambientTimerS <= 0) {
@@ -203,8 +223,12 @@ export const story = {
     // No announcement — the player just starts noticing discrepancies if they're paying attention.
     this._maybeEarlyPhase2();
 
-    // B7 endgame gate check: once met, present the choice (once).
-    this._maybeOfferEndgame();
+    // Read the career ledger at most once per sim second, not on every 60 Hz frame. Dock/sector
+    // events still reconcile immediately. This clock is saved with the narrative state.
+    if ((s.endingGateNextAtS || 0) <= (state.simTime || 0)) {
+      s.endingGateNextAtS = (state.simTime || 0) + 1;
+      this._maybeOfferEndgame();
+    }
   },
 
   /** Phase 2 can begin early if the player is deeply hated by a law faction (rep <= -100).
@@ -301,6 +325,15 @@ export const story = {
     }
     const s = this.state.story;
     this._ensureState();
+    if (this._writtenFinaleHoldsChannel()) return;
+    if (s.endgameResolved && s.endgameChoice) {
+      const line = endingAmbientLine(s.endgameChoice, s.endingAmbientIndex);
+      if (line) {
+        s.endingAmbientIndex += 1;
+        this._fireComms(line);
+        return;
+      }
+    }
     if (!s.ambientQueue || !s.ambientQueue.length) this._rebuildAmbientQueue();
     const id = s.ambientQueue.shift();
     if (!id) return;
@@ -498,7 +531,11 @@ export const story = {
     // Post-ending airlock mutation re-surface on home dock.
     if (s.endgameChoice && ENDING_AIRLOCK_GRAFFITI[s.endgameChoice]
         && (stationId === 'station_helios' || stationId === s.flags.homeStationId)) {
-      this._showGraffiti(ENDING_AIRLOCK_GRAFFITI[s.endgameChoice], 'airlock', 7);
+      // Re-emit for the newly mounted hub; permanent dedupe would hide it after the first visit.
+      this.bus.emit('graffiti:show', {
+        line: endingHomeGraffiti(s.endgameChoice) || ENDING_AIRLOCK_GRAFFITI[s.endgameChoice],
+        where: 'airlock', beat: 7, author: null, dockedStationId: stationId,
+      });
     }
   },
 
@@ -585,14 +622,9 @@ export const story = {
     const s = state.story;
     if (!s || s.endgameChoice || s.endgameResolved || (s.flags && s.flags.sandboxContinued)) return;
     if (s.endgameOffered) return;                 // already presented
-    // The B7 gate (from missions.js _checkStoryGates): net worth >= 100k AND chosen-faction rep >= 50.
-    if (!(s.flags && s.flags.endgame)) return;    // missions sets flags.endgame when beatIndex reaches 7
+    // One gate shared with the pure evaluator: actual Deep Reach completion, or a ledger held
+    // after substantial independent work, and an encountered desk. Money is not permission to end.
     if (!this._endgameGateMet()) return;
-    // Place required: Deep Reach is desk + ledger, not a credit toast in Helios.
-    if (!(s.flags && s.flags.deep_reach_operation_complete)) return;
-    if (!(s.flags && (s.flags.ashfall_visited || s.flags.deep_reach_ashfall_docked || s.flags.kurtz_desk_opened))) {
-      return;
-    }
     s.endgameOffered = true;
     // Fire the board update + comms + bulkhead graffiti simultaneously (no cutscene — per the doc).
     this._showGraffiti(GRAFFITI.THEY_ALWAYS_KNEW, 'bulkhead', 7);
@@ -627,10 +659,7 @@ export const story = {
   },
 
   _endgameGateMet() {
-    // Use the same durable facts as per-ending eligibility. In particular, a capital hull is part
-    // of net worth; requiring the equivalent value again as liquid credits strands lawful owners.
-    const facts = snapshotEndingFacts(this.state);
-    return facts.netWorthCr >= ENDGAME_NET_WORTH_CR && facts.branchRep >= ENDGAME_REP_MIN;
+    return evaluateSharedGate(snapshotEndingFacts(this.state)).ok;
   },
 
   _availableChoices() {
@@ -648,6 +677,44 @@ export const story = {
 
   getBoardEligibleEndingIds() {
     return listBoardEligibleEndingIds(this.state);
+  },
+
+  getEndingAssessment() {
+    return assessEndingHistory(this.state);
+  },
+
+  getWrittenEndingArchive() {
+    return writtenEndingArchive(this.state && this.state.story && this.state.story.writtenFinale);
+  },
+
+  _writtenFinaleHoldsChannel() {
+    const rec = this.state && this.state.story && this.state.story.writtenFinale;
+    return !!(rec && (isWrittenFinaleActive(rec) || (this.state.simTime || 0) < rec.nextAtS));
+  },
+
+  _pumpWrittenFinale() {
+    const s = this.state && this.state.story;
+    if (!s || !s.writtenFinale) return false;
+    const advanced = advanceWrittenFinale(s.writtenFinale, this.state.simTime || 0);
+    if (!advanced.changed) return false;
+    // Commit the cursor BEFORE emitting. Re-entrant handlers and saves cannot replay this beat.
+    s.writtenFinale = advanced.state;
+    for (const item of advanced.events) {
+      if (item.event === 'comms:popup') this._fireComms(item.payload);
+      else if (item.event === 'graffiti:show') this._showGraffiti(item.payload.line, item.payload.where, 7);
+      else if (item.event === 'hud:phase') {
+        s.phase = item.payload.phase;
+        this.bus.emit(item.event, item.payload);
+      }
+    }
+    if (advanced.completed) {
+      // Queue before the notification so a save taken by its consumer also has the next objective.
+      this._schedulePostEndingObjective();
+      this.bus.emit('endgame:finaleCompleted', {
+        choice: s.writtenFinale.choiceId, receiptId: s.writtenFinale.receiptId,
+      });
+    }
+    return true;
   },
 
   _requestUnfiledJump() {
@@ -768,8 +835,8 @@ export const story = {
     if (!s || s.endgameResolved || s.endgameChoice) return;
     const pending = s.endgamePending && s.endgamePending.choice;
     const id = choice || pending;
-    if (!id) return;
-    if (pending && choice && pending !== choice) return; // must match staged choice
+    if (!pending || !id) return;
+    if (choice && pending !== choice) return; // confirm only a staged choice; revalidate at resolution
     this._resolveEndgameDisposition(id);
   },
 
@@ -806,6 +873,10 @@ export const story = {
     // Mark resolved BEFORE emitting intents so re-entrant handlers cannot double-apply.
     s.endgameResolved = true;
     s.endgamePending = null;
+    // A finalized record uses the pre-consequence facts. Never rebuild it after expungement,
+    // payment, a later murder, or a load; this is evidence from the moment of decision.
+    s.writtenFinale = plan.writtenFinale ? JSON.parse(JSON.stringify(plan.writtenFinale)) : null;
+    s.endingAmbientIndex = 0;
     s.flags = s.flags || {};
     if (plan.isSandbox) {
       s.endgameChoice = null;
@@ -831,7 +902,7 @@ export const story = {
         sender: 'CONCORD ADMIN',
         text: plan.hudOnAccept,
         category: 'story',
-        ttl: 0,
+        ttl: plan.writtenFinale ? 8 : 0,
         persist: true,
       });
     }
@@ -868,7 +939,9 @@ export const story = {
         resolution: plan.resolution,
         sandboxMode: plan.sandboxMode,
       });
-      this._sayStoryLine(plan.resolution || plan.title, 8);
+      // The finite accept line yields to the first transmission. Do not stack another toast here.
+      if (!plan.writtenFinale) this._sayStoryLine(plan.resolution || plan.title, 8);
+      this.bus.emit('endgame:finaleReady', this.getWrittenEndingArchive());
     }
     this._schedulePostEndingObjective();
   },
@@ -1238,7 +1311,12 @@ export const story = {
   _onPostEndingSignal(signal, payload) {
     const s = this.state && this.state.story;
     if (!s || !s.postEnding || !s.endgameResolved) return false;
-    const advanced = advancePostEndingContinuity(s.postEnding, signal, payload, this.state.simTime || 0);
+    // Native target scans may omit sectorId. Qualify them at the live boundary with the actual
+    // region, never the ambiguous string "current" (entity ids may repeat in another region).
+    const observed = signal === 'scan:completed' && !payload.sectorId
+      ? { ...payload, sectorId: this.state.world && this.state.world.currentSectorId }
+      : payload;
+    const advanced = advancePostEndingContinuity(s.postEnding, signal, observed, this.state.simTime || 0);
     if (!advanced.changed || !advanced.state) return false;
     s.postEnding = advanced.state;
     this.bus.emit('story:postEndingProgress', this._postEndingPublicPayload('progress'));
@@ -1257,13 +1335,13 @@ export const story = {
         });
       }
       this.bus.emit('story:replayHookUnlocked', this._postEndingPublicPayload('unlocked'));
-      this._fireComms({
+      // Use the regular saved queue; a completed finale holds that queue until its last line ends.
+      this._scheduleNarrative(0, {
+        kind: 'comms',
         id: 'replay_hook_' + s.postEnding.replayHookId,
         sender: s.postEnding.title,
-        text: 'Route logged. Further work available.',
-        category: 'story',
-        ttl: 7,
-        persist: false,
+        text: endingContinuationLine(s.postEnding.choiceId) || 'Route logged. Operations continue.',
+        category: 'story', ttl: 10, persist: true,
       });
     }
     return true;
@@ -1276,11 +1354,14 @@ export const story = {
   },
 
   _schedulePostEndingObjective() {
-    const rec = this.state && this.state.story && this.state.story.postEnding;
+    const s = this.state && this.state.story;
+    const rec = s && s.postEnding;
     if (!rec || !rec.objective) return false;
-    // Let the ending resolution line finish first. The normal deterministic story queue then
-    // surfaces one concise next objective through the existing one-voice path.
-    this._scheduleNarrative(6, {
+    const finale = s.writtenFinale;
+    if (isWrittenFinaleActive(finale) || (finale && finale.objectiveQueued)) return false;
+    if (finale) finale.objectiveQueued = true;
+    // Sealed testimony first, then one concise next objective. Sandbox keeps its existing cadence.
+    this._scheduleNarrative(Math.max(6, finale ? finale.nextAtS - (this.state.simTime || 0) : 6), {
       kind: 'comms',
       id: 'post_ending_' + rec.directiveId,
       sender: rec.title,
@@ -1660,6 +1741,12 @@ export const story = {
 
   _onLoaded() {
     this._ensureState();
+    // Migrate at the load boundary only. Old resolved saves receive no fabricated retrospective
+    // life, no replayed payout, and no reset to the beginning of a transmitted finale.
+    this.state.story.writtenFinale = this._validatedWrittenFinale(this.state.story.writtenFinale);
+    if (this.state.story.writtenFinale && !isWrittenFinaleActive(this.state.story.writtenFinale)) {
+      this._schedulePostEndingObjective();
+    }
     this._reconcileOrrinWitnessCase();
     if (!(this.state.story.ambientTimerS > 0)) this._rescheduleAmbient();
     this._recoverValeMilestones();
@@ -1679,11 +1766,21 @@ export const story = {
       s.scheduled = [];
       s.graffitiShown = {};
       s.endgameChoice = null;
+      // Clear only narrative-owned disposition flags. Missions still owns quest/new-world reset.
+      if (s.flags) {
+        const owned = ['sandboxContinued', 'identityErased', 'stayedAtAshfall', 'contract47bPending',
+          'sandbox_continued', 'no_final_disposition',
+          ...ENDING_DEFS.flatMap(def => def.consequenceIntents.flags)];
+        for (const flag of owned) delete s.flags[flag];
+      }
       s.endgameOffered = false;
       s.endgameDeclined = [];
       s.endgameResolved = false;
       s.endgamePending = null;
       s.postEnding = null;
+      s.writtenFinale = null;
+      s.endingAmbientIndex = 0;
+      s.endingGateNextAtS = 0;
       s.newGamePlus = null;
       s.persistentCargo = [];
       s.valeMilestones = { conflictFlip: null };
@@ -1705,6 +1802,9 @@ export const story = {
       if (!Array.isArray(s.endgameDeclined)) s.endgameDeclined = [];
       if (s.endgameResolved == null) s.endgameResolved = !!(s.endgameChoice || (s.flags && s.flags.sandboxContinued));
       if (s.endgamePending === undefined) s.endgamePending = null;
+      if (s.writtenFinale === undefined) s.writtenFinale = null;
+      if (!Number.isSafeInteger(s.endingAmbientIndex) || s.endingAmbientIndex < 0) s.endingAmbientIndex = 0;
+      if (!Number.isFinite(s.endingGateNextAtS) || s.endingGateNextAtS < 0) s.endingGateNextAtS = 0;
       s.postEnding = normalizePostEndingContinuity(s.postEnding);
       if (!s.postEnding && (s.endgameChoice || (s.flags && s.flags.sandboxContinued))) {
         const choice = s.endgameChoice || SANDBOX_ID;
@@ -1736,6 +1836,13 @@ export const story = {
     }
   },
 
+  _validatedWrittenFinale(raw) {
+    const s = this.state && this.state.story;
+    const rec = normalizeWrittenFinale(raw);
+    // A presentation record is only valid alongside its actually filed canonical outcome.
+    return rec && s && s.endgameResolved && s.endgameChoice === rec.choiceId ? rec : null;
+  },
+
   serialize() {
     // state.story is serialized by the missions system (it already includes story). We return the
     // narrative fields so the save system's missions path carries them. The save system calls
@@ -1755,17 +1862,24 @@ export const story = {
       if (carried.seenComms) s.seenComms = Object.assign({}, carried.seenComms);
       if (Array.isArray(carried.ambientQueue)) s.ambientQueue = carried.ambientQueue.slice();
       if (typeof carried.ambientTimerS === 'number') s.ambientTimerS = carried.ambientTimerS;
-      if (Array.isArray(carried.scheduled)) s.scheduled = carried.scheduled.slice();
+      s.scheduled = Array.isArray(carried.scheduled) ? carried.scheduled.slice() : [];
       if (carried.graffitiShown) s.graffitiShown = Object.assign({}, carried.graffitiShown);
-      if (carried.endgameChoice) s.endgameChoice = carried.endgameChoice;
-      if (carried.endgameOffered) s.endgameOffered = true;
-      if (Array.isArray(carried.endgameDeclined)) s.endgameDeclined = carried.endgameDeclined.slice();
-      if (carried.endgameResolved != null) s.endgameResolved = !!carried.endgameResolved;
-      else if (carried.endgameChoice || (carried.flags && carried.flags.sandboxContinued)) s.endgameResolved = true;
-      if (carried.endgamePending) s.endgamePending = carried.endgamePending;
-      if (carried.postEnding) s.postEnding = normalizePostEndingContinuity(carried.postEnding);
+      // The carried save is authoritative, not a union with the previously played captain.
+      // In particular, explicit null/false and absent legacy fields must clear stale dispositions.
+      s.endgameChoice = isEndingId(carried.endgameChoice) ? carried.endgameChoice : null;
+      s.endgameOffered = carried.endgameOffered === true;
+      s.endgameDeclined = Array.isArray(carried.endgameDeclined) ? carried.endgameDeclined.slice() : [];
+      s.endgameResolved = carried.endgameResolved === true || !!s.endgameChoice
+        || !!(carried.flags && carried.flags.sandboxContinued);
+      s.endgamePending = carried.endgamePending ? Object.assign({}, carried.endgamePending) : null;
+      s.writtenFinale = this._validatedWrittenFinale(carried.writtenFinale);
+      s.endingAmbientIndex = Number.isSafeInteger(carried.endingAmbientIndex) && carried.endingAmbientIndex >= 0
+        ? carried.endingAmbientIndex : 0;
+      s.endingGateNextAtS = Number.isFinite(carried.endingGateNextAtS) && carried.endingGateNextAtS >= 0
+        ? carried.endingGateNextAtS : 0;
+      s.postEnding = normalizePostEndingContinuity(carried.postEnding);
       if (carried.newGamePlus) s.newGamePlus = normalizeStoryNewGamePlusRecord(carried.newGamePlus);
-      if (Array.isArray(carried.persistentCargo)) s.persistentCargo = carried.persistentCargo.slice();
+      s.persistentCargo = Array.isArray(carried.persistentCargo) ? carried.persistentCargo.slice() : [];
       if (carried.valeMilestones && typeof carried.valeMilestones === 'object' && !Array.isArray(carried.valeMilestones)) {
         const flip = carried.valeMilestones.conflictFlip;
         s.valeMilestones = { conflictFlip: flip && typeof flip === 'object' ? Object.assign({}, flip) : null };
@@ -1773,9 +1887,10 @@ export const story = {
       if (carried.conflictReaction) {
         s.conflictReaction = normalizeConflictReactionState(carried.conflictReaction);
       }
-      if (carried.flags && typeof carried.flags === 'object') {
-        s.flags = Object.assign({}, s.flags || {}, carried.flags);
-      }
+      // Flags are a full save projection here. Merging would leak an earlier sandbox/identity
+      // disposition into the new life even when every canonical ending field was explicitly clear.
+      s.flags = carried.flags && typeof carried.flags === 'object' && !Array.isArray(carried.flags)
+        ? Object.assign({}, carried.flags) : {};
       if (!s.postEnding && (s.endgameChoice || (s.flags && s.flags.sandboxContinued))) {
         const choice = s.endgameChoice || SANDBOX_ID;
         s.postEnding = createPostEndingContinuity(choice, this.state.simTime || 0, this.state.meta && this.state.meta.seed);
