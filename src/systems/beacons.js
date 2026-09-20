@@ -14,7 +14,8 @@
 //
 // Owns state.beacons plus the transient buoy entities it spawns (§0.6). The state RECORD stays the
 // deterministic sim brain and the radar's data source; the spawned entity is presentation + physical
-// presence only (no interaction profile targets 'beacon', mass 1e6 keeps it anchored). Deploy is
+// presence only (no interaction profile targets 'beacon'; the physics statics layer builds it as a
+// FIXED body, which is what actually anchors it — mass is inert for fixed bodies). Deploy is
 // reached only through the player's deploy verb, so the deterministic 47a sim (which never deploys
 // one) is unaffected. The buoy is transient — not flags.persistent, so saves never serialize it and
 // the load path's transient-entity clear drops it; state.beacons resets on save:loaded to match.
@@ -66,11 +67,18 @@ export const beacons = {
     }
 
     this.bus.emit('economy:chargeCredits', { amount: BEACON_COST, reason: 'claim_beacon' });
-    const pos = { x: player.pos.x, z: player.pos.z };
+    // The buoy drops AFT of the hull, not centered in it: the physics statics layer builds the
+    // beacon entity as a fixed collider, and an r=5 ball spawned inside the player's capsule would
+    // depenetrate the ship in an arbitrary direction on every deploy. Record, lure, radar marker
+    // and entity all use this same dropped point.
+    const dropDist = (player.radius || 12) + 18;
+    const rot = Number.isFinite(player.rot) ? player.rot : 0;
+    const pos = {
+      x: player.pos.x - Math.cos(rot) * dropDist,
+      z: player.pos.z - Math.sin(rot) * dropDist,
+    };
     const node = this._nearestNode(state, pos);
     const expireAt = (state.simTime || 0) + BEACON_TTL;
-    // A beacon is a lightweight state record — not a spawned entity — so it can't perturb the
-    // renderer/physics/entity-index (no beacon mesh exists) and is drawn straight from state.beacons.
     const rec = {
       id: 'beacon_' + (this._nextId++),
       x: pos.x, z: pos.z,
@@ -137,6 +145,9 @@ export const beacons = {
         storyPropKind: 'claim_beacon',
         claimBeaconId: rec.id,
         tetherable: true,
+        // The latch gate's real field (src/systems/tetherGameplay.js reads data.masslineTetherable);
+        // `tetherable` above stays as descriptive metadata matching the other story-prop writers.
+        masslineTetherable: true,
       },
     });
     return (ent && ent.id != null) ? ent.id : null;

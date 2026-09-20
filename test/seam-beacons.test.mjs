@@ -30,7 +30,9 @@ test('a claim beacon plants a record at the player and charges credits', () => {
     bus.emit('beacon:deploy');
     assert.equal(state.beacons.length, 1);
     assert.equal(state.beacons[0].alive, true);
-    assert.equal(state.beacons[0].x, 12);
+    // The beacon drops AFT of the hull (facing defaults to +x with no rot): the buoy entity is a
+    // fixed physics collider, so it must never spawn centered inside the player's capsule.
+    assert.equal(state.beacons[0].x, 12 - 30);
     assert.equal(state.beacons[0].z, -8);
     assert.equal(charges.length, 1);
     assert.equal(charges[0].amount, 250);
@@ -63,6 +65,7 @@ test('deploying a beacon also spawns its world buoy through the entity contract'
     assert.equal(spec.data.storyPropKind, 'claim_beacon');
     assert.equal(spec.data.claimBeaconId, rec.id);
     assert.equal(spec.data.tetherable, true);
+    assert.equal(spec.data.masslineTetherable, true);
     assert.equal(spec.mass, 1e6);
   } finally {
     bus.clear();
