@@ -3421,13 +3421,18 @@
       "source": "assets/ships/parts/places/place_dead_hulk.glb",
       "release": "assets/ships/release/parts/places/place_dead_hulk.glb",
       "sourceSha256": "65d65241df9f0c619ed280473e9a045303c985ea4ab408fe28a483e86a4582bb",
-      "releaseSha256": "d50f077e7b8c51611d7d4c2e7491f4f8db37057556d70f4c9ce771ba660b4d8f",
+      "releaseSha256": "5aa5868c64e80d50724614b89cfcbe411cd76b3a16115d72c252d3daea47fee8",
       "sourceBytes": 5456352,
-      "releaseBytes": 3543104,
+      "releaseBytes": 1944544,
       "textures": 24,
       "ktx2Textures": 24,
       "meshoptBufferViews": 81,
-      "contractNodeCount": 26
+      "contractNodeCount": 26,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_debris_chunk",
@@ -3435,13 +3440,18 @@
       "source": "assets/ships/parts/places/place_debris_chunk.glb",
       "release": "assets/ships/release/parts/places/place_debris_chunk.glb",
       "sourceSha256": "e4de39f1d97f495841700ee119d4aa783ffa18dd39972e6ba8725c6114a684bb",
-      "releaseSha256": "a302a3136541e549ae6a17589339f8389a9a01b8d63193e39ecec573eb4e0795",
+      "releaseSha256": "1b3e131dfb51106b1a42f85e97ce148237848c77b202e59f9d58827321b9ee8a",
       "sourceBytes": 4220396,
-      "releaseBytes": 2904112,
+      "releaseBytes": 1542516,
       "textures": 27,
       "ktx2Textures": 27,
       "meshoptBufferViews": 85,
-      "contractNodeCount": 26
+      "contractNodeCount": 26,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_dock_interior",
@@ -3449,13 +3459,18 @@
       "source": "assets/ships/parts/places/place_dock_interior.glb",
       "release": "assets/ships/release/parts/places/place_dock_interior.glb",
       "sourceSha256": "37edf82fc5bfc4ccc61a3b8907f019459a3e1905f8ce92d5f82bd4c2d2779280",
-      "releaseSha256": "e47a986ce1632bd6a96d0f055b9923a7149aac26967effb15b02705303f1d125",
+      "releaseSha256": "713201d7ed9075e51692114e3b1b406726ca8f709f51b14b411444e37af7155c",
       "sourceBytes": 23024512,
-      "releaseBytes": 17147348,
+      "releaseBytes": 8865692,
       "textures": 37,
       "ktx2Textures": 37,
       "meshoptBufferViews": 53,
-      "contractNodeCount": 12
+      "contractNodeCount": 12,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_gate_jump_ring",
