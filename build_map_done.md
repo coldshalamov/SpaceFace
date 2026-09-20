@@ -7,6 +7,13 @@ When a unit or campaign closes, move its entry here from build_map.md: keep the 
 
 ---
 
+### PQ-206.01 — swarm first-pass combat value (2026-09-20)
+
+Landed in `724342234`: earlier target-facing warning, a short pulse burst, and corrected NPC
+ballistic lead make fragile swarmers land 2–3 hits before the armed starter destroys them.
+Five fixed seeds, 55 focused tests, and live New Game/save/Continue passed; health is unchanged.
+Receipt and existing baseline-failure attribution: [PQ-206](./design/program/roadmap/active/PQ-206.md#pq-20601-completed-2026-09-20).
+
 ### 1B.1 Retained campaign laws (verbatim from the previous front door)
 
 **PQ-050 campaign law:** Hitch/Kestrel stays frozen. Stay off INFERENCE, the
@@ -699,5 +706,4 @@ by the integrator; nothing below is an owner ruling until the owner says so.
   [`PQ-195.00-REPORT.md`](./design/program/roadmap/receipts/PQ-195.00-REPORT.md).
 - Cost: SP-07 spindle + capture fork authored through material-truth preflight and wired on the
   ordinary route; Wave 1b + Wave 2b PARTIAL + inline R1-R4 close + Wave 3 fixed-and-verified.
-
 
