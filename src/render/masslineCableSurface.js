@@ -15,9 +15,10 @@
 // ALLOCATION. Every buffer is created once and reused. The writers only ever move floats and the
 // draw range; they never resize, never allocate and never replace a typed array.
 import * as THREE from 'three';
+import { MASSLINE_CABLE_SEGMENT_CAPACITY } from './masslinePresentation.js';
 
-/** Span capacity of one ribbon draw. Reached only by a whipping, shivering, deeply bowed line. */
-export const MASSLINE_CABLE_SEGMENT_CAPACITY = 48;
+/** One source of truth: the planner clamps to the same number this file allocates. */
+export { MASSLINE_CABLE_SEGMENT_CAPACITY };
 /** Ferrules per line. Fixed on purpose: a count that tracked chord would pop hardware in and out. */
 export const MASSLINE_CABLE_COLLAR_COUNT = 10;
 

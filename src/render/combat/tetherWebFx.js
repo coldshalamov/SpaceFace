@@ -54,7 +54,10 @@ export class TetherWebFx {
     this.lay = resolveMasslineWebStrandProfile({ slack: 0, maxSlack: MAX_SLACK_WU });
     this.a = { x: 0, z: 0 };
     this.b = { x: 0, z: 0 };
-    scene.add(this.mesh);
+    // Match the sibling ArcadeStructuralFx contract: vfx.js is constructed against stub scenes in
+    // several harnesses, and an unguarded add() there aborts the whole VFX init.
+    // (Pre-existing since d588e4888; teardown already tolerates it via mesh.removeFromParent().)
+    if (scene && typeof scene.add === 'function') scene.add(this.mesh);
   }
 
   update(state) {

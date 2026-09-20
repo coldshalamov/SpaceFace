@@ -449,6 +449,12 @@ function clamp01(x) {
 
 /** Below this a straight span is already pixel-exact: the shader's travel is a varying, not a mesh. */
 const CABLE_SEGMENT_FLOOR = 6;
+/**
+ * Spans the resident cable buffer holds. Reached only by a whipping, shivering, deeply bowed line.
+ * src/render/masslineCableSurface.js allocates against this exact number and re-exports it, so the
+ * planner can never ask for a span the buffer does not have.
+ */
+export const MASSLINE_CABLE_SEGMENT_CAPACITY = 48;
 /** Chord-to-arc error accepted per span, in world units (~0.8 px at the supported gameplay camera). */
 const CABLE_SAGITTA_TOLERANCE_WU = 0.045;
 /** Samples per spatial cycle of a travelling term that is actually running this frame. */
@@ -483,7 +489,7 @@ export function resolveMasslineCableProfile(input = {}, out = {}) {
   const shiverAmplitude = Math.abs(finite(input.shiverAmplitude, 0));
   const capacity = Math.max(
     CABLE_SEGMENT_FLOOR,
-    Math.trunc(finite(input.segmentCapacity, CABLE_SEGMENT_FLOOR)),
+    Math.trunc(finite(input.segmentCapacity, MASSLINE_CABLE_SEGMENT_CAPACITY)),
   );
 
   // Two independent sampling needs, both honest about what is actually moving this frame.
