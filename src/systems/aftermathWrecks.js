@@ -1,7 +1,9 @@
 // aftermathWrecks.js - BP-01/C11 Battle-Aftermath Persistence.
 //
-// Event-sourced battle residue. Live `entity:killed` events inside named sector zones become
-// bounded, durable aftermath markers. On sector entry those markers materialize as ordinary wreck
+// Event-sourced battle residue. Live `entity:killed` events anywhere in a sector become bounded,
+// durable aftermath markers. A named sector zone gives the marker its name and threat band; a kill
+// in the open black between zones is remembered just as durably, anchored to its position under
+// the sector's zone-less wreck field. On sector entry those markers materialize as ordinary wreck
 // entities so the shipped scanner/mining/salvage-action paths can read them without combat,
 // salvage, or sectorSim edits.
 
@@ -346,7 +348,8 @@ function newsLine(marker) {
   const zone = marker.zoneName || 'a local zone';
   if (isPlayerWreckMarker(marker)) return `Your hull still drifts in ${zone}.`;
   const victim = marker.victimClass || 'ship';
-  return `Aftermath reported in ${zone}: ${victim} wreckage now drifting on the lane.`;
+  const where = marker.zoneId ? `drifting on the lane` : `drifting in the open`;
+  return `Aftermath reported in ${zone}: ${victim} wreckage now ${where}.`;
 }
 
 function normalizeStructurePatch(input) {
@@ -399,7 +402,6 @@ function makeMarker(state, payload, entity) {
   if (!pos) return null;
   const local = globalToSectorLocalForSector(pos, sectorId);
   const zone = zoneAt(sectorId, local.x, local.z);
-  if (!zone) return null;
   const type = entity && entity.type || payload && payload.type;
   if (!SHIPLIKE_TYPES.has(type)) return null;
   const victimId = entity && entity.id != null ? entity.id : payload && payload.id;
@@ -418,10 +420,13 @@ function makeMarker(state, payload, entity) {
     schemaVersion: STATE_VERSION,
     markerId: markerIdFor(state, sectorId, { ...payload, id: victimId, encounterFingerprint }),
     sectorId,
-    zoneId: zone.id,
-    zoneName: zone.name || zone.id,
-    zoneType: zone.type || null,
-    zoneThreat: zoneThreat(zone),
+    // Zone-less kills keep the same durable contract as zone kills (the player-wreck path has
+    // always worked this way): the marker is position-anchored, named "open space", and groups
+    // into the sector's zone-less wreck field via aftermathFieldId's null fallback.
+    zoneId: zone ? zone.id : null,
+    zoneName: zone ? (zone.name || zone.id) : 'open space',
+    zoneType: zone ? (zone.type || null) : null,
+    zoneThreat: zone ? zoneThreat(zone) : 0,
     pos,
     victimId,
     victimClass,
@@ -905,7 +910,8 @@ export const aftermathWrecks = {
 
   // Production init order registers this system before mining. By the time mining observes the same
   // entity:killed event, the durable marker therefore exists and can author the one immediate wreck
-  // spec. Returning null is deliberate: kills outside named zones keep mining's ordinary fallback.
+  // spec. Returning null is now rare: only non-shiplike or unplaceable kills fall back to mining's
+  // ordinary anonymous wreck.
   immediateWreckPlan(payload) {
     const entity = entityFor(this.state, payload && payload.id);
     const candidate = makeMarker(this.state, payload || {}, entity);
@@ -1335,7 +1341,9 @@ export const aftermathWrecks = {
     if (!markers.length) return;
     const groups = new Map();
     for (const marker of markers) {
-      if (!marker || !marker.zoneId) continue;
+      if (!marker) continue;
+      // Zone-less markers group into the sector's shared zone-less field ('aft:<sector>:zone')
+      // so open-space battles feed the same wreck-field ecology a named zone gets.
       const key = aftermathFieldId(marker.sectorId, marker.zoneId);
       const group = groups.get(key) || [];
       group.push(marker);

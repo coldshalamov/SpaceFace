@@ -448,19 +448,22 @@ test('salvaging a travel-rematerialized wreck clears the same marker and cannot 
   aftermathWrecks.destroy();
 });
 
-test('ship kill outside every named zone retains the ordinary anonymous mining wreck path', () => {
+test('ship kill outside every named zone keeps the durable aftermath identity too', () => {
   const h = integratedHarness();
   const victim = addVictim(h.state, outsideZonePos());
   h.bus.emit('entity:killed', killPayload(victim));
 
-  assert.equal(aftermathForSector(h.state, SECTOR_ID).length, 0);
+  const markers = aftermathForSector(h.state, SECTOR_ID);
+  assert.equal(markers.length, 1, 'open-space kills record a durable marker like zone kills');
+  const marker = markers[0];
+  assert.equal(marker.zoneId, null);
+  assert.equal(marker.zoneName, 'open space');
+
   assert.equal(wrecks(h.state).length, 1);
   const wreck = wrecks(h.state)[0];
-  assert.equal(wreck.data.name, 'Salvage Wreck');
-  assert.equal(wreck.data.markerId, undefined);
-  assert.equal(wreck.data.provenance, undefined);
-  assert.deepEqual(wreck.data.salvagePool, { cmdty_scrap_metal: 4 });
-  assert.equal(h.state.rngCalls(), 2, 'ordinary fallback keeps its existing deterministic loot rolls');
-  assert.equal(entries(h.bus, 'aftermathWreck:spawned').length, 0);
+  assert.equal(wreck.data.markerId, marker.markerId, 'mining spawns the wreck bound to the marker');
+  assert.equal(wreck.data.provenance.markerId, marker.markerId);
+  assert.equal(wreck.data.provenance.zoneName, 'open space');
+  assert.equal(entries(h.bus, 'aftermathWreck:spawned').length, 1);
   aftermathWrecks.destroy();
 });
