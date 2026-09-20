@@ -2217,6 +2217,11 @@ export const vfx = {
       if (this._weaponPresenter && typeof this._weaponPresenter.reproject === 'function') {
         this._weaponPresenter.reproject(ox, oz);
       }
+      // The player's recorded wake is world-space history, so a frame rebase has to carry it or the
+      // ship flies out of its own contrail and the whole wake pops out for a second and a bit.
+      // Unlike the NPC ribbons above it is not cleared: the samples are still true, they just need
+      // re-expressing in the new frame. Optional-called so an older plasmaStream is a no-op.
+      this._energy?.plasmaStream?.reproject?.(ox, oz);
       this._arcadeStructural?.reproject(dx, dz);
       this._fieldGeom?.reproject(ox, oz);
     }
