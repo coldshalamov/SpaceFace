@@ -578,6 +578,11 @@ export const encounterDirector = {
     // other current/future authored gate remains enforced through the same fail-closed evaluator.
     if (!this._gatesPass(shape, state, { ignoreMinSectorTier: ceresActivityAmbush })) return gateDefer();
     if (shape.proximity && !this._playerNearItemZone(item)) {
+      // The authored Ceres throughline ambush is anchored to its killbox, not to a spawnable
+      // zone: relocating it would detach the telegraph from the durable cohort still holding
+      // the authored band, and the 300 s prey deadline would spend the one-shot crossing on a
+      // fight that physically cannot happen. It waits (replan carries it) instead of fizzling.
+      if (ceresActivityAmbush) return defer();
       // Proximity-starved combat beats relocate to the player instead of dissolving: a hunter
       // parked far from every authored zone (deep mining field, salvage pin, off-lane drift)
       // must still be offered fights. Civilian/ambient props keep their zone anchoring.
@@ -1788,7 +1793,6 @@ export const encounterDirector = {
     const playerId = state.playerId;
     const data = attacker.data || (attacker.data = {});
     const ai = data.ai || (data.ai = {});
-    ai.mercyStrikes = (ai.mercyStrikes | 0) + 1;   // persists on the attacker: repeat pins re-qualify fast
     // An encounter-owned squad resolves through its own script machinery; the ambient harasser
     // gets the same stand-down the encounter scripts use (ai.passive + motive spent).
     let encounterId = null;
@@ -1797,7 +1801,10 @@ export const encounterDirector = {
       const live = dir.live[lid];
       if (live.ids.includes(attacker.id)) {
         encounterOwned = true;
-        if (live.data && live.data.adoptedWorldActors === true) break;
+        // Adopted world actors (the authored Ceres ambush cohort) own their depart/deadline
+        // lifecycle: mercy cannot stand them down, so it must not claim a disengage that never
+        // happens — the strikes bump would re-qualify the pin in 90 s and repeat a false toast.
+        if (live.data && live.data.adoptedWorldActors === true) return;
         if (live.phase !== 'done') {
           encounterId = live.id;
           this.resolve(live, 'escaped');
@@ -1805,6 +1812,7 @@ export const encounterDirector = {
         break;
       }
     }
+    ai.mercyStrikes = (ai.mercyStrikes | 0) + 1;   // persists on the attacker: repeat pins re-qualify fast
     if (!encounterOwned) {
       const hadPassive = ai.passive === true;
       ai.passive = true;                    // engagementAuthority denies fire; the stack resumes patrol

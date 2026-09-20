@@ -121,6 +121,28 @@ test('the starvation clock survives the sector-day replan that resets per-item d
   assert.ok(tele && tele.payload.relocated, 'relocation fires despite the replan');
 });
 
+test('the authored Ceres throughline ambush never relocates off its killbox', () => {
+  const h = makeHarness();
+  h.state.world.currentSectorId = 'sector_ceres_belt';
+  const item = h.pendingItem();
+  item.encounterId = 'ceres:activity:throughline-ambush';
+  item.squadId = 'ceres:activity:throughline-ambush';
+  item.shapeId = 'ambush_snare';
+  item.script = 'ambush';
+  item.sectorId = 'sector_ceres_belt';
+  item.zoneId = 'zone_ceres_ambush';
+  item.data = { ceresActivityAmbush: true };
+  h.state.encounterDirector.pending.push(item);
+  // Starvation clock matures (the sector sees only unreachable combat zones), but the authored
+  // one-shot must wait for the player at its authored band — never relocate beside a parked
+  // player and never gate-fizzle the durable item out of the queue.
+  h.pumpUntil(300);
+  assert.equal(h.events.filter((e) => e.name === 'encounter:telegraph').length, 0, 'no telegraph off the killbox');
+  assert.equal(h.events.filter((e) => e.name === 'encounter:spawned').length, 0, 'no spawn off the killbox');
+  assert.ok(h.state.encounterDirector.pending.includes(item), 'authored item still queued');
+  assert.equal(item.defers, 0, 'waits on plain defer, never the fizzle counter');
+});
+
 test('a player near the authored zone fires in place, without relocation or starvation stamping', () => {
   const h = makeHarness();
   const item = h.pendingItem({ x: 400, z: 0 }); // inside the reach band of the parked player
