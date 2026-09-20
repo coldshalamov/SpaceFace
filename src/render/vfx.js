@@ -10,7 +10,7 @@
 //   Public surface:  EVENT_LIGHT_POOL_SIZE (L15), eventLightPoolSizeFor (L16), vfx{} (L85), createVfxPrecompileSalvo (L2510)
 //   Lifecycle:       init (L88) · inspect/diagnostics (L126) · _initPools (L147) · _subscribe (L256) · update (L1928)
 //   Spawn helpers:   _spawnParticle (L318) · _spawnSprite (L337) · _activate/_retireParticle (L371/377) · _activate/_retireSprite (L394/399)
-//   Combat effects:  _onFire/muzzle flash (L590) · _onProjectileHit (L635) · _onDamage/shield ripple (L676) · _impactSparks (L746)
+//   Combat effects:  _onFire/muzzle flash (L590) · _onProjectileHit (L635) · _onDamage/shield ripple (L676)
 //   VFX NEXT ports:  impact_concussion → 'concussive-slam' case + _onCollisionConsequence ·
 //                    destruction_light → _emitDestructionLightBeats (ignition, non-capital) ·
 //                    massline_latch → _onTetherLatch · massline_tension → _updateTetherCable ·
@@ -4004,32 +4004,6 @@ export const vfx = {
     }
     // player hits get a camera kick — STRONGER, proportional to damage
     if (p.isPlayer && (p.amount || 0) > 0) this.bus.emit('camera:shake', { amount: Math.min(0.5, 0.08 + (p.amount || 0) * 0.015) });
-  },
-
-  _impactSparks(x, z, dir, color, n) {
-    this._c0.set('#ffffff'); this._c1.set(color);
-    const base = dir ? Math.atan2(dir.z, dir.x) + Math.PI : Math.random() * Math.PI * 2; // reflect-ish
-    const count = Math.max(5, Math.round(n * (this._burst || 1)));
-    // primary spark spray — tighter cone along the reflection direction, fast and bright
-    for (let k = 0; k < count; k++) {
-      const a = base + (Math.random() - 0.5) * 1.4;
-      const sp = 22 + Math.random() * 40;
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 0.25 + Math.random() * 0.15, 2.0, 0.0, this._c0, this._c1, 2.8, 0, 0);
-    }
-    // secondary slower sparks — wider spread, dimmer, for lingering debris feel
-    this._c0.set('#ffc060'); this._c1.set('#401008');
-    const slow = Math.max(2, Math.round(count * 0.35));
-    for (let k = 0; k < slow; k++) {
-      const a = base + (Math.random() - 0.5) * 2.4;
-      const sp = 8 + Math.random() * 15;
-      this._spawnParticle(x, z, Math.cos(a) * sp, Math.sin(a) * sp, 0.4 + Math.random() * 0.25, 1.5, 0.3, this._c0, this._c1, 1.5, 0, 0);
-    }
-    // hot impact flash — BIGGER white core punch
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.08, 2.8, 5.0, 1.0, 0.0, '#ffffff', 0, 0);
-    // coloured outer halo — larger and longer
-    this._spawnSprite(SPR_FLASH, x, 0, z, 0.15, 4.0, 7.0, 0.65, 0.0, color, 0, 0);
-    // impact light flash
-    this._flashLight({ x, z }, color, 2.5, 14, 100);
   },
 
   _onPresentationCue(p) {
