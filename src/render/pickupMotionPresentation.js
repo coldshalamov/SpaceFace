@@ -6,8 +6,14 @@
 //   2. Magnetic Tractor Vortex: When pulled toward the ship's cargo bay, pickups accelerate their
 //      tumble and spiral inward in a magnetic funnel, compressing into the intake scoop.
 //   3. Transponder Warning Strobes: Rhythmic aviation-grade double-flash sequences on chits and canisters.
+//   4. Intake response: inside the last stretch the spin SETTLES, the body turns to face the
+//      scoop and is drawn in lengthwise. Collection is the object arriving — a thing the player
+//      chased, turning and going in — not a reward firework thrown around where it used to be.
 //
 // PURE RENDER-ONLY PRESENTATION: Never modifies physical collection radii or sim cargo quantities.
+// Nothing here writes to the entity, creates a pickup or adds a body; it only poses the mesh the
+// cargo system already owns. Cosmetic debris (src/render/vfx/fragmentFamilies.js) is a different
+// class of matter entirely and is never collectible.
 
 function hashId(id) {
   const s = String(id || '');
@@ -75,6 +81,60 @@ export function resolveTractorScaleTarget(distanceWu) {
   return Math.max(0.15, d / 25.0);
 }
 
+// --- Intake: the last stretch ----------------------------------------------------------------
+// Collection is a thing arriving, not a reward going off. The magnet grabs the drop and spins it
+// up; then, inside the intake range, the spin SETTLES, the body turns to face the scoop, and it is
+// drawn in lengthwise. That sequence — grab, spiral, align, swallow — is the whole feedback, and
+// it is carried by the actual object the player was chasing, so nothing radial has to be invented.
+
+export const TRACTOR_INTAKE_RANGE_WU = 28;   // alignment begins here
+export const TRACTOR_INTAKE_MOUTH_WU = 6;    // fully aligned by here
+
+/** Smoothstep. */
+function ease(x) {
+  const t = x < 0 ? 0 : (x > 1 ? 1 : x);
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * How much the intake owns the pose, 0..1. 0 outside the intake range (free tumble), 1 at the
+ * scoop mouth (fully aligned on the approach axis). NaN-safe.
+ */
+export function resolveIntakeAlignment(distanceWu) {
+  const d = Number(distanceWu);
+  if (!Number.isFinite(d) || d >= TRACTOR_INTAKE_RANGE_WU) return 0;
+  const span = TRACTOR_INTAKE_RANGE_WU - TRACTOR_INTAKE_MOUTH_WU;
+  return ease((TRACTOR_INTAKE_RANGE_WU - d) / span);
+}
+
+/**
+ * Anisotropic intake response: squeezed across the throat, drawn out along the approach.
+ * Writes { transverse, along } multipliers into `out`.
+ */
+export function resolveIntakeStretch(alignment, out = null) {
+  const rec = out || { transverse: 1, along: 1 };
+  const a = Number.isFinite(alignment) ? Math.min(1, Math.max(0, alignment)) : 0;
+  rec.transverse = 1 - 0.28 * a;
+  rec.along = 1 + 0.42 * a;
+  return rec;
+}
+
+/**
+ * Yaw that points the body's local +Z at the collector, for a mesh whose Euler is applied XYZ.
+ * `dx`/`dz` run from the drop toward the collector.
+ */
+export function resolveIntakeYaw(dx, dz) {
+  return Math.PI / 2 - Math.atan2(Number(dz) || 0, Number(dx) || 0);
+}
+
+/** Shortest-arc blend between two angles; keeps the turn from unwinding the long way round. */
+function blendAngle(from, to, weight) {
+  let delta = (to - from) % (Math.PI * 2);
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  if (delta < -Math.PI) delta += Math.PI * 2;
+  return from + delta * weight;
+}
+
 /**
  * Deterministic ambient funnel-mote stream phase for VFX: `cycle` runs 0 (drop rim) → 1 (scoop)
  * on a ~0.7 s loop keyed to sim time, `angle` precesses so motes describe the funnel wall.
@@ -93,6 +153,7 @@ export function resolveFunnelMoteStream(seed, simTime, out = null) {
 export function createPickupMotionTracker() {
   const pickupStates = new Map();
   const vortexScratch = { radius: 0, x: 0, z: 0 };
+  const stretchScratch = { transverse: 1, along: 1 };
 
   function getState(pickupId) {
     let rec = pickupStates.get(pickupId);
@@ -129,18 +190,24 @@ export function createPickupMotionTracker() {
     let isMagnetized = false;
     let distToPlayer = 9999;
     let pullFactor = 0;
+    let approachYaw = 0;
 
     if (playerEntity && playerEntity.pos && entity.pos) {
       const dx = playerEntity.pos.x - entity.pos.x;
       const dz = playerEntity.pos.z - entity.pos.z;
       distToPlayer = Math.hypot(dx, dz);
+      approachYaw = resolveIntakeYaw(dx, dz);
 
       pullFactor = resolveTractorPullFactor(distToPlayer);
       isMagnetized = isTractorMagnetized(pullFactor);
     }
 
-    // Dynamic tumble acceleration under tractor pull
-    const tumbleMultiplier = isMagnetized ? (1.0 + pullFactor * 3.5) : 1.0;
+    // The intake takes over the pose in the last stretch: the tumble settles instead of spinning
+    // ever faster into the hull, so the player sees the object turn and go in rather than vanish.
+    const alignment = resolveIntakeAlignment(distToPlayer);
+
+    // Dynamic tumble acceleration under tractor pull, released again as the intake claims it.
+    const tumbleMultiplier = isMagnetized ? (1.0 + pullFactor * 3.5 * (1 - alignment)) : 1.0;
     if (!reducedMotion) {
       rec.rotX += rec.pitchSpin * tumbleMultiplier * dt;
       rec.rotY += rec.spinSpeed * tumbleMultiplier * dt;
@@ -169,15 +236,24 @@ export function createPickupMotionTracker() {
       || (mesh.children && mesh.children[0])
       || mesh;
 
-    targetObj.rotation.x = rec.rotX;
-    targetObj.rotation.y = rec.rotY;
-    targetObj.rotation.z = rec.rotZ;
+    // Applied pose. The accumulators keep running underneath, so if the pull is broken the drop
+    // picks its own tumble back up instead of staying frozen in the intake attitude.
+    targetObj.rotation.x = rec.rotX * (1 - alignment);
+    targetObj.rotation.y = alignment > 0 ? blendAngle(rec.rotY, approachYaw, alignment) : rec.rotY;
+    targetObj.rotation.z = rec.rotZ * (1 - alignment);
 
     targetObj.position.x = vortexOffsetX;
     targetObj.position.y = bob;
     targetObj.position.z = vortexOffsetZ;
 
-    if (rec.scaleRatio < 0.98) {
+    const scale = targetObj.scale;
+    if (alignment > 0 && scale && typeof scale.set === 'function') {
+      // Squeezed across the throat and drawn out along the approach: the body is being taken in,
+      // not shrunk in place. Local +Z is the approach axis once the yaw blend has landed.
+      const stretch = resolveIntakeStretch(alignment, stretchScratch);
+      const s = rec.scaleRatio;
+      scale.set(s * stretch.transverse, s * stretch.transverse, s * stretch.along);
+    } else if (rec.scaleRatio < 0.98) {
       targetObj.scale.setScalar(rec.scaleRatio);
     }
   }
