@@ -8,7 +8,6 @@ import {
   HITCH_CATCHUP_STEPS,
   LOOP_FIXED_DT,
   frameSimStepCap,
-  isHitchFrame,
 } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities } from '../world/presentationSources.js';
@@ -839,7 +838,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // clock restarts. A draw throw must not undo the sim that already ran this callback.
       let presentationMs = 0;
       let presentationError = null;
-      const hitchFrame = !restoring && isHitchFrame(frameDt, fixedDt);
       const stepCap = restoring
         ? undefined
         : frameSimStepCap({ frameDt, fixedDt, maxSteps: simulationRunner.maxSteps });
@@ -912,15 +910,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       };
       // A restore frame's picture is out; settle its accumulator without advancing the clock.
       if (restoring && !destroyed && !suspended) advanceSimulation(frameDt, true, undefined, perf);
-      // Sim and picture are both done. A hitch or restore callback is already late, so it offers
-      // the compile drain only what truly remains of this callback, never the nominal budget.
-      if (hitchFrame || restoring) {
-        const remainMs = Math.max(0, frameBudgetMs - (measureNow() - callbackStart));
-        diagnostics.lastLeftoverMs = remainMs;
-        drainAfterPresentCompile(remainMs);
-      } else {
-        drainAfterPresentCompile(diagnostics.lastLeftoverMs);
-      }
+      // Sim and picture are both done. The compile drain is offered what TRULY remains of this
+      // callback — the frame budget less everything already spent, sim included — on every frame.
+      // Budgeting against the present alone ignored two or three catch-up steps, so a 40 ms swarm
+      // frame that had already spent 24 ms was still offered six more for shader admission: the
+      // band the owner's iGPU lives in during a fight, and the cost its worst freezes are made of.
+      const remainMs = Math.max(0, frameBudgetMs - (measureNow() - callbackStart));
+      diagnostics.lastLeftoverMs = remainMs;
+      drainAfterPresentCompile(remainMs);
       drainArrivalSlices();
       diagnostics.lastLeftoverStepCap = stepCap ?? frameSimStepCap({ maxSteps: simulationRunner.maxSteps });
       if (presentationError) throw presentationError;

@@ -80,11 +80,19 @@ Every row was reproduced, fixed, given a test that quotes the owner, and committ
 |---|---|---|---|---|
 | Open flight, settled | **60.0** | 0 / 0 / 0 | 100 % | healthy when the host is quiet |
 | Open flight, first 20 s | 36 | 25 % / 7 % / 2 | 93 % | opening admission still leaks into flight → `.02` |
-| **Crucible swarm**, 10 hostiles | **42** | 11.7 % / 5.8 % / **21 in 30 s** | 89 % | worst 250 ms → `.00` |
+| Crucible swarm, 10 hostiles — before the compile-budget fix (host 50 % busy) | 42 | 11.7 % / 5.8 % / 21 in 30 s | 89 % | worst 250 ms |
+| **Crucible swarm**, 10 hostiles — after it (host 32 % busy, two runs) | **57–58** | 1.3–1.9 % / 0.2–0.4 % / **1 in 30 s** | 99 % | worst 183–200 ms → `.00` |
 
-The Crucible's worst freezes are 15–20 ms of game work plus **120–146 ms of pipeline admission and
-a 127 ms first-draw link**, clustered inside one second: a wave arriving with hull types the GPU
-has never drawn. That is now the largest felt defect in the mode the owner cares most about.
+The first Crucible reading's worst freezes were 15–20 ms of game work plus **120–146 ms of pipeline
+admission**. One cause was in the loop itself: the compile drain was budgeted against the present
+alone, so a 40 ms swarm frame that had already spent 24 ms was still offered six more for shader
+admission. It is now offered only what truly remains of the callback, sim included. The two
+readings were taken at different host loads (50 % vs 32 % busy), so the gain is the fix **and** a
+quieter machine; what is solid is that two consecutive runs agree.
+
+What remains is **one reproducible freeze of 183–200 ms about 22 s into seed 4242**: a 22–26 ms
+sim frame (a wave spawning) followed by ~200 ms outside the game's callback (the driver linking
+and uploading hull types the GPU has never drawn). That single event is leaf `.00`.
 
 ## 3. The ordered work (`PQ-210`)
 
@@ -94,8 +102,8 @@ minute.
 
 | Leaf | The player feels | Done when (owner's iGPU) |
 |---|---|---|
-| `.00` **Crucible roster prewarm** | No wave ever freezes the fight | Freezes over 100 ms in a 30 s Crucible sample **21 → ≤ 1**; worst frame ≤ 60 ms |
-| `.01` **A fight fits the frame** | 60 fps with ten hostiles on screen | Typical callback in the Crucible **13.2 → ≤ 10 ms**; frames over 33 ms **11.7 % → ≤ 3 %** |
+| `.00` **Crucible roster prewarm** | No wave ever freezes the fight | The reproducible wave-arrival freeze (183–200 ms, ~22 s into seed 4242) is gone: **0** frames over 100 ms in a 30 s Crucible sample, worst frame ≤ 60 ms |
+| `.01` **A fight fits the frame** | 60 fps with ten hostiles on screen, even on a busy machine | Typical callback in the Crucible ≤ 10 ms at **50 %** host load (read 9.3–9.6 ms at 32 %, 13.2 ms at 50 %); frames over 33 ms ≤ 1 % |
 | `.02` **The first 20 seconds** | The opening is as smooth as minute two | First-20 s frames over 33 ms **25 % → ≤ 5 %** |
 | `.03` **Nothing on screen unloads** | The world is solid | New counter `onGlassDisposals` reads 0 over a Crucible run and a 3-minute belt flight; on-screen `geometryPending` roots show within 0.25 s |
 | `.04` **Every hit answers** | Combat has weight and sound | The four-channel audit passes for every default-kit weapon with effects Full; minimal action audio is on by default (`PQ-158.06`) |
