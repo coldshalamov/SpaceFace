@@ -1,0 +1,1237 @@
+{
+  "scope": "Warden production trio and exact three Helios hostile GLBs",
+  "candidateCount": 6,
+  "authoring": [
+    "tools/blender/helios_remaster/warden.py",
+    "tools/blender/helios_remaster/warden.sources.json",
+    "tools/blender/helios_remaster/WARDEN_HOSTILES.md",
+    "tools/blender/helios_remaster/warden.receipt.mjs"
+  ],
+  "visualAcceptance": {
+    "status": "accepted",
+    "reviewer": "/root",
+    "evidence": [
+      ".devshots/tuneup/remaster-convoy-warden.png",
+      ".devshots/tuneup/remaster-hostiles-r2.png"
+    ],
+    "scope": "Whole Warden and three hostile bodies; same final candidate geometry after static batch compaction",
+    "hashes": [
+      {
+        "asset": "warden_production_v1",
+        "sha256": "db57f08cff986727ba18735b097f126a0a21c0937992349398732bea797d3b53"
+      },
+      {
+        "asset": "warden_production_v1_lod1",
+        "sha256": "8ac7ec67041eef3f6e749684c137b0c2a711cc195382067055984d6ba662e1a2"
+      },
+      {
+        "asset": "warden_production_v1_lod2",
+        "sha256": "c6d5cac3b027b42a0e7d993e45bbc3989b3a2eecf513fd11d4457e03aa46c223"
+      },
+      {
+        "asset": "ashline_dart",
+        "sha256": "642ea74a762404729b15f49ed49ca262daa72af9ef682794c74756aa75cffc0b"
+      },
+      {
+        "asset": "ashline_lode",
+        "sha256": "61b6da146819da9388fb58d8c686ec0621f33e12f657a1af85d21a01ac19d3f1"
+      },
+      {
+        "asset": "ashline_rig_corsair_blade",
+        "sha256": "33b52300830bcd80125d86ec0bbe956cf5fd8fd61187d91f941a834d642e7c55"
+      }
+    ]
+  },
+  "assets": [
+    {
+      "asset": "warden_production_v1",
+      "sourcePath": "assets/ships/parts/wholeships/warden_production_v1.glb",
+      "candidatePath": ".devshots/helios-remaster/warden/warden_production_v1/warden_production_v1.glb",
+      "sourceSha256": "2368e804604172eabfcb1f809e9a3ff54e4b0f3e126dc5a4407744c667be08e6",
+      "candidateSha256": "db57f08cff986727ba18735b097f126a0a21c0937992349398732bea797d3b53",
+      "sourceBytes": 2466688,
+      "candidateBytes": 3137556,
+      "baseline": {
+        "0": {
+          "meshes": 9,
+          "triangles": 47284,
+          "bounds": [
+            [
+              -11.132,
+              -2.92,
+              -1.35
+            ],
+            [
+              10,
+              2.92,
+              2.33
+            ]
+          ]
+        }
+      },
+      "candidate": {
+        "0": {
+          "meshes": 12,
+          "triangles": 53594,
+          "bounds": [
+            [
+              -11.132,
+              -2.92,
+              -1.35
+            ],
+            [
+              10,
+              2.92,
+              2.33
+            ]
+          ]
+        }
+      },
+      "helpersUnchanged": true,
+      "everyMaterialGeometryFlag": true,
+      "changes": [
+        {
+          "label": "WardenCasemateGallery-1",
+          "center": [
+            -3.65,
+            -1.23,
+            1.1565017700195312
+          ],
+          "size": [
+            5.35,
+            0.7,
+            0.49
+          ],
+          "sourceObjects": [
+            "LOD0_Armor.054",
+            "LOD0_Hull",
+            "LOD0_Hull.005",
+            "LOD0_Hull.006"
+          ],
+          "newObjects": [
+            "LOD0_Remaster_WardenCasemateGallery-1_FoldedLeaf",
+            "LOD0_Remaster_WardenCasemateGallery-1_CoolantReturn",
+            "LOD0_Remaster_WardenCasemateGallery-1_FoldedLeaf.002",
+            "LOD0_Remaster_WardenCasemateGallery-1_FoldedLeaf.005",
+            "LOD0_Remaster_WardenCasemateGallery-1_FoldedLeaf.003",
+            "LOD0_Remaster_WardenCasemateGallery-1_NickelSeam",
+            "LOD0_Remaster_WardenCasemateGallery-1_OxidizedLiner",
+            "LOD0_Remaster_WardenCasemateGallery-1_FoldedLeaf.001",
+            "LOD0_Remaster_WardenCasemateGallery-1_FoldedLeaf.004",
+            "LOD0_Remaster_WardenCasemateGallery-1_FoldedLeaf.008",
+            "LOD0_Remaster_WardenCasemateGallery-1_FoldedLeaf.009",
+            "LOD0_Remaster_WardenCasemateGallery-1_FoldedLeaf.007",
+            "LOD0_Remaster_WardenCasemateGallery-1_FoldedLeaf.006"
+          ]
+        },
+        {
+          "label": "WardenCasemateGallery1",
+          "center": [
+            -3.65,
+            1.23,
+            1.156494140625
+          ],
+          "size": [
+            5.35,
+            0.7,
+            0.49
+          ],
+          "sourceObjects": [
+            "LOD0_Hull",
+            "LOD0_Hull.005",
+            "LOD0_Hull.006",
+            "LOD0_Hull.011"
+          ],
+          "newObjects": [
+            "LOD0_Remaster_WardenCasemateGallery1_CoolantReturn",
+            "LOD0_Remaster_WardenCasemateGallery1_FoldedLeaf.005",
+            "LOD0_Remaster_WardenCasemateGallery1_FoldedLeaf.003",
+            "LOD0_Remaster_WardenCasemateGallery1_FoldedLeaf",
+            "LOD0_Remaster_WardenCasemateGallery1_FoldedLeaf.009",
+            "LOD0_Remaster_WardenCasemateGallery1_FoldedLeaf.002",
+            "LOD0_Remaster_WardenCasemateGallery1_NickelSeam",
+            "LOD0_Remaster_WardenCasemateGallery1_FoldedLeaf.004",
+            "LOD0_Remaster_WardenCasemateGallery1_FoldedLeaf.007",
+            "LOD0_Remaster_WardenCasemateGallery1_FoldedLeaf.006",
+            "LOD0_Remaster_WardenCasemateGallery1_FoldedLeaf.008",
+            "LOD0_Remaster_WardenCasemateGallery1_FoldedLeaf.001",
+            "LOD0_Remaster_WardenCasemateGallery1_OxidizedLiner"
+          ]
+        },
+        {
+          "label": "Retained pressure-glass bridge framed; three open transom thrust cradles"
+        }
+      ],
+      "review": "Accepted by root independent actual Three gallery review; integration owned by root",
+      "interfacesVerified": [
+        "COLLISION_HULL",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "nativeLodNamesVerified": true,
+      "allMaterialGeometryFlagsVerified": true,
+      "sourceGitBlob": "fade31e100f7502b0666468244452bc581841c97"
+    },
+    {
+      "asset": "warden_production_v1_lod1",
+      "sourcePath": "assets/ships/parts/wholeships/warden_production_v1_lod1.glb",
+      "candidatePath": ".devshots/helios-remaster/warden/warden_production_v1_lod1/warden_production_v1_lod1.glb",
+      "sourceSha256": "579ad9a9d683086e86a7680915e33929c397d39fc40becced701a092eb348b08",
+      "candidateSha256": "8ac7ec67041eef3f6e749684c137b0c2a711cc195382067055984d6ba662e1a2",
+      "sourceBytes": 680808,
+      "candidateBytes": 845896,
+      "baseline": {
+        "1": {
+          "meshes": 9,
+          "triangles": 13220,
+          "bounds": [
+            [
+              -10.979,
+              -2.87,
+              -1.35
+            ],
+            [
+              10,
+              2.87,
+              2.33
+            ]
+          ]
+        }
+      },
+      "candidate": {
+        "1": {
+          "meshes": 9,
+          "triangles": 15318,
+          "bounds": [
+            [
+              -10.979,
+              -2.87,
+              -1.35
+            ],
+            [
+              10,
+              2.87,
+              2.33
+            ]
+          ]
+        }
+      },
+      "helpersUnchanged": true,
+      "everyMaterialGeometryFlag": true,
+      "changes": [
+        {
+          "label": "WardenCasemateGallery-1",
+          "center": [
+            -3.65,
+            -1.23,
+            1.1565017700195312
+          ],
+          "size": [
+            5.35,
+            0.7,
+            0.49
+          ],
+          "sourceObjects": [
+            "LOD1_Armor.018",
+            "LOD1_Hull",
+            "LOD1_Hull.005",
+            "LOD1_Hull.006"
+          ],
+          "newObjects": [
+            "LOD1_Remaster_WardenCasemateGallery-1_OxidizedLiner",
+            "LOD1_Remaster_WardenCasemateGallery-1_NickelSeam",
+            "LOD1_Remaster_WardenCasemateGallery-1_FoldedLeaf",
+            "LOD1_Remaster_WardenCasemateGallery-1_FoldedLeaf.003",
+            "LOD1_Remaster_WardenCasemateGallery-1_FoldedLeaf.001",
+            "LOD1_Remaster_WardenCasemateGallery-1_FoldedLeaf.002"
+          ]
+        },
+        {
+          "label": "WardenCasemateGallery1",
+          "center": [
+            -3.65,
+            1.23,
+            1.156494140625
+          ],
+          "size": [
+            5.35,
+            0.7,
+            0.49
+          ],
+          "sourceObjects": [
+            "LOD1_Hull",
+            "LOD1_Hull.005",
+            "LOD1_Hull.006",
+            "LOD1_Hull.011"
+          ],
+          "newObjects": [
+            "LOD1_Remaster_WardenCasemateGallery1_FoldedLeaf.001",
+            "LOD1_Remaster_WardenCasemateGallery1_FoldedLeaf.002",
+            "LOD1_Remaster_WardenCasemateGallery1_FoldedLeaf.003",
+            "LOD1_Remaster_WardenCasemateGallery1_FoldedLeaf",
+            "LOD1_Remaster_WardenCasemateGallery1_NickelSeam",
+            "LOD1_Remaster_WardenCasemateGallery1_OxidizedLiner"
+          ]
+        },
+        {
+          "label": "Retained pressure-glass bridge framed; three open transom thrust cradles"
+        }
+      ],
+      "review": "Accepted by root independent actual Three gallery review; integration owned by root",
+      "interfacesVerified": [
+        "COLLISION_HULL.001",
+        "SOCKET_Camera_Focus.001",
+        "SOCKET_Cargo_Ventral.001",
+        "SOCKET_Engine_Main.001",
+        "SOCKET_Mining_Front.001",
+        "SOCKET_RCS_Port.001",
+        "SOCKET_RCS_Starboard.001",
+        "SOCKET_Trail_Main.001",
+        "SOCKET_Trail_Port.001",
+        "SOCKET_Trail_Starboard.001",
+        "SOCKET_Utility_Dorsal.001",
+        "SOCKET_Weapon_Front.001"
+      ],
+      "nativeLodNamesVerified": true,
+      "allMaterialGeometryFlagsVerified": true,
+      "sourceGitBlob": "870bc1f77744b6f4617337d60f224e47441f4460"
+    },
+    {
+      "asset": "warden_production_v1_lod2",
+      "sourcePath": "assets/ships/parts/wholeships/warden_production_v1_lod2.glb",
+      "candidatePath": ".devshots/helios-remaster/warden/warden_production_v1_lod2/warden_production_v1_lod2.glb",
+      "sourceSha256": "3ca0ecb01eee161675b0094431c5f4e50831dcb02b805ffe697025dae21594c7",
+      "candidateSha256": "c6d5cac3b027b42a0e7d993e45bbc3989b3a2eecf513fd11d4457e03aa46c223",
+      "sourceBytes": 392196,
+      "candidateBytes": 430600,
+      "baseline": {
+        "2": {
+          "meshes": 7,
+          "triangles": 8144,
+          "bounds": [
+            [
+              -10.979,
+              -2.87,
+              -1.35
+            ],
+            [
+              10,
+              2.87,
+              2.33
+            ]
+          ]
+        }
+      },
+      "candidate": {
+        "2": {
+          "meshes": 7,
+          "triangles": 9028,
+          "bounds": [
+            [
+              -10.979,
+              -2.87,
+              -1.35
+            ],
+            [
+              10,
+              2.87,
+              2.33
+            ]
+          ]
+        }
+      },
+      "helpersUnchanged": true,
+      "everyMaterialGeometryFlag": true,
+      "changes": [
+        {
+          "label": "WardenCasemateGallery-1",
+          "center": [
+            -3.65,
+            -1.23,
+            1.1565017700195312
+          ],
+          "size": [
+            5.35,
+            0.7,
+            0.49
+          ],
+          "sourceObjects": [
+            "LOD2_Hull",
+            "LOD2_Hull.005",
+            "LOD2_Hull.006"
+          ],
+          "newObjects": [
+            "LOD2_Remaster_WardenCasemateGallery-1_OxidizedLiner",
+            "LOD2_Remaster_WardenCasemateGallery-1_FoldedLeaf",
+            "LOD2_Remaster_WardenCasemateGallery-1_NickelSeam"
+          ]
+        },
+        {
+          "label": "WardenCasemateGallery1",
+          "center": [
+            -3.65,
+            1.23,
+            1.156494140625
+          ],
+          "size": [
+            5.35,
+            0.7,
+            0.49
+          ],
+          "sourceObjects": [
+            "LOD2_Hull",
+            "LOD2_Hull.005",
+            "LOD2_Hull.006"
+          ],
+          "newObjects": [
+            "LOD2_Remaster_WardenCasemateGallery1_OxidizedLiner",
+            "LOD2_Remaster_WardenCasemateGallery1_FoldedLeaf",
+            "LOD2_Remaster_WardenCasemateGallery1_NickelSeam"
+          ]
+        },
+        {
+          "label": "Retained pressure-glass bridge framed; three open transom thrust cradles"
+        }
+      ],
+      "review": "Accepted by root independent actual Three gallery review; integration owned by root",
+      "interfacesVerified": [
+        "COLLISION_HULL.002",
+        "SOCKET_Camera_Focus.002",
+        "SOCKET_Cargo_Ventral.002",
+        "SOCKET_Engine_Main.002",
+        "SOCKET_Mining_Front.002",
+        "SOCKET_RCS_Port.002",
+        "SOCKET_RCS_Starboard.002",
+        "SOCKET_Trail_Main.002",
+        "SOCKET_Trail_Port.002",
+        "SOCKET_Trail_Starboard.002",
+        "SOCKET_Utility_Dorsal.002",
+        "SOCKET_Weapon_Front.002"
+      ],
+      "nativeLodNamesVerified": true,
+      "allMaterialGeometryFlagsVerified": true,
+      "sourceGitBlob": "b8ab86ced401df806cd81296b39c4cf4779f074d"
+    },
+    {
+      "asset": "ashline_dart",
+      "sourcePath": "assets/ships/parts/wholeships/ashline_dart.glb",
+      "candidatePath": ".devshots/helios-remaster/warden/ashline_dart/ashline_dart.glb",
+      "sourceSha256": "10890bc8286826b251a5f4dfef8e0a109cacb0334cac161d34e2a2f9a2de2b41",
+      "candidateSha256": "642ea74a762404729b15f49ed49ca262daa72af9ef682794c74756aa75cffc0b",
+      "sourceBytes": 18570144,
+      "candidateBytes": 19306620,
+      "baseline": {
+        "0": {
+          "meshes": 8,
+          "triangles": 8184,
+          "bounds": [
+            [
+              -7.025,
+              -3.025,
+              -0.7226
+            ],
+            [
+              8.75,
+              3.025,
+              1.575
+            ]
+          ]
+        },
+        "1": {
+          "meshes": 7,
+          "triangles": 3016,
+          "bounds": [
+            [
+              -7.025,
+              -3.0224,
+              -0.7226
+            ],
+            [
+              8.7501,
+              3.0224,
+              1.0674
+            ]
+          ]
+        },
+        "2": {
+          "meshes": 7,
+          "triangles": 1288,
+          "bounds": [
+            [
+              -7.0229,
+              -3.0184,
+              -0.7226
+            ],
+            [
+              8.7491,
+              3.0184,
+              1.0649
+            ]
+          ]
+        }
+      },
+      "candidate": {
+        "0": {
+          "meshes": 11,
+          "triangles": 11916,
+          "bounds": [
+            [
+              -7.025,
+              -3.025,
+              -0.7226
+            ],
+            [
+              8.75,
+              3.025,
+              1.575
+            ]
+          ]
+        },
+        "1": {
+          "meshes": 7,
+          "triangles": 4712,
+          "bounds": [
+            [
+              -7.025,
+              -3.0224,
+              -0.7226
+            ],
+            [
+              8.7501,
+              3.0224,
+              1.0674
+            ]
+          ]
+        },
+        "2": {
+          "meshes": 7,
+          "triangles": 2002,
+          "bounds": [
+            [
+              -7.0229,
+              -3.0184,
+              -0.7226
+            ],
+            [
+              8.7491,
+              3.0184,
+              1.0649
+            ]
+          ]
+        }
+      },
+      "helpersUnchanged": true,
+      "everyMaterialGeometryFlag": true,
+      "changes": [
+        {
+          "label": "DartThermalSpine",
+          "center": [
+            -0.75,
+            0,
+            0.6875
+          ],
+          "size": [
+            3.3,
+            0.32,
+            0.32
+          ],
+          "sourceObjects": [
+            "LOD0_Merged_Material_Hull",
+            "LOD0_Merged_Material_Hull.002"
+          ],
+          "newObjects": [
+            "LOD0_Remaster_DartThermalSpine_FoldedLeaf.003",
+            "LOD0_Remaster_DartThermalSpine_FoldedLeaf.001",
+            "LOD0_Remaster_DartThermalSpine_FoldedLeaf.004",
+            "LOD0_Remaster_DartThermalSpine_FoldedLeaf.005",
+            "LOD0_Remaster_DartThermalSpine_OxidizedLiner",
+            "LOD0_Remaster_DartThermalSpine_CoolantReturn",
+            "LOD0_Remaster_DartThermalSpine_FoldedLeaf.002",
+            "LOD0_Remaster_DartThermalSpine_NickelSeam",
+            "LOD0_Remaster_DartThermalSpine_FoldedLeaf"
+          ]
+        },
+        {
+          "label": "Continuous paired cheek shells join drive block, wing shoulders and nose collar; center slots remain open"
+        },
+        {
+          "label": "DartThermalSpine",
+          "center": [
+            -0.75,
+            0,
+            0.683319091796875
+          ],
+          "size": [
+            3.3,
+            0.32,
+            0.32
+          ],
+          "sourceObjects": [
+            "LOD1_Merged_Material_Hull",
+            "LOD1_Merged_Material_Hull.002"
+          ],
+          "newObjects": [
+            "LOD1_Remaster_DartThermalSpine_FoldedLeaf",
+            "LOD1_Remaster_DartThermalSpine_OxidizedLiner",
+            "LOD1_Remaster_DartThermalSpine_FoldedLeaf.001",
+            "LOD1_Remaster_DartThermalSpine_FoldedLeaf.002",
+            "LOD1_Remaster_DartThermalSpine_NickelSeam"
+          ]
+        },
+        {
+          "label": "Continuous paired cheek shells join drive block, wing shoulders and nose collar; center slots remain open"
+        },
+        {
+          "label": "DartThermalSpine",
+          "center": [
+            -0.75,
+            0,
+            0.6769256591796875
+          ],
+          "size": [
+            3.3,
+            0.32,
+            0.32
+          ],
+          "sourceObjects": [
+            "LOD2_Merged_Material_Hull",
+            "LOD2_Merged_Material_Hull.002"
+          ],
+          "newObjects": [
+            "LOD2_Remaster_DartThermalSpine_FoldedLeaf",
+            "LOD2_Remaster_DartThermalSpine_OxidizedLiner",
+            "LOD2_Remaster_DartThermalSpine_NickelSeam"
+          ]
+        },
+        {
+          "label": "Continuous paired cheek shells join drive block, wing shoulders and nose collar; center slots remain open"
+        }
+      ],
+      "review": "Accepted by root independent actual Three gallery review; integration owned by root",
+      "staticBatchCleanup": "Unused/duplicate material slots compacted; triangle count, bounds and interfaces unchanged",
+      "interfacesVerified": [
+        "COLLISION_HULL",
+        "LOD0_Gun_Assembly",
+        "LOD0_HOOK_DRIVE_CORE",
+        "LOD0_HOOK_DRIVE_FAN",
+        "LOD1_Gun_Assembly",
+        "LOD1_HOOK_DRIVE_CORE",
+        "LOD1_HOOK_DRIVE_FAN",
+        "LOD2_Gun_Assembly",
+        "LOD2_HOOK_DRIVE_CORE",
+        "LOD2_HOOK_DRIVE_FAN",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "nativeLodNamesVerified": true,
+      "allMaterialGeometryFlagsVerified": true,
+      "sourceGitBlob": "3485a65bb59575b0f9d00633c8c6fecdf9540feb"
+    },
+    {
+      "asset": "ashline_lode",
+      "sourcePath": "assets/ships/parts/wholeships/ashline_lode.glb",
+      "candidatePath": ".devshots/helios-remaster/warden/ashline_lode/ashline_lode.glb",
+      "sourceSha256": "1ffdf08cea3b8c454b4ee3f3d6fc374b7877fdb85bf722b7344f6d996dbc04b9",
+      "candidateSha256": "61b6da146819da9388fb58d8c686ec0621f33e12f657a1af85d21a01ac19d3f1",
+      "sourceBytes": 18776280,
+      "candidateBytes": 20186844,
+      "baseline": {
+        "0": {
+          "meshes": 8,
+          "triangles": 10368,
+          "bounds": [
+            [
+              -11.525,
+              -4.9875,
+              -1.755
+            ],
+            [
+              12.1,
+              4.9875,
+              2.575
+            ]
+          ]
+        },
+        "1": {
+          "meshes": 7,
+          "triangles": 3706,
+          "bounds": [
+            [
+              -11.525,
+              -4.9856,
+              -1.755
+            ],
+            [
+              12.0982,
+              4.9856,
+              1.585
+            ]
+          ]
+        },
+        "2": {
+          "meshes": 7,
+          "triangles": 1584,
+          "bounds": [
+            [
+              -11.525,
+              -4.9834,
+              -1.7467
+            ],
+            [
+              12.0921,
+              4.9834,
+              1.5835
+            ]
+          ]
+        }
+      },
+      "candidate": {
+        "0": {
+          "meshes": 12,
+          "triangles": 17504,
+          "bounds": [
+            [
+              -11.525,
+              -4.9875,
+              -1.755
+            ],
+            [
+              12.1,
+              4.9875,
+              2.575
+            ]
+          ]
+        },
+        "1": {
+          "meshes": 7,
+          "triangles": 6898,
+          "bounds": [
+            [
+              -11.525,
+              -4.9856,
+              -1.755
+            ],
+            [
+              12.0982,
+              4.9856,
+              1.585
+            ]
+          ]
+        },
+        "2": {
+          "meshes": 7,
+          "triangles": 2826,
+          "bounds": [
+            [
+              -11.525,
+              -4.9834,
+              -1.7467
+            ],
+            [
+              12.0921,
+              4.9834,
+              1.5835
+            ]
+          ]
+        }
+      },
+      "helpersUnchanged": true,
+      "everyMaterialGeometryFlag": true,
+      "changes": [
+        {
+          "label": "LodeBroadsideCassette-1",
+          "center": [
+            -0.3,
+            -3.15,
+            0.5374984741210938
+          ],
+          "size": [
+            3.78,
+            0.91,
+            0.4
+          ],
+          "sourceObjects": [
+            "LOD0_Merged_Material_Hull.008"
+          ],
+          "newObjects": [
+            "LOD0_Remaster_LodeBroadsideCassette-1_FoldedLeaf.002",
+            "LOD0_Remaster_LodeBroadsideCassette-1_OxidizedLiner",
+            "LOD0_Remaster_LodeBroadsideCassette-1_FoldedLeaf",
+            "LOD0_Remaster_LodeBroadsideCassette-1_CoolantReturn",
+            "LOD0_Remaster_LodeBroadsideCassette-1_FoldedLeaf.001",
+            "LOD0_Remaster_LodeBroadsideCassette-1_NickelSeam"
+          ]
+        },
+        {
+          "label": "LodeBroadsideCassette1",
+          "center": [
+            -0.3,
+            3.15,
+            0.5374984741210938
+          ],
+          "size": [
+            3.78,
+            0.91,
+            0.4
+          ],
+          "sourceObjects": [
+            "LOD0_Merged_Material_Hull.005"
+          ],
+          "newObjects": [
+            "LOD0_Remaster_LodeBroadsideCassette1_NickelSeam",
+            "LOD0_Remaster_LodeBroadsideCassette1_FoldedLeaf",
+            "LOD0_Remaster_LodeBroadsideCassette1_CoolantReturn",
+            "LOD0_Remaster_LodeBroadsideCassette1_FoldedLeaf.001",
+            "LOD0_Remaster_LodeBroadsideCassette1_OxidizedLiner",
+            "LOD0_Remaster_LodeBroadsideCassette1_FoldedLeaf.002"
+          ]
+        },
+        {
+          "label": "LodeDorsalHeatTrench",
+          "center": [
+            -1,
+            0,
+            0.787506103515625
+          ],
+          "size": [
+            4.5,
+            0.91,
+            0.45
+          ],
+          "sourceObjects": [
+            "LOD0_Merged_Material_Hull",
+            "LOD0_Merged_Material_Hull.001"
+          ],
+          "newObjects": [
+            "LOD0_Remaster_LodeDorsalHeatTrench_OxidizedLiner",
+            "LOD0_Remaster_LodeDorsalHeatTrench_FoldedLeaf",
+            "LOD0_Remaster_LodeDorsalHeatTrench_FoldedLeaf.001",
+            "LOD0_Remaster_LodeDorsalHeatTrench_FoldedLeaf.004",
+            "LOD0_Remaster_LodeDorsalHeatTrench_NickelSeam",
+            "LOD0_Remaster_LodeDorsalHeatTrench_FoldedLeaf.006",
+            "LOD0_Remaster_LodeDorsalHeatTrench_CoolantReturn",
+            "LOD0_Remaster_LodeDorsalHeatTrench_FoldedLeaf.002",
+            "LOD0_Remaster_LodeDorsalHeatTrench_FoldedLeaf.005",
+            "LOD0_Remaster_LodeDorsalHeatTrench_FoldedLeaf.003",
+            "LOD0_Remaster_LodeDorsalHeatTrench_FoldedLeaf.007"
+          ]
+        },
+        {
+          "label": "Continuous center keel and swept casemate shoulders connect drives, cassettes and bow; unsupported bar replaced by recessed trough",
+          "removedObsoleteDorsalBar": [
+            "LOD0_Merged_Material_Hull.002"
+          ]
+        },
+        {
+          "label": "LodeBroadsideCassette-1",
+          "center": [
+            -0.3,
+            -3.15,
+            0.534942626953125
+          ],
+          "size": [
+            3.78,
+            0.91,
+            0.4
+          ],
+          "sourceObjects": [
+            "LOD1_Merged_Material_Hull.008"
+          ],
+          "newObjects": [
+            "LOD1_Remaster_LodeBroadsideCassette-1_FoldedLeaf",
+            "LOD1_Remaster_LodeBroadsideCassette-1_NickelSeam",
+            "LOD1_Remaster_LodeBroadsideCassette-1_FoldedLeaf.001",
+            "LOD1_Remaster_LodeBroadsideCassette-1_OxidizedLiner"
+          ]
+        },
+        {
+          "label": "LodeBroadsideCassette1",
+          "center": [
+            -0.3,
+            3.15,
+            0.5349349975585938
+          ],
+          "size": [
+            3.78,
+            0.91,
+            0.4
+          ],
+          "sourceObjects": [
+            "LOD1_Merged_Material_Hull.005"
+          ],
+          "newObjects": [
+            "LOD1_Remaster_LodeBroadsideCassette1_FoldedLeaf.001",
+            "LOD1_Remaster_LodeBroadsideCassette1_OxidizedLiner",
+            "LOD1_Remaster_LodeBroadsideCassette1_FoldedLeaf",
+            "LOD1_Remaster_LodeBroadsideCassette1_NickelSeam"
+          ]
+        },
+        {
+          "label": "LodeDorsalHeatTrench",
+          "center": [
+            -1,
+            0,
+            0.7870407104492188
+          ],
+          "size": [
+            4.5,
+            0.91,
+            0.45
+          ],
+          "sourceObjects": [
+            "LOD1_Merged_Material_Hull",
+            "LOD1_Merged_Material_Hull.001"
+          ],
+          "newObjects": [
+            "LOD1_Remaster_LodeDorsalHeatTrench_OxidizedLiner",
+            "LOD1_Remaster_LodeDorsalHeatTrench_FoldedLeaf.002",
+            "LOD1_Remaster_LodeDorsalHeatTrench_FoldedLeaf.001",
+            "LOD1_Remaster_LodeDorsalHeatTrench_FoldedLeaf",
+            "LOD1_Remaster_LodeDorsalHeatTrench_NickelSeam",
+            "LOD1_Remaster_LodeDorsalHeatTrench_FoldedLeaf.003"
+          ]
+        },
+        {
+          "label": "Continuous center keel and swept casemate shoulders connect drives, cassettes and bow; unsupported bar replaced by recessed trough",
+          "removedObsoleteDorsalBar": [
+            "LOD1_Merged_Material_Hull.002"
+          ]
+        },
+        {
+          "label": "LodeBroadsideCassette-1",
+          "center": [
+            -0.3,
+            -3.15,
+            0.5256805419921875
+          ],
+          "size": [
+            3.78,
+            0.91,
+            0.4
+          ],
+          "sourceObjects": [
+            "LOD2_Merged_Material_Hull.008"
+          ],
+          "newObjects": [
+            "LOD2_Remaster_LodeBroadsideCassette-1_FoldedLeaf",
+            "LOD2_Remaster_LodeBroadsideCassette-1_NickelSeam",
+            "LOD2_Remaster_LodeBroadsideCassette-1_OxidizedLiner"
+          ]
+        },
+        {
+          "label": "LodeBroadsideCassette1",
+          "center": [
+            -0.3,
+            3.15,
+            0.5288467407226562
+          ],
+          "size": [
+            3.78,
+            0.91,
+            0.4
+          ],
+          "sourceObjects": [
+            "LOD2_Merged_Material_Hull.005"
+          ],
+          "newObjects": [
+            "LOD2_Remaster_LodeBroadsideCassette1_NickelSeam",
+            "LOD2_Remaster_LodeBroadsideCassette1_OxidizedLiner",
+            "LOD2_Remaster_LodeBroadsideCassette1_FoldedLeaf"
+          ]
+        },
+        {
+          "label": "LodeDorsalHeatTrench",
+          "center": [
+            -1,
+            0,
+            0.7862930297851562
+          ],
+          "size": [
+            4.5,
+            0.91,
+            0.45
+          ],
+          "sourceObjects": [
+            "LOD2_Merged_Material_Hull",
+            "LOD2_Merged_Material_Hull.001"
+          ],
+          "newObjects": [
+            "LOD2_Remaster_LodeDorsalHeatTrench_NickelSeam",
+            "LOD2_Remaster_LodeDorsalHeatTrench_FoldedLeaf",
+            "LOD2_Remaster_LodeDorsalHeatTrench_OxidizedLiner"
+          ]
+        },
+        {
+          "label": "Continuous center keel and swept casemate shoulders connect drives, cassettes and bow; unsupported bar replaced by recessed trough",
+          "removedObsoleteDorsalBar": [
+            "LOD2_Merged_Material_Hull.002"
+          ]
+        }
+      ],
+      "review": "Accepted by root independent actual Three gallery review; integration owned by root",
+      "staticBatchCleanup": "Unused/duplicate material slots compacted; triangle count, bounds and interfaces unchanged",
+      "interfacesVerified": [
+        "COLLISION_HULL",
+        "LOD0_Gun_Assembly",
+        "LOD0_HOOK_DRIVE_CORE",
+        "LOD0_HOOK_DRIVE_FAN",
+        "LOD1_Gun_Assembly",
+        "LOD1_HOOK_DRIVE_CORE",
+        "LOD1_HOOK_DRIVE_FAN",
+        "LOD2_Gun_Assembly",
+        "LOD2_HOOK_DRIVE_CORE",
+        "LOD2_HOOK_DRIVE_FAN",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "nativeLodNamesVerified": true,
+      "allMaterialGeometryFlagsVerified": true,
+      "sourceGitBlob": "7ef16abe871eed67906db7539ec8a2b90652e15d"
+    },
+    {
+      "asset": "ashline_rig_corsair_blade",
+      "sourcePath": "assets/ships/parts/wholeships/ashline_rig_corsair_blade.glb",
+      "candidatePath": ".devshots/helios-remaster/warden/ashline_rig_corsair_blade/ashline_rig_corsair_blade.glb",
+      "sourceSha256": "062b6cac12a574fcb326b72bb9fd130e2a9eb97edd884531737cb7d013859849",
+      "candidateSha256": "33b52300830bcd80125d86ec0bbe956cf5fd8fd61187d91f941a834d642e7c55",
+      "sourceBytes": 18598504,
+      "candidateBytes": 19515016,
+      "baseline": {
+        "0": {
+          "meshes": 32,
+          "triangles": 8452,
+          "bounds": [
+            [
+              -8.175,
+              -2.5526,
+              -2.1
+            ],
+            [
+              9.6417,
+              3.17,
+              4.3494
+            ]
+          ]
+        },
+        "1": {
+          "meshes": 8,
+          "triangles": 2514,
+          "bounds": [
+            [
+              -8.175,
+              -1.8024,
+              -2.0983
+            ],
+            [
+              9.54,
+              3.1673,
+              3.87
+            ]
+          ]
+        },
+        "2": {
+          "meshes": 8,
+          "triangles": 1196,
+          "bounds": [
+            [
+              -8.175,
+              -1.7984,
+              -2.0903
+            ],
+            [
+              9.54,
+              3.1814,
+              3.87
+            ]
+          ]
+        }
+      },
+      "candidate": {
+        "0": {
+          "meshes": 14,
+          "triangles": 13746,
+          "bounds": [
+            [
+              -8.175,
+              -2.5526,
+              -2.1
+            ],
+            [
+              9.6417,
+              3.17,
+              4.3494
+            ]
+          ]
+        },
+        "1": {
+          "meshes": 8,
+          "triangles": 3864,
+          "bounds": [
+            [
+              -8.175,
+              -1.8024,
+              -2.0983
+            ],
+            [
+              9.54,
+              3.1673,
+              3.87
+            ]
+          ]
+        },
+        "2": {
+          "meshes": 8,
+          "triangles": 1822,
+          "bounds": [
+            [
+              -8.175,
+              -1.7984,
+              -2.0903
+            ],
+            [
+              9.54,
+              3.1814,
+              3.87
+            ]
+          ]
+        }
+      },
+      "helpersUnchanged": true,
+      "everyMaterialGeometryFlag": true,
+      "changes": [
+        {
+          "label": "CorsairSalvageDeckCooling",
+          "center": [
+            -1.8,
+            0,
+            0.9875030517578125
+          ],
+          "size": [
+            1.7,
+            0.68,
+            0.36
+          ],
+          "sourceObjects": [
+            "LOD0_Merged_Material_Hull",
+            "LOD0_Merged_Material_Hull.001"
+          ],
+          "newObjects": [
+            "LOD0_Remaster_CorsairSalvageDeckCooling_FoldedLeaf.001",
+            "LOD0_Remaster_CorsairSalvageDeckCooling_NickelSeam",
+            "LOD0_Remaster_CorsairSalvageDeckCooling_CoolantReturn",
+            "LOD0_Remaster_CorsairSalvageDeckCooling_FoldedLeaf.002",
+            "LOD0_Remaster_CorsairSalvageDeckCooling_FoldedLeaf",
+            "LOD0_Remaster_CorsairSalvageDeckCooling_OxidizedLiner"
+          ]
+        },
+        {
+          "label": "Rig thrust truss and rooted raised Corsair blade/boarding cage"
+        },
+        {
+          "label": "CorsairSalvageDeckCooling",
+          "center": [
+            -1.8,
+            0,
+            0.9837493896484375
+          ],
+          "size": [
+            1.7,
+            0.68,
+            0.36
+          ],
+          "sourceObjects": [
+            "LOD1_Merged_Material_Hull",
+            "LOD1_Merged_Material_Hull.001"
+          ],
+          "newObjects": [
+            "LOD1_Remaster_CorsairSalvageDeckCooling_NickelSeam",
+            "LOD1_Remaster_CorsairSalvageDeckCooling_OxidizedLiner",
+            "LOD1_Remaster_CorsairSalvageDeckCooling_FoldedLeaf",
+            "LOD1_Remaster_CorsairSalvageDeckCooling_FoldedLeaf.001"
+          ]
+        },
+        {
+          "label": "Rig thrust truss and rooted raised Corsair blade/boarding cage"
+        },
+        {
+          "label": "CorsairSalvageDeckCooling",
+          "center": [
+            -1.8,
+            0,
+            0.9778518676757812
+          ],
+          "size": [
+            1.7,
+            0.68,
+            0.36
+          ],
+          "sourceObjects": [
+            "LOD2_Merged_Material_Hull",
+            "LOD2_Merged_Material_Hull.001"
+          ],
+          "newObjects": [
+            "LOD2_Remaster_CorsairSalvageDeckCooling_FoldedLeaf",
+            "LOD2_Remaster_CorsairSalvageDeckCooling_NickelSeam",
+            "LOD2_Remaster_CorsairSalvageDeckCooling_OxidizedLiner"
+          ]
+        },
+        {
+          "label": "Rig thrust truss and rooted raised Corsair blade/boarding cage"
+        }
+      ],
+      "review": "Accepted by root independent actual Three gallery review; integration owned by root",
+      "staticBatchCleanup": "Unused/duplicate material slots compacted; triangle count, bounds and interfaces unchanged",
+      "interfacesVerified": [
+        "COLLISION_HULL",
+        "LOD0_Gun_Assembly",
+        "LOD0_HOOK_DRIVE_CORE",
+        "LOD0_HOOK_DRIVE_FAN",
+        "LOD0_HOOK_TETHER_SPOOL",
+        "LOD1_Gun_Assembly",
+        "LOD1_HOOK_DRIVE_CORE",
+        "LOD1_HOOK_DRIVE_FAN",
+        "LOD1_HOOK_TETHER_SPOOL",
+        "LOD2_Gun_Assembly",
+        "LOD2_HOOK_DRIVE_CORE",
+        "LOD2_HOOK_DRIVE_FAN",
+        "LOD2_HOOK_TETHER_SPOOL",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Front",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "nativeLodNamesVerified": true,
+      "allMaterialGeometryFlagsVerified": true,
+      "sourceGitBlob": "d0dc92992cf8f91181ef0081f8a96cf7b0df5ee9"
+    }
+  ]
+}

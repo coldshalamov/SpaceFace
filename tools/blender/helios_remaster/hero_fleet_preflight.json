@@ -1,0 +1,34 @@
+{
+  "scope": "Helios hero and traffic fleet: retained source meshes plus authored camera-visible construction",
+  "authority": "Owner 2026-09-19 requests entire first-sector model work and supersedes earlier Hitch freeze. Canon tone: docs/worldbuilding/vibe/vibe-CANONICAL.md. Manufacturing detail below is ART EXTRAPOLATION, not new narrative canon.",
+  "supportedViews": ["play_chase D144 heading0", "play_chase_abeam D144 heading90", "play_chase_close D58 heading0"],
+  "componentReferenceDecision": "not_needed",
+  "identity": "Import original source GLB; preserve principal silhouette, bounds, pivots, sockets, collision, hooks, decals, retained texture maps, role. Cut only selected dorsal exposed panels; attachments sit inside existing hull envelope except millimetre-scale rims.",
+  "allSupportedViewZonesClassified": false,
+  "zones": [
+    {"name":"pressure hull, wings, load bed and large armor","disposition":"retained_reviewed","dominates":true,"supportedViews":["all"],"review":"Original chase sheets show useful distinct hull silhouettes. Broad Arclight/inspection/Bastion and civilian roof panels are billed separately below; macro footprint retained."},
+    {"name":"canopy, identity markings, existing drive throats, tools and hooks","disposition":"retained_reviewed","dominates":false,"supportedViews":["all"],"review":"Retain authored transparent glazing, decal maps, emission fixtures and moving hook interfaces. These carry identity and gameplay alignment."},
+    {"name":"dorsal cooling, service and optical cavities","disposition":"billed","dominates":true,"supportedViews":["all"],"bill":"Folded enamel steel shell is cut through; chamfered metal lip joins recessed oxidized well, exposed heat exchanger shutters and pressure manifold. Dielectric enamel on shells, bare nickel at machined lips, dry dark heat alloy inside. Geometry provides depth and thin highlights; no painted black pseudo-hole or raised generic slab."},
+    {"name":"tanker pressure lids and saddle transfer circuit","disposition":"billed","dominates":true,"supportedViews":["all"],"bill":"Segmented formed pressure cap with inset valve manifold, radial stiffeners and service conduit linking existing vessels. Existing vessel silhouette retained. Enamel dome, bare coupling flange, black oxidized recessed valve. No flat blank tank disk."},
+    {"name":"Ashline engine-to-spine transfer truss","disposition":"billed","dominates":false,"supportedViews":["all"],"bill":"Paired tapered channel beams with triangulated load path connect existing aft drive mounting flange to retained core spine. Machined attachment shoes, coated webs, deliberate open triangular voids. No floating cylinder or disconnected beam."},
+    {"name":"unseen cabin interiors","disposition":"outside_supported_view","dominates":false,"supportedViews":[],"review":"No interior furniture is authored because it has no chase-camera read."}
+  ],
+  "perAsset": {
+    "kestrel":"Recessed aft heat-exchanger servicing ports and protective folded shutters within retained working tug body; intact personalized marks and asymmetry.",
+    "helios_lark":"Paired wing-root cooling slots with swept protective louvers; central canopy and long courier silhouette retained.",
+    "helios_cradle":"Paired pod-top load-service wells with heavy hinged jaw shutters, emphasizing tug machinery and gap between cargo arms.",
+    "helios_span":"Six separate cargo-lid service recesses rooted to existing carriage bays; center freight spine stays open and legible.",
+    "ashline_rig":"Bridge existing separated aft drive to salvage frame using open tapered transfer truss; recessed working-deck service port.",
+    "survey_pin":"Offset paired recessed instrument trays, short shielded optic bars and lateral cooling slots; existing survey fins retained.",
+    "massline_express_liner_v1":"Three-bay passenger clerestory cut into the actual flat dorsal roof, with bronze arches, smoked safety glazing, recessed warm light coves and enamel ridge covers; broad ceramic shell and retained side glazing stay intact.",
+    "helios_arclight":"Twin elongated dorsal cooling wells and central recessed observation fixtures turn blank upper slab into inhabited vessel structure.",
+    "volatiles_tanker":"Three real domed pressure head assemblies, centered valve cavities, sixfold stiffener pattern and joining transfer line.",
+    "inspection_cutter":"Two offset deep scanner equipment wells with protected lenses and directional shutter housings; forward bridge remains distinct.",
+    "wasp_production_v1":"Paired nacelle-root heat-transfer slots with swept shutter leaves; retain authored wing planform and strong polished forms.",
+    "hornet_production_v1":"Rear dorsal block cut open into low heat exchanger trench; tapered baffles and thin rim separate hull and machinery.",
+    "bastion_production_v1":"Cut long offset weapon-service trench and paired shorter armor cooling pockets; preserve armored wedge and existing gun.",
+    "drifter_production_v1":"Staggered spine cooling and maintenance openings with asymmetric folded covers; retain compact silhouette."
+  },
+  "workingScenes":".devshots/helios-remaster/hero-fleet/<asset>/<asset>.blend",
+  "evidence":"Exact exported candidate SHA256 and chase renders in hero-fleet output; root independently reviews G1/G2/G4, integrates source and verifies runtime/release G0/G3/G5/G6/G7. These records do not self-promote asset acceptance."
+}

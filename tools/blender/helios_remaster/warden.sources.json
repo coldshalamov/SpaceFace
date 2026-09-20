@@ -1,0 +1,32 @@
+{
+  "warden_production_v1": {
+    "source": "assets/ships/parts/wholeships/warden_production_v1.glb",
+    "gitBlob": "fade31e100f7502b0666468244452bc581841c97",
+    "sha256": "2368e804604172eabfcb1f809e9a3ff54e4b0f3e126dc5a4407744c667be08e6"
+  },
+  "warden_production_v1_lod1": {
+    "source": "assets/ships/parts/wholeships/warden_production_v1_lod1.glb",
+    "gitBlob": "870bc1f77744b6f4617337d60f224e47441f4460",
+    "sha256": "579ad9a9d683086e86a7680915e33929c397d39fc40becced701a092eb348b08"
+  },
+  "warden_production_v1_lod2": {
+    "source": "assets/ships/parts/wholeships/warden_production_v1_lod2.glb",
+    "gitBlob": "b8ab86ced401df806cd81296b39c4cf4779f074d",
+    "sha256": "3ca0ecb01eee161675b0094431c5f4e50831dcb02b805ffe697025dae21594c7"
+  },
+  "ashline_dart": {
+    "source": "assets/ships/parts/wholeships/ashline_dart.glb",
+    "gitBlob": "3485a65bb59575b0f9d00633c8c6fecdf9540feb",
+    "sha256": "10890bc8286826b251a5f4dfef8e0a109cacb0334cac161d34e2a2f9a2de2b41"
+  },
+  "ashline_lode": {
+    "source": "assets/ships/parts/wholeships/ashline_lode.glb",
+    "gitBlob": "7ef16abe871eed67906db7539ec8a2b90652e15d",
+    "sha256": "1ffdf08cea3b8c454b4ee3f3d6fc374b7877fdb85bf722b7344f6d996dbc04b9"
+  },
+  "ashline_rig_corsair_blade": {
+    "source": "assets/ships/parts/wholeships/ashline_rig_corsair_blade.glb",
+    "gitBlob": "d0dc92992cf8f91181ef0081f8a96cf7b0df5ee9",
+    "sha256": "062b6cac12a574fcb326b72bb9fd130e2a9eb97edd884531737cb7d013859849"
+  }
+}

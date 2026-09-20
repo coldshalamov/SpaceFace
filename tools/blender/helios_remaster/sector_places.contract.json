@@ -1,0 +1,1913 @@
+{
+  "scope": "Helios nonship models",
+  "sourceRevision": "463d9383855d99fce87e5ee6e59974fe5f2653c4",
+  "candidateCount": 33,
+  "technicalStatus": "attachments preserved; actual authored materials flagged",
+  "artAcceptance": "Root personally reviewed all 33 in the live Three material/post gallery. Root accepted the six primary aftermath reconstructions from remaster-aftermath-v2.png on 2026-09-19. Final release and package integration remain root-owned.",
+  "assets": [
+    {
+      "id": "place_47a_rescue_capsule",
+      "source": "assets\\ships\\parts\\places\\place_47a_rescue_capsule.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_47a_rescue_capsule.glb",
+      "sourceSha256": "19dbe30b8bcfe6d234cd4d919c293ef9b4183174d960407b9148dd9b385a6144",
+      "candidateSha256": "a28098618b86f1c4a0315228525a806f6439013c78c294b038e5522063d4cf3e",
+      "bytes": 353336,
+      "trianglesAllLods": 4888,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            0.31000012159347534,
+            0.23794308304786682,
+            -1.3698416948318481
+          ],
+          "size": [
+            0.9646001541614533,
+            0.22842535972595227
+          ],
+          "depth": 0.05023999786376953
+        },
+        {
+          "center": [
+            0.31000012159347534,
+            -0.23794308304786682,
+            -1.3698418140411377
+          ],
+          "size": [
+            0.9646001541614533,
+            0.22842535972595202
+          ],
+          "depth": 0.05023999786376953
+        },
+        {
+          "center": [
+            0.31000012159347534,
+            0.690537691116333,
+            -1.232334017753601
+          ],
+          "size": [
+            0.9646001541614533,
+            0.20606549263000487
+          ],
+          "depth": 0.05023999786376953
+        }
+      ],
+      "sourceComponents": [
+        "Capsule_Distress_Paint",
+        "Capsule_Mechanical_Merged",
+        "Capsule_Pressure_Hull",
+        "Capsule_Viewport_Glass",
+        "HOOK_EMISSIVE"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_aftermath_aft_cargo_module",
+      "source": "assets\\incubator\\wreck_aftermath_pack\\source\\aft_cargo_module.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_aftermath_aft_cargo_module.glb",
+      "sourceSha256": "e011eb1092afb3b98d48d6b8c17158eccabeeea71ca6ae1f2ad319bf4ea6fb5e",
+      "candidateSha256": "cd47f79c681fc15f7fa3c758d590aa2f7fa9649d7feaf4a05c21dc351cc2531c",
+      "bytes": 272196,
+      "trianglesAllLods": 2496,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "primary manufactured assembly",
+          "rebuilt": "cargo",
+          "construction": "Open structural sections, rooted interfaces, visible wall thickness and sheared load paths; inherited socket/origin unchanged."
+        }
+      ],
+      "sourceComponents": [
+        "ac_box",
+        "ac_crate_0",
+        "ac_crate_1",
+        "ac_crate_2",
+        "ac_petal_0",
+        "ac_petal_1",
+        "ac_rib_0",
+        "ac_rib_1",
+        "ac_rib_2",
+        "tear_seam_tear_0",
+        "tear_seam_tear_1",
+        "tear_seam_tear_2",
+        "tear_seam_tear_3",
+        "tear_seam_tear_4",
+        "tear_seam_tear_5",
+        "tear_seam_tear_6",
+        "tear_seam_tear_7"
+      ],
+      "visualVerdict": "root: keep; exact candidate reviewed in .devshots/tuneup/remaster-aftermath-v2.png"
+    },
+    {
+      "id": "place_aftermath_aft_cockpit_section",
+      "source": "assets\\incubator\\wreck_aftermath_pack\\source\\aft_cockpit_section.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_aftermath_aft_cockpit_section.glb",
+      "sourceSha256": "04806ab402d06bcdd766591ba79c71c058804a6088e8eae3c6dd67d453bad8fe",
+      "candidateSha256": "0ad2981eb02cc95847216f98ec6f414bb7069f11c317e241a355338e43d49f7d",
+      "bytes": 245160,
+      "trianglesAllLods": 2116,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "primary manufactured assembly",
+          "rebuilt": "cockpit",
+          "construction": "Open structural sections, rooted interfaces, visible wall thickness and sheared load paths; inherited socket/origin unchanged."
+        }
+      ],
+      "sourceComponents": [
+        "ak_cabin",
+        "ak_canopy",
+        "ak_canopy_side",
+        "ak_emerg",
+        "ak_nose",
+        "break_aft_fray_0",
+        "break_aft_fray_1",
+        "break_aft_fray_2",
+        "break_aft_fray_3",
+        "break_aft_fray_4",
+        "break_aft_hotcore",
+        "break_aft_hotfray_0",
+        "break_aft_hotfray_2",
+        "break_aft_hotfray_4",
+        "break_aft_peel_0",
+        "break_aft_peel_1",
+        "break_aft_peel_2",
+        "break_aft_peel_3",
+        "stub_cbl_0a",
+        "stub_cbl_0b",
+        "stub_cbl_1a",
+        "stub_cbl_1b",
+        "stub_cbl_2a",
+        "stub_cbl_2b",
+        "stub_cbl_3a",
+        "stub_cbl_3b",
+        "stub_cbl_4a",
+        "stub_cbl_4b"
+      ],
+      "visualVerdict": "root: keep; exact candidate reviewed in .devshots/tuneup/remaster-aftermath-v2.png"
+    },
+    {
+      "id": "place_aftermath_aft_engine_section",
+      "source": "assets\\incubator\\wreck_aftermath_pack\\source\\aft_engine_section.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_aftermath_aft_engine_section.glb",
+      "sourceSha256": "3c46c1ef9ca8b065e4ac1b578902807c2ccce81ee6fe7a7f527827f73c5d9f3e",
+      "candidateSha256": "cbfce40e6612187a2aafe600b5eb780143e274d71998d60865742223102a015d",
+      "bytes": 603864,
+      "trianglesAllLods": 6388,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "primary manufactured assembly",
+          "rebuilt": "engine",
+          "construction": "Open structural sections, rooted interfaces, visible wall thickness and sheared load paths; inherited socket/origin unchanged."
+        }
+      ],
+      "sourceComponents": [
+        "ae_bell",
+        "ae_bellring",
+        "ae_block",
+        "ae_fire",
+        "ae_manifold_0",
+        "ae_manifold_1",
+        "ae_manifold_2",
+        "ae_manifold_3",
+        "crack_crack_0",
+        "crack_crack_1",
+        "stub_cbl_0a",
+        "stub_cbl_0b",
+        "stub_cbl_1a",
+        "stub_cbl_1b",
+        "stub_cbl_2a",
+        "stub_cbl_2b",
+        "stub_cbl_3a",
+        "stub_cbl_3b"
+      ],
+      "visualVerdict": "root: keep; exact candidate reviewed in .devshots/tuneup/remaster-aftermath-v2.png"
+    },
+    {
+      "id": "place_aftermath_aft_pressure_tank",
+      "source": "assets\\incubator\\wreck_aftermath_pack\\source\\aft_pressure_tank.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_aftermath_aft_pressure_tank.glb",
+      "sourceSha256": "1eb49105cf25d6595f014c6312793e753f765866e9b5a00aa107442dccb21134",
+      "candidateSha256": "8b3b70533dca310def921c79c4021dce9564d465893bb760a7b481097b4b3f65",
+      "bytes": 304860,
+      "trianglesAllLods": 3628,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "primary manufactured assembly",
+          "rebuilt": "tank",
+          "construction": "Open structural sections, rooted interfaces, visible wall thickness and sheared load paths; inherited socket/origin unchanged."
+        }
+      ],
+      "sourceComponents": [
+        "at_dome_-4",
+        "at_dome_4",
+        "at_petal_0",
+        "at_petal_1",
+        "at_petal_2",
+        "at_petal_3",
+        "at_saddle_0",
+        "at_saddle_1",
+        "at_shell",
+        "vent_vent_0",
+        "vent_vent_1",
+        "vent_vent_10",
+        "vent_vent_11",
+        "vent_vent_12",
+        "vent_vent_13",
+        "vent_vent_2",
+        "vent_vent_3",
+        "vent_vent_4",
+        "vent_vent_5",
+        "vent_vent_6",
+        "vent_vent_7",
+        "vent_vent_8",
+        "vent_vent_9"
+      ],
+      "visualVerdict": "root: keep; exact candidate reviewed in .devshots/tuneup/remaster-aftermath-v2.png"
+    },
+    {
+      "id": "place_aftermath_aft_weapon_spar",
+      "source": "assets\\incubator\\wreck_aftermath_pack\\source\\aft_weapon_spar.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_aftermath_aft_weapon_spar.glb",
+      "sourceSha256": "5cbafbc43c8e65c3ff46207e8006da5c32727eed70f6a1a0504bdeeb8d8ea4ee",
+      "candidateSha256": "1c817288102c4eee47a3ea2ed7f9a4ec6cbae6e25f3039404312340e6dcd61bd",
+      "bytes": 109708,
+      "trianglesAllLods": 1080,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "primary manufactured assembly",
+          "rebuilt": "spar",
+          "construction": "Open structural sections, rooted interfaces, visible wall thickness and sheared load paths; inherited socket/origin unchanged."
+        }
+      ],
+      "sourceComponents": [
+        "as_barrel",
+        "as_housing",
+        "as_mount",
+        "as_rib_0",
+        "as_rib_1",
+        "as_rib_2",
+        "as_spar",
+        "break_root_fray_0",
+        "break_root_fray_1",
+        "break_root_fray_2",
+        "break_root_fray_3",
+        "break_root_hotcore",
+        "break_root_hotfray_0",
+        "break_root_hotfray_2",
+        "break_root_peel_0",
+        "break_root_peel_1",
+        "break_root_peel_2",
+        "tear_tip_tear_0",
+        "tear_tip_tear_1",
+        "tear_tip_tear_2",
+        "tear_tip_tear_3",
+        "tear_tip_tear_4"
+      ],
+      "visualVerdict": "root: keep; exact candidate reviewed in .devshots/tuneup/remaster-aftermath-v2.png"
+    },
+    {
+      "id": "place_aftermath_wreck_corvette_turret",
+      "source": "assets\\incubator\\wreck_aftermath_pack\\source\\wreck_corvette_turret.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_aftermath_wreck_corvette_turret.glb",
+      "sourceSha256": "6abc72e4b7c2f6dfcc7a938961049c20736f921a52c5b9ed705dfffff11cdc2c",
+      "candidateSha256": "d1ec77922f42df10dea8f8d71b1ebbcf73c453a3c96a70f18fbf1eb856607d2f",
+      "bytes": 240740,
+      "trianglesAllLods": 2382,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "primary manufactured assembly",
+          "rebuilt": "turret",
+          "construction": "Open structural sections, rooted interfaces, visible wall thickness and sheared load paths; inherited socket/origin unchanged."
+        }
+      ],
+      "sourceComponents": [
+        "cvt_gun",
+        "cvt_house",
+        "cvt_ring",
+        "shear_rib_0",
+        "shear_rib_1",
+        "shear_rib_10",
+        "shear_rib_11",
+        "shear_rib_2",
+        "shear_rib_3",
+        "shear_rib_4",
+        "shear_rib_5",
+        "shear_rib_6",
+        "shear_rib_7",
+        "shear_rib_8",
+        "shear_rib_9",
+        "shear_tear_0",
+        "shear_tear_1",
+        "shear_tear_2",
+        "shear_tear_3",
+        "shear_tear_4",
+        "shear_tear_5",
+        "shear_tear_6",
+        "shear_tear_7"
+      ],
+      "visualVerdict": "root: keep; exact candidate reviewed in .devshots/tuneup/remaster-aftermath-v2.png"
+    },
+    {
+      "id": "place_ash_pin",
+      "source": "assets\\ships\\parts\\places\\place_ash_pin.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_ash_pin.glb",
+      "sourceSha256": "7a178878d201a214fc5dc6023cb6f17f32fa98e97ad042153199f6ae00a89b03",
+      "candidateSha256": "c0519e0464f7dd9025929fea2f7aff99432f925708f7773a035441ff0bcd4657",
+      "bytes": 196768,
+      "trianglesAllLods": 1192,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "ash_base",
+          "instrumentBay": true
+        }
+      ],
+      "sourceComponents": [
+        "ash_ballast_link_0",
+        "ash_ballast_link_1",
+        "ash_ballast_link_2",
+        "ash_ballast_link_3",
+        "ash_ballast_link_4",
+        "ash_base",
+        "ash_cage_arm",
+        "ash_cage_bar_0",
+        "ash_cage_bar_1",
+        "ash_cage_bar_2",
+        "ash_cage_bar_3",
+        "ash_cage_ring",
+        "ash_cage_ring_lo",
+        "ash_chain_eye_a",
+        "ash_chain_eye_b",
+        "ash_foot_0",
+        "ash_foot_1",
+        "ash_foot_2",
+        "ash_foot_3",
+        "ash_foot_brace_0",
+        "ash_foot_brace_1",
+        "ash_foot_brace_2",
+        "ash_foot_brace_3",
+        "ash_name_plate",
+        "ash_offering_eye_a",
+        "ash_offering_eye_b",
+        "ash_offering_wire_0",
+        "ash_offering_wire_1",
+        "ash_offering_wire_2",
+        "ash_plate_backing_bar",
+        "ash_plate_bolt_0",
+        "ash_plate_bolt_1",
+        "ash_plate_ear_0",
+        "ash_plate_ear_1",
+        "ash_shim",
+        "ash_spar",
+        "ash_token_0",
+        "ash_token_1",
+        "ash_token_2"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_claim_mark",
+      "source": "assets\\ships\\parts\\places\\place_claim_mark.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_claim_mark.glb",
+      "sourceSha256": "7db1cd0d350612215a966ca878617c562defb5e26d451c53e03bdfe6afa85532",
+      "candidateSha256": "28e2e8cc4b79cb3b9d9bbb746a1cfb040c1e711ec172d2c47060009dfff01148",
+      "bytes": 204096,
+      "trianglesAllLods": 1356,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "claim_shaft",
+          "instrumentBay": true
+        }
+      ],
+      "sourceComponents": [
+        "claim_antenna_ring_crushed",
+        "claim_bite_tab_0",
+        "claim_bite_tab_1",
+        "claim_bite_tab_2",
+        "claim_bite_tab_3",
+        "claim_bite_tab_4",
+        "claim_bolt_0",
+        "claim_bolt_2",
+        "claim_cage_bar_0",
+        "claim_cage_bar_1",
+        "claim_cage_bar_2",
+        "claim_cage_bar_3",
+        "claim_embed_plug",
+        "claim_flange",
+        "claim_lamp_lens",
+        "claim_nozzle_slag",
+        "claim_paint_nozzle",
+        "claim_plate",
+        "claim_puck_tape",
+        "claim_rim_slag_0",
+        "claim_rim_slag_1",
+        "claim_rim_slag_2",
+        "claim_shaft",
+        "claim_spare_puck",
+        "claim_streamer_tab",
+        "claim_tear_1",
+        "claim_tear_3",
+        "claim_tether_loop",
+        "claim_tick_capsule",
+        "claim_weld_collar"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_cold_locker",
+      "source": "assets\\ships\\parts\\places\\place_cold_locker.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_cold_locker.glb",
+      "sourceSha256": "53327515c91eb68cc5d60f94b398b2fcd29401a98c56e1d6485b96bb35aa5fb7",
+      "candidateSha256": "2cd9997a8278127ffbf62f7ce7ec842bcf92ed6e3f906d4d5ea3d3c3a7ac1c07",
+      "bytes": 161296,
+      "trianglesAllLods": 1784,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "locker_drum",
+          "instrumentBay": true
+        }
+      ],
+      "sourceComponents": [
+        "locker_bite_tab_0",
+        "locker_bite_tab_1",
+        "locker_bite_tab_2",
+        "locker_bite_tab_3",
+        "locker_bite_tab_4",
+        "locker_bond_ring",
+        "locker_diag_a_0",
+        "locker_diag_a_1",
+        "locker_diag_a_11",
+        "locker_diag_a_12",
+        "locker_diag_a_13",
+        "locker_diag_a_14",
+        "locker_diag_a_15",
+        "locker_diag_a_16",
+        "locker_diag_a_17",
+        "locker_diag_a_2",
+        "locker_diag_a_3",
+        "locker_diag_a_4",
+        "locker_diag_a_5",
+        "locker_diag_a_6",
+        "locker_diag_a_7",
+        "locker_diag_a_8",
+        "locker_diag_a_9",
+        "locker_diag_b_0",
+        "locker_diag_b_1",
+        "locker_diag_b_11",
+        "locker_diag_b_12",
+        "locker_diag_b_13",
+        "locker_diag_b_14",
+        "locker_diag_b_15",
+        "locker_diag_b_16",
+        "locker_diag_b_17",
+        "locker_diag_b_2",
+        "locker_diag_b_3",
+        "locker_diag_b_4",
+        "locker_diag_b_5",
+        "locker_diag_b_6",
+        "locker_diag_b_7",
+        "locker_diag_b_8",
+        "locker_diag_b_9",
+        "locker_dog_0",
+        "locker_dog_1",
+        "locker_dog_2",
+        "locker_drum",
+        "locker_embed_plug",
+        "locker_hatch",
+        "locker_hoop_hi",
+        "locker_hoop_lo",
+        "locker_manifest_plate",
+        "locker_outrigger_0",
+        "locker_outrigger_1",
+        "locker_petal_0",
+        "locker_petal_1",
+        "locker_petal_2",
+        "locker_rail_-1_-1",
+        "locker_rail_-1_1",
+        "locker_rail_1_-1",
+        "locker_rail_1_1",
+        "locker_root_clamp",
+        "locker_rung_x_0",
+        "locker_rung_x_1",
+        "locker_rung_x_10",
+        "locker_rung_x_11",
+        "locker_rung_x_12",
+        "locker_rung_x_13",
+        "locker_rung_x_14",
+        "locker_rung_x_15",
+        "locker_rung_x_16",
+        "locker_rung_x_17",
+        "locker_rung_x_2",
+        "locker_rung_x_3",
+        "locker_rung_x_4",
+        "locker_rung_x_5",
+        "locker_rung_x_6",
+        "locker_rung_x_7",
+        "locker_rung_x_8",
+        "locker_rung_x_9",
+        "locker_rung_y_0",
+        "locker_rung_y_1",
+        "locker_rung_y_10",
+        "locker_rung_y_11",
+        "locker_rung_y_12",
+        "locker_rung_y_13",
+        "locker_rung_y_14",
+        "locker_rung_y_15",
+        "locker_rung_y_16",
+        "locker_rung_y_17",
+        "locker_rung_y_2",
+        "locker_rung_y_3",
+        "locker_rung_y_4",
+        "locker_rung_y_5",
+        "locker_rung_y_6",
+        "locker_rung_y_7",
+        "locker_rung_y_8",
+        "locker_rung_y_9",
+        "locker_shear_cable",
+        "locker_spoil_0",
+        "locker_spoil_1",
+        "locker_spoil_2"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_dead_hulk",
+      "source": "assets\\ships\\parts\\places\\place_dead_hulk.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_dead_hulk.glb",
+      "sourceSha256": "7d083b28b73550434c5c4783c85719c0c6c437ab68dfc9eae4122ca1872d0327",
+      "candidateSha256": "65d65241df9f0c619ed280473e9a045303c985ea4ab408fe28a483e86a4582bb",
+      "bytes": 5456352,
+      "trianglesAllLods": 30518,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            16.838817596435547,
+            -1.9199999570846558,
+            6.138623237609863
+          ],
+          "size": [
+            4.526912155151368,
+            1.9199998855590819
+          ],
+          "depth": 2.011258544921875
+        },
+        {
+          "center": [
+            -11.80000114440918,
+            0,
+            2.1750001907348633
+          ],
+          "size": [
+            9.052399959564209,
+            5.2704002380371096
+          ],
+          "depth": 1.8788644886016848
+        },
+        {
+          "center": [
+            -11.55000114440918,
+            0,
+            4.849999904632568
+          ],
+          "size": [
+            8.479998989105225,
+            4.152000274658203
+          ],
+          "depth": 1.8788644886016848
+        },
+        {
+          "center": [
+            15.429353713989258,
+            -1.4800000190734863,
+            4.309638500213623
+          ],
+          "size": [
+            5.921770038604737,
+            2.3424000549316406
+          ],
+          "depth": 1.8788644886016848
+        }
+      ],
+      "sourceComponents": [
+        "LOD0_Hulk_Material_Armor",
+        "LOD0_Hulk_Material_Glass",
+        "LOD0_Hulk_Material_Heat",
+        "LOD0_Hulk_Material_Hull",
+        "LOD0_Hulk_Material_Insulation",
+        "LOD0_Hulk_Material_Service",
+        "LOD0_Hulk_Material_Structural"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_debris_chunk",
+      "source": "assets\\ships\\parts\\places\\place_debris_chunk.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_debris_chunk.glb",
+      "sourceSha256": "2b728182d45000ce89a353066371513038cdb09c231332c0971758b763331be6",
+      "candidateSha256": "e4de39f1d97f495841700ee119d4aa783ffa18dd39972e6ba8725c6114a684bb",
+      "bytes": 4220396,
+      "trianglesAllLods": 19250,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "LOD0_Debris_Material_Hull",
+          "dorsalRuptureWithWallDepth": true
+        }
+      ],
+      "sourceComponents": [
+        "LOD0_Debris_Material_Accent",
+        "LOD0_Debris_Material_Cable",
+        "LOD0_Debris_Material_Decal",
+        "LOD0_Debris_Material_Hull",
+        "LOD0_Debris_Material_Insulation",
+        "LOD0_Debris_Material_Mechanical",
+        "LOD0_Debris_Material_Radiator"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_dock_interior",
+      "source": "assets\\ships\\parts\\places\\place_dock_interior.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_dock_interior.glb",
+      "sourceSha256": "630a1780e2490ba0d4d7d401dad8547085ed7a26a1f26a22a85fd5a5d00b1c60",
+      "candidateSha256": "37edf82fc5bfc4ccc61a3b8907f019459a3e1905f8ce92d5f82bd4c2d2779280",
+      "bytes": 23024512,
+      "trianglesAllLods": 22452,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            -20.25,
+            -12.5,
+            -1.959999918937683
+          ],
+          "size": [
+            5.67100040435791,
+            2.9760003662109376
+          ],
+          "depth": 0.2752000122070313
+        },
+        {
+          "center": [
+            21,
+            13.5,
+            -3.7599997520446777
+          ],
+          "size": [
+            3.5033003234863282,
+            3.0432000732421876
+          ],
+          "depth": 0.2752000122070313
+        },
+        {
+          "center": [
+            -14,
+            -13.5,
+            -3.7599997520446777
+          ],
+          "size": [
+            3.5033003234863282,
+            3.0432000732421876
+          ],
+          "depth": 0.2752000122070313
+        },
+        {
+          "center": [
+            0,
+            16,
+            10.940000534057617
+          ],
+          "size": [
+            17.426400566101076,
+            1.13280029296875
+          ],
+          "depth": 0.2752000122070313
+        }
+      ],
+      "sourceComponents": [
+        "LOD0_Dock_Material_Accent",
+        "LOD0_Dock_Material_Decal",
+        "LOD0_Dock_Material_Floor",
+        "LOD0_Dock_Material_Glass",
+        "LOD0_Dock_Material_Hull",
+        "LOD0_Dock_Material_Mechanical",
+        "LOD0_Dock_Material_Radiator",
+        "LOD0_Dock_Material_Rubber",
+        "LOD0_Dock_Material_Safety",
+        "LOD0_Dock_Material_Structure"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_gate_jump_ring",
+      "source": "assets\\ships\\parts\\places\\place_gate_jump_ring.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_gate_jump_ring.glb",
+      "sourceSha256": "fcf7b6b6693a081a7ddb2d0b36479263cc7f2f01b77df4ee1569f037944668ec",
+      "candidateSha256": "fa669b1883f933e96da6d9951b46b6558c1740bd6be1bac25bd8052290048ca0",
+      "bytes": 11853172,
+      "trianglesAllLods": 64772,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            0.00000762939453125,
+            -16,
+            37.000003814697266
+          ],
+          "size": [
+            6.731000404357911,
+            13.776000366210937
+          ],
+          "depth": 0.32
+        },
+        {
+          "center": [
+            -0.0000057220458984375,
+            -16,
+            -27.000003814697266
+          ],
+          "size": [
+            6.731000404357911,
+            13.776000366210937
+          ],
+          "depth": 0.32
+        },
+        {
+          "center": [
+            0.0000019073486328125,
+            -37,
+            8.500000953674316
+          ],
+          "size": [
+            8.904000606536865,
+            3.26400146484375
+          ],
+          "depth": 0.32
+        }
+      ],
+      "sourceComponents": [
+        "LOD0_Station_Material_Accent",
+        "LOD0_Station_Material_Glass",
+        "LOD0_Station_Material_Hull",
+        "LOD0_Station_Material_Mechanical",
+        "LOD0_Station_Material_Warm"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_lane_beacon",
+      "source": "assets\\ships\\parts\\places\\place_lane_beacon.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_lane_beacon.glb",
+      "sourceSha256": "632ff55e840ac42e6832d9856f680b85e8403822d1d651ed13be5f062bab2b68",
+      "candidateSha256": "ffc36710e773bd17b32da5cff816a60f68cb822386fffc47d3cd59f969d5587c",
+      "bytes": 930788,
+      "trianglesAllLods": 12124,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            0,
+            0,
+            -4.359999656677246
+          ],
+          "size": [
+            1.6165001010894777,
+            1.4640000915527343
+          ],
+          "depth": 0.05040000152587891
+        },
+        {
+          "center": [
+            8.25,
+            0,
+            2.7800002098083496
+          ],
+          "size": [
+            0.7685001516342164,
+            0.6959999656677246
+          ],
+          "depth": 0.05040000152587891
+        },
+        {
+          "center": [
+            0,
+            0,
+            -4.28000020980835
+          ],
+          "size": [
+            0.7208000075817108,
+            0.652800006866455
+          ],
+          "depth": 0.05040000152587891
+        }
+      ],
+      "sourceComponents": [
+        "LOD0_HOOK_EMISSIVE",
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_lane_pin",
+      "source": "assets\\ships\\parts\\places\\place_lane_pin.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_lane_pin.glb",
+      "sourceSha256": "c620c4e690e1fe574d7caf3ad777b0f440a14916badc9091851f0bdb7f731196",
+      "candidateSha256": "74e67498fdb484d84cce818fbffc4b943dd33437e9390efc981c09bb2a93b03e",
+      "bytes": 76528,
+      "trianglesAllLods": 740,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "pin_mast",
+          "instrumentBay": true
+        }
+      ],
+      "sourceComponents": [
+        "pin_annex_plate_sheared",
+        "pin_ballast_drum",
+        "pin_cap",
+        "pin_chevron_housing",
+        "pin_chevron_lens",
+        "pin_foot_0",
+        "pin_foot_1",
+        "pin_foot_2",
+        "pin_foot_3",
+        "pin_foot_brace_0",
+        "pin_foot_brace_1",
+        "pin_foot_brace_2",
+        "pin_foot_brace_3",
+        "pin_mast",
+        "pin_shim",
+        "pin_speed_lamp_0",
+        "pin_speed_lamp_2",
+        "pin_vane_0_0",
+        "pin_vane_0_1",
+        "pin_vane_0_2",
+        "pin_vane_1_0",
+        "pin_vane_1_1",
+        "pin_vane_1_2",
+        "pin_vane_collar_0",
+        "pin_vane_collar_1",
+        "pin_vane_root_0_0",
+        "pin_vane_root_0_1",
+        "pin_vane_root_0_2",
+        "pin_vane_root_1_0",
+        "pin_vane_root_1_1",
+        "pin_vane_root_1_2"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_memorial_array",
+      "source": "assets\\ships\\parts\\places\\place_memorial_array.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_memorial_array.glb",
+      "sourceSha256": "9cb774d83ea03e3fbc40e47852b2bc3f9944be9979c0b57473aa7ba6cbd645f4",
+      "candidateSha256": "a377a0e998413c6209779b1f2d7fc0e6b002c8cc6fdc55ecc70fe3be0c4855db",
+      "bytes": 817016,
+      "trianglesAllLods": 6780,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            5.90000057220459,
+            -0.10000000894069672,
+            1.850000023841858
+          ],
+          "size": [
+            6.921799969673157,
+            0.16800000071525573
+          ],
+          "depth": 0.048
+        },
+        {
+          "center": [
+            5.899999618530273,
+            -0.09999999403953552,
+            -0.1900000125169754
+          ],
+          "size": [
+            6.927099585533142,
+            0.16319998383522033
+          ],
+          "depth": 0.048
+        },
+        {
+          "center": [
+            10.46500015258789,
+            0,
+            -1.149999976158142
+          ],
+          "size": [
+            2.4539000606536865,
+            1.44
+          ],
+          "depth": 0.048
+        },
+        {
+          "center": [
+            1.2899999618530273,
+            0,
+            -1.1349999904632568
+          ],
+          "size": [
+            2.3426000088453294,
+            1.44
+          ],
+          "depth": 0.048
+        },
+        {
+          "center": [
+            5.824999809265137,
+            0,
+            -1.0850000381469727
+          ],
+          "size": [
+            2.4644997978210452,
+            1.286400032043457
+          ],
+          "depth": 0.048
+        }
+      ],
+      "sourceComponents": [
+        "LOD0_Memorial_Candle_Optic",
+        "LOD0_Memorial_Frame_Coat",
+        "LOD0_Memorial_Inscribed_Bronze",
+        "LOD0_Memorial_Recovered_Hull",
+        "LOD0_Memorial_Service_Alloy"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_mining_drone",
+      "source": "assets\\ships\\parts\\places\\place_mining_drone.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_mining_drone.glb",
+      "sourceSha256": "052bd45517392d19bfca93bed5bcc1b40aa8a2b97dbd2bff4747163985d52c1a",
+      "candidateSha256": "d8c1d41d5fed1d466afd08a472aaf9c6f27d3cee3d13c237a266b5a77afb171c",
+      "bytes": 4158172,
+      "trianglesAllLods": 19124,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            1.0199999809265137,
+            0,
+            1.2750000953674316
+          ],
+          "size": [
+            0.9169000101089478,
+            0.566399974822998
+          ],
+          "depth": 0.04
+        },
+        {
+          "center": [
+            0.7200000286102295,
+            0,
+            0.9900000095367432
+          ],
+          "size": [
+            0.657200005054474,
+            0.7488000297546387
+          ],
+          "depth": 0.04
+        },
+        {
+          "center": [
+            1.8200000524520874,
+            0,
+            0.9800000190734863
+          ],
+          "size": [
+            0.3868999469280243,
+            0.7919999885559081
+          ],
+          "depth": 0.04
+        },
+        {
+          "center": [
+            3.180000066757202,
+            -2.980232238769531e-8,
+            1.2899999618530273
+          ],
+          "size": [
+            0.6625000000000001,
+            0.9455999851226806
+          ],
+          "depth": 0.04
+        },
+        {
+          "center": [
+            2.4800000190734863,
+            2.980232238769531e-8,
+            0.9200000166893005
+          ],
+          "size": [
+            0.052999949455261236,
+            0.9408000469207763
+          ],
+          "depth": 0.04
+        },
+        {
+          "center": [
+            3.2699999809265137,
+            -1.4901161193847656e-8,
+            1.1029999256134033
+          ],
+          "size": [
+            0.13568002223968506,
+            0.23807998180389403
+          ],
+          "depth": 0.04
+        }
+      ],
+      "sourceComponents": [
+        "LOD0_Drone_Material_Accent",
+        "LOD0_Drone_Material_Cable",
+        "LOD0_Drone_Material_Hull",
+        "LOD0_Drone_Material_Mechanical",
+        "LOD0_Drone_Material_Radiator",
+        "LOD0_Drone_Material_Safety",
+        "LOD0_Drone_Material_Tool"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_nav_buoy",
+      "source": "assets\\ships\\parts\\places\\place_nav_buoy.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_nav_buoy.glb",
+      "sourceSha256": "edcfd2779a4248c32d71a3f8984644be8fadbeedac9493e13d869955ad9e0780",
+      "candidateSha256": "eec3116f9662001ca2e6c49f001dfb95fec120a24c6968ab0ddfeaac12e78a00",
+      "bytes": 479280,
+      "trianglesAllLods": 3596,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            0.2353409230709076,
+            0.9802654981613159,
+            7.734999656677246
+          ],
+          "size": [
+            0.37583891794085506,
+            0.17994269371032715
+          ],
+          "depth": 0.044799999237060545
+        },
+        {
+          "center": [
+            0.7665804624557495,
+            0.6547214984893799,
+            7.734999656677246
+          ],
+          "size": [
+            0.3174854987859726,
+            0.3102686405181885
+          ],
+          "depth": 0.044799999237060545
+        },
+        {
+          "center": [
+            -0.7665804624557495,
+            -0.6547214984893799,
+            7.734999656677246
+          ],
+          "size": [
+            0.3174854987859726,
+            0.3102686405181885
+          ],
+          "depth": 0.044799999237060545
+        }
+      ],
+      "sourceComponents": [
+        "LOD0_Buoy_Nav_Optic",
+        "LOD0_Buoy_Pressure_Shell",
+        "LOD0_Buoy_Service_Marking",
+        "LOD0_Buoy_Solar_Cell",
+        "LOD0_Buoy_Stabilizer_Frame"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_station_billboard",
+      "source": "assets\\ships\\parts\\places\\place_station_billboard.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_station_billboard.glb",
+      "sourceSha256": "9245e7275b36ebed9e7e853a14f1e0315d85d23c14323b6d947ea4cb3a1f2ff6",
+      "candidateSha256": "815c930bfb298b1446290c0a5da8a61c77f9ac0800eeab573faf0ddc82513de9",
+      "bytes": 1409576,
+      "trianglesAllLods": 11340,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            0,
+            1.7306058406829834,
+            -0.17848420143127441
+          ],
+          "size": [
+            6.836999797821045,
+            1.569305191040039
+          ],
+          "depth": 0.092
+        },
+        {
+          "center": [
+            0,
+            -1.7306058406829834,
+            -0.17848420143127441
+          ],
+          "size": [
+            6.836999797821045,
+            1.569305191040039
+          ],
+          "depth": 0.092
+        },
+        {
+          "center": [
+            0,
+            -1.7879462242126465,
+            -0.13833364844322205
+          ],
+          "size": [
+            2.6711999797821044,
+            1.2499377822875977
+          ],
+          "depth": 0.092
+        },
+        {
+          "center": [
+            0,
+            1.787946343421936,
+            -0.13833367824554443
+          ],
+          "size": [
+            2.6711999797821044,
+            1.2499377822875977
+          ],
+          "depth": 0.092
+        }
+      ],
+      "sourceComponents": [
+        "LOD0_Display_Backplate",
+        "LOD0_Display_Frame_Coat",
+        "LOD0_Display_Safety_Marking",
+        "LOD0_Display_Screen_Glass",
+        "LOD0_Display_Service_Alloy"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_station_military",
+      "source": "assets\\ships\\parts\\places\\place_station_military.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_station_military.glb",
+      "sourceSha256": "fe2676f628c8a7382e6827883128d63c53407c9a828493cac8ccb65a9ed2491e",
+      "candidateSha256": "afc8b8e16c54e91b71976fe9431f1a5b4d99284e28d695b555b4d3f9ef28e4af",
+      "bytes": 8863228,
+      "trianglesAllLods": 112602,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            -5,
+            4,
+            2.200000047683716
+          ],
+          "size": [
+            29.415000000000003,
+            9.84
+          ],
+          "depth": 0.5272000122070313
+        },
+        {
+          "center": [
+            -5,
+            4,
+            -13.800000190734863
+          ],
+          "size": [
+            31.535,
+            8.879999999999999
+          ],
+          "depth": 0.5272000122070313
+        },
+        {
+          "center": [
+            -6,
+            3,
+            -28.299999237060547
+          ],
+          "size": [
+            28.30200080871582,
+            7.391999816894531
+          ],
+          "depth": 0.5272000122070313
+        },
+        {
+          "center": [
+            -21,
+            4,
+            17.100000381469727
+          ],
+          "size": [
+            14.045,
+            8.879999999999999
+          ],
+          "depth": 0.5272000122070313
+        },
+        {
+          "center": [
+            1.867140769958496,
+            5.342207908630371,
+            17
+          ],
+          "size": [
+            4.034743754863739,
+            2.3736935806274415
+          ],
+          "depth": 0.5272000122070313
+        },
+        {
+          "center": [
+            -5.000000953674316,
+            4,
+            2
+          ],
+          "size": [
+            29.839000606536867,
+            9.743999633789063
+          ],
+          "depth": 0.5272000122070313
+        },
+        {
+          "center": [
+            -4.999999046325684,
+            4,
+            -14
+          ],
+          "size": [
+            31.905999393463137,
+            8.736000366210938
+          ],
+          "depth": 0.5272000122070313
+        },
+        {
+          "center": [
+            -6,
+            4,
+            16
+          ],
+          "size": [
+            26.71200080871582,
+            7.871999816894531
+          ],
+          "depth": 0.5272000122070313
+        },
+        {
+          "center": [
+            -21,
+            4,
+            30
+          ],
+          "size": [
+            13.037999696731568,
+            7.9680001831054685
+          ],
+          "depth": 0.5272000122070313
+        },
+        {
+          "center": [
+            -22,
+            4,
+            33
+          ],
+          "size": [
+            10.17600040435791,
+            6.336000137329101
+          ],
+          "depth": 0.5272000122070313
+        }
+      ],
+      "sourceComponents": [
+        "LOD0_Station_Material_Accent",
+        "LOD0_Station_Material_Alloy",
+        "LOD0_Station_Material_Blast",
+        "LOD0_Station_Material_Dock",
+        "LOD0_Station_Material_Glass",
+        "LOD0_Station_Material_Hull",
+        "LOD0_Station_Material_Machinery",
+        "LOD0_Station_Material_Radiator",
+        "LOD0_Station_Material_Warm",
+        "LOD0_Station_Material_Warning"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_station_trade_hub",
+      "source": "assets\\ships\\parts\\places\\place_station_trade_hub.glb",
+      "candidate": ".devshots/helios-remaster/trade-hub-compact/place_station_trade_hub.glb",
+      "sourceSha256": "94cb9dc727d606df2f7c32f2c0ffb274ee6a572a8fa7bd40836d721563d1a578",
+      "candidateSha256": "fca11eabec3cb3c1e1956ed9ca54bfdb483cd867db2609f5e6d1d85e64091a9a",
+      "bytes": 82073572,
+      "trianglesAllLods": 1676618,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "primary approach piers",
+          "shelteredArcades": 12
+        }
+      ],
+      "sourceComponents": [
+        "HeliosGolden02_CommonBatch",
+        "LOD0_HeliosGolden02_Batch",
+        "LOD0_SFG02_SupportedRingBay_00",
+        "LOD0_SFG02_SupportedRingBay_01",
+        "LOD0_SFG02_SupportedRingBay_02",
+        "LOD0_SFG02_SupportedRingBay_03",
+        "LOD0_SFG02_SupportedRingBay_04",
+        "LOD0_SFG02_SupportedRingBay_05",
+        "LOD0_SFG02_SupportedRingBay_06",
+        "LOD0_SFG02_SupportedRingBay_07",
+        "LOD0_SFG02_SupportedRingBay_08",
+        "LOD0_SFG02_SupportedRingBay_09",
+        "LOD0_SFG02_SupportedRingBay_10",
+        "LOD0_SFG02_SupportedRingBay_11",
+        "LOD0_SFG02_SupportedRingBay_12",
+        "LOD0_SFG02_SupportedRingBay_13",
+        "LOD0_SFG02_SupportedRingBay_14",
+        "LOD0_SFG02_SupportedRingBay_15"
+      ],
+      "visualVerdict": "Accepted by independent root review; compact storage uses identical current shipping geometry precision and texture bytes, with no additional render change.",
+      "rawAuthoredCandidate": ".devshots/helios-remaster/sector-places/place_station_trade_hub.glb",
+      "rawAuthoredCandidateSha256": "2edca1e1c8a3309801ffe2bf88f3ebcd4a8ca82857d51946f00b6f5015e80be3",
+      "rawAuthoredCandidateBytes": 289342776,
+      "previousCandidateSha256": "2edca1e1c8a3309801ffe2bf88f3ebcd4a8ca82857d51946f00b6f5015e80be3",
+      "storageCompactionRecord": "tools/blender/helios_remaster/trade_hub_compact.json"
+    },
+    {
+      "id": "place_tally_post",
+      "source": "assets\\ships\\parts\\places\\place_tally_post.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_tally_post.glb",
+      "sourceSha256": "1ce33824f30fc2e4708aebff511a036e4a3ebc2cdcd0bdd08431320e23b5f00a",
+      "candidateSha256": "8648ca605776e3fcd13eb31656e536546fb39d6d91e584933e33ba61b9ae1c6d",
+      "bytes": 225004,
+      "trianglesAllLods": 1350,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "tally_scale_house",
+          "instrumentBay": true
+        }
+      ],
+      "sourceComponents": [
+        "tally_boom",
+        "tally_deck_crumple",
+        "tally_deck_rail_e",
+        "tally_deck_rail_n",
+        "tally_deck_rail_s",
+        "tally_deck_rail_w",
+        "tally_foot_0",
+        "tally_foot_1",
+        "tally_foot_2",
+        "tally_foot_3",
+        "tally_foot_brace_0",
+        "tally_foot_brace_1",
+        "tally_foot_brace_2",
+        "tally_foot_brace_3",
+        "tally_grate_0",
+        "tally_grate_1",
+        "tally_grate_2",
+        "tally_grate_3",
+        "tally_grate_4",
+        "tally_grate_5",
+        "tally_grate_6",
+        "tally_grate_7",
+        "tally_invoice_lamp",
+        "tally_ledger_plate",
+        "tally_mast",
+        "tally_scale_house",
+        "tally_shim",
+        "tally_sill_0",
+        "tally_sill_1",
+        "tally_sill_2",
+        "tally_sill_3",
+        "tally_tag_link_0",
+        "tally_tag_link_1",
+        "tally_tag_link_2",
+        "tally_thermal_hood",
+        "tally_tong_a",
+        "tally_tong_b",
+        "tally_yoke_hub",
+        "tally_yoke_pad_replacement",
+        "tally_yoke_pad_worn",
+        "tally_yoke_wear_cup"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "place_whistle",
+      "source": "assets\\ships\\parts\\places\\place_whistle.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/place_whistle.glb",
+      "sourceSha256": "db16f44a321aacf0c00e2404ee143a7b4b8ddc3af26f906eda0eac96ceee27fb",
+      "candidateSha256": "b49820a735388a0f9522382e24973bf0ee3239365d8bba9794f4b8868b724cf4",
+      "bytes": 251228,
+      "trianglesAllLods": 1618,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "whistle_drum",
+          "instrumentBay": true
+        }
+      ],
+      "sourceComponents": [
+        "whistle_antenna_clamp",
+        "whistle_antenna_s_0",
+        "whistle_antenna_s_1",
+        "whistle_antenna_s_2",
+        "whistle_basket_bar_0",
+        "whistle_basket_bar_1",
+        "whistle_basket_bar_2",
+        "whistle_basket_bar_3",
+        "whistle_basket_gather_0",
+        "whistle_basket_gather_1",
+        "whistle_basket_gather_2",
+        "whistle_basket_ring",
+        "whistle_basket_ring_lo",
+        "whistle_boot",
+        "whistle_boot_sole",
+        "whistle_chain_0_1",
+        "whistle_chain_0_2",
+        "whistle_chain_0_3",
+        "whistle_chain_0_4",
+        "whistle_chain_1_1",
+        "whistle_chain_1_2",
+        "whistle_chain_1_3",
+        "whistle_chain_1_4",
+        "whistle_chain_2_1",
+        "whistle_chain_2_2",
+        "whistle_chain_2_3",
+        "whistle_chain_2_4",
+        "whistle_crank_arm",
+        "whistle_crank_hub",
+        "whistle_drum",
+        "whistle_fillet_0",
+        "whistle_fillet_1",
+        "whistle_fillet_2",
+        "whistle_fillet_3",
+        "whistle_fillet_4",
+        "whistle_fillet_5",
+        "whistle_fillet_6",
+        "whistle_fillet_7",
+        "whistle_lamp_0",
+        "whistle_lamp_1",
+        "whistle_lamp_2",
+        "whistle_lid_clamp",
+        "whistle_lid_warped",
+        "whistle_paddle_root",
+        "whistle_paddle_stanchion",
+        "whistle_plaque",
+        "whistle_plaque_bolt_0",
+        "whistle_plaque_bolt_1",
+        "whistle_plaque_standoff",
+        "whistle_rebar_0",
+        "whistle_rebar_1",
+        "whistle_rebar_2",
+        "whistle_strap_0",
+        "whistle_strap_1",
+        "whistle_tack_plate_0",
+        "whistle_tack_plate_1"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "pod_47a_evidence_spindle",
+      "source": "assets\\ships\\parts\\pods\\pod_47a_evidence_spindle.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/pod_47a_evidence_spindle.glb",
+      "sourceSha256": "5bdf06745186d54166471d17098904ec2181b2d0b84bdf7bc6e4d6199da88499",
+      "candidateSha256": "605e955f351042479cb3678f6ea11594731cc5d2d38f5e1d17ff8288a93cf37b",
+      "bytes": 448004,
+      "trianglesAllLods": 6864,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            2.0999999046325684,
+            0,
+            2.119999885559082
+          ],
+          "size": [
+            2.628800020217896,
+            1.339200096130371
+          ],
+          "depth": 0.05087999725341797
+        },
+        {
+          "center": [
+            2.0999999046325684,
+            0,
+            2.2100000381469727
+          ],
+          "size": [
+            2.5864000606536868,
+            1.286400032043457
+          ],
+          "depth": 0.05087999725341797
+        },
+        {
+          "center": [
+            3.9499998092651367,
+            -0.44999998807907104,
+            2.56000018119812
+          ],
+          "size": [
+            0.38159988880157475,
+            0.24960003376007078
+          ],
+          "depth": 0.05087999725341797
+        }
+      ],
+      "sourceComponents": [
+        "HOOK_EMISSIVE",
+        "Spindle_Custody_Seals",
+        "Spindle_Evidence_Bands",
+        "Spindle_Mechanical_Merged",
+        "Spindle_Shell"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "pod_cargo_container",
+      "source": "assets\\ships\\parts\\pods\\pod_cargo_container.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/pod_cargo_container.glb",
+      "sourceSha256": "158832e4ec600c59b7f0d845ff1882d7abc3b85a9a8ce3ae448f44853bca02a9",
+      "candidateSha256": "6dfb066cb3a7b63e3dbf2a8bcf0ef764e960732766ee8817e71842ccbf8ea9f7",
+      "bytes": 341860,
+      "trianglesAllLods": 5324,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            2.0999999046325684,
+            0,
+            2.119999885559082
+          ],
+          "size": [
+            2.628800020217896,
+            1.339200096130371
+          ],
+          "depth": 0.04
+        },
+        {
+          "center": [
+            2.0999999046325684,
+            0,
+            2.2100000381469727
+          ],
+          "size": [
+            2.5864000606536868,
+            1.286400032043457
+          ],
+          "depth": 0.04
+        },
+        {
+          "center": [
+            1.5499999523162842,
+            0,
+            2.169999837875366
+          ],
+          "size": [
+            0.7844000101089478,
+            0.403199987411499
+          ],
+          "depth": 0.04
+        }
+      ],
+      "sourceComponents": [
+        "Cargo_ID_Plate",
+        "Cargo_Shell",
+        "pod_cargo_container_Material_Mechanical_Merged"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "var_station_trade_hub_scn_overlay_v01",
+      "source": "assets\\ships\\parts\\places\\var_station_trade_hub_scn_overlay_v01.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/var_station_trade_hub_scn_overlay_v01.glb",
+      "sourceSha256": "fdb0d1e6bf318b6bd3de23074b7b3ff649d33ade55d6e8020b1ca7d3877f97d0",
+      "candidateSha256": "28777903fa9c587b65eb70f17219310ddfd7a398ea15ef0b034c016e879a363a",
+      "bytes": 267996,
+      "trianglesAllLods": 3008,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "center": [
+            -57.40049743652344,
+            -52.39799880981445,
+            34
+          ],
+          "size": [
+            13.462000808715821,
+            12.192000732421874
+          ],
+          "depth": 0.7191409301757813
+        },
+        {
+          "center": [
+            -57.40049743652344,
+            52.402000427246094,
+            34
+          ],
+          "size": [
+            13.462000808715821,
+            12.191998901367187
+          ],
+          "depth": 0.7191409301757813
+        },
+        {
+          "center": [
+            63.399497985839844,
+            -52.39799880981445,
+            34
+          ],
+          "size": [
+            13.462000808715821,
+            12.192000732421874
+          ],
+          "depth": 0.7191409301757813
+        },
+        {
+          "center": [
+            63.399497985839844,
+            52.402000427246094,
+            34
+          ],
+          "size": [
+            13.462000808715821,
+            12.191998901367187
+          ],
+          "depth": 0.7191409301757813
+        },
+        {
+          "center": [
+            -57.4005012512207,
+            28.052001953125,
+            31
+          ],
+          "size": [
+            5.0879991912841795,
+            7.728001098632812
+          ],
+          "depth": 0.7191409301757813
+        },
+        {
+          "center": [
+            63.39950180053711,
+            28.052001953125,
+            31
+          ],
+          "size": [
+            5.0879991912841795,
+            7.728001098632812
+          ],
+          "depth": 0.7191409301757813
+        },
+        {
+          "center": [
+            63.39950180053711,
+            -9.347999572753906,
+            31
+          ],
+          "size": [
+            5.0879991912841795,
+            7.727999725341797
+          ],
+          "depth": 0.7191409301757813
+        },
+        {
+          "center": [
+            63.39950180053711,
+            -28.04800033569336,
+            31
+          ],
+          "size": [
+            5.0879991912841795,
+            7.727999267578125
+          ],
+          "depth": 0.7191409301757813
+        },
+        {
+          "center": [
+            -57.4005012512207,
+            9.35200023651123,
+            31
+          ],
+          "size": [
+            5.0879991912841795,
+            7.728000183105468
+          ],
+          "depth": 0.7191409301757813
+        }
+      ],
+      "sourceComponents": [
+        "LOD0_VAR_SCN_bastion_nn",
+        "LOD0_VAR_SCN_bastion_np",
+        "LOD0_VAR_SCN_bastion_pn",
+        "LOD0_VAR_SCN_bastion_pp",
+        "LOD0_VAR_SCN_boom_gate",
+        "LOD0_VAR_SCN_boom_n",
+        "LOD0_VAR_SCN_boom_p",
+        "LOD0_VAR_SCN_cladding_band",
+        "LOD0_VAR_SCN_mast00",
+        "LOD0_VAR_SCN_mast01",
+        "LOD0_VAR_SCN_mast02",
+        "LOD0_VAR_SCN_mast10",
+        "LOD0_VAR_SCN_mast11",
+        "LOD0_VAR_SCN_mast12"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "weapon_gatling",
+      "source": "assets\\ships\\parts\\weapons\\weapon_gatling.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/weapon_gatling.glb",
+      "sourceSha256": "61910d390242f8ba9f586be92c53266a9d70a23320e48c37fc201310bb6a5b99",
+      "candidateSha256": "fb6a5fdf96f9ddbe1e1f7611d0f10cd1471c0f8ad45874bd6ff55115023023e4",
+      "bytes": 3723616,
+      "trianglesAllLods": 4432,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "Gatling_Housing",
+          "castSectionShoulderAndOpenBay": true
+        }
+      ],
+      "sourceComponents": [
+        "DET_ammo_feed",
+        "DET_heat_disc",
+        "DET_scuff_plate",
+        "Gatling_Barrel_Cluster",
+        "Gatling_Coils_Merged",
+        "Gatling_Housing",
+        "Gatling_Muzzle"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "weapon_heavy_cannon",
+      "source": "assets\\ships\\parts\\weapons\\weapon_heavy_cannon.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/weapon_heavy_cannon.glb",
+      "sourceSha256": "3d7fe6da830c46850244b4a7f9e113567b6ddfbff864e608b2cfe5171449bc36",
+      "candidateSha256": "dbc7c4f7b828af4eb96465c6a3712077efea228a58f99db998655b650825c393",
+      "bytes": 405880,
+      "trianglesAllLods": 3056,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "weapon_heavy_cannon_Material_Hull_Merged",
+          "isolatedCastReceiverRebuilt": true
+        }
+      ],
+      "sourceComponents": [
+        "Heavy_Muzzle_Glow",
+        "weapon_heavy_cannon_Material_Hull_Merged",
+        "weapon_heavy_cannon_Material_Mechanical_Merged"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "weapon_lance",
+      "source": "assets\\ships\\parts\\weapons\\weapon_lance.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/weapon_lance.glb",
+      "sourceSha256": "34b1cefb6ed726f23dd5f4ad930d933a95e01c445b72712065cd6e3e3f7d5818",
+      "candidateSha256": "a19f5cb3876d5d3e7af87fc7d8f3a0d36b566100aa6d94d28715241392c2f964",
+      "bytes": 314192,
+      "trianglesAllLods": 1536,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "weapon_lance_Material_Hull_Merged",
+          "isolatedCastReceiverRebuilt": true
+        }
+      ],
+      "sourceComponents": [
+        "weapon_lance_Material_Accent_Merged",
+        "weapon_lance_Material_Hull_Merged",
+        "weapon_lance_Material_Mechanical_Merged"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "weapon_pulse_cannon",
+      "source": "assets\\ships\\parts\\weapons\\weapon_pulse_cannon.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/weapon_pulse_cannon.glb",
+      "sourceSha256": "85cfeaeeabdf8ea468ce13f4a5347174f57f3dd45bf722e74444be4322a9be2e",
+      "candidateSha256": "93d8350497bcc7f900802cf272d5dd7433e947e24c90b127ad1dff72135f7eeb",
+      "bytes": 387040,
+      "trianglesAllLods": 2684,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "weapon_pulse_cannon_Material_Hull_Merged",
+          "isolatedCastReceiverRebuilt": true
+        }
+      ],
+      "sourceComponents": [
+        "Pulse_Muzzle_Glow",
+        "weapon_pulse_cannon_Material_Hull_Merged",
+        "weapon_pulse_cannon_Material_Mechanical_Merged"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "weapon_railgun",
+      "source": "assets\\ships\\parts\\weapons\\weapon_railgun.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/weapon_railgun.glb",
+      "sourceSha256": "841ed9fc0d6b42912ec06efaa23eab52f3c163f414a30c00e5f95f9488ffcc10",
+      "candidateSha256": "ace0d02030382ae9db7d954944db7087ed332e251203e3985966764b98063906",
+      "bytes": 176896,
+      "trianglesAllLods": 2412,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "Rail_Breech",
+          "castSectionShoulderAndOpenBay": true
+        }
+      ],
+      "sourceComponents": [
+        "Rail_Accent_Slit",
+        "Rail_Breech",
+        "weapon_railgun_Material_Accent_Merged",
+        "weapon_railgun_Material_Mechanical_Merged"
+      ],
+      "visualVerdict": "pending independent root review"
+    },
+    {
+      "id": "weapon_turret_dual",
+      "source": "assets\\ships\\parts\\weapons\\weapon_turret_dual.glb",
+      "candidate": ".devshots/helios-remaster/sector-places/weapon_turret_dual.glb",
+      "sourceSha256": "70a47b78b84fac6f18ab47f7eed2ffec22f685ac06f2e5215f2ffcdeaeec2011",
+      "candidateSha256": "6a11d18cfe15e9b5c3838473824593d86032fbf98b3ffa8a25a695f6b01c9780",
+      "bytes": 379920,
+      "trianglesAllLods": 2512,
+      "materialFlags": true,
+      "attachmentErrors": [],
+      "changes": [
+        {
+          "component": "Turret_Head",
+          "castSectionShoulderAndOpenBay": true
+        }
+      ],
+      "sourceComponents": [
+        "Turret_Barrel_-0.62",
+        "Turret_Barrel_0.62",
+        "Turret_Base",
+        "Turret_Charge_Block",
+        "Turret_Head",
+        "Turret_Muzzle_-0.62",
+        "Turret_Muzzle_0.62",
+        "weapon_turret_dual_Material_Mechanical_Merged"
+      ],
+      "visualVerdict": "pending independent root review"
+    }
+  ]
+}
