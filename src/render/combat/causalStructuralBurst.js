@@ -398,9 +398,10 @@ export function spawnImpactStructuralBeats({
         // Last line of defence for E2. The grammar already substitutes symmetric layouts for an
         // unsigned axis; the pose code refuses to aim one even if a caller hands it a sheet that
         // slipped through, because this is the step that actually writes a direction.
-        layout: (rec.axisSigned !== true && (row.layout === 'reflected-cone' || row.layout === 'internal-vent'))
-          ? 'mirrored-lip'
-          : row.layout,
+        layout: rec.axisSigned === true
+          ? row.layout
+          : (row.layout === 'reflected-cone' ? 'mirrored-lip'
+            : (row.layout === 'internal-vent' ? 'core-release' : row.layout)),
       };
       if (row.primitive === 'shard' || row.primitive === 'plate') poseSolid(spec, ctx);
       else poseLight(spec, ctx);
@@ -540,6 +541,24 @@ function poseLight(spec, ctx) {
       spec.intensity = 0.85;
       spec.drag = row.drag * 1.6;
       spec.angularVelocity = jitter * 0.12;
+      break;
+    }
+    case 'core-release': {
+      // What an internal vent becomes when there is no outward side: the release comes from the
+      // CENTRE and leaves in every direction, still growing outward from inside rather than
+      // sitting on top of the contact. Radial, so a normal flip changes nothing.
+      const around = bodyAngle + (n > 1 ? (k / n) * Math.PI * 2 : 0) + jitter * 0.14;
+      spec.angle = around;
+      spec.x += Math.cos(around) * radius * 0.08;
+      spec.z += Math.sin(around) * radius * 0.08;
+      spec.vx = Math.cos(around) * row.speed;
+      spec.vz = Math.sin(around) * row.speed;
+      spec.length0 = size * 0.30;
+      spec.length1 = size * 1.75;
+      spec.width0 = Math.max(0.06, size * 0.15);
+      spec.width1 = Math.max(0.10, size * 0.28);
+      spec.intensity = 3.4;
+      spec.drag = row.drag * 0.5;
       break;
     }
     case 'plate-separation':

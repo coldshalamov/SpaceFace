@@ -218,6 +218,18 @@ test('a one-sided beat is dropped rather than re-aimed when the axis is unsigned
     assert.ok(!['reflected-cone', 'internal-vent'].includes(beat.layout),
       `detonation beat ${beat.role} kept a one-sided layout on an unsigned axis`);
   }
+
+  // E2 must not HOLLOW a recipe. A charge almost never has a signed normal — it did not strike a
+  // surface — so dropping its internal stages outright would leave the only class that depends on
+  // them indistinguishable from a slam. A centred event has no outward SIDE but it does have a
+  // CENTRE, so the vent becomes a radial core release, which is still flip-invariant.
+  const staged = detonation.beats.filter((b) => b.role === 'internal');
+  assert.equal(staged.length, 2, 'the two-stage internal release is the detonation');
+  assert.ok(staged.every((b) => b.layout === 'core-release'));
+  assert.ok(staged[1].at > staged[0].at, 'the energy arrives in steps, not one bloom');
+  const slam = resolveImpactPresentation({ eventClass: 'slam', materialId: 'hull', axisSigned: false, severity: 0.35 });
+  assert.ok(slam.beats.every((b) => b.role !== 'internal'),
+    'an unsigned detonation must not collapse into an unsigned slam');
 });
 
 test('the classifier reads the physics of a contact, not its size alone', () => {

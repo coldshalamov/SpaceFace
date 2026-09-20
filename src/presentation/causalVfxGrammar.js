@@ -563,11 +563,21 @@ function impactBeat(row) { return Object.freeze(row); }
 const SIGNED_ONLY_LAYOUTS = Object.freeze({ 'reflected-cone': 1, 'internal-vent': 1 });
 
 /**
- * What a signed-only layout becomes on an unsigned axis. `internal-vent` has no honest symmetric
- * form — venting out of a hole needs a hole — so it is dropped. Everything else falls back to the
- * mirrored lip, which is invariant under a normal flip.
+ * What a signed-only layout becomes on an unsigned axis.
+ *
+ * `reflected-cone` becomes the mirrored lip: no outward side, so the contact spreads both ways.
+ *
+ * `internal-vent` becomes `core-release`. A centred event has no outward SIDE, but it does have a
+ * CENTRE, and a charge going off is exactly that: the release comes from inside and leaves in every
+ * direction. Dropping the beat instead would hollow out the only class that depends on it — a
+ * detonation with its two internal stages removed is just a slam with a different name, and a
+ * detonation almost never has a signed normal, because a charge is not something that struck a
+ * surface. `core-release` is radial about the body axis, so it is still invariant under a flip.
  */
-const UNSIGNED_LAYOUT_FALLBACK = Object.freeze({ 'reflected-cone': 'mirrored-lip', 'internal-vent': null });
+const UNSIGNED_LAYOUT_FALLBACK = Object.freeze({
+  'reflected-cone': 'mirrored-lip',
+  'internal-vent': 'core-release',
+});
 
 /**
  * The beat sheets. Each entry is ordered by `at` (seconds after contact).
