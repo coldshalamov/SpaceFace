@@ -2557,7 +2557,33 @@ export function injectHudCss() {
      the key fires), an armed one burns, and anything that cannot fire drops to bone and dims. */
   #hud .sf-prail__slots { background:var(--dp-glass-flight); box-shadow:var(--dp-glass-depth), 0 12px 26px rgb(0 0 0 / .3); }
   #hud .sf-pslot { background:linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .18) 60%, rgb(255 255 255 / .03)); }
-  #hud .sf-pslot[data-state="ready"] .sf-pslot__art { color:var(--dp-lamp); }
+  /* a ready power is information (bone); amber is kept for what is armed or chosen, so the rail no
+     longer lights a dozen amber marks at rest (critic round 3) */
+  #hud .sf-pslot[data-state="ready"] .sf-pslot__art { color:var(--dp-ink); }
+  #hud .sf-pslot__name { letter-spacing:.06em; }
+  /* the radar's north mark is a small machined pointer on the rim, not a grey sprite pill */
+  #hud .sf-kit-radar__n {
+    width:0; height:0; top:10px; background:none;
+    border-left:5px solid transparent; border-right:5px solid transparent; border-top:7px solid var(--dp-ink-dim);
+  }
+  /* every label on the flight glass is an etched legend at reading contrast */
+  #hud .sf-ob-kicker > span:first-child, #hud .sf-comm__tag {
+    font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; letter-spacing:.16em; text-transform:uppercase; color:var(--dp-ink-dim);
+  }
+  /* the band key carries its lamp: dark when the band is off, lit when it is on; hover lights the
+     legend, never an outer ring */
+  #hud .sf-band-hud__button {
+    padding-left:28px;
+    background-image:radial-gradient(circle at 14px 50%, #3b352c 0, #17140f 3.5px, rgb(0 0 0 / .7) 4.5px, transparent 5px), var(--dp-plate-img);
+  }
+  #hud .sf-band-hud__button:not([data-off="true"]) {
+    color:var(--dp-ink);
+    background-image:radial-gradient(circle at 14px 50%, #fff6df 0, var(--dp-lamp-hot) 1.5px, var(--dp-lamp) 3.5px, rgb(242 185 80 / .35) 5px, rgb(242 185 80 / .12) 9px, transparent 12px), var(--dp-plate-img);
+  }
+  #hud .sf-band-hud__button:hover, #hud .sf-band-hud__button:focus-visible {
+    box-shadow:var(--dp-plate-bevel-raised), 0 8px 16px -10px var(--dp-lamp-bloom); outline:0 solid transparent !important;
+  }
+  @media (forced-colors:active) { #hud .sf-band-hud__button:focus-visible { outline:2px solid Highlight !important; } }
   #hud .sf-pslot[data-state="ready"] .fh-glyph .accent { fill:var(--dp-lamp-hot); }
   #hud .sf-pslot:is([data-state="cooling"], [data-state="unaffordable"], [data-state="locked"], [data-state="empty"]) .sf-pslot__art { color:var(--dp-ink-dim); }
   /* alerts, toasts, the edge-arrow caption: the same flight glass, one lit rim */

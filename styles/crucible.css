@@ -101,7 +101,7 @@
 .sf-swarm-flight .sf-ft { text-shadow: 0 2px 1px #07101a, 0 0 5px #07101a; }
 .sf-swarm-flight .sf-ft--hull { color: #fff0b3; }
 .sf-swarm-flight .sf-ft--big { font-size: 27px; font-weight: 900; }
-.sf-swarm-flight #hud { --hud-cyan: #9ae6ee; --hud-amber: #ffd477; --hud-paper: #f0f7fa; --hud-muted: #b5cad4; }
+.sf-swarm-flight #hud { --hud-cyan: #e8e2d4; --hud-amber: #f2b950; --hud-paper: #f3eee3; --hud-muted: #b7b4a6; }
 .sf-swarm-flight #hud .sf-leftstack { left: 20px; bottom: 20px; width: 310px; }
 .sf-swarm-flight #hud .sf-bars {
   width: 310px; padding: 12px 14px; gap: 5px 10px;

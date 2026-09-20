@@ -323,6 +323,6 @@ html body #screens .of-credits .k-foot .k-word:active { border-image-source: url
 }
 /* the name sits inside its card at every width (it was clipped at the card's right edge) */
 html body #screens .of-credits .of-credits-name {
-  font-size: clamp(34px, min(4.2vw, 7.4vh), 80px); line-height: .95; overflow-wrap: anywhere;
-  font-family: var(--dp-face-display); font-variation-settings: 'wght' 900, 'wdth' 118; color: var(--dp-ink);
+  font-size: clamp(26px, min(2.2vw, 3.8vh), 44px); line-height: 1.05; overflow-wrap: anywhere; letter-spacing: .06em; text-transform: uppercase;
+  font-family: var(--dp-face-etch); font-variation-settings: 'wght' 820, 'wdth' 86; color: var(--dp-ink);
 }

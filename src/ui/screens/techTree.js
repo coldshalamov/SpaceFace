@@ -348,14 +348,20 @@ function drawGlassTile(g, x, y, w, h, state, sel, hov, zoom) {
   g.lineTo(x + w - lw * 1.5, y + lw * 1.5);
   g.stroke();
   if (state === 'locked' && !sel) {
-    g.setLineDash([3 / zoom, 3 / zoom]);
-    g.strokeStyle = 'rgba(232,226,212,0.14)';
-    g.strokeRect(x + lw * 2.5, y + lw * 2.5, w - lw * 5, h - lw * 5);
-    g.setLineDash([]);
+    // A locked card is recessed, not outlined: a shadow falls from its upper lip into the face.
+    const sunk = g.createLinearGradient(x, y, x, y + h * 0.55);
+    sunk.addColorStop(0, 'rgba(0,0,0,0.42)');
+    sunk.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = sunk;
+    g.fillRect(x, y, w, h * 0.55);
   }
   if (sel) {
-    g.strokeStyle = 'rgba(255,217,140,0.5)';
-    g.strokeRect(x + lw * 1.5, y + lw * 1.5, w - lw * 3, h - lw * 3);
+    // the one selection language: the amber edge and a warm lift, never a box around the card
+    const lift = g.createLinearGradient(x, y, x + w * 0.75, y);
+    lift.addColorStop(0, 'rgba(255,238,210,0.09)');
+    lift.addColorStop(1, 'rgba(255,238,210,0)');
+    g.fillStyle = lift;
+    g.fillRect(x, y, w, h);
     g.fillStyle = KIT_INK.signal;
     g.fillRect(x, y, 3 / zoom, h);
   }
@@ -1024,10 +1030,7 @@ export const techTreeScreen = {
         g.setLineDash([]);
       }
       g.globalAlpha = 1;
-      if (!sel && stt !== 'locked') {
-        g.fillStyle = stt === 'researched' ? KIT_INK.good : KIT_INK.signal;
-        g.fillRect(px + 3, py + 10, 2, Math.max(8, ph - 20));
-      }
+      // Availability is the node's lamp (bottom right); the amber edge belongs to the selection alone.
       const lightKind = stt === 'researched' ? 'good' : stt === 'available' ? (sel || hov ? 'on' : 'dim') : 'off';
       // Status light sits bottom-right so the name still wraps to NODE_W
       // (growth locales already budget every pixel of that box).

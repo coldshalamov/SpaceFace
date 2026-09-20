@@ -48,6 +48,8 @@ export const DECKPLATE_HARDWARE_CSS = `
      falloff from the key light (--dp-glass-fall), handling haze that only shows where the light
      crosses it (smudge), a lit top-left rim and a shadowed lip (--dp-glass-depth). The tint is a
      neutral smoke, not navy, and no phosphor scanlines: those read as a cheap CRT filter. */
+  /* good news reads in bone with its sign or arrow: the deckplate carries no green (the kit default was mint) */
+  --k-good:#d8d2c4;
   --dp-glass-0:rgb(8 10 14 / .84);
   --dp-glass-1:rgb(20 25 31 / .74);
   --dp-glass-see:blur(14px) saturate(1.2) brightness(.6);
@@ -208,7 +210,7 @@ html.sf-high-contrast :focus-visible { outline-color:#fff !important; }
    legend, amber inner edge and a faint bloom — the same signal a selected row or tab shows. */
 .dp-key--primary {
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .5), inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
+  box-shadow:inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
 }
 .dp-key--primary:hover { filter:brightness(1.1); }
 .dp-key--primary .dp-icon { color:var(--dp-lamp-hot); }
@@ -330,7 +332,7 @@ button.dp-row, a.dp-row, .dp-row[tabindex] { cursor:pointer; width:100%; text-al
 .dp-switch[aria-checked="false"] > span:first-child,
 .dp-switch[aria-checked="true"] > span:last-child {
   color:var(--dp-ink); background:linear-gradient(180deg, #2a303a, #20252d);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .22), inset 0 1px 0 rgb(255 236 204 / .14);
+  box-shadow:inset 0 1px 0 rgb(255 236 204 / .14);
 }
 .dp-switch[aria-checked="true"] > span:last-child::before { background:${LED_ON}; box-shadow:${LED_ON_GLOW}; }
 .dp-switch[aria-checked="false"] > span:first-child::before { background:radial-gradient(circle at 42% 34%, #fbf5e8, #bdb6a5 55%, #6b675d); box-shadow:0 0 5px rgb(232 226 212 / .3); }
@@ -389,7 +391,7 @@ button.dp-row, a.dp-row, .dp-row[tabindex] { cursor:pointer; width:100%; text-al
 .dp-tile[aria-pressed="true"], .dp-tile.is-selected { box-shadow:0 0 26px rgb(242 185 80 / .32), 0 10px 24px rgb(0 0 0 / .5); }
 .dp-tile[aria-pressed="true"]::after, .dp-tile.is-selected::after {
   content:""; position:absolute; inset:0; pointer-events:none;
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .72), inset 0 0 26px rgb(242 185 80 / .34);
+  box-shadow:inset 3px 0 0 var(--dp-lamp), inset 0 0 26px rgb(242 185 80 / .22);
 }
 .dp-tile[aria-pressed="true"] .dp-tile__art, .dp-tile.is-selected .dp-tile__art { filter:saturate(1) brightness(1); }
 .dp-tile[aria-pressed="true"] .dp-tile__name, .dp-tile.is-selected .dp-tile__name { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }

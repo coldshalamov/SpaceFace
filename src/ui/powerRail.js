@@ -69,7 +69,7 @@ export const SLOT_STATES = ['ready', 'armed', 'cooling', 'unaffordable', 'locked
 export const RAIL_SLOTS = Object.freeze([
   // Reserved sockets 1–3 stay nameless under their band pill: the band label twelve pixels above
   // already says ORDNANCE, and three stacked "Ordnance" micro-labels truncated to "ORD_" junk.
-  { index: 1, band: BAND_ORDNANCE, action: 'chargeThrow', name: 'Charge', glyph: 'weapon' },
+  { index: 1, band: BAND_ORDNANCE, action: 'chargeThrow', name: 'Charge', glyph: 'munitions' },
   { index: 2, band: BAND_ORDNANCE, action: 'chargeDetonate', name: 'Blast', glyph: 'blast' },
   { index: 3, band: BAND_ORDNANCE, action: 'tether', name: 'Line', glyph: 'tether' },
   { index: 4, band: BAND_FIELDWORK, action: 'deployMassSeed', name: 'Seed', glyph: 'seed' },
@@ -277,6 +277,20 @@ function escapeRailText(value) {
   return String(value).replaceAll('&', '&amp;').replaceAll('\"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
+/** A key cap is two or three characters wide: long key names print short (the accessible name keeps
+ *  the full one). SPACE touched the socket's glyph. */
+const KEY_CAP_SHORT = Object.freeze({ SPACE: 'SPC', SHIFT: 'SHF', 'L-SHIFT': 'LSH', 'R-SHIFT': 'RSH', CTRL: 'CTL', ENTER: 'ENT', ESCAPE: 'ESC', BACKSPACE: 'BSP', DELETE: 'DEL', CAPSLOCK: 'CAP' });
+function capLabel(label) {
+  const text = String(label || '');
+  if (text.length <= 3) return text;
+  const upper = text.toUpperCase();
+  if (KEY_CAP_SHORT[upper]) return KEY_CAP_SHORT[upper];
+  // Numpad rebinds print `Num4` (4 chars): keeping the digit beats truncating every pad key to NUM.
+  const numpad = /^NUM(\d)$/.exec(upper);
+  if (numpad) return 'N' + numpad[1];
+  return upper.slice(0, 3);
+}
+
 function slotMarkup(slot, label) {
   const name = slot.answer != null ? slot.answer : slot.name;
   // A claimed socket is answering a prompt, so it shows the answer word and no verb mark: a glyph
@@ -287,7 +301,7 @@ function slotMarkup(slot, label) {
     : `${label ? `key ${label}` : 'unbound socket'}, ${slot.state}`;
   return `<button type="button" class="sf-pslot" data-slot="${slot.index}" data-state="${slot.state}"`
     + ` data-band="${slot.band}" tabindex="-1" aria-label="${escapeRailText(described + (slot.description ? '. ' + slot.description : ''))}" title="${escapeRailText(slot.description || described)}">`
-    + `<span class="sf-pslot__key" aria-hidden="true">${label || '·'}</span>`
+    + `<span class="sf-pslot__key" aria-hidden="true">${capLabel(label) || '·'}</span>`
     + `<span class="sf-pslot__art" aria-hidden="true">${art}</span>`
     + sweepSvg()
     + (name ? `<span class="sf-pslot__name">${name}</span>` : '')

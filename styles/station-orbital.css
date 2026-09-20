@@ -517,3 +517,102 @@
 @media (forced-colors: active) {
   :is(#screens .sx-observatory, .sx-observatory) .sx-tile__badge { forced-color-adjust: none; background: Highlight; color: HighlightText; box-shadow: none; }
 }
+
+/* ══ DECKPLATE CONTROLS (critic round 3, 2026-09-19) ════════════════════════════════════════════
+   The station's controls become the game's one hardware: a command is a brushed-metal keycap in the
+   thin machined edge with a lamp in its cap (lit under the hand, and on the panel's one primary —
+   Undock, Buy, Accept); a tab or a choice lights its lamp, its legend in amber and a 2px amber edge
+   (never a rounded ring); the market filters are segments in one recessed track; inputs are glass
+   wells; the station's name takes the display face and an item's title the condensed header
+   voice. Keyboard focus is that same light. The deckplate tokens (--dp-*) are the game's :root. */
+:is(#screens .sx-observatory, .sx-observatory) {
+  --so-led-off: radial-gradient(circle at 14px 50%, #3b352c 0, #17140f 3.5px, rgb(0 0 0 / .7) 4.5px, transparent 5px) border-box;
+  --so-led-on: radial-gradient(circle at 14px 50%, #fff6df 0, #ffd98c 1.5px, #f2b950 3.5px, rgb(242 185 80 / .35) 5px, rgb(242 185 80 / .12) 9px, transparent 12px) border-box;
+  --so-led-red: radial-gradient(circle at 14px 50%, #fff1ea 0, #ff8a70 1.5px, #ff5038 3.5px, rgb(255 80 56 / .35) 5px, rgb(255 80 56 / .12) 9px, transparent 12px) border-box;
+  --so-metal: url('../assets/ui/deckplate/tex/brushed.png') 0 0 / 512px repeat border-box, linear-gradient(180deg, #2b3038, #1e2229) border-box;
+  --so-edge: linear-gradient(var(--dp-lamp, #f2b950), var(--dp-lamp, #f2b950)) 0 0 / 2px 100% no-repeat border-box;
+  --so-lift: linear-gradient(90deg, rgb(255 238 210 / .09), transparent 75%) border-box;
+}
+/* commands */
+:is(#screens .sx-observatory, .sx-observatory) :is(button.fh-key--small, button.fh-key--primary, button.fh-key--hazard, .sx-trade__go, .sxb-launch, .sx-btn-primary, .sx-bar-offer__verb, .sx-comms__toggle, .sxb-help) {
+  box-sizing: border-box; min-height: 36px; padding: 0 14px 0 28px; border-radius: 0;
+  border-style: solid; border-color: transparent; border-width: 8px 10px 10px;
+  border-image: url('../assets/ui/deckplate/hw/keycap.svg') 10 10 12 / 8px 10px 10px / 0 stretch;
+  background: var(--so-led-off), var(--so-metal);
+  font-family: var(--dp-face-etch, Archivo), sans-serif; font-variation-settings: 'wght' 740, 'wdth' 80; font-weight: inherit;
+  font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dp-ink, #e8e2d4);
+  text-shadow: 0 -1px 0 rgb(0 0 0 / .7); box-shadow: none; opacity: 1;
+}
+:is(#screens .sx-observatory, .sx-observatory) :is(button.fh-key--small, button.fh-key--primary, button.fh-key--hazard, .sx-trade__go, .sxb-launch, .sx-btn-primary, .sx-bar-offer__verb, .sx-comms__toggle, .sxb-help):is(:hover, :focus-visible):not(:disabled):not([aria-disabled=true]) {
+  background: var(--so-led-on), var(--so-metal); color: var(--dp-lamp-hot, #ffd98c);
+  text-shadow: 0 0 12px var(--dp-lamp-bloom, rgb(242 185 80 / .34)); box-shadow: 0 8px 16px -10px var(--dp-lamp-bloom, rgb(242 185 80 / .34));
+  border-color: transparent; outline: 0 solid transparent !important;
+}
+/* the panel's one primary is lit at rest */
+:is(#screens .sx-observatory, .sx-observatory) :is(button.fh-key--primary, .sx-btn-primary, .sxb-launch, .sx-trade__go--buy, .sx-bar-offer__verb):not(:disabled):not([aria-disabled=true]) {
+  background: var(--so-led-on), var(--so-metal); color: var(--dp-lamp-hot, #ffd98c);
+  text-shadow: 0 0 12px var(--dp-lamp-bloom, rgb(242 185 80 / .34));
+  box-shadow: inset 0 -8px 16px -10px var(--dp-lamp-bloom, rgb(242 185 80 / .34)), 0 0 18px rgb(242 185 80 / .16);
+}
+:is(#screens .sx-observatory, .sx-observatory) button.fh-key--hazard:is(:hover, :focus-visible):not(:disabled) {
+  background: var(--so-led-red), var(--so-metal); color: #ff8a70; text-shadow: 0 0 12px rgb(255 80 56 / .4);
+}
+:is(#screens .sx-observatory, .sx-observatory) :is(button.fh-key--small, button.fh-key--primary, button.fh-key--hazard, .sx-trade__go, .sxb-launch, .sx-btn-primary, .sx-bar-offer__verb):is(:disabled, [aria-disabled=true]) {
+  background: var(--so-led-off), var(--so-metal); color: var(--dp-ink-dim, #b7b4a6); text-shadow: none; box-shadow: none; opacity: 1; filter: none;
+}
+:is(#screens .sx-observatory, .sx-observatory) .sxb-launch { height: auto; min-height: 44px; }
+:is(#screens .sx-observatory, .sx-observatory) .sxb-launch__label { font: inherit; letter-spacing: inherit; }
+:is(#screens .sx-observatory, .sx-observatory) .sxb-launch__state { color: var(--dp-ink-dim, #b7b4a6); border-left-color: rgb(232 226 212 / .2); }
+:is(#screens .sx-observatory, .sx-observatory) .sxb-launch[data-state=check] { background: var(--so-led-on), var(--so-metal); }
+:is(#screens .sx-observatory, .sx-observatory) .sxb-launch[data-state=risk] { background: var(--so-led-red), var(--so-metal); color: #ff8a70; }
+/* tabs and choices: the lamp, the amber legend, the edge */
+:is(#screens .sx-observatory, .sx-observatory) :is(.sx-tile, button.fh-key--legend:not(.sx-trade__go)) {
+  border: 0; border-radius: 0; border-image: none; box-shadow: none; outline-offset: 0;
+  padding-left: 30px; background: radial-gradient(circle at 15px 50%, #3b352c 0, #17140f 3.5px, rgb(0 0 0 / .7) 4.5px, transparent 5px) border-box;
+}
+:is(#screens .sx-observatory, .sx-observatory) :is(.sx-tile, button.fh-key--legend:not(.sx-trade__go)):hover:not(:disabled) {
+  background: radial-gradient(circle at 15px 50%, #3b352c 0, #17140f 3.5px, rgb(0 0 0 / .7) 4.5px, transparent 5px) border-box, linear-gradient(90deg, rgb(255 255 255 / .05), transparent 80%) border-box;
+  color: var(--dp-ink, #e8e2d4);
+}
+:is(#screens .sx-observatory, .sx-observatory) :is(.sx-tile, button.fh-key--legend:not(.sx-trade__go)):focus-visible {
+  outline: 0 solid transparent !important;
+  background: radial-gradient(circle at 15px 50%, #3b352c 0, #17140f 3.5px, rgb(0 0 0 / .7) 4.5px, transparent 5px) border-box, var(--so-edge), linear-gradient(90deg, rgb(255 255 255 / .05), transparent 80%) border-box;
+}
+:is(#screens .sx-observatory, .sx-observatory) :is(.sx-tile.is-active, .sx-tile[aria-current=true], .sx-tile[aria-selected=true], button.fh-key--legend:not(.sx-trade__go):is([aria-pressed=true], [aria-selected=true], [aria-current=true], .is-on, .is-active)) {
+  color: var(--dp-lamp-hot, #ffd98c); text-shadow: 0 0 12px var(--dp-lamp-bloom, rgb(242 185 80 / .34)); box-shadow: none;
+  background: radial-gradient(circle at 15px 50%, #fff6df 0, #ffd98c 1.5px, #f2b950 3.5px, rgb(242 185 80 / .35) 5px, rgb(242 185 80 / .12) 9px, transparent 12px) border-box, var(--so-edge), var(--so-lift);
+}
+/* the market filters: segments in one recessed track */
+:is(#screens .sx-observatory, .sx-observatory) :is(.sx-mkt-browser, .sx-mkt__list) .k-words--row:has(.sx-mkt-filter) {
+  gap: 3px; padding: 3px; border-radius: 3px; width: max-content; max-width: 100%;
+  background: linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .28)); box-shadow: inset 0 1px 3px rgb(0 0 0 / .85), 0 1px 0 rgb(255 236 204 / .07);
+}
+:is(#screens .sx-observatory, .sx-observatory) button.sx-mkt-filter.fh-key--legend {
+  min-height: 28px; padding: 0 10px 0 24px; font-size: 12px;
+  background: radial-gradient(circle at 12px 50%, #3b352c 0, #17140f 3px, transparent 4px) border-box, linear-gradient(180deg, #232830, #191d24) border-box;
+}
+:is(#screens .sx-observatory, .sx-observatory) button.sx-mkt-filter.fh-key--legend:is([aria-pressed=true], .is-on) {
+  background: radial-gradient(circle at 12px 50%, #fff6df 0, #ffd98c 1.2px, #f2b950 3px, rgb(242 185 80 / .3) 4.5px, transparent 7px) border-box, var(--so-edge), linear-gradient(180deg, #2c3139, #20252d) border-box;
+}
+/* inputs: glass wells whose rim lights on focus */
+:is(#screens .sx-observatory, .sx-observatory) :is(.k-input, .fh-input) {
+  border: 0; border-radius: 3px; background: linear-gradient(180deg, #151a21, #090c10);
+  box-shadow: inset 0 0 0 1px rgb(2 3 5 / .92), inset 1px 1px 0 1px rgb(255 244 222 / .08), inset 0 10px 18px -12px rgb(0 0 0 / .75);
+}
+:is(#screens .sx-observatory, .sx-observatory) :is(.k-input, .fh-input):focus-visible {
+  outline: 0 solid transparent !important; box-shadow: inset 0 0 0 1px var(--dp-lamp, #f2b950), 0 0 12px rgb(242 185 80 / .18);
+}
+/* titles: the station's name in the display face; an item's title in the condensed header voice */
+:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-title,
+:is(#screens .sx-observatory, .sx-observatory) .sx-ct-title {
+  font-family: var(--dp-face-etch, Archivo), sans-serif; font-variation-settings: 'wght' 820, 'wdth' 86; font-weight: inherit;
+  letter-spacing: .04em; text-transform: uppercase; line-height: 1.05;
+}
+/* a section legend is information, not a lit thing: bone, etched */
+:is(#screens .sx-observatory, .sx-observatory) :is(.k-caps, .so-overline) { color: var(--so-muted); }
+@media (forced-colors: active) {
+  :is(#screens .sx-observatory, .sx-observatory) :is(button.fh-key--small, button.fh-key--primary, button.fh-key--hazard, .sx-trade__go, .sxb-launch, .sx-btn-primary, .sx-bar-offer__verb, .sx-comms__toggle, .sxb-help, .sx-tile, button.fh-key--legend:not(.sx-trade__go)) {
+    border: 1px solid ButtonText; border-image: none; background: ButtonFace; color: ButtonText;
+  }
+  :is(#screens .sx-observatory, .sx-observatory) :is(button, .sx-tile):focus-visible { outline: 2px solid Highlight !important; }
+}

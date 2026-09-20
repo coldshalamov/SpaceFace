@@ -26,9 +26,9 @@
    these :root values are just the fallback when the JS controller hasn't run yet.
    ============================================================================================ */
 :root {
-  --sf-hostile: #d95f6a; --sf-neutral: #9aa8bc; --sf-friendly: #4fbf8f; --sf-ally: #4f8fdd;
-  --sf-hull: #d95f6a; --sf-shield: #4f8fdd; --sf-energy: #d4b45f; --sf-cargo: #4fbf8f;
-  --sf-warn: #ffb347; --sf-danger: #d95f6a; --sf-good: #4fbf8f;
+  --sf-hostile: #ff5038; --sf-neutral: #8f8d88; --sf-friendly: #c9c4b6; --sf-ally: #e8e2d4;
+  --sf-hull: #e8e2d4; --sf-shield: #c9c4b6; --sf-energy: #f2b950; --sf-cargo: #c9c4b6;
+  --sf-warn: #ffd08a; --sf-danger: #ff5038; --sf-good: #d8d2c4;
 
   /* iOS / notched-display safe-area fallbacks (0 on desktops that don't define env()). */
   --sf-safe-top: env(safe-area-inset-top, 0px);

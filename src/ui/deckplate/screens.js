@@ -120,7 +120,7 @@ const PAUSE = `
 #screens .of-pause .k-words:not(:focus-within) .k-word[aria-current='true'] {
   color:var(--dp-lamp-hot); border-image-source:none; text-shadow:var(--dp-emit-lamp);
   background:${LED_ON}, linear-gradient(90deg, rgb(255 238 210 / .06), transparent 75%);
-  box-shadow:inset 3px 0 0 var(--dp-lamp), inset 0 0 0 1px rgb(255 217 140 / .22), 0 10px 18px -14px var(--dp-lamp-bloom);
+  box-shadow:inset 3px 0 0 var(--dp-lamp), 0 10px 18px -14px var(--dp-lamp-bloom);
 }
 /* ui.css forces a ring on every :focus-visible with !important; the lit row is this list's ring */
 #screens .of-pause .k-word:focus-visible { outline:0 solid transparent !important; }
@@ -139,14 +139,14 @@ const PAUSE = `
 #screens .of-pause .k-words > li:is([data-group="Reference"], [data-group="Media"], [data-group="Exit"]) .k-word[data-icon]::before { margin:0; width:18px; height:18px; }
 #screens .of-pause .k-words > li:is([data-group="Reference"], [data-group="Media"], [data-group="Exit"]) .k-word:is(:hover, :focus-visible) {
   background:${LED_ON_TL}, linear-gradient(180deg, rgb(255 238 210 / .07), rgb(0 0 0 / .18));
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .42), inset 0 -3px 0 var(--dp-lamp), 0 10px 18px -14px var(--dp-lamp-bloom);
+  box-shadow:inset 3px 0 0 var(--dp-lamp), 0 10px 18px -14px var(--dp-lamp-bloom);
 }
 /* The exits discard the run: bone at rest (they are not threats), the lamp driven red on focus. */
 #screens .of-pause .k-word--danger { color:var(--dp-ink-dim); }
 #screens .of-pause .k-words > li[data-group="Exit"] .k-word--danger:is(:hover, :focus-visible) {
   color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
   background:${LED_RED_TL}, linear-gradient(180deg, rgb(255 80 56 / .08), rgb(0 0 0 / .18));
-  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), inset 0 -3px 0 var(--dp-danger), 0 10px 18px -14px var(--dp-danger-bloom);
+  box-shadow:inset 3px 0 0 var(--dp-danger), 0 10px 18px -14px var(--dp-danger-bloom);
 }
 #screens .of-pause .k-fine { color:var(--dp-ink-mute); font-family:var(--dp-face-etch); grid-area:foot; position:static; font-size:12px; }
 @media (max-height:760px) {
@@ -236,18 +236,18 @@ html body #screens > :not(.sx-observatory) .fh-key {
 html body #screens > :not(.sx-observatory) .fh-key:is(:hover, :focus-visible) {
   border-image-source:url("${HW}keycap.svg"); color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:${KEY_LED_ON_BB}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .35), 0 8px 16px -10px var(--dp-lamp-bloom);
+  box-shadow:0 8px 16px -10px var(--dp-lamp-bloom);
 }
 html body #screens > :not(.sx-observatory) .fh-key:active { border-image-source:url("${HW}keycap-pressed.svg"); }
 html body #screens > :not(.sx-observatory) :is(.fh-key:disabled, .fh-key[aria-disabled='true']) {
-  border-image-source:url("${HW}keycap.svg"); color:var(--dp-ink-mute); text-shadow:none; box-shadow:none; filter:saturate(.6) brightness(.85);
+  border-image-source:url("${HW}keycap.svg"); color:var(--dp-ink-dim); text-shadow:none; box-shadow:none; filter:none; opacity:1;
   background:${KEY_LED_OFF_BB}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
 }
 /* the screen's one primary command wears the selection language permanently */
 html body #screens > :not(.sx-observatory) .fh-key.fh-key--primary {
   border-image-source:url("${HW}keycap.svg"); color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:${KEY_LED_ON_BB}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .5), inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
+  box-shadow:inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
 }
 html body #screens > :not(.sx-observatory) .fh-key.fh-key--primary:is(:hover, :focus-visible) { filter:brightness(1.1); }
 /* a destructive key: bone at rest, the lamp driven red under the hand */
@@ -255,7 +255,7 @@ html body #screens > :not(.sx-observatory) .fh-key.fh-key--hazard { border-image
 html body #screens > :not(.sx-observatory) .fh-key.fh-key--hazard:is(:hover, :focus-visible) {
   color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
   background:${KEY_LED_RED_BB}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), 0 8px 16px -10px var(--dp-danger-bloom);
+  box-shadow:0 8px 16px -10px var(--dp-danger-bloom);
 }
 html body #screens > :not(.sx-observatory) .fh-key.fh-key--small { padding:0 10px; border-width:12px; border-image:url("${HW}keycap.svg") 10 10 12 / 6px 7px 8px / 0 stretch; }
 /* a key-binding cap is a legend, not a command: metal, no lamp */
@@ -295,7 +295,7 @@ html body #screens > :not(.sx-observatory) .k-words.k-words--row.of-pause .fh-ke
 }
 html body #screens > :not(.sx-observatory) .k-words.k-words--row.of-pause .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) {
   background:linear-gradient(var(--dp-lamp), var(--dp-lamp)) 0 0 / 2px 100% no-repeat padding-box, linear-gradient(180deg, #2c3139, #20252d) padding-box;
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .3), 0 8px 14px -10px var(--dp-lamp-bloom);
+  box-shadow:0 8px 14px -10px var(--dp-lamp-bloom);
 }
 /* rows: etched hairlines; the selected row lights like every deckplate row (and keeps its box) */
 html body #screens > :not(.sx-observatory) .fh-row {
@@ -335,10 +335,10 @@ html body #screens > :not(.sx-observatory) .fh-tile {
   border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch; background:var(--dp-glass-bb);
 }
 html body #screens > :not(.sx-observatory) .fh-tile[aria-selected='true'] {
-  border-image-source:url("${HW}bezel-lit.svg"); color:var(--dp-lamp-hot);
+  color:var(--dp-lamp-hot); background:${EDGE_LIT}, ${LIFT_LIT}, var(--dp-glass-bb);
   box-shadow:0 10px 22px -12px var(--dp-lamp-bloom);
 }
-html body #screens > :not(.sx-observatory) .fh-tile:focus-visible { outline:0 solid transparent !important; border-image-source:url("${HW}bezel-lit.svg"); }
+html body #screens > :not(.sx-observatory) .fh-tile:focus-visible { outline:0 solid transparent !important; background:${EDGE_LIT}, var(--dp-glass-bb); }
 html body #screens > :not(.sx-observatory) .fh-tile-legend { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 70; }
 /* lights: the deckplate lens */
 html body #screens > :not(.sx-observatory) .fh-light {
@@ -384,12 +384,12 @@ ${sel}::after { display:none; }
 ${sel}:is(:hover, :focus-visible) {
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:${KEY_LED_ON_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .35), 0 8px 16px -10px var(--dp-lamp-bloom);
+  box-shadow:0 8px 16px -10px var(--dp-lamp-bloom);
 }
 ${sel}:is(.k-word--primary, [aria-pressed='true']) {
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:${KEY_LED_ON_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .5), inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
+  box-shadow:inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
 }
 ${sel}:focus-visible { outline:0 solid transparent !important; }
 ${sel}:active { border-image-source:url("${HW}keycap-pressed.svg"); }
@@ -397,10 +397,10 @@ ${sel}.k-word--danger { color:var(--dp-ink-dim); }
 ${sel}.k-word--danger:is(:hover, :focus-visible) {
   color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
   background:${KEY_LED_RED_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), 0 8px 16px -10px var(--dp-danger-bloom);
+  box-shadow:0 8px 16px -10px var(--dp-danger-bloom);
 }
 ${sel}:is([aria-disabled='true'], :disabled) {
-  color:var(--dp-ink-mute); text-shadow:none; box-shadow:none; filter:saturate(.6) brightness(.85); cursor:default;
+  color:var(--dp-ink-dim); text-shadow:none; box-shadow:none; filter:none; opacity:1; cursor:default;
   background:${KEY_LED_OFF_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
 }
 @media (prefers-reduced-motion:reduce) { ${sel} { transition:none; } }
@@ -433,7 +433,7 @@ ${ML} .k-row .k-row__sub { color:var(--dp-ink-mute); }
 /* the tracked contract in the list lights like every deckplate row */
 ${ML} .k-row:is(.is-tracked, .tracked, [aria-current='true'], [aria-selected='true']) {
   background:linear-gradient(90deg, rgb(255 238 210 / .07), transparent 70%);
-  box-shadow:inset 3px 0 0 var(--dp-lamp), inset 0 0 0 1px rgb(255 217 140 / .16);
+  box-shadow:inset 3px 0 0 var(--dp-lamp);
 }
 ${ML} .sf-mlog-card .k-t-title {
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 86; text-transform:uppercase;
@@ -568,7 +568,7 @@ html body #screens .k-screen .k-foot .sf-back.k-word::after, html body #screens 
 html body #screens .k-screen .k-foot .sf-back.k-word:is(:hover, :focus-visible), html body #screens .k-screen .sf-back.k-word:is(:hover, :focus-visible) {
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:${KEY_LED_ON_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .35), 0 8px 16px -10px var(--dp-lamp-bloom);
+  box-shadow:0 8px 16px -10px var(--dp-lamp-bloom);
 }
 html body #screens .k-screen .sf-back.k-word:focus-visible { outline:0 solid transparent !important; }
 ${SHELL_SCREENS} > .k-title .k-t-title {
@@ -799,11 +799,11 @@ ${S} .of-settings-switch .k-word {
 ${S} .of-settings-switch .k-word[aria-pressed='true'] {
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:radial-gradient(circle at 11px 50%, #fff6df 0, var(--dp-lamp-hot) 1.5px, var(--dp-lamp) 3px, rgb(242 185 80 / .35) 4.5px, transparent 7px), linear-gradient(180deg, #2a303a, #20252d);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .28), inset 0 1px 0 rgb(255 236 204 / .14);
+  box-shadow:inset 0 1px 0 rgb(255 236 204 / .14);
 }
 ${S} .of-settings-switch.is-on .k-word[data-action='on'][aria-pressed='true'] {
   background:radial-gradient(circle at 11px 50%, #fff6df 0, var(--dp-lamp-hot) 1.5px, var(--dp-lamp) 3px, rgb(242 185 80 / .35) 4.5px, transparent 7px), linear-gradient(180deg, #2a303a, #20252d);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .28), inset 0 1px 0 rgb(255 236 204 / .14);
+  box-shadow:inset 0 1px 0 rgb(255 236 204 / .14);
 }
 /* Choice rows (presets, schemes): small command keys; the chosen one's LED is lit. */
 ${S} .sf-settings-pane .k-words--row:not(.of-settings-switch) .k-word {
@@ -865,7 +865,7 @@ const GM_TRACK = 'background:linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 
   + 'box-shadow:inset 0 1px 3px rgb(0 0 0 / .85), 0 1px 0 rgb(255 236 204 / .07); border-radius:3px;';
 const GM_SEG = 'background:linear-gradient(180deg, #232830, #191d24); box-shadow:inset 0 1px 0 rgb(255 236 204 / .07);';
 const GM_SEG_LIT = 'background:linear-gradient(180deg, #2c3139, #20252d); color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); '
-  + 'box-shadow:inset 0 0 0 1px rgb(255 217 140 / .3), inset 0 -2px 0 var(--dp-lamp), 0 8px 14px -10px var(--dp-lamp-bloom);';
+  + 'box-shadow:inset 2px 0 0 var(--dp-lamp), 0 8px 14px -10px var(--dp-lamp-bloom);';
 const GM_ETCH = 'font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 74; letter-spacing:.14em; text-transform:uppercase;';
 const GM_HAIR = 'background-image:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px); '
   + 'background-size:100% 2px; background-repeat:no-repeat; background-position:left top;';
@@ -922,16 +922,16 @@ ${GM} :is(#gm-set-course-btn, #gm-engage-route-btn, .gm-plot-btn) { width:100%; 
 ${GM} :is(#gm-set-course-btn, #gm-engage-route-btn):not(:disabled):not([aria-disabled="true"]) {
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:${KEY_LED_ON_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .5), inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
+  box-shadow:inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
 }
 ${GM_KEYS}:is(:disabled, [aria-disabled="true"]) {
   background:${KEY_LED_OFF_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  color:var(--dp-ink-mute); text-shadow:none; box-shadow:none; filter:saturate(.6) brightness(.85); cursor:default;
+  color:var(--dp-ink-dim); text-shadow:none; box-shadow:none; filter:none; opacity:1; cursor:default;
 }
 ${GM} #gm-engage-route-btn[data-engage-state="nav:abortRoute"]:not(:disabled) {
   color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
   background:${KEY_LED_RED_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), 0 8px 16px -10px var(--dp-danger-bloom);
+  box-shadow:0 8px 16px -10px var(--dp-danger-bloom);
 }
 ${GM} .gm-hint-btn[aria-expanded="true"] {
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
@@ -993,7 +993,8 @@ ${GM} .gm-tab.k-word {
   border:0; border-image:none; border-radius:2px; ${GM_SEG} ${GM_ETCH} font-size:12px; letter-spacing:.1em; color:var(--dp-ink-dim);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;
 }
-${GM} .gm-tab.k-word::before { display:none; }
+${GM} .gm-tab.k-word::before { content:""; display:block; position:static; flex:0 0 auto; width:7px; height:7px; margin:0 7px 0 0; border-radius:50%; background:radial-gradient(circle at 42% 36%, #3b352c, #17140f 70%); box-shadow:inset 0 1px 1.5px rgb(0 0 0 / .85), 0 0 0 1px rgb(0 0 0 / .6); }
+${GM} .gm-tab.k-word[aria-selected="true"]::before { background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%); box-shadow:0 0 6px var(--dp-lamp-bloom); }
 ${GM} .gm-tab.k-word:is(:hover, :focus-visible) { color:var(--dp-ink); background:linear-gradient(180deg, #2a2f37, #1e222a); }
 ${GM} .gm-tab.k-word[aria-selected="true"] { ${GM_SEG_LIT} }
 /* the detail region scrolls: it ends in a fade over a padded foot, so no line is cut at the edge */
@@ -1177,7 +1178,7 @@ ${SH} .sx-sw__slotfield.is-board .sx-hardpoint {
 ${SH} .sx-sw__slotfield.is-board .sx-hardpoint.is-empty { background:${LED_OFF.replace('12px 50%', '14px 50%')}, var(--dp-glass-flight); }
 ${SH} .sx-sw__slotfield.is-board .sx-hardpoint__reticle { display:none; }
 ${SH} .sx-sw__slotfield.is-board .sx-hardpoint:is(.is-selected, :hover, :focus-visible) {
-  box-shadow:var(--dp-glass-depth), inset 0 0 0 1px rgb(255 217 140 / .42); outline:0 solid transparent !important;
+  box-shadow:var(--dp-glass-depth), inset 2px 0 0 var(--dp-lamp); outline:0 solid transparent !important;
 }
 ${SH} .sx-hardpoint__reticle { width:7px; height:7px; left:-3.5px; top:-3.5px; border-radius:50%; background:radial-gradient(circle at 42% 34%, #fffaf0, #d8d2c4 45%, #6b675d); box-shadow:0 0 6px rgb(232 226 212 / .3), 0 0 0 1px #06080a; }
 ${SH} .sx-hardpoint.is-selected .sx-hardpoint__reticle { background:radial-gradient(circle at 42% 34%, #fff6df, var(--dp-lamp-hot) 30%, var(--dp-lamp) 60%, var(--dp-lamp-dim)); box-shadow:0 0 8px var(--dp-lamp-bloom), 0 0 0 1px #06080a; }
@@ -1238,7 +1239,7 @@ ${CRD} .fh-key.fh-key--hazard {
 ${CRD} .fh-key.fh-key--hazard:is(:hover, :focus-visible) {
   color:var(--dp-danger-hot); text-shadow:0 0 14px var(--dp-danger-bloom);
   background:${HAZARD_BAND}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), 0 10px 24px -12px var(--dp-danger-bloom);
+  box-shadow:0 10px 24px -12px var(--dp-danger-bloom);
 }
 ${CR} { background:radial-gradient(130% 100% at 30% 30%, rgb(9 10 13 / .84), rgb(5 6 9 / .92) 70%, rgb(4 5 7 / .95)); }
 ${dpKey(`${CR} .k-foot .k-word`)}
@@ -1254,7 +1255,7 @@ ${CR} .sf-cru-card {
   background:var(--dp-glass-bb); box-shadow:0 14px 30px rgb(0 0 0 / .5); color:var(--dp-ink);
 }
 ${CR} .sf-cru-card:is(:hover, :focus-visible):not(:disabled) {
-  outline:0 solid transparent !important; border-image-source:url("${HW}bezel-lit.svg"); box-shadow:0 14px 30px rgb(0 0 0 / .5), 0 10px 24px -12px var(--dp-lamp-bloom);
+  outline:0 solid transparent !important; background:${EDGE_LIT}, ${LIFT_LIT}, var(--dp-glass-bb); box-shadow:0 14px 30px rgb(0 0 0 / .5), 0 10px 24px -12px var(--dp-lamp-bloom);
 }
 ${CR} .sf-cru-card:is(:hover, :focus-visible):not(:disabled) .sf-cru-verb { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
 ${CR} .sf-cru-verb { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; letter-spacing:.18em; color:var(--dp-ink-mute); }
@@ -1345,19 +1346,19 @@ ${AU} .au-tab { min-height:30px; border:0; border-radius:2px; background:linear-
 ${AU} .au-tab:hover { color:var(--dp-ink); background:linear-gradient(180deg, #2a2f37, #1e222a); }
 ${AU} .au-tab:focus-visible { outline:0 solid transparent !important; color:var(--dp-ink); background:linear-gradient(var(--dp-lamp), var(--dp-lamp)) 0 0 / 2px 100% no-repeat, linear-gradient(180deg, #2a2f37, #1e222a); }
 ${AU} .au-tab.active { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); background:linear-gradient(var(--dp-lamp), var(--dp-lamp)) 0 0 / 2px 100% no-repeat, linear-gradient(180deg, #2c3139, #20252d);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .3), 0 8px 14px -10px var(--dp-lamp-bloom); }
+  box-shadow:0 8px 14px -10px var(--dp-lamp-bloom); }
 /* verbs: keycaps; the one primary lit, a recall the hazard kind */
 ${dpKey(`${AU} :is(.au-close, .au-cta, .au-card button, .au-outpost-detail button)`)}
 ${dpKey(`${BS} button.sf-btn`)}
 ${AU} :is(.au-cta, .au-card button.au-buy):not(:disabled), ${BS} button.sf-btn.sf-btn--primary:not(:disabled) {
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:${KEY_LED_ON_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 217 140 / .5), inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
+  box-shadow:inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
 }
 ${AU} .au-card button.au-recall:is(:hover, :focus-visible):not(:disabled) {
   color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
   background:${KEY_LED_RED_BB.replace('11px 50%', '17px 50%')}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
-  box-shadow:inset 0 0 0 1px rgb(255 80 56 / .45), 0 8px 16px -10px var(--dp-danger-bloom);
+  box-shadow:0 8px 16px -10px var(--dp-danger-bloom);
 }
 ${AU} .au-program { border:0; border-radius:3px; background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth); color:var(--dp-ink); }
 ${AU} .au-outpost-detail summary { color:var(--dp-lamp-hot); }
@@ -1370,4 +1371,37 @@ ${AU} .au-outpost-detail summary { color:var(--dp-lamp-hot); }
 }
 `;
 
-export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + LEGACY;
+/* ── FINISH (critic round 3) ──
+   Scrollbars are one machined part: a recessed groove and a metal thumb with no arrow caps (Windows
+   Chromium drew arrow buttons for the thin standard scrollbar, so the standard properties are reset
+   here and the part is drawn with the scrollbar pseudo-elements). A tab or a choice in a row carries
+   its lamp inside its cap, lit when chosen. */
+const NS = 'html body #screens > :not(.sx-observatory)';
+const FINISH = `
+${NS}, ${NS} * { scrollbar-width:auto !important; scrollbar-color:auto !important; }
+${NS} ::-webkit-scrollbar, ${NS}::-webkit-scrollbar { width:10px; height:10px; background:transparent; }
+${NS} ::-webkit-scrollbar-button, ${NS}::-webkit-scrollbar-button { display:none; width:0; height:0; }
+${NS} ::-webkit-scrollbar-track, ${NS}::-webkit-scrollbar-track {
+  border-radius:5px; background:rgb(0 0 0 / .38); box-shadow:inset 0 1px 2px rgb(0 0 0 / .85), inset 0 0 0 1px rgb(0 0 0 / .45);
+}
+${NS} ::-webkit-scrollbar-thumb, ${NS}::-webkit-scrollbar-thumb {
+  border-radius:5px; border:2px solid transparent; background:linear-gradient(90deg, #5c6068, #3e424a) padding-box;
+  box-shadow:inset 0 1px 0 rgb(255 236 204 / .16);
+}
+${NS} ::-webkit-scrollbar-thumb:hover, ${NS}::-webkit-scrollbar-thumb:hover { background:linear-gradient(90deg, #6c7078, #4c5058) padding-box; }
+${NS} ::-webkit-scrollbar-corner, ${NS}::-webkit-scrollbar-corner { background:transparent; }
+${NS} .k-words--row .fh-key.fh-key--legend::before {
+  content:""; display:block; position:static; flex:0 0 auto; width:7px; height:7px; margin:0 8px 0 0; border-radius:50%;
+  background:radial-gradient(circle at 42% 36%, #3b352c, #17140f 70%); box-shadow:inset 0 1px 1.5px rgb(0 0 0 / .85), 0 0 0 1px rgb(0 0 0 / .6);
+}
+${NS} .k-words--row .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit)::before {
+  background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
+  box-shadow:0 0 6px var(--dp-lamp-bloom), 0 0 14px var(--dp-lamp-bloom-soft);
+}
+${NS} .sf-ng-body .fh-key.fh-key--small:not(.fh-key--legend) { padding:0 14px 0 30px; }
+@media (forced-colors:active) {
+  ${NS} .k-words--row .fh-key.fh-key--legend::before { background:CanvasText; box-shadow:none; }
+}
+`;
+
+export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + LEGACY + FINISH;

@@ -22,7 +22,14 @@
 // a key called `line` holding a string makes the extractor file this SVG path data as player copy
 // awaiting translation. Verified against that list — the other eight names are clear.
 
+import { DP_ICON_24 } from '../deckplate/iconPaths.js';
+
 const RAW = Object.freeze({
+  // The throwable charge answers under the kit's munitions name, but the kit's munitions mark is
+  // the same three-shell art `weapon` carries (provenance above), so CHARGE and FRAG still render
+  // as one verb today. Keep the two entries separate: this alias is the socket's verb key, and a
+  // dedicated charge mark replaces its path here without touching the bomb bay.
+  munitions: DP_ICON_24['icon-munitions'],
   weapon: `<path fill="currentColor" fill-rule="evenodd" d="M6.40,8.00H6.80A1.40,1.40 0 0 1 8.20,9.40V18.00A1.40,1.40 0 0 1 6.80,19.40H6.40A1.40,1.40 0 0 1 5.00,18.00V9.40A1.40,1.40 0 0 1 6.40,8.00ZM5.00,8.00 L8.20,8.00 L6.60,3.60ZM11.80,8.00H12.20A1.40,1.40 0 0 1 13.60,9.40V18.00A1.40,1.40 0 0 1 12.20,19.40H11.80A1.40,1.40 0 0 1 10.40,18.00V9.40A1.40,1.40 0 0 1 11.80,8.00ZM10.40,8.00 L13.60,8.00 L12.00,3.60ZM17.20,8.00H17.60A1.40,1.40 0 0 1 19.00,9.40V18.00A1.40,1.40 0 0 1 17.60,19.40H17.20A1.40,1.40 0 0 1 15.80,18.00V9.40A1.40,1.40 0 0 1 17.20,8.00ZM15.80,8.00 L19.00,8.00 L17.40,3.60Z"/><path fill="currentColor" class="accent" d="M5.20,19.80H18.80A1.00,1.00 0 0 1 19.80,20.80V21.00A1.00,1.00 0 0 1 18.80,22.00H5.20A1.00,1.00 0 0 1 4.20,21.00V20.80A1.00,1.00 0 0 1 5.20,19.80Z"/>`,
   blast: `<path fill="currentColor" fill-rule="evenodd" d="M12.00,1.80 L14.00,9.00 L21.20,11.00 L14.00,13.00 L12.00,20.20 L10.00,13.00 L2.80,11.00 L10.00,9.00Z"/><path fill="currentColor" class="accent" d="M10.00,11.00a2.00,2.00 0 1 0 4.00,0a2.00,2.00 0 1 0 -4.00,0Z"/>`,
   tether: `<path fill="currentColor" fill-rule="evenodd" d="M2.20,18.80a3.00,3.00 0 1 0 6.00,0a3.00,3.00 0 1 0 -6.00,0ZM15.80,5.20a3.00,3.00 0 1 0 6.00,0a3.00,3.00 0 1 0 -6.00,0ZM5.20,19.65 L19.65,5.20 L18.80,4.35 L4.35,18.80Z"/><path fill="currentColor" class="accent" d="M9.80,12.00a2.20,2.20 0 1 0 4.40,0a2.20,2.20 0 1 0 -4.40,0Z"/>`,

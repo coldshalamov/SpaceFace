@@ -63,10 +63,12 @@ export const CAPTION_SIZES = ['small', 'medium', 'large'];
 
 const PALETTES = {
   none: {
-    // identity — the shipped theme (styles/ui.css:8-9). Listed so we can hard-reset every var.
-    '--sf-hostile': '#ff5470', '--sf-neutral': '#9aa8bc', '--sf-friendly': '#62e08a', '--sf-ally': '#4f8fdd',
-    '--sf-hull': '#ff5470', '--sf-shield': '#4f8fdd', '--sf-energy': '#ffd84a', '--sf-cargo': '#4fbf8f',
-    '--sf-warn': '#ffb347', '--sf-danger': '#ff5470', '--sf-good': '#62e08a',
+    // identity — the shipped deckplate theme: bone for information (friends, allies, good news), the
+    // lamp amber for energy and caution, red only for threat. No green, blue or cyan in the default;
+    // the dichromacy palettes below keep their own separations. Listed so we can hard-reset every var.
+    '--sf-hostile': '#ff5038', '--sf-neutral': '#8f8d88', '--sf-friendly': '#c9c4b6', '--sf-ally': '#e8e2d4',
+    '--sf-hull': '#e8e2d4', '--sf-shield': '#c9c4b6', '--sf-energy': '#f2b950', '--sf-cargo': '#c9c4b6',
+    '--sf-warn': '#ffd08a', '--sf-danger': '#ff5038', '--sf-good': '#d8d2c4',
   },
   // Protan (no L-cones): red is dark/ambiguous. Push hostile toward orange-vermillion, friendly toward
   // bluish-green, keep shield a strong blue; widen luminance gaps.

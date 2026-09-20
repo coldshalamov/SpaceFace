@@ -608,8 +608,8 @@ export const newGameScreen = {
     const caption = el('div', 'k-stage__foot');
     paintPlate(caption, 'edge', { 'max-width': '100%' });
     const ship = shipDefFor(ctx, DEFAULT_STARTER.shipId);
-    const hullName = el('h2', 'k-display k-t-sub fh-title', (ship && ship.name) || DEFAULT_STARTER.name);
-    paintMarking(hullName);
+    // The hull card's name is a content header (the header voice, set by the sheet), not a title.
+    const hullName = el('h2', 'k-display k-t-sub fh-title sf-slot-card-title', (ship && ship.name) || DEFAULT_STARTER.name);
     const hullBlurb = el('p', 'k-sentence', DEFAULT_STARTER.blurb);
     caption.appendChild(hullName);
     caption.appendChild(hullBlurb);
