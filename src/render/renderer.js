@@ -9940,10 +9940,10 @@ export const render = {
     const holdOpeningPicture = this._openingFirstPicturePrepared === true
       && this.state && this.state.mode === 'flight'
       && !Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
-    // Kinetic crunch: a 1–2 frame interpolation pause. Sim keeps stepping; only pose
-    // submission reuses the last presented meshes so the hull reads as stopping the slug.
-    const holdInterpolation = !holdOpeningPicture
-      && !!(this.state && this.state.render && this.state.render.holdInterpolation);
+    // No presentation path may hold poses while the sim keeps stepping. The kinetic crunch used to
+    // do exactly that for 1–2 frames per heavy hit: every hull froze, the sim ran on underneath,
+    // and the picture then snapped a frame or two forward — the player's own ship included. Weight
+    // on impact is a time dip (feel.js hit-stop), which resumes from where it stopped.
     // Failsafe: the opening hold normally ends in the afterBrowserPaint latch after the first
     // playable draw. If that callback never fires (lost paint signal, validation-time mode flip),
     // the hold would freeze syncEntityViews/camera/instance submission for the rest of the session.
@@ -9963,7 +9963,7 @@ export const render = {
     } else {
       this._openingPictureHoldSinceMs = null;
     }
-    if (!holdOpeningPicture && !holdInterpolation) {
+    if (!holdOpeningPicture) {
       updateShipPitchPresentation(this.state, frameDt);
       this.syncEntityViews(alpha);
       if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
@@ -9978,19 +9978,6 @@ export const render = {
           : null;
         this.cam.follow(frameDt, alpha, presented);
       }
-    } else if (holdInterpolation) {
-      // Keep last posed meshes. Camera still tracks that frozen hull so trauma / FOV punch land.
-      const heldAlpha = this.state.render && Number.isFinite(this.state.render.interpolationAlpha)
-        ? this.state.render.interpolationAlpha
-        : alpha;
-      if (this.cam && typeof this.cam.follow === 'function') {
-        const pm = this._meshes && this.state ? this._meshes.get(this.state.playerId) : null;
-        const presented = pm && pm.position
-          && Number.isFinite(pm.position.x) && Number.isFinite(pm.position.z)
-          ? pm.position
-          : null;
-        this.cam.follow(frameDt, heldAlpha, presented);
-      }
     } else if (this.state && this.state.render) {
       // prepareOpeningFirstPicture already published the exact final pose, visibility, camera, and
       // LOD graph. Preserve that immutable composition through its first submit; re-running the
@@ -9999,7 +9986,7 @@ export const render = {
       // the first paint releases the opening latch below.
       this.state.render.interpolationAlpha = 1;
     }
-    if (!holdOpeningPicture && !holdLoadingGpu && !holdInterpolation) {
+    if (!holdOpeningPicture && !holdLoadingGpu) {
       syncContactShadowPool(this._contactShadowPool, this._entityFrame);
       syncShipAuxPools(this._shipAuxPool, this._entityFrame);
     }
@@ -10007,7 +9994,7 @@ export const render = {
       ? this._frameShadowCastRadius
       : liveShadowCastRadius(this.state);
     this._frameShadowCastRadius = shadowRadius;
-    if (!holdOpeningPicture && !holdLoadingGpu && !holdInterpolation) this._syncAuthoredInstanceSubmission(shadowRadius);
+    if (!holdOpeningPicture && !holdLoadingGpu) this._syncAuthoredInstanceSubmission(shadowRadius);
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
     // momentarily stills the clouds too, keeping the backdrop in the same time model as the action.

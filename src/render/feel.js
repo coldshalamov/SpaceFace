@@ -39,10 +39,14 @@ import { fillSpeedLineStreak, speedLineRgba } from './speedLineStrokeCache.js';
 // Fully data-driven: new weapons in WEAPONS[] get scaled automatically, no hardcoded IDs.
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 
-// Kinetic crunch (presentation hold). A 1–2 frame interpolation freeze on heavy kinetic /
-// explosive contacts, then the pose and debris burst resume. This is NOT a timeScale dip:
-// the 60 Hz sim keeps stepping; only the render pose update is held. Fast repeaters stay
-// rhythmic (holdS = 0) so they read as ticks, not freezes.
+// Kinetic crunch. A 1–2 frame hit-stop on heavy kinetic / explosive contacts: the world dips to
+// the hit-stop floor, then resumes FROM WHERE IT STOPPED. It used to be a presentation hold — the
+// render poses froze while the 60 Hz sim kept stepping — and that is a manufactured dropped
+// frame: when the hold released, every hull (the player's own included) snapped forward by the
+// time the sim had run underneath, 2.5–5 WU at fighting speed, once per concussion-cannon hit.
+// The owner read it as the ship "jigging back and forth like it doesn't know its own location".
+// A time dip carries the same weight and is continuous. Fast repeaters stay rhythmic (hsDur = 0)
+// so they read as ticks, not stops.
 export const CRUNCH_FRAME_S = 1 / 60;
 export const CRUNCH_HOLD_MIN_S = CRUNCH_FRAME_S;
 export const CRUNCH_HOLD_MAX_S = CRUNCH_FRAME_S * 2;
@@ -117,9 +121,9 @@ function kineticBody(weapon, payload = {}) {
 }
 
 /**
- * Presentation crunch for a combat:damage receipt. Pure: no DOM, no timeScale, no RNG.
- * Heavy kinetic / explosive contacts return a 1–2 frame interpolation hold plus mass-scaled
- * FOV/trauma. Light repeaters return a rhythmic tick (holdS = 0). motionReduce / photo / non-flight
+ * Crunch for a combat:damage receipt. Pure: no DOM, no timeScale write, no RNG.
+ * Heavy kinetic / explosive contacts return a 1–2 frame hit-stop plus mass-scaled FOV/trauma.
+ * Light repeaters return a rhythmic tick (hsDur = 0). motionReduce / photo / non-flight
  * / uninvolved NPC furballs return null.
  */
 export function resolveKineticCrunch(payload, context = {}) {
@@ -147,10 +151,10 @@ export function resolveKineticCrunch(payload, context = {}) {
   const heavy = kin.body >= 0.35
     || (kin.mass >= 8 && kin.impulse >= 100)
     || (kin.explosive === 1 && kin.mass >= 7);
-  let holdS = 0;
+  let hsDur = 0;
   if (heavy && !(kin.rof >= CRUNCH_REPEATER_ROF)) {
     const holdT = Math.min(1, 0.55 * kin.body + 0.45 * kin.impulseU);
-    holdS = CRUNCH_HOLD_MIN_S + (CRUNCH_HOLD_MAX_S - CRUNCH_HOLD_MIN_S) * holdT;
+    hsDur = CRUNCH_HOLD_MIN_S + (CRUNCH_HOLD_MAX_S - CRUNCH_HOLD_MIN_S) * holdT;
   }
 
   const fov = 0.35 + kin.body * (heavy ? 2.45 : 0.75);
@@ -162,18 +166,14 @@ export function resolveKineticCrunch(payload, context = {}) {
 
   return Object.freeze({
     id,
-    holdS,
+    hsDur,
     fov,
     trauma,
     mass: kin.mass,
     body: kin.body,
-    stallsSim: false,
+    // The picture is never held against a running sim; a heavy crunch is a continuous time dip.
+    holdsPose: false,
   });
-}
-
-/** True when the current presentation frame must reuse last posed meshes. */
-export function kineticCrunchPresentationHold(state) {
-  return !!(state && state.render && state.render.holdInterpolation);
 }
 
 // Collision impact feel (PQ-139.00). Physics impacts and combat consequence receipts share one
@@ -287,13 +287,9 @@ export function resolveCollisionFeel(impact, context = {}, out = null) {
   if (deltaV < IMPACT_KNOCK_DV) id = 'impact.scrape';
   else if (deltaV < IMPACT_SLAM_DV) id = 'impact.knock';
 
-  // Slams also arm a 1–2 frame presentation hold so the hull reads as stopping the universe
-  // before the debris burst. Scrapes stay ticks (holdS = 0); timeScale hit-stop is unchanged.
-  const holdS = deltaV >= IMPACT_SLAM_DV
-    ? CRUNCH_HOLD_MIN_S + (CRUNCH_HOLD_MAX_S - CRUNCH_HOLD_MIN_S) * t
-    : 0;
-
-  if (!out) return Object.freeze({ id, deltaV, hsDur, fov, trauma, kickWu, kickX, kickZ, holdS });
+  // The slam's weight is its hit-stop above: a time dip that resumes from where it stopped. It
+  // never holds poses against a running sim (that snap read as the ship losing its place).
+  if (!out) return Object.freeze({ id, deltaV, hsDur, fov, trauma, kickWu, kickX, kickZ });
   out.id = id;
   out.deltaV = deltaV;
   out.hsDur = hsDur;
@@ -302,7 +298,6 @@ export function resolveCollisionFeel(impact, context = {}, out = null) {
   out.kickWu = kickWu;
   out.kickX = kickX;
   out.kickZ = kickZ;
-  out.holdS = holdS;
   return out;
 }
 
@@ -604,7 +599,6 @@ export const feel = {
     this._hsRampIn = 0;       // >0 = cinematic ease-in window (death); timeScale ramps 1 -> floor
     this._hsFreezeTimer = 0;  // kill-cam hard-freeze window (timeScale = 0)
     this._hsRequest = { scale: HS_DEPTH }; // reused: frame() performs no request allocation
-    this._crunchHold = 0;     // remaining presentation-hold seconds (interpolation pause, not sim)
     this._collisionHitstopCooldown = 0; // remaining real-time seconds before another collision beat
     this._armedCollisionDeltaV = 0;     // deltaV that armed the current cooldown (upgrade gate)
     this._pendingCollisionFeel = null;  // strongest contact this frame, from either receipt source
@@ -1404,7 +1398,6 @@ export const feel = {
     if (mr) return;
 
     this._trigger(pending.hsDur, pending.fov, 0, null);
-    if (pending.holdS > 0) this._armPresentationHold(pending.holdS);
     const ctrl = this.state.render && this.state.render.cameraCtrl;
     if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(pending.trauma);
     // Directed kick rides the SAME armed beat — the cooldown above rate-limits it identically, so
@@ -1476,27 +1469,13 @@ export const feel = {
     if (photoModeFeelPresentation(this.state).silencePunch) return;
     const fovScale = scales && Number.isFinite(scales.fovScale) ? scales.fovScale : 1;
     const traumaScale = scales && Number.isFinite(scales.traumaScale) ? scales.traumaScale : 1;
-    this._armPresentationHold(crunch.holdS);
-    if (crunch.fov * fovScale > 0) this._fovPunch = addFovPunch(this._fovPunch, crunch.fov * fovScale);
+    // Heavy contacts bite with a 1–2 frame hit-stop; _trigger keeps the longer of any dip already
+    // running and stacks the FOV punch. Rhythmic ticks (hsDur = 0) only punch the FOV.
+    this._trigger(crunch.hsDur || 0, Math.max(0, crunch.fov * fovScale), 0, null);
     const ctrl = this.state.render && this.state.render.cameraCtrl;
     if (crunch.trauma * traumaScale > 0 && ctrl && typeof ctrl.addTrauma === 'function') {
       ctrl.addTrauma(crunch.trauma * traumaScale);
     }
-  },
-
-  _armPresentationHold(holdS) {
-    const dur = Number.isFinite(holdS) ? Math.max(0, holdS) : 0;
-    if (!(dur > 0)) return;
-    this._crunchHold = Math.max(this._crunchHold || 0, dur);
-    this._publishCrunchHold();
-  },
-
-  _publishCrunchHold() {
-    const render = this.state && this.state.render;
-    if (!render) return;
-    const remaining = this._crunchHold > 0 ? this._crunchHold : 0;
-    render.holdInterpolation = remaining > 0;
-    render.kineticCrunchHoldRemaining = remaining;
   },
 
   // Arm a punch. `vigCls` selects which vignette gradient ('hit'|'death'|null).
@@ -1555,8 +1534,6 @@ export const feel = {
     this._hsRampIn = 0;
     this._hsFreezeTimer = 0;
     this.timeEffects.clear('feel:hit-stop');
-    this._crunchHold = 0;
-    this._publishCrunchHold();
     this._collisionHitstopCooldown = 0;
     this._armedCollisionDeltaV = 0;
     this._pendingCollisionFeel = null;
@@ -1570,13 +1547,6 @@ export const feel = {
     void state;
 
     // ---- hit-stop timer updates only its time-effects request ----
-    const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
-    if (mr && this._crunchHold > 0) {
-      this._crunchHold = 0;
-    } else if (this._crunchHold > 0) {
-      this._crunchHold = Math.max(0, this._crunchHold - frameDt);
-    }
-    this._publishCrunchHold();
     if (this._collisionHitstopCooldown > 0) {
       this._collisionHitstopCooldown = Math.max(0, this._collisionHitstopCooldown - frameDt);
     }
