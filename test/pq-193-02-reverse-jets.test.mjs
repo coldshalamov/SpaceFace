@@ -17,6 +17,7 @@ import { computeFlightTelemetry } from '../src/core/flight/flightTelemetry.js';
 import { createPropulsionRuntime, stepPropulsion } from '../src/core/flight/propulsionKernel.js';
 import { PROPULSION_PROFILES } from '../src/core/flight/propulsionCatalog.js';
 import { resolveActuatorScale, resolveRcsFirings } from '../src/render/rcsJets.js';
+import { vfx } from '../src/render/vfx.js';
 import { PLAYER_RETRO_VOLUME_RECIPE } from '../src/render/thruster/recipes/plasmaStreamRecipe.js';
 import {
   PlayerRetroJets,
@@ -136,4 +137,68 @@ test('seed 19302: retro jet has bounded directional aspect, separated sheets and
   assert.match(owner, /DriveForge/);
   assert.doesNotMatch(owner, /new VolumetricPlumeSystem/);
   console.log(`SEED=${SEED} length=${length} exitR=${exitR} aspect=${aspect.toFixed(2)} construction=${RETRO_JET_CONSTRUCTION}`);
+});
+
+test('release tail rides the moving hull instead of molting off in space (seed 19302)', () => {
+  // Reproduce the shipped bug: brake, then hit the accelerator. The spooling-down pair used to
+  // replay a frozen render-local pose — two bright blobs stayed parked at the release point and
+  // the ship flew out from under them. The held pose is now ship-local and rebuilt per frame.
+  const { actuators, scale } = reverseActuators();
+  const volume = mockVolume();
+  volume.spool = 0;
+  const ctx = {
+    _energy: { retroVolume: volume },
+    _rcsPoseScratch: {},
+    _retroSockets: [
+      { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+      { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+    ],
+    _retroSocketView: [],
+    _retroHeldSockets: [
+      { lx: 0, lz: 0, lax: 1, laz: 0 },
+      { lx: 0, lz: 0, lax: 1, laz: 0 },
+    ],
+    _retroHeldCount: 0,
+    _retroParams: {},
+    _spawnLocalXZ: { x: 0, z: 0 },
+    _entityLocalXZ: { x: 0, z: 0 },
+    _frameMembrane: null,
+    _productionRcsFirings: [],
+    _rcsSocketObjects: () => null,
+    _writeRetroSocketPose: () => false,
+    _rcsScaleFor: () => scale,
+    _toLocalXZ(x, z, out) { const t = out || { x: 0, z: 0 }; t.x = x; t.z = z; return t; },
+    state: {},
+  };
+  const player = { pos: { x: 0, z: 0 }, rot: 0, radius: 6 };
+
+  // Hold the brake: both bow jets live, and the held pose is retained ship-locally.
+  for (let i = 0; i < 30; i++) {
+    vfx._updateRetroVolume.call(ctx, player, actuators, DT, null);
+  }
+  assert.equal(volume.last.live, 2, 'both bow jets live under brake');
+  const liveOffsets = volume.last.sockets.map((s) => ({
+    dx: s.x - player.pos.x,
+    dz: s.z - player.pos.z,
+  }));
+
+  // Release onto the accelerator: reverse demand dies while the hull accelerates away.
+  const coast = { ...actuators, reverse: 0, brake: 0 };
+  let tailFrames = 0;
+  for (let i = 0; i < 12; i++) {
+    player.pos.x += 5;
+    vfx._updateRetroVolume.call(ctx, player, coast, DT, null);
+    const sockets = volume.last && volume.last.sockets;
+    if (volume.last && volume.last.live === 2 && sockets && sockets.length >= 2) {
+      sockets.forEach((s, j) => {
+        assert.ok(Math.abs((s.x - player.pos.x) - liveOffsets[j].dx) < 1e-3,
+          `decaying retro jet ${j} must ride the hull (got ${((s.x - player.pos.x) - liveOffsets[j].dx).toFixed(3)} WU drift)`);
+        assert.ok(Math.abs((s.z - player.pos.z) - liveOffsets[j].dz) < 1e-3,
+          `decaying retro jet ${j} must not be left parked at the release point`);
+      });
+      tailFrames++;
+    }
+  }
+  assert.ok(tailFrames >= 6, 'release tail should run while the spool decays');
+  console.log('pq-193.02 release tail rides the hull', { seed: SEED, tailFrames });
 });

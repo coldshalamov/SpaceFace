@@ -248,8 +248,8 @@ export class PlayerRetroJets {
       this._plumes.push(plume);
 
       const forge = new DriveForge(T, {
-        lengthWU: 1.45, mouthScale: 0.86, aftScale: 1.06,
-        opacity: 0.13, radiance: 1.08, forceSinglePass: true,
+        lengthWU: 1.6, mouthScale: 0.86, aftScale: 1.02,
+        opacity: 0.2, radiance: 1.35, forceSinglePass: true,
       });
       forge.mesh.name = `${this.name}-forge-${i}`;
       forge.attach(this.group);

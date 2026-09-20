@@ -188,15 +188,17 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
  * this recipe.
  */
 export const PLAYER_RETRO_VOLUME_RECIPE = freezeDeep({
-  id: 'player_retro_jet_v5',
+  id: 'player_retro_jet_v6',
   // Open, directional high-pressure exhaust. Avoid a short, wide envelope that integrates to a bulb.
+  // Slimmer than v5: the tail used to balloon nearly as wide as the jet was long at low drive,
+  // which is what made the bow pair read as two ribbon balls instead of small mounted jets.
   // Long enough to read at chase height (~140 WU), still well under the main drive's 17 WU jet.
-  lengthWU: 8.8,
-  exitRadiusWU: 1.08,
-  tailFlare: 1.14,
-  spread: 0.82,
+  lengthWU: 9.2,
+  exitRadiusWU: 1.0,
+  tailFlare: 1.08,
+  spread: 0.5,
   radiance: 1.6,
-  opacity: 0.16,
+  opacity: 0.15,
   ribbons: 12,
   stations: 40,
   across: 5,

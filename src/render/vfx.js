@@ -11467,10 +11467,12 @@ export const vfx = {
         { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
       ];
       this._retroSocketView = [];
-      // Last held bow pose, so a released brake can spool down at the position it left (B10).
+      // Last held bow pose in SHIP-LOCAL space (offset from hull origin + local axis), so a
+      // released brake can spool down attached to the hull — a frozen render-local pose would
+      // stay behind in the world while the ship flies on (B10).
       this._retroHeldSockets = [
-        { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
-        { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+        { lx: 0, lz: 0, lax: 1, laz: 0 },
+        { lx: 0, lz: 0, lax: 1, laz: 0 },
       ];
       this._retroHeldCount = 0;
       this._retroParams = { ...PLAYER_RETRO_VOLUME_RECIPE, drive: 0, boost: 0, turbulence: 0 };
@@ -11918,11 +11920,25 @@ export const vfx = {
     }
 
     if (!view.length) {
-      // Release tail: the demand is gone but the spool may still be winding down. Reuse the last
-      // held pose so the pair shrinks in place instead of popping off (B10).
+      // Release tail: the demand is gone but the spool may still be winding down. Rebuild the
+      // bow pose under the hull's CURRENT transform so the pair shrinks in place on the ship
+      // instead of being left hanging at the world spot where the brake let go (B10).
       const spool = Number.isFinite(volume.spool) ? volume.spool : 0;
       if (this._retroHeldCount > 0 && spool > 0) {
-        for (let i = 0; i < this._retroHeldCount; i++) view.push(this._retroHeldSockets[i]);
+        const cf = Math.cos(pose.rot || 0);
+        const sf = Math.sin(pose.rot || 0);
+        const shipLocal = this._toLocalXZ(pose.x, pose.z, this._spawnLocalXZ);
+        for (let i = 0; i < this._retroHeldCount; i++) {
+          const held = this._retroHeldSockets[i];
+          const sock = this._retroSockets[i];
+          sock.x = shipLocal.x + held.lx * cf - held.lz * sf;
+          sock.y = 0;
+          sock.z = shipLocal.z + held.lx * sf + held.lz * cf;
+          sock.ax = held.lax * cf - held.laz * sf;
+          sock.ay = 0;
+          sock.az = held.lax * sf + held.laz * cf;
+          view.push(sock);
+        }
         const cam = this.state.render && this.state.render.camera;
         if (cam) volume.setCamera(cam);
         applyPlayerRetroVolume(volume, view, 0, dt, a11y, this._retroParams);
@@ -11932,13 +11948,24 @@ export const vfx = {
       return;
     }
 
-    // Retain the live pose for the release tail.
+    // Retain the live pose in ship-local space for the release tail: store the socket's offset
+    // from the hull origin and its axis rotated by -rot, so the tail can rebuild it wherever
+    // the hull has moved (or turned) by the time demand dies.
     this._retroHeldCount = Math.min(view.length, this._retroHeldSockets.length);
-    for (let i = 0; i < this._retroHeldCount; i++) {
-      const dst = this._retroHeldSockets[i];
-      const src = view[i];
-      dst.x = src.x; dst.y = src.y; dst.z = src.z;
-      dst.ax = src.ax; dst.ay = src.ay; dst.az = src.az;
+    if (this._retroHeldCount > 0) {
+      const cf = Math.cos(pose.rot || 0);
+      const sf = Math.sin(pose.rot || 0);
+      const shipLocal = this._toLocalXZ(pose.x, pose.z, this._spawnLocalXZ);
+      for (let i = 0; i < this._retroHeldCount; i++) {
+        const dst = this._retroHeldSockets[i];
+        const src = view[i];
+        const dx = src.x - shipLocal.x;
+        const dz = src.z - shipLocal.z;
+        dst.lx = dx * cf + dz * sf;
+        dst.lz = -dx * sf + dz * cf;
+        dst.lax = src.ax * cf + src.az * sf;
+        dst.laz = -src.ax * sf + src.az * cf;
+      }
     }
 
     const cam = this.state.render && this.state.render.camera;
