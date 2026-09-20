@@ -5,13 +5,16 @@
 
 import {
   DEMAND_MULTIPLIER_BOUNDS,
+  DEMAND_DEPLETION_GATE,
   ECONOMY_DEMAND_PROFILES,
 } from '../data/economyDemandProfiles.js';
 import { conflictPairsForSector } from '../data/conflictZones.js';
 import { thresholdGate } from '../data/economyContractTemplates.js';
 import { sectorSignalFor } from '../systems/sectorSim.js';
+import { sectorDepletionPressure } from '../systems/fieldDepletion.js';
 
 export { DEMAND_MULTIPLIER_BOUNDS } from '../data/economyDemandProfiles.js';
+export { DEMAND_DEPLETION_GATE } from '../data/economyDemandProfiles.js';
 
 const clamp = (value, lo, hi) => value < lo ? lo : value > hi ? hi : value;
 
@@ -40,7 +43,9 @@ function driverFor(profile, commodity, delta, detail) {
     ? 'War'
     : profile.id === 'blockade-relief'
       ? 'Blockade'
-      : 'Expansion';
+      : profile.id === 'depletion-scarcity'
+        ? 'Depleted belts'
+        : 'Expansion';
   let explanation;
   if (profile.id === 'war-footing') {
     explanation = `Active faction war raises local demand for ${commodity.name}.`;
@@ -48,6 +53,8 @@ function driverFor(profile, commodity, delta, detail) {
     explanation = direction === 'down'
       ? `Blockade conditions suppress discretionary demand for ${commodity.name}.`
       : `Disrupted supply lanes increase local demand for ${commodity.name}.`;
+  } else if (profile.id === 'depletion-scarcity') {
+    explanation = `Local belts are worked out; ${commodity.name} carries a regional scarcity premium.`;
   } else {
     explanation = `Sustained sector throughput increases industrial demand for ${commodity.name}.`;
   }
@@ -82,6 +89,26 @@ function isIndustrialExpansion(signal) {
     && Number(signal.danger) < 0.62;
 }
 
+/**
+ * Local field memory as a demand context. Reads the same durable depletion scalar the mining and
+ * world systems write; intensity is 0 at the gate and 1 at a fully worked sector, so the premium
+ * scales with how hard the belts have actually been hit instead of toggling on a threshold.
+ */
+function depletionContext(state, sectorId) {
+  const pressure = sectorDepletionPressure(state, sectorId);
+  if (!pressure || pressure.fields <= 0) return null;
+  if (pressure.depletion < DEMAND_DEPLETION_GATE) return null;
+  const span = Math.max(1e-6, 1 - DEMAND_DEPLETION_GATE);
+  const intensity = clamp((pressure.depletion - DEMAND_DEPLETION_GATE) / span, 0, 1);
+  if (intensity <= 0) return null;
+  return {
+    profile: ECONOMY_DEMAND_PROFILES.depletionScarcity,
+    detail: intensity,
+    intensity,
+    fields: pressure.fields,
+  };
+}
+
 export function effectiveDemandFor({ state, sectorId, commodity } = {}) {
   if (!state || !sectorId || !commodity) {
     return Object.freeze({ multiplier: 1, drivers: Object.freeze([]), context: Object.freeze({}) });
@@ -96,11 +123,14 @@ export function effectiveDemandFor({ state, sectorId, commodity } = {}) {
   if (isIndustrialExpansion(signal)) {
     contexts.push({ profile: ECONOMY_DEMAND_PROFILES.industrialExpansion, detail: signal.driver.pricePressure });
   }
+  const depletion = depletionContext(state, sectorId);
+  if (depletion) contexts.push(depletion);
 
   let delta = 0;
   const drivers = [];
   for (const context of contexts) {
-    const amount = deltaFor(context.profile, commodity);
+    const scale = Number.isFinite(context.intensity) ? context.intensity : 1;
+    const amount = deltaFor(context.profile, commodity) * scale;
     if (Math.abs(amount) < 1e-9) continue;
     delta += amount;
     drivers.push(driverFor(context.profile, commodity, amount, context.detail));
@@ -113,6 +143,7 @@ export function effectiveDemandFor({ state, sectorId, commodity } = {}) {
       war: !!war,
       blockade: !!(signal && thresholdGate(signal, 'blockade')),
       industrialExpansion: isIndustrialExpansion(signal),
+      depletion: !!depletion,
     }),
   });
 }
