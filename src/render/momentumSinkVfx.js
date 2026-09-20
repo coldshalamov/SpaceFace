@@ -11,6 +11,30 @@ const CURRENT_TARGET_PRIORITY = 0.98;
 const MAX_AUTHORED_RELATIVE_SPEED = 180;
 const RESIDUE_LIFE_S = 1 / MOMENTUM_SINK_VFX_HZ;
 
+// Stored-minus-live speed that reads as a fully loaded clamp. Below this the sink is merely
+// trailing the body; at it, the bungee is holding real tension and the cue should say so.
+const TENSION_BITE_SPEED = 6;
+
+// The brace phase is read from the target's OWN position, for two reasons.
+//
+// The planner is pure and is resolved TWICE per cadence pulse — once to rank candidates, once to
+// emit — so a module counter would advance twice and hand the two reads different poses. Position
+// is identical across both, and moves continuously with the body, so successive 12 Hz pulses vary
+// coherently (roughly a sixth of a cycle per pulse at ordinary combat speeds) instead of stamping
+// the same three parallel dashes over and over, which is what made a working clamp read as a
+// strobing decal. A parked body holds one pose, which is correct: nothing is converging.
+//
+// Wrapped BEFORE scaling. Galactic-global coordinates are large, and multiplying first would spend
+// the whole float mantissa on the integer part and leave the fraction as noise.
+const BRACE_MODULUS_X = 37;
+const BRACE_MODULUS_Z = 43;
+const TAU = Math.PI * 2;
+
+function bracePhase(x, z) {
+  const u = ((x % BRACE_MODULUS_X) / BRACE_MODULUS_X + (z % BRACE_MODULUS_Z) / BRACE_MODULUS_Z) * 0.5;
+  return u - Math.floor(u);
+}
+
 export const MOMENTUM_SINK_VFX_COLORS = Object.freeze({
   core: '#fff0bf',
   compression: '#ff9d48',
@@ -197,10 +221,22 @@ export function resolveMomentumSinkVfxPlan(out, input) {
   plan.opacity = motionReduce
     ? (flashReduce ? 0.22 : 0.3)
     : (flashReduce ? fullOpacity * 0.54 : fullOpacity);
-  plan.centerOffset = radius * 0.65 + plan.length * 0.22;
-  plan.sideOffset = motionReduce ? 0 : clamp(radius * 0.55 + speedT * 2.5, 2, 18);
-  plan.convergenceSpeed = motionReduce ? 0 : clamp(4 + relativeSpeed * 0.05, 4, 18);
-  plan.particleSpeed = motionReduce ? 0 : clamp(6 + relativeSpeed * 0.07, 6, 24);
+  // A LOADED clamp and a merely trailing one should not look the same. `storedReceding` is the
+  // bungee's tension read and until now only fed length/width/opacity, so a sink holding real
+  // tension was just a slightly longer streak. Now the bite pulls the compression front in against
+  // the hull and drives the braces harder inward, which is the verb the tool is actually doing.
+  const bite = clamp01((tensionSpeed - relativeSpeed) / TENSION_BITE_SPEED);
+  const brace = 1 + 0.18 * Math.sin(bracePhase(position.x, position.z) * TAU);
+  plan.centerOffset = radius * (0.65 - 0.18 * bite) + plan.length * 0.22;
+  plan.sideOffset = motionReduce
+    ? 0
+    : clamp(clamp(radius * 0.55 + speedT * 2.5, 2, 18) * brace * (1 - 0.22 * bite), 1.5, 18);
+  plan.convergenceSpeed = motionReduce
+    ? 0
+    : clamp((4 + relativeSpeed * 0.05) * brace * (1 + 0.85 * bite), 4, 18);
+  plan.particleSpeed = motionReduce
+    ? 0
+    : clamp((6 + relativeSpeed * 0.07) * brace, 6, 24);
   // Carry follows the target's real translation; only the side channels add convergence travel.
   plan.carryX = velocity.x;
   plan.carryZ = velocity.z;
