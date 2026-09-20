@@ -48,7 +48,7 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
     background: {
       // The original stellar island and ringed planet remain the landmarks. The painted
       // estuary is distant atmosphere around them, held below the lit machinery.
-      paintedSky: { strength: 0.16, parallax: 0.003 },
+      paintedSky: { plate: 'helios-amber-estuary', strength: 0.16, parallax: 0.003 },
       intensity: 0.80,
       nebulaOpacity: 0.0,
       structure: {
@@ -99,6 +99,10 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
       intensity: 0.58,
       // Authored star associations/landmarks carry the composition; no procedural full-field veil.
       nebulaOpacity: 0.0,
+      // The Lantern shelf: an offline-baked plate with one dominant lit mass upper-right, a far
+      // companion upper-left and an explicit protected void over the lower-left play corridor.
+      // It is authored art, not a wash — the bake refuses to ship over its composition budget.
+      paintedSky: { plate: 'core-lantern-shelf', strength: 0.15, parallax: 0.0032 },
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'core_trade_constellation',
@@ -127,6 +131,9 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
       intensity: 0.55,
       // The broken dust lane is explicit geometry with authored silhouette and occlusion.
       nebulaOpacity: 0.0,
+      // The ochre shoal answers this region's own recipe: one warm mass broken into pieces by dark
+      // lanes, sitting clear of the amber stellar river the star formation already draws overhead.
+      paintedSky: { plate: 'belt-ochre-shoal', strength: 0.15, parallax: 0.0034 },
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'belt_broken_dust_lane',
@@ -160,6 +167,10 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
       intensity: 0.72,
       // Full-field L1/L2 contribution forced off — macro geometry + stars only.
       nebulaOpacity: 0.0,
+      // Deliberately NO painted plate. The fringe's identity is the tidal filament and the blue
+      // flocculent spiral against empty sky; giving every region a plate would make the feature a
+      // uniform veil, which is the thing it exists to avoid. A region with no plate loads nothing.
+      paintedSky: null,
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'fringe_tidal_filament',
@@ -203,6 +214,9 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
       intensity: 0.6,
       // Local electromagnetic scar + wormhole replace the former fullscreen violet wash.
       nebulaOpacity: 0.0,
+      // Still not a wash: the cold halo is two shell arcs and one knot, with a second protected
+      // void over the right half so the live wormhole owns that patch of sky uncontested.
+      paintedSky: { plate: 'anomaly-cold-halo', strength: 0.13, parallax: 0.0030 },
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'anomaly_electromagnetic_scar',
@@ -291,6 +305,23 @@ export function resolveBackgroundComposition(profile) {
     ringChance: finiteClamped(source.ringChance, DEFAULT_BACKGROUND_COMPOSITION.ringChance, 0, 1),
     cometInterval: deepFreeze([Math.min(a, b), Math.max(a, b)]),
     signatureHero: signature,
+  });
+}
+
+/**
+ * The region's painted far-sky plate, or null when the region is deliberately plateless.
+ *
+ * `plate` names an entry in src/render/deepSkyPlates.js, which the offline bake manifest pins. The
+ * strength is clamped hard: this layer is mixed across the whole frame, so an accidental 0.8 would
+ * be the full-field wash earlier review rejected, not a bolder sky.
+ */
+export function resolveBackgroundPaintedSky(profile) {
+  const source = profile && profile.background && profile.background.paintedSky;
+  if (!source || typeof source.plate !== 'string' || !source.plate) return null;
+  return deepFreeze({
+    plate: source.plate,
+    strength: finiteClamped(source.strength, 0.14, 0, 0.35),
+    parallax: finiteClamped(source.parallax, 0.003, 0, 0.02),
   });
 }
 

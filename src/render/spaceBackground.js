@@ -26,8 +26,10 @@ import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import {
   resolveBackgroundComposition,
   resolveBackgroundStructure,
+  resolveBackgroundPaintedSky,
   estimatePhenomenonCoverage,
 } from '../data/sectorVisualProfiles.js';
+import { DeepSkyPlateResidency, deepSkyPeakResidentBytes } from './deepSkyPlates.js';
 import {
   resolveDeepFieldStructureRecipe,
   sampleAuthoredWidth,
@@ -1193,17 +1195,30 @@ export class SpaceBackground {
     this.planetCache = new Map();
     this.paintedPlanets = typeof document !== 'undefined' && typeof document.createElementNS === 'function'
       ? new PaintedPlanets() : null;
-    this.paintedSky = null;
+    // Regional far-sky plates. This used to be one unconditional TextureLoader call for the Helios
+    // plate, resident in every sector including the four that never sampled it, and uploaded to the
+    // GPU by whichever frame first drew it. Both are now bounded: see src/render/deepSkyPlates.js.
+    this.paintedSky = null;            // the ACTIVE plate texture, or null
     this._paintedSkyReady = false;
     this._paintedSkyStrength = 0;
-    if (typeof document !== 'undefined' && typeof document.createElementNS === 'function') {
-      this.paintedSky = new THREE.TextureLoader().load('/assets/background/helios-amber-estuary.png',
-        () => { if (!this._disposed) this._paintedSkyReady = true; }, undefined,
-        (error) => console.error('[background] Helios painted sky failed to load', error));
-      this.paintedSky.colorSpace = THREE.SRGBColorSpace;
-      this.paintedSky.wrapS = this.paintedSky.wrapT = THREE.RepeatWrapping;
-      this.paintedSky.name = 'Helios_Amber_Estuary';
-    }
+    this._paintedSkyArt = null;        // resolved { plate, strength, parallax } for this region
+    this._paintedSkyAnchorX = 0;       // region-entry anchor: plate parallax is local and bounded
+    this._paintedSkyAnchorZ = 0;
+    this.deepSkyPlates = new DeepSkyPlateResidency({
+      loader: (typeof document !== 'undefined' && typeof document.createElementNS === 'function')
+        ? new THREE.TextureLoader() : null,
+      renderer: this.renderer,
+      state: this.state,
+      configure: (texture, plate) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        // ClampToEdge, not Repeat. The sampler offset reaches past 1.0 at large world coordinates,
+        // and a wrap there folds the far edge of the plate onto screen. Every plate is baked with
+        // an edge fade back to its own floor, so clamping is invisible where wrapping was a seam.
+        texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.anisotropy = 1;
+        texture.name = `DeepSkyPlate_${plate.id}`;
+      },
+    });
     // Shared sprite materials, one per baked texture — never disposed during flight. Disposing a
     // sprite material releases the shared sprite GL program once its last user dies; the next
     // impostor spawn then re-links it inside renderBufferDirect (a 50-300 ms draw-time stall).
@@ -2790,20 +2805,43 @@ export class SpaceBackground {
       const un = this.layerMaterial.uniforms;
       un.uGroupOrigin.value.copy(this.group.position);
       un.uNebulaOpacity.value = this.nebulaOpacity;
-      const skyArt = this._visualProfile?.background?.paintedSky;
-      const skyTarget = this._paintedSkyReady ? (skyArt?.strength || 0) : 0;
+      // At most one plate upload per transition, and only on a frame with room for it. The blend
+      // strength stays at zero until that upload has happened, so the plate never appears on the
+      // same frame that pays for it.
+      if (this.deepSkyPlates.pump()) this._adoptActiveSkyPlate();
+      const skyArt = this._paintedSkyArt;
+      const skyLive = !!skyArt && this.deepSkyPlates.readyId === skyArt.plate;
+      this._paintedSkyReady = skyLive;
+      const skyTarget = skyLive ? skyArt.strength : 0;
       this._paintedSkyStrength += (skyTarget - this._paintedSkyStrength) * Math.min(1, dt * 1.8);
       un.uPaintedSkyStrength.value = this._paintedSkyStrength;
       const skyParallax = skyArt?.parallax || 0.003;
-      // The frame-coordinate bridge already supplies global XZ here, just like the tile layers.
-      un.uPaintedSkyOffset.value.set((cx * skyParallax / this.H) % 1, (-cz * skyParallax / this.H) % 1);
       // Cover the viewport without stretching the painted forms on wide or tall displays.
       const canvas = this.renderer?.domElement;
       const aspect = canvas?.height ? canvas.width / canvas.height : 16 / 9;
       const skyImage = this.paintedSky?.image;
       const imageAspect = skyImage?.height ? skyImage.width / skyImage.height : 16 / 9;
-      un.uPaintedSkyScale.value.set(0.88 * Math.min(1, aspect / imageAspect),
-        0.88 * Math.min(1, imageAspect / aspect));
+      const scaleX = 0.88 * Math.min(1, aspect / imageAspect);
+      const scaleY = 0.88 * Math.min(1, imageAspect / aspect);
+      un.uPaintedSkyScale.value.set(scaleX, scaleY);
+      // Plate parallax is LOCAL to the region and BOUNDED by the plate's own unseen margin.
+      //
+      // It used to be `(cx * parallax / H) % 1` from the absolute world position. Two defects
+      // followed. The modulo wrapped, so at a large enough coordinate the far edge of the plate
+      // folded onto the screen as a hard seam — and with a per-region plate it would have folded
+      // an authored landmark in beside itself. And the absolute position meant an arbitrary
+      // starting offset per region, so the composition a plate was authored for was never the one
+      // the player arrived at. Anchoring at region entry and clamping to the margin the scale
+      // leaves unseen gives a sky that slides with travel, always shows the authored frame, and
+      // can neither wrap nor smear a clamped edge across the view.
+      const marginX = Math.max(0, (1 - scaleX) * 0.5);
+      const marginY = Math.max(0, (1 - scaleY) * 0.5);
+      const skyDx = (cx - this._paintedSkyAnchorX) * skyParallax / this.H;
+      const skyDz = -(cz - this._paintedSkyAnchorZ) * skyParallax / this.H;
+      un.uPaintedSkyOffset.value.set(
+        Math.max(-marginX, Math.min(marginX, skyDx)),
+        Math.max(-marginY, Math.min(marginY, skyDz)),
+      );
     }
 
     // pixel scale can change with dynamic resolution — one scalar, cheap to refresh
@@ -3027,6 +3065,7 @@ export class SpaceBackground {
     const initialSector = this._sectorId == null;
     this._sectorId = id;
     this._visualProfile = visualProfile || null;
+    this._requestSkyPlate(visualProfile);
     this.backgroundComposition = resolveBackgroundComposition(visualProfile);
     this.backgroundStructure = resolveBackgroundStructure(visualProfile);
     this.deepFieldRecipe = resolveDeepFieldStructureRecipe(this.backgroundStructure);
@@ -3090,6 +3129,31 @@ export class SpaceBackground {
     this._publishOpeningSubmissionPackage();
   }
 
+  /**
+   * Bind this region's painted plate. Called on every sector entry, including the opening one.
+   * A region with no plate releases whatever was held: the feature costs a plateless region zero.
+   */
+  _requestSkyPlate(visualProfile) {
+    const art = resolveBackgroundPaintedSky(visualProfile);
+    this._paintedSkyArt = art;
+    // Anchor the plate's parallax where the player entered, so every region presents the frame it
+    // was authored for rather than an arbitrary slice chosen by the world coordinate.
+    this._paintedSkyAnchorX = this.camX;
+    this._paintedSkyAnchorZ = this.camZ;
+    this.deepSkyPlates.request(art ? art.plate : null);
+    // The requested plate is not the live one yet. Only pump() promotes it, and only after upload.
+    if (!art || this.deepSkyPlates.readyId !== art.plate) this._adoptActiveSkyPlate();
+  }
+
+  /** Point the sky sampler at whatever the residency currently holds. */
+  _adoptActiveSkyPlate() {
+    this.paintedSky = this.deepSkyPlates.activeTexture;
+    const un = this.layerMaterial && this.layerMaterial.uniforms;
+    if (!un || !un.uPaintedSky) return;
+    // A sampler always needs a bound texture even at zero strength; the void tile is the stand-in.
+    un.uPaintedSky.value = this.paintedSky || (this.layers[0] && this.layers[0].tex) || un.uPaintedSky.value;
+  }
+
   _skyPaletteForSector(sector) {
     // Match by nebulaTint VALUE, not object identity — sector objects get shallow-copied
     // (world init) and can round-trip through JSON (saves), so references don't survive.
@@ -3139,8 +3203,10 @@ export class SpaceBackground {
     // one that would keep reading "32.2 MB" no matter how much was reclaimed. 1.34 is the mip tail.
     const texMB = [this.l0Target, this.l1Target, this.l2Target]
       .reduce((bytes, t) => bytes + (t ? t.width * t.height * 4 * 1.34 : 0), 0) / (1024 * 1024);
-    const paintedSkyMB = this._paintedSkyReady
-      ? this.paintedSky.image.width * this.paintedSky.image.height * 4 * 1.34 / (1024 * 1024) : 0;
+    // Regional plate residency is reported from the registry's exact RGBA8 + mip figure, not from
+    // the decoded image, so the number is the same before and after the upload lands.
+    const plateStats = this.deepSkyPlates ? this.deepSkyPlates.stats() : null;
+    const paintedSkyMB = plateStats ? plateStats.residentMB : 0;
     return {
       tier: this.tierName,
       H_world: this.H,
@@ -3161,6 +3227,12 @@ export class SpaceBackground {
       heroCandidates: this.heroPlacement.length,
       bakedTexMB: Math.round(texMB * 10) / 10,
       paintedSkyTexMB: Math.round(paintedSkyMB * 10) / 10,
+      paintedSkyPlate: plateStats ? plateStats.activePlate : null,
+      paintedSkyIncoming: plateStats ? plateStats.incomingPlate : null,
+      paintedSkyResidentPlates: plateStats ? plateStats.residentPlates : 0,
+      paintedSkyUploads: plateStats ? plateStats.uploads : 0,
+      paintedSkyLastUploadMs: plateStats ? plateStats.lastUploadMs : 0,
+      paintedSkyPeakMB: Math.round((deepSkyPeakResidentBytes() / 1048576) * 10) / 10,
       nebulaDeferred: this._nebulaBakePending
         ? [this._nebulaBakePending.L1 ? 'L1' : null, this._nebulaBakePending.L2 ? 'L2' : null].filter(Boolean)
         : [],
@@ -3179,7 +3251,8 @@ export class SpaceBackground {
 
   dispose() {
     this._disposed = true;
-    this.paintedSky?.dispose();
+    this.deepSkyPlates?.dispose();
+    this.paintedSky = null;
     this.paintedPlanets?.dispose();
     this._disposeStructureMacro();
     this._disposeStructureTextures();

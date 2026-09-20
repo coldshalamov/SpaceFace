@@ -172,7 +172,9 @@ export function installDeepFieldPresentation(Background) {
         skyCarrierTriangles: 1,
         voidTextureBytes: rgbaMipBytes(DEEP_FIELD_VOID_SIZE),
         clearSectorTextureReads: this._paintedSkyStrength > 0 ? 2 : 1,
-        paintedSky: this._paintedSkyStrength > 0 ? 'helios-amber-estuary' : null,
+        // Read the live plate. This was hardcoded to the Helios plate, which stopped being true
+        // the moment the sky became regional.
+        paintedSky: this._paintedSkyStrength > 0 ? (this.deepSkyPlates?.activeId || null) : null,
       };
     };
   }
