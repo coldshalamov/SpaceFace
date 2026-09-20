@@ -1,0 +1,39 @@
+{
+  "id": "environmental-drift",
+  "note": "Diffuse environmental particulate you fly THROUGH. Deliberately a few large lobes with real openings between them, driven by a slow large-scale vortex pair, so the player can read the action through the gaps instead of behind a uniform fog blanket. The aux channel is PARTICULATE concentration - grit suspended in the gas that catches the key light. Baked to a quasi-steady drift so the four captured frames loop. Edit this file and re-run `node tools/bake-gas-volumes.mjs`.",
+  "auxChannel": "particulate",
+  "frames": 4,
+  "steps": 150,
+  "captureStart": 96,
+  "loop": true,
+  "dt": 0.020,
+  "jacobi": 20,
+  "drag": 0.9995,
+  "sources": [
+    { "c": [-0.30, 0.14, -0.22], "r": 0.34, "amount": 0.85, "sharp": 1.0 },
+    { "c": [0.28, -0.10, 0.20], "r": 0.31, "amount": 0.78, "sharp": 1.0 },
+    { "c": [0.06, 0.30, 0.24], "r": 0.26, "amount": 0.62, "sharp": 1.1 },
+    { "c": [-0.10, -0.31, 0.06], "r": 0.24, "amount": 0.58, "sharp": 1.1 }
+  ],
+  "cavities": [
+    { "c": [0.0, 0.0, 0.0], "r": [0.20, 0.34, 0.20], "cut": 0.78 },
+    { "c": [-0.26, -0.10, 0.30], "r": [0.16, 0.16, 0.16], "cut": 0.70 },
+    { "c": [0.32, 0.26, -0.18], "r": [0.15, 0.15, 0.15], "cut": 0.66 }
+  ],
+  "initialVelocity": { "radial": 0.0, "push": [0.06, 0.0, 0.0], "shearAxis": 0.34, "vortexPair": 0.55 },
+  "forces": {
+    "buoyancy": 0.02,
+    "weight": 0.0,
+    "swirl": 0.22,
+    "swirlRadius": 0.48,
+    "swirlDrift": 0.0,
+    "jet": 0.0,
+    "jetRadius": 0.5,
+    "jetOrigin": 0.0
+  },
+  "injection": { "steps": 40, "hold": 40, "rate": 0.045, "lateRate": 0.045, "auxScale": 0.55 },
+  "dissipation": { "rho": 0.9992, "aux": 0.9975 },
+  "blur": { "rho": 2, "aux": 1 },
+  "clump": 0.18,
+  "auxMode": "inject"
+}

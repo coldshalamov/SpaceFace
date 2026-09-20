@@ -1,0 +1,40 @@
+{
+  "id": "fracture-dust",
+  "note": "Mining / rock fracture dust. A flat ejecta fan off one face, no buoyancy, heavy drag, and a sharpening term that lets the material clump into grains instead of relaxing into a ball. The aux channel is the COARSE grain fraction; it falls out faster than the fine haze, so late frames are a thin veil around a lumpy core. Edit this file and re-run `node tools/bake-gas-volumes.mjs`.",
+  "auxChannel": "grain",
+  "frames": 8,
+  "steps": 84,
+  "captureStart": 6,
+  "loop": false,
+  "dt": 0.016,
+  "jacobi": 8,
+  "drag": 0.982,
+  "sources": [
+    { "c": [-0.30, 0.00, 0.00], "r": 0.16, "amount": 1.00, "sharp": 2.4 },
+    { "c": [-0.20, 0.05, 0.18], "r": 0.11, "amount": 0.72, "sharp": 3.0 },
+    { "c": [-0.21, -0.07, -0.16], "r": 0.10, "amount": 0.68, "sharp": 3.2 },
+    { "c": [-0.10, 0.12, -0.04], "r": 0.09, "amount": 0.55, "sharp": 3.4 },
+    { "c": [-0.08, -0.13, 0.08], "r": 0.09, "amount": 0.52, "sharp": 3.4 },
+    { "c": [0.04, 0.02, 0.14], "r": 0.07, "amount": 0.40, "sharp": 3.8 },
+    { "c": [0.02, -0.04, -0.12], "r": 0.07, "amount": 0.38, "sharp": 3.8 }
+  ],
+  "cavities": [
+    { "c": [-0.34, 0.0, 0.0], "r": [0.10, 0.30, 0.30], "cut": 0.55 }
+  ],
+  "initialVelocity": { "radial": 0.10, "push": [0.95, 0.0, 0.0], "shearAxis": 0.30, "fan": 0.85 },
+  "forces": {
+    "buoyancy": 0.0,
+    "weight": 0.12,
+    "swirl": 0.55,
+    "swirlRadius": 0.30,
+    "swirlDrift": 0.006,
+    "jet": 0.22,
+    "jetRadius": 0.22,
+    "jetOrigin": -0.30
+  },
+  "injection": { "steps": 9, "hold": 5, "rate": 0.17, "lateRate": 0.05, "auxScale": 1.0 },
+  "dissipation": { "rho": 0.994, "aux": 0.951 },
+  "blur": { "rho": 0, "aux": 1 },
+  "clump": 0.55,
+  "auxMode": "inject"
+}

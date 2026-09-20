@@ -1,0 +1,41 @@
+{
+  "id": "combustion-bloom",
+  "note": "Combustion aftermath. Unequal fuel lobes around a cold rent, buoyant hot core, fast heat decay against slow density decay so the body cools from the inside out and the cavities open as it expands. Edit this file and re-run `node tools/bake-gas-volumes.mjs`.",
+  "auxChannel": "temperature",
+  "frames": 12,
+  "steps": 104,
+  "captureStart": 8,
+  "loop": false,
+  "dt": 0.014,
+  "jacobi": 18,
+  "drag": 0.997,
+  "sources": [
+    { "c": [-0.20, 0.02, 0.01], "r": 0.21, "amount": 1.00, "sharp": 1.6 },
+    { "c": [-0.01, 0.27, 0.03], "r": 0.18, "amount": 0.86, "sharp": 1.6 },
+    { "c": [0.12, -0.10, 0.27], "r": 0.22, "amount": 0.95, "sharp": 1.5 },
+    { "c": [-0.17, -0.27, -0.17], "r": 0.18, "amount": 0.90, "sharp": 1.7 },
+    { "c": [0.11, 0.19, -0.26], "r": 0.20, "amount": 0.92, "sharp": 1.6 },
+    { "c": [0.29, -0.12, -0.10], "r": 0.17, "amount": 0.80, "sharp": 1.8 },
+    { "c": [0.30, 0.23, 0.20], "r": 0.13, "amount": 0.76, "sharp": 2.0 }
+  ],
+  "cavities": [
+    { "c": [0.02, -0.01, 0.02], "r": [0.27, 0.09, 0.15], "cut": 0.86 },
+    { "c": [-0.24, 0.18, -0.06], "r": [0.10, 0.16, 0.10], "cut": 0.60 }
+  ],
+  "initialVelocity": { "radial": 0.30, "push": [0.42, 0.0, 0.0], "shearAxis": 0.72 },
+  "forces": {
+    "buoyancy": 0.36,
+    "weight": 0.30,
+    "swirl": 1.55,
+    "swirlRadius": 0.14,
+    "swirlDrift": 0.0025,
+    "jet": 0.80,
+    "jetRadius": 0.085,
+    "jetOrigin": -0.22
+  },
+  "injection": { "steps": 14, "hold": 8, "rate": 0.145, "lateRate": 0.08, "auxScale": 1.0 },
+  "dissipation": { "rho": 0.9965, "aux": 0.972 },
+  "blur": { "rho": 1, "aux": 2 },
+  "clump": 0.0,
+  "auxMode": "inject"
+}
