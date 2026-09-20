@@ -11,6 +11,7 @@ import {
   wreckFieldEcology,
 } from '../src/systems/aftermathWrecks.js';
 import { mining } from '../src/systems/mining.js';
+import { createMarketNews } from '../src/ui/marketNews.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 
 const SECTOR_ID = 'sector_helios_prime';
@@ -75,7 +76,8 @@ function boot(seed = 90210) {
   };
   aftermathWrecks.init({ state, bus, helpers, registry });
   mining.init({ state, bus, helpers, registry });
-  return { state, bus, helpers, registry };
+  const marketNews = createMarketNews({ state, bus, helpers });
+  return { state, bus, helpers, registry, marketNews };
 }
 
 function dispose() {
@@ -140,16 +142,22 @@ test('an open-space kill leaves a durable marker, a bound wreck, and a headline'
     assert.equal(spawned[0].payload.markerId, marker.markerId);
     assert.equal(spawned[0].payload.zoneId, null);
 
-    const news = entries(h.bus, 'news:headline');
-    assert.equal(news.length, 1, 'the world reports the open-space loss');
+    // The record leg (from rememberMarker) has no citation id; marketNews's presenter
+    // re-emit carries id:'aft:news:<markerId>' — count only the record leg.
+    const news = entries(h.bus, 'news:headline').filter((entry) => !entry.payload.id);
+    assert.equal(news.length, 1, 'the world records the open-space loss');
     assert.match(news[0].payload.headline, /open space/);
     assert.match(news[0].payload.headline, /drifting in the open/);
 
-    // The player news surface presents authored copy from news:publish (marketNews is its only
-    // presenter); news:headline alone is a system-side record no UI ever shows.
+    // The player news surface presents authored copy from news:publish — mounted here for real,
+    // because its tickerEventRef gate silently drops lines without a citation key.
     const published = entries(h.bus, 'news:publish');
     assert.equal(published.length, 1, 'the loss reaches the player news surface');
     assert.equal(published[0].payload.text, news[0].payload.headline);
+    assert.ok(published[0].payload.id, 'the publish carries its citation key');
+    const surfaced = h.state.ui.marketNews.log.filter((rec) => rec.kind === 'battle-aftermath');
+    assert.equal(surfaced.length, 1, 'marketNews actually surfaces the aftermath line');
+    assert.equal(surfaced[0].text, news[0].payload.headline);
 
     // The zone-less markers group into one shared zone-less field for ecology eligibility.
     const fieldId = aftermathFieldId(SECTOR_ID, null);
@@ -219,6 +227,28 @@ test('an open-space marker survives a save round-trip', () => {
 
     h.bus.emit('sector:enter', { sectorId: SECTOR_ID });
     assert.equal(wrecks(h.state).length, 1, 'the open-space wreck comes back after load');
+  } finally {
+    dispose();
+  }
+});
+
+test('wave2 fix: an eight-kill battle surfaces one aftermath line, not eight', () => {
+  const h = boot();
+  try {
+    for (let i = 0; i < 3; i++) {
+      killInOpenSpace(h, openPos(), 300 + i, `Chaff ${i}`);
+      dropLiveWrecks(h.state);
+    }
+    // Three near-simultaneous open-space kills inside the throttle window publish once.
+    let surfaced = h.state.ui.marketNews.log.filter((rec) => rec.kind === 'battle-aftermath');
+    assert.equal(surfaced.length, 1, 'burst collapses to one ambient publish');
+
+    // A kill after the window publishes again.
+    h.state.simTime += 10;
+    killInOpenSpace(h, openPos(), 400, 'Late Widow');
+    dropLiveWrecks(h.state);
+    surfaced = h.state.ui.marketNews.log.filter((rec) => rec.kind === 'battle-aftermath');
+    assert.equal(surfaced.length, 2, 'the next window publishes again');
   } finally {
     dispose();
   }

@@ -51,6 +51,8 @@ const SCAV_ARRIVAL_MIN_WU = 520;
 // A drifting wreck can outrun a fighter's thrust; pursuit that never converges must give up
 // rather than chase the hulk across the sector forever.
 const SCAV_APPROACH_GIVE_UP_S = 90;
+// One ambient aftermath publish per this many sim-seconds, however many hulls die in a burst.
+const AMBIENT_NEWS_WINDOW_S = 6;
 const SHIPLIKE_TYPES = new Set(['ship', 'drone']);
 const DEFAULT_POOL = Object.freeze({ cmdty_scrap_metal: 3, cmdty_salvage_electronics: 1 });
 const STATION_INFO = new Map();
@@ -608,16 +610,25 @@ function rememberMarker(state, bus, marker, onEvicted = null) {
       zoneName: marker.zoneName,
       markerId: marker.markerId,
     });
-    // `news:headline` is a system-side record; the player news surface presents authored copy
-    // from `news:publish` verbatim. Without this leg the aftermath line never reaches the HUD.
-    bus.emit('news:publish', {
-      text: headline,
-      kind: 'battle-aftermath',
-      sectorId: marker.sectorId,
-      zoneId: marker.zoneId,
-      zoneName: marker.zoneName,
-      markerId: marker.markerId,
-    });
+    // `news:headline` is a system-side record no UI presents; the player news surface presents
+    // `news:publish` verbatim — but only lines carrying a citation key survive its
+    // tickerEventRef gate, so the id here is load-bearing, not bookkeeping. Ambient battle
+    // residue is throttled to one publish per window: an eight-kill fight must not fire eight
+    // voice/toast lines in one tick. The player hull and recovery-offer lines always publish.
+    const ambient = marker.source === 'entity:killed' && !isPlayerWreckMarker(marker);
+    const now = Number(state && state.simTime) || 0;
+    if (!ambient || !(own.lastAmbientNewsAt) || now - own.lastAmbientNewsAt >= AMBIENT_NEWS_WINDOW_S) {
+      if (ambient) own.lastAmbientNewsAt = now;
+      bus.emit('news:publish', {
+        id: `aft:news:${marker.markerId}`,
+        text: headline,
+        kind: 'battle-aftermath',
+        sectorId: marker.sectorId,
+        zoneId: marker.zoneId,
+        zoneName: marker.zoneName,
+        markerId: marker.markerId,
+      });
+    }
   }
   return marker;
 }
