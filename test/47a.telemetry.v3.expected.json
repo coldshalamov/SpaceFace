@@ -68,7 +68,7 @@
     "audio:cue": 5
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "142af1ec95ec251acc9fb51fe4bbfb3853d1ad37b270854e24033ad3ef9cbd0e",
+    "authoritativeHash": "5c84097c2c15ff3493b362a7c92c7cfcdee374e4c6467c770df63db4c50c40ad",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -175,6 +175,13 @@
     "Isolation: clean-worktree HEAD + only propulsionCatalog/physics/sg02DynamicBodyOwner reproduces this hash; foreign shared-tree dirt moves it, so sim-v3 stays red there until that work lands.",
     "Prior authoritativeHash was a583d48fc20ffdf8e9e1d31959d55afa13e8ea66232e19f4572b790f2d5ee304.",
     "2026-09-16 re-record over e8d10fed7 (reproduces prior hash). CONTENT_ONLY: added player.salvageRights + missions.config.featured; 12 foreign propulsionRuntime/Resources field removals (content-only). Prior hash f18d2929.",
-    "2026-09-16 velocity-vectoring assist (docs/TUNING_JOBS.md job 1, Feel Contract C band): deliberate handling change; player dodges 5+ hits in the tape. Field diff vs base: player+interacted entities only. Evidence detail in the tuning-job commit message."
+    "2026-09-16 velocity-vectoring assist (docs/TUNING_JOBS.md job 1, Feel Contract C band): deliberate handling change; player dodges 5+ hits in the tape. Field diff vs base: player+interacted entities only. Evidence detail in the tuning-job commit message.",
+    "2026-09-20 deliberate re-record over e973dc86b..11b64303f, the same window and the same two economy-feature causes as the legacy envelope. The prior authoritativeHash was 142af1ec95ec251acc9fb51fe4bbfb3853d1ad37b270854e24033ad3ef9cbd0e.",
+    "Bisect by clean git-archive exports under --flight-system v3: the e973dc86b tree reproduces the prior hash exactly; b65ad1f40 (Mid-game economy heartbeat: field regrowth + offer history) first moved it (V3 intermediate 5aa8a848).",
+    "ff6a0cae9 (Economy Pulse packet: derived prices, net-work contracts, renewable work budget, cash-flow pulse) set the current value, and no later commit moved it again.",
+    "Evidence: node scripts/sim-golden-diff.mjs --flight-system v3 --ref e973dc86b: VERDICT CONTENT_ONLY, the same 12,179-field breakdown as the legacy envelope.",
+    "12,156 $.economy, 20 $.missions procedural pricing, 3 added $.story ambient-finale fields. ZERO motion fields changed and every phase0ObservedTraceCount is unchanged.",
+    "Recorded against a clean git-archive export of HEAD 11b64303f; the uncommitted capital-boss/finale lane moves this hash and re-records when it lands.",
+    "Provenance: sim-golden-diff's default --ref crashes on the broken 000b6ff05..dcb805e49^ trees (missing src/data/encounters/mega-heist.js until dcb805e49); pass --ref explicitly. Repeat-20 and reload@600 are deterministic."
   ]
 }

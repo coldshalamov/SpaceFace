@@ -66,7 +66,7 @@
     "audio:cue": 3
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "82d9de5c32dc2df38280e4181131c0c5234ce0592ad0f4f71d1b4559bcf111e0",
+    "authoritativeHash": "e2d355ca18264842fece43568ba5c6872ff2d642809a09185bad722cd5911118",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -143,6 +143,17 @@
     "sim-golden-diff legacy vs reference 8f101f61: MOTION_CHANGED as intended, 12 entity motion fields / 158 snapshot fields moved. Zero observed trace counts moved (fire 17, hit 4, damage 4, cues unchanged).",
     "repeat-20 and reload@600 are deterministic (baselineSha256 equals run hash). Recorded on an isolated tree (HEAD + owned files only); unrelated dirty-tree work in tetherGameplay moves this hash and is excluded.",
     "Companion fix in this change: player contact-response budget bookkeeping now persists through save/reload instead of living only on the physics record, so a mid-episode scrape no longer re-spends its cruise budget.",
-    "2026-09-16 re-record over e8d10fed7 (reproduces prior hash). CONTENT_ONLY: added player.salvageRights + missions.config.featured. No boards on the 47-A tape; no motion/trace diffs. Prior hash 22499c93."
+    "2026-09-16 re-record over e8d10fed7 (reproduces prior hash). CONTENT_ONLY: added player.salvageRights + missions.config.featured. No boards on the 47-A tape; no motion/trace diffs. Prior hash 22499c93.",
+    "2026-09-20 deliberate re-record over e973dc86b..11b64303f. The prior authoritativeHash was 82d9de5c32dc2df38280e4181131c0c5234ce0592ad0f4f71d1b4559bcf111e0.",
+    "check:sim had been red on master across the whole window: the drift shipped in two committed economy features that did not re-record. Bisected by clean git-archive exports; the working tree was never touched.",
+    "The tree at e973dc86b reproduces the prior hash exactly; b65ad1f40 (Mid-game economy heartbeat: field regrowth + offer history) is the first tree that does not (intermediate hash 7ce28336).",
+    "ff6a0cae9 (Economy Pulse packet: derived prices, net-work contracts, renewable work budget, cash-flow pulse) is the first tree at the current value, and no later commit moved it again.",
+    "Evidence: node scripts/sim-golden-diff.mjs --ref e973dc86b: VERDICT CONTENT_ONLY. 12,179 leaf fields moved: 12,156 $.economy (field regrowth + Economy Pulse derived pricing tables).",
+    "Also moved: 20 $.missions procedural pricing config fields (BASE rewards, RISK_MULT, refreshSec 600->300) and 3 added $.story ambient-finale fields.",
+    "ZERO entity pos / vel / rot / angVel / prevPos fields changed after 720 ticks, and no event trace count moved, so phase0ObservedTraceCounts is unchanged. This re-record papers over no physics regression.",
+    "Provenance note for the next diff: the commits that recorded the prior hash (c8a21376e, ad2a3e910) have broken clean exports.",
+    "000b6ff05 imported src/data/encounters/mega-heist.js but the file only landed at dcb805e49, so sim-golden-diff's default --ref crashes; the oldest cleanly-exportable reproducer of 82d9de5c is dcb805e49. Pass --ref explicitly.",
+    "Recorded against a clean git-archive export of HEAD 11b64303f. The uncommitted capital-boss/finale lane in the primary working tree moves this hash and re-records when it lands.",
+    "Repeat-20 and reload@600 are deterministic. The V3 envelope re-records in the same commit against the same two commits and the same verdict."
   ]
 }
