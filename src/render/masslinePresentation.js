@@ -457,8 +457,24 @@ const CABLE_SEGMENT_FLOOR = 6;
 export const MASSLINE_CABLE_SEGMENT_CAPACITY = 48;
 /** Chord-to-arc error accepted per span, in world units (~0.8 px at the supported gameplay camera). */
 const CABLE_SAGITTA_TOLERANCE_WU = 0.045;
-/** Samples per spatial cycle of a travelling term that is actually running this frame. */
-const CABLE_SAMPLES_PER_CYCLE = 4;
+/** The slack bow is one half-cycle of sin(pi*t) across the span. */
+const CABLE_BOW_CYCLES = 0.5;
+
+/**
+ * Spans needed to draw one lateral sinusoid inside the tolerance.
+ *
+ * A sinusoid of amplitude A and k spatial cycles, sampled with n straight spans, departs from the
+ * true curve by about A * (pi*k/n)^2 / 2. Solving that for the tolerance gives one rule that covers
+ * the slack bow, the whip harmonic and the load shiver alike, instead of a sagitta guess for the
+ * first and a samples-per-cycle guess for the other two. A term whose whole amplitude is already
+ * below the tolerance is invisible and buys no spans at all.
+ */
+function spansForLateralTerm(amplitude, cycles, tolerance) {
+  const a = Math.abs(Number.isFinite(amplitude) ? amplitude : 0);
+  const k = Math.max(0, Number.isFinite(cycles) ? cycles : 0);
+  if (!(a > tolerance) || k <= 0) return 0;
+  return Math.ceil(Math.PI * k * Math.sqrt(a / (2 * tolerance)));
+}
 /** Reference tessellation the accepted collar length was authored against (the old fixed SEG). */
 const CABLE_COLLAR_LENGTH_REFERENCE = 24 * 3.2;
 
@@ -484,6 +500,8 @@ export function resolveMasslineCableProfile(input = {}, out = {}) {
   const taut = input.taut === true;
   const whip = clamp01(finite(input.whip, 0));
   const reel = clamp01(finite(input.reel, 0));
+  const parting = input.parting === true;
+  const collarCount = Math.max(1, Math.trunc(finite(input.collarCount, 10)));
   const bow = Math.abs(finite(input.bowMagnitude, 0));
   const whipAmplitude = Math.abs(finite(input.whipAmplitude, 0));
   const shiverAmplitude = Math.abs(finite(input.shiverAmplitude, 0));
@@ -492,23 +510,19 @@ export function resolveMasslineCableProfile(input = {}, out = {}) {
     Math.trunc(finite(input.segmentCapacity, MASSLINE_CABLE_SEGMENT_CAPACITY)),
   );
 
-  // Two independent sampling needs, both honest about what is actually moving this frame.
-  //
-  // 1. SAGITTA. A smooth arc of height h approximated by n straight spans deviates from the true
-  //    curve by about h / n^2. A quiet, straight, taut line therefore needs almost no spans — and
-  //    it loses nothing by having few, because the shader's travelling structure rides `aAlong`,
-  //    a perspective-correct varying that is exactly linear along a straight span.
-  // 2. WAVE. The whip harmonic and the load shiver are spatial sinusoids. They alias into a
-  //    sawtooth unless sampled several times per cycle, so they set their own floor — but only
-  //    while their amplitude is non-zero. Reduced motion zeroes those amplitudes upstream, so an
-  //    accessibility profile that removes the motion also removes the cost of resolving it.
+  // Sample the curve for what is actually on it this frame, term by term. A quiet, straight, taut
+  // line needs almost no spans and loses nothing by having few, because the shader's travelling
+  // structure rides `aAlong` — a perspective-correct varying that is exactly linear along a
+  // straight span. A worked line asks for far more than the old fixed 24 precisely where the old
+  // count was under-sampling its own shiver into the jagged read it was trying to avoid. Reduced
+  // motion zeroes these amplitudes upstream, so removing the motion also removes its cost.
+  const tolerance = CABLE_SAGITTA_TOLERANCE_WU;
+  const sagittaNeed = spansForLateralTerm(bow, CABLE_BOW_CYCLES, tolerance);
+  const waveNeed = Math.max(
+    spansForLateralTerm(whipAmplitude, finite(input.whipCycles, 0), tolerance),
+    spansForLateralTerm(shiverAmplitude, finite(input.shiverCycles, 0), tolerance),
+  );
   const deviation = bow + whipAmplitude + shiverAmplitude;
-  const sagittaNeed = deviation > 0
-    ? Math.ceil(Math.sqrt(deviation / CABLE_SAGITTA_TOLERANCE_WU))
-    : 0;
-  const whipNeed = whipAmplitude > 1e-4 ? Math.max(0, finite(input.whipCycles, 0)) : 0;
-  const shiverNeed = shiverAmplitude > 1e-4 ? Math.max(0, finite(input.shiverCycles, 0)) : 0;
-  const waveNeed = Math.ceil(CABLE_SAMPLES_PER_CYCLE * Math.max(whipNeed, shiverNeed));
   const segments = Math.max(
     CABLE_SEGMENT_FLOOR,
     Math.min(capacity, Math.max(sagittaNeed, waveNeed)),
@@ -521,17 +535,35 @@ export function resolveMasslineCableProfile(input = {}, out = {}) {
 
   // Load ferrules. Length is deliberately keyed off the CHORD against a fixed reference, never off
   // the live span count — otherwise adaptive tessellation would silently resize the hardware.
-  const collarHalfLength = Math.min(1.9, Math.max(0.5, chord / CABLE_COLLAR_LENGTH_REFERENCE))
-    * (1 + load * 0.55);
+  //
+  // It is then capped at a third of the pitch between rings. That cap is what keeps the hardware
+  // legible when the line runs along the camera's screen axis: at the supported 60-degree gameplay
+  // tilt a cable pointing up-screen foreshortens by about half, and rings that merely LOOK close
+  // together still read as separate rings, while rings that actually touch read as one tube.
+  const collarPitch = chord / (collarCount + 1);
+  const collarHalfLength = Math.min(
+    Math.min(1.9, Math.max(0.5, chord / CABLE_COLLAR_LENGTH_REFERENCE)) * (1 + load * 0.55),
+    Math.max(0.05, collarPitch * 0.35),
+  );
   // The cut itself is the load read. Slack: a rounded swell barely proud of the rope. Taut: the
   // lips undercut hard and the crown stands off, so the ferrule becomes a machined ring with a
   // real edge. Nothing in this relation is a colour.
+  //
+  // PARTING is the third state, and it is what keeps a snap distinct from a clean release without
+  // touching either one's timing or adding a single particle. A parting line is no longer gripped:
+  // the lips open back out toward the crown and the hard shoulder softens, so the hardware visibly
+  // lets go while the rope lashes. A clean release has no whip envelope at all, so its ferrules
+  // simply hold their shape and fade with the line while the released body carries the momentum —
+  // which is exactly where the energy is supposed to go.
+  const release = parting ? clamp01(whip) : 0;
+  const grip = 1 - release;
   const collarCrownHalfWidth = coreHalfWidth * 1.34 + 0.08 + load * 0.30;
-  const collarLipHalfWidth = coreHalfWidth * (0.94 - 0.34 * load);
+  const collarLipHalfWidth = coreHalfWidth * (0.94 - 0.34 * load * grip)
+    + (collarCrownHalfWidth - coreHalfWidth * 0.94) * release * 0.75;
   // Plateau fraction: how much of the ferrule's length is crown rather than ramp. A slack ferrule
   // is a soft dome (long ramps, almost no plateau); a loaded one is a hard-shouldered ring whose
   // crown fills its length and whose sides stand near-vertical.
-  const collarCrownFraction = 0.34 + load * 0.52;
+  const collarCrownFraction = (0.34 + load * 0.52) * grip + 0.18 * release;
 
   out.segments = segments;
   out.segmentCapacity = capacity;
@@ -544,6 +576,10 @@ export function resolveMasslineCableProfile(input = {}, out = {}) {
   out.collarCrownHalfWidth = collarCrownHalfWidth;
   out.collarLipHalfWidth = collarLipHalfWidth;
   out.collarCrownFraction = clamp01(collarCrownFraction);
+  out.collarCount = collarCount;
+  out.collarPitch = collarPitch;
+  out.parting = parting;
+  out.grip = grip;
   out.load = load;
   out.taut = taut;
   return out;

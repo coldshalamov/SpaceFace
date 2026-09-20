@@ -279,6 +279,50 @@ test('the ferrule cut is the load read, with no colour in it', () => {
   assert.equal(coarse.collarHalfLength, fine.collarHalfLength);
 });
 
+test('a parting line lets go of its hardware; a clean release does not', () => {
+  // The two events must stay distinct WITHOUT touching either one's timing and without adding a
+  // single particle — the clean release is acceptance-pinned particle-silent, and the continuing
+  // motion of the released body is where its energy goes.
+  const base = { chord: 96, load: 0.9, taut: true, collarCount: MASSLINE_CABLE_COLLAR_COUNT };
+  const gripped = resolveMasslineCableProfile({ ...base, whip: 0.9 });
+  const parting = resolveMasslineCableProfile({ ...base, whip: 0.9, parting: true });
+  const cleanRelease = resolveMasslineCableProfile({ ...base, whip: 0 });
+
+  assert.ok(parting.collarLipHalfWidth > gripped.collarLipHalfWidth * 2,
+    'a parting ring opens its lips back out: it is not clamped on anything any more');
+  assert.ok(parting.collarCrownFraction < gripped.collarCrownFraction * 0.5,
+    'and its hard shoulder softens');
+  assert.equal(parting.collarHalfLength, gripped.collarHalfLength,
+    'hardware does not change size when a rope breaks');
+
+  // A clean release carries no whip envelope, so its ferrules are simply the loaded ones, holding
+  // their shape as the line fades. Nothing about the break grammar leaks into it.
+  assert.equal(cleanRelease.collarLipHalfWidth,
+    resolveMasslineCableProfile({ ...base, whip: 0, parting: true }).collarLipHalfWidth,
+    'with no recoil envelope there is nothing to let go of, break flag or not');
+  assert.ok(cleanRelease.collarCrownFraction > parting.collarCrownFraction,
+    'a clean release keeps the ring the loaded line had');
+});
+
+test('ferrules never merge into one tube, at any chord the line can have', () => {
+  // The hard case at the supported 60-degree gameplay camera is not an edge-on ribbon — a flat XZ
+  // ribbon is never edge-on there — it is a cable running along the screen axis, whose LENGTH
+  // foreshortens by about half. Rings that only look closer together still read as rings; rings
+  // that actually touch read as a tube. So the pitch cap has to hold at every chord.
+  for (const chord of [12, 15, 24, 40, 96, 150, 400, 900]) {
+    for (const load of [0, 0.5, 1]) {
+      const profile = resolveMasslineCableProfile({
+        chord, load, taut: load > 0.5, collarCount: MASSLINE_CABLE_COLLAR_COUNT,
+      });
+      const clearance = profile.collarPitch - profile.collarHalfLength * 2;
+      assert.ok(clearance > 0,
+        `chord ${chord} load ${load}: ferrules touch (pitch ${profile.collarPitch})`);
+      // Even halved by foreshortening there is still a gap.
+      assert.ok(clearance * 0.5 > 0, 'clearance survives a two-to-one foreshortening');
+    }
+  }
+});
+
 test('ferrules are spaced along the rope, so slack visibly puts more rope between the anchors', () => {
   const line = createMasslineCenterline();
   const collars = createMasslineCollarSurface();
