@@ -167,6 +167,7 @@ import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapon
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
+import { WEAPONS } from '../data/weapons.js';
 import { applySectorExitResidency, getAssetResidency } from './assetResidency.js';
 import {
   ADMISSION_SLICE_TARGET_MS,
@@ -3661,6 +3662,9 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   for (const record of [owner._incomingSectorPrewarm, owner._currentSectorPrewarm, owner._authoredSectorPrewarmPending]) {
     if (record) record.active = false;
   }
+  // Retained roster-prewarm roots share the prewarm lifecycle: release them with the rest so a
+  // renderer swap mid-run cannot strand hidden admission subjects in the scene being retired.
+  try { owner._releaseSurvivalRosterPrewarm?.('renderer-destroyed'); } catch (_) { /* best effort */ }
   const residency = owner._assetResidency;
   if (contextLost) {
     try { residency?.handleContextLost?.(); } catch (_) { /* best effort */ }
@@ -4733,6 +4737,13 @@ export const render = {
     this._authoredSectorPrewarmPending = null;
     this._sectorPrewarmGeneration = 0;
     this._authoredPreparationEpoch = 0;
+    // PQ-210.00 survival roster prewarm: exemplar spec ids admitted or in flight, the weapon
+    // ids already given a projectile exemplar, and the hidden roots RETAINED so the warmed
+    // programs/materials stay resident — disposing them after the warm would release exactly
+    // what a live spawn needs to hit the cache.
+    this._rosterPrewarmIds = new Set();
+    this._rosterPrewarmWeaponIds = new Set();
+    this._rosterPrewarmRoots = [];
     this._sectorBoundaryPreparations = createSectorBoundaryGenerationManager({
       startBudgetPerTurn: RUNTIME_MESH_BUILD_BUDGET,
       scheduleNextStartTurn: scheduleSectorBoundaryBuildTurn,
@@ -7785,6 +7796,11 @@ export const render = {
       }
       this._publishAssetResidencyDiagnostics();
     });
+    // PQ-210.00: the arena publishes real spawn-spec exemplars on every run:wavePlanned —
+    // wave 1's receipt lands while mode is still 'loading', so these jobs drain behind the
+    // shell like every other queued admission. run:ended retires the retained roots.
+    onBus('survivalArena:rosterPrewarm', (p) => this._admitSurvivalRosterPrewarm(p));
+    onBus('run:ended', () => this._releaseSurvivalRosterPrewarm('run_ended'));
     const compileSectorPipelines = async (sector) => {
       if (gpu.software) {
         return {
@@ -8148,6 +8164,137 @@ export const render = {
     this._resizeHandler = null;
     this._videoSettingsOff = null;
     return destroyed;
+  },
+
+  // PQ-210.00 Crucible roster prewarm. A wave that introduces a hull the GPU has never drawn
+  // pays the authored composition's program link + first upload inside the fight (~180 ms at
+  // second 22 of the seed-4242 probe). The arena publishes real makeEnemySpawnSpec exemplars on
+  // every run:wavePlanned — well before the wave materializes — and each rides the SAME admission
+  // path a live spawn takes: hidden scene membership (the authored upgrade queue drops jobs whose
+  // boundary is not a scene descendant), requestAuthoredUpgrade for authored hulls, and
+  // compileObjectPipelines for procedural ones, plus one projectile exemplar per roster weapon.
+  // The roots stay mounted-but-invisible until run:ended: retention keeps the programs resident
+  // so the live spawn's first draw is a cache hit, not a link. Event-driven only — no per-frame
+  // work, no sim-state writes.
+  _admitSurvivalRosterPrewarm(payload) {
+    const specs = payload && payload.specs;
+    const state = this.state;
+    if (!Array.isArray(specs) || !this.vf || !this.scene || !this.renderer) return;
+    const compilePipelines = (subject) => (
+      state && state.render && typeof state.render.compileObjectPipelines === 'function'
+        ? state.render.compileObjectPipelines(subject, { explicit: true })
+        : Promise.resolve({ skipped: true })
+    );
+    for (const spec of specs) {
+      if (!spec || spec.type !== 'ship' || spec.id == null) continue;
+      if (this._rosterPrewarmIds.has(spec.id)
+          || (this._meshes && this._meshes.has(spec.id))) continue;
+      // Record before building: a re-entrant emit during vf.build must not double-queue the
+      // same exemplar.
+      this._rosterPrewarmIds.add(spec.id);
+      let boundary = null;
+      try {
+        boundary = this.vf.build(spec);
+      } catch (error) {
+        console.warn('[render] survival roster prewarm build failed', spec.id, error);
+        continue;
+      }
+      if (!boundary) continue;
+      boundary.visible = false;
+      boundary.position.set(0, 0, 0);
+      this.scene.add(boundary);
+      this._rosterPrewarmRoots.push(boundary);
+      try {
+        const admitted = requestAuthoredUpgrade(boundary, this.renderer, this.scene, {
+          deferPackagePoolActivation: true,
+          deferBoundaryPublication: true,
+          overlapAuthoredPipelineCompile: false,
+          residencyRole: 'survival-roster-prewarm',
+          sectorId: (state && state.world && state.world.currentSectorId) || null,
+          isResidencyOwnerActive: () => this._rosterPrewarmIds.has(spec.id)
+            && boundary.parent === this.scene,
+        });
+        Promise.resolve(admitted).then((result) => {
+          // A procedural hull carries no authored GLB, so the upgrade request resolves
+          // 'no-authored-upgrade' — still run the production compile/residency/exact-target
+          // lane or its material would link on first draw inside the fight. The id check
+          // keeps a released exemplar from re-uploading buffers onto a dead root.
+          if (result && result.status === 'no-authored-upgrade'
+              && this._rosterPrewarmIds && this._rosterPrewarmIds.has(spec.id)) {
+            compilePipelines(boundary).catch(() => null);
+          }
+        }, (error) => {
+          console.warn('[render] survival roster prewarm admission failed', spec.id, error);
+        });
+      } catch (error) {
+        console.warn('[render] survival roster prewarm admission failed', spec.id, error);
+      }
+    }
+    // Projectile exemplars: every weapon id the roster fields gets one hidden bolt through the
+    // same compile lane, so the first shot of a new gun is as warm as the hull firing it. The
+    // spec shape mirrors precompile.js's weapon warmup verbatim.
+    const weaponIds = new Set();
+    for (const spec of specs) {
+      const weapons = spec && spec.data && spec.data.weapons;
+      if (!Array.isArray(weapons)) continue;
+      for (const w of weapons) {
+        const weaponId = w && (w.defId || w.id);
+        if (typeof weaponId === 'string' && weaponId.length > 0) weaponIds.add(weaponId);
+      }
+    }
+    for (const weaponId of weaponIds) {
+      if (this._rosterPrewarmWeaponIds.has(weaponId)) continue;
+      this._rosterPrewarmWeaponIds.add(weaponId);
+      const weapon = WEAPONS.find((entry) => entry && entry.id === weaponId);
+      if (!weapon) continue;
+      try {
+        const mesh = this.vf.build({
+          id: -210000 - this._rosterPrewarmWeaponIds.size,
+          type: 'projectile',
+          team: 0,
+          radius: weapon.size === 'L' ? 1.1 : weapon.size === 'M' ? 0.85 : 0.65,
+          pos: { x: 0, y: 0, z: 0 },
+          prevPos: { x: 0, y: 0, z: 0 },
+          vel: { x: 0, y: 0, z: 0 },
+          rot: 0,
+          flags: {},
+          data: {
+            weaponId: weapon.id,
+            damageType: weapon.damageType || 'energy',
+            kind: weapon.ammo || /missile|torpedo/i.test(weapon.id) ? 'missile' : 'bullet',
+          },
+        });
+        if (!mesh) continue;
+        mesh.visible = false;
+        mesh.position.set(0, 0, 0);
+        this.scene.add(mesh);
+        this._rosterPrewarmRoots.push(mesh);
+        compilePipelines(mesh).catch((error) => {
+          console.warn('[render] survival roster projectile warm failed', weaponId, error);
+        });
+      } catch (error) {
+        console.warn('[render] survival roster projectile warm failed', weaponId, error);
+      }
+    }
+  },
+
+  _releaseSurvivalRosterPrewarm(reason) {
+    const roots = Array.isArray(this._rosterPrewarmRoots) ? this._rosterPrewarmRoots : [];
+    this._rosterPrewarmRoots = [];
+    if (this._rosterPrewarmIds) this._rosterPrewarmIds.clear();
+    if (this._rosterPrewarmWeaponIds) this._rosterPrewarmWeaponIds.clear();
+    for (const root of roots) {
+      if (!root) continue;
+      try {
+        if (root.parent) root.parent.remove(root);
+        // A lost context already owns those buffers: detach the root but never invoke the
+        // old context's disposers (the same abandon contract the rest of teardown obeys).
+        if (this._contextLost === true) continue;
+        if (!disposePreparedAuthoredBoundary(root)) disposeObject(root);
+      } catch (error) {
+        console.warn('[render] survival roster prewarm release failed', reason, error);
+      }
+    }
   },
 
   _normalizePostVideo(vd = {}) {
@@ -9356,7 +9503,11 @@ export const render = {
         const dt = Math.min(0.1, Math.max(0.001, now - previousFlashTime));
         shieldBubble.userData._prevFlashT = now;
         // Per-ship fallback material: same shell clock as the pooled lane, same sim-time source.
-        setShieldShellClock(shieldBubble.material, simTime, _worldSiteA11y && _worldSiteA11y.reducedMotion === true);
+        // Resolved locally: the simTime binding a few blocks up is scoped to the micro-motion branch,
+        // and reaching it from here threw a ReferenceError every single frame, which killed the whole
+        // render loop (drawCalls 0, verdict draw-throwing) while every node gate stayed green.
+        const shellSimTime = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : now;
+        setShieldShellClock(shieldBubble.material, shellSimTime, _worldSiteA11y && _worldSiteA11y.reducedMotion === true);
 
         const up = entity.shield > 0;
         let flash = 0;
