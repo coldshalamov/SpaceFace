@@ -68,7 +68,7 @@ import {
   selectPlacePackageLayer,
 } from './flightReadySet.js';
 import { PRESENTATION_TIER } from '../world/activityClassification.js';
-import { canonicalizeSurfaceProgramFamilyKey } from './illustratedSurface.js';
+import { canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { sharedMaterialRoleFromAuthored, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 
@@ -2428,6 +2428,9 @@ function buildFallbackStationArchetype(entity, placeFile) {
     emissive: new THREE.Color(color).multiplyScalar(0.18),
     emissiveIntensity: 0.2,
   });
+  // Graceful-fallback stations are still player-visible when an archetype GLB fails to load.
+  // Keep them in the global Lacquer & Starlight light language instead of flat physical shading.
+  installIllustratedSurface(material);
   const core = new THREE.Mesh(getFallbackStationCoreGeometry(), material);
   core.name = `SF_StationArchetypeFallback_${placeId}_Core`;
   core.scale.set(radius * 0.75, radius * 0.55, radius * 0.75);
@@ -3556,6 +3559,8 @@ function buildFallbackPlaceProp(entity, placeFile) {
     emissive: new THREE.Color(color).multiplyScalar(0.28),
     emissiveIntensity: 0.25,
   });
+  // Authored world-place fallback: same reasoning as the station fallback above.
+  installIllustratedSurface(material);
   const mesh = new THREE.Mesh(getFallbackPlaceGeometry(), material);
   mesh.name = `SF_PlaceFallback_${placeId}_Hull`;
   mesh.scale.set(radius * 0.28, radius * 0.20, radius * 0.28);

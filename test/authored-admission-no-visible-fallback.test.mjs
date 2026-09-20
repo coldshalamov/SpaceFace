@@ -14,6 +14,7 @@ import {
   upgradeAuthoredPlaceBoundaryForProbe,
   wrapShipWithAuthoredParts,
 } from '../src/render/partsLibrary.js';
+import { ILLUSTRATED_SURFACE_KEY } from '../src/render/illustratedSurface.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
 import {
   asteroidInstanceMembership,
@@ -173,6 +174,47 @@ test('authored world-place boundary does not publish the temporary box', () => {
   assert.equal(temporary.visible, false);
   assert.equal(boundary.userData.authoredAssetState, 'awaiting-authored-admission');
   assert.equal(boundary.userData.authoredVisualRoot, 'none-pending-admission');
+});
+
+test('world-place and station fallbacks carry the global illustrated surface', () => {
+  // Graceful fallbacks are player-visible when an authored GLB fails to load. They must stay in
+  // the same Lacquer & Starlight light language as the fleet instead of flat physical shading.
+  const litMaterials = (root) => {
+    const list = [];
+    root.traverse((object) => {
+      if (!object?.isMesh) return;
+      const mats = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of mats) if (material?.isMeshStandardMaterial) list.push(material);
+    });
+    return list;
+  };
+
+  const placeBoundary = buildAuthoredPlaceProp({
+    id: 3,
+    type: 'fx',
+    alive: true,
+    radius: 12,
+    data: { placeId: 'place_nav_buoy' },
+  }, { releaseMode: true });
+  const placeSurface = litMaterials(placeBoundary.children[0]);
+  assert.ok(placeSurface.length > 0, 'place fallback has a Standard material');
+  for (const material of placeSurface) {
+    assert.equal(material.userData.spacefaceIllustratedSurface, ILLUSTRATED_SURFACE_KEY, material.name);
+  }
+
+  const stationBoundary = buildAuthoredStationArchetype({
+    id: 'station_surface_contract',
+    type: 'station',
+    alive: true,
+    radius: 34,
+    pos: { x: 0, z: 0 },
+    data: { archetypeGlb: 'place_station_military', dockRadius: 72, placeScale: 72 / 14 },
+  }, { releaseMode: true });
+  const stationSurface = litMaterials(stationBoundary.children[0]);
+  assert.ok(stationSurface.length > 0, 'station fallback has a Standard material');
+  for (const material of stationSurface) {
+    assert.equal(material.userData.spacefaceIllustratedSurface, ILLUSTRATED_SURFACE_KEY, material.name);
+  }
 });
 
 test('authored geology uses the place boundary only with an explicit radius-matched contract', () => {
