@@ -556,6 +556,20 @@ export const IMPACT_MATERIAL_GRAMMAR = Object.freeze({
 function impactBeat(row) { return Object.freeze(row); }
 
 /**
+ * Layouts that are meaningless without a real outward side. Keeping this as a property of the
+ * LAYOUT, not of a per-beat flag, is deliberate: a flag can be forgotten when a sheet is edited,
+ * and forgetting it silently turns an unsigned collision axis into an aimed force (rule E2).
+ */
+const SIGNED_ONLY_LAYOUTS = Object.freeze({ 'reflected-cone': 1, 'internal-vent': 1 });
+
+/**
+ * What a signed-only layout becomes on an unsigned axis. `internal-vent` has no honest symmetric
+ * form — venting out of a hole needs a hole — so it is dropped. Everything else falls back to the
+ * mirrored lip, which is invariant under a normal flip.
+ */
+const UNSIGNED_LAYOUT_FALLBACK = Object.freeze({ 'reflected-cone': 'mirrored-lip', 'internal-vent': null });
+
+/**
  * The beat sheets. Each entry is ordered by `at` (seconds after contact).
  *
  * `layout` is the pose family the render side must honour:
@@ -701,9 +715,17 @@ export function resolveImpactPresentation(rec, options = {}) {
   const beats = [];
   for (let i = 0; i < sheet.beats.length; i++) {
     const row = sheet.beats[i];
-    // E2: a beat that needs a signed outward direction is DROPPED on an unsigned axis. It is never
-    // re-aimed at a fabricated direction and never silently mirrored into a different event.
-    if (row.signedOnly && !axisSigned) continue;
+    // E2: on an unsigned collision axis nothing may be aimed. A beat marked signedOnly is dropped
+    // outright; a beat that merely USES a one-sided layout falls back to the symmetric form, or is
+    // dropped when it has none. Nothing is ever re-aimed at a fabricated direction.
+    let layout = row.layout;
+    if (!axisSigned) {
+      if (row.signedOnly) continue;
+      if (SIGNED_ONLY_LAYOUTS[layout]) {
+        layout = UNSIGNED_LAYOUT_FALLBACK[layout];
+        if (!layout) continue;
+      }
+    }
     let count = reduced ? row.reduced : row.count;
     if (count <= 0) continue;
     // A shield contact has no matter to throw; the field absorbs. Solids drop, light does not.
@@ -731,7 +753,7 @@ export function resolveImpactPresentation(rec, options = {}) {
       at: row.at,
       primitive: row.primitive,
       count,
-      layout: row.layout,
+      layout,
       spread: row.spread,
       speed: row.speed * (reduced ? 0.6 : 1),
       life: row.life * (reduced ? 1.18 : 1),

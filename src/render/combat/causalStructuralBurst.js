@@ -395,6 +395,12 @@ export function spawnImpactStructuralBeats({
       const ctx = {
         row, k, n: row.count, radius, serial, beatIndex: b,
         nx, nz, tx, tz, normalAngle, outAngle, bodyAngle, reduced,
+        // Last line of defence for E2. The grammar already substitutes symmetric layouts for an
+        // unsigned axis; the pose code refuses to aim one even if a caller hands it a sheet that
+        // slipped through, because this is the step that actually writes a direction.
+        layout: (rec.axisSigned !== true && (row.layout === 'reflected-cone' || row.layout === 'internal-vent'))
+          ? 'mirrored-lip'
+          : row.layout,
       };
       if (row.primitive === 'shard' || row.primitive === 'plate') poseSolid(spec, ctx);
       else poseLight(spec, ctx);
@@ -433,12 +439,12 @@ function resetImpactSpec(spec, priority, row, lx, ly, lz) {
 
 /** Blades and arcs: impulse light. Shape and reach carry the beat, never a bigger flash. */
 function poseLight(spec, ctx) {
-  const { row, k, n, radius, serial, beatIndex, nx, nz, tx, tz, normalAngle, outAngle, bodyAngle } = ctx;
+  const { row, k, n, radius, serial, beatIndex, nx, nz, tx, tz, normalAngle, outAngle, bodyAngle, layout } = ctx;
   const jitter = explosionPatternSigned(serial, 'ignition', k, beatIndex + 40);
   const span = n > 1 ? (k - (n - 1) * 0.5) / Math.max(1, (n - 1) * 0.5) : 0;
   const size = radius * row.size;
 
-  switch (row.layout) {
+  switch (layout) {
     case 'reflected-cone': {
       // One-sided, aimed down the reflected path. Short and hard: a contact beat, not a bloom.
       spec.angle = outAngle + span * row.spread + jitter * 0.06;
@@ -555,7 +561,7 @@ const CLEAVAGE_ANGLES = Object.freeze([0.0, 1.05, -0.78, 2.44, -2.05, 1.83, -1.4
 
 /** Shards and plates: real matter. Momentum, tumble, drag and a cooling colour track. */
 function poseSolid(spec, ctx) {
-  const { row, k, n, radius, serial, beatIndex, nx, nz, tx, tz, normalAngle, outAngle, bodyAngle, reduced } = ctx;
+  const { row, k, n, radius, serial, beatIndex, nx, nz, tx, tz, normalAngle, outAngle, bodyAngle, reduced, layout } = ctx;
   const j0 = explosionPatternSigned(serial, 'debris', k, beatIndex + 50);
   const j1 = explosionPattern01(serial, 'debris', k, beatIndex + 51);
   const j2 = explosionPatternSigned(serial, 'breakup', k, beatIndex + 52);
@@ -575,7 +581,7 @@ function poseSolid(spec, ctx) {
   spec.rollVelocity = j2 * (row.primitive === 'plate' ? 2.6 : 7.2);
   spec.intensity = 1;
 
-  switch (row.layout) {
+  switch (layout) {
     case 'mirrored-lip': {
       // A slam does not spray. The matter leaves late, slowly, mostly sideways, and it is heavy:
       // low speed, high drag, short throw. Mirrored so an unsigned axis stays unbiased.
