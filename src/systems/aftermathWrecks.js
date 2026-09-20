@@ -1540,6 +1540,10 @@ export const aftermathWrecks = {
     own.bySector = {};
     own.causes = trimCauses(data && data.causes);
     own.ecology = serializeEcology(data && data.ecology);
+    // The ambient-news throttle is session-transient; a rewind to an earlier save must not
+    // inherit the outgoing session's timestamp (it would suppress publishes until simTime
+    // overtook it).
+    own.lastAmbientNewsAt = 0;
     const bySector = data && data.bySector && typeof data.bySector === 'object' ? data.bySector : {};
     for (const sectorId of Object.keys(bySector)) {
       const markers = trimAndSort(Array.isArray(bySector[sectorId]) ? bySector[sectorId] : []);
