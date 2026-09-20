@@ -156,7 +156,9 @@ export class WeaponRibbonPool {
     geo.setIndex(new THREE.BufferAttribute(index, 1));
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6);
     this.material = new THREE.ShaderMaterial({
-      uniforms: { uIntensity: { value: 1 }, uGrazeGain: { value: 1.9 } },
+      // Geometry now absorbs the foreshortening, so the shader only keeps a modest residual
+      // density lift for the edge-on read. Both together would over-brighten a grazing wake.
+      uniforms: { uIntensity: { value: 1 }, uGrazeGain: { value: 1.35 } },
       vertexShader: RIBBON_VERT,
       fragmentShader: RIBBON_FRAG,
       transparent: true,
@@ -394,8 +396,12 @@ export class WeaponRibbonPool {
         // Projected pixel floor: a world-anchored sheet foreshortens, so the floor is measured
         // on the sheet as the camera sees it. Without this a 0.12 WU rail wake is subpixel.
         const facing = Math.max(RIBBON_MIN_FACING, Math.abs(nx * ex + ny * ey + nz * ez));
-        const floorW = worldSizeForPixels(dist, RIBBON_MIN_PIXELS, this._fovDeg, this._viewportHeight) / facing;
-        const hw = 0.5 * Math.max(width, floorW) * taper;
+        const floorW = worldSizeForPixels(dist, RIBBON_MIN_PIXELS, this._fovDeg, this._viewportHeight);
+        // A world-anchored sheet foreshortens, so its world width is opened by exactly that
+        // factor. Every family therefore keeps the APPARENT width it was authored with - no wake
+        // got thinner in exchange for becoming a real sheet - and the thin ballistic threads gain
+        // a floor so a 0.12 WU rail wake can no longer fall under one pixel.
+        const hw = 0.5 * (Math.max(width, floorW) / facing) * taper;
         const unravel = releaseT > 0
           ? Math.max(0, Math.min(1, (u - unravelEdge) / 0.35))
           : 1;
