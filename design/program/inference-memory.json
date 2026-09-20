@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-17",
+  "updated": "2026-09-19",
   "runs": [
     {
       "date": "2026-08-12",
@@ -1148,6 +1148,25 @@
       "references": [],
       "integration": "live",
       "commit": "0cfbd4f86",
+      "verification": "focused_green"
+    },
+    {
+      "id": "surveyor-probe-line",
+      "date": "2026-09-19",
+      "wf": "WF-01",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "The Ceres causal chain opens with the surveyor probe line: three player-reserved probe pickups planted at 40 wu on the authored sweep wedge seed seam_mapped, and the rich-seam strike now requires it",
+      "fingerprint": "verb=wire,subject=causal-chain-opener,sector=ceres,domain=wf-01",
+      "references": [
+        "src/systems/traffic.js",
+        "src/core/physics.js",
+        "src/data/contactHail.js",
+        "test/ceres-causal-chain.test.mjs",
+        "test/pickup-partial-acceptance.test.mjs"
+      ],
+      "integration": "live",
+      "commit": "bbf9c5b8d",
       "verification": "focused_green"
     }
   ],
