@@ -416,6 +416,9 @@ export class RcsImpulseSystem {
       const mat = materialFactory(THREE, {
         name: `rcs:${this.recipe.id}:${role}`,
         role,
+        // The family's impulse construction — collar hold and overpressure-head travel, so a
+        // vector drive's control jet snaps where an industrial one shoves.
+        engineFamily: this.recipe.engineFamily,
         textureId: texId,
         map,
         blend: this.pool._layerBlend[li],

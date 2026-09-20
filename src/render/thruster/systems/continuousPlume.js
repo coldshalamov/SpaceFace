@@ -601,6 +601,9 @@ export class ContinuousPlumeSystem {
       const mat = materialFactory(THREE, {
         name: `plume:${this.recipe.id}:${role}`,
         role,
+        // How this drive is built (familyConstruction.js): sheet count, crease sharpness, mouth,
+        // compression, reach spread. Resolved once per material, never touched per frame.
+        engineFamily: this.recipe.engineFamily,
         textureId: texId,
         map,
         blend: this.pool._layerBlend[li],

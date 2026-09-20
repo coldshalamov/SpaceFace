@@ -12,6 +12,8 @@ import {
   axialWidthEnvelope,
   AXIAL_ENVELOPE_DEFAULTS,
 } from '../geometry/axialWidthEnvelope.js';
+import { PLUME_FOLD_FIELD_GLSL } from './plumeFoldField.js';
+import { resolveFamilyConstruction } from '../recipes/familyConstruction.js';
 
 export const LAYER_ROLE_PACK = Object.freeze({
   core: 0,
@@ -208,6 +210,31 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
   uniform float uImpulseJet;
   uniform sampler2D uMap;
 
+  // Family construction (familyConstruction.js). Bound once at material creation: one material
+  // per family x role already exists, so these cost nothing per frame and add no shader variant.
+  uniform float uFoldCount;
+  uniform float uCreaseDepth;
+  uniform float uCreaseSharp;
+  uniform float uCreaseBias;
+  uniform float uFoldTravel;
+  uniform float uFoldPitch;
+  uniform float uFoldBreak;
+  uniform float uFoldBeatHz;
+  uniform float uFoldAnnulus;
+  uniform float uThroatBite;
+  uniform float uMouthLobes;
+  uniform float uCompressionPitch;
+  uniform float uCompressionDepth;
+  uniform float uReachSpread;
+  // Impulse construction (RCS only; zero on continuous drives).
+  uniform float uHeadLaunch;
+  uniform float uHeadTravel;
+  uniform float uHeadDepth;
+  uniform float uCollarLift;
+  uniform float uCollarHold;
+
+${PLUME_FOLD_FIELD_GLSL}
+
   float hash21(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
     p += dot(p, p + 45.32);
@@ -249,10 +276,23 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     float dynTurb = vTurbulence;
     float dynCore = vCoreSheath;
     float dynDiss = vDissipation;
-    float dynBoost = vBoostBlend;
+    // params.w carries two different things, and which one depends on the jet's kind. A continuous
+    // drive writes its boost blend there. An impulse jet has no boost, so it writes its PULSE
+    // CLOCK — 0 at ignition, 1 at the end of the burst — and the force-impulse read below is built
+    // on it. Split them here, once, so neither path can ever read the other's number.
+    float dynBoost = vBoostBlend * (1.0 - uImpulseJet);
+    float pulse = clamp(vBoostBlend, 0.0, 1.0) * uImpulseJet;
     // Continuous-plume flow speed is already accessibility-scaled on the CPU. Do not square
     // reduced-motion here into a frozen card.
     float flowTime = uTime * dynFlow;
+
+    // B18 — per-instance extent. Every instance of a role used to end at exactly the same station,
+    // so a family's plumes had a flat chopped back edge and two ships of one family were pixel
+    // identical. Each instance now runs out at its own distance, seeded from its own phase (which
+    // is per-socket AND per-entity), and only ever SHORTER than the mesh: the material must always
+    // finish before the geometry does.
+    float instReach = plumeInstanceReach(vPhase * 7.31 + uLayerRole * 2.17);
+    float reachAlong = clamp(vAlong / max(instReach, 0.5), 0.0, 1.35);
     float soft = max(uSoftEdge, 0.04);
     float edgeX = smoothstep(0.0, soft, vUv.x) * (1.0 - smoothstep(1.0 - soft * 1.15, 1.0, vUv.x));
     float edgeY = 1.0 - smoothstep(1.0 - soft, 1.0, abs(vSide));
@@ -364,22 +404,38 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     breakupAmount *= breakupMotion;
     stream *= mix(1.0, attachedBreakup, clamp(breakupAmount, 0.0, 1.0));
 
-    // Elongated shear filaments give the sheath/vapor internal flow direction. Their floor remains
-    // attached and continuous, so this cannot become a row of cards, beads, or detached sprites.
-    // Turbo increases filament count and axial shear; reduced motion retains the structure but
-    // calms its travel. This is the structural cruise/turbo distinction, independent of opacity.
-    // Fewer, broader filaments travelling further per cycle. The structure and its throttle/turbo
-    // response are unchanged; only the spatial rate drops, which is what turns a fine granular
-    // shimmer into visible sheets of moving liquid at the real chase-camera distance.
-    float filamentPhase = shapedSide * (5.0 + breakupDrive * 2.2 + dynBoost * 1.6)
-      + nAxial * 1.6 - flowTime * (0.42 + dynBoost * 0.34);
-    float crossFilaments = 0.56 + 0.44 * (0.5 + 0.5 * sin(filamentPhase));
-    float axialShear = 0.68 + 0.32 * smoothstep(0.18, 0.84, valueNoise(vec2(
-      vAlong * (5.2 + breakupDrive * 2.8) - flowTime * (0.5 + dynBoost * 0.45),
-      shapedSide * 1.7 + vPhase * 7.0
-    )));
-    float filamentDepth = broadRole * mix(0.30, 0.56, breakupDrive) * mix(1.0, 0.62, uReducedMotion);
-    stream *= mix(1.0, crossFilaments * axialShear, filamentDepth);
+    // -- The family's fold arrangement ----------------------------------------------------------
+    // This replaces a fixed five-filament sine that every drive in the game shared. Same job —
+    // give the shell internal flow direction — but the sheet count, crease sharpness, pairing,
+    // travel rate, standing beat, annulus and downstream shredding are now the family's own
+    // construction. A disciplined ion drive gets three long clean creases running fast and
+    // parallel; an industrial torch gets six soft ones that wander and tear; the resonator's
+    // barely convect at all and beat in place instead.
+    //
+    // Deliberately ONE field rather than a new layer over the old one: stacking a second
+    // arrangement on the first is what turns four cooperating roles into four separate plumes.
+    // The field is floored at (1 - creaseDepth), so a crease darkens the interior between sheets
+    // and can never open a gap — bright lines with holes between them is B19.
+    float foldTime = uTime * mix(1.0, 0.35, uReducedMotion);
+    float foldDrive = clamp(vThrottle, 0.0, 1.4);
+    float fold = plumeFoldField(vAlong, shapedSide, nAxial, foldDrive, dynBoost, foldTime);
+    // Broad roles carry the arrangement at full depth. The core and inner stream take a fraction,
+    // so the brightest and most gameplay-legible part of the exhaust keeps one or two clean
+    // creases instead of either dissolving into stripes or staying a featureless tube.
+    float foldWeight = clamp(
+      broadRole + coreRole * 0.34 + innerRole * 0.58, 0.0, 1.0
+    ) * mix(1.0, 0.68, uReducedMotion);
+    stream *= mix(1.0, fold, foldWeight);
+
+    // The mouth. A disciplined drive welds its column to the lip and sears there; a loaded one
+    // stands off and breaks into lobes before the column opens. This is the family tell that
+    // survives at any distance, because it is legible before the plume's interior resolves.
+    stream *= plumeThroatAttach(vAlong, shapedSide);
+
+    // Per-instance runout (B18). Material thins to nothing before this instance's mesh ends, at
+    // a distance that is this instance's own, so a family's plumes stop at a ragged front rather
+    // than a shared plane and a formation of one hull type is not a row of identical copies.
+    stream *= 1.0 - smoothstep(0.72, 1.02, reachAlong);
 
     // Three unequal, nozzle-connected axial tongues replace the circular distal puff. Their
     // staggered falloffs create 2-4 readable shear notches after minification while the rootBridge
@@ -402,18 +458,22 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     // Broad layers get coherent scalloping instead of inheriting the inner texture's narrow wisp.
     float scallop = 0.90 + 0.10 * sin(vAlong * 10.5 + n1 * 3.2 + vSide * 2.2);
     turb *= mix(1.0, scallop, clamp(sheathRole * 0.75 + vaporRole, 0.0, 1.0));
-    // Coherent pressure cells modulate a continuous inner filament. The high floor prevents the
-    // detached-ball/bead read while adding an engine-specific rhythm that survives minification.
-    float pressureCells = 0.88 + 0.12 * sin(vAlong * 8.5 - flowTime * 1.05 + n1 * 1.2);
-    pressureCells = mix(pressureCells, 0.91, uReducedMotion);
-    stream *= mix(1.0, pressureCells, innerRole * 0.72);
+    // Standing compression cells, imposed by the nozzle rather than carried by the gas. This is
+    // the family's own shock structure: pitch and depth come from the construction table, and it
+    // decays within a few units of the lip on purpose — a train that survives far downstream is
+    // the rung ladder that reads as a striped cone. The travel belongs to the fold field above;
+    // the machine's structure stands still relative to its bell, which is what E2 allows.
+    float pressureCells = plumeCompression(vAlong);
+    pressureCells = mix(pressureCells, 1.0, uReducedMotion * 0.4);
+    stream *= mix(1.0, pressureCells, clamp(innerRole * 0.78 + coreRole * 0.45, 0.0, 1.0));
 
     float tip = smoothstep(0.62, 1.0, vAlong);
     stream *= 1.0 - tip * uFork * (0.30 + n2 * 0.55);
 
     // A later, gentler dissipation ramp keeps the tail alive further downstream so the exhaust
-    // trails off as flowing material rather than being cut short by a falloff wall.
-    float dissipate = 1.0 - smoothstep(0.52, 1.06, vAlong / max(0.25, dynDiss));
+    // trails off as flowing material rather than being cut short by a falloff wall. Read in the
+    // instance's own reach coordinate so a short instance cools early rather than being clipped.
+    float dissipate = 1.0 - smoothstep(0.52, 1.06, reachAlong / max(0.25, dynDiss));
     stream *= mix(0.62, 1.0, dissipate);
 
     // Advanced texture advection. Both paths take two taps and cross-fade, which removes the two
@@ -451,10 +511,28 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     staticFloor *= mix(1.0, 1.32, uReducedMotion);
     body = max(body, staticFloor);
 
-    // RCS owns a compact luminous root before its directional release. This boosts only the
-    // nozzle-attached core/inner material zones, never the whole impulse card.
-    float impulseRoot = uImpulseJet * (1.0 - smoothstep(0.08, 0.32, vAlong));
-    body *= 1.0 + impulseRoot * (coreRole * 0.52 + innerRole * 0.22);
+    // -- RCS: a force impulse, not a tiny flight history ----------------------------------------
+    // A control jet is a valve opening and shutting, and what the player has to read is the
+    // SHOVE. Two things say it: a hard collar flash at the mouth while the valve is open, and a
+    // single overpressure head that leaves the throat and runs out along the jet. When the collar
+    // shuts, the root darkens behind the head, so what is left on screen is a packet of gas
+    // already on its way — the shape of a kick. A jet that simply shrank back into its nozzle
+    // read as a short trail of where the ship had been, which is the history's job and not this
+    // one's.
+    //
+    // pulse is THIS impulse's own clock, so a rapid double tap shows two heads at two distances
+    // rather than one smeared glow, and the first head keeps travelling through the second firing.
+    float collarOpen = 1.0 - smoothstep(uCollarHold, min(uCollarHold + 0.28, 1.0), pulse);
+    float collarZone = 1.0 - smoothstep(0.05, 0.26, vAlong);
+    float collar = uImpulseJet * uCollarLift * collarOpen * collarZone;
+    float headPos = uHeadTravel * smoothstep(uHeadLaunch, 1.0, pulse);
+    float headD = (vAlong - headPos) * 3.4;
+    float head = exp(-(headD * headD)) * (1.0 - smoothstep(0.72, 1.0, pulse));
+    body *= 1.0 + collar * (coreRole * 0.62 + innerRole * 0.30)
+      + uImpulseJet * uHeadDepth * head * (0.55 + coreRole * 0.60);
+    // Behind the head the valve has already shut, so the root goes out while the packet keeps
+    // going. This is the difference between a shove and a fade.
+    body *= 1.0 - uImpulseJet * 0.55 * collarZone * smoothstep(uCollarHold, 1.0, pulse);
 
     float coreW = coreRole;
     float heat = clamp((1.0 - vAlong * 0.7) * (0.5 + vThrottle * 0.7) + coreW * 0.35, 0.0, 1.4);
@@ -570,11 +648,20 @@ export function createFlowFlipbookMaterial(THREE, options = {}) {
       ? THREE.MultiplyBlending
       : THREE.AdditiveBlending;
 
+  // How this drive is BUILT (familyConstruction.js). Resolved and bound once, here: there is one
+  // material per family x role already, so the whole vocabulary costs a handful of constant
+  // uniforms and adds no shader variant. An unknown family gets the disciplined ion reading.
+  const construction = options.construction || resolveFamilyConstruction(options.engineFamily);
+  const impulse = construction.impulse || {};
+  const isImpulse = !!options.impulseJet;
+
   const uniforms = {
     uTime: { value: 0 },
     // The distortion encoder has no silhouette; keep its card flat. Live plume layers get the
-    // curved cross-section so their normals respond to the shipping camera.
-    uShellArc: { value: isDistort ? 0 : num(options.shellArc, 0.9) },
+    // curved cross-section so their normals respond to the shipping camera. The arc span is the
+    // family's: a vector needle and a plasma-ring barrel are different shapes, not one shape at
+    // two widths.
+    uShellArc: { value: isDistort ? 0 : num(options.shellArc, construction.shellArc) },
     uFlowSpeed: { value: num(options.flowSpeed, 2.4) },
     uNoiseScale: { value: num(options.noiseScale, 1.5) },
     uSoftEdge: { value: num(options.softEdge, 0.28) },
@@ -605,6 +692,28 @@ export function createFlowFlipbookMaterial(THREE, options = {}) {
     uEnvelopeExpandU: { value: num(options.envelopeExpandU, AXIAL_ENVELOPE_DEFAULTS.expandU) },
     uEnvelopeTaper: { value: num(options.envelopeTaper, AXIAL_ENVELOPE_DEFAULTS.taper) },
     uEnvelopeMouthBreak: { value: num(options.envelopeMouthBreak, AXIAL_ENVELOPE_DEFAULTS.mouthBreak) },
+    // Family construction — constant for the life of the material.
+    uFoldCount: { value: construction.foldCount },
+    uCreaseDepth: { value: construction.creaseDepth },
+    uCreaseSharp: { value: construction.creaseSharp },
+    uCreaseBias: { value: construction.creaseBias },
+    uFoldTravel: { value: construction.foldTravel },
+    uFoldPitch: { value: construction.foldPitch },
+    uFoldBreak: { value: construction.foldBreak },
+    uFoldBeatHz: { value: construction.foldBeatHz },
+    uFoldAnnulus: { value: construction.foldAnnulus },
+    uThroatBite: { value: construction.throatBite },
+    uMouthLobes: { value: construction.mouthLobes },
+    uCompressionPitch: { value: construction.compressionPitch },
+    uCompressionDepth: { value: construction.compressionDepth },
+    uReachSpread: { value: construction.reachSpread },
+    // Impulse construction. Zeroed on continuous drives so the RCS terms cannot reach them even
+    // if uImpulseJet were ever mis-set: two independent gates on the same branch.
+    uHeadLaunch: { value: isImpulse ? num(impulse.headLaunch, 0.22) : 0 },
+    uHeadTravel: { value: isImpulse ? num(impulse.headTravel, 0.9) : 0 },
+    uHeadDepth: { value: isImpulse ? num(impulse.headDepth, 0.62) : 0 },
+    uCollarLift: { value: isImpulse ? num(impulse.collarLift, 0.85) : 0 },
+    uCollarHold: { value: isImpulse ? num(impulse.collarHold, 0.42) : 1 },
   };
 
   const material = new THREE.ShaderMaterial({
@@ -642,6 +751,9 @@ export function createFlowFlipbookMaterial(THREE, options = {}) {
     mouthBreak: uniforms.uEnvelopeMouthBreak.value,
   };
   material.userData.usesSharedAxialEnvelope = true;
+  material.userData.engineFamily = construction.family;
+  material.userData.construction = construction;
+  material.userData.silhouette = construction.silhouette;
   return material;
 }
 
