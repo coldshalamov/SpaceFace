@@ -87,6 +87,16 @@ function bootCombat(systems = [combat, heat]) {
   return { sim, state, bus, player, damageEvents, killedEvents, lootDrops, combat: sim.registry.get('combat') };
 }
 
+// The witness gate (law adjudication) needs real eyes on a crime: a lawful hull inside the
+// kill-witness radius. Without one, an unseen civilian kill is correctly charged as nothing.
+function lawfulWitness(run, pos) {
+  return run.sim.spawn({
+    type: 'ship', team: 2, factionId: 'faction_scn',
+    pos: { x: pos.x, z: pos.z }, hull: 80, hullMax: 80, radius: 8,
+    data: { ai: { lawful: true } },
+  });
+}
+
 function withLootShardsEnabled(fn) {
   const prior = { enabled: MASSLINE2_FLAGS.enabled, lootShards: MASSLINE2_FLAGS.lootShards };
   MASSLINE2_FLAGS.enabled = true;
@@ -337,7 +347,8 @@ test('killing a clean generic ship immediately crosses WANTED', () => {
   assert.ok(heatLevelFor(state.player.heat) > 0);
   assert.equal(state.player.heatZone.active, true);
   assert.equal(changes.length, 1, 'threshold crossing emits one immediate HUD update');
-  assert.match(changes[0].reason, /piracy kill \(ship\)/);
+  // Kill heat arrives only through a law-signed receipt — the reason names the adjudicated kind.
+  assert.match(changes[0].reason, /law incident \(unlawful_kill\)/);
 });
 
 test('authored civilian hull classes each cross WANTED when clean', () => {
@@ -409,6 +420,7 @@ test('production-order clean authored trader kill becomes WANTED and earns no ho
   const trader = run.sim.spawn(makeEnemySpawnSpec('mule_trader', 1, { x: 80, z: 0 }, {
     startedTick: run.state.tick,
   }));
+  lawfulWitness(run, { x: 140, z: 0 }); // a lawful hull sees the murder — the gate needs eyes
 
   assert.equal(trader.data.ai.archetype, 'fleeing_trader');
   assert.equal(trader.data.shipClass, 'frigate', 'exercise the authored civilian hull class');
@@ -446,6 +458,7 @@ test('player-initiated craft contact routes through combat into clean-civilian W
     pos: { x: 8, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, mass: 20,
     hull: 1, hullMax: 1, shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0,
   });
+  lawfulWitness(run, { x: 60, z: -160 }); // lawful eyes on the ram, clear of the contact lane
 
   resolveCustomCraftContact(run, run.player, trader);
 
@@ -499,6 +512,7 @@ test('production-order multi-hit trader kill preserves first-hit clean provenanc
   const trader = run.sim.spawn(makeEnemySpawnSpec('mule_trader', 1, { x: 80, z: 0 }, {
     startedTick: run.state.tick,
   }));
+  lawfulWitness(run, { x: 140, z: 0 }); // lawful eyes on the scene — the murder must be seen to price
 
   playerHit(run, trader, 1);
   assert.equal(run.damageEvents[0].targetHostileToPlayer, false);
@@ -637,13 +651,14 @@ test('non-player damage never seeds player legal or reward provenance', () => {
 });
 
 test('production combat marks a neutral generic ship clean and its kill crosses WANTED', () => {
-  const run = bootCombat();
+  const run = bootCombat([lawSecurity, combat, heat]);
   run.state.factions.faction_free = { rep: 40, aggro: false };
   const neutral = run.sim.spawn({
     type: 'ship', team: 2, factionId: 'faction_free', pos: { x: 80, z: 0 },
     hull: 20, hullMax: 20, shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0,
     data: {},
   });
+  lawfulWitness(run, { x: 140, z: 0 }); // witnessed crime — the gate prices what it can see
 
   lethalPlayerHit(run, neutral);
 

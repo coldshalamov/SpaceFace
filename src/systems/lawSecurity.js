@@ -27,15 +27,18 @@ import {
   isImpoundWorkComplete,
   quoteImpoundBill,
 } from './custodyConsequences.js';
-import { isPlayerWanted, wantedTierFor, WANTED_TIER } from './heat.js';
+import { heatLevelFor, isPlayerWanted, wantedTierFor, WANTED_TIER } from './heat.js';
 import {
   BOUNTY_HUNTER_PLAYER_CONTEXT,
   makePlayerWarrantHunterSpec,
 } from '../data/bountyHunters.js';
 import {
   commodityLegality,
+  isCivilianManifestPayload,
   isJettisonedCargoPod,
 } from './lootShards.js';
+import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
+import { isHostileToPlayer } from './scanner.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { patrolCanInitiateScan } from './encounterScripts.js';
 import { effectiveRegionalSecurity } from './regionalEcology.js';
@@ -172,6 +175,8 @@ export const lawSecurity = {
     this._onSurvivorPodEjected = (payload) => this._handleSurvivorPodEjected(payload);
     this._onStolenCargoPodCollect = (payload) => this._handleStolenCargoPodCollect(payload);
     this._onStolenCargoPodLatch = (payload) => this._handleStolenCargoPodLatch(payload);
+    this._onKilledAdjudication = (payload) => this._handleKilledAdjudication(payload);
+    this._onDockedLawfulClearance = (payload) => this._handleDockedLawfulClearance(payload);
     this._onHeatChanged = () => {
       this._syncWantedWarrant(this.state);
       this._syncWantedCheckpoint(this.state);
@@ -194,6 +199,8 @@ export const lawSecurity = {
       this.bus.on('player:death', this._onPlayerDeath);
       this.bus.on('pickup:collected', this._onStolenCargoPodCollect);
       this.bus.on('tether:latched', this._onStolenCargoPodLatch);
+      this.bus.on('entity:killed', this._onKilledAdjudication);
+      this.bus.on('dock:docked', this._onDockedLawfulClearance);
       this.bus.on('heat:changed', this._onHeatChanged);
       this.bus.on('law:impoundPay', this._onImpoundPay);
     }
@@ -597,18 +604,24 @@ export const lawSecurity = {
     }
 
     if (attacker.id === state.playerId && target.id !== state.playerId) {
-      const jurisdiction = protectedStationAt(state, target)
-        || (player && protectedStationAt(state, player))
-        || ceresDistressJurisdiction(state, target);
-      if (jurisdiction && (isLawful(target) || isProtectedCivilian(target))) {
-        this._openIncident(attacker, target, jurisdiction, isLawful(target) ? 'player_assault' : 'player_piracy');
-        return;
-      }
-      if (isLawful(target)) {
-        if (jurisdiction) this._openIncident(attacker, target, jurisdiction, 'player_assault');
-        else this._authorizeResponder(target, attacker, null, 'self_defense');
-      } else {
-        this._retaliate(target, attacker);
+      // Already hostile at first contact: the fight was lawful before it began. The combat
+      // receipt carries the FROZEN first-hit truth, so a victim who only turned hostile by
+      // retaliating to the player's own first shot still flows through as a crime scene —
+      // but shooting a declared hostile never opens an incident against the defender.
+      if (payload.targetHostileToPlayer !== true) {
+        const jurisdiction = protectedStationAt(state, target)
+          || (player && protectedStationAt(state, player))
+          || ceresDistressJurisdiction(state, target);
+        if (jurisdiction && (isLawful(target) || isProtectedCivilian(target))) {
+          this._openIncident(attacker, target, jurisdiction, isLawful(target) ? 'player_assault' : 'player_piracy');
+          return;
+        }
+        if (isLawful(target)) {
+          if (jurisdiction) this._openIncident(attacker, target, jurisdiction, 'player_assault');
+          else this._authorizeResponder(target, attacker, null, 'self_defense');
+        } else {
+          this._retaliate(target, attacker);
+        }
       }
       return;
     }
@@ -627,12 +640,20 @@ export const lawSecurity = {
     const ownerId = payload.ownerId ?? payload.attackerId ?? payload.sourceId;
     const attacker = entityById(state, ownerId);
     if (!attacker || attacker.alive === false) return;
+    const player = entityById(state, state.playerId);
     const targetId = payload.targetId
       ?? (attacker.data && attacker.data.combat && attacker.data.combat.targetId)
       ?? (attacker.data && attacker.data.ai && attacker.data.ai.activity && attacker.data.ai.activity.targetId);
     const target = entityById(state, targetId);
     if (!target || target.alive === false || attacker.id === target.id) return;
     if (isLawful(attacker) || !isCivilianHauler(target)) return;
+    // Firing on a hauler that is already hostile to the player — and was not provoked into it
+    // by the player's own first shot — is lawful force, not a fresh incident.
+    if (attacker.id === state.playerId
+      && !(target.data && target.data.ai && target.data.ai.retaliationTargetId === state.playerId)
+      && isHostileToPlayer(target, player && player.team, state)) {
+      return;
+    }
     const slotHauler = target.data && target.data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT;
     const pocket = ceresDistressJurisdiction(state, target);
     const jurisdiction = pocket
@@ -734,6 +755,11 @@ export const lawSecurity = {
     this._say('alert', `CONTROL: distress logged. Patrol ETA ${policy.dispatchDelayS.toFixed(2)} seconds.`, `law:distress:${incident.id}`, jurisdiction.factionId);
     this._emit('law:distressRaised', publicIncident(incident));
     this._emit('law:incidentOpened', publicIncident(incident));
+    this._lawResponse('incident_opened', {
+      incidentId: incident.id, stationId: incident.stationId, factionId: incident.factionId,
+      cause, attackerId: attacker.id, victimId: victim.id,
+      dispatchAt: incident.dispatchAt,
+    });
     this._recordReceipt({
       incidentId: incident.id, cause, outcome: 'distress_received', attackerId: attacker.id,
       targetId: victim.id, stationId: jurisdiction.stationId,
@@ -1101,6 +1127,11 @@ export const lawSecurity = {
     incident.status = dispatched.length ? 'responding' : 'monitoring';
     const payload = publicIncident(incident);
     this._emit('law:dispatchStarted', payload);
+    this._lawResponse(dispatched.length ? 'patrol_dispatched' : 'dispatch_unavailable', {
+      incidentId: incident.id, stationId: incident.stationId, factionId: incident.factionId,
+      cause: incident.cause, attackerId: incident.attackerId, victimId: incident.victimId,
+      responderIds: incident.responderIds.slice(),
+    });
     if (hasLiveResponse) {
       this._reconcileWitnessChoice(incident);
     }
@@ -1209,6 +1240,11 @@ export const lawSecurity = {
     delete ensureState(state).incidents[key];
     this._say('info', 'CONTROL: threat clear. Station approach secure.', `law:clear:${incident.id}`, incident.factionId);
     this._emit('law:incidentResolved', publicIncident(incident));
+    this._lawResponse('incident_resolved', {
+      incidentId: incident.id, stationId: incident.stationId, factionId: incident.factionId,
+      cause: incident.cause, attackerId: incident.attackerId, victimId: incident.victimId,
+      outcome,
+    });
     this._emit('encounter:receipt', {
       encounterId: incident.id,
       shape: 'security_response',
@@ -1757,6 +1793,13 @@ export const lawSecurity = {
         : `THEFT REPORTED — ${witnesses.length} witness${witnesses.length === 1 ? '' : 'es'}; no patrol in range.`,
     });
     this._emit('law:reportIncidentReceipt', receipt);
+    this._lawResponse('crime_validated', {
+      kind: receipt.kind,
+      incidentReceiptId: receipt.incidentReceiptId,
+      stationId: receipt.stationId,
+      witnessCount: receipt.witnessCount,
+      responderAvailability: receipt.responderAvailability,
+    });
     return receipt;
   },
 
@@ -1776,6 +1819,7 @@ export const lawSecurity = {
       source: 'lawSecurity',
     });
     this._emit('law:reportIncidentReceipt', denial);
+    this._lawResponse('report_denied', { reason, kind: denial.kind, reportId: denial.reportId });
     return denial;
   },
 
@@ -1804,12 +1848,30 @@ export const lawSecurity = {
 
   _reportStolenCargoPod(entity) {
     const state = this.state;
-    if (!isJettisonedCargoPod(entity) || (entity.data && entity.data.freightCustodyPod)) return null;
+    const isManifest = isCivilianManifestPayload(entity);
+    if ((!isJettisonedCargoPod(entity) && !isManifest)
+      || (entity.data && entity.data.freightCustodyPod)) return null;
     const ownerId = cargoPodOwnerId(entity);
     if (ownerId == null || sameLawEntityId(ownerId, state.playerId)) return null;
+    // A manifest pod is the dead victim's cargo. If the kill itself was already adjudicated a
+    // crime, the murder receipt already priced the scene — a second receipt would be double
+    // jeopardy. A lawful or unwitnessed kill leaves the pod an honest salvage claim instead.
+    // The ledger scan (not just the reportId probe) keeps the match alive when the victim
+    // entity has already been culled from state.entities.
+    if (isManifest) {
+      const victim = entityById(state, ownerId);
+      const killReportId = cleanLawId(`kill:${victimStableIdOf(victim, { id: ownerId })}`);
+      const killReceipt = killReportId && readReportedIncident(state, killReportId);
+      const ledger = state.lawSecurity && state.lawSecurity.reportedIncidents;
+      const priced = (killReceipt && killReceipt.accepted === true && killReceipt.validatedCrime === true)
+        || (ledger && typeof ledger === 'object' && Object.values(ledger).some((r) => r
+          && r.accepted === true && r.validatedCrime === true
+          && (sameLawEntityId(r.victimEntityId, ownerId) || r.victimStableId === `entity:${ownerId}`)));
+      if (priced) return null;
+    }
     const pos = finiteLawPoint(entity.pos);
     if (!pos) return null;
-    const payloadStableId = cleanLawId(`jettisoned-${entity.id}`);
+    const payloadStableId = cleanLawId(`${isManifest ? 'manifest' : 'jettisoned'}-${entity.id}`);
     const reportId = cleanLawId(`pod-theft:${payloadStableId}`);
     if (!payloadStableId || !reportId) return null;
     const causalTick = Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
@@ -1823,6 +1885,246 @@ export const lawSecurity = {
       pos,
       victim: entity,
       victimEntityId: ownerId,
+    });
+  },
+
+  // ── Kill adjudication: the witness gate on homicide ──────────────────────────────────────
+  //
+  // One lawful evaluation per player-caused kill. The combat receipt carries the FROZEN
+  // first-hit truth (`targetHostileToPlayer`): a ship that was already hostile when the player
+  // engaged is a lawful kill — self-defense or declared bounty work — wherever it happens, and
+  // the law clears it on the record when it could see the act. Everything else is a crime
+  // candidate, and a crime the law cannot see is a crime it cannot charge:
+  //
+  //   * inside a lawful station's protection ring (jurisdiction), or
+  //   * seen by a lawful unit or marked witness (`lawWitnessesNear`), or
+  //   * seen by a protected civilian who watched it happen, or
+  //   * the victim itself was lawful-faction — the law network always records its own dead.
+  //
+  // A validated kill reports through the same receipt contract as a witnessed theft
+  // (`law:reportIncidentReceipt` + `validatedCrime`) so the HEAT OWNER — and only the heat
+  // owner — prices it. There is no direct heat write in this path.
+
+  _handleKilledAdjudication(payload) {
+    const state = this.state;
+    if (!state || !payload || state.playerId == null) return;
+    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (payload.killerId !== state.playerId || payload.id === state.playerId) return;
+    const victim = entityById(state, payload.id);
+    const victimType = payload.type || (victim && victim.type);
+    if (!LAW_KILL_ADJUDICATION_TYPES.has(victimType)) return;
+    // Contracted and run-scoped victims are legal work — their reward owner already priced them.
+    if (victim && (missionOwnsReward(victim) || runOwnsReward(victim))) return;
+
+    const player = entityById(state, state.playerId);
+    const pos = finiteLawPoint(payload.pos)
+      || finiteLawPoint(victim && victim.pos)
+      || finiteLawPoint(player && player.pos);
+    if (!pos) return;
+
+    // Legacy payloads without the frozen flag fall back to live hostility minus provoked
+    // retaliation: a victim who only turned hostile because the player shot first is NOT a
+    // clear hostile. When the victim entity itself is already gone, the faction ledger's
+    // declared aggro is the only hostility truth left (the old heat-owner rule).
+    const provoked = !!(victim && victim.data && victim.data.ai
+      && victim.data.ai.retaliationTargetId === state.playerId);
+    const factionAggro = !!(victim == null && payload.factionId != null && state.factions
+      && state.factions[payload.factionId] && state.factions[payload.factionId].aggro);
+    const clearlyHostile = typeof payload.targetHostileToPlayer === 'boolean'
+      ? payload.targetHostileToPlayer
+      : factionAggro
+        || !!(victim && !provoked && isHostileToPlayer(victim, player && player.team, state));
+
+    const jurisdiction = (victim && protectedStationAt(state, victim))
+      || protectedStationAt(state, { pos })
+      || (player && protectedStationAt(state, player))
+      || null;
+    const witnesses = lawWitnessesNear(state, {
+      pos, offenderEntityId: state.playerId, radius: LAW_KILL_WITNESS_RADIUS,
+    }).filter((w) => w.entityId !== payload.id); // the dead cannot testify
+    const civilians = civilianKillWitnessesNear(state, pos, state.playerId, witnesses, payload.id);
+    const seen = !!jurisdiction || witnesses.length > 0 || civilians.length > 0;
+    const witnessStableIds = witnesses.map((w) => w.stableId)
+      .concat(civilians.map((w) => w.stableId))
+      .slice(0, LAW_INCIDENT_WITNESS_CAP);
+    const victimStableId = victimStableIdOf(victim, payload);
+
+    if (clearlyHostile) {
+      // Lawful force: no crime, no heat. Where the law could see the kill it clears the
+      // shooter on the record — the lawful-defense leg is an outcome the player can observe.
+      if (seen) {
+        this._lawResponse('kill_adjudicated', {
+          outcome: 'lawful',
+          victimEntityId: payload.id,
+          victimStableId,
+          victimClass: payload.victimClass || null,
+          stationId: jurisdiction ? jurisdiction.stationId : null,
+          witnessCount: witnessStableIds.length,
+        });
+      }
+      return;
+    }
+
+    const factionLawful = payload.factionLawful === true
+      || !!(victim && victim.data && victim.data.ai && victim.data.ai.lawful === true);
+    if (!factionLawful && !seen) {
+      // Nobody saw it — the law cannot act. Recorded as an explicit outcome, never a licence:
+      // the same kill re-adjudicates if a save/reload replays the event under new eyes.
+      this._lawResponse('kill_unwitnessed', {
+        outcome: 'no_charge',
+        victimEntityId: payload.id,
+        victimStableId,
+        victimClass: payload.victimClass || null,
+      });
+      return;
+    }
+
+    if (victimStableId == null) return; // no stable identity — a colliding 'kill:null' key would re-emit a stranger's receipt
+    const reportId = cleanLawId(`kill:${victimStableId}`);
+    if (!reportId) return;
+    const existing = readReportedIncident(state, reportId);
+    if (existing) {
+      this._emit('law:reportIncidentReceipt', existing);
+      return;
+    }
+
+    const kind = factionLawful ? 'lawful_kill' : 'unlawful_kill';
+    const causalTick = Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
+    const receipt = Object.freeze({
+      accepted: true,
+      incidentReceiptId: `law:kill:${hash32(reportId, kind, victimStableId, causalTick).toString(36)}`,
+      reportId,
+      kind,
+      offenderStableId: 'player',
+      offenderEntityId: state.playerId,
+      payloadStableId: victimStableId,
+      victimEntityId: payload.id,
+      victimStableId,
+      victimClass: payload.victimClass || null,
+      causalTick,
+      stationId: jurisdiction ? jurisdiction.stationId : null,
+      factionId: (jurisdiction && jurisdiction.factionId)
+        || (victim && victim.factionId)
+        || payload.factionId
+        || null,
+      witnessCount: witnessStableIds.length,
+      witnessStableIds: Object.freeze(witnessStableIds),
+      // Kill receipts carry validatedCrime, not validatedWitnessedTheft — the heat owner
+      // prices either fact through the same single-writer door.
+      validatedWitnessedTheft: false,
+      validatedCrime: true,
+      source: 'lawSecurity',
+    });
+    storeReportedIncident(state, receipt);
+    this._recordReceipt({
+      incidentId: receipt.incidentReceiptId,
+      cause: kind,
+      outcome: 'kill_validated',
+      attackerId: state.playerId,
+      targetId: payload.id,
+      stationId: receipt.stationId,
+      text: `KILL ADJUDICATED — ${factionLawful ? 'lawful victim' : 'non-hostile victim'}; ${witnessStableIds.length} witness${witnessStableIds.length === 1 ? '' : 'es'} on record.`,
+    });
+    this._emit('law:reportIncidentReceipt', receipt);
+    this._lawResponse('crime_validated', {
+      kind,
+      incidentReceiptId: receipt.incidentReceiptId,
+      victimEntityId: payload.id,
+      victimStableId,
+      victimClass: receipt.victimClass,
+      stationId: receipt.stationId,
+      witnessCount: witnessStableIds.length,
+    });
+
+    // A witnessed murder inside a live protection ring is also a standing distress incident —
+    // the same patrol machinery that answers shots fired answers a corpse.
+    if (jurisdiction && victim && player) {
+      this._openIncident(player, victim, jurisdiction,
+        factionLawful ? 'player_assault' : 'player_piracy');
+    }
+  },
+
+  // ── Lawful clearance: pay the assessed fine at a lawful dock ─────────────────────────────
+  //
+  // The lawful channel for the two escapable tiers. SCAN and BOUNTY already clear by leaving
+  // the search zone; a lawful dock offers the honest door instead — pay the assessed fine
+  // through the economy owner and the heat owner clears the sheet. NETS and IMPOUND keep
+  // their physical escapes; nobody pays a fine to walk out of an impound lot.
+  //
+  // Escaping consequences is possible but never free: the fine is real credits, charged
+  // through `economy:chargeCredits`, and a pilot who cannot pay keeps the heat.
+
+  _handleDockedLawfulClearance(payload) {
+    const state = this.state;
+    if (!state || !payload || state.playerId == null) return;
+    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    const player = state.player;
+    const heatValue = player && Number(player.heat) || 0;
+    if (heatValue <= 0) return;
+    const tier = wantedTierFor(heatValue);
+    if (tier !== WANTED_TIER.SCAN && tier !== WANTED_TIER.BOUNTY) return;
+    const station = entityById(state, payload.stationId)
+      || stationByPublicId(state, payload.stationId)
+      || entityById(state, payload.entityId);
+    if (!station || !isLawful(station)) return;
+
+    const level = heatLevelFor(heatValue);
+    const fine = LAW_DOCK_FINE_BASE_CR + LAW_DOCK_FINE_PER_LEVEL_CR * level;
+    const credits = Math.max(0, Math.round(Number(player.credits) || 0));
+    const stationId = payload.stationId
+      || (station.data && station.data.stationId)
+      || station.stationId
+      || station.id;
+
+    this._lawResponse('fine_assessed', {
+      stationId, fineCr: fine, heatLevel: level, wantedTier: tier,
+    });
+    if (credits < fine) {
+      this._lawResponse('fine_unpaid', {
+        stationId, fineCr: fine, shortfallCr: fine - credits, heatLevel: level, wantedTier: tier,
+      });
+      this._recordReceipt({
+        cause: 'wanted_fine', outcome: 'fine_unpaid',
+        attackerId: state.playerId, targetId: null, stationId,
+        text: `FINE ASSESSED ${fine} cr — insufficient funds. Warrant stands.`,
+      });
+      this._emit('law:fineAssessed', {
+        stationId, amount: fine, paid: false, shortfall: fine - credits,
+        heatLevel: level, wantedTier: tier,
+      });
+      return;
+    }
+
+    this._emit('economy:chargeCredits', {
+      amount: fine,
+      reason: 'fine:wanted_clearance',
+      sink: 'fine',
+      cause: 'wanted_clearance',
+    });
+    this._emit('heat:clear', { reason: 'station_fine' });
+    this._emit('law:fineAssessed', {
+      stationId, amount: fine, paid: true,
+      heatLevel: level, wantedTier: tier,
+    });
+    this._lawResponse('fine_paid', {
+      stationId, fineCr: fine, heatLevel: level, wantedTier: tier,
+    });
+    this._recordReceipt({
+      cause: 'wanted_fine', outcome: 'fine_paid',
+      attackerId: state.playerId, targetId: null, stationId,
+      text: `FINE PAID ${fine} cr — warrant cleared at ${stationId}.`,
+    });
+  },
+
+  // Canonical law-response event: one named row per action leg so instruments, barks, and HUD
+  // can follow the loop without reading system internals.
+  _lawResponse(action, fields) {
+    const state = this.state;
+    this._emit('law:response', {
+      action,
+      tick: state ? state.tick | 0 : 0,
+      t: state ? state.simTime || 0 : 0,
+      ...(fields || {}),
     });
   },
 
@@ -2041,6 +2343,9 @@ export const lawSecurity = {
       arrival: { x: arrival.x, z: arrival.z },
     };
     this._emit('law:wantedWarrantPosted', publicWantedWarrant(own.wantedWarrant));
+    this._lawResponse('warrant_posted', {
+      contractId, hunterId: spawned.id, targetId: state.playerId, tier: WANTED_TIER.BOUNTY,
+    });
   },
 
   _releaseWantedWarrant(state, warrant, hunter) {
@@ -2063,6 +2368,11 @@ export const lawSecurity = {
     }
     own.wantedWarrant = null;
     this._emit('law:wantedWarrantReleased', {
+      contractId: warrant && warrant.contractId,
+      hunterId: warrant && warrant.hunterId,
+      targetId: warrant && warrant.targetId,
+    });
+    this._lawResponse('warrant_released', {
       contractId: warrant && warrant.contractId,
       hunterId: warrant && warrant.hunterId,
       targetId: warrant && warrant.targetId,
@@ -2186,6 +2496,10 @@ export const lawSecurity = {
       brokenBy: null,
     };
     this._emit('law:wantedCheckpointPosted', publicWantedCheckpoint(own.wantedCheckpoint));
+    this._lawResponse('checkpoint_posted', {
+      checkpointId, netId: net.id, cutterId: cutter && cutter.id || null,
+      targetId: state.playerId, tier: WANTED_TIER.NETS,
+    });
   },
 
   _spawnCheckpointCutter(state, arrival, lane, checkpointId, requester, budget) {
@@ -2296,6 +2610,10 @@ export const lawSecurity = {
       targetId: checkpoint.targetId,
       byId: byEntity && byEntity.id != null ? byEntity.id : null,
     });
+    this._lawResponse('checkpoint_broken', {
+      checkpointId: checkpoint.checkpointId, method,
+      netId: checkpoint.netId, targetId: checkpoint.targetId,
+    });
   },
 
   _releaseWantedCheckpoint(state, checkpoint, net) {
@@ -2322,6 +2640,11 @@ export const lawSecurity = {
       checkpointId: checkpoint && checkpoint.checkpointId,
       netId: checkpoint && checkpoint.netId,
       cutterId: checkpoint && checkpoint.cutterId,
+      targetId: checkpoint && checkpoint.targetId,
+      brokenBy: checkpoint && checkpoint.brokenBy,
+    });
+    this._lawResponse('checkpoint_released', {
+      checkpointId: checkpoint && checkpoint.checkpointId,
       targetId: checkpoint && checkpoint.targetId,
       brokenBy: checkpoint && checkpoint.brokenBy,
     });
@@ -2492,6 +2815,10 @@ export const lawSecurity = {
       owedCr: existing && existing.status === 'open' ? existing.owedCr : quoteImpoundBill(state.player),
       sectorId: currentSectorId(state),
     });
+    this._lawResponse('impound_posted', {
+      billId, targetId: state.playerId, tier: WANTED_TIER.IMPOUND,
+      sectorId: currentSectorId(state),
+    });
   },
 
   _spawnImpoundClerk(state, arrival, yard, poundId, requester, budget) {
@@ -2631,6 +2958,9 @@ export const lawSecurity = {
       targetId: pound.targetId,
       byId: byEntity && byEntity.id != null ? byEntity.id : null,
       t: state.simTime || 0,
+    });
+    this._lawResponse('impound_resolved', {
+      poundId: pound.poundId, billId: pound.billId, method, targetId: pound.targetId,
     });
   },
 
@@ -3449,6 +3779,14 @@ export const LAW_INCIDENT_RESPONDER_MARGIN = 1000;
 export const LAW_INCIDENT_WITNESS_CAP = 8;
 const REPORTED_INCIDENT_CAP = 16;
 
+/** Entity kinds a player kill can be adjudicated over. Wrecks/pickups/rocks are not victims. */
+const LAW_KILL_ADJUDICATION_TYPES = new Set(['ship', 'fighter', 'drone', 'hauler', 'capital', 'station']);
+/** The kill gate reuses the theft-report eyes: same radius, same "who could see the act" rule. */
+const LAW_KILL_WITNESS_RADIUS = LAW_INCIDENT_WITNESS_RADIUS;
+/** Lawful dock clearance: assessed fine for the two escapable tiers, real credits, never free. */
+const LAW_DOCK_FINE_BASE_CR = 150;
+const LAW_DOCK_FINE_PER_LEVEL_CR = 100;
+
 /**
  * The reported-incident ledger, created ONLY on first actual use.
  *
@@ -3537,6 +3875,51 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
   return out
     .sort((a, b) => a.distanceSq - b.distanceSq || a.stableId.localeCompare(b.stableId))
     .slice(0, LAW_INCIDENT_WITNESS_CAP);
+}
+
+/**
+ * Civilian eyes on a kill. `lawWitnessesNear` is deliberately narrow (lawful units and marked
+ * witnesses) because a theft report needs a reporting party; a watched MURDER is different —
+ * the hauler who saw you vent a ship three hundred meters off her bow calls it in. Protected
+ * civilians (`isProtectedCivilian`) inside the same radius therefore count as kill witnesses.
+ * Entities already collected as lawful witnesses are skipped by id, so the combined list is
+ * still deterministic, sorted, and capped by the caller.
+ */
+function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollected, victimEntityId = null) {
+  const anchor = finiteLawPoint(pos);
+  if (!state || !anchor) return [];
+  const limitSq = LAW_KILL_WITNESS_RADIUS ** 2;
+  const taken = new Set((alreadyCollected || []).map((w) => w.entityId));
+  const out = [];
+  forEachLivingWorldActor(state, (entity) => {
+    if (!entity || !entity.pos || entity.alive === false) return;
+    if (entity.id === offenderEntityId || entity.id === state.playerId) return;
+    if (victimEntityId != null && entity.id === victimEntityId) return; // the dead cannot testify
+    if (taken.has(entity.id)) return;
+    if (!isProtectedCivilian(entity)) return;
+    const d2 = distance2(entity.pos, anchor);
+    if (d2 > limitSq) return;
+    out.push({
+      stableId: String(entity.data?.worldRecordId
+        || entity.data?.stationId
+        || `entity:${entity.id}`),
+      entityId: entity.id,
+      distanceSq: d2,
+      lawful: false,
+      civilian: true,
+    });
+  });
+  return out.sort((a, b) => a.distanceSq - b.distanceSq || a.stableId.localeCompare(b.stableId));
+}
+
+/** Stable identity for a kill victim, for the idempotent report key and the receipt. */
+function victimStableIdOf(victim, payload) {
+  const data = victim && victim.data || {};
+  const id = data.worldRecordId
+    || data.stationId
+    || (payload && payload.id != null ? `entity:${payload.id}` : null)
+    || (victim && victim.id != null ? `entity:${victim.id}` : null);
+  return id == null ? null : String(id);
 }
 
 export default lawSecurity;

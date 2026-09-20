@@ -47,6 +47,9 @@ const BUST_CONTRABAND = 0.16;      // smuggling scan bust
 const FactionsAggroAdd = 0.20;     // a faction flipping hostile (the law noticed)
 
 const WANTED_THRESHOLD = 0.15;     // above this, lawful patrols hunt you (playerWanted=true)
+// Hit-chips are suspicion, never conviction: they plateau just under WANTED so an
+// unwitnessed assault cannot mint a warrant — a validated receipt must convict.
+const HIT_SUSPICION_MAX = WANTED_THRESHOLD * 0.95;
 const HEAT_LEVEL_COUNT = 5;
 const HEAT_RADIUS_BY_LEVEL = [0, 1200, 1700, 2300, 3000, 3700];
 const HEAT_CLEAR_SECONDS_BY_LEVEL = [0, 5, 6, 7, 8, 10];
@@ -198,9 +201,11 @@ export const heat = {
 
     const bus = this.bus;
 
-    // Piracy: killing a ship that isn't already hostile to the player. Production combat receipts
-    // carry scanner's canonical team/context classification; older producers fall back to standing.
-    bus.on('entity:killed', (p) => this._onKill(p));
+    // Kills do NOT write heat directly. lawSecurity adjudicates every player-caused kill
+    // through the same witness/jurisdiction gate as a reported theft and signs an incident
+    // receipt — the ONLY door into this writer — so an unwitnessed kill stays free and a
+    // lawful defensive kill is cleared on the law's own record, never priced here.
+    // See lawSecurity._handleKilledAdjudication + applyIncidentReceipt below.
 
     // Unprovoked attacks: chipping a non-hostile ship's hull/shield. Capped per-second so a beam
     // weapon can't spike heat to max instantly.
@@ -264,7 +269,7 @@ export const heat = {
     if (receipt.accepted !== true || receipt.source !== 'lawSecurity') {
       return { applied: false, reason: 'not_law_validated', incidentReceiptId: null, delta: 0 };
     }
-    if (receipt.validatedWitnessedTheft !== true) {
+    if (receipt.validatedWitnessedTheft !== true && receipt.validatedCrime !== true) {
       return { applied: false, reason: 'not_witnessed', incidentReceiptId: null, delta: 0 };
     }
     const incidentReceiptId = typeof receipt.incidentReceiptId === 'string'
@@ -282,9 +287,13 @@ export const heat = {
       return { applied: false, reason: 'already_applied', incidentReceiptId, delta: 0 };
     }
 
-    const delta = INCIDENT_HEAT_BY_KIND[receipt.kind] != null
-      ? INCIDENT_HEAT_BY_KIND[receipt.kind]
-      : INCIDENT_HEAT_DEFAULT;
+    const delta = receipt.kind === 'lawful_kill'
+      ? KILL_NONHOSTILE * 1.3
+      : receipt.kind === 'unlawful_kill'
+        ? KILL_NONHOSTILE * killClassMultiplier(receipt.victimClass)
+        : INCIDENT_HEAT_BY_KIND[receipt.kind] != null
+          ? INCIDENT_HEAT_BY_KIND[receipt.kind]
+          : INCIDENT_HEAT_DEFAULT;
 
     // Record BEFORE mutating. If `_raise` ever throws, the alternative ordering would leave the
     // incident un-recorded and a retry would double-charge; this ordering can at worst under-apply,
@@ -317,25 +326,15 @@ export const heat = {
     this._burstAccrued = 0;
   },
 
-  _onKill(p) {
-    if (!p || p.killerId !== this.state.playerId) return;
-    if (!isWantedHeatVictim(this.state, p, p.id)) return;
-    // Lawful victims (patrol_lawman / factionLawful) are ALWAYS piracy — killing a cop is the
-    // clearest criminal act even if you're already hostile to their faction.
-    if (p.factionLawful) {
-      this._raise(KILL_NONHOSTILE * 1.3, 'lawful kill');
-      return;
-    }
-    if (this._receiptTargetIsHostile(p)) return; // legitimate combat, no heat
-    const cls = p.victimClass || 'default';
-    const mult = KILL_CLASS_MULT[cls] != null ? KILL_CLASS_MULT[cls] : KILL_CLASS_MULT.default;
-    this._raise(KILL_NONHOSTILE * mult, 'piracy kill (' + cls + ')');
-  },
-
   _onDamage(p) {
     if (!p || p.attackerId !== this.state.playerId) return; // only the player's own attacks
     if (!isWantedHeatVictim(this.state, p, p.targetId)) return;
     if (p.factionLawful || !this._receiptTargetIsHostile(p)) {
+      const player = this.state.player;
+      // Suspicion, never conviction: unprovoked hits can fill the ledger up to just under
+      // WANTED, but only a validated kill, theft, bust, or aggro event can convict — a beam
+      // held on a neutral in dead space cannot mint a warrant by itself.
+      if (!player || (player.heat || 0) >= HIT_SUSPICION_MAX) return;
       const now = this.state.simTime;
       if (now - this._lastHitT < 1.0) {
         // within the per-second cap window: only raise if under the burst budget
@@ -345,7 +344,7 @@ export const heat = {
       }
       this._burstAccrued = (this._burstAccrued || 0) + HIT_NONHOSTILE;
       this._lastHitT = now;
-      this._raise(HIT_NONHOSTILE, 'unprovoked hit');
+      this._raise(Math.min(HIT_NONHOSTILE, Math.max(0, HIT_SUSPICION_MAX - (player.heat || 0))), 'unprovoked hit');
     }
   },
 
@@ -561,6 +560,11 @@ export const THRESHOLD = WANTED_THRESHOLD;
 // plates, mines, mass-seeds, or other deployed devices. Self-hits (impulse charges, whip recoil)
 // also must not mint a WANTED incident.
 const WANTED_HEAT_VICTIM_TYPES = new Set(['ship', 'drone', 'station']);
+
+function killClassMultiplier(victimClass) {
+  const cls = victimClass || 'default';
+  return KILL_CLASS_MULT[cls] != null ? KILL_CLASS_MULT[cls] : KILL_CLASS_MULT.default;
+}
 
 function isWantedHeatVictim(state, payload, victimId) {
   if (victimId != null && state && victimId === state.playerId) return false;

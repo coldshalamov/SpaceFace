@@ -143,7 +143,7 @@ export function salvagePoolFromManifest(manifest) {
   return pool;
 }
 
-function isCivilianManifestPayload(entity) {
+export function isCivilianManifestPayload(entity) {
   return !!(entity
     && entity.alive !== false
     && entity.type === 'payload'
