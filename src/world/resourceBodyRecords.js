@@ -121,6 +121,16 @@ export function resourceBodyIdentityKey(sectorId, fieldId, slotId, sourceSeed) {
   return [sectorId || '', fieldId || '', slotId || '', sourceSeed != null ? sourceSeed : ''].join(':');
 }
 
+const KNOWN_RESOURCE_BODY_FIELDS = new Set([
+  'recordId', 'sectorId', 'fieldId', 'slotId', 'activityObjectSlotId', 'sourceSeed',
+  'pos', 'vel', 'rot', 'angVel', 'oreHp', 'oreHP', 'oreHpMax', 'oreHPMax', 'yieldU', 'yieldRemainingU', 'yieldMaxU',
+  'pctEjected', '_oreCarry',
+  'seamState', 'fractureState', 'fragmentsRemaining', 'bulkCoreState', 'lastMinedT',
+  'lastObservedT', 'depletedAtT', 'recoveryPolicy', 'tethered', 'displaced',
+  'missionOwned', 'tracked', 'outcome', 'revision', 'identityKey', 'playerModified',
+  'retentionClass', 'extra',
+]);
+
 export function normalizeResourceBodyRecord(raw, fallbackId) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const sectorId = raw.sectorId != null ? String(raw.sectorId) : '';
@@ -135,15 +145,7 @@ export function normalizeResourceBodyRecord(raw, fallbackId) {
     : (typeof fallbackId === 'string' && fallbackId ? fallbackId : null);
   if (!recordId) return null;
   const extra = {};
-  const known = new Set([
-    'recordId', 'sectorId', 'fieldId', 'slotId', 'activityObjectSlotId', 'sourceSeed',
-    'pos', 'vel', 'rot', 'angVel', 'oreHp', 'oreHP', 'oreHpMax', 'oreHPMax', 'yieldU', 'yieldRemainingU', 'yieldMaxU',
-    'pctEjected', '_oreCarry',
-    'seamState', 'fractureState', 'fragmentsRemaining', 'bulkCoreState', 'lastMinedT',
-    'lastObservedT', 'depletedAtT', 'recoveryPolicy', 'tethered', 'displaced',
-    'missionOwned', 'tracked', 'outcome', 'revision', 'identityKey', 'playerModified',
-    'retentionClass', 'extra',
-  ]);
+  const known = KNOWN_RESOURCE_BODY_FIELDS;
   if (raw.extra && typeof raw.extra === 'object' && !Array.isArray(raw.extra)) {
     const nested = clonePlain(raw.extra) || {};
     for (const key of Object.keys(nested)) extra[key] = nested[key];
@@ -406,14 +408,17 @@ export function upsertResourceBody(bag, record, opts = {}) {
   const rec = normalizeResourceBodyRecord(merged);
   if (!rec) return null;
   b.byId[rec.recordId] = rec;
+  sortedBodyIdKeysCache.delete(b.byId);
   enforceBound(b, opts);
   return rec;
 }
 
 function enforceBound(bag, opts = {}) {
+  let liveCount = 0;
+  for (const id of Object.keys(bag.byId)) if (bag.byId[id]) liveCount++;
+  if (liveCount <= MAX_RESOURCE_BODIES) return;
   const ids = Object.keys(bag.byId);
   const before = ids.map((id) => bag.byId[id]).filter(Boolean);
-  if (before.length <= MAX_RESOURCE_BODIES) return;
   const ranked = before.filter((record) => isReclaimableResourceBody(record, {
     fieldMayRegenerate: opts.fieldMayRegenerate !== false,
   })).sort((a, b) => {
@@ -449,6 +454,7 @@ function enforceBound(bag, opts = {}) {
   report.protectedOverflow = Math.max(0, after.length - MAX_RESOURCE_BODIES);
   const beforeIds = before.map((record) => record.recordId).sort();
   const afterIds = after.map((record) => record.recordId).sort();
+  const afterIdSet = new Set(afterIds);
   appendResourceRetentionReceipt(bag, {
     receiptId: `rb-cap:${(hash32(1, 'rb-cap', beforeIds.join(','), afterIds.join(','), report.protectedOverflow) >>> 0).toString(16)}`,
     event: 'resource_body_cap',
@@ -456,7 +462,7 @@ function enforceBound(bag, opts = {}) {
     limit: MAX_RESOURCE_BODIES,
     before: before.length,
     retired,
-    retiredRecordIds: beforeIds.filter((id) => !afterIds.includes(id)),
+    retiredRecordIds: beforeIds.filter((id) => !afterIdSet.has(id)),
     protectedOverflow: report.protectedOverflow,
   });
 }
@@ -585,6 +591,7 @@ export function retireResourceBody(bag, recordId, opts = {}) {
     MAX_RESOURCE_RETIREMENT_RECEIPTS,
   );
   delete bag.byId[record.recordId];
+  sortedBodyIdKeysCache.delete(bag.byId);
   return { retired: true, record, receipt };
 }
 
@@ -625,6 +632,19 @@ export function compactResourceBodyRecords(bag, opts = {}) {
   return { retired, protected: report.protected, receipts };
 }
 
+// Sorted-id iteration order in findResourceBodyForEntity is load-bearing (sorted-first match
+// wins), but the bag only changes through upsert/retire below, so the sorted key array is cached
+// per byId object and invalidated at those two mutation points.
+const sortedBodyIdKeysCache = new WeakMap();
+function sortedBodyIdKeys(byId) {
+  let keys = sortedBodyIdKeysCache.get(byId);
+  if (!keys) {
+    keys = Object.keys(byId).sort();
+    sortedBodyIdKeysCache.set(byId, keys);
+  }
+  return keys;
+}
+
 export function findResourceBodyForEntity(bag, entity) {
   const d = entity && entity.data || {};
   const sectorId = entity && (entity.homeSectorId || d.homeSectorId || d.sectorId);
@@ -632,7 +652,7 @@ export function findResourceBodyForEntity(bag, entity) {
   const slotId = d.activityObjectSlotId || d.asteroidSlotId || d.slotId;
   if (!bag || !bag.byId || !sectorId || !fieldId || slotId == null || slotId === '') return null;
   const key = resourceBodyIdentityKey(sectorId, fieldId, slotId, d.sourceSeed);
-  const ids = Object.keys(bag.byId).sort();
+  const ids = sortedBodyIdKeys(bag.byId);
   for (const id of ids) {
     const rec = bag.byId[id];
     if (!rec) continue;

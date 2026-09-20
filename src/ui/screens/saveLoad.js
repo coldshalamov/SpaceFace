@@ -755,6 +755,9 @@ export const saveLoadScreen = {
       if (refs) this._render(ctx);
       if (this.hull.hasMount()) this.hull.activate(ctx);
     });
+    // The slot list re-reads the store the moment it changes, not on the next periodic tick.
+    const unsubSynced = ctx.bus.on('save:store-synced', () => { if (refs) this._render(ctx); });
+    const unsubCompleted = ctx.bus.on('save:completed', () => { if (refs) this._render(ctx); });
 
     // Foot: Export, Import (the hidden file input stays), Back.
     const foot = el('footer', 'k-foot of-pause');
@@ -785,7 +788,7 @@ export const saveLoadScreen = {
       caption, shipName, portrait, scars, titles, rapSheet, grudge,
       objective, credits, fine, actions,
       selected: null, shownShipId: null, ids: [], slots: {},
-      cancelHullRelease, unsubLoading, unsubStartFailed,
+      cancelHullRelease, unsubLoading, unsubStartFailed, unsubSynced, unsubCompleted,
       markLoadRequested: () => { loadRequested = true; },
       clearLoadRequest: () => { loadRequested = false; },
     };
@@ -794,6 +797,7 @@ export const saveLoadScreen = {
 
   _render(ctx) {
     if (!refs) return;
+    this._slSig = this._slInputs(ctx);
     const slots = readSlots(ctx);
     const saveAllowed = canSave(ctx);
     const ids = ['quick'];
@@ -1132,12 +1136,28 @@ export const saveLoadScreen = {
     cue('close');
     if (this.hull) this.hull.deactivate();
   },
-  refresh(ctx) { this._render(ctx); },
+  // Everything the render reads is either captured by this cheap signature (save allowed, current
+  // slot, selection) or arrives by bus event ('save:store-synced'/'save:completed' re-render), so
+  // the periodic pass can skip the full slot re-read + list/stage rebuild when nothing changed.
+  _slInputs(ctx) {
+    return [
+      canSave(ctx) ? '1' : '0',
+      (ctx && ctx.state && ctx.state.save && ctx.state.save.currentSlot) || '',
+      (refs && refs.selected) || '',
+    ].join('\u0000');
+  },
+  refresh(ctx, options = {}) {
+    if (options && options.periodic && refs && this._slSig != null
+      && this._slSig === this._slInputs(ctx)) return;
+    this._render(ctx);
+  },
   dispose() {
     if (refs) {
       refs.cancelHullRelease();
       try { refs.unsubLoading(); } catch (e) { /* bus already gone */ }
       try { refs.unsubStartFailed(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubSynced(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }
     }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     refs = null;

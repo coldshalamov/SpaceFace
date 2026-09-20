@@ -8,16 +8,18 @@ import { resolve } from 'node:path';
 const GLB_MAGIC = 0x46546c67;
 const JSON_CHUNK_TYPE = 0x4e4f534a;
 
-export function fileRecord(root, relPath) {
-  const bytes = readFileSync(resolve(root, relPath));
+function fileRecordFromBytes(bytes) {
   return {
     bytes: bytes.length,
     sha256: createHash('sha256').update(bytes).digest('hex').toUpperCase(),
   };
 }
 
-export function glbMetrics(root, relPath) {
-  const buffer = readFileSync(resolve(root, relPath));
+export function fileRecord(root, relPath) {
+  return fileRecordFromBytes(readFileSync(resolve(root, relPath)));
+}
+
+function glbMetricsFromBytes(relPath, buffer) {
   if (buffer.readUInt32LE(0) !== GLB_MAGIC) throw new Error(`${relPath} GLB magic`);
   if (buffer.readUInt32LE(16) !== JSON_CHUNK_TYPE) throw new Error(`${relPath} JSON chunk`);
   const jsonLength = buffer.readUInt32LE(12);
@@ -44,6 +46,10 @@ export function glbMetrics(root, relPath) {
     materials: (gltf.materials || []).length,
     textures: (gltf.textures || []).length,
   };
+}
+
+export function glbMetrics(root, relPath) {
+  return glbMetricsFromBytes(relPath, readFileSync(resolve(root, relPath)));
 }
 
 // Verify one release-manifest asset against disk. Returns a per-asset result object so the caller
@@ -73,8 +79,11 @@ export function verifyAssetReceipt(root, releaseEntry, partEntry) {
   const norm = (v) => String(v).toUpperCase();
 
   let src = null;
+  let srcBytes = null;
   try {
-    src = fileRecord(root, releaseEntry.source);
+    // One read of the source GLB feeds both the hash/bytes checks and the parts tris check below.
+    srcBytes = readFileSync(resolve(root, releaseEntry.source));
+    src = fileRecordFromBytes(srcBytes);
     records.source = src;
   } catch (error) {
     failures.push({
@@ -132,7 +141,7 @@ export function verifyAssetReceipt(root, releaseEntry, partEntry) {
     }
     let metrics = null;
     try {
-      metrics = glbMetrics(root, releaseEntry.source);
+      metrics = glbMetricsFromBytes(releaseEntry.source, srcBytes);
     } catch (error) {
       failures.push({
         asset: id, manifest: 'parts_manifest.json', field: 'tris',

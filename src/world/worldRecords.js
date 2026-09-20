@@ -840,6 +840,15 @@ export function upsertRecord(bag, record) {
 }
 
 function enforceSectorBound(bag, sectorId, opts = {}) {
+  // Counting pass first: the sorted recordsForSector walk below is only needed once the sector
+  // is actually over cap, which is the rare path.
+  const byId = bag && bag.byId ? bag.byId : {};
+  let sectorCount = 0;
+  for (const id of Object.keys(byId)) {
+    const rec = byId[id];
+    if (rec && (rec.sectorId === sectorId || rec.homeSectorId === sectorId)) sectorCount++;
+  }
+  if (sectorCount <= MAX_RECORDS_PER_SECTOR) return;
   const list = recordsForSector(bag, sectorId);
   const reclaimable = list.filter(isReclaimableRecentWorldRecord);
   const required = Math.max(0, list.length - MAX_RECORDS_PER_SECTOR);

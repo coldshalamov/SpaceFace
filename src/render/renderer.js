@@ -313,6 +313,15 @@ function writeScreenProjection(out, x, y, onScreen) {
 }
 const _socketGlobalXZ = { x: 0, z: 0 };
 const _worldSiteA11y = { reducedMotion: false, reducedFlash: false };
+// Reused per frame by syncEntityViews; updateCraftMicroMotion reads it synchronously and never
+// retains it, so one module-level object replaces a per-ship allocation.
+const _craftMicroMotionOptions = {
+  motionReduce: false,
+  playerMiningActive: false,
+  playerId: 0,
+  playerTargetId: 0,
+  entities: null,
+};
 // Empty by design for PQ-129.20: every known first-visible admission belongs behind the loading
 // boundary. Future exemptions must name a selector and a non-empty reason; the diagnostic helper
 // ignores reasonless entries so this cannot become a silent allow-list.
@@ -9251,9 +9260,11 @@ export const render = {
         userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
       }
       if (entity && runClosures && userData.updateDamageState) {
-        const stamp = `${entity.hull}|${entity.shield}|${entity.alive}`;
-        if (stamp !== userData._damageVisualStamp) {
-          userData._damageVisualStamp = stamp;
+        if (entity.hull !== userData._dmgHull || entity.shield !== userData._dmgShield
+          || entity.alive !== userData._dmgAlive) {
+          userData._dmgHull = entity.hull;
+          userData._dmgShield = entity.shield;
+          userData._dmgAlive = entity.alive;
           userData.updateDamageState(entity, now);
         }
       }
@@ -9264,14 +9275,12 @@ export const render = {
         const frameDt = this._lastFrameDt || 0.016667;
         const simTime = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : now;
         if (typeName === 'ship' || typeName === 'drone') {
-          const options = {
-            motionReduce: _worldSiteA11y.reducedMotion,
-            playerMiningActive: !!(this.state && this.state.player && this.state.player.miningBeam && this.state.player.miningBeam.active),
-            playerId: this.state && this.state.playerId,
-            playerTargetId: this.state && this.state.player && this.state.player.targetId,
-            entities: this.state && this.state.entities,
-          };
-          globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, options);
+          _craftMicroMotionOptions.motionReduce = _worldSiteA11y.reducedMotion;
+          _craftMicroMotionOptions.playerMiningActive = !!(this.state && this.state.player && this.state.player.miningBeam && this.state.player.miningBeam.active);
+          _craftMicroMotionOptions.playerId = this.state && this.state.playerId;
+          _craftMicroMotionOptions.playerTargetId = this.state && this.state.player && this.state.player.targetId;
+          _craftMicroMotionOptions.entities = this.state && this.state.entities;
+          globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
         } else if (typeName === 'projectile') {
           globalProjectileMotion.updateProjectileMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
         } else if (typeName === 'asteroid') {

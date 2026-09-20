@@ -421,8 +421,25 @@ export const mainMenuScreen = {
     }
   },
 
+  // Cheap signature of everything the render reads that can change while the menu sits on top.
+  // The save index itself is event-driven ('save:store-synced'/'save:completed' re-render), so
+  // the periodic refresh only needs to re-run when one of these flips.
+  _menuInputs(ctx) {
+    const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
+    const syncPending = !!(sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending());
+    return [
+      syncPending ? '1' : '0',
+      screenReady(ctx, 'newGame') ? '1' : '0',
+      screenReady(ctx, 'saveLoad') ? '1' : '0',
+      screenReady(ctx, 'settings') ? '1' : '0',
+      screenReady(ctx, 'sandbox') ? '1' : '0',
+      screenReady(ctx, 'crucible') ? '1' : '0',
+    ].join('');
+  },
+
   _render(ctx) {
     if (!refs) return;
+    this._menuSig = this._menuInputs(ctx);
     setScreenButtonReady(refs.bNew, ctx, 'newGame', 'New Game');
     setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
     setScreenButtonReady(refs.bSettings, ctx, 'settings', 'Settings');
@@ -479,7 +496,11 @@ export const mainMenuScreen = {
     this._startIdleAttract({ state: ctx && ctx.state, rootEl: refs && refs.root });
   },
   onHide() { this._stopIdleAttract(); },
-  refresh(ctx) { this._render(ctx); },
+  refresh(ctx, options = {}) {
+    if (options && options.periodic && refs && this._menuSig != null
+      && this._menuSig === this._menuInputs(ctx)) return;
+    this._render(ctx);
+  },
 
   dispose() {
     this._stopIdleAttract();

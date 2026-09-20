@@ -148,15 +148,11 @@ export function queryCombatTableEntities(state, x, z, radius, out = [], flagMask
 
 export function combatTableRowDistance(table, id, x, z) {
   if (!table || table.count <= 0 || id == null) return null;
-  const nid = id >>> 0;
-  const n = table.count;
-  for (let i = 0; i < n; i++) {
-    if (table.id[i] !== nid) continue;
-    const dx = table.x[i] - x;
-    const dz = table.z[i] - z;
-    return Math.hypot(dx, dz);
-  }
-  return null;
+  const row = table.rowById && table.rowById.get(id >>> 0);
+  if (row == null || row >= table.count) return null;
+  const dx = table.x[row] - x;
+  const dz = table.z[row] - z;
+  return Math.hypot(dx, dz);
 }
 
 export const COMBAT_TABLE_FLAGS = Object.freeze({

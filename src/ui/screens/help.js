@@ -556,6 +556,7 @@ export const helpScreen = {
 
   _render(ctx) {
     if (!this._body) return;
+    this._helpSigVal = this._helpSig(ctx);
     const active = document.activeElement;
     const hadSearchFocus = active && this._body.contains(active) && active.classList.contains('sf-lc__search');
     const selection = hadSearchFocus
@@ -774,7 +775,17 @@ export const helpScreen = {
     }
   },
   onHide() { try { cue('close'); } catch (e) {} },
-  refresh(ctx) { this._render(ctx); },
+  // Help renders static content keyed by tab + search query + control scheme; the scheme can only
+  // change through Settings (a stack return re-renders non-periodically), so the periodic pass
+  // skips the full body rebuild when all three are unchanged.
+  _helpSig(ctx) {
+    return [this._activeTab, this._q || '', profileName(ctx && ctx.state)].join('\u0000');
+  },
+  refresh(ctx, options = {}) {
+    if (options && options.periodic && this._body && this._helpSigVal != null
+      && this._helpSigVal === this._helpSig(ctx)) return;
+    this._render(ctx);
+  },
 };
 
 function fmtPrice(v) {

@@ -117,7 +117,8 @@ for (const member of FAMILY) {
     `${member.lod} release must preserve socket directions`);
   assert.ok(release.bytes < MAX_GITHUB_BYTES, `${member.lod} release must stay below GitHub's 100MiB limit`);
 
-  const releaseJson = readGlbJson(readFileSync(releasePath));
+  const releaseBytes = readFileSync(releasePath);
+  const releaseJson = readGlbJson(releaseBytes);
   assert.ok((releaseJson.extensionsUsed || []).includes('EXT_meshopt_compression'),
     `${member.lod} release geometry must use Meshopt`);
   const images = releaseJson.images || [];
@@ -126,7 +127,7 @@ for (const member of FAMILY) {
       `${member.lod} release textures must use KTX2/BasisU`);
     assert.ok(images.every((image) => image.mimeType === 'image/ktx2'),
       `${member.lod} release images must all be KTX2`);
-    const mipLevelCounts = readKtx2MipLevelCounts(readFileSync(releasePath));
+    const mipLevelCounts = readKtx2MipLevelCounts(releaseBytes);
     assert.equal(mipLevelCounts.length, images.length,
       `${member.lod} must expose a readable KTX2 mip header for every release image`);
     assert.ok(mipLevelCounts.every((count) => count >= 2),
@@ -233,7 +234,7 @@ function verifyMember(result, member, label) {
 
 async function inspect(path, member, { inspectBounds }) {
   const bytes = readFileSync(path);
-  const document = await io.read(path);
+  const document = await io.readBinary(bytes);
   const root = document.getRoot();
   const nodes = root.listNodes();
   const lodBuckets = new Set();

@@ -371,13 +371,25 @@ export function pauseExitConfirmBody(state, target = 'menu') {
 }
 
 let els = null;
+// Dirty-checked brief writes: periodic refresh passes recompute the lines but only touch the DOM
+// when a value actually changed.
+const briefLast = { objective: undefined, next: undefined, save: undefined };
 
 function renderFlightBrief(ctx) {
   if (!els || !els.briefObjective) return;
   const lines = pauseStatusLines(ctx && ctx.state);
-  els.briefObjective.textContent = lines.objective;
-  els.briefNext.textContent = lines.next;
-  els.briefSave.textContent = lines.save;
+  if (lines.objective !== briefLast.objective) {
+    briefLast.objective = lines.objective;
+    els.briefObjective.textContent = lines.objective;
+  }
+  if (lines.next !== briefLast.next) {
+    briefLast.next = lines.next;
+    els.briefNext.textContent = lines.next;
+  }
+  if (lines.save !== briefLast.save) {
+    briefLast.save = lines.save;
+    els.briefSave.textContent = lines.save;
+  }
 }
 
 /* ---------- photo mode (Task B §1.7, sheet moment 12, PQ-159.03) ---------- */
@@ -736,6 +748,9 @@ export const pauseScreen = {
 
     const bResume = list.querySelector(`[data-action="${resumeAction}"]`);
     els = { bResume, title, stage, briefObjective, briefNext, briefSave, versionText };
+    briefLast.objective = undefined;
+    briefLast.next = undefined;
+    briefLast.save = undefined;
     renderFlightBrief(ctx);
     this._loadVersion();
   },

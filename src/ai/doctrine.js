@@ -38,11 +38,16 @@ const OFFENSIVE_ACTIVITY_VALUES = new Set([
 ]);
 const DEFAULT_LEASH_RADIUS = 2600;
 
+// Outputs are frozen and every field is idempotent under re-normalization, so re-normalizing an
+// already-normalized activity (the common case inside one decision pass) can return it as-is.
+const NORMALIZED_ACTIVITIES = new WeakSet();
+
 export function normalizeActivity(value, fallback = null) {
+  if (value && typeof value === 'object' && NORMALIZED_ACTIVITIES.has(value)) return value;
   const src = value && typeof value === 'object' ? value : fallback;
   if (!src || typeof src !== 'object') return null;
   const kind = ACTIVITY_VALUES.has(String(src.kind)) ? String(src.kind) : ActivityKind.LOITER;
-  const activity = {
+  const activity = Object.freeze({
     kind,
     reason: String(src.reason || kind),
     anchor: normalizeVec(src.anchor),
@@ -53,8 +58,9 @@ export function normalizeActivity(value, fallback = null) {
     targetId: src.targetId == null ? null : src.targetId,
     routeId: src.routeId == null ? null : String(src.routeId),
     encounterId: src.encounterId == null ? null : String(src.encounterId),
-  };
-  return Object.freeze(activity);
+  });
+  NORMALIZED_ACTIVITIES.add(activity);
+  return activity;
 }
 
 /**

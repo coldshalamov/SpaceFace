@@ -40,7 +40,9 @@ export function hasPlaceholderParity(source, candidate) {
 }
 
 export function interpolate(message, values = {}) {
-  return String(message == null ? '' : message).replace(PLACEHOLDER_RE, (whole, name) => (
+  const text = String(message == null ? '' : message);
+  if (text.indexOf('{') === -1) return text;
+  return text.replace(PLACEHOLDER_RE, (whole, name) => (
     Object.prototype.hasOwnProperty.call(values || {}, name) ? String(values[name]) : whole
   ));
 }
@@ -92,6 +94,9 @@ export function meanPseudoGrowth(messages) {
 
 export function createLocalizationRuntime(options = {}) {
   let locale = normalizeLocale(options.locale);
+  // The fallback chain is a pure function of the current locale; locale only changes through
+  // setLocale, so the chain is cached and invalidated there instead of rebuilt on every t().
+  let chainCache = null;
   const catalogs = options.catalogs && typeof options.catalogs === 'object' ? options.catalogs : {};
   const onMissing = typeof options.onMissing === 'function' ? options.onMissing : null;
   const reported = new Set();
@@ -121,8 +126,10 @@ export function createLocalizationRuntime(options = {}) {
       report(key, 'missing_key');
       return interpolate(pseudoLocalize(fallback == null ? key : fallback), values);
     }
-    for (const candidateLocale of localeFallbackChain(locale)) {
-      const message = lookup(candidateLocale, key);
+    for (const candidateLocale of (chainCache || (chainCache = localeFallbackChain(locale)))) {
+      const message = candidateLocale === DEFAULT_LOCALE
+        ? english
+        : lookup(candidateLocale, key);
       if (message == null) continue;
       if (candidateLocale !== DEFAULT_LOCALE && english != null && !hasPlaceholderParity(english, message)) {
         report(key, 'placeholder_mismatch');
@@ -138,7 +145,11 @@ export function createLocalizationRuntime(options = {}) {
   return Object.freeze({
     t,
     get locale() { return locale; },
-    setLocale(next) { locale = normalizeLocale(next); return locale; },
+    setLocale(next) {
+      locale = normalizeLocale(next);
+      chainCache = null;
+      return locale;
+    },
     missingCount() { return reported.size; },
   });
 }
