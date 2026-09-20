@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { attachDamageStateDriver } from './kestrelDamage.js';
 import { attachLodState } from '../lod.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
+import { installIllustratedSurface } from '../illustratedSurface.js';
 
 const TAU = Math.PI * 2;
 const DESIGN_RADIUS = 14;
@@ -24,11 +25,15 @@ export const KESTREL_HERO_COLORS = Object.freeze({
   canopy: '#061a22',
 });
 
+// Opaque hero hull/metal carries the shared illustrated surface, matching the released GLB fleet
+// and the procedural faction builders. Canopy/decals/emitters keep their own response.
 function standardMaterial(color, roughness = 0.55, metalness = 0.45, options = {}) {
-  return stampSharedMaterialRole(
+  const material = stampSharedMaterialRole(
     new THREE.MeshStandardMaterial({ color, roughness, metalness, ...options }),
     SHARED_MATERIAL_ROLE.HULL,
   );
+  installIllustratedSurface(material);
+  return material;
 }
 
 function emissiveMaterial(color, intensity = 1.5, opacity = 1) {

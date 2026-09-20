@@ -4,7 +4,8 @@ import test from 'node:test';
 import { resolve as resolveLibraryMaterial, _resetForTest } from '../src/render/materialLibrary.js';
 import { SHARED_MATERIAL_ROLE } from '../src/render/sharedMaterialRoles.js';
 import { buildKestrelHero } from '../src/render/ships/kestrelHero.js';
-import { pbrHullMaterial } from '../src/render/ships/shipKit.js';
+import { machineryMaterial, pbrHullMaterial, standardMaterial } from '../src/render/ships/shipKit.js';
+import { ILLUSTRATED_SURFACE_KEY } from '../src/render/illustratedSurface.js';
 
 const SHARED_ROLES = new Set(Object.values(SHARED_MATERIAL_ROLE));
 
@@ -117,4 +118,28 @@ test('hero hull and canopy are stamped onto shared families', () => {
   assert.equal(canopy.material.userData.spacefaceSharedMaterialRole, SHARED_MATERIAL_ROLE.CANOPY);
   assert.equal(hull.material.userData.spacefaceBatchKey, undefined);
   assert.equal(canopy.material.userData.spacefaceBatchKey, undefined);
+});
+
+test('procedural faction hulls inherit the illustrated surface light language', () => {
+  // The remastered GLB fleet is shaped by installIllustratedSurface at authored admission. The
+  // procedural faction builders and the Kestrel hero must join the same family instead of falling
+  // back to plain physical lighting, or outside-Helios traffic reads as a different art style.
+  const hull = pbrHullMaterial({ hull: '#5a4a44', accent: '#D8334A', seed: 7, panelCount: 10 });
+  const plate = standardMaterial('#6b3f2b', 0.9, 0.06);
+  const machine = machineryMaterial('#15100e', 0.6, 0.66);
+
+  for (const [label, material] of [['pbrHull', hull], ['standard', plate], ['machinery', machine]]) {
+    assert.equal(material.userData.spacefaceIllustratedSurface, ILLUSTRATED_SURFACE_KEY,
+      `${label} must install the illustrated surface`);
+    assert.equal(material.customProgramCacheKey(), ILLUSTRATED_SURFACE_KEY,
+      `${label} must share the single illustrated program family`);
+    assert.equal(material.userData.spacefaceIllustratedPigment, undefined,
+      `${label} keeps its baked palette; no double-painted fleet pigment`);
+  }
+
+  const heroHull = collectLitMaterials(buildKestrelHero({ radius: 14 }))
+    .find((entry) => entry.material.userData.spacefaceSharedMaterialRole === SHARED_MATERIAL_ROLE.HULL
+      && entry.material.transparent !== true);
+  assert.equal(heroHull.material.userData.spacefaceIllustratedSurface, ILLUSTRATED_SURFACE_KEY,
+    'the Kestrel hero hull must join the illustrated surface family too');
 });

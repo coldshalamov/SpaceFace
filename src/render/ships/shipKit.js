@@ -21,6 +21,7 @@ import {
 } from '../canvasTextures.js';
 import { attachDamageStateDriver } from './shipDamage.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
+import { installIllustratedSurface } from '../illustratedSurface.js';
 
 const TAU = Math.PI * 2;
 const DRIVE_POSE_KEY = 'spacefaceDrivePose';
@@ -191,12 +192,20 @@ export function mirroredXZ(points) {
 // MATERIALS — Kestrel-grade PBR. standardMaterial/emissiveMaterial/glowMaterial match the Kestrel's
 // signatures exactly; pbrHullMaterial composes the shared canvas-texture generators so faction
 // hulls get real beveled-panel normal maps + albedo variation (the thing they were entirely missing).
+//
+// Every opaque hull/machinery material also installs the shared illustrated surface so procedural
+// faction ships inherit the same Lacquer & Starlight light language (blue-violet shadow pools,
+// warm light, geometric ink contour) as the remastered GLB fleet. Fleet pigment is deliberately NOT
+// applied here: these palettes are already baked into the panel albedo, so recolouring low-chroma
+// texels would double-paint the hull. Emitters, decals and grime stay on their own response.
 // ---------------------------------------------------------------------------------------------
 export function standardMaterial(color, roughness = 0.55, metalness = 0.45, options = {}) {
-  return stampSharedMaterialRole(
+  const material = stampSharedMaterialRole(
     new THREE.MeshStandardMaterial({ color, roughness, metalness, ...options }),
     SHARED_MATERIAL_ROLE.HULL,
   );
+  installIllustratedSurface(material);
+  return material;
 }
 
 export function emissiveMaterial(color, intensity = 1.5, opacity = 1) {
@@ -227,10 +236,12 @@ export function glowMaterial(color, opacity = 0.55) {
 // Dark dielectric "machinery" material for internal/exposed structure (gun breeches, drive housings,
 // keel beams). Reads as bare metal against the painted hull, carrying the material hierarchy.
 export function machineryMaterial(color = '#10161b', roughness = 0.42, metalness = 0.78) {
-  return stampSharedMaterialRole(
+  const material = stampSharedMaterialRole(
     new THREE.MeshStandardMaterial({ color, roughness, metalness }),
     SHARED_MATERIAL_ROLE.HULL,
   );
+  installIllustratedSurface(material);
+  return material;
 }
 
 // Module-level texture cache shared across ALL ships (canvas generation is the costly part; textures
@@ -269,7 +280,9 @@ export function pbrHullMaterial({ hull, accent, seed, panelCount = 12, metalness
       emissive: new THREE.Color(emissive || accent),
       emissiveIntensity: 0.04,
     });
-    return stampSharedMaterialRole(noDispose(mat), SHARED_MATERIAL_ROLE.HULL);
+    const material = stampSharedMaterialRole(noDispose(mat), SHARED_MATERIAL_ROLE.HULL);
+    installIllustratedSurface(material);
+    return material;
   });
 }
 
