@@ -17,6 +17,29 @@
  * it represents gas currently leaving the engine. This object represents light already left behind.
  */
 import * as THREE from 'three';
+// Guarded namespace import (E5). The jet lane owns `driveEnvelope.js`; a namespace import cannot
+// fail to link if the handoff signature moves or is renamed, so the recorder degrades to its own
+// bell-sized mouth instead of taking the whole renderer down with it.
+import * as driveEnvelope from './driveEnvelope.js';
+
+const resolveJetHandoff = typeof driveEnvelope.resolveJetHandoff === 'function'
+  ? driveEnvelope.resolveJetHandoff
+  : null;
+
+/**
+ * The jet's own radiance at the handoff station when it is running flat out with no boost or dash,
+ * expressed as a multiple of the jet's base radiance. Derived from the jet lane's own published
+ * terms so the seam is a reading of the shipped jet, never a second opinion about it. Dividing the
+ * live handoff radiance by this gives a dimensionless "how hard is the jet handing over" scalar,
+ * which is the only radiance number that means anything across two different shaders.
+ */
+const HANDOFF_ENERGY_REF = (() => {
+  const T = driveEnvelope.HANDOFF_TERMS;
+  if (!T) return 0.783;
+  const emit = T.burn * T.burnWeight * T.alight;
+  const ref = emit + T.grazeMean * T.grazeWeight;
+  return Number.isFinite(ref) && ref > 1e-4 ? ref : 0.783;
+})();
 
 /** Seconds an emitted history sample remains alive. */
 export const TRAIL_SECONDS = 1.2;
@@ -80,6 +103,30 @@ export function resolveContrailSpin(owner) {
 /** A teleport/sector jump starts another disconnected history segment; it never erases the old one. */
 export const DISCONTINUITY_WU = 160;
 
+/**
+ * JET HANDOFF (E5). The live jet's material runs out around `HANDOFF_STATION` of its designed
+ * length, so the jet physically covers the newest stretch of the flown line. The overlap the
+ * recorder flares across is measured in that jet's own terminal width: a short, controlled join
+ * rather than a length guessed in seconds. Walking is bounded so a hitch cannot turn the seam into
+ * an unbounded scan.
+ */
+export const SEAM_SPAN_WIDTHS = 2.2;
+export const SEAM_WALK_LIMIT = 48;
+/** Hard ceiling on the overlap as a fraction of the history's life: the seam is a join, not a mood. */
+export const SEAM_MAX_LIFE_FRACTION = 0.3;
+
+/**
+ * Smallest half-width, in world units per unit of camera distance, that a sheet is allowed to
+ * project to. Sized for a 1080-line frame at a 60 degree vertical field: one pixel spans about
+ * 0.00107 * distance world units there, so 0.0009 holds a sheet at roughly 1.7 px across.
+ *
+ * Below a pixel an additive sheet stops covering pixel centres reliably and crawls — the classic
+ * thin-line sparkle. The fix is to widen the geometry and divide the radiance by exactly the same
+ * factor, so the wake keeps its integrated light instead of gaining energy into the bloom pass.
+ * Brightness is preserved; only the sampling is repaired. It never shortens or dims the history.
+ */
+export const MIN_PROJECTED_HALF_WIDTH = 0.0009;
+
 const UP = new THREE.Vector3(0, 1, 0);
 
 const TRAIL_VERT = /* glsl */`
@@ -95,6 +142,9 @@ const TRAIL_VERT = /* glsl */`
   uniform float uStrandCount;
   uniform float uLive;
   uniform float uTrailSeconds;
+  // Ring head. Recorded facts never move between texels; only this cursor moves, so inserting the
+  // newest fact is one texel write instead of shuffling the whole retained window down by one.
+  uniform float uHead;
   // The history's own clock: advanced only by update(dt), so a paused game pauses the fade.
   // path.a stores each sample's birth on this clock; age is derived on the GPU so the texture
   // contents do not change as time passes.
@@ -105,6 +155,13 @@ const TRAIL_VERT = /* glsl */`
   uniform float uWidthHead;
   uniform float uWidthTail;
   uniform float uCurve;
+  uniform float uMinPxWidth;
+  uniform vec3  uCamPos;
+
+  // E5 seam. uSeamAge is the normalized age at which the overlap with the live jet has fully
+  // handed over; zero disables the whole seam and the recorder draws its own mouth.
+  uniform float uSeamAge;
+  uniform float uSeamHalfWidth;
 
   varying float vAge;
   varying float vLife;
@@ -114,6 +171,8 @@ const TRAIL_VERT = /* glsl */`
   varying float vDash;
   varying float vStaticTexture;
   varying float vCore;
+  varying float vSeam;
+  varying float vWidthGain;
   varying vec3  vWorldPos;
   varying vec3  vNormal;
 
@@ -139,7 +198,10 @@ const TRAIL_VERT = /* glsl */`
     out float segmentOut
   ) {
     float idx = clamp(slot, 0.0, max(uLive - 1.0, 0.0));
-    float u = (idx + 0.5) / uSampleCount;
+    // Logical index (0 = newest) to physical ring texel. Every clamp/neighbour decision above and
+    // below stays in logical space; the ring is a storage detail and nothing else may see it.
+    float ring = mod(uHead + idx, uSampleCount);
+    float u = (ring + 0.5) / uSampleCount;
     vec4 path = texture2D(uPathTex, vec2(u, 0.5));
     vec4 state = texture2D(uStateTex, vec2(u, 0.5));
     posOut = path.rgb;
@@ -187,14 +249,43 @@ const TRAIL_VERT = /* glsl */`
     if (prevSame < 0.5) pPrev = p;
     if (nextSame < 0.5) pNext = p;
 
+    // NEAR REVERSAL. When the ship flies back down its own line the central difference cancels and
+    // the old code snapped the tangent to world +X, which threw one ring of the sheath sideways at
+    // the cusp. Fall back to the one-sided differences, which still describe the real line there.
     vec3 tangent = pNext - pPrev;
+    if (dot(tangent, tangent) < 1e-7) tangent = p - pPrev;
+    if (dot(tangent, tangent) < 1e-7) tangent = pNext - p;
     if (dot(tangent, tangent) < 1e-7) tangent = vec3(1.0, 0.0, 0.0);
     tangent = normalize(tangent);
 
     vec3 ref = cross(tangent, vec3(0.0, 1.0, 0.0));
     if (dot(ref, ref) < 1e-7) ref = cross(tangent, vec3(1.0, 0.0, 0.0));
     ref = normalize(ref);
+    // TRANSPORTED FRAME. A reversal flips the tangent, which mirrors ref and rolls the whole
+    // sheath half a turn across one sample boundary — a visible twist at every hairpin and at every
+    // self-crossing. Pinning the sign to a world axis makes the frame a function of the LINE rather
+    // than of the direction it was flown, so the roll is continuous through a cusp. The residual
+    // ambiguity is exactly pi, and the braid set (four braids at pi/2) maps onto itself under pi,
+    // so the remaining flip is a relabelling of sheets rather than a visible jump.
+    if (ref.x < 0.0 || (ref.x == 0.0 && ref.z < 0.0)) ref = -ref;
     vec3 up = normalize(cross(ref, tangent));
+
+    // CURVATURE. 1 - cos(turn) between the incoming and outgoing chords: 0 straight, 2 reversed.
+    // The local radius of the bend follows from it, and a tube wider than that radius folds through
+    // its own inside edge on a hard turn. Bounding the lateral reach by the bend keeps a fast turn a
+    // clean cord instead of a crumpled one. It is a local guard on a real bend, never a global trim.
+    vec3 chordIn = p - pPrev;
+    vec3 chordOut = pNext - p;
+    float lenIn = length(chordIn);
+    float lenOut = length(chordOut);
+    float turn = 0.0;
+    if (lenIn > 1e-5 && lenOut > 1e-5) {
+      turn = 1.0 - clamp(dot(chordIn / lenIn, chordOut / lenOut), -1.0, 1.0);
+    }
+    float bendRadius = turn > 1e-4
+      ? (0.5 * (lenIn + lenOut)) / sqrt(2.0 * turn)
+      : 1.0e6;
+    float bendReach = max(0.35, bendRadius * 0.85);
 
     // Every geometric variation is keyed to immutable data: recorded world position, segment and
     // sheet id. There is deliberately no time uniform and no age-driven position deformation.
