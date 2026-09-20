@@ -315,6 +315,42 @@ export function insertFarActor(state, entity, simTime = 0) {
   return rec;
 }
 
+// A parked or short-loop session (the release soak's dock/trade route, a station camper)
+// shelves every actor that wanders past the exit radius and never promotes it back, and
+// dropFarActorSector only fires on a sector leave that route never takes. Live traffic is
+// bounded by the spawn budget, but its SHELVED rows were not: rows accumulated in the save
+// forever — the one unbounded save-growth source left after the convoy-cap fix
+// (PQ-033.02 attribution: ~0.2-0.6 KB/cycle, every other grower plateaued).
+export const FAR_ROW_BUDGET = 128;
+
+function farRowIsDurable(rec) {
+  if (!rec) return false;
+  // A row carrying a live npcJobs relink id or a durable world record must survive: the job
+  // bag relinks jobs by worldRecordId against rematerialized hulls, and evicting the row
+  // would orphan the job (the exact phantom-job growth the convoy-cap fix closed).
+  if (rec.jobId != null || rec.worldRecordId != null) return true;
+  const data = rec.data;
+  return !!(data && (data.jobId != null || data.worldRecordId != null));
+}
+
+/** Oldest-first, deterministic (rows is insertion-ordered and restore preserves the order). */
+export function enforceFarRowBudget(state) {
+  const table = state && state.world && state.world.farActors;
+  if (!table || !Array.isArray(table.rows) || table.rows.length <= FAR_ROW_BUDGET) return 0;
+  let evicted = 0;
+  let i = 0;
+  while (table.rows.length > FAR_ROW_BUDGET && i < table.rows.length) {
+    const rec = table.rows[i];
+    if (farRowIsDurable(rec)) {
+      i += 1;
+      continue;
+    }
+    removeFarRecord(table, rec);
+    evicted += 1;
+  }
+  return evicted;
+}
+
 function removeFarRecord(table, rec) {
   if (!table || !rec) return false;
   const idx = table.rows.indexOf(rec);
@@ -538,6 +574,7 @@ export function tickFarActors(state, helpers, bus) {
     }
   }
   resolveFarEncounters(state, simTime);
+  enforceFarRowBudget(state);
   return { shelved, restored };
 }
 
