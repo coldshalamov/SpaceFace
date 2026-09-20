@@ -216,6 +216,7 @@ for (let index = 0; index < assets.length; index++) {
     }));
 
     await document.transform(...transforms);
+    nameTransformMintedNodes(document);
     stampReleaseTextureCompression(document, sourceInspection);
     await mkdir(dirname(releaseAbs), { recursive: true });
     await writeDocumentAtomic(io, releaseAbs, document);
@@ -432,6 +433,45 @@ function assertUnderAssetShips(label, path) {
 
 function errorMessage(error) {
   return error && error.stack ? error.stack : String(error);
+}
+
+// The meshopt transform's weld/join pass can attach merged primitives as NEW child nodes and
+// leaves them unnamed (measured 2026-09-20: place_cold_locker gained one under locker_drum with
+// its content intact), and a source asset can itself carry two nodes sharing one name
+// (fin_crystalline shipped '..._Material_Accent_Merged' twice). The render-package packager
+// rejects a file unless every semantic node name is non-empty and unique, so name transform-
+// minted nodes from their parent and suffix later duplicates during a deterministic scene
+// walk — content and transforms are untouched, and fully-named assets are a no-op.
+function nameTransformMintedNodes(document) {
+  const used = new Set();
+  for (const node of document.getRoot().listNodes()) {
+    const name = node.getName();
+    if (name) used.add(name);
+  }
+  const seen = new Set();
+  const claim = (node, base) => {
+    let name = base;
+    for (let i = 2; used.has(name); i += 1) name = `${base}_${i}`;
+    node.setName(name);
+    used.add(name);
+    seen.add(name);
+  };
+  for (const scene of document.getRoot().listScenes()) {
+    const stack = scene.listChildren().map((node) => ({ node, parentName: '' }));
+    while (stack.length) {
+      const { node, parentName } = stack.pop();
+      const name = node.getName();
+      if (!name) {
+        claim(node, `${parentName || 'sg04'}_joined`);
+      } else if (seen.has(name)) {
+        claim(node, name);
+      } else {
+        seen.add(name);
+      }
+      const childParentName = node.getName();
+      for (const child of node.listChildren()) stack.push({ node: child, parentName: childParentName });
+    }
+  }
 }
 
 function splitIncompatibleTextureSlots(document) {

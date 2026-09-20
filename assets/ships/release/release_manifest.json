@@ -148,20 +148,6 @@
       "contractNodeCount": 4
     },
     {
-      "id": "fin_crystalline",
-      "kind": "part:fins",
-      "source": "assets/ships/parts/fins/fin_crystalline.glb",
-      "release": "assets/ships/release/parts/fins/fin_crystalline.glb",
-      "sourceSha256": "bb483fd0e319740f6370e7ea604b5fafc4804c40511e043bdcb20351399208f7",
-      "releaseSha256": "570c7f08e38ba9d770d191261d55441debac01ddf76b590b389f0b81369d9b6c",
-      "sourceBytes": 194568,
-      "releaseBytes": 372576,
-      "textures": 3,
-      "ktx2Textures": 3,
-      "meshoptBufferViews": 10,
-      "contractNodeCount": 1
-    },
-    {
       "id": "fin_delta",
       "kind": "part:fins",
       "source": "assets/ships/parts/fins/fin_delta.glb",
@@ -3374,20 +3360,6 @@
       "contractNodeCount": 20
     },
     {
-      "id": "place_ash_pin",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_ash_pin.glb",
-      "release": "assets/ships/release/parts/places/place_ash_pin.glb",
-      "sourceSha256": "c0519e0464f7dd9025929fea2f7aff99432f925708f7773a035441ff0bcd4657",
-      "releaseSha256": "621d2ff3b1b33beb7a97df7d280080c5564a4ddacb3926ea55ab5d98477a8809",
-      "sourceBytes": 196768,
-      "releaseBytes": 142344,
-      "textures": 15,
-      "ktx2Textures": 15,
-      "meshoptBufferViews": 107,
-      "contractNodeCount": 0
-    },
-    {
       "id": "place_claim_mark",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_claim_mark.glb",
@@ -3399,20 +3371,6 @@
       "textures": 20,
       "ktx2Textures": 20,
       "meshoptBufferViews": 94,
-      "contractNodeCount": 0
-    },
-    {
-      "id": "place_cold_locker",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_cold_locker.glb",
-      "release": "assets/ships/release/parts/places/place_cold_locker.glb",
-      "sourceSha256": "2cd9997a8278127ffbf62f7ce7ec842bcf92ed6e3f906d4d5ea3d3c3a7ac1c07",
-      "releaseSha256": "a114ebde7ee538ea29091b0ead5ca0d9b6b62f6ae2d364aeabe689a27b9e4dce",
-      "sourceBytes": 161296,
-      "releaseBytes": 73164,
-      "textures": 15,
-      "ktx2Textures": 15,
-      "meshoptBufferViews": 42,
       "contractNodeCount": 0
     },
     {
@@ -3611,20 +3569,6 @@
       "ktx2Textures": 3,
       "meshoptBufferViews": 48,
       "contractNodeCount": 14
-    },
-    {
-      "id": "place_tally_post",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_tally_post.glb",
-      "release": "assets/ships/release/parts/places/place_tally_post.glb",
-      "sourceSha256": "8648ca605776e3fcd13eb31656e536546fb39d6d91e584933e33ba61b9ae1c6d",
-      "releaseSha256": "98777b2468f9ce5544804db6a1d8eaf9231e198f1ec6067ea9b00097dbeba30a",
-      "sourceBytes": 225004,
-      "releaseBytes": 167480,
-      "textures": 20,
-      "ktx2Textures": 20,
-      "meshoptBufferViews": 114,
-      "contractNodeCount": 0
     },
     {
       "id": "place_whistle",
@@ -4297,6 +4241,62 @@
       "ktx2Textures": 0,
       "meshoptBufferViews": 31,
       "contractNodeCount": 18
+    },
+    {
+      "id": "fin_crystalline",
+      "kind": "part:fins",
+      "source": "assets/ships/parts/fins/fin_crystalline.glb",
+      "release": "assets/ships/release/parts/fins/fin_crystalline.glb",
+      "sourceSha256": "bb483fd0e319740f6370e7ea604b5fafc4804c40511e043bdcb20351399208f7",
+      "releaseSha256": "90d525e072d87124adec8f6d240f72b3bda79b394bff8bfb4cc272d1cdaa9cc2",
+      "sourceBytes": 194568,
+      "releaseBytes": 372580,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 10,
+      "contractNodeCount": 1
+    },
+    {
+      "id": "place_ash_pin",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_ash_pin.glb",
+      "release": "assets/ships/release/parts/places/place_ash_pin.glb",
+      "sourceSha256": "c0519e0464f7dd9025929fea2f7aff99432f925708f7773a035441ff0bcd4657",
+      "releaseSha256": "377ccec0b636d436daba5778425a1d9fc5b00d676b98787489bb7414b60cc490",
+      "sourceBytes": 196768,
+      "releaseBytes": 142368,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 107,
+      "contractNodeCount": 0
+    },
+    {
+      "id": "place_cold_locker",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_cold_locker.glb",
+      "release": "assets/ships/release/parts/places/place_cold_locker.glb",
+      "sourceSha256": "2cd9997a8278127ffbf62f7ce7ec842bcf92ed6e3f906d4d5ea3d3c3a7ac1c07",
+      "releaseSha256": "096d9f47d4c54d08352e067aea2c9c124256aad661a1a4ff778403d07faff9c4",
+      "sourceBytes": 161296,
+      "releaseBytes": 73192,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 42,
+      "contractNodeCount": 0
+    },
+    {
+      "id": "place_tally_post",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_tally_post.glb",
+      "release": "assets/ships/release/parts/places/place_tally_post.glb",
+      "sourceSha256": "8648ca605776e3fcd13eb31656e536546fb39d6d91e584933e33ba61b9ae1c6d",
+      "releaseSha256": "48ff774b5dd37e8cef192b7d7b309a2970e8113ded438b3f93143f550adebe85",
+      "sourceBytes": 225004,
+      "releaseBytes": 167508,
+      "textures": 20,
+      "ktx2Textures": 20,
+      "meshoptBufferViews": 114,
+      "contractNodeCount": 0
     }
   ]
 }
