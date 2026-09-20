@@ -8,6 +8,8 @@ export {
   recipeUsesSweptMuzzle,
   listWeaponRecipes,
   flightColorsForEntity,
+  RIBBON_PROFILE,
+  ribbonProfileForWidth,
 } from './recipes.js';
 export {
   WeaponDischargePool,
@@ -24,7 +26,7 @@ export {
   DEFAULT_BOLT_MIN_PIXELS,
 } from './pixelFloor.js';
 export { EnergyBoltPool, ENERGY_BOLT_CAPACITY, createEnergyBoltPrecompileMesh } from './energyBoltPool.js';
-export { WeaponRibbonPool, WEAPON_RIBBON_CAPACITY } from './ribbonPool.js';
+export { WeaponRibbonPool, WEAPON_RIBBON_CAPACITY, RIBBON_MIN_PIXELS } from './ribbonPool.js';
 export { DistortionField, DISTORTION_CAPACITY } from './distortionField.js';
 export { WeaponLightPool, WEAPON_LIGHT_POOL_SIZE, visiblePointLightBudget } from './weaponLights.js';
 export { HullScorchPool, HULL_SCORCH_CAPACITY, heatForWeaponVariant, scorchHeatForAge } from './contactMarks.js';

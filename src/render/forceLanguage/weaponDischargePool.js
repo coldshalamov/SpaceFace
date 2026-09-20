@@ -52,7 +52,7 @@ export class WeaponDischargePool {
       alive:false,role:SURFACE_ROLE.SOURCE,kind:IMPACT_KIND.HULL,
       age:0,life:0,x:0,y:0,z:0,angle:0,pitch:0,width:0,length:0,opacity:1,
       source:null,variant:null,ownerId:null,targetId:null,attached:false,slant:0,
-      tr:1,tg:1,tb:1,priority:0,seed:0,
+      tr:1,tg:1,tb:1,priority:0,seed:0,beat:0,cadence:Infinity,
     }));
     this.descriptor=new Float32Array(24);
     this.envelope={length:1,width:1,opacity:1};
@@ -68,19 +68,26 @@ export class WeaponDischargePool {
     // card fallback to keep, so a missing signature must not silently delete the muzzle.
     const source=signature?signature.source:'machined-burst';
     // Coalesce rapid same-owner source shots; no additive pileup into a glowing ball.
-    let slot=null;
-    for(const s of this.slots)if(s.alive&&s.role===SURFACE_ROLE.SOURCE&&s.ownerId===ownerId&&ownerId!=null&&s.variant===recipe.variant){slot=s;break;}
+    let slot=null;let coalesced=false;
+    for(const s of this.slots)if(s.alive&&s.role===SURFACE_ROLE.SOURCE&&s.ownerId===ownerId&&ownerId!=null&&s.variant===recipe.variant){slot=s;coalesced=true;break;}
     if(!slot)for(const s of this.slots)if(!s.alive){slot=s;break;}
     if(!slot){
       // Decorative enemy sources may be dropped. Never displace a live player cue with one.
       for(const s of this.slots)if(s.priority<=priority&&(!slot||s.age/s.life>slot.age/slot.life))slot=s;
     }
     if(!slot){this.dropped++;return true;} // saturating the pool is handled, not a license to stack cards
+    // Cadence and beat are the RHYTHM channel. Coalescing already stops brightness from piling
+    // up; without a per-shot counter the restarted envelope would simply hold the source at its
+    // ignition peak, which reads as one continuous glow rather than a machine cycling.
+    slot.cadence=coalesced?slot.age:Infinity;
+    slot.beat=coalesced?(slot.beat+1)%12:0;
     slot.alive=true;slot.role=SURFACE_ROLE.SOURCE;slot.age=0;slot.life=Math.max(.035,flash.life);
     slot.x=pose.x;slot.y=pose.y;slot.z=pose.z;slot.angle=Math.atan2(pose.az,pose.ax);
     slot.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
     slot.width=Math.max(.55,flash.size0);slot.length=Math.max(2.8,flash.size1*2.1);
-    slot.opacity=Math.min(1,flash.opacity0/1.35);slot.source=source;slot.variant=recipe.variant;
+    const rapid=coalesced?Math.max(0,1-slot.cadence/Math.max(.001,slot.life*.9)):0;
+    slot.opacity=Math.min(1,flash.opacity0/1.35)*(1-.22*rapid);
+    slot.source=source;slot.variant=recipe.variant;
     slot.ownerId=ownerId;slot.priority=priority;slot.seed=(this.sequence++%17)/17;
     return true;
   }
@@ -112,89 +119,134 @@ export class WeaponDischargePool {
     slot.tg=Number.isFinite(flash.g)?flash.g:1;
     slot.tb=Number.isFinite(flash.b)?flash.b:1;
     slot.ownerId=null;slot.priority=priority;slot.seed=(this.sequence++%17)/17;
+    slot.beat=0;slot.cadence=Infinity;
     return true;
   }
-  _strip(s,a0,a1,r0,r1,width,type=1,offset=0,lift=0,frontMode=0,phase=-1){
+  _strip(s,a0,a1,r0,r1,width,type=1,offset=0,lift=0,frontMode=0,phase=-1,axial=0){
     const d=this.descriptor,c=this.color;
     const ca=Math.cos(s.angle),sa=Math.sin(s.angle);
-    d[0]=s.x-sa*offset;d[1]=s.y;d[2]=s.z+ca*offset;d[3]=s.angle;
+    d[0]=s.x-sa*offset+ca*axial;d[1]=s.y;d[2]=s.z+ca*offset+sa*axial;d[3]=s.angle;
     d[4]=type;d[5]=a0;d[6]=a1;d[7]=r0;d[8]=r1;d[9]=width;d[10]=lift;d[11]=0;
     d[12]=c.r;d[13]=c.g;d[14]=c.b;d[15]=this.opacity;
     d[16]=0;d[17]=phase>=0?phase:s.seed;d[18]=frontMode;d[19]=this.style;
     d[20]=1;d[21]=1;d[22]=1;d[23]=s.pitch;
     this.batch.add(d);
   }
+  /**
+   * Source geometry for one shot, staged in the weapon's own fiction.
+   *
+   *  - ballistics run a real breech cycle: the carrier rides back on ignition, the opposed brake
+   *    ports alternate which one vents hard, and the whole stroke replays per shot so automatic
+   *    fire keeps a readable rhythm instead of settling into one continuous glow;
+   *  - coherent apertures ALIGN first - jaws converge onto the axis, then the collimated core
+   *    opens, so the beam is released by a mechanism that found its line;
+   *  - induction forks branch, bridge at a real junction and extinguish together - no limb is
+   *    ever left hanging in empty space;
+   *  - propulsion sources transport hot material off the throat rather than growing in place,
+   *    and staged launches eject BEFORE the motor lights.
+   *
+   * Every one of those is a shape/motion difference, so the families stay apart in a grayscale,
+   * bloom-off frame. Nothing here is drawn at or beyond the contact point.
+   */
   _sourceStrips(s,w,length){
     this.style=3;this.color=BRASS;
+    const t=Math.min(1,s.age/Math.max(.001,s.life));
+    const hand=(s.beat&1)?-1:1;
     if(s.source==='machined-burst'){
       const spread=s.variant==='flak'?.27:.12;
-      this._strip(s,-spread,0,.1,length*.86,w*.21);
-      this._strip(s,spread*.7,0,.05,length,w*.29);
-      this._strip(s,spread*1.5,0,.1,length*.65,w*.14);
-      this._strip(s,-1.17,0,.08,w*1.95,w*.19);
-      this._strip(s,1.06,0,.08,w*1.57,w*.24);
-      this._strip(s,.04,0,.1,length*1.07,w*.09);
+      const stroke=Math.max(0,1-t/.55);
+      const kick=-w*.34*stroke*stroke;
+      this._strip(s,-spread*hand,0,.1,length*.86,w*.21,1,0,0,0,-1,kick);
+      this._strip(s,spread*.7*hand,0,.05,length,w*.29,1,0,0,0,-1,kick);
+      this._strip(s,spread*1.5*hand,0,.1,length*.65,w*.14,1,0,0,0,-1,kick);
+      this._strip(s,-1.17*hand,0,.08,w*(hand>0?1.95:1.14),w*.19,1,0,0,0,-1,kick);
+      this._strip(s,1.06*hand,0,.08,w*(hand>0?1.02:1.57),w*.24,1,0,0,0,-1,kick);
+      this._strip(s,.04,0,.1,length*1.07,w*.09,1,0,0,0,-1,kick);
+      // Hard machined bar behind the bore: the moving part the blast escapes past.
+      this.style=1;
+      this._strip(s,Math.PI,0,w*.2,w*1.05,w*.3,1,0,0,0,-1,kick*1.9);
+      this.style=3;
     }else if(s.source==='rail-shear'){
       this.color=PALE;
       this._strip(s,0,0,0,length*1.8,w*.15);
-      this._strip(s,0,0,.1,length*.84,w*.08,1,w*.29);
-      this._strip(s,0,0,.1,length*.84,w*.08,1,-w*.29);
+      // The armature leaves one rail hotter than the other, and it swaps every shot.
+      this._strip(s,0,0,.1,length*(hand>0?.84:.5),w*.08,1,w*.29);
+      this._strip(s,0,0,.1,length*(hand>0?.5:.84),w*.08,1,-w*.29);
       this.color=BRASS;
-      this._strip(s,-1.44,0,0,w*2.0,w*.16);
-      this._strip(s,1.44,0,0,w*2.0,w*.16);
+      const vent=w*(1.35+.85*Math.max(0,1-t/.4));
+      this._strip(s,-1.44,0,0,vent,w*.16);
+      this._strip(s,1.44,0,0,vent,w*.16);
     }else if(s.source==='split-aperture'){
       this.style=4;this.color=PALE;
-      this._strip(s,-1.12,-.12,w*.72,w*.72,w*.16,0);
-      this._strip(s,.12,1.12,w*.72,w*.72,w*.16,0);
-      this._strip(s,0,0,w*.18,length,w*.14,1,w*.27);
-      this._strip(s,0,0,w*.18,length*.88,w*.14,1,-w*.27);
+      const align=Math.min(1,t/.34);
+      const part=(1-align*align)*.52;
+      this._strip(s,-1.12-part,-.12,w*.72,w*.72,w*.16,0);
+      this._strip(s,.12,1.12+part,w*.72,w*.72,w*.16,0);
+      this._strip(s,0,0,w*.18,length,w*.14,1,w*.27*(1+part));
+      this._strip(s,0,0,w*.18,length*.88,w*.14,1,-w*.27*(1+part));
       this._strip(s,0,0,w*.6,length*.78,w*.07);
     }else if(s.source==='thermal-lobes'){
       this.style=0;
-      for(let j=0;j<3;j++)this._strip(s,(j-1)*.2,(j-1)*.4,.05,length*(.65+j*.12),w*(.36-j*.055),0,0,w*.2);
+      // Transport: the lobes are carried off the throat, they do not inflate in place.
+      const carry=length*.34*t;
+      for(let j=0;j<3;j++)this._strip(s,(j-1)*.2,(j-1)*.4,.05+carry*(.25+j*.3),
+        length*(.65+j*.12)+carry,w*(.36-j*.055)*(1-.3*t),0,0,w*.2);
     }else if(s.source==='circuit-fork'){
       this.style=4;this.color=VIOLET;
+      // Branch, bridge, extinguish. Each outer limb starts INSIDE its inner limb's reach, so
+      // the junction is real and no branch ends in empty space. The live limb rotates per shot.
+      const liveLimb=s.beat%3;
       for(let j=0;j<3;j++){
-        const a=(j-1)*.53;
-        this._strip(s,a,0,.05,length*.58,w*.15);
-        this._strip(s,a+.21,0,length*.50,length*.85,w*.12);
+        const a=(j-1)*.53*hand;
+        const live=j===liveLimb;
+        const inner=length*(live?.64:.46);
+        this._strip(s,a,0,.05,inner,w*(live?.18:.11));
+        this._strip(s,a+.21*hand,0,inner*.84,length*(live?.94:.66),w*(live?.14:.09));
       }
     }else if(s.source==='staged-launch'){
-      // Eject first: material is thrown back out of the tube as a hard bowl while the motor
-      // lights forward. No soft smoke card, no single plume cone.
+      // Eject first: material is thrown back out of the tube as a hard bowl, and only then does
+      // the motor light forward. No soft smoke card, no single plume cone.
+      const eject=Math.max(0,1-t/.45);
+      const motor=Math.min(1,Math.max(0,(t-.18)/.5));
       this.style=1;this.color=THERMAL;
-      this._strip(s,-1.35,1.35,w*.35,w*1.25,w*.4,0);
+      this._strip(s,-1.35,1.35,w*.35,w*(.62+.7*eject),w*.4,0);
       this.style=0;this.color=PALE;
-      this._strip(s,-.06,0,-w*1.1,-w*2.4,w*.16);
-      this._strip(s,.05,0,.1,length*.55,w*.13);
+      this._strip(s,-.06,0,-w*1.1,-w*(1.3+1.2*eject),w*.16);
+      this._strip(s,.05,0,.1,Math.max(.14,length*(.18+.4*motor)),w*.13);
       this.style=3;this.color=BRASS;
-      this._strip(s,-.5,0,.05,length*.28,w*.12);
-      this._strip(s,.62,0,.05,length*.22,w*.09);
+      this._strip(s,-.5,0,.05,Math.max(.1,length*.28*motor),w*.12);
+      this._strip(s,.62,0,.05,Math.max(.1,length*.22*motor),w*.09);
     }else if(s.source==='heavy-launch'){
+      const eject=Math.max(0,1-t/.5);
+      const motor=Math.min(1,Math.max(0,(t-.3)/.5));
       this.style=1;this.color=THERMAL;
-      this._strip(s,-1.5,1.5,w*.3,w*1.6,w*.5,0);
+      this._strip(s,-1.5,1.5,w*.3,w*(.75+.95*eject),w*.5,0);
       this._strip(s,-.5,.4,w*.7,w*.7,w*.22,0);
       this.style=0;this.color=PALE;
-      this._strip(s,.02,0,.12,length*.72,w*.11);
-      this._strip(s,-.1,0,-w*1.4,-w*3.1,w*.2);
+      this._strip(s,.02,0,.12,Math.max(.16,length*.72*motor),w*.11);
+      this._strip(s,-.1,0,-w*1.4,-w*(1.7+1.6*eject),w*.2);
       this.style=3;this.color=BRASS;
-      this._strip(s,-.7,0,.05,length*.34,w*.14);
-      this._strip(s,.8,0,.05,length*.26,w*.1);
+      this._strip(s,-.7,0,.05,Math.max(.12,length*.34*motor),w*.14);
+      this._strip(s,.8,0,.05,Math.max(.1,length*.26*motor),w*.1);
     }else if(s.source==='latched-aperture'){
-      // Coherent: two parallel jaws bracket one long collimated core; the latch ring is the
-      // only closed shape, and it never becomes a glowing ball.
+      // Coherent: the jaws converge onto the axis (alignment), then one long collimated core
+      // opens between them. The latch ring is the only closed shape and never becomes a ball.
       this.style=4;this.color=PALE;
-      this._strip(s,0,0,.05,length*1.45,w*.085);
-      this._strip(s,0,0,w*.25,length*.9,w*.06,1,w*.34);
-      this._strip(s,0,0,w*.25,length*.9,w*.06,1,-w*.34);
+      const align=Math.min(1,t/.30);
+      const open=align*align*(3-2*align);
+      const jaw=w*.34*(1.95-.95*open);
+      this._strip(s,0,0,.05,length*(.34+1.12*open),w*.085);
+      this._strip(s,0,0,w*.25,length*.9,w*.06,1,jaw);
+      this._strip(s,0,0,w*.25,length*.9,w*.06,1,-jaw);
       this._strip(s,Math.PI*.5,0,w*.4,w*.4,w*.1,0);
       this.style=0;
-      this._strip(s,0,0,.04,length*.5,w*.14);
+      this._strip(s,0,0,.04,Math.max(.06,length*.5*open),w*.14);
     }else if(s.source==='shaped-deploy'){
-      // Metric: outward pressure bowls and rails, never inward suction.
+      // Metric: outward pressure bowls and rails that arm outward, never inward suction.
+      const arm=Math.min(1,t/.42);
       this.style=1;this.color=SHIELD_CYAN;
-      this._strip(s,-1.2,1.2,w*.4,w*1.45,w*.34,0);
-      this._strip(s,-.55,.55,w*.9,w*1.05,w*.16,0);
+      this._strip(s,-1.2,1.2,w*.4,w*(1.05+.55*arm),w*.34,0);
+      this._strip(s,-.55,.55,w*(.85+.25*arm),w*(1.0+.35*arm),w*.16,0);
       this.style=0;this.color=PALE;
       this._strip(s,-.22,0,.1,length*.42,w*.12);
       this._strip(s,.26,0,.1,length*.36,w*.1);

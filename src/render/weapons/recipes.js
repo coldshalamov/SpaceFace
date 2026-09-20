@@ -1,5 +1,36 @@
 import { resolveWeaponPresentationFamily } from '../vfxProfiles.js';
 
+/**
+ * Carried-energy / carried-matter wake cross-sections, authored per family.
+ *
+ * These are SHAPE records, not tints. Each profile owns a different lateral density curve,
+ * a different internal structure and a different silhouette, so the families stay apart in a
+ * grayscale, bloom-off frame. One recoloured tracer serving the whole arsenal is the failure
+ * this table exists to prevent. The renderer for them lives in `ribbonPool.js`; the enum lives
+ * here so the recipe table stays free of a Three.js dependency.
+ */
+export const RIBBON_PROFILE = Object.freeze({
+  CORD: 0, // machined impulse - hard-edged ionisation cord with world-pinned shock beads
+  BRAID: 1, // transported plasma - two counter-wound convection lobes that cross
+  FORK: 2, // induced current - twin conductors with real open air between them
+  SHEET: 3, // staged motor - twin vapour banks around a dark exhaust channel
+  FILAMENT: 4, // coherent energy - collimated afterimage, ceramic edge, no combustion detail
+});
+
+/**
+ * Authored default when a caller does not name a profile. Width alone cannot separate a plasma
+ * braid from a motor vapour sheet, so an explicit `ribbonProfile` is the authoritative channel;
+ * this fallback only guarantees that the ballistic cord, the induction fork and the coherent
+ * filament never collapse into one shape on the live route.
+ */
+export function ribbonProfileForWidth(width) {
+  const w = Number(width) || 0;
+  if (w <= 0.22) return RIBBON_PROFILE.CORD;
+  if (w <= 0.45) return RIBBON_PROFILE.FORK;
+  if (w <= 0.62) return RIBBON_PROFILE.FILAMENT;
+  return RIBBON_PROFILE.BRAID;
+}
+
 export const FLIGHT_MODE = Object.freeze({
   ENERGY_CARD: 'energy-card',
   MESH: 'mesh',
@@ -46,6 +77,7 @@ const PULSE = Object.freeze({
     ribbon: true,
     ribbonWidth: 0.52,
     ribbonLinger: 0.075,
+    ribbonProfile: RIBBON_PROFILE.FILAMENT,
     coreColor: '#34cfff',
     sheathColor: '#5f80ff',
   }),
@@ -91,6 +123,7 @@ const THERMAL = Object.freeze({
     ribbon: true,
     ribbonWidth: 0.9,
     ribbonLinger: 0.18,
+    ribbonProfile: RIBBON_PROFILE.BRAID,
     coreColor: '#80ffcc',
     sheathColor: '#40ffa0',
     enemyCoreColor: '#ff6040',
@@ -139,6 +172,7 @@ const AUTOCANNON = Object.freeze({
     ribbon: true,
     ribbonWidth: 0.16,
     ribbonLinger: 0.05,
+    ribbonProfile: RIBBON_PROFILE.CORD,
     coreColor: '#eeddbb',
     sheathColor: '#ffcc88',
   }),
@@ -184,6 +218,7 @@ const FLAK = Object.freeze({
     ribbon: false,
     ribbonWidth: 0,
     ribbonLinger: 0,
+    ribbonProfile: RIBBON_PROFILE.CORD,
     coreColor: '#fff4d2',
     sheathColor: '#ffcc88',
   }),
@@ -229,6 +264,7 @@ const RAIL = Object.freeze({
     ribbon: true,
     ribbonWidth: 0.12,
     ribbonLinger: 0.07,
+    ribbonProfile: RIBBON_PROFILE.CORD,
     coreColor: '#ffffff',
     sheathColor: '#9edcff',
   }),
@@ -295,6 +331,7 @@ const EMP = Object.freeze({
     ribbon: true,
     ribbonWidth: 0.34,
     ribbonLinger: 0.1,
+    ribbonProfile: RIBBON_PROFILE.FORK,
     coreColor: '#ffffff',
     sheathColor: '#4d7eff',
   }),
@@ -340,6 +377,7 @@ const CONCUSSION = Object.freeze({
     ribbon: false,
     ribbonWidth: 0,
     ribbonLinger: 0,
+    ribbonProfile: RIBBON_PROFILE.CORD,
     coreColor: '#ffe0a8',
     sheathColor: '#c98a4a',
   }),
@@ -385,6 +423,7 @@ const MISSILE = Object.freeze({
     ribbon: true,
     ribbonWidth: 0.7,
     ribbonLinger: 0.2,
+    ribbonProfile: RIBBON_PROFILE.SHEET,
     coreColor: '#fff8df',
     sheathColor: '#ff8844',
   }),
@@ -438,6 +477,7 @@ const BEAM = Object.freeze({
     ribbon: false,
     ribbonWidth: 0,
     ribbonLinger: 0,
+    ribbonProfile: RIBBON_PROFILE.FILAMENT,
     coreColor: '#f4fbff',
     sheathColor: '#56cfff',
   }),
@@ -483,6 +523,7 @@ const MINE = Object.freeze({
     ribbon: false,
     ribbonWidth: 0,
     ribbonLinger: 0,
+    ribbonProfile: RIBBON_PROFILE.SHEET,
     coreColor: '#cfe8ff',
     sheathColor: '#5aa0ff',
   }),
