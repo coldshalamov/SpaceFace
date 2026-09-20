@@ -269,13 +269,17 @@ const TRAIL_VERT = /* glsl */`
     vec3 ref = cross(tangent, vec3(0.0, 1.0, 0.0));
     if (dot(ref, ref) < 1e-7) ref = cross(tangent, vec3(1.0, 0.0, 0.0));
     ref = normalize(ref);
-    // TRANSPORTED FRAME. A reversal flips the tangent, which mirrors ref and rolls the whole
-    // sheath half a turn across one sample boundary — a visible twist at every hairpin and at every
-    // self-crossing. Pinning the sign to a world axis makes the frame a function of the LINE rather
-    // than of the direction it was flown, so the roll is continuous through a cusp. The residual
-    // ambiguity is exactly pi, and the braid set (four braids at pi/2) maps onto itself under pi,
-    // so the remaining flip is a relabelling of sheets rather than a visible jump.
-    if (ref.x < 0.0 || (ref.x == 0.0 && ref.z < 0.0)) ref = -ref;
+    // FRAME CONTINUITY, and a warning. cross(tangent, up) on a horizontal path is (-tz, 0, tx),
+    // which already rotates smoothly with the tangent: there is no discontinuity to repair on an
+    // ordinary turn, only at a true cusp, and the one-sided fallback above covers that.
+    //
+    // Do NOT pin this vector's sign to a world axis to make the frame a function of the line rather
+    // than of the direction it was flown. That was tried here and reverted. The sign flips whenever
+    // tz crosses zero, which on a circle is twice a revolution at the plus and minus X headings,
+    // and it rotates the whole sheath by pi between two CONSECUTIVE rows. The index buffer joins
+    // each sheet to itself across those rows, so every quad then spans the tube's diameter:
+    // measured as a frame step of 2.0 against 0.02 for the construction kept below. Additively
+    // blended that is a bright knot on every turn, which is the case the owner cares most about.
     vec3 up = normalize(cross(ref, tangent));
 
     // CURVATURE. 1 - cos(turn) between the incoming and outgoing chords: 0 straight, 2 reversed.
