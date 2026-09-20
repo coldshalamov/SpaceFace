@@ -13,6 +13,7 @@ export function createProjectileMotionTracker() {
   function updateProjectileMotion(entity, mesh, simTime, frameDt, a11y = {}) {
     if (!entity || !mesh) return;
     const reducedMotion = a11y && a11y.reducedMotion === true;
+    const reducedFlash = a11y && a11y.reducedFlash === true;
     const data = entity.data || {};
     const weaponId = String(data.weaponId || '').toLowerCase();
     const isMissile = data.kind === 'missile' || weaponId.includes('missile');
@@ -38,20 +39,24 @@ export function createProjectileMotionTracker() {
     if (isTorpedo) {
       const warhead = (mesh.userData && mesh.userData.warhead)
         || mesh.getObjectByName('ProjectileMissileWarhead');
-      if (warhead && warhead.material) {
+      if (warhead && warhead.material && warhead.material.emissive) {
         // Frequency accelerates as the torpedo flies
         const flightTime = Math.max(0, simTime - (entity.spawnTime || simTime));
         const pulseHz = 2.0 + Math.min(7.0, flightTime * 3.0);
-        const pulse = Math.pow(Math.max(0, Math.sin(simTime * pulseHz * Math.PI * 2)), 5.0);
+        // Reduced flash must not be handed a 2-9 Hz strobe. The arming state stays LEGIBLE - the
+        // warhead still runs hot and still brightens as it arms - it simply stops blinking, which
+        // is the whole point of the profile. Reduced motion keeps the beat: it is a state tell,
+        // not decorative movement.
+        const pulse = reducedFlash
+          ? 0.35 + 0.25 * Math.min(1, flightTime * 0.5)
+          : Math.pow(Math.max(0, Math.sin(simTime * pulseHz * Math.PI * 2)), 5.0);
 
-        if (warhead.material.emissive) {
-          if (pulse > 0.6) {
-            warhead.material.emissive.set('#fff2a0');
-            warhead.material.emissiveIntensity = 2.5 + pulse * 2.5;
-          } else {
-            warhead.material.emissive.set('#ff3300');
-            warhead.material.emissiveIntensity = 0.4 + pulse * 1.6;
-          }
+        if (!reducedFlash && pulse > 0.6) {
+          warhead.material.emissive.set('#fff2a0');
+          warhead.material.emissiveIntensity = 2.5 + pulse * 2.5;
+        } else {
+          warhead.material.emissive.set('#ff3300');
+          warhead.material.emissiveIntensity = 0.4 + pulse * 1.6;
         }
       }
     }

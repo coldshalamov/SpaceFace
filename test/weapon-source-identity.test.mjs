@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { WeaponDischargePool } from '../src/render/forceLanguage/weaponDischargePool.js';
 import { weaponSignature } from '../src/render/forceLanguage/catalog.js';
 import { PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
+import { globalProjectileMotion } from '../src/render/projectileMotionPresentation.js';
 import {
   EnergyBoltPool,
   FLIGHT_MODE,
@@ -382,6 +383,33 @@ test('the weapons lane draws nothing at the contact point', () => {
   }
   ribbons.dispose();
   bolts.dispose();
+});
+
+test('an arming warhead stays legible under reduced flash without strobing', () => {
+  const warhead = {
+    name: 'ProjectileMissileWarhead',
+    material: { emissive: { value: null, set(v) { this.value = v; } }, emissiveIntensity: 0 },
+  };
+  const mesh = { rotation: { x: 0, y: 0, z: 0 }, userData: { warhead }, getObjectByName: () => warhead };
+  const entity = { id: 7, spawnTime: 0, data: { weaponId: 'wpn_torpedo_l' } };
+  const sample = (a11y) => {
+    const seen = [];
+    for (let i = 0; i < 40; i++) {
+      globalProjectileMotion.updateProjectileMotion(entity, mesh, 1 + i * 0.02, 0.02, a11y);
+      seen.push(warhead.material.emissiveIntensity);
+    }
+    return seen;
+  };
+
+  const normal = sample({ reducedMotion: false, reducedFlash: false });
+  const spread = Math.max(...normal) - Math.min(...normal);
+  assert.ok(spread > 2, `the arming heartbeat must be visible normally, spread ${spread}`);
+
+  const damped = sample({ reducedMotion: false, reducedFlash: true });
+  const dampedSpread = Math.max(...damped) - Math.min(...damped);
+  assert.ok(dampedSpread < 0.35, `reduced flash must not receive a 2-9 Hz strobe, spread ${dampedSpread}`);
+  assert.ok(Math.min(...damped) > 0.5, 'but the warhead must still read as live and arming');
+  assert.equal(warhead.material.emissive.value, '#ff3300', 'and it holds the hot arming colour');
 });
 
 test('a sustained beam can follow a moving socket without inventing its contact point', () => {
