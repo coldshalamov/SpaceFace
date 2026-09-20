@@ -172,7 +172,9 @@ export class FamilyProductionFleet {
       profileId: 'engine_ion_small',
       familyIndex: 0,
       isPlayer: false,
-      driveState: { plumeDrive: 0, boostBlend: 0 },
+      // ignition: the one-shot overpressure transient a drive shows when its taps are thrown
+      // open. Lives on the ship record so a hull keeps its own event across frames.
+      driveState: { plumeDrive: 0, boostBlend: 0, ignition: 0 },
       sockets,
       socketCount: 0,
       drive: 0,
@@ -329,6 +331,7 @@ export class FamilyProductionFleet {
     if (prevEntity !== entityId || prevProfile !== entry.profileId) {
       ship.driveState.plumeDrive = 0;
       ship.driveState.boostBlend = 0;
+      ship.driveState.ignition = 0;
       ship.spin = 0;
       ship.spinPhase = 0;
     }
@@ -652,6 +655,7 @@ export class FamilyProductionFleet {
       s.priorEntityId = null;
       s.driveState.plumeDrive = 0;
       s.driveState.boostBlend = 0;
+      s.driveState.ignition = 0;
       s.factionR = 0.533;
       s.factionG = 0.667;
       s.factionB = 1.0;

@@ -123,7 +123,10 @@ export function plumeCompression(along, c) {
  */
 export function plumeFoldField(along, side, axialNoise, drive, boost, time, c) {
   const beatOn = step(0.001, c.foldBeatHz);
-  const beat = Math.sin(time * TAU * c.foldBeatHz);
+  // The beat is the field drive’s power read: opening the taps does not throw more mass, it
+  // drives the standing arrangement harder and faster. Without this, boost on a resonator would
+  // be a brightness change and nothing else.
+  const beat = Math.sin(time * TAU * c.foldBeatHz * (0.8 + drive * 0.3 + boost * 0.45));
 
   // Where the crease band sits across the shell. Zero is a solid column; a non-zero annulus puts
   // the ridges off the centreline, so the plume has an inner edge as well as an outer one.
@@ -188,7 +191,7 @@ float plumeCompression(float along) {
 
 float plumeFoldField(float along, float side, float axialNoise, float drive, float boost, float t) {
   float beatOn = step(0.001, uFoldBeatHz);
-  float beat = sin(t * 6.28318531 * uFoldBeatHz);
+  float beat = sin(t * 6.28318531 * uFoldBeatHz * (0.8 + drive * 0.3 + boost * 0.45));
 
   float ringD = (abs(side) - uFoldAnnulus) * 2.6;
   float ringBand = exp(-(ringD * ringD));

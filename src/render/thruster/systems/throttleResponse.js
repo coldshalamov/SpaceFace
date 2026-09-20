@@ -230,6 +230,15 @@ export function sampleThrottle(recipe, throttle, a11y = {}) {
 /**
  * Mutates state; no allocation.
  */
+/**
+ * How fast a fleet drive's ignition transient decays, per second. Roughly a third of a second of
+ * overpressure, which is what the player's own drive uses and what reads as an event rather than
+ * a ramp.
+ */
+export const IGNITION_DECAY_PER_S = 3.6;
+/** Boost blend per second that counts as the taps being THROWN open rather than eased. */
+export const IGNITION_TRIGGER_RATE = 3.5;
+
 export function integrateDriveState(state, rawDrive, targetBoost, dt, rates) {
   const driveRise = rates.driveRise ?? 9.5;
   const driveFall = rates.driveFall ?? 4.2;
@@ -238,8 +247,34 @@ export function integrateDriveState(state, rawDrive, targetBoost, dt, rates) {
   const d = Math.max(0, dt || 0);
   const driveRate = rawDrive > state.plumeDrive ? driveRise : driveFall;
   const boostRate = targetBoost > state.boostBlend ? boostRise : boostFall;
+  const prevBoost = state.boostBlend;
+  const prevDrive = state.plumeDrive;
   state.plumeDrive += (rawDrive - state.plumeDrive) * (1 - Math.exp(-driveRate * d));
   state.boostBlend += (targetBoost - state.boostBlend) * (1 - Math.exp(-boostRate * d));
+
+  // IGNITION — lighting a drive is an EVENT, not the first part of a ramp.
+  //
+  // Two exponentials settling toward a target describe a dial being turned. What a drive
+  // actually does when the taps are thrown open is overpressure: the chamber spikes above its
+  // steady value, the shock train snaps in, and then it settles. Without that, boost and a
+  // standing start are the same motion at two speeds, and the player never feels the machine
+  // commit to anything.
+  //
+  // Deliberately rate-triggered, not level-triggered: easing the throttle up produces no
+  // transient at all, which is the difference between opening a valve and slamming it. The
+  // fleet path consumes it structurally — crease sharpness, fold speed and a bounded length
+  // overshoot — never as a brightness pop, so a reduced-flash profile still sees the event.
+  if (d > 0) {
+    const boostSlew = (state.boostBlend - prevBoost) / d;
+    const driveSlew = (state.plumeDrive - prevDrive) / d;
+    const throw_ = Math.max(boostSlew, driveSlew * 0.55);
+    if (throw_ > IGNITION_TRIGGER_RATE) {
+      const kick = Math.min(1, (throw_ - IGNITION_TRIGGER_RATE) / (IGNITION_TRIGGER_RATE * 2.5));
+      const ign = state.ignition || 0;
+      state.ignition = Math.min(1, ign + kick * (1 - ign * 0.6));
+    }
+  }
+  state.ignition = Math.max(0, (state.ignition || 0) - d * IGNITION_DECAY_PER_S);
   return state;
 }
 

@@ -240,7 +240,7 @@ export class PlumeSlotPool {
       this._allocCount += 1;
     }
 
-    this._driveState = { plumeDrive: 0, boostBlend: 0 };
+    this._driveState = { plumeDrive: 0, boostBlend: 0, ignition: 0 };
     this._scratchSample = {
       throttle: 0,
       length: 0,
@@ -394,6 +394,9 @@ export class PlumeSlotPool {
     const dynDiss = sample.dissipation;
     const dynBoost = boostBlend;
     const dynMode = sample.mode || tf.mode || 'accel';
+    // One-shot overpressure from integrateDriveState. Bounded here as well as there, because a
+    // caller supplying its own driveState object is not obliged to have run through that path.
+    const ignition = Math.max(0, Math.min(1, state.ignition || 0));
     // Spin wobble (PQ-139.04): the fleet ship record carries its raw angVel (`spin`) and the
     // phase it accumulated (`spinPhase`). Zero amp at rest keeps the card bit-identical.
     const spinAmp = spinWobbleAmp(signals ? signals.spin : 0, !!flags.reducedMotion);
@@ -429,11 +432,16 @@ export class PlumeSlotPool {
         const motionProfile = this.recipe.accessibility?.reducedMotion;
         const reducedLength = flags.reducedMotion ? (motionProfile?.roleLengthScale?.[role] ?? 1) : 1;
         const reducedWidth = flags.reducedMotion ? (motionProfile?.roleWidthScale?.[role] ?? 1) : 1;
+        // The ignition transient is spent on LENGTH and on the structural drive term, never on
+        // brightness: the jet spears out and its creases sharpen for a third of a second, then it
+        // settles. A reduced-flash profile therefore still sees the engine commit.
         slot.length = geo.baseLength * sample.length * this._layerLengthScale[li]
-          * (1 + boostBlend * boostLength) * reducedLength;
+          * (1 + boostBlend * boostLength) * (1 + ignition * 0.22) * reducedLength;
         slot.width = geo.baseWidth * sample.width * this._layerWidthScale[li]
           * (1 + boostBlend * boostWidth) * reducedWidth;
-        slot.throttle = sample.effectiveDrive + boostBlend * (layering?.boostStructuralDrive ?? 0);
+        slot.throttle = sample.effectiveDrive
+          + boostBlend * (layering?.boostStructuralDrive ?? 0)
+          + ignition * 0.3;
         slot.intensity = this._layerIntensity[li] * intensityScale;
         slot.opacity = this._layerOpacity[li];
         slot.softEdge = this._layerSoftEdge[li] + this._presentation.softEdgeBoost;
@@ -506,6 +514,7 @@ export class PlumeSlotPool {
   resetDrive() {
     this._driveState.plumeDrive = 0;
     this._driveState.boostBlend = 0;
+    this._driveState.ignition = 0;
   }
 }
 

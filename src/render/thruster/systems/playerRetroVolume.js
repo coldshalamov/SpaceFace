@@ -28,8 +28,27 @@ export const RETRO_SPOOL_RISE_TAU = 0.14;
 export const RETRO_SPOOL_FALL_TAU = 0.24;
 
 /**
- * Asymmetric one-pole spool for the retro pair. The spool lives on the volume instance so the
- * release keeps the last held pose while the demand decays to exactly zero (no idle stub).
+ * THE BITE.
+ *
+ * A spool alone describes a dial. What a brake actually does on the frame you ask for it is
+ * overpressure: the bow jets punch — they tighten and sear well past their held value — and then
+ * relax into the steady brake. Without that, standing on the brake and easing onto it are the
+ * same motion at two speeds, and the hardest input in the game has no moment of commitment.
+ *
+ * Rate-triggered, not level-triggered: easing the demand up produces no bite at all. Decays on
+ * its own clock in about a third of a second.
+ *
+ * It is spent on HEAT and COLLIMATION, never on length. The retro envelope's length-to-diameter
+ * ratio is a shipped jet-likeness contract (see retroEnvelopeIsJetLike): a bow jet that stretched
+ * on every brake tap would run out the top of it and start reading as a second main drive.
+ */
+export const RETRO_BITE_TRIGGER_RATE = 3.0;
+export const RETRO_BITE_DECAY_PER_S = 3.4;
+
+/**
+ * Asymmetric one-pole spool for the retro pair, plus the bite transient. The spool lives on the
+ * volume instance so the release keeps the last held pose while the demand decays to exactly zero
+ * (no idle stub); the bite lives there for the same reason.
  */
 export function integrateRetroSpool(volume, demand, dt) {
   const target = Math.max(0, Math.min(1.4, Number(demand) || 0));
@@ -39,22 +58,45 @@ export function integrateRetroSpool(volume, demand, dt) {
   let next = current + (target - current) * (1 - Math.exp(-d / tau));
   if (next < 1e-4) next = 0;
   volume.spool = next;
+
+  const bite = Number.isFinite(volume.bite) ? volume.bite : 0;
+  let nextBite = bite;
+  if (d > 0) {
+    const slew = (next - current) / d;
+    if (slew > RETRO_BITE_TRIGGER_RATE) {
+      const kick = Math.min(1, (slew - RETRO_BITE_TRIGGER_RATE) / (RETRO_BITE_TRIGGER_RATE * 2));
+      nextBite = Math.min(1, bite + kick * (1 - bite * 0.6));
+    }
+  }
+  nextBite = Math.max(0, nextBite - d * RETRO_BITE_DECAY_PER_S);
+  volume.bite = nextBite < 1e-4 ? 0 : nextBite;
   return next;
 }
 
-export function retroEnvelopeForDemand(peak, a11y = null) {
+/**
+ * @param {number} peak spooled retro demand
+ * @param {object|null} a11y reduced motion / flash flags
+ * @param {number} [bite] the one-shot overpressure transient from integrateRetroSpool
+ */
+export function retroEnvelopeForDemand(peak, a11y = null, bite = 0) {
   const drive = Math.max(0, Math.min(1.4, Number(peak) || 0));
+  const punch = Math.max(0, Math.min(1, Number(bite) || 0));
   const flashScale = a11y && a11y.reducedFlash ? 0.72 : 1;
   const lengthWU = PLAYER_RETRO_VOLUME_RECIPE.lengthWU * (0.55 + drive * 0.5);
   const exitRadiusWU = PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU;
   return {
     drive,
+    // Carried into the ribbon sheets' boost channel: the sheets collimate and sear rather than
+    // inflate, which is the same thing the main drive's boost does and reads as pressure.
+    boost: punch,
+    bite: punch,
     animRate: a11y && a11y.reducedMotion ? 0.12 : 1,
     lengthWU,
     exitRadiusWU,
     tailRadiusWU: exitRadiusWU * PLAYER_RETRO_VOLUME_RECIPE.tailFlare,
-    radiance: (PLAYER_RETRO_VOLUME_RECIPE.radiance || 1.12) * flashScale * (0.6 + drive * 0.55),
-    spread: PLAYER_RETRO_VOLUME_RECIPE.spread,
+    radiance: (PLAYER_RETRO_VOLUME_RECIPE.radiance || 1.12) * flashScale
+      * (0.6 + drive * 0.55) * (1 + punch * 0.5 * flashScale),
+    spread: PLAYER_RETRO_VOLUME_RECIPE.spread * (1 - punch * 0.18),
     opacity: PLAYER_RETRO_VOLUME_RECIPE.opacity,
     construction: RETRO_JET_CONSTRUCTION,
   };
@@ -102,7 +144,7 @@ export function applyPlayerRetroVolume(volume, sockets, peak, dt, a11y, paramsOu
       construction: RETRO_JET_CONSTRUCTION,
     };
   }
-  const envelope = retroEnvelopeForDemand(spool, a11y);
+  const envelope = retroEnvelopeForDemand(spool, a11y, volume.bite);
   if (paramsOut) {
     paramsOut.drive = envelope.drive;
     paramsOut.animRate = envelope.animRate;
@@ -112,7 +154,7 @@ export function applyPlayerRetroVolume(volume, sockets, peak, dt, a11y, paramsOu
     paramsOut.radiance = envelope.radiance;
     paramsOut.spread = envelope.spread;
     paramsOut.opacity = envelope.opacity;
-    paramsOut.boost = 0;
+    paramsOut.boost = envelope.boost;
     paramsOut.turbulence = 0;
   }
   const params = paramsOut || envelope;
@@ -216,6 +258,8 @@ export class PlayerRetroJets {
     this._liveCount = 0;
     // Asymmetric spool state owned here so the release can decay across frames (B10).
     this.spool = 0;
+    // One-shot overpressure on brake engagement (see integrateRetroSpool).
+    this.bite = 0;
     this._disposed = false;
   }
 
@@ -271,6 +315,7 @@ export class PlayerRetroJets {
   reset() {
     this._liveCount = 0;
     this.spool = 0;
+    this.bite = 0;
     for (let i = 0; i < this._plumes.length; i++) {
       this._plumes[i].reset();
       this._forges[i].update(null, null, this._shape);
