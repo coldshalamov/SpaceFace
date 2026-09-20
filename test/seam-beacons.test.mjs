@@ -5,7 +5,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { beacons } from '../src/systems/beacons.js';
 
-function bootBeacons({ credits = 1000 } = {}) {
+function bootBeacons({ credits = 1000, helpers = {} } = {}) {
   const state = createGameState(47);
   state.mode = 'flight';
   state.playerId = 1;
@@ -20,7 +20,7 @@ function bootBeacons({ credits = 1000 } = {}) {
   const charges = [];
   bus.on('economy:chargeCredits', (p) => charges.push(p));
   const system = Object.create(beacons);
-  system.init({ state, bus, helpers: {} });
+  system.init({ state, bus, helpers });
   return { state, bus, system, charges };
 }
 
@@ -35,6 +35,70 @@ test('a claim beacon plants a record at the player and charges credits', () => {
     assert.equal(charges.length, 1);
     assert.equal(charges[0].amount, 250);
     assert.equal(charges[0].reason, 'claim_beacon');
+  } finally {
+    bus.clear();
+  }
+});
+
+test('deploying a beacon also spawns its world buoy through the entity contract', () => {
+  const spawned = [];
+  const { state, bus, system } = bootBeacons({
+    helpers: {
+      spawnEntity: (spec) => { spawned.push(spec); return { id: 777, type: spec.type }; },
+      removeEntity: () => {},
+    },
+  });
+  try {
+    bus.emit('beacon:deploy');
+    assert.equal(state.beacons.length, 1);
+    const rec = state.beacons[0];
+    assert.equal(rec.entityId, 777);
+    assert.equal(spawned.length, 1);
+    const spec = spawned[0];
+    assert.equal(spec.type, 'beacon');
+    assert.equal(spec.pos.x, rec.x);
+    assert.equal(spec.pos.z, rec.z);
+    assert.equal(spec.data.parentType, 'story_prop');
+    assert.equal(spec.data.scanLabel, 'Claim beacon');
+    assert.equal(spec.data.storyPropKind, 'claim_beacon');
+    assert.equal(spec.data.claimBeaconId, rec.id);
+    assert.equal(spec.data.tetherable, true);
+    assert.equal(spec.mass, 1e6);
+  } finally {
+    bus.clear();
+  }
+});
+
+test('an expired beacon despawns its world buoy with it', () => {
+  const removed = [];
+  const { state, bus, system } = bootBeacons({
+    helpers: {
+      spawnEntity: () => ({ id: 777, type: 'beacon' }),
+      removeEntity: (id) => removed.push(id),
+    },
+  });
+  try {
+    bus.emit('beacon:deploy');
+    const rec = state.beacons[0];
+    assert.equal(rec.entityId, 777);
+    state.simTime = rec.expireAt + 0.1;
+    system.update(0.016, state);
+    assert.equal(state.beacons.length, 0);
+    assert.deepEqual(removed, [777]);
+  } finally {
+    bus.clear();
+  }
+});
+
+test('a harness without spawn helpers still plants a working record-only beacon', () => {
+  const { state, bus, system } = bootBeacons();
+  try {
+    bus.emit('beacon:deploy');
+    const rec = state.beacons[0];
+    assert.equal(rec.entityId, null);
+    state.simTime = rec.expireAt + 0.1;
+    system.update(0.016, state);
+    assert.equal(state.beacons.length, 0);
   } finally {
     bus.clear();
   }

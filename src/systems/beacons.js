@@ -4,16 +4,20 @@
 //
 // A beacon is a cheap, temporary deployable dropped at the player's position (reuses the CLAIM key —
 // U — when there's no claimable body in range). It:
+//   • EXISTS in the world: deploy also spawns a transient story-prop buoy entity (type 'beacon') —
+//     the same route-nav buoy the renderer builds for lane/story beacons — so the skirmish has a
+//     physical focal point the player can see, tether, and scan ("Claim beacon"),
 //   • marks the spot (radar marker) + tags the nearest ore seam it sits on ("mark a rich node"),
 //   • lures nearby hostile ships that AREN'T already dogfighting the player: their flight intent is
 //     steered toward the beacon so they drift in to investigate, seeding skirmishes; once they
 //     arrive they're released back to their own AI (so they mill / fight whatever's there).
 //
-// Owns state.beacons only (§0.6). A beacon is a lightweight state RECORD, not a spawned entity, so it
-// can't perturb the renderer/physics/entity-index. The lure writes to hostiles' data.intent AFTER the
-// AI system and BEFORE flight in UPDATE_ORDER, so it composes with either AI backend without touching
-// AI internals. It is a strict no-op while no beacon is deployed, so the deterministic 47a sim (which
-// never deploys one) is unaffected. Beacons are transient — not persisted across save/load.
+// Owns state.beacons plus the transient buoy entities it spawns (§0.6). The state RECORD stays the
+// deterministic sim brain and the radar's data source; the spawned entity is presentation + physical
+// presence only (no interaction profile targets 'beacon', mass 1e6 keeps it anchored). Deploy is
+// reached only through the player's deploy verb, so the deterministic 47a sim (which never deploys
+// one) is unaffected. The buoy is transient — not flags.persistent, so saves never serialize it and
+// the load path's transient-entity clear drops it; state.beacons resets on save:loaded to match.
 
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 
@@ -73,7 +77,9 @@ export const beacons = {
       expireAt,
       node: node ? node.label : null,
       alive: true,
+      entityId: null,
     };
+    rec.entityId = this._spawnBuoy(state, rec);
     state.beacons.push(rec);
     this.bus.emit('beacon:deployed', { id: rec.id, pos });
     this.bus.emit('toast', {
@@ -102,12 +108,46 @@ export const beacons = {
       if (!b.alive) { list.splice(i, 1); continue; }
       if (now >= b.expireAt) {
         b.alive = false;
+        this._despawnBuoy(b);
         list.splice(i, 1);
         this.bus.emit('toast', { text: 'Claim beacon expired', kind: 'info', ttl: 2 });
         continue;
       }
       this._lure(state, b, player);
     }
+  },
+
+  // The world presence: a transient story-prop buoy (the renderer's route-nav visual — mast, fins,
+  // blinking amber lens), spawned through the standard entity contract so tether/beam/scanner all
+  // just work on it. Absent helpers (focused harnesses) degrade to the record-only beacon.
+  _spawnBuoy(state, rec) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function') return null;
+    const ent = spawnEntity({
+      type: 'beacon',
+      pos: { x: rec.x, z: rec.z },
+      vel: { x: 0, z: 0 },
+      radius: 5,
+      mass: 1e6,
+      hull: 1,
+      hullMax: 1,
+      data: {
+        parentType: 'story_prop',
+        scanLabel: 'Claim beacon',
+        storyPropKind: 'claim_beacon',
+        claimBeaconId: rec.id,
+        tetherable: true,
+      },
+    });
+    return (ent && ent.id != null) ? ent.id : null;
+  },
+
+  _despawnBuoy(rec) {
+    const id = rec && rec.entityId;
+    if (id == null) return;
+    const removeEntity = this.helpers && this.helpers.removeEntity;
+    if (typeof removeEntity === 'function') removeEntity(id);
+    rec.entityId = null;
   },
 
   // Steer nearby hostiles toward the beacon (intent override), leaving player-engagers alone.
