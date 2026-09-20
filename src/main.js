@@ -26,7 +26,7 @@ import {
   GameStartReadinessError,
   runNewGameStartTransition,
 } from './core/newGameStartTransition.js';
-import { applyAccessibility } from './ui/accessibility.js';
+import { applyAccessibility, maybePromptMotionChoice } from './ui/accessibility.js';
 import { createLoadingPresenter } from './ui/loadingPresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import {
@@ -203,6 +203,13 @@ async function boot() {
     applyAccessibility(state.settings);
     bus.on('settings:changed', () => applyAccessibility(state.settings));
     bus.on('save:loaded', () => applyAccessibility(state.settings));
+    // INF-007: first-boot Full/Reduce choice — once, only when the OS requests reduced motion.
+    // Explicit prior choices and the migration are preserved; settled settings never reopen.
+    try {
+      const osReduced = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        && !!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (osReduced) maybePromptMotionChoice(state.settings, typeof document !== 'undefined' ? document.documentElement : null, true);
+    } catch (_) {}
 
     // If the save system implements newGame(), let it own world setup; else use the skeleton bootstrap.
     // Boot to the MAIN MENU. uiRoot shows it automatically because state.mode === 'menu' (the

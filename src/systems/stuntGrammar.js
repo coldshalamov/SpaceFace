@@ -58,7 +58,7 @@ export const stuntGrammar={
     bindStuntEvidence(this.state);ensure(this.state);this.detector=createStuntDetector({playerId:this.state.playerId});this.flight=new StuntFlightObserver();
     for(const entity of this.state.entities?.values?.()??[]) this._admit(entity);
     for(const event of ['combat:collisionConsequence','combat:projectileConsequence','tether:releaseRated','entity:killed','combat:kill','entity:spawned',
-      'run:started','game:started','game:newGame','save:restoring','save:loaded','run:waveCleared','player:death','player:died','combat:damage','physics:impact',
+      'run:started','game:started','game:newGame','save:restoring','save:loaded','run:waveCleared','run:wavePlanned','player:death','player:died','combat:damage','physics:impact',
       'pickup:collected']) {
       const off=this.bus?.on(event,p=>this._event(event,p??{}));if(typeof off==='function')this._unsubs.push(off);
     }

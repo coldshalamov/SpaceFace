@@ -409,3 +409,116 @@ export function semanticShape(state) {
   const def = SEMANTIC_PALETTE[state];
   return def ? def.shape : 'square';
 }
+
+// ---------------------------------------------------------------------------------------------------
+// INF-007 — first-boot motion choice (asked once, only when the OS requests reduced motion).
+// Contract: fresh/migrated/explicitly-reduced/explicitly-full profiles each take the correct path;
+// the prompt appears no more than once; explicit prior choices and the existing migration are
+// preserved; settled settings are never reopened.
+// ---------------------------------------------------------------------------------------------------
+
+/** Short visual + brief copy for the first-boot Full/Reduce choice. Both options named plainly. */
+export const MOTION_CHOICE_COPY = Object.freeze({
+  title: 'Motion effects',
+  body: 'Your system asks for reduced motion. Full keeps camera shake, zoom punch and hit-stop. Reduce calms them. You can change this later in Settings > Access.',
+  fullLabel: 'Full',
+  reduceLabel: 'Reduce',
+});
+
+/** True when the settings tree already carries an explicit persisted motion choice. */
+export function hasExplicitMotionChoice(settings) {
+  const explicit = pick(settings, 'accessibility.motionPreference', null);
+  if (MOTION_PREFERENCES.includes(explicit)) return true;
+  // Migration seam: an explicitly persisted boolean is also a settled choice.
+  const video = settings && settings.video && typeof settings.video === 'object' ? settings.video : null;
+  return !!(video && Object.prototype.hasOwnProperty.call(video, 'motionReduce'));
+}
+
+/** True when the one-time motion prompt has already been answered or shown. */
+export function motionPromptSettled(settings) {
+  const a = settings && settings.accessibility && typeof settings.accessibility === 'object'
+    ? settings.accessibility : null;
+  return !!(a && a.motionPrompted === true);
+}
+
+/**
+ * Pure gate: should the first-boot Full/Reduce choice be offered?
+ * Only when the OS requests reduced motion, no explicit choice exists yet, and the prompt
+ * has not already been settled. Never reopens settled settings.
+ */
+export function shouldPromptMotionChoice(settings, osReduced) {
+  if (!osReduced) return false;
+  if (!settings || typeof settings !== 'object') return false;
+  if (motionPromptSettled(settings)) return false;
+  if (hasExplicitMotionChoice(settings)) return false;
+  return true;
+}
+
+/**
+ * Persist an explicit first-boot motion choice exactly once. `choice` is 'reduce' or 'full'.
+ * Sets accessibility.motionPreference + motionPrompted and syncs the existing
+ * video.motionReduce runtime contract. Returns the persisted choice.
+ */
+export function recordMotionChoice(settings, choice) {
+  const normalized = choice === 'reduce' ? 'reduce' : 'full';
+  const s = settings && typeof settings === 'object' ? settings : {};
+  if (!s.accessibility || typeof s.accessibility !== 'object') s.accessibility = {};
+  s.accessibility.motionPreference = normalized;
+  s.accessibility.motionPrompted = true;
+  if (!s.video || typeof s.video !== 'object') s.video = {};
+  s.video.motionReduce = normalized === 'reduce';
+  // Apply immediately so the live runtime booleans agree without waiting for the next
+  // settings:changed cycle. applyMotionPreference is idempotent and headless-safe.
+  try { applyMotionPreference(s, typeof document !== 'undefined' ? document.documentElement : null); } catch (_) {}
+  return normalized;
+}
+
+/**
+ * Headless-safe one-time prompt driver for the default route. When the gate passes, builds a
+ * minimal DOM dialog with the Full/Reduce copy, records the choice once, then removes itself.
+ * Returns true when a prompt was shown, false otherwise. Safe to call on every boot.
+ */
+export function maybePromptMotionChoice(settings, root, osReduced) {
+  if (!shouldPromptMotionChoice(settings, osReduced)) return false;
+  if (typeof document === 'undefined') return false;
+  const host = root || document.documentElement || document.body;
+  if (!host || typeof document.createElement !== 'function') return false;
+  if (host.querySelector && host.querySelector('[data-sf-motion-choice]')) return false;
+  const dialog = document.createElement('div');
+  dialog.setAttribute('data-sf-motion-choice', 'true');
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-label', MOTION_CHOICE_COPY.title);
+  dialog.className = 'sf-motion-choice';
+  const title = document.createElement('p');
+  title.className = 'sf-motion-choice__title';
+  title.textContent = MOTION_CHOICE_COPY.title;
+  const body = document.createElement('p');
+  body.className = 'sf-motion-choice__body';
+  body.textContent = MOTION_CHOICE_COPY.body;
+  const row = document.createElement('div');
+  row.className = 'sf-motion-choice__row';
+  const fullBtn = document.createElement('button');
+  fullBtn.type = 'button';
+  fullBtn.textContent = MOTION_CHOICE_COPY.fullLabel;
+  const reduceBtn = document.createElement('button');
+  reduceBtn.type = 'button';
+  reduceBtn.textContent = MOTION_CHOICE_COPY.reduceLabel;
+  const choose = (choice) => {
+    recordMotionChoice(settings, choice);
+    if (dialog.parentNode) dialog.parentNode.removeChild(dialog);
+  };
+  if (typeof fullBtn.addEventListener === 'function') {
+    fullBtn.addEventListener('click', () => choose('full'));
+    reduceBtn.addEventListener('click', () => choose('reduce'));
+  } else {
+    fullBtn.onclick = () => choose('full');
+    reduceBtn.onclick = () => choose('reduce');
+  }
+  row.appendChild(fullBtn);
+  row.appendChild(reduceBtn);
+  dialog.appendChild(title);
+  dialog.appendChild(body);
+  dialog.appendChild(row);
+  host.appendChild(dialog);
+  return true;
+}

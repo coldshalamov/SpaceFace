@@ -44,6 +44,43 @@ const MARK_PREDICTION_S = 1 / 120;
 // to outlive the next attempt.
 const MASSLINE_DENIAL_PILL_S = 1.2;
 
+// INF-013 — compact relative-mass interpretation for the acquisition readout: which body is
+// going to move, read from the same effective masses the live physics path couples
+// (entity.physicsBody.mass ?? entity.mass, the masses stepMassline receives as owner/target).
+// A 3x ratio names the likely outcome; anything closer is comparable. Labels say LIKELY —
+// a heavy object is never promised immovable.
+export const MASS_ANCHOR_RATIO = 3;
+export function resolveMassInterpretation(playerMass, targetMass) {
+  const p = Number(playerMass);
+  const t = Number(targetMass);
+  if (!(p > 0) || !(t > 0) || !Number.isFinite(p) || !Number.isFinite(t)) return null;
+  if (p >= t * MASS_ANCHOR_RATIO) {
+    return { key: 'likely-payload', short: 'PAYLOAD', title: 'Likely payload — it should move more than you' };
+  }
+  if (t >= p * MASS_ANCHOR_RATIO) {
+    return { key: 'likely-anchor', short: 'ANCHOR', title: 'Likely anchor — you should move more than it; nothing is immovable' };
+  }
+  return { key: 'comparable', short: 'EVEN', title: 'Comparable mass — both bodies move' };
+}
+
+// INF-014 — line-load warning with hysteresis. Strain is the solver-owned break ratio the
+// telemetry already mirrors (tether.strain); trend is strain per second. The warning turns on
+// at high load (or moderate load climbing fast) and stays until the line relaxes well below
+// the trip band, so a tightening turn reads distinctly from steady towing without chattering
+// around the threshold. Presentation only — the solver is untouched.
+export const LINE_LOAD_WARN_ON = 0.75;
+export const LINE_LOAD_WARN_RISING_ON = 0.6;
+export const LINE_LOAD_RISE_RATE_ON = 0.5;
+export const LINE_LOAD_WARN_OFF = 0.5;
+export function resolveLineLoadWarning(strain, trendPerS, warned) {
+  const s = Number(strain);
+  if (!(s >= 0) || !Number.isFinite(s)) return false;
+  if (warned) return s > LINE_LOAD_WARN_OFF;
+  if (s >= LINE_LOAD_WARN_ON) return true;
+  const trend = Number(trendPerS);
+  return s >= LINE_LOAD_WARN_RISING_ON && Number.isFinite(trend) && trend >= LINE_LOAD_RISE_RATE_ON;
+}
+
 export const MASSLINE_HUD_CSS = `
 #sf-ml2 { position:absolute; inset:0; pointer-events:none; z-index:6; }
 #sf-ml2 .ml2-mark { position:absolute; left:0; top:0; will-change:transform;
@@ -119,6 +156,9 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-pill.ml2-on { box-shadow:var(--dp-plate-bevel, none), 0 0 8px var(--dp-lamp-bloom, rgba(95,215,255,.3)); color:var(--dp-lamp-hot, #e0f6ff); }
 #sf-ml2 .ml2-pill.ml2-cloak .ml2-fill i { background:#9f8bff; }
 #sf-ml2 .ml2-pill.ml2-cloak.ml2-on { box-shadow:var(--dp-plate-bevel, none), 0 0 8px rgba(159,139,255,.3); color:#efeaff; }
+#sf-ml2 .ml2-pill.ml2-strain .ml2-fill i { background:var(--dp-lamp, #f2b950); }
+#sf-ml2 .ml2-pill.ml2-strain.ml2-warn { color:#ffd08a; border:1px solid #8a6b3a; }
+#sf-ml2 .ml2-pill.ml2-strain.ml2-warn .ml2-fill i { background:#ff9d5c; }
 /* Cadence instrument slot: mid-LEFT column — away from the central playfield, clear of the comms
    strip (top-left), the vitals cluster (bottom-left), the FOCUS/CLOAK pills (bottom-centre), the
    objective/band HUD (top-right) and the radar dock (bottom-right). The side columns are the
@@ -333,6 +373,22 @@ function writeMasslineHudFields(fields, state, player) {
   fields[index++] = selected.targetType;
   fields[index++] = receipt.id;
   fields[index++] = !!(playerState.tether && playerState.tether.active);
+  // INF-013: effective masses + interpretation key — the caption repaints after cargo/fitting
+  // changes because the signature rolls with them.
+  fields[index++] = Math.round(finite(player && player.physicsBody && player.physicsBody.mass)
+    || finite(player && player.mass));
+  fields[index++] = selected.targetId != null && state.entities && typeof state.entities.get === 'function'
+    ? Math.round(finite(state.entities.get(selected.targetId)?.physicsBody?.mass)
+      || finite(state.entities.get(selected.targetId)?.mass))
+    : 0;
+  // INF-014: solver-owned strain (quantized so the bar rolls with it).
+  fields[index++] = (() => {
+    if (!(playerState.tether && playerState.tether.active)) return 0;
+    const raw = Number.isFinite(playerState.tether.strain)
+      ? playerState.tether.strain
+      : finite(playerState.masslineTelemetry && playerState.masslineTelemetry.strain);
+    return Math.round(finite(raw) * 50) / 50;
+  })();
   fields[index++] = bridle.phase
     ? Math.max(0, Math.ceil(Number(bridle.expiresAt) - Number(state.simTime)))
     : '';
@@ -367,6 +423,7 @@ export const masslineHud = {
     this.helpers = ctx.helpers;
     this._dom = null;
     this._cadenceReadout = null;
+    this._lineLoad = null;
     // M3: every denied latch gets words — the bus event is the one seam all six emit sites share.
     // The denial lands on a state field so it joins the HUD signature and redraws on arrival/expiry.
     if (ctx.bus && typeof ctx.bus.on === 'function') {
@@ -417,7 +474,7 @@ export const masslineHud = {
     this._updateThrowMark(dom, ml2.throw, state, w2s);
     this._updateSelfMark(dom, ml2.throw, state, w2s);
     this._updateCloakRing(dom, ml2.cloak, player, w2s);
-    this._updateMeters(dom, ml2);
+    this._updateMeters(dom, ml2, state);
     this._updateCadenceReadout(state);
   },
 
@@ -470,10 +527,15 @@ export const masslineHud = {
     const targetMass = Math.round(finite(target.physicsBody && target.physicsBody.mass)
       || finite(target.mass));
     const massText = targetMass > 0 ? `${targetMass} t` : '— t';
+    // INF-013: compact relative-mass read from the same effective masses the solver couples.
+    const playerMass = Math.round(finite(player.physicsBody && player.physicsBody.mass)
+      || finite(player.mass));
+    const massRead = resolveMassInterpretation(playerMass, targetMass);
+    const massTag = massRead ? ` · ${massRead.short}` : '';
     const status = previewStatusCopy(selected.status, selected.reason);
     const intent = String(selected.intentLabel || selected.context || 'PICK').toUpperCase();
     const label = String(selected.targetLabel || selected.targetType || 'Target');
-    const text = `${label} · ${intent} · ${massText} · ${status}`;
+    const text = `${label} · ${intent} · ${massText}${massTag} · ${status}`;
 
     // Keep the caption beside the mark and inside the frame. The estimate only decides which SIDE
     // of the mark it sits on; a wrong guess shifts the caption, it never hides information.
@@ -504,7 +566,7 @@ export const masslineHud = {
     setStyle(dom.previewSvg, 'display', 'none');
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)${labelShift}`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
-    setAttr(dom.previewEl, 'aria-label', `Massline ${intent} ${label}, ${targetMass > 0 ? `${targetMass} tonnes` : 'unknown mass'}, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
+    setAttr(dom.previewEl, 'aria-label', `Massline ${intent} ${label}, ${targetMass > 0 ? `${targetMass} tonnes` : 'unknown mass'}${massRead ? `, ${massRead.title.toLowerCase()}` : ''}, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
     setAttr(dom.previewEl, 'data-receipt-id', String(receipt.id || ''));
     setAttr(dom.previewEl, 'data-target-id', String(selected.targetId));
     setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
@@ -775,7 +837,7 @@ export const masslineHud = {
     setAttr(dom.ringCircle, 'r', String(r));
   },
 
-  _updateMeters(dom, ml2) {
+  _updateMeters(dom, ml2, state) {
     const bt = ml2.bulletTime;
     const showBt = massline2Flag('bulletTime') && bt && (bt.active || bt.energy < 0.999);
     setStyle(dom.btPill, 'display', showBt ? 'flex' : 'none');
@@ -789,6 +851,31 @@ export const masslineHud = {
     if (showCk) {
       setStyle(dom.ckFill, 'transform', `scaleX(${clamp01(ck.energy)})`);
       setClass(dom.ckPill, 'ml2-on', !!ck.active);
+    }
+    // INF-014: one bounded line-load cue over the solver-owned strain telemetry. The bar shows
+    // current stress; the warn class fires when load is high or climbing fast, with hysteresis
+    // so it does not chatter. Read-only: the solver is never written.
+    const tether = state && state.player && state.player.tether;
+    const telemetry = state && state.player && state.player.masslineTelemetry;
+    const active = !!(tether && tether.active && tether.targetId != null);
+    const strain = active
+      ? (Number.isFinite(tether.strain) ? tether.strain : finite(telemetry && telemetry.strain))
+      : 0;
+    const now = finite(state && state.simTime);
+    const prev = this._lineLoad || null;
+    const trend = prev && now > prev.t ? (strain - prev.strain) / Math.max(1e-3, now - prev.t) : 0;
+    const warned = resolveLineLoadWarning(strain, trend, !!(prev && prev.warned));
+    this._lineLoad = { strain, t: now, warned };
+    const showStrain = active && strain > 0.02;
+    setStyle(dom.strainPill, 'display', showStrain ? 'flex' : 'none');
+    if (showStrain) {
+      setStyle(dom.strainFill, 'transform', `scaleX(${clamp01(strain)})`);
+      setClass(dom.strainPill, 'ml2-warn', warned);
+      setAttr(dom.strainPill, 'aria-label', warned
+        ? `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn before it breaks`
+        : `Massline line load ${Math.round(clamp01(strain) * 100)} percent`);
+    } else if (prev && prev.warned) {
+      setClass(dom.strainPill, 'ml2-warn', false);
     }
   },
 
@@ -814,6 +901,8 @@ export const masslineHud = {
     this._hideAcquisitionPreview(dom);
     setStyle(dom.btPill, 'display', 'none');
     setStyle(dom.ckPill, 'display', 'none');
+    if (dom.strainPill) setStyle(dom.strainPill, 'display', 'none');
+    this._lineLoad = null;
     // The panel gates itself on tether.active, not on flight/docked — hide it explicitly here so
     // it never outlives the flight HUD (docked, flag off, dead player).
     if (this._cadenceReadout) this._cadenceReadout.element.hidden = true;
@@ -933,6 +1022,7 @@ export const masslineHud = {
     };
     const bt = makePill('FOCUS', 'ml2-bt');
     const ck = makePill('CLOAK', 'ml2-cloak');
+    const strain = makePill('LINE', 'ml2-strain');
     root.appendChild(meters);
 
     // Cadence instrument slot (mid-left column). The component owns its subtree; this system owns
@@ -960,6 +1050,7 @@ export const masslineHud = {
     this._dom = {
       root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine, throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
       btPill: bt.pill, btFill: bt.bar, ckPill: ck.pill, ckFill: ck.bar,
+      strainPill: strain.pill, strainFill: strain.bar,
     };
     // A recreated DOM tree must receive its first complete paint even when the state object was
     // reused across a route/new-run boundary and its previous signature happens to match.

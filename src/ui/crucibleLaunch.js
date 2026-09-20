@@ -154,6 +154,24 @@ export function lastCrucibleRuleset() {
   return lastSetup ? normalizeCrucibleRuleset(lastSetup.ruleset) : CRUCIBLE_DEFAULT_RULESET;
 }
 
+/**
+ * INF-010 — one explicit retry snapshot: the selected seed, kit (hull + loadout), arena and
+ * ruleset as the run BEGAN, deep-copied so later mutation cannot silently change the challenge.
+ * Carries no campaign possessions and no asset handles: the retry replays through the ordinary
+ * New Game route, which reuses resident assets and performs a clean run reset. Null when no run
+ * has launched yet (the results screen then returns to setup instead).
+ */
+export function buildCrucibleRetryRequest(setup = lastCrucibleSetup(), ruleset = lastCrucibleRuleset()) {
+  if (!setup) return null;
+  const resolvedRuleset = normalizeCrucibleRuleset(ruleset ?? setup.ruleset);
+  const retrySetup = {
+    ...setup,
+    loadout: Array.isArray(setup.loadout) ? setup.loadout.map((entry) => ({ ...entry })) : [],
+    ruleset: resolvedRuleset,
+  };
+  return { setup: retrySetup, ruleset: resolvedRuleset };
+}
+
 /** Test/lifecycle seam: forget the remembered setup. */
 export function clearCrucibleSetup() {
   lastSetup = null;

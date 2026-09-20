@@ -97,7 +97,7 @@ export const ACTIVE_ATTACKER_LOOKAHEAD_SCALE = 0.6;
 // the composition bias slews between anchors. Hold the current anchor briefly unless a challenger
 // is meaningfully closer or a new active attacker appears.
 export const COMPOSITION_THREAT_STICK_S = 0.28;
-export const COMPOSITION_THREAT_STICK_CLOSER = 0.85; // challenger must be < 85% of sticky distance
+export const COMPOSITION_THREAT_STICK_CLOSER = 0.85; // INF-006 hysteresis: challenger must be < 85% of sticky distance
 // B3b group fit: with one or more hostiles attacking, single-threat composition leaves every
 // attacker but the composed pair off-frame — and even a lone attacker holding past ~330 zoom's
 // depth reach stays invisible. The group pass fits the player plus every active attacker inside
@@ -826,7 +826,7 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     if (sticky.remainS > 0) sticky.remainS = Math.max(0, sticky.remainS - dtStick);
     const held = sticky.id != null ? state.entities.get(sticky.id) : null;
     const heldAlive = !!(held && held.alive !== false && held.hull > 0 && held.pos
-      && isComposableThreatType(held) && isHostileToPlayer(held, player.team, state));
+      && isComposableThreatType(held) && isHostileToPlayer(held, player.team, state) && (((held.pos.x - player.pos.x) ** 2 + (held.pos.z - player.pos.z) ** 2) <= THREAT_COMPOSE_RANGE * THREAT_COMPOSE_RANGE || combatCanShootPlayer(state, held, player)));
     if (heldAlive) {
       const heldD2 = (held.pos.x - player.pos.x) ** 2 + (held.pos.z - player.pos.z) ** 2;
       const challenger = activeAttacker || nearestThreat;

@@ -15,6 +15,7 @@ import { WEAPONS } from '../../data/weapons.js';
 import {
   CRUCIBLE_ARENA_ID,
   CRUCIBLE_DEFAULT_RULESET,
+  buildCrucibleRetryRequest,
   crucibleSetupFor,
   crucibleStarterIdForSetup,
   lastCrucibleRuleset,
@@ -1888,18 +1889,21 @@ export const crucibleResultsScreen = {
 
     const again = addWord(word('Run it again — same seed', 'k-word--emph k-word--primary'));
     again.addEventListener('click', () => {
-      const setup = lastCrucibleSetup();
-      if (!setup) {
+      // INF-010: one explicit retry action — same seed and kit as the run began, deep-copied
+      // so the challenge cannot silently change; replays through the ordinary New Game route.
+      const retry = buildCrucibleRetryRequest();
+      if (!retry) {
         ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
         return;
       }
+      const setup = retry.setup;
       // Restart is a real New Game: runSession.newGame resets the envelope to inactive, so the
       // begin below is accepted exactly as it was the first time.
       // Replay the run as it BEGAN, ruleset included — a swarm death must not restart as a gauntlet.
       if (setup.dailyDateKey || setup.weeklyMutatorId) {
         queueSurvivalChallenge({
           seed: setup.seed,
-          ruleset: lastCrucibleRuleset(),
+          ruleset: retry.ruleset,
           mutators: setup.weeklyMutatorId ? [setup.weeklyMutatorId] : [],
           dailyDateKey: setup.dailyDateKey,
           weeklyMutatorId: setup.weeklyMutatorId,
@@ -1908,7 +1912,7 @@ export const crucibleResultsScreen = {
       } else if (setup.ghostHash != null) {
         queueGhostPlayback(setup.ghostHash);
       }
-      requestCrucibleRun(ctx.bus, setup, lastCrucibleRuleset());
+      requestCrucibleRun(ctx.bus, setup, retry.ruleset);
     });
 
     const newSeed = addWord(word('New run', 'k-word--emph'));
