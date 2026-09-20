@@ -1,0 +1,2657 @@
+{
+  "schema": "spaceface.funMeasure.v1",
+  "timestamp": "2026-09-18T12:39:25.044Z",
+  "bench": "verbs",
+  "seed": 4242,
+  "bars": [
+    {
+      "id": "B1",
+      "key": "feel.earned_speed_kept",
+      "title": "Earned speed is kept",
+      "statement": "After leaving the cap at 2× cruise by ANY means (rope release, shove, well fling, bounce), speed 10 s later is ≥ 99 % of the exit speed with hands off, and ≥ 99 % with forward held. Only the brake spends it.",
+      "target": "≥ 99 % of exit speed 10 s later, hands off and forward held",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "release speed kept 5 s after letting go, hands off (worst of 1 run(s))",
+          "value": 1.000253875976908,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "speed kept 10 s after a 2x cruise exit, hands off",
+          "value": 0.527356885191068,
+          "unit": "fraction",
+          "met": false,
+          "note": "exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s"
+        },
+        {
+          "label": "speed kept 10 s after a 2x cruise exit, forward held",
+          "value": 0.48583292361510905,
+          "unit": "fraction",
+          "met": false,
+          "note": "exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s"
+        },
+        {
+          "label": "straight assisted cruise vs governed cap, Hitch",
+          "value": 0.9999996087489984,
+          "unit": "fraction",
+          "met": true,
+          "note": "governed 195 WU/s, measured 194.9999237060547 WU/s"
+        },
+        {
+          "label": "terminal weave speed / cruise, Hitch 40 s",
+          "value": 1.0000011143104788,
+          "unit": "fraction",
+          "met": true,
+          "note": "marks {\"10\":195.00005839395445,\"20\":195.0000147731569,\"30\":195.00025237533006,\"40\":195.00021729054336}; terminal 195.00021729054336 WU/s"
+        },
+        {
+          "label": "held W+A speed / cruise, Hitch",
+          "value": 0.9935211460860339,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "held W+D speed / cruise, Hitch",
+          "value": 0.9935211460860339,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "pure lateral speed / cruise, Hitch",
+          "value": 1,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "held boost speed / authored boost cap, Hitch",
+          "value": 0.9085740814335195,
+          "unit": "fraction",
+          "met": true,
+          "note": "boost cap 302.25 WU/s"
+        },
+        {
+          "label": "Drift remains ungoverned, Hitch",
+          "value": 10.82245092147436,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "Newtonian remains ungoverned, Hitch",
+          "value": 10.82245092147436,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "oblique 2x physics-earned kept after 1 s held thrust, Hitch",
+          "value": 1,
+          "unit": "fraction",
+          "met": true,
+          "note": "exit 390 WU/s"
+        },
+        {
+          "label": "authored travel ceilings unchanged",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        }
+      ],
+      "met": false,
+      "notes": "only the 5 s release-retention clause (≥ 95 %) was measured; that sentence belongs to the rope-release scenario, and the value row is kept for the receipt. B1's own clauses — ≥ 99 % of exit speed 10 s later, hands off and with forward held — are kernel-level (test/flightV3.spec.mjs §12c) and are not benched headlessly, so this bar cannot read met from this bench. exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s governed 195 WU/s, measured 194.9999237060547 WU/s marks {\"10\":195.00005839395445,\"20\":195.0000147731569,\"30\":195.00025237533006,\"40\":195.00021729054336}; terminal 195.00021729054336 WU/s boost cap 302.25 WU/s exit 390 WU/s",
+      "fedBy": [
+        "verbs/feel.rope_swing_release/s4242",
+        "verbs/feel.earned_speed_kept/s4242",
+        "verbs/feel.governor_integrity/s4242"
+      ]
+    },
+    {
+      "id": "B2",
+      "key": "feel.reversal_course",
+      "title": "Nimble regime",
+      "statement": "From rest to cruise ≤ 1.5 s. Full 180° velocity reversal ≤ 3.0 s. Turn radius at cruise ≤ 1 screen depth.",
+      "target": "rest→cruise ≤ 1.5 s; 180° velocity reversal ≤ 3.0 s; turn radius at cruise ≤ 1 screen depth",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "rest to cruise, Hitch (starter)",
+          "value": 1.05,
+          "unit": "s",
+          "met": true
+        },
+        {
+          "label": "full 180 deg velocity reversal, Hitch (starter)",
+          "value": 1.6833333333333105,
+          "unit": "s",
+          "met": true,
+          "note": "flip-and-burn from steady cruise on the real path; velocity heading rotated >= 0.88 pi. Motion Lab M3 reports 4.3 for the same hull (its clock cannot start below 2.2 WU/s, so a ship that kills its speed during the yaw reads null there)."
+        },
+        {
+          "label": "turn radius at cruise, Hitch (starter)",
+          "value": 1.0602371448832808,
+          "unit": "screen depths",
+          "met": false,
+          "note": "r = 137.2435563706889 WU at cruise 190.32212829589844 WU/s; screen depth 129.4460932943429 WU read from the live chase camera"
+        },
+        {
+          "label": "rest to cruise, Wasp",
+          "value": 0.7333333333333345,
+          "unit": "s",
+          "met": true
+        },
+        {
+          "label": "full 180 deg velocity reversal, Wasp",
+          "value": 1.233333333333336,
+          "unit": "s",
+          "met": true,
+          "note": "flip-and-burn from steady cruise on the real path; velocity heading rotated >= 0.88 pi. Motion Lab M3 reports 3.9833333333333334 for the same hull (its clock cannot start below 2.2 WU/s, so a ship that kills its speed during the yaw reads null there)."
+        },
+        {
+          "label": "turn radius at cruise, Wasp",
+          "value": 0.8388032655637764,
+          "unit": "screen depths",
+          "met": true,
+          "note": "r = 108.21896971784038 WU at cruise 202.9744873046875 WU/s; screen depth 129.01591369592995 WU read from the live chase camera"
+        }
+      ],
+      "met": false,
+      "notes": "fed only by flight-reversal / flight-accel-brake — not in this evaluation input flip-and-burn from steady cruise on the real path; velocity heading rotated >= 0.88 pi. Motion Lab M3 reports 4.3 for the same hull (its clock cannot start below 2.2 WU/s, so a ship that kills its speed during the yaw reads null there). r = 137.2435563706889 WU at cruise 190.32212829589844 WU/s; screen depth 129.4460932943429 WU read from the live chase camera flip-and-burn from steady cruise on the real path; velocity heading rotated >= 0.88 pi. Motion Lab M3 reports 3.9833333333333334 for the same hull (its clock cannot start below 2.2 WU/s, so a ship that kills its speed during the yaw reads null there). r = 108.21896971784038 WU at cruise 202.9744873046875 WU/s; screen depth 129.01591369592995 WU read from the live chase camera",
+      "fedBy": [
+        "verbs/feel.reversal_course/s4242"
+      ]
+    },
+    {
+      "id": "B3",
+      "key": "feel.screen_crossing",
+      "title": "The fight stays on screen",
+      "statement": "At cruise the hull needs ≥ 1.2 s to cross the visible depth. Above the cap the camera opens so that a 2× cruise exit still shows ≥ 2 s of travel.",
+      "target": "≥ 1.2 s to cross the visible depth at cruise",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "seconds to cross the visible depth at cruise, Hitch (starter)",
+          "value": 0.680142106718615,
+          "unit": "s",
+          "met": false,
+          "note": "screen depth 129.4460932943429 WU read from the live chase camera at cruise 190.32212829589844 WU/s; both camera stages key to governed combat speed 195"
+        },
+        {
+          "label": "visible depth at 2x cruise, as a multiple of the at-cruise depth, Hitch (starter)",
+          "value": 1.7503832083852116,
+          "unit": "x at-cruise depth",
+          "met": true,
+          "note": "reached 380.10934002551966 WU/s by a physics impulse (target 2x cruise = 380.6442565917969); depth 226.5802680934833 WU vs 129.4460932943429 WU at cruise; both camera stages key to governed combat speed 195"
+        },
+        {
+          "label": "visible depth at 3x cruise, as a multiple of the at-cruise depth, Hitch (starter)",
+          "value": 2.6078578495222375,
+          "unit": "x at-cruise depth",
+          "met": true,
+          "note": "reached 570.4155883789062 WU/s by a physics impulse (target 3x cruise = 570.9663848876953); depth 337.57701048764 WU; both camera stages key to governed combat speed 195"
+        },
+        {
+          "label": "visible depth grows monotonically from cruise to 3x cruise, Hitch (starter)",
+          "value": 1,
+          "unit": "bool",
+          "met": true,
+          "note": "61 samples of the live camera depth between 190.32212829589844 and 570.4155883789062 WU/s; largest backward step 0 WU"
+        },
+        {
+          "label": "smallest share of frame width the starter hull ever falls to, Hitch (starter)",
+          "value": 4.665602073212467,
+          "unit": "% of frame width",
+          "met": true,
+          "note": "hull 28 WU (2 x collisionRadius) against frame width = visible depth x 1.7777777777777777 (the camera's own default aspect); worst case at 570.4155883789062 WU/s"
+        }
+      ],
+      "met": false,
+      "notes": "superseded by the real-path feel.screen_crossing run; the stroke-derived estimate is not applied. screen depth 129.4460932943429 WU read from the live chase camera at cruise 190.32212829589844 WU/s; both camera stages key to governed combat speed 195 reached 380.10934002551966 WU/s by a physics impulse (target 2x cruise = 380.6442565917969); depth 226.5802680934833 WU vs 129.4460932943429 WU at cruise; both camera stages key to governed combat speed 195 reached 570.4155883789062 WU/s by a physics impulse (target 3x cruise = 570.9663848876953); depth 337.57701048764 WU; both camera stages key to governed combat speed 195 61 samples of the live camera depth between 190.32212829589844 and 570.4155883789062 WU/s; largest backward step 0 WU hull 28 WU (2 x collisionRadius) against frame width = visible depth x 1.7777777777777777 (the camera's own default aspect); worst case at 570.4155883789062 WU/s",
+      "fedBy": [
+        "verbs/feel.screen_crossing/s4242"
+      ]
+    },
+    {
+      "id": "B4",
+      "key": "feel.shove_magnitude",
+      "title": "Shove magnitude",
+      "statement": "The dedicated shove weapon changes a light hostile's velocity by ≥ 30 % of its cruise per hit. The starter gun changes it by ≥ 5 % per hit. A light hostile already at cruise gets faster when shoved along its motion.",
+      "target": "shove ΔV ≥ 30 % of light-hostile cruise per hit (starter gun ≥ 5 %)",
+      "reachable": true,
+      "coverage": "full",
+      "values": [
+        {
+          "label": "shove ΔV, fraction of light-hostile cruise (worst of 1 run(s))",
+          "value": 0.5462921710461983,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "starter ΔV, fraction of light-hostile cruise (worst of 1 run(s))",
+          "value": 0.04999999905029861,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "Vector Mine centre-hit ΔV, fraction of light-hostile cruise (worst of 1 run(s))",
+          "value": 0.45,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "along-motion victim speed before hit, fraction of cruise (worst of 1 run(s))",
+          "value": 0.9052490960984003,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "along-motion speed after / before hit (worst of 1 run(s))",
+          "value": 1.6049373341750581,
+          "unit": "ratio",
+          "met": true
+        },
+        {
+          "label": "starter gun delta-V, fraction of light-hostile cruise",
+          "value": 0.04999999905029861,
+          "unit": "fraction",
+          "met": true,
+          "note": "caused by the hit; raw one-tick delta was 5.985913 WU/s, of which 2.497603 WU/s is the victim's own thrust"
+        },
+        {
+          "label": "light hostile AT CRUISE shoved ALONG its motion gets faster (speed after / speed before)",
+          "value": 1.6049373341750581,
+          "unit": "ratio",
+          "met": true,
+          "note": "victim was at 0.905249 of cruise when hit"
+        },
+        {
+          "label": "shove weapon delta-V, fraction of light-hostile cruise",
+          "value": 0.5462921710461983,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "vector mine centre-hit delta-V, fraction of light-hostile cruise",
+          "value": 0.45,
+          "unit": "fraction",
+          "met": true
+        }
+      ],
+      "met": true,
+      "notes": "caused by the hit; raw one-tick delta was 5.985913 WU/s, of which 2.497603 WU/s is the victim's own thrust victim was at 0.905249 of cruise when hit",
+      "fedBy": [
+        "verbs/feel.shove_magnitude/s4242"
+      ]
+    },
+    {
+      "id": "B5",
+      "key": "feel.shove_displacement",
+      "title": "Shove displacement",
+      "statement": "2 s after a shove-weapon hit, a light hostile is ≥ 1 screen depth off the line it was flying and has not fired.",
+      "target": "≥ 1 screen depth off the original line 2 s after the hit",
+      "reachable": true,
+      "coverage": "full",
+      "values": [
+        {
+          "label": "displacement 2 s after the shove, screen depths (worst of 1 run(s))",
+          "value": 1.0083287296697898,
+          "unit": "screen depths",
+          "met": true
+        },
+        {
+          "label": "hostile shots during the 2 s after hit (worst of 1 run(s))",
+          "value": 0,
+          "unit": "shots",
+          "met": true
+        },
+        {
+          "label": "matched unhit hostile shots in the same window (worst of 1 run(s))",
+          "value": 1,
+          "unit": "shots",
+          "met": true
+        },
+        {
+          "label": "displacement 2 s after the shove-weapon hit, screen depths",
+          "value": 1.0083287296697898,
+          "unit": "screen depths",
+          "met": true
+        },
+        {
+          "label": "victim has not fired within 2 s of the shove-weapon hit",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        }
+      ],
+      "met": true,
+      "notes": "",
+      "fedBy": [
+        "verbs/feel.shove_magnitude/s4242"
+      ]
+    },
+    {
+      "id": "B6",
+      "key": "feel.terrain_slam",
+      "title": "Terrain is lethal",
+      "statement": "A light hostile meeting rock at ≥ 50 % of cruise loses ≥ 60 % of hull and its helm; at ≥ 75 % of cruise it dies. A heavy at the same speed loses ≤ 15 % and keeps its helm.",
+      "target": "dies at ≥ 75 % cruise closing; ≥ 60 % hull + helm lost at ≥ 50 %; heavy ≤ 15 %",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "light hostile dies at ≥ 75 % of cruise closing (ran at 76 % of cruise, 1 run(s))",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        },
+        {
+          "label": "hull lost at ≥ 50 % of cruise closing (worst of 1 run(s))",
+          "value": 1,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "helm lost at ≥ 50 % of cruise closing (1 run(s))",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        },
+        {
+          "label": "heavy hull lost at the same speed (worst of 1 run(s))",
+          "value": 0,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "heavy keeps its helm at the same speed (1 run(s))",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        },
+        {
+          "label": "light hostile hull lost at 50 % of cruise closing",
+          "value": 1,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "light hostile loses the helm at 50 % of cruise closing",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        },
+        {
+          "label": "light hostile dies at 76 % of cruise closing",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        },
+        {
+          "label": "heavy hull lost at the same closing speed",
+          "value": 0,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "heavy keeps its helm at the same closing speed",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        }
+      ],
+      "met": true,
+      "notes": "",
+      "fedBy": [
+        "verbs/feel.terrain_slam/s4242"
+      ]
+    },
+    {
+      "id": "B7",
+      "key": "feel.rope_swing_release",
+      "title": "The rope is a rope",
+      "statement": "Swinging at 1.5× cruise on a 100 WU line around a heavy anchor stretches the line < 10 % and does not break; releasing at the tangent keeps ≥ 95 % of tangential speed 5 s later.",
+      "target": "stretch < 10 %; release keeps ≥ 95 % of tangential speed at 5 s",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "peak line stretch (worst of 1 run(s))",
+          "value": 0.08480905759092479,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "tangential speed kept 5 s after release (worst of 1 run(s))",
+          "value": 1.000253875976908,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "peak stretch on a 100 WU line at 1.5x cruise",
+          "value": 0.08480905759092479,
+          "unit": "fraction",
+          "met": true,
+          "note": "authored 100 WU; peak line 108.481 WU"
+        },
+        {
+          "label": "line held until commanded release",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        },
+        {
+          "label": "tangential speed kept 5 s after release",
+          "value": 1.000253875976908,
+          "unit": "fraction",
+          "met": true,
+          "note": "before 281.18 WU/s; 5 s 281.25 WU/s"
+        }
+      ],
+      "met": true,
+      "notes": "authored 100 WU; peak line 108.481 WU before 281.18 WU/s; 5 s 281.25 WU/s",
+      "fedBy": [
+        "verbs/feel.rope_swing_release/s4242"
+      ]
+    },
+    {
+      "id": "B8",
+      "key": "feel.stroke_speed",
+      "title": "Draw-to-fly rips",
+      "statement": "Mean speed along any hand-drawn stroke ≥ 70 % of cruise; the slowest point ≥ 35 % of cruise. Speed is the pass criterion; track is the constraint.",
+      "target": "mean stroke speed ≥ 70 % of cruise; slowest point ≥ 35 %",
+      "reachable": true,
+      "coverage": "full",
+      "values": [
+        {
+          "label": "mean speed along the stroke, fraction of cruise (worst of 1 run(s))",
+          "value": 1.5362002371201104,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "slowest point of the stroke, fraction of cruise (worst of 1 run(s))",
+          "value": 1.194881147212075,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "mean speed along the corner stroke, Hitch (starter)",
+          "value": 1.5362002371201104,
+          "unit": "fraction of cruise",
+          "met": true,
+          "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 292.37289861736326 WU/s from 82 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke)"
+        },
+        {
+          "label": "slowest point on the corner stroke, Hitch (starter)",
+          "value": 1.194881147212075,
+          "unit": "fraction of cruise",
+          "met": true,
+          "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks"
+        },
+        {
+          "label": "max deviation from the ink on the corner stroke",
+          "value": 0.1124321890530521,
+          "unit": "x turn radius",
+          "met": true,
+          "note": "max 25.93743896484375 WU from the ink polyline at speed 311.2757545792884 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU)"
+        },
+        {
+          "label": "ordered coverage of the corner stroke",
+          "value": 1,
+          "unit": "fraction",
+          "met": true,
+          "note": "fraction of resampled ink nodes passed in drawn order on the real path; stroke length 570.9663848876953 WU, 107 ticks"
+        },
+        {
+          "label": "mean speed along the S stroke, Hitch (starter)",
+          "value": 1.7297198796415874,
+          "unit": "fraction of cruise",
+          "met": true,
+          "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 329.2039688491122 WU/s from 382 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke)"
+        },
+        {
+          "label": "slowest point on the S stroke, Hitch (starter)",
+          "value": 1.194881147212075,
+          "unit": "fraction of cruise",
+          "met": true,
+          "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks"
+        },
+        {
+          "label": "max deviation from the ink on the S stroke",
+          "value": 0.057841137576898995,
+          "unit": "x turn radius",
+          "met": true,
+          "note": "max 15.98416526612592 WU from the ink polyline at speed 372.87391653327956 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU)"
+        },
+        {
+          "label": "ordered coverage of the S stroke",
+          "value": 1,
+          "unit": "fraction",
+          "met": true,
+          "note": "fraction of resampled ink nodes passed in drawn order on the real path; stroke length 2273.184381397186 WU, 408 ticks"
+        },
+        {
+          "label": "mean speed along the hook stroke, Hitch (starter)",
+          "value": 1.6231317514426569,
+          "unit": "fraction of cruise",
+          "met": true,
+          "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 308.9178894392157 WU/s from 214 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke)"
+        },
+        {
+          "label": "slowest point on the hook stroke, Hitch (starter)",
+          "value": 1.194881147212075,
+          "unit": "fraction of cruise",
+          "met": true,
+          "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks"
+        },
+        {
+          "label": "max deviation from the ink on the hook stroke",
+          "value": 0.08663745367466566,
+          "unit": "x turn radius",
+          "met": true,
+          "note": "max 20.71897599481574 WU from the ink polyline at speed 322.6795752125565 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU)"
+        },
+        {
+          "label": "ordered coverage of the hook stroke",
+          "value": 1,
+          "unit": "fraction",
+          "met": true,
+          "note": "fraction of resampled ink nodes passed in drawn order on the real path; stroke length 1248.68239082923 WU, 239 ticks"
+        }
+      ],
+      "met": true,
+      "notes": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 292.37289861736326 WU/s from 82 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke) fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks max 25.93743896484375 WU from the ink polyline at speed 311.2757545792884 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU) fraction of resampled ink nodes passed in drawn order on the real path; stroke length 570.9663848876953 WU, 107 ticks fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 329.2039688491122 WU/s from 382 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke) fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks max 15.98416526612592 WU from the ink polyline at speed 372.87391653327956 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU) fraction of resampled ink nodes passed in drawn order on the real path; stroke length 2273.184381397186 WU, 408 ticks fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 308.9178894392157 WU/s from 214 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke) fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks max 20.71897599481574 WU from the ink polyline at speed 322.6795752125565 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU) fraction of resampled ink nodes passed in drawn order on the real path; stroke length 1248.68239082923 WU, 239 ticks",
+      "fedBy": [
+        "verbs/feel.stroke_speed/s4242"
+      ]
+    },
+    {
+      "id": "B9",
+      "key": "feel.impact_feedback",
+      "title": "Impacts answer",
+      "statement": "Every collision with ΔV ≥ 8 WU/s produces hitstop and camera trauma scaled by exchanged momentum. Collision audio differs by ≥ one octave of pitch and ≥ 12 dB between a scout kissing a rock and a freighter broadsiding a station. A Massline release has a time-domain snap.",
+      "target": "hitstop + trauma at ΔV ≥ 8 WU/s; audio ≥ 1 octave and ≥ 12 dB apart; release snaps",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "collision audio pitch, scout-on-rock vs freighter-on-station",
+          "value": 1.08,
+          "unit": "octaves",
+          "met": true
+        },
+        {
+          "label": "collision audio loudness, same two cases",
+          "value": 18.4,
+          "unit": "dB",
+          "met": true
+        },
+        {
+          "label": "Massline razor release time-domain snap",
+          "value": 55,
+          "unit": "ms",
+          "met": true,
+          "note": "hard-coded 0 on all nine branches before PQ-139.00"
+        }
+      ],
+      "met": true,
+      "notes": "hard-coded 0 on all nine branches before PQ-139.00",
+      "fedBy": [
+        "verbs/feel.impact_feedback/s4242"
+      ]
+    },
+    {
+      "id": "B10",
+      "key": "world.reaction_trio",
+      "title": "The world reacts",
+      "statement": "Within 10 s of a kill in a patrol's sight, the patrol makes a visible stay-with-wreck / chase choice. Spilled cargo attracts an NPC within 30 s. Civilians within 300 WU of gunfire change course within 3 s.",
+      "target": "salvor arrives ≤ 30 s; patrol chooses within 10 s; civilians turn within 3 s",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "salvor arrives after the cargo spill (worst of 1 run(s))",
+          "value": 3.75,
+          "unit": "s",
+          "met": true
+        },
+        {
+          "label": "patrol decides stay-or-chase after a witnessed kill",
+          "value": 1.2,
+          "unit": "s",
+          "met": true,
+          "note": "holder 308 held at 1.2s, chaser 327 pursued at 1.2s"
+        },
+        {
+          "label": "a live NPC reaches spilled cargo",
+          "value": 4.2,
+          "unit": "s",
+          "met": true,
+          "note": "hauler 311 arrived"
+        },
+        {
+          "label": "a civilian within 300 WU of gunfire changes course",
+          "value": 0.1,
+          "unit": "s",
+          "met": true,
+          "note": "ore_carrier 310 at 94.4 WU changed course only when the shooting started"
+        },
+        {
+          "label": "a wreck keeps the momentum of the ship that died (2 s after the kill)",
+          "value": 100,
+          "unit": "% of victim speed",
+          "met": true,
+          "note": "100% retained, drifted 240 WU, spun 2.263 rad, mass 55 (shoveable)"
+        }
+      ],
+      "met": true,
+      "notes": "holder 308 held at 1.2s, chaser 327 pursued at 1.2s hauler 311 arrived ore_carrier 310 at 94.4 WU changed course only when the shooting started 100% retained, drifted 240 WU, spun 2.263 rad, mass 55 (shoveable)",
+      "fedBy": [
+        "verbs/world.cargo_spill/s4242",
+        "verbs/world.reaction_trio/s4242"
+      ]
+    },
+    {
+      "id": "B11",
+      "key": "feel.hitstun_curve",
+      "title": "Hitstun law is universal",
+      "statement": "Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro.",
+      "target": "one universal curve; lights ≥ 30 % ΔV stunned ≥ 1 s; heavies at gun-scale ΔV never",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "shove helm-loss duration, scenario constant (at ≥ 30 % ΔV, worst of 1 in-regime run(s))",
+          "value": 2,
+          "unit": "s",
+          "met": true
+        },
+        {
+          "label": "terrain slam strips the helm (1 run(s))",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        },
+        {
+          "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - gun",
+          "value": 1.1166666666666667,
+          "unit": "s",
+          "met": true
+        },
+        {
+          "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - rope_throw",
+          "value": 1.1166666666666667,
+          "unit": "s",
+          "met": true
+        },
+        {
+          "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - well_fling",
+          "value": 1.1833333333333333,
+          "unit": "s",
+          "met": true
+        },
+        {
+          "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - collision",
+          "value": 1.0666666666666667,
+          "unit": "s",
+          "met": true
+        },
+        {
+          "label": "heavy hull at gun-scale delta-V never loses the helm (measured k <= 0.06, all sources)",
+          "value": 0,
+          "unit": "s",
+          "met": true
+        },
+        {
+          "label": "one law: relative spread of helm-loss across gun, rope_throw, well_fling, collision (light hull, measured u in [0.25, 0.4])",
+          "value": 0.09859154929577467,
+          "unit": "fraction",
+          "met": true,
+          "note": "gun u=0.3182 1.1167s, rope_throw u=0.3182 1.1167s, well_fling u=0.3254 1.1833s, collision u=0.3086 1.0667s"
+        },
+        {
+          "label": "helm-loss is monotone non-decreasing in k (light hull, gun source)",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        },
+        {
+          "label": "mass-ratio scaling: helm-loss strictly ordered by mass at matched measured k (gun source: wasp > drifter > atlas)",
+          "value": 1.0667,
+          "unit": "s",
+          "met": true,
+          "note": "ship_wasp k=0.3 (16) 1.1167s, ship_drifter k=0.3 (48) 0.2667s, ship_atlas k=0.3 (200) 0.05s"
+        },
+        {
+          "label": "never a hidden gyro: gun, rope_throw, well_fling, collision recover with commanded thruster torque when entry spin is measurable (light hull, measured u in [0.25, 0.4])",
+          "value": 1,
+          "unit": "fraction",
+          "met": true,
+          "note": "gun spin 5.6623 rad/s recovery 145.5526 Nm opposing spin; rope_throw spin 1.8121 rad/s recovery 145.5526 Nm opposing spin; well_fling spin 0.3162 rad/s recovery 145.5526 Nm opposing spin; collision spin 2.0101 rad/s recovery 145.5526 Nm opposing spin"
+        }
+      ],
+      "met": true,
+      "notes": "gun u=0.3182 1.1167s, rope_throw u=0.3182 1.1167s, well_fling u=0.3254 1.1833s, collision u=0.3086 1.0667s ship_wasp k=0.3 (16) 1.1167s, ship_drifter k=0.3 (48) 0.2667s, ship_atlas k=0.3 (200) 0.05s gun spin 5.6623 rad/s recovery 145.5526 Nm opposing spin; rope_throw spin 1.8121 rad/s recovery 145.5526 Nm opposing spin; well_fling spin 0.3162 rad/s recovery 145.5526 Nm opposing spin; collision spin 2.0101 rad/s recovery 145.5526 Nm opposing spin",
+      "fedBy": [
+        "verbs/feel.shove_magnitude/s4242",
+        "verbs/feel.terrain_slam/s4242",
+        "verbs/feel.hitstun_curve/s4242"
+      ]
+    },
+    {
+      "id": "B12",
+      "key": "proof.sixty_seconds",
+      "title": "The 60-second proof",
+      "statement": "At the reference site, the VISION.md sequence (op working → hauler leaves → pirates intercept → shove spins one → rope-swing-release makes a projectile → collateral → cargo spills → hauler flees → patrol arrives → grab pod → run WANTED) occurs in a deterministic scenario with ≥ 9 of the 11 beats, and in a headed capture at the shipping camera.",
+      "target": "≥ 9 of 11 beats in a deterministic scenario plus a headed capture at the shipping camera",
+      "reachable": false,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "needs the PQ-141 60-second proof scenario, which does not exist yet. the bar is listed here for completeness; this bench cannot measure it.",
+      "fedBy": []
+    },
+    {
+      "id": "B13",
+      "key": "feel.knock_budget",
+      "title": "The player is never knocked around",
+      "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+      "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "contact knocks per minute on the player, verbs feel.knock_budget (worst of 1 run(s))",
+          "value": 1.5,
+          "unit": "events/min",
+          "met": true
+        },
+        {
+          "label": "largest single knock, fraction of cruise, verbs feel.knock_budget (worst of 1 run(s))",
+          "value": 0.01501961720995283,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "knock events that changed the player's heading (worst of 1 run(s))",
+          "value": 0,
+          "unit": "events",
+          "met": true
+        }
+      ],
+      "met": null,
+      "notes": "visible jitter on the flight bench has no pictures behind it: this evaluation carries no normal-speed Crucible strip whose frames measured jitter, so the clause stays open. the lateral-velocity sign-flip proxy (jitterEvents/jitterMaxSignFlips) is reported beside the clause and never folded into it. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+      "fedBy": [
+        "verbs/feel.knock_budget/s4242"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "runRef": "verbs feel.rope_swing_release seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.rope_swing_release",
+      "seed": 4242,
+      "runHash": "70f5cfcc9e171f2e91e56debafb13f9b05b5cf479da2dcfaa4b860a8643afb84",
+      "fedByRef": "verbs/feel.rope_swing_release/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B1",
+          "key": "feel.earned_speed_kept",
+          "title": "Earned speed is kept",
+          "statement": "After leaving the cap at 2× cruise by ANY means (rope release, shove, well fling, bounce), speed 10 s later is ≥ 99 % of the exit speed with hands off, and ≥ 99 % with forward held. Only the brake spends it.",
+          "target": "≥ 99 % of exit speed 10 s later, hands off and forward held",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "release speed kept 5 s after letting go, hands off (worst of 1 run(s))",
+              "value": 1.000253875976908,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "speed kept 10 s after a 2x cruise exit, hands off",
+              "value": 0.527356885191068,
+              "unit": "fraction",
+              "met": false,
+              "note": "exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s"
+            },
+            {
+              "label": "speed kept 10 s after a 2x cruise exit, forward held",
+              "value": 0.48583292361510905,
+              "unit": "fraction",
+              "met": false,
+              "note": "exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s"
+            },
+            {
+              "label": "straight assisted cruise vs governed cap, Hitch",
+              "value": 0.9999996087489984,
+              "unit": "fraction",
+              "met": true,
+              "note": "governed 195 WU/s, measured 194.9999237060547 WU/s"
+            },
+            {
+              "label": "terminal weave speed / cruise, Hitch 40 s",
+              "value": 1.0000011143104788,
+              "unit": "fraction",
+              "met": true,
+              "note": "marks {\"10\":195.00005839395445,\"20\":195.0000147731569,\"30\":195.00025237533006,\"40\":195.00021729054336}; terminal 195.00021729054336 WU/s"
+            },
+            {
+              "label": "held W+A speed / cruise, Hitch",
+              "value": 0.9935211460860339,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "held W+D speed / cruise, Hitch",
+              "value": 0.9935211460860339,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "pure lateral speed / cruise, Hitch",
+              "value": 1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "held boost speed / authored boost cap, Hitch",
+              "value": 0.9085740814335195,
+              "unit": "fraction",
+              "met": true,
+              "note": "boost cap 302.25 WU/s"
+            },
+            {
+              "label": "Drift remains ungoverned, Hitch",
+              "value": 10.82245092147436,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "Newtonian remains ungoverned, Hitch",
+              "value": 10.82245092147436,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "oblique 2x physics-earned kept after 1 s held thrust, Hitch",
+              "value": 1,
+              "unit": "fraction",
+              "met": true,
+              "note": "exit 390 WU/s"
+            },
+            {
+              "label": "authored travel ceilings unchanged",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "only the 5 s release-retention clause (≥ 95 %) was measured; that sentence belongs to the rope-release scenario, and the value row is kept for the receipt. B1's own clauses — ≥ 99 % of exit speed 10 s later, hands off and with forward held — are kernel-level (test/flightV3.spec.mjs §12c) and are not benched headlessly, so this bar cannot read met from this bench. exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s governed 195 WU/s, measured 194.9999237060547 WU/s marks {\"10\":195.00005839395445,\"20\":195.0000147731569,\"30\":195.00025237533006,\"40\":195.00021729054336}; terminal 195.00021729054336 WU/s boost cap 302.25 WU/s exit 390 WU/s",
+          "fedBy": [
+            "verbs/feel.rope_swing_release/s4242",
+            "verbs/feel.earned_speed_kept/s4242",
+            "verbs/feel.governor_integrity/s4242"
+          ]
+        },
+        {
+          "id": "B7",
+          "key": "feel.rope_swing_release",
+          "title": "The rope is a rope",
+          "statement": "Swinging at 1.5× cruise on a 100 WU line around a heavy anchor stretches the line < 10 % and does not break; releasing at the tangent keeps ≥ 95 % of tangential speed 5 s later.",
+          "target": "stretch < 10 %; release keeps ≥ 95 % of tangential speed at 5 s",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "peak line stretch (worst of 1 run(s))",
+              "value": 0.08480905759092479,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "tangential speed kept 5 s after release (worst of 1 run(s))",
+              "value": 1.000253875976908,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "peak stretch on a 100 WU line at 1.5x cruise",
+              "value": 0.08480905759092479,
+              "unit": "fraction",
+              "met": true,
+              "note": "authored 100 WU; peak line 108.481 WU"
+            },
+            {
+              "label": "line held until commanded release",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "tangential speed kept 5 s after release",
+              "value": 1.000253875976908,
+              "unit": "fraction",
+              "met": true,
+              "note": "before 281.18 WU/s; 5 s 281.25 WU/s"
+            }
+          ],
+          "met": true,
+          "notes": "authored 100 WU; peak line 108.481 WU before 281.18 WU/s; 5 s 281.25 WU/s",
+          "fedBy": [
+            "verbs/feel.rope_swing_release/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs feel.shove_magnitude seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.shove_magnitude",
+      "seed": 4242,
+      "runHash": "c260e81bcedc5765a60db850fd19fc8bf9746cf5fc36f921b4826059b8aa16a6",
+      "fedByRef": "verbs/feel.shove_magnitude/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B4",
+          "key": "feel.shove_magnitude",
+          "title": "Shove magnitude",
+          "statement": "The dedicated shove weapon changes a light hostile's velocity by ≥ 30 % of its cruise per hit. The starter gun changes it by ≥ 5 % per hit. A light hostile already at cruise gets faster when shoved along its motion.",
+          "target": "shove ΔV ≥ 30 % of light-hostile cruise per hit (starter gun ≥ 5 %)",
+          "reachable": true,
+          "coverage": "full",
+          "values": [
+            {
+              "label": "shove ΔV, fraction of light-hostile cruise (worst of 1 run(s))",
+              "value": 0.5462921710461983,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "starter ΔV, fraction of light-hostile cruise (worst of 1 run(s))",
+              "value": 0.04999999905029861,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "Vector Mine centre-hit ΔV, fraction of light-hostile cruise (worst of 1 run(s))",
+              "value": 0.45,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "along-motion victim speed before hit, fraction of cruise (worst of 1 run(s))",
+              "value": 0.9052490960984003,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "along-motion speed after / before hit (worst of 1 run(s))",
+              "value": 1.6049373341750581,
+              "unit": "ratio",
+              "met": true
+            },
+            {
+              "label": "starter gun delta-V, fraction of light-hostile cruise",
+              "value": 0.04999999905029861,
+              "unit": "fraction",
+              "met": true,
+              "note": "caused by the hit; raw one-tick delta was 5.985913 WU/s, of which 2.497603 WU/s is the victim's own thrust"
+            },
+            {
+              "label": "light hostile AT CRUISE shoved ALONG its motion gets faster (speed after / speed before)",
+              "value": 1.6049373341750581,
+              "unit": "ratio",
+              "met": true,
+              "note": "victim was at 0.905249 of cruise when hit"
+            },
+            {
+              "label": "shove weapon delta-V, fraction of light-hostile cruise",
+              "value": 0.5462921710461983,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "vector mine centre-hit delta-V, fraction of light-hostile cruise",
+              "value": 0.45,
+              "unit": "fraction",
+              "met": true
+            }
+          ],
+          "met": true,
+          "notes": "caused by the hit; raw one-tick delta was 5.985913 WU/s, of which 2.497603 WU/s is the victim's own thrust victim was at 0.905249 of cruise when hit",
+          "fedBy": [
+            "verbs/feel.shove_magnitude/s4242"
+          ]
+        },
+        {
+          "id": "B5",
+          "key": "feel.shove_displacement",
+          "title": "Shove displacement",
+          "statement": "2 s after a shove-weapon hit, a light hostile is ≥ 1 screen depth off the line it was flying and has not fired.",
+          "target": "≥ 1 screen depth off the original line 2 s after the hit",
+          "reachable": true,
+          "coverage": "full",
+          "values": [
+            {
+              "label": "displacement 2 s after the shove, screen depths (worst of 1 run(s))",
+              "value": 1.0083287296697898,
+              "unit": "screen depths",
+              "met": true
+            },
+            {
+              "label": "hostile shots during the 2 s after hit (worst of 1 run(s))",
+              "value": 0,
+              "unit": "shots",
+              "met": true
+            },
+            {
+              "label": "matched unhit hostile shots in the same window (worst of 1 run(s))",
+              "value": 1,
+              "unit": "shots",
+              "met": true
+            },
+            {
+              "label": "displacement 2 s after the shove-weapon hit, screen depths",
+              "value": 1.0083287296697898,
+              "unit": "screen depths",
+              "met": true
+            },
+            {
+              "label": "victim has not fired within 2 s of the shove-weapon hit",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            }
+          ],
+          "met": true,
+          "notes": "",
+          "fedBy": [
+            "verbs/feel.shove_magnitude/s4242"
+          ]
+        },
+        {
+          "id": "B11",
+          "key": "feel.hitstun_curve",
+          "title": "Hitstun law is universal",
+          "statement": "Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro.",
+          "target": "one universal curve; lights ≥ 30 % ΔV stunned ≥ 1 s; heavies at gun-scale ΔV never",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "shove helm-loss duration, scenario constant (at ≥ 30 % ΔV, worst of 1 in-regime run(s))",
+              "value": 2,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "terrain slam strips the helm (1 run(s))",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - gun",
+              "value": 1.1166666666666667,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - rope_throw",
+              "value": 1.1166666666666667,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - well_fling",
+              "value": 1.1833333333333333,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - collision",
+              "value": 1.0666666666666667,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "heavy hull at gun-scale delta-V never loses the helm (measured k <= 0.06, all sources)",
+              "value": 0,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "one law: relative spread of helm-loss across gun, rope_throw, well_fling, collision (light hull, measured u in [0.25, 0.4])",
+              "value": 0.09859154929577467,
+              "unit": "fraction",
+              "met": true,
+              "note": "gun u=0.3182 1.1167s, rope_throw u=0.3182 1.1167s, well_fling u=0.3254 1.1833s, collision u=0.3086 1.0667s"
+            },
+            {
+              "label": "helm-loss is monotone non-decreasing in k (light hull, gun source)",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "mass-ratio scaling: helm-loss strictly ordered by mass at matched measured k (gun source: wasp > drifter > atlas)",
+              "value": 1.0667,
+              "unit": "s",
+              "met": true,
+              "note": "ship_wasp k=0.3 (16) 1.1167s, ship_drifter k=0.3 (48) 0.2667s, ship_atlas k=0.3 (200) 0.05s"
+            },
+            {
+              "label": "never a hidden gyro: gun, rope_throw, well_fling, collision recover with commanded thruster torque when entry spin is measurable (light hull, measured u in [0.25, 0.4])",
+              "value": 1,
+              "unit": "fraction",
+              "met": true,
+              "note": "gun spin 5.6623 rad/s recovery 145.5526 Nm opposing spin; rope_throw spin 1.8121 rad/s recovery 145.5526 Nm opposing spin; well_fling spin 0.3162 rad/s recovery 145.5526 Nm opposing spin; collision spin 2.0101 rad/s recovery 145.5526 Nm opposing spin"
+            }
+          ],
+          "met": true,
+          "notes": "gun u=0.3182 1.1167s, rope_throw u=0.3182 1.1167s, well_fling u=0.3254 1.1833s, collision u=0.3086 1.0667s ship_wasp k=0.3 (16) 1.1167s, ship_drifter k=0.3 (48) 0.2667s, ship_atlas k=0.3 (200) 0.05s gun spin 5.6623 rad/s recovery 145.5526 Nm opposing spin; rope_throw spin 1.8121 rad/s recovery 145.5526 Nm opposing spin; well_fling spin 0.3162 rad/s recovery 145.5526 Nm opposing spin; collision spin 2.0101 rad/s recovery 145.5526 Nm opposing spin",
+          "fedBy": [
+            "verbs/feel.shove_magnitude/s4242",
+            "verbs/feel.terrain_slam/s4242",
+            "verbs/feel.hitstun_curve/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs feel.gravity_well seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.gravity_well",
+      "seed": 4242,
+      "runHash": "dd2a62de03c3597777e6577927d69b75ef20c61d7b2370b07a1660fc1a4f6276",
+      "fedByRef": "verbs/feel.gravity_well/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": []
+    },
+    {
+      "runRef": "verbs feel.stroke_speed seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.stroke_speed",
+      "seed": 4242,
+      "runHash": "d3ef51104f370e0ca37c63eb5faaa0975095a3229a15159ddfe91fc9ef92f69d",
+      "fedByRef": "verbs/feel.stroke_speed/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B8",
+          "key": "feel.stroke_speed",
+          "title": "Draw-to-fly rips",
+          "statement": "Mean speed along any hand-drawn stroke ≥ 70 % of cruise; the slowest point ≥ 35 % of cruise. Speed is the pass criterion; track is the constraint.",
+          "target": "mean stroke speed ≥ 70 % of cruise; slowest point ≥ 35 %",
+          "reachable": true,
+          "coverage": "full",
+          "values": [
+            {
+              "label": "mean speed along the stroke, fraction of cruise (worst of 1 run(s))",
+              "value": 1.5362002371201104,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "slowest point of the stroke, fraction of cruise (worst of 1 run(s))",
+              "value": 1.194881147212075,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "mean speed along the corner stroke, Hitch (starter)",
+              "value": 1.5362002371201104,
+              "unit": "fraction of cruise",
+              "met": true,
+              "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 292.37289861736326 WU/s from 82 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke)"
+            },
+            {
+              "label": "slowest point on the corner stroke, Hitch (starter)",
+              "value": 1.194881147212075,
+              "unit": "fraction of cruise",
+              "met": true,
+              "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks"
+            },
+            {
+              "label": "max deviation from the ink on the corner stroke",
+              "value": 0.1124321890530521,
+              "unit": "x turn radius",
+              "met": true,
+              "note": "max 25.93743896484375 WU from the ink polyline at speed 311.2757545792884 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU)"
+            },
+            {
+              "label": "ordered coverage of the corner stroke",
+              "value": 1,
+              "unit": "fraction",
+              "met": true,
+              "note": "fraction of resampled ink nodes passed in drawn order on the real path; stroke length 570.9663848876953 WU, 107 ticks"
+            },
+            {
+              "label": "mean speed along the S stroke, Hitch (starter)",
+              "value": 1.7297198796415874,
+              "unit": "fraction of cruise",
+              "met": true,
+              "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 329.2039688491122 WU/s from 382 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke)"
+            },
+            {
+              "label": "slowest point on the S stroke, Hitch (starter)",
+              "value": 1.194881147212075,
+              "unit": "fraction of cruise",
+              "met": true,
+              "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks"
+            },
+            {
+              "label": "max deviation from the ink on the S stroke",
+              "value": 0.057841137576898995,
+              "unit": "x turn radius",
+              "met": true,
+              "note": "max 15.98416526612592 WU from the ink polyline at speed 372.87391653327956 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU)"
+            },
+            {
+              "label": "ordered coverage of the S stroke",
+              "value": 1,
+              "unit": "fraction",
+              "met": true,
+              "note": "fraction of resampled ink nodes passed in drawn order on the real path; stroke length 2273.184381397186 WU, 408 ticks"
+            },
+            {
+              "label": "mean speed along the hook stroke, Hitch (starter)",
+              "value": 1.6231317514426569,
+              "unit": "fraction of cruise",
+              "met": true,
+              "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 308.9178894392157 WU/s from 214 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke)"
+            },
+            {
+              "label": "slowest point on the hook stroke, Hitch (starter)",
+              "value": 1.194881147212075,
+              "unit": "fraction of cruise",
+              "met": true,
+              "note": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks"
+            },
+            {
+              "label": "max deviation from the ink on the hook stroke",
+              "value": 0.08663745367466566,
+              "unit": "x turn radius",
+              "met": true,
+              "note": "max 20.71897599481574 WU from the ink polyline at speed 322.6795752125565 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU)"
+            },
+            {
+              "label": "ordered coverage of the hook stroke",
+              "value": 1,
+              "unit": "fraction",
+              "met": true,
+              "note": "fraction of resampled ink nodes passed in drawn order on the real path; stroke length 1248.68239082923 WU, 239 ticks"
+            }
+          ],
+          "met": true,
+          "notes": "fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 292.37289861736326 WU/s from 82 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke) fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks max 25.93743896484375 WU from the ink polyline at speed 311.2757545792884 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU) fraction of resampled ink nodes passed in drawn order on the real path; stroke length 570.9663848876953 WU, 107 ticks fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 329.2039688491122 WU/s from 382 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke) fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks max 15.98416526612592 WU from the ink polyline at speed 372.87391653327956 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU) fraction of resampled ink nodes passed in drawn order on the real path; stroke length 2273.184381397186 WU, 408 ticks fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); mean 308.9178894392157 WU/s from 214 real-path ticks along the ink (pads of one hull width at start and end excluded so arrival-hold is not scored as the stroke) fraction of measured governed cruise 190.32212829589844 WU/s (900-tick full-forward hold after 18-tick settle on bootRealPath, Hitch starter); slowest sampled speed 227.41232299804688 WU/s on the same real-path ticks max 20.71897599481574 WU from the ink polyline at speed 322.6795752125565 WU/s; divided by turn radius at that speed (r = v / ω, ω=1.3493010830377805 rad/s from the 90 deg cruise sweep, r_cruise=137.2435563706889 WU) fraction of resampled ink nodes passed in drawn order on the real path; stroke length 1248.68239082923 WU, 239 ticks",
+          "fedBy": [
+            "verbs/feel.stroke_speed/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs feel.terrain_slam seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.terrain_slam",
+      "seed": 4242,
+      "runHash": "b7e8301598cceaeb30d20623282bac39d5f6549cab214fa1a801c520ce34ed16",
+      "fedByRef": "verbs/feel.terrain_slam/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B6",
+          "key": "feel.terrain_slam",
+          "title": "Terrain is lethal",
+          "statement": "A light hostile meeting rock at ≥ 50 % of cruise loses ≥ 60 % of hull and its helm; at ≥ 75 % of cruise it dies. A heavy at the same speed loses ≤ 15 % and keeps its helm.",
+          "target": "dies at ≥ 75 % cruise closing; ≥ 60 % hull + helm lost at ≥ 50 %; heavy ≤ 15 %",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "light hostile dies at ≥ 75 % of cruise closing (ran at 76 % of cruise, 1 run(s))",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "hull lost at ≥ 50 % of cruise closing (worst of 1 run(s))",
+              "value": 1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "helm lost at ≥ 50 % of cruise closing (1 run(s))",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "heavy hull lost at the same speed (worst of 1 run(s))",
+              "value": 0,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "heavy keeps its helm at the same speed (1 run(s))",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "light hostile hull lost at 50 % of cruise closing",
+              "value": 1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "light hostile loses the helm at 50 % of cruise closing",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "light hostile dies at 76 % of cruise closing",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "heavy hull lost at the same closing speed",
+              "value": 0,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "heavy keeps its helm at the same closing speed",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            }
+          ],
+          "met": true,
+          "notes": "",
+          "fedBy": [
+            "verbs/feel.terrain_slam/s4242"
+          ]
+        },
+        {
+          "id": "B11",
+          "key": "feel.hitstun_curve",
+          "title": "Hitstun law is universal",
+          "statement": "Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro.",
+          "target": "one universal curve; lights ≥ 30 % ΔV stunned ≥ 1 s; heavies at gun-scale ΔV never",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "shove helm-loss duration, scenario constant (at ≥ 30 % ΔV, worst of 1 in-regime run(s))",
+              "value": 2,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "terrain slam strips the helm (1 run(s))",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - gun",
+              "value": 1.1166666666666667,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - rope_throw",
+              "value": 1.1166666666666667,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - well_fling",
+              "value": 1.1833333333333333,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - collision",
+              "value": 1.0666666666666667,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "heavy hull at gun-scale delta-V never loses the helm (measured k <= 0.06, all sources)",
+              "value": 0,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "one law: relative spread of helm-loss across gun, rope_throw, well_fling, collision (light hull, measured u in [0.25, 0.4])",
+              "value": 0.09859154929577467,
+              "unit": "fraction",
+              "met": true,
+              "note": "gun u=0.3182 1.1167s, rope_throw u=0.3182 1.1167s, well_fling u=0.3254 1.1833s, collision u=0.3086 1.0667s"
+            },
+            {
+              "label": "helm-loss is monotone non-decreasing in k (light hull, gun source)",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "mass-ratio scaling: helm-loss strictly ordered by mass at matched measured k (gun source: wasp > drifter > atlas)",
+              "value": 1.0667,
+              "unit": "s",
+              "met": true,
+              "note": "ship_wasp k=0.3 (16) 1.1167s, ship_drifter k=0.3 (48) 0.2667s, ship_atlas k=0.3 (200) 0.05s"
+            },
+            {
+              "label": "never a hidden gyro: gun, rope_throw, well_fling, collision recover with commanded thruster torque when entry spin is measurable (light hull, measured u in [0.25, 0.4])",
+              "value": 1,
+              "unit": "fraction",
+              "met": true,
+              "note": "gun spin 5.6623 rad/s recovery 145.5526 Nm opposing spin; rope_throw spin 1.8121 rad/s recovery 145.5526 Nm opposing spin; well_fling spin 0.3162 rad/s recovery 145.5526 Nm opposing spin; collision spin 2.0101 rad/s recovery 145.5526 Nm opposing spin"
+            }
+          ],
+          "met": true,
+          "notes": "gun u=0.3182 1.1167s, rope_throw u=0.3182 1.1167s, well_fling u=0.3254 1.1833s, collision u=0.3086 1.0667s ship_wasp k=0.3 (16) 1.1167s, ship_drifter k=0.3 (48) 0.2667s, ship_atlas k=0.3 (200) 0.05s gun spin 5.6623 rad/s recovery 145.5526 Nm opposing spin; rope_throw spin 1.8121 rad/s recovery 145.5526 Nm opposing spin; well_fling spin 0.3162 rad/s recovery 145.5526 Nm opposing spin; collision spin 2.0101 rad/s recovery 145.5526 Nm opposing spin",
+          "fedBy": [
+            "verbs/feel.shove_magnitude/s4242",
+            "verbs/feel.terrain_slam/s4242",
+            "verbs/feel.hitstun_curve/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs world.cargo_spill seed 4242",
+      "bench": "verbs",
+      "scenarioId": "world.cargo_spill",
+      "seed": 4242,
+      "runHash": "0601dc6653e7d806baad6523dbf318aa8462757b85b158ec384fb1030edd50b8",
+      "fedByRef": "verbs/world.cargo_spill/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B10",
+          "key": "world.reaction_trio",
+          "title": "The world reacts",
+          "statement": "Within 10 s of a kill in a patrol's sight, the patrol makes a visible stay-with-wreck / chase choice. Spilled cargo attracts an NPC within 30 s. Civilians within 300 WU of gunfire change course within 3 s.",
+          "target": "salvor arrives ≤ 30 s; patrol chooses within 10 s; civilians turn within 3 s",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "salvor arrives after the cargo spill (worst of 1 run(s))",
+              "value": 3.75,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "patrol decides stay-or-chase after a witnessed kill",
+              "value": 1.2,
+              "unit": "s",
+              "met": true,
+              "note": "holder 308 held at 1.2s, chaser 327 pursued at 1.2s"
+            },
+            {
+              "label": "a live NPC reaches spilled cargo",
+              "value": 4.2,
+              "unit": "s",
+              "met": true,
+              "note": "hauler 311 arrived"
+            },
+            {
+              "label": "a civilian within 300 WU of gunfire changes course",
+              "value": 0.1,
+              "unit": "s",
+              "met": true,
+              "note": "ore_carrier 310 at 94.4 WU changed course only when the shooting started"
+            },
+            {
+              "label": "a wreck keeps the momentum of the ship that died (2 s after the kill)",
+              "value": 100,
+              "unit": "% of victim speed",
+              "met": true,
+              "note": "100% retained, drifted 240 WU, spun 2.263 rad, mass 55 (shoveable)"
+            }
+          ],
+          "met": true,
+          "notes": "holder 308 held at 1.2s, chaser 327 pursued at 1.2s hauler 311 arrived ore_carrier 310 at 94.4 WU changed course only when the shooting started 100% retained, drifted 240 WU, spun 2.263 rad, mass 55 (shoveable)",
+          "fedBy": [
+            "verbs/world.cargo_spill/s4242",
+            "verbs/world.reaction_trio/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs feel.knock_budget seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.knock_budget",
+      "seed": 4242,
+      "runHash": "d8f90a29b731504be4001f71cf051d2224bc317e72b3fb5d79f9fc2d8637664a",
+      "fedByRef": "verbs/feel.knock_budget/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": {
+          "eventsPerMinute": 1.5,
+          "maxDeltaVFractionOfCruise": 0.01501961720995283,
+          "headingChangeEvents": 0,
+          "jitterMeasured": false,
+          "met": null,
+          "source": "scenario"
+        },
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: visible jitter is unmeasured; full B13 cannot pass"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, verbs feel.knock_budget (worst of 1 run(s))",
+              "value": 1.5,
+              "unit": "events/min",
+              "met": true
+            },
+            {
+              "label": "largest single knock, fraction of cruise, verbs feel.knock_budget (worst of 1 run(s))",
+              "value": 0.01501961720995283,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "knock events that changed the player's heading (worst of 1 run(s))",
+              "value": 0,
+              "unit": "events",
+              "met": true
+            }
+          ],
+          "met": null,
+          "notes": "visible jitter on the flight bench has no pictures behind it: this evaluation carries no normal-speed Crucible strip whose frames measured jitter, so the clause stays open. the lateral-velocity sign-flip proxy (jitterEvents/jitterMaxSignFlips) is reported beside the clause and never folded into it. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+          "fedBy": [
+            "verbs/feel.knock_budget/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs feel.chain_reaction seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.chain_reaction",
+      "seed": 4242,
+      "runHash": "7f1abbd7a4f1dc2fbc927bed41ac8577767ac746f4509f4ae645ae58537bb97f",
+      "fedByRef": "verbs/feel.chain_reaction/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": []
+    },
+    {
+      "runRef": "verbs feel.earned_speed_kept seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.earned_speed_kept",
+      "seed": 4242,
+      "runHash": "a2ada1cd6e2ebc21e55df516d507f7ecef845f795b3e4a6af29f92024256c9b7",
+      "fedByRef": "verbs/feel.earned_speed_kept/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B1",
+          "key": "feel.earned_speed_kept",
+          "title": "Earned speed is kept",
+          "statement": "After leaving the cap at 2× cruise by ANY means (rope release, shove, well fling, bounce), speed 10 s later is ≥ 99 % of the exit speed with hands off, and ≥ 99 % with forward held. Only the brake spends it.",
+          "target": "≥ 99 % of exit speed 10 s later, hands off and forward held",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "release speed kept 5 s after letting go, hands off (worst of 1 run(s))",
+              "value": 1.000253875976908,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "speed kept 10 s after a 2x cruise exit, hands off",
+              "value": 0.527356885191068,
+              "unit": "fraction",
+              "met": false,
+              "note": "exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s"
+            },
+            {
+              "label": "speed kept 10 s after a 2x cruise exit, forward held",
+              "value": 0.48583292361510905,
+              "unit": "fraction",
+              "met": false,
+              "note": "exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s"
+            },
+            {
+              "label": "straight assisted cruise vs governed cap, Hitch",
+              "value": 0.9999996087489984,
+              "unit": "fraction",
+              "met": true,
+              "note": "governed 195 WU/s, measured 194.9999237060547 WU/s"
+            },
+            {
+              "label": "terminal weave speed / cruise, Hitch 40 s",
+              "value": 1.0000011143104788,
+              "unit": "fraction",
+              "met": true,
+              "note": "marks {\"10\":195.00005839395445,\"20\":195.0000147731569,\"30\":195.00025237533006,\"40\":195.00021729054336}; terminal 195.00021729054336 WU/s"
+            },
+            {
+              "label": "held W+A speed / cruise, Hitch",
+              "value": 0.9935211460860339,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "held W+D speed / cruise, Hitch",
+              "value": 0.9935211460860339,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "pure lateral speed / cruise, Hitch",
+              "value": 1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "held boost speed / authored boost cap, Hitch",
+              "value": 0.9085740814335195,
+              "unit": "fraction",
+              "met": true,
+              "note": "boost cap 302.25 WU/s"
+            },
+            {
+              "label": "Drift remains ungoverned, Hitch",
+              "value": 10.82245092147436,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "Newtonian remains ungoverned, Hitch",
+              "value": 10.82245092147436,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "oblique 2x physics-earned kept after 1 s held thrust, Hitch",
+              "value": 1,
+              "unit": "fraction",
+              "met": true,
+              "note": "exit 390 WU/s"
+            },
+            {
+              "label": "authored travel ceilings unchanged",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "only the 5 s release-retention clause (≥ 95 %) was measured; that sentence belongs to the rope-release scenario, and the value row is kept for the receipt. B1's own clauses — ≥ 99 % of exit speed 10 s later, hands off and with forward held — are kernel-level (test/flightV3.spec.mjs §12c) and are not benched headlessly, so this bar cannot read met from this bench. exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s governed 195 WU/s, measured 194.9999237060547 WU/s marks {\"10\":195.00005839395445,\"20\":195.0000147731569,\"30\":195.00025237533006,\"40\":195.00021729054336}; terminal 195.00021729054336 WU/s boost cap 302.25 WU/s exit 390 WU/s",
+          "fedBy": [
+            "verbs/feel.rope_swing_release/s4242",
+            "verbs/feel.earned_speed_kept/s4242",
+            "verbs/feel.governor_integrity/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs feel.governor_integrity seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.governor_integrity",
+      "seed": 4242,
+      "runHash": "f5d7714d8c187672fcb6e5f33c68f9d72187ba23807d940ecf5d00d029a96037",
+      "fedByRef": "verbs/feel.governor_integrity/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B1",
+          "key": "feel.earned_speed_kept",
+          "title": "Earned speed is kept",
+          "statement": "After leaving the cap at 2× cruise by ANY means (rope release, shove, well fling, bounce), speed 10 s later is ≥ 99 % of the exit speed with hands off, and ≥ 99 % with forward held. Only the brake spends it.",
+          "target": "≥ 99 % of exit speed 10 s later, hands off and forward held",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "release speed kept 5 s after letting go, hands off (worst of 1 run(s))",
+              "value": 1.000253875976908,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "speed kept 10 s after a 2x cruise exit, hands off",
+              "value": 0.527356885191068,
+              "unit": "fraction",
+              "met": false,
+              "note": "exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s"
+            },
+            {
+              "label": "speed kept 10 s after a 2x cruise exit, forward held",
+              "value": 0.48583292361510905,
+              "unit": "fraction",
+              "met": false,
+              "note": "exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s"
+            },
+            {
+              "label": "straight assisted cruise vs governed cap, Hitch",
+              "value": 0.9999996087489984,
+              "unit": "fraction",
+              "met": true,
+              "note": "governed 195 WU/s, measured 194.9999237060547 WU/s"
+            },
+            {
+              "label": "terminal weave speed / cruise, Hitch 40 s",
+              "value": 1.0000011143104788,
+              "unit": "fraction",
+              "met": true,
+              "note": "marks {\"10\":195.00005839395445,\"20\":195.0000147731569,\"30\":195.00025237533006,\"40\":195.00021729054336}; terminal 195.00021729054336 WU/s"
+            },
+            {
+              "label": "held W+A speed / cruise, Hitch",
+              "value": 0.9935211460860339,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "held W+D speed / cruise, Hitch",
+              "value": 0.9935211460860339,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "pure lateral speed / cruise, Hitch",
+              "value": 1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "held boost speed / authored boost cap, Hitch",
+              "value": 0.9085740814335195,
+              "unit": "fraction",
+              "met": true,
+              "note": "boost cap 302.25 WU/s"
+            },
+            {
+              "label": "Drift remains ungoverned, Hitch",
+              "value": 10.82245092147436,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "Newtonian remains ungoverned, Hitch",
+              "value": 10.82245092147436,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "oblique 2x physics-earned kept after 1 s held thrust, Hitch",
+              "value": 1,
+              "unit": "fraction",
+              "met": true,
+              "note": "exit 390 WU/s"
+            },
+            {
+              "label": "authored travel ceilings unchanged",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "only the 5 s release-retention clause (≥ 95 %) was measured; that sentence belongs to the rope-release scenario, and the value row is kept for the receipt. B1's own clauses — ≥ 99 % of exit speed 10 s later, hands off and with forward held — are kernel-level (test/flightV3.spec.mjs §12c) and are not benched headlessly, so this bar cannot read met from this bench. exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s exit 380.10934002551966 WU/s from a physics impulse; cruise 190.32212829589844 WU/s governed 195 WU/s, measured 194.9999237060547 WU/s marks {\"10\":195.00005839395445,\"20\":195.0000147731569,\"30\":195.00025237533006,\"40\":195.00021729054336}; terminal 195.00021729054336 WU/s boost cap 302.25 WU/s exit 390 WU/s",
+          "fedBy": [
+            "verbs/feel.rope_swing_release/s4242",
+            "verbs/feel.earned_speed_kept/s4242",
+            "verbs/feel.governor_integrity/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs feel.hitstun_curve seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.hitstun_curve",
+      "seed": 4242,
+      "runHash": "7d5f2c3d1c7235bb8f3f3b0c87783554eb65c9bd7ab28e70b755348a76c458ca",
+      "fedByRef": "verbs/feel.hitstun_curve/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B11",
+          "key": "feel.hitstun_curve",
+          "title": "Hitstun law is universal",
+          "statement": "Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro.",
+          "target": "one universal curve; lights ≥ 30 % ΔV stunned ≥ 1 s; heavies at gun-scale ΔV never",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "shove helm-loss duration, scenario constant (at ≥ 30 % ΔV, worst of 1 in-regime run(s))",
+              "value": 2,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "terrain slam strips the helm (1 run(s))",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - gun",
+              "value": 1.1166666666666667,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - rope_throw",
+              "value": 1.1166666666666667,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - well_fling",
+              "value": 1.1833333333333333,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "light hull loses the helm >= 1 s at measured k >= 0.3 - collision",
+              "value": 1.0666666666666667,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "heavy hull at gun-scale delta-V never loses the helm (measured k <= 0.06, all sources)",
+              "value": 0,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "one law: relative spread of helm-loss across gun, rope_throw, well_fling, collision (light hull, measured u in [0.25, 0.4])",
+              "value": 0.09859154929577467,
+              "unit": "fraction",
+              "met": true,
+              "note": "gun u=0.3182 1.1167s, rope_throw u=0.3182 1.1167s, well_fling u=0.3254 1.1833s, collision u=0.3086 1.0667s"
+            },
+            {
+              "label": "helm-loss is monotone non-decreasing in k (light hull, gun source)",
+              "value": 1,
+              "unit": "bool",
+              "met": true
+            },
+            {
+              "label": "mass-ratio scaling: helm-loss strictly ordered by mass at matched measured k (gun source: wasp > drifter > atlas)",
+              "value": 1.0667,
+              "unit": "s",
+              "met": true,
+              "note": "ship_wasp k=0.3 (16) 1.1167s, ship_drifter k=0.3 (48) 0.2667s, ship_atlas k=0.3 (200) 0.05s"
+            },
+            {
+              "label": "never a hidden gyro: gun, rope_throw, well_fling, collision recover with commanded thruster torque when entry spin is measurable (light hull, measured u in [0.25, 0.4])",
+              "value": 1,
+              "unit": "fraction",
+              "met": true,
+              "note": "gun spin 5.6623 rad/s recovery 145.5526 Nm opposing spin; rope_throw spin 1.8121 rad/s recovery 145.5526 Nm opposing spin; well_fling spin 0.3162 rad/s recovery 145.5526 Nm opposing spin; collision spin 2.0101 rad/s recovery 145.5526 Nm opposing spin"
+            }
+          ],
+          "met": true,
+          "notes": "gun u=0.3182 1.1167s, rope_throw u=0.3182 1.1167s, well_fling u=0.3254 1.1833s, collision u=0.3086 1.0667s ship_wasp k=0.3 (16) 1.1167s, ship_drifter k=0.3 (48) 0.2667s, ship_atlas k=0.3 (200) 0.05s gun spin 5.6623 rad/s recovery 145.5526 Nm opposing spin; rope_throw spin 1.8121 rad/s recovery 145.5526 Nm opposing spin; well_fling spin 0.3162 rad/s recovery 145.5526 Nm opposing spin; collision spin 2.0101 rad/s recovery 145.5526 Nm opposing spin",
+          "fedBy": [
+            "verbs/feel.shove_magnitude/s4242",
+            "verbs/feel.terrain_slam/s4242",
+            "verbs/feel.hitstun_curve/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs feel.impact_feedback seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.impact_feedback",
+      "seed": 4242,
+      "runHash": "86cd5142117de5e0c9438a47619c3ebcf8b08c2dd86b1a8c8d3279e38c19fae4",
+      "fedByRef": "verbs/feel.impact_feedback/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B9",
+          "key": "feel.impact_feedback",
+          "title": "Impacts answer",
+          "statement": "Every collision with ΔV ≥ 8 WU/s produces hitstop and camera trauma scaled by exchanged momentum. Collision audio differs by ≥ one octave of pitch and ≥ 12 dB between a scout kissing a rock and a freighter broadsiding a station. A Massline release has a time-domain snap.",
+          "target": "hitstop + trauma at ΔV ≥ 8 WU/s; audio ≥ 1 octave and ≥ 12 dB apart; release snaps",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "collision audio pitch, scout-on-rock vs freighter-on-station",
+              "value": 1.08,
+              "unit": "octaves",
+              "met": true
+            },
+            {
+              "label": "collision audio loudness, same two cases",
+              "value": 18.4,
+              "unit": "dB",
+              "met": true
+            },
+            {
+              "label": "Massline razor release time-domain snap",
+              "value": 55,
+              "unit": "ms",
+              "met": true,
+              "note": "hard-coded 0 on all nine branches before PQ-139.00"
+            }
+          ],
+          "met": true,
+          "notes": "hard-coded 0 on all nine branches before PQ-139.00",
+          "fedBy": [
+            "verbs/feel.impact_feedback/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs feel.knock_budget_10min seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.knock_budget_10min",
+      "seed": 4242,
+      "runHash": "87ff9c4a77ab35d7c84a6b19afce20d7668d6b4a8c7adda75cdfa6de1b05a9aa",
+      "fedByRef": "verbs/feel.knock_budget_10min/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": {
+          "eventsPerMinute": 1.1,
+          "maxDeltaVFractionOfCruise": 0.04576684295909865,
+          "headingChangeEvents": 0,
+          "jitterMeasured": false,
+          "met": null,
+          "source": "scenario"
+        },
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: visible jitter is unmeasured; full B13 cannot pass"
+        ]
+      },
+      "bars": []
+    },
+    {
+      "runRef": "verbs feel.reversal_course seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.reversal_course",
+      "seed": 4242,
+      "runHash": "68c879c0be0ce2e987c670b7507319144d49924be59ded66601511ba4d971bb5",
+      "fedByRef": "verbs/feel.reversal_course/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B2",
+          "key": "feel.reversal_course",
+          "title": "Nimble regime",
+          "statement": "From rest to cruise ≤ 1.5 s. Full 180° velocity reversal ≤ 3.0 s. Turn radius at cruise ≤ 1 screen depth.",
+          "target": "rest→cruise ≤ 1.5 s; 180° velocity reversal ≤ 3.0 s; turn radius at cruise ≤ 1 screen depth",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "rest to cruise, Hitch (starter)",
+              "value": 1.05,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "full 180 deg velocity reversal, Hitch (starter)",
+              "value": 1.6833333333333105,
+              "unit": "s",
+              "met": true,
+              "note": "flip-and-burn from steady cruise on the real path; velocity heading rotated >= 0.88 pi. Motion Lab M3 reports 4.3 for the same hull (its clock cannot start below 2.2 WU/s, so a ship that kills its speed during the yaw reads null there)."
+            },
+            {
+              "label": "turn radius at cruise, Hitch (starter)",
+              "value": 1.0602371448832808,
+              "unit": "screen depths",
+              "met": false,
+              "note": "r = 137.2435563706889 WU at cruise 190.32212829589844 WU/s; screen depth 129.4460932943429 WU read from the live chase camera"
+            },
+            {
+              "label": "rest to cruise, Wasp",
+              "value": 0.7333333333333345,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "full 180 deg velocity reversal, Wasp",
+              "value": 1.233333333333336,
+              "unit": "s",
+              "met": true,
+              "note": "flip-and-burn from steady cruise on the real path; velocity heading rotated >= 0.88 pi. Motion Lab M3 reports 3.9833333333333334 for the same hull (its clock cannot start below 2.2 WU/s, so a ship that kills its speed during the yaw reads null there)."
+            },
+            {
+              "label": "turn radius at cruise, Wasp",
+              "value": 0.8388032655637764,
+              "unit": "screen depths",
+              "met": true,
+              "note": "r = 108.21896971784038 WU at cruise 202.9744873046875 WU/s; screen depth 129.01591369592995 WU read from the live chase camera"
+            }
+          ],
+          "met": false,
+          "notes": "fed only by flight-reversal / flight-accel-brake — not in this evaluation input flip-and-burn from steady cruise on the real path; velocity heading rotated >= 0.88 pi. Motion Lab M3 reports 4.3 for the same hull (its clock cannot start below 2.2 WU/s, so a ship that kills its speed during the yaw reads null there). r = 137.2435563706889 WU at cruise 190.32212829589844 WU/s; screen depth 129.4460932943429 WU read from the live chase camera flip-and-burn from steady cruise on the real path; velocity heading rotated >= 0.88 pi. Motion Lab M3 reports 3.9833333333333334 for the same hull (its clock cannot start below 2.2 WU/s, so a ship that kills its speed during the yaw reads null there). r = 108.21896971784038 WU at cruise 202.9744873046875 WU/s; screen depth 129.01591369592995 WU read from the live chase camera",
+          "fedBy": [
+            "verbs/feel.reversal_course/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs feel.screen_crossing seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.screen_crossing",
+      "seed": 4242,
+      "runHash": "6c13f5d69dd32ac7badcc541b576ba5ad94ba62c08834c43979be615c2b3e699",
+      "fedByRef": "verbs/feel.screen_crossing/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B3",
+          "key": "feel.screen_crossing",
+          "title": "The fight stays on screen",
+          "statement": "At cruise the hull needs ≥ 1.2 s to cross the visible depth. Above the cap the camera opens so that a 2× cruise exit still shows ≥ 2 s of travel.",
+          "target": "≥ 1.2 s to cross the visible depth at cruise",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "seconds to cross the visible depth at cruise, Hitch (starter)",
+              "value": 0.680142106718615,
+              "unit": "s",
+              "met": false,
+              "note": "screen depth 129.4460932943429 WU read from the live chase camera at cruise 190.32212829589844 WU/s; both camera stages key to governed combat speed 195"
+            },
+            {
+              "label": "visible depth at 2x cruise, as a multiple of the at-cruise depth, Hitch (starter)",
+              "value": 1.7503832083852116,
+              "unit": "x at-cruise depth",
+              "met": true,
+              "note": "reached 380.10934002551966 WU/s by a physics impulse (target 2x cruise = 380.6442565917969); depth 226.5802680934833 WU vs 129.4460932943429 WU at cruise; both camera stages key to governed combat speed 195"
+            },
+            {
+              "label": "visible depth at 3x cruise, as a multiple of the at-cruise depth, Hitch (starter)",
+              "value": 2.6078578495222375,
+              "unit": "x at-cruise depth",
+              "met": true,
+              "note": "reached 570.4155883789062 WU/s by a physics impulse (target 3x cruise = 570.9663848876953); depth 337.57701048764 WU; both camera stages key to governed combat speed 195"
+            },
+            {
+              "label": "visible depth grows monotonically from cruise to 3x cruise, Hitch (starter)",
+              "value": 1,
+              "unit": "bool",
+              "met": true,
+              "note": "61 samples of the live camera depth between 190.32212829589844 and 570.4155883789062 WU/s; largest backward step 0 WU"
+            },
+            {
+              "label": "smallest share of frame width the starter hull ever falls to, Hitch (starter)",
+              "value": 4.665602073212467,
+              "unit": "% of frame width",
+              "met": true,
+              "note": "hull 28 WU (2 x collisionRadius) against frame width = visible depth x 1.7777777777777777 (the camera's own default aspect); worst case at 570.4155883789062 WU/s"
+            }
+          ],
+          "met": false,
+          "notes": "superseded by the real-path feel.screen_crossing run; the stroke-derived estimate is not applied. screen depth 129.4460932943429 WU read from the live chase camera at cruise 190.32212829589844 WU/s; both camera stages key to governed combat speed 195 reached 380.10934002551966 WU/s by a physics impulse (target 2x cruise = 380.6442565917969); depth 226.5802680934833 WU vs 129.4460932943429 WU at cruise; both camera stages key to governed combat speed 195 reached 570.4155883789062 WU/s by a physics impulse (target 3x cruise = 570.9663848876953); depth 337.57701048764 WU; both camera stages key to governed combat speed 195 61 samples of the live camera depth between 190.32212829589844 and 570.4155883789062 WU/s; largest backward step 0 WU hull 28 WU (2 x collisionRadius) against frame width = visible depth x 1.7777777777777777 (the camera's own default aspect); worst case at 570.4155883789062 WU/s",
+          "fedBy": [
+            "verbs/feel.screen_crossing/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs feel.tumble_trail seed 4242",
+      "bench": "verbs",
+      "scenarioId": "feel.tumble_trail",
+      "seed": 4242,
+      "runHash": "7fbe6ff60d690d387171b1fa2b8d547684a442d81e451cc6953b79ccd41032ef",
+      "fedByRef": "verbs/feel.tumble_trail/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": []
+    },
+    {
+      "runRef": "verbs fit.capability_verbs seed 4242",
+      "bench": "verbs",
+      "scenarioId": "fit.capability_verbs",
+      "seed": 4242,
+      "runHash": "dd87228a048b7a231eec1fe7173ee9c9b3066fe2ffededb7726fa116451ce463",
+      "fedByRef": "verbs/fit.capability_verbs/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": []
+    },
+    {
+      "runRef": "verbs fit.drive_thruster_split seed 4242",
+      "bench": "verbs",
+      "scenarioId": "fit.drive_thruster_split",
+      "seed": 4242,
+      "runHash": "1890ae346ac230d18b8d8b30000646a3eabbc1872eebf872c818293747163326",
+      "fedByRef": "verbs/fit.drive_thruster_split/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": []
+    },
+    {
+      "runRef": "verbs fit.mass_law seed 4242",
+      "bench": "verbs",
+      "scenarioId": "fit.mass_law",
+      "seed": 4242,
+      "runHash": "31b180feebcbacb6eeae228575edd81ba46f927ec0be6088bf76c33e6c83adf5",
+      "fedByRef": "verbs/fit.mass_law/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": []
+    },
+    {
+      "runRef": "verbs swarm.pressure_reservoir seed 4242",
+      "bench": "verbs",
+      "scenarioId": "swarm.pressure_reservoir",
+      "seed": 4242,
+      "runHash": "c6656e98c36995606b7ac5af48e11871729df17aac8e6245a0236bb4c7bbaf5c",
+      "fedByRef": "verbs/swarm.pressure_reservoir/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": []
+    },
+    {
+      "runRef": "verbs world.reaction_trio seed 4242",
+      "bench": "verbs",
+      "scenarioId": "world.reaction_trio",
+      "seed": 4242,
+      "runHash": "6cf05246619bb42776ea73f09353a6790de71a014cf3483486a4e4b23d44d088",
+      "fedByRef": "verbs/world.reaction_trio/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B10",
+          "key": "world.reaction_trio",
+          "title": "The world reacts",
+          "statement": "Within 10 s of a kill in a patrol's sight, the patrol makes a visible stay-with-wreck / chase choice. Spilled cargo attracts an NPC within 30 s. Civilians within 300 WU of gunfire change course within 3 s.",
+          "target": "salvor arrives ≤ 30 s; patrol chooses within 10 s; civilians turn within 3 s",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "salvor arrives after the cargo spill (worst of 1 run(s))",
+              "value": 3.75,
+              "unit": "s",
+              "met": true
+            },
+            {
+              "label": "patrol decides stay-or-chase after a witnessed kill",
+              "value": 1.2,
+              "unit": "s",
+              "met": true,
+              "note": "holder 308 held at 1.2s, chaser 327 pursued at 1.2s"
+            },
+            {
+              "label": "a live NPC reaches spilled cargo",
+              "value": 4.2,
+              "unit": "s",
+              "met": true,
+              "note": "hauler 311 arrived"
+            },
+            {
+              "label": "a civilian within 300 WU of gunfire changes course",
+              "value": 0.1,
+              "unit": "s",
+              "met": true,
+              "note": "ore_carrier 310 at 94.4 WU changed course only when the shooting started"
+            },
+            {
+              "label": "a wreck keeps the momentum of the ship that died (2 s after the kill)",
+              "value": 100,
+              "unit": "% of victim speed",
+              "met": true,
+              "note": "100% retained, drifted 240 WU, spun 2.263 rad, mass 55 (shoveable)"
+            }
+          ],
+          "met": true,
+          "notes": "holder 308 held at 1.2s, chaser 327 pursued at 1.2s hauler 311 arrived ore_carrier 310 at 94.4 WU changed course only when the shooting started 100% retained, drifted 240 WU, spun 2.263 rad, mass 55 (shoveable)",
+          "fedBy": [
+            "verbs/world.cargo_spill/s4242",
+            "verbs/world.reaction_trio/s4242"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "verbs world.sector_identity seed 4242",
+      "bench": "verbs",
+      "scenarioId": "world.sector_identity",
+      "seed": 4242,
+      "runHash": "ef7690bf42a0ca7f44b98f00e850be17a926cc5b96a6ede189def10a44c583ac",
+      "fedByRef": "verbs/world.sector_identity/s4242",
+      "funMetrics": {
+        "verbsPerMinute": null,
+        "verbsUsed": null,
+        "consequencesPerAction": null,
+        "timeToFirstConsequenceS": null,
+        "momentsPerMinute": null,
+        "nothingHappenedSeconds": null,
+        "deathsByCause": null,
+        "knockBudget": null,
+        "gaps": [
+          "verbsPerMinute: run metrics do not report verb usage",
+          "verbsUsed: run metrics do not report verb usage",
+          "consequencesPerAction: verb trace is scenario-specific, no player action count",
+          "timeToFirstConsequenceS: verb trace is scenario-specific, no player action count",
+          "momentsPerMinute: verb trace is scenario-specific, no per-tick collateral record",
+          "nothingHappenedSeconds: verb trace is scenario-specific, sampled not per-tick",
+          "deathsByCause: verb scenario records no deaths",
+          "knockBudget: verb scenario does not measure the knock budget"
+        ]
+      },
+      "bars": []
+    }
+  ]
+}
