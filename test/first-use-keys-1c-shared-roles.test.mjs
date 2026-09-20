@@ -11,6 +11,7 @@ import {
 import { createLivingHullPresentation } from '../src/render/livingHullPresentation.js';
 import { build47aScenarioProp } from '../src/render/scenarioProps47a.js';
 import { SHARED_MATERIAL_ROLE } from '../src/render/sharedMaterialRoles.js';
+import { ILLUSTRATED_SURFACE_KEY } from '../src/render/illustratedSurface.js';
 
 const SHARED_ROLES = new Set(Object.values(SHARED_MATERIAL_ROLE));
 
@@ -62,6 +63,34 @@ test('living-hull Standard decals join the hull family', () => {
   for (const material of lit) {
     assert.equal(material.userData.spacefaceSharedMaterialRole, SHARED_MATERIAL_ROLE.HULL);
     assert.equal(material.userData.spacefaceBatchKey, undefined);
+  }
+});
+
+test('living-hull repair patches carry the global illustrated surface', () => {
+  const { root } = createLivingHullPresentation();
+  const patch = root.getObjectByName('LivingHull_RepairPatches')?.material;
+  assert.ok(patch, 'repair patch material exists');
+  assert.equal(patch.userData.spacefaceSharedMaterialRole, SHARED_MATERIAL_ROLE.HULL);
+  assert.equal(patch.userData.spacefaceIllustratedSurface, ILLUSTRATED_SURFACE_KEY);
+});
+
+test('47-A scenario props inherit the illustrated surface while keeping their family token', () => {
+  const root = build47aScenarioProp({
+    id: 'spindle-surface',
+    type: 'payload',
+    radius: 10,
+    data: { assetRef: 'asset.slice.47a_spindle' },
+  });
+  const structural = litMaterials(root).filter(
+    (material) => material.userData.spacefaceProgramFamily === 'SF_Scenario_standard',
+  );
+  assert.ok(structural.length > 0, 'expected at least one SF_Scenario_standard prop material');
+  for (const material of structural) {
+    assert.equal(material.userData.spacefaceIllustratedSurface, ILLUSTRATED_SURFACE_KEY);
+    // The semantic debug family stays on userData; the compiled family collapses to the single
+    // illustrated key shared by every opaque hull-class surface.
+    assert.match(material.userData.spacefaceProgramFamily, /SF_Scenario_standard/);
+    assert.equal(material.customProgramCacheKey(), ILLUSTRATED_SURFACE_KEY);
   }
 });
 

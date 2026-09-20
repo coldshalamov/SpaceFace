@@ -12,6 +12,7 @@ import {
 } from '../core/livingHull.js';
 import { shouldUseTransparentSinglePass } from './transparentSinglePassPolicy.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
+import { installIllustratedSurface } from './illustratedSurface.js';
 
 const GRAFFITI_WIDTH = 256;
 const GRAFFITI_HEIGHT = 64;
@@ -228,6 +229,9 @@ export function createLivingHullPresentation(options = {}) {
     roughness: 0.68,
     metalness: 0.48,
   }), SHARED_MATERIAL_ROLE.HULL);
+  // Repair patches are weld-metal plates on the player's hull: carry the same global illustrated
+  // surface as the authored GLB fleet so repair history reads in the fleet's light language.
+  installIllustratedSurface(patchMaterial);
   const scorchMaterial = configureDecalMaterial(new THREE.MeshBasicMaterial({
     color: 0x160d0a,
     transparent: true,

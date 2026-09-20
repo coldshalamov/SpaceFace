@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
+import { installIllustratedSurface } from './illustratedSurface.js';
 
 export const SCENARIO_47A_PROP_ASSET_IDS = Object.freeze({
   'asset.slice.47a_spindle': 'SF_47A_EVIDENCE_SPINDLE',
@@ -56,6 +57,12 @@ function standard(name, color, roughness = 0.65, metalness = 0.3, options = {}) 
     new THREE.MeshStandardMaterial({ color, roughness, metalness, ...options }),
     SHARED_MATERIAL_ROLE.HULL,
   );
+  // Scenario props (evidence spindles, wrecks, pods, beacons) are opaque hull-class surfaces
+  // seen in every sector. Give them the same Lacquer & Starlight light language as the
+  // remastered GLB fleet and procedural faction hulls so the standard is global, not Helios-only.
+  // The SF_Scenario_standard semantic family stays on userData; the compiled family collapses
+  // onto the single shared illustrated key, exactly like the fleet hulls.
+  installIllustratedSurface(mat);
   mat.name = name;
   mat.userData = {
     ...(mat.userData || {}),
