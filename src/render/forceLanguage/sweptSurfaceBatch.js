@@ -20,8 +20,8 @@ attribute vec4 iTint;   // linear RGB, alpha
 attribute vec4 iMotion;// flow, phase, radial traveling crest, material style
 attribute vec4 iFinish;// reveal, taper, source envelope, pitch
 attribute vec4 iLife; // birth seconds, build seconds (0 = legacy), releaseAt (-1 = live), release seconds
-attribute vec4 iBehavior; // family animation code, semantic role, local phase, reserved
-attribute vec4 iPivot; // local source XZ, reserved; permits whole-tool growth, not strip-by-strip scaling
+attribute vec4 iBehavior; // family animation code, semantic role, local phase, structural flex
+attribute vec4 iPivot; // local source XZ, rib count, working heat; permits whole-tool growth, not strip-by-strip scaling
 uniform float uTime;
 uniform float uMotion;
 varying vec2 vUv;
@@ -29,6 +29,7 @@ varying vec4 vTint;
 varying vec4 vFlow;
 varying float vFront;
 varying vec4 vCycle; // kind, release, powered local time, role
+varying vec4 vMaterial; // structural flex, machined rib count, working heat, reserved
 const float PI=3.14159265359;
 void main(){
   float t=position.x;
@@ -80,35 +81,50 @@ void main(){
     }else{
       float growth=mix(1.0,0.055+0.945*build,uMotion);
       float spin=0.0;
+      // Structural flex. A machined collar, an aperture throat or a splayed spar barely gives;
+      // the working membrane between them does. One authored channel per strip, so a powered tool
+      // reads as a BUILT object with stiff hardware and a live surface, not a uniform jelly.
+      // Unset (legacy weapon descriptors never enter this branch) it is simply 0 = rigid.
+      float flex=iBehavior.w;
       if(kind<1.5){
         // Seed: opposed lock plates breathe/ratchet, never orbit or imply suction.
         float stroke=sin(motionTime*3.7+localPhase);
-        relative*=1.0+uMotion*0.075*stroke;
-        height+=uMotion*length(relative)*0.055*sin(motionTime*3.7+localPhase+1.1);
+        relative*=1.0+uMotion*0.075*stroke*flex;
+        height+=uMotion*length(relative)*0.055*flex*sin(motionTime*3.7+localPhase+1.1);
         spin=uMotion*(1.0-build)*0.48;
         growth*=mix(1.0,1.0-0.92*release,uMotion);
       }else if(kind<2.5){
         // Well: the silhouette itself turns and flexes; illumination is secondary motion.
-        spin=(-0.48*motionTime+uMotion*0.16*sin(motionTime*1.9+t*6.28+localPhase));
+        spin=(-0.48*motionTime+uMotion*0.16*flex*sin(motionTime*1.9+t*6.28+localPhase));
         if(role>1.5)spin=0.64*motionTime;
         spin+=uMotion*((1.0-build)*1.8-release*1.15);
         growth*=mix(1.0,1.0-0.95*release,uMotion);
-        height+=uMotion*iShape.y*0.34*sin(t*9.0-motionTime*3.2+localPhase);
+        height+=uMotion*iShape.y*0.34*flex*sin(t*9.0-motionTime*3.2+localPhase);
+        // Material is DRAWN IN: each fold's reach creeps toward the throat out of phase with its
+        // neighbours, so the ring visibly swallows even with nothing caught in it. Bounded well
+        // under the authoritative radius, which the separate boundary role still owns exactly.
+        relative*=1.0-uMotion*flex*0.052*(0.5+0.5*sin(motionTime*1.35+localPhase*3.1));
       }else if(kind<3.5){
         // Repulsor: never a reverse Well on shutdown. Freeze the front, peel into cooling shards.
-        spin=uMotion*0.055*sin(motionTime*1.7+localPhase);
+        spin=uMotion*0.055*flex*sin(motionTime*1.7+localPhase);
+        // Pressure is delivered in breaths, OUTWARD only: the shell leans out and settles back,
+        // and it never crosses below its built radius, so the verb can never invert into a Well.
+        relative*=1.0+uMotion*flex*0.055*max(0.0,sin(motionTime*2.15+localPhase*4.2));
         growth*=1.0+uMotion*release*0.04;
         height+=uMotion*release*iShape.y*2.8;
       }else if(kind<4.5){
         // Cone: a flowing pressure curtain, with fixed outer rails.
-        relative+=vec2(-sa,ca)*uMotion*iShape.y*0.70*sin(t*7.0-motionTime*3.6+localPhase)*sin(PI*t);
+        relative+=vec2(-sa,ca)*uMotion*iShape.y*0.70*flex*sin(t*7.0-motionTime*3.6+localPhase)*sin(PI*t);
         height+=uMotion*release*iShape.y*2.0;
       }else{
         // Skim: lateral scoops travel in the path stage; retiring banks fold onto the centerline.
         vec2 q=mat2(ca,-sa,sa,ca)*relative;
         q.y*=1.0-uMotion*release*0.88;
+        // Intake stroke: the bank leans toward the axis and recovers, so the parallel banks are
+        // visibly working. Longitudinal spacing is untouched — Skim must not diverge like a Cone.
+        q.y*=1.0-uMotion*flex*0.06*max(0.0,sin(motionTime*2.6+localPhase*5.0));
         relative=mat2(ca,sa,-sa,ca)*q;
-        height+=uMotion*iShape.y*0.22*sin(motionTime*2.4+t*7.0+localPhase);
+        height+=uMotion*iShape.y*0.22*flex*sin(motionTime*2.4+t*7.0+localPhase);
       }
       relative=mat2(cos(spin),sin(spin),-sin(spin),cos(spin))*relative*growth;
       height*=growth;
@@ -118,6 +134,9 @@ void main(){
     : iOrigin.xyz+vec3(p.x,height,p.y);
   gl_Position=projectionMatrix*modelViewMatrix*vec4(world,1.0);
   vCycle=vec4(cycle ? iBehavior.x : 0.0,release,motionTime,iBehavior.y);
+  // Weapon sources keep the smooth, fully hot surface they already ship: the machined channel and
+  // the cool-structure channel are lifecycle-only, so a 24-float legacy descriptor is unchanged.
+  vMaterial=vec4(cycle ? iBehavior.w : 1.0, cycle ? iPivot.z : 0.0, cycle ? iPivot.w : 1.0, 0.0);
   vUv=vec2(t,across); vTint=iTint;
   vFlow=vec4(iMotion.x,iMotion.y,iMotion.w,iFinish.x);
   vFront=(radial||conveyor ? smoothstep(0.0,0.13,phase)*(1.0-smoothstep(0.76,1.0,phase)) : 1.0)*iFinish.z*envelope;
@@ -131,6 +150,7 @@ varying vec4 vTint;
 varying vec4 vFlow;
 varying float vFront;
 varying vec4 vCycle;
+varying vec4 vMaterial;
 void main(){
   float t=vUv.x; float v=vUv.y;
   float edge=1.0-smoothstep(0.78,1.0,abs(v));
@@ -143,6 +163,25 @@ void main(){
   // every force resemble corrugated ribbon irrespective of its physical construction.
   float groove=0.5+0.5*sin(t*18.0+v*4.0+vFlow.y*9.0);
   float packet=pow(0.5+0.5*cos(t*16.0-vCycle.z*vFlow.x*5.0+vFlow.y*6.283),3.0);
+  // TRANSPORT SIGNATURE — which way material actually moves through this surface, which is the
+  // family's identity before any colour. Weapon sources (kind 0) keep the generic packet exactly.
+  // All of it is driven by vCycle.z, which is already scaled by uMotion, so reduced motion freezes
+  // transport without touching the lifecycle fades.
+  float kind=vCycle.x;
+  if(kind>1.5&&kind<2.5){
+    // Well: caustic fringes run from the rim INTO the throat.
+    packet=pow(0.5+0.5*cos((1.0-t)*15.0-vCycle.z*3.05+vFlow.y*6.283),4.0);
+  }else if(kind>2.5&&kind<3.5){
+    // Repulsor: one hot leading crest with its own cooling wake trailing behind it, outward.
+    float front=fract(t*0.62-vCycle.z*0.44+vFlow.y);
+    packet=smoothstep(0.55,1.0,front)*(0.30+0.70*front);
+  }else if(kind>3.5&&kind<4.5){
+    // Cone: discrete packets carried source-to-tip inside the authoritative sector.
+    packet=pow(0.5+0.5*cos(t*9.0-vCycle.z*4.15+vFlow.y*6.283),5.0);
+  }else if(kind>4.5){
+    // Skim: intake banding runs ACROSS the bank toward the centreline, never along it.
+    packet=pow(0.5+0.5*cos((v*0.5+0.5)*9.0-vCycle.z*3.4+vFlow.y*6.283),4.0);
+  }
   float body=0.12+0.38*smoothstep(0.28,0.64,groove);
   float hot=(fold*(0.75+0.48*packet)+rim*0.58)*uFlash;
   if(vFlow.z>0.5 && vFlow.z<1.5){
@@ -159,6 +198,20 @@ void main(){
     // Kinetic: torn, hard striations and dead metal between the directed explosive blades.
     body=0.12+0.18*step(0.45,groove); hot*=0.82+0.18*step(0.3,sin(t*87.0+v*13.0));
   }
+  // MACHINED CROSS-SECTION. Discrete ribs with a dark channel between them, filtered by fwidth so
+  // the edges stay stable at play distance instead of degenerating into noise. Members authored
+  // with zero ribs and full heat resolve to exactly the previous surface, so nothing outside the
+  // lifecycle families moves. Heat separates cool structure (collars, spars, aperture throats)
+  // from the hot working membrane, which is what makes the tool read as built hardware.
+  float ribs=vMaterial.y;
+  float heat=vMaterial.z;
+  float ribU=t*ribs+vFlow.y*2.0;
+  float ribQ=abs(fract(ribU)-0.5)*2.0;
+  float ribW=clamp(fwidth(ribU)*1.6,0.004,0.45);
+  float crest=ribs>0.5 ? 1.0-smoothstep(0.16-ribW,0.16+ribW,ribQ) : 0.0;
+  float channel=ribs>0.5 ? smoothstep(0.58-ribW,0.58+ribW,ribQ) : 0.0;
+  body=body*(1.0-0.44*channel)+0.19*crest;
+  hot=hot*heat+crest*packet*0.34*uFlash*heat;
   float fracture=1.0;
   if(vCycle.y>0.0){
     // Persistent fragments cool and erode; they do not remain active conveyor/force symbols.
@@ -170,6 +223,9 @@ void main(){
   }
   float shadowPool=1.0-smoothstep(0.20,0.55,groove);
   vec3 pigment=mix(vTint.rgb,vTint.rgb*vec3(0.30,0.24,0.68),shadowPool*0.78);
+  // Cool members drift toward machined steel rather than a dimmer copy of the field's own colour,
+  // so hardware and working surface separate by MATERIAL, not by brightness alone.
+  pigment=mix(pigment*vec3(0.46,0.50,0.60)+vec3(0.030,0.034,0.042),pigment,clamp(heat,0.0,1.0));
   vec3 color=pigment*body+vTint.rgb*hot*1.5+vec3(0.55,0.68,0.78)*pow(fold,3.0)*hot*0.40;
   float alpha=edge*tips*reveal*vTint.a*vFront*fracture*(0.57+0.43*max(fold,rim));
   if(alpha<0.003)discard;

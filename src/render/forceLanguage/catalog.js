@@ -12,6 +12,28 @@ const freeze = (value) => {
   return value;
 };
 
+/**
+ * Authored material per STRUCTURAL MEMBER, shared by every field recipe so a family's hardware and
+ * its working surface cannot drift apart. These are art-direction constants, not physics:
+ *   flex — how much of the family's sustained deformation this member receives (0 = rigid hardware)
+ *   ribs — machined rib count across the strip; 0 is a smooth membrane. Filtered in the shader,
+ *          so this buys readable internal structure, never high-frequency noise.
+ *   heat — 0 = cool machined structure, 1 = hot working surface. Separates the built object from
+ *          the force it is carrying by material rather than by brightness.
+ * The neutral member ("plain") reproduces the pre-2026-09-20 surface exactly; weapon-source
+ * descriptors never reach this table and are unaffected.
+ */
+export const SURFACE_MATERIALS = freeze({
+  plain: { flex: 1, ribs: 0, heat: 1 },
+  truth: { flex: 0, ribs: 0, heat: 0.70 }, // the authoritative footprint line: measured, not lit
+  frame: { flex: 0.18, ribs: 9, heat: 0.44 }, // collars, crowns, aperture throats
+  spar: { flex: 0.34, ribs: 7, heat: 0.52 }, // splayed structural ribs and end caps
+  membrane: { flex: 1.22, ribs: 5, heat: 1 }, // the surface that actually carries the force
+  filament: { flex: 1.40, ribs: 0, heat: 1 }, // thin inner threads
+  plate: { flex: 0.90, ribs: 5, heat: 0.62 }, // Seed's machined force plates
+  edge: { flex: 0.55, ribs: 0, heat: 1 }, // hot working and warning edges
+});
+
 export const FORCE_FAMILIES = freeze({
   kinetic: { name: 'Machined impulse', silhouette: 'fractured axial wedges', motion: 'ballistic; abrupt ignition, fast cooling', material: 'hot cut metal, brass, soot', never: 'orbiting magic, soft source spheres' },
   propulsion: { name: 'Driven plasma', silhouette: 'open throat, separated swept sheets', motion: 'continuous nozzle-to-wake convection', material: 'white-hot folds, blue cooling edges, dark channels', never: 'isotropic bulbs; flight-history attached to current heading' },
