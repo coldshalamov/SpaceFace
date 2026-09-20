@@ -5,7 +5,7 @@ import { mulberry32 } from './rng.js';
 import { SpatialHash } from './spatialHash.js';
 import { CURRENT_VERSION } from '../data/saveVersion.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
-import { AUDIO_DEFAULT_MUTE_VERSION } from './graphicsProfileBootstrap.js';
+import { AUDIO_DEFAULT_MUTE_VERSION, GAME_MOTION_DEFAULT_VERSION } from './graphicsProfileBootstrap.js';
 import { createRunState } from './runState.js';
 
 function defaultSettings() {
@@ -53,7 +53,9 @@ function defaultSettings() {
     // root field above. These are the net-new a11y fields driven by src/ui/accessibility.js.
     accessibility: {
       colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
-      motionPreference: 'system', captions: false, audioCues: true, captionSize: 'medium', captionBackground: true,
+      // Full by default: the OS reduced-motion hint is an explicit opt-in (System), never a silent
+      // one — Windows "Animation effects: off" is a desktop tweak, not a request to strip combat feel.
+      motionPreference: 'full', motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION, captions: false, audioCues: true, captionSize: 'medium', captionBackground: true,
     },
   };
 }

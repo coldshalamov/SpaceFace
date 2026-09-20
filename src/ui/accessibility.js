@@ -177,8 +177,8 @@ export const ACCESSIBILITY_SETTINGS_SCHEMA = [
   },
   {
     key: 'motionPreference', path: 'accessibility.motionPreference', type: 'select',
-    options: MOTION_PREFERENCES, default: 'system', status: 'EXISTS',
-    label: 'Motion effects', help: 'Follows the operating system or explicitly reduces motion.',
+    options: MOTION_PREFERENCES, default: 'full', status: 'EXISTS',
+    label: 'Motion effects', help: 'Full by default. Reduce calms camera shake, zoom punch and hit-stop; System follows the operating system.',
   },
   {
     key: 'captions', path: 'accessibility.captions', type: 'toggle', default: true, status: 'EXISTS',
@@ -233,8 +233,10 @@ function normalizedMotionPreference(settings) {
   const explicit = pick(settings, 'accessibility.motionPreference', null);
   if (MOTION_PREFERENCES.includes(explicit)) return explicit;
   // Old profiles had only the effective boolean. Preserve an explicit reduced choice; otherwise
-  // migrate to the professional default that follows the operating-system preference.
-  return pick(settings, 'video.motionReduce', false) ? 'reduce' : 'system';
+  // full effects. Following the operating system is an explicit pick (System), never the fallback:
+  // Windows "Animation effects: off" is a desktop tweak, and inheriting it silently stripped
+  // hit-stop, trauma, event lights and force-field motion from players who never asked.
+  return pick(settings, 'video.motionReduce', false) ? 'reduce' : 'full';
 }
 
 function systemMotionReduced() {

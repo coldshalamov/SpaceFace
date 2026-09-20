@@ -101,3 +101,43 @@ test('pre-policy profiles default to mute before registry while explicit post-po
   assert.equal(optedIn.settings.audio.muted, false,
     'an explicit unmute made under the current policy must remain a player choice');
 });
+
+// OWNER, 2026-09-20: "the vfx for the attacks is limp and a lot of times doesn't even move, it'll be
+// like a blue swirl and literally be a frozen frame moving and not spinning or anything." The
+// owner's Windows has "Animation effects" off, Chromium reports that as prefers-reduced-motion, and
+// the old silent 'system' default turned off hit-stop, trauma, event lights and field motion.
+test('a profile that never chose its motion setting boots with full combat effects', async () => {
+  const { GAME_MOTION_DEFAULT_VERSION, migrateGameMotionDefault } = await import('../src/core/graphicsProfileBootstrap.js');
+  const ownerProfile = JSON.stringify({
+    settings: {
+      accessibility: { motionPreference: 'system' },
+      video: { motionReduce: true },
+    },
+  });
+  const state = createGameState(11);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(state, storageWith(ownerProfile)), true);
+  assert.equal(state.settings.accessibility.motionPreference, 'full',
+    'the silent OS-following default is migrated once to full effects');
+  assert.equal(state.settings.video.motionReduce, false,
+    'the mirrored OS flag does not survive as if the player had asked for it');
+  assert.equal(state.settings.accessibility.motionDefaultVersion, GAME_MOTION_DEFAULT_VERSION);
+
+  const reduce = migrateGameMotionDefault({ accessibility: { motionPreference: 'reduce' }, video: { motionReduce: true } });
+  assert.equal(reduce.accessibility.motionPreference, 'reduce', 'an explicit Reduce is always kept');
+  assert.equal(reduce.video.motionReduce, true);
+
+  const ancient = migrateGameMotionDefault({ video: { motionReduce: true } });
+  assert.equal(ancient.accessibility.motionPreference, 'reduce',
+    'before motionPreference existed, the boolean was the explicit choice');
+
+  const chosenSystem = migrateGameMotionDefault({
+    accessibility: { motionPreference: 'system', motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION },
+    video: { motionReduce: true },
+  });
+  assert.equal(chosenSystem.accessibility.motionPreference, 'system',
+    'a player who picks System after the migration keeps it');
+
+  assert.equal(createGameState(12).settings.accessibility.motionPreference, 'full',
+    'a fresh profile starts with full effects and carries the version');
+  assert.equal(createGameState(12).settings.accessibility.motionDefaultVersion, GAME_MOTION_DEFAULT_VERSION);
+});

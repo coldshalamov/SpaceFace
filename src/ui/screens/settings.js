@@ -423,7 +423,7 @@ export const settingsScreen = {
       // Accessibility (V2 §9/§12): vestibular-sensitive players get hit feedback (numbers, audio,
       // smoke) with the camera shake / FOV punch / hit-stop freeze suppressed. Live-applied: the
       // feel module reads settings.video.motionReduce every trigger, so the preference takes effect now.
-      rowSelect('Motion effects', () => (s.accessibility && s.accessibility.motionPreference) || (vd.motionReduce ? 'reduce' : 'system'),
+      rowSelect('Motion effects', () => (s.accessibility && s.accessibility.motionPreference) || (vd.motionReduce ? 'reduce' : 'full'),
         [['system', 'Follow system'], ['reduce', 'Reduced'], ['full', 'Full']],
         (v) => this._set(ctx, 'accessibility', 'motionPreference', v));
       rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v, persist) => this._set(ctx, 'video', 'screenShake', v, persist));
@@ -533,7 +533,7 @@ export const settingsScreen = {
       }
     } else if (refs.active === 'Access') {
       const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
-        motionPreference: 'system', captions: true, audioCues: true, captionSize: 'medium', captionBackground: true });
+        motionPreference: 'full', captions: true, audioCues: true, captionSize: 'medium', captionBackground: true });
       // Language: the default route is English; choosing here switches the live locale and re-renders
       // every mounted screen through the shared document bridge (no reload).
       rowSelect('Language', () => chosenLocale(s), LANGUAGE_OPTIONS.map((option) => [option.id, option.label]),
@@ -548,7 +548,7 @@ export const settingsScreen = {
       rowToggle('High contrast', () => !!ac.highContrast, (v) => this._set(ctx, 'accessibility', 'highContrast', v));
       rowToggle('Reduce flashing', () => !!ac.flashReduce, (v) => this._set(ctx, 'accessibility', 'flashReduce', v));
       rowToggle('Readable font', () => !!ac.dyslexiaFont, (v) => this._set(ctx, 'accessibility', 'dyslexiaFont', v));
-      rowSelect('Motion effects', () => ac.motionPreference || (s.video.motionReduce ? 'reduce' : 'system'),
+      rowSelect('Motion effects', () => ac.motionPreference || (s.video.motionReduce ? 'reduce' : 'full'),
         [['system', 'Follow system'], ['reduce', 'Reduced'], ['full', 'Full']],
         (v) => this._set(ctx, 'accessibility', 'motionPreference', v));
       rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));

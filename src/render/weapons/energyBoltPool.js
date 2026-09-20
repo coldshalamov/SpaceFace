@@ -139,13 +139,18 @@ const FRAGMENT_SHADER = /* glsl */`
 
     vec3 col = mix(vSheath, vColor, clamp(core * 1.15, 0.0, 1.0));
 
-    // Variant 0: Pulse - a cupped dielectric lip with an electric-cyan punch.
+    // Variant 0: Pulse - a cupped dielectric lip with an electric-cyan punch. The lip is a wave
+    // the round sheds down its own flanks, and the head surges as the charge sloshes forward:
+    // this is the starter gun, so it is the shot the player sees most and it may never be a
+    // still image sliding across the screen.
     float pulse = 1.0 - step(0.5, vVariant);
     float pulseTip = smoothstep(0.0, 0.1, vAlong) * smoothstep(1.0, 0.88, vAlong);
     float pulseHead = smoothstep(0.40, 0.76, vAlong);
-    float pulseLip = exp(-pow((across - (0.57 + 0.13 * sin(vAlong * 5.0))) / 0.13, 2.0));
+    float pulseShed = sin(vAlong * 5.0 + uBoltTime * 17.0);
+    float pulseLip = exp(-pow((across - (0.57 + 0.13 * pulseShed)) / 0.13, 2.0));
+    float pulseSurge = 0.9 + uBoltFlicker * 0.1 * sin(uBoltTime * 29.0 - vAlong * 4.0);
     body = mix(body, (sheath * 0.20 + pulseLip * (0.72 + pulseHead * 0.95)
-      + core * (0.25 + pulseHead * 0.58)) * pulseTip, pulse);
+      + core * (0.25 + pulseHead * 0.58) * pulseSurge) * pulseTip, pulse);
     col = mix(col, vec3(0.92, 0.98, 1.0), pulseLip * pulse * pulseHead * 0.67);
 
     // Variant 1: Plasma - superheated incandescent convection with boiling edges
@@ -192,15 +197,23 @@ const FRAGMENT_SHADER = /* glsl */`
     if (emp > 0.5 && empArc + empRoot < 0.12) discard;
     col = mix(col, vec3(0.75, 0.88, 1.0), empArc * emp * 0.8);
 
-    // Variant 5: Concussion - dense shockwave compression slug
+    // Variant 5: Concussion - dense shockwave compression slug. Pressure rings peel off the bow
+    // shock and race down the slug's flanks while the bow itself throbs: the round that shoves
+    // hulls around has to look like it is carrying a wall of pressure, not like a painted capsule.
     float concussion = step(4.5, vVariant) * (1.0 - step(5.5, vVariant));
     float concShock = smoothstep(0.65, 0.98, vAlong);
-    body = mix(body, (core * 0.85 + sheath * 0.7) * (0.8 + concShock * 0.6), concussion);
+    float concRings = 0.5 + 0.5 * sin(vAlong * 21.0 + uBoltTime * 44.0);
+    float concThrob = 0.86 + uBoltFlicker * 0.14 * sin(uBoltTime * 26.0);
+    body = mix(body, (core * 0.85 + sheath * (0.5 + 0.34 * concRings * (1.0 - concShock)))
+      * (0.8 + concShock * 0.6 * concThrob), concussion);
     col = mix(col, vec3(1.0, 0.8, 0.45), concShock * concussion * 0.65);
 
     // Variant 6: Flak - fragmentation fleck with incendiary spark jacket
     float flak = step(5.5, vVariant);
-    body = mix(body, (core * 1.1 + sheath * 0.6) * (0.7 + 0.3 * sin(vAlong * 25.0)), flak);
+    // The spark jacket crawls tailward and spits: fragmentation is burning, not striped.
+    float flakCrawl = sin(vAlong * 25.0 + uBoltTime * 39.0);
+    float flakSpit = 1.0 + uBoltFlicker * 0.16 * sin(uBoltTime * 67.0 + vAlong * 9.0);
+    body = mix(body, (core * 1.1 + sheath * 0.6) * (0.7 + 0.3 * flakCrawl) * flakSpit, flak);
     col = mix(col, vec3(1.0, 0.9, 0.6), core * flak * 0.8);
 
     float radiance = body * vIntensity;

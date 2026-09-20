@@ -6,6 +6,7 @@ export const PROFILE_SETTINGS_KEY = 'sf.settings.profile.v1';
 export const MASSLINE_BINDING_PROFILE_SPACE = 'space-v1';
 export const MASSLINE_BINDING_PROFILE_LEGACY = 'legacy-f-v1';
 export const AUDIO_DEFAULT_MUTE_VERSION = 1;
+export const GAME_MOTION_DEFAULT_VERSION = 1;
 
 const LOCKED_GAMEPLAY_KEYS = Object.freeze([
   'physicsBackend',
@@ -62,6 +63,34 @@ export function migrateDefaultMutedAudioProfile(settings) {
   return settings;
 }
 
+/**
+ * Motion effects default to FULL; the operating-system hint is an explicit opt-in.
+ *
+ * 'system' used to be the silent default, and Chromium reports prefers-reduced-motion whenever
+ * Windows "Animation effects" is off — a tweak many players make so their desktop feels snappier,
+ * with no vestibular need at all. On those machines the game stripped hit-stop, camera trauma, FOV
+ * punch, muzzle and impact lights, heat haze, projectile shimmer and the turning of force fields
+ * without the player ever touching a setting: combat read as limp, and a Well was a frozen swirl
+ * sliding across the screen. No profile written before this version could have chosen 'system'
+ * knowingly, so those receive one migration to 'full'. An explicit Reduce is always kept, and a
+ * later explicit pick of System carries the current version and remains the player's choice.
+ */
+export function migrateGameMotionDefault(settings) {
+  if (!isPlainObject(settings)) return settings;
+  if (!isPlainObject(settings.accessibility)) settings.accessibility = {};
+  const access = settings.accessibility;
+  if (access.motionDefaultVersion === GAME_MOTION_DEFAULT_VERSION) return settings;
+  const video = isPlainObject(settings.video) ? settings.video : null;
+  // Profiles older than motionPreference carried only the effective boolean, and there a true was
+  // an explicit player choice. Alongside 'system' the same boolean is only the mirrored OS hint.
+  const explicitReduce = access.motionPreference === 'reduce'
+    || (access.motionPreference == null && !!(video && video.motionReduce === true));
+  access.motionPreference = explicitReduce ? 'reduce' : 'full';
+  if (video) video.motionReduce = explicitReduce;
+  access.motionDefaultVersion = GAME_MOTION_DEFAULT_VERSION;
+  return settings;
+}
+
 export function mergeProfileSettings(baseSettings, profileSettings) {
   const base = isPlainObject(baseSettings) ? baseSettings : {};
   const merged = mergePlain(base, isPlainObject(profileSettings) ? profileSettings : {});
@@ -78,9 +107,9 @@ export function mergeProfileSettings(baseSettings, profileSettings) {
 
 export function bootstrapProfileSettingsBeforeRegistry(state, storage = globalThis.localStorage) {
   if (!state || !isPlainObject(state.settings)) return false;
-  const profile = migrateDefaultMutedAudioProfile(
+  const profile = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
     migrateLegacyMasslineBindingProfile(readProfileSettings(storage)),
-  );
+  ));
   if (!profile) return false;
   state.settings = mergeProfileSettings(state.settings, profile);
   return true;

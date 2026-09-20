@@ -13,20 +13,35 @@ const {
 const state = createGameState(606);
 const root = createRoot();
 
-assert.equal(state.settings.accessibility.motionPreference, 'system');
-assert.equal(state.settings.accessibility.captions, true);
+// OWNER, 2026-09-20: "the vfx for the attacks is limp and a lot of times doesn't even move ... a blue
+// swirl and literally be a frozen frame moving and not spinning." The owner's Windows has "Animation
+// effects" off (a desktop tweak); the old 'system' default inherited that silently and stripped
+// hit-stop, trauma, event lights and force-field motion. Full is the default; System is an opt-in.
+assert.equal(state.settings.accessibility.motionPreference, 'full');
+assert.equal(state.settings.accessibility.captions, false,
+  'captions are an opt-in: every captioned event already has its sound and its effect (Package 0, 2026-09-14)');
 assert.equal(state.settings.accessibility.captionSize, 'medium');
 assert.equal(state.settings.accessibility.captionBackground, true);
 
 let applied = applyAccessibility(state.settings, root);
-assert.equal(applied.motionPreference, 'system');
+assert.equal(applied.motionPreference, 'full');
 assert.equal(applied.motionReduced, false);
 assert.equal(state.settings.video.motionReduce, false);
 assert.equal(root.classList.contains('sf-caption-size-medium'), true);
 assert.equal(root.classList.contains('sf-caption-backing'), true);
 
 media.setMatches(true);
-assert.equal(state.settings.video.motionReduce, true, 'OS motion preference must reach existing runtime flag live');
+applied = applyAccessibility(state.settings, root);
+assert.equal(applied.motionReduced, false, 'the OS hint must never strip combat feel from a player who did not ask');
+assert.equal(state.settings.video.motionReduce, false);
+assert.equal(root.classList.contains('sf-reduce-motion'), false);
+
+media.setMatches(false);
+state.settings.accessibility.motionPreference = 'system';
+applied = applyAccessibility(state.settings, root);
+assert.equal(applied.motionReduced, false);
+media.setMatches(true);
+assert.equal(state.settings.video.motionReduce, true, 'an explicit System choice follows the OS preference live');
 assert.equal(root.classList.contains('sf-reduce-motion'), true);
 
 state.settings.accessibility.motionPreference = 'full';
