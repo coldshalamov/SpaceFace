@@ -23,6 +23,27 @@ const TRAIL_OPACITY = 2;
  */
 export const RIBBON_TRAIL_INTERPOLATION_CAP = 32;
 
+/**
+ * Cross-section of the NPC wake ribbon (M2, closing the B7 row in VFX_QUALITY_AUDIT_2026-09-16).
+ *
+ * The strip is two vertices wide and stays that way — its vertex layout is a published contract
+ * that the head/skip characterization reads directly. The curvature is carried instead by the
+ * shading frame: the two edge vertices are tilted away from each other about the transverse axis,
+ * so the interpolated normal sweeps an arch through the sheet's own up vector at the midline.
+ *
+ * RIBBON_ARCH_RAD is the half-angle of that arch. At 1.02 rad the flanks sit about 58 degrees off
+ * the midline, wide enough that a chase camera sees a lit crown with two shaded shoulders rather
+ * than a flat panel, and narrow enough that the shoulders never go fully dark.
+ *
+ * RIBBON_BANK_* rolls the strip into its own turns. A flat XZ ribbon under a top-down camera is
+ * face-on everywhere, so no view term can do anything with it; banking through the recorded
+ * curvature gives it a real angle to the eye exactly where the interesting geometry is. The
+ * CENTERLINE is untouched — only the two edges rise and fall around it.
+ */
+export const RIBBON_ARCH_RAD = 1.02;
+export const RIBBON_BANK_GAIN = 2.6;
+export const RIBBON_BANK_RISE = 0.55;
+
 // Both streak lanes share the same radiance curve: lower the floor from 0.65 to 0.28 while
 // retaining the 1.20 peak. The quadratic term concentrates brightness in the procedural core.
 const TRAIL_STREAK_RADIANCE_GLSL = /* glsl */`
@@ -35,17 +56,23 @@ const RIBBON_TRAIL_VERT = /* glsl */`
   attribute vec2 aTrailUv;
   attribute vec3 aTrailNormal;
   varying vec2 vTrailUv;
-  varying float vTrailGrazing;
+  varying vec3 vTrailNormal;
+  varying vec3 vTrailView;
   void main() {
     vTrailUv = aTrailUv;
-    // M2/B7: a flat strip with no view-dependent term reads as plastic tape. The trail keeps its
-    // world-space history, but its sheet now brightens at grazing angles relative to the real
-    // camera instead of presenting one constant value from every heading.
+    // M2/B7. The strip carries an ARCHED cross-section normal: the two edge vertices are tilted
+    // away from each other about the transverse axis, so the interpolated normal sweeps from one
+    // flank, through the sheet's own up vector at the midline, to the other. That is what gives a
+    // two-vertex strip a curved cross-section to light, and it is why the grazing term has to be
+    // evaluated per FRAGMENT: interpolating an already-collapsed scalar would hand the midline the
+    // average of the two flanks instead of the response the midline actually has.
+    //
+    // The previous term also read the wrong vector. It used the transverse horizontal as the sheet
+    // normal, which for a strip lying in XZ is the BINORMAL, not the surface normal; dotted against
+    // a top-down chase camera it sat pinned at its own clamp, so the whole effect was a constant.
     vec4 world = modelMatrix * vec4(position, 1.0);
-    vec3 viewDir = normalize(cameraPosition - world.xyz);
-    float normalLen = length(aTrailNormal);
-    vec3 sheetNormal = normalLen > 1e-5 ? aTrailNormal / normalLen : vec3(0.0, 1.0, 0.0);
-    vTrailGrazing = clamp(1.0 / max(abs(dot(sheetNormal, viewDir)), 0.22), 1.0, 2.4);
+    vTrailNormal = normalize(mat3(modelMatrix) * aTrailNormal);
+    vTrailView = cameraPosition - world.xyz;
     gl_Position = projectionMatrix * viewMatrix * world;
   }
 `;
@@ -59,8 +86,19 @@ const RIBBON_TRAIL_FRAG = /* glsl */`
   uniform float uOpacity;
   uniform float uRadiance;
   varying vec2 vTrailUv;
-  varying float vTrailGrazing;
+  varying vec3 vTrailNormal;
+  varying vec3 vTrailView;
   void main() {
+    // The arched cross-section, resolved here rather than in the vertex stage. facing is 1 looking
+    // straight down onto the sheet and falls to 0 along it, so the reciprocal is the grazing lift.
+    vec3 sheetN = normalize(vTrailNormal);
+    vec3 viewDir = normalize(vTrailView);
+    float facing = abs(dot(sheetN, viewDir));
+    float vTrailGrazing = clamp(1.0 / max(facing, 0.20), 1.0, 4.2);
+    // Flank separation: the arch turns away from the eye down each side, so the body reads as a
+    // rounded cord with its own shaded shoulders instead of one evenly-lit tape.
+    float shoulder = 1.0 - smoothstep(0.30, 0.94, facing);
+
     // aTrailUv.x is physical history: 0 = live nozzle, 1 = oldest retained wake. Flow scroll is
     // independent so animation never re-lights the tail as a solid painted strip.
     float pathT = clamp(vTrailUv.x, 0.0, 1.0);
@@ -93,10 +131,18 @@ const RIBBON_TRAIL_FRAG = /* glsl */`
     float ribbonA = exp(-dA * dA * 32.0 * strandTight);
     float ribbonB = exp(-dB * dB * 30.0 * strandTight);
     // Grazing lift on the sheet itself: the strands carry the view response, while the throat
-    // filament below stays a stable core so the trail cannot flicker as the ship yaws.
+    // filament below stays a stable core so the trail cannot flicker as the ship yaws. The two
+    // strands sit on opposite flanks of the arch, so each takes the shoulder that faces it — which
+    // is what makes a turn read as a cord rolling over rather than a tape changing brightness.
     float grazeLift = 1.0 + clamp(vTrailGrazing - 1.0, 0.0, 1.4) * 0.55;
-    ribbonA *= grazeLift;
-    ribbonB *= grazeLift;
+    // Zero sum by construction. An arch turns one flank toward the eye and the other away, so the
+    // strands trade brightness rather than both gaining it — that is what reads as a cord rolling
+    // over. Summing them instead would just make the whole trail flash as a ship yaws.
+    float lean = shoulder * 0.30;
+    float flankA = 1.0 + lean * (smoothstep(-0.75, 0.75, side) * 2.0 - 1.0);
+    float flankB = 1.0 + lean * (smoothstep(-0.75, 0.75, -side) * 2.0 - 1.0);
+    ribbonA *= grazeLift * flankA;
+    ribbonB *= grazeLift * flankB;
 
     // Each strand runs out of material at its own distance and tears into its own clumps, so the
     // wake ends where several elements happen to expire rather than at a plane. The fields are
@@ -134,9 +180,13 @@ const RIBBON_TRAIL_FRAG = /* glsl */`
     float sheathLive = mix(1.0, smoothstep(0.14, 0.66, shedC), tear);
     float brokenSheath = liquid * sheath * (0.42 + 0.58 * fluidNoise)
       * (0.72 + 0.28 * threadNoise) * sheathLive;
+    // Optical depth, not a brightness knob: a luminous sheet seen along its own surface is being
+    // looked through end-on, so there is genuinely more material in the line of sight. Bounded well
+    // under the clamp so the trail cannot flash as a ship yaws through the grazing angle.
+    float depth = 1.0 + clamp(vTrailGrazing - 1.0, 0.0, 1.4) * 0.09;
     float alpha = min(1.0, uOpacity * tailEnvelope
       * (filament * 0.88 + ribbons * 0.72 + brokenSheath * 0.48 + sheath * 0.10 + arcs * 0.55)
-      * (0.86 + headBoost * 0.28));
+      * (0.86 + headBoost * 0.28) * depth);
     if (alpha < 0.006) discard;
 
     // Three thermal bands, the outer two leaning on the ship's own trail colour so per-hull
@@ -151,7 +201,8 @@ const RIBBON_TRAIL_FRAG = /* glsl */`
     // down the wake, which holds its energy as saturated colour and structure instead of white fill.
     float thermal = 0.26 + 0.78 * plasma + 0.22 * throat;
     vec3 radiance = mix(body, whiteHot, hotMix) * uRadiance * thermal
-      * (0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcs * 0.22);
+      * (0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcs * 0.22
+         + shoulder * 0.24);
     gl_FragColor = vec4(radiance, alpha);
   }
 `;
@@ -538,21 +589,55 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
     const w = baseWidth * nozzleOpen * body;
     const ox = normalX * w;
     const oz = normalZ * w;
+
+    // Signed curvature of the recorded line at this station, from the chord either side of it in
+    // the direction of flight (index 0 is the live head, so newer sits at i - 1). The wake rolls
+    // into its own turns by this much; the centerline never moves.
+    let bank = 0;
+    if (count >= 3 && i > 0 && i < count - 1) {
+      const inX = centers[i * 3] - centers[(i + 1) * 3];
+      const inZ = centers[i * 3 + 1] - centers[(i + 1) * 3 + 1];
+      const outX = centers[(i - 1) * 3] - centers[i * 3];
+      const outZ = centers[(i - 1) * 3 + 1] - centers[i * 3 + 1];
+      const inLen = Math.hypot(inX, inZ);
+      const outLen = Math.hypot(outX, outZ);
+      if (inLen > 1e-5 && outLen > 1e-5) {
+        const turn = (inX / inLen) * (outZ / outLen) - (inZ / inLen) * (outX / outLen);
+        bank = Math.max(-1, Math.min(1, turn * RIBBON_BANK_GAIN));
+      }
+    }
+    const rise = bank * w * RIBBON_BANK_RISE;
+
     const vi = i * 2;
     pos[vi * 3] = px + ox;
-    pos[vi * 3 + 1] = 0.4;
+    pos[vi * 3 + 1] = 0.4 + rise;
     pos[vi * 3 + 2] = pz + oz;
     pos[(vi + 1) * 3] = px - ox;
-    pos[(vi + 1) * 3 + 1] = 0.4;
+    pos[(vi + 1) * 3 + 1] = 0.4 - rise;
     pos[(vi + 1) * 3 + 2] = pz - oz;
-    // The sheet normal is the transverse horizontal (the ribbon lies in the XZ plane), shared by
-    // both edge vertices; the shader turns it into the view-dependent grazing term.
-    normals[vi * 3] = normalX;
-    normals[vi * 3 + 1] = 0;
-    normals[vi * 3 + 2] = normalZ;
-    normals[(vi + 1) * 3] = normalX;
-    normals[(vi + 1) * 3 + 1] = 0;
-    normals[(vi + 1) * 3 + 2] = normalZ;
+
+    // ARCHED CROSS-SECTION (M2/B7). The two edge vertices get normals tilted away from each other
+    // about the transverse axis, measured from the sheet's own up vector; the rasterizer sweeps the
+    // interpolation through that up vector at the midline. The banked roll tilts the whole arch
+    // with the sheet, so a turning wake presents a real angle to the camera.
+    //
+    // What this replaces genuinely did not work: it stored the transverse horizontal, which is the
+    // BINORMAL of a strip lying in XZ rather than its surface normal. Dotted against a top-down
+    // chase camera that value stayed near zero, so the reciprocal sat pinned at its clamp and the
+    // grazing term was a constant from every heading — the flat-tape reading the audit named.
+    const tilt = -Math.atan(bank * RIBBON_BANK_RISE);
+    const angleA = tilt + RIBBON_ARCH_RAD;
+    const angleB = tilt - RIBBON_ARCH_RAD;
+    const cosA = Math.cos(angleA);
+    const sinA = Math.sin(angleA);
+    const cosB = Math.cos(angleB);
+    const sinB = Math.sin(angleB);
+    normals[vi * 3] = normalX * sinA;
+    normals[vi * 3 + 1] = cosA;
+    normals[vi * 3 + 2] = normalZ * sinA;
+    normals[(vi + 1) * 3] = normalX * sinB;
+    normals[(vi + 1) * 3 + 1] = cosB;
+    normals[(vi + 1) * 3 + 2] = normalZ * sinB;
   };
 
   const appendHistory = (x, z, rot) => {

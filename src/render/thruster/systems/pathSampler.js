@@ -189,6 +189,30 @@ export function createPathSampler(capacity = 40) {
     return written;
   }
 
+  /**
+   * Re-express the retained track in a rebased render frame (E2, floating origin).
+   *
+   * The render frame is re-pegged every 8192 WU. A stored point that does not move with it is
+   * describing a DIFFERENT place afterwards, so shifting by the frame delta is what keeps it the
+   * same place — leaving it alone is what would move it. Rotation-free and allocation-free; the
+   * committed and live poses shift with the history so the next follow() sees no false jump.
+   */
+  function reproject(dx, dz) {
+    const ox = Number.isFinite(dx) ? dx : 0;
+    const oz = Number.isFinite(dz) ? dz : 0;
+    if (ox === 0 && oz === 0) return;
+    for (let i = 0; i < n; i++) {
+      xs[i] += ox;
+      zs[i] += oz;
+    }
+    if (hasLive) {
+      liveX += ox;
+      liveZ += oz;
+      committedX += ox;
+      committedZ += oz;
+    }
+  }
+
   function inspect() {
     return {
       capacity: n,
@@ -204,6 +228,7 @@ export function createPathSampler(capacity = 40) {
   return {
     follow,
     clear,
+    reproject,
     sampleInto,
     inspect,
     get hasLive() { return hasLive; },

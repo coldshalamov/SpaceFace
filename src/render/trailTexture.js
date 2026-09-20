@@ -103,7 +103,10 @@ export function sampleTrailTexture(u, v, time = 0, opts = {}) {
  * coordinate; `pathT` is zero at the nozzle and one at the oldest sample. The optional opacity and
  * radiance inputs mirror the live uniforms. This is a tooling API; the render loop uses GLSL.
  *
- * Mirrors RIBBON_TRAIL_FRAG in engineTrailSurfaces.js (braided liquid plasma wake).
+ * Mirrors RIBBON_TRAIL_FRAG in engineTrailSurfaces.js (braided liquid plasma wake), including its
+ * view response: pass opts.facing as |N.V| against the ribbon's arched cross-section normal to get
+ * the grazing lift, the flank shoulders and the optical-depth term the live sheet applies. Omitting
+ * it gives the face-on case, which is what every caller got before the arch existed.
  */
 export function sampleLuminousTrailLayers(u, v, pathT, time = 0, opts = {}) {
   // `u` is the shader's wrapped flow coordinate. Keep the physical history coordinate separate:
@@ -127,8 +130,29 @@ export function sampleLuminousTrailLayers(u, v, pathT, time = 0, opts = {}) {
     + spread * (0.55 + 0.45 * Math.sin(twist));
   const ribbonOffB = 0.26 + 0.10 * Math.cos(along * 8.5 - time * 2.1)
     + spread * (0.52 + 0.45 * Math.sin(twist + 2.09));
-  const ribbonA = Math.exp(-((side - ribbonOffA) ** 2) * 32 * strandTight);
-  const ribbonB = Math.exp(-((side + ribbonOffB) ** 2) * 30 * strandTight);
+  // VIEW RESPONSE. `facing` is |N.V| against the ribbon's arched cross-section normal: 1 looking
+  // straight down onto the sheet, falling to 0 along it. Defaulting to 1 keeps every existing
+  // caller on the face-on case it already got. The twin carried none of this before, so it had
+  // silently stopped mirroring the live shader when the grazing lift landed.
+  const facing = Number.isFinite(opts.facing)
+    ? Math.max(0, Math.min(1, Math.abs(opts.facing)))
+    : 1;
+  const grazing = Math.max(1, Math.min(4.2, 1 / Math.max(facing, 0.20)));
+  const shoulderT = Math.max(0, Math.min(1, (facing - 0.30) / (0.94 - 0.30)));
+  const shoulder = 1 - shoulderT * shoulderT * (3 - 2 * shoulderT);
+  const grazeLift = 1 + Math.min(1.4, Math.max(0, grazing - 1)) * 0.55;
+  // Centred on the midline, so flankT(s) + flankT(-s) is exactly 1 and the pair genuinely trades.
+  const flankT = (s) => {
+    const e = Math.max(0, Math.min(1, (s + 0.75) / 1.5));
+    return e * e * (3 - 2 * e);
+  };
+  const lean = shoulder * 0.30;
+  const flankA = 1 + lean * (flankT(side) * 2 - 1);
+  const flankB = 1 + lean * (flankT(-side) * 2 - 1);
+  const depth = 1 + Math.min(1.4, Math.max(0, grazing - 1)) * 0.09;
+
+  const ribbonA = Math.exp(-((side - ribbonOffA) ** 2) * 32 * strandTight) * grazeLift * flankA;
+  const ribbonB = Math.exp(-((side + ribbonOffB) ** 2) * 30 * strandTight) * grazeLift * flankB;
   const tear = Math.max(0, Math.min(1, (t - 0.08) / 0.50));
   const tearSmooth = tear * tear * (3 - 2 * tear);
   const shedA = valueNoise2D(t * 5.9 + 3.1, time * 0.17);
@@ -196,12 +220,20 @@ export function sampleLuminousTrailLayers(u, v, pathT, time = 0, opts = {}) {
     headBoost,
     opacity,
     radianceScale,
+    facing,
+    grazing,
+    shoulder,
+    grazeLift,
+    flankA,
+    flankB,
+    depth,
     alpha: Math.min(1, opacity * tailEnvelope
       * (filament * 0.88 + ribbons * 0.72 + brokenSheath * 0.48 + sheath * 0.10 + arcs * 0.55)
-      * (0.86 + headBoost * 0.28)),
+      * (0.86 + headBoost * 0.28) * depth),
     radiance: radianceScale
       * thermal
-      * (0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcs * 0.22),
+      * (0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcs * 0.22
+         + shoulder * 0.24),
     thermal,
     hotMix,
   };
