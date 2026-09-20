@@ -226,6 +226,9 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
   uniform float uCompressionPitch;
   uniform float uCompressionDepth;
   uniform float uReachSpread;
+  // The INTEGRATED fold clock, advanced on the CPU at foldClockRate(drive, boost, reducedMotion).
+  // Throttle and boost must never multiply it here: see the note in plumeFoldField.js.
+  uniform float uFoldTime;
   // Impulse construction (RCS only; zero on continuous drives).
   uniform float uHeadLaunch;
   uniform float uHeadTravel;
@@ -291,7 +294,10 @@ ${PLUME_FOLD_FIELD_GLSL}
     // identical. Each instance now runs out at its own distance, seeded from its own phase (which
     // is per-socket AND per-entity), and only ever SHORTER than the mesh: the material must always
     // finish before the geometry does.
-    float instReach = plumeInstanceReach(vPhase * 7.31 + uLayerRole * 2.17);
+    // One hash per instance, shared by every role of it; the role scale alone decides how much
+    // of the family spread each layer spends. That keeps the hot core inside its own cold sheath
+    // instead of letting a short core draw a stub inside a longer vapor sleeve.
+    float instReach = plumeInstanceReach(vPhase * 7.31, plumeRoleReachScale(uLayerRole));
     float reachAlong = clamp(vAlong / max(instReach, 0.5), 0.0, 1.35);
     float soft = max(uSoftEdge, 0.04);
     float edgeX = smoothstep(0.0, soft, vUv.x) * (1.0 - smoothstep(1.0 - soft * 1.15, 1.0, vUv.x));
@@ -416,9 +422,8 @@ ${PLUME_FOLD_FIELD_GLSL}
     // arrangement on the first is what turns four cooperating roles into four separate plumes.
     // The field is floored at (1 - creaseDepth), so a crease darkens the interior between sheets
     // and can never open a gap — bright lines with holes between them is B19.
-    float foldTime = uTime * mix(1.0, 0.35, uReducedMotion);
     float foldDrive = clamp(vThrottle, 0.0, 1.4);
-    float fold = plumeFoldField(vAlong, shapedSide, nAxial, foldDrive, dynBoost, foldTime);
+    float fold = plumeFoldField(vAlong, shapedSide, nAxial, foldDrive, dynBoost, uFoldTime);
     // Broad roles carry the arrangement at full depth. The core and inner stream take a fraction,
     // so the brightest and most gameplay-legible part of the exhaust keeps one or two clean
     // creases instead of either dissolving into stripes or staying a featureless tube.
@@ -707,13 +712,18 @@ export function createFlowFlipbookMaterial(THREE, options = {}) {
     uCompressionPitch: { value: construction.compressionPitch },
     uCompressionDepth: { value: construction.compressionDepth },
     uReachSpread: { value: construction.reachSpread },
+    uFoldTime: { value: 0 },
     // Impulse construction. Zeroed on continuous drives so the RCS terms cannot reach them even
     // if uImpulseJet were ever mis-set: two independent gates on the same branch.
     uHeadLaunch: { value: isImpulse ? num(impulse.headLaunch, 0.22) : 0 },
     uHeadTravel: { value: isImpulse ? num(impulse.headTravel, 0.9) : 0 },
     uHeadDepth: { value: isImpulse ? num(impulse.headDepth, 0.62) : 0 },
     uCollarLift: { value: isImpulse ? num(impulse.collarLift, 0.85) : 0 },
-    uCollarHold: { value: isImpulse ? num(impulse.collarHold, 0.42) : 1 },
+    // Never 1 on a continuous drive: smoothstep(edge0, edge1, x) with edge0 >= edge1 is
+    // undefined in GLSL, and a driver that returns NaN there would skip the alpha discard and
+    // paint the whole card. Both collar terms are already zeroed by uImpulseJet and uCollarLift;
+    // this keeps the smoothstep itself well formed as well.
+    uCollarHold: { value: num(impulse.collarHold, 0.42) },
   };
 
   const material = new THREE.ShaderMaterial({
@@ -782,6 +792,7 @@ export function setMaterialUniforms(material, values) {
   if (!material || !material.uniforms) return;
   const u = material.uniforms;
   if (values.time != null && u.uTime) u.uTime.value = values.time;
+  if (values.foldTime != null && u.uFoldTime) u.uFoldTime.value = values.foldTime;
   if (values.shellArc != null && u.uShellArc) u.uShellArc.value = values.shellArc;
   if (values.flowSpeed != null && u.uFlowSpeed) u.uFlowSpeed.value = values.flowSpeed;
   if (values.noiseScale != null && u.uNoiseScale) u.uNoiseScale.value = values.noiseScale;

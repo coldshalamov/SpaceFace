@@ -24,6 +24,7 @@ import {
   segmentedIndexCount,
 } from '../geometry/segmentedPlumeGeometry.js';
 import { EventLightPool } from './eventLight.js';
+import { foldClockRate } from '../materials/plumeFoldField.js';
 import {
   assertDynamicBufferOwnerWritable,
   commitDynamicBufferOwner,
@@ -492,6 +493,9 @@ export class RcsImpulseSystem {
 
       const uScratch = {
         time: 0,
+        // Integrated fold clock (see plumeFoldField.js). A control jet runs at full chamber flow
+        // for its whole short life, so its rate does not vary with a throttle it does not have.
+        foldTime: 0,
         flowSpeed: idn.baseFlow,
         reducedMotion: false,
         reducedFlash: false,
@@ -647,6 +651,8 @@ export class RcsImpulseSystem {
         batch.mesh.visible = batch.writeCount > 0;
         const u = batch.uScratch;
         u.time = this._time;
+        u.foldTime += (dt || 0) * foldClockRate(1, 0, !!flags.reducedMotion);
+        if (u.foldTime > 4096) u.foldTime -= 4096;
         u.flowSpeed = baseFlow;
         u.reducedMotion = !!flags.reducedMotion;
         u.reducedFlash = !!flags.reducedFlash;

@@ -55,19 +55,68 @@ function step(edge, x) {
 }
 
 /**
- * Per-instance extent, in [1 - reachSpread, 1].
+ * THE FOLD CLOCK, and why it is integrated on the CPU.
+ *
+ * The obvious way to make creases run faster under throttle is to scale the time term:
+ * `phase = ... - uTime * rate * (0.55 + drive * 0.75)`. That is frequency modulation without
+ * phase integration, and it is wrong in a way that only shows up after the game has been running
+ * for a while. `uTime` is unbounded, so changing the rate multiplies the WHOLE elapsed time by a
+ * different number and the phase jumps by the difference. Measured on the ion drive: a 0.3 -> 1.0
+ * spool moves the crease phase by 5 rad one second into a session, 633 rad two minutes in, and
+ * 6333 rad twenty minutes in. Every spool, every boost tap and every ignition transient would
+ * scrub a hundred creases past the eye in a third of a second, worse the longer you played.
+ *
+ * The old soft filament pattern had the same shape and got away with it because smooth noise
+ * hides a scrub. Sharp creases do not — they are exactly the structure that makes a scrub visible.
+ *
+ * So the rate is integrated into a clock on the CPU, once per material per frame, and the shader
+ * reads a phase that only ever moves forward at the current speed. Throttle and boost still reach
+ * the fragment directly, but only for things that are instantaneous by nature: how sharp the
+ * crease is and how deep the interior goes.
+ *
+ * @param {number} drive effective throttle 0..1+
+ * @param {number} boost boost blend 0..1
+ * @param {boolean} reducedMotion calm the flow without freezing it
+ * @returns {number} clock units per second
+ */
+export function foldClockRate(drive, boost, reducedMotion) {
+  const d = Math.max(0, Math.min(1.4, drive || 0));
+  const b = Math.max(0, Math.min(1, boost || 0));
+  return (0.55 + d * 0.75) * (1 + b * 0.5) * (reducedMotion ? 0.35 : 1);
+}
+
+/**
+ * How much of the family's extent spread a role is allowed to spend.
+ *
+ * The hot core is the last thing to shred: it is the collimated part. The cold outer material is
+ * what tears off early. Scaling the spread by role rather than hashing each role separately also
+ * guarantees the ordering — a core can never end up SHORTER than the vapor wrapped around it,
+ * which would draw a hot stub inside a longer cold sleeve.
+ *
+ * @param {number} layerRole 0 core, 1 inner, 2 sheath, 3 vapor
+ */
+export function plumeRoleReachScale(layerRole) {
+  const r = Math.max(0, Math.min(3, layerRole || 0));
+  return 0.3 + (r / 3) * 0.7;
+}
+
+/**
+ * Per-instance extent, in [1 - reachSpread * roleScale, 1].
  *
  * B18 is "uniform extent across all elements of an effect, so they all end at the same place".
  * Every instance of a role used to end at exactly the same station, so a fleet drive had a flat
  * chopped back edge and two ships of one family were pixel-identical. This shortens each instance
- * by its own amount, seeded from the instance's own phase.
+ * by its own amount, seeded from the instance's own phase — which is now per-socket AND per-entity.
+ *
+ * The seed deliberately excludes the role, so every layer of one instance draws the SAME hash and
+ * the role scale alone decides how much of it each spends. That is what keeps the core inside its
+ * own sheath.
  *
  * It can only ever SHORTEN. A reach above 1 would push material at the mesh's own end, which is
- * the hard cut-off B9 rejects; the mesh end must always be somewhere the material has already
- * finished.
+ * the hard cut-off B9 rejects; the mesh end must always be somewhere the material has finished.
  *
- * @param {number} seed the instance's phase, plus a per-role offset
- * @param {number} reachSpread construction `reachSpread`
+ * @param {number} seed the instance's phase
+ * @param {number} reachSpread construction `reachSpread`, already multiplied by the role scale
  */
 export function plumeInstanceReach(seed, reachSpread) {
   const spread = Math.max(0, Math.min(0.5, reachSpread || 0));
@@ -116,17 +165,18 @@ export function plumeCompression(along, c) {
  * @param {number} along axial fraction 0..1
  * @param {number} side shell cross-section coordinate, about -1..1
  * @param {number} axialNoise the fragment's existing axial breakup field, 0..1
- * @param {number} drive effective throttle 0..1+ (sharpens and speeds the pattern)
- * @param {number} boost boost blend 0..1
- * @param {number} time seconds on the material's own flow clock
+ * @param {number} drive effective throttle 0..1+ (sharpens the crease; does NOT scale the clock)
+ * @param {number} boost boost blend 0..1 (same)
+ * @param {number} foldTime the integrated fold clock, in clock units — see foldClockRate. Both
+ *   the travelling wave and the standing beat ride it, so opening the taps speeds them together
+ *   without any term multiplying elapsed time.
  * @param {object} c construction from resolveFamilyConstruction
  */
-export function plumeFoldField(along, side, axialNoise, drive, boost, time, c) {
+export function plumeFoldField(along, side, axialNoise, drive, boost, foldTime, c) {
   const beatOn = step(0.001, c.foldBeatHz);
-  // The beat is the field drive’s power read: opening the taps does not throw more mass, it
-  // drives the standing arrangement harder and faster. Without this, boost on a resonator would
-  // be a brightness change and nothing else.
-  const beat = Math.sin(time * TAU * c.foldBeatHz * (0.8 + drive * 0.3 + boost * 0.45));
+  // The beat rides the same integrated clock as the travel, so a field drive under load beats
+  // harder and faster without the elapsed-time scrub that scaling the clock in here would cause.
+  const beat = Math.sin(foldTime * TAU * c.foldBeatHz);
 
   // Where the crease band sits across the shell. Zero is a solid column; a non-zero annulus puts
   // the ridges off the centreline, so the plume has an inner edge as well as an outer one.
@@ -139,7 +189,7 @@ export function plumeFoldField(along, side, axialNoise, drive, boost, time, c) {
   // still position-minus-time plus a slow evolution, never a frozen image (E3, B16).
   const phase = side * c.foldCount * PI
     + along * c.foldPitch * TAU
-    - time * c.foldTravel * TAU * (0.55 + drive * 0.75) * (1 + boost * 0.5)
+    - foldTime * c.foldTravel * TAU
     + beat * 1.15 * beatOn;
 
   const wave = 0.5 + 0.5 * Math.cos(phase);
@@ -172,8 +222,15 @@ export function plumeFoldField(along, side, axialNoise, drive, boost, time, c) {
  */
 export const PLUME_FOLD_FIELD_GLSL = /* glsl */`
 // Shared fold field (must match plumeFoldField.js)
-float plumeInstanceReach(float seed) {
-  float spread = clamp(uReachSpread, 0.0, 0.5);
+// uFoldTime is the INTEGRATED fold clock. Nothing in here may multiply it by drive or boost:
+// scaling an unbounded elapsed time is frequency modulation without phase integration, and it
+// scrubs hundreds of creases past the eye on every spool once a session has been running a while.
+float plumeRoleReachScale(float layerRole) {
+  return 0.3 + clamp(layerRole, 0.0, 3.0) / 3.0 * 0.7;
+}
+
+float plumeInstanceReach(float seed, float roleScale) {
+  float spread = clamp(uReachSpread * roleScale, 0.0, 0.5);
   return 1.0 - spread * (0.5 + 0.5 * sin(seed * 12.9898 + 4.1));
 }
 
@@ -191,7 +248,7 @@ float plumeCompression(float along) {
 
 float plumeFoldField(float along, float side, float axialNoise, float drive, float boost, float t) {
   float beatOn = step(0.001, uFoldBeatHz);
-  float beat = sin(t * 6.28318531 * uFoldBeatHz * (0.8 + drive * 0.3 + boost * 0.45));
+  float beat = sin(t * 6.28318531 * uFoldBeatHz);
 
   float ringD = (abs(side) - uFoldAnnulus) * 2.6;
   float ringBand = exp(-(ringD * ringD));
@@ -199,7 +256,7 @@ float plumeFoldField(float along, float side, float axialNoise, float drive, flo
 
   float phase = side * uFoldCount * 3.14159265
     + along * uFoldPitch * 6.28318531
-    - t * uFoldTravel * 6.28318531 * (0.55 + drive * 0.75) * (1.0 + boost * 0.5)
+    - t * uFoldTravel * 6.28318531
     + beat * 1.15 * beatOn;
 
   float wave = 0.5 + 0.5 * cos(phase);

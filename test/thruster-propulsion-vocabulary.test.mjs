@@ -31,6 +31,8 @@ import {
 import {
   plumeFoldField,
   plumeInstanceReach,
+  plumeRoleReachScale,
+  foldClockRate,
   plumeThroatAttach,
   plumeCompression,
   bakeFoldProfileRgba,
@@ -103,7 +105,7 @@ test('a stationary firing ship shows moving exhaust: the clock advances and reac
 
     assert.ok(t1 - t0 > 0.2,
       `${pack.profileId}: material clock must advance while parked (${t1 - t0}s)`);
-    // Proof that "stationary" is真 stationary: nothing about the pose moved.
+    // Proof that the ship really is stationary: nothing about the pose moved.
     assert.deepEqual(Array.from(lastOffset), Array.from(firstOffset),
       `${pack.profileId}: the test ship must not have moved`);
     assert.ok(batch.writeCount > 0, `${pack.profileId}: the parked drive must still draw`);
@@ -134,15 +136,37 @@ test('a stationary firing ship shows moving exhaust: the field itself changes, e
 });
 
 test('reduced motion calms the exhaust without freezing it', () => {
+  const full = foldClockRate(0.8, 0, false);
+  const calm = foldClockRate(0.8, 0, true);
+  assert.ok(calm < full * 0.5, 'reduced motion must visibly slow the fold clock');
+  assert.ok(calm > 0, 'and must never stop it');
   for (const family of FAMILIES) {
     const c = resolveFamilyConstruction(family);
-    // The fragment feeds the fold field a clock scaled by mix(1.0, 0.35, uReducedMotion).
+    // A quarter second of wall clock becomes 0.25 * calm of fold clock.
     const a = foldGrid(c, 0);
-    const slow = foldGrid(c, 0.25 * 0.35);
+    const slow = foldGrid(c, 0.25 * calm);
     let moved = 0;
     for (let i = 0; i < a.length; i++) moved += Math.abs(a[i] - slow[i]);
     assert.ok(moved / a.length > 0.02,
       `${family}: reduced motion must slow the exhaust, not stop it`);
+  }
+});
+
+test('the hot core never ends short of the cold sheath wrapped around it', () => {
+  for (const family of FAMILIES) {
+    const c = resolveFamilyConstruction(family);
+    for (let s = 0; s < 48; s++) {
+      const seed = s * 0.137;
+      const core = plumeInstanceReach(seed, c.reachSpread * plumeRoleReachScale(0));
+      const inner = plumeInstanceReach(seed, c.reachSpread * plumeRoleReachScale(1));
+      const sheath = plumeInstanceReach(seed, c.reachSpread * plumeRoleReachScale(2));
+      const vapor = plumeInstanceReach(seed, c.reachSpread * plumeRoleReachScale(3));
+      assert.ok(core >= inner - 1e-9 && inner >= sheath - 1e-9 && sheath >= vapor - 1e-9,
+        `${family}: the collimated core must outlast the material shredding off it `
+        + `(${core}, ${inner}, ${sheath}, ${vapor})`);
+    }
+    assert.ok(plumeRoleReachScale(0) < plumeRoleReachScale(3),
+      'the cold outer material tears off earliest');
   }
 });
 
@@ -482,24 +506,56 @@ test('the ignition transient is spent on structure, so reduced flash still sees 
 });
 
 test('boost drives the arrangement harder rather than just brighter', () => {
-  for (const family of FAMILIES) {
-    const c = resolveFamilyConstruction(family);
-    if (c.foldTravel <= 0.05) continue; // a standing beat has nothing to speed up
-    // Boost speeds the fold travel, so the field at a fixed point diverges faster with boost on.
-    let calm = 0;
-    let boosted = 0;
-    for (let i = 0; i <= 12; i++) {
-      const along = i / 12;
-      calm += Math.abs(
-        plumeFoldField(along, 0.3, 0.5, 1, 0, 0, c) - plumeFoldField(along, 0.3, 0.5, 1, 0, 0.08, c),
-      );
-      boosted += Math.abs(
-        plumeFoldField(along, 0.3, 0.5, 1, 1, 0, c) - plumeFoldField(along, 0.3, 0.5, 1, 1, 0.08, c),
-      );
-    }
-    assert.ok(boosted > calm * 1.05,
-      `${family}: boost must change the flow, not only the brightness (${calm.toFixed(3)} -> ${boosted.toFixed(3)})`);
+  // The fold clock is INTEGRATED on the CPU, so "boost speeds the creases up" is a property of
+  // the rate, not of a term multiplying elapsed time. Asserting it on the rate is also what pins
+  // the fix for the strobe: a test written against the old shape would pass with the bug in.
+  const calm = foldClockRate(1, 0, false);
+  const boosted = foldClockRate(1, 1, false);
+  const idle = foldClockRate(0, 0, false);
+  assert.ok(boosted > calm * 1.3, `boost must speed the arrangement (${calm} -> ${boosted})`);
+  assert.ok(calm > idle * 1.8, 'throttle must speed the arrangement');
+  assert.ok(idle > 0, 'a lit but unfired drive still moves');
+  assert.ok(foldClockRate(1, 1, true) < boosted, 'reduced motion calms it');
+  assert.ok(foldClockRate(1, 1, true) > 0, 'but never freezes it');
+
+  // And the rate reaches the material: the same drive boosted advances the clock further.
+  const mk = () => new ContinuousPlumeSystem(THREE, PACKS[0].main, { distortionEnabled: false });
+  const plain = mk();
+  const hot = mk();
+  for (let f = 0; f < 30; f++) {
+    plain.update(1 / 60, 1, SOCKETS, { a11y: A11Y_OFF, boost: 0 });
+    hot.update(1 / 60, 1, SOCKETS, { a11y: A11Y_OFF, boost: 1 });
   }
+  const plainClock = plain.layerBatches[0].material.uniforms.uFoldTime.value;
+  const hotClock = hot.layerBatches[0].material.uniforms.uFoldTime.value;
+  assert.ok(plainClock > 0, 'the fold clock advances');
+  assert.ok(hotClock > plainClock * 1.15,
+    `boost must advance the fold clock faster (${plainClock.toFixed(3)} vs ${hotClock.toFixed(3)})`);
+  plain.dispose();
+  hot.dispose();
+});
+
+test('the fold clock is integrated, so a throttle change can never scrub the creases', () => {
+  // The bug this pins: scaling an unbounded uTime by a drive-dependent rate is frequency
+  // modulation without phase integration. Two minutes in, a normal spool jumped the crease phase
+  // by 633 radians — a hundred creases scrubbing past in a third of a second, worse the longer
+  // the session ran. An integrated clock cannot do that however long it has been running.
+  const sys = new ContinuousPlumeSystem(THREE, PACKS[0].main, { distortionEnabled: false });
+  const u = sys.layerBatches[0].material.uniforms;
+  // Two minutes of steady cruise.
+  for (let f = 0; f < 60 * 120; f++) sys.update(1 / 60, 0.3, SOCKETS, { a11y: A11Y_OFF });
+  const before = u.uFoldTime.value;
+  // Then slam the throttle open for one frame.
+  sys.update(1 / 60, 1, SOCKETS, { a11y: A11Y_OFF });
+  const step = u.uFoldTime.value - before;
+  assert.ok(step >= 0, 'the clock only moves forward');
+  assert.ok(step < 0.05,
+    `a spool must advance the clock by one frame, not by a multiple of the session (${step})`);
+  const c = resolveFamilyConstruction(PACKS[0].main.engineFamily);
+  const phaseJump = Math.abs(step * c.foldTravel * Math.PI * 2);
+  assert.ok(phaseJump < 0.6,
+    `a spool must not scrub whole creases past the eye (${(phaseJump / (Math.PI * 2)).toFixed(3)} creases)`);
+  sys.dispose();
 });
 
 // ── 6. Fleet integration: sockets, turns, stop/start, speed, crowding ────────────────────────

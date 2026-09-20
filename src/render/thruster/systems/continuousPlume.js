@@ -25,6 +25,7 @@ import {
   bindEnvelopeFromRecipe,
 } from '../materials/flowFlipbookMaterial.js';
 import { resolveEnvelopeParams } from '../geometry/axialWidthEnvelope.js';
+import { foldClockRate } from '../materials/plumeFoldField.js';
 import {
   createSegmentedPlumeGeometry,
   resolveSegmentCount,
@@ -755,6 +756,10 @@ export class ContinuousPlumeSystem {
 
       const uScratch = {
         time: 0,
+        // Integrated fold clock. Advanced by foldClockRate each frame rather than scaled inside
+        // the shader, so a spool speeds the creases up instead of scrubbing a hundred of them
+        // past the eye (see plumeFoldField.js).
+        foldTime: 0,
         flowSpeed: 0,
         turbulence: 0,
         coreSheath: 0,
@@ -903,7 +908,7 @@ export class ContinuousPlumeSystem {
     const a11y = this._batchA11y || this._a11y;
     const result = this.pool.endWrite();
     this._batching = false;
-    this._commitGpu(result, a11y, null);
+    this._commitGpu(result, a11y, null, dt || 0);
     return result;
   }
 
@@ -921,11 +926,11 @@ export class ContinuousPlumeSystem {
     const a11y = o.a11y == null ? this._a11y : o.a11y;
     if (a11y.qualityTier) this.setQualityTier(a11y.qualityTier);
     const result = this.pool.update(throttle, sockets, a11y, dt, boost, o);
-    this._commitGpu(result, a11y, sockets);
+    this._commitGpu(result, a11y, sockets, dt || 0);
     return result;
   }
 
-  _commitGpu(result, a11y, sockets) {
+  _commitGpu(result, a11y, sockets, dtFold = 0) {
     const sock0 = sockets && sockets.length ? sockets[0] : this.pool._fallbackSocket;
     this._nozzleScratch.x = sock0.x;
     this._nozzleScratch.y = sock0.y;
@@ -1006,6 +1011,11 @@ export class ContinuousPlumeSystem {
         const li = batch.layerIndex;
         const u = batch.uScratch;
         u.time = this._time;
+        u.foldTime += (dtFold) * foldClockRate(result.drive, result.boostBlend, a11y.reducedMotion);
+        // Wrapped well inside float32 exact-integer range so a long session never loses crease
+        // precision, at a period that is an exact number of clock units (the fold phase is
+        // periodic in it, so the wrap is invisible).
+        if (u.foldTime > 4096) u.foldTime -= 4096;
         // Uniforms remain family-identity fallbacks; per-instance dynamics own continuum.
         u.flowSpeed = sample.flowSpeed * (this.pool._layerScroll[li] / 2.4);
         u.turbulence = sample.turbulence;
