@@ -1,0 +1,165 @@
+[
+  {
+    "kind": "overlay",
+    "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\var_station_trade_hub_free_overlay_v01.glb",
+    "bytes": 297116,
+    "tris": 3024,
+    "hull": 0,
+    "bounds": {
+      "min": [
+        -67.71522521972656,
+        14.534955978393555,
+        -59.585636138916016
+      ],
+      "max": [
+        65.43138885498047,
+        39.69185256958008,
+        72.6036148071289
+      ],
+      "size": [
+        133.14661407470703,
+        25.156896591186523,
+        132.18925094604492
+      ]
+    },
+    "grafted": [
+      "LOD0_VAR_FREE_pod00",
+      "LOD0_VAR_FREE_pod00_collar",
+      "LOD0_VAR_FREE_pod01",
+      "LOD0_VAR_FREE_pod01_collar",
+      "LOD0_VAR_FREE_pod02",
+      "LOD0_VAR_FREE_pod02_collar",
+      "LOD0_VAR_FREE_pod03",
+      "LOD0_VAR_FREE_pod03_collar",
+      "LOD0_VAR_FREE_pod04",
+      "LOD0_VAR_FREE_pod04_collar",
+      "LOD0_VAR_FREE_pod05",
+      "LOD0_VAR_FREE_pod05_collar",
+      "LOD0_VAR_FREE_pod06",
+      "LOD0_VAR_FREE_pod06_collar",
+      "LOD0_VAR_FREE_pod07",
+      "LOD0_VAR_FREE_pod07_collar",
+      "LOD0_VAR_FREE_pod08",
+      "LOD0_VAR_FREE_pod08_collar",
+      "LOD0_VAR_FREE_pod09",
+      "LOD0_VAR_FREE_pod09_collar",
+      "LOD0_VAR_FREE_pod10",
+      "LOD0_VAR_FREE_pod10_collar",
+      "LOD0_VAR_FREE_pod11",
+      "LOD0_VAR_FREE_pod11_collar",
+      "LOD0_VAR_FREE_truss00",
+      "LOD0_VAR_FREE_truss01",
+      "LOD0_VAR_FREE_truss02",
+      "LOD0_VAR_FREE_truss03",
+      "LOD0_VAR_FREE_truss05",
+      "LOD0_VAR_FREE_truss06",
+      "LOD0_VAR_FREE_truss07",
+      "LOD0_VAR_FREE_truss08",
+      "LOD0_VAR_FREE_truss09",
+      "LOD0_VAR_FREE_truss10",
+      "LOD0_VAR_FREE_skirtX0",
+      "LOD0_VAR_FREE_skirtX1",
+      "LOD0_VAR_FREE_skirtX2",
+      "LOD0_VAR_FREE_skirtX3",
+      "LOD0_VAR_FREE_skirtX4",
+      "LOD0_VAR_FREE_skirtX5",
+      "LOD0_VAR_FREE_skirtY0",
+      "LOD0_VAR_FREE_skirtY1",
+      "LOD0_VAR_FREE_skirtY2",
+      "LOD0_VAR_FREE_skirtY3",
+      "LOD0_VAR_FREE_skirtY4"
+    ],
+    "assetId": "SF_PLACE_STATION_TRADE_HUB_FREE_OVERLAY",
+    "rootName": "SF_TRADE_HUB_FREE_OVERLAY_ROOT",
+    "file": "assets/ships/parts/places/var_station_trade_hub_free_overlay_v01.glb"
+  },
+  {
+    "kind": "overlay",
+    "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\var_station_trade_hub_mts_overlay_v01.glb",
+    "bytes": 220688,
+    "tris": 4800,
+    "hull": 0,
+    "bounds": {
+      "min": [
+        -73.35761260986328,
+        26.676998138427734,
+        -66.22205352783203
+      ],
+      "max": [
+        79.35661315917969,
+        49.22699737548828,
+        66.21805572509766
+      ],
+      "size": [
+        152.71422576904297,
+        22.549999237060547,
+        132.4401092529297
+      ]
+    },
+    "grafted": [
+      "LOD0_VAR_MTS_ring_inner",
+      "LOD0_VAR_MTS_ring_outer",
+      "LOD0_VAR_MTS_struts",
+      "LOD0_VAR_MTS_crown0",
+      "LOD0_VAR_MTS_crown1",
+      "LOD0_VAR_MTS_crown2",
+      "LOD0_VAR_MTS_crown3",
+      "LOD0_VAR_MTS_crown4",
+      "LOD0_VAR_MTS_crown5",
+      "LOD0_VAR_MTS_adframe0",
+      "LOD0_VAR_MTS_adpanel0",
+      "LOD0_VAR_MTS_adframe1",
+      "LOD0_VAR_MTS_adpanel1",
+      "LOD0_VAR_MTS_adframe2",
+      "LOD0_VAR_MTS_adpanel2",
+      "LOD0_VAR_MTS_adframe3",
+      "LOD0_VAR_MTS_adpanel3"
+    ],
+    "assetId": "SF_PLACE_STATION_TRADE_HUB_MTS_OVERLAY",
+    "rootName": "SF_TRADE_HUB_MTS_OVERLAY_ROOT",
+    "file": "assets/ships/parts/places/var_station_trade_hub_mts_overlay_v01.glb"
+  },
+  {
+    "kind": "overlay",
+    "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\var_station_trade_hub_scn_overlay_v01.glb",
+    "bytes": 219728,
+    "tris": 2756,
+    "hull": 0,
+    "bounds": {
+      "min": [
+        -94.40049743652344,
+        11.230690002441406,
+        -65.4020004272461
+      ],
+      "max": [
+        76.39950561523438,
+        56.176998138427734,
+        65.39799499511719
+      ],
+      "size": [
+        170.8000030517578,
+        44.94630813598633,
+        130.79999542236328
+      ]
+    },
+    "grafted": [
+      "LOD0_VAR_SCN_cladding_band",
+      "LOD0_VAR_SCN_bastion_nn",
+      "LOD0_VAR_SCN_bastion_np",
+      "LOD0_VAR_SCN_bastion_pn",
+      "LOD0_VAR_SCN_bastion_pp",
+      "LOD0_VAR_SCN_mast00",
+      "LOD0_VAR_SCN_mast01",
+      "LOD0_VAR_SCN_mast02",
+      "LOD0_VAR_SCN_mast10",
+      "LOD0_VAR_SCN_mast11",
+      "LOD0_VAR_SCN_mast12",
+      "LOD0_VAR_SCN_boom_n",
+      "LOD0_VAR_SCN_boom_p",
+      "LOD0_VAR_SCN_boom_gate"
+    ],
+    "assetId": "SF_PLACE_STATION_TRADE_HUB_SCN_OVERLAY",
+    "rootName": "SF_TRADE_HUB_SCN_OVERLAY_ROOT",
+    "file": "assets/ships/parts/places/var_station_trade_hub_scn_overlay_v01.glb"
+  }
+]

@@ -1,0 +1,15 @@
+Review landed PQ-032.00 leftover settle. Protocol: .devshots/packets/HONESTY-REVIEW.md
+
+Read:
+- design/program/roadmap/receipts/PQ-032.00-REPORT.md
+- test/pq-032-00-set-pieces.test.mjs
+- src/systems/missions.js story latch-dock / whip settle only as evidence
+- src/systems/masslineImpacts.js COLLIDABLE_TYPES
+
+Philosophical goal: beats 1–3 are set pieces whose physical headline verb settles the beat.
+
+Trace the test inputs. Does B1 drive leftover masslineImpacts with a real rock on the tower, or inject whipImpact? Do B2/B3 place cargo at 0 WU by teleport, or tow it? Is the 111/120 WU gate live leftover math? STATUS must match the live route.
+
+Allowed edits: the receipt and test/pq-032-00-set-pieces.test.mjs only. Do not mark the queue. Do not commit. Do not edit missions.js.
+
+Return: do the three headline verbs now settle the beats? Which rows are still placed cargo? Files changed, if any.

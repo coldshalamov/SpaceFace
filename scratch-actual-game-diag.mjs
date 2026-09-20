@@ -160,10 +160,26 @@ function sample() {
   const active = {};
   for (const [k, v] of Object.entries(dir.active || {})) active[k] = v.ids ? v.ids.length : -1;
   const ships = (state.entityList || []).filter((e) => e.alive && e.type === 'ship').length;
+  // pin probe: what loot/foe is the hunter pilot parked on?
+  const p = state.entities.get(state.playerId);
+  let pinLoot = null, pinFoe = null;
+  if (p && p.pos) {
+    for (const e of state.entityList || []) {
+      if (!e || !e.alive || e.id === state.playerId) continue;
+      const d = Math.hypot((e.pos?.x || 0) - p.pos.x, (e.pos?.z || 0) - p.pos.z);
+      if (d <= 500 && !pinLoot && (e.type === 'pickup' || e.type === 'cargo' || e.type === 'lootShard' || (e.data && e.data.salvageable))) {
+        pinLoot = { id: e.id, type: e.type, d: Math.round(d), salvageable: !!(e.data && e.data.salvageable), lootN: Array.isArray(e.data && e.data.loot) ? e.data.loot.length : null, despawnAt: e.data ? e.data.despawnAt ?? null : null };
+      }
+      if (d <= 1600 && !pinFoe && e.type === 'ship' && e.team === 1) {
+        pinFoe = { id: e.id, d: Math.round(d), archetype: e.data && e.data.ai && e.data.ai.archetype, hull: Math.round((e.hull || 0) * 10) / 10 };
+      }
+    }
+  }
   samples.push({
     t: Math.round(state.simTime),
     sector: state.world.currentSectorId,
     shipsAlive: ships,
+    pinLoot, pinFoe,
     budget: { used: b.used, max: b.max, reservations: res },
     dir: {
       pending: (dir.pending || []).length,
