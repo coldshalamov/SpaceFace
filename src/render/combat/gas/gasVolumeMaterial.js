@@ -36,9 +36,30 @@ const [AX, AY, AZ] = GAS_FILM.atlas;
 const MAX_MARCH_STEPS = 28;
 
 let decoded = null;
+let sharedTextures = null;
+let sharedUsers = 0;
 
-/** Decode once per process; the two textures are shared by every gas batch. */
+/**
+ * Decode and upload ONCE per process, refcounted. The live batch and the startup precompile draw
+ * both want these, and a second Data3DTexture would be a second 2 MiB upload of identical bytes.
+ */
 export function createGasVolumeTextures() {
+  sharedUsers++;
+  if (sharedTextures) return sharedTextures;
+  sharedTextures = buildGasVolumeTextures();
+  return sharedTextures;
+}
+
+/** Drop one user; the GPU copy is released only when the last batch goes away. */
+export function releaseGasVolumeTextures() {
+  sharedUsers = Math.max(0, sharedUsers - 1);
+  if (sharedUsers > 0 || !sharedTextures) return;
+  sharedTextures.density.dispose();
+  sharedTextures.motion.dispose();
+  sharedTextures = null;
+}
+
+function buildGasVolumeTextures() {
   if (!decoded) decoded = decodeGasFilm();
   const density = new THREE.Data3DTexture(decoded.density, AX * G, AY * G, AZ * G);
   density.name = 'SF_GasDensityFilm_RG8';
@@ -104,13 +125,21 @@ function familyUniformArrays() {
   return { albedo, emissive, shape, look };
 }
 
-const SHARED = /* glsl */`
+// VERTEX STAGE ONLY. Under WebGL2 three.js compiles as GLSL ES 3.00 and rewrites `attribute` to
+// `in` for the vertex stage; in a fragment shader `attribute` is a RESERVED WORD and the compile
+// dies with "Illegal use of reserved word". Keeping these in the block shared by both stages is
+// exactly how this material failed its first real GPU compile, so they live apart from the
+// varyings on purpose. Do not fold this back into SHARED.
+const SHARED_ATTRIBUTES = /* glsl */`
   attribute vec4 aGasPose;   // xyz centre in scene-local space, w heading about Y
   attribute vec4 aGasScale;  // xyz body extent in world units, w opacity
   attribute vec4 aGasTint;   // rgb colour multiplier, w normalised phase 0..1
   attribute vec4 aGasFilm;   // x cell offset, y frame count, z family + 8*pingpong, w seed
   attribute vec4 aGasOcclude;// xyz occluder centre in scene-local space, w radius (<=0 disables)
+`;
 
+// Declared identically in BOTH stages, which is what makes the interface link.
+const SHARED = /* glsl */`
   varying vec3 vFilmPos;
   varying vec3 vFilmCam;
   varying vec3 vBoxMin;
@@ -136,6 +165,7 @@ const SHARED = /* glsl */`
 `;
 
 const VERTEX = /* glsl */`
+  ${SHARED_ATTRIBUTES}
   ${SHARED}
   uniform vec3 uCellBounds[${GAS_FILM.slots * 2}];
   uniform float uViewportHeight;
