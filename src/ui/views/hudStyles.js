@@ -2386,7 +2386,10 @@ export function injectHudCss() {
      information. The glyph warms to the lamp when damaged and burns red when critical, so the
      Kestrel silhouette IS the damage display. The decorative chevrons carried no reading. */
   html #hud .sf-schematic.sf-integrity { --si-signal:var(--dp-ink); --si-blue:var(--dp-ink-dim); }
-  #hud .sf-integrity .sf-integrity__signal-mark { display:none; }
+  /* ...but the state word and the big figure are the state, and they step forward the moment the
+     hull goes critical: quiet-while-whole must not mute the alarm itself. The offline word shares
+     the amber the break marks on the envelope already carry. */
+  html #hud .sf-schematic.sf-integrity:is([data-hull="critical"], [data-hull="destroyed"]) { --si-signal:var(--dp-danger-hot); }
   #hud .sf-integrity .sf-integrity__gradient-edge { stop-color:#6f6a5f; }
   #hud .sf-integrity .sf-integrity__gradient-core { stop-color:#e9e2d2; }
   #hud .sf-integrity[data-hull="damaged"] .sf-integrity__gradient-edge { stop-color:var(--dp-lamp-dim); }

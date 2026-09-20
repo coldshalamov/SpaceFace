@@ -123,13 +123,19 @@ export function shipConditionMarkup(defId = 'ship_kestrel', namespace) {
   const id = key || `sf-integrity-${++serial}`;
   return `<svg class="sf-integrity__art" viewBox="0 0 272 174" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" data-integrity-prefix="${id}" data-integrity-hull="${integrityHullId(defId)}">` +
     `<defs><linearGradient id="${id}-facet" x1="0" y1="0" x2="0" y2="1"><stop class="sf-integrity__gradient-edge" offset="0"/><stop class="sf-integrity__gradient-core" offset=".49"/><stop class="sf-integrity__gradient-edge" offset="1"/></linearGradient></defs>` +
-    '<path class="sf-integrity__datum" d="M70 27v9M70 137v10M12 81h8M120 81h7M31 36l4 4M105 36l-4 4M19 112l4-1M117 111l4 1M55 143l2-4M83 139l2 4"/>' +
+    // Datum ticks frame the plate. The old M70 27v9 nose tick was removed: the projection puts the
+    // hull nose at (70, 34.2), so that tick was drawn through the silhouette it frames.
+    '<path class="sf-integrity__datum" d="M70 137v10M12 81h8M120 81h7M31 36l4 4M105 36l-4 4M19 112l4-1M117 111l4 1M55 143l2-4M83 139l2 4"/>' +
     `<path class="sf-integrity__envelope-track" d="${LEFT_ENVELOPE} ${RIGHT_ENVELOPE}"/>` +
     [LEFT_ENVELOPE, RIGHT_ENVELOPE].map(d=>`<path class="sf-integrity__envelope-echo" d="${d}" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1"/>`).join('') +
     [LEFT_ENVELOPE, RIGHT_ENVELOPE].map(d=>`<path class="sf-integrity__envelope" d="${d}" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1"/>`).join('') +
     `<g class="sf-integrity__geometry" style="--si-facet:url(#${id}-facet)">${hullGeometry(defId, id)}</g>` +
-    '<path class="sf-integrity__shield-break" d="m20 86 5-6m90 0 5 6M21 92l5-6m88 0 5 6"/>' +
-    '<path class="sf-integrity__signal-mark" d="M237 13h9l-6 7h-9Zm12 0h9l-6 7h-9Z"/>' +
+    '<path class="sf-integrity__shield-break" d="M16 83l11 9M27 83l-11 9M112 83l11 9M123 83l-11 9"/>' +
+    // Safe-regeneration feed: two bone chevrons dripping into the envelope shoulders (67,25)/(73,25),
+    // shown only while data-shield="charging". The three urgent states separate by PLACE as well as
+    // hue: offline cuts the envelope at the waist (amber X), critical burns the hull itself (red),
+    // regeneration feeds it from above (quiet bone) — never three shades of one mark.
+    '<path class="sf-integrity__recharge" d="M65 13l5 5 5-5M65 20l5 5 5-5"/>' +
     '</svg>' +
     '<span class="sf-integrity__heading" aria-hidden="true">INTEGRITY</span>' +
     '<span class="sf-integrity__identity" aria-hidden="true">KESTREL</span>' +

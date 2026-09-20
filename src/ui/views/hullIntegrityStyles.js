@@ -79,8 +79,15 @@ export const HULL_INTEGRITY_CSS = `
 .sf-integrity .sf-integrity__outline .sx-shipmark__cut { stroke-width:.35; }
 .sf-integrity .sf-integrity__impact { fill:none; stroke:var(--si-paper); stroke-width:1.55; }
 .sf-integrity .sf-integrity__repair { fill:none; stroke:var(--si-paper); stroke-width:2.3; }
-.sf-integrity .sf-integrity__signal-mark { fill:var(--si-blue); opacity:.8; }
-.sf-integrity .sf-integrity__shield-break { stroke:var(--si-warning); stroke-width:1.5; display:none; }
+.sf-integrity .sf-integrity__shield-break { stroke:var(--si-warning); stroke-width:2.2; display:none; }
+/* State grammar rides on place and shape, not hue alone: OFFLINE cuts the envelope track with amber
+   X marks at the waist; CHARGING feeds bone chevrons into the shoulders; CRITICAL edges the whole
+   silhouette in danger red. Each is CSS-gated off the data attributes the frame already writes. */
+.sf-integrity[data-shield="offline"] .sf-integrity__shield-state { color:var(--si-warning); }
+.sf-integrity .sf-integrity__recharge { fill:none; stroke:var(--si-paper); stroke-width:2; display:none; }
+.sf-integrity[data-shield="charging"] .sf-integrity__recharge { display:block; }
+.sf-integrity[data-hull="critical"] .sf-integrity__outline,
+.sf-integrity[data-hull="destroyed"] .sf-integrity__outline { stroke:var(--si-danger); stroke-width:.9; }
 .sf-integrity .sf-integrity__rail-bed { stroke:var(--si-track); stroke-width:4; }
 .sf-integrity .sf-integrity__rail-fill { stroke:var(--si-blue); stroke-width:4; }
 .sf-integrity .sf-integrity__rail-cuts { stroke:var(--si-cut); stroke-width:2; }

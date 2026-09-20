@@ -151,6 +151,44 @@ test('style owner is once per document and accepts headless rendering',()=>{
   const doc={getElementById:id=>stored.get(id),createElement:()=>({}),head:{appendChild(n){count++;stored.set(n.id,n);}}};
   mountHullIntegrityStyles(doc);mountHullIntegrityStyles(doc);assert.equal(count,1);
 });
+
+// INF-051 state grammar: shield-down, hull-critical and safe regeneration are different by PLACE and
+// SHAPE, not three shades of one mark. Vestigial/overlapping decoration is gone from the markup.
+test('the three urgent states own different marks in different places',()=>{
+  const css=HULL_INTEGRITY_CSS.replace(/\/\*[\s\S]*?\*\//g,'');
+  const html=shipConditionMarkup('ship_kestrel','grammar');
+  // offline: amber break marks cut the envelope at the waist (outside the hull), gate on data-shield
+  assert.match(html,/sf-integrity__shield-break" d="M16 83l11 9M27 83l-11 9M112 83l11 9M123 83l-11 9"/);
+  assert.match(css,/\.sf-integrity\[data-shield="offline"\] \.sf-integrity__shield-break \{ display:block/);
+  assert.match(css,/\.sf-integrity\[data-shield="offline"\] \.sf-integrity__shield-state \{ color:var\(--si-warning\)/);
+  // charging: bone feed-chevrons above the shoulders, gated on data-shield
+  assert.match(html,/sf-integrity__recharge" d="M65 13l5 5 5-5M65 20l5 5 5-5"/);
+  assert.match(css,/\.sf-integrity \.sf-integrity__recharge \{ fill:none; stroke:var\(--si-paper\); stroke-width:2; display:none/);
+  assert.match(css,/\.sf-integrity\[data-shield="charging"\] \.sf-integrity__recharge \{ display:block/);
+  // critical/destroyed: the silhouette outline itself goes danger red
+  assert.match(css,/\.sf-integrity\[data-hull="critical"\] \.sf-integrity__outline,[\s\S]*?\{ stroke:var\(--si-danger\); stroke-width:\.9/);
+});
+test('vestigial marks are gone and no datum overlaps the projected hull',()=>{
+  const html=shipConditionMarkup('ship_kestrel','vestige');
+  assert.ok(!html.includes('sf-integrity__signal-mark'),'retired decorative chevrons removed from markup');
+  assert.ok(!HULL_INTEGRITY_CSS.includes('signal-mark'),'retired decorative chevron rule removed');
+  // the projection puts the nose tip at (70, 34.2); the datum set must not draw inside the hull box
+  const datum=html.match(/sf-integrity__datum" d="([^"]+)"/)[1];
+  assert.ok(!/M70 27v9/.test(datum),'nose tick removed');
+  for (const seg of datum.match(/M[^M]+/g)) {
+    const nums=seg.match(/-?\d+(?:\.\d+)?/g).map(Number);
+    for (let i=0;i<nums.length;i+=2) {
+      const x=nums[i],y=nums[i+1];
+      assert.ok(!(x>40&&x<100&&y>34&&y<134),'datum point '+x+','+y+' overlaps the hull projection');
+    }
+  }
+});
+test('the deck pass keeps the critical alarm loud and drops the retired rule',()=>{
+  const source=readFileSync(new URL('../src/ui/views/hudStyles.js',import.meta.url),'utf8');
+  assert.ok(!source.includes('sf-integrity__signal-mark'),'deck rule for retired mark removed');
+  assert.match(source,/sf-integrity:is\(\[data-hull="critical"\], \[data-hull="destroyed"\]\) \{ --si-signal:var\(--dp-danger-hot\)/,
+    'critical/destroyed state word + figures step to danger despite the ink remap');
+});
 test('production scope has no new animation loop, layout flush, network, filters, or sim writes',()=>{
   const source=readFileSync(new URL('../src/ui/views/hullIntegrity.js',import.meta.url),'utf8');
   assert.doesNotMatch(source,/requestAnimationFrame\s*\(|setTimeout\s*\(|setInterval\s*\(|getBoundingClientRect\s*\(|offsetWidth|fetch\s*\(|Math\.random\s*\(/);
