@@ -1160,6 +1160,12 @@ function isHoldExemptMeshBuild(entity, state, glassIds) {
       return true;
     }
   }
+  // The activity frame can only name combat-list entities, so field rocks and dressing rows were
+  // never exempt: anything not cooked during loading could not build for the first 20 s of
+  // flight, however squarely it sat on screen. The hold protects the opening from work the
+  // player cannot see; a row on the live glass is work the player is looking at the absence of.
+  // Builds stay inside the ordinary per-poll budget and time slice.
+  if (entityIsOnReadableGlass(entity, state)) return true;
   return false;
 }
 
