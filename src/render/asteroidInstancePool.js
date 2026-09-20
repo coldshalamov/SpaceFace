@@ -181,16 +181,15 @@ export function syncAsteroidInstancePool(pool, options = {}) {
 
     let submitted = 0;
     let matrixDirty = false;
-    const matrixArray = bucket.mesh.instanceMatrix.array;
-    const dynamicBufferOwner = bucket.dynamicBufferOwner;
-    if (dynamicBufferOwner && dynamicBufferOwner.invalid) {
-      if (bucket.mesh) {
-        bucket.mesh.count = 0;
-        bucket.mesh.visible = false;
-      }
+    if (bucket.dynamicBufferOwner && bucket.dynamicBufferOwner.invalid
+      && !recoverRetiredBucket(pool, bucket, variantStats)) {
+      // Out of rebuilds: the rocks still exist, so they are drawn one by one. Never nothing.
+      drawBucketLeavesDirectly(bucket);
       variantStats.submitted = 0;
       continue;
     }
+    const matrixArray = bucket.mesh.instanceMatrix.array;
+    const dynamicBufferOwner = bucket.dynamicBufferOwner;
     assertDynamicBufferOwnerWritable(dynamicBufferOwner);
     for (let index = 0; index < bucket.records.length; index++) {
       const record = bucket.records[index];
@@ -352,8 +351,45 @@ export function getAsteroidInstancePoolDiagnostics(pool) {
   return pool ? pool.stats : null;
 }
 
-function ensureCapacity(pool, bucket, required) {
-  if (bucket.mesh && bucket.capacity >= required) return;
+// A dynamic-buffer owner retires itself (and never un-retires) when it sees an upload it did not
+// ask for, a version it did not write, or a throw inside a publish. The pool used to answer that
+// by setting the variant's count to zero and hiding it — for the rest of the session. Every leaf
+// in the bucket is already hidden in favour of the instanced draw, so one fifth of every common
+// rock on screen vanished at once and never came back: "asteroids pop out of existence all the
+// time." A retired owner is a bookkeeping fault, not a reason to stop drawing rocks.
+const MAX_RETIRED_BUCKET_REBUILDS = 3;
+
+function recoverRetiredBucket(pool, bucket, variantStats) {
+  const retired = bucket.dynamicBufferOwner;
+  bucket.retiredOwnerCount = (bucket.retiredOwnerCount | 0) + 1;
+  if (variantStats) variantStats.retiredOwners = bucket.retiredOwnerCount;
+  const reason = retired && retired.diagnostics && retired.diagnostics.lastError;
+  if (bucket.retiredOwnerCount <= MAX_RETIRED_BUCKET_REBUILDS + 1 && typeof console !== 'undefined') {
+    console.warn(`[asteroid-pool] variant ${bucket.variant} buffer owner retired (${reason || 'unknown'}); `
+      + (bucket.retiredOwnerCount <= MAX_RETIRED_BUCKET_REBUILDS
+        ? 'rebuilding the instanced batch'
+        : 'drawing its rocks individually from now on'));
+  }
+  if (bucket.retiredOwnerCount > MAX_RETIRED_BUCKET_REBUILDS) {
+    if (bucket.mesh) {
+      bucket.mesh.count = 0;
+      bucket.mesh.visible = false;
+    }
+    return false;
+  }
+  ensureCapacity(pool, bucket, Math.max(bucket.capacity | 0, bucket.records.length, 1), true);
+  return !!bucket.mesh && !(bucket.dynamicBufferOwner && bucket.dynamicBufferOwner.invalid);
+}
+
+function drawBucketLeavesDirectly(bucket) {
+  for (let index = 0; index < bucket.records.length; index++) {
+    const record = bucket.records[index];
+    if (record && record.leaf) record.leaf.visible = true;
+  }
+}
+
+function ensureCapacity(pool, bucket, required, rebuild = false) {
+  if (!rebuild && bucket.mesh && bucket.capacity >= required) return;
   const capacity = Math.max(INITIAL_CAPACITY, nextPowerOfTwo(required));
   const previous = bucket.mesh;
   const previousOwner = bucket.dynamicBufferOwner;
@@ -414,6 +450,9 @@ function ensureCapacity(pool, bucket, required) {
 
 function disposeOwnedInstanceMesh(mesh, dynamicBufferOwner, scene) {
   if (!mesh) return;
+  // A replaced batch draws nothing from the moment it is replaced, whoever still holds a reference.
+  mesh.count = 0;
+  mesh.visible = false;
   // The pool creates instanceMatrix; source geometry/material belong to the borrowed leaf and
   // must never be disposed here. Release the dynamic callback owner before the attribute event.
   if (dynamicBufferOwner) releaseDynamicBufferOwner(dynamicBufferOwner);

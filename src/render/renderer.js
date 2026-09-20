@@ -694,8 +694,13 @@ function liveShadowCastRadius(state) {
 function renderResidencyRadius(state, kind = 'prefetch', entity = null) {
   const speed = tableTravelSpeed(state);
   const cam = liveTableCamera(state);
+  // Both radii read the SAME zoom. Evict used the live zoom alone while prefetch used
+  // max(live, requested): the moment the player wheeled out (requested 330, live still damped at
+  // 144) prefetch was 766 WU and evict 595 WU — evict INSIDE prefetch — so every mesh in that
+  // 170 WU annulus was built and destroyed on each 0.25 s poll, burning the build budget that
+  // the rocks actually reaching the glass needed. Hysteresis only exists if evict >= prefetch.
   const radius = kind === 'evict'
-    ? residencyEvictRadius(speed, cam.zoom, cam.fov, cam.aspect, cam.tilt)
+    ? residencyEvictRadius(speed, cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt)
     : residencyPrefetchRadius(speed, cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt);
   // Ships/wrecks admit at the longer decode runway. Evicting at the ordinary mesh
   // runway removed and rebuilt the same hull on every poll in that outer annulus.
@@ -858,6 +863,16 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
     // puts it on entityList, then a stale or incremental frame omits it.
     if (inboundDecode) return true;
     if (!isPresentationLedgerRow(entity)) {
+      // THE LIVE SCREEN OUTRANKS THE SIM-SIDE ACTIVITY FRAME. The frame classifies from the
+      // player's position and the REQUESTED zoom (144 by default, glass half-depth 106 WU); the
+      // picture is drawn from the camera look-at at the LIVE zoom, which speed, threat and
+      // group-fit push as far as 528 (half-depth 389 WU) with the look-at led up to 400 WU off
+      // the player. In that gap a wreck, hull, station or promoted rock the player is looking at
+      // is classed unloaded, and the 0.25 s residency poll disposes its mesh while it is on
+      // screen: "I fly kind of away from something and it'll pop out of existence."
+      // entityMeshVisibility already honours the live glass for VISIBILITY; residency must too,
+      // or the override only ever hides and shows a mesh that has been thrown away.
+      if (entityIsOnReadableGlass(entity, state)) return true;
       // The activity owner has explicitly classified this entity outside the
       // presentation runway. Do not recreate an Object3D for a metadata-only or
       // unloaded record merely because it shares a sector with the player.
@@ -866,7 +881,8 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
   }
   if (inboundDecode) return true;
   if (tier === PRESENTATION_TIER.R2_METADATA || tier === PRESENTATION_TIER.R3_UNLOADED) {
-    return false;
+    // Same law without a complete activity frame: nothing on the live glass loses its mesh.
+    return entityIsOnReadableGlass(entity, state);
   }
   // An already-authored landmark in the player's own sector is kept, never rebuilt from scratch.
   // This is a post-admission residency rule: the loading path above no longer admits a far Helios

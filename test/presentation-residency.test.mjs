@@ -103,3 +103,58 @@ test('a shelved far hull still draws from the ledger before it rematerializes', 
   assert.equal(isEntityRenderRelevant(rec, state), true,
     'activity frame cannot hide a nearby ledger hull or the rim blinks empty');
 });
+
+// OWNER, 2026-09-20: "sometimes I fly kind of away from something and it'll pop out of existence,
+// asteroids pop out of existence all the time." The activity frame classifies from the player's
+// position at the REQUESTED zoom; the picture is drawn from the camera look-at at the LIVE zoom,
+// which combat group-fit pushes to 528 with the look-at led hundreds of WU off the player.
+test('nothing on the live screen loses its mesh, whatever tier the sim-side frame gave it', () => {
+  const player = {
+    id: 1, type: 'ship', alive: true, isPlayer: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    maxSpeed: 160, radius: 8, collides: true, team: 0, data: {},
+  };
+  // 900 WU out: beyond the ~821 WU runway disc the sim-side classifier keeps at default zoom.
+  const wreck = {
+    id: 2, type: 'wreck', alive: true, pos: { x: 0, z: -900 }, vel: { x: 0, z: 0 },
+    radius: 14, collides: true, team: 0, data: {},
+    activity: { presentationTier: PRESENTATION_TIER.R3_UNLOADED },
+  };
+  const state = makeState([player, wreck]);
+  state.render = { activityFrame: { complete: true, renderGlassIds: [1], renderRunwayIds: [] } };
+
+  assert.equal(isEntityRenderRelevant(wreck, state), false,
+    'off the live screen, an unloaded record stays unloaded');
+
+  // Combat group-fit: the camera pulls out and its look-at leads toward the fight.
+  state.camera.liveZoom = 528;
+  state.camera.focus = { x: 0, z: -600 };
+  state.render.cameraFocus = { x: 0, z: -600 };
+  const onScreen = isEntityRenderRelevant(wreck, state);
+  state.camera.liveZoom = 144;
+  assert.equal(isEntityRenderRelevant(wreck, state), false, 'and lets go again once the screen has moved off it');
+  assert.equal(onScreen, true,
+    'while the wreck is on the live glass its mesh must not be disposed by the residency poll');
+
+  const noFrame = makeState([player, wreck]);
+  noFrame.camera.liveZoom = 528;
+  noFrame.camera.focus = { x: 0, z: -600 };
+  noFrame.render = { cameraFocus: { x: 0, z: -600 } };
+  assert.equal(isEntityRenderRelevant(wreck, noFrame), true,
+    'the same law holds on the tier fallback path when no complete activity frame exists');
+});
+
+test('mesh eviction never sits inside mesh prefetch while the player zooms out', async () => {
+  const { residencyEvictRadius } = await import('../src/render/tabletopPolicy.js');
+  // Wheel-out in progress: requested 330, live zoom still damped at 144. Both radii must read the
+  // wider zoom, or the annulus between them is built and destroyed on every 0.25 s poll.
+  const speed = 160;
+  const prefetch = residencyPrefetchRadius(speed, 330, 50, 16 / 9, 60);
+  const evictAtWiderZoom = residencyEvictRadius(speed, 330, 50, 16 / 9, 60);
+  const evictAtLiveZoomOnly = residencyEvictRadius(speed, 144, 50, 16 / 9, 60);
+  assert.ok(evictAtWiderZoom >= prefetch, 'hysteresis exists only when evict >= prefetch');
+  assert.ok(evictAtLiveZoomOnly < prefetch,
+    'this is the inversion the renderer used to compute; renderResidencyRadius must not');
+  const source = (await import('node:fs')).readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(source, /residencyEvictRadius\(speed, cam\.prefetchZoom,/,
+    'evict and prefetch read the same zoom');
+});
