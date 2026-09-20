@@ -150,6 +150,7 @@ import {
   recipeUsesSweptMuzzle,
   recipeUsesRibbonWake,
   resolveWeaponRecipe,
+  WEAPON_SOCKET_NAME,
   visiblePointLightBudget as weaponVisiblePointLightBudget,
   WEAPON_LIGHT_POOL_SIZE,
   worldSizeForPixels,
@@ -2916,6 +2917,15 @@ export const vfx = {
       timeoutS: 0.14,
       scene: this._scene,
     });
+    // Sustained beams are refreshed once per simulation tick, so a turning ship used to drag its
+    // aperture in 60 Hz steps behind the hull. This resolver re-seats the DRAWN origin on the
+    // firing socket every displayed frame. It cannot touch the contact end, which stays exactly
+    // where the simulation put it, so no hit can be invented here.
+    this._beamOriginResolver = (entry) => {
+      const helpers = this.helpers;
+      if (!helpers || typeof helpers.socketWorldPose !== 'function') return null;
+      return helpers.socketWorldPose(entry.ownerId, WEAPON_SOCKET_NAME);
+    };
     this._scene.add(this._combatBeams.group);
   },
 
@@ -10329,6 +10339,7 @@ export const vfx = {
         this._combatBeamLocalizer,
         resolveVfxAccessibilityProfile(this.state && this.state.settings),
         worldSizeForPixels(camDist, 8, cam && cam.fov, viewportH),
+        this._beamOriginResolver,
       ) > 0 ? 1 : 0;
     } else {
       sub.combatBeams = 0;

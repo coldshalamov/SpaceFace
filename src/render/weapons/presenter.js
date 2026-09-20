@@ -168,6 +168,7 @@ export class WeaponVfxPresenter {
     };
     this._ribbonSpec = {
       entityId: -1, x: 0, y: 0, z: 0, width: 0, colorHead: '#ffffff', colorTail: '#ffffff', linger: 0,
+      profile: 0,
     };
     this._nearMissSpec = { x: 0, y: 0.4, z: 0, radius: 5.5, strength: 0, life: 0.08 };
     this._flashScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0, r: 1, g: 1, b: 1 };
@@ -357,6 +358,7 @@ export class WeaponVfxPresenter {
     this._syncWellDistortion();
     this.distortion.update(dt);
     this.lights.update(dt);
+    this.ribbons.setCamera(camera, viewportHeight);
     this.ribbons.update(dt, camera && camera.position);
     if (this.quarks) this.quarks.update(dt);
   }
@@ -407,6 +409,10 @@ export class WeaponVfxPresenter {
             ribbon.entityId = entity.id;
             ribbon.x = currLocal.x; ribbon.y = y; ribbon.z = currLocal.z;
             ribbon.width = recipe.flight.ribbonWidth;
+            // Authored wake cross-section. Without this the pool falls back to a width-derived
+            // guess, which is right for ten of the twelve families but cannot tell a motor's
+            // vapour sheet from a plasma braid, so missile and torpedo wakes read as plasma.
+            ribbon.profile = recipe.flight.ribbonProfile;
             ribbon.colorHead = this._flightColors.core;
             ribbon.colorTail = this._flightColors.sheath;
             ribbon.linger = recipe.flight.ribbonLinger;
