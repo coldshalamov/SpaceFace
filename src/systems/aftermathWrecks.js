@@ -48,6 +48,9 @@ const SCAV_TAKE_PER_WORK = 1;
 const SCAV_HOLD_CAP = 6;
 const SCAV_DEPART_RANGE_WU = 2400;
 const SCAV_ARRIVAL_MIN_WU = 520;
+// A drifting wreck can outrun a fighter's thrust; pursuit that never converges must give up
+// rather than chase the hulk across the sector forever.
+const SCAV_APPROACH_GIVE_UP_S = 90;
 const SHIPLIKE_TYPES = new Set(['ship', 'drone']);
 const DEFAULT_POOL = Object.freeze({ cmdty_scrap_metal: 3, cmdty_salvage_electronics: 1 });
 const STATION_INFO = new Map();
@@ -87,6 +90,12 @@ export function aftermathForSector(state, sectorId) {
 
 export function isPlayerWreckMarker(marker) {
   return !!(marker && (marker.playerWreck === true || marker.kind === PLAYER_WRECK_KIND));
+}
+
+// Markers the bounded cap must never evict: the player's own drifting hull and mission-pinned
+// recovery wrecks (their live body unbinds on eviction and would never rematerialize).
+function isProtectedMarker(marker) {
+  return isPlayerWreckMarker(marker) || !!(marker && marker.pinWreck === true);
 }
 
 export function playerWreckMarker(state) {
@@ -357,7 +366,7 @@ function aftermathLine(marker) {
 function newsLine(marker) {
   const zone = marker.zoneName || 'a local zone';
   if (isPlayerWreckMarker(marker)) return `Your hull still drifts in ${zone}.`;
-  const victim = marker.victimClass || 'ship';
+  const victim = marker.victimLabel || marker.victimClass || 'ship';
   const where = marker.zoneId ? `drifting on the lane` : `drifting in the open`;
   return `Aftermath reported in ${zone}: ${victim} wreckage now ${where}.`;
 }
@@ -576,7 +585,7 @@ function rememberMarker(state, bus, marker, onEvicted = null) {
     while (arr.length > MAX_PER_SECTOR) {
       let idx = -1;
       for (let i = arr.length - 1; i >= 0; i--) {
-        if (!isPlayerWreckMarker(arr[i])) {
+        if (!isProtectedMarker(arr[i])) {
           idx = i;
           break;
         }
@@ -592,6 +601,16 @@ function rememberMarker(state, bus, marker, onEvicted = null) {
     bus.emit('aftermathWreck:recorded', clonePlain(marker));
     bus.emit('news:headline', {
       headline,
+      text: headline,
+      kind: 'battle-aftermath',
+      sectorId: marker.sectorId,
+      zoneId: marker.zoneId,
+      zoneName: marker.zoneName,
+      markerId: marker.markerId,
+    });
+    // `news:headline` is a system-side record; the player news surface presents authored copy
+    // from `news:publish` verbatim. Without this leg the aftermath line never reaches the HUD.
+    bus.emit('news:publish', {
       text: headline,
       kind: 'battle-aftermath',
       sectorId: marker.sectorId,
@@ -655,12 +674,12 @@ function normalizeMarker(input) {
 
 function trimAndSort(markers) {
   const normalized = markers.map(normalizeMarker).filter(Boolean);
-  const player = normalized.filter(isPlayerWreckMarker);
+  const protectedMarkers = normalized.filter(isProtectedMarker);
   const rest = normalized
-    .filter((marker) => !isPlayerWreckMarker(marker))
+    .filter((marker) => !isProtectedMarker(marker))
     .sort((a, b) => (b.tick - a.tick) || (b.t - a.t) || String(a.markerId).localeCompare(String(b.markerId)))
-    .slice(0, Math.max(0, MAX_PER_SECTOR - player.length));
-  return [...player, ...rest].sort((a, b) => (b.tick - a.tick) || (b.t - a.t)
+    .slice(0, Math.max(0, MAX_PER_SECTOR - protectedMarkers.length));
+  return [...protectedMarkers, ...rest].sort((a, b) => (b.tick - a.tick) || (b.t - a.t)
     || String(a.markerId).localeCompare(String(b.markerId)));
 }
 
@@ -784,13 +803,21 @@ export const aftermathWrecks = {
     const dist = Math.hypot(dx, dz);
     if (dist > SCAV_WORK_RANGE_WU) {
       work.state = 'approach';
-      this._scavengerIntent(entity, { x: wreck.pos.x, z: wreck.pos.z });
+      if (work.approachSince == null) work.approachSince = now;
+      else if (now - work.approachSince > SCAV_APPROACH_GIVE_UP_S) {
+        this._startScavengerDepart(state, field, entity, work);
+      } else {
+        this._scavengerIntent(entity, { x: wreck.pos.x, z: wreck.pos.z });
+      }
       return;
     }
 
-    // At the wreck: hold station and strip the pool on the work clock.
+    // At the wreck: hold station and strip the pool on the work clock. Aim at the wreck so the
+    // flight layer keeps commanding the hull — all-zero intent with a settled aim reads as
+    // 'no command' and the unbraked hull would coast out of the work ring.
     work.state = 'work';
-    this._scavengerIntent(entity, null);
+    work.approachSince = null;
+    this._scavengerIntent(entity, { x: wreck.pos.x, z: wreck.pos.z }, true);
     if (now < (work.nextWorkAt || 0)) return;
     work.nextWorkAt = now + SCAV_WORK_INTERVAL_S;
     const taken = this._scavengerTake(state, field, entity, work, wreck);
@@ -807,18 +834,21 @@ export const aftermathWrecks = {
     }
   },
 
-  // Nearest durable marker-bound wreck in this field. Authored/mission-owned wrecks (salvage.js
-  // derelicts, unique wrecks) are excluded: their pools have other owners.
+  // Nearest durable marker-bound wreck in this field. Excluded: the player's own drifting hull
+  // (a memorial, not NPC loot), mission-pinned recovery wrecks (mission-owned objects), and
+  // authored/unique wrecks without a marker (salvage.js derelicts — their pools have other
+  // owners). A wreck only qualifies while it still holds at least one whole work unit.
   _nearestFieldWreck(field, pos) {
     const markers = aftermathForSector(this.state, field.sectorId);
     let best = null;
     let bestD = Infinity;
     for (const marker of markers) {
-      if (!marker || aftermathFieldId(marker.sectorId, marker.zoneId) !== field.fieldId) continue;
+      if (!marker || isProtectedMarker(marker)) continue;
+      if (aftermathFieldId(marker.sectorId, marker.zoneId) !== field.fieldId) continue;
       const entity = this._resolveBoundWreck(marker.markerId);
       if (!entity) continue;
       const pool = entity.data && entity.data.salvagePool;
-      if (!pool || !Object.values(pool).some((qty) => qty > 0)) continue;
+      if (!pool || !Object.values(pool).some((qty) => qty >= SCAV_TAKE_PER_WORK)) continue;
       const d = Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z);
       if (!(d < bestD)) continue;
       bestD = d;
@@ -903,8 +933,9 @@ export const aftermathWrecks = {
   },
 
   // Shared NPC steer language: local-frame move axes plus an aim angle. Passive AI never writes
-  // this, so the driver owns the hull's intent while it works the field.
-  _scavengerIntent(entity, target) {
+  // this, so the driver owns the hull's intent while it works the field. holdPosition steers to
+  // a stop while keeping the nose on the target (station-keeping, not coasting).
+  _scavengerIntent(entity, target, holdPosition = false) {
     const data = entity.data || (entity.data = {});
     const intent = data.intent || (data.intent = {});
     if (!target) {
@@ -920,8 +951,13 @@ export const aftermathWrecks = {
     const uz = dz / len;
     const cf = Math.cos(entity.rot || 0);
     const sf = Math.sin(entity.rot || 0);
-    intent.moveZ = Math.max(-1, Math.min(1, cf * ux + sf * uz));
-    intent.moveX = Math.max(-1, Math.min(1, -sf * ux + cf * uz));
+    if (holdPosition) {
+      intent.moveX = 0;
+      intent.moveZ = 0;
+    } else {
+      intent.moveZ = Math.max(-1, Math.min(1, cf * ux + sf * uz));
+      intent.moveX = Math.max(-1, Math.min(1, -sf * ux + cf * uz));
+    }
     intent.aimAngle = Math.atan2(dz, dx);
     intent.fire = false;
   },
@@ -1414,6 +1450,15 @@ export const aftermathWrecks = {
     if (entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
       marker.pos = { x: entity.pos.x, z: entity.pos.z };
     }
+    // Pool truth lives on the marker and is normally the SAME object the live wreck drains
+    // (player beam, scavenger). A foreign drainer may have REPLACED the live pool object
+    // (traffic's salvor empties the wreck this way); without this reconciliation the marker
+    // would restore the stale full pool on rematerialization and the drain never happened.
+    const livePool = entity.data && entity.data.salvagePool;
+    if (livePool && typeof livePool === 'object' && !Array.isArray(livePool)
+      && livePool !== marker.salvagePool) {
+      marker.salvagePool = normalizeSalvagePool(livePool) || {};
+    }
     marker.victimVel = boundedDriftVel(entity.vel);
     marker.victimAngVel = boundedTumble(entity.angVel);
     marker.victimRot = boundedPoseAngle(entity.rot);
@@ -1682,11 +1727,13 @@ export const aftermathWrecks = {
       data: {
         defId: archetype === 'reaver_pirate' ? 'ship_corsair' : 'ship_wasp',
         shipClass: 'fighter',
-        trafficRole: 'scavenger',
+        // Deliberately NO trafficRole: traffic's rematerialized-adoption path would claim the
+        // hull as a hauler, steer it to a station (fighting this system's intent for the same
+        // field), and mint a phantom cargoManifest on top of the work hold.
         // The hold uses the ordinary kill-spill schema (data.cargo.items), so a laden scavenger
         // that is killed spills what it stole through the shipped cargo path — no special case.
         cargo: { items: {} },
-        scavengerWork: { state: 'approach', holdQty: 0, nextWorkAt: 0, announcedWreckId: null },
+        scavengerWork: { state: 'approach', holdQty: 0, nextWorkAt: 0, announcedWreckId: null, approachSince: null },
         ai: {
           doctrine: 'scavenger',
           archetype: 'reaver',

@@ -145,6 +145,12 @@ test('an open-space kill leaves a durable marker, a bound wreck, and a headline'
     assert.match(news[0].payload.headline, /open space/);
     assert.match(news[0].payload.headline, /drifting in the open/);
 
+    // The player news surface presents authored copy from news:publish (marketNews is its only
+    // presenter); news:headline alone is a system-side record no UI ever shows.
+    const published = entries(h.bus, 'news:publish');
+    assert.equal(published.length, 1, 'the loss reaches the player news surface');
+    assert.equal(published[0].payload.text, news[0].payload.headline);
+
     // The zone-less markers group into one shared zone-less field for ecology eligibility.
     const fieldId = aftermathFieldId(SECTOR_ID, null);
     h.state.simTime += 1;
