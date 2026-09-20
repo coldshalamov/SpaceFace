@@ -1,40 +1,51 @@
 {
   "id": "fracture-dust",
-  "note": "Mining / rock fracture dust. A flat ejecta fan off one face, no buoyancy, heavy drag, and a sharpening term that lets the material clump into grains instead of relaxing into a ball. The aux channel is the COARSE grain fraction; it falls out faster than the fine haze, so late frames are a thin veil around a lumpy core. Edit this file and re-run `node tools/bake-gas-volumes.mjs`.",
+  "note": "Mining / rock fracture dust. Granular, not gaseous: the cloud is a superposition of SEPARATE ejecta parcels, each deposited on its own step with its own momentum, so the body stays lumpy and the lumps travel coherently instead of relaxing into a ball. No thermal drive, heavy drag. The aux channel is the COARSE grain fraction; it falls out faster than the fine haze, so late frames are a thin veil around a lumpy core. Edit this file and re-run `node tools/bake-gas-volumes.mjs`.",
   "auxChannel": "grain",
   "frames": 8,
-  "steps": 84,
-  "captureStart": 6,
+  "steps": 58,
+  "captureStart": 4,
   "loop": false,
   "dt": 0.016,
   "jacobi": 8,
-  "drag": 0.982,
+  "drag": 0.991,
   "sources": [
-    { "c": [-0.30, 0.00, 0.00], "r": 0.16, "amount": 1.00, "sharp": 2.4 },
-    { "c": [-0.20, 0.05, 0.18], "r": 0.11, "amount": 0.72, "sharp": 3.0 },
-    { "c": [-0.21, -0.07, -0.16], "r": 0.10, "amount": 0.68, "sharp": 3.2 },
-    { "c": [-0.10, 0.12, -0.04], "r": 0.09, "amount": 0.55, "sharp": 3.4 },
-    { "c": [-0.08, -0.13, 0.08], "r": 0.09, "amount": 0.52, "sharp": 3.4 },
-    { "c": [0.04, 0.02, 0.14], "r": 0.07, "amount": 0.40, "sharp": 3.8 },
-    { "c": [0.02, -0.04, -0.12], "r": 0.07, "amount": 0.38, "sharp": 3.8 }
+    { "c": [-0.30, 0.00, 0.00], "r": 0.15, "amount": 1.00, "sharp": 2.4 },
+    { "c": [-0.24, 0.07, 0.15], "r": 0.10, "amount": 0.80, "sharp": 3.0 },
+    { "c": [-0.25, -0.09, -0.13], "r": 0.10, "amount": 0.76, "sharp": 3.2 },
+    { "c": [-0.18, 0.14, -0.06], "r": 0.085, "amount": 0.66, "sharp": 3.4 },
+    { "c": [-0.17, -0.12, 0.10], "r": 0.085, "amount": 0.62, "sharp": 3.4 },
+    { "c": [-0.12, 0.03, 0.17], "r": 0.075, "amount": 0.54, "sharp": 3.8 },
+    { "c": [-0.13, -0.05, -0.15], "r": 0.075, "amount": 0.50, "sharp": 3.8 },
+    { "c": [-0.20, 0.00, 0.00], "r": 0.22, "amount": 0.38, "sharp": 1.2 }
   ],
   "cavities": [
-    { "c": [-0.34, 0.0, 0.0], "r": [0.10, 0.30, 0.30], "cut": 0.55 }
+    { "c": [-0.36, 0.0, 0.0], "r": [0.09, 0.30, 0.30], "cut": 0.55 }
   ],
-  "initialVelocity": { "radial": 0.10, "push": [0.95, 0.0, 0.0], "shearAxis": 0.30, "fan": 0.85 },
+  "initialVelocity": { "radial": 0.06, "push": [0.55, 0.0, 0.0], "shearAxis": 0.28, "fan": 0.55 },
   "forces": {
     "buoyancy": 0.0,
-    "weight": 0.12,
-    "swirl": 0.55,
+    "weight": 0.10,
+    "swirl": 0.50,
     "swirlRadius": 0.30,
     "swirlDrift": 0.006,
-    "jet": 0.22,
+    "jet": 0.18,
     "jetRadius": 0.22,
     "jetOrigin": -0.30
   },
-  "injection": { "steps": 9, "hold": 5, "rate": 0.17, "lateRate": 0.05, "auxScale": 1.0 },
-  "dissipation": { "rho": 0.994, "aux": 0.951 },
-  "blur": { "rho": 0, "aux": 1 },
-  "clump": 0.55,
+  "injection": { "steps": 3, "hold": 2, "rate": 0.09, "lateRate": 0.05, "auxScale": 1.0 },
+  "pulses": [
+    { "lobe": 0, "at": 0, "amount": 0.34, "vel": [2.10, 0.00, 0.00] },
+    { "lobe": 1, "at": 1, "amount": 0.30, "vel": [1.55, 0.95, 1.05] },
+    { "lobe": 2, "at": 2, "amount": 0.29, "vel": [1.70, -1.05, -0.90] },
+    { "lobe": 3, "at": 4, "amount": 0.26, "vel": [1.25, 1.35, -0.55] },
+    { "lobe": 4, "at": 5, "amount": 0.25, "vel": [1.40, -1.20, 0.80] },
+    { "lobe": 5, "at": 7, "amount": 0.22, "vel": [0.95, 0.35, 1.45], "auxScale": 0.6 },
+    { "lobe": 6, "at": 9, "amount": 0.21, "vel": [1.05, -0.45, -1.35], "auxScale": 0.6 },
+    { "lobe": 7, "at": 11, "amount": 0.16, "vel": [0.55, 0.00, 0.00], "auxScale": 0.3 }
+  ],
+  "dissipation": { "rho": 0.9955, "aux": 0.962 },
+  "blur": { "rho": 0.0, "aux": 0.10 },
+  "clump": 0.0,
   "auxMode": "inject"
 }

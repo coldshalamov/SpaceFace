@@ -1,34 +1,34 @@
 {
   "id": "coolant-plume",
-  "note": "Pressurised coolant leaking from a hull breach. A narrow high-velocity nozzle column that flares into a mushrooming head. The aux channel is CONDENSATE: it is zero at the nozzle and grows downstream as the jet expands and flashes, so the effect reads clear-and-fast at the breach and bright-and-slow at the head - the opposite gradient to combustion. Baked past its transient so the captured frames loop. Edit this file and re-run `node tools/bake-gas-volumes.mjs`.",
+  "note": "Pressurised coolant escaping a hull breach. A discrete pressure RELEASE, not an infinite jet: the breach bursts, a narrow high-velocity column extends, injection stops and the head detaches and drifts. Baking it as a sustained jet was tried first and converged to a steady state with a measured frame delta of 0.006 - correct physics, and a static film. The aux channel is CONDENSATE: zero at the nozzle, growing downstream as the jet expands and flashes, so the effect reads clear-and-fast at the breach and bright-and-slow at the head - the opposite gradient to combustion. Edit this file and re-run `node tools/bake-gas-volumes.mjs`.",
   "auxChannel": "condensate",
-  "frames": 6,
-  "steps": 120,
-  "captureStart": 66,
-  "loop": true,
+  "frames": 8,
+  "steps": 78,
+  "captureStart": 3,
+  "loop": false,
   "dt": 0.013,
   "jacobi": 16,
   "drag": 0.992,
   "sources": [
-    { "c": [-0.40, 0.00, 0.00], "r": 0.085, "amount": 1.00, "sharp": 3.6 },
-    { "c": [-0.34, 0.01, 0.00], "r": 0.070, "amount": 0.80, "sharp": 3.8 }
+    { "c": [-0.44, 0.00, 0.00], "r": 0.085, "amount": 1.00, "sharp": 3.6 },
+    { "c": [-0.37, 0.01, 0.00], "r": 0.070, "amount": 0.80, "sharp": 3.8 }
   ],
   "cavities": [],
   "initialVelocity": { "radial": 0.0, "push": [1.35, 0.0, 0.0], "shearAxis": 0.18 },
   "forces": {
     "buoyancy": 0.0,
     "weight": 0.05,
-    "swirl": 0.95,
-    "swirlRadius": 0.055,
-    "swirlDrift": 0.0,
-    "jet": 2.10,
+    "swirl": 2.6,
+    "swirlRadius": 0.048,
+    "swirlDrift": 0.009,
+    "jet": 2.1,
     "jetRadius": 0.032,
-    "jetOrigin": -0.40
+    "jetOrigin": -0.44
   },
-  "injection": { "steps": 120, "hold": 120, "rate": 0.085, "lateRate": 0.085, "auxScale": 0.0 },
+  "injection": { "steps": 26, "hold": 17, "rate": 0.105, "lateRate": 0.05, "auxScale": 0.0 },
   "dissipation": { "rho": 0.985, "aux": 0.993 },
-  "blur": { "rho": 1, "aux": 2 },
+  "blur": { "rho": 0.03, "aux": 0.08 },
   "clump": 0.0,
   "auxMode": "condense",
-  "condense": { "rate": 0.26, "start": -0.16, "end": 0.34 }
+  "condense": { "rate": 0.26, "start": -0.2, "end": 0.34 }
 }
