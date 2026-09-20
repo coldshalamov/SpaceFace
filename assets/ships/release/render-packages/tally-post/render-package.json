@@ -6,31 +6,81 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4c40c72ea15863e05838e35e7b46ec7675edb6c5514dc2d296c7ed1f4c4cf64f",
+  "contentHash": "158322ad920e20b1ded853627433878c9c8077392e850b362a47cd9376fee1ad",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          9.569306828264558,
-          13.720703519782157,
+          0.25190114974975586,
+          15.524401664733887,
+          0.4337027966976166
+        ],
+        "min": [
+          -0.25190114974975586,
+          -0.6600000262260437,
+          -0.2518634796142578
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "86a0e938d070a4935c5b9bb52096f7762ac23bab8108939f5ffbc76fc23194cf",
+      "id": "sf.render.tally-post.node.remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 372,
+      "indexed": true,
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_InsetInstrumentFin0",
+      "nodeId": "sf.render.tally-post.node.remaster-material-mechanical-brushednickel",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          0.197127103805542,
+          0.8639999628067017,
+          0.3638632893562317
+        ],
+        "min": [
+          -0.197127103805542,
+          -0.8639999628067017,
+          0.3431907594203949
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7bda2db0502fc5bfe9905e95950f6397859edea6c37bd02f1dc5ce201c51cec1",
+      "id": "sf.render.tally-post.node.remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_ServiceWell_Inner",
+      "nodeId": "sf.render.tally-post.node.remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.569306437655841,
+          13.720703803331983,
           0.3061421837846581
         ],
         "min": [
-          -1.299451160854976,
-          11.475446178487564,
+          -1.299451526443526,
+          11.47544614370075,
           -0.3061421837846581
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76bf8f0808e25193e786e4c5882d728ff3a8bf8b5d72acd3e5571d4111468446",
-      "id": "sf.render.tally-post.mesh.tally-boom-mesh.primitive.0",
+      "geometryHash": "9c1048798cde9d2dccf5799104d783a7effb05405e23bf02a25ba6e72061ed83",
+      "id": "sf.render.tally-post.node.tally-boom-mesh.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
-      "nodeId": "sf.render.tally-post.mesh.tally-boom-mesh",
+      "nodeId": "sf.render.tally-post.node.tally-boom-mesh",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -38,24 +88,24 @@
       "bounds": {
         "max": [
           5.131874657571302,
-          1.612187770526205,
+          1.6121876691983061,
           4.76026269436619
         ],
         "min": [
-          3.0768933920830364,
+          3.0768931894272384,
           0.5178054746194576,
-          2.7327714852100655
+          2.7327716878658634
         ]
       },
       "drawMode": 4,
-      "geometryHash": "384255d1ee4cb227e934e1da0e9e6d06caee3adcf7c777da79e1cd4a5615a441",
-      "id": "sf.render.tally-post.mesh.tally-deck-crumple.primitive.0",
+      "geometryHash": "db68f202fbaaa52e1df42943fe845715e20667ba33df65396a4f1e56ae3b723c",
+      "id": "sf.render.tally-post.node.tally-deck-crumple.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
-      "nodeId": "sf.render.tally-post.mesh.tally-deck-crumple",
+      "nodeId": "sf.render.tally-post.node.tally-deck-crumple",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -73,14 +123,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a460cada7e2c72b5b8ed49400b9439d52f90ea5141dd62e2b8649f45c728c6a2",
-      "id": "sf.render.tally-post.mesh.tally-deck-rail-e.primitive.0",
+      "geometryHash": "431b81692793a3647768bf365ab4f689de63b46b3a945abb8822cef4d4a834a5",
+      "id": "sf.render.tally-post.node.tally-deck-rail-e.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
-      "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-e",
+      "nodeId": "sf.render.tally-post.node.tally-deck-rail-e",
       "primitiveIndex": 0,
       "vertexCount": 72
     },
@@ -98,14 +148,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7a48fbbbc0f5d203a1a130bf6d760aec1c806c170394c6815763cf554c509fa",
-      "id": "sf.render.tally-post.mesh.tally-deck-rail-n.primitive.0",
+      "geometryHash": "6904341d8da869cc1100fe3fb90c1a8548c15a008445b452a5c74878502418d9",
+      "id": "sf.render.tally-post.node.tally-deck-rail-n.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
-      "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-n",
+      "nodeId": "sf.render.tally-post.node.tally-deck-rail-n",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -123,14 +173,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "15edc261c0bc5c920555b621881259d0c5ac7b96608db9bd3b0beb18086232ff",
-      "id": "sf.render.tally-post.mesh.tally-deck-rail-s.primitive.0",
+      "geometryHash": "fb3ec299a2eeaa3ace1e1ccfde30767d573167d5619125a8727a8f91c059e0a8",
+      "id": "sf.render.tally-post.node.tally-deck-rail-s.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
-      "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-s",
+      "nodeId": "sf.render.tally-post.node.tally-deck-rail-s",
       "primitiveIndex": 0,
       "vertexCount": 72
     },
@@ -148,14 +198,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5db6dee603e4b6ac1b6e1ca86e055bb3d3507a774b43816bd06a65ab4f033e9",
-      "id": "sf.render.tally-post.mesh.tally-deck-rail-w.primitive.0",
+      "geometryHash": "b178b0ee80e09daa80c5374bc48c57a4e61a1c16aa01512958bd34d65855358f",
+      "id": "sf.render.tally-post.node.tally-deck-rail-w.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
-      "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-w",
+      "nodeId": "sf.render.tally-post.node.tally-deck-rail-w",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -168,19 +218,19 @@
         ],
         "min": [
           3.6390848942107255,
-          -0.000021248586886319027,
+          -0.000021235920898948985,
           -2.281779448615225
         ]
       },
       "drawMode": 4,
-      "geometryHash": "affbd01547469b0461a3d61e684b51c3c041fb9e60109f068470673087393bf7",
-      "id": "sf.render.tally-post.mesh.tally-foot-0.primitive.0",
+      "geometryHash": "cec445eac62071612dde897202bf16447b218a6b51ab3ff9b5cf2189edfbf950",
+      "id": "sf.render.tally-post.node.tally-foot-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
-      "nodeId": "sf.render.tally-post.mesh.tally-foot-0",
+      "nodeId": "sf.render.tally-post.node.tally-foot-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -193,19 +243,19 @@
         ],
         "min": [
           -2.2089297556576923,
-          -0.000021248586886319027,
+          -0.000021235920898948985,
           -4.654234802140479
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc9c31ec9e871831a6235be55056b923c26820c3c79a5f605b758345373dbad3",
-      "id": "sf.render.tally-post.mesh.tally-foot-1.primitive.0",
+      "geometryHash": "0dc4379e3a662951debdb460c60bcfe3cabc6d29c4228056c08bfded83cc9640",
+      "id": "sf.render.tally-post.node.tally-foot-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
-      "nodeId": "sf.render.tally-post.mesh.tally-foot-1",
+      "nodeId": "sf.render.tally-post.node.tally-foot-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -218,19 +268,19 @@
         ],
         "min": [
           -4.581384906527148,
-          -0.000021248586886319027,
+          -0.000021235920898948985,
           1.1937795437442418
         ]
       },
       "drawMode": 4,
-      "geometryHash": "49199a9075f88565debf5fca6277798fc4bd8e5606c78ba6a810f020b2b26546",
-      "id": "sf.render.tally-post.mesh.tally-foot-2.primitive.0",
+      "geometryHash": "4195a1a6fa78cebc84c21c635b354141c33589eeea5ecb04c8ebf8aed07c65c4",
+      "id": "sf.render.tally-post.node.tally-foot-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.004",
-      "nodeId": "sf.render.tally-post.mesh.tally-foot-2",
+      "nodeId": "sf.render.tally-post.node.tally-foot-2",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -243,94 +293,94 @@
         ],
         "min": [
           1.2666294393575726,
-          -0.000021248586886319027,
+          -0.000021235920898948985,
           3.5662349985973947
         ]
       },
       "drawMode": 4,
-      "geometryHash": "777d22f4a119ba1f5a8ae40047b7481ad46d426b4e95c61610f1180dbe939480",
-      "id": "sf.render.tally-post.mesh.tally-foot-3.primitive.0",
+      "geometryHash": "3b332c2a42f53e7dbf35b4ff2d660fbd67134e141c900bc68a037b0421806b66",
+      "id": "sf.render.tally-post.node.tally-foot-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
-      "nodeId": "sf.render.tally-post.mesh.tally-foot-3",
+      "nodeId": "sf.render.tally-post.node.tally-foot-3",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          4.163437316373859,
+          4.163437721685455,
           1.135611148739173,
-          -0.5078054749350116
+          -0.5078055762629106
         ],
         "min": [
-          1.3853800625767434,
-          0.19038908047049397,
-          -1.8381967106481625
+          1.3853802652325413,
+          0.19038915646641819,
+          -1.8381969133039604
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a070c5c9ad393b5c56d34b7a517e2d999edc0483bd84c74d5fb99c0a963f5a4c",
-      "id": "sf.render.tally-post.mesh.tally-foot-brace-0.primitive.0",
+      "geometryHash": "9f970942412825272f70cd816a5075bc9214de00fbc1f46a1d79ded0136b6c61",
+      "id": "sf.render.tally-post.node.tally-foot-brace-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
-      "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-0",
+      "nodeId": "sf.render.tally-post.node.tally-foot-brace-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -0.5078055762629106,
-          1.135610642099678,
-          -1.3853799612488444
+          -0.50780562692686,
+          1.135610946083375,
+          -1.3853798599209455
         ],
         "min": [
-          -1.8381967106481625,
-          0.19038954911202666,
-          -4.163437316373859
+          -1.8381969133039604,
+          0.19038929579227926,
+          -4.16343812699705
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5277e03f5d4d8c642d62e9d5b2ac321dcc75aee4b528be8e69c7cc1416bbc7f",
-      "id": "sf.render.tally-post.mesh.tally-foot-brace-1.primitive.0",
+      "geometryHash": "7f562a97f66e39f62b270f736bf9fd1cc062dbce469b6d30528b2e6672371c05",
+      "id": "sf.render.tally-post.node.tally-foot-brace-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
-      "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-1",
+      "nodeId": "sf.render.tally-post.node.tally-foot-brace-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -1.3853799612488444,
-          1.135610844755476,
+          -1.3853802652325413,
+          1.135610743427577,
           1.8381967106481625
         ],
         "min": [
-          -4.163437316373859,
-          0.190389321124254,
-          0.5078056775908095
+          -4.163437721685455,
+          0.19038952378005192,
+          0.507805728254759
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d7d10d60870efed34b1be60a0c4614ca308eb4e1018461b71da9713eb861fe37",
-      "id": "sf.render.tally-post.mesh.tally-foot-brace-2.primitive.0",
+      "geometryHash": "8eae6eebacbf56a7f243b30d3431953f589ad823800712a0daa2dd8ffc2b76cd",
+      "id": "sf.render.tally-post.node.tally-foot-brace-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
-      "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-2",
+      "nodeId": "sf.render.tally-post.node.tally-foot-brace-2",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -338,224 +388,224 @@
       "bounds": {
         "max": [
           1.8381967106481625,
-          1.135610946083375,
-          4.163437316373859
+          1.135611047411274,
+          4.163437721685455
         ],
         "min": [
-          0.50780562692686,
-          0.19038921979635504,
-          1.3853799612488444
+          0.507805829582658,
+          0.19038928312629189,
+          1.3853801639046424
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9ad7b1cb7d42eeaef44fffbe1f0f405dcd6f82174703e2443a48cb35700566cf",
-      "id": "sf.render.tally-post.mesh.tally-foot-brace-3.primitive.0",
+      "geometryHash": "540038f30fe238f123f73d35642bbd71cc32545b80bdb41e7f23c74ca6e20bbe",
+      "id": "sf.render.tally-post.node.tally-foot-brace-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.008",
-      "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-3",
+      "nodeId": "sf.render.tally-post.node.tally-foot-brace-3",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          4.338401010131861,
-          1.1389516255841983,
-          3.7569511275277705
+          4.338400199508669,
+          1.1389517269120972,
+          3.7569515328393663
         ],
         "min": [
-          -4.338401010131861,
-          0.7650485879196438,
-          3.383049356461953
+          -4.338400199508669,
+          0.7650487399114922,
+          3.383049761773549
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6295150f2b46add70b56bd44b4acd63c58c76847f32437efe1360284a3efcbf",
-      "id": "sf.render.tally-post.mesh.tally-grate-0.primitive.0",
+      "geometryHash": "3ff985b9fc39c27ddee484f217af6126ff469aa7ff4abecccdab49e77ec0a937",
+      "id": "sf.render.tally-post.node.tally-grate-0.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.013",
-      "nodeId": "sf.render.tally-post.mesh.tally-grate-0",
+      "nodeId": "sf.render.tally-post.node.tally-grate-0",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.338401010131861,
-          1.1389516255841983,
+          4.338400199508669,
+          1.1389517269120972,
           2.7369512610421793
         ],
         "min": [
-          -4.338401010131861,
-          0.7650485879196438,
+          -4.338400199508669,
+          0.7650487399114922,
           2.363049287320564
         ]
       },
       "drawMode": 4,
-      "geometryHash": "771c6b0abf851d2e844da0500dec3d2cd7e89b046d1d2fe9dae4b7aa331993b6",
-      "id": "sf.render.tally-post.mesh.tally-grate-1.primitive.0",
+      "geometryHash": "f91f0cbf0c08075c84db26c4a31fc4b7d9d90400087a7766a9a1fef29c3ba8b3",
+      "id": "sf.render.tally-post.node.tally-grate-1.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.014",
-      "nodeId": "sf.render.tally-post.mesh.tally-grate-1",
+      "nodeId": "sf.render.tally-post.node.tally-grate-1",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.338401010131861,
-          1.1389516255841983,
-          1.7169509892449923
+          4.338400199508669,
+          1.1389517269120972,
+          1.7169511919007903
         ],
         "min": [
-          -4.338401010131861,
-          0.7650485879196438,
-          1.3430492181791749
+          -4.338400199508669,
+          0.7650487399114922,
+          1.3430493195070738
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c97469d0cc2aaa822dcf151d45a48d653e5bf02a27d60c8837b436cf829af4fb",
-      "id": "sf.render.tally-post.mesh.tally-grate-2.primitive.0",
+      "geometryHash": "d4287f593362f713fa33c18efa9ce634a9b6d863899329ad1b44a858e1f5f65b",
+      "id": "sf.render.tally-post.node.tally-grate-2.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.015",
-      "nodeId": "sf.render.tally-post.mesh.tally-grate-2",
+      "nodeId": "sf.render.tally-post.node.tally-grate-2",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.338401010131861,
-          1.1389516255841983,
-          0.6969510214315022
+          4.338400199508669,
+          1.1389517269120972,
+          0.6969510720954517
         ],
         "min": [
-          -4.338401010131861,
-          0.7650485879196438,
-          0.3230491490377858
+          -4.338400199508669,
+          0.7650487399114922,
+          0.3230491997017353
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fde45b1d56a82b27894a033373ac475299bdabadc316a5f0cc86dc3c733e121f",
-      "id": "sf.render.tally-post.mesh.tally-grate-3.primitive.0",
+      "geometryHash": "1f733768e66858a04a902c0900dd17b523f2685bf36d0dc14bb3ec577bd9d1d3",
+      "id": "sf.render.tally-post.node.tally-grate-3.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.016",
-      "nodeId": "sf.render.tally-post.mesh.tally-grate-3",
+      "nodeId": "sf.render.tally-post.node.tally-grate-3",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.338401010131861,
-          1.1389516255841983,
-          -0.3230491490377858
+          4.338400199508669,
+          1.1389517269120972,
+          -0.3230491997017353
         ],
         "min": [
-          -4.338401010131861,
-          0.7650485879196438,
-          -0.6969510214315022
+          -4.338400199508669,
+          0.7650487399114922,
+          -0.6969510720954517
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09ac50c148c1d3a8d66881294f4c2ecc4b08f15c6e21621ea125b53081c4171d",
-      "id": "sf.render.tally-post.mesh.tally-grate-4.primitive.0",
+      "geometryHash": "25d95ecd79fcd2a0fc7ecfed21209c0741b2c83d1d1698f55311c4e3c0ab7f43",
+      "id": "sf.render.tally-post.node.tally-grate-4.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.017",
-      "nodeId": "sf.render.tally-post.mesh.tally-grate-4",
+      "nodeId": "sf.render.tally-post.node.tally-grate-4",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.338401010131861,
-          1.1389516255841983,
-          -1.3430492181791749
+          4.338400199508669,
+          1.1389517269120972,
+          -1.3430493195070738
         ],
         "min": [
-          -4.338401010131861,
-          0.7650485879196438,
-          -1.7169509892449923
+          -4.338400199508669,
+          0.7650487399114922,
+          -1.7169511919007903
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f2af17ac27e7dfef455ceec337c1ed9e4bee1f37b24e00483cd6fd1414a20d9",
-      "id": "sf.render.tally-post.mesh.tally-grate-5.primitive.0",
+      "geometryHash": "039bfc02146960f54ef7c0d805ba07b2b3d69f4b39c387b3bfac5cb246810bed",
+      "id": "sf.render.tally-post.node.tally-grate-5.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.018",
-      "nodeId": "sf.render.tally-post.mesh.tally-grate-5",
+      "nodeId": "sf.render.tally-post.node.tally-grate-5",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.338401010131861,
-          1.1389516255841983,
+          4.338400199508669,
+          1.1389517269120972,
           -2.363049287320564
         ],
         "min": [
-          -4.338401010131861,
-          0.7650485879196438,
+          -4.338400199508669,
+          0.7650487399114922,
           -2.7369512610421793
         ]
       },
       "drawMode": 4,
-      "geometryHash": "edf58dc8d5850ddbbe4b3783f68a19a4b02232b92e804fc7c221d4da5b1954a4",
-      "id": "sf.render.tally-post.mesh.tally-grate-6.primitive.0",
+      "geometryHash": "8f1e7fb06170572a6206ede7eabffddea2ad383740887ecc874c8d166dbb88fb",
+      "id": "sf.render.tally-post.node.tally-grate-6.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.019",
-      "nodeId": "sf.render.tally-post.mesh.tally-grate-6",
+      "nodeId": "sf.render.tally-post.node.tally-grate-6",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.338401010131861,
-          1.1389516255841983,
-          -3.383049356461953
+          4.338400199508669,
+          1.1389517269120972,
+          -3.383049761773549
         ],
         "min": [
-          -4.338401010131861,
-          0.7650485879196438,
-          -3.7569511275277705
+          -4.338400199508669,
+          0.7650487399114922,
+          -3.7569515328393663
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e34ca539eadec8b4ddd4d1bd845f7991a3da27fcc668fe5576e86a0cad27029",
-      "id": "sf.render.tally-post.mesh.tally-grate-7.primitive.0",
+      "geometryHash": "71a4ab372cf49343517d93e0fdd86ff7b6c4edd02f1eaaa9a444d65cd60860a2",
+      "id": "sf.render.tally-post.node.tally-grate-7.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.020",
-      "nodeId": "sf.render.tally-post.mesh.tally-grate-7",
+      "nodeId": "sf.render.tally-post.node.tally-grate-7",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -563,24 +613,24 @@
       "bounds": {
         "max": [
           0.3880277161360546,
-          20.366001414299035,
+          20.36600303554542,
           0.4080000023245809
         ],
         "min": [
           -0.3880277161360546,
-          19.890003476142965,
+          19.89000509738935,
           -0.4080000023245809
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a48d52041e836a624742afad4071a4c105a04a208a430194b721b16f26ebeb97",
-      "id": "sf.render.tally-post.mesh.tally-invoice-lamp.primitive.0",
+      "geometryHash": "d42e096eebfbb078f686589f62320a783b2c5b071b50d52ec65b52aedc5bbc94",
+      "id": "sf.render.tally-post.node.tally-invoice-lamp.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "560d55fc8c9bb2787ce461221cc076dc8be4826249c86fb3ae9abc7512f6106a",
+      "materialHash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.025",
-      "nodeId": "sf.render.tally-post.mesh.tally-invoice-lamp",
+      "nodeId": "sf.render.tally-post.node.tally-invoice-lamp",
       "primitiveIndex": 0,
       "vertexCount": 60
     },
@@ -598,14 +648,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13ea87dee8b06ef21c22c58010b0797cbfd009a18800614d22dd08b518930f3c",
-      "id": "sf.render.tally-post.mesh.tally-ledger-plate.primitive.0",
+      "geometryHash": "0e0136710d5cc2118064d7037fb62576fbcb55e53da2bd433418ffd6af044a70",
+      "id": "sf.render.tally-post.node.tally-ledger-plate.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2c420cb20907deda2f1a1b3cc4a04ddd293fc6e0f576efbe9d6ad70115624975",
+      "materialHash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.013",
-      "nodeId": "sf.render.tally-post.mesh.tally-ledger-plate",
+      "nodeId": "sf.render.tally-post.node.tally-ledger-plate",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -613,74 +663,74 @@
       "bounds": {
         "max": [
           0.2378246344278736,
-          19.890001854896582,
+          19.890003476142965,
           0.2378246344278736
         ],
         "min": [
           -0.2378246344278736,
-          14.790001711845434,
+          14.790003333091818,
           -0.2378246344278736
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba7382b7ce235f0f221c8cc40989a67359125f12ce790ab83e454d008a879ca6",
-      "id": "sf.render.tally-post.mesh.tally-mast.primitive.0",
+      "geometryHash": "b710502518f3dcd8ab43a60963d9c65fa00be04af8e6873c744cf8357bc62b32",
+      "id": "sf.render.tally-post.node.tally-mast.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.024",
-      "nodeId": "sf.render.tally-post.mesh.tally-mast",
+      "nodeId": "sf.render.tally-post.node.tally-mast",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          1.6195319153149512,
-          14.450000405311584,
-          1.8704307365538284
+          1.6195321179707491,
+          14.450003647804351,
+          1.8704309392096263
         ],
         "min": [
-          -1.6195319153149512,
-          0.8500008344650496,
-          -1.8704307365538284
+          -1.6195321179707491,
+          0.8500010371208475,
+          -1.8704309392096263
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb53cf8cba01a0e10eb2d55e5f11102354923dda6a26c25dde3eed1dda402497",
-      "id": "sf.render.tally-post.mesh.tally-scale-house.primitive.0",
-      "indexCount": 60,
+      "geometryHash": "f8e6076a134db22e4a904d300c9ca567d1bb4b063f74a525984609d94f33f53b",
+      "id": "sf.render.tally-post.node.tally-scale-house.primitive.0",
+      "indexCount": 114,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.021",
-      "nodeId": "sf.render.tally-post.mesh.tally-scale-house",
+      "meshName": "Cylinder.029",
+      "nodeId": "sf.render.tally-post.node.tally-scale-house",
       "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 62
     },
     {
       "bounds": {
         "max": [
           -3.7568724970781773,
-          0.41651843613437833,
+          0.4165184614663531,
           2.1457795745002386
         ],
         "min": [
           -4.4635973036596965,
-          0.297481612264594,
+          0.29748163759656876,
           1.3297795191871273
         ]
       },
       "drawMode": 4,
-      "geometryHash": "798dabaf2d7420323f56a8b4853e335807c4af70864a3ac24c4643a6bd3e1237",
-      "id": "sf.render.tally-post.mesh.tally-shim.primitive.0",
+      "geometryHash": "1e3baf20833052dc3b9283bd88133a4af2fdaff079bcbafe48f0764a2b7492ce",
+      "id": "sf.render.tally-post.node.tally-shim.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.006",
-      "nodeId": "sf.render.tally-post.mesh.tally-shim",
+      "nodeId": "sf.render.tally-post.node.tally-shim",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -688,74 +738,74 @@
       "bounds": {
         "max": [
           4.171054337194505,
-          0.5268224416921399,
-          -1.5878622858064944
+          0.5268226950118873,
+          -1.5878626911180902
         ],
         "min": [
-          -1.7985985783576552,
-          0.1531776128461111,
+          -1.7985981730460594,
+          0.1531774355222879,
           -4.260152364061923
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bfda96e0abaab46d3fd1cff4432651b17d09922ea35133b46d1206779a005a79",
-      "id": "sf.render.tally-post.mesh.tally-sill-0.primitive.0",
+      "geometryHash": "3b1fcc7c5e9a8f84bb396c697d038a765fc6dbde6e91c5b36cb5d92940f7f6fb",
+      "id": "sf.render.tally-post.node.tally-sill-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.009",
-      "nodeId": "sf.render.tally-post.mesh.tally-sill-0",
+      "nodeId": "sf.render.tally-post.node.tally-sill-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -1.5878622858064944,
-          0.5268223403642409,
+          -1.5878624884622923,
+          0.5268223910281904,
           1.7985981730460594
         ],
         "min": [
           -4.260152364061923,
-          0.15317771417401005,
+          0.1531777395059848,
           -4.171053931882909
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79711f022316fad34c043ef0a6d5d9a9eea871ccd5611ca453411fc19ecb6cfb",
-      "id": "sf.render.tally-post.mesh.tally-sill-1.primitive.0",
+      "geometryHash": "33320c326ba32cf17062807f761742a70dbe049a341eed4beb6c6dedcc2ce384",
+      "id": "sf.render.tally-post.node.tally-sill-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.010",
-      "nodeId": "sf.render.tally-post.mesh.tally-sill-1",
+      "nodeId": "sf.render.tally-post.node.tally-sill-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          1.798599186325049,
-          0.5268228976676852,
+          1.7985985783576552,
+          0.5268226443479378,
           4.260151553438732
         ],
         "min": [
           -4.171054742506101,
-          0.1531771822025405,
-          1.587862995101787
+          0.15317746085426265,
+          1.587863299085484
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be907cf99a7741758d8d1485c0074c3ed3d7c34f94e8107df9650de0b460c449",
-      "id": "sf.render.tally-post.mesh.tally-sill-2.primitive.0",
+      "geometryHash": "d1c225835c409c76a6725e1657ba8202795d608aeb0aafd6b2b853ded3312875",
+      "id": "sf.render.tally-post.node.tally-sill-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.011",
-      "nodeId": "sf.render.tally-post.mesh.tally-sill-2",
+      "nodeId": "sf.render.tally-post.node.tally-sill-2",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -767,95 +817,95 @@
           4.171053931882909
         ],
         "min": [
-          1.5878620831506964,
-          0.15317775217197216,
+          1.5878622858064944,
+          0.1531777775039469,
           -1.7985981730460594
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1418a01d6f3278ad0da0eea303278baf0d1fc6df3edf1b86e045416509e3c768",
-      "id": "sf.render.tally-post.mesh.tally-sill-3.primitive.0",
+      "geometryHash": "f8f0f6b3eec270ad6ad8b037fca5c9e3d62d9e9f21dd60ec1e2432932448ebb6",
+      "id": "sf.render.tally-post.node.tally-sill-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.012",
-      "nodeId": "sf.render.tally-post.mesh.tally-sill-3",
+      "nodeId": "sf.render.tally-post.node.tally-sill-3",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          2.196331657979954,
-          11.492000711441051,
+          2.196331860635752,
+          11.492001522064243,
           0.10201141263576563
         ],
         "min": [
-          2.019668898012185,
-          10.948001214981105,
+          2.0196691006679828,
+          10.948002025604296,
           -0.10201141263576563
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7a4b58b6125bdf171c897c3d8d4138affabbba9b67aa1c0e4485d96cb09c060",
-      "id": "sf.render.tally-post.mesh.tally-tag-link-0.primitive.0",
+      "geometryHash": "d3e57cce13fc134defefef5d6afe55a93be967319aced5de15a97c0b2400b3b3",
+      "id": "sf.render.tally-post.node.tally-tag-link-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.026",
-      "nodeId": "sf.render.tally-post.mesh.tally-tag-link-0",
+      "nodeId": "sf.render.tally-post.node.tally-tag-link-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          2.196331657979954,
+          2.196331860635752,
           10.812012689590802,
-          0.2720000522136701
+          0.27200002688169533
         ],
         "min": [
-          2.019668898012185,
+          2.0196691006679828,
           10.607990180968955,
-          -0.2720000522136701
+          -0.27200002688169533
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4a96fcd4b21965f642cb458428d5e551cf8472de4bc308f7fa076a4a3ec1402",
-      "id": "sf.render.tally-post.mesh.tally-tag-link-1.primitive.0",
+      "geometryHash": "fda5684d0b751591268fcae61e2c7cd0046235788007b1e7e514f9f7e0cd4a2e",
+      "id": "sf.render.tally-post.node.tally-tag-link-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.027",
-      "nodeId": "sf.render.tally-post.mesh.tally-tag-link-1",
+      "nodeId": "sf.render.tally-post.node.tally-tag-link-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          2.196331657979954,
+          2.196331860635752,
           10.47200084495546,
           0.10201141263576563
         ],
         "min": [
-          2.019668898012185,
+          2.0196691006679828,
           9.928001348495513,
           -0.10201141263576563
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cbc59d5fa0410090fe79831ea212f9f086395de68604e25c04090d1f4873451f",
-      "id": "sf.render.tally-post.mesh.tally-tag-link-2.primitive.0",
+      "geometryHash": "011c7d37a3a5e8a2f9969a9a6bcd553bd09b16aa863d16a67d3c5ef478048abf",
+      "id": "sf.render.tally-post.node.tally-tag-link-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.028",
-      "nodeId": "sf.render.tally-post.mesh.tally-tag-link-2",
+      "nodeId": "sf.render.tally-post.node.tally-tag-link-2",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -873,164 +923,164 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "34be61d48b0bec17a017f7cc0c16f64b7a3b3fbef97a509dc94a7f8d55207547",
-      "id": "sf.render.tally-post.mesh.tally-thermal-hood.primitive.0",
+      "geometryHash": "aa9c15ea02073276b5d7f3da9c7f9910f461965a65330d582ef0309f7b8e15c3",
+      "id": "sf.render.tally-post.node.tally-thermal-hood.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.023",
-      "nodeId": "sf.render.tally-post.mesh.tally-thermal-hood",
+      "nodeId": "sf.render.tally-post.node.tally-thermal-hood",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          6.397268592790754,
-          0.9589220495566371,
+          6.397268571083211,
+          0.9589222397294515,
           -0.35659919636317383
         ],
         "min": [
-          5.2038347634098345,
-          0.5341704796890715,
+          5.20383474053086,
+          0.534170637800613,
           -1.1394009134881884
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a9f0e7d3829452a26db3f77492e8bea12f14496ce93c68e5cf93b4e26f2e0a0",
-      "id": "sf.render.tally-post.mesh.tally-tong-a.primitive.0",
+      "geometryHash": "9b9352a315810351aa9294715fc25a82549f524e1b62423887d370c3c0765c80",
+      "id": "sf.render.tally-post.node.tally-tong-a.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
-      "nodeId": "sf.render.tally-post.mesh.tally-tong-a",
+      "nodeId": "sf.render.tally-post.node.tally-tong-a",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          6.397268592790754,
-          0.9589220495566371,
+          6.397268571083211,
+          0.9589222397294515,
           1.1394009134881884
         ],
         "min": [
-          5.2038347634098345,
-          0.5341704796890715,
+          5.20383474053086,
+          0.534170637800613,
           0.35659919636317383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "817e90a6e4cf4ed82e1f8523807a768c7a2556614f5e262f78bf5efccaded51a",
-      "id": "sf.render.tally-post.mesh.tally-tong-b.primitive.0",
+      "geometryHash": "48b51e33bd56a05647174254c23af0906c2ad7437247ebc51474e2d99dabebe6",
+      "id": "sf.render.tally-post.node.tally-tong-b.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
-      "nodeId": "sf.render.tally-post.mesh.tally-tong-b",
+      "nodeId": "sf.render.tally-post.node.tally-tong-b",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          5.833677917630873,
-          1.1458591794558397,
+          5.833677902413938,
+          1.1458593508909773,
           0.4760000153779984
         ],
         "min": [
-          4.805762765033414,
-          0.349416992923776,
+          4.805762735578826,
+          0.34941714090483467,
           -0.4760000153779984
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d076dfc5e5159eea34df851aefe74776bb088940e298e2c05520aa29f7c2c845",
-      "id": "sf.render.tally-post.mesh.tally-yoke-hub.primitive.0",
+      "geometryHash": "20ddb1bca910526f06ff4aecf92198751f65526af352b3e4dfb4ac62c1ed3b7a",
+      "id": "sf.render.tally-post.node.tally-yoke-hub.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
-      "nodeId": "sf.render.tally-post.mesh.tally-yoke-hub",
+      "nodeId": "sf.render.tally-post.node.tally-yoke-hub",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          6.940296374562513,
-          0.8690227423397429,
+          6.940296350060425,
+          0.8690229499801831,
           1.717018270969902
         ],
         "min": [
-          5.757146387902135,
-          0.6408137218301808,
+          5.757146367337248,
+          0.6408138953855071,
           0.8669817690844184
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f5b3a5800f1c13bffab35574001a63a85af596b35dc44d04fab4eaff4df727c9",
-      "id": "sf.render.tally-post.mesh.tally-yoke-pad-replacement.primitive.0",
+      "geometryHash": "d232c16888733919a59346b69c0a507fb150eae939ed3a317eebd6cc11806ab3",
+      "id": "sf.render.tally-post.node.tally-yoke-pad-replacement.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.012",
-      "nodeId": "sf.render.tally-post.mesh.tally-yoke-pad-replacement",
+      "nodeId": "sf.render.tally-post.node.tally-yoke-pad-replacement",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          6.961587844498032,
-          1.0349849199334475,
+          6.9615878245441625,
+          1.034985126361839,
           -0.8669817690844184
         ],
         "min": [
-          5.7358549175259235,
-          0.4748515630505603,
+          5.73585489241282,
+          0.47485173781793544,
           -1.717018270969902
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39cb83fbb9432afe82b1185448db6eae4e50edc0723b56a65e9b5ea5ea23307c",
-      "id": "sf.render.tally-post.mesh.tally-yoke-pad-worn.primitive.0",
+      "geometryHash": "49921cf684508e093b39b89975127658f74efdec5486b21d905d26a95dc00ee9",
+      "id": "sf.render.tally-post.node.tally-yoke-pad-worn.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.011",
-      "nodeId": "sf.render.tally-post.mesh.tally-yoke-pad-worn",
+      "nodeId": "sf.render.tally-post.node.tally-yoke-pad-worn",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          6.677293167090932,
-          1.1747874738247424,
+          6.677293123922552,
+          1.1747877737839842,
           -0.9179999608993512
         ],
         "min": [
-          5.944438994184328,
-          0.8737548963122465,
+          5.944438947908514,
+          0.8737551759704737,
           -1.6660000791549692
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d87a36f5f265f908230116bb16bf1425f9e2c2b6d5dae8a0247098e9d86f316e",
-      "id": "sf.render.tally-post.mesh.tally-yoke-wear-cup.primitive.0",
+      "geometryHash": "9be94ba8d37404139f546b5124ddfde23de8794fc7b104f6091c2700a09facee",
+      "id": "sf.render.tally-post.node.tally-yoke-wear-cup.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.022",
-      "nodeId": "sf.render.tally-post.mesh.tally-yoke-wear-cup",
+      "nodeId": "sf.render.tally-post.node.tally-yoke-wear-cup",
       "primitiveIndex": 0,
       "vertexCount": 60
     }
@@ -1040,40 +1090,194 @@
   "lods": [],
   "materials": [
     {
-      "hash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
-      "id": "material:042af3f5b04a408797d21b47",
-      "name": "furniture_bare_steel",
+      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "id": "material:09306e58ed6387f8ee509fc5",
+      "name": "Material_Mechanical_BrushedNickel",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "furniture_bare_steel_baseColor",
+          "name": "Material_Mechanical_BrushedNickel_base",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_bare_steel_orm",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_bare_steel_normal",
+          "name": "Material_Mechanical_BrushedNickel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_bare_steel_orm",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "2c420cb20907deda2f1a1b3cc4a04ddd293fc6e0f576efbe9d6ad70115624975",
-      "id": "material:2c420cb20907deda2f1a1b3c",
+      "hash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
+      "id": "material:62757001ceb6d643a2a31c70",
+      "name": "Material_Rubber_HeatScale",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Rubber_HeatScale_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "id": "material:9b606ffef39761a1e7cc390d",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
+      "id": "material:b6096d8a315bf4d19f719ab7",
+      "name": "Material_Hull_DeepSeaEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_DeepSeaEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
+      "id": "material:b75db6daea4fdcd5ab35e301",
+      "name": "furniture_signal_lens",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_signal_lens_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_signal_lens_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_signal_lens_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
+      "id": "material:d75684dbd82479f6e5eba655",
       "name": "furniture_identity_plate",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1102,133 +1306,204 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "560d55fc8c9bb2787ce461221cc076dc8be4826249c86fb3ae9abc7512f6106a",
-      "id": "material:560d55fc8c9bb2787ce46122",
-      "name": "furniture_signal_lens",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "furniture_signal_lens_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_signal_lens_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_signal_lens_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
-      "id": "material:6ba888af1e572a80fd8d795a",
-      "name": "furniture_painted_shell",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "furniture_painted_shell_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_painted_shell_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_painted_shell_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_painted_shell_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
-      "id": "material:9d347080e13ee4faa8b858e1",
-      "name": "furniture_structural_alloy",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "furniture_structural_alloy_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_structural_alloy_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_structural_alloy_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_structural_alloy_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
-      "id": "material:b296e8bf930483a9bc39facb",
-      "name": "furniture_scorch",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "furniture_scorch_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_scorch_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_scorch_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_scorch_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.tally-post.mesh.tally-boom-mesh",
+      "id": "sf.render.tally-post.node.place-tally-post",
+      "localTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "place_tally_post",
+      "nodeName": "place_tally_post",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.node.remaster-material-mechanical-brushednickel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.node.remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.node.tally-boom",
+      "localTransform": [
+        0.9902680612974847,
+        0.1391731579709905,
+        0,
+        0,
+        -0.1391731579709905,
+        0.9902680612974847,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "tally_boom",
+      "nodeName": "tally_boom",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.tally-post.node.place-tally-post",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.3669115028507695,
+        0.47318875037395436,
+        0,
+        0,
+        -0.47318875037395436,
+        3.3669115028507695,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.node.tally-boom-mesh",
       "localTransform": [
         1,
         0,
@@ -1255,16 +1530,16 @@
         0,
         6
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.tally-boom",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
-        3.366911516987327,
-        0.4731886492928823,
+        3.3669115028507695,
+        0.47318875037395436,
         0,
         0,
-        -0.4731886492928823,
-        3.366911516987327,
+        -0.47318875037395436,
+        3.3669115028507695,
         0,
         0,
         0,
@@ -1278,7 +1553,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-deck-crumple",
+      "id": "sf.render.tally-post.node.tally-deck-crumple",
       "localTransform": [
         1,
         0,
@@ -1304,7 +1579,7 @@
         0,
         1
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1327,7 +1602,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-deck-rail-e",
+      "id": "sf.render.tally-post.node.tally-deck-rail-e",
       "localTransform": [
         1,
         0,
@@ -1353,7 +1628,7 @@
         0,
         2
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1376,7 +1651,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-deck-rail-n",
+      "id": "sf.render.tally-post.node.tally-deck-rail-n",
       "localTransform": [
         1,
         0,
@@ -1402,7 +1677,7 @@
         0,
         3
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1425,7 +1700,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-deck-rail-s",
+      "id": "sf.render.tally-post.node.tally-deck-rail-s",
       "localTransform": [
         1,
         0,
@@ -1451,7 +1726,7 @@
         0,
         4
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1474,7 +1749,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-deck-rail-w",
+      "id": "sf.render.tally-post.node.tally-deck-rail-w",
       "localTransform": [
         1,
         0,
@@ -1500,7 +1775,7 @@
         0,
         5
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1523,7 +1798,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-foot-0",
+      "id": "sf.render.tally-post.node.tally-foot-0",
       "localTransform": [
         1,
         0,
@@ -1549,7 +1824,7 @@
         0,
         6
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1572,7 +1847,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-foot-1",
+      "id": "sf.render.tally-post.node.tally-foot-1",
       "localTransform": [
         1,
         0,
@@ -1598,7 +1873,7 @@
         0,
         7
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1621,7 +1896,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-foot-2",
+      "id": "sf.render.tally-post.node.tally-foot-2",
       "localTransform": [
         1,
         0,
@@ -1647,7 +1922,7 @@
         0,
         8
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1670,7 +1945,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-foot-3",
+      "id": "sf.render.tally-post.node.tally-foot-3",
       "localTransform": [
         1,
         0,
@@ -1696,7 +1971,7 @@
         0,
         9
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1719,7 +1994,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-foot-brace-0",
+      "id": "sf.render.tally-post.node.tally-foot-brace-0",
       "localTransform": [
         1,
         0,
@@ -1745,7 +2020,7 @@
         0,
         10
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1768,7 +2043,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-foot-brace-1",
+      "id": "sf.render.tally-post.node.tally-foot-brace-1",
       "localTransform": [
         1,
         0,
@@ -1794,7 +2069,7 @@
         0,
         11
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1817,7 +2092,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-foot-brace-2",
+      "id": "sf.render.tally-post.node.tally-foot-brace-2",
       "localTransform": [
         1,
         0,
@@ -1843,7 +2118,7 @@
         0,
         12
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1866,7 +2141,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-foot-brace-3",
+      "id": "sf.render.tally-post.node.tally-foot-brace-3",
       "localTransform": [
         1,
         0,
@@ -1892,7 +2167,7 @@
         0,
         13
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1915,7 +2190,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-grate-0",
+      "id": "sf.render.tally-post.node.tally-grate-0",
       "localTransform": [
         1,
         0,
@@ -1941,7 +2216,7 @@
         0,
         14
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -1964,7 +2239,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-grate-1",
+      "id": "sf.render.tally-post.node.tally-grate-1",
       "localTransform": [
         1,
         0,
@@ -1990,7 +2265,7 @@
         0,
         15
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2013,7 +2288,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-grate-2",
+      "id": "sf.render.tally-post.node.tally-grate-2",
       "localTransform": [
         1,
         0,
@@ -2039,7 +2314,7 @@
         0,
         16
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2062,7 +2337,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-grate-3",
+      "id": "sf.render.tally-post.node.tally-grate-3",
       "localTransform": [
         1,
         0,
@@ -2088,7 +2363,7 @@
         0,
         17
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2111,7 +2386,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-grate-4",
+      "id": "sf.render.tally-post.node.tally-grate-4",
       "localTransform": [
         1,
         0,
@@ -2137,7 +2412,7 @@
         0,
         18
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2160,7 +2435,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-grate-5",
+      "id": "sf.render.tally-post.node.tally-grate-5",
       "localTransform": [
         1,
         0,
@@ -2186,7 +2461,7 @@
         0,
         19
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2209,7 +2484,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-grate-6",
+      "id": "sf.render.tally-post.node.tally-grate-6",
       "localTransform": [
         1,
         0,
@@ -2235,7 +2510,7 @@
         0,
         20
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2258,7 +2533,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-grate-7",
+      "id": "sf.render.tally-post.node.tally-grate-7",
       "localTransform": [
         1,
         0,
@@ -2284,7 +2559,7 @@
         0,
         21
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2307,7 +2582,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-invoice-lamp",
+      "id": "sf.render.tally-post.node.tally-invoice-lamp",
       "localTransform": [
         1,
         0,
@@ -2333,7 +2608,7 @@
         0,
         22
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2356,7 +2631,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-ledger-plate",
+      "id": "sf.render.tally-post.node.tally-ledger-plate",
       "localTransform": [
         1,
         0,
@@ -2382,7 +2657,7 @@
         0,
         23
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2405,7 +2680,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-mast",
+      "id": "sf.render.tally-post.node.tally-mast",
       "localTransform": [
         1,
         0,
@@ -2431,7 +2706,7 @@
         0,
         24
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2454,7 +2729,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-scale-house",
+      "id": "sf.render.tally-post.node.tally-scale-house",
       "localTransform": [
         1,
         0,
@@ -2480,7 +2755,7 @@
         0,
         25
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2503,7 +2778,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-shim",
+      "id": "sf.render.tally-post.node.tally-shim",
       "localTransform": [
         1,
         0,
@@ -2529,7 +2804,7 @@
         0,
         26
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2552,7 +2827,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-sill-0",
+      "id": "sf.render.tally-post.node.tally-sill-0",
       "localTransform": [
         1,
         0,
@@ -2578,7 +2853,7 @@
         0,
         27
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2601,7 +2876,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-sill-1",
+      "id": "sf.render.tally-post.node.tally-sill-1",
       "localTransform": [
         1,
         0,
@@ -2627,7 +2902,7 @@
         0,
         28
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2650,7 +2925,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-sill-2",
+      "id": "sf.render.tally-post.node.tally-sill-2",
       "localTransform": [
         1,
         0,
@@ -2676,7 +2951,7 @@
         0,
         29
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2699,7 +2974,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-sill-3",
+      "id": "sf.render.tally-post.node.tally-sill-3",
       "localTransform": [
         1,
         0,
@@ -2725,7 +3000,7 @@
         0,
         30
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2748,7 +3023,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-tag-link-0",
+      "id": "sf.render.tally-post.node.tally-tag-link-0",
       "localTransform": [
         1,
         0,
@@ -2774,7 +3049,7 @@
         0,
         31
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2797,7 +3072,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-tag-link-1",
+      "id": "sf.render.tally-post.node.tally-tag-link-1",
       "localTransform": [
         1,
         0,
@@ -2823,7 +3098,7 @@
         0,
         32
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2846,7 +3121,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-tag-link-2",
+      "id": "sf.render.tally-post.node.tally-tag-link-2",
       "localTransform": [
         1,
         0,
@@ -2872,7 +3147,7 @@
         0,
         33
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2895,7 +3170,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-thermal-hood",
+      "id": "sf.render.tally-post.node.tally-thermal-hood",
       "localTransform": [
         1,
         0,
@@ -2921,7 +3196,7 @@
         0,
         34
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.place-tally-post",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
@@ -2944,7 +3219,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-tong-a",
+      "id": "sf.render.tally-post.node.tally-tong-a",
       "localTransform": [
         1,
         0,
@@ -2971,16 +3246,16 @@
         0,
         0
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.tally-boom",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
-        3.366911516987327,
-        0.4731886492928823,
+        3.3669115028507695,
+        0.47318875037395436,
         0,
         0,
-        -0.4731886492928823,
-        3.366911516987327,
+        -0.47318875037395436,
+        3.3669115028507695,
         0,
         0,
         0,
@@ -2994,7 +3269,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-tong-b",
+      "id": "sf.render.tally-post.node.tally-tong-b",
       "localTransform": [
         1,
         0,
@@ -3021,16 +3296,16 @@
         0,
         1
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.tally-boom",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
-        3.366911516987327,
-        0.4731886492928823,
+        3.3669115028507695,
+        0.47318875037395436,
         0,
         0,
-        -0.4731886492928823,
-        3.366911516987327,
+        -0.47318875037395436,
+        3.3669115028507695,
         0,
         0,
         0,
@@ -3044,7 +3319,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-yoke-hub",
+      "id": "sf.render.tally-post.node.tally-yoke-hub",
       "localTransform": [
         1,
         0,
@@ -3071,16 +3346,16 @@
         0,
         2
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.tally-boom",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
-        3.366911516987327,
-        0.4731886492928823,
+        3.3669115028507695,
+        0.47318875037395436,
         0,
         0,
-        -0.4731886492928823,
-        3.366911516987327,
+        -0.47318875037395436,
+        3.3669115028507695,
         0,
         0,
         0,
@@ -3094,7 +3369,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-yoke-pad-replacement",
+      "id": "sf.render.tally-post.node.tally-yoke-pad-replacement",
       "localTransform": [
         1,
         0,
@@ -3121,16 +3396,16 @@
         0,
         3
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.tally-boom",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
-        3.366911516987327,
-        0.4731886492928823,
+        3.3669115028507695,
+        0.47318875037395436,
         0,
         0,
-        -0.4731886492928823,
-        3.366911516987327,
+        -0.47318875037395436,
+        3.3669115028507695,
         0,
         0,
         0,
@@ -3144,7 +3419,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-yoke-pad-worn",
+      "id": "sf.render.tally-post.node.tally-yoke-pad-worn",
       "localTransform": [
         1,
         0,
@@ -3171,16 +3446,16 @@
         0,
         4
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.tally-boom",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
-        3.366911516987327,
-        0.4731886492928823,
+        3.3669115028507695,
+        0.47318875037395436,
         0,
         0,
-        -0.4731886492928823,
-        3.366911516987327,
+        -0.47318875037395436,
+        3.3669115028507695,
         0,
         0,
         0,
@@ -3194,7 +3469,7 @@
       ]
     },
     {
-      "id": "sf.render.tally-post.mesh.tally-yoke-wear-cup",
+      "id": "sf.render.tally-post.node.tally-yoke-wear-cup",
       "localTransform": [
         1,
         0,
@@ -3221,64 +3496,16 @@
         0,
         5
       ],
-      "parentId": "sf.render.tally-post.root",
+      "parentId": "sf.render.tally-post.node.tally-boom",
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
-        3.366911516987327,
-        0.4731886492928823,
+        3.3669115028507695,
+        0.47318875037395436,
         0,
         0,
-        -0.4731886492928823,
-        3.366911516987327,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.tally-post.root",
-      "localTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
-      "nodeName": "place_tally_post",
-      "nodePath": [
-        0
-      ],
-      "parentId": null,
-      "role": "immutable",
-      "spatialClusterId": "sf.render.tally-post.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
+        -0.47318875037395436,
+        3.3669115028507695,
         0,
         0,
         0,
@@ -3294,44 +3521,44 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "73b5b028688b10223ef04c4cd0030d982ce90547db5db12962a9824d42402321"
+      "sha256": "ec5a1851baa619e26aadf3c4da8c1b297384a37545c17f6fcead95f0c7caed08"
     },
     "sourceGlb": {
-      "bytes": 209944,
-      "sha256": "9a2d02cd8e675473a613497ba494a35cdf5651958b68b40a8ccf2c2e31f907d5",
+      "bytes": 167480,
+      "sha256": "98777b2468f9ce5544804db6a1d8eaf9231e198f1ec6067ea9b00097dbeba30a",
       "uri": "place_tally_post.glb"
     },
     "sourceManifest": {
-      "bytes": 159409,
-      "sha256": "744cb0ede1c62d560bfd2e23bfc1b9f5fb5065ec409718e44f95bd1f531921e0",
+      "bytes": 169401,
+      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 255292,
-    "sha256": "1d66e79c441847d94a79d37fb5fa06368c24b44ca9de82aacaf5b54d16ab5d3a",
+    "bytes": 227380,
+    "sha256": "c181ceddc992ab7a71feb475522f05f476f4a9ebdf3b22a3087daa087e68336d",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        2.2346533426067055,
-        10.182990082856074,
+        2.234653147302347,
+        9.751001536369358,
         0.00015867948977188462
       ],
       "max": [
-        9.569306828264558,
-        20.366001414299035,
+        9.569306437655841,
+        20.36600303554542,
         5.0999669075002885
       ],
       "min": [
         -5.1000001430511475,
-        -0.000021248586886319027,
+        -0.8639999628067017,
         -5.099649548520745
       ],
       "size": [
-        14.669306971315706,
-        20.36602266288592,
+        14.669306580706989,
+        21.23000299835212,
         10.199616456021033
       ]
     },
@@ -3339,28 +3566,31 @@
     "legacyPart": false,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 41
+      "ceramic": 31,
+      "hull": 4,
+      "mechanical": 7,
+      "rubber": 1
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -3370,117 +3600,117 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 30,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
@@ -3495,7 +3725,7 @@
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
@@ -3505,60 +3735,70 @@
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 39,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 40,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 41,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 42,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 43,
-        "role": "hull"
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 44,
+    "nodeCount": 46,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          3.366911516987327,
-          0.4731886492928823,
+          3.3669115028507695,
+          0.47318875037395436,
           0,
           0,
-          -0.4731886492928823,
-          3.366911516987327,
+          -0.47318875037395436,
+          3.3669115028507695,
           0,
           0,
           0,
@@ -3579,12 +3819,12 @@
       {
         "canopy": false,
         "matrix": [
-          3.366911516987327,
-          0.4731886492928823,
+          3.3669115028507695,
+          0.47318875037395436,
           0,
           0,
-          -0.4731886492928823,
-          3.366911516987327,
+          -0.47318875037395436,
+          3.3669115028507695,
           0,
           0,
           0,
@@ -3605,12 +3845,12 @@
       {
         "canopy": false,
         "matrix": [
-          3.366911516987327,
-          0.4731886492928823,
+          3.3669115028507695,
+          0.47318875037395436,
           0,
           0,
-          -0.4731886492928823,
-          3.366911516987327,
+          -0.47318875037395436,
+          3.3669115028507695,
           0,
           0,
           0,
@@ -3631,12 +3871,12 @@
       {
         "canopy": false,
         "matrix": [
-          3.366911516987327,
-          0.4731886492928823,
+          3.3669115028507695,
+          0.47318875037395436,
           0,
           0,
-          -0.4731886492928823,
-          3.366911516987327,
+          -0.47318875037395436,
+          3.3669115028507695,
           0,
           0,
           0,
@@ -3657,12 +3897,12 @@
       {
         "canopy": false,
         "matrix": [
-          3.366911516987327,
-          0.4731886492928823,
+          3.3669115028507695,
+          0.47318875037395436,
           0,
           0,
-          -0.4731886492928823,
-          3.366911516987327,
+          -0.47318875037395436,
+          3.3669115028507695,
           0,
           0,
           0,
@@ -3683,12 +3923,12 @@
       {
         "canopy": false,
         "matrix": [
-          3.366911516987327,
-          0.4731886492928823,
+          3.3669115028507695,
+          0.47318875037395436,
           0,
           0,
-          -0.4731886492928823,
-          3.366911516987327,
+          -0.47318875037395436,
+          3.3669115028507695,
           0,
           0,
           0,
@@ -3709,12 +3949,12 @@
       {
         "canopy": false,
         "matrix": [
-          3.366911516987327,
-          0.4731886492928823,
+          3.3669115028507695,
+          0.47318875037395436,
           0,
           0,
-          -0.4731886492928823,
-          3.366911516987327,
+          -0.47318875037395436,
+          3.3669115028507695,
           0,
           0,
           0,
@@ -4615,72 +4855,131 @@
         "tags": {
           "canopy": false
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tally_post.glb"
   },
-  "runtimeHash": "1d057568cb076b53a1a9fcfeb539071acf1d9c79896541e3fb69c89f45c8a978",
+  "runtimeHash": "6c74af9b007d70318698024d592b3b226a2b200d1c077bbfc55b5ff1a663633e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          9.569306828264558,
-          20.366001414299035,
+          9.569306437655841,
+          20.36600303554542,
           5.0999669075002885
         ],
         "min": [
           -5.1000001430511475,
-          -0.000021248586886319027,
+          -0.8639999628067017,
           -5.099649548520745
         ]
       },
       "id": "sf.render.tally-post.body",
       "nodeIds": [
-        "sf.render.tally-post.mesh.tally-boom-mesh",
-        "sf.render.tally-post.mesh.tally-deck-crumple",
-        "sf.render.tally-post.mesh.tally-deck-rail-e",
-        "sf.render.tally-post.mesh.tally-deck-rail-n",
-        "sf.render.tally-post.mesh.tally-deck-rail-s",
-        "sf.render.tally-post.mesh.tally-deck-rail-w",
-        "sf.render.tally-post.mesh.tally-foot-0",
-        "sf.render.tally-post.mesh.tally-foot-1",
-        "sf.render.tally-post.mesh.tally-foot-2",
-        "sf.render.tally-post.mesh.tally-foot-3",
-        "sf.render.tally-post.mesh.tally-foot-brace-0",
-        "sf.render.tally-post.mesh.tally-foot-brace-1",
-        "sf.render.tally-post.mesh.tally-foot-brace-2",
-        "sf.render.tally-post.mesh.tally-foot-brace-3",
-        "sf.render.tally-post.mesh.tally-grate-0",
-        "sf.render.tally-post.mesh.tally-grate-1",
-        "sf.render.tally-post.mesh.tally-grate-2",
-        "sf.render.tally-post.mesh.tally-grate-3",
-        "sf.render.tally-post.mesh.tally-grate-4",
-        "sf.render.tally-post.mesh.tally-grate-5",
-        "sf.render.tally-post.mesh.tally-grate-6",
-        "sf.render.tally-post.mesh.tally-grate-7",
-        "sf.render.tally-post.mesh.tally-invoice-lamp",
-        "sf.render.tally-post.mesh.tally-ledger-plate",
-        "sf.render.tally-post.mesh.tally-mast",
-        "sf.render.tally-post.mesh.tally-scale-house",
-        "sf.render.tally-post.mesh.tally-shim",
-        "sf.render.tally-post.mesh.tally-sill-0",
-        "sf.render.tally-post.mesh.tally-sill-1",
-        "sf.render.tally-post.mesh.tally-sill-2",
-        "sf.render.tally-post.mesh.tally-sill-3",
-        "sf.render.tally-post.mesh.tally-tag-link-0",
-        "sf.render.tally-post.mesh.tally-tag-link-1",
-        "sf.render.tally-post.mesh.tally-tag-link-2",
-        "sf.render.tally-post.mesh.tally-thermal-hood",
-        "sf.render.tally-post.mesh.tally-tong-a",
-        "sf.render.tally-post.mesh.tally-tong-b",
-        "sf.render.tally-post.mesh.tally-yoke-hub",
-        "sf.render.tally-post.mesh.tally-yoke-pad-replacement",
-        "sf.render.tally-post.mesh.tally-yoke-pad-worn",
-        "sf.render.tally-post.mesh.tally-yoke-wear-cup",
-        "sf.render.tally-post.root"
+        "sf.render.tally-post.node.place-tally-post",
+        "sf.render.tally-post.node.remaster-material-mechanical-brushednickel",
+        "sf.render.tally-post.node.remaster-material-mechanical-shadowenamel",
+        "sf.render.tally-post.node.tally-boom",
+        "sf.render.tally-post.node.tally-boom-mesh",
+        "sf.render.tally-post.node.tally-deck-crumple",
+        "sf.render.tally-post.node.tally-deck-rail-e",
+        "sf.render.tally-post.node.tally-deck-rail-n",
+        "sf.render.tally-post.node.tally-deck-rail-s",
+        "sf.render.tally-post.node.tally-deck-rail-w",
+        "sf.render.tally-post.node.tally-foot-0",
+        "sf.render.tally-post.node.tally-foot-1",
+        "sf.render.tally-post.node.tally-foot-2",
+        "sf.render.tally-post.node.tally-foot-3",
+        "sf.render.tally-post.node.tally-foot-brace-0",
+        "sf.render.tally-post.node.tally-foot-brace-1",
+        "sf.render.tally-post.node.tally-foot-brace-2",
+        "sf.render.tally-post.node.tally-foot-brace-3",
+        "sf.render.tally-post.node.tally-grate-0",
+        "sf.render.tally-post.node.tally-grate-1",
+        "sf.render.tally-post.node.tally-grate-2",
+        "sf.render.tally-post.node.tally-grate-3",
+        "sf.render.tally-post.node.tally-grate-4",
+        "sf.render.tally-post.node.tally-grate-5",
+        "sf.render.tally-post.node.tally-grate-6",
+        "sf.render.tally-post.node.tally-grate-7",
+        "sf.render.tally-post.node.tally-invoice-lamp",
+        "sf.render.tally-post.node.tally-ledger-plate",
+        "sf.render.tally-post.node.tally-mast",
+        "sf.render.tally-post.node.tally-scale-house",
+        "sf.render.tally-post.node.tally-shim",
+        "sf.render.tally-post.node.tally-sill-0",
+        "sf.render.tally-post.node.tally-sill-1",
+        "sf.render.tally-post.node.tally-sill-2",
+        "sf.render.tally-post.node.tally-sill-3",
+        "sf.render.tally-post.node.tally-tag-link-0",
+        "sf.render.tally-post.node.tally-tag-link-1",
+        "sf.render.tally-post.node.tally-tag-link-2",
+        "sf.render.tally-post.node.tally-thermal-hood",
+        "sf.render.tally-post.node.tally-tong-a",
+        "sf.render.tally-post.node.tally-tong-b",
+        "sf.render.tally-post.node.tally-yoke-hub",
+        "sf.render.tally-post.node.tally-yoke-pad-replacement",
+        "sf.render.tally-post.node.tally-yoke-pad-worn",
+        "sf.render.tally-post.node.tally-yoke-wear-cup"
       ]
     }
   ]

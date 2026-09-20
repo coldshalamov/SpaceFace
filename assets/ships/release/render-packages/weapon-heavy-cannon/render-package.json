@@ -16,7 +16,7 @@
         0,
         1,
         0,
-        6.2,
+        6.199999809265137,
         0,
         0,
         1
@@ -26,7 +26,7 @@
         0,
         9
       ],
-      "parentNodeId": "sf.render.weapon-heavy-cannon.root",
+      "parentNodeId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
       "worldTransform": [
         1,
         0,
@@ -40,7 +40,7 @@
         0,
         1,
         0,
-        6.2,
+        6.199999809265137,
         0,
         0,
         1
@@ -53,58 +53,133 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7800bdc3627c6dd79d1f1bb34f9fb14ca4de0e97daf16a55cb790a86c5a6ac93",
+  "contentHash": "0cadaddf0f49e357fc68514a4afa8b799b857c48119000debaa97cdbb6966275",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          6.130016173422336,
+          6.1300163641572,
           0.28999999165534973,
           0.2856101989746094
         ],
         "min": [
-          5.969983826577663,
+          5.969984017312527,
           -0.28999999165534973,
           -0.2856101989746094
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41522053a49592aa1057350cc17c9eb06669a58e4c4b0670e061c0a5d19901e0",
-      "id": "sf.render.weapon-heavy-cannon.mesh.heavy-muzzle-glow.primitive.0",
+      "geometryHash": "398663b06032454050afbe1d2dc7e0f09323243990fc96fa96f2cb4fd9621a45",
+      "id": "sf.render.weapon-heavy-cannon.node.heavy-muzzle-glow.primitive.0",
       "indexCount": 216,
       "indexed": true,
-      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialHash": "3e89ecd14466b59bdaf35c00c9a37317f7966cd6ad117b606a0d63b466a122b5",
       "materialPipelineKey": "opaque",
       "meshName": "Heavy_Muzzle_Glow",
-      "nodeId": "sf.render.weapon-heavy-cannon.mesh.heavy-muzzle-glow",
+      "nodeId": "sf.render.weapon-heavy-cannon.node.heavy-muzzle-glow",
       "primitiveIndex": 0,
-      "vertexCount": 38
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          6.065700054168701,
+          0.42623183131217957,
+          0.5210896134376526
+        ],
+        "min": [
+          1.725450038909912,
+          -0.3812318742275238,
+          -0.5210896134376526
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e2639b07914a7e4454a89855794846187cd23bb0b70426a4d89fe672f1ee5d45",
+      "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 1056,
+      "indexed": true,
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_HeavyRecessedBore",
+      "nodeId": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-brushednickel",
+      "primitiveIndex": 0,
+      "vertexCount": 528
+    },
+    {
+      "bounds": {
+        "max": [
+          1.33292555809021,
+          0.3065343499183655,
+          0.4732249975204468
+        ],
+        "min": [
+          0.4768253564834595,
+          0.022515589371323586,
+          -0.47322502732276917
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "adf52b979fb48f317e13203de4ba49ea2816e538c9d001b0e3a99bfcd5912e38",
+      "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 684,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_RecoilClevis-1",
+      "nodeId": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 456
     },
     {
       "bounds": {
         "max": [
           4.177994251251221,
-          0.7249220609664917,
+          0.55997633934021,
+          0.5601080060005188
+        ],
+        "min": [
+          2.072105646133423,
+          -0.5598980784416199,
+          -0.5601080060005188
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f23795fb3af8584c4907e896b394cb0e28cc4178902bca4564c1546988925f4f",
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged.primitive.0",
+      "indexCount": 3360,
+      "indexed": true,
+      "materialHash": "fd5cd111187e5e081661850337b4cc777991e0e7eeacd898f17f132e3e7a2262",
+      "materialPipelineKey": "opaque",
+      "meshName": "weapon_heavy_cannon_Material_Hull_Merged.001",
+      "nodeId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 792
+    },
+    {
+      "bounds": {
+        "max": [
+          2.099984645843506,
+          0.7226037383079529,
           0.8249583840370178
         ],
         "min": [
           -0.30000001192092896,
-          -0.7249220609664917,
+          -0.7250537872314453,
           -0.8249583840370178
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88f75a4aefa5f7785148b4e9d676542cc48dc2ff5f173acb7b590e9a28cfa3e6",
-      "id": "sf.render.weapon-heavy-cannon.mesh.weapon-heavy-cannon-material-hull-merged.primitive.0",
-      "indexCount": 3936,
+      "geometryHash": "51dc5609b22cd6fbbd58719ab022df73f1d6a9abd2c9061dd050735cd9b85f44",
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged.primitive.1",
+      "indexCount": 1116,
       "indexed": true,
-      "materialHash": "20b7fe243667c6ee80e25834cc0587cb3cfa1de939c29b75d26245dcd4e59d70",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
-      "meshName": "weapon_heavy_cannon_Material_Hull_Merged",
-      "nodeId": "sf.render.weapon-heavy-cannon.mesh.weapon-heavy-cannon-material-hull-merged",
-      "primitiveIndex": 0,
-      "vertexCount": 710
+      "meshName": "weapon_heavy_cannon_Material_Hull_Merged.001",
+      "nodeId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged",
+      "primitiveIndex": 1,
+      "vertexCount": 728
     },
     {
       "bounds": {
@@ -120,16 +195,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "de6acda421602e37e612896ad477067afbb511a20bf1c6057465efff5d9f6ccb",
-      "id": "sf.render.weapon-heavy-cannon.mesh.weapon-heavy-cannon-material-mechanical-merged.primitive.0",
+      "geometryHash": "8323ab7bb5b1b2b25e900288c01ed701d06d9aa1bb1043ef8324d5edf920a356",
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-mechanical-merged.primitive.0",
       "indexCount": 2736,
       "indexed": true,
-      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialHash": "daf05c172b4514b994d970c22aa2c6114dbe4d2095eb8405346a036c8b9293fe",
       "materialPipelineKey": "opaque",
       "meshName": "weapon_heavy_cannon_Material_Mechanical_Merged",
-      "nodeId": "sf.render.weapon-heavy-cannon.mesh.weapon-heavy-cannon-material-mechanical-merged",
+      "nodeId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-mechanical-merged",
       "primitiveIndex": 0,
-      "vertexCount": 478
+      "vertexCount": 822
     }
   ],
   "hlods": [],
@@ -137,8 +212,118 @@
   "lods": [],
   "materials": [
     {
-      "hash": "20b7fe243667c6ee80e25834cc0587cb3cfa1de939c29b75d26245dcd4e59d70",
-      "id": "material:20b7fe243667c6ee80e25834",
+      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "id": "material:09306e58ed6387f8ee509fc5",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "3e89ecd14466b59bdaf35c00c9a37317f7966cd6ad117b606a0d63b466a122b5",
+      "id": "material:3e89ecd14466b59bdaf35c00",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "id": "material:9b606ffef39761a1e7cc390d",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "daf05c172b4514b994d970c22aa2c6114dbe4d2095eb8405346a036c8b9293fe",
+      "id": "material:daf05c172b4514b994d970c2",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "fd5cd111187e5e081661850337b4cc777991e0e7eeacd898f17f132e3e7a2262",
+      "id": "material:fd5cd111187e5e0816618503",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -167,25 +352,109 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
-      "id": "material:4bbfc0af06e03d63cd7b8818",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
-      "id": "material:7af6f768ac4f1f4c9ee04b14",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": []
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.weapon-heavy-cannon.mesh.heavy-muzzle-glow",
+      "id": "sf.render.weapon-heavy-cannon.node.heavy-barrel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.649999976158142,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Heavy_Barrel",
+      "nodeName": "Heavy_Barrel",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.649999976158142,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.heavy-breech",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.8999999761581421,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Heavy_Breech",
+      "nodeName": "Heavy_Breech",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.8999999761581421,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.heavy-muzzle-glow",
       "localTransform": [
         1,
         0,
@@ -212,7 +481,7 @@
         8,
         0
       ],
-      "parentId": "sf.render.weapon-heavy-cannon.root",
+      "parentId": "sf.render.weapon-heavy-cannon.node.hook-emissive",
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
       "worldTransform": [
@@ -228,14 +497,357 @@
         0,
         1,
         0,
-        6.05,
+        6.050000190734863,
         0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.weapon-heavy-cannon.mesh.weapon-heavy-cannon-material-hull-merged",
+      "id": "sf.render.weapon-heavy-cannon.node.heavy-recoil-0-72",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.225000023841858,
+        0.5,
+        -0.7200000286102295,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Heavy_Recoil_-0.72",
+      "nodeName": "Heavy_Recoil_-0.72",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.225000023841858,
+        0.5,
+        -0.7200000286102295,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.heavy-recoil-0-72-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.225000023841858,
+        0.5,
+        0.7200000286102295,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Heavy_Recoil_0.72",
+      "nodeName": "Heavy_Recoil_0.72",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.225000023841858,
+        0.5,
+        0.7200000286102295,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.heavy-rib-2-15",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.1500000953674316,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Heavy_Rib_2.15",
+      "nodeName": "Heavy_Rib_2.15",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.1500000953674316,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.heavy-rib-2-8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.799999952316284,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Heavy_Rib_2.8",
+      "nodeName": "Heavy_Rib_2.8",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.799999952316284,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.heavy-rib-3-45",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.450000047683716,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Heavy_Rib_3.45",
+      "nodeName": "Heavy_Rib_3.45",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.450000047683716,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.heavy-rib-4-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.099999904632568,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Heavy_Rib_4.1",
+      "nodeName": "Heavy_Rib_4.1",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.099999904632568,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.hook-emissive",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.050000190734863,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "HOOK_Emissive",
+      "nodeName": "HOOK_Emissive",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.050000190734863,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-brushednickel",
       "localTransform": [
         1,
         0,
@@ -255,13 +867,12 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "weapon_heavy_cannon_Material_Hull_Merged",
-      "nodeName": "weapon_heavy_cannon_Material_Hull_Merged",
+      "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "Remaster_Material_Mechanical_BrushedNickel",
       "nodePath": [
-        0,
-        18
+        2
       ],
-      "parentId": "sf.render.weapon-heavy-cannon.root",
+      "parentId": null,
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
       "worldTransform": [
@@ -284,7 +895,7 @@
       ]
     },
     {
-      "id": "sf.render.weapon-heavy-cannon.mesh.weapon-heavy-cannon-material-mechanical-merged",
+      "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-shadowenamel",
       "localTransform": [
         1,
         0,
@@ -304,13 +915,12 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "weapon_heavy_cannon_Material_Mechanical_Merged",
-      "nodeName": "weapon_heavy_cannon_Material_Mechanical_Merged",
+      "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "Remaster_Material_Mechanical_ShadowEnamel",
       "nodePath": [
-        0,
-        19
+        1
       ],
-      "parentId": "sf.render.weapon-heavy-cannon.root",
+      "parentId": null,
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
       "worldTransform": [
@@ -333,7 +943,56 @@
       ]
     },
     {
-      "id": "sf.render.weapon-heavy-cannon.root",
+      "id": "sf.render.weapon-heavy-cannon.node.socket-muzzle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.199999809265137,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Muzzle",
+      "nodeName": "SOCKET_Muzzle",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.199999809265137,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
       "localTransform": [
         1,
         0,
@@ -353,7 +1012,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "weapon_heavy_cannon",
       "nodeName": "weapon_heavy_cannon",
       "nodePath": [
         0
@@ -379,48 +1038,538 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-1",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.05000000074505806,
+        0.7300000190734863,
+        -0.7599999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_heavy_cannon_Bolt_1",
+      "nodeName": "weapon_heavy_cannon_Bolt_1",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.05000000074505806,
+        0.7300000190734863,
+        -0.7599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-2",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.05000000074505806,
+        0.7300000190734863,
+        0.7599999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_heavy_cannon_Bolt_2",
+      "nodeName": "weapon_heavy_cannon_Bolt_2",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.05000000074505806,
+        0.7300000190734863,
+        0.7599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-3",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.550000011920929,
+        0.7300000190734863,
+        -0.7599999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_heavy_cannon_Bolt_3",
+      "nodeName": "weapon_heavy_cannon_Bolt_3",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.550000011920929,
+        0.7300000190734863,
+        -0.7599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-4",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.550000011920929,
+        0.7300000190734863,
+        0.7599999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_heavy_cannon_Bolt_4",
+      "nodeName": "weapon_heavy_cannon_Bolt_4",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.550000011920929,
+        0.7300000190734863,
+        0.7599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-5",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.149999976158142,
+        0.7300000190734863,
+        -0.7599999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_heavy_cannon_Bolt_5",
+      "nodeName": "weapon_heavy_cannon_Bolt_5",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.149999976158142,
+        0.7300000190734863,
+        -0.7599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-6",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.149999976158142,
+        0.7300000190734863,
+        0.7599999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_heavy_cannon_Bolt_6",
+      "nodeName": "weapon_heavy_cannon_Bolt_6",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.149999976158142,
+        0.7300000190734863,
+        0.7599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-7",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.75,
+        0.7300000190734863,
+        -0.7599999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_heavy_cannon_Bolt_7",
+      "nodeName": "weapon_heavy_cannon_Bolt_7",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.75,
+        0.7300000190734863,
+        -0.7599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-8",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.75,
+        0.7300000190734863,
+        0.7599999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_heavy_cannon_Bolt_8",
+      "nodeName": "weapon_heavy_cannon_Bolt_8",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.75,
+        0.7300000190734863,
+        0.7599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "weapon_heavy_cannon_Material_Hull_Merged",
+      "nodeName": "weapon_heavy_cannon_Material_Hull_Merged",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "weapon_heavy_cannon_Material_Mechanical_Merged",
+      "nodeName": "weapon_heavy_cannon_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "6ddcb7aba29f6986088c224a1e0172c6db4ba772b6013cbf3d29f102aed60cdd"
+      "sha256": "1e31f3b557c2122f229a09ec78c35881db7659a7e9142b32cbaf28b70c72e2f5"
     },
     "sourceGlb": {
-      "bytes": 398748,
-      "sha256": "e9692901fd420427d03a17de0b818c77c3c417d3ea1c76fd5d4839ae07bff366",
+      "bytes": 445480,
+      "sha256": "572b2b7cbfd2b0c7f8134f6d65ba08064f04655ad8d93437e9da312831ae880a",
       "uri": "weapon_heavy_cannon.glb"
     },
     "sourceManifest": {
-      "bytes": 76590,
-      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
+      "bytes": 169401,
+      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 416440,
-    "sha256": "697e8ad98ebf24ec3e70dc7d7d5d22e8633fe3830d0211b51308619df53c2672",
+    "bytes": 508488,
+    "sha256": "a2b74f25e806a525b059a782ebcf60a4dde69cc10a28c032936ca3fc459c9cdb",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        2.9150080807507037,
-        0.0225507915019989,
+        2.9150081761181355,
+        0.022484928369522095,
         0
       ],
       "max": [
-        6.130016173422336,
+        6.1300163641572,
         0.7700236439704895,
         0.849827766418457
       ],
       "min": [
         -0.30000001192092896,
-        -0.7249220609664917,
+        -0.7250537872314453,
         -0.849827766418457
       ],
       "size": [
-        6.430016185343265,
-        1.4949457049369812,
+        6.430016376078129,
+        1.4950774312019348,
         1.699655532836914
       ]
     },
@@ -441,7 +1590,7 @@
           0,
           1,
           0,
-          6.05,
+          6.050000190734863,
           0,
           0,
           1
@@ -451,7 +1600,14 @@
         "tags": {},
         "userData": {
           "name": "HOOK_Emissive",
-          "spacefaceHook": true
+          "spacefaceHook": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "HOOK_Emissive",
+            "recordIds": [
+              "sf.render.weapon-heavy-cannon.node.hook-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
         }
       },
       {
@@ -468,7 +1624,7 @@
           0,
           1,
           0,
-          6.2,
+          6.199999809265137,
           0,
           0,
           1
@@ -495,7 +1651,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Muzzle",
             "recordIds": [
-              "sf.render.weapon-heavy-cannon.anchor.socket-muzzle"
+              "sf.render.weapon-heavy-cannon.anchor.socket-muzzle",
+              "sf.render.weapon-heavy-cannon.node.socket-muzzle"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           },
@@ -505,8 +1662,9 @@
     ],
     "materialProfileRoles": {
       "accent": 1,
+      "ceramic": 1,
       "hull": 1,
-      "mechanical": 1
+      "mechanical": 3
     },
     "materialProfiles": [
       {
@@ -516,16 +1674,31 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 21,
+        "planIndex": 22,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 22,
+        "planIndex": 23,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 23,
+    "nodeCount": 27,
     "primitives": [
       {
         "canopy": false,
@@ -542,7 +1715,7 @@
           0,
           1,
           0,
-          6.05,
+          6.050000190734863,
           0,
           0,
           1
@@ -573,8 +1746,34 @@
           0,
           1
         ],
-        "name": "weapon_heavy_cannon_Material_Hull_Merged",
-        "planIndex": 21,
+        "name": "weapon_heavy_cannon_Material_Hull_Merged001",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "weapon_heavy_cannon_Material_Hull_Merged001_1",
+        "planIndex": 23,
         "tags": {
           "canopy": false
         }
@@ -600,9 +1799,65 @@
           1
         ],
         "name": "weapon_heavy_cannon_Material_Mechanical_Merged",
-        "planIndex": 22,
+        "planIndex": 24,
         "tags": {
           "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
         }
       }
     ],
@@ -610,27 +1865,48 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb"
   },
+  "runtimeHash": "4cc74d098c2809e1a1983762ba00e5d77203948e4863863022aea78027048504",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          6.130016173422336,
+          6.1300163641572,
           0.7700236439704895,
           0.849827766418457
         ],
         "min": [
           -0.30000001192092896,
-          -0.7249220609664917,
+          -0.7250537872314453,
           -0.849827766418457
         ]
       },
       "id": "sf.render.weapon-heavy-cannon.body",
       "nodeIds": [
-        "sf.render.weapon-heavy-cannon.mesh.heavy-muzzle-glow",
-        "sf.render.weapon-heavy-cannon.mesh.weapon-heavy-cannon-material-hull-merged",
-        "sf.render.weapon-heavy-cannon.mesh.weapon-heavy-cannon-material-mechanical-merged",
-        "sf.render.weapon-heavy-cannon.root"
+        "sf.render.weapon-heavy-cannon.node.heavy-barrel",
+        "sf.render.weapon-heavy-cannon.node.heavy-breech",
+        "sf.render.weapon-heavy-cannon.node.heavy-muzzle-glow",
+        "sf.render.weapon-heavy-cannon.node.heavy-recoil-0-72",
+        "sf.render.weapon-heavy-cannon.node.heavy-recoil-0-72-2",
+        "sf.render.weapon-heavy-cannon.node.heavy-rib-2-15",
+        "sf.render.weapon-heavy-cannon.node.heavy-rib-2-8",
+        "sf.render.weapon-heavy-cannon.node.heavy-rib-3-45",
+        "sf.render.weapon-heavy-cannon.node.heavy-rib-4-1",
+        "sf.render.weapon-heavy-cannon.node.hook-emissive",
+        "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-brushednickel",
+        "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-shadowenamel",
+        "sf.render.weapon-heavy-cannon.node.socket-muzzle",
+        "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-1",
+        "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-2",
+        "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-3",
+        "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-4",
+        "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-5",
+        "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-6",
+        "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-7",
+        "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-8",
+        "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged",
+        "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-mechanical-merged"
       ]
     }
   ]

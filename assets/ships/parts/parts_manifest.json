@@ -1858,10 +1858,27 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_ash_pin.glb",
-      "tris": 1100,
-      "bytes": 283348,
+      "tris": 1192,
+      "bytes": 196768,
       "textureSize": 128,
-      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py."
+      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
+      "bounds": {
+        "min": [
+          -2.428373,
+          -0.05616,
+          -2.501255
+        ],
+        "max": [
+          2.428373,
+          12.481041,
+          2.501255
+        ],
+        "dimensionsM": [
+          4.856746,
+          12.537201,
+          5.00251
+        ]
+      }
     },
     {
       "id": "place_asteroid_graffiti",
@@ -1996,8 +2013,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_asteroid_seamed.glb",
-      "tris": 13340,
-      "bytes": 22141308,
+      "tris": 3362,
+      "bytes": 18047712,
       "textureSize": 1024,
       "note": "Geology landmark V3 live promotion 2026-07-19 — dry-bedded-regolith-with-surveyed-mineral-fracture; authored LOD0/1/2 (8,340 / 3,552 / 1,448 tris), six functional PBR material roles with bound base-color/normal/ORM maps, explicit runtime geology/mechanical/warning roles, recessed fracture seats, preserved pivot and interaction markers, deterministic texture generation, no emission substitute, and dry nonuniform roughness reviewed at close/default/far standalone game-camera assumptions before live-route admission.",
       "hooks": [],
@@ -2007,19 +2024,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.233109474182129,
-          -10.274117469787598,
-          -11.860407829284668
+          -14.11311,
+          -10.154118,
+          -11.740408
         ],
         "max": [
-          14.450972557067871,
-          11.491243362426758,
-          12.745527267456055
+          14.330973,
+          11.371243,
+          12.095528
         ],
         "dimensionsM": [
-          28.68408203125,
-          21.765360832214355,
-          24.605935096740723
+          28.444082,
+          21.525361,
+          23.835936
         ]
       }
     },
@@ -2175,13 +2192,30 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_claim_mark.glb",
-      "tris": 1208,
-      "bytes": 358880,
+      "tris": 1356,
+      "bytes": 204096,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
       },
-      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py."
+      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
+      "bounds": {
+        "min": [
+          -1.188637,
+          -0.3888,
+          -1.205929
+        ],
+        "max": [
+          1.31197,
+          9.76478,
+          1.611297
+        ],
+        "dimensionsM": [
+          2.500607,
+          10.15358,
+          2.817226
+        ]
+      }
     },
     {
       "id": "place_claim_outpost_base",
@@ -2628,13 +2662,30 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_cold_locker.glb",
-      "tris": 1712,
-      "bytes": 141852,
+      "tris": 1784,
+      "bytes": 161296,
       "textureSize": 0,
       "tintable": {
         "accent": "furniture_signal_lens"
       },
-      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=de17d9e996bf0b6f"
+      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=de17d9e996bf0b6f",
+      "bounds": {
+        "min": [
+          -2.968355,
+          -0.783804,
+          -3.06
+        ],
+        "max": [
+          3.036531,
+          32.526047,
+          3.281
+        ],
+        "dimensionsM": [
+          6.004886,
+          33.309851,
+          6.341
+        ]
+      }
     },
     {
       "id": "place_container_rack",
@@ -2770,8 +2821,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dead_hulk.glb",
-      "tris": 30316,
-      "bytes": 5424740,
+      "tris": 30518,
+      "bytes": 5456352,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull"
@@ -2824,8 +2875,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_debris_chunk.glb",
-      "tris": 18846,
-      "bytes": 4172188,
+      "tris": 19250,
+      "bytes": 4220396,
       "textureSize": 512,
       "tintable": {
         "hull": "Material_Hull",
@@ -2857,19 +2908,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          0.15000057220458984,
-          -3.9518349170684814,
-          -5.0017876625061035
+          0.150001,
+          -3.951835,
+          -5.001788
         ],
         "max": [
-          24.048377990722656,
-          3.703914165496826,
-          5.499457359313965
+          24.048378,
+          3.703914,
+          5.499457
         ],
         "dimensionsM": [
-          23.898377418518066,
-          7.655749082565308,
-          10.501245021820068
+          23.898377,
+          7.655749,
+          10.501245
         ]
       }
     },
@@ -2878,8 +2929,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_dock_interior.glb",
-      "tris": 21248,
-      "bytes": 22905000,
+      "tris": 22452,
+      "bytes": 23024512,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2911,18 +2962,18 @@
       "bounds": {
         "min": [
           -26,
-          -4.425000190734863,
-          -18
+          -4.425,
+          -18.000001
         ],
         "max": [
           26,
-          12.774999618530273,
+          12.775,
           18
         ],
         "dimensionsM": [
           52,
-          17.199999809265137,
-          36
+          17.2,
+          36.000001
         ]
       },
       "note": "H-04 neutral Shipworks service bay — deterministic open-front industrial backdrop with its portal and crane rear-parked outside a 28 m preview aperture, authored PBR surfaces, adaptive preview-mount policy, and LOD0-only runtime export; LOD1/LOD2 remain editable in Blender."
@@ -3155,8 +3206,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_gate_jump_ring.glb",
-      "tris": 40808,
-      "bytes": 10024660,
+      "tris": 43644,
+      "bytes": 11853172,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3191,18 +3242,18 @@
       "bounds": {
         "min": [
           -10,
-          -48.0148,
-          -46.8898
+          -40.900002,
+          -40.9
         ],
         "max": [
           10,
-          48.0148,
-          46.8898
+          44.661469,
+          44.066654
         ],
         "dimensionsM": [
           20,
-          96.0296,
-          93.7796
+          85.56147,
+          84.966654
         ]
       },
       "triangleMetric": "lod0"
@@ -3317,8 +3368,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_lane_beacon.glb",
-      "tris": 7268,
-      "bytes": 742760,
+      "tris": 7892,
+      "bytes": 930788,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3372,13 +3423,30 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_lane_pin.glb",
-      "tris": 584,
-      "bytes": 50704,
+      "tris": 740,
+      "bytes": 76528,
       "textureSize": 0,
       "tintable": {
         "accent": "furniture_signal_lens"
       },
-      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=9c6c1c565bb8875d"
+      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=9c6c1c565bb8875d",
+      "bounds": {
+        "min": [
+          -2.858706,
+          -1.944,
+          -4.337505
+        ],
+        "max": [
+          4.93,
+          31.620008,
+          4.337505
+        ],
+        "dimensionsM": [
+          7.788706,
+          33.564008,
+          8.675011
+        ]
+      }
     },
     {
       "id": "place_maintenance_gantry",
@@ -3422,8 +3490,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_memorial_array.glb",
-      "tris": 2816,
-      "bytes": 526636,
+      "tris": 3820,
+      "bytes": 817016,
       "textureSize": 256,
       "note": "PQ-022 navigation-infrastructure material-truth V2 — admitted candidate fd18cf6619f9, promoted source 9cb774d83ea0; LOD0/1/2 2816/932/180 render tris across five semantic PBR groups. Browser/Electron route and performance remain separate gates.",
       "hooks": [],
@@ -3434,17 +3502,17 @@
       "bounds": {
         "min": [
           -1.5,
-          -1.2000000476837158,
+          -1.214861,
           -1.5
         ],
         "max": [
-          13.300000190734863,
-          1.850000023841858,
+          13.3,
+          1.85,
           1.5
         ],
         "dimensionsM": [
-          14.800000190734863,
-          3.0500000715255737,
+          14.8,
+          3.064861,
           3
         ]
       },
@@ -3455,8 +3523,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_mining_drone.glb",
-      "tris": 17924,
-      "bytes": 4035648,
+      "tris": 19124,
+      "bytes": 4158172,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3492,7 +3560,7 @@
       "bounds": {
         "min": [
           -0.4,
-          -0.1215,
+          -0.121483,
           -1.195
         ],
         "max": [
@@ -3502,7 +3570,7 @@
         ],
         "dimensionsM": [
           5,
-          1.4239,
+          1.423983,
           2.39
         ]
       }
@@ -3512,8 +3580,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_nav_buoy.glb",
-      "tris": 1876,
-      "bytes": 430492,
+      "tris": 2072,
+      "bytes": 479280,
       "textureSize": 256,
       "note": "PQ-022 navigation-infrastructure material-truth V2 buoy repair — admitted candidate cbaed85c003e, promoted source edcfd2779a42; LOD0/1/2 1876/972/288 render tris across five semantic PBR groups. Billboard and memorial rows are accepted and untouched by this transaction. Browser/Electron route and performance remain separate gates.",
       "hooks": [],
@@ -3523,19 +3591,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.399999976158142,
+          -1.4,
           -5,
-          -1.399999976158142
+          -1.4
         ],
         "max": [
-          1.5749999284744263,
-          10.300000190734863,
-          1.399999976158142
+          1.575,
+          10.3,
+          1.4
         ],
         "dimensionsM": [
-          2.9749999046325684,
-          15.300000190734863,
-          2.799999952316284
+          2.975,
+          15.3,
+          2.8
         ]
       },
       "triangleMetric": "lod0"
@@ -3689,9 +3757,9 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_billboard.glb",
-      "tris": 6832,
+      "tris": 7168,
       "triangleMetric": "lod0",
-      "bytes": 1314736,
+      "bytes": 1409576,
       "textureSize": 256,
       "note": "PQ-022 navigation-infrastructure material-truth V3 — WIP candidate source 9245e7275b36; LOD0/1/2 6832/2864/780 render tris across five semantic PBR groups. Parent visual review, Browser/Electron route, and performance remain separate gates.",
       "hooks": [],
@@ -3701,19 +3769,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -7.110000133514404,
-          -3.069999933242798,
-          -3.810147285461426
+          -7.11,
+          -3.07,
+          -3.810147
         ],
         "max": [
-          7.110000133514404,
-          2.680000066757202,
-          3.810147285461426
+          7.11,
+          2.68,
+          3.810147
         ],
         "dimensionsM": [
-          14.220000267028809,
+          14.22,
           5.75,
-          7.620294570922852
+          7.620295
         ]
       }
     },
@@ -3836,8 +3904,8 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_military.glb",
-      "tris": 98470,
-      "bytes": 6761824,
+      "tris": 112602,
+      "bytes": 8863228,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3872,18 +3940,18 @@
       "bounds": {
         "min": [
           -41,
-          -35.9,
+          -35.900002,
           -20.85
         ],
         "max": [
-          33.5025,
-          40.7812,
-          14.8275
+          33.450001,
+          40.781158,
+          12.1
         ],
         "dimensionsM": [
-          74.5025,
-          76.6812,
-          35.6775
+          74.450001,
+          76.68116,
+          32.950001
         ]
       }
     },
@@ -4063,9 +4131,9 @@
       "category": "places",
       "priority": "P0",
       "file": "places/place_station_trade_hub.glb",
-      "tris": 1664738,
+      "tris": 1676618,
       "budgetClass": "landmark",
-      "bytes": 79717896,
+      "bytes": 82073572,
       "textureSize": 1024,
       "note": "HELIOS-GOLDEN-PRODUCTION-V1 2026-07-19 — engineered STATION-GOLDEN-02 body; functional armor, hull, machinery, service, docking, radiator, window and marking roles; outward-face material lift; supported service-truss bays; 30 KTX2 PBR textures; deterministic Blender production scripts and promotion receipt. Runtime gameplay capture remains the final visual acceptance gate. | PRO Full Finish 2026-07-06 — Meridian gold trade hub foundation. | M4-HELIOS-HUB-ENV promoted 2026-07-11 through 2026-07-12.",
       "factionAccentVariants": {
@@ -4093,19 +4161,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -57.42290687561035,
-          -4.179576214557418,
-          -52.42861819240351
+          -57.422905,
+          -1.820184,
+          -43.625517
         ],
         "max": [
-          63.42224884033203,
-          28.67694025874687,
-          52.42530703517695
+          63.422249,
+          28.675183,
+          43.625517
         ],
         "dimensionsM": [
-          120.84515571594238,
-          32.85651647330429,
-          104.85392522758046
+          120.845154,
+          30.495367,
+          87.251035
         ]
       }
     },
@@ -4126,9 +4194,21 @@
       "sockets": [],
       "mount": "origin",
       "bounds": {
-        "min": [-67.7152, 14.535, -59.5856],
-        "max": [65.4314, 39.6919, 72.6036],
-        "dimensionsM": [133.1466, 25.1569, 132.1893]
+        "min": [
+          -67.7152,
+          14.535,
+          -59.5856
+        ],
+        "max": [
+          65.4314,
+          39.6919,
+          72.6036
+        ],
+        "dimensionsM": [
+          133.1466,
+          25.1569,
+          132.1893
+        ]
       },
       "note": "PQ-193.09 — Free-ports trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_free_overlay_v01.glb."
     },
@@ -4149,9 +4229,21 @@
       "sockets": [],
       "mount": "origin",
       "bounds": {
-        "min": [-73.3576, 26.677, -66.2221],
-        "max": [79.3566, 49.227, 66.2181],
-        "dimensionsM": [152.7142, 22.55, 132.4401]
+        "min": [
+          -73.3576,
+          26.677,
+          -66.2221
+        ],
+        "max": [
+          79.3566,
+          49.227,
+          66.2181
+        ],
+        "dimensionsM": [
+          152.7142,
+          22.55,
+          132.4401
+        ]
       },
       "note": "PQ-193.09 — MTS trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_mts_overlay_v01.glb."
     },
@@ -4161,8 +4253,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/var_station_trade_hub_scn_overlay_v01.glb",
-      "tris": 2756,
-      "bytes": 219728,
+      "tris": 3008,
+      "bytes": 267996,
       "textureSize": 1024,
       "tintable": {
         "hull": "SF_HullMid_K0PBR",
@@ -4172,9 +4264,21 @@
       "sockets": [],
       "mount": "origin",
       "bounds": {
-        "min": [-94.4005, 11.2307, -65.402],
-        "max": [76.3995, 56.177, 65.398],
-        "dimensionsM": [170.8, 44.9463, 130.8]
+        "min": [
+          -94.400497,
+          11.23069,
+          -65.402
+        ],
+        "max": [
+          76.399506,
+          56.176998,
+          65.397995
+        ],
+        "dimensionsM": [
+          170.800003,
+          44.946308,
+          130.799995
+        ]
       },
       "note": "PQ-193.09 — SCN trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_scn_overlay_v01.glb."
     },
@@ -4183,13 +4287,30 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_tally_post.glb",
-      "tris": 1196,
-      "bytes": 372536,
+      "tris": 1350,
+      "bytes": 225004,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
       },
-      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py."
+      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
+      "bounds": {
+        "min": [
+          -5.1,
+          -0.864,
+          -5.1
+        ],
+        "max": [
+          9.569305,
+          20.366004,
+          5.1
+        ],
+        "dimensionsM": [
+          14.669305,
+          21.230004,
+          10.2
+        ]
+      }
     },
     {
       "id": "place_transfer_arm",
@@ -4270,13 +4391,30 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_whistle.glb",
-      "tris": 1528,
-      "bytes": 395736,
+      "tris": 1618,
+      "bytes": 251228,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
       },
-      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py."
+      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py.",
+      "bounds": {
+        "min": [
+          -2.670737,
+          -0.4752,
+          -2.102661
+        ],
+        "max": [
+          2.757491,
+          11.595547,
+          2.750914
+        ],
+        "dimensionsM": [
+          5.428229,
+          12.070747,
+          4.853575
+        ]
+      }
     },
     {
       "id": "place_worklight_tower",
@@ -5050,8 +5188,8 @@
       "category": "pods",
       "priority": "P2",
       "file": "pods/pod_cargo_container.glb",
-      "tris": 4552,
-      "bytes": 263268,
+      "tris": 5324,
+      "bytes": 341860,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5085,17 +5223,17 @@
         "min": [
           -0.53,
           -0.02,
-          -1.51
+          -1.510301
         ],
         "max": [
           4.81,
-          2.285,
-          1.5
+          2.43,
+          1.500301
         ],
         "dimensionsM": [
           5.34,
-          2.305,
-          3.01
+          2.45,
+          3.010602
         ]
       }
     },
@@ -5104,8 +5242,8 @@
       "category": "pods",
       "priority": "P1",
       "file": "pods/pod_47a_evidence_spindle.glb",
-      "tris": 6088,
-      "bytes": 369260,
+      "tris": 6864,
+      "bytes": 448004,
       "textureSize": 256,
       "tintable": {
         "hull": "Material_Hull"
@@ -5138,17 +5276,17 @@
         "min": [
           -0.71,
           -0.02,
-          -1.625
+          -1.625318
         ],
         "max": [
           4.81,
           3.61,
-          1.555
+          1.555318
         ],
         "dimensionsM": [
           5.52,
           3.63,
-          3.18
+          3.180636
         ]
       }
     },
@@ -5157,8 +5295,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_47a_rescue_capsule.glb",
-      "tris": 4492,
-      "bytes": 305824,
+      "tris": 4888,
+      "bytes": 353336,
       "textureSize": 256,
       "tintable": {
         "hull": "Material_Ceramic"
@@ -5421,12 +5559,12 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_gatling.glb",
-      "tris": 3040,
-      "bytes": 6530340,
+      "tris": 4432,
+      "bytes": 3723616,
       "textureSize": 1024,
       "tintable": {
-        "hull": "Material_Hull",
-        "accent": "Material_Accent"
+        "hull": "Material_Hull_VitreousCeramic",
+        "accent": "Material_Hull_ServiceOchre"
       },
       "note": "PRO Full Finish 2026-07-06 — DET ammo/heat/rail/scuff + trim_sheet+wear_mask+SF_EdgeWear+AO bake+emissive heat+clearcoat (textures/weapon_gatling/). Skin: belt-fed Fringe rapid-fire, heat disc, cartridge scuff, BELT barrel marking. 3680 tris / blender_mcp. Texture-role correction 2026-07-27: trim and painted atlases retain color roles; OpenGL normals are derived from their actual surface detail; Mechanical and Accent use explicit shared ORM bindings.",
       "factionAccentVariants": {
@@ -5462,13 +5600,13 @@
           -0.8
         ],
         "max": [
-          8.9,
-          0.5,
+          4.61,
+          0.498601,
           0.575
         ],
         "dimensionsM": [
-          9.1,
-          1.41,
+          4.81,
+          1.408601,
           1.375
         ]
       }
@@ -5478,8 +5616,8 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_heavy_cannon.glb",
-      "tris": 2296,
-      "bytes": 246532,
+      "tris": 3056,
+      "bytes": 405880,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5534,8 +5672,8 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_lance.glb",
-      "tris": 1112,
-      "bytes": 220168,
+      "tris": 1536,
+      "bytes": 314192,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5590,8 +5728,8 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_pulse_cannon.glb",
-      "tris": 1944,
-      "bytes": 239152,
+      "tris": 2684,
+      "bytes": 387040,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5646,11 +5784,11 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_railgun.glb",
-      "tris": 1788,
-      "bytes": 237656,
+      "tris": 2412,
+      "bytes": 176896,
       "textureSize": 1024,
       "tintable": {
-        "hull": "Material_Hull",
+        "hull": "Material_Hull_VitreousCeramic",
         "accent": "Material_Accent"
       },
       "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for railgun. Character: linear rail accelerator with long barrel, high-energy wear. 1788 tris.",
@@ -5683,17 +5821,17 @@
         "min": [
           -0.2,
           -0.45,
-          -0.4628
+          -0.462798
         ],
         "max": [
           6.1,
           0.52,
-          0.4628
+          0.462798
         ],
         "dimensionsM": [
           6.3,
           0.97,
-          0.9256
+          0.925595
         ]
       }
     },
@@ -5702,12 +5840,11 @@
       "category": "weapons",
       "priority": "P1",
       "file": "weapons/weapon_turret_dual.glb",
-      "tris": 1808,
-      "bytes": 241160,
+      "tris": 2512,
+      "bytes": 379920,
       "textureSize": 1024,
       "tintable": {
-        "hull": "Material_Hull",
-        "accent": "Material_Accent"
+        "hull": "Material_Hull"
       },
       "note": "PRO revamp 2026-07-05 — bevel (segs=3) + WN via MCP for dual turret. Character: dual barrel turret with charge block, combat wear. 1808 tris.",
       "factionAccentVariants": {
@@ -5743,12 +5880,12 @@
           -1.125
         ],
         "max": [
-          5.03,
+          4.865,
           1.05,
           1.125
         ],
         "dimensionsM": [
-          5.28,
+          5.115,
           2.1,
           2.25
         ]
@@ -5759,8 +5896,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/apron_shuttle.glb",
-      "tris": 4052,
-      "bytes": 3566004,
+      "tris": 12202,
+      "bytes": 4037336,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5786,14 +5923,14 @@
           -2.16
         ],
         "max": [
-          8.7,
-          1.747,
-          2.16
+          8.45,
+          1.746853,
+          2.08
         ],
         "dimensionsM": [
-          18,
-          3.972,
-          4.32
+          17.75,
+          3.971853,
+          4.24
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Apron Shuttle, live traffic role shuttle; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (3456/410/174 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -5803,8 +5940,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_dart.glb",
-      "tris": 12500,
-      "bytes": 18570144,
+      "tris": 18642,
+      "bytes": 19306620,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5831,17 +5968,17 @@
       "bounds": {
         "min": [
           -7.025,
-          -0.7226,
+          -0.722586,
           -3.025
         ],
         "max": [
-          8.7501,
+          8.750127,
           1.575,
           3.025
         ],
         "dimensionsM": [
-          15.7751,
-          2.2976,
+          15.775127,
+          2.297586,
           6.05
         ]
       },
@@ -5852,8 +5989,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_lode.glb",
-      "tris": 15670,
-      "bytes": 18776280,
+      "tris": 27240,
+      "bytes": 20186844,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5884,12 +6021,12 @@
           -4.9875
         ],
         "max": [
-          12.1,
+          12.099999,
           2.575,
           4.9875
         ],
         "dimensionsM": [
-          23.625,
+          23.624999,
           4.33,
           9.975
         ]
@@ -5901,8 +6038,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_rig.glb",
-      "tris": 10302,
-      "bytes": 18495872,
+      "tris": 14724,
+      "bytes": 19004840,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5932,7 +6069,7 @@
         "min": [
           -8.175,
           -2.1,
-          -3.1814
+          -3.181428
         ],
         "max": [
           9.54,
@@ -5942,7 +6079,7 @@
         "dimensionsM": [
           17.715,
           5.97,
-          4.9864
+          4.986428
         ]
       },
       "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Hook, live tether_control_raider Reach hostile body; explicit LOD0/1/2, 9/8/8 draws, damageable drive/gun/tether roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
@@ -5953,8 +6090,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_rig_corsair_blade.glb",
-      "tris": 12174,
-      "bytes": 18598504,
+      "tris": 19444,
+      "bytes": 19515016,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -5984,17 +6121,17 @@
         "min": [
           -8.175,
           -2.1,
-          -3.17
+          -3.181428
         ],
         "max": [
-          9.6417,
-          4.3494,
-          2.5526
+          9.641732,
+          4.349393,
+          2.552605
         ],
         "dimensionsM": [
-          17.8167,
-          6.4494,
-          5.7226
+          17.816732,
+          6.449393,
+          5.734033
         ]
       },
       "note": "PQ-193.06 — Corsair Blade, live corsair_raider body. Foundry variant of the Ashline Rig with ram-lip, four blades, weapon collars, and lamps; donor PBR materials on the kit; pirate Rig slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_ashline_rig_corsair_blade_v01.glb."
@@ -6012,8 +6149,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_atlas",
-      "tris": 59594,
-      "bytes": 3112876,
+      "tris": 65126,
+      "bytes": 3605016,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6041,19 +6178,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.885,
-          -1.45,
-          -6.22
+          -12.132,
+          -1.6,
+          -3.57
         ],
         "max": [
           11,
-          17.75,
+          3.169999,
           3.57
         ],
         "dimensionsM": [
-          22.885,
-          19.2,
-          9.79
+          23.132,
+          4.769999,
+          7.14
         ]
       },
       "note": "Fleet remaster production Atlas. Live player heavy hauler. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -6071,8 +6208,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_bastion",
-      "tris": 37894,
-      "bytes": 1982260,
+      "tris": 40702,
+      "bytes": 2138908,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6100,19 +6237,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -10.135,
-          -1.282,
-          -4.02
+          -10.382,
+          -1.2,
+          -2.52
         ],
         "max": [
           9.25,
-          13.395,
-          2.5
+          2.18,
+          2.52
         ],
         "dimensionsM": [
-          19.385,
-          14.677,
-          6.52
+          19.632,
+          3.38,
+          5.04
         ]
       },
       "note": "Fleet remaster production Bastion. Live player corvette. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -6182,8 +6319,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_arclight.glb",
-      "tris": 20837,
-      "bytes": 5015548,
+      "tris": 35888,
+      "bytes": 7175412,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6209,19 +6346,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -16.1114,
+          -16.111364,
           -4.1,
-          -5.886
+          -5.885962
         ],
         "max": [
-          16.8,
-          4.55,
+          16.800001,
+          4.204,
           5.87
         ],
         "dimensionsM": [
-          32.9114,
-          8.65,
-          11.756
+          32.911366,
+          8.304,
+          11.755962
         ]
       },
       "note": "PQ-193.07 — Helios Arclight, rare heavy hauler. Distinct body from live Span/Atlas slots. Provenance: assets/ships/m4_hero_hauler/."
@@ -6231,8 +6368,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_cradle.glb",
-      "tris": 32368,
-      "bytes": 25245508,
+      "tris": 37870,
+      "bytes": 25784456,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6264,7 +6401,7 @@
           -4.65
         ],
         "max": [
-          11.8,
+          11.799999,
           5.05,
           4.65
         ],
@@ -6281,8 +6418,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_lark.glb",
-      "tris": 32248,
-      "bytes": 25286680,
+      "tris": 36010,
+      "bytes": 25667296,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6313,12 +6450,12 @@
           -3.7
         ],
         "max": [
-          9.9501,
+          9.950078,
           2.12,
           3.7
         ],
         "dimensionsM": [
-          18.2251,
+          18.225078,
           3.345,
           7.4
         ]
@@ -6330,8 +6467,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_span.glb",
-      "tris": 45858,
-      "bytes": 26048088,
+      "tris": 55736,
+      "bytes": 27039256,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6367,7 +6504,7 @@
           4.46
         ],
         "dimensionsM": [
-          28.475,
+          28.474999,
           5.11,
           8.92
         ]
@@ -6380,8 +6517,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_span_dmc.glb",
-      "tris": 50418,
-      "bytes": 26444624,
+      "tris": 60808,
+      "bytes": 27492292,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6406,9 +6543,21 @@
       ],
       "mount": "origin",
       "bounds": {
-        "min": [-14.325, -2.3, -4.625],
-        "max": [14.15, 3.5606, 4.625],
-        "dimensionsM": [28.475, 5.8606, 9.25]
+        "min": [
+          -14.325,
+          -2.3,
+          -4.625
+        ],
+        "max": [
+          14.15,
+          3.560601,
+          4.625
+        ],
+        "dimensionsM": [
+          28.474999,
+          5.860602,
+          9.25
+        ]
       },
       "note": "PQ-193.09 — live Helios Span carrying the DMC orebox faction kit. Donor hull is the accepted Span. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_helios_span_dmc_orebox_v01.glb."
     },
@@ -6418,8 +6567,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_span_mts.glb",
-      "tris": 47886,
-      "bytes": 26158436,
+      "tris": 59678,
+      "bytes": 27768400,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6444,9 +6593,21 @@
       ],
       "mount": "origin",
       "bounds": {
-        "min": [-14.325, -2.3, -4.46],
-        "max": [14.15, 3.96, 4.46],
-        "dimensionsM": [28.475, 6.26, 8.92]
+        "min": [
+          -14.325,
+          -2.3,
+          -4.46
+        ],
+        "max": [
+          14.15,
+          3.96,
+          4.46
+        ],
+        "dimensionsM": [
+          28.474999,
+          6.26,
+          8.92
+        ]
       },
       "note": "PQ-193.09 — live Helios Span carrying the MTS sealed faction kit. Donor hull is the accepted Span. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_helios_span_mts_sealed_v01.glb."
     },
@@ -6456,8 +6617,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/helios_span_reach.glb",
-      "tris": 48154,
-      "bytes": 26226316,
+      "tris": 58062,
+      "bytes": 27285532,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6482,9 +6643,21 @@
       ],
       "mount": "origin",
       "bounds": {
-        "min": [-14.6625, -2.3, -4.46],
-        "max": [14.15, 3.2522, 4.46],
-        "dimensionsM": [28.8125, 5.5522, 8.92]
+        "min": [
+          -14.662499,
+          -2.3,
+          -4.46
+        ],
+        "max": [
+          14.15,
+          3.252204,
+          4.46
+        ],
+        "dimensionsM": [
+          28.812499,
+          5.552204,
+          8.92
+        ]
       },
       "note": "PQ-193.09 — live Helios Span carrying the Reach scrap faction kit. Donor hull is the accepted Span. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_helios_span_reach_scrap_v01.glb."
     },
@@ -6501,15 +6674,14 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
-      "tris": 56373,
-      "bytes": 23544916,
+      "tris": 48306,
+      "bytes": 12589996,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
         "dark": "Material_Armor",
         "mechanical": "Material_Mechanical",
         "accent": "Material_Accent",
-        "warning": "Material_Warning",
         "canopy": "Material_Canopy",
         "thruster": "Material_Thruster"
       },
@@ -6530,19 +6702,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -8.225,
-          -1.224,
-          -6.76
+          -5.1,
+          -1.05,
+          -4.55
         ],
         "max": [
           5.7,
-          1.374,
-          3.7
+          1.353253,
+          4.55
         ],
         "dimensionsM": [
-          13.925,
-          2.599,
-          10.46
+          10.8,
+          2.403252,
+          9.1
         ]
       },
       "note": "Fleet remaster production Hornet. Live player interceptor. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -6552,8 +6724,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/inspection_cutter.glb",
-      "tris": 6075,
-      "bytes": 3714424,
+      "tris": 16503,
+      "bytes": 5046492,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6574,19 +6746,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -11.5775,
-          -3.3295,
-          -2.4963
+          -11.577497,
+          -3.329519,
+          -2.496316
         ],
         "max": [
           11,
           3.85,
-          2.4963
+          2.496316
         ],
         "dimensionsM": [
-          22.5775,
-          7.1795,
-          4.9926
+          22.577497,
+          7.179519,
+          4.992631
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Inspection Cutter, live traffic role customs; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4144/1356/578 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -6660,8 +6832,8 @@
         "lod1": "wholeships/kestrel_lod1.glb",
         "lod2": "wholeships/kestrel_lod2.glb"
       },
-      "tris": 37974,
-      "bytes": 53208684,
+      "tris": 40490,
+      "bytes": 53462012,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6691,19 +6863,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.3162,
-          -2.7664,
-          -7.0153
+          -14.316187,
+          -2.766388,
+          -7.015333
         ],
         "max": [
-          13.9057,
-          4.3638,
-          7.0153
+          13.90574,
+          4.363783,
+          7.015333
         ],
         "dimensionsM": [
-          28.2219,
-          7.1302,
-          14.0306
+          28.221927,
+          7.130171,
+          14.030665
         ]
       },
       "note": "Hitch V7 polish live promotion — same boat, manufactured drive/sensor/shoulders/radiators, DIE LAUGHING spray stencil, role-mapped PBR, nine sockets, no baked plume."
@@ -6713,22 +6885,56 @@
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/kestrel_lod1.glb",
-      "tris": 16323,
-      "bytes": 38611612,
+      "tris": 17063,
+      "bytes": 38684688,
       "textureSize": 1024,
       "mount": "origin",
-      "note": "Kestrel LOD1 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth."
+      "note": "Kestrel LOD1 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth.",
+      "bounds": {
+        "min": [
+          -14.315042,
+          -2.761895,
+          -7.015333
+        ],
+        "max": [
+          13.90574,
+          4.359975,
+          7.015333
+        ],
+        "dimensionsM": [
+          28.220782,
+          7.121871,
+          14.030665
+        ]
+      }
     },
     {
       "id": "wholeship_kestrel_lod2",
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/kestrel_lod2.glb",
-      "tris": 9878,
-      "bytes": 32975840,
+      "tris": 10142,
+      "bytes": 32994768,
       "textureSize": 1024,
       "mount": "origin",
-      "note": "Kestrel LOD2 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth."
+      "note": "Kestrel LOD2 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth.",
+      "bounds": {
+        "min": [
+          -14.32,
+          -2.77,
+          -7.015333
+        ],
+        "max": [
+          13.90574,
+          4.363783,
+          7.015333
+        ],
+        "dimensionsM": [
+          28.225739,
+          7.133783,
+          14.030665
+        ]
+      }
     },
     {
       "id": "wholeship_leviathan_production_v1",
@@ -6802,8 +7008,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_express_candidate",
-      "tris": 54637,
-      "bytes": 12667384,
+      "tris": 58211,
+      "bytes": 13125508,
       "textureSize": 1024,
       "hooks": [],
       "sockets": [
@@ -6824,19 +7030,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -23.69,
-          -14.015,
-          -18.792
+          -21,
+          -5.47,
+          -9.48
         ],
         "max": [
-          19.8,
-          5.635,
+          19.799999,
+          5.666806,
           9.48
         ],
         "dimensionsM": [
-          43.49,
-          19.65,
-          28.272
+          40.799999,
+          11.136806,
+          18.959999
         ]
       },
       "note": "PQ-049 Massline Express Liner. Civic pressure-drum passenger body for the existing Helios express slot. Authored LOD0/1/2; LOD0 is the packaged live body. Not self-accepted."
@@ -6854,8 +7060,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_mule",
-      "tris": 28890,
-      "bytes": 1597284,
+      "tris": 34372,
+      "bytes": 2172716,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6883,19 +7089,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -13.975,
-          -2.41,
-          -5.24
+          -8.825,
+          -1.23,
+          -3.295
         ],
         "max": [
           6.4,
-          2.666,
+          3.13,
           3.27
         ],
         "dimensionsM": [
-          20.375,
-          5.076,
-          8.51
+          15.225,
+          4.36,
+          6.565
         ]
       },
       "note": "Fleet remaster production Mule. Live player freighter. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -6905,8 +7111,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/ore_barge.glb",
-      "tris": 9254,
-      "bytes": 3860456,
+      "tris": 21208,
+      "bytes": 4514692,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6933,13 +7139,13 @@
           -3.82
         ],
         "max": [
-          17.9,
-          4.7512,
+          17.850002,
+          4.75116,
           3.82
         ],
         "dimensionsM": [
-          39.67,
-          6.5512,
+          39.620003,
+          6.55116,
           7.64
         ]
       },
@@ -7000,8 +7206,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/prospector_skiff.glb",
-      "tris": 3360,
-      "bytes": 3547236,
+      "tris": 12244,
+      "bytes": 4052088,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7023,18 +7229,18 @@
       "bounds": {
         "min": [
           -7.9,
-          -2.0342,
-          -2.6697
+          -1.949444,
+          -2.669701
         ],
         "max": [
-          9.44,
-          1.7615,
-          2.325
+          9.440001,
+          1.74,
+          2.32
         ],
         "dimensionsM": [
           17.34,
-          3.7958,
-          4.9947
+          3.689444,
+          4.989701
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Prospector Skiff, live traffic role prospector; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (2636/500/212 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7103,8 +7309,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/repair_tender.glb",
-      "tris": 6976,
-      "bytes": 3730264,
+      "tris": 18502,
+      "bytes": 4383916,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7129,17 +7335,17 @@
         "min": [
           -12.4,
           -2.36,
-          -5.2677
+          -5.267666
         ],
         "max": [
-          12.4,
-          3.6199,
-          4.35
+          12.300001,
+          3.380717,
+          4.25
         ],
         "dimensionsM": [
-          24.8,
-          5.9799,
-          9.6177
+          24.700001,
+          5.740717,
+          9.517666
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Repair Tender, live traffic role tender; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (5652/920/392 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7149,8 +7355,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/rescue_lifter.glb",
-      "tris": 5680,
-      "bytes": 3666792,
+      "tris": 19676,
+      "bytes": 4435028,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7171,19 +7377,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -14.2,
+          -14.200001,
           -2.725,
-          -3.68
+          -3.6
         ],
         "max": [
-          15.1,
+          14.800001,
           4.33,
-          3.68
+          3.6
         ],
         "dimensionsM": [
-          29.3,
+          29.000002,
           7.055,
-          7.36
+          7.2
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Rescue Lifter, live traffic role rescue; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4692/684/292 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7193,8 +7399,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/salvage_cutter.glb",
-      "tris": 5472,
-      "bytes": 3666708,
+      "tris": 13964,
+      "bytes": 4165212,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7217,18 +7423,18 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -10.1,
+          -10.099999,
           -2,
           -3.67
         ],
         "max": [
-          10.85,
-          3.1098,
+          10.700564,
+          3.109795,
           3.67
         ],
         "dimensionsM": [
-          20.95,
-          5.1098,
+          20.800564,
+          5.109795,
           7.34
         ]
       },
@@ -7239,8 +7445,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/scrap_sweeper.glb",
-      "tris": 4500,
-      "bytes": 3603720,
+      "tris": 12916,
+      "bytes": 4072924,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7262,18 +7468,18 @@
       "bounds": {
         "min": [
           -9.5,
-          -2.5945,
-          -3.3821
+          -2.350707,
+          -3.147204
         ],
         "max": [
-          9.6,
+          9.426921,
           3.5,
-          3.3821
+          3.147204
         ],
         "dimensionsM": [
-          19.1,
-          6.0945,
-          6.7642
+          18.926921,
+          5.850707,
+          6.294407
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Scrap Sweeper, live traffic role sweeper; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (3520/678/290 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7283,8 +7489,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/survey_pin.glb",
-      "tris": 5066,
-      "bytes": 3635984,
+      "tris": 13884,
+      "bytes": 4703968,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7307,8 +7513,8 @@
       "bounds": {
         "min": [
           -11.1,
-          -1.5633,
-          -3.8921
+          -1.563264,
+          -3.892146
         ],
         "max": [
           9.8,
@@ -7316,9 +7522,9 @@
           4.05
         ],
         "dimensionsM": [
-          20.9,
-          6.1133,
-          7.9421
+          20.900001,
+          6.113264,
+          7.942146
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Survey Pin, live traffic role surveyor; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4104/666/284 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7328,8 +7534,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/volatiles_tanker.glb",
-      "tris": 12473,
-      "bytes": 4032624,
+      "tris": 23377,
+      "bytes": 5227508,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7350,19 +7556,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -17.2449,
-          -1.6758,
-          -3.3338
+          -17.244871,
+          -1.67583,
+          -3.333834
         ],
         "max": [
-          17.88,
-          5.9736,
+          17.880001,
+          5.973592,
           2.63
         ],
         "dimensionsM": [
-          35.1249,
-          7.6494,
-          5.9638
+          35.124872,
+          7.649422,
+          5.963834
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Volatiles Tanker, live traffic role tanker; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (8688/2646/1130 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
@@ -7380,8 +7586,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_warden",
-      "tris": 47294,
-      "bytes": 2466688,
+      "tris": 53604,
+      "bytes": 3137556,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7409,19 +7615,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -10.885,
-          -1.282,
-          -4.72
+          -11.132,
+          -1.35,
+          -2.92
         ],
         "max": [
           10,
-          14.49,
-          2.9
+          2.33,
+          2.92
         ],
         "dimensionsM": [
-          20.885,
-          15.772,
-          7.62
+          21.132,
+          3.68,
+          5.84
         ]
       },
       "note": "Fleet remaster production Warden. Live player gunship. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
@@ -7447,8 +7653,8 @@
       },
       "status": "accepted",
       "wiringStatus": "live_player_wasp",
-      "tris": 11526,
-      "bytes": 12797604,
+      "tris": 15410,
+      "bytes": 13199596,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7474,7 +7680,24 @@
         "SOCKET_RCS_Starboard"
       ],
       "mount": "origin",
-      "note": "Accepted production Wasp. New SpaceFace-authored fighter body with seven semantic material draws, authored 11.5k/7.7k/5.4k LODs, compact dark canopy, bounded tone-mapped twin drive apertures, no embedded plume, and exact first-party provenance at assets/ships/wasp_production_v1/PROVENANCE.json. Canonical public Shipyard -> Undock -> save -> Continue visual acceptance passed 2026-07-14; receipt: .devshots/alpha/m5-role-public-route-v2/evidence.json."
+      "note": "Accepted production Wasp. New SpaceFace-authored fighter body with seven semantic material draws, authored 11.5k/7.7k/5.4k LODs, compact dark canopy, bounded tone-mapped twin drive apertures, no embedded plume, and exact first-party provenance at assets/ships/wasp_production_v1/PROVENANCE.json. Canonical public Shipyard -> Undock -> save -> Continue visual acceptance passed 2026-07-14; receipt: .devshots/alpha/m5-role-public-route-v2/evidence.json.",
+      "bounds": {
+        "min": [
+          -10,
+          -1.38,
+          -8.08183
+        ],
+        "max": [
+          12,
+          2.319466,
+          8.08183
+        ],
+        "dimensionsM": [
+          22,
+          3.699466,
+          16.16366
+        ]
+      }
     },
     {
       "id": "wholeship_wasp_free_militia",
@@ -7482,8 +7705,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/wasp_free_militia.glb",
-      "tris": 12994,
-      "bytes": 12916012,
+      "tris": 16878,
+      "bytes": 13334128,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7510,9 +7733,21 @@
       ],
       "mount": "origin",
       "bounds": {
-        "min": [-10, -1.38, -8.0818],
-        "max": [12, 2.3247, 8.0818],
-        "dimensionsM": [22, 3.7047, 16.1637]
+        "min": [
+          -10,
+          -1.38,
+          -8.08183
+        ],
+        "max": [
+          12,
+          2.324737,
+          8.08183
+        ],
+        "dimensionsM": [
+          22,
+          3.704737,
+          16.16366
+        ]
       },
       "note": "PQ-193.09 — live Wasp carrying the Free militia faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_free_militia_v01.glb."
     },
@@ -7522,8 +7757,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/wasp_mts_escort.glb",
-      "tris": 12974,
-      "bytes": 12851440,
+      "tris": 23696,
+      "bytes": 14390672,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7550,9 +7785,21 @@
       ],
       "mount": "origin",
       "bounds": {
-        "min": [-10, -1.38, -8.0818],
-        "max": [12, 4.8603, 8.0818],
-        "dimensionsM": [22, 6.2403, 16.1637]
+        "min": [
+          -10,
+          -1.38,
+          -8.08183
+        ],
+        "max": [
+          12,
+          4.860343,
+          8.08183
+        ],
+        "dimensionsM": [
+          22,
+          6.240343,
+          16.16366
+        ]
       },
       "note": "PQ-193.09 — live Wasp carrying the MTS escort faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_mts_escort_v01.glb."
     },
@@ -7562,8 +7809,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/wasp_scn_patrol.glb",
-      "tris": 12126,
-      "bytes": 12846548,
+      "tris": 23866,
+      "bytes": 14421392,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7590,9 +7837,21 @@
       ],
       "mount": "origin",
       "bounds": {
-        "min": [-10, -1.38, -8.0818],
-        "max": [12, 2.38, 8.0818],
-        "dimensionsM": [22, 3.76, 16.1637]
+        "min": [
+          -10,
+          -1.38,
+          -8.08183
+        ],
+        "max": [
+          12,
+          2.38,
+          8.08183
+        ],
+        "dimensionsM": [
+          22,
+          3.76,
+          16.16366
+        ]
       },
       "note": "PQ-193.09 — live Wasp carrying the SCN patrol faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_scn_patrol_v01.glb."
     },
@@ -7601,8 +7860,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/yard_tug.glb",
-      "tris": 12662,
-      "bytes": 4103548,
+      "tris": 24558,
+      "bytes": 4769596,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7623,19 +7882,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -12.5268,
+          -12.61818,
           -1.58,
-          -5.0714
+          -3.5402
         ],
         "max": [
-          13.51,
+          13.509999,
           4.42,
           3.5402
         ],
         "dimensionsM": [
-          26.0368,
+          26.12818,
           6,
-          8.6116
+          7.0804
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Yard Tug, live traffic role tug; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (8208/3116/1331 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."

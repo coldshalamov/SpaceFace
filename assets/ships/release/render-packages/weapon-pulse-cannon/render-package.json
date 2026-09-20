@@ -16,7 +16,7 @@
         0,
         1,
         0,
-        4.7,
+        4.699999809265137,
         0,
         0,
         1
@@ -24,9 +24,9 @@
       "nodeName": "SOCKET_Muzzle",
       "nodePath": [
         0,
-        6
+        8
       ],
-      "parentNodeId": "sf.render.weapon-pulse-cannon.root",
+      "parentNodeId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
       "worldTransform": [
         1,
         0,
@@ -40,7 +40,7 @@
         0,
         1,
         0,
-        4.7,
+        4.699999809265137,
         0,
         0,
         1
@@ -53,58 +53,158 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bd7ce8a1e98a2e50245d3e9e5d34c1823b0cf8f60ecf19e7cbe505969426639c",
+  "contentHash": "77159d5c5319d587e00f6b18a503e4e5baf7057a890585f1be0f9d70c1c07d83",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          4.639992674738169,
+          4.639992598444223,
           0.18000000715255737,
           0.18000000715255737
         ],
         "min": [
-          4.520007325261831,
+          4.520007248967886,
           -0.18000000715255737,
           -0.18000000715255737
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53dfd4ac57aae03b20f54e1d52cd6e5e981495e788219f4e40a90a11f08284bb",
-      "id": "sf.render.weapon-pulse-cannon.mesh.pulse-muzzle-glow.primitive.0",
+      "geometryHash": "cbc5dd9ea1c4c2fb3c1045ec9b6cf07397fe547d754baddbf20422f6b16910ea",
+      "id": "sf.render.weapon-pulse-cannon.node.pulse-muzzle-glow.primitive.0",
       "indexCount": 192,
       "indexed": true,
-      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialHash": "3e89ecd14466b59bdaf35c00c9a37317f7966cd6ad117b606a0d63b466a122b5",
       "materialPipelineKey": "opaque",
       "meshName": "Pulse_Muzzle_Glow",
-      "nodeId": "sf.render.weapon-pulse-cannon.mesh.pulse-muzzle-glow",
+      "nodeId": "sf.render.weapon-pulse-cannon.node.pulse-muzzle-glow",
       "primitiveIndex": 0,
-      "vertexCount": 34
+      "vertexCount": 76
+    },
+    {
+      "bounds": {
+        "max": [
+          3.765825033187866,
+          0.4159579575061798,
+          0.4159579575061798
+        ],
+        "min": [
+          1.7779749631881714,
+          -0.4159579575061798,
+          -0.4159579575061798
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "24d0f3eaf10958bd7f6cb0be91ca9bd657fd330cf4ff3db9d62d1535430d6434",
+      "id": "sf.render.weapon-pulse-cannon.node.remaster-material-hull-vitreousceramic.primitive.0",
+      "indexCount": 864,
+      "indexed": true,
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_PulseCompressionCollar0",
+      "nodeId": "sf.render.weapon-pulse-cannon.node.remaster-material-hull-vitreousceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          4.017299652099609,
+          0.47077712416648865,
+          0.4201282858848572
+        ],
+        "min": [
+          1.2390999794006348,
+          -0.47077712416648865,
+          -0.395263671875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9452d4881535a0d6adb21111c9db8e01e1a9bec5c30297905adb26ea110d07f3",
+      "id": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 396,
+      "indexed": true,
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_PulseHeatShield_0",
+      "nodeId": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-brushednickel",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          4.628025054931641,
+          0.27049192786216736,
+          0.27049192786216736
+        ],
+        "min": [
+          0.3831932544708252,
+          -0.27049192786216736,
+          -0.27049192786216736
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "af5e882cb43661fce235c70a8dd811a53b2deb42a7fc5b7602fb1954f668ef65",
+      "id": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 420,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_PulseAperture",
+      "nodeId": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 216
     },
     {
       "bounds": {
         "max": [
           2.5976314544677734,
-          0.4500004053115845,
+          0.3649356961250305,
+          0.35943853855133057
+        ],
+        "min": [
+          1.6023728847503662,
+          -0.3650100827217102,
+          -0.35943853855133057
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4058dfa704488075a0cfae72898ec84ea6a91fdf1246e9ffc5d932853a5c96d3",
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged.primitive.0",
+      "indexCount": 1944,
+      "indexed": true,
+      "materialHash": "fd5cd111187e5e081661850337b4cc777991e0e7eeacd898f17f132e3e7a2262",
+      "materialPipelineKey": "opaque",
+      "meshName": "weapon_pulse_cannon_Material_Hull_Merged.001",
+      "nodeId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 456
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4500527381896973,
+          0.44862157106399536,
           0.4999772012233734
         ],
         "min": [
           -0.15000000596046448,
-          -0.4500004053115845,
+          -0.4500376284122467,
           -0.4999772012233734
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83eaaf57bd699668f452c7de6e8b82d3fa4d4e89e71453e0f4ce609c17b9f68d",
-      "id": "sf.render.weapon-pulse-cannon.mesh.weapon-pulse-cannon-material-hull-merged.primitive.0",
-      "indexCount": 2520,
+      "geometryHash": "98cb16a84ba2577570e745280167c943ea7facad2aeed56da58acd9fd719a58c",
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged.primitive.1",
+      "indexCount": 1116,
       "indexed": true,
-      "materialHash": "20b7fe243667c6ee80e25834cc0587cb3cfa1de939c29b75d26245dcd4e59d70",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
-      "meshName": "weapon_pulse_cannon_Material_Hull_Merged",
-      "nodeId": "sf.render.weapon-pulse-cannon.mesh.weapon-pulse-cannon-material-hull-merged",
-      "primitiveIndex": 0,
-      "vertexCount": 474
+      "meshName": "weapon_pulse_cannon_Material_Hull_Merged.001",
+      "nodeId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged",
+      "primitiveIndex": 1,
+      "vertexCount": 728
     },
     {
       "bounds": {
@@ -120,16 +220,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f0ef2121486bfe03389e089c7a608bcabd015ff8f44e1ee525c808fb4de3b89",
-      "id": "sf.render.weapon-pulse-cannon.mesh.weapon-pulse-cannon-material-mechanical-merged.primitive.0",
+      "geometryHash": "9fb74ee5b6890d9be140485855cca5270fbe1a75ab590007e1ebeeb128d1c2fc",
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-mechanical-merged.primitive.0",
       "indexCount": 3120,
       "indexed": true,
-      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialHash": "daf05c172b4514b994d970c22aa2c6114dbe4d2095eb8405346a036c8b9293fe",
       "materialPipelineKey": "opaque",
       "meshName": "weapon_pulse_cannon_Material_Mechanical_Merged",
-      "nodeId": "sf.render.weapon-pulse-cannon.mesh.weapon-pulse-cannon-material-mechanical-merged",
+      "nodeId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-mechanical-merged",
       "primitiveIndex": 0,
-      "vertexCount": 546
+      "vertexCount": 942
     }
   ],
   "hlods": [],
@@ -137,8 +237,118 @@
   "lods": [],
   "materials": [
     {
-      "hash": "20b7fe243667c6ee80e25834cc0587cb3cfa1de939c29b75d26245dcd4e59d70",
-      "id": "material:20b7fe243667c6ee80e25834",
+      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "id": "material:09306e58ed6387f8ee509fc5",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "3e89ecd14466b59bdaf35c00c9a37317f7966cd6ad117b606a0d63b466a122b5",
+      "id": "material:3e89ecd14466b59bdaf35c00",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "id": "material:9b606ffef39761a1e7cc390d",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "daf05c172b4514b994d970c22aa2c6114dbe4d2095eb8405346a036c8b9293fe",
+      "id": "material:daf05c172b4514b994d970c2",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "fd5cd111187e5e081661850337b4cc777991e0e7eeacd898f17f132e3e7a2262",
+      "id": "material:fd5cd111187e5e0816618503",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -167,25 +377,305 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
-      "id": "material:4bbfc0af06e03d63cd7b8818",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
-      "id": "material:7af6f768ac4f1f4c9ee04b14",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": []
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.weapon-pulse-cannon.mesh.pulse-muzzle-glow",
+      "id": "sf.render.weapon-pulse-cannon.node.hook-emissive",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.579999923706055,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "HOOK_Emissive",
+      "nodeName": "HOOK_Emissive",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.579999923706055,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.pulse-barrel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.25,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Pulse_Barrel",
+      "nodeName": "Pulse_Barrel",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.25,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.pulse-breech",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6499999761581421,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Pulse_Breech",
+      "nodeName": "Pulse_Breech",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6499999761581421,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.pulse-cooling-1-65",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.649999976158142,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Pulse_Cooling_1.65",
+      "nodeName": "Pulse_Cooling_1.65",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.649999976158142,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.pulse-cooling-2-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.0999999046325684,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Pulse_Cooling_2.1",
+      "nodeName": "Pulse_Cooling_2.1",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.0999999046325684,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.pulse-cooling-2-55",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.549999952316284,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Pulse_Cooling_2.55",
+      "nodeName": "Pulse_Cooling_2.55",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.549999952316284,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.pulse-muzzle-glow",
       "localTransform": [
         1,
         0,
@@ -209,10 +699,10 @@
       "nodeName": "Pulse_Muzzle_Glow",
       "nodePath": [
         0,
-        5,
+        0,
         0
       ],
-      "parentId": "sf.render.weapon-pulse-cannon.root",
+      "parentId": "sf.render.weapon-pulse-cannon.node.hook-emissive",
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
       "worldTransform": [
@@ -228,14 +718,112 @@
         0,
         1,
         0,
-        4.58,
+        4.579999923706055,
         0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.weapon-pulse-cannon.mesh.weapon-pulse-cannon-material-hull-merged",
+      "id": "sf.render.weapon-pulse-cannon.node.pulse-recuperator-0-42",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.875,
+        0.2800000011920929,
+        -0.41999998688697815,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Pulse_Recuperator_-0.42",
+      "nodeName": "Pulse_Recuperator_-0.42",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.875,
+        0.2800000011920929,
+        -0.41999998688697815,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.pulse-recuperator-0-42-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.875,
+        0.2800000011920929,
+        0.41999998688697815,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Pulse_Recuperator_0.42",
+      "nodeName": "Pulse_Recuperator_0.42",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.875,
+        0.2800000011920929,
+        0.41999998688697815,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.remaster-material-hull-vitreousceramic",
       "localTransform": [
         1,
         0,
@@ -255,13 +843,12 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "weapon_pulse_cannon_Material_Hull_Merged",
-      "nodeName": "weapon_pulse_cannon_Material_Hull_Merged",
+      "mergeBoundary": "Remaster_Material_Hull_VitreousCeramic",
+      "nodeName": "Remaster_Material_Hull_VitreousCeramic",
       "nodePath": [
-        0,
-        19
+        2
       ],
-      "parentId": "sf.render.weapon-pulse-cannon.root",
+      "parentId": null,
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
       "worldTransform": [
@@ -284,7 +871,7 @@
       ]
     },
     {
-      "id": "sf.render.weapon-pulse-cannon.mesh.weapon-pulse-cannon-material-mechanical-merged",
+      "id": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-brushednickel",
       "localTransform": [
         1,
         0,
@@ -304,13 +891,12 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "weapon_pulse_cannon_Material_Mechanical_Merged",
-      "nodeName": "weapon_pulse_cannon_Material_Mechanical_Merged",
+      "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "Remaster_Material_Mechanical_BrushedNickel",
       "nodePath": [
-        0,
-        20
+        1
       ],
-      "parentId": "sf.render.weapon-pulse-cannon.root",
+      "parentId": null,
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
       "worldTransform": [
@@ -333,7 +919,104 @@
       ]
     },
     {
-      "id": "sf.render.weapon-pulse-cannon.root",
+      "id": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.socket-muzzle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.699999809265137,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Muzzle",
+      "nodeName": "SOCKET_Muzzle",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.699999809265137,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
       "localTransform": [
         1,
         0,
@@ -353,7 +1036,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "weapon_pulse_cannon",
       "nodeName": "weapon_pulse_cannon",
       "nodePath": [
         0
@@ -379,37 +1062,625 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-1",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        0.47999998927116394,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_pulse_cannon_Bolt_1",
+      "nodeName": "weapon_pulse_cannon_Bolt_1",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        0.47999998927116394,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-10",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        0.3883279860019684,
+        -0.282137006521225,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_pulse_cannon_Bolt_10",
+      "nodeName": "weapon_pulse_cannon_Bolt_10",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        0.3883279860019684,
+        -0.282137006521225,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-2",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        0.3883279860019684,
+        0.282137006521225,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_pulse_cannon_Bolt_2",
+      "nodeName": "weapon_pulse_cannon_Bolt_2",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        0.3883279860019684,
+        0.282137006521225,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-3",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        0.1483280062675476,
+        0.45650699734687805,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_pulse_cannon_Bolt_3",
+      "nodeName": "weapon_pulse_cannon_Bolt_3",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        0.1483280062675476,
+        0.45650699734687805,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-4",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        -0.1483280062675476,
+        0.45650699734687805,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_pulse_cannon_Bolt_4",
+      "nodeName": "weapon_pulse_cannon_Bolt_4",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        -0.1483280062675476,
+        0.45650699734687805,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-5",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        -0.3883279860019684,
+        0.282137006521225,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_pulse_cannon_Bolt_5",
+      "nodeName": "weapon_pulse_cannon_Bolt_5",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        -0.3883279860019684,
+        0.282137006521225,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-6",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        -0.47999998927116394,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_pulse_cannon_Bolt_6",
+      "nodeName": "weapon_pulse_cannon_Bolt_6",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        -0.47999998927116394,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-7",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        -0.3883279860019684,
+        -0.282137006521225,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_pulse_cannon_Bolt_7",
+      "nodeName": "weapon_pulse_cannon_Bolt_7",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        -0.3883279860019684,
+        -0.282137006521225,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-8",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        -0.1483280062675476,
+        -0.45650699734687805,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_pulse_cannon_Bolt_8",
+      "nodeName": "weapon_pulse_cannon_Bolt_8",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        -0.1483280062675476,
+        -0.45650699734687805,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-9",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        0.1483280062675476,
+        -0.45650699734687805,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_pulse_cannon_Bolt_9",
+      "nodeName": "weapon_pulse_cannon_Bolt_9",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.05000000074505806,
+        0.1483280062675476,
+        -0.45650699734687805,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "weapon_pulse_cannon_Material_Hull_Merged",
+      "nodeName": "weapon_pulse_cannon_Material_Hull_Merged",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "weapon_pulse_cannon_Material_Mechanical_Merged",
+      "nodeName": "weapon_pulse_cannon_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "58764b597d7ef09fcd90b2bef1a128b84cbd75aab61163c53c7f265aefa6c11c"
+      "sha256": "61a368d05a01b9cfefbcd56a2111530709ca7888ce2a3fc1212c8a0749c51156"
     },
     "sourceGlb": {
-      "bytes": 396348,
-      "sha256": "0d3f6f238019958c893ddd598bf63092d626274de063ac3b9ca2236421d47511",
+      "bytes": 443484,
+      "sha256": "f6b5cd089af47a2d5744bea2f45b53e7559638bb28ed135b269df8449ac8148d",
       "uri": "weapon_pulse_cannon.glb"
     },
     "sourceManifest": {
-      "bytes": 76590,
-      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
+      "bytes": 169401,
+      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 412028,
-    "sha256": "888d083fcd618616fb5d03ba961647fcb88f84ac30040721016653ded6eb1d8e",
+    "bytes": 498652,
+    "sha256": "0de61a5eeb46cc55e8a3f36d76e9fe127ff121c2ab7fe369fa99a16ee6195111",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        2.244996334388852,
+        2.2449962962418795,
         0,
         0
       ],
       "max": [
-        4.639992674738169,
+        4.639992598444223,
         0.519976794719696,
         0.4999772012233734
       ],
@@ -419,7 +1690,7 @@
         -0.4999772012233734
       ],
       "size": [
-        4.789992680698633,
+        4.789992604404688,
         1.039953589439392,
         0.9999544024467468
       ]
@@ -441,17 +1712,24 @@
           0,
           1,
           0,
-          4.58,
+          4.579999923706055,
           0,
           0,
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 7,
+        "planIndex": 2,
         "tags": {},
         "userData": {
           "name": "HOOK_Emissive",
-          "spacefaceHook": true
+          "spacefaceHook": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "HOOK_Emissive",
+            "recordIds": [
+              "sf.render.weapon-pulse-cannon.node.hook-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
         }
       },
       {
@@ -468,13 +1746,13 @@
           0,
           1,
           0,
-          4.7,
+          4.699999809265137,
           0,
           0,
           1
         ],
         "name": "SOCKET_Muzzle",
-        "planIndex": 9,
+        "planIndex": 11,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -495,7 +1773,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Muzzle",
             "recordIds": [
-              "sf.render.weapon-pulse-cannon.anchor.socket-muzzle"
+              "sf.render.weapon-pulse-cannon.anchor.socket-muzzle",
+              "sf.render.weapon-pulse-cannon.node.socket-muzzle"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           },
@@ -505,27 +1784,48 @@
     ],
     "materialProfileRoles": {
       "accent": 1,
+      "ceramic": 2,
       "hull": 1,
-      "mechanical": 1
+      "mechanical": 3
     },
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 8,
+        "planIndex": 3,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 22,
+        "planIndex": 23,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 23,
+        "planIndex": 24,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 24,
+    "nodeCount": 29,
     "primitives": [
       {
         "canopy": false,
@@ -542,13 +1842,13 @@
           0,
           1,
           0,
-          4.58,
+          4.579999923706055,
           0,
           0,
           1
         ],
         "name": "Pulse_Muzzle_Glow",
-        "planIndex": 8,
+        "planIndex": 3,
         "tags": {
           "canopy": false
         }
@@ -573,8 +1873,34 @@
           0,
           1
         ],
-        "name": "weapon_pulse_cannon_Material_Hull_Merged",
-        "planIndex": 22,
+        "name": "weapon_pulse_cannon_Material_Hull_Merged001",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "weapon_pulse_cannon_Material_Hull_Merged001_1",
+        "planIndex": 24,
         "tags": {
           "canopy": false
         }
@@ -600,9 +1926,93 @@
           1
         ],
         "name": "weapon_pulse_cannon_Material_Mechanical_Merged",
-        "planIndex": 23,
+        "planIndex": 25,
         "tags": {
           "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Hull_VitreousCeramic",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
         }
       }
     ],
@@ -610,12 +2020,13 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
   },
+  "runtimeHash": "ea732ab6a4ce678561d3761a0035401746f7c410d199f5334238740f973f75e4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          4.639992674738169,
+          4.639992598444223,
           0.519976794719696,
           0.4999772012233734
         ],
@@ -627,10 +2038,32 @@
       },
       "id": "sf.render.weapon-pulse-cannon.body",
       "nodeIds": [
-        "sf.render.weapon-pulse-cannon.mesh.pulse-muzzle-glow",
-        "sf.render.weapon-pulse-cannon.mesh.weapon-pulse-cannon-material-hull-merged",
-        "sf.render.weapon-pulse-cannon.mesh.weapon-pulse-cannon-material-mechanical-merged",
-        "sf.render.weapon-pulse-cannon.root"
+        "sf.render.weapon-pulse-cannon.node.hook-emissive",
+        "sf.render.weapon-pulse-cannon.node.pulse-barrel",
+        "sf.render.weapon-pulse-cannon.node.pulse-breech",
+        "sf.render.weapon-pulse-cannon.node.pulse-cooling-1-65",
+        "sf.render.weapon-pulse-cannon.node.pulse-cooling-2-1",
+        "sf.render.weapon-pulse-cannon.node.pulse-cooling-2-55",
+        "sf.render.weapon-pulse-cannon.node.pulse-muzzle-glow",
+        "sf.render.weapon-pulse-cannon.node.pulse-recuperator-0-42",
+        "sf.render.weapon-pulse-cannon.node.pulse-recuperator-0-42-2",
+        "sf.render.weapon-pulse-cannon.node.remaster-material-hull-vitreousceramic",
+        "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-brushednickel",
+        "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-shadowenamel",
+        "sf.render.weapon-pulse-cannon.node.socket-muzzle",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-1",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-10",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-2",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-3",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-4",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-5",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-6",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-7",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-8",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-bolt-9",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged",
+        "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-mechanical-merged"
       ]
     }
   ]

@@ -6,31 +6,31 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8861d6e2e1d63167d33ea14bea72b36d64bd5f213b950843eae24ad5eb1870f1",
+  "contentHash": "31e415f6539b1b84764ce60babd625e13d55cfcf2b5085e6453b80ebfc96911e",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          1.0792458836961032,
-          1.1560001459121736,
+          1.0792459850240022,
+          1.1560002472400726,
           -0.49717592501432506
         ],
         "min": [
-          0.9391302729811457,
-          0.8160001059770607,
-          -0.6380726725023678
+          0.9391303743090447,
+          0.8160002073049597,
+          -0.6380726218384183
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e50891c0628ec44bb4c5b2280f0530245aea9aeda5114da3283f8d2c6b9c05e3",
-      "id": "sf.render.ash-pin.mesh.ash-ballast-link-0.primitive.0",
+      "geometryHash": "3c71a7c0568772abdcff6fa016bcc7be48800ffd64d7b88851edb54810041de2",
+      "id": "sf.render.ash-pin.node.ash-ballast-link-0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.015",
-      "nodeId": "sf.render.ash-pin.mesh.ash-ballast-link-0",
+      "nodeId": "sf.render.ash-pin.node.ash-ballast-link-0",
       "primitiveIndex": 0,
       "vertexCount": 30
     },
@@ -39,48 +39,48 @@
         "max": [
           1.3191016865225862,
           1.0608015715599493,
-          -0.19057248396761217
+          -0.19057252196557428
         ],
         "min": [
           0.9520983188179883,
-          0.9254842421723595,
+          0.9254843435002584,
           -0.4758275552939679
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0d28b9bfb4f5e5666ebe09f9c044a9d0fc94bfa8e12a6f27c7cd61ea98b5655e",
-      "id": "sf.render.ash-pin.mesh.ash-ballast-link-1.primitive.0",
+      "geometryHash": "733f5fb7e3a322bd1ed870c3eb1b008f103b854b2413a251a6d1c5e7a1356799",
+      "id": "sf.render.ash-pin.node.ash-ballast-link-1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.016",
-      "nodeId": "sf.render.ash-pin.mesh.ash-ballast-link-1",
+      "nodeId": "sf.render.ash-pin.node.ash-ballast-link-1",
       "primitiveIndex": 0,
       "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          1.3480570456015926,
-          1.1560001459121736,
-          -0.010320305089301707
+          1.3480571469294915,
+          1.1560002472400726,
+          -0.010320315380416445
         ],
         "min": [
-          1.1569940712730755,
-          0.8160001059770607,
+          1.1569941726009745,
+          0.8160002073049597,
           -0.20244582118204946
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e627e563b763d09cfdf71ef040df35c6585df877dd153f7110be7ddc83fd236e",
-      "id": "sf.render.ash-pin.mesh.ash-ballast-link-2.primitive.0",
+      "geometryHash": "ef02759bbbd40bbc6179d001657f485d912e1bb37330b9bcee9071ab7e3ea764",
+      "id": "sf.render.ash-pin.node.ash-ballast-link-2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.017",
-      "nodeId": "sf.render.ash-pin.mesh.ash-ballast-link-2",
+      "nodeId": "sf.render.ash-pin.node.ash-ballast-link-2",
       "primitiveIndex": 0,
       "vertexCount": 30
     },
@@ -93,94 +93,94 @@
         ],
         "min": [
           1.196898315146342,
-          0.9254842421723595,
-          -0.013427536193659328
+          0.9254843435002584,
+          -0.013427529860665643
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1c0e4d9a068f3cb11d4b1e7d40dc88a999af84d031c59ea6aa908755f6a982f",
-      "id": "sf.render.ash-pin.mesh.ash-ballast-link-3.primitive.0",
+      "geometryHash": "42097acadcd142d176690e247a55169bc8e55a3f6b65e4d6b0e4ddc22f7651e3",
+      "id": "sf.render.ash-pin.node.ash-ballast-link-3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.018",
-      "nodeId": "sf.render.ash-pin.mesh.ash-ballast-link-3",
+      "nodeId": "sf.render.ash-pin.node.ash-ballast-link-3",
       "primitiveIndex": 0,
       "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          1.5688459776807093,
-          1.1560001459121736,
-          0.42762415118425423
+          1.5688460790086083,
+          1.1560002472400726,
+          0.42762410052030475
         ],
         "min": [
-          1.4287303669657518,
-          0.8160001059770607,
+          1.4287304682936508,
+          0.8160002073049597,
           0.2867274036962115
         ]
       },
       "drawMode": 4,
-      "geometryHash": "994afe6b4051e5e71da8b0ac132191906d8569423b8bac5a248dcaeb3db17ea8",
-      "id": "sf.render.ash-pin.mesh.ash-ballast-link-4.primitive.0",
+      "geometryHash": "1d75769d87c02fd1375054d4bc8603f4a8eb53e0bc04a3dfec4042273eca3e38",
+      "id": "sf.render.ash-pin.node.ash-ballast-link-4.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.019",
-      "nodeId": "sf.render.ash-pin.mesh.ash-ballast-link-4",
+      "nodeId": "sf.render.ash-pin.node.ash-ballast-link-4",
       "primitiveIndex": 0,
       "vertexCount": 30
     },
     {
       "bounds": {
         "max": [
-          1.6167821801208646,
-          0.8840820679687624,
-          1.7000000476837158
+          1.6167824841045615,
+          0.8840821692966614,
+          1.7000002503395137
         ],
         "min": [
-          -1.6167821801208646,
-          -0.00008192360630943085,
-          -1.7000000476837158
+          -1.6167824841045615,
+          -0.00008190919627497177,
+          -1.7000002503395137
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a07963b760503ca451ccfefc041ecea26a476d282670b89522cad4eafe2dcb1",
-      "id": "sf.render.ash-pin.mesh.ash-base.primitive.0",
-      "indexCount": 108,
+      "geometryHash": "880dc9e829f5b79fb6148cd7788a433ed19936b7d3ab8f854e6b61043e98f915",
+      "id": "sf.render.ash-pin.node.ash-base.primitive.0",
+      "indexCount": 168,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
-      "nodeId": "sf.render.ash-pin.mesh.ash-base",
+      "meshName": "Cylinder.028",
+      "nodeId": "sf.render.ash-pin.node.ash-base",
       "primitiveIndex": 0,
-      "vertexCount": 60
+      "vertexCount": 90
     },
     {
       "bounds": {
         "max": [
           0.0849870336797176,
-          8.954082285010465,
-          0.8794083170118339
+          8.954082654955146,
+          0.8794084521342385
         ],
         "min": [
           -0.0849870336797176,
-          8.72727482729332,
-          0.5251800324679883
+          8.727275183422666,
+          0.5251801661387362
         ]
       },
       "drawMode": 4,
-      "geometryHash": "71be7704fb57a7d88cc83f493441dbb3f2d9c9e1ea6637bb15767933f9eabfe3",
-      "id": "sf.render.ash-pin.mesh.ash-cage-arm.primitive.0",
+      "geometryHash": "18f35510b7b8ec76166519f9ea4c87e1f6d8fe304c28ceff56ad07be97f059a5",
+      "id": "sf.render.ash-pin.node.ash-cage-arm.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
-      "nodeId": "sf.render.ash-pin.mesh.ash-cage-arm",
+      "nodeId": "sf.render.ash-pin.node.ash-cage-arm",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -188,24 +188,24 @@
       "bounds": {
         "max": [
           0.2039859039183476,
-          9.1329610289299,
-          0.9844114492578483
+          9.132961377110458,
+          0.984411600093098
         ],
         "min": [
           0.14961411329547403,
-          8.464264375730073,
-          0.7845912980282813
+          8.464264731474703,
+          0.7845914109390999
         ]
       },
       "drawMode": 4,
-      "geometryHash": "271afe91744e7f06edc43bf2ba10d4e21e0ad2a2d7bbee85133e6b7bdeda9d04",
-      "id": "sf.render.ash-pin.mesh.ash-cage-bar-0.primitive.0",
+      "geometryHash": "89c142bcee4c57abd444ccd7fb67877d90e172f2a757271a7c6c9a50ba172aec",
+      "id": "sf.render.ash-pin.node.ash-cage-bar-0.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
-      "nodeId": "sf.render.ash-pin.mesh.ash-cage-bar-0",
+      "nodeId": "sf.render.ash-pin.node.ash-cage-bar-0",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -213,24 +213,24 @@
       "bounds": {
         "max": [
           -0.14961411329547403,
-          9.1329610289299,
-          0.9844114492578483
+          9.132961377110458,
+          0.984411600093098
         ],
         "min": [
           -0.2039859039183476,
-          8.464264375730073,
-          0.7845912980282813
+          8.464264731474703,
+          0.7845914109390999
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f781d05663f66e06b123bfc7f567f8854a327487aa6b63851a85ba21b462b94",
-      "id": "sf.render.ash-pin.mesh.ash-cage-bar-1.primitive.0",
+      "geometryHash": "8e8681d900287402104e4f5fab114164450d1b2b2dbad7311c5c1b4dafb1a3a5",
+      "id": "sf.render.ash-pin.node.ash-cage-bar-1.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
-      "nodeId": "sf.render.ash-pin.mesh.ash-cage-bar-1",
+      "nodeId": "sf.render.ash-pin.node.ash-cage-bar-1",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -238,24 +238,24 @@
       "bounds": {
         "max": [
           0.02718589531143678,
-          9.172732382514917,
-          0.8121428145184573
+          9.172732741165838,
+          0.8121429677396017
         ],
         "min": [
           -0.02718589531143678,
-          8.504035735013545,
-          0.6123226632888904
+          8.504036101228538,
+          0.6123227785856035
         ]
       },
       "drawMode": 4,
-      "geometryHash": "211500af1179ce0e782e2a2595111690f353cab4723e740334772569765356a1",
-      "id": "sf.render.ash-pin.mesh.ash-cage-bar-2.primitive.0",
+      "geometryHash": "696d02b3a5b0261c5a41ff073e97dd2915075ae294095853e5119f520033f8ba",
+      "id": "sf.render.ash-pin.node.ash-cage-bar-2.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
-      "nodeId": "sf.render.ash-pin.mesh.ash-cage-bar-2",
+      "nodeId": "sf.render.ash-pin.node.ash-cage-bar-2",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -263,24 +263,24 @@
       "bounds": {
         "max": [
           0.02718589531143678,
-          9.093189672495654,
-          1.156680108679957
+          9.093190010205852,
+          1.1566802571293118
         ],
         "min": [
           -0.02718589531143678,
-          8.424493019295827,
-          0.9568599080849545
+          8.424493364570095,
+          0.9568600186098789
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad97b1d63edd2c83e76b96334ebf5738fab1eb32fa1e19a1e32c6e6cbca1e1b8",
-      "id": "sf.render.ash-pin.mesh.ash-cage-bar-3.primitive.0",
+      "geometryHash": "e672a42ee51bfd04fb94f9909bd6138a983ab5fffdcaca022a7300d2cc2bdf1c",
+      "id": "sf.render.ash-pin.node.ash-cage-bar-3.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
-      "nodeId": "sf.render.ash-pin.mesh.ash-cage-bar-3",
+      "nodeId": "sf.render.ash-pin.node.ash-cage-bar-3",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -288,24 +288,24 @@
       "bounds": {
         "max": [
           0.2380000076889992,
-          8.583289521756177,
-          1.0437420530396102
+          8.583290305439835,
+          1.043742155016758
         ],
         "min": [
           -0.2380000076889992,
-          8.384492703333414,
-          0.5799418654993685
+          8.384493467727273,
+          0.5799419739000788
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9625c1671d0f206d5a7b16ba6e2856959f90ab9d65842035318f1f04a9afde2d",
-      "id": "sf.render.ash-pin.mesh.ash-cage-ring-lo.primitive.0",
+      "geometryHash": "bf905d872c54a057aeed4030b80dc0642aa8a3515e73b566c9635aeb01cbd1ff",
+      "id": "sf.render.ash-pin.node.ash-cage-ring-lo.primitive.0",
       "indexCount": 192,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Torus",
-      "nodeId": "sf.render.ash-pin.mesh.ash-cage-ring-lo",
+      "nodeId": "sf.render.ash-pin.node.ash-cage-ring-lo",
       "primitiveIndex": 0,
       "vertexCount": 128
     },
@@ -313,249 +313,249 @@
       "bounds": {
         "max": [
           0.2380000076889992,
-          9.212733193123789,
-          1.1890605039904139
+          9.212733968089749,
+          1.18906064422469
         ],
         "min": [
           -0.2380000076889992,
-          9.013936374701025,
-          0.7252603658156075
+          9.013937130377188,
+          0.7252605124734457
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5fb21bd7d2297e0d4d56cc0474db6bf7512cbf40916d589213125760c433863b",
-      "id": "sf.render.ash-pin.mesh.ash-cage-ring.primitive.0",
+      "geometryHash": "4231ed6c157f19c5e2bbb45288f47469086dfa32b59d99808c7aad527a5ca786",
+      "id": "sf.render.ash-pin.node.ash-cage-ring.primitive.0",
       "indexCount": 192,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.001",
-      "nodeId": "sf.render.ash-pin.mesh.ash-cage-ring",
+      "nodeId": "sf.render.ash-pin.node.ash-cage-ring",
       "primitiveIndex": 0,
       "vertexCount": 128
     },
     {
       "bounds": {
         "max": [
-          1.0521152374215745,
-          1.084600860500359,
-          -0.561000038027764
+          1.0521153387494735,
+          1.084600961828258,
+          -0.5610000886917135
         ],
         "min": [
-          0.851885026746217,
-          0.8533993721961792,
-          -0.7990001217126874
+          0.851885128074116,
+          0.8533994735240782,
+          -0.7990001723766369
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af54110d63e398576afea6e1daea65b18e9221240643c660dd3c637be9432f17",
-      "id": "sf.render.ash-pin.mesh.ash-chain-eye-a.primitive.0",
+      "geometryHash": "042a40688c04db2de0e6306d75c23afd62eed223deba72bfe5823587675be836",
+      "id": "sf.render.ash-pin.node.ash-chain-eye-a.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.013",
-      "nodeId": "sf.render.ash-pin.mesh.ash-chain-eye-a",
+      "nodeId": "sf.render.ash-pin.node.ash-chain-eye-a",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          1.664115380234307,
-          1.084600860500359,
-          0.5950001078844096
+          1.664115481562206,
+          1.084600961828258,
+          0.5950001585483591
         ],
         "min": [
-          1.4638851695589494,
-          0.8533993721961792,
-          0.3570000241994862
+          1.4638852708868484,
+          0.8533994735240782,
+          0.35700007486343566
         ]
       },
       "drawMode": 4,
-      "geometryHash": "797524c98622db45f078f2776a4f7555e4d7dcce8ebd2d7dabb5aca97758c44f",
-      "id": "sf.render.ash-pin.mesh.ash-chain-eye-b.primitive.0",
+      "geometryHash": "a545a084887519d3452d0331872f0fef66a3e11f69a09dcfe7c2217a6fb64659",
+      "id": "sf.render.ash-pin.node.ash-chain-eye-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.014",
-      "nodeId": "sf.render.ash-pin.mesh.ash-chain-eye-b",
+      "nodeId": "sf.render.ash-pin.node.ash-chain-eye-b",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          2.4284051741825863,
+          2.428405376838384,
           0.3060212996011984,
-          -0.2835140427004319
+          -0.2835140933643814
         ],
         "min": [
-          1.4861048578824665,
-          -0.000021248586886319027,
+          1.4861050605382644,
+          -0.000021235920898948985,
           -1.3715140488993143
         ]
       },
       "drawMode": 4,
-      "geometryHash": "14412a7bf3fb8cae774bc41c06f69192b411b20c807cd666eef191c86d89e3f4",
-      "id": "sf.render.ash-pin.mesh.ash-foot-0.primitive.0",
+      "geometryHash": "fe4cd976fafc9fc2b2bdb763cfd5248d228d01c9dc8d33c245a3d82cbceac25c",
+      "id": "sf.render.ash-pin.node.ash-foot-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
-      "nodeId": "sf.render.ash-pin.mesh.ash-foot-0",
+      "nodeId": "sf.render.ash-pin.node.ash-foot-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -0.3563639383137627,
+          -0.35636398897771215,
           0.3060212996011984,
-          -1.4132549622691357
+          -1.4132551649249336
         ],
         "min": [
-          -1.2986641532859835,
-          -0.000021248586886319027,
-          -2.501254867140119
+          -1.2986642546138825,
+          -0.000021235920898948985,
+          -2.501255272451715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd18c9bf892d82fa2449fb867b1ff223b7cb919533efcd62bbf3e920c12d4683",
-      "id": "sf.render.ash-pin.mesh.ash-foot-1.primitive.0",
+      "geometryHash": "aa8f17727633193b629841ea6aa65eb4a5acefe1b1a2933eb3aefcc924c792ad",
+      "id": "sf.render.ash-pin.node.ash-foot-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
-      "nodeId": "sf.render.ash-pin.mesh.ash-foot-1",
+      "nodeId": "sf.render.ash-pin.node.ash-foot-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -1.4861048578824665,
+          -1.4861050605382644,
           0.3060212996011984,
           1.3715140488993143
         ],
         "min": [
-          -2.4284051741825863,
-          -0.000021248586886319027,
-          0.2835140427004319
+          -2.428405376838384,
+          -0.000021235920898948985,
+          0.2835140933643814
         ]
       },
       "drawMode": 4,
-      "geometryHash": "48fab568712b3facbc926d0178068c950a0b9b3b4849288a9ef40c9b2b3deff8",
-      "id": "sf.render.ash-pin.mesh.ash-foot-2.primitive.0",
+      "geometryHash": "8e778592629635fc7597fbbcea5c170d4c652770771831518f3e68a6488b3c21",
+      "id": "sf.render.ash-pin.node.ash-foot-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
-      "nodeId": "sf.render.ash-pin.mesh.ash-foot-2",
+      "nodeId": "sf.render.ash-pin.node.ash-foot-2",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          1.2986641532859835,
+          1.2986642546138825,
           0.3060212996011984,
-          2.501254867140119
+          2.501255272451715
         ],
         "min": [
-          0.3563639383137627,
-          -0.000021248586886319027,
-          1.4132549622691357
+          0.35636398897771215,
+          -0.000021235920898948985,
+          1.4132551649249336
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ba8f6f70837441d786aa40c6b1ebae32c990b98015f00e4f3f3f9364939cf30",
-      "id": "sf.render.ash-pin.mesh.ash-foot-3.primitive.0",
+      "geometryHash": "012dd17170f6721edc5db9cc49ed775ca70cbbf8e170030a32450f756ca1091b",
+      "id": "sf.render.ash-pin.node.ash-foot-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.008",
-      "nodeId": "sf.render.ash-pin.mesh.ash-foot-3",
+      "nodeId": "sf.render.ash-pin.node.ash-foot-3",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          2.0225591750021295,
-          1.1257215458006442,
-          -0.18405817667338908
+          2.0225593776579274,
+          1.1257217484564421,
+          -0.18405805001351538
         ],
         "min": [
           0.6197350586438191,
-          0.20027863274507318,
-          -0.9330858611523638
+          0.2002785820811237,
+          -0.9330859624802628
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2876a87a92835c68c077628e7d632cdba111e824ece56999939ce2b09cf1a177",
-      "id": "sf.render.ash-pin.mesh.ash-foot-brace-0.primitive.0",
+      "geometryHash": "01a3fbe11fdc744b306667aecc51b85f8e37b04b96690676935f55742e854a66",
+      "id": "sf.render.ash-pin.node.ash-foot-brace-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
-      "nodeId": "sf.render.ash-pin.mesh.ash-foot-brace-0",
+      "nodeId": "sf.render.ash-pin.node.ash-foot-brace-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -0.1840580880114775,
-          1.1257216471285432,
-          -0.619735261299617
+          -0.18405807534549012,
+          1.1257217484564421,
+          -0.6197353626275159
         ],
         "min": [
           -0.9330859624802628,
-          0.2002784934192121,
+          0.2002785440831616,
           -2.0225589723463315
         ]
       },
       "drawMode": 4,
-      "geometryHash": "328b14559d4b0879761c2888f78ef800148b5481def1cd1b0ce2981f4de3150b",
-      "id": "sf.render.ash-pin.mesh.ash-foot-brace-1.primitive.0",
+      "geometryHash": "42ee492b028f7022e4623a6e8dcee4cf06318101b7e40f356c17a20b5d5fd77c",
+      "id": "sf.render.ash-pin.node.ash-foot-brace-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.004",
-      "nodeId": "sf.render.ash-pin.mesh.ash-foot-brace-1",
+      "nodeId": "sf.render.ash-pin.node.ash-foot-brace-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -0.6197351093077685,
+          -0.6197352106356675,
           1.1257215458006442,
           0.9330861651360607
         ],
         "min": [
           -2.0225591750021295,
-          0.2002786200790858,
-          0.1840579106876543
+          0.2002787087409974,
+          0.18405789802166694
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8358dbd38b85c8605b327bc98a0d25eba8a3bf7e27f3f15ec5a3a731673094b1",
-      "id": "sf.render.ash-pin.mesh.ash-foot-brace-2.primitive.0",
+      "geometryHash": "e75a922c5014de9a8d4da3fe56d4fa37235bc6e88862117a1029f6f3bb2f21ae",
+      "id": "sf.render.ash-pin.node.ash-foot-brace-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.006",
-      "nodeId": "sf.render.ash-pin.mesh.ash-foot-brace-2",
+      "nodeId": "sf.render.ash-pin.node.ash-foot-brace-2",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -564,23 +564,23 @@
         "max": [
           0.9330858611523638,
           1.1257215458006442,
-          2.0225589723463315
+          2.0225591750021295
         ],
         "min": [
-          0.18405817667338908,
-          0.2002786707430353,
-          0.6197351093077685
+          0.18405815134141434,
+          0.2002787087409974,
+          0.6197352106356675
         ]
       },
       "drawMode": 4,
-      "geometryHash": "092521ae0c2298bb67d12f4ad00513876ac042f9a1a7f2b1dbe6855721520417",
-      "id": "sf.render.ash-pin.mesh.ash-foot-brace-3.primitive.0",
+      "geometryHash": "f736424ea6aab1382bd403457a7bd711671d9cb0bfb48e01b1f24a54d029d192",
+      "id": "sf.render.ash-pin.node.ash-foot-brace-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.009",
-      "nodeId": "sf.render.ash-pin.mesh.ash-foot-brace-3",
+      "nodeId": "sf.render.ash-pin.node.ash-foot-brace-3",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -588,124 +588,124 @@
       "bounds": {
         "max": [
           0.8500000238418579,
-          6.285098233923241,
-          0.35376374935402277
+          6.285098621864934,
+          0.35376372591048905
         ],
         "min": [
           -0.8500000238418579,
-          5.279665687659077,
-          0.03649303593140801
+          5.279666086343466,
+          0.036492956474812155
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5cd1502bde02381cdcbf1cd1540fc86a0b292f7884b9cd4c628510e1138dbab3",
-      "id": "sf.render.ash-pin.mesh.ash-name-plate.primitive.0",
+      "geometryHash": "4509a082e4de82fd5218b222de7630ec5dd57182f1ceb412edd76c3e33d12488",
+      "id": "sf.render.ash-pin.node.ash-name-plate.primitive.0",
       "indexCount": 168,
       "indexed": true,
-      "materialHash": "2c420cb20907deda2f1a1b3cc4a04ddd293fc6e0f576efbe9d6ad70115624975",
+      "materialHash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
-      "nodeId": "sf.render.ash-pin.mesh.ash-name-plate",
+      "nodeId": "sf.render.ash-pin.node.ash-name-plate",
       "primitiveIndex": 0,
       "vertexCount": 108
     },
     {
       "bounds": {
         "max": [
-          -0.25165938844847346,
-          1.0540037868023973,
-          -1.122000177383427
+          -0.2516594137804482,
+          1.0540038881302962,
+          -1.122000278711326
         ],
         "min": [
           -0.42834069142175224,
-          0.883996445894141,
-          -1.3260001912117048
+          0.8839965472220399,
+          -1.3260002925396037
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b18e346c885ba28719682e3e8a485e7015efdfd4f6022c8c32c95cccc1d4a2a7",
-      "id": "sf.render.ash-pin.mesh.ash-offering-eye-a.primitive.0",
+      "geometryHash": "c4047f05967e873e08f215bd7dc20a6b5884e4064d95de5096ea256c77b2fc44",
+      "id": "sf.render.ash-pin.node.ash-offering-eye-a.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.020",
-      "nodeId": "sf.render.ash-pin.mesh.ash-offering-eye-a",
+      "nodeId": "sf.render.ash-pin.node.ash-offering-eye-a",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -1.135659583474876,
-          1.0540037868023973,
-          0.5780000729560868
+          -1.135659684802775,
+          1.0540038881302962,
+          0.5780001236200363
         ],
         "min": [
-          -1.3123407851202558,
-          0.883996445894141,
-          0.374000059127809
+          -1.3123408864481547,
+          0.8839965472220399,
+          0.37400010979175846
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce11b769d1a164c2ed7898096e72677c6fe7e51aa5d981ec447edaa5e180e1fc",
-      "id": "sf.render.ash-pin.mesh.ash-offering-eye-b.primitive.0",
+      "geometryHash": "aa03bf7ab3ee532a63dbb3be8dba7b80258ae7951c861b75307aebf4d747225c",
+      "id": "sf.render.ash-pin.node.ash-offering-eye-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.021",
-      "nodeId": "sf.render.ash-pin.mesh.ash-offering-eye-b",
+      "nodeId": "sf.render.ash-pin.node.ash-offering-eye-b",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -0.311165286387844,
-          1.0536352572338785,
-          -0.6619783557366858
+          -0.3111653370517935,
+          1.0536353585617775,
+          -0.6619784570645848
         ],
         "min": [
-          -0.7088349094134188,
-          0.8911650907618878,
-          -1.2420218577671562
+          -0.7088349600773682,
+          0.8911651920897867,
+          -1.2420219590950552
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce62386a290aa9b1861ca21a964d38df06bb8642c38c1e534f80e0d97e22d085",
-      "id": "sf.render.ash-pin.mesh.ash-offering-wire-0.primitive.0",
+      "geometryHash": "97a94c1e11e04939b418deabf0ae38d3987b406f89ea99176aef4d6a1ecefebb",
+      "id": "sf.render.ash-pin.node.ash-offering-wire-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.022",
-      "nodeId": "sf.render.ash-pin.mesh.ash-offering-wire-0",
+      "nodeId": "sf.render.ash-pin.node.ash-offering-wire-0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -0.6489209893569097,
+          -0.6489210906848086,
           0.9588105828288178,
-          -0.05418706986306887
+          -0.054187152191986776
         ],
         "min": [
           -0.9830792225972118,
           0.8907897722241387,
-          -0.6938129977285996
+          -0.6938129470646501
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b36b868e176a4ed8d0b3e624dbccf972976f6a697ae8299d1c2df2dc1274373f",
-      "id": "sf.render.ash-pin.mesh.ash-offering-wire-1.primitive.0",
+      "geometryHash": "baffe33bd44050ad06bcf763c4a65bea5250d81bd48ade33de4b8cce97b57390",
+      "id": "sf.render.ash-pin.node.ash-offering-wire-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.023",
-      "nodeId": "sf.render.ash-pin.mesh.ash-offering-wire-1",
+      "nodeId": "sf.render.ash-pin.node.ash-offering-wire-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -713,24 +713,24 @@
       "bounds": {
         "max": [
           -0.9215844353250731,
-          1.0535967526322736,
+          1.0535968539601726,
           0.49120786375740977
         ],
         "min": [
           -1.2544157797284896,
-          0.8912035953634927,
-          -0.0832078107688794
+          0.8912036966913917,
+          -0.08320777910391097
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9b2e560c7f338354bcc824d05051fe6cf76ce17a44599a5c3aa432afb8fbb02",
-      "id": "sf.render.ash-pin.mesh.ash-offering-wire-2.primitive.0",
+      "geometryHash": "5265f98a296dede57f899df54d86dcf61d88be3c31e277c92b07c2c9b4f76865",
+      "id": "sf.render.ash-pin.node.ash-offering-wire-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.024",
-      "nodeId": "sf.render.ash-pin.mesh.ash-offering-wire-2",
+      "nodeId": "sf.render.ash-pin.node.ash-offering-wire-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -738,74 +738,74 @@
       "bounds": {
         "max": [
           0.7139999977350229,
-          5.9153975239025804,
-          0.16402760505279412
+          5.915397924698544,
+          0.1640275582714829
         ],
         "min": [
           -0.7139999977350229,
-          5.701375115292922,
-          0.0009547737514236376
+          5.701375514815052,
+          0.0009547207526201529
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e95873627b7680d1b42a56f79f5d8ab4bed6e869ce1d21b1515bcbcbc9e5be2f",
-      "id": "sf.render.ash-pin.mesh.ash-plate-backing-bar.primitive.0",
+      "geometryHash": "d344b94e3460d888b508b9d0c7d507878636dc50077b0f6748f51b7610389973",
+      "id": "sf.render.ash-pin.node.ash-plate-backing-bar.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
-      "nodeId": "sf.render.ash-pin.mesh.ash-plate-backing-bar",
+      "nodeId": "sf.render.ash-pin.node.ash-plate-backing-bar",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          0.6310044435824906,
-          5.83436638669803,
-          0.30828477137149896
+          0.6310044942464401,
+          5.834366727806467,
+          0.3082847107723694
         ],
         "min": [
-          0.524995702329683,
-          5.699804999689275,
-          0.21448586802628306
+          0.5249957529936324,
+          5.699805338421957,
+          0.21448580109619728
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c11cbcda2b0625c764ce87d50b0f93ab11645715b7ba02743b19f36a99a27a3",
-      "id": "sf.render.ash-pin.mesh.ash-plate-bolt-0.primitive.0",
+      "geometryHash": "ccb8ce9c3cc471d21192eea2729072a9fe4731b19b9e2a2dfe72476ae6e6c5b4",
+      "id": "sf.render.ash-pin.node.ash-plate-bolt-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.011",
-      "nodeId": "sf.render.ash-pin.mesh.ash-plate-bolt-0",
+      "nodeId": "sf.render.ash-pin.node.ash-plate-bolt-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -0.524995702329683,
-          5.83436638669803,
-          0.30828477137149896
+          -0.5249957529936324,
+          5.834366727806467,
+          0.3082847107723694
         ],
         "min": [
-          -0.6310044435824906,
-          5.699804999689275,
-          0.21448586802628306
+          -0.6310044942464401,
+          5.699805338421957,
+          0.21448580109619728
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f2ad89ba3b9d2d88d17d62168904603904820ff6d2b8d540f16bdf6f9db1ac59",
-      "id": "sf.render.ash-pin.mesh.ash-plate-bolt-1.primitive.0",
+      "geometryHash": "ef360b55932366cdceebd25e05b868dc987a4f41e576d21c8e7c1237190b694d",
+      "id": "sf.render.ash-pin.node.ash-plate-bolt-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.012",
-      "nodeId": "sf.render.ash-pin.mesh.ash-plate-bolt-1",
+      "nodeId": "sf.render.ash-pin.node.ash-plate-bolt-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -813,24 +813,24 @@
       "bounds": {
         "max": [
           0.6969995068311547,
-          6.00639291088764,
-          0.27311864929017315
+          6.006393308092363,
+          0.2731186073577041
         ],
         "min": [
           0.4590005377531199,
-          5.582080884454969,
-          0.014439499295417907
+          5.582081280118275,
+          0.014439439750119493
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8b3a6c22cb85b367ba0c388ce4853fd66145c93061e643bcff79bbd9b4e1279",
-      "id": "sf.render.ash-pin.mesh.ash-plate-ear-0.primitive.0",
+      "geometryHash": "30841bd2a9bc2d0d605f13ad25ba57a4dc58ae52704ec8a302ddfc879fe3cb53",
+      "id": "sf.render.ash-pin.node.ash-plate-ear-0.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
-      "nodeId": "sf.render.ash-pin.mesh.ash-plate-ear-0",
+      "nodeId": "sf.render.ash-pin.node.ash-plate-ear-0",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -838,49 +838,49 @@
       "bounds": {
         "max": [
           -0.4590005377531199,
-          6.00639291088764,
-          0.27311864929017315
+          6.006393308092363,
+          0.2731186073577041
         ],
         "min": [
           -0.6969995068311547,
-          5.582080884454969,
-          0.014439499295417907
+          5.582081280118275,
+          0.014439439750119493
         ]
       },
       "drawMode": 4,
-      "geometryHash": "169720c931705cb83b5caefdb65b86c874ee05cdfa397e75932e9bde69c97f7e",
-      "id": "sf.render.ash-pin.mesh.ash-plate-ear-1.primitive.0",
+      "geometryHash": "aa57caa820d278198532ed12fd33de8491703868ddade44198816e439c3c5acb",
+      "id": "sf.render.ash-pin.node.ash-plate-ear-1.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
-      "nodeId": "sf.render.ash-pin.mesh.ash-plate-ear-1",
+      "nodeId": "sf.render.ash-pin.node.ash-plate-ear-1",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          -1.6038923594220194,
-          0.41651843613437833,
+          -1.6038925620778173,
+          0.4165184614663531,
           1.2355140734564287
         ],
         "min": [
-          -2.3106175713151345,
-          0.297481612264594,
-          0.4195140434752922
+          -2.3106177739709324,
+          0.29748163759656876,
+          0.4195140941392417
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b951eb255f5e63bac02b61b8854a9936300661f19076fa62ca0bc1663b6be89",
-      "id": "sf.render.ash-pin.mesh.ash-shim.primitive.0",
+      "geometryHash": "d4975bff972fd889aa83589f628c0a7b8d8156fce5b7c9b5224ca5009b937e3c",
+      "id": "sf.render.ash-pin.node.ash-shim.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
-      "nodeId": "sf.render.ash-pin.mesh.ash-shim",
+      "nodeId": "sf.render.ash-pin.node.ash-shim",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -888,58 +888,58 @@
       "bounds": {
         "max": [
           0.23823969883398988,
-          12.481095046779838,
-          1.57059271245601
+          12.481095385905821,
+          1.5705930616089432
         ],
         "min": [
           -0.23823969883398988,
-          0.7789064600256141,
-          -1.57059271245601
+          0.7789069315228234,
+          -1.5705930616089432
         ]
       },
       "drawMode": 4,
-      "geometryHash": "777cf4411eb3a9d80c04f7b74b57cba555c41ad9c7ade3671ede3ad29cef5a2f",
-      "id": "sf.render.ash-pin.mesh.ash-spar-mesh.primitive.0",
+      "geometryHash": "4941e6812cfa0ca332ee4134a95d0084d227dfe56d295b8e382107fcc6c762f8",
+      "id": "sf.render.ash-pin.node.ash-spar-mesh.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.010",
-      "nodeId": "sf.render.ash-pin.mesh.ash-spar-mesh",
+      "nodeId": "sf.render.ash-pin.node.ash-spar-mesh",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          -0.33671501478279353,
-          0.9676398906326256,
-          -0.77871508696402
+          -0.336715065446743,
+          0.9676399919605245,
+          -0.778715188291919
         ],
         "min": [
-          -0.6832851303545198,
-          0.9227603455925077,
-          -1.125285227867721
+          -0.6832851810184692,
+          0.9227604469204067,
+          -1.12528532919562
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cdda7963a1429a67904dffbb66749ecc740ed77c642077439b938e53c562f83d",
-      "id": "sf.render.ash-pin.mesh.ash-token-0.primitive.0",
+      "geometryHash": "7289c7693e18aa35d7c38f66da42fb08350f7d5fdbbb193534a4d1193729bf30",
+      "id": "sf.render.ash-pin.node.ash-token-0.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.025",
-      "nodeId": "sf.render.ash-pin.mesh.ash-token-0",
+      "nodeId": "sf.render.ash-pin.node.ash-token-0",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          -0.6873032375238424,
+          -0.6873032881877918,
           0.9207200070190424,
-          -0.24530321600656535
+          -0.2453032413385401
         ],
         "min": [
           -0.9446969237663296,
@@ -948,14 +948,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "122861ab5e21ceecd3c3da37dd4b2fdecd8b5488a0da54ebf614a0239ea47bb2",
-      "id": "sf.render.ash-pin.mesh.ash-token-1.primitive.0",
+      "geometryHash": "c3e576d24a01461fee2a8197d607f5fb1109519dde5185054d88109b2e8cc282",
+      "id": "sf.render.ash-pin.node.ash-token-1.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.026",
-      "nodeId": "sf.render.ash-pin.mesh.ash-token-1",
+      "nodeId": "sf.render.ash-pin.node.ash-token-1",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -963,26 +963,76 @@
       "bounds": {
         "max": [
           -0.9351323807276657,
-          0.9499598948383294,
+          0.9499599961662284,
           0.35686774062739346
         ],
         "min": [
           -1.240867834325897,
-          0.9132402855014874,
-          0.0511322965286527
+          0.9132403868293864,
+          0.05113230919464007
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c91465d1e7e18b67132f00403e3f315e1a88e6dc832855108c162555fdc6984a",
-      "id": "sf.render.ash-pin.mesh.ash-token-2.primitive.0",
+      "geometryHash": "f27d29b191298b33576490cf50d1814f684e41d81eb506e75bf8e6cc9a16f152",
+      "id": "sf.render.ash-pin.node.ash-token-2.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.027",
-      "nodeId": "sf.render.ash-pin.mesh.ash-token-2",
+      "nodeId": "sf.render.ash-pin.node.ash-token-2",
       "primitiveIndex": 0,
       "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          0.15454669296741486,
+          0.04290631413459778,
+          0.3842658996582031
+        ],
+        "min": [
+          -0.15454669296741486,
+          -0.04290631413459778,
+          0.36030587553977966
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1fa3a77767c6e84daf5fb5cb7cd45075c09a1151384e12ed27a7e5b87fe42764",
+      "id": "sf.render.ash-pin.node.remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_InsetInstrumentFin0",
+      "nodeId": "sf.render.ash-pin.node.remaster-material-mechanical-brushednickel",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          0.19686870276927948,
+          0.056170087307691574,
+          0.31407174468040466
+        ],
+        "min": [
+          -0.19686870276927948,
+          -0.05617010220885277,
+          0.29354792833328247
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e1b00f15295c1574627ab32307737c9e54ef60a8fab9ef9de3a70428e6749c75",
+      "id": "sf.render.ash-pin.node.remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_ServiceWell_Inner",
+      "nodeId": "sf.render.ash-pin.node.remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 24
     }
   ],
   "hlods": [],
@@ -990,40 +1040,136 @@
   "lods": [],
   "materials": [
     {
-      "hash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
-      "id": "material:042af3f5b04a408797d21b47",
-      "name": "furniture_bare_steel",
+      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "id": "material:09306e58ed6387f8ee509fc5",
+      "name": "Material_Mechanical_BrushedNickel",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "furniture_bare_steel_baseColor",
+          "name": "Material_Mechanical_BrushedNickel_base",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_bare_steel_orm",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_bare_steel_normal",
+          "name": "Material_Mechanical_BrushedNickel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_bare_steel_orm",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "2c420cb20907deda2f1a1b3cc4a04ddd293fc6e0f576efbe9d6ad70115624975",
-      "id": "material:2c420cb20907deda2f1a1b3c",
+      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "id": "material:9b606ffef39761a1e7cc390d",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
+      "id": "material:b6096d8a315bf4d19f719ab7",
+      "name": "Material_Hull_DeepSeaEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_DeepSeaEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
+      "id": "material:d75684dbd82479f6e5eba655",
       "name": "furniture_identity_plate",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1052,75 +1198,11 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
-      "id": "material:6ba888af1e572a80fd8d795a",
-      "name": "furniture_painted_shell",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "furniture_painted_shell_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_painted_shell_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_painted_shell_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_painted_shell_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
-      "id": "material:9d347080e13ee4faa8b858e1",
-      "name": "furniture_structural_alloy",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "furniture_structural_alloy_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_structural_alloy_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_structural_alloy_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_structural_alloy_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.ash-pin.mesh.ash-ballast-link-0",
+      "id": "sf.render.ash-pin.node.ash-ballast-link-0",
       "localTransform": [
         1,
         0,
@@ -1146,7 +1228,7 @@
         0,
         0
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1169,7 +1251,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-ballast-link-1",
+      "id": "sf.render.ash-pin.node.ash-ballast-link-1",
       "localTransform": [
         1,
         0,
@@ -1195,7 +1277,7 @@
         0,
         1
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1218,7 +1300,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-ballast-link-2",
+      "id": "sf.render.ash-pin.node.ash-ballast-link-2",
       "localTransform": [
         1,
         0,
@@ -1244,7 +1326,7 @@
         0,
         2
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1267,7 +1349,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-ballast-link-3",
+      "id": "sf.render.ash-pin.node.ash-ballast-link-3",
       "localTransform": [
         1,
         0,
@@ -1293,7 +1375,7 @@
         0,
         3
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1316,7 +1398,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-ballast-link-4",
+      "id": "sf.render.ash-pin.node.ash-ballast-link-4",
       "localTransform": [
         1,
         0,
@@ -1342,7 +1424,7 @@
         0,
         4
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1365,7 +1447,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-base",
+      "id": "sf.render.ash-pin.node.ash-base",
       "localTransform": [
         1,
         0,
@@ -1391,7 +1473,7 @@
         0,
         5
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1414,7 +1496,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-cage-arm",
+      "id": "sf.render.ash-pin.node.ash-cage-arm",
       "localTransform": [
         1,
         0,
@@ -1441,7 +1523,7 @@
         22,
         0
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1450,21 +1532,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-cage-bar-0",
+      "id": "sf.render.ash-pin.node.ash-cage-bar-0",
       "localTransform": [
         1,
         0,
@@ -1491,7 +1573,7 @@
         22,
         1
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1500,21 +1582,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-cage-bar-1",
+      "id": "sf.render.ash-pin.node.ash-cage-bar-1",
       "localTransform": [
         1,
         0,
@@ -1541,7 +1623,7 @@
         22,
         2
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1550,21 +1632,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-cage-bar-2",
+      "id": "sf.render.ash-pin.node.ash-cage-bar-2",
       "localTransform": [
         1,
         0,
@@ -1591,7 +1673,7 @@
         22,
         3
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1600,21 +1682,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-cage-bar-3",
+      "id": "sf.render.ash-pin.node.ash-cage-bar-3",
       "localTransform": [
         1,
         0,
@@ -1641,7 +1723,7 @@
         22,
         4
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1650,21 +1732,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-cage-ring",
+      "id": "sf.render.ash-pin.node.ash-cage-ring",
       "localTransform": [
         1,
         0,
@@ -1691,7 +1773,7 @@
         22,
         5
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1700,21 +1782,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-cage-ring-lo",
+      "id": "sf.render.ash-pin.node.ash-cage-ring-lo",
       "localTransform": [
         1,
         0,
@@ -1741,7 +1823,7 @@
         22,
         6
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1750,21 +1832,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-chain-eye-a",
+      "id": "sf.render.ash-pin.node.ash-chain-eye-a",
       "localTransform": [
         1,
         0,
@@ -1790,7 +1872,7 @@
         0,
         6
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1813,7 +1895,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-chain-eye-b",
+      "id": "sf.render.ash-pin.node.ash-chain-eye-b",
       "localTransform": [
         1,
         0,
@@ -1839,7 +1921,7 @@
         0,
         7
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1862,7 +1944,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-foot-0",
+      "id": "sf.render.ash-pin.node.ash-foot-0",
       "localTransform": [
         1,
         0,
@@ -1888,7 +1970,7 @@
         0,
         8
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1911,7 +1993,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-foot-1",
+      "id": "sf.render.ash-pin.node.ash-foot-1",
       "localTransform": [
         1,
         0,
@@ -1937,7 +2019,7 @@
         0,
         9
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -1960,7 +2042,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-foot-2",
+      "id": "sf.render.ash-pin.node.ash-foot-2",
       "localTransform": [
         1,
         0,
@@ -1986,7 +2068,7 @@
         0,
         10
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2009,7 +2091,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-foot-3",
+      "id": "sf.render.ash-pin.node.ash-foot-3",
       "localTransform": [
         1,
         0,
@@ -2035,7 +2117,7 @@
         0,
         11
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2058,7 +2140,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-foot-brace-0",
+      "id": "sf.render.ash-pin.node.ash-foot-brace-0",
       "localTransform": [
         1,
         0,
@@ -2084,7 +2166,7 @@
         0,
         12
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2107,7 +2189,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-foot-brace-1",
+      "id": "sf.render.ash-pin.node.ash-foot-brace-1",
       "localTransform": [
         1,
         0,
@@ -2133,7 +2215,7 @@
         0,
         13
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2156,7 +2238,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-foot-brace-2",
+      "id": "sf.render.ash-pin.node.ash-foot-brace-2",
       "localTransform": [
         1,
         0,
@@ -2182,7 +2264,7 @@
         0,
         14
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2205,7 +2287,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-foot-brace-3",
+      "id": "sf.render.ash-pin.node.ash-foot-brace-3",
       "localTransform": [
         1,
         0,
@@ -2231,7 +2313,7 @@
         0,
         15
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2254,7 +2336,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-name-plate",
+      "id": "sf.render.ash-pin.node.ash-name-plate",
       "localTransform": [
         1,
         0,
@@ -2281,7 +2363,7 @@
         22,
         7
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2290,21 +2372,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-offering-eye-a",
+      "id": "sf.render.ash-pin.node.ash-offering-eye-a",
       "localTransform": [
         1,
         0,
@@ -2330,7 +2412,7 @@
         0,
         16
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2353,7 +2435,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-offering-eye-b",
+      "id": "sf.render.ash-pin.node.ash-offering-eye-b",
       "localTransform": [
         1,
         0,
@@ -2379,7 +2461,7 @@
         0,
         17
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2402,7 +2484,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-offering-wire-0",
+      "id": "sf.render.ash-pin.node.ash-offering-wire-0",
       "localTransform": [
         1,
         0,
@@ -2428,7 +2510,7 @@
         0,
         18
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2451,7 +2533,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-offering-wire-1",
+      "id": "sf.render.ash-pin.node.ash-offering-wire-1",
       "localTransform": [
         1,
         0,
@@ -2477,7 +2559,7 @@
         0,
         19
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2500,7 +2582,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-offering-wire-2",
+      "id": "sf.render.ash-pin.node.ash-offering-wire-2",
       "localTransform": [
         1,
         0,
@@ -2526,7 +2608,7 @@
         0,
         20
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2549,7 +2631,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-plate-backing-bar",
+      "id": "sf.render.ash-pin.node.ash-plate-backing-bar",
       "localTransform": [
         1,
         0,
@@ -2576,7 +2658,7 @@
         22,
         8
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2585,21 +2667,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-plate-bolt-0",
+      "id": "sf.render.ash-pin.node.ash-plate-bolt-0",
       "localTransform": [
         1,
         0,
@@ -2626,7 +2708,7 @@
         22,
         9
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2635,21 +2717,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-plate-bolt-1",
+      "id": "sf.render.ash-pin.node.ash-plate-bolt-1",
       "localTransform": [
         1,
         0,
@@ -2676,7 +2758,7 @@
         22,
         10
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2685,21 +2767,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-plate-ear-0",
+      "id": "sf.render.ash-pin.node.ash-plate-ear-0",
       "localTransform": [
         1,
         0,
@@ -2726,7 +2808,7 @@
         22,
         11
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2735,21 +2817,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-plate-ear-1",
+      "id": "sf.render.ash-pin.node.ash-plate-ear-1",
       "localTransform": [
         1,
         0,
@@ -2776,7 +2858,7 @@
         22,
         12
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2785,21 +2867,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-shim",
+      "id": "sf.render.ash-pin.node.ash-shim",
       "localTransform": [
         1,
         0,
@@ -2825,7 +2907,7 @@
         0,
         21
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2848,7 +2930,56 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-spar-mesh",
+      "id": "sf.render.ash-pin.node.ash-spar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0.9743700450632371,
+        0.22495115932393972,
+        0,
+        0,
+        -0.22495115932393972,
+        0.9743700450632371,
+        0,
+        0,
+        1.950000286102295,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "ash_spar",
+      "nodeName": "ash_spar",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ash-pin.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.3128582461381746,
+        0.7648339631544093,
+        0,
+        0,
+        -0.7648339631544093,
+        3.3128582461381746,
+        0,
+        0,
+        6.630001158714322,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ash-pin.node.ash-spar-mesh",
       "localTransform": [
         1,
         0,
@@ -2875,7 +3006,7 @@
         22,
         13
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.ash-spar",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2884,21 +3015,21 @@
         0,
         0,
         0,
-        3.3128582920207617,
-        0.7648337618012957,
+        3.3128582461381746,
+        0.7648339631544093,
         0,
         0,
-        -0.7648337618012957,
-        3.3128582920207617,
+        -0.7648339631544093,
+        3.3128582461381746,
         0,
         0,
-        6.630000753402726,
+        6.630001158714322,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-token-0",
+      "id": "sf.render.ash-pin.node.ash-token-0",
       "localTransform": [
         1,
         0,
@@ -2924,7 +3055,7 @@
         0,
         23
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2947,7 +3078,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-token-1",
+      "id": "sf.render.ash-pin.node.ash-token-1",
       "localTransform": [
         1,
         0,
@@ -2973,7 +3104,7 @@
         0,
         24
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -2996,7 +3127,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.mesh.ash-token-2",
+      "id": "sf.render.ash-pin.node.ash-token-2",
       "localTransform": [
         1,
         0,
@@ -3022,7 +3153,7 @@
         0,
         25
       ],
-      "parentId": "sf.render.ash-pin.root",
+      "parentId": "sf.render.ash-pin.node.place-ash-pin",
       "role": "immutable",
       "spatialClusterId": "sf.render.ash-pin.body",
       "worldTransform": [
@@ -3045,7 +3176,7 @@
       ]
     },
     {
-      "id": "sf.render.ash-pin.root",
+      "id": "sf.render.ash-pin.node.place-ash-pin",
       "localTransform": [
         3.4000000953674316,
         0,
@@ -3065,7 +3196,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "place_ash_pin",
       "nodeName": "place_ash_pin",
       "nodePath": [
         0
@@ -3091,202 +3222,300 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.ash-pin.node.remaster-material-mechanical-brushednickel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ash-pin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ash-pin.node.remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ash-pin.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "ed848116244a6c94ae4af94c7ce47af04f3bb4b30544a06ca13ba857fed3e005"
+      "sha256": "394aa4ec61462ea023a8026d77890927203045279a347d25d742e7195685f833"
     },
     "sourceGlb": {
-      "bytes": 170196,
-      "sha256": "1be79a9ae0d3652b66db455c5e38a9c8c2135f07bf0c6378abc44dbbaa0e939f",
+      "bytes": 142344,
+      "sha256": "621d2ff3b1b33beb7a97df7d280080c5564a4ddacb3926ea55ab5d98477a8809",
       "uri": "place_ash_pin.glb"
     },
     "sourceManifest": {
-      "bytes": 159409,
-      "sha256": "744cb0ede1c62d560bfd2e23bfc1b9f5fb5065ec409718e44f95bd1f531921e0",
+      "bytes": 169401,
+      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 215372,
-    "sha256": "f7f5d395f4fd9ad78f077724573d80e0759da4a4dd24763c97055be853000c63",
+    "bytes": 198972,
+    "sha256": "05f100d9c90e8f52e57980bdfcf77ea1010e74d38199446e4b2c5b98b19e680c",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        6.2405065615867645,
+        6.212462641848484,
         0
       ],
       "max": [
-        2.4284051741825863,
-        12.481095046779838,
-        2.501254867140119
+        2.428405376838384,
+        12.481095385905821,
+        2.501255272451715
       ],
       "min": [
-        -2.4284051741825863,
-        -0.00008192360630943085,
-        -2.501254867140119
+        -2.428405376838384,
+        -0.05617010220885277,
+        -2.501255272451715
       ],
       "size": [
-        4.856810348365173,
-        12.481176970386148,
-        5.002509734280238
+        4.856810753676768,
+        12.537265488114674,
+        5.00251054490343
       ]
     },
     "hidden": [],
     "legacyPart": false,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 39
+      "ceramic": 23,
+      "hull": 4,
+      "mechanical": 14
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 2,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 30,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 31,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
@@ -3296,32 +3525,32 @@
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 34,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -3337,9 +3566,19 @@
         "allowTextures": true,
         "planIndex": 41,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 42,
+    "nodeCount": 44,
     "primitives": [
       {
         "canopy": false,
@@ -3921,15 +4160,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -3947,15 +4186,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -3973,15 +4212,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -3999,15 +4238,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -4025,15 +4264,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -4051,15 +4290,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -4077,15 +4316,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -4103,15 +4342,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -4129,15 +4368,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -4155,15 +4394,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -4181,15 +4420,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -4207,15 +4446,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -4233,15 +4472,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -4259,15 +4498,15 @@
           0,
           0,
           0,
-          3.3128582920207617,
-          0.7648337618012957,
+          3.3128582461381746,
+          0.7648339631544093,
           0,
           0,
-          -0.7648337618012957,
-          3.3128582920207617,
+          -0.7648339631544093,
+          3.3128582461381746,
           0,
           0,
-          6.630000753402726,
+          6.630001158714322,
           0,
           1
         ],
@@ -4354,70 +4593,129 @@
         "tags": {
           "canopy": false
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ash_pin.glb"
   },
-  "runtimeHash": "40bfd1aac6b9d266f10bf2bd9233a21cff64b54ece2f6b38bf666c534c8b5e98",
+  "runtimeHash": "a384b6acaa36ed1f4b7f2f736b9b4fbb4e71b3a498a9cea16f5bb35798ddd45c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          2.4284051741825863,
-          12.481095046779838,
-          2.501254867140119
+          2.428405376838384,
+          12.481095385905821,
+          2.501255272451715
         ],
         "min": [
-          -2.4284051741825863,
-          -0.00008192360630943085,
-          -2.501254867140119
+          -2.428405376838384,
+          -0.05617010220885277,
+          -2.501255272451715
         ]
       },
       "id": "sf.render.ash-pin.body",
       "nodeIds": [
-        "sf.render.ash-pin.mesh.ash-ballast-link-0",
-        "sf.render.ash-pin.mesh.ash-ballast-link-1",
-        "sf.render.ash-pin.mesh.ash-ballast-link-2",
-        "sf.render.ash-pin.mesh.ash-ballast-link-3",
-        "sf.render.ash-pin.mesh.ash-ballast-link-4",
-        "sf.render.ash-pin.mesh.ash-base",
-        "sf.render.ash-pin.mesh.ash-cage-arm",
-        "sf.render.ash-pin.mesh.ash-cage-bar-0",
-        "sf.render.ash-pin.mesh.ash-cage-bar-1",
-        "sf.render.ash-pin.mesh.ash-cage-bar-2",
-        "sf.render.ash-pin.mesh.ash-cage-bar-3",
-        "sf.render.ash-pin.mesh.ash-cage-ring",
-        "sf.render.ash-pin.mesh.ash-cage-ring-lo",
-        "sf.render.ash-pin.mesh.ash-chain-eye-a",
-        "sf.render.ash-pin.mesh.ash-chain-eye-b",
-        "sf.render.ash-pin.mesh.ash-foot-0",
-        "sf.render.ash-pin.mesh.ash-foot-1",
-        "sf.render.ash-pin.mesh.ash-foot-2",
-        "sf.render.ash-pin.mesh.ash-foot-3",
-        "sf.render.ash-pin.mesh.ash-foot-brace-0",
-        "sf.render.ash-pin.mesh.ash-foot-brace-1",
-        "sf.render.ash-pin.mesh.ash-foot-brace-2",
-        "sf.render.ash-pin.mesh.ash-foot-brace-3",
-        "sf.render.ash-pin.mesh.ash-name-plate",
-        "sf.render.ash-pin.mesh.ash-offering-eye-a",
-        "sf.render.ash-pin.mesh.ash-offering-eye-b",
-        "sf.render.ash-pin.mesh.ash-offering-wire-0",
-        "sf.render.ash-pin.mesh.ash-offering-wire-1",
-        "sf.render.ash-pin.mesh.ash-offering-wire-2",
-        "sf.render.ash-pin.mesh.ash-plate-backing-bar",
-        "sf.render.ash-pin.mesh.ash-plate-bolt-0",
-        "sf.render.ash-pin.mesh.ash-plate-bolt-1",
-        "sf.render.ash-pin.mesh.ash-plate-ear-0",
-        "sf.render.ash-pin.mesh.ash-plate-ear-1",
-        "sf.render.ash-pin.mesh.ash-shim",
-        "sf.render.ash-pin.mesh.ash-spar-mesh",
-        "sf.render.ash-pin.mesh.ash-token-0",
-        "sf.render.ash-pin.mesh.ash-token-1",
-        "sf.render.ash-pin.mesh.ash-token-2",
-        "sf.render.ash-pin.root"
+        "sf.render.ash-pin.node.ash-ballast-link-0",
+        "sf.render.ash-pin.node.ash-ballast-link-1",
+        "sf.render.ash-pin.node.ash-ballast-link-2",
+        "sf.render.ash-pin.node.ash-ballast-link-3",
+        "sf.render.ash-pin.node.ash-ballast-link-4",
+        "sf.render.ash-pin.node.ash-base",
+        "sf.render.ash-pin.node.ash-cage-arm",
+        "sf.render.ash-pin.node.ash-cage-bar-0",
+        "sf.render.ash-pin.node.ash-cage-bar-1",
+        "sf.render.ash-pin.node.ash-cage-bar-2",
+        "sf.render.ash-pin.node.ash-cage-bar-3",
+        "sf.render.ash-pin.node.ash-cage-ring",
+        "sf.render.ash-pin.node.ash-cage-ring-lo",
+        "sf.render.ash-pin.node.ash-chain-eye-a",
+        "sf.render.ash-pin.node.ash-chain-eye-b",
+        "sf.render.ash-pin.node.ash-foot-0",
+        "sf.render.ash-pin.node.ash-foot-1",
+        "sf.render.ash-pin.node.ash-foot-2",
+        "sf.render.ash-pin.node.ash-foot-3",
+        "sf.render.ash-pin.node.ash-foot-brace-0",
+        "sf.render.ash-pin.node.ash-foot-brace-1",
+        "sf.render.ash-pin.node.ash-foot-brace-2",
+        "sf.render.ash-pin.node.ash-foot-brace-3",
+        "sf.render.ash-pin.node.ash-name-plate",
+        "sf.render.ash-pin.node.ash-offering-eye-a",
+        "sf.render.ash-pin.node.ash-offering-eye-b",
+        "sf.render.ash-pin.node.ash-offering-wire-0",
+        "sf.render.ash-pin.node.ash-offering-wire-1",
+        "sf.render.ash-pin.node.ash-offering-wire-2",
+        "sf.render.ash-pin.node.ash-plate-backing-bar",
+        "sf.render.ash-pin.node.ash-plate-bolt-0",
+        "sf.render.ash-pin.node.ash-plate-bolt-1",
+        "sf.render.ash-pin.node.ash-plate-ear-0",
+        "sf.render.ash-pin.node.ash-plate-ear-1",
+        "sf.render.ash-pin.node.ash-shim",
+        "sf.render.ash-pin.node.ash-spar",
+        "sf.render.ash-pin.node.ash-spar-mesh",
+        "sf.render.ash-pin.node.ash-token-0",
+        "sf.render.ash-pin.node.ash-token-1",
+        "sf.render.ash-pin.node.ash-token-2",
+        "sf.render.ash-pin.node.place-ash-pin",
+        "sf.render.ash-pin.node.remaster-material-mechanical-brushednickel",
+        "sf.render.ash-pin.node.remaster-material-mechanical-shadowenamel"
       ]
     }
   ]

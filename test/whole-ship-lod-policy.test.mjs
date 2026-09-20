@@ -43,6 +43,31 @@ test('live lod admission never leaves a packaged lod0 for an unpackaged sibling'
   }
 });
 
+test('first-sector roles use the distance family of their selected visual body', () => {
+  const cases = [
+    [{ defId: 'ship_hornet', trafficRole: 'pirate' }, 'wasp_production_v1'],
+    [{ defId: 'ship_drifter', trafficRole: 'smuggler' }, 'drifter_production_v1'],
+    [{ defId: 'ship_mule', trafficRole: 'express' }, 'massline_express_liner_v1'],
+    [{ defId: 'ship_mule' }, 'mule_production_v1'],
+    [{ defId: 'ship_atlas' }, 'atlas_production_v1'],
+    [{ defId: 'ship_warden' }, 'warden_production_v1'],
+    [{ defId: 'ship_hornet', lootTableId: 'lancer_sniper' }, 'wasp_production_v1'],
+  ];
+  for (const [data, stem] of cases) {
+    const ship = { type: 'ship', data };
+    assert.equal(wholeShipLodFileForEntity(ship, 'lod2', { requiredWholeShip: true }),
+      `wholeships/${stem}_lod2.glb`, JSON.stringify(data));
+  }
+});
+
+test('a faction kit never changes livery to a base-body distance sibling', () => {
+  const ship = { type: 'ship', factionId: 'faction_scn', data: { defId: 'ship_wasp', trafficRole: 'patrol' } };
+  const visual = wholeShipVisualForEntity(ship, { requiredWholeShip: true });
+  assert.equal(visual.file, 'wholeships/wasp_scn_patrol.glb');
+  assert.equal(visual.lodFamily, undefined);
+  assert.equal(wholeShipLodFileForEntity(ship, 'lod2', { requiredWholeShip: true }), visual.file);
+});
+
 test('player ships never install a demotion family even when a catalog exists', () => {
   const player = { type: 'ship', isPlayer: true, data: { defId: 'ship_kestrel' } };
   const selection = wholeShipVisualForEntity(player, { requiredWholeShip: true });

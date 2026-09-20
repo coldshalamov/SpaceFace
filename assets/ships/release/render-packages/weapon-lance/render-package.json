@@ -16,7 +16,7 @@
         0,
         1,
         0,
-        7.1,
+        7.099999904632568,
         0,
         0,
         1
@@ -26,7 +26,7 @@
         0,
         5
       ],
-      "parentNodeId": "sf.render.weapon-lance.root",
+      "parentNodeId": "sf.render.weapon-lance.node.weapon-lance",
       "worldTransform": [
         1,
         0,
@@ -40,7 +40,7 @@
         0,
         1,
         0,
-        7.1,
+        7.099999904632568,
         0,
         0,
         1
@@ -53,9 +53,84 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "770d30c74c3b0d3bc94e89e6c5bf4d4f80209cf51b5018d93253b6e0cabdaabb",
+  "contentHash": "94c023807f215dbde84b42e9911dcb88ccbc7de18c1891cedd17e5fdf92edbef",
   "dynamicGroups": [],
   "geometry": [
+    {
+      "bounds": {
+        "max": [
+          6.852749824523926,
+          0.47063595056533813,
+          0.47063595056533813
+        ],
+        "min": [
+          2.3010001182556152,
+          -0.47063595056533813,
+          -0.47063595056533813
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7d12b90cdf66a580b3d197f639373a0ad9dd4d6c66b62f984c6465592ef82826",
+      "id": "sf.render.weapon-lance.node.remaster-material-hull-vitreousceramic.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_FoldedLancePetal_0",
+      "nodeId": "sf.render.weapon-lance.node.remaster-material-hull-vitreousceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 288
+    },
+    {
+      "bounds": {
+        "max": [
+          7.296450138092041,
+          0.2032945603132248,
+          0.2032945603132248
+        ],
+        "min": [
+          6.760950088500977,
+          -0.2032945603132248,
+          -0.2032945603132248
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "90058f17f4223ca4624df5006ca98648d81d923c59d3c0b692417508b1286810",
+      "id": "sf.render.weapon-lance.node.remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_OpticSocket",
+      "nodeId": "sf.render.weapon-lance.node.remaster-material-mechanical-brushednickel",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5719856023788452,
+          0.16483403742313385,
+          0.20272508263587952
+        ],
+        "min": [
+          0.2379566878080368,
+          0.12350577116012573,
+          -0.20272499322891235
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e554334b5a2d6d7c8b3e88342541714fd12aa771fc80553032542f1e1dfb7a8f",
+      "id": "sf.render.weapon-lance.node.remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_ServiceWell_Inner",
+      "nodeId": "sf.render.weapon-lance.node.remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
     {
       "bounds": {
         "max": [
@@ -70,41 +145,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "77b2b8a797ccb0a60da34c1eb95a3ff1d4004e2e1e654d73d6ec4835a3ae690b",
-      "id": "sf.render.weapon-lance.mesh.weapon-lance-material-accent-merged.primitive.0",
+      "geometryHash": "7a39f2e2b8f7375a303ee617dbb9ae88a47ef506af6addd0d8514df7180b6561",
+      "id": "sf.render.weapon-lance.node.weapon-lance-material-accent-merged.primitive.0",
       "indexCount": 1776,
       "indexed": true,
-      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialHash": "3e89ecd14466b59bdaf35c00c9a37317f7966cd6ad117b606a0d63b466a122b5",
       "materialPipelineKey": "opaque",
       "meshName": "weapon_lance_Material_Accent_Merged",
-      "nodeId": "sf.render.weapon-lance.mesh.weapon-lance-material-accent-merged",
+      "nodeId": "sf.render.weapon-lance.node.weapon-lance-material-accent-merged",
       "primitiveIndex": 0,
-      "vertexCount": 317
+      "vertexCount": 438
     },
     {
       "bounds": {
         "max": [
           4.949999809265137,
-          0.39991453289985657,
+          0.059923090040683746,
           0.8498985171318054
         ],
         "min": [
-          -0.30000001192092896,
-          -0.39991453289985657,
+          2.1500372886657715,
+          -0.059923090040683746,
           -0.8498985171318054
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1ea20a747aa770a881e5b18cb4645bfd82312c6cb5dd02f4deb4e23c1f9aafe4",
-      "id": "sf.render.weapon-lance.mesh.weapon-lance-material-hull-merged.primitive.0",
-      "indexCount": 696,
+      "geometryHash": "cee79f23a7c30a43650772a6cb217ca86e6b40fb02c43e338dea5869eaaf9e7b",
+      "id": "sf.render.weapon-lance.node.weapon-lance-material-hull-merged.primitive.0",
+      "indexCount": 120,
       "indexed": true,
-      "materialHash": "20b7fe243667c6ee80e25834cc0587cb3cfa1de939c29b75d26245dcd4e59d70",
+      "materialHash": "fd5cd111187e5e081661850337b4cc777991e0e7eeacd898f17f132e3e7a2262",
       "materialPipelineKey": "opaque",
-      "meshName": "weapon_lance_Material_Hull_Merged",
-      "nodeId": "sf.render.weapon-lance.mesh.weapon-lance-material-hull-merged",
+      "meshName": "weapon_lance_Material_Hull_Merged.001",
+      "nodeId": "sf.render.weapon-lance.node.weapon-lance-material-hull-merged",
       "primitiveIndex": 0,
-      "vertexCount": 174
+      "vertexCount": 42
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4001173973083496,
+          0.39991453289985657,
+          0.574877142906189
+        ],
+        "min": [
+          -0.30000001192092896,
+          -0.39991453289985657,
+          -0.574877142906189
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e1b709e55aafc2e2c468453898474e09316e3257019c65e3ed6072a07888ca80",
+      "id": "sf.render.weapon-lance.node.weapon-lance-material-hull-merged.primitive.1",
+      "indexCount": 996,
+      "indexed": true,
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialPipelineKey": "opaque",
+      "meshName": "weapon_lance_Material_Hull_Merged.001",
+      "nodeId": "sf.render.weapon-lance.node.weapon-lance-material-hull-merged",
+      "primitiveIndex": 1,
+      "vertexCount": 648
     },
     {
       "bounds": {
@@ -120,16 +220,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab1023b6b5ad6d666745ac5facff66717be33af233c2b643485a06d09673c22e",
-      "id": "sf.render.weapon-lance.mesh.weapon-lance-material-mechanical-merged.primitive.0",
+      "geometryHash": "7ed11c589f99870c9cf798d3ea0911752db0a669d91c61e3ab3aad6c02b64266",
+      "id": "sf.render.weapon-lance.node.weapon-lance-material-mechanical-merged.primitive.0",
       "indexCount": 864,
       "indexed": true,
-      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialHash": "daf05c172b4514b994d970c22aa2c6114dbe4d2095eb8405346a036c8b9293fe",
       "materialPipelineKey": "opaque",
       "meshName": "weapon_lance_Material_Mechanical_Merged",
-      "nodeId": "sf.render.weapon-lance.mesh.weapon-lance-material-mechanical-merged",
+      "nodeId": "sf.render.weapon-lance.node.weapon-lance-material-mechanical-merged",
       "primitiveIndex": 0,
-      "vertexCount": 152
+      "vertexCount": 264
     }
   ],
   "hlods": [],
@@ -137,8 +237,118 @@
   "lods": [],
   "materials": [
     {
-      "hash": "20b7fe243667c6ee80e25834cc0587cb3cfa1de939c29b75d26245dcd4e59d70",
-      "id": "material:20b7fe243667c6ee80e25834",
+      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "id": "material:09306e58ed6387f8ee509fc5",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "3e89ecd14466b59bdaf35c00c9a37317f7966cd6ad117b606a0d63b466a122b5",
+      "id": "material:3e89ecd14466b59bdaf35c00",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "id": "material:9b606ffef39761a1e7cc390d",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "daf05c172b4514b994d970c22aa2c6114dbe4d2095eb8405346a036c8b9293fe",
+      "id": "material:daf05c172b4514b994d970c2",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "fd5cd111187e5e081661850337b4cc777991e0e7eeacd898f17f132e3e7a2262",
+      "id": "material:fd5cd111187e5e0816618503",
       "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -167,172 +377,11 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
-      "id": "material:4bbfc0af06e03d63cd7b8818",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
-      "id": "material:7af6f768ac4f1f4c9ee04b14",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": []
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.weapon-lance.mesh.weapon-lance-material-accent-merged",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "weapon_lance_Material_Accent_Merged",
-      "nodeName": "weapon_lance_Material_Accent_Merged",
-      "nodePath": [
-        0,
-        11
-      ],
-      "parentId": "sf.render.weapon-lance.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.weapon-lance.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.weapon-lance.mesh.weapon-lance-material-hull-merged",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "weapon_lance_Material_Hull_Merged",
-      "nodeName": "weapon_lance_Material_Hull_Merged",
-      "nodePath": [
-        0,
-        9
-      ],
-      "parentId": "sf.render.weapon-lance.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.weapon-lance.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.weapon-lance.mesh.weapon-lance-material-mechanical-merged",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "weapon_lance_Material_Mechanical_Merged",
-      "nodeName": "weapon_lance_Material_Mechanical_Merged",
-      "nodePath": [
-        0,
-        10
-      ],
-      "parentId": "sf.render.weapon-lance.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.weapon-lance.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.weapon-lance.root",
+      "id": "sf.render.weapon-lance.node.hook-emissive",
       "localTransform": [
         1,
         0,
@@ -352,7 +401,695 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "HOOK_Emissive",
+      "nodeName": "HOOK_Emissive",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.lance-crystal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.550000190734863,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Lance_Crystal",
+      "nodeName": "Lance_Crystal",
+      "nodePath": [
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.weapon-lance.node.hook-emissive",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.550000190734863,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.lance-fin-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.1500000953674316,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Lance_Fin_-1",
+      "nodeName": "Lance_Fin_-1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.1500000953674316,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.lance-fin-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.1500000953674316,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Lance_Fin_1",
+      "nodeName": "Lance_Fin_1",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.1500000953674316,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.lance-focus-2-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.0999999046325684,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Lance_Focus_2.1",
+      "nodeName": "Lance_Focus_2.1",
+      "nodePath": [
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.weapon-lance.node.hook-emissive",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.0999999046325684,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.lance-focus-3-15",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.1500000953674316,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Lance_Focus_3.15",
+      "nodeName": "Lance_Focus_3.15",
+      "nodePath": [
+        0,
+        0,
+        2
+      ],
+      "parentId": "sf.render.weapon-lance.node.hook-emissive",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.1500000953674316,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.lance-focus-4-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.199999809265137,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Lance_Focus_4.2",
+      "nodeName": "Lance_Focus_4.2",
+      "nodePath": [
+        0,
+        0,
+        3
+      ],
+      "parentId": "sf.render.weapon-lance.node.hook-emissive",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.199999809265137,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.lance-focus-5-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.199999809265137,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Lance_Focus_5.2",
+      "nodeName": "Lance_Focus_5.2",
+      "nodePath": [
+        0,
+        0,
+        4
+      ],
+      "parentId": "sf.render.weapon-lance.node.hook-emissive",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.199999809265137,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.lance-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.550000011920929,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Lance_Root",
+      "nodeName": "Lance_Root",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.550000011920929,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.lance-spine",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.25,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "Lance_Spine",
+      "nodeName": "Lance_Spine",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.25,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.remaster-material-hull-vitreousceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Hull_VitreousCeramic",
+      "nodeName": "Remaster_Material_Hull_VitreousCeramic",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.remaster-material-mechanical-brushednickel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.socket-muzzle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.099999904632568,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Muzzle",
+      "nodeName": "SOCKET_Muzzle",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.099999904632568,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.weapon-lance",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_lance",
       "nodeName": "weapon_lance",
       "nodePath": [
         0
@@ -378,26 +1115,320 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.weapon-lance-bolt-1",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.10000000149011612,
+        0.41999998688697815,
+        0.5199999809265137,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_lance_Bolt_1",
+      "nodeName": "weapon_lance_Bolt_1",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.10000000149011612,
+        0.41999998688697815,
+        0.5199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.weapon-lance-bolt-2",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6499999761581421,
+        0.41999998688697815,
+        0.5199999809265137,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_lance_Bolt_2",
+      "nodeName": "weapon_lance_Bolt_2",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6499999761581421,
+        0.41999998688697815,
+        0.5199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.weapon-lance-bolt-3",
+      "localTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        0.41999998688697815,
+        0.5199999809265137,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "weapon_lance_Bolt_3",
+      "nodeName": "weapon_lance_Bolt_3",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        -1.3435885648505064e-7,
+        0.9999999657714511,
+        0,
+        0,
+        -0.9999999657714511,
+        -1.3435885648505064e-7,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        0.41999998688697815,
+        0.5199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.weapon-lance-material-accent-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "weapon_lance_Material_Accent_Merged",
+      "nodeName": "weapon_lance_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.weapon-lance-material-hull-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "weapon_lance_Material_Hull_Merged",
+      "nodeName": "weapon_lance_Material_Hull_Merged",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.weapon-lance.node.weapon-lance-material-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "weapon_lance_Material_Mechanical_Merged",
+      "nodeName": "weapon_lance_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.weapon-lance.node.weapon-lance",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.weapon-lance.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "d23051acb1f10ad7f344562c7773c80c9d0d8ac6b401aeb9235d7b6038088d52"
+      "sha256": "c2bee69e6faf536f207222142ad8fd9523561341b1dbfbede88177989d6b55d5"
     },
     "sourceGlb": {
-      "bytes": 389924,
-      "sha256": "ae616831b90679cb53db2c099cb255da645a2b5af1de1f51ff9557707dea985c",
+      "bytes": 425536,
+      "sha256": "a526bb5ed014e0c7bdcc20e6714065cb3a39c77050f1ea5ac1283c273c4bec64",
       "uri": "weapon_lance.glb"
     },
     "sourceManifest": {
-      "bytes": 76590,
-      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
+      "bytes": 169401,
+      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 399872,
-    "sha256": "4584bf94e6edf31c7dd25aa0334eea9e2a0692d800a7e21c1d53525e9e996634",
+    "bytes": 460080,
+    "sha256": "89753fabdcce9c541ed525eb1bf95fd5a6b00d73515848c5b4ee1058bd66d0cc",
     "uri": "render.glb"
   },
   "runtime": {
@@ -446,11 +1477,18 @@
           1
         ],
         "name": "HOOK_Emissive",
-        "planIndex": 4,
+        "planIndex": 2,
         "tags": {},
         "userData": {
           "name": "HOOK_Emissive",
-          "spacefaceHook": true
+          "spacefaceHook": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "HOOK_Emissive",
+            "recordIds": [
+              "sf.render.weapon-lance.node.hook-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
         }
       },
       {
@@ -467,7 +1505,7 @@
           0,
           1,
           0,
-          7.1,
+          7.099999904632568,
           0,
           0,
           1
@@ -494,7 +1532,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Muzzle",
             "recordIds": [
-              "sf.render.weapon-lance.anchor.socket-muzzle"
+              "sf.render.weapon-lance.anchor.socket-muzzle",
+              "sf.render.weapon-lance.node.socket-muzzle"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           },
@@ -504,27 +1543,48 @@
     ],
     "materialProfileRoles": {
       "accent": 1,
+      "ceramic": 2,
       "hull": 1,
-      "mechanical": 1
+      "mechanical": 3
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "accent"
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 19,
+    "nodeCount": 24,
     "primitives": [
       {
         "canopy": false,
@@ -546,8 +1606,60 @@
           0,
           1
         ],
-        "name": "weapon_lance_Material_Hull_Merged",
+        "name": "weapon_lance_Material_Accent_Merged",
         "planIndex": 16,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "weapon_lance_Material_Hull_Merged001",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "weapon_lance_Material_Hull_Merged001_1",
+        "planIndex": 19,
         "tags": {
           "canopy": false
         }
@@ -573,7 +1685,7 @@
           1
         ],
         "name": "weapon_lance_Material_Mechanical_Merged",
-        "planIndex": 17,
+        "planIndex": 20,
         "tags": {
           "canopy": false
         }
@@ -598,10 +1710,68 @@
           0,
           1
         ],
-        "name": "weapon_lance_Material_Accent_Merged",
-        "planIndex": 18,
+        "name": "Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 21,
         "tags": {
-          "canopy": false
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Hull_VitreousCeramic",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
         }
       }
     ],
@@ -609,6 +1779,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_lance.glb"
   },
+  "runtimeHash": "76a13f0ad0add307b4a51c079b01b7f33ad3522987cef3b3487fff7f5e26cc43",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -626,10 +1797,27 @@
       },
       "id": "sf.render.weapon-lance.body",
       "nodeIds": [
-        "sf.render.weapon-lance.mesh.weapon-lance-material-accent-merged",
-        "sf.render.weapon-lance.mesh.weapon-lance-material-hull-merged",
-        "sf.render.weapon-lance.mesh.weapon-lance-material-mechanical-merged",
-        "sf.render.weapon-lance.root"
+        "sf.render.weapon-lance.node.hook-emissive",
+        "sf.render.weapon-lance.node.lance-crystal",
+        "sf.render.weapon-lance.node.lance-fin-1",
+        "sf.render.weapon-lance.node.lance-fin-1-2",
+        "sf.render.weapon-lance.node.lance-focus-2-1",
+        "sf.render.weapon-lance.node.lance-focus-3-15",
+        "sf.render.weapon-lance.node.lance-focus-4-2",
+        "sf.render.weapon-lance.node.lance-focus-5-2",
+        "sf.render.weapon-lance.node.lance-root",
+        "sf.render.weapon-lance.node.lance-spine",
+        "sf.render.weapon-lance.node.remaster-material-hull-vitreousceramic",
+        "sf.render.weapon-lance.node.remaster-material-mechanical-brushednickel",
+        "sf.render.weapon-lance.node.remaster-material-mechanical-shadowenamel",
+        "sf.render.weapon-lance.node.socket-muzzle",
+        "sf.render.weapon-lance.node.weapon-lance",
+        "sf.render.weapon-lance.node.weapon-lance-bolt-1",
+        "sf.render.weapon-lance.node.weapon-lance-bolt-2",
+        "sf.render.weapon-lance.node.weapon-lance-bolt-3",
+        "sf.render.weapon-lance.node.weapon-lance-material-accent-merged",
+        "sf.render.weapon-lance.node.weapon-lance-material-hull-merged",
+        "sf.render.weapon-lance.node.weapon-lance-material-mechanical-merged"
       ]
     }
   ]

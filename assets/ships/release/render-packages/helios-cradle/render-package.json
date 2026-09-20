@@ -16,17 +16,17 @@
         0,
         1,
         0,
-        0.2,
-        0.4,
+        0.20000000298023224,
+        0.4000000059604645,
         0,
         1
       ],
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
-        0,
+        4,
         28
       ],
-      "parentNodeId": "sf.render.helios-cradle.root",
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "worldTransform": [
         1,
         0,
@@ -40,8 +40,8 @@
         0,
         1,
         0,
-        0.2,
-        0.4,
+        0.20000000298023224,
+        0.4000000059604645,
         0,
         1
       ]
@@ -62,17 +62,17 @@
         0,
         1,
         0,
-        0.6,
-        -2.35,
+        0.6000000238418579,
+        -2.3499999046325684,
         0,
         1
       ],
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
-        0,
+        4,
         29
       ],
-      "parentNodeId": "sf.render.helios-cradle.root",
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "worldTransform": [
         1,
         0,
@@ -86,8 +86,8 @@
         0,
         1,
         0,
-        0.6,
-        -2.35,
+        0.6000000238418579,
+        -2.3499999046325684,
         0,
         1
       ]
@@ -108,17 +108,17 @@
         0,
         1,
         0,
-        -8.7,
-        0.1,
+        -8.699999809265137,
+        0.10000000149011612,
         0,
         1
       ],
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
-        0,
+        4,
         30
       ],
-      "parentNodeId": "sf.render.helios-cradle.root",
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "worldTransform": [
         1,
         0,
@@ -132,8 +132,8 @@
         0,
         1,
         0,
-        -8.7,
-        0.1,
+        -8.699999809265137,
+        0.10000000149011612,
         0,
         1
       ]
@@ -154,17 +154,17 @@
         0,
         1,
         0,
-        8.9,
-        -1.15,
+        8.899999618530273,
+        -1.149999976158142,
         0,
         1
       ],
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
-        0,
+        4,
         31
       ],
-      "parentNodeId": "sf.render.helios-cradle.root",
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "worldTransform": [
         1,
         0,
@@ -178,8 +178,8 @@
         0,
         1,
         0,
-        8.9,
-        -1.15,
+        8.899999618530273,
+        -1.149999976158142,
         0,
         1
       ]
@@ -201,16 +201,16 @@
         1,
         0,
         1.5,
-        0.35,
-        -4.2,
+        0.3499999940395355,
+        -4.199999809265137,
         1
       ],
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
-        0,
+        4,
         32
       ],
-      "parentNodeId": "sf.render.helios-cradle.root",
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "worldTransform": [
         1,
         0,
@@ -225,8 +225,8 @@
         1,
         0,
         1.5,
-        0.35,
-        -4.2,
+        0.3499999940395355,
+        -4.199999809265137,
         1
       ]
     },
@@ -247,16 +247,16 @@
         1,
         0,
         1.5,
-        0.35,
-        4.2,
+        0.3499999940395355,
+        4.199999809265137,
         1
       ],
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
-        0,
+        4,
         33
       ],
-      "parentNodeId": "sf.render.helios-cradle.root",
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "worldTransform": [
         1,
         0,
@@ -271,8 +271,8 @@
         1,
         0,
         1.5,
-        0.35,
-        4.2,
+        0.3499999940395355,
+        4.199999809265137,
         1
       ]
     },
@@ -292,17 +292,17 @@
         0,
         1,
         0,
-        -9.1,
-        0.1,
+        -9.100000381469727,
+        0.10000000149011612,
         0,
         1
       ],
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
-        0,
+        4,
         34
       ],
-      "parentNodeId": "sf.render.helios-cradle.root",
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "worldTransform": [
         1,
         0,
@@ -316,8 +316,8 @@
         0,
         1,
         0,
-        -9.1,
-        0.1,
+        -9.100000381469727,
+        0.10000000149011612,
         0,
         1
       ]
@@ -338,17 +338,17 @@
         0,
         1,
         0,
-        -0.4,
+        -0.4000000059604645,
         3.25,
         0,
         1
       ],
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
-        0,
+        4,
         35
       ],
-      "parentNodeId": "sf.render.helios-cradle.root",
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "worldTransform": [
         1,
         0,
@@ -362,7 +362,7 @@
         0,
         1,
         0,
-        -0.4,
+        -0.4000000059604645,
         3.25,
         0,
         1
@@ -384,17 +384,17 @@
         0,
         1,
         0,
-        7.4,
-        0.55,
+        7.400000095367432,
+        0.550000011920929,
         0,
         1
       ],
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
-        0,
+        4,
         36
       ],
-      "parentNodeId": "sf.render.helios-cradle.root",
+      "parentNodeId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "worldTransform": [
         1,
         0,
@@ -408,8 +408,8 @@
         0,
         1,
         0,
-        7.4,
-        0.55,
+        7.400000095367432,
+        0.550000011920929,
         0,
         1
       ]
@@ -419,7 +419,7 @@
   "collisions": [
     {
       "id": "sf.render.helios-cradle.collision",
-      "nodeId": "sf.render.helios-cradle.mesh.collision-hull",
+      "nodeId": "sf.render.helios-cradle.node.collision-hull",
       "reference": "COLLISION_HULL"
     }
   ],
@@ -427,37 +427,37 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "349fccb2215f8fe3fe267ca37953433e814873a59d4946736c44378ea46aef1d",
+  "contentHash": "cce33865e5f4bb19cb60f53ef4145e44a722a80a9f7452ac864ed1d4608e5c35",
   "dynamicGroups": [
     {
-      "id": "sf.render.helios-cradle.mesh.lod0-hook-drive-core.dynamic",
+      "id": "sf.render.helios-cradle.node.lod0-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.helios-cradle.mesh.lod0-hook-drive-core"
+      "nodeId": "sf.render.helios-cradle.node.lod0-hook-drive-core"
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod0-hook-drive-fan.dynamic",
+      "id": "sf.render.helios-cradle.node.lod0-hook-drive-fan.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.helios-cradle.mesh.lod0-hook-drive-fan"
+      "nodeId": "sf.render.helios-cradle.node.lod0-hook-drive-fan"
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod1-hook-drive-core.dynamic",
+      "id": "sf.render.helios-cradle.node.lod1-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.helios-cradle.mesh.lod1-hook-drive-core"
+      "nodeId": "sf.render.helios-cradle.node.lod1-hook-drive-core"
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod1-hook-drive-fan.dynamic",
+      "id": "sf.render.helios-cradle.node.lod1-hook-drive-fan.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.helios-cradle.mesh.lod1-hook-drive-fan"
+      "nodeId": "sf.render.helios-cradle.node.lod1-hook-drive-fan"
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod2-hook-drive-core.dynamic",
+      "id": "sf.render.helios-cradle.node.lod2-hook-drive-core.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.helios-cradle.mesh.lod2-hook-drive-core"
+      "nodeId": "sf.render.helios-cradle.node.lod2-hook-drive-core"
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod2-hook-drive-fan.dynamic",
+      "id": "sf.render.helios-cradle.node.lod2-hook-drive-fan.dynamic",
       "kind": "dynamic-surface",
-      "nodeId": "sf.render.helios-cradle.mesh.lod2-hook-drive-fan"
+      "nodeId": "sf.render.helios-cradle.node.lod2-hook-drive-fan"
     }
   ],
   "geometry": [
@@ -476,13 +476,13 @@
       },
       "drawMode": 4,
       "geometryHash": "d8356e2ee3e6c040a9e64b414b5505d71783ea2f4e690216a853ddf643f34617",
-      "id": "sf.render.helios-cradle.mesh.collision-hull.primitive.0",
+      "id": "sf.render.helios-cradle.node.collision-hull.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": null,
       "materialPipelineKey": "non-render",
       "meshName": "Cube.149",
-      "nodeId": "sf.render.helios-cradle.mesh.collision-hull",
+      "nodeId": "sf.render.helios-cradle.node.collision-hull",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -500,14 +500,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98126d6d0da9c7175c8ddadfc307d3e397795794631e789d8536b4ae1c3a1c5b",
-      "id": "sf.render.helios-cradle.mesh.lod0-gun-assembly.primitive.0",
+      "geometryHash": "f170d2ec786da678e2942d5cce79af4ca116010c96ab145e019b74ec39e699f5",
+      "id": "sf.render.helios-cradle.node.lod0-gun-assembly.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Gun_Assembly",
-      "nodeId": "sf.render.helios-cradle.mesh.lod0-gun-assembly",
+      "nodeId": "sf.render.helios-cradle.node.lod0-gun-assembly",
       "primitiveIndex": 0,
       "vertexCount": 56
     },
@@ -526,13 +526,13 @@
       },
       "drawMode": 4,
       "geometryHash": "75512d02bef9a68e06ebfb59738c5cc437368c69a02c8e25e297c03574ce31bc",
-      "id": "sf.render.helios-cradle.mesh.lod0-hook-drive-core.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 360,
       "indexed": true,
-      "materialHash": "0e7dcb0680adc08fd8d8e0cf5471ed3053f47d88c0eae125a1d8943198cf01c7",
+      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_CORE",
-      "nodeId": "sf.render.helios-cradle.mesh.lod0-hook-drive-core",
+      "nodeId": "sf.render.helios-cradle.node.lod0-hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 144
     },
@@ -551,13 +551,13 @@
       },
       "drawMode": 4,
       "geometryHash": "ab16bff5338ce15f4ecf5f91d4a3d3b8b789ee62f0e82684084efaf31cb32904",
-      "id": "sf.render.helios-cradle.mesh.lod0-hook-drive-fan.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod0-hook-drive-fan.primitive.0",
       "indexCount": 456,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_DRIVE_FAN",
-      "nodeId": "sf.render.helios-cradle.mesh.lod0-hook-drive-fan",
+      "nodeId": "sf.render.helios-cradle.node.lod0-hook-drive-fan",
       "primitiveIndex": 0,
       "vertexCount": 176
     },
@@ -575,14 +575,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a6f481cf9886112bd0393bc81f23e16136235adc3de2448c8a054c2ea96b677e",
-      "id": "sf.render.helios-cradle.mesh.lod0-merged-material-cyan.primitive.0",
+      "geometryHash": "432e407c2cef8902b3cc2c64d0ef9a64e8fa4fd46afe885c234340f7e8d01c2e",
+      "id": "sf.render.helios-cradle.node.lod0-merged-material-cyan.primitive.0",
       "indexCount": 1572,
       "indexed": true,
-      "materialHash": "0e7dcb0680adc08fd8d8e0cf5471ed3053f47d88c0eae125a1d8943198cf01c7",
+      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Cyan",
-      "nodeId": "sf.render.helios-cradle.mesh.lod0-merged-material-cyan",
+      "nodeId": "sf.render.helios-cradle.node.lod0-merged-material-cyan",
       "primitiveIndex": 0,
       "vertexCount": 488
     },
@@ -601,13 +601,13 @@
       },
       "drawMode": 4,
       "geometryHash": "801bd4d4d6d3b3000a217e54ad291324735f655fa4b58f56fe4117080ff2dd82",
-      "id": "sf.render.helios-cradle.mesh.lod0-merged-material-glass.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod0-merged-material-glass.primitive.0",
       "indexCount": 720,
       "indexed": true,
-      "materialHash": "2bfb85a115d620a303e64a880a26adb8500b7a65f0c146435f3f69b98784e37e",
+      "materialHash": "dd306e10f3d2708d7d48eca29e518853564ecf4259770a574e6a203379a33a0a",
       "materialPipelineKey": "blend",
       "meshName": "LOD0_Merged_Material_Glass",
-      "nodeId": "sf.render.helios-cradle.mesh.lod0-merged-material-glass",
+      "nodeId": "sf.render.helios-cradle.node.lod0-merged-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 216
     },
@@ -625,16 +625,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "265c48002b7838e2fae29176bdb131d4f412a25a336998fddf2a18ed7739f24f",
-      "id": "sf.render.helios-cradle.mesh.lod0-merged-material-hull.primitive.0",
-      "indexCount": 14856,
+      "geometryHash": "381462dede63ad82b7c3d83a4573f53f4e9af20d0b031718bf16f36ec0dadec9",
+      "id": "sf.render.helios-cradle.node.lod0-merged-material-hull.primitive.0",
+      "indexCount": 16140,
       "indexed": true,
-      "materialHash": "f9bc27c14123d4c6574b39013c9e3e2babd4950b2b455bb26e886cd2352812d8",
+      "materialHash": "182a947d7d5ef5da50e2561b65d0cce4061787f79fe085bbcf2d704a92671e3c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Hull",
-      "nodeId": "sf.render.helios-cradle.mesh.lod0-merged-material-hull",
+      "nodeId": "sf.render.helios-cradle.node.lod0-merged-material-hull",
       "primitiveIndex": 0,
-      "vertexCount": 4197
+      "vertexCount": 4753
     },
     {
       "bounds": {
@@ -650,14 +650,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5557254d307365db7662fd77b7fbdc6df4b16485e99c92e927c01a80c0ba7066",
-      "id": "sf.render.helios-cradle.mesh.lod0-merged-material-mechanical.primitive.0",
+      "geometryHash": "7ac1b9143df07935139884bb06cf1128965aaffc70fe9c6215cded01ba420295",
+      "id": "sf.render.helios-cradle.node.lod0-merged-material-mechanical.primitive.0",
       "indexCount": 39816,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Mechanical",
-      "nodeId": "sf.render.helios-cradle.mesh.lod0-merged-material-mechanical",
+      "nodeId": "sf.render.helios-cradle.node.lod0-merged-material-mechanical",
       "primitiveIndex": 0,
       "vertexCount": 11283
     },
@@ -675,14 +675,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19bac9e502ec6520c831e2d289b85e7a38d82334a140a487aa21f0c1319a8418",
-      "id": "sf.render.helios-cradle.mesh.lod0-merged-material-warm.primitive.0",
+      "geometryHash": "b153e208ea2a03d9a4a4513e33dc99e56a5016a2d321e8505e62d135a06c6a70",
+      "id": "sf.render.helios-cradle.node.lod0-merged-material-warm.primitive.0",
       "indexCount": 4932,
       "indexed": true,
-      "materialHash": "9475ae8d7370d403b96fe1f0101d5452795468578483df5478d7cadcdd554b97",
+      "materialHash": "3fe75c2036792a2886fdec1b73acc6dc4511590ce2294e1fc451175892d9503e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Merged_Material_Warm",
-      "nodeId": "sf.render.helios-cradle.mesh.lod0-merged-material-warm",
+      "nodeId": "sf.render.helios-cradle.node.lod0-merged-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 1536
     },
@@ -701,15 +701,115 @@
       },
       "drawMode": 4,
       "geometryHash": "2b9e33ee0ebbb8846df39373eab58442c1d205ca24f768ee29a41036a8ac5164",
-      "id": "sf.render.helios-cradle.mesh.lod0-mining-emitter.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod0-mining-emitter.primitive.0",
       "indexCount": 204,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mining_Emitter",
-      "nodeId": "sf.render.helios-cradle.mesh.lod0-mining-emitter",
+      "nodeId": "sf.render.helios-cradle.node.lod0-mining-emitter",
       "primitiveIndex": 0,
       "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
+          1.3700000047683716,
+          1.8588558435440063,
+          3.720093250274658
+        ],
+        "min": [
+          -8.020000457763672,
+          1.1997474431991577,
+          -3.720093250274658
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "37fe00c92c67bb87e1e7f9aa053d0bac45894f8d3ba03f9e3b3a893d08176395",
+      "id": "sf.render.helios-cradle.node.lod0-remaster-material-brushedmetal-remasternickel.primitive.0",
+      "indexCount": 4416,
+      "indexed": true,
+      "materialHash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Remaster_PortCargoArmService_NickelSeam",
+      "nodeId": "sf.render.helios-cradle.node.lod0-remaster-material-brushedmetal-remasternickel",
+      "primitiveIndex": 0,
+      "vertexCount": 2864
+    },
+    {
+      "bounds": {
+        "max": [
+          1.316780924797058,
+          1.6840081214904785,
+          3.5510001182556152
+        ],
+        "min": [
+          -2.716796398162842,
+          1.5080132484436035,
+          -3.5510001182556152
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2275bbf3128ea85a2af121cc2be3500f6910ab1ef4dee8077004606a2efa2432",
+      "id": "sf.render.helios-cradle.node.lod0-remaster-material-engineceramic-remasterglazed.primitive.0",
+      "indexCount": 3960,
+      "indexed": true,
+      "materialHash": "dd71cd991f0355687d548b9e7a54ba92d30b68ab6e85814bd730402c8e167a35",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Remaster_PortCargoArmService_FoldedLeaf",
+      "nodeId": "sf.render.helios-cradle.node.lod0-remaster-material-engineceramic-remasterglazed",
+      "primitiveIndex": 0,
+      "vertexCount": 2592
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8694999814033508,
+          1.5145708322525024,
+          3.4796760082244873
+        ],
+        "min": [
+          -7.772000312805176,
+          1.2898764610290527,
+          -2.819675922393799
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d9f5b5f34891098ed89d92f2b20df37ffcdbab6c838818c49eca4ac34e524752",
+      "id": "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasterheatcopper.primitive.0",
+      "indexCount": 540,
+      "indexed": true,
+      "materialHash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Remaster_PortCargoArmService_CoolantReturn",
+      "nodeId": "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasterheatcopper",
+      "primitiveIndex": 0,
+      "vertexCount": 428
+    },
+    {
+      "bounds": {
+        "max": [
+          1.25,
+          1.2498892545700073,
+          3.5998787879943848
+        ],
+        "min": [
+          -7.900000095367432,
+          1.1851046085357666,
+          -3.5998787879943848
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b96fb9d620e613868a82b9a23d9e41181d18d7d1ff2fe53c18c4fec7cb197bd9",
+      "id": "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasteroxidized.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Remaster_PortCargoArmService_OxidizedLiner",
+      "nodeId": "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasteroxidized",
+      "primitiveIndex": 0,
+      "vertexCount": 144
     },
     {
       "bounds": {
@@ -726,13 +826,13 @@
       },
       "drawMode": 4,
       "geometryHash": "41abaccc5c849b9e42c2ab46360ae22f6afe2d5e636ee07180ca03ea13f78054",
-      "id": "sf.render.helios-cradle.mesh.lod1-gun-assembly.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod1-gun-assembly.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Gun_Assembly",
-      "nodeId": "sf.render.helios-cradle.mesh.lod1-gun-assembly",
+      "nodeId": "sf.render.helios-cradle.node.lod1-gun-assembly",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -751,13 +851,13 @@
       },
       "drawMode": 4,
       "geometryHash": "94513d04ee3c7fdcc4f029f22a698765bb87d95e36500d006a4e12cac7bc6106",
-      "id": "sf.render.helios-cradle.mesh.lod1-hook-drive-core.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "0e7dcb0680adc08fd8d8e0cf5471ed3053f47d88c0eae125a1d8943198cf01c7",
+      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_CORE",
-      "nodeId": "sf.render.helios-cradle.mesh.lod1-hook-drive-core",
+      "nodeId": "sf.render.helios-cradle.node.lod1-hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 56
     },
@@ -776,13 +876,13 @@
       },
       "drawMode": 4,
       "geometryHash": "c2656534408a8032fa3beb9f3f5b65f7610f571585975944f0ae0eedf6215c09",
-      "id": "sf.render.helios-cradle.mesh.lod1-hook-drive-fan.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod1-hook-drive-fan.primitive.0",
       "indexCount": 138,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_FAN",
-      "nodeId": "sf.render.helios-cradle.mesh.lod1-hook-drive-fan",
+      "nodeId": "sf.render.helios-cradle.node.lod1-hook-drive-fan",
       "primitiveIndex": 0,
       "vertexCount": 74
     },
@@ -801,13 +901,13 @@
       },
       "drawMode": 4,
       "geometryHash": "68776afe08412115f5458b968306859cb8c6ab2a1ee38d48424df2615e8fa63f",
-      "id": "sf.render.helios-cradle.mesh.lod1-merged-material-cyan.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod1-merged-material-cyan.primitive.0",
       "indexCount": 660,
       "indexed": true,
-      "materialHash": "0e7dcb0680adc08fd8d8e0cf5471ed3053f47d88c0eae125a1d8943198cf01c7",
+      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Cyan",
-      "nodeId": "sf.render.helios-cradle.mesh.lod1-merged-material-cyan",
+      "nodeId": "sf.render.helios-cradle.node.lod1-merged-material-cyan",
       "primitiveIndex": 0,
       "vertexCount": 276
     },
@@ -826,13 +926,13 @@
       },
       "drawMode": 4,
       "geometryHash": "ed554471223b270a04b7465ca8879f189704f6db541e07d4324b109fe0696c65",
-      "id": "sf.render.helios-cradle.mesh.lod1-merged-material-glass.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod1-merged-material-glass.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "2bfb85a115d620a303e64a880a26adb8500b7a65f0c146435f3f69b98784e37e",
+      "materialHash": "dd306e10f3d2708d7d48eca29e518853564ecf4259770a574e6a203379a33a0a",
       "materialPipelineKey": "blend",
       "meshName": "LOD1_Merged_Material_Glass",
-      "nodeId": "sf.render.helios-cradle.mesh.lod1-merged-material-glass",
+      "nodeId": "sf.render.helios-cradle.node.lod1-merged-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 120
     },
@@ -850,16 +950,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "751a14c5718cba2fb05a0eea95703f054f24439f8826ef9520ad02b63333335f",
-      "id": "sf.render.helios-cradle.mesh.lod1-merged-material-hull.primitive.0",
-      "indexCount": 6234,
+      "geometryHash": "e19505327bad1527cfaef2794ed4cc9bd2741328e7e6d94800aad6964324e489",
+      "id": "sf.render.helios-cradle.node.lod1-merged-material-hull.primitive.0",
+      "indexCount": 7446,
       "indexed": true,
-      "materialHash": "f9bc27c14123d4c6574b39013c9e3e2babd4950b2b455bb26e886cd2352812d8",
+      "materialHash": "182a947d7d5ef5da50e2561b65d0cce4061787f79fe085bbcf2d704a92671e3c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Hull",
-      "nodeId": "sf.render.helios-cradle.mesh.lod1-merged-material-hull",
+      "nodeId": "sf.render.helios-cradle.node.lod1-merged-material-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2364
+      "vertexCount": 2884
     },
     {
       "bounds": {
@@ -875,16 +975,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "341403b0a4c94692a70575bec45c7a4fb0d5d21a538dbdd839e279b83f55af53",
-      "id": "sf.render.helios-cradle.mesh.lod1-merged-material-mechanical.primitive.0",
-      "indexCount": 15222,
+      "geometryHash": "861278cb12c64d186536df70015d5f139e1b00f61d4479ad5ac59aefdf7dca14",
+      "id": "sf.render.helios-cradle.node.lod1-merged-material-mechanical.primitive.0",
+      "indexCount": 18138,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Mechanical",
-      "nodeId": "sf.render.helios-cradle.mesh.lod1-merged-material-mechanical",
+      "nodeId": "sf.render.helios-cradle.node.lod1-merged-material-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 5275
+      "vertexCount": 7243
     },
     {
       "bounds": {
@@ -900,14 +1000,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dcf6004d00a630dfd8594731a93fde1de23c503211288bebc27b00e87a8a0b42",
-      "id": "sf.render.helios-cradle.mesh.lod1-merged-material-warm.primitive.0",
+      "geometryHash": "d5d14d8aee8eca7a76cf1e9a5671795494eb29960f7ec3871bc03d3b510b3db5",
+      "id": "sf.render.helios-cradle.node.lod1-merged-material-warm.primitive.0",
       "indexCount": 978,
       "indexed": true,
-      "materialHash": "9475ae8d7370d403b96fe1f0101d5452795468578483df5478d7cadcdd554b97",
+      "materialHash": "3fe75c2036792a2886fdec1b73acc6dc4511590ce2294e1fc451175892d9503e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Merged_Material_Warm",
-      "nodeId": "sf.render.helios-cradle.mesh.lod1-merged-material-warm",
+      "nodeId": "sf.render.helios-cradle.node.lod1-merged-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 434
     },
@@ -925,14 +1025,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a2273c9ee91916d81ba26d1da848dc2beaac2641062e9a0e3bc899156eeb912",
-      "id": "sf.render.helios-cradle.mesh.lod1-mining-emitter.primitive.0",
+      "geometryHash": "6d4e3cc073b87a8bf800b766ca8bc17e0326b58ccd40bdc4540af189bb32e8b6",
+      "id": "sf.render.helios-cradle.node.lod1-mining-emitter.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mining_Emitter",
-      "nodeId": "sf.render.helios-cradle.mesh.lod1-mining-emitter",
+      "nodeId": "sf.render.helios-cradle.node.lod1-mining-emitter",
       "primitiveIndex": 0,
       "vertexCount": 32
     },
@@ -950,14 +1050,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dbe2b70c4499a9a8b6e3de3f237fe3b61b6cf1b10ef57b5bd436442634be1a90",
-      "id": "sf.render.helios-cradle.mesh.lod2-gun-assembly.primitive.0",
+      "geometryHash": "3cc7d1a4fd4915e8fc18374005eab1c1e91d6d9563c9b22e403419ef2a5a5f35",
+      "id": "sf.render.helios-cradle.node.lod2-gun-assembly.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Gun_Assembly",
-      "nodeId": "sf.render.helios-cradle.mesh.lod2-gun-assembly",
+      "nodeId": "sf.render.helios-cradle.node.lod2-gun-assembly",
       "primitiveIndex": 0,
       "vertexCount": 32
     },
@@ -976,13 +1076,13 @@
       },
       "drawMode": 4,
       "geometryHash": "804b44f2bcf82f8eb1cd9d06e85baa10cc18c11163dbb18e0b7817342da0241b",
-      "id": "sf.render.helios-cradle.mesh.lod2-hook-drive-core.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0e7dcb0680adc08fd8d8e0cf5471ed3053f47d88c0eae125a1d8943198cf01c7",
+      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_CORE",
-      "nodeId": "sf.render.helios-cradle.mesh.lod2-hook-drive-core",
+      "nodeId": "sf.render.helios-cradle.node.lod2-hook-drive-core",
       "primitiveIndex": 0,
       "vertexCount": 40
     },
@@ -1001,13 +1101,13 @@
       },
       "drawMode": 4,
       "geometryHash": "7f416918b9e4380a14ec440d5916857de04e4c7db808c67173a2f03cc2475e98",
-      "id": "sf.render.helios-cradle.mesh.lod2-hook-drive-fan.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod2-hook-drive-fan.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_FAN",
-      "nodeId": "sf.render.helios-cradle.mesh.lod2-hook-drive-fan",
+      "nodeId": "sf.render.helios-cradle.node.lod2-hook-drive-fan",
       "primitiveIndex": 0,
       "vertexCount": 30
     },
@@ -1026,13 +1126,13 @@
       },
       "drawMode": 4,
       "geometryHash": "f8afa9c96b4e6fa4585b3ac7cae3440b265d2de7b33afa90d1000977441578b8",
-      "id": "sf.render.helios-cradle.mesh.lod2-merged-material-cyan.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod2-merged-material-cyan.primitive.0",
       "indexCount": 282,
       "indexed": true,
-      "materialHash": "0e7dcb0680adc08fd8d8e0cf5471ed3053f47d88c0eae125a1d8943198cf01c7",
+      "materialHash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Cyan",
-      "nodeId": "sf.render.helios-cradle.mesh.lod2-merged-material-cyan",
+      "nodeId": "sf.render.helios-cradle.node.lod2-merged-material-cyan",
       "primitiveIndex": 0,
       "vertexCount": 154
     },
@@ -1051,13 +1151,13 @@
       },
       "drawMode": 4,
       "geometryHash": "d415db0d197d69d92ec66560381807db397f385c6b60cfb454fe9e3c405446cb",
-      "id": "sf.render.helios-cradle.mesh.lod2-merged-material-glass.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod2-merged-material-glass.primitive.0",
       "indexCount": 126,
       "indexed": true,
-      "materialHash": "2bfb85a115d620a303e64a880a26adb8500b7a65f0c146435f3f69b98784e37e",
+      "materialHash": "dd306e10f3d2708d7d48eca29e518853564ecf4259770a574e6a203379a33a0a",
       "materialPipelineKey": "blend",
       "meshName": "LOD2_Merged_Material_Glass",
-      "nodeId": "sf.render.helios-cradle.mesh.lod2-merged-material-glass",
+      "nodeId": "sf.render.helios-cradle.node.lod2-merged-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 66
     },
@@ -1075,16 +1175,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e3d21c4b034ec5017ad4da57c572f52f71a00de292e39ba55a2bfe31fb6564f",
-      "id": "sf.render.helios-cradle.mesh.lod2-merged-material-hull.primitive.0",
-      "indexCount": 2670,
+      "geometryHash": "626487ed484e13e7e358d5af9843d28779f2441b56d9232711527078bc68f5ce",
+      "id": "sf.render.helios-cradle.node.lod2-merged-material-hull.primitive.0",
+      "indexCount": 3858,
       "indexed": true,
-      "materialHash": "f9bc27c14123d4c6574b39013c9e3e2babd4950b2b455bb26e886cd2352812d8",
+      "materialHash": "182a947d7d5ef5da50e2561b65d0cce4061787f79fe085bbcf2d704a92671e3c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Hull",
-      "nodeId": "sf.render.helios-cradle.mesh.lod2-merged-material-hull",
+      "nodeId": "sf.render.helios-cradle.node.lod2-merged-material-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1329
+      "vertexCount": 1841
     },
     {
       "bounds": {
@@ -1100,16 +1200,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d31d5a89706769e7e580a4c57aeb878dd10686667528d15a4d2b42c4815a232",
-      "id": "sf.render.helios-cradle.mesh.lod2-merged-material-mechanical.primitive.0",
-      "indexCount": 6522,
+      "geometryHash": "7d59fdffc9673372b852b6aed1803fc68da0acdefb914693eebd9e466532fb7c",
+      "id": "sf.render.helios-cradle.node.lod2-merged-material-mechanical.primitive.0",
+      "indexCount": 7260,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Mechanical",
-      "nodeId": "sf.render.helios-cradle.mesh.lod2-merged-material-mechanical",
+      "nodeId": "sf.render.helios-cradle.node.lod2-merged-material-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 3187
+      "vertexCount": 3607
     },
     {
       "bounds": {
@@ -1125,14 +1225,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cc1b48651dc006b90fdbba9ecff814064cc5a56c0fa0fca31c2d2070e534a53a",
-      "id": "sf.render.helios-cradle.mesh.lod2-merged-material-warm.primitive.0",
+      "geometryHash": "96b616dab466ca6ed022aa1121164109cdd0407aada6d04479d9b42680323b09",
+      "id": "sf.render.helios-cradle.node.lod2-merged-material-warm.primitive.0",
       "indexCount": 420,
       "indexed": true,
-      "materialHash": "9475ae8d7370d403b96fe1f0101d5452795468578483df5478d7cadcdd554b97",
+      "materialHash": "3fe75c2036792a2886fdec1b73acc6dc4511590ce2294e1fc451175892d9503e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Merged_Material_Warm",
-      "nodeId": "sf.render.helios-cradle.mesh.lod2-merged-material-warm",
+      "nodeId": "sf.render.helios-cradle.node.lod2-merged-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 232
     },
@@ -1151,13 +1251,13 @@
       },
       "drawMode": 4,
       "geometryHash": "97b08e5c393cca4257413d55b4bc9e53b2d18e97196e889d26ac1a727d741faf",
-      "id": "sf.render.helios-cradle.mesh.lod2-mining-emitter.primitive.0",
+      "id": "sf.render.helios-cradle.node.lod2-mining-emitter.primitive.0",
       "indexCount": 96,
       "indexed": true,
-      "materialHash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
+      "materialHash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mining_Emitter",
-      "nodeId": "sf.render.helios-cradle.mesh.lod2-mining-emitter",
+      "nodeId": "sf.render.helios-cradle.node.lod2-mining-emitter",
       "primitiveIndex": 0,
       "vertexCount": 38
     }
@@ -1167,8 +1267,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0e7dcb0680adc08fd8d8e0cf5471ed3053f47d88c0eae125a1d8943198cf01c7",
-      "id": "material:0e7dcb0680adc08fd8d8e0cf",
+      "hash": "0d6c86ecadd0909da1839fdcdf4e98872c96958b8253998687f683ee5e424c7d",
+      "id": "material:0d6c86ecadd0909da1839fdc",
       "name": "Material_Cyan",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1199,40 +1299,40 @@
       ]
     },
     {
-      "hash": "2bfb85a115d620a303e64a880a26adb8500b7a65f0c146435f3f69b98784e37e",
-      "id": "material:2bfb85a115d620a303e64a88",
-      "name": "Material_Glass",
-      "pipelineKey": "blend:double",
+      "hash": "182a947d7d5ef5da50e2561b65d0cce4061787f79fe085bbcf2d704a92671e3c",
+      "id": "material:182a947d7d5ef5da50e2561b",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "helios_cradle_Material_Glass_baseColor",
+          "name": "helios_cradle_Material_Hull_baseColor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "helios_cradle_Material_Glass_orm",
+          "name": "helios_cradle_Material_Hull_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "helios_cradle_Material_Glass_normal",
+          "name": "helios_cradle_Material_Hull_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "helios_cradle_Material_Glass_orm",
+          "name": "helios_cradle_Material_Hull_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "9475ae8d7370d403b96fe1f0101d5452795468578483df5478d7cadcdd554b97",
-      "id": "material:9475ae8d7370d403b96fe1f0",
+      "hash": "3fe75c2036792a2886fdec1b73acc6dc4511590ce2294e1fc451175892d9503e",
+      "id": "material:3fe75c2036792a2886fdec1b",
       "name": "Material_Warm",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1263,8 +1363,15 @@
       ]
     },
     {
-      "hash": "dfea1e2b7d272c8d3f4cd8e6988d1e3c3ceccb5399443ad60c8c6375730a14a0",
-      "id": "material:dfea1e2b7d272c8d3f4cd8e6",
+      "hash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
+      "id": "material:8ab96250fdee6299bd749485",
+      "name": "Material_Mechanical_RemasterHeatCopper",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "92124a9ab2ca3f29bc463fb4e34f73b5a1e66f9919053e1044d7f4d207fa75c3",
+      "id": "material:92124a9ab2ca3f29bc463fb4",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1295,41 +1402,62 @@
       ]
     },
     {
-      "hash": "f9bc27c14123d4c6574b39013c9e3e2babd4950b2b455bb26e886cd2352812d8",
-      "id": "material:f9bc27c14123d4c6574b3901",
-      "name": "Material_Hull",
+      "hash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
+      "id": "material:bc5362fa29283f47ae662c67",
+      "name": "Material_BrushedMetal_RemasterNickel",
       "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "dd306e10f3d2708d7d48eca29e518853564ecf4259770a574e6a203379a33a0a",
+      "id": "material:dd306e10f3d2708d7d48eca2",
+      "name": "Material_Glass",
+      "pipelineKey": "blend:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "helios_cradle_Material_Hull_baseColor",
+          "name": "helios_cradle_Material_Glass_baseColor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "helios_cradle_Material_Hull_orm",
+          "name": "helios_cradle_Material_Glass_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "helios_cradle_Material_Hull_normal",
+          "name": "helios_cradle_Material_Glass_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "helios_cradle_Material_Hull_orm",
+          "name": "helios_cradle_Material_Glass_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "dd71cd991f0355687d548b9e7a54ba92d30b68ab6e85814bd730402c8e167a35",
+      "id": "material:dd71cd991f0355687d548b9e",
+      "name": "Material_EngineCeramic_RemasterGlazed",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "eed6e8ec396ecaf2032f9016e05b2af79b3e37e54bdd946e52cc2e5a15bdb111",
+      "id": "material:eed6e8ec396ecaf2032f9016",
+      "name": "Material_Mechanical_RemasterOxidized",
+      "pipelineKey": "opaque:double",
+      "textures": []
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.helios-cradle.mesh.collision-hull",
+      "id": "sf.render.helios-cradle.node.collision-hull",
       "localTransform": [
         1,
         0,
@@ -1352,10 +1480,10 @@
       "mergeBoundary": "COLLISION_HULL",
       "nodeName": "COLLISION_HULL",
       "nodePath": [
-        0,
+        4,
         0
       ],
-      "parentId": "sf.render.helios-cradle.root",
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-cradle.body",
       "worldTransform": [
@@ -1378,7 +1506,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod0-gun-assembly",
+      "id": "sf.render.helios-cradle.node.lod0-gun-assembly",
       "localTransform": [
         1,
         0,
@@ -1401,10 +1529,10 @@
       "mergeBoundary": "LOD0_Gun_Assembly",
       "nodeName": "LOD0_Gun_Assembly",
       "nodePath": [
-        0,
+        4,
         1
       ],
-      "parentId": "sf.render.helios-cradle.root",
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-cradle.body",
       "worldTransform": [
@@ -1427,7 +1555,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod0-hook-drive-core",
+      "id": "sf.render.helios-cradle.node.lod0-hook-drive-core",
       "localTransform": [
         1.399999976158142,
         0,
@@ -1450,10 +1578,10 @@
       "mergeBoundary": "LOD0_HOOK_DRIVE_CORE",
       "nodeName": "LOD0_HOOK_DRIVE_CORE",
       "nodePath": [
-        0,
+        4,
         2
       ],
-      "parentId": "sf.render.helios-cradle.root",
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.helios-cradle.body",
       "worldTransform": [
@@ -1476,7 +1604,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod0-hook-drive-fan",
+      "id": "sf.render.helios-cradle.node.lod0-hook-drive-fan",
       "localTransform": [
         1.5199999809265137,
         0,
@@ -1499,10 +1627,10 @@
       "mergeBoundary": "LOD0_HOOK_DRIVE_FAN",
       "nodeName": "LOD0_HOOK_DRIVE_FAN",
       "nodePath": [
-        0,
+        4,
         3
       ],
-      "parentId": "sf.render.helios-cradle.root",
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "role": "dynamic",
       "spatialClusterId": "sf.render.helios-cradle.body",
       "worldTransform": [
@@ -1525,7 +1653,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod0-merged-material-cyan",
+      "id": "sf.render.helios-cradle.node.lod0-merged-material-cyan",
       "localTransform": [
         1,
         0,
@@ -1548,10 +1676,10 @@
       "mergeBoundary": "LOD0_Merged_Material_Cyan",
       "nodeName": "LOD0_Merged_Material_Cyan",
       "nodePath": [
-        0,
+        4,
         4
       ],
-      "parentId": "sf.render.helios-cradle.root",
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-cradle.body",
       "worldTransform": [
@@ -1574,7 +1702,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod0-merged-material-glass",
+      "id": "sf.render.helios-cradle.node.lod0-merged-material-glass",
       "localTransform": [
         1,
         0,
@@ -1597,10 +1725,10 @@
       "mergeBoundary": "LOD0_Merged_Material_Glass",
       "nodeName": "LOD0_Merged_Material_Glass",
       "nodePath": [
-        0,
+        4,
         5
       ],
-      "parentId": "sf.render.helios-cradle.root",
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-cradle.body",
       "worldTransform": [
@@ -1623,7 +1751,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod0-merged-material-hull",
+      "id": "sf.render.helios-cradle.node.lod0-merged-material-hull",
       "localTransform": [
         1,
         0,
@@ -1646,10 +1774,10 @@
       "mergeBoundary": "LOD0_Merged_Material_Hull",
       "nodeName": "LOD0_Merged_Material_Hull",
       "nodePath": [
-        0,
+        4,
         6
       ],
-      "parentId": "sf.render.helios-cradle.root",
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-cradle.body",
       "worldTransform": [
@@ -1672,7 +1800,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod0-merged-material-mechanical",
+      "id": "sf.render.helios-cradle.node.lod0-merged-material-mechanical",
       "localTransform": [
         1,
         0,
@@ -1695,10 +1823,10 @@
       "mergeBoundary": "LOD0_Merged_Material_Mechanical",
       "nodeName": "LOD0_Merged_Material_Mechanical",
       "nodePath": [
-        0,
+        4,
         7
       ],
-      "parentId": "sf.render.helios-cradle.root",
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-cradle.body",
       "worldTransform": [
@@ -1721,7 +1849,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod0-merged-material-warm",
+      "id": "sf.render.helios-cradle.node.lod0-merged-material-warm",
       "localTransform": [
         1,
         0,
@@ -1744,10 +1872,10 @@
       "mergeBoundary": "LOD0_Merged_Material_Warm",
       "nodeName": "LOD0_Merged_Material_Warm",
       "nodePath": [
-        0,
+        4,
         8
       ],
-      "parentId": "sf.render.helios-cradle.root",
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-cradle.body",
       "worldTransform": [
@@ -1770,7 +1898,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod0-mining-emitter",
+      "id": "sf.render.helios-cradle.node.lod0-mining-emitter",
       "localTransform": [
         1,
         0,
@@ -1793,10 +1921,10 @@
       "mergeBoundary": "LOD0_Mining_Emitter",
       "nodeName": "LOD0_Mining_Emitter",
       "nodePath": [
-        0,
+        4,
         9
       ],
-      "parentId": "sf.render.helios-cradle.root",
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-cradle.body",
       "worldTransform": [
@@ -1819,7 +1947,7 @@
       ]
     },
     {
-      "id": "sf.render.helios-cradle.mesh.lod1-gun-assembly",
+      "id": "sf.render.helios-cradle.node.lod0-remaster-material-brushedmetal-remasternickel",
       "localTransform": [
         1,
         0,
@@ -1839,890 +1967,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Gun_Assembly",
-      "nodeName": "LOD1_Gun_Assembly",
-      "nodePath": [
-        0,
-        10
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod1-hook-drive-core",
-      "localTransform": [
-        1.3976716995239258,
-        0,
-        0,
-        0,
-        0,
-        1.3976716995239258,
-        0,
-        0,
-        0,
-        0,
-        1.3976716995239258,
-        0,
-        -10.050000190734863,
-        0.10944375395774841,
-        0.02004218101501465,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_HOOK_DRIVE_CORE",
-      "nodeName": "LOD1_HOOK_DRIVE_CORE",
-      "nodePath": [
-        0,
-        11
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1.3976716995239258,
-        0,
-        0,
-        0,
-        0,
-        1.3976716995239258,
-        0,
-        0,
-        0,
-        0,
-        1.3976716995239258,
-        0,
-        -10.050000190734863,
-        0.10944375395774841,
-        0.02004218101501465,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod1-hook-drive-fan",
-      "localTransform": [
-        1.502326250076294,
-        0,
-        0,
-        0,
-        0,
-        1.502326250076294,
-        0,
-        0,
-        0,
-        0,
-        1.502326250076294,
-        0,
-        -9.550000190734863,
-        0.09999999403953552,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_HOOK_DRIVE_FAN",
-      "nodeName": "LOD1_HOOK_DRIVE_FAN",
-      "nodePath": [
-        0,
-        12
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1.502326250076294,
-        0,
-        0,
-        0,
-        0,
-        1.502326250076294,
-        0,
-        0,
-        0,
-        0,
-        1.502326250076294,
-        0,
-        -9.550000190734863,
-        0.09999999403953552,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod1-merged-material-cyan",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Merged_Material_Cyan",
-      "nodeName": "LOD1_Merged_Material_Cyan",
-      "nodePath": [
-        0,
-        13
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod1-merged-material-glass",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD1_Merged_Material_Glass",
-      "nodeName": "LOD1_Merged_Material_Glass",
-      "nodePath": [
-        0,
-        14
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod1-merged-material-hull",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Merged_Material_Hull",
-      "nodeName": "LOD1_Merged_Material_Hull",
-      "nodePath": [
-        0,
-        15
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod1-merged-material-mechanical",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Merged_Material_Mechanical",
-      "nodeName": "LOD1_Merged_Material_Mechanical",
-      "nodePath": [
-        0,
-        16
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod1-merged-material-warm",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Merged_Material_Warm",
-      "nodeName": "LOD1_Merged_Material_Warm",
-      "nodePath": [
-        0,
-        17
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod1-mining-emitter",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Mining_Emitter",
-      "nodeName": "LOD1_Mining_Emitter",
-      "nodePath": [
-        0,
-        18
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod2-gun-assembly",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Gun_Assembly",
-      "nodeName": "LOD2_Gun_Assembly",
-      "nodePath": [
-        0,
-        19
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod2-hook-drive-core",
-      "localTransform": [
-        1.40754234790802,
-        0,
-        0,
-        0,
-        0,
-        1.40754234790802,
-        0,
-        0,
-        0,
-        0,
-        1.40754234790802,
-        0,
-        -10.050000190734863,
-        0.10268756747245789,
-        0.06123983860015869,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_HOOK_DRIVE_CORE",
-      "nodeName": "LOD2_HOOK_DRIVE_CORE",
-      "nodePath": [
-        0,
-        20
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1.40754234790802,
-        0,
-        0,
-        0,
-        0,
-        1.40754234790802,
-        0,
-        0,
-        0,
-        0,
-        1.40754234790802,
-        0,
-        -10.050000190734863,
-        0.10268756747245789,
-        0.06123983860015869,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod2-hook-drive-fan",
-      "localTransform": [
-        1.541850984096527,
-        0,
-        0,
-        0,
-        0,
-        1.541850984096527,
-        0,
-        0,
-        0,
-        0,
-        1.541850984096527,
-        0,
-        -9.550000190734863,
-        0.09733179211616516,
-        -0.04225414991378784,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_HOOK_DRIVE_FAN",
-      "nodeName": "LOD2_HOOK_DRIVE_FAN",
-      "nodePath": [
-        0,
-        21
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1.541850984096527,
-        0,
-        0,
-        0,
-        0,
-        1.541850984096527,
-        0,
-        0,
-        0,
-        0,
-        1.541850984096527,
-        0,
-        -9.550000190734863,
-        0.09733179211616516,
-        -0.04225414991378784,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod2-merged-material-cyan",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Merged_Material_Cyan",
-      "nodeName": "LOD2_Merged_Material_Cyan",
-      "nodePath": [
-        0,
-        22
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod2-merged-material-glass",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "blend",
-      "mergeBoundary": "LOD2_Merged_Material_Glass",
-      "nodeName": "LOD2_Merged_Material_Glass",
-      "nodePath": [
-        0,
-        23
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod2-merged-material-hull",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Merged_Material_Hull",
-      "nodeName": "LOD2_Merged_Material_Hull",
-      "nodePath": [
-        0,
-        24
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod2-merged-material-mechanical",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Merged_Material_Mechanical",
-      "nodeName": "LOD2_Merged_Material_Mechanical",
-      "nodePath": [
-        0,
-        25
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod2-merged-material-warm",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Merged_Material_Warm",
-      "nodeName": "LOD2_Merged_Material_Warm",
-      "nodePath": [
-        0,
-        26
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.mesh.lod2-mining-emitter",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Mining_Emitter",
-      "nodeName": "LOD2_Mining_Emitter",
-      "nodePath": [
-        0,
-        27
-      ],
-      "parentId": "sf.render.helios-cradle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.helios-cradle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.helios-cradle.root",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
-      "nodeName": "SF_M4_HELIOS_CRADLE_ROOT",
+      "mergeBoundary": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "nodeName": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
       "nodePath": [
         0
       ],
@@ -2747,26 +1993,1541 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-remaster-material-engineceramic-remasterglazed",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Remaster_Material_EngineCeramic_RemasterGlazed",
+      "nodeName": "LOD0_Remaster_Material_EngineCeramic_RemasterGlazed",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasterheatcopper",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "nodeName": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasteroxidized",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
+      "nodeName": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-gun-assembly",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Gun_Assembly",
+      "nodeName": "LOD1_Gun_Assembly",
+      "nodePath": [
+        4,
+        10
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-hook-drive-core",
+      "localTransform": [
+        1.3976716995239258,
+        0,
+        0,
+        0,
+        0,
+        1.3976716995239258,
+        0,
+        0,
+        0,
+        0,
+        1.3976716995239258,
+        0,
+        -10.050000190734863,
+        0.10944375395774841,
+        0.02004218101501465,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_CORE",
+      "nodeName": "LOD1_HOOK_DRIVE_CORE",
+      "nodePath": [
+        4,
+        11
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1.3976716995239258,
+        0,
+        0,
+        0,
+        0,
+        1.3976716995239258,
+        0,
+        0,
+        0,
+        0,
+        1.3976716995239258,
+        0,
+        -10.050000190734863,
+        0.10944375395774841,
+        0.02004218101501465,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-hook-drive-fan",
+      "localTransform": [
+        1.502326250076294,
+        0,
+        0,
+        0,
+        0,
+        1.502326250076294,
+        0,
+        0,
+        0,
+        0,
+        1.502326250076294,
+        0,
+        -9.550000190734863,
+        0.09999999403953552,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_FAN",
+      "nodeName": "LOD1_HOOK_DRIVE_FAN",
+      "nodePath": [
+        4,
+        12
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1.502326250076294,
+        0,
+        0,
+        0,
+        0,
+        1.502326250076294,
+        0,
+        0,
+        0,
+        0,
+        1.502326250076294,
+        0,
+        -9.550000190734863,
+        0.09999999403953552,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-merged-material-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Cyan",
+      "nodeName": "LOD1_Merged_Material_Cyan",
+      "nodePath": [
+        4,
+        13
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-merged-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_Merged_Material_Glass",
+      "nodeName": "LOD1_Merged_Material_Glass",
+      "nodePath": [
+        4,
+        14
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-merged-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Hull",
+      "nodeName": "LOD1_Merged_Material_Hull",
+      "nodePath": [
+        4,
+        15
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-merged-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Mechanical",
+      "nodeName": "LOD1_Merged_Material_Mechanical",
+      "nodePath": [
+        4,
+        16
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-merged-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Warm",
+      "nodeName": "LOD1_Merged_Material_Warm",
+      "nodePath": [
+        4,
+        17
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod1-mining-emitter",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mining_Emitter",
+      "nodeName": "LOD1_Mining_Emitter",
+      "nodePath": [
+        4,
+        18
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-gun-assembly",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Gun_Assembly",
+      "nodeName": "LOD2_Gun_Assembly",
+      "nodePath": [
+        4,
+        19
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-hook-drive-core",
+      "localTransform": [
+        1.40754234790802,
+        0,
+        0,
+        0,
+        0,
+        1.40754234790802,
+        0,
+        0,
+        0,
+        0,
+        1.40754234790802,
+        0,
+        -10.050000190734863,
+        0.10268756747245789,
+        0.06123983860015869,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_DRIVE_CORE",
+      "nodeName": "LOD2_HOOK_DRIVE_CORE",
+      "nodePath": [
+        4,
+        20
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1.40754234790802,
+        0,
+        0,
+        0,
+        0,
+        1.40754234790802,
+        0,
+        0,
+        0,
+        0,
+        1.40754234790802,
+        0,
+        -10.050000190734863,
+        0.10268756747245789,
+        0.06123983860015869,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-hook-drive-fan",
+      "localTransform": [
+        1.541850984096527,
+        0,
+        0,
+        0,
+        0,
+        1.541850984096527,
+        0,
+        0,
+        0,
+        0,
+        1.541850984096527,
+        0,
+        -9.550000190734863,
+        0.09733179211616516,
+        -0.04225414991378784,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_DRIVE_FAN",
+      "nodeName": "LOD2_HOOK_DRIVE_FAN",
+      "nodePath": [
+        4,
+        21
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1.541850984096527,
+        0,
+        0,
+        0,
+        0,
+        1.541850984096527,
+        0,
+        0,
+        0,
+        0,
+        1.541850984096527,
+        0,
+        -9.550000190734863,
+        0.09733179211616516,
+        -0.04225414991378784,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-merged-material-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Cyan",
+      "nodeName": "LOD2_Merged_Material_Cyan",
+      "nodePath": [
+        4,
+        22
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-merged-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_Merged_Material_Glass",
+      "nodeName": "LOD2_Merged_Material_Glass",
+      "nodePath": [
+        4,
+        23
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-merged-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Hull",
+      "nodeName": "LOD2_Merged_Material_Hull",
+      "nodePath": [
+        4,
+        24
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-merged-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Mechanical",
+      "nodeName": "LOD2_Merged_Material_Mechanical",
+      "nodePath": [
+        4,
+        25
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-merged-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Warm",
+      "nodeName": "LOD2_Merged_Material_Warm",
+      "nodePath": [
+        4,
+        26
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.lod2-mining-emitter",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mining_Emitter",
+      "nodeName": "LOD2_Mining_Emitter",
+      "nodePath": [
+        4,
+        27
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_M4_HELIOS_CRADLE_ROOT",
+      "nodeName": "SF_M4_HELIOS_CRADLE_ROOT",
+      "nodePath": [
+        4
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.20000000298023224,
+        0.4000000059604645,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        4,
+        28
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.20000000298023224,
+        0.4000000059604645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-cargo-ventral",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6000000238418579,
+        -2.3499999046325684,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Cargo_Ventral",
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        4,
+        29
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6000000238418579,
+        -2.3499999046325684,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.699999809265137,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        4,
+        30
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.699999809265137,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.899999618530273,
+        -1.149999976158142,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        4,
+        31
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.899999618530273,
+        -1.149999976158142,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-rcs-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        0.3499999940395355,
+        -4.199999809265137,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Port",
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        4,
+        32
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        0.3499999940395355,
+        -4.199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-rcs-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        0.3499999940395355,
+        4.199999809265137,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Starboard",
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        4,
+        33
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.5,
+        0.3499999940395355,
+        4.199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.100000381469727,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        4,
+        34
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.100000381469727,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-utility-dorsal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.4000000059604645,
+        3.25,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Utility_Dorsal",
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        4,
+        35
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.4000000059604645,
+        3.25,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.helios-cradle.node.socket-weapon-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.400000095367432,
+        0.550000011920929,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Weapon_Front",
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        4,
+        36
+      ],
+      "parentId": "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.helios-cradle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.400000095367432,
+        0.550000011920929,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "1ba4ab6cd38033cbcf4d344564f674883698ed85bbdace69db05504d3160f9bb"
+      "sha256": "3a844d4da22b969dc0ead365f0ff29ad09598d1294a193fd47515339072739a4"
     },
     "sourceGlb": {
-      "bytes": 14123188,
-      "sha256": "6f400dfd7caf7e18df1b0cb951e77ec2c8773a4cd8321243e4c259c840c778de",
+      "bytes": 14273944,
+      "sha256": "f45fd3f17f1338dd482ce959eea04c93852a1ebe68babff28423b8abf2569f00",
       "uri": "helios_cradle.glb"
     },
     "sourceManifest": {
-      "bytes": 168394,
-      "sha256": "d7200721c99b6069204d939589aae9e55ccae5861bee5f7dcc97060e59e43d68",
+      "bytes": 179339,
+      "sha256": "e6f56006ab9800ae747bcaae8835959c222e821a4d92afd9575cdbf890dd3a07",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 14757796,
-    "sha256": "eee874f657e7a01cd0dbb8209ee39a28b9abd52bde69ac20e98fcb45de05a3b7",
+    "bytes": 15037056,
+    "sha256": "d21ef7d8b217730ef0e63ddffca9e31bd59ee1f3d1977e69b3d071bde5eb99ee",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2793,7 +3554,7 @@
       ]
     },
     "hidden": [
-      2
+      6
     ],
     "legacyPart": false,
     "markers": [
@@ -2811,13 +3572,13 @@
           0,
           1,
           0,
-          0.2,
-          0.4,
+          0.20000000298023224,
+          0.4000000059604645,
           0,
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 30,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2848,7 +3609,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Camera_Focus",
             "recordIds": [
-              "sf.render.helios-cradle.anchor.socket-camera-focus"
+              "sf.render.helios-cradle.anchor.socket-camera-focus",
+              "sf.render.helios-cradle.node.socket-camera-focus"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2868,13 +3630,13 @@
           0,
           1,
           0,
-          0.6,
-          -2.35,
+          0.6000000238418579,
+          -2.3499999046325684,
           0,
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 31,
+        "planIndex": 35,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2905,7 +3667,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Cargo_Ventral",
             "recordIds": [
-              "sf.render.helios-cradle.anchor.socket-cargo-ventral"
+              "sf.render.helios-cradle.anchor.socket-cargo-ventral",
+              "sf.render.helios-cradle.node.socket-cargo-ventral"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2925,13 +3688,13 @@
           0,
           1,
           0,
-          -8.7,
-          0.1,
+          -8.699999809265137,
+          0.10000000149011612,
           0,
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 32,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2962,7 +3725,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Engine_Main",
             "recordIds": [
-              "sf.render.helios-cradle.anchor.socket-engine-main"
+              "sf.render.helios-cradle.anchor.socket-engine-main",
+              "sf.render.helios-cradle.node.socket-engine-main"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2982,13 +3746,13 @@
           0,
           1,
           0,
-          8.9,
-          -1.15,
+          8.899999618530273,
+          -1.149999976158142,
           0,
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 33,
+        "planIndex": 37,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3019,7 +3783,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Mining_Front",
             "recordIds": [
-              "sf.render.helios-cradle.anchor.socket-mining-front"
+              "sf.render.helios-cradle.anchor.socket-mining-front",
+              "sf.render.helios-cradle.node.socket-mining-front"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -3040,12 +3805,12 @@
           1,
           0,
           1.5,
-          0.35,
-          -4.2,
+          0.3499999940395355,
+          -4.199999809265137,
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 34,
+        "planIndex": 38,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3076,7 +3841,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_RCS_Port",
             "recordIds": [
-              "sf.render.helios-cradle.anchor.socket-rcs-port"
+              "sf.render.helios-cradle.anchor.socket-rcs-port",
+              "sf.render.helios-cradle.node.socket-rcs-port"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -3097,12 +3863,12 @@
           1,
           0,
           1.5,
-          0.35,
-          4.2,
+          0.3499999940395355,
+          4.199999809265137,
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 35,
+        "planIndex": 39,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3133,7 +3899,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_RCS_Starboard",
             "recordIds": [
-              "sf.render.helios-cradle.anchor.socket-rcs-starboard"
+              "sf.render.helios-cradle.anchor.socket-rcs-starboard",
+              "sf.render.helios-cradle.node.socket-rcs-starboard"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -3153,13 +3920,13 @@
           0,
           1,
           0,
-          -9.1,
-          0.1,
+          -9.100000381469727,
+          0.10000000149011612,
           0,
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 36,
+        "planIndex": 40,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3190,7 +3957,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Main",
             "recordIds": [
-              "sf.render.helios-cradle.anchor.socket-trail-main"
+              "sf.render.helios-cradle.anchor.socket-trail-main",
+              "sf.render.helios-cradle.node.socket-trail-main"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -3210,13 +3978,13 @@
           0,
           1,
           0,
-          -0.4,
+          -0.4000000059604645,
           3.25,
           0,
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 37,
+        "planIndex": 41,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3247,7 +4015,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Utility_Dorsal",
             "recordIds": [
-              "sf.render.helios-cradle.anchor.socket-utility-dorsal"
+              "sf.render.helios-cradle.anchor.socket-utility-dorsal",
+              "sf.render.helios-cradle.node.socket-utility-dorsal"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -3267,13 +4036,13 @@
           0,
           1,
           0,
-          7.4,
-          0.55,
+          7.400000095367432,
+          0.550000011920929,
           0,
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 38,
+        "planIndex": 42,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3304,7 +4073,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Weapon_Front",
             "recordIds": [
-              "sf.render.helios-cradle.anchor.socket-weapon-front"
+              "sf.render.helios-cradle.anchor.socket-weapon-front",
+              "sf.render.helios-cradle.node.socket-weapon-front"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -3312,29 +4082,30 @@
       }
     ],
     "materialProfileRoles": {
+      "ceramic": 1,
       "glass": 3,
       "hull": 13,
-      "mechanical": 12
+      "mechanical": 15
     },
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 2,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 3,
+        "planIndex": 1,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 4,
-        "role": "hull"
+        "planIndex": 2,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 5,
+        "planIndex": 3,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
         "role": "mechanical"
       },
       {
@@ -3345,7 +4116,7 @@
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "glass"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -3365,32 +4136,32 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 15,
+        "planIndex": 14,
         "role": "hull"
       },
       {
         "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 16,
-        "role": "glass"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -3410,32 +4181,32 @@
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 24,
+        "planIndex": 23,
         "role": "hull"
       },
       {
         "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 25,
-        "role": "glass"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -3455,10 +4226,30 @@
       {
         "allowTextures": true,
         "planIndex": 29,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 39,
+    "nodeCount": 43,
     "primitives": [
       {
         "canopy": false,
@@ -3480,8 +4271,116 @@
           0,
           1
         ],
-        "name": "LOD0_Gun_Assembly",
+        "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Remaster_Material_EngineCeramic_RemasterGlazed",
         "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Gun_Assembly",
+        "planIndex": 7,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3512,7 +4411,7 @@
           1
         ],
         "name": "LOD0_HOOK_DRIVE_CORE",
-        "planIndex": 4,
+        "planIndex": 8,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3561,7 +4460,7 @@
           1
         ],
         "name": "LOD0_HOOK_DRIVE_FAN",
-        "planIndex": 5,
+        "planIndex": 9,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3610,7 +4509,7 @@
           1
         ],
         "name": "LOD0_Merged_Material_Cyan",
-        "planIndex": 6,
+        "planIndex": 10,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3640,7 +4539,7 @@
           1
         ],
         "name": "LOD0_Merged_Material_Glass",
-        "planIndex": 7,
+        "planIndex": 11,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": true,
@@ -3670,7 +4569,7 @@
           1
         ],
         "name": "LOD0_Merged_Material_Hull",
-        "planIndex": 8,
+        "planIndex": 12,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3700,7 +4599,7 @@
           1
         ],
         "name": "LOD0_Merged_Material_Mechanical",
-        "planIndex": 9,
+        "planIndex": 13,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3730,7 +4629,7 @@
           1
         ],
         "name": "LOD0_Merged_Material_Warm",
-        "planIndex": 10,
+        "planIndex": 14,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3760,7 +4659,7 @@
           1
         ],
         "name": "LOD0_Mining_Emitter",
-        "planIndex": 11,
+        "planIndex": 15,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3791,7 +4690,7 @@
           1
         ],
         "name": "LOD1_Gun_Assembly",
-        "planIndex": 12,
+        "planIndex": 16,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3822,7 +4721,7 @@
           1
         ],
         "name": "LOD1_HOOK_DRIVE_CORE",
-        "planIndex": 13,
+        "planIndex": 17,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3871,7 +4770,7 @@
           1
         ],
         "name": "LOD1_HOOK_DRIVE_FAN",
-        "planIndex": 14,
+        "planIndex": 18,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3920,7 +4819,7 @@
           1
         ],
         "name": "LOD1_Merged_Material_Cyan",
-        "planIndex": 15,
+        "planIndex": 19,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -3950,7 +4849,7 @@
           1
         ],
         "name": "LOD1_Merged_Material_Glass",
-        "planIndex": 16,
+        "planIndex": 20,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": true,
@@ -3980,7 +4879,7 @@
           1
         ],
         "name": "LOD1_Merged_Material_Hull",
-        "planIndex": 17,
+        "planIndex": 21,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4010,7 +4909,7 @@
           1
         ],
         "name": "LOD1_Merged_Material_Mechanical",
-        "planIndex": 18,
+        "planIndex": 22,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4040,7 +4939,7 @@
           1
         ],
         "name": "LOD1_Merged_Material_Warm",
-        "planIndex": 19,
+        "planIndex": 23,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4070,7 +4969,7 @@
           1
         ],
         "name": "LOD1_Mining_Emitter",
-        "planIndex": 20,
+        "planIndex": 24,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4101,7 +5000,7 @@
           1
         ],
         "name": "LOD2_Gun_Assembly",
-        "planIndex": 21,
+        "planIndex": 25,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4132,7 +5031,7 @@
           1
         ],
         "name": "LOD2_HOOK_DRIVE_CORE",
-        "planIndex": 22,
+        "planIndex": 26,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4181,7 +5080,7 @@
           1
         ],
         "name": "LOD2_HOOK_DRIVE_FAN",
-        "planIndex": 23,
+        "planIndex": 27,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4230,7 +5129,7 @@
           1
         ],
         "name": "LOD2_Merged_Material_Cyan",
-        "planIndex": 24,
+        "planIndex": 28,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4260,7 +5159,7 @@
           1
         ],
         "name": "LOD2_Merged_Material_Glass",
-        "planIndex": 25,
+        "planIndex": 29,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": true,
@@ -4290,7 +5189,7 @@
           1
         ],
         "name": "LOD2_Merged_Material_Hull",
-        "planIndex": 26,
+        "planIndex": 30,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4320,7 +5219,7 @@
           1
         ],
         "name": "LOD2_Merged_Material_Mechanical",
-        "planIndex": 27,
+        "planIndex": 31,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4350,7 +5249,7 @@
           1
         ],
         "name": "LOD2_Merged_Material_Warm",
-        "planIndex": 28,
+        "planIndex": 32,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4380,7 +5279,7 @@
           1
         ],
         "name": "LOD2_Mining_Emitter",
-        "planIndex": 29,
+        "planIndex": 33,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -4395,7 +5294,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_cradle.glb"
   },
-  "runtimeHash": "b9c31b44539d88345e2723c30550c5d2c26f7f1f5b1631fde578cb5e701b2568",
+  "runtimeHash": "30dac60792ff34aba8fda1d1f621d372b8c08dd1190bfc3d6ffcb217e81a7c44",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4413,35 +5312,48 @@
       },
       "id": "sf.render.helios-cradle.body",
       "nodeIds": [
-        "sf.render.helios-cradle.mesh.collision-hull",
-        "sf.render.helios-cradle.mesh.lod0-gun-assembly",
-        "sf.render.helios-cradle.mesh.lod0-hook-drive-core",
-        "sf.render.helios-cradle.mesh.lod0-hook-drive-fan",
-        "sf.render.helios-cradle.mesh.lod0-merged-material-cyan",
-        "sf.render.helios-cradle.mesh.lod0-merged-material-glass",
-        "sf.render.helios-cradle.mesh.lod0-merged-material-hull",
-        "sf.render.helios-cradle.mesh.lod0-merged-material-mechanical",
-        "sf.render.helios-cradle.mesh.lod0-merged-material-warm",
-        "sf.render.helios-cradle.mesh.lod0-mining-emitter",
-        "sf.render.helios-cradle.mesh.lod1-gun-assembly",
-        "sf.render.helios-cradle.mesh.lod1-hook-drive-core",
-        "sf.render.helios-cradle.mesh.lod1-hook-drive-fan",
-        "sf.render.helios-cradle.mesh.lod1-merged-material-cyan",
-        "sf.render.helios-cradle.mesh.lod1-merged-material-glass",
-        "sf.render.helios-cradle.mesh.lod1-merged-material-hull",
-        "sf.render.helios-cradle.mesh.lod1-merged-material-mechanical",
-        "sf.render.helios-cradle.mesh.lod1-merged-material-warm",
-        "sf.render.helios-cradle.mesh.lod1-mining-emitter",
-        "sf.render.helios-cradle.mesh.lod2-gun-assembly",
-        "sf.render.helios-cradle.mesh.lod2-hook-drive-core",
-        "sf.render.helios-cradle.mesh.lod2-hook-drive-fan",
-        "sf.render.helios-cradle.mesh.lod2-merged-material-cyan",
-        "sf.render.helios-cradle.mesh.lod2-merged-material-glass",
-        "sf.render.helios-cradle.mesh.lod2-merged-material-hull",
-        "sf.render.helios-cradle.mesh.lod2-merged-material-mechanical",
-        "sf.render.helios-cradle.mesh.lod2-merged-material-warm",
-        "sf.render.helios-cradle.mesh.lod2-mining-emitter",
-        "sf.render.helios-cradle.root"
+        "sf.render.helios-cradle.node.collision-hull",
+        "sf.render.helios-cradle.node.lod0-gun-assembly",
+        "sf.render.helios-cradle.node.lod0-hook-drive-core",
+        "sf.render.helios-cradle.node.lod0-hook-drive-fan",
+        "sf.render.helios-cradle.node.lod0-merged-material-cyan",
+        "sf.render.helios-cradle.node.lod0-merged-material-glass",
+        "sf.render.helios-cradle.node.lod0-merged-material-hull",
+        "sf.render.helios-cradle.node.lod0-merged-material-mechanical",
+        "sf.render.helios-cradle.node.lod0-merged-material-warm",
+        "sf.render.helios-cradle.node.lod0-mining-emitter",
+        "sf.render.helios-cradle.node.lod0-remaster-material-brushedmetal-remasternickel",
+        "sf.render.helios-cradle.node.lod0-remaster-material-engineceramic-remasterglazed",
+        "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasterheatcopper",
+        "sf.render.helios-cradle.node.lod0-remaster-material-mechanical-remasteroxidized",
+        "sf.render.helios-cradle.node.lod1-gun-assembly",
+        "sf.render.helios-cradle.node.lod1-hook-drive-core",
+        "sf.render.helios-cradle.node.lod1-hook-drive-fan",
+        "sf.render.helios-cradle.node.lod1-merged-material-cyan",
+        "sf.render.helios-cradle.node.lod1-merged-material-glass",
+        "sf.render.helios-cradle.node.lod1-merged-material-hull",
+        "sf.render.helios-cradle.node.lod1-merged-material-mechanical",
+        "sf.render.helios-cradle.node.lod1-merged-material-warm",
+        "sf.render.helios-cradle.node.lod1-mining-emitter",
+        "sf.render.helios-cradle.node.lod2-gun-assembly",
+        "sf.render.helios-cradle.node.lod2-hook-drive-core",
+        "sf.render.helios-cradle.node.lod2-hook-drive-fan",
+        "sf.render.helios-cradle.node.lod2-merged-material-cyan",
+        "sf.render.helios-cradle.node.lod2-merged-material-glass",
+        "sf.render.helios-cradle.node.lod2-merged-material-hull",
+        "sf.render.helios-cradle.node.lod2-merged-material-mechanical",
+        "sf.render.helios-cradle.node.lod2-merged-material-warm",
+        "sf.render.helios-cradle.node.lod2-mining-emitter",
+        "sf.render.helios-cradle.node.sf-m4-helios-cradle-root",
+        "sf.render.helios-cradle.node.socket-camera-focus",
+        "sf.render.helios-cradle.node.socket-cargo-ventral",
+        "sf.render.helios-cradle.node.socket-engine-main",
+        "sf.render.helios-cradle.node.socket-mining-front",
+        "sf.render.helios-cradle.node.socket-rcs-port",
+        "sf.render.helios-cradle.node.socket-rcs-starboard",
+        "sf.render.helios-cradle.node.socket-trail-main",
+        "sf.render.helios-cradle.node.socket-utility-dorsal",
+        "sf.render.helios-cradle.node.socket-weapon-front"
       ]
     }
   ]

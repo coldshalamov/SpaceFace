@@ -7,8 +7,8 @@
   "audit": "assets/incubator/wreck_aftermath_pack/evidence/EXISTING_COVERAGE.md",
   "sourceOnly": true,
   "rng": "none - every dimension, break, drift and state is authored",
-  "playerHullM": 28.0,
-  "minGapClearRadiusM": 20.0,
+  "playerHullM": 28,
+  "minGapClearRadiusM": 20,
   "assets": [
     {
       "id": "wreck_ore_freighter_bow",
@@ -28,9 +28,9 @@
         60.4
       ],
       "centredResidualM": [
-        -0.0,
-        0.0,
-        -0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         70.57,
@@ -58,8 +58,8 @@
           ],
           "clearRadiusM": 20.7,
           "clearSpanM": 41.4,
-          "playerHullM": 28.0,
-          "requiredRadiusM": 20.0,
+          "playerHullM": 28,
+          "requiredRadiusM": 20,
           "pass": true
         }
       ],
@@ -91,9 +91,9 @@
         58.13
       ],
       "centredResidualM": [
-        0.0,
-        -0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -87.47,
@@ -109,16 +109,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          -46.0,
-          31.0,
-          -11.0
+          -46,
+          31,
+          -11
         ],
         "tumbleAxis": [
           0.211,
           0.882,
           0.421
         ],
-        "tumbleDeg": 37.0,
+        "tumbleDeg": 37,
         "driftDistanceM": 56.55,
         "note": "away from the break plane at x=-34, down-lane and to port"
       },
@@ -152,13 +152,13 @@
         49.25
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
-        68.0,
-        0.0,
+        68,
+        0,
         -7.5
       ],
       "sockets": [
@@ -168,16 +168,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          18.0,
-          -24.0,
-          -13.0
+          18,
+          -24,
+          -13
         ],
         "tumbleAxis": [
           0.619,
           0.239,
           0.748
         ],
-        "tumbleDeg": 63.0,
+        "tumbleDeg": 63,
         "driftDistanceM": 32.7,
         "note": "fell out of bay +68 and below the lane axis, tumbling hard"
       },
@@ -207,34 +207,34 @@
       "tris": 600,
       "sizeM": [
         28.35,
-        48.0,
+        48,
         53.25
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
-        51.0,
-        0.0,
-        0.0
+        51,
+        0,
+        0
       ],
       "sockets": [],
       "socketsMissing": [],
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          -8.0,
-          62.0,
-          26.0
+          -8,
+          62,
+          26
         ],
         "tumbleAxis": [
           0.75,
           0.12,
           0.65
         ],
-        "tumbleDeg": 71.0,
+        "tumbleDeg": 71,
         "driftDistanceM": 67.71,
         "note": "light structure: shed early and travelled far (fiction 1.3)"
       },
@@ -245,7 +245,7 @@
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
           28.35,
-          48.0,
+          48,
           53.25
         ]
       }
@@ -256,7 +256,7 @@
       "kind": "debris",
       "state": "cooling",
       "was": "Bulk ore freighter, hopper side panel and top rim rail.",
-      "reads": "Large area, low mass -- exactly the class of part that shears off and travels (fiction \u00a71.3). Ochre paint still names the owner.",
+      "reads": "Large area, low mass -- exactly the class of part that shears off and travels (fiction §1.3). Ochre paint still names the owner.",
       "file": "assets/incubator/wreck_aftermath_pack/source/deb_ore_freighter_hopper_lid.glb",
       "sha256": "1ab30fdc784669e8d1d94e08979a61d5a9fc65f4606bb9b1a98e04d691cf4ff6",
       "bytes": 35540,
@@ -268,30 +268,30 @@
         22.2
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
+        0,
+        0,
         -0.39
       ],
       "shipFrameOriginM": [
-        68.0,
-        12.0,
-        0.0
+        68,
+        12,
+        0
       ],
       "sockets": [],
       "socketsMissing": [],
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          36.0,
-          -74.0,
-          19.0
+          36,
+          -74,
+          19
         ],
         "tumbleAxis": [
           0.339,
           0.709,
           0.619
         ],
-        "tumbleDeg": 118.0,
+        "tumbleDeg": 118,
         "driftDistanceM": 84.46,
         "note": "largest area-to-mass ratio in the family: the farthest traveller"
       },
@@ -325,30 +325,30 @@
         14.43
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
-        -154.0,
-        8.0,
-        0.0
+        -154,
+        8,
+        0
       ],
       "sockets": [],
       "socketsMissing": [],
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          14.0,
-          -9.0,
-          -6.0
+          14,
+          -9,
+          -6
         ],
         "tumbleAxis": [
           0.503,
           0.503,
           0.704
         ],
-        "tumbleDeg": 24.0,
+        "tumbleDeg": 24,
         "driftDistanceM": 17.69,
         "note": "barely moved: it was cut off and released, not blown off"
       },
@@ -382,9 +382,9 @@
         16.45
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         32.58,
@@ -430,13 +430,13 @@
         17.4
       ],
       "centredResidualM": [
-        -0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -37.47,
-        0.0,
+        0,
         1.34
       ],
       "sockets": [
@@ -447,16 +447,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          -24.0,
-          -19.0,
-          7.0
+          -24,
+          -19,
+          7
         ],
         "tumbleAxis": [
           0.181,
           0.622,
           0.762
         ],
-        "tumbleDeg": 52.0,
+        "tumbleDeg": 52,
         "driftDistanceM": 31.4,
         "note": "pushed aft and to starboard by its own dying drive"
       },
@@ -480,24 +480,24 @@
       "was": "Concord patrol corvette, main turret with its bearing ring.",
       "reads": "Milspec, restricted, and lying in the open. Someone will want it and someone will be fined for taking it.",
       "file": "assets/incubator/wreck_aftermath_pack/source/wreck_corvette_turret.glb",
-      "sha256": "6abc72e4b7c2f6dfcc7a938961049c20736f921a52c5b9ed705dfffff11cdc2c",
-      "bytes": 41072,
-      "generator": "Khronos glTF Blender I/O v5.1.20",
-      "tris": 316,
+      "sha256": "d1ec77922f42df10dea8f8d71b1ebbcf73c453a3c96a70f18fbf1eb856607d2f",
+      "bytes": 240740,
+      "generator": "SpaceFace Helios remaster / Blender 5.1.2",
+      "tris": 2382,
       "sizeM": [
         16.18,
         9.51,
         7.78
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
-        46.0,
-        0.0,
-        5.0
+        46,
+        0,
+        5
       ],
       "sockets": [
         "SOCKET_Salvage_Weapon"
@@ -506,16 +506,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          11.0,
-          26.0,
-          14.0
+          11,
+          26,
+          14
         ],
         "tumbleAxis": [
           0.711,
           0.33,
           0.621
         ],
-        "tumbleDeg": 104.0,
+        "tumbleDeg": 104,
         "driftDistanceM": 31.51,
         "note": "light, high, and spinning: sheared parts leave fast"
       },
@@ -529,6 +529,17 @@
           9.51,
           7.78
         ]
+      },
+      "remaster": {
+        "builder": "tools/blender/helios_remaster/sector_places_aftermath.py",
+        "sourceRevision": "463d9383855d99fce87e5ee6e59974fe5f2653c4",
+        "construction": "Rebuilt broken primary components, preserving sockets, collision and source frame.",
+        "driver": "tools/blender/helios_remaster/sector_places.py",
+        "command": "blender --background --threads 3 --python tools/blender/helios_remaster/sector_places.py -- --build place_aftermath_wreck_corvette_turret",
+        "metadataRepair": "tools/blender/helios_remaster/sector_places_metadata.py",
+        "metadataReceipt": "tools/blender/helios_remaster/sector_places.metadata-repair.json",
+        "metadataOnlyCorrection": true,
+        "geometryAndImageBufferSha256": "e8e6dba286160c73015874a7dc3c01d9b2602d64ef021fe145d12affaad136ac"
       }
     },
     {
@@ -550,12 +561,12 @@
       ],
       "centredResidualM": [
         -0.15,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "shipFrameOriginM": [
-        16.0,
-        -7.0,
+        16,
+        -7,
         -0.5
       ],
       "sockets": [],
@@ -563,16 +574,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          22.0,
-          -31.0,
-          -12.0
+          22,
+          -31,
+          -12
         ],
         "tumbleAxis": [
           0.26,
           0.8,
           0.54
         ],
-        "tumbleDeg": 87.0,
+        "tumbleDeg": 87,
         "driftDistanceM": 39.86
       },
       "driftNote": null,
@@ -605,30 +616,30 @@
         11.44
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
-        -30.0,
-        0.0,
-        5.0
+        -30,
+        0,
+        5
       ],
       "sockets": [],
       "socketsMissing": [],
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          6.0,
-          -8.0,
-          -4.0
+          6,
+          -8,
+          -4
         ],
         "tumbleAxis": [
           0.62,
           0.44,
           0.65
         ],
-        "tumbleDeg": 31.0,
+        "tumbleDeg": 31,
         "driftDistanceM": 10.77,
         "note": "dropped, not thrown: cut free by a salvage crew"
       },
@@ -662,14 +673,14 @@
         72.82
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
-        -6.0,
+        -6,
         -9.41,
-        -0.0
+        0
       ],
       "sockets": [
         "INTERACTION_DrumBore",
@@ -685,14 +696,14 @@
         {
           "name": "INTERACTION_DrumBore",
           "atM": [
-            0.0,
+            0,
             9.4,
-            0.0
+            0
           ],
           "clearRadiusM": 20.75,
           "clearSpanM": 41.5,
-          "playerHullM": 28.0,
-          "requiredRadiusM": 20.0,
+          "playerHullM": 28,
+          "requiredRadiusM": 20,
           "pass": true
         }
       ],
@@ -724,9 +735,9 @@
         24.43
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -13.48,
@@ -741,16 +752,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          38.0,
-          17.0,
-          -9.0
+          38,
+          17,
+          -9
         ],
         "tumbleAxis": [
           0.14,
           0.361,
           0.922
         ],
-        "tumbleDeg": 28.0,
+        "tumbleDeg": 28,
         "driftDistanceM": 42.59,
         "note": "barely tumbled: it parted cleanly and kept the ship attitude"
       },
@@ -784,9 +795,9 @@
         15.87
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         0.34,
@@ -801,16 +812,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          -14.0,
-          -33.0,
-          12.0
+          -14,
+          -33,
+          12
         ],
         "tumbleAxis": [
           0.553,
           0.221,
           0.804
         ],
-        "tumbleDeg": 66.0,
+        "tumbleDeg": 66,
         "driftDistanceM": 37.8
       },
       "driftNote": null,
@@ -843,30 +854,30 @@
         13.52
       ],
       "centredResidualM": [
-        0.0,
-        -0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
-        2.0,
-        -20.0,
-        6.0
+        2,
+        -20,
+        6
       ],
       "sockets": [],
       "socketsMissing": [],
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          -31.0,
-          -58.0,
-          24.0
+          -31,
+          -58,
+          24
         ],
         "tumbleAxis": [
           0.421,
           0.661,
           0.621
         ],
-        "tumbleDeg": 133.0,
+        "tumbleDeg": 133,
         "driftDistanceM": 70.01,
         "note": "thin skin, huge area: the piece that ends up furthest from the hull"
       },
@@ -900,30 +911,30 @@
         17.99
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
-        -32.0,
-        14.0,
-        0.0
+        -32,
+        14,
+        0
       ],
       "sockets": [],
       "socketsMissing": [],
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          -19.0,
-          24.0,
-          -16.0
+          -19,
+          24,
+          -16
         ],
         "tumbleAxis": [
           0.679,
           0.509,
           0.529
         ],
-        "tumbleDeg": 74.0,
+        "tumbleDeg": 74,
         "driftDistanceM": 34.54
       },
       "driftNote": null,
@@ -946,19 +957,19 @@
       "was": "Any hull, engine section: combustion block, bell, feed manifold.",
       "reads": "The single most legible \"a ship died here\" shape there is. Torn off its mounts, still hot in the throat.",
       "file": "assets/incubator/wreck_aftermath_pack/source/aft_engine_section.glb",
-      "sha256": "3c46c1ef9ca8b065e4ac1b578902807c2ccce81ee6fe7a7f527827f73c5d9f3e",
-      "bytes": 71664,
-      "generator": "Khronos glTF Blender I/O v5.1.20",
-      "tris": 668,
+      "sha256": "cbfce40e6612187a2aafe600b5eb780143e274d71998d60865742223102a015d",
+      "bytes": 603864,
+      "generator": "SpaceFace Helios remaster / Blender 5.1.2",
+      "tris": 6388,
       "sizeM": [
         24.68,
         9.95,
         10.38
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [
@@ -969,17 +980,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.398,
           0.597,
           0.697
         ],
-        "tumbleDeg": 41.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 41,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -991,6 +1002,17 @@
           9.95,
           10.38
         ]
+      },
+      "remaster": {
+        "builder": "tools/blender/helios_remaster/sector_places_aftermath.py",
+        "sourceRevision": "463d9383855d99fce87e5ee6e59974fe5f2653c4",
+        "construction": "Rebuilt broken primary components, preserving sockets, collision and source frame.",
+        "driver": "tools/blender/helios_remaster/sector_places.py",
+        "command": "blender --background --threads 3 --python tools/blender/helios_remaster/sector_places.py -- --build place_aftermath_aft_engine_section",
+        "metadataRepair": "tools/blender/helios_remaster/sector_places_metadata.py",
+        "metadataReceipt": "tools/blender/helios_remaster/sector_places.metadata-repair.json",
+        "metadataOnlyCorrection": true,
+        "geometryAndImageBufferSha256": "814bdb2b9f4b224f1128720e75078b9000334510aceb654d5df0487fb102bb10"
       }
     },
     {
@@ -1001,19 +1023,19 @@
       "was": "Any hull, weapon spar or hardpoint wing.",
       "reads": "Snapped at the root fitting, not mid-span: things break where they bolt on.",
       "file": "assets/incubator/wreck_aftermath_pack/source/aft_weapon_spar.glb",
-      "sha256": "5cbafbc43c8e65c3ff46207e8006da5c32727eed70f6a1a0504bdeeb8d8ea4ee",
-      "bytes": 43104,
-      "generator": "Khronos glTF Blender I/O v5.1.20",
-      "tris": 372,
+      "sha256": "1c817288102c4eee47a3ea2ed7f9a4ec6cbae6e25f3039404312340e6dcd61bd",
+      "bytes": 109708,
+      "generator": "SpaceFace Helios remaster / Blender 5.1.2",
+      "tris": 1080,
       "sizeM": [
         27.8,
         4.53,
         4.73
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [
@@ -1023,17 +1045,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.703,
           0.201,
           0.683
         ],
-        "tumbleDeg": 96.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 96,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1045,6 +1067,17 @@
           4.53,
           4.73
         ]
+      },
+      "remaster": {
+        "builder": "tools/blender/helios_remaster/sector_places_aftermath.py",
+        "sourceRevision": "463d9383855d99fce87e5ee6e59974fe5f2653c4",
+        "construction": "Rebuilt broken primary components, preserving sockets, collision and source frame.",
+        "driver": "tools/blender/helios_remaster/sector_places.py",
+        "command": "blender --background --threads 3 --python tools/blender/helios_remaster/sector_places.py -- --build place_aftermath_aft_weapon_spar",
+        "metadataRepair": "tools/blender/helios_remaster/sector_places_metadata.py",
+        "metadataReceipt": "tools/blender/helios_remaster/sector_places.metadata-repair.json",
+        "metadataOnlyCorrection": true,
+        "geometryAndImageBufferSha256": "b19b65c64abe181ed1cabb7f72fc9ec8ac6c5fc0d5619e403fe943104b77c90f"
       }
     },
     {
@@ -1055,19 +1088,19 @@
       "was": "Any hull, cargo module on the Berth-standard footprint.",
       "reads": "Split on a seam and still shedding. Whoever gets here first gets the rest of it.",
       "file": "assets/incubator/wreck_aftermath_pack/source/aft_cargo_module.glb",
-      "sha256": "e011eb1092afb3b98d48d6b8c17158eccabeeea71ca6ae1f2ad319bf4ea6fb5e",
-      "bytes": 27960,
-      "generator": "Khronos glTF Blender I/O v5.1.20",
-      "tris": 204,
+      "sha256": "cd47f79c681fc15f7fa3c758d590aa2f7fa9649d7feaf4a05c21dc351cc2531c",
+      "bytes": 272196,
+      "generator": "SpaceFace Helios remaster / Blender 5.1.2",
+      "tris": 2496,
       "sizeM": [
         13.37,
         15.19,
         13.65
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [
@@ -1077,17 +1110,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.3,
           0.8,
           0.52
         ],
-        "tumbleDeg": 58.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 58,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1099,6 +1132,17 @@
           15.19,
           13.65
         ]
+      },
+      "remaster": {
+        "builder": "tools/blender/helios_remaster/sector_places_aftermath.py",
+        "sourceRevision": "463d9383855d99fce87e5ee6e59974fe5f2653c4",
+        "construction": "Rebuilt broken primary components, preserving sockets, collision and source frame.",
+        "driver": "tools/blender/helios_remaster/sector_places.py",
+        "command": "blender --background --threads 3 --python tools/blender/helios_remaster/sector_places.py -- --build place_aftermath_aft_cargo_module",
+        "metadataRepair": "tools/blender/helios_remaster/sector_places_metadata.py",
+        "metadataReceipt": "tools/blender/helios_remaster/sector_places.metadata-repair.json",
+        "metadataOnlyCorrection": true,
+        "geometryAndImageBufferSha256": "a2449f386fb1af099b34c4783160a17aefd47a8f831264c1ee8fce97ea500758"
       }
     },
     {
@@ -1109,19 +1153,19 @@
       "was": "Any hull, cockpit / control section.",
       "reads": "The part with the black box in it, and the part a player will always stop for. Canopy gone, cabin lights still on.",
       "file": "assets/incubator/wreck_aftermath_pack/source/aft_cockpit_section.glb",
-      "sha256": "04806ab402d06bcdd766591ba79c71c058804a6088e8eae3c6dd67d453bad8fe",
-      "bytes": 58252,
-      "generator": "Khronos glTF Blender I/O v5.1.20",
-      "tris": 500,
+      "sha256": "0ad2981eb02cc95847216f98ec6f414bb7069f11c317e241a355338e43d49f7d",
+      "bytes": 245160,
+      "generator": "SpaceFace Helios remaster / Blender 5.1.2",
+      "tris": 2116,
       "sizeM": [
         20.86,
         7.35,
         9.2
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [
@@ -1132,17 +1176,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.599,
           0.439,
           0.669
         ],
-        "tumbleDeg": 77.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 77,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1154,6 +1198,17 @@
           7.35,
           9.2
         ]
+      },
+      "remaster": {
+        "builder": "tools/blender/helios_remaster/sector_places_aftermath.py",
+        "sourceRevision": "463d9383855d99fce87e5ee6e59974fe5f2653c4",
+        "construction": "Rebuilt broken primary components, preserving sockets, collision and source frame.",
+        "driver": "tools/blender/helios_remaster/sector_places.py",
+        "command": "blender --background --threads 3 --python tools/blender/helios_remaster/sector_places.py -- --build place_aftermath_aft_cockpit_section",
+        "metadataRepair": "tools/blender/helios_remaster/sector_places_metadata.py",
+        "metadataReceipt": "tools/blender/helios_remaster/sector_places.metadata-repair.json",
+        "metadataOnlyCorrection": true,
+        "geometryAndImageBufferSha256": "f3516741a1d18433bfb2cde6fa7ffb2a43479ce0eec08bf99c0cb805c46b823a"
       }
     },
     {
@@ -1174,9 +1229,9 @@
         17.54
       ],
       "centredResidualM": [
-        0.0,
-        -0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [
@@ -1186,17 +1241,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.2,
           0.75,
           0.63
         ],
-        "tumbleDeg": 141.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 141,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1218,19 +1273,19 @@
       "was": "Any hull, pressure vessel with saddle mounts.",
       "reads": "Peeled open from the inside and still anchored by its saddles -- the clearest \"this burst\" shape in the kit.",
       "file": "assets/incubator/wreck_aftermath_pack/source/aft_pressure_tank.glb",
-      "sha256": "1eb49105cf25d6595f014c6312793e753f765866e9b5a00aa107442dccb21134",
-      "bytes": 117112,
-      "generator": "Khronos glTF Blender I/O v5.1.20",
-      "tris": 1308,
+      "sha256": "8b3b70533dca310def921c79c4021dce9564d465893bb760a7b481097b4b3f65",
+      "bytes": 304860,
+      "generator": "SpaceFace Helios remaster / Blender 5.1.2",
+      "tris": 3628,
       "sizeM": [
         16.02,
         15.89,
         17.44
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [
@@ -1240,17 +1295,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.52,
           0.3,
           0.8
         ],
-        "tumbleDeg": 63.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 63,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1262,6 +1317,17 @@
           15.89,
           17.44
         ]
+      },
+      "remaster": {
+        "builder": "tools/blender/helios_remaster/sector_places_aftermath.py",
+        "sourceRevision": "463d9383855d99fce87e5ee6e59974fe5f2653c4",
+        "construction": "Rebuilt broken primary components, preserving sockets, collision and source frame.",
+        "driver": "tools/blender/helios_remaster/sector_places.py",
+        "command": "blender --background --threads 3 --python tools/blender/helios_remaster/sector_places.py -- --build place_aftermath_aft_pressure_tank",
+        "metadataRepair": "tools/blender/helios_remaster/sector_places_metadata.py",
+        "metadataReceipt": "tools/blender/helios_remaster/sector_places.metadata-repair.json",
+        "metadataOnlyCorrection": true,
+        "geometryAndImageBufferSha256": "eda4d52f04c58ab735b304b231e013c860f735f1f9a050caba0c9540357e5cfb"
       }
     },
     {
@@ -1283,8 +1349,8 @@
       ],
       "centredResidualM": [
         -0.13,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [],
@@ -1292,17 +1358,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.66,
           0.5,
           0.56
         ],
-        "tumbleDeg": 38.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 38,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1334,9 +1400,9 @@
         9.73
       ],
       "centredResidualM": [
-        0.0,
-        -0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [
@@ -1346,17 +1412,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.451,
           0.621,
           0.641
         ],
-        "tumbleDeg": 88.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 88,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1388,7 +1454,7 @@
         4.34
       ],
       "centredResidualM": [
-        0.0,
+        0,
         0.27,
         -0.49
       ],
@@ -1398,17 +1464,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.602,
           0.501,
           0.622
         ],
-        "tumbleDeg": 122.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 122,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1440,8 +1506,8 @@
         3.47
       ],
       "centredResidualM": [
-        -0.0,
-        0.0,
+        0,
+        0,
         0.33
       ],
       "shipFrameOriginM": null,
@@ -1450,17 +1516,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.301,
           0.723,
           0.622
         ],
-        "tumbleDeg": 88.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 88,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1492,9 +1558,9 @@
         3.76
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [],
@@ -1502,17 +1568,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.723,
           0.321,
           0.612
         ],
-        "tumbleDeg": 154.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 154,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1544,9 +1610,9 @@
         5.78
       ],
       "centredResidualM": [
-        -0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [],
@@ -1554,17 +1620,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.501,
           0.602,
           0.622
         ],
-        "tumbleDeg": 61.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 61,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1596,9 +1662,9 @@
         3.76
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [],
@@ -1606,17 +1672,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.66,
           0.5,
           0.56
         ],
-        "tumbleDeg": 97.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 97,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1648,9 +1714,9 @@
         4.65
       ],
       "centredResidualM": [
-        0.0,
-        -0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": null,
       "sockets": [],
@@ -1658,17 +1724,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.42,
           0.68,
           0.6
         ],
-        "tumbleDeg": 133.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 133,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1884,9 +1950,9 @@
       "gaps": [],
       "drift": null,
       "shipFrameOriginM": [
-        -6.0,
+        -6,
         -9.41,
-        -0.0
+        0
       ]
     },
     {
@@ -1918,9 +1984,9 @@
       "gaps": [],
       "drift": null,
       "shipFrameOriginM": [
-        -6.0,
+        -6,
         -8.96,
-        -0.0
+        0
       ]
     }
   ],

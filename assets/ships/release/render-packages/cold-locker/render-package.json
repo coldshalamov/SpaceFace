@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d62fc663c8cc30d970fd83bcad6fb8c30adca899a347d21b26b48976c30d07b3",
+  "contentHash": "4fec19368f92bd085f3de66910a983247ad9caa02ba4a4cd1cb2bf81f8fe039b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -24,38 +24,38 @@
       },
       "drawMode": 4,
       "geometryHash": "150660bcc3a0b9106ccc42310ac07f94a8cf13b8d465fa19232eca013402035b",
-      "id": "sf.render.cold-locker.mesh.locker-bite-tab-0.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-bite-tab-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
-      "nodeId": "sf.render.cold-locker.mesh.locker-bite-tab-0",
+      "nodeId": "sf.render.cold-locker.node.locker-bite-tab-0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -0.8888188432614612,
+          -0.8888189445893602,
           0.333469482179094,
-          0.29058852861806983
+          0.29058855395004457
         ],
         "min": [
-          -1.2604671831822998,
-          -0.20996354066171463,
+          -1.2604672845101987,
+          -0.2099636419896136,
           -0.6672963478578211
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d10bc236b6a3189f523bccef8fe05b763d473c0ff8b5fa60f8de111dd8fd614",
-      "id": "sf.render.cold-locker.mesh.locker-bite-tab-1.primitive.0",
+      "geometryHash": "733e579b7b1e5922b67f7cc68ef3c777211e7c1af9686365d0c96d26e98c2618",
+      "id": "sf.render.cold-locker.node.locker-bite-tab-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
-      "nodeId": "sf.render.cold-locker.mesh.locker-bite-tab-1",
+      "nodeId": "sf.render.cold-locker.node.locker-bite-tab-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -74,13 +74,13 @@
       },
       "drawMode": 4,
       "geometryHash": "8364b17ab1ff6bd96a5e611a90111e5e3e5c0a74b113d88e435f3fa3935b4ea5",
-      "id": "sf.render.cold-locker.mesh.locker-bite-tab-2.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-bite-tab-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
-      "nodeId": "sf.render.cold-locker.mesh.locker-bite-tab-2",
+      "nodeId": "sf.render.cold-locker.node.locker-bite-tab-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -89,48 +89,48 @@
         "max": [
           -0.6248352464461391,
           0.4553124048867616,
-          -0.1250864034214132
+          -0.12508641608740056
         ],
         "min": [
-          -1.1780201169468398,
-          -0.017809367772542162,
+          -1.1780202182747388,
+          -0.01780937885528111,
           -1.0302905252482049
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da6544885c0d7eeeec82c3ad974aa0ebe8954829667ba5e4fed54c410e43682f",
-      "id": "sf.render.cold-locker.mesh.locker-bite-tab-3.primitive.0",
+      "geometryHash": "dd09ab2bbf2d0906f66626e879c6fe7185d5667041e6171849a61a216e78a30b",
+      "id": "sf.render.cold-locker.node.locker-bite-tab-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
-      "nodeId": "sf.render.cold-locker.mesh.locker-bite-tab-3",
+      "nodeId": "sf.render.cold-locker.node.locker-bite-tab-3",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          0.6765728156797408,
-          0.02322746394160813,
-          1.4763104018410615
+          0.6765727143518419,
+          0.023227459191862865,
+          1.4763105031689605
         ],
         "min": [
-          -0.3051040541278347,
-          -0.6056526592381601,
+          -0.3051041301237589,
+          -0.6056527099021096,
           0.5971851933615397
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1b3fade026dce397428ad8fc0e18c31fe322cd7c089ba714e6fbd26f10b1363",
-      "id": "sf.render.cold-locker.mesh.locker-bite-tab-4.primitive.0",
+      "geometryHash": "1d4818347703ac2d59569238b95274ef92cbcafa2c44994c13f0393f29cbafca",
+      "id": "sf.render.cold-locker.node.locker-bite-tab-4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
-      "nodeId": "sf.render.cold-locker.mesh.locker-bite-tab-4",
+      "nodeId": "sf.render.cold-locker.node.locker-bite-tab-4",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -139,873 +139,873 @@
         "max": [
           2.567000258445745,
           19.162760985956766,
-          2.9691248892089845
+          2.9691254971763783
         ],
         "min": [
           -2.567000258445745,
           14.157240597142618,
-          2.7428754979827943
+          2.7428752953269964
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d78cb18a7e96cc43e630c7f72cdb2c542cc3fbd6000a16b112c6a589c0b83a9f",
-      "id": "sf.render.cold-locker.mesh.locker-bond-ring.primitive.0",
+      "geometryHash": "6a86922b17fa3fb43c79c4d908c392b17f63a7a13f6fb98da73501c7b72545e9",
+      "id": "sf.render.cold-locker.node.locker-bond-ring.primitive.0",
       "indexCount": 420,
       "indexed": true,
       "materialHash": "3c10c457611ae6cc9010a82ecb80ae37ca2a8d9b9dda1747cb8abf2587785d2a",
       "materialPipelineKey": "opaque",
       "meshName": "Torus",
-      "nodeId": "sf.render.cold-locker.mesh.locker-bond-ring",
+      "nodeId": "sf.render.cold-locker.node.locker-bond-ring",
       "primitiveIndex": 0,
       "vertexCount": 140
     },
     {
       "bounds": {
         "max": [
-          0.7432914614548807,
+          0.7432914107909312,
           3.6259973827810086,
           0.7432916134467291
         ],
         "min": [
-          -0.7432914614548807,
-          1.814003256180797,
+          -0.7432914107909312,
+          1.814003661492393,
           -0.7432916134467291
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f77f93164a85b8ab0ab443acbd7ebe8ad93b3a96917851b9fefbab50cd1df358",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-0.primitive.0",
+      "geometryHash": "a1a5b1c53d5d72557cd0629162a885256f8fd94d6781fbca52f55c06d69a66df",
+      "id": "sf.render.cold-locker.node.locker-diag-a-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.006",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-0",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          5.325997430464724,
+          0.7432912587990828,
+          5.32599783577632,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          3.514003303864513,
+          -0.7432912587990828,
+          3.5140037091761087,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed3130f0998423e840d5dfa263011ae79cbd66bc9766372e4bf5fb15fa52ba6e",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-1.primitive.0",
+      "geometryHash": "1877eaa516720c187383ee16e2197c9e1a57a86ed2644117241f5cd22102a68b",
+      "id": "sf.render.cold-locker.node.locker-diag-a-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.008",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-1",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           22.326000744483053,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           20.51400499663646,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c3127ea4d0480f6b20af50c51a84559938dacde39b97bda86d3c6e8711abd7c",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-11.primitive.0",
+      "geometryHash": "97ee66025bed3213f0c580d3dbd609f40535feea63b0e0506fdad3bcc99b5996",
+      "id": "sf.render.cold-locker.node.locker-diag-a-11.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.026",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-11",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-11",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          24.02600079216677,
+          0.7432912587990828,
+          24.026002413413153,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          22.214005044320174,
+          -0.7432912587990828,
+          22.214006665566558,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eb547b4ccba215a14c8b0896f40d2fe211b9994988137764daa354458acc83b2",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-12.primitive.0",
+      "geometryHash": "984ce6a744fc6949d1ad4f108c92709bcd5cc16b3b3f7cf46334ac011b56bee0",
+      "id": "sf.render.cold-locker.node.locker-diag-a-12.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.028",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-12",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-12",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          25.726000839850485,
+          0.7432912587990828,
+          25.72600246109687,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          23.91400509200389,
+          -0.7432912587990828,
+          23.914006713250274,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f4026babba5bed328550234054b9878238f7bbaa2eee29ab57efd7bd6e1e4019",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-13.primitive.0",
+      "geometryHash": "b325f28d0869a08ecb039bc947d6a412f3fa57a858f5c87e25b6d022a9495801",
+      "id": "sf.render.cold-locker.node.locker-diag-a-13.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.030",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-13",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-13",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          27.425999266287818,
+          0.7432912587990828,
+          27.426002508780584,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          25.614005139687606,
+          -0.7432912587990828,
+          25.61400676093399,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e041e2a135f25d62770c7c8e16602470f7a58d456fe19eb595623a9f8c2af7d9",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-14.primitive.0",
+      "geometryHash": "1d0d33aa20408c57059336068ef6c85b339fe6da4db95df8bedb956f63aa5ff8",
+      "id": "sf.render.cold-locker.node.locker-diag-a-14.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.032",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-14",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-14",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          29.1260025564643,
+          0.7432912587990828,
+          29.126005798957067,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          27.314006808617705,
+          -0.7432912587990828,
+          27.314010051110472,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d339c694e0ac90b788beff4fd64a0a7c2d51572fa2b7767d45a296c501991ec",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-15.primitive.0",
+      "geometryHash": "a4d2d67becb4c01f8f35a06728effdececa43840635b7d15e2c803774375fdab",
+      "id": "sf.render.cold-locker.node.locker-diag-a-15.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.034",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-15",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-15",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           30.826002604148016,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           29.01400685630142,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0317f17a79fe34268fe1eaa4643acb7c93a5c97c52f1fad6034b464a33dbcf95",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-16.primitive.0",
+      "geometryHash": "a6e3b1a2eba3cfb43469e5b1e80360b1ac215501964e1b68545a331f00798e22",
+      "id": "sf.render.cold-locker.node.locker-diag-a-16.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.036",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-16",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-16",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           32.525999409338965,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           30.71400366149237,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5fffd25a1e2c7191b26516b58603dd2445c6fb955a167f24f9c14519028e49f6",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-17.primitive.0",
+      "geometryHash": "db3604566e7905de4e87ccacaa4e3b8f2e82c6f4766ef51456895e2f96d343b4",
+      "id": "sf.render.cold-locker.node.locker-diag-a-17.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.038",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-17",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-17",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           7.025997883460036,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          5.214003351548229,
+          -0.7432912587990828,
+          5.2140037568598245,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "385ba5a1923cf39f5a7974f6cb21ddaf10bdfba511aea53e5e1664b371ed2f00",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-2.primitive.0",
+      "geometryHash": "0c1ad8856c4b37a075980dbe590dedeb8f3d27162c039d078e50bdb29edf5734",
+      "id": "sf.render.cold-locker.node.locker-diag-a-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.010",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-2",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-2",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           8.725997931143752,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           6.91400380454354,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12fed9ea27606b9a951abeef19c0a042147e6ce8d91dedd74aee42e0a658ee6c",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-3.primitive.0",
+      "geometryHash": "b8009e8b063f2b26b2aaf8bd9b099f2ea7b2c7199b9d5751d772ffd81dac3441",
+      "id": "sf.render.cold-locker.node.locker-diag-a-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.012",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-3",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-3",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           10.425997978827468,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           8.614003852227256,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ee1283de6629d2e58587cadf0481017b39f8c5dfa039a676010ef4f068b3b5b",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-4.primitive.0",
+      "geometryHash": "6a8fe5c3112a8a61b7280495b7e98213f508e73a663e7249e91a1595aa199060",
+      "id": "sf.render.cold-locker.node.locker-diag-a-4.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.014",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-4",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-4",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          12.125998026511184,
+          0.7432912587990828,
+          12.125998837134375,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          10.314003899910972,
+          -0.7432912587990828,
+          10.314004710534164,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8db1f7e427ff8eacb4b27a7b014c82148344599f88fe5ca35b4ec219709e5052",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-5.primitive.0",
+      "geometryHash": "83e7aa7dfd238254541c4f56ae61bacd72af4b294a972c1a3ec379b34d3242e6",
+      "id": "sf.render.cold-locker.node.locker-diag-a-5.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.016",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-5",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-5",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913601269817,
-          13.825998884818091,
-          0.7432915627827796
+          0.7432915121188302,
+          13.826000506064474,
+          0.7432916641106786
         ],
         "min": [
-          -0.7432913601269817,
-          12.014003947594688,
-          -0.7432915627827796
+          -0.7432915121188302,
+          12.01400475821788,
+          -0.7432916641106786
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7245a55326a15a50b2a40d152a1b2057de916bf8659793012f50f83fde9649d",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-6.primitive.0",
+      "geometryHash": "c39f09053f3a850b7147463e5eb99e18ad1dbc30eec9782679f79269f8716b82",
+      "id": "sf.render.cold-locker.node.locker-diag-a-6.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.018",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-6",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-6",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           15.525998932501807,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           13.714003184655212,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f7dd3580514ffb21e4c05542fcd508531f4c8720ee7ce7f305c478cb98223b7",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-7.primitive.0",
+      "geometryHash": "332047941d25fad6ad06c66faebf0aa4baa09d25905e93328886fc378809abd7",
+      "id": "sf.render.cold-locker.node.locker-diag-a-7.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.020",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-7",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-7",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          17.226000601431906,
+          0.7432912587990828,
+          17.22600222267829,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          15.414004853585311,
+          -0.7432912587990828,
+          15.414006474831695,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "052b14f1dc794cee760aacb91aab02577c122e34d6f79b5ccba9088aef92ea01",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-8.primitive.0",
+      "geometryHash": "c57c1d751ded44f84edf3205a18a5a5d983512e4a49167969146de4d1c6d12b5",
+      "id": "sf.render.cold-locker.node.locker-diag-a-8.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.022",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-8",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-8",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           18.92599902786924,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           17.114003280022644,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7bb2c644377917aa924fe554c6371d576f044dd4bafee49004f77d7a95e7c6c8",
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-9.primitive.0",
+      "geometryHash": "710e611ae80f7be44ef2578ea9e445d3a3ac8009548df7843926945b61245cb8",
+      "id": "sf.render.cold-locker.node.locker-diag-a-9.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.024",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-a-9",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-a-9",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432914614548807,
+          0.7432914107909312,
           3.6259973827810086,
           0.7432916134467291
         ],
         "min": [
-          -0.7432914614548807,
-          1.814003256180797,
+          -0.7432914107909312,
+          1.814003661492393,
           -0.7432916134467291
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c97ca53bbf8913730f19d9c8ae64d5b3e7d3581bf400406ce770ccbd97d8a47",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-0.primitive.0",
+      "geometryHash": "44780ed8c4482d2a154ff0a1a6e427117c12d11b5deb1abed0d6688c41ed30c7",
+      "id": "sf.render.cold-locker.node.locker-diag-b-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-0",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          5.325997430464724,
+          0.7432912587990828,
+          5.32599783577632,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          3.514003303864513,
+          -0.7432912587990828,
+          3.5140037091761087,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b82ace0940488587e62304be1fff91c1d13cb173de07e6043bbbdf0e1220bf6a",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-1.primitive.0",
+      "geometryHash": "d55455782be8ee0b026df4eb1eb95481319e70c570f1028340ed5409aa19eb73",
+      "id": "sf.render.cold-locker.node.locker-diag-b-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.009",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-1",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           22.326000744483053,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           20.51400499663646,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "732fd18633070f1a747787637fa446ce1c0270c9c88fffb53378626c36d70b82",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-11.primitive.0",
+      "geometryHash": "45671a406259b7c52b6d08d9f5768ba799d578774c97c564e1bace233dba284d",
+      "id": "sf.render.cold-locker.node.locker-diag-b-11.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.027",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-11",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-11",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          24.02600079216677,
+          0.7432912587990828,
+          24.026002413413153,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          22.214005044320174,
+          -0.7432912587990828,
+          22.214006665566558,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a1071432b33e2f44c9b87e3a5e8fecbd23cb09882011e28e7011dc921d09219",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-12.primitive.0",
+      "geometryHash": "dae41386c6dc358dec7adf220f4f1cec10ab464aa15031c8d2cbb32c2d14012a",
+      "id": "sf.render.cold-locker.node.locker-diag-b-12.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.029",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-12",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-12",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          25.726000839850485,
+          0.7432912587990828,
+          25.72600246109687,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          23.91400509200389,
+          -0.7432912587990828,
+          23.914006713250274,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d6cdf5ac413178e9e5a99bb4fc7b79d7ee411643104b07508cb4b2378ebfc74d",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-13.primitive.0",
+      "geometryHash": "49f91208e72d5af88c9c2e519ff653e2909c1913f927f635811d179ee75cbc3b",
+      "id": "sf.render.cold-locker.node.locker-diag-b-13.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.031",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-13",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-13",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          27.425999266287818,
+          0.7432912587990828,
+          27.426002508780584,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          25.614005139687606,
+          -0.7432912587990828,
+          25.61400676093399,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f0d4951c1e5b286a3da378ef8124fe742d1391848a688ceac4dbc61e07115ea5",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-14.primitive.0",
+      "geometryHash": "f4be994499bd77abe7b8ea546bec1d6e766596db7201ac77bdd9f3d8a19dab69",
+      "id": "sf.render.cold-locker.node.locker-diag-b-14.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.033",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-14",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-14",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          29.1260025564643,
+          0.7432912587990828,
+          29.126005798957067,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          27.314006808617705,
+          -0.7432912587990828,
+          27.314010051110472,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e94594141812cb3f3f73e8174ab0926bb21f9bfbedaf93d4fa87189502ae9c07",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-15.primitive.0",
+      "geometryHash": "5f3d8bee0daceedf61e6e6a5765edbb66b7b4c2810e9001d1c56dd98a2d7ec36",
+      "id": "sf.render.cold-locker.node.locker-diag-b-15.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.035",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-15",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-15",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           30.826002604148016,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           29.01400685630142,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "edb9a8a0bc14d1d165ae02a846e0c0fc1c32320554a08a5714522dde4183c6fa",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-16.primitive.0",
+      "geometryHash": "a84b45db2dcb8bcce0b2c3dc08b35c06470e07d2dee907affcb79217372bf671",
+      "id": "sf.render.cold-locker.node.locker-diag-b-16.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.037",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-16",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-16",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           32.525999409338965,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           30.71400366149237,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6ae4ba157b417efee12e7cb96e7174ae025141bbe2d42905cc8a1c7082f8dcf4",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-17.primitive.0",
+      "geometryHash": "ce8250a71604c345edfc2dca376ff28107c51bc88875bc813829f0e1ff3abfbf",
+      "id": "sf.render.cold-locker.node.locker-diag-b-17.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.039",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-17",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-17",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           7.025997883460036,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          5.214003351548229,
+          -0.7432912587990828,
+          5.2140037568598245,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d12b3a75afeb1fdf1b04a16ef95273594c3009abed3a06d63378a3a5a15ee6a4",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-2.primitive.0",
+      "geometryHash": "f3d7dee0cacab7743608413d9291361577bf1381e0e789711b5121b49ca4983c",
+      "id": "sf.render.cold-locker.node.locker-diag-b-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.011",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-2",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-2",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           8.725997931143752,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           6.91400380454354,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8eb6bf2406bf7c71ef44a8907c6efd91bab49365fa87ba27ea6f43fd3ba3ec11",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-3.primitive.0",
+      "geometryHash": "c8b1157220372145e8355fb8803816ddc37174b04cfa1935172bd642a32f1541",
+      "id": "sf.render.cold-locker.node.locker-diag-b-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.013",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-3",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-3",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           10.425997978827468,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           8.614003852227256,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d686d934547ac2430789cbaa5bdfd1578bebc510657a04708b9548c839de5ebf",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-4.primitive.0",
+      "geometryHash": "bdf09c4ccb354250d11d5d5560152914502bfe181713680c1e1e64130b73ce21",
+      "id": "sf.render.cold-locker.node.locker-diag-b-4.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.015",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-4",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-4",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          12.125998026511184,
+          0.7432912587990828,
+          12.125998837134375,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          10.314003899910972,
+          -0.7432912587990828,
+          10.314004710534164,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07af7c454341ed8cd1b82f98d7d34fda1708b0f16b24afff595e56a273dda095",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-5.primitive.0",
+      "geometryHash": "4c0eb1aa9dcbde3f04be2daf2f1577de51834f064de8e3f9f1bf480a5416cf23",
+      "id": "sf.render.cold-locker.node.locker-diag-b-5.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.017",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-5",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-5",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913601269817,
-          13.825998884818091,
-          0.7432915627827796
+          0.7432915121188302,
+          13.826000506064474,
+          0.7432916641106786
         ],
         "min": [
-          -0.7432913601269817,
-          12.014003947594688,
-          -0.7432915627827796
+          -0.7432915121188302,
+          12.01400475821788,
+          -0.7432916641106786
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a451432635820634de8c36ec459b623bd7596cd0d8690962c2ef70c7b36fa2bf",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-6.primitive.0",
+      "geometryHash": "6b5ba2e4c41eb276814fc6a5cabdea3608b6334276545fa32ec0b429c0793726",
+      "id": "sf.render.cold-locker.node.locker-diag-b-6.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.019",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-6",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-6",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           15.525998932501807,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           13.714003184655212,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38ef907bb69a5729f4054e39898b5d6974d1de2e0b0a465c657a5803510d03d1",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-7.primitive.0",
+      "geometryHash": "5f96aabb1b3b70f30b029b5f4214a08fb67259fe8c11316de87c0c0432d4ff84",
+      "id": "sf.render.cold-locker.node.locker-diag-b-7.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.021",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-7",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-7",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
-          17.226000601431906,
+          0.7432912587990828,
+          17.22600222267829,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
-          15.414004853585311,
+          -0.7432912587990828,
+          15.414006474831695,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "885e2e1adedc0f8f141de4a96a0fd812d723cbc966167d07a7b31ae166d7b302",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-8.primitive.0",
+      "geometryHash": "95f0677b01c20c28ddc458d70be25ea6f614c5748e281cf5e2e830f0181aab30",
+      "id": "sf.render.cold-locker.node.locker-diag-b-8.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.023",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-8",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-8",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7432913094630322,
+          0.7432912587990828,
           18.92599902786924,
           0.7432917147746281
         ],
         "min": [
-          -0.7432913094630322,
+          -0.7432912587990828,
           17.114003280022644,
           -0.7432917147746281
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a683a5f56a6a7352943e5ff9a1136a33879229d4aff48d64ed0e16211239cff5",
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-9.primitive.0",
+      "geometryHash": "9364ca11a2dc9c3aa661ae65361fe673a5ff60295df0f782b7e1236795eb92cb",
+      "id": "sf.render.cold-locker.node.locker-diag-b-9.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.025",
-      "nodeId": "sf.render.cold-locker.mesh.locker-diag-b-9",
+      "nodeId": "sf.render.cold-locker.node.locker-diag-b-9",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -1024,13 +1024,13 @@
       },
       "drawMode": 4,
       "geometryHash": "6f1f99d99a4a0f077cba3aff565cbf08547919ab051f5b132a473d26905b30b8",
-      "id": "sf.render.cold-locker.mesh.locker-dog-0.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-dog-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.044",
-      "nodeId": "sf.render.cold-locker.mesh.locker-dog-0",
+      "nodeId": "sf.render.cold-locker.node.locker-dog-0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1049,63 +1049,63 @@
       },
       "drawMode": 4,
       "geometryHash": "e9f5c0cf205027a115cef2195e5265255b2a32727d421067e62f1d190d260a03",
-      "id": "sf.render.cold-locker.mesh.locker-dog-1.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-dog-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.045",
-      "nodeId": "sf.render.cold-locker.mesh.locker-dog-1",
+      "nodeId": "sf.render.cold-locker.node.locker-dog-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -2.2146853829744373,
+          -2.214685585630235,
           15.334088755610082,
-          1.9427656837846428
+          1.942765278473047
         ],
         "min": [
           -2.9683357475318815,
           15.130132718089953,
-          0.7658599710705687
+          0.7658596164229223
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c11497a314101596c0d358b47583b71a750126e24e450507e722370e76af2c00",
-      "id": "sf.render.cold-locker.mesh.locker-dog-2.primitive.0",
+      "geometryHash": "502fe528aef849acbe7bc6f24d838bb1428ed732a3a113eb4a8e7a2405a91baf",
+      "id": "sf.render.cold-locker.node.locker-dog-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.046",
-      "nodeId": "sf.render.cold-locker.mesh.locker-dog-2",
+      "nodeId": "sf.render.cold-locker.node.locker-dog-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          2.650310233068751,
-          20.14500080823899,
-          3.0599975728987943
+          2.650310969826601,
+          20.14500390458123,
+          3.059998558997784
         ],
         "min": [
-          -2.650310233068751,
-          13.175000774860393,
-          -3.0599975728987943
+          -2.650310969826601,
+          13.175001491308135,
+          -3.059998558997784
         ]
       },
       "drawMode": 4,
-      "geometryHash": "04d003e9e599fc0c1a94614cbef93da010db1b5e16b9152a5aca53c78612db60",
-      "id": "sf.render.cold-locker.mesh.locker-drum-mesh.primitive.0",
+      "geometryHash": "48775f7e3c07165ce2b20af933542a69e35c9b7c26e11b567861f713f5e85697",
+      "id": "sf.render.cold-locker.node.locker-drum-mesh.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e508700b026f2aa301f724b310b82947e3ebbed3a8e53f2178ded887760cee45",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.040",
-      "nodeId": "sf.render.cold-locker.mesh.locker-drum-mesh",
+      "meshName": "Cylinder.047",
+      "nodeId": "sf.render.cold-locker.node.locker-drum-mesh",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -1124,13 +1124,13 @@
       },
       "drawMode": 4,
       "geometryHash": "aee8cc12891ab832456cde9c20d0819274fdab9b82943387a8dae6d48f6a4a26",
-      "id": "sf.render.cold-locker.mesh.locker-embed-plug.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-embed-plug.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
-      "nodeId": "sf.render.cold-locker.mesh.locker-embed-plug",
+      "nodeId": "sf.render.cold-locker.node.locker-embed-plug",
       "primitiveIndex": 0,
       "vertexCount": 42
     },
@@ -1139,7 +1139,7 @@
         "max": [
           2.0048099722528434,
           18.768000461578367,
-          2.822097094538549
+          2.8220974998501447
         ],
         "min": [
           -2.0048099722528434,
@@ -1148,64 +1148,64 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30060e9d516e018838d4382c1b4be51d529260e7b92dc12547d4d85a85fcae1b",
-      "id": "sf.render.cold-locker.mesh.locker-hatch.primitive.0",
+      "geometryHash": "91b8b10eaad5a00ab205094517e28067860289a0bae577d3ae643e6a968b4879",
+      "id": "sf.render.cold-locker.node.locker-hatch.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.043",
-      "nodeId": "sf.render.cold-locker.mesh.locker-hatch",
+      "nodeId": "sf.render.cold-locker.node.locker-hatch",
       "primitiveIndex": 0,
       "vertexCount": 60
     },
     {
       "bounds": {
         "max": [
-          2.7385601454218715,
-          19.243873158451322,
-          3.162000113010407
+          0.8054589815223655,
+          0.7599625695669228,
+          0.930000166275927
         ],
         "min": [
-          -2.7385601454218715,
-          18.972130377773112,
-          -3.162000113010407
+          -0.8054589815223655,
+          0.6800382108753562,
+          -0.930000166275927
         ]
       },
       "drawMode": 4,
       "geometryHash": "6b35eba33de4f97c1c61095ade7f064a2aa49715277d1e723367c51ded0b46a1",
-      "id": "sf.render.cold-locker.mesh.locker-hoop-hi.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-hoop-hi.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.042",
-      "nodeId": "sf.render.cold-locker.mesh.locker-hoop-hi",
+      "nodeId": "sf.render.cold-locker.node.locker-hoop-hi",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          2.7385601454218715,
-          14.347872826572655,
-          3.162000113010407
+          0.8054589815223655,
+          -0.6800377340381164,
+          0.930000166275927
         ],
         "min": [
-          -2.7385601454218715,
-          14.076130045894445,
-          -3.162000113010407
+          -0.8054589815223655,
+          -0.759962092729683,
+          -0.930000166275927
         ]
       },
       "drawMode": 4,
       "geometryHash": "96cee64c324e73732b1faed51ffa656e6a84621e3cdbba3bba10b07736d2d411",
-      "id": "sf.render.cold-locker.mesh.locker-hoop-lo.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-hoop-lo.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.041",
-      "nodeId": "sf.render.cold-locker.mesh.locker-hoop-lo",
+      "nodeId": "sf.render.cold-locker.node.locker-hoop-lo",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -1224,13 +1224,13 @@
       },
       "drawMode": 4,
       "geometryHash": "e4d03a9d1fbbacabce21293f9f7a9c450503a9ea584d01e9d7107d6878ba1165",
-      "id": "sf.render.cold-locker.mesh.locker-manifest-plate.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-manifest-plate.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "393d0b9202c9bce81d29b499076cb115ac2656e8d37a7b0b44c41289479ff99f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.047",
-      "nodeId": "sf.render.cold-locker.mesh.locker-manifest-plate",
+      "nodeId": "sf.render.cold-locker.node.locker-manifest-plate",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1242,220 +1242,220 @@
           0.4940464635188846
         ],
         "min": [
-          -0.48641120367642543,
-          0.2332991784684566,
-          -3.0550079844981894
+          -0.4864113050043244,
+          0.23329927979635556,
+          -3.0550081871539874
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23cbf797b56095bdeead29edd795dc77d1da3baa3eb8a3904ceb27fc35f85978",
-      "id": "sf.render.cold-locker.mesh.locker-outrigger-0.primitive.0",
+      "geometryHash": "e79a5260acd0b321f47392122dfb11bac9051203411e08f1926e1f54fb8600f1",
+      "id": "sf.render.cold-locker.node.locker-outrigger-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.044",
-      "nodeId": "sf.render.cold-locker.mesh.locker-outrigger-0",
+      "nodeId": "sf.render.cold-locker.node.locker-outrigger-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.38358479175034077,
-          2.5183180800134437,
+          0.3835845637625681,
+          2.5183184853250395,
           1.3824088245955295
         ],
         "min": [
-          -2.5788495429501666,
-          0.3376820375865215,
-          -0.2991186151362477
+          -2.5788493402943686,
+          0.3376819109266478,
+          -0.29911851380834875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "10a77f961821d815fb6b67baa742b39e16d8ca43aa27796d69dbb262359c4ae7",
-      "id": "sf.render.cold-locker.mesh.locker-outrigger-1.primitive.0",
+      "geometryHash": "6a0f4b4bec48f423d7cf052752dc9f0e941fda00c80c874ac08c0c7ad63d2e46",
+      "id": "sf.render.cold-locker.node.locker-outrigger-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.045",
-      "nodeId": "sf.render.cold-locker.mesh.locker-outrigger-1",
+      "nodeId": "sf.render.cold-locker.node.locker-outrigger-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          3.0600000047683693,
-          20.366035460473086,
-          0.25502851575692986
+          0.9000001301484944,
+          1.090010352669384,
+          0.07500839771736814
         ],
         "min": [
-          1.7000000476837158,
-          20.2979666204443,
-          -0.25502851575692986
+          0.500000085550198,
+          1.0699901027381746,
+          -0.07500839771736814
         ]
       },
       "drawMode": 4,
       "geometryHash": "f7d5b91caf87c442cc9cf07e43d8cfafbee355477273c560702fb04667793917",
-      "id": "sf.render.cold-locker.mesh.locker-petal-0.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-petal-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.048",
-      "nodeId": "sf.render.cold-locker.mesh.locker-petal-0",
+      "nodeId": "sf.render.cold-locker.node.locker-petal-0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          0.8579284252960093,
-          20.999866192477327,
-          1.8967344458449418
+          0.2523319556916378,
+          1.2764311828677533,
+          0.5578631521102885
         ],
         "min": [
-          -0.24321272012311468,
-          20.72261563252323,
-          0.4723160369554975
+          -0.0715331334079588,
+          1.1948868888633095,
+          0.13891651623082507
         ]
       },
       "drawMode": 4,
-      "geometryHash": "85dbfe105ca5403f722a1f5d9f33e8162b34c0d5a54dd0788561c007c21cfc80",
-      "id": "sf.render.cold-locker.mesh.locker-petal-1.primitive.0",
+      "geometryHash": "78a01450302fd5cff9887010ede304144ae54e927b0240f8229d3202c6051ad5",
+      "id": "sf.render.cold-locker.node.locker-petal-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.049",
-      "nodeId": "sf.render.cold-locker.mesh.locker-petal-1",
+      "nodeId": "sf.render.cold-locker.node.locker-petal-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -0.6346807210846706,
-          20.366035460473086,
-          -1.3417006451719118
+          -0.1866709909352941,
+          1.090010352669384,
+          -0.39461768464951014
         ],
         "min": [
-          -1.7552863732586559,
-          20.2979666204443,
-          -2.774811417209719
+          -0.5162607718689369,
+          1.0699901027381746,
+          -0.8161207641807985
         ]
       },
       "drawMode": 4,
-      "geometryHash": "504a145dfeed4f51e1f68a1123198fc04c188e3d9a7c15e2050261a46ca8eacc",
-      "id": "sf.render.cold-locker.mesh.locker-petal-2.primitive.0",
+      "geometryHash": "5bc108e164022c5c2d9af4a660eb15c735cb55ef401c6e26b23477686642cbe8",
+      "id": "sf.render.cold-locker.node.locker-petal-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.050",
-      "nodeId": "sf.render.cold-locker.mesh.locker-petal-2",
+      "nodeId": "sf.render.cold-locker.node.locker-petal-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -0.5623329052106882,
+          -0.5623329558746377,
           31.95999959945675,
-          -0.543655589570875
+          -0.5436556402348245
         ],
         "min": [
-          -0.7976672545297632,
+          -0.7976673051937127,
           1.3600003623962493,
-          -0.8163445701695764
+          -0.8163446208335259
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e293bf03dc27173f6edef7f9024d783d3ca76e0edcc163ed0f34111da6cb27e",
-      "id": "sf.render.cold-locker.mesh.locker-rail-1-1-2.primitive.0",
+      "geometryHash": "a6fc6a37b2d280af6391659faf6e5d73a5e82df19a50ce2cb17205a499507360",
+      "id": "sf.render.cold-locker.node.locker-rail-1-1-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rail-1-1-2",
+      "nodeId": "sf.render.cold-locker.node.locker-rail-1-1-2",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7976672545297632,
+          0.7976673051937127,
           31.95999959945675,
-          0.8163445701695764
+          0.8163446208335259
         ],
         "min": [
-          0.5623329052106882,
+          0.5623329558746377,
           1.3600003623962493,
-          0.543655589570875
+          0.5436556402348245
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7a2d46839dbd82e8cfe1ae38755657ba09b9acccad992967ee67d2200afd7b8",
-      "id": "sf.render.cold-locker.mesh.locker-rail-1-1-3.primitive.0",
+      "geometryHash": "74dc4778e5d2c0dc14c0750b0ebaf355152485b08d4360c9d82f8819b85ef7a7",
+      "id": "sf.render.cold-locker.node.locker-rail-1-1-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.004",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rail-1-1-3",
+      "nodeId": "sf.render.cold-locker.node.locker-rail-1-1-3",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.7976672545297632,
+          0.7976673051937127,
           31.95999959945675,
-          -0.543655589570875
+          -0.5436556402348245
         ],
         "min": [
-          0.5623329052106882,
+          0.5623329558746377,
           1.3600003623962493,
-          -0.8163445701695764
+          -0.8163446208335259
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9c329920887d975149f64b2c7b7ddcf0c702ba3dcc13e84eb25b4f47a96df232",
-      "id": "sf.render.cold-locker.mesh.locker-rail-1-1-4.primitive.0",
+      "geometryHash": "5abec3ac4bd5d41f6679a1e196645e95d8b10fd8c6bcf237a8eaa3d5ead92890",
+      "id": "sf.render.cold-locker.node.locker-rail-1-1-4.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rail-1-1-4",
+      "nodeId": "sf.render.cold-locker.node.locker-rail-1-1-4",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -0.5623329052106882,
+          -0.5623329558746377,
           31.95999959945675,
-          0.8163445701695764
+          0.8163446208335259
         ],
         "min": [
-          -0.7976672545297632,
+          -0.7976673051937127,
           1.3600003623962493,
-          0.543655589570875
+          0.5436556402348245
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66c566814e306ad388c9de860109b1b42c94490c24593c9a3dbd313a1fe15d27",
-      "id": "sf.render.cold-locker.mesh.locker-rail-1-1.primitive.0",
+      "geometryHash": "49c3ac5a1abd1da020caab96c633a3495e29153fe2dd84e7bfb035b1fbac7d99",
+      "id": "sf.render.cold-locker.node.locker-rail-1-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rail-1-1",
+      "nodeId": "sf.render.cold-locker.node.locker-rail-1-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -1463,24 +1463,24 @@
       "bounds": {
         "max": [
           1.1560000445842746,
-          1.4279844923015048,
+          1.4279845936294038,
           1.1560000445842746
         ],
         "min": [
           -1.1560000445842746,
-          0.00001560103926853424,
+          0.000015651703218014408,
           -1.1560000445842746
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e91dd345b25f644036104bbde915d133fa881ce079258c1b0acdab070f1c1bf6",
-      "id": "sf.render.cold-locker.mesh.locker-root-clamp.primitive.0",
+      "geometryHash": "41c6aba20f5e21eeddd1abbfa86af4db5a7fd6e5a3ff476c6537293f922b71ba",
+      "id": "sf.render.cold-locker.node.locker-root-clamp.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
-      "nodeId": "sf.render.cold-locker.mesh.locker-root-clamp",
+      "nodeId": "sf.render.cold-locker.node.locker-root-clamp",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -1499,13 +1499,13 @@
       },
       "drawMode": 4,
       "geometryHash": "0f139ada032b9994d64ec5d5f0372e34b2cdad92c043694bc4ca8500af29349f",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-0.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-0",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1524,13 +1524,13 @@
       },
       "drawMode": 4,
       "geometryHash": "c8dcc536867ce7dd63f739291a203342597db371bbf9d866268a5ae4878641ce",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-1.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-1",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1549,13 +1549,13 @@
       },
       "drawMode": 4,
       "geometryHash": "a841a1b0480b999bfae52c3858c48a070876fe71a4a9c7b348bd87ec24fe004f",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-10.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-10.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.028",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-10",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-10",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1574,13 +1574,13 @@
       },
       "drawMode": 4,
       "geometryHash": "84daad738834b34c17de27b27b3085fe4bf7385ef42486093ec821744c5fbb23",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-11.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-11.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.030",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-11",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-11",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1599,13 +1599,13 @@
       },
       "drawMode": 4,
       "geometryHash": "5451fdd3460cd7bfb9e9937ec0fe227777568f9ddce8aa2d5b773f6d857fa1dd",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-12.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-12.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.032",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-12",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-12",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1624,13 +1624,13 @@
       },
       "drawMode": 4,
       "geometryHash": "86e681a26eca5309aa9dbfe4552b967429a6e203f9e9dab7e548e253dd63dc77",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-13.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-13.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.034",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-13",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-13",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1649,13 +1649,13 @@
       },
       "drawMode": 4,
       "geometryHash": "5843f2b643b7b0fa0299ba929efad9c4b78b55a4c234ee1d387779219d5752f2",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-14.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-14.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.036",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-14",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-14",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1674,13 +1674,13 @@
       },
       "drawMode": 4,
       "geometryHash": "4fbf2888273932b0c1ba6a929cfeb0f350b7bc7b275f2139f0bf7a00ab5ccb90",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-15.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-15.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.038",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-15",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-15",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1699,13 +1699,13 @@
       },
       "drawMode": 4,
       "geometryHash": "12c2ed22e76e4c246549cd3f1d843e0ab799388d1dd657f06ec9c7985d0ebd53",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-16.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-16.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.040",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-16",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-16",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1724,13 +1724,13 @@
       },
       "drawMode": 4,
       "geometryHash": "848e1f1f383bdad4fb2e73ea3b56e8e3003c4054cde75cd037dde6f23c2302a9",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-17.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-17.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.042",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-17",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-17",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1749,13 +1749,13 @@
       },
       "drawMode": 4,
       "geometryHash": "051630fb757559b88ab46c2cc5f3606746583f7d173dc23253525d1e9a3e95f8",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-2.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.012",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-2",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1774,13 +1774,13 @@
       },
       "drawMode": 4,
       "geometryHash": "530a9556b174953b032d3ef74121e6bffbf0974ef8edbda8f7a36db18cb3e3b0",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-3.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.014",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-3",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-3",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1799,13 +1799,13 @@
       },
       "drawMode": 4,
       "geometryHash": "b88775616a9f3574690faf81175e1f6de6728f5e85d32866251d9e607a7e7dda",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-4.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.016",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-4",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-4",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1824,13 +1824,13 @@
       },
       "drawMode": 4,
       "geometryHash": "f17a376425a4147e760a25d8d1ba8c22218de01de624f3bd97e75494f653385d",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-5.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.018",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-5",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-5",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1849,13 +1849,13 @@
       },
       "drawMode": 4,
       "geometryHash": "d7186faef40a630b728ef82f80a7a053329534a49e188548dd491e6314d9f120",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-6.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.020",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-6",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-6",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1874,13 +1874,13 @@
       },
       "drawMode": 4,
       "geometryHash": "912cfb0baead4122b0c5d68f5066dee2e39ba22b26d393c51c7537bea052fe0b",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-7.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-7.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.022",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-7",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-7",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1899,13 +1899,13 @@
       },
       "drawMode": 4,
       "geometryHash": "8bfd70ce1636a7930538c9abc07bba6bd8305aff50a98bf08dae08e7d9daec2a",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-8.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-8.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.024",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-8",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-8",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1924,13 +1924,13 @@
       },
       "drawMode": 4,
       "geometryHash": "67b3d452633923a1cac8b4e717c9dd35ae673b8fdbbbc215bd1e40505ba722b8",
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-9.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-9.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.026",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-x-9",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-x-9",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1949,13 +1949,13 @@
       },
       "drawMode": 4,
       "geometryHash": "c5e3b690a2d9f1b4ceadec54661b57b5179c377ffaf56888272a3004ace1666e",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-0.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-0",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1974,13 +1974,13 @@
       },
       "drawMode": 4,
       "geometryHash": "56a0c2147c70b320b4db4388391968559726d09a196dba6d4ab637e4640b50e9",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-1.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.011",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-1",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1999,13 +1999,13 @@
       },
       "drawMode": 4,
       "geometryHash": "8e4498cabd29ab19e5efbde7ad4d623a6c6504ed1fb486def4854bb8f2a400e5",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-10.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-10.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.029",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-10",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-10",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2024,13 +2024,13 @@
       },
       "drawMode": 4,
       "geometryHash": "6a6f05e285f53e79798a40f3ae36110aabdb3cba970c7d06a3a01332b56b1dfd",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-11.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-11.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.031",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-11",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-11",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2049,13 +2049,13 @@
       },
       "drawMode": 4,
       "geometryHash": "a1bdda41368a261c3d6aecd573e9bc4a8dd2174feda1026a2bfe15b7db9a0bb0",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-12.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-12.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.033",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-12",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-12",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2074,13 +2074,13 @@
       },
       "drawMode": 4,
       "geometryHash": "92c40474c2c89afc60c2e0e9e759111f37c221c98ffc94c817ad89a09b2e442c",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-13.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-13.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.035",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-13",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-13",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2099,13 +2099,13 @@
       },
       "drawMode": 4,
       "geometryHash": "09c98758c8babffb01e0eef0a09460e0a0c55611e1b4c5e5b4a4303350e24cbd",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-14.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-14.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.037",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-14",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-14",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2124,13 +2124,13 @@
       },
       "drawMode": 4,
       "geometryHash": "7b80d09697663b413909739f1c094b0c38c2859d0fdbc15969179768f6e3dcc1",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-15.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-15.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.039",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-15",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-15",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2149,13 +2149,13 @@
       },
       "drawMode": 4,
       "geometryHash": "cc95d1241a5a60b92332922b875407015e20d51e7d2e630c95d8fe808590891f",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-16.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-16.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.041",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-16",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-16",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2174,13 +2174,13 @@
       },
       "drawMode": 4,
       "geometryHash": "846f51b38d708bd0bbf06e4e8d6e44159b9642e0d90aa88b523e6b7d9e1ca456",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-17.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-17.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.043",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-17",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-17",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2199,13 +2199,13 @@
       },
       "drawMode": 4,
       "geometryHash": "533054214b2bb3e9d57176e2114d3969523659a577f4bb43645118af9bae7d4c",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-2.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.013",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-2",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2224,13 +2224,13 @@
       },
       "drawMode": 4,
       "geometryHash": "c9b100aa9cc7ac79a3b94a657b3b36b21c10ad1fb9ad1bb3e8e519f02d213cb9",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-3.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.015",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-3",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-3",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2249,13 +2249,13 @@
       },
       "drawMode": 4,
       "geometryHash": "50287c20a3b127e53ccd57831bbd1f9563f4adf37159693d036cda5c3bb10b21",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-4.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.017",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-4",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-4",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2274,13 +2274,13 @@
       },
       "drawMode": 4,
       "geometryHash": "d921c6c054eca6c22312d47ed9af9262969455f57b3262d80687ba653005dc0c",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-5.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.019",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-5",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-5",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2299,13 +2299,13 @@
       },
       "drawMode": 4,
       "geometryHash": "f2a6724edf71ae4ee5cd769c85450415d746868eadca1bbab31f8519cd639533",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-6.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.021",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-6",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-6",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2324,13 +2324,13 @@
       },
       "drawMode": 4,
       "geometryHash": "14dc13875eda643bff961793f81a1c2b391174c28a970778107b34261976b640",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-7.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-7.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.023",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-7",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-7",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2349,13 +2349,13 @@
       },
       "drawMode": 4,
       "geometryHash": "b0de26383863d6160b9439e5aec368c99b7e499edb04e0353b865f60c95b216b",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-8.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-8.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.025",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-8",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-8",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2374,38 +2374,38 @@
       },
       "drawMode": 4,
       "geometryHash": "f2b6579b42e2ef9ea71775c5cfdb4efb834008f9b717ab198235434f1f2aad06",
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-9.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-9.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.027",
-      "nodeId": "sf.render.cold-locker.mesh.locker-rung-y-9",
+      "nodeId": "sf.render.cold-locker.node.locker-rung-y-9",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          0.044133923695618194,
+          0.044133888864152926,
           6.312861047432307,
           1.1319533129146038
         ],
         "min": [
           -2.2393986495634692,
           0.9971393805290489,
-          -0.048663100288825145
+          -0.04866306862385672
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a32deec29563ab5a82d52476a01982201654278555147f9f28aa5a438e9ca9c3",
-      "id": "sf.render.cold-locker.mesh.locker-shear-cable.primitive.0",
+      "geometryHash": "74d2b42e322fc7f204a4ddb9d749980227871ff1e8eb4c3d40cf3c773f4a3e9c",
+      "id": "sf.render.cold-locker.node.locker-shear-cable.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.046",
-      "nodeId": "sf.render.cold-locker.mesh.locker-shear-cable",
+      "nodeId": "sf.render.cold-locker.node.locker-shear-cable",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2424,13 +2424,13 @@
       },
       "drawMode": 4,
       "geometryHash": "564bb5090ab86e552acd0fc03cba65e3779e8a857058864b1005a26f24ebd947",
-      "id": "sf.render.cold-locker.mesh.locker-spoil-0.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-spoil-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
-      "nodeId": "sf.render.cold-locker.mesh.locker-spoil-0",
+      "nodeId": "sf.render.cold-locker.node.locker-spoil-0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2449,13 +2449,13 @@
       },
       "drawMode": 4,
       "geometryHash": "2cb620d02cc2e2751d266462559bbe7a879744a63887012e0cb987997fdb1bbb",
-      "id": "sf.render.cold-locker.mesh.locker-spoil-1.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-spoil-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
-      "nodeId": "sf.render.cold-locker.mesh.locker-spoil-1",
+      "nodeId": "sf.render.cold-locker.node.locker-spoil-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -2474,13 +2474,63 @@
       },
       "drawMode": 4,
       "geometryHash": "81e03b0c19c583317322874c9c2b06dbc5d41d9fd625426c5fe58c7916131e51",
-      "id": "sf.render.cold-locker.mesh.locker-spoil-2.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-spoil-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
-      "nodeId": "sf.render.cold-locker.mesh.locker-spoil-2",
+      "nodeId": "sf.render.cold-locker.node.locker-spoil-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.2533029615879059,
+          0.33824998140335083,
+          0.7262994050979614
+        ],
+        "min": [
+          -0.2533029615879059,
+          -0.33824998140335083,
+          0.6869899034500122
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7d6b5e492011a2e9e4164094e56fcf4d3d7c23d1b11ea88de9c07706a80dc68d",
+      "id": "sf.render.cold-locker.node.remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_InsetInstrumentFin0",
+      "nodeId": "sf.render.cold-locker.node.remaster-material-mechanical-brushednickel",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3226776123046875,
+          0.4427999258041382,
+          0.6112187504768372
+        ],
+        "min": [
+          -0.3226776123046875,
+          -0.44279998540878296,
+          0.57759690284729
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "46f808173c1044d59230a75a697747587fcac283f3f1234a575a5376db064986",
+      "id": "sf.render.cold-locker.node.remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_ServiceWell_Inner",
+      "nodeId": "sf.render.cold-locker.node.remaster-material-mechanical-shadowenamel",
       "primitiveIndex": 0,
       "vertexCount": 24
     }
@@ -2489,6 +2539,38 @@
   "kind": "place",
   "lods": [],
   "materials": [
+    {
+      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "id": "material:09306e58ed6387f8ee509fc5",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
     {
       "hash": "393d0b9202c9bce81d29b499076cb115ac2656e8d37a7b0b44c41289479ff99f",
       "id": "material:393d0b9202c9bce81d29b499",
@@ -2504,37 +2586,137 @@
       "textures": []
     },
     {
-      "hash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
-      "id": "material:51838052dbc372ee373d2e91",
-      "name": "furniture_bare_steel",
+      "hash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
+      "id": "material:62757001ceb6d643a2a31c70",
+      "name": "Material_Rubber_HeatScale",
       "pipelineKey": "opaque:double",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Rubber_HeatScale_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
-      "id": "material:6786891c29a6f0dad01d4956",
-      "name": "furniture_scorch",
+      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "id": "material:9b606ffef39761a1e7cc390d",
+      "name": "Material_Hull_VitreousCeramic",
       "pipelineKey": "opaque:double",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "e508700b026f2aa301f724b310b82947e3ebbed3a8e53f2178ded887760cee45",
-      "id": "material:e508700b026f2aa301f724b3",
-      "name": "furniture_painted_shell",
+      "hash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
+      "id": "material:b6096d8a315bf4d19f719ab7",
+      "name": "Material_Hull_DeepSeaEnamel",
       "pipelineKey": "opaque:double",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_DeepSeaEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
-      "id": "material:e7177974a6bd849c95dc3273",
-      "name": "furniture_structural_alloy",
+      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "name": "Material_Mechanical_ShadowEnamel",
       "pipelineKey": "opaque:double",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.cold-locker.mesh.locker-bite-tab-0",
+      "id": "sf.render.cold-locker.node.locker-bite-tab-0",
       "localTransform": [
         1,
         0,
@@ -2560,7 +2742,7 @@
         0,
         0
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -2583,7 +2765,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-bite-tab-1",
+      "id": "sf.render.cold-locker.node.locker-bite-tab-1",
       "localTransform": [
         1,
         0,
@@ -2609,7 +2791,7 @@
         0,
         1
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -2632,7 +2814,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-bite-tab-2",
+      "id": "sf.render.cold-locker.node.locker-bite-tab-2",
       "localTransform": [
         1,
         0,
@@ -2658,7 +2840,7 @@
         0,
         2
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -2681,7 +2863,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-bite-tab-3",
+      "id": "sf.render.cold-locker.node.locker-bite-tab-3",
       "localTransform": [
         1,
         0,
@@ -2707,7 +2889,7 @@
         0,
         3
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -2730,7 +2912,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-bite-tab-4",
+      "id": "sf.render.cold-locker.node.locker-bite-tab-4",
       "localTransform": [
         1,
         0,
@@ -2756,7 +2938,7 @@
         0,
         4
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -2779,7 +2961,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-bond-ring",
+      "id": "sf.render.cold-locker.node.locker-bond-ring",
       "localTransform": [
         1,
         0,
@@ -2805,7 +2987,7 @@
         0,
         5
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -2828,7 +3010,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-0",
+      "id": "sf.render.cold-locker.node.locker-diag-a-0",
       "localTransform": [
         1,
         0,
@@ -2854,7 +3036,7 @@
         0,
         6
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -2877,7 +3059,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-1",
+      "id": "sf.render.cold-locker.node.locker-diag-a-1",
       "localTransform": [
         1,
         0,
@@ -2903,7 +3085,7 @@
         0,
         7
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -2926,7 +3108,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-11",
+      "id": "sf.render.cold-locker.node.locker-diag-a-11",
       "localTransform": [
         1,
         0,
@@ -2952,7 +3134,7 @@
         0,
         8
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -2975,7 +3157,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-12",
+      "id": "sf.render.cold-locker.node.locker-diag-a-12",
       "localTransform": [
         1,
         0,
@@ -3001,7 +3183,7 @@
         0,
         9
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3024,7 +3206,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-13",
+      "id": "sf.render.cold-locker.node.locker-diag-a-13",
       "localTransform": [
         1,
         0,
@@ -3050,7 +3232,7 @@
         0,
         10
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3073,7 +3255,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-14",
+      "id": "sf.render.cold-locker.node.locker-diag-a-14",
       "localTransform": [
         1,
         0,
@@ -3099,7 +3281,7 @@
         0,
         11
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3122,7 +3304,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-15",
+      "id": "sf.render.cold-locker.node.locker-diag-a-15",
       "localTransform": [
         1,
         0,
@@ -3148,7 +3330,7 @@
         0,
         12
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3171,7 +3353,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-16",
+      "id": "sf.render.cold-locker.node.locker-diag-a-16",
       "localTransform": [
         1,
         0,
@@ -3197,7 +3379,7 @@
         0,
         13
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3220,7 +3402,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-17",
+      "id": "sf.render.cold-locker.node.locker-diag-a-17",
       "localTransform": [
         1,
         0,
@@ -3246,7 +3428,7 @@
         0,
         14
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3269,7 +3451,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-2",
+      "id": "sf.render.cold-locker.node.locker-diag-a-2",
       "localTransform": [
         1,
         0,
@@ -3295,7 +3477,7 @@
         0,
         15
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3318,7 +3500,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-3",
+      "id": "sf.render.cold-locker.node.locker-diag-a-3",
       "localTransform": [
         1,
         0,
@@ -3344,7 +3526,7 @@
         0,
         16
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3367,7 +3549,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-4",
+      "id": "sf.render.cold-locker.node.locker-diag-a-4",
       "localTransform": [
         1,
         0,
@@ -3393,7 +3575,7 @@
         0,
         17
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3416,7 +3598,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-5",
+      "id": "sf.render.cold-locker.node.locker-diag-a-5",
       "localTransform": [
         1,
         0,
@@ -3442,7 +3624,7 @@
         0,
         18
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3465,7 +3647,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-6",
+      "id": "sf.render.cold-locker.node.locker-diag-a-6",
       "localTransform": [
         1,
         0,
@@ -3491,7 +3673,7 @@
         0,
         19
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3514,7 +3696,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-7",
+      "id": "sf.render.cold-locker.node.locker-diag-a-7",
       "localTransform": [
         1,
         0,
@@ -3540,7 +3722,7 @@
         0,
         20
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3563,7 +3745,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-8",
+      "id": "sf.render.cold-locker.node.locker-diag-a-8",
       "localTransform": [
         1,
         0,
@@ -3589,7 +3771,7 @@
         0,
         21
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3612,7 +3794,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-a-9",
+      "id": "sf.render.cold-locker.node.locker-diag-a-9",
       "localTransform": [
         1,
         0,
@@ -3638,7 +3820,7 @@
         0,
         22
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3661,7 +3843,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-0",
+      "id": "sf.render.cold-locker.node.locker-diag-b-0",
       "localTransform": [
         1,
         0,
@@ -3687,7 +3869,7 @@
         0,
         23
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3710,7 +3892,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-1",
+      "id": "sf.render.cold-locker.node.locker-diag-b-1",
       "localTransform": [
         1,
         0,
@@ -3736,7 +3918,7 @@
         0,
         24
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3759,7 +3941,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-11",
+      "id": "sf.render.cold-locker.node.locker-diag-b-11",
       "localTransform": [
         1,
         0,
@@ -3785,7 +3967,7 @@
         0,
         25
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3808,7 +3990,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-12",
+      "id": "sf.render.cold-locker.node.locker-diag-b-12",
       "localTransform": [
         1,
         0,
@@ -3834,7 +4016,7 @@
         0,
         26
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3857,7 +4039,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-13",
+      "id": "sf.render.cold-locker.node.locker-diag-b-13",
       "localTransform": [
         1,
         0,
@@ -3883,7 +4065,7 @@
         0,
         27
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3906,7 +4088,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-14",
+      "id": "sf.render.cold-locker.node.locker-diag-b-14",
       "localTransform": [
         1,
         0,
@@ -3932,7 +4114,7 @@
         0,
         28
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -3955,7 +4137,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-15",
+      "id": "sf.render.cold-locker.node.locker-diag-b-15",
       "localTransform": [
         1,
         0,
@@ -3981,7 +4163,7 @@
         0,
         29
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4004,7 +4186,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-16",
+      "id": "sf.render.cold-locker.node.locker-diag-b-16",
       "localTransform": [
         1,
         0,
@@ -4030,7 +4212,7 @@
         0,
         30
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4053,7 +4235,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-17",
+      "id": "sf.render.cold-locker.node.locker-diag-b-17",
       "localTransform": [
         1,
         0,
@@ -4079,7 +4261,7 @@
         0,
         31
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4102,7 +4284,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-2",
+      "id": "sf.render.cold-locker.node.locker-diag-b-2",
       "localTransform": [
         1,
         0,
@@ -4128,7 +4310,7 @@
         0,
         32
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4151,7 +4333,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-3",
+      "id": "sf.render.cold-locker.node.locker-diag-b-3",
       "localTransform": [
         1,
         0,
@@ -4177,7 +4359,7 @@
         0,
         33
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4200,7 +4382,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-4",
+      "id": "sf.render.cold-locker.node.locker-diag-b-4",
       "localTransform": [
         1,
         0,
@@ -4226,7 +4408,7 @@
         0,
         34
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4249,7 +4431,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-5",
+      "id": "sf.render.cold-locker.node.locker-diag-b-5",
       "localTransform": [
         1,
         0,
@@ -4275,7 +4457,7 @@
         0,
         35
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4298,7 +4480,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-6",
+      "id": "sf.render.cold-locker.node.locker-diag-b-6",
       "localTransform": [
         1,
         0,
@@ -4324,7 +4506,7 @@
         0,
         36
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4347,7 +4529,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-7",
+      "id": "sf.render.cold-locker.node.locker-diag-b-7",
       "localTransform": [
         1,
         0,
@@ -4373,7 +4555,7 @@
         0,
         37
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4396,7 +4578,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-8",
+      "id": "sf.render.cold-locker.node.locker-diag-b-8",
       "localTransform": [
         1,
         0,
@@ -4422,7 +4604,7 @@
         0,
         38
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4445,7 +4627,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-diag-b-9",
+      "id": "sf.render.cold-locker.node.locker-diag-b-9",
       "localTransform": [
         1,
         0,
@@ -4471,7 +4653,7 @@
         0,
         39
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4494,7 +4676,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-dog-0",
+      "id": "sf.render.cold-locker.node.locker-dog-0",
       "localTransform": [
         1,
         0,
@@ -4520,7 +4702,7 @@
         0,
         40
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4543,7 +4725,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-dog-1",
+      "id": "sf.render.cold-locker.node.locker-dog-1",
       "localTransform": [
         1,
         0,
@@ -4569,7 +4751,7 @@
         0,
         41
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4592,7 +4774,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-dog-2",
+      "id": "sf.render.cold-locker.node.locker-dog-2",
       "localTransform": [
         1,
         0,
@@ -4618,7 +4800,7 @@
         0,
         42
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4641,7 +4823,56 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-drum-mesh",
+      "id": "sf.render.cold-locker.node.locker-drum",
+      "localTransform": [
+        0.29411768913269043,
+        0,
+        0,
+        0,
+        0,
+        0.29411768913269043,
+        0,
+        0,
+        0,
+        0,
+        0.29411768913269043,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "locker_drum",
+      "nodeName": "locker_drum",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cold-locker.body",
+      "worldTransform": [
+        1.000000171100396,
+        0,
+        0,
+        0,
+        0,
+        1.000000171100396,
+        0,
+        0,
+        0,
+        0,
+        1.000000171100396,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cold-locker.node.locker-drum-mesh",
       "localTransform": [
         1,
         0,
@@ -4668,30 +4899,30 @@
         43,
         5
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.locker-drum",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
-        16.66000079154969,
+        0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-embed-plug",
+      "id": "sf.render.cold-locker.node.locker-embed-plug",
       "localTransform": [
         1,
         0,
@@ -4717,7 +4948,7 @@
         0,
         44
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4740,7 +4971,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-hatch",
+      "id": "sf.render.cold-locker.node.locker-hatch",
       "localTransform": [
         1,
         0,
@@ -4766,7 +4997,7 @@
         0,
         45
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4789,7 +5020,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-hoop-hi",
+      "id": "sf.render.cold-locker.node.locker-hoop-hi",
       "localTransform": [
         1,
         0,
@@ -4816,30 +5047,30 @@
         43,
         0
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.locker-drum",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
-        16.66000079154969,
+        0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-hoop-lo",
+      "id": "sf.render.cold-locker.node.locker-hoop-lo",
       "localTransform": [
         1,
         0,
@@ -4866,30 +5097,30 @@
         43,
         1
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.locker-drum",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
-        16.66000079154969,
+        0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-manifest-plate",
+      "id": "sf.render.cold-locker.node.locker-manifest-plate",
       "localTransform": [
         1,
         0,
@@ -4915,7 +5146,7 @@
         0,
         46
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4938,7 +5169,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-outrigger-0",
+      "id": "sf.render.cold-locker.node.locker-outrigger-0",
       "localTransform": [
         1,
         0,
@@ -4964,7 +5195,7 @@
         0,
         47
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -4987,7 +5218,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-outrigger-1",
+      "id": "sf.render.cold-locker.node.locker-outrigger-1",
       "localTransform": [
         1,
         0,
@@ -5013,7 +5244,7 @@
         0,
         48
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5036,7 +5267,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-petal-0",
+      "id": "sf.render.cold-locker.node.locker-petal-0",
       "localTransform": [
         1,
         0,
@@ -5063,30 +5294,30 @@
         43,
         2
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.locker-drum",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
-        16.66000079154969,
+        0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-petal-1",
+      "id": "sf.render.cold-locker.node.locker-petal-1",
       "localTransform": [
         1,
         0,
@@ -5113,30 +5344,30 @@
         43,
         3
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.locker-drum",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
-        16.66000079154969,
+        0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-petal-2",
+      "id": "sf.render.cold-locker.node.locker-petal-2",
       "localTransform": [
         1,
         0,
@@ -5163,30 +5394,30 @@
         43,
         4
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.locker-drum",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
         0,
         0,
-        3.4000000953674316,
+        1.000000171100396,
         0,
         0,
-        16.66000079154969,
+        0,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rail-1-1",
+      "id": "sf.render.cold-locker.node.locker-rail-1-1",
       "localTransform": [
         1,
         0,
@@ -5212,7 +5443,7 @@
         0,
         49
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5235,7 +5466,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rail-1-1-2",
+      "id": "sf.render.cold-locker.node.locker-rail-1-1-2",
       "localTransform": [
         1,
         0,
@@ -5261,7 +5492,7 @@
         0,
         50
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5284,7 +5515,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rail-1-1-3",
+      "id": "sf.render.cold-locker.node.locker-rail-1-1-3",
       "localTransform": [
         1,
         0,
@@ -5310,7 +5541,7 @@
         0,
         51
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5333,7 +5564,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rail-1-1-4",
+      "id": "sf.render.cold-locker.node.locker-rail-1-1-4",
       "localTransform": [
         1,
         0,
@@ -5359,7 +5590,7 @@
         0,
         52
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5382,7 +5613,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-root-clamp",
+      "id": "sf.render.cold-locker.node.locker-root-clamp",
       "localTransform": [
         1,
         0,
@@ -5408,7 +5639,7 @@
         0,
         53
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5431,7 +5662,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-0",
+      "id": "sf.render.cold-locker.node.locker-rung-x-0",
       "localTransform": [
         1,
         0,
@@ -5457,7 +5688,7 @@
         0,
         54
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5480,7 +5711,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-1",
+      "id": "sf.render.cold-locker.node.locker-rung-x-1",
       "localTransform": [
         1,
         0,
@@ -5506,7 +5737,7 @@
         0,
         55
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5529,7 +5760,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-10",
+      "id": "sf.render.cold-locker.node.locker-rung-x-10",
       "localTransform": [
         1,
         0,
@@ -5555,7 +5786,7 @@
         0,
         56
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5578,7 +5809,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-11",
+      "id": "sf.render.cold-locker.node.locker-rung-x-11",
       "localTransform": [
         1,
         0,
@@ -5604,7 +5835,7 @@
         0,
         57
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5627,7 +5858,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-12",
+      "id": "sf.render.cold-locker.node.locker-rung-x-12",
       "localTransform": [
         1,
         0,
@@ -5653,7 +5884,7 @@
         0,
         58
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5676,7 +5907,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-13",
+      "id": "sf.render.cold-locker.node.locker-rung-x-13",
       "localTransform": [
         1,
         0,
@@ -5702,7 +5933,7 @@
         0,
         59
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5725,7 +5956,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-14",
+      "id": "sf.render.cold-locker.node.locker-rung-x-14",
       "localTransform": [
         1,
         0,
@@ -5751,7 +5982,7 @@
         0,
         60
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5774,7 +6005,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-15",
+      "id": "sf.render.cold-locker.node.locker-rung-x-15",
       "localTransform": [
         1,
         0,
@@ -5800,7 +6031,7 @@
         0,
         61
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5823,7 +6054,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-16",
+      "id": "sf.render.cold-locker.node.locker-rung-x-16",
       "localTransform": [
         1,
         0,
@@ -5849,7 +6080,7 @@
         0,
         62
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5872,7 +6103,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-17",
+      "id": "sf.render.cold-locker.node.locker-rung-x-17",
       "localTransform": [
         1,
         0,
@@ -5898,7 +6129,7 @@
         0,
         63
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5921,7 +6152,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-2",
+      "id": "sf.render.cold-locker.node.locker-rung-x-2",
       "localTransform": [
         1,
         0,
@@ -5947,7 +6178,7 @@
         0,
         64
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -5970,7 +6201,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-3",
+      "id": "sf.render.cold-locker.node.locker-rung-x-3",
       "localTransform": [
         1,
         0,
@@ -5996,7 +6227,7 @@
         0,
         65
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6019,7 +6250,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-4",
+      "id": "sf.render.cold-locker.node.locker-rung-x-4",
       "localTransform": [
         1,
         0,
@@ -6045,7 +6276,7 @@
         0,
         66
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6068,7 +6299,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-5",
+      "id": "sf.render.cold-locker.node.locker-rung-x-5",
       "localTransform": [
         1,
         0,
@@ -6094,7 +6325,7 @@
         0,
         67
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6117,7 +6348,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-6",
+      "id": "sf.render.cold-locker.node.locker-rung-x-6",
       "localTransform": [
         1,
         0,
@@ -6143,7 +6374,7 @@
         0,
         68
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6166,7 +6397,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-7",
+      "id": "sf.render.cold-locker.node.locker-rung-x-7",
       "localTransform": [
         1,
         0,
@@ -6192,7 +6423,7 @@
         0,
         69
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6215,7 +6446,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-8",
+      "id": "sf.render.cold-locker.node.locker-rung-x-8",
       "localTransform": [
         1,
         0,
@@ -6241,7 +6472,7 @@
         0,
         70
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6264,7 +6495,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-x-9",
+      "id": "sf.render.cold-locker.node.locker-rung-x-9",
       "localTransform": [
         1,
         0,
@@ -6290,7 +6521,7 @@
         0,
         71
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6313,7 +6544,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-0",
+      "id": "sf.render.cold-locker.node.locker-rung-y-0",
       "localTransform": [
         1,
         0,
@@ -6339,7 +6570,7 @@
         0,
         72
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6362,7 +6593,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-1",
+      "id": "sf.render.cold-locker.node.locker-rung-y-1",
       "localTransform": [
         1,
         0,
@@ -6388,7 +6619,7 @@
         0,
         73
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6411,7 +6642,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-10",
+      "id": "sf.render.cold-locker.node.locker-rung-y-10",
       "localTransform": [
         1,
         0,
@@ -6437,7 +6668,7 @@
         0,
         74
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6460,7 +6691,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-11",
+      "id": "sf.render.cold-locker.node.locker-rung-y-11",
       "localTransform": [
         1,
         0,
@@ -6486,7 +6717,7 @@
         0,
         75
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6509,7 +6740,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-12",
+      "id": "sf.render.cold-locker.node.locker-rung-y-12",
       "localTransform": [
         1,
         0,
@@ -6535,7 +6766,7 @@
         0,
         76
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6558,7 +6789,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-13",
+      "id": "sf.render.cold-locker.node.locker-rung-y-13",
       "localTransform": [
         1,
         0,
@@ -6584,7 +6815,7 @@
         0,
         77
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6607,7 +6838,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-14",
+      "id": "sf.render.cold-locker.node.locker-rung-y-14",
       "localTransform": [
         1,
         0,
@@ -6633,7 +6864,7 @@
         0,
         78
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6656,7 +6887,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-15",
+      "id": "sf.render.cold-locker.node.locker-rung-y-15",
       "localTransform": [
         1,
         0,
@@ -6682,7 +6913,7 @@
         0,
         79
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6705,7 +6936,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-16",
+      "id": "sf.render.cold-locker.node.locker-rung-y-16",
       "localTransform": [
         1,
         0,
@@ -6731,7 +6962,7 @@
         0,
         80
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6754,7 +6985,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-17",
+      "id": "sf.render.cold-locker.node.locker-rung-y-17",
       "localTransform": [
         1,
         0,
@@ -6780,7 +7011,7 @@
         0,
         81
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6803,7 +7034,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-2",
+      "id": "sf.render.cold-locker.node.locker-rung-y-2",
       "localTransform": [
         1,
         0,
@@ -6829,7 +7060,7 @@
         0,
         82
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6852,7 +7083,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-3",
+      "id": "sf.render.cold-locker.node.locker-rung-y-3",
       "localTransform": [
         1,
         0,
@@ -6878,7 +7109,7 @@
         0,
         83
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6901,7 +7132,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-4",
+      "id": "sf.render.cold-locker.node.locker-rung-y-4",
       "localTransform": [
         1,
         0,
@@ -6927,7 +7158,7 @@
         0,
         84
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6950,7 +7181,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-5",
+      "id": "sf.render.cold-locker.node.locker-rung-y-5",
       "localTransform": [
         1,
         0,
@@ -6976,7 +7207,7 @@
         0,
         85
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -6999,7 +7230,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-6",
+      "id": "sf.render.cold-locker.node.locker-rung-y-6",
       "localTransform": [
         1,
         0,
@@ -7025,7 +7256,7 @@
         0,
         86
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -7048,7 +7279,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-7",
+      "id": "sf.render.cold-locker.node.locker-rung-y-7",
       "localTransform": [
         1,
         0,
@@ -7074,7 +7305,7 @@
         0,
         87
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -7097,7 +7328,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-8",
+      "id": "sf.render.cold-locker.node.locker-rung-y-8",
       "localTransform": [
         1,
         0,
@@ -7123,7 +7354,7 @@
         0,
         88
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -7146,7 +7377,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-rung-y-9",
+      "id": "sf.render.cold-locker.node.locker-rung-y-9",
       "localTransform": [
         1,
         0,
@@ -7172,7 +7403,7 @@
         0,
         89
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -7195,7 +7426,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-shear-cable",
+      "id": "sf.render.cold-locker.node.locker-shear-cable",
       "localTransform": [
         1,
         0,
@@ -7221,7 +7452,7 @@
         0,
         90
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -7244,7 +7475,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-spoil-0",
+      "id": "sf.render.cold-locker.node.locker-spoil-0",
       "localTransform": [
         1,
         0,
@@ -7270,7 +7501,7 @@
         0,
         91
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -7293,7 +7524,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-spoil-1",
+      "id": "sf.render.cold-locker.node.locker-spoil-1",
       "localTransform": [
         1,
         0,
@@ -7319,7 +7550,7 @@
         0,
         92
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -7342,7 +7573,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.mesh.locker-spoil-2",
+      "id": "sf.render.cold-locker.node.locker-spoil-2",
       "localTransform": [
         1,
         0,
@@ -7368,7 +7599,7 @@
         0,
         93
       ],
-      "parentId": "sf.render.cold-locker.root",
+      "parentId": "sf.render.cold-locker.node.place-cold-locker",
       "role": "immutable",
       "spatialClusterId": "sf.render.cold-locker.body",
       "worldTransform": [
@@ -7391,7 +7622,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.root",
+      "id": "sf.render.cold-locker.node.place-cold-locker",
       "localTransform": [
         3.4000000953674316,
         0,
@@ -7411,7 +7642,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "place_cold_locker",
       "nodeName": "place_cold_locker",
       "nodePath": [
         0
@@ -7437,82 +7668,181 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.cold-locker.node.remaster-material-mechanical-brushednickel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cold-locker.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cold-locker.node.remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cold-locker.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "70f868c61a8ac4673068a64e7e42627abe1973d9a95a2061c5da64ce31bcdc93"
+      "sha256": "7a612a05d2a12744833749013b7129d22a6ec33b7c79ff66c3ec07badb72e9cf"
     },
     "sourceGlb": {
-      "bytes": 54788,
-      "sha256": "fcc05abb5d27ada70146cef9aeab5af23d179253a610da8f38af842473f84d25",
+      "bytes": 73164,
+      "sha256": "a114ebde7ee538ea29091b0ead5ca0d9b6b62f6ae2d364aeabe689a27b9e4dce",
       "uri": "place_cold_locker.glb"
     },
     "sourceManifest": {
-      "bytes": 150937,
-      "sha256": "9d35adcf4a504bd7f944b22e9c3b0bbaa3ead818520e8c6e9ebdd0165cc0515e",
+      "bytes": 169401,
+      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 173664,
-    "sha256": "4854f8a017c0f8178786beec217ab6088323ea0441bc6e71aa974e1dbe8b14cd",
+    "bytes": 193332,
+    "sha256": "d428f63947c728c82650dbf65e5331558ec23748c6960d5c500617eeac74a5dc",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.04583212861824393,
+        0.034092683556295356,
         15.871087380870986,
-        0.05949447321876278
+        0.11049525022507445
       ],
       "max": [
-        3.0600000047683693,
+        3.036521114644472,
         32.525999409338965,
         3.2809890594479327
       ],
       "min": [
         -2.9683357475318815,
         -0.7838246475969939,
-        -3.162000113010407
+        -3.059998558997784
       ],
       "size": [
-        6.028335752300251,
+        6.004856862176354,
         33.30982405693596,
-        6.44298917245834
+        6.340987618445716
       ]
     },
     "hidden": [],
     "legacyPart": false,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 99
+      "ceramic": 82,
+      "hull": 3,
+      "mechanical": 13,
+      "rubber": 3
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 2,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 4,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
@@ -7522,227 +7852,227 @@
       {
         "allowTextures": false,
         "planIndex": 8,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 9,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 10,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 13,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 15,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 16,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 17,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 18,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 19,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 20,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 21,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 22,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 23,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 24,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 25,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 26,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 27,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 28,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 29,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 30,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 31,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 32,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 33,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 34,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 35,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 36,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 37,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 38,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 39,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 40,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 41,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 42,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 43,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 44,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 46,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 47,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 48,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 49,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 50,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 51,
         "role": "hull"
       },
       {
         "allowTextures": false,
         "planIndex": 52,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 53,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
@@ -7752,240 +8082,250 @@
       {
         "allowTextures": false,
         "planIndex": 55,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 56,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 57,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 58,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 59,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 60,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 61,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 62,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 63,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 64,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 65,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 66,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 67,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 68,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 69,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 70,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 71,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 72,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 73,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 74,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 75,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 76,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 77,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 78,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 79,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 80,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 81,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 82,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 83,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 84,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 85,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 86,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 87,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 88,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 89,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 90,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 91,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 92,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 93,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 94,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 95,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 96,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 97,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": false,
         "planIndex": 98,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": false,
         "planIndex": 99,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
         "planIndex": 100,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
         "planIndex": 101,
-        "role": "hull"
+        "role": "rubber"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 102,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 103,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 102,
+    "nodeCount": 104,
     "primitives": [
       {
         "canopy": false,
@@ -9108,20 +9448,20 @@
       {
         "canopy": false,
         "matrix": [
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
-          16.66000079154969,
+          0,
           0,
           1
         ],
@@ -9134,20 +9474,20 @@
       {
         "canopy": false,
         "matrix": [
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
-          16.66000079154969,
+          0,
           0,
           1
         ],
@@ -9160,20 +9500,20 @@
       {
         "canopy": false,
         "matrix": [
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
-          16.66000079154969,
+          0,
           0,
           1
         ],
@@ -9186,20 +9526,20 @@
       {
         "canopy": false,
         "matrix": [
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
-          16.66000079154969,
+          0,
           0,
           1
         ],
@@ -9212,20 +9552,20 @@
       {
         "canopy": false,
         "matrix": [
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
-          16.66000079154969,
+          0,
           0,
           1
         ],
@@ -9238,20 +9578,20 @@
       {
         "canopy": false,
         "matrix": [
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
           0,
           0,
-          3.4000000953674316,
+          1.000000171100396,
           0,
           0,
-          16.66000079154969,
+          0,
           0,
           1
         ],
@@ -10560,130 +10900,189 @@
         "tags": {
           "canopy": false
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 102,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 103,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cold_locker.glb"
   },
-  "runtimeHash": "5d7214c46037a89ee2c7ed728bef2ea7bc2b079c67fbf28dc50194ad3421c974",
+  "runtimeHash": "03beae84e0422424bc07eb2266bab0340abe92143b3318caa7ccaae312f4d09f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.0600000047683693,
+          3.036521114644472,
           32.525999409338965,
           3.2809890594479327
         ],
         "min": [
           -2.9683357475318815,
           -0.7838246475969939,
-          -3.162000113010407
+          -3.059998558997784
         ]
       },
       "id": "sf.render.cold-locker.body",
       "nodeIds": [
-        "sf.render.cold-locker.mesh.locker-bite-tab-0",
-        "sf.render.cold-locker.mesh.locker-bite-tab-1",
-        "sf.render.cold-locker.mesh.locker-bite-tab-2",
-        "sf.render.cold-locker.mesh.locker-bite-tab-3",
-        "sf.render.cold-locker.mesh.locker-bite-tab-4",
-        "sf.render.cold-locker.mesh.locker-bond-ring",
-        "sf.render.cold-locker.mesh.locker-diag-a-0",
-        "sf.render.cold-locker.mesh.locker-diag-a-1",
-        "sf.render.cold-locker.mesh.locker-diag-a-11",
-        "sf.render.cold-locker.mesh.locker-diag-a-12",
-        "sf.render.cold-locker.mesh.locker-diag-a-13",
-        "sf.render.cold-locker.mesh.locker-diag-a-14",
-        "sf.render.cold-locker.mesh.locker-diag-a-15",
-        "sf.render.cold-locker.mesh.locker-diag-a-16",
-        "sf.render.cold-locker.mesh.locker-diag-a-17",
-        "sf.render.cold-locker.mesh.locker-diag-a-2",
-        "sf.render.cold-locker.mesh.locker-diag-a-3",
-        "sf.render.cold-locker.mesh.locker-diag-a-4",
-        "sf.render.cold-locker.mesh.locker-diag-a-5",
-        "sf.render.cold-locker.mesh.locker-diag-a-6",
-        "sf.render.cold-locker.mesh.locker-diag-a-7",
-        "sf.render.cold-locker.mesh.locker-diag-a-8",
-        "sf.render.cold-locker.mesh.locker-diag-a-9",
-        "sf.render.cold-locker.mesh.locker-diag-b-0",
-        "sf.render.cold-locker.mesh.locker-diag-b-1",
-        "sf.render.cold-locker.mesh.locker-diag-b-11",
-        "sf.render.cold-locker.mesh.locker-diag-b-12",
-        "sf.render.cold-locker.mesh.locker-diag-b-13",
-        "sf.render.cold-locker.mesh.locker-diag-b-14",
-        "sf.render.cold-locker.mesh.locker-diag-b-15",
-        "sf.render.cold-locker.mesh.locker-diag-b-16",
-        "sf.render.cold-locker.mesh.locker-diag-b-17",
-        "sf.render.cold-locker.mesh.locker-diag-b-2",
-        "sf.render.cold-locker.mesh.locker-diag-b-3",
-        "sf.render.cold-locker.mesh.locker-diag-b-4",
-        "sf.render.cold-locker.mesh.locker-diag-b-5",
-        "sf.render.cold-locker.mesh.locker-diag-b-6",
-        "sf.render.cold-locker.mesh.locker-diag-b-7",
-        "sf.render.cold-locker.mesh.locker-diag-b-8",
-        "sf.render.cold-locker.mesh.locker-diag-b-9",
-        "sf.render.cold-locker.mesh.locker-dog-0",
-        "sf.render.cold-locker.mesh.locker-dog-1",
-        "sf.render.cold-locker.mesh.locker-dog-2",
-        "sf.render.cold-locker.mesh.locker-drum-mesh",
-        "sf.render.cold-locker.mesh.locker-embed-plug",
-        "sf.render.cold-locker.mesh.locker-hatch",
-        "sf.render.cold-locker.mesh.locker-hoop-hi",
-        "sf.render.cold-locker.mesh.locker-hoop-lo",
-        "sf.render.cold-locker.mesh.locker-manifest-plate",
-        "sf.render.cold-locker.mesh.locker-outrigger-0",
-        "sf.render.cold-locker.mesh.locker-outrigger-1",
-        "sf.render.cold-locker.mesh.locker-petal-0",
-        "sf.render.cold-locker.mesh.locker-petal-1",
-        "sf.render.cold-locker.mesh.locker-petal-2",
-        "sf.render.cold-locker.mesh.locker-rail-1-1",
-        "sf.render.cold-locker.mesh.locker-rail-1-1-2",
-        "sf.render.cold-locker.mesh.locker-rail-1-1-3",
-        "sf.render.cold-locker.mesh.locker-rail-1-1-4",
-        "sf.render.cold-locker.mesh.locker-root-clamp",
-        "sf.render.cold-locker.mesh.locker-rung-x-0",
-        "sf.render.cold-locker.mesh.locker-rung-x-1",
-        "sf.render.cold-locker.mesh.locker-rung-x-10",
-        "sf.render.cold-locker.mesh.locker-rung-x-11",
-        "sf.render.cold-locker.mesh.locker-rung-x-12",
-        "sf.render.cold-locker.mesh.locker-rung-x-13",
-        "sf.render.cold-locker.mesh.locker-rung-x-14",
-        "sf.render.cold-locker.mesh.locker-rung-x-15",
-        "sf.render.cold-locker.mesh.locker-rung-x-16",
-        "sf.render.cold-locker.mesh.locker-rung-x-17",
-        "sf.render.cold-locker.mesh.locker-rung-x-2",
-        "sf.render.cold-locker.mesh.locker-rung-x-3",
-        "sf.render.cold-locker.mesh.locker-rung-x-4",
-        "sf.render.cold-locker.mesh.locker-rung-x-5",
-        "sf.render.cold-locker.mesh.locker-rung-x-6",
-        "sf.render.cold-locker.mesh.locker-rung-x-7",
-        "sf.render.cold-locker.mesh.locker-rung-x-8",
-        "sf.render.cold-locker.mesh.locker-rung-x-9",
-        "sf.render.cold-locker.mesh.locker-rung-y-0",
-        "sf.render.cold-locker.mesh.locker-rung-y-1",
-        "sf.render.cold-locker.mesh.locker-rung-y-10",
-        "sf.render.cold-locker.mesh.locker-rung-y-11",
-        "sf.render.cold-locker.mesh.locker-rung-y-12",
-        "sf.render.cold-locker.mesh.locker-rung-y-13",
-        "sf.render.cold-locker.mesh.locker-rung-y-14",
-        "sf.render.cold-locker.mesh.locker-rung-y-15",
-        "sf.render.cold-locker.mesh.locker-rung-y-16",
-        "sf.render.cold-locker.mesh.locker-rung-y-17",
-        "sf.render.cold-locker.mesh.locker-rung-y-2",
-        "sf.render.cold-locker.mesh.locker-rung-y-3",
-        "sf.render.cold-locker.mesh.locker-rung-y-4",
-        "sf.render.cold-locker.mesh.locker-rung-y-5",
-        "sf.render.cold-locker.mesh.locker-rung-y-6",
-        "sf.render.cold-locker.mesh.locker-rung-y-7",
-        "sf.render.cold-locker.mesh.locker-rung-y-8",
-        "sf.render.cold-locker.mesh.locker-rung-y-9",
-        "sf.render.cold-locker.mesh.locker-shear-cable",
-        "sf.render.cold-locker.mesh.locker-spoil-0",
-        "sf.render.cold-locker.mesh.locker-spoil-1",
-        "sf.render.cold-locker.mesh.locker-spoil-2",
-        "sf.render.cold-locker.root"
+        "sf.render.cold-locker.node.locker-bite-tab-0",
+        "sf.render.cold-locker.node.locker-bite-tab-1",
+        "sf.render.cold-locker.node.locker-bite-tab-2",
+        "sf.render.cold-locker.node.locker-bite-tab-3",
+        "sf.render.cold-locker.node.locker-bite-tab-4",
+        "sf.render.cold-locker.node.locker-bond-ring",
+        "sf.render.cold-locker.node.locker-diag-a-0",
+        "sf.render.cold-locker.node.locker-diag-a-1",
+        "sf.render.cold-locker.node.locker-diag-a-11",
+        "sf.render.cold-locker.node.locker-diag-a-12",
+        "sf.render.cold-locker.node.locker-diag-a-13",
+        "sf.render.cold-locker.node.locker-diag-a-14",
+        "sf.render.cold-locker.node.locker-diag-a-15",
+        "sf.render.cold-locker.node.locker-diag-a-16",
+        "sf.render.cold-locker.node.locker-diag-a-17",
+        "sf.render.cold-locker.node.locker-diag-a-2",
+        "sf.render.cold-locker.node.locker-diag-a-3",
+        "sf.render.cold-locker.node.locker-diag-a-4",
+        "sf.render.cold-locker.node.locker-diag-a-5",
+        "sf.render.cold-locker.node.locker-diag-a-6",
+        "sf.render.cold-locker.node.locker-diag-a-7",
+        "sf.render.cold-locker.node.locker-diag-a-8",
+        "sf.render.cold-locker.node.locker-diag-a-9",
+        "sf.render.cold-locker.node.locker-diag-b-0",
+        "sf.render.cold-locker.node.locker-diag-b-1",
+        "sf.render.cold-locker.node.locker-diag-b-11",
+        "sf.render.cold-locker.node.locker-diag-b-12",
+        "sf.render.cold-locker.node.locker-diag-b-13",
+        "sf.render.cold-locker.node.locker-diag-b-14",
+        "sf.render.cold-locker.node.locker-diag-b-15",
+        "sf.render.cold-locker.node.locker-diag-b-16",
+        "sf.render.cold-locker.node.locker-diag-b-17",
+        "sf.render.cold-locker.node.locker-diag-b-2",
+        "sf.render.cold-locker.node.locker-diag-b-3",
+        "sf.render.cold-locker.node.locker-diag-b-4",
+        "sf.render.cold-locker.node.locker-diag-b-5",
+        "sf.render.cold-locker.node.locker-diag-b-6",
+        "sf.render.cold-locker.node.locker-diag-b-7",
+        "sf.render.cold-locker.node.locker-diag-b-8",
+        "sf.render.cold-locker.node.locker-diag-b-9",
+        "sf.render.cold-locker.node.locker-dog-0",
+        "sf.render.cold-locker.node.locker-dog-1",
+        "sf.render.cold-locker.node.locker-dog-2",
+        "sf.render.cold-locker.node.locker-drum",
+        "sf.render.cold-locker.node.locker-drum-mesh",
+        "sf.render.cold-locker.node.locker-embed-plug",
+        "sf.render.cold-locker.node.locker-hatch",
+        "sf.render.cold-locker.node.locker-hoop-hi",
+        "sf.render.cold-locker.node.locker-hoop-lo",
+        "sf.render.cold-locker.node.locker-manifest-plate",
+        "sf.render.cold-locker.node.locker-outrigger-0",
+        "sf.render.cold-locker.node.locker-outrigger-1",
+        "sf.render.cold-locker.node.locker-petal-0",
+        "sf.render.cold-locker.node.locker-petal-1",
+        "sf.render.cold-locker.node.locker-petal-2",
+        "sf.render.cold-locker.node.locker-rail-1-1",
+        "sf.render.cold-locker.node.locker-rail-1-1-2",
+        "sf.render.cold-locker.node.locker-rail-1-1-3",
+        "sf.render.cold-locker.node.locker-rail-1-1-4",
+        "sf.render.cold-locker.node.locker-root-clamp",
+        "sf.render.cold-locker.node.locker-rung-x-0",
+        "sf.render.cold-locker.node.locker-rung-x-1",
+        "sf.render.cold-locker.node.locker-rung-x-10",
+        "sf.render.cold-locker.node.locker-rung-x-11",
+        "sf.render.cold-locker.node.locker-rung-x-12",
+        "sf.render.cold-locker.node.locker-rung-x-13",
+        "sf.render.cold-locker.node.locker-rung-x-14",
+        "sf.render.cold-locker.node.locker-rung-x-15",
+        "sf.render.cold-locker.node.locker-rung-x-16",
+        "sf.render.cold-locker.node.locker-rung-x-17",
+        "sf.render.cold-locker.node.locker-rung-x-2",
+        "sf.render.cold-locker.node.locker-rung-x-3",
+        "sf.render.cold-locker.node.locker-rung-x-4",
+        "sf.render.cold-locker.node.locker-rung-x-5",
+        "sf.render.cold-locker.node.locker-rung-x-6",
+        "sf.render.cold-locker.node.locker-rung-x-7",
+        "sf.render.cold-locker.node.locker-rung-x-8",
+        "sf.render.cold-locker.node.locker-rung-x-9",
+        "sf.render.cold-locker.node.locker-rung-y-0",
+        "sf.render.cold-locker.node.locker-rung-y-1",
+        "sf.render.cold-locker.node.locker-rung-y-10",
+        "sf.render.cold-locker.node.locker-rung-y-11",
+        "sf.render.cold-locker.node.locker-rung-y-12",
+        "sf.render.cold-locker.node.locker-rung-y-13",
+        "sf.render.cold-locker.node.locker-rung-y-14",
+        "sf.render.cold-locker.node.locker-rung-y-15",
+        "sf.render.cold-locker.node.locker-rung-y-16",
+        "sf.render.cold-locker.node.locker-rung-y-17",
+        "sf.render.cold-locker.node.locker-rung-y-2",
+        "sf.render.cold-locker.node.locker-rung-y-3",
+        "sf.render.cold-locker.node.locker-rung-y-4",
+        "sf.render.cold-locker.node.locker-rung-y-5",
+        "sf.render.cold-locker.node.locker-rung-y-6",
+        "sf.render.cold-locker.node.locker-rung-y-7",
+        "sf.render.cold-locker.node.locker-rung-y-8",
+        "sf.render.cold-locker.node.locker-rung-y-9",
+        "sf.render.cold-locker.node.locker-shear-cable",
+        "sf.render.cold-locker.node.locker-spoil-0",
+        "sf.render.cold-locker.node.locker-spoil-1",
+        "sf.render.cold-locker.node.locker-spoil-2",
+        "sf.render.cold-locker.node.place-cold-locker",
+        "sf.render.cold-locker.node.remaster-material-mechanical-brushednickel",
+        "sf.render.cold-locker.node.remaster-material-mechanical-shadowenamel"
       ]
     }
   ]

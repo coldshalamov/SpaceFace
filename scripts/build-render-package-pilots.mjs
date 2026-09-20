@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -131,7 +131,15 @@ export async function buildRenderPackagePilots(options = {}) {
       const current = await readFile(runtimeManifestPath, 'utf8');
       if (current !== runtimeSource) throw new Error(`${manifest.runtimeManifest} is stale; rebuild render-package pilots.`);
     } else {
-      await writeFile(runtimeManifestPath, runtimeSource);
+      // The dev server may be serving this module while packages publish. Replace a complete
+      // sibling file instead of truncating the live module (also avoids Windows reader locks).
+      const temporary = `${runtimeManifestPath}.${process.pid}.tmp`;
+      try {
+        await writeFile(temporary, runtimeSource, { flag: 'wx' });
+        await rename(temporary, runtimeManifestPath);
+      } finally {
+        await rm(temporary, { force: true });
+      }
     }
   } finally {
     if (scratch) await rm(scratch, { recursive: true, force: true });

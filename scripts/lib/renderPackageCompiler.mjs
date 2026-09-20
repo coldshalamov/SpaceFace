@@ -13,6 +13,7 @@ import {
   weld,
 } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
+import { encodeRenderPackageGlb } from './renderPackageStorage.mjs';
 
 import {
   RENDER_PACKAGE_COMPILER_NAME,
@@ -75,7 +76,7 @@ export async function compileRenderPackage(options = {}) {
   );
   stampSemanticLocators(semanticManifest, resolvedNodes);
 
-  const renderBytes = Buffer.from(await io.writeBinary(document));
+  const renderBytes = await encodeRenderPackageGlb(io, document);
   const renderHash = sha256(renderBytes);
   const sourceHash = sha256(sourceBytes);
   const semanticsHash = sha256(Buffer.from(stableJsonStringify(semanticManifest)));

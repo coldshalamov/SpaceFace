@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a2644b2e7816ae3cd2f7453056ba321ef314cd6ea68b70862cdd04858e5ff80e",
+  "contentHash": "9f1703fac25f07632805f0a5bbd9073f75560b1c10895c944c14387eb4a3cd97",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,16 +23,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f67006511c0498b74ec7b7f4f7b65975efe3e9dfe5c8e726df48926df7cc25f1",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-nn.primitive.0",
-      "indexCount": 180,
+      "geometryHash": "cfee56598bb8cf1963041539c6d68f8073e7e12d8ad258da17474eb60295d8b9",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-nn.primitive.0",
+      "indexCount": 228,
       "indexed": true,
       "materialHash": "9852cfa051e20a3bc1bf95f67f0943e0607a6309180bc99d9ccc7bf11527472c",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_VAR_SCN_bastion_nn",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-nn",
+      "meshName": "LOD0_VAR_SCN_bastion_nn.001",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-nn",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 120
     },
     {
       "bounds": {
@@ -48,16 +48,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "84680a18fecc92df113fe5cdfb378bf314eaa6ece90656cb9992aa47ffe0b8c6",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-np.primitive.0",
-      "indexCount": 180,
+      "geometryHash": "91ea05ffc5d595f111c8c5a31a238c25d4fe77e09109f80541c7a7d111859397",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-np.primitive.0",
+      "indexCount": 228,
       "indexed": true,
       "materialHash": "9852cfa051e20a3bc1bf95f67f0943e0607a6309180bc99d9ccc7bf11527472c",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_VAR_SCN_bastion_np",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-np",
+      "meshName": "LOD0_VAR_SCN_bastion_np.001",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-np",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 120
     },
     {
       "bounds": {
@@ -73,16 +73,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42eee4cd6256bec8b295bc3217eb7dccd89dbd9cda591f5eb861de826566696f",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-pn.primitive.0",
-      "indexCount": 180,
+      "geometryHash": "c91f964bb85468f4e6f3c34b0d91f55ae2ba05c90d27a3ea7ca56e727df90e53",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-pn.primitive.0",
+      "indexCount": 228,
       "indexed": true,
       "materialHash": "9852cfa051e20a3bc1bf95f67f0943e0607a6309180bc99d9ccc7bf11527472c",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_VAR_SCN_bastion_pn",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-pn",
+      "meshName": "LOD0_VAR_SCN_bastion_pn.001",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-pn",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 120
     },
     {
       "bounds": {
@@ -98,16 +98,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "acc5eed75d5cf52dae0bdb1efb9f3160f7b858422a33b1eab721ad8cceee0f2b",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-pp.primitive.0",
-      "indexCount": 180,
+      "geometryHash": "8fcf1d8335c5a8e0d429702c28525f2a3dafdd22c3d9a0175d259c6047b338a8",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-pp.primitive.0",
+      "indexCount": 228,
       "indexed": true,
       "materialHash": "9852cfa051e20a3bc1bf95f67f0943e0607a6309180bc99d9ccc7bf11527472c",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_VAR_SCN_bastion_pp",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-pp",
+      "meshName": "LOD0_VAR_SCN_bastion_pp.001",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-pp",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 120
     },
     {
       "bounds": {
@@ -123,14 +123,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1aab78e3db91dd250ee2d711f97962db47fcebcbb94ba6ea338dbe28640e8191",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-gate.primitive.0",
+      "geometryHash": "4f6cb4907f84b556e7376b6573a246556c65e132e06c5bde8c276ed23f3cae94",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-gate.primitive.0",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_boom_gate",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-gate",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-gate",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -148,16 +148,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f74cb1314e43cb06c03e570be33916ff661964f57ecb1a13489a0e25d3145d3f",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-n.primitive.0",
+      "geometryHash": "3354280704e4d872bfeb08d012f49b4813e6da2807421d2e9925be62a0dff741",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-n.primitive.0",
       "indexCount": 444,
       "indexed": true,
       "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_boom_n",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-n",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-n",
       "primitiveIndex": 0,
-      "vertexCount": 208
+      "vertexCount": 231
     },
     {
       "bounds": {
@@ -173,16 +173,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3dd1319eec0add3bda5ea4877c8ae6956502b39af1917cd7a1bac022a64f00e0",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-p.primitive.0",
+      "geometryHash": "c583cfac6a170562a238b7b9ab0c141129bfb726bc73323159038af6918cae31",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-p.primitive.0",
       "indexCount": 444,
       "indexed": true,
       "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_boom_p",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-p",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-p",
       "primitiveIndex": 0,
-      "vertexCount": 208
+      "vertexCount": 237
     },
     {
       "bounds": {
@@ -198,16 +198,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d5e890436c4d21894440d299cff77326aa3e6e9d80069f321c1ab0a9da882dbd",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-cladding-band.primitive.0",
-      "indexCount": 3240,
+      "geometryHash": "3221114e97dd54f17dde62a07f4d9216a8356460448b208cdf5dbed555a73971",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-cladding-band.primitive.0",
+      "indexCount": 3360,
       "indexed": true,
       "materialHash": "9852cfa051e20a3bc1bf95f67f0943e0607a6309180bc99d9ccc7bf11527472c",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_VAR_SCN_cladding_band",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-cladding-band",
+      "meshName": "LOD0_VAR_SCN_cladding_band.001",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-cladding-band",
       "primitiveIndex": 0,
-      "vertexCount": 1728
+      "vertexCount": 1768
+    },
+    {
+      "bounds": {
+        "max": [
+          65.94054412841797,
+          30.995716094970703,
+          31.910614013671875
+        ],
+        "min": [
+          -59.9415397644043,
+          30.17340087890625,
+          -31.914615631103516
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "240032e7d733103f122976425a9e73a51d0c51757478c4db0b9fee6258416b93",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-cladding-band.primitive.1",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_SCN_cladding_band.001",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-cladding-band",
+      "primitiveIndex": 1,
+      "vertexCount": 80
     },
     {
       "bounds": {
@@ -223,14 +248,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0cef352c3b6a6bba16a67335a8aea47e2b14a50c24100f4d1e0c9f49edf40a20",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast00.primitive.0",
+      "geometryHash": "bf78147008c87d1618000e44dd57e72584871f93708ce7d1433ead1049a5cd18",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast00.primitive.0",
       "indexCount": 360,
       "indexed": true,
       "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast00",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast00",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast00",
       "primitiveIndex": 0,
       "vertexCount": 192
     },
@@ -248,14 +273,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31b546e6934ff687d238efe16c47d3dd8aa3a370e05957c10c957ba9281ce750",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast00.primitive.1",
+      "geometryHash": "b7137033035be6bb4b7913dc848a44d1b81ff75400660b8f34ea7bf9584dd957",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast00.primitive.1",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast00",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast00",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast00",
       "primitiveIndex": 1,
       "vertexCount": 96
     },
@@ -273,14 +298,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d8720694150b8bf23df650bc6f55c7ac59d45fc6105e48b029de352dba203a32",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast01.primitive.0",
+      "geometryHash": "13ac5b6900dd6392c0c1577dd42618de349d693b0ccf2fa2a76bfe60e01e6656",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast01.primitive.0",
       "indexCount": 360,
       "indexed": true,
       "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast01",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast01",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast01",
       "primitiveIndex": 0,
       "vertexCount": 192
     },
@@ -298,14 +323,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb23c9b4c06b758daa04d691d2226865ac4b9d14514d613ae70f660b7c181368",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast01.primitive.1",
+      "geometryHash": "9a4e09facf2b158b6fffa9d68cc0a1d960e7f3a23b5f9dbc7570a7f248503a0a",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast01.primitive.1",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast01",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast01",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast01",
       "primitiveIndex": 1,
       "vertexCount": 96
     },
@@ -323,14 +348,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2dbb07bcb59a5e8b346aed287cfec5c40fdd9c3913c718503b73d6b1e00fb3fb",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast02.primitive.0",
+      "geometryHash": "39e78e642c6aa0236b9e51aed2bbba3791c44c246c112a56ec76ee14e868d2e2",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast02.primitive.0",
       "indexCount": 360,
       "indexed": true,
       "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast02",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast02",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast02",
       "primitiveIndex": 0,
       "vertexCount": 192
     },
@@ -348,14 +373,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4e8ff951b6af38b8314635b9de784689d6832c35c37746601c3f434d2d6eb61",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast02.primitive.1",
+      "geometryHash": "b571e88ed34fa382f62be23df7254d8ea4cd991108be82edd6baeb88b9bbda44",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast02.primitive.1",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast02",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast02",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast02",
       "primitiveIndex": 1,
       "vertexCount": 96
     },
@@ -373,14 +398,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f5092cd42655b01ee9337812ae2a6adad62fc430d62e3eaec2a6a6d6a04f2e5",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast10.primitive.0",
+      "geometryHash": "fef8d83d15c64d3159aee536e4b0e879f379a26ee3cd684d624c15eff2b40415",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast10.primitive.0",
       "indexCount": 360,
       "indexed": true,
       "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast10",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast10",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast10",
       "primitiveIndex": 0,
       "vertexCount": 192
     },
@@ -398,14 +423,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d1f3148883bfb134ff039e2f6d94c08642b4443d1dfc4bac426ae083976942bb",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast10.primitive.1",
+      "geometryHash": "dfb9791e31015b5035430d24816016932bcfcc3ba00ff9ad39d1a45d58d890b3",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast10.primitive.1",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast10",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast10",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast10",
       "primitiveIndex": 1,
       "vertexCount": 96
     },
@@ -423,14 +448,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "17a1e317d1b27458c649f744ebd4eaebea0eb76970e66e5fb81c5bdcd424577f",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast11.primitive.0",
+      "geometryHash": "00e796d0d85eff9e5453ac391d5b63519bdf8157ce0c54fc261f71b08f78f805",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast11.primitive.0",
       "indexCount": 360,
       "indexed": true,
       "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast11",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast11",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast11",
       "primitiveIndex": 0,
       "vertexCount": 192
     },
@@ -448,14 +473,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "51991d4339f0b802a0db768daf324ba715e22480e0322d8f8c45f53f4927331d",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast11.primitive.1",
+      "geometryHash": "40d580ec7fcced4e36bd9cec206e9b9aa15b59620b40bb1c822e5d1b2341d172",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast11.primitive.1",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast11",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast11",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast11",
       "primitiveIndex": 1,
       "vertexCount": 96
     },
@@ -473,14 +498,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "980806472fa35f691faa0bbf3cf779d14766091cc71cd23c0c41be0538477d50",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast12.primitive.0",
+      "geometryHash": "3d21f602a726d3346ecd47d12f095313ed7c977e9ccdf7b4048c21db1eb495d4",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast12.primitive.0",
       "indexCount": 360,
       "indexed": true,
       "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast12",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast12",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast12",
       "primitiveIndex": 0,
       "vertexCount": 192
     },
@@ -498,16 +523,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d95fd0e6b67af5df4f72cd5eb94ed0b10589b1027162a824926aac562d8df030",
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast12.primitive.1",
+      "geometryHash": "de5a9a298e560e5bfc47f430633cefbea5884710ba757e251d7cf3763383a0c3",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast12.primitive.1",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_SCN_mast12",
-      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast12",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast12",
       "primitiveIndex": 1,
       "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          69.4573974609375,
+          33.322288513183594,
+          57.888797760009766
+        ],
+        "min": [
+          -63.45840072631836,
+          30.239431381225586,
+          -57.892799377441406
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "18b16067f49b099a9346df8d1ea81ae1ec78504d60f05d360839aaba0cb732f4",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_ServiceWell_Inner",
+      "nodeId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 216
     }
   ],
   "hlods": [],
@@ -534,11 +584,43 @@
       "name": "KitMat_Emissive",
       "pipelineKey": "opaque:double",
       "textures": []
+    },
+    {
+      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-nn",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-nn",
       "localTransform": [
         1,
         0,
@@ -562,9 +644,9 @@
       "nodeName": "LOD0_VAR_SCN_bastion_nn",
       "nodePath": [
         0,
-        1
+        0
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -587,7 +669,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-np",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-np",
       "localTransform": [
         1,
         0,
@@ -611,9 +693,9 @@
       "nodeName": "LOD0_VAR_SCN_bastion_np",
       "nodePath": [
         0,
-        2
+        1
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -636,7 +718,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-pn",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-pn",
       "localTransform": [
         1,
         0,
@@ -660,9 +742,9 @@
       "nodeName": "LOD0_VAR_SCN_bastion_pn",
       "nodePath": [
         0,
-        3
+        2
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -685,7 +767,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-pp",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-pp",
       "localTransform": [
         1,
         0,
@@ -709,9 +791,9 @@
       "nodeName": "LOD0_VAR_SCN_bastion_pp",
       "nodePath": [
         0,
-        4
+        3
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -734,7 +816,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-gate",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-gate",
       "localTransform": [
         1,
         0,
@@ -758,9 +840,9 @@
       "nodeName": "LOD0_VAR_SCN_boom_gate",
       "nodePath": [
         0,
-        13
+        4
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -783,7 +865,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-n",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-n",
       "localTransform": [
         1,
         0,
@@ -807,9 +889,9 @@
       "nodeName": "LOD0_VAR_SCN_boom_n",
       "nodePath": [
         0,
-        11
+        5
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -832,7 +914,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-p",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-p",
       "localTransform": [
         1,
         0,
@@ -856,9 +938,9 @@
       "nodeName": "LOD0_VAR_SCN_boom_p",
       "nodePath": [
         0,
-        12
+        6
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -881,7 +963,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-cladding-band",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-cladding-band",
       "localTransform": [
         1,
         0,
@@ -905,9 +987,9 @@
       "nodeName": "LOD0_VAR_SCN_cladding_band",
       "nodePath": [
         0,
-        0
+        7
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -930,7 +1012,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast00",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast00",
       "localTransform": [
         1,
         0,
@@ -954,9 +1036,9 @@
       "nodeName": "LOD0_VAR_SCN_mast00",
       "nodePath": [
         0,
-        5
+        8
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -979,7 +1061,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast01",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast01",
       "localTransform": [
         1,
         0,
@@ -1003,9 +1085,9 @@
       "nodeName": "LOD0_VAR_SCN_mast01",
       "nodePath": [
         0,
-        6
+        9
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -1028,7 +1110,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast02",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast02",
       "localTransform": [
         1,
         0,
@@ -1052,9 +1134,9 @@
       "nodeName": "LOD0_VAR_SCN_mast02",
       "nodePath": [
         0,
-        7
+        10
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -1077,7 +1159,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast10",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast10",
       "localTransform": [
         1,
         0,
@@ -1101,9 +1183,9 @@
       "nodeName": "LOD0_VAR_SCN_mast10",
       "nodePath": [
         0,
-        8
+        11
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -1126,7 +1208,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast11",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast11",
       "localTransform": [
         1,
         0,
@@ -1150,9 +1232,9 @@
       "nodeName": "LOD0_VAR_SCN_mast11",
       "nodePath": [
         0,
-        9
+        12
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -1175,7 +1257,7 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast12",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast12",
       "localTransform": [
         1,
         0,
@@ -1199,9 +1281,9 @@
       "nodeName": "LOD0_VAR_SCN_mast12",
       "nodePath": [
         0,
-        10
+        13
       ],
-      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "parentId": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "worldTransform": [
@@ -1224,7 +1306,55 @@
       ]
     },
     {
-      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.root",
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root",
       "localTransform": [
         1,
         0,
@@ -1244,7 +1374,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "SF_TRADE_HUB_SCN_OVERLAY_ROOT",
       "nodeName": "SF_TRADE_HUB_SCN_OVERLAY_ROOT",
       "nodePath": [
         0
@@ -1274,22 +1404,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "c395df0362806cdbc6ae9e64e8c5a10d3962050a7a7f775e87a91bbf2795de35"
+      "sha256": "ae9179b27512aaf4b8e404e74455b811cc3f8ce5e1e7b54a757852ee42a0df90"
     },
     "sourceGlb": {
-      "bytes": 54332,
-      "sha256": "698fc8cb703607dd1a1425c082a1046e978d0521b068c22ee9cdb961f4f76161",
+      "bytes": 75588,
+      "sha256": "6419a7032e2ad721f0d183e81a6bac7bab32d7690e4b95232a033ba0127bd991",
       "uri": "var_station_trade_hub_scn_overlay_v01.glb"
     },
     "sourceManifest": {
-      "bytes": 168394,
-      "sha256": "d7200721c99b6069204d939589aae9e55ccae5861bee5f7dcc97060e59e43d68",
+      "bytes": 169401,
+      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 107044,
-    "sha256": "9591904dd81e791f63a2da425644d560014884d0e63c9b565836d169040609d0",
+    "bytes": 129168,
+    "sha256": "eb5c65200d90699fbb3b161059dfc6cca1ce81cd04d52d72cdae8a8ab9511bfd",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1320,7 +1450,7 @@
     "markers": [],
     "materialProfileRoles": {
       "hull": 11,
-      "mechanical": 9
+      "mechanical": 11
     },
     "materialProfiles": [
       {
@@ -1346,7 +1476,12 @@
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -1354,8 +1489,8 @@
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
-        "planIndex": 9,
+        "allowTextures": true,
+        "planIndex": 10,
         "role": "hull"
       },
       {
@@ -1364,48 +1499,43 @@
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
-        "planIndex": 12,
-        "role": "hull"
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
-        "allowTextures": false,
-        "planIndex": 15,
-        "role": "hull"
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
-        "allowTextures": false,
-        "planIndex": 18,
-        "role": "hull"
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 21,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 23,
+        "planIndex": 22,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
-        "planIndex": 24,
+        "allowTextures": true,
+        "planIndex": 23,
         "role": "hull"
       },
       {
@@ -1416,15 +1546,25 @@
       {
         "allowTextures": true,
         "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 27,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 28,
+    "nodeCount": 31,
     "primitives": [
       {
         "canopy": false,
@@ -1446,35 +1586,8 @@
           0,
           1
         ],
-        "name": "LOD0_VAR_SCN_cladding_band",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
         "name": "LOD0_VAR_SCN_bastion_nn",
-        "planIndex": 3,
+        "planIndex": 2,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1501,7 +1614,7 @@
           1
         ],
         "name": "LOD0_VAR_SCN_bastion_np",
-        "planIndex": 4,
+        "planIndex": 3,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1528,7 +1641,7 @@
           1
         ],
         "name": "LOD0_VAR_SCN_bastion_pn",
-        "planIndex": 5,
+        "planIndex": 4,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1555,385 +1668,7 @@
           1
         ],
         "name": "LOD0_VAR_SCN_bastion_pp",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast00_1",
-        "planIndex": 8,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast00_2",
-        "planIndex": 9,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast01_1",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast01_2",
-        "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast02_1",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast02_2",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast10_1",
-        "planIndex": 17,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast10_2",
-        "planIndex": 18,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast11_1",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast11_2",
-        "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast12_1",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_mast12_2",
-        "planIndex": 24,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_boom_n",
-        "planIndex": 25,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_SCN_boom_p",
-        "planIndex": 26,
+        "planIndex": 5,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1960,9 +1695,469 @@
           1
         ],
         "name": "LOD0_VAR_SCN_boom_gate",
-        "planIndex": 27,
+        "planIndex": 6,
         "tags": {
           "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_boom_n",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_boom_p",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_cladding_band001",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_cladding_band001_1",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast00_1",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast00_2",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast01_1",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast01_2",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast02_1",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast02_2",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast10_1",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast10_2",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast11_1",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast11_2",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast12_1",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_SCN_mast12_2",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
           "lod": "lod0"
         }
       }
@@ -1971,7 +2166,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb"
   },
-  "runtimeHash": "11402718c97e60b0af4e63e430b7aa648173130c7f13d06a754231d0575ff094",
+  "runtimeHash": "ce86fa8f34acfed8ede8a6e2b775155fb15edcdf4a01c47000827b3f2d45d2ae",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -1989,21 +2184,22 @@
       },
       "id": "sf.render.var-station-trade-hub-scn-overlay-v01.body",
       "nodeIds": [
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-nn",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-np",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-pn",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-bastion-pp",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-gate",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-n",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-boom-p",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-cladding-band",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast00",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast01",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast02",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast10",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast11",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.mesh.lod0-var-scn-mast12",
-        "sf.render.var-station-trade-hub-scn-overlay-v01.root"
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-nn",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-np",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-pn",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-bastion-pp",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-gate",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-n",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-boom-p",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-cladding-band",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast00",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast01",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast02",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast10",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast11",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.lod0-var-scn-mast12",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.remaster-material-mechanical-shadowenamel",
+        "sf.render.var-station-trade-hub-scn-overlay-v01.node.sf-trade-hub-scn-overlay-root"
       ]
     }
   ]

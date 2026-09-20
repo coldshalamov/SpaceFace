@@ -23,10 +23,10 @@
       ],
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
-        0,
-        8
+        3,
+        13
       ],
-      "parentNodeId": "sf.render.wasp-mts-escort.root",
+      "parentNodeId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "worldTransform": [
         1,
         0,
@@ -69,10 +69,10 @@
       ],
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
-        0,
-        9
+        3,
+        14
       ],
-      "parentNodeId": "sf.render.wasp-mts-escort.root",
+      "parentNodeId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "worldTransform": [
         1,
         0,
@@ -115,10 +115,10 @@
       ],
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
-        0,
-        10
+        3,
+        15
       ],
-      "parentNodeId": "sf.render.wasp-mts-escort.root",
+      "parentNodeId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "worldTransform": [
         1,
         0,
@@ -161,10 +161,10 @@
       ],
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
-        0,
-        11
+        3,
+        16
       ],
-      "parentNodeId": "sf.render.wasp-mts-escort.root",
+      "parentNodeId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "worldTransform": [
         1,
         0,
@@ -207,10 +207,10 @@
       ],
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
-        0,
-        12
+        3,
+        17
       ],
-      "parentNodeId": "sf.render.wasp-mts-escort.root",
+      "parentNodeId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "worldTransform": [
         1,
         0,
@@ -253,10 +253,10 @@
       ],
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
-        0,
-        13
+        3,
+        18
       ],
-      "parentNodeId": "sf.render.wasp-mts-escort.root",
+      "parentNodeId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "worldTransform": [
         1,
         0,
@@ -299,10 +299,10 @@
       ],
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
-        0,
-        14
+        3,
+        19
       ],
-      "parentNodeId": "sf.render.wasp-mts-escort.root",
+      "parentNodeId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "worldTransform": [
         1,
         0,
@@ -345,10 +345,10 @@
       ],
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
-        0,
-        15
+        3,
+        20
       ],
-      "parentNodeId": "sf.render.wasp-mts-escort.root",
+      "parentNodeId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "worldTransform": [
         1,
         0,
@@ -391,10 +391,10 @@
       ],
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
-        0,
-        16
+        3,
+        21
       ],
-      "parentNodeId": "sf.render.wasp-mts-escort.root",
+      "parentNodeId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "worldTransform": [
         1,
         0,
@@ -437,10 +437,10 @@
       ],
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
-        0,
-        17
+        3,
+        22
       ],
-      "parentNodeId": "sf.render.wasp-mts-escort.root",
+      "parentNodeId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "worldTransform": [
         1,
         0,
@@ -483,10 +483,10 @@
       ],
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
-        0,
-        18
+        3,
+        23
       ],
-      "parentNodeId": "sf.render.wasp-mts-escort.root",
+      "parentNodeId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "worldTransform": [
         1,
         0,
@@ -511,7 +511,7 @@
   "collisions": [
     {
       "id": "sf.render.wasp-mts-escort.collision",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.collision-hull",
+      "nodeId": "sf.render.wasp-mts-escort.node.collision-hull",
       "reference": "COLLISION_HULL"
     }
   ],
@@ -519,7 +519,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "978f000281ae9c479aa1c56a4a49c838acd18c42828fc64085bf24183696a2a3",
+  "contentHash": "dbeb19d9b1ec634f2cb249fa2191d05fcc533151b01fe492664cf740f153a8b4",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -537,13 +537,13 @@
       },
       "drawMode": 4,
       "geometryHash": "b20f9ef691434fcb120b40aa73fa7e1112a87b0ffdcbf97b1c6ab28266985381",
-      "id": "sf.render.wasp-mts-escort.mesh.collision-hull.primitive.0",
+      "id": "sf.render.wasp-mts-escort.node.collision-hull.primitive.0",
       "indexCount": 66,
       "indexed": true,
       "materialHash": null,
       "materialPipelineKey": "non-render",
       "meshName": "COLLISION_HULL_MESH",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.collision-hull",
+      "nodeId": "sf.render.wasp-mts-escort.node.collision-hull",
       "primitiveIndex": 0,
       "vertexCount": 60
     },
@@ -561,14 +561,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62f37efb55a1e85080c66af4a55526d636d3586f81f5735d6fab1b71099ecba7",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-accent.primitive.0",
+      "geometryHash": "9b600e0cd94da3904e74bba896c0f763622bf43606ff3572d8a1afb9667f8eb5",
+      "id": "sf.render.wasp-mts-escort.node.lod0-accent.primitive.0",
       "indexCount": 2748,
       "indexed": true,
-      "materialHash": "4d64569f5c61852ac37a98e25d81d08e5ae875111c151707218ac0249d0c0d68",
+      "materialHash": "3e7fba0091a35f81e1a7031006878f42c90b0505461d82355cc2caf5d36fcd0c",
       "materialPipelineKey": "opaque",
       "meshName": "Nacelle_Strake_Port_Mesh",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-accent",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-accent",
       "primitiveIndex": 0,
       "vertexCount": 732
     },
@@ -587,13 +587,13 @@
       },
       "drawMode": 4,
       "geometryHash": "dd0fb0dd05b62611e640d390b4a77209c0bf983f4ea1cb67aa90548f1f8ea97d",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-canopy.primitive.0",
+      "id": "sf.render.wasp-mts-escort.node.lod0-canopy.primitive.0",
       "indexCount": 804,
       "indexed": true,
       "materialHash": "26b2563a632dabf7aaf34bb35246dc9d3a533731c3527b640fe000eccd1a6cac",
       "materialPipelineKey": "blend",
       "meshName": "Cockpit_Canopy_Mesh",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-canopy",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-canopy",
       "primitiveIndex": 0,
       "vertexCount": 206
     },
@@ -611,89 +611,164 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "28bddfeacbc9bc7af681b44298e02299dacdf441a550d18a21419a5d851d81cf",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-hull-armor.primitive.0",
-      "indexCount": 9804,
+      "geometryHash": "da5ed1cc845b8806f869a106ad780487ac31674e995f38678fb467606291fbec",
+      "id": "sf.render.wasp-mts-escort.node.lod0-hull-armor.primitive.0",
+      "indexCount": 10248,
       "indexed": true,
-      "materialHash": "f3b706457d9e983795985b9fb8747a3e660482b805dddf7b60b047de12717515",
+      "materialHash": "8c8f9ee0040b25a5178f077cc7ed97c8185620fbb412e4e2f104d4f8b5a08175",
       "materialPipelineKey": "opaque",
       "meshName": "Dorsal_Hull_Armor_Spine_Mesh",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-hull-armor",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-hull-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2680
+      "vertexCount": 2895
     },
     {
       "bounds": {
         "max": [
           12,
-          1.2367321252822876,
+          4.739911079406738,
           8.081727981567383
         ],
         "min": [
           -10,
-          -1.2367321252822876,
+          -1.2362844944000244,
           -8.081727981567383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f55b25611868128e49f31b86ffaee0728c0d23d400fc109acaad92a85dd9714",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-hull.primitive.0",
-      "indexCount": 1956,
+      "geometryHash": "29ac493ab697e10bd92c291f1baa5888a9dfe84ecdde17b6659386e0863efde5",
+      "id": "sf.render.wasp-mts-escort.node.lod0-hull.primitive.0",
+      "indexCount": 11454,
       "indexed": true,
-      "materialHash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
+      "materialHash": "de55173b43a448952006756b5654593d2b461c93551441add464514294da20ea",
       "materialPipelineKey": "opaque",
       "meshName": "Fuselage_Core_Mesh",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-hull",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 508
+      "vertexCount": 8263
     },
     {
       "bounds": {
         "max": [
-          6.954329490661621,
-          1.650251030921936,
-          7.179970741271973
+          7.6020002365112305,
+          4.484750270843506,
+          7.180263519287109
         ],
         "min": [
           -9.639999389648438,
-          -1.3802510499954224,
-          -7.179970741271973
+          -1.37975013256073,
+          -7.180263519287109
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c289a7d80fb317c71599433a5e3e07ebc878cb1085c6bfe65ce650ea2c6d1aa3",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-mechanical.primitive.0",
-      "indexCount": 16272,
+      "geometryHash": "f806289035fb4a7eb98544bae44c87dd9a1438c5fb12122464354c013ddfdc58",
+      "id": "sf.render.wasp-mts-escort.node.lod0-mechanical.primitive.0",
+      "indexCount": 24696,
       "indexed": true,
-      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialHash": "f0d541dede2be448c76d69a3972c4b0f31e7f15d884379a2e448b29eef78d012",
       "materialPipelineKey": "opaque",
       "meshName": "Ventral_Keel_Mesh",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-mechanical",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 4568
+      "vertexCount": 11488
+    },
+    {
+      "bounds": {
+        "max": [
+          6.473999977111816,
+          4.7537360191345215,
+          5.680323600769043
+        ],
+        "min": [
+          -5.769999980926514,
+          0.596672534942627,
+          -5.680323600769043
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8e7c0e5ea7c5831c9fd39ff29c5052d290438522f444facb38b92e80bce66322",
+      "id": "sf.render.wasp-mts-escort.node.lod0-remaster-material-brushedmetal-remasternickel.primitive.0",
+      "indexCount": 14064,
+      "indexed": true,
+      "materialHash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Remaster_PortNacelleThermal_NickelSeam",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-remaster-material-brushedmetal-remasternickel",
+      "primitiveIndex": 0,
+      "vertexCount": 11022
+    },
+    {
+      "bounds": {
+        "max": [
+          6.163760185241699,
+          4.5499467849731445,
+          0.9856171011924744
+        ],
+        "min": [
+          -1.659999966621399,
+          2.4141533374786377,
+          -0.4126170873641968
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bafa17ae9b5d058d6e2022fccd32ba09fb81a4e925cb8044d456082c59c34959",
+      "id": "sf.render.wasp-mts-escort.node.lod0-remaster-material-glass-remasteroptical.primitive.0",
+      "indexCount": 2640,
+      "indexed": true,
+      "materialHash": "92d3bd83e3ee165cf2d4464f888be56b92a41200451c8693a79ed83d0b701c95",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_Remaster_MTSEscort_ForeService_InsetOpticalDoor",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-remaster-material-glass-remasteroptical",
+      "primitiveIndex": 0,
+      "vertexCount": 2229
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.1476995944976807,
+          0.7812288403511047,
+          5.4984002113342285
+        ],
+        "min": [
+          -5.25230073928833,
+          0.665156900882721,
+          -5.066400051116943
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "195c7cc603a2793102153bbe41919f9753270e0add7fbae2584649618ec5e3cd",
+      "id": "sf.render.wasp-mts-escort.node.lod0-remaster-material-mechanical-remasterheatcopper.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Remaster_PortNacelleThermal_CoolantReturn",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-remaster-material-mechanical-remasterheatcopper",
+      "primitiveIndex": 0,
+      "vertexCount": 288
     },
     {
       "bounds": {
         "max": [
           -9.629646301269531,
-          0.6299387812614441,
+          0.6299386620521545,
           6.180000305175781
         ],
         "min": [
           -9.75035285949707,
-          -0.6299387812614441,
+          -0.6299386620521545,
           -6.180000305175781
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e2291a3a57f07e247bf0ad7d36b96f77946c34907a2ac0ff6806b66152ff7cc1",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-thruster.primitive.0",
+      "geometryHash": "fed5d6e6c41f2212a981ad0f9b725273b4d13a1444469c72a1fc33b7c662d754",
+      "id": "sf.render.wasp-mts-escort.node.lod0-thruster.primitive.0",
       "indexCount": 2280,
       "indexed": true,
-      "materialHash": "0f72a97d1a1da1a300b71938a46f30718907478ac1c010d1506bbecf0e22aee8",
+      "materialHash": "f3ae0e9b33fabaeb2e9b8e884323de2d441586fab1344c7d6906895eb56f1455",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-thruster",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-thruster",
       "primitiveIndex": 0,
       "vertexCount": 544
     },
@@ -701,224 +776,124 @@
       "bounds": {
         "max": [
           3.451608180999756,
-          4.227633953094482,
+          3.07763409614563,
           -0.6200000643730164
         ],
         "min": [
           2.3483920097351074,
-          3.392371892929077,
+          2.2423717975616455,
           -1.7799999713897705
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98fa2d9f92bb0d4e611fdab8833404513caafe46a0fe7d71628f3189d0738332",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister0.primitive.0",
+      "geometryHash": "3acb05e769217f269c61ee1b7a07b2c2b2576f0e011939b6fb7d688178fe5ae1",
+      "id": "sf.render.wasp-mts-escort.node.lod0-var-mts-blister0.primitive.0",
       "indexCount": 240,
       "indexed": true,
-      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialHash": "f0d541dede2be448c76d69a3972c4b0f31e7f15d884379a2e448b29eef78d012",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_MTS_blister0",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister0",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-var-mts-blister0",
       "primitiveIndex": 0,
-      "vertexCount": 42
+      "vertexCount": 84
     },
     {
       "bounds": {
         "max": [
           -0.08643391728401184,
-          4.198832035064697,
+          3.0488319396972656,
           1.940000057220459
         ],
         "min": [
           -1.1135661602020264,
-          3.4211738109588623,
+          2.2711737155914307,
           0.85999995470047
         ]
       },
       "drawMode": 4,
-      "geometryHash": "91f9cdc9dfa118bc98c660eed046b6e04dbf7b283b2f8eecb2301fa7ff8a8aa5",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister1.primitive.0",
+      "geometryHash": "8c78b790231e8e7d0cc467cb5bb065e7fce6248c4e62e45d956859f1b385f501",
+      "id": "sf.render.wasp-mts-escort.node.lod0-var-mts-blister1.primitive.0",
       "indexCount": 240,
       "indexed": true,
-      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialHash": "f0d541dede2be448c76d69a3972c4b0f31e7f15d884379a2e448b29eef78d012",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_MTS_blister1",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister1",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-var-mts-blister1",
       "primitiveIndex": 0,
-      "vertexCount": 42
+      "vertexCount": 88
     },
     {
       "bounds": {
         "max": [
           4.856503009796143,
-          3.944706439971924,
+          2.794706344604492,
           0.6799999475479126
         ],
         "min": [
           3.9434969425201416,
-          3.2534546852111816,
+          2.103454828262329,
           -0.2799999713897705
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7953bf3781d0f83427ef02af4e23c0915a5166f43fe448aa050d6e053d2eec5",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister2.primitive.0",
+      "geometryHash": "5e43aec43bfd1b69d2bd7f916a626f7c913889378eec8f51eaa06f2d6f045f89",
+      "id": "sf.render.wasp-mts-escort.node.lod0-var-mts-blister2.primitive.0",
       "indexCount": 240,
       "indexed": true,
-      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialHash": "f0d541dede2be448c76d69a3972c4b0f31e7f15d884379a2e448b29eef78d012",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_MTS_blister2",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister2",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-var-mts-blister2",
       "primitiveIndex": 0,
-      "vertexCount": 42
+      "vertexCount": 84
     },
     {
       "bounds": {
         "max": [
-          6.899999618530273,
-          4.860330581665039,
-          0.08009277284145355
+          5.199999809265137,
+          4.860415935516357,
+          0.08001953363418579
         ],
         "min": [
-          1.499999761581421,
-          4.7403564453125,
-          -0.08009277284145355
+          1.3999998569488525,
+          4.740271091461182,
+          -0.08001953363418579
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e81dd11d5109e704df74ee21b659d12397a1fae3d4e7f09e87610ea9d7d39cd3",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-cabinstrip.primitive.0",
+      "geometryHash": "95e4ed324e22f7bb701345d8120321c7e2acdda2ddb34178ac4c8a4a2a0fe287",
+      "id": "sf.render.wasp-mts-escort.node.lod0-var-mts-cabinstrip.primitive.0",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_MTS_cabinstrip",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-cabinstrip",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-var-mts-cabinstrip",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          -1.7000000476837158,
-          2.5599923133850098,
-          1.649916172027588
-        ],
-        "min": [
-          -6.100000381469727,
-          1.260013461112976,
-          -1.649916172027588
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "35e3f9234dfc48950826a4c0ad66fff4c25db5d944c8b35eae2ba487868f35dd",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-aft.primitive.0",
-      "indexCount": 900,
-      "indexed": true,
-      "materialHash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_VAR_MTS_clamshell_aft",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-aft",
-      "primitiveIndex": 0,
-      "vertexCount": 152
-    },
-    {
-      "bounds": {
-        "max": [
-          7.800000190734863,
-          2.7490944862365723,
-          1.5000580549240112
-        ],
-        "min": [
-          3.3999998569488525,
-          1.4990683794021606,
-          -1.5000580549240112
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f2fe624dc72d1c7fb8360121f9e6d49b0dbd97ddf92ddffcaa517ce5cfdb045d",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-fore.primitive.0",
-      "indexCount": 900,
-      "indexed": true,
-      "materialHash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_VAR_MTS_clamshell_fore",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-fore",
-      "primitiveIndex": 0,
-      "vertexCount": 152
-    },
-    {
-      "bounds": {
-        "max": [
-          4.400000095367432,
-          2.9600534439086914,
-          2.0002381801605225
-        ],
-        "min": [
-          -3,
-          1.2599525451660156,
-          -2.0002381801605225
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "95d853e8775780ddbc27bcd0bcd2d1ff8174aff8817207eb68d35a2481578d31",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-mid.primitive.0",
-      "indexCount": 900,
-      "indexed": true,
-      "materialHash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_VAR_MTS_clamshell_mid",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-mid",
-      "primitiveIndex": 0,
-      "vertexCount": 152
-    },
-    {
-      "bounds": {
-        "max": [
-          2.0999999046325684,
-          4.200056552886963,
-          0.8499892950057983
-        ],
-        "min": [
-          -0.699999988079071,
-          3.899949550628662,
-          -0.8499892950057983
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cabb66ae63209036e95128955a78ba8a96d16305a4322967d3a9a7c1295c5e62",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-goldzone.primitive.0",
-      "indexCount": 564,
-      "indexed": true,
-      "materialHash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_VAR_MTS_goldzone",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-goldzone",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.600000023841858,
+          -0.3999999761581421,
           4.850345134735107,
           0.40000003576278687
         ],
         "min": [
-          -2.4000000953674316,
+          -1.2000000476837158,
           4.750341892242432,
           -0.40000003576278687
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f578e52c2d2eb735487b156c82de265de68d0877c353f9759bafc029ec4d1a80",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-logo.primitive.0",
+      "geometryHash": "2b77d836efb819b6a4143c7c35c826d29ed76372d5917a4e03d44bbe1ba9bb99",
+      "id": "sf.render.wasp-mts-escort.node.lod0-var-mts-logo.primitive.0",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_VAR_MTS_logo",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-logo",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-var-mts-logo",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -936,14 +911,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "128f297af86ea3a8927e09f7bf8306e1c78e297bd812be1e65f5747465dc791b",
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-warning.primitive.0",
+      "geometryHash": "24b8141fdadbb2fba164320d5f83a5520b5a619a05cb1af19a8cc5ff4124dc3b",
+      "id": "sf.render.wasp-mts-escort.node.lod0-warning.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "9149d0049faf5b8c879f41a334c2c0b982eb325d087c655e363dae44b3a4556c",
+      "materialHash": "cba1558edbacc486882f7adb3e5d42dfdc601f7cffad272dcbd55ca57d349cb1",
       "materialPipelineKey": "opaque",
       "meshName": "Wing_Warning_Port_Mesh",
-      "nodeId": "sf.render.wasp-mts-escort.mesh.lod0-warning",
+      "nodeId": "sf.render.wasp-mts-escort.node.lod0-warning",
       "primitiveIndex": 0,
       "vertexCount": 192
     }
@@ -953,45 +928,6 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0f72a97d1a1da1a300b71938a46f30718907478ac1c010d1506bbecf0e22aee8",
-      "id": "material:0f72a97d1a1da1a300b71938",
-      "name": "Material_Thruster",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
-      "id": "material:1afd8d4eb395d278d3722b95",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "mechanical_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "mechanical_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "mechanical_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "mechanical_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "26b2563a632dabf7aaf34bb35246dc9d3a533731c3527b640fe000eccd1a6cac",
       "id": "material:26b2563a632dabf7aaf34bb3",
       "name": "Material_Canopy",
@@ -999,8 +935,8 @@
       "textures": []
     },
     {
-      "hash": "4d64569f5c61852ac37a98e25d81d08e5ae875111c151707218ac0249d0c0d68",
-      "id": "material:4d64569f5c61852ac37a98e2",
+      "hash": "3e7fba0091a35f81e1a7031006878f42c90b0505461d82355cc2caf5d36fcd0c",
+      "id": "material:3e7fba0091a35f81e1a70310",
       "name": "Material_Accent",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1031,8 +967,68 @@
       ]
     },
     {
-      "hash": "9149d0049faf5b8c879f41a334c2c0b982eb325d087c655e363dae44b3a4556c",
-      "id": "material:9149d0049faf5b8c879f41a3",
+      "hash": "8ab96250fdee6299bd749485db7c52a85c8aafceb6a262b89bdf94e48ccaa50b",
+      "id": "material:8ab96250fdee6299bd749485",
+      "name": "Material_Mechanical_RemasterHeatCopper",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c8f9ee0040b25a5178f077cc7ed97c8185620fbb412e4e2f104d4f8b5a08175",
+      "id": "material:8c8f9ee0040b25a5178f077c",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "armor_dark_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "armor_dark_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "armor_dark_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "armor_dark_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "92d3bd83e3ee165cf2d4464f888be56b92a41200451c8693a79ed83d0b701c95",
+      "id": "material:92d3bd83e3ee165cf2d4464f",
+      "name": "Material_Glass_RemasterOptical",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
+      "id": "material:ae1ee81b0e0eb81a22cf6f2d",
+      "name": "KitMat_Emissive",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "bc5362fa29283f47ae662c67988f1daee0098031894b9b6b9afdbf9c1104092c",
+      "id": "material:bc5362fa29283f47ae662c67",
+      "name": "Material_BrushedMetal_RemasterNickel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "cba1558edbacc486882f7adb3e5d42dfdc601f7cffad272dcbd55ca57d349cb1",
+      "id": "material:cba1558edbacc486882f7adb",
       "name": "Material_Warning",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1063,8 +1059,8 @@
       ]
     },
     {
-      "hash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
-      "id": "material:a4ce347ab65b87d412bb5b76",
+      "hash": "de55173b43a448952006756b5654593d2b461c93551441add464514294da20ea",
+      "id": "material:de55173b43a448952006756b",
       "name": "Material_Hull",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1095,48 +1091,48 @@
       ]
     },
     {
-      "hash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
-      "id": "material:ae1ee81b0e0eb81a22cf6f2d",
-      "name": "KitMat_Emissive",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "f3b706457d9e983795985b9fb8747a3e660482b805dddf7b60b047de12717515",
-      "id": "material:f3b706457d9e983795985b9f",
-      "name": "Material_Armor",
+      "hash": "f0d541dede2be448c76d69a3972c4b0f31e7f15d884379a2e448b29eef78d012",
+      "id": "material:f0d541dede2be448c76d69a3",
+      "name": "Material_Mechanical",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "armor_dark_baseColor",
+          "name": "mechanical_baseColor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "armor_dark_orm",
+          "name": "mechanical_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "armor_dark_normal",
+          "name": "mechanical_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "armor_dark_orm",
+          "name": "mechanical_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "f3ae0e9b33fabaeb2e9b8e884323de2d441586fab1344c7d6906895eb56f1455",
+      "id": "material:f3ae0e9b33fabaeb2e9b8e88",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:double",
+      "textures": []
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.wasp-mts-escort.mesh.collision-hull",
+      "id": "sf.render.wasp-mts-escort.node.collision-hull",
       "localTransform": [
         1,
         0,
@@ -1159,10 +1155,10 @@
       "mergeBoundary": "COLLISION_HULL",
       "nodeName": "COLLISION_HULL",
       "nodePath": [
-        0,
+        3,
         0
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1185,7 +1181,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-accent",
+      "id": "sf.render.wasp-mts-escort.node.lod0-accent",
       "localTransform": [
         1,
         0,
@@ -1208,10 +1204,10 @@
       "mergeBoundary": "LOD0_Accent",
       "nodeName": "LOD0_Accent",
       "nodePath": [
-        0,
+        3,
         1
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1234,7 +1230,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-canopy",
+      "id": "sf.render.wasp-mts-escort.node.lod0-canopy",
       "localTransform": [
         1,
         0,
@@ -1257,10 +1253,10 @@
       "mergeBoundary": "LOD0_Canopy",
       "nodeName": "LOD0_Canopy",
       "nodePath": [
-        0,
-        3
+        3,
+        2
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1283,7 +1279,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-hull",
+      "id": "sf.render.wasp-mts-escort.node.lod0-hull",
       "localTransform": [
         1,
         0,
@@ -1306,10 +1302,10 @@
       "mergeBoundary": "LOD0_Hull",
       "nodeName": "LOD0_Hull",
       "nodePath": [
-        0,
-        4
+        3,
+        3
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1332,7 +1328,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-hull-armor",
+      "id": "sf.render.wasp-mts-escort.node.lod0-hull-armor",
       "localTransform": [
         1,
         0,
@@ -1355,10 +1351,10 @@
       "mergeBoundary": "LOD0_Hull_Armor",
       "nodeName": "LOD0_Hull_Armor",
       "nodePath": [
-        0,
-        2
+        3,
+        4
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1381,7 +1377,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-mechanical",
+      "id": "sf.render.wasp-mts-escort.node.lod0-mechanical",
       "localTransform": [
         1,
         0,
@@ -1404,10 +1400,10 @@
       "mergeBoundary": "LOD0_Mechanical",
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
-        0,
+        3,
         5
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1430,7 +1426,151 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-thruster",
+      "id": "sf.render.wasp-mts-escort.node.lod0-remaster-material-brushedmetal-remasternickel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "nodeName": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.lod0-remaster-material-glass-remasteroptical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_Remaster_Material_Glass_RemasterOptical",
+      "nodeName": "LOD0_Remaster_Material_Glass_RemasterOptical",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.lod0-remaster-material-mechanical-remasterheatcopper",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "nodeName": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.lod0-thruster",
       "localTransform": [
         1,
         0,
@@ -1453,10 +1593,10 @@
       "mergeBoundary": "LOD0_Thruster",
       "nodeName": "LOD0_Thruster",
       "nodePath": [
-        0,
+        3,
         6
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1479,7 +1619,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister0",
+      "id": "sf.render.wasp-mts-escort.node.lod0-var-mts-blister0",
       "localTransform": [
         1,
         0,
@@ -1502,10 +1642,10 @@
       "mergeBoundary": "LOD0_VAR_MTS_blister0",
       "nodeName": "LOD0_VAR_MTS_blister0",
       "nodePath": [
-        0,
-        23
+        3,
+        7
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1528,7 +1668,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister1",
+      "id": "sf.render.wasp-mts-escort.node.lod0-var-mts-blister1",
       "localTransform": [
         1,
         0,
@@ -1551,10 +1691,10 @@
       "mergeBoundary": "LOD0_VAR_MTS_blister1",
       "nodeName": "LOD0_VAR_MTS_blister1",
       "nodePath": [
-        0,
-        24
+        3,
+        8
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1577,7 +1717,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister2",
+      "id": "sf.render.wasp-mts-escort.node.lod0-var-mts-blister2",
       "localTransform": [
         1,
         0,
@@ -1600,10 +1740,10 @@
       "mergeBoundary": "LOD0_VAR_MTS_blister2",
       "nodeName": "LOD0_VAR_MTS_blister2",
       "nodePath": [
-        0,
-        25
+        3,
+        9
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1626,7 +1766,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-cabinstrip",
+      "id": "sf.render.wasp-mts-escort.node.lod0-var-mts-cabinstrip",
       "localTransform": [
         1,
         0,
@@ -1649,10 +1789,10 @@
       "mergeBoundary": "LOD0_VAR_MTS_cabinstrip",
       "nodeName": "LOD0_VAR_MTS_cabinstrip",
       "nodePath": [
-        0,
-        26
+        3,
+        10
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1675,203 +1815,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-aft",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_VAR_MTS_clamshell_aft",
-      "nodeName": "LOD0_VAR_MTS_clamshell_aft",
-      "nodePath": [
-        0,
-        21
-      ],
-      "parentId": "sf.render.wasp-mts-escort.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.wasp-mts-escort.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-fore",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_VAR_MTS_clamshell_fore",
-      "nodeName": "LOD0_VAR_MTS_clamshell_fore",
-      "nodePath": [
-        0,
-        20
-      ],
-      "parentId": "sf.render.wasp-mts-escort.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.wasp-mts-escort.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-mid",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_VAR_MTS_clamshell_mid",
-      "nodeName": "LOD0_VAR_MTS_clamshell_mid",
-      "nodePath": [
-        0,
-        19
-      ],
-      "parentId": "sf.render.wasp-mts-escort.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.wasp-mts-escort.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-goldzone",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_VAR_MTS_goldzone",
-      "nodeName": "LOD0_VAR_MTS_goldzone",
-      "nodePath": [
-        0,
-        22
-      ],
-      "parentId": "sf.render.wasp-mts-escort.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.wasp-mts-escort.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-var-mts-logo",
+      "id": "sf.render.wasp-mts-escort.node.lod0-var-mts-logo",
       "localTransform": [
         1,
         0,
@@ -1894,10 +1838,10 @@
       "mergeBoundary": "LOD0_VAR_MTS_logo",
       "nodeName": "LOD0_VAR_MTS_logo",
       "nodePath": [
-        0,
-        27
+        3,
+        11
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1920,7 +1864,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.mesh.lod0-warning",
+      "id": "sf.render.wasp-mts-escort.node.lod0-warning",
       "localTransform": [
         1,
         0,
@@ -1943,10 +1887,10 @@
       "mergeBoundary": "LOD0_Warning",
       "nodeName": "LOD0_Warning",
       "nodePath": [
-        0,
-        7
+        3,
+        12
       ],
-      "parentId": "sf.render.wasp-mts-escort.root",
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-mts-escort.body",
       "worldTransform": [
@@ -1969,7 +1913,546 @@
       ]
     },
     {
-      "id": "sf.render.wasp-mts-escort.root",
+      "id": "sf.render.wasp-mts-escort.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.20000000298023224,
+        0.3499999940395355,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        3,
+        13
+      ],
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.20000000298023224,
+        0.3499999940395355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.socket-cargo-ventral",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.200000047683716,
+        -1.149999976158142,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Cargo_Ventral",
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        3,
+        14
+      ],
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.200000047683716,
+        -1.149999976158142,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.699999809265137,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        3,
+        15
+      ],
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.699999809265137,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.3499999940395355,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        3,
+        16
+      ],
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.3499999940395355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.socket-rcs-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.05000000074505806,
+        7,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Port",
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        3,
+        17
+      ],
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.05000000074505806,
+        7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.socket-rcs-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.05000000074505806,
+        -7,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Starboard",
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        3,
+        18
+      ],
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.05000000074505806,
+        -7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        3,
+        19
+      ],
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.socket-trail-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.800000190734863,
+        0,
+        5.550000190734863,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Port",
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        3,
+        20
+      ],
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.800000190734863,
+        0,
+        5.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.socket-trail-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.800000190734863,
+        0,
+        -5.550000190734863,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Starboard",
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        3,
+        21
+      ],
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.800000190734863,
+        0,
+        -5.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.socket-utility-dorsal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        1.5,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Utility_Dorsal",
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        3,
+        22
+      ],
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        1.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.socket-weapon-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.600000381469727,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Weapon_Front",
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        3,
+        23
+      ],
+      "parentId": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-mts-escort.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.600000381469727,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-mts-escort.node.wasp-mts-escort-root",
       "localTransform": [
         1,
         0,
@@ -1989,10 +2472,10 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "WASP_MTS_ESCORT_ROOT",
       "nodeName": "WASP_MTS_ESCORT_ROOT",
       "nodePath": [
-        0
+        3
       ],
       "parentId": null,
       "role": "immutable",
@@ -2019,49 +2502,49 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "01dccf12285d39bf9cd21a75eae69bd7011670fd66160a85c915f6bd124f71bf"
+      "sha256": "9dcd4eb34b5544e369da832b35be544cac883658d047fa845bad919514d1491b"
     },
     "sourceGlb": {
-      "bytes": 13494192,
-      "sha256": "a71bbcb92beac962f0d9c5a153f3fc3193335604fdb7312b669a5a0d265eb4d9",
+      "bytes": 13861684,
+      "sha256": "144b59d3d583973306666b1d2949bc87059f17c55888beccfbc51bbcf3f33289",
       "uri": "wasp_mts_escort.glb"
     },
     "sourceManifest": {
-      "bytes": 168394,
-      "sha256": "d7200721c99b6069204d939589aae9e55ccae5861bee5f7dcc97060e59e43d68",
+      "bytes": 179326,
+      "sha256": "6f38482c6ba49ddda392cc655547048454d0cdd9877c62fa54f338d42f2117cf",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 13719412,
-    "sha256": "89f4e3950c1fa2c2a26b438e2d8a60fe5d6f9b2bf59c10c51c93c485434de86b",
+    "bytes": 14381912,
+    "sha256": "490d0beff68f7cbeb0048bc16cd5622f5d973dd461d4ea43b5c357f61e6fec9a",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         1,
-        1.7400397658348083,
+        1.7403329014778137,
         0
       ],
       "max": [
         12,
-        4.860330581665039,
+        4.860415935516357,
         8.081727981567383
       ],
       "min": [
         -10,
-        -1.3802510499954224,
+        -1.37975013256073,
         -8.081727981567383
       ],
       "size": [
         22,
-        6.240581631660461,
+        6.240166068077087,
         16.163455963134766
       ]
     },
     "hidden": [
-      2
+      5
     ],
     "legacyPart": false,
     "markers": [
@@ -2085,7 +2568,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 10,
+        "planIndex": 18,
         "tags": {
           "socket": true,
           "socketRole": "camera"
@@ -2099,7 +2582,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Camera_Focus",
             "recordIds": [
-              "sf.render.wasp-mts-escort.anchor.socket-camera-focus"
+              "sf.render.wasp-mts-escort.anchor.socket-camera-focus",
+              "sf.render.wasp-mts-escort.node.socket-camera-focus"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2125,7 +2609,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 11,
+        "planIndex": 19,
         "tags": {
           "socket": true,
           "socketRole": "cargo"
@@ -2139,7 +2623,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Cargo_Ventral",
             "recordIds": [
-              "sf.render.wasp-mts-escort.anchor.socket-cargo-ventral"
+              "sf.render.wasp-mts-escort.anchor.socket-cargo-ventral",
+              "sf.render.wasp-mts-escort.node.socket-cargo-ventral"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2165,7 +2650,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 12,
+        "planIndex": 20,
         "tags": {
           "socket": true,
           "socketRole": "engine"
@@ -2179,7 +2664,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Engine_Main",
             "recordIds": [
-              "sf.render.wasp-mts-escort.anchor.socket-engine-main"
+              "sf.render.wasp-mts-escort.anchor.socket-engine-main",
+              "sf.render.wasp-mts-escort.node.socket-engine-main"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2205,7 +2691,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 13,
+        "planIndex": 21,
         "tags": {
           "socket": true,
           "socketRole": "mining"
@@ -2219,7 +2705,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Mining_Front",
             "recordIds": [
-              "sf.render.wasp-mts-escort.anchor.socket-mining-front"
+              "sf.render.wasp-mts-escort.anchor.socket-mining-front",
+              "sf.render.wasp-mts-escort.node.socket-mining-front"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2245,7 +2732,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 14,
+        "planIndex": 22,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2259,7 +2746,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_RCS_Port",
             "recordIds": [
-              "sf.render.wasp-mts-escort.anchor.socket-rcs-port"
+              "sf.render.wasp-mts-escort.anchor.socket-rcs-port",
+              "sf.render.wasp-mts-escort.node.socket-rcs-port"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2285,7 +2773,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 15,
+        "planIndex": 23,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2299,7 +2787,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_RCS_Starboard",
             "recordIds": [
-              "sf.render.wasp-mts-escort.anchor.socket-rcs-starboard"
+              "sf.render.wasp-mts-escort.anchor.socket-rcs-starboard",
+              "sf.render.wasp-mts-escort.node.socket-rcs-starboard"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2325,7 +2814,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 16,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketRole": "vfx"
@@ -2339,7 +2828,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Main",
             "recordIds": [
-              "sf.render.wasp-mts-escort.anchor.socket-trail-main"
+              "sf.render.wasp-mts-escort.anchor.socket-trail-main",
+              "sf.render.wasp-mts-escort.node.socket-trail-main"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2365,7 +2855,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 17,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketRole": "vfx"
@@ -2379,7 +2869,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Port",
             "recordIds": [
-              "sf.render.wasp-mts-escort.anchor.socket-trail-port"
+              "sf.render.wasp-mts-escort.anchor.socket-trail-port",
+              "sf.render.wasp-mts-escort.node.socket-trail-port"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2405,7 +2896,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 18,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketRole": "vfx"
@@ -2419,7 +2910,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Trail_Starboard",
             "recordIds": [
-              "sf.render.wasp-mts-escort.anchor.socket-trail-starboard"
+              "sf.render.wasp-mts-escort.anchor.socket-trail-starboard",
+              "sf.render.wasp-mts-escort.node.socket-trail-starboard"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2445,7 +2937,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 19,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketRole": "utility"
@@ -2459,7 +2951,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Utility_Dorsal",
             "recordIds": [
-              "sf.render.wasp-mts-escort.anchor.socket-utility-dorsal"
+              "sf.render.wasp-mts-escort.anchor.socket-utility-dorsal",
+              "sf.render.wasp-mts-escort.node.socket-utility-dorsal"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2485,7 +2978,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 20,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketRole": "weapon"
@@ -2499,7 +2992,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Weapon_Front",
             "recordIds": [
-              "sf.render.wasp-mts-escort.anchor.socket-weapon-front"
+              "sf.render.wasp-mts-escort.anchor.socket-weapon-front",
+              "sf.render.wasp-mts-escort.node.socket-weapon-front"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2509,99 +3003,94 @@
     "materialProfileRoles": {
       "accent": 1,
       "drive": 1,
-      "glass": 1,
-      "hull": 9,
-      "mechanical": 4,
+      "glass": 2,
+      "hull": 5,
+      "mechanical": 6,
       "warning": 1
     },
     "materialProfiles": [
       {
-        "allowTextures": false,
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 2,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 4,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 5,
         "role": "glass"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "drive"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
         "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 27,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 28,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 29,
-        "role": "hull"
       }
     ],
-    "nodeCount": 30,
+    "nodeCount": 29,
     "primitives": [
       {
         "canopy": false,
@@ -2623,14 +3112,11 @@
           0,
           1
         ],
-        "name": "LOD0_Accent",
-        "planIndex": 3,
+        "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+        "planIndex": 1,
         "tags": {
-          "bevelRadiusM": 0.025,
           "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "accent"
+          "lod": "lod0"
         }
       },
       {
@@ -2653,14 +3139,68 @@
           0,
           1
         ],
-        "name": "LOD0_Hull_Armor",
-        "planIndex": 4,
+        "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Remaster_Material_Glass_RemasterOptical",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Accent",
+        "planIndex": 6,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
           "chamfered": true,
           "lod": "lod0",
-          "tint": "dark"
+          "tint": "accent"
         }
       },
       {
@@ -2684,7 +3224,7 @@
           1
         ],
         "name": "LOD0_Canopy",
-        "planIndex": 5,
+        "planIndex": 7,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": true,
@@ -2714,7 +3254,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 6,
+        "planIndex": 8,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -2743,8 +3283,38 @@
           0,
           1
         ],
+        "name": "LOD0_Hull_Armor",
+        "planIndex": 9,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
         "name": "LOD0_Mechanical",
-        "planIndex": 7,
+        "planIndex": 10,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -2774,7 +3344,7 @@
           1
         ],
         "name": "LOD0_Thruster",
-        "planIndex": 8,
+        "planIndex": 11,
         "tags": {
           "bevelRadiusM": 0.025,
           "canopy": false,
@@ -2803,146 +3373,8 @@
           0,
           1
         ],
-        "name": "LOD0_Warning",
-        "planIndex": 9,
-        "tags": {
-          "bevelRadiusM": 0.025,
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "accent"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_MTS_clamshell_mid",
-        "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_MTS_clamshell_fore",
-        "planIndex": 22,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_MTS_clamshell_aft",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_VAR_MTS_goldzone",
-        "planIndex": 24,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
         "name": "LOD0_VAR_MTS_blister0",
-        "planIndex": 25,
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2969,7 +3401,7 @@
           1
         ],
         "name": "LOD0_VAR_MTS_blister1",
-        "planIndex": 26,
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2996,7 +3428,7 @@
           1
         ],
         "name": "LOD0_VAR_MTS_blister2",
-        "planIndex": 27,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3023,7 +3455,7 @@
           1
         ],
         "name": "LOD0_VAR_MTS_cabinstrip",
-        "planIndex": 28,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3050,10 +3482,40 @@
           1
         ],
         "name": "LOD0_VAR_MTS_logo",
-        "planIndex": 29,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 17,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "accent"
         }
       }
     ],
@@ -3061,42 +3523,52 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_mts_escort.glb"
   },
-  "runtimeHash": "f6fe5d41b3489a79d37dd8db23d89b52215863611364f4a33d18951015ea0a56",
+  "runtimeHash": "5b4fec82b35869edb538daee3ba94986121f76023da13b9b54dd7f42ac40676c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           12,
-          4.860330581665039,
+          4.860415935516357,
           8.081727981567383
         ],
         "min": [
           -10,
-          -1.3802510499954224,
+          -1.37975013256073,
           -8.081727981567383
         ]
       },
       "id": "sf.render.wasp-mts-escort.body",
       "nodeIds": [
-        "sf.render.wasp-mts-escort.mesh.collision-hull",
-        "sf.render.wasp-mts-escort.mesh.lod0-accent",
-        "sf.render.wasp-mts-escort.mesh.lod0-canopy",
-        "sf.render.wasp-mts-escort.mesh.lod0-hull",
-        "sf.render.wasp-mts-escort.mesh.lod0-hull-armor",
-        "sf.render.wasp-mts-escort.mesh.lod0-mechanical",
-        "sf.render.wasp-mts-escort.mesh.lod0-thruster",
-        "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister0",
-        "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister1",
-        "sf.render.wasp-mts-escort.mesh.lod0-var-mts-blister2",
-        "sf.render.wasp-mts-escort.mesh.lod0-var-mts-cabinstrip",
-        "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-aft",
-        "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-fore",
-        "sf.render.wasp-mts-escort.mesh.lod0-var-mts-clamshell-mid",
-        "sf.render.wasp-mts-escort.mesh.lod0-var-mts-goldzone",
-        "sf.render.wasp-mts-escort.mesh.lod0-var-mts-logo",
-        "sf.render.wasp-mts-escort.mesh.lod0-warning",
-        "sf.render.wasp-mts-escort.root"
+        "sf.render.wasp-mts-escort.node.collision-hull",
+        "sf.render.wasp-mts-escort.node.lod0-accent",
+        "sf.render.wasp-mts-escort.node.lod0-canopy",
+        "sf.render.wasp-mts-escort.node.lod0-hull",
+        "sf.render.wasp-mts-escort.node.lod0-hull-armor",
+        "sf.render.wasp-mts-escort.node.lod0-mechanical",
+        "sf.render.wasp-mts-escort.node.lod0-remaster-material-brushedmetal-remasternickel",
+        "sf.render.wasp-mts-escort.node.lod0-remaster-material-glass-remasteroptical",
+        "sf.render.wasp-mts-escort.node.lod0-remaster-material-mechanical-remasterheatcopper",
+        "sf.render.wasp-mts-escort.node.lod0-thruster",
+        "sf.render.wasp-mts-escort.node.lod0-var-mts-blister0",
+        "sf.render.wasp-mts-escort.node.lod0-var-mts-blister1",
+        "sf.render.wasp-mts-escort.node.lod0-var-mts-blister2",
+        "sf.render.wasp-mts-escort.node.lod0-var-mts-cabinstrip",
+        "sf.render.wasp-mts-escort.node.lod0-var-mts-logo",
+        "sf.render.wasp-mts-escort.node.lod0-warning",
+        "sf.render.wasp-mts-escort.node.socket-camera-focus",
+        "sf.render.wasp-mts-escort.node.socket-cargo-ventral",
+        "sf.render.wasp-mts-escort.node.socket-engine-main",
+        "sf.render.wasp-mts-escort.node.socket-mining-front",
+        "sf.render.wasp-mts-escort.node.socket-rcs-port",
+        "sf.render.wasp-mts-escort.node.socket-rcs-starboard",
+        "sf.render.wasp-mts-escort.node.socket-trail-main",
+        "sf.render.wasp-mts-escort.node.socket-trail-port",
+        "sf.render.wasp-mts-escort.node.socket-trail-starboard",
+        "sf.render.wasp-mts-escort.node.socket-utility-dorsal",
+        "sf.render.wasp-mts-escort.node.socket-weapon-front",
+        "sf.render.wasp-mts-escort.node.wasp-mts-escort-root"
       ]
     }
   ]

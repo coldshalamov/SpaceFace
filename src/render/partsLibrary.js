@@ -24,6 +24,7 @@ import {
   tableTravelSpeed,
 } from './tabletopPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
+import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { freezeStaticChildMatrices } from './staticChildMatrices.js';
@@ -1290,10 +1291,8 @@ const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
   'ship_leviathan': 'SF_LEVIATHAN_PRODUCTION_V1',
   'ship_hawser': 'SF_WHOLESHIP_YARD_TUG',
 });
-// V4 is authored as three independent GLBs so the runtime can retain only the selected level.
-// The current whole-ship seam accepts one file, therefore LOD0 is canonical live truth while the
-// lower levels stay explicitly catalogued (and excluded from random modular-hull selection) until
-// the separate-file residency selector lands. Do not preload all three: that would triple GPU use.
+// Independent GLBs let the distance selector load detail on demand. Keep player presentation at
+// LOD0 and associate traffic families with the selected visual body, never its gameplay chassis.
 const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
   ship_kestrel: Object.freeze({
     lod0: 'wholeships/kestrel.glb',
@@ -1361,58 +1360,23 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
     lod2: 'wholeships/leviathan_production_v1_lod2.glb',
   }),
 });
+const WHOLE_SHIP_LOD_FAMILY_BY_FILE = Object.freeze(Object.fromEntries([
+  ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID).map((family) => [family.lod0, family]),
+  ['wholeships/massline_express_liner_v1.glb', Object.freeze({
+    lod0: 'wholeships/massline_express_liner_v1.glb',
+    lod1: 'wholeships/massline_express_liner_v1_lod1.glb',
+    lod2: 'wholeships/massline_express_liner_v1_lod2.glb',
+  })],
+]));
 // Reach hostiles are selected by their authoritative combat archetype, not by ship def: several
 // enemy roles intentionally share player-facing chassis stats while requiring different combat
 // silhouettes. This presentation map changes no doctrine, hostility, movement, or damage data.
 // Only files that already have a render-package pilot may be requested on the live
 // empty-admission path. A remaster sibling that exists on disk but is not packaged
 // fails closed and leaves a targeting lock on blank space.
-const PACKAGED_LIVE_WHOLE_SHIP_FILES = Object.freeze(new Set([
-  'wholeships/kestrel.glb',
-  'wholeships/kestrel_lod1.glb',
-  'wholeships/kestrel_lod2.glb',
-  'wholeships/wasp_production_v1.glb',
-  'wholeships/ashline_dart.glb',
-  'wholeships/ashline_lode.glb',
-  'wholeships/ashline_rig.glb',
-  'wholeships/ashline_rig_corsair_blade.glb',
-  'wholeships/helios_lark.glb',
-  'wholeships/helios_cradle.glb',
-  'wholeships/helios_span.glb',
-  'wholeships/helios_span_dmc.glb',
-  'wholeships/helios_span_mts.glb',
-  'wholeships/helios_span_reach.glb',
-  'wholeships/helios_arclight.glb',
-  'wholeships/wasp_free_militia.glb',
-  'wholeships/wasp_mts_escort.glb',
-  'wholeships/wasp_scn_patrol.glb',
-  'wholeships/ore_barge.glb',
-  'wholeships/repair_tender.glb',
-  'wholeships/salvage_cutter.glb',
-  'wholeships/survey_pin.glb',
-  // PQ-136.02: packaged work-fleet hulls admitted to the live role map.
-  // PQ-193.08: tanker and inspection cutter enclosed; admitted as rare Helios extras.
-  'wholeships/volatiles_tanker.glb',
-  'wholeships/inspection_cutter.glb',
-  'wholeships/rescue_lifter.glb',
-  'wholeships/prospector_skiff.glb',
-  'wholeships/scrap_sweeper.glb',
-  'wholeships/apron_shuttle.glb',
-  'wholeships/yard_tug.glb',
-  // PQ-193.00: roster LOD0 + liner on the empty-admission allowlist. Factory LOD1/2 stay off.
-  'wholeships/pelican_production_v1.glb',
-  'wholeships/mule_production_v1.glb',
-  'wholeships/drifter_production_v1.glb',
-  'wholeships/hornet_production_v1.glb',
-  'wholeships/ironback_production_v1.glb',
-  'wholeships/bastion_production_v1.glb',
-  'wholeships/atlas_production_v1.glb',
-  'wholeships/ranger_production_v1.glb',
-  'wholeships/warden_production_v1.glb',
-  'wholeships/colossus_production_v1.glb',
-  'wholeships/leviathan_production_v1.glb',
-  'wholeships/massline_express_liner_v1.glb',
-]));
+const PACKAGED_LIVE_WHOLE_SHIP_FILES = new Set(RENDER_PACKAGE_PILOTS
+  .filter((pilot) => pilot.sourceUrl.startsWith('assets/ships/release/parts/wholeships/'))
+  .map((pilot) => pilot.sourceUrl.slice('assets/ships/release/parts/'.length)));
 
 export function isPackagedLiveWholeShipFile(file) {
   const token = String(file || '').replace(/\\/g, '/');
@@ -1635,7 +1599,9 @@ function wholeShipSelection(file, assetId, roleId, lodFamily = null) {
 /** Empty-admission identity: a mapped file that is not packaged-live must not publish. */
 function liveWholeShipSelection(file, assetId, roleId, lodFamily = null) {
   if (!packagedLiveWholeShipFile(file)) return null;
-  return wholeShipSelection(file, assetId, roleId, lodFamily);
+  // Role/archetype overrides can select a Wasp for a Hornet stat block. Faction kits do not
+  // inherit the base family's LODs: changing distance must never change a ship's livery.
+  return wholeShipSelection(file, assetId, roleId, lodFamily || WHOLE_SHIP_LOD_FAMILY_BY_FILE[file] || null);
 }
 
 function factionIdForVisual(entity) {

@@ -26,7 +26,7 @@
         0,
         31
       ],
-      "parentNodeId": "sf.render.military.root",
+      "parentNodeId": "sf.render.military.node.sf-place-station-military-root",
       "worldTransform": [
         1,
         0,
@@ -72,7 +72,7 @@
         0,
         32
       ],
-      "parentNodeId": "sf.render.military.root",
+      "parentNodeId": "sf.render.military.node.sf-place-station-military-root",
       "worldTransform": [
         1,
         0,
@@ -118,7 +118,7 @@
         0,
         33
       ],
-      "parentNodeId": "sf.render.military.root",
+      "parentNodeId": "sf.render.military.node.sf-place-station-military-root",
       "worldTransform": [
         1,
         0,
@@ -143,7 +143,7 @@
   "collisions": [
     {
       "id": "sf.render.military.collision",
-      "nodeId": "sf.render.military.mesh.collision-hull",
+      "nodeId": "sf.render.military.node.collision-hull",
       "reference": "COLLISION_HULL"
     }
   ],
@@ -151,33 +151,58 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5182dd40ecf4257946055087a0ed9c164f223a2d42c5104a0b1781a7a3854b6d",
+  "contentHash": "266fdca993d85bc406d87ffb2b23aaf39d53ba13a50073e1649c0c22157a9156",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          33.50398254394531,
-          34.50652313232422,
-          14.828527450561523
+          7.860418319702148,
+          30.843717575073242,
+          10.461848258972168
         ],
         "min": [
-          -33.50398254394531,
-          -34.50652313232422,
-          -14.828527450561523
+          -12.160588264465332,
+          2.786194324493408,
+          -10.46191120147705
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d522de0fdcf41e398cee04b67b6dc3669cbd6daa38eed3e3482804fa1367ba0",
-      "id": "sf.render.military.mesh.collision-hull.primitive.0",
-      "indexCount": 132,
+      "geometryHash": "22b3e23a5a03f16260ee5affa9bcadf9fa68e456ea0853a6476d901c9d18e905",
+      "id": "sf.render.military.node.lod0-remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 4536,
       "indexed": true,
-      "materialHash": "3ee86771eb1eef8adfc50a78a77cabdb53e6cccbf1c8ee91d7a4f93006ca85ac",
-      "materialPipelineKey": "non-render",
-      "meshName": "Cube",
-      "nodeId": "sf.render.military.mesh.collision-hull",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_BastionRoofLouvre",
+      "nodeId": "sf.render.military.node.lod0-remaster-material-mechanical-brushednickel",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 3024
+    },
+    {
+      "bounds": {
+        "max": [
+          9.35842227935791,
+          32.5046501159668,
+          10.56820297241211
+        ],
+        "min": [
+          -27.321210861206055,
+          -28.857282638549805,
+          -10.568199157714844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b2c3a66fd966bce185b965466176255fd0a44f37e5e6b99669615424ae501fca",
+      "id": "sf.render.military.node.lod0-remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 9432,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_LouvreFoot",
+      "nodeId": "sf.render.military.node.lod0-remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 6288
     },
     {
       "bounds": {
@@ -193,16 +218,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39950d3885eda656b7c378800ea39a19803210685da4411d14e36d7b26cafeff",
-      "id": "sf.render.military.mesh.lod0-station-material-accent.primitive.0",
+      "geometryHash": "60d2ff50b6e96a4c6dbe72e8ea12217309874d76160e4a01937f02c517ef7326",
+      "id": "sf.render.military.node.lod0-station-material-accent.primitive.0",
       "indexCount": 17604,
       "indexed": true,
       "materialHash": "a61231590ff206bc25276c8afa8e24abe6f2c869850114f6dce68e913233c428",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Station_Material_Accent",
-      "nodeId": "sf.render.military.mesh.lod0-station-material-accent",
+      "nodeId": "sf.render.military.node.lod0-station-material-accent",
       "primitiveIndex": 0,
-      "vertexCount": 4552
+      "vertexCount": 4560
     },
     {
       "bounds": {
@@ -218,16 +243,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9912cb869e92e7c2bcba5f232eb31edf27cfaf0c77f3e78a0c5bcaa313ab14ba",
-      "id": "sf.render.military.mesh.lod0-station-material-alloy.primitive.0",
+      "geometryHash": "708512fcaf1ff083cf0ac8beffca3eef82fb1f5fd1ffd602cc34eae0343f823e",
+      "id": "sf.render.military.node.lod0-station-material-alloy.primitive.0",
       "indexCount": 55992,
       "indexed": true,
       "materialHash": "aa85152c8df99ffff26d2990e9f2069ea5686dda95d1f5420d935c98a790b479",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Station_Material_Alloy",
-      "nodeId": "sf.render.military.mesh.lod0-station-material-alloy",
+      "nodeId": "sf.render.military.node.lod0-station-material-alloy",
       "primitiveIndex": 0,
-      "vertexCount": 14820
+      "vertexCount": 14876
     },
     {
       "bounds": {
@@ -243,16 +268,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4bfb616333fe1b1355c1bb4ea44a4c6af97a6077e637e15eb111c4d5e24cc7c7",
-      "id": "sf.render.military.mesh.lod0-station-material-blast.primitive.0",
-      "indexCount": 27072,
+      "geometryHash": "0a03cc8d3c100115749fecb4521ab8694207f88086afadeb3501ed172b1bacd3",
+      "id": "sf.render.military.node.lod0-station-material-blast.primitive.0",
+      "indexCount": 27210,
       "indexed": true,
       "materialHash": "f1db6ce648018e283adf458fef1a6423958de154ac90ad9eb8afe03e6005b167",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Station_Material_Blast",
-      "nodeId": "sf.render.military.mesh.lod0-station-material-blast",
+      "meshName": "LOD0_Station_Material_Blast.001",
+      "nodeId": "sf.render.military.node.lod0-station-material-blast",
       "primitiveIndex": 0,
-      "vertexCount": 7243
+      "vertexCount": 7287
+    },
+    {
+      "bounds": {
+        "max": [
+          10.769601821899414,
+          17.10136604309082,
+          0.6953110694885254
+        ],
+        "min": [
+          -28.022258758544922,
+          -28.907072067260742,
+          -8.439318656921387
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "00de9859ffa5ef07543cd4ec59750e8f95329e0f0334dfc2bbcf2fb66923454f",
+      "id": "sf.render.military.node.lod0-station-material-blast.primitive.1",
+      "indexCount": 114,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Blast.001",
+      "nodeId": "sf.render.military.node.lod0-station-material-blast",
+      "primitiveIndex": 1,
+      "vertexCount": 76
     },
     {
       "bounds": {
@@ -268,14 +318,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e3b38234478c75efd887954a14bebd230ffd4ae4449b79c3d6796a553af4b58",
-      "id": "sf.render.military.mesh.lod0-station-material-dock.primitive.0",
+      "geometryHash": "2247cdd6fccc5f795521a79909c86ceb607ac45dbfa9ce660e3beb483fac7c0c",
+      "id": "sf.render.military.node.lod0-station-material-dock.primitive.0",
       "indexCount": 6204,
       "indexed": true,
       "materialHash": "2ab0eb86bd48daaa4d890c473ab041b0e2b0e9857cace448564ec863d3f3cbcc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Station_Material_Dock",
-      "nodeId": "sf.render.military.mesh.lod0-station-material-dock",
+      "nodeId": "sf.render.military.node.lod0-station-material-dock",
       "primitiveIndex": 0,
       "vertexCount": 1736
     },
@@ -293,14 +343,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38e1489b04dc0ae607f6979065551f4579cd1477a861a3f1891ac48e09383d7f",
-      "id": "sf.render.military.mesh.lod0-station-material-glass.primitive.0",
+      "geometryHash": "8b9637ff24f35d43ed6ae26fa50c8431bacfc18fc36dbda52b7e1b3a725be27d",
+      "id": "sf.render.military.node.lod0-station-material-glass.primitive.0",
       "indexCount": 17544,
       "indexed": true,
       "materialHash": "8fd941ca8f9c7ebb2e51bc79827fe3645bd6043d6e3a93cb25f32c19609df37f",
       "materialPipelineKey": "blend",
       "meshName": "LOD0_Station_Material_Glass",
-      "nodeId": "sf.render.military.mesh.lod0-station-material-glass",
+      "nodeId": "sf.render.military.node.lod0-station-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 4628
     },
@@ -318,16 +368,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bf07aacd5f88b17936f62bc7f14d3507503890a02ba50672edb33d3079de17e4",
-      "id": "sf.render.military.mesh.lod0-station-material-hull.primitive.0",
-      "indexCount": 32712,
+      "geometryHash": "fbe314f26a7ff276a141838cd21b160a748d3d5f2031b9719a72004c4d8420ed",
+      "id": "sf.render.military.node.lod0-station-material-hull.primitive.0",
+      "indexCount": 32832,
       "indexed": true,
       "materialHash": "c2f9a81645a3f07410d2427a9e832b24dea9853f74369829a59dcf5ce09631f6",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Station_Material_Hull",
-      "nodeId": "sf.render.military.mesh.lod0-station-material-hull",
+      "meshName": "LOD0_Station_Material_Hull.001",
+      "nodeId": "sf.render.military.node.lod0-station-material-hull",
       "primitiveIndex": 0,
-      "vertexCount": 8898
+      "vertexCount": 8938
+    },
+    {
+      "bounds": {
+        "max": [
+          10.951445579528809,
+          33.00138473510742,
+          0.3692849576473236
+        ],
+        "min": [
+          -27.521013259887695,
+          -14.605216026306152,
+          -8.367538452148438
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "66a5222eafa6220024957b0e066145fcf0f862c13b2e0a08f9f1959c5ce5d536",
+      "id": "sf.render.military.node.lod0-station-material-hull.primitive.1",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Hull.001",
+      "nodeId": "sf.render.military.node.lod0-station-material-hull",
+      "primitiveIndex": 1,
+      "vertexCount": 80
     },
     {
       "bounds": {
@@ -343,16 +418,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e81636f82cc5da8c4587b63ac9611a1ef87ff7db6131230151fc7c9fce449a55",
-      "id": "sf.render.military.mesh.lod0-station-material-machinery.primitive.0",
+      "geometryHash": "743b7067ab8534b1a0f97d8e9ddeeaa2d65cdf2060ee1ffb747fa73bdf086348",
+      "id": "sf.render.military.node.lod0-station-material-machinery.primitive.0",
       "indexCount": 22548,
       "indexed": true,
       "materialHash": "3ee86771eb1eef8adfc50a78a77cabdb53e6cccbf1c8ee91d7a4f93006ca85ac",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Station_Material_Machinery",
-      "nodeId": "sf.render.military.mesh.lod0-station-material-machinery",
+      "nodeId": "sf.render.military.node.lod0-station-material-machinery",
       "primitiveIndex": 0,
-      "vertexCount": 5923
+      "vertexCount": 5953
     },
     {
       "bounds": {
@@ -368,14 +443,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c72ca5266f206ecd9bf2cb80caeb5fb07e0cb2b0935e77eef8b602de9ddf50b7",
-      "id": "sf.render.military.mesh.lod0-station-material-radiator.primitive.0",
+      "geometryHash": "51187f3cc702339e7b5f4d261829f863625dae5ff4cc2f686bec4da8f1d0acc0",
+      "id": "sf.render.military.node.lod0-station-material-radiator.primitive.0",
       "indexCount": 2820,
       "indexed": true,
       "materialHash": "07f878d4abed59935b81d278281a03cdee4a7fc6499718e94161d07e30689948",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Station_Material_Radiator",
-      "nodeId": "sf.render.military.mesh.lod0-station-material-radiator",
+      "nodeId": "sf.render.military.node.lod0-station-material-radiator",
       "primitiveIndex": 0,
       "vertexCount": 760
     },
@@ -393,16 +468,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a5e504012b896d253cc5102238e932ec832c263629efe00ac1d60aa58921ae5f",
-      "id": "sf.render.military.mesh.lod0-station-material-warm.primitive.0",
+      "geometryHash": "b09187281f4df9433bfb9a6c70a50c5f715339ee0cbbb77b423d6d62006ca4a6",
+      "id": "sf.render.military.node.lod0-station-material-warm.primitive.0",
       "indexCount": 3492,
       "indexed": true,
       "materialHash": "cc3cb294af1f90b4d7bdb4561f033d95814669e8def9ed08320500e29e6472ee",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Station_Material_Warm",
-      "nodeId": "sf.render.military.mesh.lod0-station-material-warm",
+      "nodeId": "sf.render.military.node.lod0-station-material-warm",
       "primitiveIndex": 0,
-      "vertexCount": 968
+      "vertexCount": 976
     },
     {
       "bounds": {
@@ -418,16 +493,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a45365e2a680f9b70ed873664c663bee0dfde12c1662f74b542bd18e99576f20",
-      "id": "sf.render.military.mesh.lod0-station-material-warning.primitive.0",
+      "geometryHash": "e50719afbdc2f52178f97d7fcc698470a96bd7df65b1f82c2b27833d00e8be3d",
+      "id": "sf.render.military.node.lod0-station-material-warning.primitive.0",
       "indexCount": 9588,
       "indexed": true,
       "materialHash": "e13ace7e2da26099c8ab887f562c84780a7c2397e42a0ddc80ee83f9e590120a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Station_Material_Warning",
-      "nodeId": "sf.render.military.mesh.lod0-station-material-warning",
+      "nodeId": "sf.render.military.node.lod0-station-material-warning",
       "primitiveIndex": 0,
       "vertexCount": 2588
+    },
+    {
+      "bounds": {
+        "max": [
+          7.860418319702148,
+          30.843717575073242,
+          10.461848258972168
+        ],
+        "min": [
+          -12.160588264465332,
+          2.786194324493408,
+          -10.46191120147705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "22b3e23a5a03f16260ee5affa9bcadf9fa68e456ea0853a6476d901c9d18e905",
+      "id": "sf.render.military.node.lod1-remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 4536,
+      "indexed": true,
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_BastionRoofLouvre.014",
+      "nodeId": "sf.render.military.node.lod1-remaster-material-mechanical-brushednickel",
+      "primitiveIndex": 0,
+      "vertexCount": 3024
+    },
+    {
+      "bounds": {
+        "max": [
+          9.35842227935791,
+          32.5046501159668,
+          10.56820297241211
+        ],
+        "min": [
+          -27.321210861206055,
+          -28.857282638549805,
+          -10.568199157714844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b2c3a66fd966bce185b965466176255fd0a44f37e5e6b99669615424ae501fca",
+      "id": "sf.render.military.node.lod1-remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 9432,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_LouvreFoot.028",
+      "nodeId": "sf.render.military.node.lod1-remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 6288
     },
     {
       "bounds": {
@@ -443,14 +568,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cac902f7744b544ead671c5d47c2adddf564d746fd0392df424a21de8d2f5954",
-      "id": "sf.render.military.mesh.lod1-station-material-accent.primitive.0",
+      "geometryHash": "d92e391b0925e0041e03c5ad5042dafc797f7b77f885cb95429153a3ad59081e",
+      "id": "sf.render.military.node.lod1-station-material-accent.primitive.0",
       "indexCount": 9504,
       "indexed": true,
       "materialHash": "a61231590ff206bc25276c8afa8e24abe6f2c869850114f6dce68e913233c428",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Station_Material_Accent",
-      "nodeId": "sf.render.military.mesh.lod1-station-material-accent",
+      "nodeId": "sf.render.military.node.lod1-station-material-accent",
       "primitiveIndex": 0,
       "vertexCount": 2672
     },
@@ -468,14 +593,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8921bdcc89c6245ac9060004c45b121dd46edc0fc2009159cf939776aad764ac",
-      "id": "sf.render.military.mesh.lod1-station-material-alloy.primitive.0",
+      "geometryHash": "353e20360dc4aa5e2c997d05d38cdc34a62c5cdb9b79f7e524e3c9a1b13a1696",
+      "id": "sf.render.military.node.lod1-station-material-alloy.primitive.0",
       "indexCount": 25134,
       "indexed": true,
       "materialHash": "aa85152c8df99ffff26d2990e9f2069ea5686dda95d1f5420d935c98a790b479",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Station_Material_Alloy",
-      "nodeId": "sf.render.military.mesh.lod1-station-material-alloy",
+      "nodeId": "sf.render.military.node.lod1-station-material-alloy",
       "primitiveIndex": 0,
       "vertexCount": 7232
     },
@@ -493,14 +618,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1277a52becd29ef99ec032005bc288bce01e4be79b5bf9a2212795181c8c38eb",
-      "id": "sf.render.military.mesh.lod1-station-material-blast.primitive.0",
+      "geometryHash": "7c261d9d05865e2db88c7a326c0d7a865b04ec5ff2524bc9c037e8c4a7eec10c",
+      "id": "sf.render.military.node.lod1-station-material-blast.primitive.0",
       "indexCount": 9720,
       "indexed": true,
       "materialHash": "f1db6ce648018e283adf458fef1a6423958de154ac90ad9eb8afe03e6005b167",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Station_Material_Blast",
-      "nodeId": "sf.render.military.mesh.lod1-station-material-blast",
+      "nodeId": "sf.render.military.node.lod1-station-material-blast",
       "primitiveIndex": 0,
       "vertexCount": 2880
     },
@@ -518,14 +643,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6e7533d1a8b63814ac3feec896761e62fcd13aa87ddb7026169165343bcf7c90",
-      "id": "sf.render.military.mesh.lod1-station-material-dock.primitive.0",
+      "geometryHash": "76a416b9834c0ad0b6732300f704ffb905b32aeec74a5de780f61da419588a0e",
+      "id": "sf.render.military.node.lod1-station-material-dock.primitive.0",
       "indexCount": 2916,
       "indexed": true,
       "materialHash": "2ab0eb86bd48daaa4d890c473ab041b0e2b0e9857cace448564ec863d3f3cbcc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Station_Material_Dock",
-      "nodeId": "sf.render.military.mesh.lod1-station-material-dock",
+      "nodeId": "sf.render.military.node.lod1-station-material-dock",
       "primitiveIndex": 0,
       "vertexCount": 864
     },
@@ -543,14 +668,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cc1fa33c03d01fec80fc97c3cc32dbcebab4e1deabaf03c7de8746e5b5c2d4d4",
-      "id": "sf.render.military.mesh.lod1-station-material-glass.primitive.0",
+      "geometryHash": "80145a35225e16bf2634ffb3bc02e1bf3e46e40899d977a1cae3f77a580e5646",
+      "id": "sf.render.military.node.lod1-station-material-glass.primitive.0",
       "indexCount": 6264,
       "indexed": true,
       "materialHash": "8fd941ca8f9c7ebb2e51bc79827fe3645bd6043d6e3a93cb25f32c19609df37f",
       "materialPipelineKey": "blend",
       "meshName": "LOD1_Station_Material_Glass",
-      "nodeId": "sf.render.military.mesh.lod1-station-material-glass",
+      "nodeId": "sf.render.military.node.lod1-station-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 1782
     },
@@ -568,14 +693,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "deb6e3daaf58c85ce682b4d582855c87467fc9f2bb947519b908ff0a1be62827",
-      "id": "sf.render.military.mesh.lod1-station-material-hull.primitive.0",
+      "geometryHash": "95977642792e809d51c4d030df827f7c3dc41076c54fe84fb5554b4518c31b85",
+      "id": "sf.render.military.node.lod1-station-material-hull.primitive.0",
       "indexCount": 9396,
       "indexed": true,
       "materialHash": "c2f9a81645a3f07410d2427a9e832b24dea9853f74369829a59dcf5ce09631f6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Station_Material_Hull",
-      "nodeId": "sf.render.military.mesh.lod1-station-material-hull",
+      "nodeId": "sf.render.military.node.lod1-station-material-hull",
       "primitiveIndex": 0,
       "vertexCount": 2788
     },
@@ -593,16 +718,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41f5538386a31b668d22ea30d165b907e003a812f615e425f04691ad4d82c5ff",
-      "id": "sf.render.military.mesh.lod1-station-material-machinery.primitive.0",
+      "geometryHash": "f140c351fb1cf14cdceecd47affed452c39b05b9f9a48bfcfd4b1c25065df492",
+      "id": "sf.render.military.node.lod1-station-material-machinery.primitive.0",
       "indexCount": 12000,
       "indexed": true,
       "materialHash": "3ee86771eb1eef8adfc50a78a77cabdb53e6cccbf1c8ee91d7a4f93006ca85ac",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Station_Material_Machinery",
-      "nodeId": "sf.render.military.mesh.lod1-station-material-machinery",
+      "nodeId": "sf.render.military.node.lod1-station-material-machinery",
       "primitiveIndex": 0,
-      "vertexCount": 3326
+      "vertexCount": 3334
     },
     {
       "bounds": {
@@ -618,14 +743,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98239fd252311024253972e375eac5ad6af10aa8bf7acc983aca135cf00712c4",
-      "id": "sf.render.military.mesh.lod1-station-material-radiator.primitive.0",
+      "geometryHash": "a0170bf039af0b08c6265fbd784bdd24f70416d7ff061dc5922dbe39b818830e",
+      "id": "sf.render.military.node.lod1-station-material-radiator.primitive.0",
       "indexCount": 1296,
       "indexed": true,
       "materialHash": "07f878d4abed59935b81d278281a03cdee4a7fc6499718e94161d07e30689948",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Station_Material_Radiator",
-      "nodeId": "sf.render.military.mesh.lod1-station-material-radiator",
+      "nodeId": "sf.render.military.node.lod1-station-material-radiator",
       "primitiveIndex": 0,
       "vertexCount": 384
     },
@@ -643,16 +768,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62ce241964385dad149329d5a33f560e258cd270d6accc705130cc1b2e99324a",
-      "id": "sf.render.military.mesh.lod1-station-material-warm.primitive.0",
+      "geometryHash": "59c2a5e67e11aff9a5c4fcefa29fa0319dae331a698eeec4c62e7aa957bfba68",
+      "id": "sf.render.military.node.lod1-station-material-warm.primitive.0",
       "indexCount": 1788,
       "indexed": true,
       "materialHash": "cc3cb294af1f90b4d7bdb4561f033d95814669e8def9ed08320500e29e6472ee",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Station_Material_Warm",
-      "nodeId": "sf.render.military.mesh.lod1-station-material-warm",
+      "nodeId": "sf.render.military.node.lod1-station-material-warm",
       "primitiveIndex": 0,
-      "vertexCount": 532
+      "vertexCount": 536
     },
     {
       "bounds": {
@@ -668,16 +793,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "01d125c9552b3722277dc3702d6605985a592cff296f2bcb513481036c3527bc",
-      "id": "sf.render.military.mesh.lod1-station-material-warning.primitive.0",
+      "geometryHash": "a6196dcd02efd46abac93553fcd61289fb644219d7a935c59416249deb9573b6",
+      "id": "sf.render.military.node.lod1-station-material-warning.primitive.0",
       "indexCount": 3888,
       "indexed": true,
       "materialHash": "e13ace7e2da26099c8ab887f562c84780a7c2397e42a0ddc80ee83f9e590120a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Station_Material_Warning",
-      "nodeId": "sf.render.military.mesh.lod1-station-material-warning",
+      "nodeId": "sf.render.military.node.lod1-station-material-warning",
       "primitiveIndex": 0,
       "vertexCount": 1152
+    },
+    {
+      "bounds": {
+        "max": [
+          7.860418319702148,
+          30.843717575073242,
+          10.461848258972168
+        ],
+        "min": [
+          -12.160588264465332,
+          2.786194324493408,
+          -10.46191120147705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "22b3e23a5a03f16260ee5affa9bcadf9fa68e456ea0853a6476d901c9d18e905",
+      "id": "sf.render.military.node.lod2-remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 4536,
+      "indexed": true,
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_BastionRoofLouvre.015",
+      "nodeId": "sf.render.military.node.lod2-remaster-material-mechanical-brushednickel",
+      "primitiveIndex": 0,
+      "vertexCount": 3024
+    },
+    {
+      "bounds": {
+        "max": [
+          9.35842227935791,
+          32.5046501159668,
+          10.56820297241211
+        ],
+        "min": [
+          -27.321210861206055,
+          -28.857282638549805,
+          -10.568199157714844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b2c3a66fd966bce185b965466176255fd0a44f37e5e6b99669615424ae501fca",
+      "id": "sf.render.military.node.lod2-remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 9432,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_LouvreFoot.029",
+      "nodeId": "sf.render.military.node.lod2-remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 6288
     },
     {
       "bounds": {
@@ -693,14 +868,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3b9d53679191c54833f23c556880e191a7e2ea42263bb5c106ceba8d75ec54d",
-      "id": "sf.render.military.mesh.lod2-station-material-accent.primitive.0",
+      "geometryHash": "c0d463e67b3872d868c8f05f84592c4b05b969b364229a1271e9dbe92ea62e41",
+      "id": "sf.render.military.node.lod2-station-material-accent.primitive.0",
       "indexCount": 1992,
       "indexed": true,
       "materialHash": "a61231590ff206bc25276c8afa8e24abe6f2c869850114f6dce68e913233c428",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Station_Material_Accent",
-      "nodeId": "sf.render.military.mesh.lod2-station-material-accent",
+      "nodeId": "sf.render.military.node.lod2-station-material-accent",
       "primitiveIndex": 0,
       "vertexCount": 728
     },
@@ -718,14 +893,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa4b0fcde845565dc0314e11c11287e3fb82cc39d460204180e349b436129df1",
-      "id": "sf.render.military.mesh.lod2-station-material-alloy.primitive.0",
+      "geometryHash": "40b8ddb02c77a7addeb16e83d8b020a1c1c3eec78cda0f651f7df7e8878b66b9",
+      "id": "sf.render.military.node.lod2-station-material-alloy.primitive.0",
       "indexCount": 5220,
       "indexed": true,
       "materialHash": "aa85152c8df99ffff26d2990e9f2069ea5686dda95d1f5420d935c98a790b479",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Station_Material_Alloy",
-      "nodeId": "sf.render.military.mesh.lod2-station-material-alloy",
+      "nodeId": "sf.render.military.node.lod2-station-material-alloy",
       "primitiveIndex": 0,
       "vertexCount": 1912
     },
@@ -744,13 +919,13 @@
       },
       "drawMode": 4,
       "geometryHash": "63f135df31b3f15fc437bcadd71732579a64862df018fa5107ff2da9fd8182d6",
-      "id": "sf.render.military.mesh.lod2-station-material-blast.primitive.0",
+      "id": "sf.render.military.node.lod2-station-material-blast.primitive.0",
       "indexCount": 1848,
       "indexed": true,
       "materialHash": "f1db6ce648018e283adf458fef1a6423958de154ac90ad9eb8afe03e6005b167",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Station_Material_Blast",
-      "nodeId": "sf.render.military.mesh.lod2-station-material-blast",
+      "nodeId": "sf.render.military.node.lod2-station-material-blast",
       "primitiveIndex": 0,
       "vertexCount": 672
     },
@@ -769,13 +944,13 @@
       },
       "drawMode": 4,
       "geometryHash": "382dd000d9eb320bb94df11b9f7f8a3dffd65684488ac48640889f80b653a746",
-      "id": "sf.render.military.mesh.lod2-station-material-dock.primitive.0",
+      "id": "sf.render.military.node.lod2-station-material-dock.primitive.0",
       "indexCount": 1188,
       "indexed": true,
       "materialHash": "2ab0eb86bd48daaa4d890c473ab041b0e2b0e9857cace448564ec863d3f3cbcc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Station_Material_Dock",
-      "nodeId": "sf.render.military.mesh.lod2-station-material-dock",
+      "nodeId": "sf.render.military.node.lod2-station-material-dock",
       "primitiveIndex": 0,
       "vertexCount": 432
     },
@@ -793,14 +968,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "507667a63ebb8c88a1a086f2727cabdf0b8ce731212bbaae9dccacd2ddaa12a2",
-      "id": "sf.render.military.mesh.lod2-station-material-glass.primitive.0",
+      "geometryHash": "3e0a8f358d8db76c6785f0e83951e3e18be5bd0868650489cf1849b2fdb402ea",
+      "id": "sf.render.military.node.lod2-station-material-glass.primitive.0",
       "indexCount": 1416,
       "indexed": true,
       "materialHash": "8fd941ca8f9c7ebb2e51bc79827fe3645bd6043d6e3a93cb25f32c19609df37f",
       "materialPipelineKey": "blend",
       "meshName": "LOD2_Station_Material_Glass",
-      "nodeId": "sf.render.military.mesh.lod2-station-material-glass",
+      "nodeId": "sf.render.military.node.lod2-station-material-glass",
       "primitiveIndex": 0,
       "vertexCount": 482
     },
@@ -818,14 +993,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba1db25dc56578e3a056029c1db68c4a1c6946dd90746998239ea965c5815085",
-      "id": "sf.render.military.mesh.lod2-station-material-hull.primitive.0",
+      "geometryHash": "4b79c65ef3e80eb1c2755a1c1e255add4c5d6f0bf70d5cd58d9d9548de88c812",
+      "id": "sf.render.military.node.lod2-station-material-hull.primitive.0",
       "indexCount": 1320,
       "indexed": true,
       "materialHash": "c2f9a81645a3f07410d2427a9e832b24dea9853f74369829a59dcf5ce09631f6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Station_Material_Hull",
-      "nodeId": "sf.render.military.mesh.lod2-station-material-hull",
+      "nodeId": "sf.render.military.node.lod2-station-material-hull",
       "primitiveIndex": 0,
       "vertexCount": 492
     },
@@ -843,14 +1018,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3e94784cdd20322de80e4716a67f6b4c707b240351d2061e9917aa9b71f623f",
-      "id": "sf.render.military.mesh.lod2-station-material-machinery.primitive.0",
+      "geometryHash": "1192cccac0531a6772c06c444694deaa11d1223e0afa45343a055ee38f801555",
+      "id": "sf.render.military.node.lod2-station-material-machinery.primitive.0",
       "indexCount": 2688,
       "indexed": true,
       "materialHash": "3ee86771eb1eef8adfc50a78a77cabdb53e6cccbf1c8ee91d7a4f93006ca85ac",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Station_Material_Machinery",
-      "nodeId": "sf.render.military.mesh.lod2-station-material-machinery",
+      "nodeId": "sf.render.military.node.lod2-station-material-machinery",
       "primitiveIndex": 0,
       "vertexCount": 884
     },
@@ -869,13 +1044,13 @@
       },
       "drawMode": 4,
       "geometryHash": "1568513d7c3779dcff764a77e310402fbca4ac13badf295dcbc32fdddadd3613",
-      "id": "sf.render.military.mesh.lod2-station-material-radiator.primitive.0",
+      "id": "sf.render.military.node.lod2-station-material-radiator.primitive.0",
       "indexCount": 528,
       "indexed": true,
       "materialHash": "07f878d4abed59935b81d278281a03cdee4a7fc6499718e94161d07e30689948",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Station_Material_Radiator",
-      "nodeId": "sf.render.military.mesh.lod2-station-material-radiator",
+      "nodeId": "sf.render.military.node.lod2-station-material-radiator",
       "primitiveIndex": 0,
       "vertexCount": 224
     },
@@ -893,14 +1068,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8fbb14aabd6ad88087e84004e75c960e2b42c5265b66f0a1e0d342588cd3a5e",
-      "id": "sf.render.military.mesh.lod2-station-material-warm.primitive.0",
+      "geometryHash": "bed58b8187e7151ce32c977c63c24b65d651f1a183a4b48273410a14f66731bb",
+      "id": "sf.render.military.node.lod2-station-material-warm.primitive.0",
       "indexCount": 540,
       "indexed": true,
       "materialHash": "cc3cb294af1f90b4d7bdb4561f033d95814669e8def9ed08320500e29e6472ee",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Station_Material_Warm",
-      "nodeId": "sf.render.military.mesh.lod2-station-material-warm",
+      "nodeId": "sf.render.military.node.lod2-station-material-warm",
       "primitiveIndex": 0,
       "vertexCount": 176
     },
@@ -919,13 +1094,13 @@
       },
       "drawMode": 4,
       "geometryHash": "be432e4ff248d3af158eab84b66b51518e6bf561347e683af59f99a94c9282ff",
-      "id": "sf.render.military.mesh.lod2-station-material-warning.primitive.0",
+      "id": "sf.render.military.node.lod2-station-material-warning.primitive.0",
       "indexCount": 1056,
       "indexed": true,
       "materialHash": "e13ace7e2da26099c8ab887f562c84780a7c2397e42a0ddc80ee83f9e590120a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Station_Material_Warning",
-      "nodeId": "sf.render.military.mesh.lod2-station-material-warning",
+      "nodeId": "sf.render.military.node.lod2-station-material-warning",
       "primitiveIndex": 0,
       "vertexCount": 384
     }
@@ -961,6 +1136,38 @@
         {
           "colorSpace": "linear",
           "name": "mil_radiator_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "id": "material:09306e58ed6387f8ee509fc5",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
@@ -1191,6 +1398,38 @@
       ]
     },
     {
+      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "e13ace7e2da26099c8ab887f562c84780a7c2397e42a0ddc80ee83f9e590120a",
       "id": "material:e13ace7e2da26099c8ab887f",
       "name": "Material_Warning",
@@ -1257,7 +1496,7 @@
   ],
   "nodes": [
     {
-      "id": "sf.render.military.mesh.collision-hull",
+      "id": "sf.render.military.node.collision-hull",
       "localTransform": [
         1,
         0,
@@ -1276,14 +1515,14 @@
         0,
         1
       ],
-      "materialPipelineKey": "non-render",
+      "materialPipelineKey": "root",
       "mergeBoundary": "COLLISION_HULL",
       "nodeName": "COLLISION_HULL",
       "nodePath": [
         0,
         0
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1306,7 +1545,103 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod0-station-material-accent",
+      "id": "sf.render.military.node.lod0-remaster-material-mechanical-brushednickel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "LOD0_Remaster_Material_Mechanical_BrushedNickel",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "LOD0_Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod0-station-material-accent",
       "localTransform": [
         1,
         0,
@@ -1332,7 +1667,7 @@
         0,
         1
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1355,7 +1690,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod0-station-material-alloy",
+      "id": "sf.render.military.node.lod0-station-material-alloy",
       "localTransform": [
         1,
         0,
@@ -1381,7 +1716,7 @@
         0,
         2
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1404,7 +1739,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod0-station-material-blast",
+      "id": "sf.render.military.node.lod0-station-material-blast",
       "localTransform": [
         1,
         0,
@@ -1430,7 +1765,7 @@
         0,
         3
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1453,7 +1788,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod0-station-material-dock",
+      "id": "sf.render.military.node.lod0-station-material-dock",
       "localTransform": [
         1,
         0,
@@ -1479,7 +1814,7 @@
         0,
         4
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1502,7 +1837,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod0-station-material-glass",
+      "id": "sf.render.military.node.lod0-station-material-glass",
       "localTransform": [
         1,
         0,
@@ -1528,7 +1863,7 @@
         0,
         5
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1551,7 +1886,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod0-station-material-hull",
+      "id": "sf.render.military.node.lod0-station-material-hull",
       "localTransform": [
         1,
         0,
@@ -1577,7 +1912,7 @@
         0,
         6
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1600,7 +1935,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod0-station-material-machinery",
+      "id": "sf.render.military.node.lod0-station-material-machinery",
       "localTransform": [
         1,
         0,
@@ -1626,7 +1961,7 @@
         0,
         7
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1649,7 +1984,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod0-station-material-radiator",
+      "id": "sf.render.military.node.lod0-station-material-radiator",
       "localTransform": [
         1,
         0,
@@ -1675,7 +2010,7 @@
         0,
         8
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1698,7 +2033,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod0-station-material-warm",
+      "id": "sf.render.military.node.lod0-station-material-warm",
       "localTransform": [
         1,
         0,
@@ -1724,7 +2059,7 @@
         0,
         9
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1747,7 +2082,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod0-station-material-warning",
+      "id": "sf.render.military.node.lod0-station-material-warning",
       "localTransform": [
         1,
         0,
@@ -1773,7 +2108,7 @@
         0,
         10
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1796,7 +2131,103 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod1-station-material-accent",
+      "id": "sf.render.military.node.lod1-remaster-material-mechanical-brushednickel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "LOD1_Remaster_Material_Mechanical_BrushedNickel",
+      "nodePath": [
+        5
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "LOD1_Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod1-station-material-accent",
       "localTransform": [
         1,
         0,
@@ -1822,7 +2253,7 @@
         0,
         11
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1845,7 +2276,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod1-station-material-alloy",
+      "id": "sf.render.military.node.lod1-station-material-alloy",
       "localTransform": [
         1,
         0,
@@ -1871,7 +2302,7 @@
         0,
         12
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1894,7 +2325,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod1-station-material-blast",
+      "id": "sf.render.military.node.lod1-station-material-blast",
       "localTransform": [
         1,
         0,
@@ -1920,7 +2351,7 @@
         0,
         13
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1943,7 +2374,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod1-station-material-dock",
+      "id": "sf.render.military.node.lod1-station-material-dock",
       "localTransform": [
         1,
         0,
@@ -1969,7 +2400,7 @@
         0,
         14
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -1992,7 +2423,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod1-station-material-glass",
+      "id": "sf.render.military.node.lod1-station-material-glass",
       "localTransform": [
         1,
         0,
@@ -2018,7 +2449,7 @@
         0,
         15
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2041,7 +2472,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod1-station-material-hull",
+      "id": "sf.render.military.node.lod1-station-material-hull",
       "localTransform": [
         1,
         0,
@@ -2067,7 +2498,7 @@
         0,
         16
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2090,7 +2521,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod1-station-material-machinery",
+      "id": "sf.render.military.node.lod1-station-material-machinery",
       "localTransform": [
         1,
         0,
@@ -2116,7 +2547,7 @@
         0,
         17
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2139,7 +2570,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod1-station-material-radiator",
+      "id": "sf.render.military.node.lod1-station-material-radiator",
       "localTransform": [
         1,
         0,
@@ -2165,7 +2596,7 @@
         0,
         18
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2188,7 +2619,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod1-station-material-warm",
+      "id": "sf.render.military.node.lod1-station-material-warm",
       "localTransform": [
         1,
         0,
@@ -2214,7 +2645,7 @@
         0,
         19
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2237,7 +2668,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod1-station-material-warning",
+      "id": "sf.render.military.node.lod1-station-material-warning",
       "localTransform": [
         1,
         0,
@@ -2263,7 +2694,7 @@
         0,
         20
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2286,7 +2717,103 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod2-station-material-accent",
+      "id": "sf.render.military.node.lod2-remaster-material-mechanical-brushednickel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "LOD2_Remaster_Material_Mechanical_BrushedNickel",
+      "nodePath": [
+        6
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "LOD2_Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        4
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.lod2-station-material-accent",
       "localTransform": [
         1,
         0,
@@ -2312,7 +2839,7 @@
         0,
         21
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2335,7 +2862,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod2-station-material-alloy",
+      "id": "sf.render.military.node.lod2-station-material-alloy",
       "localTransform": [
         1,
         0,
@@ -2361,7 +2888,7 @@
         0,
         22
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2384,7 +2911,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod2-station-material-blast",
+      "id": "sf.render.military.node.lod2-station-material-blast",
       "localTransform": [
         1,
         0,
@@ -2410,7 +2937,7 @@
         0,
         23
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2433,7 +2960,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod2-station-material-dock",
+      "id": "sf.render.military.node.lod2-station-material-dock",
       "localTransform": [
         1,
         0,
@@ -2459,7 +2986,7 @@
         0,
         24
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2482,7 +3009,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod2-station-material-glass",
+      "id": "sf.render.military.node.lod2-station-material-glass",
       "localTransform": [
         1,
         0,
@@ -2508,7 +3035,7 @@
         0,
         25
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2531,7 +3058,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod2-station-material-hull",
+      "id": "sf.render.military.node.lod2-station-material-hull",
       "localTransform": [
         1,
         0,
@@ -2557,7 +3084,7 @@
         0,
         26
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2580,7 +3107,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod2-station-material-machinery",
+      "id": "sf.render.military.node.lod2-station-material-machinery",
       "localTransform": [
         1,
         0,
@@ -2606,7 +3133,7 @@
         0,
         27
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2629,7 +3156,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod2-station-material-radiator",
+      "id": "sf.render.military.node.lod2-station-material-radiator",
       "localTransform": [
         1,
         0,
@@ -2655,7 +3182,7 @@
         0,
         28
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2678,7 +3205,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod2-station-material-warm",
+      "id": "sf.render.military.node.lod2-station-material-warm",
       "localTransform": [
         1,
         0,
@@ -2704,7 +3231,7 @@
         0,
         29
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2727,7 +3254,7 @@
       ]
     },
     {
-      "id": "sf.render.military.mesh.lod2-station-material-warning",
+      "id": "sf.render.military.node.lod2-station-material-warning",
       "localTransform": [
         1,
         0,
@@ -2753,7 +3280,7 @@
         0,
         30
       ],
-      "parentId": "sf.render.military.root",
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.military.body",
       "worldTransform": [
@@ -2776,7 +3303,7 @@
       ]
     },
     {
-      "id": "sf.render.military.root",
+      "id": "sf.render.military.node.sf-place-station-military-root",
       "localTransform": [
         1,
         0,
@@ -2796,7 +3323,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "SF_PLACE_STATION_MILITARY_ROOT",
       "nodeName": "SF_PLACE_STATION_MILITARY_ROOT",
       "nodePath": [
         0
@@ -2822,39 +3349,186 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.military.node.socket-dock-approach",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        23.989999771118164,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Dock_Approach",
+      "nodeName": "SOCKET_Dock_Approach",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        23.989999771118164,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.socket-emissive",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -12.979999542236328,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Emissive",
+      "nodeName": "SOCKET_Emissive",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -12.979999542236328,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.military.node.socket-structure-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Structure_Core",
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.military.node.sf-place-station-military-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.military.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "eed9c1a0833fb6179913582582b2ff212e81f1ae002a5559f04cbb371ba8719e"
+      "sha256": "f73700457772a6ea0bcd92ab7b5a602335d8831dde81df559de99e4bc576e43a"
     },
     "sourceGlb": {
-      "bytes": 4232420,
-      "sha256": "a92f5c2b53262defcbfea27b22ec07ce8d7798f856dbd8e3fc9b12475ea67806",
+      "bytes": 4459728,
+      "sha256": "25a59633f79598d7758047f75d0e5551b3406e34d4ada8a95735d52e3cc4aa77",
       "uri": "place_station_military.glb"
     },
     "sourceManifest": {
-      "bytes": 76590,
-      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
+      "bytes": 169401,
+      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 5551408,
-    "sha256": "d6333afd5a75a41b50dd466ee82ec223d342edf36a9d667f89981890185f91d2",
+    "bytes": 6765424,
+    "sha256": "9e310dfcc7a45b947ea78cf68ca52010bdac2ece4b95309d5a9b1ac138f18a01",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -3.7480087280273438,
+        -3.7749996185302734,
         2.4409713745117188,
-        -3.0113983154296875
+        -4.37551736831665
       ],
       "max": [
-        33.50398254394531,
+        33.45000076293945,
         40.781158447265625,
-        14.828527450561523
+        12.100289344787598
       ],
       "min": [
         -41,
@@ -2862,14 +3536,12 @@
         -20.8513240814209
       ],
       "size": [
-        74.50398254394531,
+        74.45000076293945,
         76.68037414550781,
-        35.67985153198242
+        32.951613426208496
       ]
     },
-    "hidden": [
-      2
-    ],
+    "hidden": [],
     "legacyPart": false,
     "markers": [
       {
@@ -2892,7 +3564,7 @@
           1
         ],
         "name": "SOCKET_Dock_Approach",
-        "planIndex": 33,
+        "planIndex": 37,
         "tags": {
           "chamfered": true,
           "socket": true,
@@ -2905,7 +3577,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Dock_Approach",
             "recordIds": [
-              "sf.render.military.anchor.socket-dock-approach"
+              "sf.render.military.anchor.socket-dock-approach",
+              "sf.render.military.node.socket-dock-approach"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2931,7 +3604,7 @@
           1
         ],
         "name": "SOCKET_Emissive",
-        "planIndex": 34,
+        "planIndex": 38,
         "tags": {
           "chamfered": true,
           "socket": true,
@@ -2944,7 +3617,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Emissive",
             "recordIds": [
-              "sf.render.military.anchor.socket-emissive"
+              "sf.render.military.anchor.socket-emissive",
+              "sf.render.military.node.socket-emissive"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2970,7 +3644,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 35,
+        "planIndex": 39,
         "tags": {
           "chamfered": true,
           "socket": true,
@@ -2983,7 +3657,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Structure_Core",
             "recordIds": [
-              "sf.render.military.anchor.socket-structure-core"
+              "sf.render.military.anchor.socket-structure-core",
+              "sf.render.military.node.socket-structure-core"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -2995,16 +3670,11 @@
       "docking": 3,
       "glass": 3,
       "hull": 12,
-      "mechanical": 4,
+      "mechanical": 11,
       "radiator": 3,
       "warning": 3
     },
     "materialProfiles": [
-      {
-        "allowTextures": true,
-        "planIndex": 2,
-        "role": "mechanical"
-      },
       {
         "allowTextures": true,
         "planIndex": 3,
@@ -3017,33 +3687,23 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 5,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 6,
-        "role": "docking"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 10,
-        "role": "radiator"
+        "planIndex": 8,
+        "role": "docking"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -3053,17 +3713,17 @@
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "radiator"
       },
       {
         "allowTextures": true,
@@ -3073,12 +3733,12 @@
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "docking"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "glass"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -3088,32 +3748,32 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "radiator"
+        "role": "docking"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "warning"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "hull"
+        "role": "radiator"
       },
       {
         "allowTextures": true,
@@ -3123,12 +3783,12 @@
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "docking"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "glass"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -3138,25 +3798,75 @@
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
-        "role": "radiator"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 31,
         "role": "hull"
       },
       {
         "allowTextures": true,
+        "planIndex": 30,
+        "role": "docking"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
         "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 36,
+    "nodeCount": 46,
     "primitives": [
       {
         "canopy": false,
@@ -3236,36 +3946,7 @@
           0,
           1
         ],
-        "name": "LOD0_Station_Material_Blast",
-        "planIndex": 5,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Station_Material_Dock",
+        "name": "LOD0_Station_Material_Blast001",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -3294,7 +3975,7 @@
           0,
           1
         ],
-        "name": "LOD0_Station_Material_Glass",
+        "name": "LOD0_Station_Material_Blast001_1",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -3323,7 +4004,7 @@
           0,
           1
         ],
-        "name": "LOD0_Station_Material_Hull",
+        "name": "LOD0_Station_Material_Dock",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -3352,7 +4033,7 @@
           0,
           1
         ],
-        "name": "LOD0_Station_Material_Machinery",
+        "name": "LOD0_Station_Material_Glass",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -3381,36 +4062,7 @@
           0,
           1
         ],
-        "name": "LOD0_Station_Material_Radiator",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "chamfered": true,
-          "lod": "lod0",
-          "tint": "hull"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "LOD0_Station_Material_Warm",
+        "name": "LOD0_Station_Material_Hull001",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -3439,7 +4091,7 @@
           0,
           1
         ],
-        "name": "LOD0_Station_Material_Warning",
+        "name": "LOD0_Station_Material_Hull001_1",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -3468,12 +4120,12 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Accent",
+        "name": "LOD0_Station_Material_Machinery",
         "planIndex": 13,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod1",
+          "lod": "lod0",
           "tint": "hull"
         }
       },
@@ -3497,12 +4149,12 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Alloy",
+        "name": "LOD0_Station_Material_Radiator",
         "planIndex": 14,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod1",
+          "lod": "lod0",
           "tint": "hull"
         }
       },
@@ -3526,12 +4178,12 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Blast",
+        "name": "LOD0_Station_Material_Warm",
         "planIndex": 15,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod1",
+          "lod": "lod0",
           "tint": "hull"
         }
       },
@@ -3555,12 +4207,12 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Dock",
+        "name": "LOD0_Station_Material_Warning",
         "planIndex": 16,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod1",
+          "lod": "lod0",
           "tint": "hull"
         }
       },
@@ -3584,7 +4236,7 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Glass",
+        "name": "LOD1_Station_Material_Accent",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -3613,7 +4265,7 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Hull",
+        "name": "LOD1_Station_Material_Alloy",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -3642,7 +4294,7 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Machinery",
+        "name": "LOD1_Station_Material_Blast",
         "planIndex": 19,
         "tags": {
           "canopy": false,
@@ -3671,7 +4323,7 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Radiator",
+        "name": "LOD1_Station_Material_Dock",
         "planIndex": 20,
         "tags": {
           "canopy": false,
@@ -3700,7 +4352,7 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Warm",
+        "name": "LOD1_Station_Material_Glass",
         "planIndex": 21,
         "tags": {
           "canopy": false,
@@ -3729,7 +4381,7 @@
           0,
           1
         ],
-        "name": "LOD1_Station_Material_Warning",
+        "name": "LOD1_Station_Material_Hull",
         "planIndex": 22,
         "tags": {
           "canopy": false,
@@ -3758,12 +4410,12 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Accent",
+        "name": "LOD1_Station_Material_Machinery",
         "planIndex": 23,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod2",
+          "lod": "lod1",
           "tint": "hull"
         }
       },
@@ -3787,12 +4439,12 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Alloy",
+        "name": "LOD1_Station_Material_Radiator",
         "planIndex": 24,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod2",
+          "lod": "lod1",
           "tint": "hull"
         }
       },
@@ -3816,12 +4468,12 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Blast",
+        "name": "LOD1_Station_Material_Warm",
         "planIndex": 25,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod2",
+          "lod": "lod1",
           "tint": "hull"
         }
       },
@@ -3845,12 +4497,12 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Dock",
+        "name": "LOD1_Station_Material_Warning",
         "planIndex": 26,
         "tags": {
           "canopy": false,
           "chamfered": true,
-          "lod": "lod2",
+          "lod": "lod1",
           "tint": "hull"
         }
       },
@@ -3874,7 +4526,7 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Glass",
+        "name": "LOD2_Station_Material_Accent",
         "planIndex": 27,
         "tags": {
           "canopy": false,
@@ -3903,7 +4555,7 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Hull",
+        "name": "LOD2_Station_Material_Alloy",
         "planIndex": 28,
         "tags": {
           "canopy": false,
@@ -3932,7 +4584,7 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Machinery",
+        "name": "LOD2_Station_Material_Blast",
         "planIndex": 29,
         "tags": {
           "canopy": false,
@@ -3961,7 +4613,7 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Radiator",
+        "name": "LOD2_Station_Material_Dock",
         "planIndex": 30,
         "tags": {
           "canopy": false,
@@ -3990,7 +4642,7 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Warm",
+        "name": "LOD2_Station_Material_Glass",
         "planIndex": 31,
         "tags": {
           "canopy": false,
@@ -4019,7 +4671,7 @@
           0,
           1
         ],
-        "name": "LOD2_Station_Material_Warning",
+        "name": "LOD2_Station_Material_Hull",
         "planIndex": 32,
         "tags": {
           "canopy": false,
@@ -4027,20 +4679,305 @@
           "lod": "lod2",
           "tint": "hull"
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Machinery",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Radiator",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Warm",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Warning",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2"
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_military.glb"
   },
+  "runtimeHash": "89316512a909a4d6da2f882165c6bd44602562cad32dffd561b374edfe3c7b13",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          33.50398254394531,
+          33.45000076293945,
           40.781158447265625,
-          14.828527450561523
+          12.100289344787598
         ],
         "min": [
           -41,
@@ -4050,38 +4987,47 @@
       },
       "id": "sf.render.military.body",
       "nodeIds": [
-        "sf.render.military.mesh.collision-hull",
-        "sf.render.military.mesh.lod0-station-material-accent",
-        "sf.render.military.mesh.lod0-station-material-alloy",
-        "sf.render.military.mesh.lod0-station-material-blast",
-        "sf.render.military.mesh.lod0-station-material-dock",
-        "sf.render.military.mesh.lod0-station-material-glass",
-        "sf.render.military.mesh.lod0-station-material-hull",
-        "sf.render.military.mesh.lod0-station-material-machinery",
-        "sf.render.military.mesh.lod0-station-material-radiator",
-        "sf.render.military.mesh.lod0-station-material-warm",
-        "sf.render.military.mesh.lod0-station-material-warning",
-        "sf.render.military.mesh.lod1-station-material-accent",
-        "sf.render.military.mesh.lod1-station-material-alloy",
-        "sf.render.military.mesh.lod1-station-material-blast",
-        "sf.render.military.mesh.lod1-station-material-dock",
-        "sf.render.military.mesh.lod1-station-material-glass",
-        "sf.render.military.mesh.lod1-station-material-hull",
-        "sf.render.military.mesh.lod1-station-material-machinery",
-        "sf.render.military.mesh.lod1-station-material-radiator",
-        "sf.render.military.mesh.lod1-station-material-warm",
-        "sf.render.military.mesh.lod1-station-material-warning",
-        "sf.render.military.mesh.lod2-station-material-accent",
-        "sf.render.military.mesh.lod2-station-material-alloy",
-        "sf.render.military.mesh.lod2-station-material-blast",
-        "sf.render.military.mesh.lod2-station-material-dock",
-        "sf.render.military.mesh.lod2-station-material-glass",
-        "sf.render.military.mesh.lod2-station-material-hull",
-        "sf.render.military.mesh.lod2-station-material-machinery",
-        "sf.render.military.mesh.lod2-station-material-radiator",
-        "sf.render.military.mesh.lod2-station-material-warm",
-        "sf.render.military.mesh.lod2-station-material-warning",
-        "sf.render.military.root"
+        "sf.render.military.node.collision-hull",
+        "sf.render.military.node.lod0-remaster-material-mechanical-brushednickel",
+        "sf.render.military.node.lod0-remaster-material-mechanical-shadowenamel",
+        "sf.render.military.node.lod0-station-material-accent",
+        "sf.render.military.node.lod0-station-material-alloy",
+        "sf.render.military.node.lod0-station-material-blast",
+        "sf.render.military.node.lod0-station-material-dock",
+        "sf.render.military.node.lod0-station-material-glass",
+        "sf.render.military.node.lod0-station-material-hull",
+        "sf.render.military.node.lod0-station-material-machinery",
+        "sf.render.military.node.lod0-station-material-radiator",
+        "sf.render.military.node.lod0-station-material-warm",
+        "sf.render.military.node.lod0-station-material-warning",
+        "sf.render.military.node.lod1-remaster-material-mechanical-brushednickel",
+        "sf.render.military.node.lod1-remaster-material-mechanical-shadowenamel",
+        "sf.render.military.node.lod1-station-material-accent",
+        "sf.render.military.node.lod1-station-material-alloy",
+        "sf.render.military.node.lod1-station-material-blast",
+        "sf.render.military.node.lod1-station-material-dock",
+        "sf.render.military.node.lod1-station-material-glass",
+        "sf.render.military.node.lod1-station-material-hull",
+        "sf.render.military.node.lod1-station-material-machinery",
+        "sf.render.military.node.lod1-station-material-radiator",
+        "sf.render.military.node.lod1-station-material-warm",
+        "sf.render.military.node.lod1-station-material-warning",
+        "sf.render.military.node.lod2-remaster-material-mechanical-brushednickel",
+        "sf.render.military.node.lod2-remaster-material-mechanical-shadowenamel",
+        "sf.render.military.node.lod2-station-material-accent",
+        "sf.render.military.node.lod2-station-material-alloy",
+        "sf.render.military.node.lod2-station-material-blast",
+        "sf.render.military.node.lod2-station-material-dock",
+        "sf.render.military.node.lod2-station-material-glass",
+        "sf.render.military.node.lod2-station-material-hull",
+        "sf.render.military.node.lod2-station-material-machinery",
+        "sf.render.military.node.lod2-station-material-radiator",
+        "sf.render.military.node.lod2-station-material-warm",
+        "sf.render.military.node.lod2-station-material-warning",
+        "sf.render.military.node.sf-place-station-military-root",
+        "sf.render.military.node.socket-dock-approach",
+        "sf.render.military.node.socket-emissive",
+        "sf.render.military.node.socket-structure-core"
       ]
     }
   ]

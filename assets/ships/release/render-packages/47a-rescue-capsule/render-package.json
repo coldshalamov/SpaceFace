@@ -26,7 +26,7 @@
         0,
         6
       ],
-      "parentNodeId": "sf.render.47a-rescue-capsule.root",
+      "parentNodeId": "sf.render.47a-rescue-capsule.node.sf-place-47a-rescue-capsule-root",
       "worldTransform": [
         1,
         0,
@@ -48,12 +48,18 @@
     }
   ],
   "assetId": "sf.render.47a-rescue-capsule",
-  "collisions": [],
+  "collisions": [
+    {
+      "id": "sf.render.47a-rescue-capsule.collision",
+      "nodeId": "sf.render.47a-rescue-capsule.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
   "compiler": {
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b4455eae265721cd37c64c7742549d69abccfdc29ada4fc4b6b654994c9bb183",
+  "contentHash": "fcd02968bff03ba1323d8adfac753ae5c4e83e9f0fbabddee0cdcd0957509304",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,14 +76,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd01493b889534a65435ebba30dddf91c5c437a0c545a0912dbc6c05c547d8a7",
-      "id": "sf.render.47a-rescue-capsule.mesh.capsule-distress-paint.primitive.0",
+      "geometryHash": "4630b5de814c07d3c7ab750f6899df7177d295e0d8a367354de7bbe00205249b",
+      "id": "sf.render.47a-rescue-capsule.node.capsule-distress-paint.primitive.0",
       "indexCount": 300,
       "indexed": true,
       "materialHash": "021cadc5586e00e48a5388887a4437d2eac17bf73fbf36c7ee5222fd81eb09b8",
       "materialPipelineKey": "opaque",
       "meshName": "Capsule_Distress_Paint_Mesh",
-      "nodeId": "sf.render.47a-rescue-capsule.mesh.capsule-distress-paint",
+      "nodeId": "sf.render.47a-rescue-capsule.node.capsule-distress-paint",
       "primitiveIndex": 0,
       "vertexCount": 136
     },
@@ -96,13 +102,13 @@
       },
       "drawMode": 4,
       "geometryHash": "5f048980bd1168dfa93fb56cd8c00589fae16f2197a0accd47113f4e416b7721",
-      "id": "sf.render.47a-rescue-capsule.mesh.capsule-mechanical-merged.primitive.0",
+      "id": "sf.render.47a-rescue-capsule.node.capsule-mechanical-merged.primitive.0",
       "indexCount": 10932,
       "indexed": true,
       "materialHash": "2865349544a1d989a4e841bcf7e6319b8396ba001150bc3ff853d90e72d5f616",
       "materialPipelineKey": "opaque",
       "meshName": "Capsule_Mechanical_Merged_Mesh",
-      "nodeId": "sf.render.47a-rescue-capsule.mesh.capsule-mechanical-merged",
+      "nodeId": "sf.render.47a-rescue-capsule.node.capsule-mechanical-merged",
       "primitiveIndex": 0,
       "vertexCount": 3588
     },
@@ -120,16 +126,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "85e7607aa205c4856c353a58c2e7effc258f6e6735503e7abe0d94dd633a968a",
-      "id": "sf.render.47a-rescue-capsule.mesh.capsule-pressure-hull.primitive.0",
-      "indexCount": 1896,
+      "geometryHash": "81f0593917203e21a1e625bc3f8930d8c03f5383abb2875469bcb63afdd0b006",
+      "id": "sf.render.47a-rescue-capsule.node.capsule-pressure-hull.primitive.0",
+      "indexCount": 1980,
       "indexed": true,
       "materialHash": "6f019d4776465ada882ca456c0c120547d8956f044bc5221289056f71ed1c902",
       "materialPipelineKey": "opaque",
-      "meshName": "Capsule_Pressure_Hull_Mesh",
-      "nodeId": "sf.render.47a-rescue-capsule.mesh.capsule-pressure-hull",
+      "meshName": "Capsule_Pressure_Hull_Mesh.001",
+      "nodeId": "sf.render.47a-rescue-capsule.node.capsule-pressure-hull",
       "primitiveIndex": 0,
-      "vertexCount": 440
+      "vertexCount": 472
+    },
+    {
+      "bounds": {
+        "max": [
+          0.796181321144104,
+          -1.1359426975250244,
+          0.36851099133491516
+        ],
+        "min": [
+          -0.17621468007564545,
+          -1.3865760564804077,
+          -0.7889989018440247
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "823e52bfef02e37b8c853c2c3fce01826996ace3ad1109373f26d42beab9c255",
+      "id": "sf.render.47a-rescue-capsule.node.capsule-pressure-hull.primitive.1",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Capsule_Pressure_Hull_Mesh.001",
+      "nodeId": "sf.render.47a-rescue-capsule.node.capsule-pressure-hull",
+      "primitiveIndex": 1,
+      "vertexCount": 40
     },
     {
       "bounds": {
@@ -146,13 +177,13 @@
       },
       "drawMode": 4,
       "geometryHash": "cc5acd9de02d7de05b80d3318cc4073adbbe3222d2d8b2fb6bd929e0ea2c8289",
-      "id": "sf.render.47a-rescue-capsule.mesh.capsule-viewport-glass.primitive.0",
+      "id": "sf.render.47a-rescue-capsule.node.capsule-viewport-glass.primitive.0",
       "indexCount": 72,
       "indexed": true,
       "materialHash": "d17dc544b68e4588e17552b91af63767d0adf1ac8122c23306b17875f852ff9b",
       "materialPipelineKey": "blend",
       "meshName": "Capsule_Viewport_Glass_Mesh",
-      "nodeId": "sf.render.47a-rescue-capsule.mesh.capsule-viewport-glass",
+      "nodeId": "sf.render.47a-rescue-capsule.node.capsule-viewport-glass",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -171,15 +202,90 @@
       },
       "drawMode": 4,
       "geometryHash": "ccbae77b1800620c209445295657e92cc0bbb47d485434f8fcdf2d1344c5178c",
-      "id": "sf.render.47a-rescue-capsule.mesh.hook-emissive.primitive.0",
+      "id": "sf.render.47a-rescue-capsule.node.hook-emissive.primitive.0",
       "indexCount": 276,
       "indexed": true,
       "materialHash": "e35b7d7a5ec883b08a4e0a2b8003f7d3b6d6aec6b3c170c43275cd71f2dcb435",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_EMISSIVE_Mesh",
-      "nodeId": "sf.render.47a-rescue-capsule.mesh.hook-emissive",
+      "nodeId": "sf.render.47a-rescue-capsule.node.hook-emissive",
       "primitiveIndex": 0,
       "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.750068187713623,
+          1.059999942779541,
+          1.059999942779541
+        ],
+        "min": [
+          -2.929931879043579,
+          -1.059999942779541,
+          -1.059999942779541
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f4194d25ecf21e92e7ba0d50b3957192a5bc45232de494692a72a7304798d01a",
+      "id": "sf.render.47a-rescue-capsule.node.remaster-material-hull-vitreousceramic.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_CapsuleServiceCollar",
+      "nodeId": "sf.render.47a-rescue-capsule.node.remaster-material-hull-vitreousceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          3.2751545906066895,
+          0.8114693760871887,
+          0.9373828768730164
+        ],
+        "min": [
+          2.704782724380493,
+          0.5884994864463806,
+          -0.9374505281448364
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "953a4ac1395e8a31d5c02f3c65193fc6a0060afe95313009cf2fbaf8f1648b3f",
+      "id": "sf.render.47a-rescue-capsule.node.remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_CapsuleDockLatch-1",
+      "nodeId": "sf.render.47a-rescue-capsule.node.remaster-material-mechanical-brushednickel",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7478077411651611,
+          -1.2351255416870117,
+          0.3631904125213623
+        ],
+        "min": [
+          -0.12727025151252747,
+          -1.4375452995300293,
+          -0.8020748496055603
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0138b0ce654d3792843f5b016e07f074863dcdf54cbea74771a9de700976106f",
+      "id": "sf.render.47a-rescue-capsule.node.remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_ServiceWell_Inner",
+      "nodeId": "sf.render.47a-rescue-capsule.node.remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 72
     }
   ],
   "hlods": [],
@@ -213,6 +319,38 @@
         {
           "colorSpace": "linear",
           "name": "Material_Distress_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "id": "material:09306e58ed6387f8ee509fc5",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
@@ -283,6 +421,38 @@
       ]
     },
     {
+      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "id": "material:9b606ffef39761a1e7cc390d",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "d17dc544b68e4588e17552b91af63767d0adf1ac8122c23306b17875f852ff9b",
       "id": "material:d17dc544b68e4588e17552b9",
       "name": "Material_Glass",
@@ -309,6 +479,38 @@
         {
           "colorSpace": "linear",
           "name": "Material_Glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
           "slot": "occlusion",
           "uri": null
         }
@@ -349,7 +551,7 @@
   ],
   "nodes": [
     {
-      "id": "sf.render.47a-rescue-capsule.mesh.capsule-distress-paint",
+      "id": "sf.render.47a-rescue-capsule.node.capsule-distress-paint",
       "localTransform": [
         1,
         0,
@@ -375,7 +577,7 @@
         0,
         0
       ],
-      "parentId": "sf.render.47a-rescue-capsule.root",
+      "parentId": "sf.render.47a-rescue-capsule.node.sf-place-47a-rescue-capsule-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.47a-rescue-capsule.body",
       "worldTransform": [
@@ -398,7 +600,7 @@
       ]
     },
     {
-      "id": "sf.render.47a-rescue-capsule.mesh.capsule-mechanical-merged",
+      "id": "sf.render.47a-rescue-capsule.node.capsule-mechanical-merged",
       "localTransform": [
         1,
         0,
@@ -424,7 +626,7 @@
         0,
         1
       ],
-      "parentId": "sf.render.47a-rescue-capsule.root",
+      "parentId": "sf.render.47a-rescue-capsule.node.sf-place-47a-rescue-capsule-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.47a-rescue-capsule.body",
       "worldTransform": [
@@ -447,7 +649,7 @@
       ]
     },
     {
-      "id": "sf.render.47a-rescue-capsule.mesh.capsule-pressure-hull",
+      "id": "sf.render.47a-rescue-capsule.node.capsule-pressure-hull",
       "localTransform": [
         1,
         0,
@@ -473,7 +675,7 @@
         0,
         2
       ],
-      "parentId": "sf.render.47a-rescue-capsule.root",
+      "parentId": "sf.render.47a-rescue-capsule.node.sf-place-47a-rescue-capsule-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.47a-rescue-capsule.body",
       "worldTransform": [
@@ -496,7 +698,7 @@
       ]
     },
     {
-      "id": "sf.render.47a-rescue-capsule.mesh.capsule-viewport-glass",
+      "id": "sf.render.47a-rescue-capsule.node.capsule-viewport-glass",
       "localTransform": [
         1,
         0,
@@ -522,7 +724,7 @@
         0,
         3
       ],
-      "parentId": "sf.render.47a-rescue-capsule.root",
+      "parentId": "sf.render.47a-rescue-capsule.node.sf-place-47a-rescue-capsule-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.47a-rescue-capsule.body",
       "worldTransform": [
@@ -545,7 +747,56 @@
       ]
     },
     {
-      "id": "sf.render.47a-rescue-capsule.mesh.hook-emissive",
+      "id": "sf.render.47a-rescue-capsule.node.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.14500010013580322,
+        0.16499996185302734,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.47a-rescue-capsule.node.sf-place-47a-rescue-capsule-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.47a-rescue-capsule.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.14500010013580322,
+        0.16499996185302734,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.47a-rescue-capsule.node.hook-emissive",
       "localTransform": [
         1,
         0,
@@ -571,7 +822,7 @@
         0,
         5
       ],
-      "parentId": "sf.render.47a-rescue-capsule.root",
+      "parentId": "sf.render.47a-rescue-capsule.node.sf-place-47a-rescue-capsule-root",
       "role": "immutable",
       "spatialClusterId": "sf.render.47a-rescue-capsule.body",
       "worldTransform": [
@@ -594,7 +845,151 @@
       ]
     },
     {
-      "id": "sf.render.47a-rescue-capsule.root",
+      "id": "sf.render.47a-rescue-capsule.node.remaster-material-hull-vitreousceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Hull_VitreousCeramic",
+      "nodeName": "Remaster_Material_Hull_VitreousCeramic",
+      "nodePath": [
+        3
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.47a-rescue-capsule.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.47a-rescue-capsule.node.remaster-material-mechanical-brushednickel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.47a-rescue-capsule.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.47a-rescue-capsule.node.remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.47a-rescue-capsule.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.47a-rescue-capsule.node.sf-place-47a-rescue-capsule-root",
       "localTransform": [
         1,
         0,
@@ -614,7 +1009,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "SF_PLACE_47A_RESCUE_CAPSULE_ROOT",
       "nodeName": "SF_PLACE_47A_RESCUE_CAPSULE_ROOT",
       "nodePath": [
         0
@@ -640,26 +1035,75 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.47a-rescue-capsule.node.socket-airlock",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.9200000762939453,
+        0.019999999552965164,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Airlock",
+      "nodeName": "SOCKET_Airlock",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.47a-rescue-capsule.node.sf-place-47a-rescue-capsule-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.47a-rescue-capsule.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.9200000762939453,
+        0.019999999552965164,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "b63007a25f587eacdb5ef44456fb1910486c8e2908692b7f2a20348b32a9fb01"
+      "sha256": "b9bf248397eab67a2dc146a5d42ff4af9a7016d1499d6b7c16fcb41efe5b6c2a"
     },
     "sourceGlb": {
-      "bytes": 255476,
-      "sha256": "507e6d6576e077d7645fe531b013b1fb31fbd03c0e49350fb330299097d97129",
+      "bytes": 280916,
+      "sha256": "7d608e8c69d07a7a6ec6faa21beba85b1f08920a690bef0611a1e7724e7aa3b8",
       "uri": "place_47a_rescue_capsule.glb"
     },
     "sourceManifest": {
-      "bytes": 169845,
-      "sha256": "d8a1979a58009e8c4efa626e4c3d7fe169173c60d29819e29d38cce687df66f4",
+      "bytes": 169401,
+      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 328192,
-    "sha256": "03da7d3453c742a23736fbfb35174db94a70bc236dec20c03dca83f5330f6408",
+    "bytes": 364048,
+    "sha256": "2febf5a89e5db6b694431b25b18d0305a5c5411861ab0ad39fd4516329f8c92b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -708,7 +1152,7 @@
           1
         ],
         "name": "SOCKET_Airlock",
-        "planIndex": 8,
+        "planIndex": 10,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -739,7 +1183,8 @@
           "spacefaceRenderPackageSemantic": {
             "rawNodeName": "SOCKET_Airlock",
             "recordIds": [
-              "sf.render.47a-rescue-capsule.anchor.socket-airlock"
+              "sf.render.47a-rescue-capsule.anchor.socket-airlock",
+              "sf.render.47a-rescue-capsule.node.socket-airlock"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           }
@@ -747,10 +1192,10 @@
       }
     ],
     "materialProfileRoles": {
-      "ceramic": 1,
+      "ceramic": 2,
       "glass": 1,
       "hull": 2,
-      "mechanical": 1
+      "mechanical": 4
     },
     "materialProfiles": [
       {
@@ -765,21 +1210,41 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 4,
+        "planIndex": 5,
         "role": "ceramic"
       },
       {
         "allowTextures": true,
-        "planIndex": 5,
-        "role": "glass"
+        "planIndex": 6,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "ceramic"
       }
     ],
-    "nodeCount": 9,
+    "nodeCount": 14,
     "primitives": [
       {
         "canopy": false,
@@ -853,33 +1318,7 @@
           0,
           1
         ],
-        "name": "Capsule_Pressure_Hull",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "Capsule_Viewport_Glass",
+        "name": "Capsule_Pressure_Hull_Mesh001",
         "planIndex": 5,
         "tags": {
           "canopy": false
@@ -905,10 +1344,146 @@
           0,
           1
         ],
-        "name": "HOOK_EMISSIVE",
+        "name": "Capsule_Pressure_Hull_Mesh001_1",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Capsule_Viewport_Glass",
         "planIndex": 7,
         "tags": {
           "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_EMISSIVE",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Hull_VitreousCeramic",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
         }
       }
     ],
@@ -916,7 +1491,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_47a_rescue_capsule.glb"
   },
-  "runtimeHash": "f3280a21ae720bf200ebbb1aa5c8ee9e3b50310f990d3435b2d2c95ae994af33",
+  "runtimeHash": "b1e9103d698198b61a8d25081421bb1259217e41774f0d8a7cfdb851b7be29e4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -934,12 +1509,17 @@
       },
       "id": "sf.render.47a-rescue-capsule.body",
       "nodeIds": [
-        "sf.render.47a-rescue-capsule.mesh.capsule-distress-paint",
-        "sf.render.47a-rescue-capsule.mesh.capsule-mechanical-merged",
-        "sf.render.47a-rescue-capsule.mesh.capsule-pressure-hull",
-        "sf.render.47a-rescue-capsule.mesh.capsule-viewport-glass",
-        "sf.render.47a-rescue-capsule.mesh.hook-emissive",
-        "sf.render.47a-rescue-capsule.root"
+        "sf.render.47a-rescue-capsule.node.capsule-distress-paint",
+        "sf.render.47a-rescue-capsule.node.capsule-mechanical-merged",
+        "sf.render.47a-rescue-capsule.node.capsule-pressure-hull",
+        "sf.render.47a-rescue-capsule.node.capsule-viewport-glass",
+        "sf.render.47a-rescue-capsule.node.collision-hull",
+        "sf.render.47a-rescue-capsule.node.hook-emissive",
+        "sf.render.47a-rescue-capsule.node.remaster-material-hull-vitreousceramic",
+        "sf.render.47a-rescue-capsule.node.remaster-material-mechanical-brushednickel",
+        "sf.render.47a-rescue-capsule.node.remaster-material-mechanical-shadowenamel",
+        "sf.render.47a-rescue-capsule.node.sf-place-47a-rescue-capsule-root",
+        "sf.render.47a-rescue-capsule.node.socket-airlock"
       ]
     }
   ]

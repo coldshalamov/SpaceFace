@@ -3,19 +3,20 @@
 Handoff snapshot: **2026-09-19 — 68 GLB families / 86 source GLB files, plus five common procedural rock shapes.**
 Counts include separate external LOD files where listed; embedded LOD meshes are not additional files.
 All 68 GLB families and five common procedural rock shapes have passed root art review.
-All 86 authored source files have been promoted; the accepted trade hub storage compaction
-is the remaining source copy. **Final release/package integration and performance validation
-remain root-owned and pending.** No final frame-rate or shipping-integration result is asserted here.
+All 86 authored source files are promoted through compressed releases and compiled render packages.
+The final scoped check verified all 86 source/release/pilot/package/runtime hash bindings, with
+no missing files or files above 100 MiB. The trade hub uses its accepted compact source and
+the compiler's standard shipping normal/tangent filter for compact package storage.
 
 | Packet / authoring owner | Families / files | Durable authoring and contracts | Root visual status at this handoff |
 | --- | ---: | --- | --- |
 | Hero and traffic / hero fleet lane | 14 / 26 | [hero_fleet.py](hero_fleet.py), [source pins](hero_fleet_sources.json), [component preflight](hero_fleet_preflight.json), [receipt generator](hero_fleet_receipt.mjs), [notes](HERO_FLEET.md) | Accepted. |
 | Occupational craft / working fleet lane | 8 / 8 | [working_fleet.py](working_fleet.py), [review contract](working_fleet.json), [notes](working_fleet.md) | All eight accepted. |
-| Places, equipment and wrecks / sector places lane | 33 / 33 | [sector_places.py](sector_places.py), [aftermath construction](sector_places_aftermath.py), [exact source/candidate contract](sector_places.contract.json), [metadata correction](sector_places.metadata-repair.json), [hub storage compaction](trade_hub_compact.json), [notes](SECTOR_PLACES.md) | All 33 accepted; corrected identity metadata promoted. Compact hub source copy pending; its geometry precision and texture bytes equal the current shipping release. |
+| Places, equipment and wrecks / sector places lane | 33 / 33 | [sector_places.py](sector_places.py), [aftermath construction](sector_places_aftermath.py), [exact source/candidate contract](sector_places.contract.json), [metadata correction](sector_places.metadata-repair.json), [hub storage compaction](trade_hub_compact.json), [notes](SECTOR_PLACES.md) | All 33 accepted and integrated, including corrected identity metadata and compact hub storage. |
 | Convoy and faction variants / hero fleet lane | 8 / 12 | [additional_fleet.py](additional_fleet.py), [source pins](additional_fleet_sources.json), [component preflight](additional_fleet_preflight.json), [receipt generator](additional_fleet_receipt.mjs), [notes](ADDITIONAL_FLEET.md) | All eight accepted, including the final MTS Span, MTS Wasp and SCN Wasp revisions. |
 | Warden and exact hostile variants / sector places lane | 4 / 6 | [warden.py](warden.py), [source pins](warden.sources.json), [exact source/candidate and review contract](warden.contract.json), [notes](WARDEN_HOSTILES.md) | Warden and all three hostile bodies accepted after second construction pass. |
 | Surveyed seamed rock / geology lane | 1 / 1 | [geology.py](geology.py), [shipping-geometry host bridge](geology.host.mjs), [contract](geology.json), [notes](geology.md) | Accepted; final source hash begins `799ca`. |
-| Common procedural rocks / root rendering lane | 5 shapes / no GLB | [visualFactory.js](../../../src/render/visualFactory.js), [objectSpaceGeology.js](../../../src/render/objectSpaceGeology.js) | Five shapes reviewed and accepted; shared final scene/integration remains root-owned. |
+| Common procedural rocks / root rendering lane | 5 shapes / no GLB | [visualFactory.js](../../../src/render/visualFactory.js), [objectSpaceGeology.js](../../../src/render/objectSpaceGeology.js) | Five shapes reviewed and accepted in the shared scene. |
 
 ## Exact ship source set
 
@@ -154,6 +155,44 @@ Publish the compiled package and derive its distance family from the selected vi
 source generators are not the reproduction path for these accepted models. The metadata correction
 contract records the intentional gun tint replacements and inherited signal-lens normal omissions;
 root owns their manifest disposition and the final integration result.
+
+## Integrated storage and runtime results
+
+- All 86 source/release/package bindings agree. Fourteen additional external LOD siblings are
+  now release-built, packaged and admitted from the generated runtime manifest. Faction bodies
+  retain their own livery instead of switching to the base model at distance.
+- The trade hub source is 82,073,572 bytes. Its compiled package is 86,462,576 bytes, down from
+  115,041,108 after the compiler's oversized-static-package fallback. Positions, UVs, indices,
+  node/material metadata and embedded textures are unchanged by that fallback. The existing EXT
+  Meshopt shipping filters introduce at most 0.722 degrees of additional normal error and 0.925
+  degrees of tangent error; both NodeIO and the actual Three.js runtime decoder were checked.
+  Ordinary packages remain byte-identical and animated packages never receive this fallback.
+- Kestrel's release is 34,559,016 bytes versus the previous 16,031,316. All 32 source images,
+  resolutions and mip counts are retained. The existing release profile changes 22 color/ORM/decal
+  encodes from ETC1S to UASTC; this explains 99.37% of the growth. That quality setting is retained.
+  Geometry rises from 36,902 to 40,468 triangles. Do not disguise the older ETC1S payloads as UASTC
+  entries in the texture cache.
+- In actual 1440×900 DPR1 flight, native thrust and firing produced the folded wake and live
+  projectile pool (five simultaneous bolts observed). The original galaxy and ringed planet remain.
+  GPU timing of the four-tap shadow treatment added approximately 0.44 ms to the composite.
+- A calmer settled-flight window measured 11.32 ms median / 15.21 ms p95 GPU work, with 16.8 ms
+  p95 frame interval. A busy thrust/fire window measured 22.34 / 42.57 ms GPU work and 100 ms
+  p95 frame interval. The nearby host-load sample was 84% CPU with about 30.7/32.3 GiB RAM used.
+  These measurements retain identical viewport/default quality; they are not a universal 60 fps
+  claim. Diagnostic background/material/shadow bypasses were restored and are not shipping settings.
+
+Focused renderer/VFX checks passed (80 tests), final distance-family/surface checks passed (18),
+and storage/compiler checks passed (17). The final Electron playable route passed all 16 checks:
+launch, authored hulls, world, native thrust, save/Continue, no uncaught or shader errors, and all
+asset requests served. Local timing details are in
+`.devshots/helios-remaster/final-ink-cost.json`, `final-layer-isolation.json`,
+`final-idle-perf.json` and `final-thrust-perf.json`.
+
+Two broader legacy validators remain red: parts-manifest reports 48 inherited metadata/schema
+failures, and SG04's catalog-count assertion expects 167 entries while the shared release manifest
+now contains 258. The latter already failed at 244 before this campaign's fourteen LOD additions.
+Those are not replaced by fabricated texture data or changed expected counts. The scoped 86-asset
+hash check is green; broader catalog cleanup remains separate work.
 
 ## Individual-model work outside this first-sector pass
 

@@ -1,0 +1,2173 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.atlas-production-v1-lod1.anchor.socket-camera-focus-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.800000011920929,
+        0.25,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus.001",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.atlas-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.800000011920929,
+        0.25,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.anchor.socket-cargo-ventral-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.4000000059604645,
+        -1.600000023841858,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral.001",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentNodeId": "sf.render.atlas-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.4000000059604645,
+        -1.600000023841858,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.anchor.socket-engine-main-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.800000190734863,
+        0.07999999821186066,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main.001",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.atlas-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.800000190734863,
+        0.07999999821186066,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.anchor.socket-mining-front-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.399999618530273,
+        -0.15000000596046448,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front.001",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.atlas-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.399999618530273,
+        -0.15000000596046448,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.anchor.socket-rcs-port-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2000000476837158,
+        0.15000000596046448,
+        2.5999999046325684,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port.001",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentNodeId": "sf.render.atlas-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2000000476837158,
+        0.15000000596046448,
+        2.5999999046325684,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.anchor.socket-rcs-starboard-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2000000476837158,
+        0.15000000596046448,
+        -2.5999999046325684,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard.001",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentNodeId": "sf.render.atlas-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2000000476837158,
+        0.15000000596046448,
+        -2.5999999046325684,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.anchor.socket-trail-main-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.199999809265137,
+        0.07999999821186066,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main.001",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.atlas-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.199999809265137,
+        0.07999999821186066,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.anchor.socket-trail-port-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10,
+        0.07999999821186066,
+        1.6799999475479126,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port.001",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.atlas-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10,
+        0.07999999821186066,
+        1.6799999475479126,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.anchor.socket-trail-starboard-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10,
+        0.07999999821186066,
+        -1.6799999475479126,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard.001",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.atlas-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10,
+        0.07999999821186066,
+        -1.6799999475479126,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.anchor.socket-utility-dorsal-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6000000238418579,
+        2,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal.001",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.atlas-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6000000238418579,
+        2,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.anchor.socket-weapon-front-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        9.800000190734863,
+        0.25,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front.001",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.atlas-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        9.800000190734863,
+        0.25,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.atlas-production-v1-lod1",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "8c79ceb57d440e954438737b8ccb6064c402b60c0a554f6044ea4f7dff7721b3",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          10.699999809265137,
+          1.449598789215088,
+          2.600177049636841
+        ],
+        "min": [
+          -10.600000381469727,
+          -1.449598789215088,
+          -2.600177049636841
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e8090628034a61deda638829a56a6c4962ed09a9f024ddc4b5ceda6228b1661a",
+      "id": "sf.render.atlas-production-v1-lod1.mesh.collision-hull-001.primitive.0",
+      "indexCount": 30,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_HULL_MESH.001",
+      "nodeId": "sf.render.atlas-production-v1-lod1.mesh.collision-hull-001",
+      "primitiveIndex": 0,
+      "vertexCount": 26
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6599999666213989,
+          1.5499905347824097,
+          -0.26399269700050354
+        ],
+        "min": [
+          -1.100000023841858,
+          1.530009388923645,
+          -0.5040073394775391
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "964c6117368c8c16e2afe882168e0327cb1733cf7786b94d75349fc9e4758f38",
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-accent.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "9a5688d10df354dd60ece3a67890d0f4e95eb10263c8f60ed337de26f260fec8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.270",
+      "nodeId": "sf.render.atlas-production-v1-lod1.mesh.lod1-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 114
+    },
+    {
+      "bounds": {
+        "max": [
+          6.900001049041748,
+          3.1702256202697754,
+          3.5704121589660645
+        ],
+        "min": [
+          -11.264999389648438,
+          -0.7702262997627258,
+          -3.5704121589660645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4bc12de8965fb50e06cfe246e6688130bff454165708d65d64f011a61c3acf59",
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-armor.primitive.0",
+      "indexCount": 15756,
+      "indexed": true,
+      "materialHash": "61e8fbc2177a0e6c2bbd655f548c1f7bba456190c77c0fcc5e9ac9982988b90f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.140",
+      "nodeId": "sf.render.atlas-production-v1-lod1.mesh.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 3363
+    },
+    {
+      "bounds": {
+        "max": [
+          6.820000171661377,
+          2.780017375946045,
+          0.5500034689903259
+        ],
+        "min": [
+          4.179999828338623,
+          2.0416038036346436,
+          -0.5500034689903259
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bdaa9fbde7f3636346d6c4cf9d268d675b615d37eb42e9f8fecfd1b5d6ba8879",
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-canopy.primitive.0",
+      "indexCount": 804,
+      "indexed": true,
+      "materialHash": "e6c3a55ca9fec0f5967eb6ecb79b1e29c898d5f9c6b4a6f7bd79406abdab911b",
+      "materialPipelineKey": "blend",
+      "meshName": "Bridge_Glass_Mesh.001",
+      "nodeId": "sf.render.atlas-production-v1-lod1.mesh.lod1-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 222
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.690001487731934,
+          1.0624675750732422,
+          2.346172571182251
+        ],
+        "min": [
+          -11.741000175476074,
+          -0.5660592317581177,
+          -2.346172571182251
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2ab10db67c04b3f10453d366b66e77417bdd6ab65c7386c5dc5157195b8ae744",
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-ceramic.primitive.0",
+      "indexCount": 2376,
+      "indexed": true,
+      "materialHash": "5d74f67d76bd5747492c9e09d78ffed1b0257405ece8d447aec91a3728ab5ee6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.145",
+      "nodeId": "sf.render.atlas-production-v1-lod1.mesh.lod1-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 640
+    },
+    {
+      "bounds": {
+        "max": [
+          11,
+          1.5605049133300781,
+          2.3998444080352783
+        ],
+        "min": [
+          -10.149999618530273,
+          -1.36991286277771,
+          -2.3998444080352783
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "09f5f9b19fe8e4228677b01959c42c9e22376b1f3e3ab37278f957368b6b9a48",
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-hull.primitive.0",
+      "indexCount": 6180,
+      "indexed": true,
+      "materialHash": "d9df6bdbd93761527519ff7adaa921fdb4cb6d1de1c8207b30ae8e6c528d98c4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Pressure_Hull_Mesh.001",
+      "nodeId": "sf.render.atlas-production-v1-lod1.mesh.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 1698
+    },
+    {
+      "bounds": {
+        "max": [
+          8.25,
+          3.158673048019409,
+          3.2805373668670654
+        ],
+        "min": [
+          -11.885499954223633,
+          -1.6000571250915527,
+          -3.2805373668670654
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "943d0e01f2a00f5a1e36710f3761f8ff397702a851b593c12d83b9badec0b4f8",
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-mechanical.primitive.0",
+      "indexCount": 22680,
+      "indexed": true,
+      "materialHash": "fe199604c81459594049f23c2ef869c6d7e765b79031a95481bf195c7240c317",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.216",
+      "nodeId": "sf.render.atlas-production-v1-lod1.mesh.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 8590
+    },
+    {
+      "bounds": {
+        "max": [
+          -11.3414945602417,
+          0.9979418516159058,
+          2.618000030517578
+        ],
+        "min": [
+          -11.426505088806152,
+          -0.8379418253898621,
+          -2.617999792098999
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4163d2702864ca9861755e9f3c8f2eac4ed137d40f21a8a56f42cb1926163500",
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-radiator.primitive.0",
+      "indexCount": 2256,
+      "indexed": true,
+      "materialHash": "1119c6ecb65cca176db69c7b1c06fcd935dcc0ab47b717d16b1b4222496f0dec",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.148",
+      "nodeId": "sf.render.atlas-production-v1-lod1.mesh.lod1-radiator",
+      "primitiveIndex": 0,
+      "vertexCount": 568
+    },
+    {
+      "bounds": {
+        "max": [
+          -11.876928329467773,
+          0.32867828011512756,
+          1.9550000429153442
+        ],
+        "min": [
+          -11.979072570800781,
+          -0.16867826879024506,
+          -1.9550001621246338
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "506e23595dc5ef6d3d5bdd99a7f437f71f0cc8bb825abaee852e97e9aa43aac8",
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-thruster.primitive.0",
+      "indexCount": 1968,
+      "indexed": true,
+      "materialHash": "1862618cc668036602c2f268bd533e2052e9d348d3eaa5a94b7ba2998823799b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.147",
+      "nodeId": "sf.render.atlas-production-v1-lod1.mesh.lod1-thruster",
+      "primitiveIndex": 0,
+      "vertexCount": 496
+    },
+    {
+      "bounds": {
+        "max": [
+          0.940000057220459,
+          1.551997423171997,
+          0.6120128035545349
+        ],
+        "min": [
+          0.3800000250339508,
+          1.5280025005340576,
+          0.25198718905448914
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9aa0dd11218b61269d515bf8ad09b4a501ffbf8d71f04b4c7a78052c1211cf8f",
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-warning.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "87280e6da392c5338b594db640ccb61ebb5c3d1445d7841bbd50ac4d4548473a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.269",
+      "nodeId": "sf.render.atlas-production-v1-lod1.mesh.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 114
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "1119c6ecb65cca176db69c7b1c06fcd935dcc0ab47b717d16b1b4222496f0dec",
+      "id": "material:1119c6ecb65cca176db69c7b",
+      "name": "Material_Radiator",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "1862618cc668036602c2f268bd533e2052e9d348d3eaa5a94b7ba2998823799b",
+      "id": "material:1862618cc668036602c2f268",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5d74f67d76bd5747492c9e09d78ffed1b0257405ece8d447aec91a3728ab5ee6",
+      "id": "material:5d74f67d76bd5747492c9e09",
+      "name": "Material_Ceramic",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "61e8fbc2177a0e6c2bbd655f548c1f7bba456190c77c0fcc5e9ac9982988b90f",
+      "id": "material:61e8fbc2177a0e6c2bbd655f",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "87280e6da392c5338b594db640ccb61ebb5c3d1445d7841bbd50ac4d4548473a",
+      "id": "material:87280e6da392c5338b594db6",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9a5688d10df354dd60ece3a67890d0f4e95eb10263c8f60ed337de26f260fec8",
+      "id": "material:9a5688d10df354dd60ece3a6",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "d9df6bdbd93761527519ff7adaa921fdb4cb6d1de1c8207b30ae8e6c528d98c4",
+      "id": "material:d9df6bdbd93761527519ff7a",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e6c3a55ca9fec0f5967eb6ecb79b1e29c898d5f9c6b4a6f7bd79406abdab911b",
+      "id": "material:e6c3a55ca9fec0f5967eb6ec",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fe199604c81459594049f23c2ef869c6d7e765b79031a95481bf195c7240c317",
+      "id": "material:fe199604c81459594049f23c",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.atlas-production-v1-lod1.mesh.collision-hull-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_HULL.001",
+      "nodeName": "COLLISION_HULL.001",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.atlas-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Accent",
+      "nodeName": "LOD1_Accent",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.atlas-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.atlas-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_Canopy",
+      "nodeName": "LOD1_Canopy",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.atlas-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Ceramic",
+      "nodeName": "LOD1_Ceramic",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.atlas-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.atlas-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.atlas-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-radiator",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Radiator",
+      "nodeName": "LOD1_Radiator",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.atlas-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-thruster",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Thruster",
+      "nodeName": "LOD1_Thruster",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.atlas-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.mesh.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.atlas-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.atlas-production-v1-lod1.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "ATLAS_LOD1_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.atlas-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "1ca6cdb429b0746590bb48f4c1b9b1330fb2fb3df581a1d4239ed9c95a4cd0f3"
+    },
+    "sourceGlb": {
+      "bytes": 247288,
+      "sha256": "f86417a1ffe001500581f56221047bdb6d6efe6ad13eeecae161048c9900a646",
+      "uri": "atlas_production_v1_lod1.glb"
+    },
+    "sourceManifest": {
+      "bytes": 179326,
+      "sha256": "6f38482c6ba49ddda392cc655547048454d0cdd9877c62fa54f338d42f2117cf",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 551520,
+    "sha256": "07dfa0a6fd27a770934619475747f0d2571d3333f492a810310496a55d4eed80",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.4895362854003906,
+        0.7850842475891113,
+        0
+      ],
+      "max": [
+        11,
+        3.1702256202697754,
+        3.5704121589660645
+      ],
+      "min": [
+        -11.979072570800781,
+        -1.6000571250915527,
+        -3.5704121589660645
+      ],
+      "size": [
+        22.97907257080078,
+        4.770282745361328,
+        7.140824317932129
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.800000011920929,
+          0.25,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus001",
+        "planIndex": 12,
+        "tags": {
+          "socket": true,
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus.001",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.anchor.socket-camera-focus-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.4000000059604645,
+          -1.600000023841858,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral001",
+        "planIndex": 13,
+        "tags": {
+          "socket": true,
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral.001",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.anchor.socket-cargo-ventral-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -9.800000190734863,
+          0.07999999821186066,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main001",
+        "planIndex": 14,
+        "tags": {
+          "socket": true,
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main.001",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.anchor.socket-engine-main-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.399999618530273,
+          -0.15000000596046448,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front001",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front.001",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.anchor.socket-mining-front-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.2000000476837158,
+          0.15000000596046448,
+          2.5999999046325684,
+          1
+        ],
+        "name": "SOCKET_RCS_Port001",
+        "planIndex": 16,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port.001",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.anchor.socket-rcs-port-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.2000000476837158,
+          0.15000000596046448,
+          -2.5999999046325684,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard001",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard.001",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.anchor.socket-rcs-starboard-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10.199999809265137,
+          0.07999999821186066,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main001",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main.001",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.anchor.socket-trail-main-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10,
+          0.07999999821186066,
+          1.6799999475479126,
+          1
+        ],
+        "name": "SOCKET_Trail_Port001",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port.001",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.anchor.socket-trail-port-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10,
+          0.07999999821186066,
+          -1.6799999475479126,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard001",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard.001",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.anchor.socket-trail-starboard-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.6000000238418579,
+          2,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal001",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal.001",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.anchor.socket-utility-dorsal-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          9.800000190734863,
+          0.25,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front001",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front.001",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.anchor.socket-weapon-front-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "ceramic": 1,
+      "drive": 1,
+      "glass": 1,
+      "hull": 2,
+      "mechanical": 1,
+      "radiator": 1,
+      "warning": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "warning"
+      }
+    ],
+    "nodeCount": 23,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Accent",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Canopy",
+        "planIndex": 5,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Ceramic",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Radiator",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Thruster",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/atlas_production_v1_lod1.glb"
+  },
+  "runtimeHash": "e87088bb73e34e0af3ff6a675c5bcbdd8649e9e6190ab7c856ed8e347fd71c32",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          11,
+          3.1702256202697754,
+          3.5704121589660645
+        ],
+        "min": [
+          -11.979072570800781,
+          -1.6000571250915527,
+          -3.5704121589660645
+        ]
+      },
+      "id": "sf.render.atlas-production-v1-lod1.body",
+      "nodeIds": [
+        "sf.render.atlas-production-v1-lod1.mesh.collision-hull-001",
+        "sf.render.atlas-production-v1-lod1.mesh.lod1-accent",
+        "sf.render.atlas-production-v1-lod1.mesh.lod1-armor",
+        "sf.render.atlas-production-v1-lod1.mesh.lod1-canopy",
+        "sf.render.atlas-production-v1-lod1.mesh.lod1-ceramic",
+        "sf.render.atlas-production-v1-lod1.mesh.lod1-hull",
+        "sf.render.atlas-production-v1-lod1.mesh.lod1-mechanical",
+        "sf.render.atlas-production-v1-lod1.mesh.lod1-radiator",
+        "sf.render.atlas-production-v1-lod1.mesh.lod1-thruster",
+        "sf.render.atlas-production-v1-lod1.mesh.lod1-warning",
+        "sf.render.atlas-production-v1-lod1.root"
+      ]
+    }
+  ]
+}

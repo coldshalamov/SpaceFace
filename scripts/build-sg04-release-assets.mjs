@@ -68,9 +68,8 @@ const packageJson = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8
 // release/ uncompressed and unmanifested. Fold them into the standard build so they get meshopt
 // compression (their SOCKET_*/LOD* nodes are preserved by inspectReleaseAssetPair's parity check) and
 // a release_manifest.json entry — same release standard as the kestrel reference and every part.
-// Kestrel V4 ships LOD0 through the canonical player path. Its independently authored LOD1/LOD2
-// family members remain release-built and hash-bound for a future separate-file residency selector;
-// the current runtime deliberately decodes only LOD0 rather than tripling starter-ship residency.
+// External LOD siblings are separate releases: the runtime loads only the selected distance tier.
+// First-sector remasters must ship these alongside LOD0 or traffic silently remains full detail.
 const WHOLE_SHIP_FILES = [
   'kestrel.glb',
   'kestrel_lod1.glb',
@@ -80,6 +79,12 @@ const WHOLE_SHIP_FILES = [
   'drifter_production_v1.glb',
   'drifter_production_v1_lod1.glb',
   'drifter_production_v1_lod2.glb',
+  ...['wasp', 'hornet', 'bastion', 'mule', 'atlas', 'warden'].flatMap((name) => [
+    `${name}_production_v1_lod1.glb`,
+    `${name}_production_v1_lod2.glb`,
+  ]),
+  'massline_express_liner_v1_lod1.glb',
+  'massline_express_liner_v1_lod2.glb',
 ];
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
 const allAssets = [

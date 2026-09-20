@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "379f89880d6c90e07932e51865edc5b7a571e81d541bf0ac902e58f5631043e8",
+  "contentHash": "b326487b6d01b568bc727167ee29cd9c8f5e2b91da0e700c9dfa7a5ba7672abe",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -24,15 +24,65 @@
       },
       "drawMode": 4,
       "geometryHash": "9088ce3a1503013aa688d285e3d76bd7ca29b923dcaaf9dd4d08ea289d33bf1b",
-      "id": "sf.render.pod-47a-evidence-spindle.mesh.hook-emissive.primitive.0",
+      "id": "sf.render.pod-47a-evidence-spindle.node.hook-emissive.primitive.0",
       "indexCount": 180,
       "indexed": true,
       "materialHash": "c3adb1682fe8e610980b6e421f9d433249927a17796b8f9ccb8217016b422041",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_EMISSIVE_Mesh",
-      "nodeId": "sf.render.pod-47a-evidence-spindle.mesh.hook-emissive",
+      "nodeId": "sf.render.pod-47a-evidence-spindle.node.hook-emissive",
       "primitiveIndex": 0,
       "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          4.675960063934326,
+          2.426697254180908,
+          1.5455286502838135
+        ],
+        "min": [
+          -0.5759600400924683,
+          2.1798646450042725,
+          -1.6155287027359009
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1008f15d6a4620908f54f0f1eadf47bf82c5559b087d21d46781277efef37ceb",
+      "id": "sf.render.pod-47a-evidence-spindle.node.remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 768,
+      "indexed": true,
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_CargoCornerCasting",
+      "nodeId": "sf.render.pod-47a-evidence-spindle.node.remaster-material-mechanical-brushednickel",
+      "primitiveIndex": 0,
+      "vertexCount": 384
+    },
+    {
+      "bounds": {
+        "max": [
+          4.685817718505859,
+          2.5121030807495117,
+          1.5553231239318848
+        ],
+        "min": [
+          -0.5858180522918701,
+          2.0661370754241943,
+          -1.6253231763839722
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "030653e163fd212206a01088cd814faa644a1fdabc28893746e84d140acacc38",
+      "id": "sf.render.pod-47a-evidence-spindle.node.remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 1404,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_CargoCastingMount",
+      "nodeId": "sf.render.pod-47a-evidence-spindle.node.remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 936
     },
     {
       "bounds": {
@@ -49,13 +99,13 @@
       },
       "drawMode": 4,
       "geometryHash": "a8befab0edaec3a93fabd03521517faa859bd223a65c206f28f33b92668f1c45",
-      "id": "sf.render.pod-47a-evidence-spindle.mesh.spindle-custody-seals.primitive.0",
+      "id": "sf.render.pod-47a-evidence-spindle.node.spindle-custody-seals.primitive.0",
       "indexCount": 2592,
       "indexed": true,
       "materialHash": "57d8f73f7139257c08b98c218d91c3fe5c5a9d35bd9016bf312524c89a6bb9a8",
       "materialPipelineKey": "opaque",
       "meshName": "Spindle_Custody_Seals_Mesh",
-      "nodeId": "sf.render.pod-47a-evidence-spindle.mesh.spindle-custody-seals",
+      "nodeId": "sf.render.pod-47a-evidence-spindle.node.spindle-custody-seals",
       "primitiveIndex": 0,
       "vertexCount": 768
     },
@@ -74,13 +124,13 @@
       },
       "drawMode": 4,
       "geometryHash": "c2b2602b65dfbd3cd8726bd4096cff6aa9f9ab225cef1a5c43eeb2e548954e6a",
-      "id": "sf.render.pod-47a-evidence-spindle.mesh.spindle-evidence-bands.primitive.0",
+      "id": "sf.render.pod-47a-evidence-spindle.node.spindle-evidence-bands.primitive.0",
       "indexCount": 1296,
       "indexed": true,
       "materialHash": "ee715fbc8e466f0cdb3a33db51d74bad56e7ec27e35193e50de47cadd7faeeae",
       "materialPipelineKey": "opaque",
       "meshName": "Spindle_Evidence_Bands_Mesh",
-      "nodeId": "sf.render.pod-47a-evidence-spindle.mesh.spindle-evidence-bands",
+      "nodeId": "sf.render.pod-47a-evidence-spindle.node.spindle-evidence-bands",
       "primitiveIndex": 0,
       "vertexCount": 384
     },
@@ -99,13 +149,13 @@
       },
       "drawMode": 4,
       "geometryHash": "1c24c1d3ad2227206121b580bd3f057a8910b2ed943382faa43447bebd1bb03b",
-      "id": "sf.render.pod-47a-evidence-spindle.mesh.spindle-mechanical-merged.primitive.0",
+      "id": "sf.render.pod-47a-evidence-spindle.node.spindle-mechanical-merged.primitive.0",
       "indexCount": 7716,
       "indexed": true,
       "materialHash": "2865349544a1d989a4e841bcf7e6319b8396ba001150bc3ff853d90e72d5f616",
       "materialPipelineKey": "opaque",
       "meshName": "Spindle_Mechanical_Merged_Mesh",
-      "nodeId": "sf.render.pod-47a-evidence-spindle.mesh.spindle-mechanical-merged",
+      "nodeId": "sf.render.pod-47a-evidence-spindle.node.spindle-mechanical-merged",
       "primitiveIndex": 0,
       "vertexCount": 2448
     },
@@ -123,22 +173,79 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "772a8c65ec8c0c8ce030bb46cc73c60d8d4f530144d4855e4dad0f494d67a4ea",
-      "id": "sf.render.pod-47a-evidence-spindle.mesh.spindle-shell.primitive.0",
-      "indexCount": 6480,
+      "geometryHash": "82edb59fabb987c26619d630792a6faacbd3b33fea5e725cabdea8eb40254a8d",
+      "id": "sf.render.pod-47a-evidence-spindle.node.spindle-shell.primitive.0",
+      "indexCount": 6582,
       "indexed": true,
       "materialHash": "5a72217dd809fe169bf431005d12631109640fb74632180704954e3ffdd8a4fd",
       "materialPipelineKey": "opaque",
-      "meshName": "Spindle_Shell_Mesh",
-      "nodeId": "sf.render.pod-47a-evidence-spindle.mesh.spindle-shell",
+      "meshName": "Spindle_Shell_Mesh.001",
+      "nodeId": "sf.render.pod-47a-evidence-spindle.node.spindle-shell",
       "primitiveIndex": 0,
-      "vertexCount": 1920
+      "vertexCount": 1956
+    },
+    {
+      "bounds": {
+        "max": [
+          4.1408562660217285,
+          2.559985876083374,
+          0.6430085301399231
+        ],
+        "min": [
+          0.8067975044250488,
+          2.1514711380004883,
+          -0.6430085301399231
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "db39817143aa92ce5aaa81b1b192de63f1fc7fcee5ea500d2e6a30ac7ebf1e22",
+      "id": "sf.render.pod-47a-evidence-spindle.node.spindle-shell.primitive.1",
+      "indexCount": 54,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Spindle_Shell_Mesh.001",
+      "nodeId": "sf.render.pod-47a-evidence-spindle.node.spindle-shell",
+      "primitiveIndex": 1,
+      "vertexCount": 36
     }
   ],
   "hlods": [],
   "kind": "part",
   "lods": [],
   "materials": [
+    {
+      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "id": "material:09306e58ed6387f8ee509fc5",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
     {
       "hash": "2865349544a1d989a4e841bcf7e6319b8396ba001150bc3ff853d90e72d5f616",
       "id": "material:2865349544a1d989a4e841bc",
@@ -268,6 +375,38 @@
       ]
     },
     {
+      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "ee715fbc8e466f0cdb3a33db51d74bad56e7ec27e35193e50de47cadd7faeeae",
       "id": "material:ee715fbc8e466f0cdb3a33db",
       "name": "Material_Evidence",
@@ -302,7 +441,7 @@
   ],
   "nodes": [
     {
-      "id": "sf.render.pod-47a-evidence-spindle.mesh.hook-emissive",
+      "id": "sf.render.pod-47a-evidence-spindle.node.hook-emissive",
       "localTransform": [
         1,
         0,
@@ -328,7 +467,7 @@
         0,
         0
       ],
-      "parentId": "sf.render.pod-47a-evidence-spindle.root",
+      "parentId": "sf.render.pod-47a-evidence-spindle.node.pod-47a-evidence-spindle",
       "role": "immutable",
       "spatialClusterId": "sf.render.pod-47a-evidence-spindle.body",
       "worldTransform": [
@@ -351,7 +490,7 @@
       ]
     },
     {
-      "id": "sf.render.pod-47a-evidence-spindle.mesh.spindle-custody-seals",
+      "id": "sf.render.pod-47a-evidence-spindle.node.mount-child",
       "localTransform": [
         1,
         0,
@@ -365,19 +504,19 @@
         0,
         1,
         0,
-        0,
-        0,
+        5,
+        1,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Spindle_Custody_Seals",
-      "nodeName": "Spindle_Custody_Seals",
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOUNT_Child",
+      "nodeName": "MOUNT_Child",
       "nodePath": [
         0,
-        2
+        1
       ],
-      "parentId": "sf.render.pod-47a-evidence-spindle.root",
+      "parentId": "sf.render.pod-47a-evidence-spindle.node.pod-47a-evidence-spindle",
       "role": "immutable",
       "spatialClusterId": "sf.render.pod-47a-evidence-spindle.body",
       "worldTransform": [
@@ -393,161 +532,14 @@
         0,
         1,
         0,
-        0,
-        0,
+        5,
+        1,
         0,
         1
       ]
     },
     {
-      "id": "sf.render.pod-47a-evidence-spindle.mesh.spindle-evidence-bands",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Spindle_Evidence_Bands",
-      "nodeName": "Spindle_Evidence_Bands",
-      "nodePath": [
-        0,
-        3
-      ],
-      "parentId": "sf.render.pod-47a-evidence-spindle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.pod-47a-evidence-spindle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.pod-47a-evidence-spindle.mesh.spindle-mechanical-merged",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Spindle_Mechanical_Merged",
-      "nodeName": "Spindle_Mechanical_Merged",
-      "nodePath": [
-        0,
-        4
-      ],
-      "parentId": "sf.render.pod-47a-evidence-spindle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.pod-47a-evidence-spindle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.pod-47a-evidence-spindle.mesh.spindle-shell",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Spindle_Shell",
-      "nodeName": "Spindle_Shell",
-      "nodePath": [
-        0,
-        5
-      ],
-      "parentId": "sf.render.pod-47a-evidence-spindle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.pod-47a-evidence-spindle.body",
-      "worldTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.pod-47a-evidence-spindle.root",
+      "id": "sf.render.pod-47a-evidence-spindle.node.pod-47a-evidence-spindle",
       "localTransform": [
         1,
         0,
@@ -567,7 +559,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "pod_47a_evidence_spindle",
       "nodeName": "pod_47a_evidence_spindle",
       "nodePath": [
         0
@@ -593,26 +585,318 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.pod-47a-evidence-spindle.node.remaster-material-mechanical-brushednickel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-47a-evidence-spindle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-47a-evidence-spindle.node.remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-47a-evidence-spindle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-47a-evidence-spindle.node.spindle-custody-seals",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Spindle_Custody_Seals",
+      "nodeName": "Spindle_Custody_Seals",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.pod-47a-evidence-spindle.node.pod-47a-evidence-spindle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-47a-evidence-spindle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-47a-evidence-spindle.node.spindle-evidence-bands",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Spindle_Evidence_Bands",
+      "nodeName": "Spindle_Evidence_Bands",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.pod-47a-evidence-spindle.node.pod-47a-evidence-spindle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-47a-evidence-spindle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-47a-evidence-spindle.node.spindle-mechanical-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Spindle_Mechanical_Merged",
+      "nodeName": "Spindle_Mechanical_Merged",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.pod-47a-evidence-spindle.node.pod-47a-evidence-spindle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-47a-evidence-spindle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pod-47a-evidence-spindle.node.spindle-shell",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Spindle_Shell",
+      "nodeName": "Spindle_Shell",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.pod-47a-evidence-spindle.node.pod-47a-evidence-spindle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pod-47a-evidence-spindle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "b03f6a99e49c963c43db75916c322c6a7312e00d59e3491193965b91547b9b3a"
+      "sha256": "16566fe8aacb15d0aaa030d7aa2bdc25feea7371e7b26b90dc124f4c0b3ae943"
     },
     "sourceGlb": {
-      "bytes": 252716,
-      "sha256": "d77f5d877eb3033d094cf39ccbbbf3b4b60f71fb480aa724aa8dff13d2be887e",
+      "bytes": 280996,
+      "sha256": "c73b85b0ac80507ef40a4430f0cf3a09b5e7671c9b08901a2572a74976346a9f",
       "uri": "pod_47a_evidence_spindle.glb"
     },
     "sourceManifest": {
-      "bytes": 169845,
-      "sha256": "d8a1979a58009e8c4efa626e4c3d7fe169173c60d29819e29d38cce687df66f4",
+      "bytes": 169401,
+      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 352732,
-    "sha256": "b5ab288f3bb981887a455a6e6fee1bb451d0aed4fa5b7241a3c0c43c49df2b5c",
+    "bytes": 396320,
+    "sha256": "8207c2bc6d5f32703cab797cf89a6ff3ec91b9009dc3371e66cb1fd20a3e34ea",
     "uri": "render.glb"
   },
   "runtime": {
@@ -620,22 +904,22 @@
       "center": [
         2.049999952316284,
         1.7950000064447522,
-        -0.034860968589782715
+        -0.0350000262260437
       ],
       "max": [
         4.809999942779541,
         3.6100008487701416,
-        1.5551679134368896
+        1.5553231239318848
       ],
       "min": [
         -0.7100000381469727,
         -0.02000083588063717,
-        -1.624889850616455
+        -1.6253231763839722
       ],
       "size": [
         5.519999980926514,
         3.6300016846507788,
-        3.1800577640533447
+        3.180646300315857
       ]
     },
     "hidden": [],
@@ -679,13 +963,20 @@
           ],
           "name": "MOUNT_Child",
           "role": "stack",
-          "spacefaceMount": true
+          "spacefaceMount": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOUNT_Child",
+            "recordIds": [
+              "sf.render.pod-47a-evidence-spindle.node.mount-child"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
         }
       }
     ],
     "materialProfileRoles": {
       "hull": 4,
-      "mechanical": 1
+      "mechanical": 4
     },
     "materialProfiles": [
       {
@@ -710,11 +1001,26 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
+        "planIndex": 8,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 8,
+    "nodeCount": 12,
     "primitives": [
       {
         "canopy": false,
@@ -840,10 +1146,92 @@
           0,
           1
         ],
-        "name": "Spindle_Shell",
-        "planIndex": 7,
+        "name": "Spindle_Shell_Mesh001",
+        "planIndex": 8,
         "tags": {
           "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Spindle_Shell_Mesh001_1",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
         }
       }
     ],
@@ -851,7 +1239,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb"
   },
-  "runtimeHash": "2be147ef4be7164e15b9177950da04e144baaf06dba31bdd3840ddb85490a759",
+  "runtimeHash": "0d2e23dde839266d889d2f6e3336a506192275aeb7a97dd2496051137968305d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -859,22 +1247,25 @@
         "max": [
           4.809999942779541,
           3.6100008487701416,
-          1.5551679134368896
+          1.5553231239318848
         ],
         "min": [
           -0.7100000381469727,
           -0.02000083588063717,
-          -1.624889850616455
+          -1.6253231763839722
         ]
       },
       "id": "sf.render.pod-47a-evidence-spindle.body",
       "nodeIds": [
-        "sf.render.pod-47a-evidence-spindle.mesh.hook-emissive",
-        "sf.render.pod-47a-evidence-spindle.mesh.spindle-custody-seals",
-        "sf.render.pod-47a-evidence-spindle.mesh.spindle-evidence-bands",
-        "sf.render.pod-47a-evidence-spindle.mesh.spindle-mechanical-merged",
-        "sf.render.pod-47a-evidence-spindle.mesh.spindle-shell",
-        "sf.render.pod-47a-evidence-spindle.root"
+        "sf.render.pod-47a-evidence-spindle.node.hook-emissive",
+        "sf.render.pod-47a-evidence-spindle.node.mount-child",
+        "sf.render.pod-47a-evidence-spindle.node.pod-47a-evidence-spindle",
+        "sf.render.pod-47a-evidence-spindle.node.remaster-material-mechanical-brushednickel",
+        "sf.render.pod-47a-evidence-spindle.node.remaster-material-mechanical-shadowenamel",
+        "sf.render.pod-47a-evidence-spindle.node.spindle-custody-seals",
+        "sf.render.pod-47a-evidence-spindle.node.spindle-evidence-bands",
+        "sf.render.pod-47a-evidence-spindle.node.spindle-mechanical-merged",
+        "sf.render.pod-47a-evidence-spindle.node.spindle-shell"
       ]
     }
   ]

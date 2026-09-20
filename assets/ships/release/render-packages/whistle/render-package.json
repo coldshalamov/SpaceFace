@@ -6,9 +6,59 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9f4f09793e4e51a26f18ec90d818f7757282ef97f41d4b014084990562c4e736",
+  "contentHash": "3163632f99d5dd8edf85630346f09a1b9f2c6bc79ef2bb3de87e0ece9171c803",
   "dynamicGroups": [],
   "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.1584296077489853,
+          0.3630000054836273,
+          0.3819824457168579
+        ],
+        "min": [
+          -0.1584296077489853,
+          -0.3630000054836273,
+          0.35743311047554016
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "da1549e4e4ab9da1331fbcad7ed05c8776d402c65ffaa3d3238bbe159eb7af6d",
+      "id": "sf.render.whistle.node.remaster-material-mechanical-brushednickel.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_InsetInstrumentFin0",
+      "nodeId": "sf.render.whistle.node.remaster-material-mechanical-brushednickel",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          0.20182983577251434,
+          0.47519996762275696,
+          0.31001272797584534
+        ],
+        "min": [
+          -0.20182983577251434,
+          -0.47519996762275696,
+          0.2890132665634155
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ce05264328bfbd72e1e86ef3aff18a79adcdd138ec488fdf2c9b2bfa72c400db",
+      "id": "sf.render.whistle.node.remaster-material-mechanical-shadowenamel.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialPipelineKey": "opaque",
+      "meshName": "Remaster_ServiceWell_Inner",
+      "nodeId": "sf.render.whistle.node.remaster-material-mechanical-shadowenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
     {
       "bounds": {
         "max": [
@@ -23,14 +73,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e2b9f22a6bce2cada4b459a54919444aa7bc2c24740fa8fa0a1edaec8e93a4f",
-      "id": "sf.render.whistle.mesh.whistle-antenna-clamp.primitive.0",
+      "geometryHash": "d5b04f5042dde4216df5baf5452b9fd08f44985b63094ed31237aa7abb2f93bf",
+      "id": "sf.render.whistle.node.whistle-antenna-clamp.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
-      "nodeId": "sf.render.whistle.mesh.whistle-antenna-clamp",
+      "nodeId": "sf.render.whistle.node.whistle-antenna-clamp",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -39,7 +89,7 @@
         "max": [
           2.2799729748325603,
           9.693310532662736,
-          -0.39255839048226804
+          -0.3925584411462175
         ],
         "min": [
           1.3920273754043393,
@@ -48,39 +98,39 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "34c57556db2f28fae92a15e5fe762a7adc828cc4a08f5c0c77d08b7148aeeb8f",
-      "id": "sf.render.whistle.mesh.whistle-antenna-s-0.primitive.0",
+      "geometryHash": "82a9da309273ae97497871b20833d92cd05c2307cd4d65929ecc05ea6f454b12",
+      "id": "sf.render.whistle.node.whistle-antenna-s-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.031",
-      "nodeId": "sf.render.whistle.mesh.whistle-antenna-s-0",
+      "nodeId": "sf.render.whistle.node.whistle-antenna-s-0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          2.2912159131896033,
+          2.291216115845401,
           10.6351387622816,
-          -0.29908418898257594
+          -0.2990842143145507
         ],
         "min": [
-          1.9247846428025355,
+          1.9247848454583334,
           9.628861935808004,
-          -0.8569159569295977
+          -0.8569160582574966
         ]
       },
       "drawMode": 4,
-      "geometryHash": "886a5bc576b645a5bbc5aca2854ae3bc1ebcca90050faaabcfc36b6a524ea251",
-      "id": "sf.render.whistle.mesh.whistle-antenna-s-1.primitive.0",
+      "geometryHash": "f6d041ae5b5c3253ce38a005fdb3af5e1c18ccd5bfe9167563ad7f43a668f573",
+      "id": "sf.render.whistle.node.whistle-antenna-s-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.032",
-      "nodeId": "sf.render.whistle.mesh.whistle-antenna-s-1",
+      "nodeId": "sf.render.whistle.node.whistle-antenna-s-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -88,74 +138,74 @@
       "bounds": {
         "max": [
           2.7575054226904854,
-          11.595558634801705,
-          -0.2904574863127394
+          11.595560256048088,
+          -0.29045753697668886
         ],
         "min": [
           1.9344946927041065,
-          10.572443543390477,
-          -0.7295426841565487
+          10.57244516463686,
+          -0.7295427348204981
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82e0e9b9162988d8a1d505cd51dbf1f45eced393b4fff06ea15b34737d501425",
-      "id": "sf.render.whistle.mesh.whistle-antenna-s-2.primitive.0",
+      "geometryHash": "3870f3660531aa09c4d57141df20dd0fff3ef7999010f14befb2dc727015da05",
+      "id": "sf.render.whistle.node.whistle-antenna-s-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.033",
-      "nodeId": "sf.render.whistle.mesh.whistle-antenna-s-2",
+      "nodeId": "sf.render.whistle.node.whistle-antenna-s-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          0.6221408362848848,
-          11.32200167942051,
+          0.6221408869488343,
+          11.322002490043701,
           0.05098911070793122
         ],
         "min": [
-          0.5338593096272888,
-          10.302001002311727,
+          0.5338593602912383,
+          10.302001812934918,
           -0.05098911070793122
         ]
       },
       "drawMode": 4,
-      "geometryHash": "80da33efd3bb9049cfc8caa8fb5a614099a9ead99c3bea5adb22252f7dda5326",
-      "id": "sf.render.whistle.mesh.whistle-basket-bar-0.primitive.0",
+      "geometryHash": "8558d4212b138f50be38e20363066c9e9b06ac93b48d5a5affeac8de10001feb",
+      "id": "sf.render.whistle.node.whistle-basket-bar-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.021",
-      "nodeId": "sf.render.whistle.mesh.whistle-basket-bar-0",
+      "nodeId": "sf.render.whistle.node.whistle-basket-bar-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -0.5338593096272888,
-          11.32200167942051,
+          -0.5338593602912383,
+          11.322002490043701,
           0.05098911070793122
         ],
         "min": [
-          -0.6221408362848848,
-          10.302001002311727,
+          -0.6221408869488343,
+          10.302001812934918,
           -0.05098911070793122
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a6bef636cb61767c1130d8921ebf563819a18e6ad8063f80695eba00b6ffa1a1",
-      "id": "sf.render.whistle.mesh.whistle-basket-bar-1.primitive.0",
+      "geometryHash": "1c8b02a6c26ed43251f8c6862b32e01beb716131dd2ebaf202603f1ec0d080cf",
+      "id": "sf.render.whistle.node.whistle-basket-bar-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.022",
-      "nodeId": "sf.render.whistle.mesh.whistle-basket-bar-1",
+      "nodeId": "sf.render.whistle.node.whistle-basket-bar-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -163,24 +213,24 @@
       "bounds": {
         "max": [
           0.04414075699580433,
-          11.32200167942051,
-          -0.5270109622481556
+          11.322002490043701,
+          -0.5270110129121051
         ],
         "min": [
           -0.04414075699580433,
-          10.302001002311727,
-          -0.628989183664018
+          10.302001812934918,
+          -0.6289892343279675
         ]
       },
       "drawMode": 4,
-      "geometryHash": "59f01e3c967e573655459e3a8a6c030b3e9e97f16ff58277711900316c97ea91",
-      "id": "sf.render.whistle.mesh.whistle-basket-bar-2.primitive.0",
+      "geometryHash": "657250fa491fd34f1206524f774072b30d7b13ac20c4b2d10ff9d8a98a4959b0",
+      "id": "sf.render.whistle.node.whistle-basket-bar-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.023",
-      "nodeId": "sf.render.whistle.mesh.whistle-basket-bar-2",
+      "nodeId": "sf.render.whistle.node.whistle-basket-bar-2",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -188,99 +238,99 @@
       "bounds": {
         "max": [
           0.04414075699580433,
-          11.32200167942051,
-          0.628989183664018
+          11.322002490043701,
+          0.6289892343279675
         ],
         "min": [
           -0.04414075699580433,
-          10.302001002311727,
-          0.5270109622481556
+          10.302001812934918,
+          0.5270110129121051
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c0ebd1bba5fcadb4a2c65b823320dd8250b505409b332da9845491822e194bca",
-      "id": "sf.render.whistle.mesh.whistle-basket-bar-3.primitive.0",
+      "geometryHash": "d0f5e718f6580bf357560a95a18e74eb734006ae526f583bab78d5ba237e8e67",
+      "id": "sf.render.whistle.node.whistle-basket-bar-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.024",
-      "nodeId": "sf.render.whistle.mesh.whistle-basket-bar-3",
+      "nodeId": "sf.render.whistle.node.whistle-basket-bar-3",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.5900133566649757,
-          10.405748611499234,
-          0.044210438925320616
+          0.5900134073289252,
+          10.405749422122426,
+          0.04421046425729536
         ],
         "min": [
-          -0.012013275792646771,
-          10.15745472788683,
-          -0.044210438925320616
+          -0.012013281334016246,
+          10.157455538510021,
+          -0.04421046425729536
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f64a65a542bd9e3d576808383480f59727c280ccb81f9b4181b9f2d0763e9e22",
-      "id": "sf.render.whistle.mesh.whistle-basket-gather-0.primitive.0",
+      "geometryHash": "91320396e4afdd7c6af7ba4d49817cf14bb4ee52a6b17b29c5d89827a4c593fe",
+      "id": "sf.render.whistle.node.whistle-basket-gather-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.025",
-      "nodeId": "sf.render.whistle.mesh.whistle-basket-gather-0",
+      "nodeId": "sf.render.whistle.node.whistle-basket-gather-0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          0.038287370422040556,
-          10.405748611499234,
-          0.022105217879411887
+          0.038287357756053186,
+          10.405749422122426,
+          0.022105192547437147
         ],
         "min": [
           -0.3272874163995745,
-          10.15745472788683,
+          10.157455538510021,
           -0.5226679978347661
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0b35bdf0443f0314efc1f689f102301d3e0c0a742370551b571e16b8c239341",
-      "id": "sf.render.whistle.mesh.whistle-basket-gather-1.primitive.0",
+      "geometryHash": "f01576ab97578301146806d8399491b51def529e1aede06e084a72f8b0926b39",
+      "id": "sf.render.whistle.node.whistle-basket-gather-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.026",
-      "nodeId": "sf.render.whistle.mesh.whistle-basket-gather-1",
+      "nodeId": "sf.render.whistle.node.whistle-basket-gather-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          0.03828740842000267,
-          10.405748611499234,
-          0.5226679471708167
+          0.038287405253505824,
+          10.405749422122426,
+          0.5226679978347661
         ],
         "min": [
-          -0.3272874417315492,
-          10.15745472788683,
-          -0.022105211546418202
+          -0.32728746706352396,
+          10.157455538510021,
+          -0.022105190964188726
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0247deb05c2327120a6ab575d671ae2180bfc68ac17d80a05d2cf7686929b606",
-      "id": "sf.render.whistle.mesh.whistle-basket-gather-2.primitive.0",
+      "geometryHash": "a37eb69b0b5cd01acc111394a50ed79673e841253f23cbf553f0babc0ddd5ff7",
+      "id": "sf.render.whistle.node.whistle-basket-gather-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.027",
-      "nodeId": "sf.render.whistle.mesh.whistle-basket-gather-2",
+      "nodeId": "sf.render.whistle.node.whistle-basket-gather-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -298,14 +348,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "376d6aeb9b645d652eed90ac3c749207362ea0cf4011c19caa90c12d4ae9f85a",
-      "id": "sf.render.whistle.mesh.whistle-basket-ring-lo.primitive.0",
+      "geometryHash": "c5ac47f323a0208c6215d9441f07e8e116f78cfa10f82c3af5e7b4b8866f5d93",
+      "id": "sf.render.whistle.node.whistle-basket-ring-lo.primitive.0",
       "indexCount": 288,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Torus",
-      "nodeId": "sf.render.whistle.mesh.whistle-basket-ring-lo",
+      "nodeId": "sf.render.whistle.node.whistle-basket-ring-lo",
       "primitiveIndex": 0,
       "vertexCount": 120
     },
@@ -313,24 +363,24 @@
       "bounds": {
         "max": [
           0.6256000187635422,
-          11.328779299926168,
+          11.32878011054936,
           0.6256000187635422
         ],
         "min": [
           -0.6256000187635422,
-          11.233623485947305,
+          11.233624296570497,
           -0.6256000187635422
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fbdd8afadf41bc797268bacdbbaab06f9a9851d02587b4e31db0c833753bb342",
-      "id": "sf.render.whistle.mesh.whistle-basket-ring.primitive.0",
+      "geometryHash": "8b0798aeb074e66b2e6fb98d5711e17059b117abb5aa6c8a05e25dbe028c9ea0",
+      "id": "sf.render.whistle.node.whistle-basket-ring.primitive.0",
       "indexCount": 288,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.001",
-      "nodeId": "sf.render.whistle.mesh.whistle-basket-ring",
+      "nodeId": "sf.render.whistle.node.whistle-basket-ring",
       "primitiveIndex": 0,
       "vertexCount": 120
     },
@@ -339,7 +389,7 @@
         "max": [
           -1.6847376342307143,
           0.13938693646155897,
-          -0.8581638100052942
+          -0.8581640126610921
         ],
         "min": [
           -2.636737563658812,
@@ -348,14 +398,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df4231740682b1392e5fd74e26803c3ef0294e35158ec6772cccd126c09bffb5",
-      "id": "sf.render.whistle.mesh.whistle-boot-sole.primitive.0",
+      "geometryHash": "1c726eaeaaa6b46a7503fc5092078f331121c919c8190145ded3ca4aa5dd88c5",
+      "id": "sf.render.whistle.node.whistle-boot-sole.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.017",
-      "nodeId": "sf.render.whistle.mesh.whistle-boot-sole",
+      "nodeId": "sf.render.whistle.node.whistle-boot-sole",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -363,24 +413,24 @@
       "bounds": {
         "max": [
           -1.9907373509894342,
-          0.47599434101565663,
+          0.4759943916796061,
           -1.062163925161471
         ],
         "min": [
           -2.670737532187559,
-          0.03400573471949686,
+          0.0340057600514716,
           -1.7421640050316967
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5ff7927783f25039a40124501021bb92ceae835d8af2a0b81c64fd902a216042",
-      "id": "sf.render.whistle.mesh.whistle-boot.primitive.0",
+      "geometryHash": "1384648eef3acc5c26b2a3ab63e1f5102c1f42725ab4e8d96f76bf178143e763",
+      "id": "sf.render.whistle.node.whistle-boot.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.016",
-      "nodeId": "sf.render.whistle.mesh.whistle-boot",
+      "nodeId": "sf.render.whistle.node.whistle-boot",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -392,45 +442,45 @@
           -0.725494178617538
         ],
         "min": [
-          1.4051595724374977,
+          1.4051596737653966,
           3.806892406432553,
           -1.0268064667703527
         ]
       },
       "drawMode": 4,
-      "geometryHash": "541812031e1c870b0ee23d5e34946e30cb04f9d89042671bb3a9733f616b7fb0",
-      "id": "sf.render.whistle.mesh.whistle-chain-0-1.primitive.0",
+      "geometryHash": "02b950ee7f23918825884b8f0e0e7361d43f4cb5936666223e6b2822026db65d",
+      "id": "sf.render.whistle.node.whistle-chain-0-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.004",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-0-1",
+      "nodeId": "sf.render.whistle.node.whistle-chain-0-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          2.0252923937486855,
+          2.0252925964044834,
           3.861181868137521,
           -0.8477536856498062
         ],
         "min": [
-          1.6298395971645903,
+          1.6298399011482871,
           2.942619334743142,
           -1.1490538144547457
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3df502ddf0b9397bd2e4ad310f0020aca7f6529b81673bfb3ebc862b2cb38d82",
-      "id": "sf.render.whistle.mesh.whistle-chain-0-2.primitive.0",
+      "geometryHash": "7e68d10086d35209dfec8b096218b6a4d0bfaa0a713fac8d96d0a1feae19eb69",
+      "id": "sf.render.whistle.node.whistle-chain-0-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-0-2",
+      "nodeId": "sf.render.whistle.node.whistle-chain-0-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -439,23 +489,23 @@
         "max": [
           2.2469029937604716,
           3.0079158434563738,
-          -0.9700038705153702
+          -0.9700039718432691
         ],
         "min": [
           1.8557955427953914,
           2.265884749072711,
-          -1.271310686961641
+          -1.27131078828954
         ]
       },
       "drawMode": 4,
-      "geometryHash": "028d4ee0690b1eb8060aa63810f1c918d0d32ac1e02166686b26d84b89dbaa03",
-      "id": "sf.render.whistle.mesh.whistle-chain-0-3.primitive.0",
+      "geometryHash": "ebc0dd3d6d669ad5852072a4a873005196cd18257374331dae55a1ba0db26982",
+      "id": "sf.render.whistle.node.whistle-chain-0-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.006",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-0-3",
+      "nodeId": "sf.render.whistle.node.whistle-chain-0-3",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -469,43 +519,43 @@
         "min": [
           2.082455109356573,
           1.7240577227664744,
-          -1.39355550144856
+          -1.393555704104358
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a381491f8164afd53cd85a81f2ce29863affdcb318b11d1d59afc86c0f09e8de",
-      "id": "sf.render.whistle.mesh.whistle-chain-0-4.primitive.0",
+      "geometryHash": "e13c96767f2ed36b65e232878f924c4049ee567d7de99389b922199e5ab67d0c",
+      "id": "sf.render.whistle.node.whistle-chain-0-4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-0-4",
+      "nodeId": "sf.render.whistle.node.whistle-chain-0-4",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -1.37049306898939,
+          -1.3704932716451879,
           4.844685451975579,
           -0.7889570070072338
         ],
         "min": [
-          -1.7614357607907607,
+          -1.7614359634465586,
           3.2735653722585027,
           -1.0952007720105996
         ]
       },
       "drawMode": 4,
-      "geometryHash": "894e663c3e132983939647bf4bcf55dac31a0d50260d8aa183c7979c1c8ffb74",
-      "id": "sf.render.whistle.mesh.whistle-chain-1-1.primitive.0",
+      "geometryHash": "1c984786791c952c02df755d538cdd50cf5079f634084a6ee58f91d32ae30560",
+      "id": "sf.render.whistle.node.whistle-chain-1-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.008",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-1-1",
+      "nodeId": "sf.render.whistle.node.whistle-chain-1-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -513,49 +563,49 @@
       "bounds": {
         "max": [
           -1.5895100800993873,
-          3.3101113055765268,
-          -0.920424737521472
+          3.3101115082323247,
+          -0.920424838849371
         ],
         "min": [
           -1.9794315893350358,
-          1.9861399015578058,
-          -1.226638661458594
+          1.9861401042136038,
+          -1.226638762786493
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d299369e2b9e94319ffad2506dc806a69c0eda20dce8ad50e94e1887ea59f2a",
-      "id": "sf.render.whistle.mesh.whistle-chain-1-2.primitive.0",
+      "geometryHash": "7464921e416ef95346770faf3b2f074e196fb789926d100f96c71ed598d5f43f",
+      "id": "sf.render.whistle.node.whistle-chain-1-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.009",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-1-2",
+      "nodeId": "sf.render.whistle.node.whistle-chain-1-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -1.8094761283110472,
+          -1.8094763309668451,
           2.033082279964958,
           -1.0518720504640697
         ],
         "min": [
-          -2.196479394056638,
-          1.0531685409312672,
+          -2.196479596712436,
+          1.0531686422591662,
           -1.3580969178142794
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c52757be2504e11f5497e19a7b8bec0458685e29165365c04ae6ec0cc80a188",
-      "id": "sf.render.whistle.mesh.whistle-chain-1-3.primitive.0",
+      "geometryHash": "7444f6a042464187b2f87c83d33ca990fc550c2777bdafe2084a827816a401fb",
+      "id": "sf.render.whistle.node.whistle-chain-1-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.010",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-1-3",
+      "nodeId": "sf.render.whistle.node.whistle-chain-1-3",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -564,73 +614,73 @@
         "max": [
           -2.030510375233547,
           1.1164265349732148,
-          -1.1833087239772766
+          -1.1833088253051756
         ],
         "min": [
           -2.4124581894442088,
-          0.37182432114935793,
-          -1.4895662189109515
+          0.3718244984731811,
+          -1.4895663202388505
         ]
       },
       "drawMode": 4,
-      "geometryHash": "90a834479deb131875708de41005947d6971ab15fc51d161074e163e512ab14a",
-      "id": "sf.render.whistle.mesh.whistle-chain-1-4.primitive.0",
+      "geometryHash": "41892830ef07d5b8a5182c4348ac15400c1c5979cf01c18f5521bee1d6e48e9f",
+      "id": "sf.render.whistle.node.whistle-chain-1-4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.011",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-1-4",
+      "nodeId": "sf.render.whistle.node.whistle-chain-1-4",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -0.12984482488652738,
-          4.8379933522166425,
-          2.002664657976055
+          -0.12984483755251475,
+          4.837993757528238,
+          2.002664860631853
         ],
         "min": [
-          -0.2800726939319915,
-          3.277158864867232,
-          1.6292766193579666
+          -0.28007271926396626,
+          3.277159270178828,
+          1.6292768220137646
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f2d87c4c3809cbee07153a9c1d527882654447a42c469720ca3beef675db3ee",
-      "id": "sf.render.whistle.mesh.whistle-chain-2-1.primitive.0",
+      "geometryHash": "c5edc24cb1a59d0d1aded969dbd3228ff6d94ab4aa12cb0e23cd8915c303afc3",
+      "id": "sf.render.whistle.node.whistle-chain-2-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.012",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-2-1",
+      "nodeId": "sf.render.whistle.node.whistle-chain-2-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -0.15848592815289564,
-          3.300007495459596,
-          2.2554720915197493
+          -0.15848595348487038,
+          3.300007698115394,
+          2.255472294175547
         ],
         "min": [
-          -0.3086294037245132,
-          2.088343881532552,
-          1.8832517556092796
+          -0.30862942905648794,
+          2.08834408418835,
+          1.8832519582650775
         ]
       },
       "drawMode": 4,
-      "geometryHash": "751816a06bae696ed53c28a509ab4ff8c98bfac0e04d0f112765b4012a7e4e9a",
-      "id": "sf.render.whistle.mesh.whistle-chain-2-2.primitive.0",
+      "geometryHash": "1ffca38836083abf3c43fa195f3fda3c02a06e1f8afdd653f6417c8c3b439b10",
+      "id": "sf.render.whistle.node.whistle-chain-2-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.013",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-2-2",
+      "nodeId": "sf.render.whistle.node.whistle-chain-2-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -638,49 +688,49 @@
       "bounds": {
         "max": [
           -0.1870635241585905,
-          2.122570216587576,
+          2.122570419243374,
           2.506412659852998
         ],
         "min": [
           -0.3372495701137588,
-          1.3957812700771228,
+          1.3957814727329207,
           2.139092946447846
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cabbaf39a6b5fcd1118ec8c64ac3df26ae94bd107dd187b6cf25ab2294e7656a",
-      "id": "sf.render.whistle.mesh.whistle-chain-2-3.primitive.0",
+      "geometryHash": "7ef617914e9e7e3a26561b877fa4347e1faab983f73a1005111561c40e24151a",
+      "id": "sf.render.whistle.node.whistle-chain-2-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.014",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-2-3",
+      "nodeId": "sf.render.whistle.node.whistle-chain-2-3",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -0.21563868829471033,
-          1.4546342363675677,
+          -0.21563871362668507,
+          1.4546341350396688,
           2.7509172853558823
         ],
         "min": [
-          -0.36587224436850363,
-          1.0505168911433742,
+          -0.36587226970047837,
+          1.0505169924712732,
           2.401370890739969
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c17f3d5d03f219087a0f69675bc583acc7ce4269e34c19e62412a6d1ee78ee63",
-      "id": "sf.render.whistle.mesh.whistle-chain-2-4.primitive.0",
+      "geometryHash": "01c82fba73e130766f16c8720c7d4db5328ae5c571ba2ba16d3dd91a770b4f6a",
+      "id": "sf.render.whistle.node.whistle-chain-2-4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.015",
-      "nodeId": "sf.render.whistle.mesh.whistle-chain-2-4",
+      "nodeId": "sf.render.whistle.node.whistle-chain-2-4",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -698,66 +748,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d1a2ccbb9521df287d12218082cd690e4c2e83e41838ee485a6c57ff66ff2559",
-      "id": "sf.render.whistle.mesh.whistle-crank-arm.primitive.0",
+      "geometryHash": "9e222ac5d59d85012a0cbedc4fc858a55edca3848d5388e2c245b2c2a9d457e5",
+      "id": "sf.render.whistle.node.whistle-crank-arm.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
-      "nodeId": "sf.render.whistle.mesh.whistle-crank-arm",
+      "nodeId": "sf.render.whistle.node.whistle-crank-arm",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          -1.5979928464887507,
-          4.3180008668899745,
+          -1.5979930491445486,
+          4.31800127220157,
           0.2380000076889992
         ],
         "min": [
-          -1.9380075283052633,
-          3.8420004968643298,
+          -1.9380077309610613,
+          3.8420009021759256,
           -0.2380000076889992
         ]
       },
       "drawMode": 4,
-      "geometryHash": "815250e1b8a5266c01b96825ee4eff0aa2cd89523935a5ed6eb0cda8193933c9",
-      "id": "sf.render.whistle.mesh.whistle-crank-hub.primitive.0",
+      "geometryHash": "754c9090a06809ce6bc8f188bab6597c16ac220bb4b0621738379596322cfa25",
+      "id": "sf.render.whistle.node.whistle-crank-hub.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.034",
-      "nodeId": "sf.render.whistle.mesh.whistle-crank-hub",
+      "nodeId": "sf.render.whistle.node.whistle-crank-hub",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          1.6574157822108475,
-          7.820000867843646,
-          1.6998755156958936
+          1.6574160861945444,
+          7.8200024890900295,
+          1.6998758196795904
         ],
         "min": [
-          -1.6574157822108475,
-          0.3400004959106582,
-          -1.6998755156958936
+          -1.6574160861945444,
+          0.3400006985664561,
+          -1.6998758196795904
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4887d62770c26920afd641e20ca0c20c96121188b3b0cb4a9adfff5d2430a6b",
-      "id": "sf.render.whistle.mesh.whistle-drum.primitive.0",
-      "indexCount": 156,
+      "geometryHash": "8fbd503004f3ffd09dbd9ba6ab85edfef97e568e5f49cdf4a6ca6748281c8105",
+      "id": "sf.render.whistle.node.whistle-drum.primitive.0",
+      "indexCount": 210,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
-      "nodeId": "sf.render.whistle.mesh.whistle-drum",
+      "meshName": "Cylinder.047",
+      "nodeId": "sf.render.whistle.node.whistle-drum",
       "primitiveIndex": 0,
-      "vertexCount": 64
+      "vertexCount": 90
     },
     {
       "bounds": {
@@ -767,20 +817,20 @@
           0.23802128654778087
         ],
         "min": [
-          1.3531788669103406,
-          2.533197474008375e-8,
+          1.3531789682382396,
+          5.06639494801675e-8,
           -0.23802128654778087
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9c6da3a5525f3122864b011e79abbf7d72723c52aa7f54fa7fa6e5cf861655d7",
-      "id": "sf.render.whistle.mesh.whistle-fillet-0.primitive.0",
+      "geometryHash": "1a3a32ff832e34d753fed8431bcfaaf981c735e58895d76614ec29d9222ebba0",
+      "id": "sf.render.whistle.node.whistle-fillet-0.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.037",
-      "nodeId": "sf.render.whistle.mesh.whistle-fillet-0",
+      "nodeId": "sf.render.whistle.node.whistle-fillet-0",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -793,19 +843,19 @@
         ],
         "min": [
           0.8871270726604195,
-          2.533197474008375e-8,
+          5.06639494801675e-8,
           -1.3631695950920317
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d70195a2e5cebc4772a94f4e582e73f69b4e8f54a2f10ae6c5c819f795f466a5",
-      "id": "sf.render.whistle.mesh.whistle-fillet-1.primitive.0",
+      "geometryHash": "ae3436e95bbc6f74888915d7fa00dc8c2ace08e7d77e62f2b9b1ab53a5a8666a",
+      "id": "sf.render.whistle.node.whistle-fillet-1.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.038",
-      "nodeId": "sf.render.whistle.mesh.whistle-fillet-1",
+      "nodeId": "sf.render.whistle.node.whistle-fillet-1",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -814,23 +864,23 @@
         "max": [
           0.23802128654778087,
           0.5780000729560868,
-          -1.3531788669103406
+          -1.3531789682382396
         ],
         "min": [
           -0.23802128654778087,
-          2.533197474008375e-8,
+          5.06639494801675e-8,
           -1.8292214906698518
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f950b98507a89882fc41de2bac0b8ba711fa805c8b4904e8f07ad2eccb64ec89",
-      "id": "sf.render.whistle.mesh.whistle-fillet-2.primitive.0",
+      "geometryHash": "39de99ceff85eb98ccc7d6ac5adce6acc08c21eb3fa6330f67399dfc7ba6065c",
+      "id": "sf.render.whistle.node.whistle-fillet-2.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.039",
-      "nodeId": "sf.render.whistle.mesh.whistle-fillet-2",
+      "nodeId": "sf.render.whistle.node.whistle-fillet-2",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -838,49 +888,49 @@
       "bounds": {
         "max": [
           -0.8871483515192011,
-          0.3400072848798885,
+          0.34000731021186326,
           -0.8871483515192011
         ],
         "min": [
           -1.36314831623325,
-          -0.0000072527612916733824,
+          -0.0000072400953043033405,
           -1.36314831623325
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c569490c274ad06d8c764c0f1c3ded47c0ac7c348c6ddd682e1c0f11d2b4e84",
-      "id": "sf.render.whistle.mesh.whistle-fillet-3.primitive.0",
+      "geometryHash": "f08c21af25a4b8d99ec717cc7bb3537672f22bb91c981e11ef89603f9dba092b",
+      "id": "sf.render.whistle.node.whistle-fillet-3.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.040",
-      "nodeId": "sf.render.whistle.mesh.whistle-fillet-3",
+      "nodeId": "sf.render.whistle.node.whistle-fillet-3",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          -1.3532001457691223,
-          0.3400072848798885,
+          -1.3532002470970212,
+          0.34000731021186326,
           0.2380000076889992
         ],
         "min": [
           -1.8292002118110702,
-          -0.0000072527612916733824,
+          -0.0000072400953043033405,
           -0.2380000076889992
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9de752f94572ddff0d7574e02c5d7293d0a78ec7dac9b59da8d60e8dcf5bf6eb",
-      "id": "sf.render.whistle.mesh.whistle-fillet-4.primitive.0",
+      "geometryHash": "150834c92a3bb9f1b34d13cbda9f1393ced2b27d800a13a8bd9e508d092adc57",
+      "id": "sf.render.whistle.node.whistle-fillet-4.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.041",
-      "nodeId": "sf.render.whistle.mesh.whistle-fillet-4",
+      "nodeId": "sf.render.whistle.node.whistle-fillet-4",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -888,24 +938,24 @@
       "bounds": {
         "max": [
           -0.8871483515192011,
-          0.3400072848798885,
+          0.34000731021186326,
           1.36314831623325
         ],
         "min": [
           -1.36314831623325,
-          -0.0000072527612916733824,
+          -0.0000072400953043033405,
           0.8871483515192011
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bdd5ef345278f3a6bb23b643d25d81a7b252e492fbac6fa449a4f6cae34ec093",
-      "id": "sf.render.whistle.mesh.whistle-fillet-5.primitive.0",
+      "geometryHash": "2821dbe7c24a51a97849b0a3f6f3b140e417f89c7568911484b7d02196df4108",
+      "id": "sf.render.whistle.node.whistle-fillet-5.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.042",
-      "nodeId": "sf.render.whistle.mesh.whistle-fillet-5",
+      "nodeId": "sf.render.whistle.node.whistle-fillet-5",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -913,24 +963,24 @@
       "bounds": {
         "max": [
           0.2380000076889992,
-          0.3400072848798885,
+          0.34000731021186326,
           1.8292002118110702
         ],
         "min": [
           -0.2380000076889992,
-          -0.0000072527612916733824,
-          1.3532001457691223
+          -0.0000072400953043033405,
+          1.3532002470970212
         ]
       },
       "drawMode": 4,
-      "geometryHash": "094dd14eff320751634320f9c10122ea85e71b862fe0e55da955bbd082f529c0",
-      "id": "sf.render.whistle.mesh.whistle-fillet-6.primitive.0",
+      "geometryHash": "c5c64a42bf1cc82c341f0a860c54ec7b2c405193a25d1f3d027f43b3d66f6e34",
+      "id": "sf.render.whistle.node.whistle-fillet-6.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.043",
-      "nodeId": "sf.render.whistle.mesh.whistle-fillet-6",
+      "nodeId": "sf.render.whistle.node.whistle-fillet-6",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -938,24 +988,24 @@
       "bounds": {
         "max": [
           1.36314831623325,
-          0.3400072848798885,
+          0.34000731021186326,
           1.36314831623325
         ],
         "min": [
           0.8871483515192011,
-          -0.0000072527612916733824,
+          -0.0000072400953043033405,
           0.8871483515192011
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f270293cb8726b20c935f207a2c1c5b744ec9d6d3c3a054761b21347dd92016",
-      "id": "sf.render.whistle.mesh.whistle-fillet-7.primitive.0",
+      "geometryHash": "2eeda74b6797f23d47cde151c9392f551b144ba3c7b39940ce07a0a1bec55e71",
+      "id": "sf.render.whistle.node.whistle-fillet-7.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
+      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.044",
-      "nodeId": "sf.render.whistle.mesh.whistle-fillet-7",
+      "nodeId": "sf.render.whistle.node.whistle-fillet-7",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -963,49 +1013,49 @@
       "bounds": {
         "max": [
           0.3808000224351886,
-          10.82899848794932,
+          10.828999298572512,
           0.10879999555349329
         ],
         "min": [
-          -0.04079998250007577,
-          10.523004445552942,
+          -0.0407999698340884,
+          10.523005256176134,
           -0.3128000093817711
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b196184bfda2a5ca24009f8bc0ca9d9635eeaad8ad40fbc67739148cb0fb3eee",
-      "id": "sf.render.whistle.mesh.whistle-lamp-0.primitive.0",
+      "geometryHash": "af93098cca0b5cc5a7b78bedd0e49428688ea639da61f68e64859c8ab9d92a78",
+      "id": "sf.render.whistle.node.whistle-lamp-0.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "560d55fc8c9bb2787ce461221cc076dc8be4826249c86fb3ae9abc7512f6106a",
+      "materialHash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.028",
-      "nodeId": "sf.render.whistle.mesh.whistle-lamp-0",
+      "nodeId": "sf.render.whistle.node.whistle-lamp-0",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          0.006799988639354382,
-          11.0329982991218,
+          0.006799975973367012,
+          11.032999109744992,
           0.2788000155210497
         ],
         "min": [
-          -0.41480001629591,
-          10.727004256725422,
+          -0.41480004162788475,
+          10.727005067348614,
           -0.14279998941421468
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be4621bbda9585099e368748542c27b32a9ebcecb06bb53061912793c5162fac",
-      "id": "sf.render.whistle.mesh.whistle-lamp-1.primitive.0",
+      "geometryHash": "a20b5c971a2989c3058a8b1146e109406165d0f34fa5bf775b2fda626d9c49a5",
+      "id": "sf.render.whistle.node.whistle-lamp-1.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "560d55fc8c9bb2787ce461221cc076dc8be4826249c86fb3ae9abc7512f6106a",
+      "materialHash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.029",
-      "nodeId": "sf.render.whistle.mesh.whistle-lamp-1",
+      "nodeId": "sf.render.whistle.node.whistle-lamp-1",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -1013,24 +1063,24 @@
       "bounds": {
         "max": [
           0.2447999963283536,
-          10.692997803211142,
-          0.41480001629591
+          10.692998613834334,
+          0.41480004162788475
         ],
         "min": [
           -0.17679999594092344,
-          10.387003760814764,
-          -0.006799988639354382
+          10.387004571437956,
+          -0.006799975973367012
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9454c1e04194a9a7b375434669abab4396310f5819abf257377925e7258e4d0b",
-      "id": "sf.render.whistle.mesh.whistle-lamp-2.primitive.0",
+      "geometryHash": "f95910ce548d6c9cedb027a3123ba459638cf0b42fa89d3fd71584899f71ff89",
+      "id": "sf.render.whistle.node.whistle-lamp-2.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "560d55fc8c9bb2787ce461221cc076dc8be4826249c86fb3ae9abc7512f6106a",
+      "materialHash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.030",
-      "nodeId": "sf.render.whistle.mesh.whistle-lamp-2",
+      "nodeId": "sf.render.whistle.node.whistle-lamp-2",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
@@ -1048,14 +1098,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8175ceb309cb434323ebc9225419e92639057bf60c90d45b784f4ee8e0050bc8",
-      "id": "sf.render.whistle.mesh.whistle-lid-clamp.primitive.0",
+      "geometryHash": "ea05c84e050100173113be500cc036aa01fbfac94197a645c9fab1c48bc073a7",
+      "id": "sf.render.whistle.node.whistle-lid-clamp.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
-      "nodeId": "sf.render.whistle.mesh.whistle-lid-clamp",
+      "nodeId": "sf.render.whistle.node.whistle-lid-clamp",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -1063,24 +1113,24 @@
       "bounds": {
         "max": [
           1.7299693950476183,
-          8.270250170939107,
+          8.270250981562299,
           1.7672627229483737
         ],
         "min": [
           -1.7299693950476183,
-          7.573751375920665,
+          7.573752186543857,
           -1.7672627229483737
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8621502c3fd065e1ceb1dd26b4a39bfb97454c5b95b7c9b1d5661cd67d9bbf82",
-      "id": "sf.render.whistle.mesh.whistle-lid-warped.primitive.0",
+      "geometryHash": "0cfd606f701b0064694899bec8dcaaaf0e0f7508633a30d8aa60f4ce65dc5968",
+      "id": "sf.render.whistle.node.whistle-lid-warped.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
-      "nodeId": "sf.render.whistle.mesh.whistle-lid-warped",
+      "nodeId": "sf.render.whistle.node.whistle-lid-warped",
       "primitiveIndex": 0,
       "vertexCount": 64
     },
@@ -1098,14 +1148,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e0248b103109e7a8a69c0012e097a963764d5008d989067e29832c2a139f2b66",
-      "id": "sf.render.whistle.mesh.whistle-paddle-root.primitive.0",
+      "geometryHash": "6eef9aa86fc7c66d6240b4d8944d828f9637a3c1b26abc0242d17c4a1ab14c3c",
+      "id": "sf.render.whistle.node.whistle-paddle-root.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
-      "nodeId": "sf.render.whistle.mesh.whistle-paddle-root",
+      "nodeId": "sf.render.whistle.node.whistle-paddle-root",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -1123,64 +1173,64 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f09a7834c0d116e0b1648306524ff310b6c90f1c7967a17fe3333e6c905ba43d",
-      "id": "sf.render.whistle.mesh.whistle-paddle-stanchion.primitive.0",
+      "geometryHash": "7f95a20d55c3fb7806706c1eb19960e02f0bf24944979866315afad1cf025a46",
+      "id": "sf.render.whistle.node.whistle-paddle-stanchion.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
-      "nodeId": "sf.render.whistle.mesh.whistle-paddle-stanchion",
+      "nodeId": "sf.render.whistle.node.whistle-paddle-stanchion",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          -0.29877440426347945,
-          5.4876008380890084,
-          1.8274983084201324
+          -0.2987744295954542,
+          5.487601243400604,
+          1.8274985110759303
         ],
         "min": [
-          -0.38122567560674625,
-          5.392400439834603,
-          1.7425020349026283
+          -0.381225700938721,
+          5.392400845146199,
+          1.7425022375584263
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7cf2ac251f545d0f9dad7399a315a8645c3802b0057fb0a20598e7d995ae5f2",
-      "id": "sf.render.whistle.mesh.whistle-plaque-bolt-0.primitive.0",
+      "geometryHash": "a1530be5564d60499697d54144bc4e63494a2df00a003bab69b963679b8feac2",
+      "id": "sf.render.whistle.node.whistle-plaque-bolt-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.035",
-      "nodeId": "sf.render.whistle.mesh.whistle-plaque-bolt-0",
+      "nodeId": "sf.render.whistle.node.whistle-plaque-bolt-0",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          0.38122567560674625,
-          5.4876008380890084,
-          1.8274983084201324
+          0.381225700938721,
+          5.487601243400604,
+          1.8274985110759303
         ],
         "min": [
-          0.29877440426347945,
-          5.392400439834603,
-          1.7425020349026283
+          0.2987744295954542,
+          5.392400845146199,
+          1.7425022375584263
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0049f6a8b374d90ee7dc41d6284a630c9303dc2d67c1d53692a6664e7589068d",
-      "id": "sf.render.whistle.mesh.whistle-plaque-bolt-1.primitive.0",
+      "geometryHash": "896a8aff2ce266756c473e164c4ea3893cf074ce068fdaf266d170a5f397fd15",
+      "id": "sf.render.whistle.node.whistle-plaque-bolt-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.036",
-      "nodeId": "sf.render.whistle.mesh.whistle-plaque-bolt-1",
+      "nodeId": "sf.render.whistle.node.whistle-plaque-bolt-1",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -1198,14 +1248,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "920708a36bc35694037b3fe1b7b9479ca08b651f677b933fdf5386cf5d8e0834",
-      "id": "sf.render.whistle.mesh.whistle-plaque-standoff.primitive.0",
+      "geometryHash": "8d55cc024e7a232409c4bc41557782882bae35db5b812108c9d17ac58297ac1a",
+      "id": "sf.render.whistle.node.whistle-plaque-standoff.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
-      "nodeId": "sf.render.whistle.mesh.whistle-plaque-standoff",
+      "nodeId": "sf.render.whistle.node.whistle-plaque-standoff",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -1223,14 +1273,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "edca7c1be26bf5ca0151b26b3ba2170c4f6990e348de520454db487109d8a63b",
-      "id": "sf.render.whistle.mesh.whistle-plaque.primitive.0",
+      "geometryHash": "e97668ccc6b9c73066541c58a0600a8158e56c01e819bd4b73852b0e64c9e924",
+      "id": "sf.render.whistle.node.whistle-plaque.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2c420cb20907deda2f1a1b3cc4a04ddd293fc6e0f576efbe9d6ad70115624975",
+      "materialHash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
-      "nodeId": "sf.render.whistle.mesh.whistle-plaque",
+      "nodeId": "sf.render.whistle.node.whistle-plaque",
       "primitiveIndex": 0,
       "vertexCount": 96
     },
@@ -1238,74 +1288,74 @@
       "bounds": {
         "max": [
           0.06115787200809564,
-          10.438000876426713,
+          10.438001687049905,
           0.06115787200809564
         ],
         "min": [
           -0.06115787200809564,
-          8.058001458168064,
+          8.058002268791256,
           -0.06115787200809564
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dc0ea002007bb711b5fc99c5719901d7956e14ccb55a1e12220d8f410efaef9a",
-      "id": "sf.render.whistle.mesh.whistle-rebar-0.primitive.0",
+      "geometryHash": "ab2855a7770b1ef674b89ac506e90f47fc9b7ca4dcf2d0e217b08b499508ae63",
+      "id": "sf.render.whistle.node.whistle-rebar-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.018",
-      "nodeId": "sf.render.whistle.mesh.whistle-rebar-0",
+      "nodeId": "sf.render.whistle.node.whistle-rebar-0",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          0.37748399094578744,
-          10.427090698889856,
-          0.14796539438550305
+          0.3774840162777622,
+          10.427091509513048,
+          0.14796538171951568
         ],
         "min": [
-          0.030516033544271348,
-          8.068911635704922,
-          -0.3519653955477935
+          0.030516046210258718,
+          8.068912446328113,
+          -0.35196542087976823
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e2db2aba1db2429fa49de11ee55f096c448617c8359c8c16845db008c13c59c0",
-      "id": "sf.render.whistle.mesh.whistle-rebar-1.primitive.0",
+      "geometryHash": "cc0b28be0e5e9739370f878e3f87e95b912f30129cc2f793774c1c6ec2780d55",
+      "id": "sf.render.whistle.node.whistle-rebar-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.019",
-      "nodeId": "sf.render.whistle.mesh.whistle-rebar-1",
+      "nodeId": "sf.render.whistle.node.whistle-rebar-1",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -0.03096665454343217,
-          10.434932667646194,
-          0.021424409975533187
+          -0.03096666720941954,
+          10.434933478269386,
+          0.021424397309545817
         ],
         "min": [
-          -0.3090333727256933,
-          8.061069666948583,
+          -0.30903339805766805,
+          8.061070477571775,
           -0.3614244562436397
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8774add91ba544d4f13a9dee8ab7296c075f820f3328e6d6c1b63f7b442e089",
-      "id": "sf.render.whistle.mesh.whistle-rebar-2.primitive.0",
+      "geometryHash": "08af50243dc1057c1674fca201adcd5124d59f427395d980c5c1247240f6cfea",
+      "id": "sf.render.whistle.node.whistle-rebar-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.020",
-      "nodeId": "sf.render.whistle.mesh.whistle-rebar-2",
+      "nodeId": "sf.render.whistle.node.whistle-rebar-2",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -1313,24 +1363,24 @@
       "bounds": {
         "max": [
           1.7569045798050524,
-          2.567008162021864,
+          2.567008364677662,
           1.8019999532699558
         ],
         "min": [
           -1.7569045798050524,
-          2.3289925751683995,
+          2.3289927778241974,
           -1.8019999532699558
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac2272ef14b1c4548629fa32d7dda0f9f8958be497fab623bf8f6a4539187ed2",
-      "id": "sf.render.whistle.mesh.whistle-strap-0.primitive.0",
+      "geometryHash": "1c45f1a88163e5fa65dac71aa7fa5d8db2bf897cb8ce5a2f74697ecc71077ae1",
+      "id": "sf.render.whistle.node.whistle-strap-0.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
-      "nodeId": "sf.render.whistle.mesh.whistle-strap-0",
+      "nodeId": "sf.render.whistle.node.whistle-strap-0",
       "primitiveIndex": 0,
       "vertexCount": 64
     },
@@ -1338,24 +1388,24 @@
       "bounds": {
         "max": [
           1.7569045798050524,
-          5.76300804090522,
+          5.763008446216816,
           1.8019999532699558
         ],
         "min": [
           -1.7569045798050524,
-          5.524992859363351,
+          5.524993264674947,
           -1.8019999532699558
         ]
       },
       "drawMode": 4,
-      "geometryHash": "77c7f7f2a5524507d4a6a3fafa7ebfb1c5f60b7f0ee1b7fd6e6ecf5d24cb6f72",
-      "id": "sf.render.whistle.mesh.whistle-strap-1.primitive.0",
+      "geometryHash": "1b8c8ef7ef68b74d39dc47dcb3b355a435de6e83d43ed034ae9a62afd7c54bc2",
+      "id": "sf.render.whistle.node.whistle-strap-1.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.003",
-      "nodeId": "sf.render.whistle.mesh.whistle-strap-1",
+      "nodeId": "sf.render.whistle.node.whistle-strap-1",
       "primitiveIndex": 0,
       "vertexCount": 64
     },
@@ -1364,7 +1414,7 @@
         "max": [
           1.7738575479243082,
           0.11898911109536137,
-          -1.0826604312352686
+          -1.0826605325631675
         ],
         "min": [
           0.7538573774550201,
@@ -1373,21 +1423,21 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a2877571e51b57c5b5773778c6903d50696c8d3c804ea51ec1243653d23b95d7",
-      "id": "sf.render.whistle.mesh.whistle-tack-plate-0.primitive.0",
+      "geometryHash": "cc05667f1d8bbeddd0f17c8692dafa6419baa5db15d606d9ec956bf6df147027",
+      "id": "sf.render.whistle.node.whistle-tack-plate-0.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.045",
-      "nodeId": "sf.render.whistle.mesh.whistle-tack-plate-0",
+      "nodeId": "sf.render.whistle.node.whistle-tack-plate-0",
       "primitiveIndex": 0,
       "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          -1.0981956193922713,
+          -1.0981957207201702,
           0.11898911109536137,
           1.7540297046557498
         ],
@@ -1398,14 +1448,14 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03d576af390de48cc6ae980ccfdd5af59676f5601ab563d829014697e6b8cfcd",
-      "id": "sf.render.whistle.mesh.whistle-tack-plate-1.primitive.0",
+      "geometryHash": "3f868bfae5327d96fb9e639fc4816150f4374085b471654a3933782f5af1f5d3",
+      "id": "sf.render.whistle.node.whistle-tack-plate-1.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.046",
-      "nodeId": "sf.render.whistle.mesh.whistle-tack-plate-1",
+      "nodeId": "sf.render.whistle.node.whistle-tack-plate-1",
       "primitiveIndex": 0,
       "vertexCount": 48
     }
@@ -1415,40 +1465,194 @@
   "lods": [],
   "materials": [
     {
-      "hash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
-      "id": "material:042af3f5b04a408797d21b47",
-      "name": "furniture_bare_steel",
+      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "id": "material:09306e58ed6387f8ee509fc5",
+      "name": "Material_Mechanical_BrushedNickel",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "furniture_bare_steel_baseColor",
+          "name": "Material_Mechanical_BrushedNickel_base",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_bare_steel_orm",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_bare_steel_normal",
+          "name": "Material_Mechanical_BrushedNickel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_bare_steel_orm",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "2c420cb20907deda2f1a1b3cc4a04ddd293fc6e0f576efbe9d6ad70115624975",
-      "id": "material:2c420cb20907deda2f1a1b3c",
+      "hash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
+      "id": "material:62757001ceb6d643a2a31c70",
+      "name": "Material_Rubber_HeatScale",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Rubber_HeatScale_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "id": "material:9b606ffef39761a1e7cc390d",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
+      "id": "material:b6096d8a315bf4d19f719ab7",
+      "name": "Material_Hull_DeepSeaEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_DeepSeaEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_DeepSeaEnamel_ao-Material_Hull_DeepSeaEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
+      "id": "material:b75db6daea4fdcd5ab35e301",
+      "name": "furniture_signal_lens",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_signal_lens_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_signal_lens_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_signal_lens_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "name": "Material_Mechanical_ShadowEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_ShadowEnamel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_ShadowEnamel_ao-Material_Mechanical_ShadowEnamel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
+      "id": "material:d75684dbd82479f6e5eba655",
       "name": "furniture_identity_plate",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1477,2877 +1681,11 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "560d55fc8c9bb2787ce461221cc076dc8be4826249c86fb3ae9abc7512f6106a",
-      "id": "material:560d55fc8c9bb2787ce46122",
-      "name": "furniture_signal_lens",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "furniture_signal_lens_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_signal_lens_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_signal_lens_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
-      "id": "material:6ba888af1e572a80fd8d795a",
-      "name": "furniture_painted_shell",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "furniture_painted_shell_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_painted_shell_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_painted_shell_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_painted_shell_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
-      "id": "material:9d347080e13ee4faa8b858e1",
-      "name": "furniture_structural_alloy",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "furniture_structural_alloy_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_structural_alloy_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_structural_alloy_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_structural_alloy_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
-      "id": "material:b296e8bf930483a9bc39facb",
-      "name": "furniture_scorch",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "furniture_scorch_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_scorch_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_scorch_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_scorch_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
     }
   ],
   "nodes": [
     {
-      "id": "sf.render.whistle.mesh.whistle-antenna-clamp",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_antenna_clamp",
-      "nodeName": "whistle_antenna_clamp",
-      "nodePath": [
-        0,
-        0
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-antenna-s-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_antenna_s_0",
-      "nodeName": "whistle_antenna_s_0",
-      "nodePath": [
-        0,
-        1
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-antenna-s-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_antenna_s_1",
-      "nodeName": "whistle_antenna_s_1",
-      "nodePath": [
-        0,
-        2
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-antenna-s-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_antenna_s_2",
-      "nodeName": "whistle_antenna_s_2",
-      "nodePath": [
-        0,
-        3
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-basket-bar-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_basket_bar_0",
-      "nodeName": "whistle_basket_bar_0",
-      "nodePath": [
-        0,
-        4
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-basket-bar-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_basket_bar_1",
-      "nodeName": "whistle_basket_bar_1",
-      "nodePath": [
-        0,
-        5
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-basket-bar-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_basket_bar_2",
-      "nodeName": "whistle_basket_bar_2",
-      "nodePath": [
-        0,
-        6
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-basket-bar-3",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_basket_bar_3",
-      "nodeName": "whistle_basket_bar_3",
-      "nodePath": [
-        0,
-        7
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-basket-gather-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_basket_gather_0",
-      "nodeName": "whistle_basket_gather_0",
-      "nodePath": [
-        0,
-        8
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-basket-gather-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_basket_gather_1",
-      "nodeName": "whistle_basket_gather_1",
-      "nodePath": [
-        0,
-        9
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-basket-gather-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_basket_gather_2",
-      "nodeName": "whistle_basket_gather_2",
-      "nodePath": [
-        0,
-        10
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-basket-ring",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_basket_ring",
-      "nodeName": "whistle_basket_ring",
-      "nodePath": [
-        0,
-        11
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-basket-ring-lo",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_basket_ring_lo",
-      "nodeName": "whistle_basket_ring_lo",
-      "nodePath": [
-        0,
-        12
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-boot",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_boot",
-      "nodeName": "whistle_boot",
-      "nodePath": [
-        0,
-        13
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-boot-sole",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_boot_sole",
-      "nodeName": "whistle_boot_sole",
-      "nodePath": [
-        0,
-        14
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-0-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_0_1",
-      "nodeName": "whistle_chain_0_1",
-      "nodePath": [
-        0,
-        15
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-0-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_0_2",
-      "nodeName": "whistle_chain_0_2",
-      "nodePath": [
-        0,
-        16
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-0-3",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_0_3",
-      "nodeName": "whistle_chain_0_3",
-      "nodePath": [
-        0,
-        17
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-0-4",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_0_4",
-      "nodeName": "whistle_chain_0_4",
-      "nodePath": [
-        0,
-        18
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-1-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_1_1",
-      "nodeName": "whistle_chain_1_1",
-      "nodePath": [
-        0,
-        19
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-1-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_1_2",
-      "nodeName": "whistle_chain_1_2",
-      "nodePath": [
-        0,
-        20
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-1-3",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_1_3",
-      "nodeName": "whistle_chain_1_3",
-      "nodePath": [
-        0,
-        21
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-1-4",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_1_4",
-      "nodeName": "whistle_chain_1_4",
-      "nodePath": [
-        0,
-        22
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-2-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_2_1",
-      "nodeName": "whistle_chain_2_1",
-      "nodePath": [
-        0,
-        23
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-2-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_2_2",
-      "nodeName": "whistle_chain_2_2",
-      "nodePath": [
-        0,
-        24
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-2-3",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_2_3",
-      "nodeName": "whistle_chain_2_3",
-      "nodePath": [
-        0,
-        25
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-chain-2-4",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_chain_2_4",
-      "nodeName": "whistle_chain_2_4",
-      "nodePath": [
-        0,
-        26
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-crank-arm",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_crank_arm",
-      "nodeName": "whistle_crank_arm",
-      "nodePath": [
-        0,
-        27
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-crank-hub",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_crank_hub",
-      "nodeName": "whistle_crank_hub",
-      "nodePath": [
-        0,
-        28
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-drum",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_drum",
-      "nodeName": "whistle_drum",
-      "nodePath": [
-        0,
-        29
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-fillet-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_fillet_0",
-      "nodeName": "whistle_fillet_0",
-      "nodePath": [
-        0,
-        30
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-fillet-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_fillet_1",
-      "nodeName": "whistle_fillet_1",
-      "nodePath": [
-        0,
-        31
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-fillet-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_fillet_2",
-      "nodeName": "whistle_fillet_2",
-      "nodePath": [
-        0,
-        32
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-fillet-3",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_fillet_3",
-      "nodeName": "whistle_fillet_3",
-      "nodePath": [
-        0,
-        33
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-fillet-4",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_fillet_4",
-      "nodeName": "whistle_fillet_4",
-      "nodePath": [
-        0,
-        34
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-fillet-5",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_fillet_5",
-      "nodeName": "whistle_fillet_5",
-      "nodePath": [
-        0,
-        35
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-fillet-6",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_fillet_6",
-      "nodeName": "whistle_fillet_6",
-      "nodePath": [
-        0,
-        36
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-fillet-7",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_fillet_7",
-      "nodeName": "whistle_fillet_7",
-      "nodePath": [
-        0,
-        37
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-lamp-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_lamp_0",
-      "nodeName": "whistle_lamp_0",
-      "nodePath": [
-        0,
-        38
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-lamp-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_lamp_1",
-      "nodeName": "whistle_lamp_1",
-      "nodePath": [
-        0,
-        39
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-lamp-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_lamp_2",
-      "nodeName": "whistle_lamp_2",
-      "nodePath": [
-        0,
-        40
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-lid-clamp",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_lid_clamp",
-      "nodeName": "whistle_lid_clamp",
-      "nodePath": [
-        0,
-        41
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-lid-warped",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_lid_warped",
-      "nodeName": "whistle_lid_warped",
-      "nodePath": [
-        0,
-        42
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-paddle-root",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_paddle_root",
-      "nodeName": "whistle_paddle_root",
-      "nodePath": [
-        0,
-        43
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-paddle-stanchion",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_paddle_stanchion",
-      "nodeName": "whistle_paddle_stanchion",
-      "nodePath": [
-        0,
-        44
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-plaque",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_plaque",
-      "nodeName": "whistle_plaque",
-      "nodePath": [
-        0,
-        45
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-plaque-bolt-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_plaque_bolt_0",
-      "nodeName": "whistle_plaque_bolt_0",
-      "nodePath": [
-        0,
-        46
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-plaque-bolt-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_plaque_bolt_1",
-      "nodeName": "whistle_plaque_bolt_1",
-      "nodePath": [
-        0,
-        47
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-plaque-standoff",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_plaque_standoff",
-      "nodeName": "whistle_plaque_standoff",
-      "nodePath": [
-        0,
-        48
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-rebar-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_rebar_0",
-      "nodeName": "whistle_rebar_0",
-      "nodePath": [
-        0,
-        49
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-rebar-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_rebar_1",
-      "nodeName": "whistle_rebar_1",
-      "nodePath": [
-        0,
-        50
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-rebar-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_rebar_2",
-      "nodeName": "whistle_rebar_2",
-      "nodePath": [
-        0,
-        51
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-strap-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_strap_0",
-      "nodeName": "whistle_strap_0",
-      "nodePath": [
-        0,
-        52
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-strap-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_strap_1",
-      "nodeName": "whistle_strap_1",
-      "nodePath": [
-        0,
-        53
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-tack-plate-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_tack_plate_0",
-      "nodeName": "whistle_tack_plate_0",
-      "nodePath": [
-        0,
-        54
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.mesh.whistle-tack-plate-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "whistle_tack_plate_1",
-      "nodeName": "whistle_tack_plate_1",
-      "nodePath": [
-        0,
-        55
-      ],
-      "parentId": "sf.render.whistle.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.whistle.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.whistle.root",
+      "id": "sf.render.whistle.node.place-whistle",
       "localTransform": [
         3.4000000953674316,
         0,
@@ -4367,7 +1705,7 @@
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "asset-root",
+      "mergeBoundary": "place_whistle",
       "nodeName": "place_whistle",
       "nodePath": [
         0
@@ -4393,48 +1731,2888 @@
         0,
         1
       ]
+    },
+    {
+      "id": "sf.render.whistle.node.remaster-material-mechanical-brushednickel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodeName": "Remaster_Material_Mechanical_BrushedNickel",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.remaster-material-mechanical-shadowenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodeName": "Remaster_Material_Mechanical_ShadowEnamel",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-antenna-clamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_antenna_clamp",
+      "nodeName": "whistle_antenna_clamp",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-antenna-s-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_antenna_s_0",
+      "nodeName": "whistle_antenna_s_0",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-antenna-s-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_antenna_s_1",
+      "nodeName": "whistle_antenna_s_1",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-antenna-s-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_antenna_s_2",
+      "nodeName": "whistle_antenna_s_2",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-basket-bar-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_basket_bar_0",
+      "nodeName": "whistle_basket_bar_0",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-basket-bar-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_basket_bar_1",
+      "nodeName": "whistle_basket_bar_1",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-basket-bar-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_basket_bar_2",
+      "nodeName": "whistle_basket_bar_2",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-basket-bar-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_basket_bar_3",
+      "nodeName": "whistle_basket_bar_3",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-basket-gather-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_basket_gather_0",
+      "nodeName": "whistle_basket_gather_0",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-basket-gather-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_basket_gather_1",
+      "nodeName": "whistle_basket_gather_1",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-basket-gather-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_basket_gather_2",
+      "nodeName": "whistle_basket_gather_2",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-basket-ring",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_basket_ring",
+      "nodeName": "whistle_basket_ring",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-basket-ring-lo",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_basket_ring_lo",
+      "nodeName": "whistle_basket_ring_lo",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-boot",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_boot",
+      "nodeName": "whistle_boot",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-boot-sole",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_boot_sole",
+      "nodeName": "whistle_boot_sole",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-0-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_0_1",
+      "nodeName": "whistle_chain_0_1",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-0-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_0_2",
+      "nodeName": "whistle_chain_0_2",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-0-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_0_3",
+      "nodeName": "whistle_chain_0_3",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-0-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_0_4",
+      "nodeName": "whistle_chain_0_4",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-1-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_1_1",
+      "nodeName": "whistle_chain_1_1",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_1_2",
+      "nodeName": "whistle_chain_1_2",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-1-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_1_3",
+      "nodeName": "whistle_chain_1_3",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-1-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_1_4",
+      "nodeName": "whistle_chain_1_4",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-2-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_2_1",
+      "nodeName": "whistle_chain_2_1",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-2-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_2_2",
+      "nodeName": "whistle_chain_2_2",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-2-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_2_3",
+      "nodeName": "whistle_chain_2_3",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-chain-2-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_chain_2_4",
+      "nodeName": "whistle_chain_2_4",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-crank-arm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_crank_arm",
+      "nodeName": "whistle_crank_arm",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-crank-hub",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_crank_hub",
+      "nodeName": "whistle_crank_hub",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-drum",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_drum",
+      "nodeName": "whistle_drum",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-fillet-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_fillet_0",
+      "nodeName": "whistle_fillet_0",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-fillet-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_fillet_1",
+      "nodeName": "whistle_fillet_1",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-fillet-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_fillet_2",
+      "nodeName": "whistle_fillet_2",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-fillet-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_fillet_3",
+      "nodeName": "whistle_fillet_3",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-fillet-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_fillet_4",
+      "nodeName": "whistle_fillet_4",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-fillet-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_fillet_5",
+      "nodeName": "whistle_fillet_5",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-fillet-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_fillet_6",
+      "nodeName": "whistle_fillet_6",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-fillet-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_fillet_7",
+      "nodeName": "whistle_fillet_7",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-lamp-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_lamp_0",
+      "nodeName": "whistle_lamp_0",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-lamp-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_lamp_1",
+      "nodeName": "whistle_lamp_1",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-lamp-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_lamp_2",
+      "nodeName": "whistle_lamp_2",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-lid-clamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_lid_clamp",
+      "nodeName": "whistle_lid_clamp",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-lid-warped",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_lid_warped",
+      "nodeName": "whistle_lid_warped",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-paddle-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_paddle_root",
+      "nodeName": "whistle_paddle_root",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-paddle-stanchion",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_paddle_stanchion",
+      "nodeName": "whistle_paddle_stanchion",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-plaque",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_plaque",
+      "nodeName": "whistle_plaque",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-plaque-bolt-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_plaque_bolt_0",
+      "nodeName": "whistle_plaque_bolt_0",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-plaque-bolt-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_plaque_bolt_1",
+      "nodeName": "whistle_plaque_bolt_1",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-plaque-standoff",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_plaque_standoff",
+      "nodeName": "whistle_plaque_standoff",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-rebar-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_rebar_0",
+      "nodeName": "whistle_rebar_0",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-rebar-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_rebar_1",
+      "nodeName": "whistle_rebar_1",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-rebar-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_rebar_2",
+      "nodeName": "whistle_rebar_2",
+      "nodePath": [
+        0,
+        51
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-strap-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_strap_0",
+      "nodeName": "whistle_strap_0",
+      "nodePath": [
+        0,
+        52
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-strap-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_strap_1",
+      "nodeName": "whistle_strap_1",
+      "nodePath": [
+        0,
+        53
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-tack-plate-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_tack_plate_0",
+      "nodeName": "whistle_tack_plate_0",
+      "nodePath": [
+        0,
+        54
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.whistle.node.whistle-tack-plate-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "whistle_tack_plate_1",
+      "nodeName": "whistle_tack_plate_1",
+      "nodePath": [
+        0,
+        55
+      ],
+      "parentId": "sf.render.whistle.node.place-whistle",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.whistle.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "28b2135332da0fcae3b2b3adb1082daa5713ae84e17b5c6261a8063ee219b315"
+      "sha256": "f8779a67f73aca0dcbbce629cfdc1f0ec486639e168d0433297f04ad036a85a3"
     },
     "sourceGlb": {
-      "bytes": 228780,
-      "sha256": "90ef2650216aa214bce5520d829d03a9c0d682e7057a8f982bf243b695aa100e",
+      "bytes": 187148,
+      "sha256": "934fdf14336f52c24893896454cd9069226ff5c43b8d5022409203e09d19173c",
       "uri": "place_whistle.glb"
     },
     "sourceManifest": {
-      "bytes": 159409,
-      "sha256": "744cb0ede1c62d560bfd2e23bfc1b9f5fb5065ec409718e44f95bd1f531921e0",
+      "bytes": 169401,
+      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 290836,
-    "sha256": "5f31948f1e436ba4533f5c0478592d3add40bf35e1cf34737abca5f9b9a37780",
+    "bytes": 269276,
+    "sha256": "f7273a169888062ffb73dd64d7725c4e5d93a43278fb0f4590b2095126d7cee6",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0.043383945251463274,
-        5.797775691020207,
+        5.560180144212666,
         0.32412839248961234
       ],
       "max": [
         2.7575054226904854,
-        11.595558634801705,
+        11.595560256048088,
         2.7509172853558823
       ],
       "min": [
         -2.670737532187559,
-        -0.0000072527612916733824,
+        -0.47519996762275696,
         -2.1026605003766576
       ],
       "size": [
         5.428242954878044,
-        11.595565887562996,
+        12.070760223670845,
         4.85357778573254
       ]
     },
@@ -4442,73 +4620,76 @@
     "legacyPart": false,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 56
+      "ceramic": 8,
+      "hull": 11,
+      "mechanical": 31,
+      "rubber": 8
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 2,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 3,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -4518,47 +4699,47 @@
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -4583,57 +4764,57 @@
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 30,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 31,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 34,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 39,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -4653,22 +4834,22 @@
       {
         "allowTextures": true,
         "planIndex": 43,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 44,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 45,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 46,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
@@ -4678,32 +4859,32 @@
       {
         "allowTextures": true,
         "planIndex": 48,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 49,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 50,
-        "role": "hull"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 51,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 52,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 53,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -4718,15 +4899,25 @@
       {
         "allowTextures": true,
         "planIndex": 56,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 57,
-        "role": "hull"
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "mechanical"
       }
     ],
-    "nodeCount": 58,
+    "nodeCount": 60,
     "primitives": [
       {
         "canopy": false,
@@ -6183,87 +6374,145 @@
         "tags": {
           "canopy": false
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_ShadowEnamel",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Remaster_Material_Mechanical_BrushedNickel",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0"
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_whistle.glb"
   },
-  "runtimeHash": "5b609e36209a179ede8fdc2da01bb11c8ad5b7b2ecd561df7e7269aac1d6dec8",
+  "runtimeHash": "39df78222bf40acbf48ea6808dfb035ed04e697f3e776d7255293c5da83529cf",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           2.7575054226904854,
-          11.595558634801705,
+          11.595560256048088,
           2.7509172853558823
         ],
         "min": [
           -2.670737532187559,
-          -0.0000072527612916733824,
+          -0.47519996762275696,
           -2.1026605003766576
         ]
       },
       "id": "sf.render.whistle.body",
       "nodeIds": [
-        "sf.render.whistle.mesh.whistle-antenna-clamp",
-        "sf.render.whistle.mesh.whistle-antenna-s-0",
-        "sf.render.whistle.mesh.whistle-antenna-s-1",
-        "sf.render.whistle.mesh.whistle-antenna-s-2",
-        "sf.render.whistle.mesh.whistle-basket-bar-0",
-        "sf.render.whistle.mesh.whistle-basket-bar-1",
-        "sf.render.whistle.mesh.whistle-basket-bar-2",
-        "sf.render.whistle.mesh.whistle-basket-bar-3",
-        "sf.render.whistle.mesh.whistle-basket-gather-0",
-        "sf.render.whistle.mesh.whistle-basket-gather-1",
-        "sf.render.whistle.mesh.whistle-basket-gather-2",
-        "sf.render.whistle.mesh.whistle-basket-ring",
-        "sf.render.whistle.mesh.whistle-basket-ring-lo",
-        "sf.render.whistle.mesh.whistle-boot",
-        "sf.render.whistle.mesh.whistle-boot-sole",
-        "sf.render.whistle.mesh.whistle-chain-0-1",
-        "sf.render.whistle.mesh.whistle-chain-0-2",
-        "sf.render.whistle.mesh.whistle-chain-0-3",
-        "sf.render.whistle.mesh.whistle-chain-0-4",
-        "sf.render.whistle.mesh.whistle-chain-1-1",
-        "sf.render.whistle.mesh.whistle-chain-1-2",
-        "sf.render.whistle.mesh.whistle-chain-1-3",
-        "sf.render.whistle.mesh.whistle-chain-1-4",
-        "sf.render.whistle.mesh.whistle-chain-2-1",
-        "sf.render.whistle.mesh.whistle-chain-2-2",
-        "sf.render.whistle.mesh.whistle-chain-2-3",
-        "sf.render.whistle.mesh.whistle-chain-2-4",
-        "sf.render.whistle.mesh.whistle-crank-arm",
-        "sf.render.whistle.mesh.whistle-crank-hub",
-        "sf.render.whistle.mesh.whistle-drum",
-        "sf.render.whistle.mesh.whistle-fillet-0",
-        "sf.render.whistle.mesh.whistle-fillet-1",
-        "sf.render.whistle.mesh.whistle-fillet-2",
-        "sf.render.whistle.mesh.whistle-fillet-3",
-        "sf.render.whistle.mesh.whistle-fillet-4",
-        "sf.render.whistle.mesh.whistle-fillet-5",
-        "sf.render.whistle.mesh.whistle-fillet-6",
-        "sf.render.whistle.mesh.whistle-fillet-7",
-        "sf.render.whistle.mesh.whistle-lamp-0",
-        "sf.render.whistle.mesh.whistle-lamp-1",
-        "sf.render.whistle.mesh.whistle-lamp-2",
-        "sf.render.whistle.mesh.whistle-lid-clamp",
-        "sf.render.whistle.mesh.whistle-lid-warped",
-        "sf.render.whistle.mesh.whistle-paddle-root",
-        "sf.render.whistle.mesh.whistle-paddle-stanchion",
-        "sf.render.whistle.mesh.whistle-plaque",
-        "sf.render.whistle.mesh.whistle-plaque-bolt-0",
-        "sf.render.whistle.mesh.whistle-plaque-bolt-1",
-        "sf.render.whistle.mesh.whistle-plaque-standoff",
-        "sf.render.whistle.mesh.whistle-rebar-0",
-        "sf.render.whistle.mesh.whistle-rebar-1",
-        "sf.render.whistle.mesh.whistle-rebar-2",
-        "sf.render.whistle.mesh.whistle-strap-0",
-        "sf.render.whistle.mesh.whistle-strap-1",
-        "sf.render.whistle.mesh.whistle-tack-plate-0",
-        "sf.render.whistle.mesh.whistle-tack-plate-1",
-        "sf.render.whistle.root"
+        "sf.render.whistle.node.place-whistle",
+        "sf.render.whistle.node.remaster-material-mechanical-brushednickel",
+        "sf.render.whistle.node.remaster-material-mechanical-shadowenamel",
+        "sf.render.whistle.node.whistle-antenna-clamp",
+        "sf.render.whistle.node.whistle-antenna-s-0",
+        "sf.render.whistle.node.whistle-antenna-s-1",
+        "sf.render.whistle.node.whistle-antenna-s-2",
+        "sf.render.whistle.node.whistle-basket-bar-0",
+        "sf.render.whistle.node.whistle-basket-bar-1",
+        "sf.render.whistle.node.whistle-basket-bar-2",
+        "sf.render.whistle.node.whistle-basket-bar-3",
+        "sf.render.whistle.node.whistle-basket-gather-0",
+        "sf.render.whistle.node.whistle-basket-gather-1",
+        "sf.render.whistle.node.whistle-basket-gather-2",
+        "sf.render.whistle.node.whistle-basket-ring",
+        "sf.render.whistle.node.whistle-basket-ring-lo",
+        "sf.render.whistle.node.whistle-boot",
+        "sf.render.whistle.node.whistle-boot-sole",
+        "sf.render.whistle.node.whistle-chain-0-1",
+        "sf.render.whistle.node.whistle-chain-0-2",
+        "sf.render.whistle.node.whistle-chain-0-3",
+        "sf.render.whistle.node.whistle-chain-0-4",
+        "sf.render.whistle.node.whistle-chain-1-1",
+        "sf.render.whistle.node.whistle-chain-1-2",
+        "sf.render.whistle.node.whistle-chain-1-3",
+        "sf.render.whistle.node.whistle-chain-1-4",
+        "sf.render.whistle.node.whistle-chain-2-1",
+        "sf.render.whistle.node.whistle-chain-2-2",
+        "sf.render.whistle.node.whistle-chain-2-3",
+        "sf.render.whistle.node.whistle-chain-2-4",
+        "sf.render.whistle.node.whistle-crank-arm",
+        "sf.render.whistle.node.whistle-crank-hub",
+        "sf.render.whistle.node.whistle-drum",
+        "sf.render.whistle.node.whistle-fillet-0",
+        "sf.render.whistle.node.whistle-fillet-1",
+        "sf.render.whistle.node.whistle-fillet-2",
+        "sf.render.whistle.node.whistle-fillet-3",
+        "sf.render.whistle.node.whistle-fillet-4",
+        "sf.render.whistle.node.whistle-fillet-5",
+        "sf.render.whistle.node.whistle-fillet-6",
+        "sf.render.whistle.node.whistle-fillet-7",
+        "sf.render.whistle.node.whistle-lamp-0",
+        "sf.render.whistle.node.whistle-lamp-1",
+        "sf.render.whistle.node.whistle-lamp-2",
+        "sf.render.whistle.node.whistle-lid-clamp",
+        "sf.render.whistle.node.whistle-lid-warped",
+        "sf.render.whistle.node.whistle-paddle-root",
+        "sf.render.whistle.node.whistle-paddle-stanchion",
+        "sf.render.whistle.node.whistle-plaque",
+        "sf.render.whistle.node.whistle-plaque-bolt-0",
+        "sf.render.whistle.node.whistle-plaque-bolt-1",
+        "sf.render.whistle.node.whistle-plaque-standoff",
+        "sf.render.whistle.node.whistle-rebar-0",
+        "sf.render.whistle.node.whistle-rebar-1",
+        "sf.render.whistle.node.whistle-rebar-2",
+        "sf.render.whistle.node.whistle-strap-0",
+        "sf.render.whistle.node.whistle-strap-1",
+        "sf.render.whistle.node.whistle-tack-plate-0",
+        "sf.render.whistle.node.whistle-tack-plate-1"
       ]
     }
   ]

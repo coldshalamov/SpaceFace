@@ -1,0 +1,3395 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        0.44999998807907104,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        2,
+        10
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        0.44999998807907104,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        2,
+        11
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-dock-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.4000000953674316,
+        0.41999998688697815,
+        9.350000381469727,
+        1
+      ],
+      "nodeName": "SOCKET_Dock_Port",
+      "nodePath": [
+        2,
+        12
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.4000000953674316,
+        0.41999998688697815,
+        9.350000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.149999618530273,
+        0.3799999952316284,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        2,
+        13
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.149999618530273,
+        0.3799999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        9.020000457763672,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        2,
+        14
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        9.020000457763672,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        -9.020000457763672,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        2,
+        15
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        -9.020000457763672,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-service-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.41999998688697815,
+        -9.350000381469727,
+        1
+      ],
+      "nodeName": "SOCKET_Service_Starboard",
+      "nodePath": [
+        2,
+        16
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.41999998688697815,
+        -9.350000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-tether-keel",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Keel",
+      "nodePath": [
+        2,
+        17
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        2,
+        18
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        4.550000190734863,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        2,
+        19
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        4.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        -4.550000190734863,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        2,
+        20
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        -4.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.400000095367432,
+        5.550000190734863,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        2,
+        21
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.400000095367432,
+        5.550000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        17.850000381469727,
+        0.550000011920929,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        2,
+        22
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        17.850000381469727,
+        0.550000011920929,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.massline-express-liner-v1-lod1",
+  "collisions": [
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.collision",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "706764f85ad3571e0b2a57c5b6e845a6f0697475773e26fb1fc435124452fdbd",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          19.799999237060547,
+          5.599421501159668,
+          9.349246978759766
+        ],
+        "min": [
+          -21,
+          -5.299421787261963,
+          -9.349246978759766
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7765ccbec6928dc3d754c161d5a3615616917d0e343161cbe2cf64493b20b37d",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.collision-hull.primitive.0",
+      "indexCount": 54,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL_MESH.001",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 54
+    },
+    {
+      "bounds": {
+        "max": [
+          19.420000076293945,
+          5.6005377769470215,
+          9.288986206054688
+        ],
+        "min": [
+          -19.719999313354492,
+          -4.840538024902344,
+          -9.288986206054688
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f731dcb89ea733ab9f3f7774d1bfe1b5507e5818fc715ca75644196084a0366c",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-hull-mat-sf-massline-ceramicpaint-warmivory.primitive.0",
+      "indexCount": 43131,
+      "indexed": true,
+      "materialHash": "df86c48abd3eef1298e0c2e9656f1f1961fafb07b3cd6fddbf1b184be831aed0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Station_Ops_Mesh.003",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.lod1-hull-mat-sf-massline-ceramicpaint-warmivory",
+      "primitiveIndex": 0,
+      "vertexCount": 33795
+    },
+    {
+      "bounds": {
+        "max": [
+          17.928001403808594,
+          5.66024923324585,
+          9.480000495910645
+        ],
+        "min": [
+          -20.850000381469727,
+          -5.110299587249756,
+          -9.480000495910645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2addcaa9b249a8c555bd36d2fd6b5e15b1e71e2a9ab6e13765d798a91916bf87",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-frame-darkanodized.primitive.0",
+      "indexCount": 68592,
+      "indexed": true,
+      "materialHash": "457c0545da5fc69ce4137cdf326cd6115ad7db23a0d76d61d041994e629682ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.270",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-frame-darkanodized",
+      "primitiveIndex": 0,
+      "vertexCount": 53641
+    },
+    {
+      "bounds": {
+        "max": [
+          16.05010986328125,
+          5.555639266967773,
+          9.177999496459961
+        ],
+        "min": [
+          -0.670110821723938,
+          -0.020008983090519905,
+          -9.177999496459961
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "626b2de1f6fd1108474b035956740a98770f6872c8f9ffb9347b8bba486232cf",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-glazing-smokedsafety.primitive.0",
+      "indexCount": 5760,
+      "indexed": true,
+      "materialHash": "aab60836bd0a091ce86c00d17a33cdafe17aba15dea47c123a9fbfcd8ab3fe1c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.284",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-glazing-smokedsafety",
+      "primitiveIndex": 0,
+      "vertexCount": 4688
+    },
+    {
+      "bounds": {
+        "max": [
+          17.700000762939453,
+          5.32981014251709,
+          8.728887557983398
+        ],
+        "min": [
+          -19.529998779296875,
+          -5.469809532165527,
+          -8.728887557983398
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "39ef92b0d259ac2188f231741adfd475c23801b33f8a085dcef6bded322d82b6",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-keel-forgeddark.primitive.0",
+      "indexCount": 15636,
+      "indexed": true,
+      "materialHash": "0e88ce0d434366e421c033eb8851b066df31fe3a809cfee5960226f3dd85db16",
+      "materialPipelineKey": "opaque",
+      "meshName": "PassLiner_Mesh.003",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-keel-forgeddark",
+      "primitiveIndex": 0,
+      "vertexCount": 12891
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.850221633911133,
+          1.1002734899520874,
+          5.344474792480469
+        ],
+        "min": [
+          -20.54977798461914,
+          -0.34027349948883057,
+          -5.344474792480469
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ecdadad04da60c519c8de2b27c1e594c8f4caa31106ac1bdf0b1d335dc858e12",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-refractoryheatalloy.primitive.0",
+      "indexCount": 3108,
+      "indexed": true,
+      "materialHash": "da0e3ca89fdca3354eb865c6264094e4b50adcf47177ad829eb98264f9f91b14",
+      "materialPipelineKey": "opaque",
+      "meshName": "Liner_Port_Mesh.003",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-refractoryheatalloy",
+      "primitiveIndex": 0,
+      "vertexCount": 2240
+    },
+    {
+      "bounds": {
+        "max": [
+          8.920000076293945,
+          5.380460739135742,
+          9.411566734313965
+        ],
+        "min": [
+          -19.770000457763672,
+          -5.330460548400879,
+          -9.411566734313965
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "726ecfc895d6ecc3bb7a050371b06922d905035a99f2cf9789c701d560e345b7",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-serviceprimer-galvanized.primitive.0",
+      "indexCount": 8160,
+      "indexed": true,
+      "materialHash": "6c6b0872da3c1b2af98cc7a0185fd4de30aaba05c79294c56e7ad36e71f537b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.318",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-serviceprimer-galvanized",
+      "primitiveIndex": 0,
+      "vertexCount": 6670
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.800235748291016,
+          1.4479219913482666,
+          5.714010238647461
+        ],
+        "min": [
+          -20.819765090942383,
+          -0.6879220008850098,
+          -5.714010238647461
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "131df14a5aa167f667d323a5bf2e2b299cde9547c2244bfb7bd6ed8a55287eac",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-throat-oxidizeddark.primitive.0",
+      "indexCount": 5328,
+      "indexed": true,
+      "materialHash": "6ed3778bc866e3a8d723ef5003824d5f5f68e1e7c0cfb3042eaf6def13244efe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Throat_Port_Mesh.003",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-throat-oxidizeddark",
+      "primitiveIndex": 0,
+      "vertexCount": 4356
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.773370623588562,
+          0.6679999828338623,
+          -9.399999618530273
+        ],
+        "min": [
+          -1.8266292810440063,
+          0.6119999885559082,
+          -9.440000534057617
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "882cefbb716c1df79febc32d86ea2accad5769d5f0d6ceaf43915993538b33ff",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-wayfindingamber.primitive.0",
+      "indexCount": 348,
+      "indexed": true,
+      "materialHash": "34579d2e3aa316644bdc5c782dbb866d4147673a2f2f8616567eed3be2859dde",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.024",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-wayfindingamber",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          3.4266297817230225,
+          0.668064534664154,
+          9.439594268798828
+        ],
+        "min": [
+          -18.39000129699707,
+          0.335160493850708,
+          -4.594369888305664
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c28c67e84b0e002154521790a848603f8e7fe721891c40fdda0257f77ec029d0",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-wayfindingcyan.primitive.0",
+      "indexCount": 1668,
+      "indexed": true,
+      "materialHash": "06eed0eebc456378d0f112726253588f2d02995649f3fe5efaf46d651fe180a3",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.023",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-wayfindingcyan",
+      "primitiveIndex": 0,
+      "vertexCount": 1326
+    },
+    {
+      "bounds": {
+        "max": [
+          9.300000190734863,
+          5.215843200683594,
+          1.0722984075546265
+        ],
+        "min": [
+          0.30000001192092896,
+          5.155416965484619,
+          -1.0722984075546265
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2f3054cf6fc7b16c28ff450ec3fd36859ca7e0d714f5c9f25190a9844628431b",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-remaster-material-emissive-warm-remasterrecess.primitive.0",
+      "indexCount": 1656,
+      "indexed": true,
+      "materialHash": "9e34bc73984fd7ba87a3c1b84ac523f51ed250574554741b9bf879f43bea6ac2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Remaster_PassengerLantern_WarmLightCove",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.lod1-remaster-material-emissive-warm-remasterrecess",
+      "primitiveIndex": 0,
+      "vertexCount": 1253
+    },
+    {
+      "bounds": {
+        "max": [
+          9,
+          5.633184909820557,
+          0.11023285239934921
+        ],
+        "min": [
+          0.6000000238418579,
+          5.548075199127197,
+          -0.11023285239934921
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8eb394a0e06f151447e737f6edde512535e842a4d2cc712d63257d2b0eac233a",
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-remaster-material-hull-remasterseaenamel.primitive.0",
+      "indexCount": 828,
+      "indexed": true,
+      "materialHash": "300f88db8479baa7f984d0fb88743961ddc08edadedbf4c77bea2bd76565d28d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Remaster_PassengerLantern_RidgeCover",
+      "nodeId": "sf.render.massline-express-liner-v1-lod1.node.lod1-remaster-material-hull-remasterseaenamel",
+      "primitiveIndex": 0,
+      "vertexCount": 624
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "06eed0eebc456378d0f112726253588f2d02995649f3fe5efaf46d651fe180a3",
+      "id": "material:06eed0eebc456378d0f11272",
+      "name": "MAT_SF_Massline_WayfindingCyan",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_cyan_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_cyan_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_cyan_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "0e88ce0d434366e421c033eb8851b066df31fe3a809cfee5960226f3dd85db16",
+      "id": "material:0e88ce0d434366e421c033eb",
+      "name": "MAT_SF_Massline_Keel_ForgedDark",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_keel_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_keel_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_keel_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "300f88db8479baa7f984d0fb88743961ddc08edadedbf4c77bea2bd76565d28d",
+      "id": "material:300f88db8479baa7f984d0fb",
+      "name": "Material_Hull_RemasterSeaEnamel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "34579d2e3aa316644bdc5c782dbb866d4147673a2f2f8616567eed3be2859dde",
+      "id": "material:34579d2e3aa316644bdc5c78",
+      "name": "MAT_SF_Massline_WayfindingAmber",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_amber_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_amber_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_amber_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "457c0545da5fc69ce4137cdf326cd6115ad7db23a0d76d61d041994e629682ce",
+      "id": "material:457c0545da5fc69ce4137cdf",
+      "name": "MAT_SF_Massline_Frame_DarkAnodized",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_frame_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_frame_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_frame_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6c6b0872da3c1b2af98cc7a0185fd4de30aaba05c79294c56e7ad36e71f537b2",
+      "id": "material:6c6b0872da3c1b2af98cc7a0",
+      "name": "MAT_SF_Massline_ServicePrimer_Galvanized",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_primer_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_primer_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_primer_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6ed3778bc866e3a8d723ef5003824d5f5f68e1e7c0cfb3042eaf6def13244efe",
+      "id": "material:6ed3778bc866e3a8d723ef50",
+      "name": "MAT_SF_Massline_Throat_OxidizedDark",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_throat_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_throat_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_throat_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9e34bc73984fd7ba87a3c1b84ac523f51ed250574554741b9bf879f43bea6ac2",
+      "id": "material:9e34bc73984fd7ba87a3c1b8",
+      "name": "Material_Emissive_Warm_RemasterRecess",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "aab60836bd0a091ce86c00d17a33cdafe17aba15dea47c123a9fbfcd8ab3fe1c",
+      "id": "material:aab60836bd0a091ce86c00d1",
+      "name": "MAT_SF_Massline_Glazing_SmokedSafety",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_glass_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_glass_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_glass_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "da0e3ca89fdca3354eb865c6264094e4b50adcf47177ad829eb98264f9f91b14",
+      "id": "material:da0e3ca89fdca3354eb865c6",
+      "name": "MAT_SF_Massline_RefractoryHeatAlloy",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_refractory_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_refractory_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_refractory_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "df86c48abd3eef1298e0c2e9656f1f1961fafb07b3cd6fddbf1b184be831aed0",
+      "id": "material:df86c48abd3eef1298e0c2e9",
+      "name": "MAT_SF_Massline_CeramicPaint_WarmIvory",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "liner_ceramic_512_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_ceramic_512_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "liner_ceramic_512_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        2,
+        0
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LINER_LOD1_ROOT",
+      "nodeName": "LINER_LOD1_ROOT",
+      "nodePath": [
+        2
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-hull-mat-sf-massline-ceramicpaint-warmivory",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_MAT_SF_Massline_CeramicPaint_WarmIvory",
+      "nodeName": "LOD1_Hull_MAT_SF_Massline_CeramicPaint_WarmIvory",
+      "nodePath": [
+        2,
+        1
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-frame-darkanodized",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MAT_SF_Massline_Frame_DarkAnodized",
+      "nodeName": "LOD1_MAT_SF_Massline_Frame_DarkAnodized",
+      "nodePath": [
+        2,
+        2
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-glazing-smokedsafety",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MAT_SF_Massline_Glazing_SmokedSafety",
+      "nodeName": "LOD1_MAT_SF_Massline_Glazing_SmokedSafety",
+      "nodePath": [
+        2,
+        3
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-keel-forgeddark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MAT_SF_Massline_Keel_ForgedDark",
+      "nodeName": "LOD1_MAT_SF_Massline_Keel_ForgedDark",
+      "nodePath": [
+        2,
+        4
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-refractoryheatalloy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MAT_SF_Massline_RefractoryHeatAlloy",
+      "nodeName": "LOD1_MAT_SF_Massline_RefractoryHeatAlloy",
+      "nodePath": [
+        2,
+        5
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-serviceprimer-galvanized",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MAT_SF_Massline_ServicePrimer_Galvanized",
+      "nodeName": "LOD1_MAT_SF_Massline_ServicePrimer_Galvanized",
+      "nodePath": [
+        2,
+        6
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-throat-oxidizeddark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MAT_SF_Massline_Throat_OxidizedDark",
+      "nodeName": "LOD1_MAT_SF_Massline_Throat_OxidizedDark",
+      "nodePath": [
+        2,
+        7
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-wayfindingamber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MAT_SF_Massline_WayfindingAmber",
+      "nodeName": "LOD1_MAT_SF_Massline_WayfindingAmber",
+      "nodePath": [
+        2,
+        8
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-wayfindingcyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MAT_SF_Massline_WayfindingCyan",
+      "nodeName": "LOD1_MAT_SF_Massline_WayfindingCyan",
+      "nodePath": [
+        2,
+        9
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-remaster-material-emissive-warm-remasterrecess",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Remaster_Material_Emissive_Warm_RemasterRecess",
+      "nodeName": "LOD1_Remaster_Material_Emissive_Warm_RemasterRecess",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.lod1-remaster-material-hull-remasterseaenamel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Remaster_Material_Hull_RemasterSeaEnamel",
+      "nodeName": "LOD1_Remaster_Material_Hull_RemasterSeaEnamel",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        0.44999998807907104,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        2,
+        10
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        0.44999998807907104,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-cargo-ventral",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Cargo_Ventral",
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        2,
+        11
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-dock-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.4000000953674316,
+        0.41999998688697815,
+        9.350000381469727,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Dock_Port",
+      "nodeName": "SOCKET_Dock_Port",
+      "nodePath": [
+        2,
+        12
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.4000000953674316,
+        0.41999998688697815,
+        9.350000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.149999618530273,
+        0.3799999952316284,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        2,
+        13
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.149999618530273,
+        0.3799999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-rcs-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        9.020000457763672,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Port",
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        2,
+        14
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        9.020000457763672,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-rcs-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        -9.020000457763672,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Starboard",
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        2,
+        15
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        -9.020000457763672,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-service-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.41999998688697815,
+        -9.350000381469727,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Service_Starboard",
+      "nodeName": "SOCKET_Service_Starboard",
+      "nodePath": [
+        2,
+        16
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.41999998688697815,
+        -9.350000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-tether-keel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Keel",
+      "nodeName": "SOCKET_Tether_Keel",
+      "nodePath": [
+        2,
+        17
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        2,
+        18
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-trail-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        4.550000190734863,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Port",
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        2,
+        19
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        4.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-trail-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        -4.550000190734863,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Starboard",
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        2,
+        20
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        -4.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-utility-dorsal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.400000095367432,
+        5.550000190734863,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Utility_Dorsal",
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        2,
+        21
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.400000095367432,
+        5.550000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1-lod1.node.socket-weapon-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        17.850000381469727,
+        0.550000011920929,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Weapon_Front",
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        2,
+        22
+      ],
+      "parentId": "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        17.850000381469727,
+        0.550000011920929,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "5a63f9d8cc8460f430a0fa24c15cdf566940421687de8a0d7aa836bfc40b6df7"
+    },
+    "sourceGlb": {
+      "bytes": 5875048,
+      "sha256": "eb6476d782fc1d6256f7327f9672351b2005e83c2d60cb203aaca5d4cbf47a1a",
+      "uri": "massline_express_liner_v1_lod1.glb"
+    },
+    "sourceManifest": {
+      "bytes": 176539,
+      "sha256": "ebd48a2be8addc8ee6eb73f33b3cc10467a71d1e555155fc6d101ba7566ace24",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 7042004,
+    "sha256": "9bcf088cd664edc3d5cfb717f926e97452d02f10b4f332fb465b2408b3878e0d",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.6000003814697266,
+        0.09521985054016113,
+        0
+      ],
+      "max": [
+        19.799999237060547,
+        5.66024923324585,
+        9.480000495910645
+      ],
+      "min": [
+        -21,
+        -5.469809532165527,
+        -9.480000495910645
+      ],
+      "size": [
+        40.79999923706055,
+        11.130058765411377,
+        18.96000099182129
+      ]
+    },
+    "hidden": [
+      4
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4000000059604645,
+          0.44999998807907104,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 14,
+        "tags": {
+          "socket": true,
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-camera-focus",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.3499999940395355,
+          -5.28000020980835,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-cargo-ventral",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.4000000953674316,
+          0.41999998688697815,
+          9.350000381469727,
+          1
+        ],
+        "name": "SOCKET_Dock_Port",
+        "planIndex": 16,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Dock_Port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Dock_Port",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-dock-port",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-dock-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -20.149999618530273,
+          0.3799999952316284,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-engine-main",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          8.800000190734863,
+          0.8500000238418579,
+          9.020000457763672,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-rcs-port",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          8.800000190734863,
+          0.8500000238418579,
+          -9.020000457763672,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-rcs-starboard",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.7999999523162842,
+          0.41999998688697815,
+          -9.350000381469727,
+          1
+        ],
+        "name": "SOCKET_Service_Starboard",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Service_Starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Service_Starboard",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-service-starboard",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-service-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.3499999940395355,
+          -5.28000020980835,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Keel",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Keel",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Keel",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-tether-keel",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-tether-keel"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -20.850000381469727,
+          0.3799999952316284,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-trail-main",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -20.850000381469727,
+          0.3799999952316284,
+          4.550000190734863,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-trail-port",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -20.850000381469727,
+          0.3799999952316284,
+          -4.550000190734863,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-trail-starboard",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.400000095367432,
+          5.550000190734863,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-utility-dorsal",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          17.850000381469727,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.anchor.socket-weapon-front",
+              "sf.render.massline-express-liner-v1-lod1.node.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "ceramic": 1,
+      "glass": 1,
+      "hull": 3,
+      "mechanical": 3,
+      "service": 1,
+      "signal": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 1,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "signal"
+      }
+    ],
+    "nodeCount": 27,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Remaster_Material_Emissive_Warm_RemasterRecess",
+        "planIndex": 1,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Remaster_Material_Hull_RemasterSeaEnamel",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull_MAT_SF_Massline_CeramicPaint_WarmIvory",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MAT_SF_Massline_Frame_DarkAnodized",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MAT_SF_Massline_Glazing_SmokedSafety",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MAT_SF_Massline_Keel_ForgedDark",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MAT_SF_Massline_RefractoryHeatAlloy",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MAT_SF_Massline_ServicePrimer_Galvanized",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MAT_SF_Massline_Throat_OxidizedDark",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MAT_SF_Massline_WayfindingAmber",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MAT_SF_Massline_WayfindingCyan",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb"
+  },
+  "runtimeHash": "7d8bd32262b64916e04fb32ef61259655a9a5d53d5c36f1f7175909730863a56",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          19.799999237060547,
+          5.66024923324585,
+          9.480000495910645
+        ],
+        "min": [
+          -21,
+          -5.469809532165527,
+          -9.480000495910645
+        ]
+      },
+      "id": "sf.render.massline-express-liner-v1-lod1.body",
+      "nodeIds": [
+        "sf.render.massline-express-liner-v1-lod1.node.collision-hull",
+        "sf.render.massline-express-liner-v1-lod1.node.liner-lod1-root",
+        "sf.render.massline-express-liner-v1-lod1.node.lod1-hull-mat-sf-massline-ceramicpaint-warmivory",
+        "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-frame-darkanodized",
+        "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-glazing-smokedsafety",
+        "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-keel-forgeddark",
+        "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-refractoryheatalloy",
+        "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-serviceprimer-galvanized",
+        "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-throat-oxidizeddark",
+        "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-wayfindingamber",
+        "sf.render.massline-express-liner-v1-lod1.node.lod1-mat-sf-massline-wayfindingcyan",
+        "sf.render.massline-express-liner-v1-lod1.node.lod1-remaster-material-emissive-warm-remasterrecess",
+        "sf.render.massline-express-liner-v1-lod1.node.lod1-remaster-material-hull-remasterseaenamel",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-camera-focus",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-cargo-ventral",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-dock-port",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-engine-main",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-rcs-port",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-rcs-starboard",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-service-starboard",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-tether-keel",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-trail-main",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-trail-port",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-trail-starboard",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-utility-dorsal",
+        "sf.render.massline-express-liner-v1-lod1.node.socket-weapon-front"
+      ]
+    }
+  ]
+}
