@@ -50,6 +50,33 @@ function labelRectsOverlap(a, b, pad) {
 }
 
 /**
+ * INF-055 view focus. The old view pinned the PLAYER to the screen center, so every wheel step
+ * scaled around the ship and the station under the cursor slid away while you zoomed onto it.
+ * The view now keeps a world-space focus: with an anchor (the world point under the cursor when
+ * the wheel moved, plus that cursor pixel), the focus re-derives each eased frame so the anchored
+ * point stays under the cursor at the CURRENT scale — through the whole 150 ms ease, a DPI change,
+ * or a viewport resize (center moves, anchor pixel holds). Without an anchor the view rests on
+ * the ship, which is also what a center-anchored (keyboard/controller) zoom keeps. The focus is
+ * clamped so the ship marker can never leave the plate — there is no pan verb to recover it.
+ */
+export function anchoredZoomFocus(anchor, playerPos, center, scale, marginPx = 24) {
+  let fx;
+  let fz;
+  if (anchor && scale > 0) {
+    fx = anchor.world.x + (anchor.screen.x - center.x) / scale;
+    fz = anchor.world.z + (anchor.screen.y - center.y) / scale;
+  } else {
+    fx = playerPos.x;
+    fz = playerPos.z;
+  }
+  const maxOffX = Math.max(0, center.x - marginPx) / Math.max(scale, 1e-6);
+  const maxOffZ = Math.max(0, center.y - marginPx) / Math.max(scale, 1e-6);
+  fx = Math.max(playerPos.x - maxOffX, Math.min(playerPos.x + maxOffX, fx));
+  fz = Math.max(playerPos.z - maxOffZ, Math.min(playerPos.z + maxOffZ, fz));
+  return { x: fx, z: fz };
+}
+
+/**
  * Greedy label placement. `jobs` is any array of {x, y, dx, text, font, priority}; `measure`
  * returns a pixel width for (text, font). Higher-priority jobs claim their spot first; within a
  * tier the incoming order (the map model's stable sort) decides, so the same world state always
@@ -322,6 +349,8 @@ export const localmapScreen = {
   _lastCanvasH: 0,
   _lastDpr: 0,
   _zoom: 1,
+  _zoomAnchor: null,
+  _viewFocus: null,
   _pan: { x: 0, y: 0 },
   _routes: EMPTY_ROUTES,
   _routesSig: '',
@@ -379,10 +408,23 @@ export const localmapScreen = {
     this._ro.observe(this._body);
     this._resize();
 
-    // Zoom listener
+    // Zoom listener. Each step captures the world point under the cursor; the eased frames keep
+    // that point at that pixel until the next step or reopen (INF-055).
     this._targetZoom = this._zoom;
+    this._zoomAnchor = null;
+    this._viewFocus = null;
     this._body.addEventListener('wheel', (ev) => {
       ev.preventDefault();
+      const t = this._mapTransform;
+      if (t && t.scale > 0) {
+        const rect = this._canvas.getBoundingClientRect();
+        const sx = ev.clientX - rect.left;
+        const sy = ev.clientY - rect.top;
+        this._zoomAnchor = {
+          world: { x: t.playerX - (sx - t.cx) / t.scale, z: t.playerZ - (sy - t.cy) / t.scale },
+          screen: { x: sx, y: sy },
+        };
+      }
       const factor = ev.deltaY < 0 ? 0.8 : 1.25;
       this._targetZoom = Math.max(0.2, Math.min(5, this._targetZoom * factor));
     }, { passive: false });
@@ -394,6 +436,8 @@ export const localmapScreen = {
   onShow() {
     this._zoom = 1;
     this._targetZoom = 1;
+    this._zoomAnchor = null;
+    this._viewFocus = null;
     this._visible = true;
     invalidateCanvasFonts();
     cancelAnimationFrame(this._animFrame);
@@ -631,14 +675,18 @@ export const localmapScreen = {
     });
     this._renderObjectivePanel(state, player);
 
-    // World → screen: player fixed at center. Both axes negated to match the chase-cam/radar
-    // convention (world +Z = screen up, world +X = screen left). Scale fits the contact spread.
+    // World → screen: the view keeps a world-space FOCUS at the plate center (the ship when no
+    // zoom anchor is held, otherwise the point the cursor is inspecting). Both axes negated to
+    // match the chase-cam/radar convention (world +Z = screen up, world +X = screen left).
     const bounds = map.bounds || {};
     const span = Math.max(400, Math.hypot((bounds.maxX || 600) - (bounds.minX || -600), (bounds.maxZ || 600) - (bounds.minZ || -600)));
     const scale = ((Math.min(w, h) * 0.42) / span) / (this._zoom || 1);
-    const wx = (x) => C.x - (x - player.pos.x) * scale;
-    const wz = (z) => C.y - (z - player.pos.z) * scale;
-    this._mapTransform = { cx: C.x, cy: C.y, scale, playerX: player.pos.x, playerZ: player.pos.z };
+    const focus = anchoredZoomFocus(this._zoomAnchor, player.pos, C, scale);
+    this._viewFocus = focus;
+    const wx = (x) => C.x - (x - focus.x) * scale;
+    const wz = (z) => C.y - (z - focus.z) * scale;
+    this._mapTransform = { cx: C.x, cy: C.y, scale, playerX: focus.x, playerZ: focus.z };
+    const pxs = wx(player.pos.x), pys = wz(player.pos.z);
     this._lastClickTargets.length = 0;
     // Label jobs collected across every layer, then placed once in priority order (INF-054).
     const labelJobs = [];
@@ -798,7 +846,7 @@ export const localmapScreen = {
       g.beginPath(); g.arc(x, y, 24, 0, Math.PI * 2); g.fill();
       g.globalAlpha = 0.72;
       g.setLineDash([6, 5]);
-      g.beginPath(); g.moveTo(C.x, C.y); g.lineTo(x, y); g.stroke();
+      g.beginPath(); g.moveTo(pxs, pys); g.lineTo(x, y); g.stroke();
       g.setLineDash([]);
       g.globalAlpha = 1;
       g.restore();
@@ -822,10 +870,10 @@ export const localmapScreen = {
       g.fillText(job.text, rect.x, job.y);
     }
 
-    // Player at center (heading marker) — you. Shape is the chevron; stations stay circles.
+    // Player at its own screen position — the view focuses on the inspected point, not on you.
     g.save();
     g.fillStyle = roles.you; g.strokeStyle = roles.you; g.lineWidth = 1.4;
-    g.translate(C.x, C.y); g.rotate(Math.PI + (player.rot || 0));
+    g.translate(pxs, pys); g.rotate(Math.PI + (player.rot || 0));
     g.beginPath(); g.moveTo(7, 0); g.lineTo(-5, -4.5); g.lineTo(-5, 4.5); g.closePath(); g.fill();
     g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
     g.restore();
@@ -835,7 +883,7 @@ export const localmapScreen = {
     if (sp > 1) {
       const vx = wx(player.pos.x + player.vel.x * 1.5), vz = wz(player.pos.z + player.vel.z * 1.5);
       g.strokeStyle = paint(roles.you, 0.8); g.lineWidth = 1.3; g.setLineDash([4, 3]);
-      g.beginPath(); g.moveTo(C.x, C.y); g.lineTo(vx, vz); g.stroke(); g.setLineDash([]);
+      g.beginPath(); g.moveTo(pxs, pys); g.lineTo(vx, vz); g.stroke(); g.setLineDash([]);
     }
   },
 
