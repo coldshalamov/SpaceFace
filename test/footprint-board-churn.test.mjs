@@ -1,5 +1,5 @@
 // The footprint board is refreshed on uiRoot's 18-frame cadence (~3x/s while open). The board's
-// content is receipt data — nothing on it ticks — so refresh() now updates the ticking header and
+// content is receipt data — nothing on it ticks — so refresh() now rewrites the live header and
 // skips the hang/board/record/edges DOM rebuild until a cheap signature of its inputs moves.
 //
 // There is no jsdom in this repo, so this file proves the two halves honestly separately:
@@ -87,18 +87,59 @@ test('the board builds once and skips while its inputs are unchanged', () => {
   assert.equal(calls.showBoard, 1);
 });
 
-test('the header sentence still ticks on skipped passes', () => {
+test('the live header sentence is still rewritten on skipped passes', () => {
   const { screen, calls } = bootScreen([makeChain('chain_1')]);
   screen.refresh(screen._ctx);
   assert.equal(calls.board, 1);
   assert.ok(screen._titleLine.textContent.length > 0, 'the header sentence is written on the build pass');
 
-  // The cadence fires again with nothing changed: the board skips, the ticking header sentence
-  // (heat clears-in, standing, radius) is still rewritten from state.
+  // The cadence fires again with nothing changed: the board skips, the live header sentence
+  // (heat tier, standing, radius) is still rewritten from state.
   screen._titleLine.textContent = '';
   screen.refresh(screen._ctx);
   assert.equal(calls.board, 1, 'an unchanged state skips the rebuild');
   assert.ok(screen._titleLine.textContent.length > 0, 'the header sentence was rewritten on the skip');
+});
+
+test('a credits move rebuilds so the pay/bribe gates cannot go stale', () => {
+  const { state, screen, calls } = bootScreen([makeChain('chain_1')]);
+  screen.refresh(screen._ctx);
+  assert.equal(calls.board, 1);
+
+  // Passive income accrues while the board sits open; the "Pay bounty"/"Bribe" gate text reads
+  // live credits, so the signature samples it.
+  state.player.credits = (state.player.credits || 0) + 5000;
+  screen.refresh(screen._ctx);
+  assert.equal(calls.board, 2, 'a credits change moves the signature');
+  screen.refresh(screen._ctx);
+  assert.equal(calls.board, 2, 'and the next cadence tick skips again');
+});
+
+test('an ace returnsBigger flip rebuilds the record', () => {
+  const { state, screen, calls } = bootScreen([makeChain('chain_1')]);
+  state.provenance.chains[0].nodes.push({ k: 'standing', tick: 120, t: 36, aceId: 'ace_test', factionId: 'faction_free', reason: 'first_contact' });
+  state.aceMemory = { ace_test: { name: 'Test Ace', encounterCount: 1, fleeCount: 0, flungCount: 0, returnTier: 0, returnsBigger: true } };
+  screen.refresh(screen._ctx);
+  assert.equal(calls.board, 1);
+
+  // aceMemory._transition('defeated') flips returnsBigger without moving any counter.
+  state.aceMemory.ace_test.returnsBigger = false;
+  screen.refresh(screen._ctx);
+  assert.equal(calls.board, 2, 'the returnsBigger flag is part of the signature');
+});
+
+test('a matching signature must not skip while the board is hidden', () => {
+  const { screen, calls } = bootScreen([makeChain('chain_1')]);
+  screen.refresh(screen._ctx);
+  screen.refresh(screen._ctx);
+  assert.equal(calls.board, 1);
+
+  // Any path that hides the board (a data-state taking over, a future close/open) must force the
+  // next refresh to rebuild even though the signature still matches.
+  screen._board.hidden = true;
+  screen.refresh(screen._ctx);
+  assert.equal(calls.showBoard, 2, 'the visibility clause re-shows the board');
+  assert.equal(calls.board, 2);
 });
 
 test('a new receipt node moves the signature and rebuilds', () => {

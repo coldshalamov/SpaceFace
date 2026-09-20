@@ -434,6 +434,10 @@ export const footprintScreen = {
     if (ctx) this._ctx = ctx;
     this._restoreMemory();
     this.refresh(this._ctx);
+    // The resize listener only lives while the screen is on top, and an unchanged signature skips
+    // the rebuild — so a resize while the board was closed or covered must re-measure the SVG
+    // edges here or reopen draws them for the old geometry.
+    this._queueEdgeDraw();
     if (!this._resizeHandler) {
       this._resizeHandler = () => this._queueEdgeDraw();
       window.addEventListener('resize', this._resizeHandler);
@@ -550,10 +554,11 @@ export const footprintScreen = {
     }
 
     // The board is data-driven and nothing on it ticks (node stamps are receipts, not wall time);
-    // only the header sentence above counts down. The uiRoot refresh cadence fires ~3x a second
-    // while the screen is open, so the full hang/board/record/edges rebuild runs only when this
-    // cheap signature of its inputs actually moves (PQ-207.00 follow-up: the old path rebuilt the
-    // page every 18 frames — layout thrash and focus churn while the pilot reads the board).
+    // the header above is the only live text and is rewritten every pass. The uiRoot refresh
+    // cadence fires ~3x a second while the screen is open, so the full hang/board/record/edges
+    // rebuild runs only when this cheap signature of its inputs actually moves (PQ-207.00
+    // follow-up: the old path rebuilt the page every 18 frames — layout thrash and focus churn
+    // while the pilot reads the board).
     this._ensureSelection();
     const signature = this._boardSignature(chains, bounty, state);
     if (this._renderSig === signature && !this._board.hidden && !this._record.hidden
@@ -590,9 +595,10 @@ export const footprintScreen = {
   /** Cheap string identity of every input the hang/board/record/edge renders draw. Receipt chains
    *  are append-only (new nodes move chainStamp), so per-chain id+open+count+stamp+edge-count plus
    *  the page's derived rows (ledger head/tail sample, titles tail, line-contract statuses, the
-   *  traced chain's loss line / incident / ace counters) cover everything that can move while the
-   *  board sits open. Header text (the heat-clears countdown) is deliberately NOT here — it ticks
-   *  every refresh and is updated outside this guard. */
+   *  traced chain's loss line / incident / ace counters incl. returnsBigger, the verb gates'
+   *  credits and bribe cost) cover everything that can move while the board sits open. Header
+   *  text (heat tier, standing display) is deliberately NOT here — it is rewritten every refresh
+   *  outside this guard. */
   _boardSignature(chains, bounty, state) {
     const parts = [];
     for (const chain of chains) {
@@ -608,6 +614,14 @@ export const footprintScreen = {
     parts.push('sel=' + asString(this._selectedChainId) + ':' + this._selectedNodeIndex + ':' + this._recordSort);
     parts.push('bty=' + Math.round(bounty));
     const chain = this._selectedChain();
+    // The verbs read live credits and the traced chain's faction bribe cost (both move while the
+    // board sits open — passive income accrues, rep shifts) — sample them or "Pay bounty"/"Bribe"
+    // render stale.
+    const verbPlayer = state.player || {};
+    const verbFaction = chain ? findChainStandingFaction(chain) : null;
+    const verbBribe = verbFaction ? bribeCost(verbFaction) : 0;
+    parts.push('cr=' + Math.max(0, Math.round(asNumber(verbPlayer.credits, 0)))
+      + ':' + (Number.isFinite(verbBribe) ? Math.round(verbBribe) : 'inf'));
     const loss = chain ? latestLossLine(state, asString(chain.sectorId)) : null;
     parts.push('loss=' + (loss || ''));
     const ledger = buildShipLedger(state, { page: 0, pageSize: SHIP_LEDGER_PAGE_SIZE });
@@ -623,7 +637,7 @@ export const footprintScreen = {
       : null;
     const aceRec = aceNode && state.aceMemory && state.aceMemory[aceNode.aceId];
     parts.push('ace=' + (aceRec
-      ? [aceNode.aceId, aceRec.encounterCount | 0, aceRec.fleeCount | 0, aceRec.flungCount | 0, aceRec.returnTier | 0].join(':')
+      ? [aceNode.aceId, aceRec.encounterCount | 0, aceRec.fleeCount | 0, aceRec.flungCount | 0, aceRec.returnTier | 0, aceRec.returnsBigger ? 1 : 0].join(':')
       : (aceNode ? asString(aceNode.aceId) : '')));
     const incident = chain ? findChainIncident(chain) : null;
     parts.push('inc=' + (incident
