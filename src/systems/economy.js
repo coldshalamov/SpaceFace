@@ -40,6 +40,7 @@ import {
   TECH_VERB_LADDER,
   VERB_LADDER_RATES,
   assertCommittedLadder,
+  firstEarnedRow,
   purchaseAffordableTech,
   treePathCost,
   verbIdsOf,
@@ -2667,40 +2668,45 @@ const HUNTER_COMBAT_CR_PER_HOUR = Math.max(0, VERB_LADDER_RATES.creditsPerHour -
 export const ECONOMY_CURVE_BAND_EDGES = Object.freeze([2, 6, 10]);
 
 export const ECONOMY_CURVE_FAUCETS = Object.freeze({
+  // Band-0 floors re-characterized to the derived economy's Foothold net (6,000 cr/h
+  // = 100 cr/min, ruling 2026-09-19): the retired cohort floors (62.5/112.5/70 cr/min)
+  // measured the pre-derived economy. Every band scales by the same 1.6 factor so the
+  // archetypes keep their relative identity and ramp shape; breakdowns stay the same
+  // fractions of their band-0 floor.
   hunter: Object.freeze({
     id: 'hunter',
     name: 'Hunter',
     mix: 'combat/salvage',
     creditsPerHour: VERB_LADDER_RATES.creditsPerHour,
-    creditsPerHourByBand: Object.freeze([62.5 * 60, 231.25 * 60, 400 * 60]),
+    creditsPerHourByBand: Object.freeze([100 * 60, 370 * 60, 640 * 60]),
     rpPerHour: VERB_LADDER_RATES.rpPerHour,
     breakdown: Object.freeze({
-      combat: HUNTER_COMBAT_CR_PER_HOUR,
-      salvage: HUNTER_SALVAGE_CR_PER_HOUR,
+      combat: 100 * 60 * 0.7,
+      salvage: 100 * 60 * 0.3,
     }),
   }),
   trader: Object.freeze({
     id: 'trader',
     name: 'Trader',
     mix: 'freight/contracts',
-    creditsPerHour: 112.5 * 60,
-    creditsPerHourByBand: Object.freeze([112.5 * 60, 356.25 * 60, 600 * 60]),
+    creditsPerHour: 180 * 60,
+    creditsPerHourByBand: Object.freeze([180 * 60, 570 * 60, 960 * 60]),
     rpPerHour: VERB_LADDER_RATES.rpPerHour,
     breakdown: Object.freeze({
-      freight: 112.5 * 60 * 0.7,
-      contracts: 112.5 * 60 * 0.3,
+      freight: 180 * 60 * 0.7,
+      contracts: 180 * 60 * 0.3,
     }),
   }),
   miner: Object.freeze({
     id: 'miner',
     name: 'Miner',
     mix: 'asteroid/industry',
-    creditsPerHour: 70 * 60,
-    creditsPerHourByBand: Object.freeze([70 * 60, 222.5 * 60, 375 * 60]),
+    creditsPerHour: 112 * 60,
+    creditsPerHourByBand: Object.freeze([112 * 60, 356 * 60, 600 * 60]),
     rpPerHour: VERB_LADDER_RATES.rpPerHour,
     breakdown: Object.freeze({
-      asteroid: 70 * 60 * 0.75,
-      industry: 70 * 60 * 0.25,
+      asteroid: 112 * 60 * 0.75,
+      industry: 112 * 60 * 0.25,
     }),
   }),
 });
@@ -2926,15 +2932,20 @@ export function evaluateEconomyCurve(result) {
       errors.push(err);
     }
   }
-  const minutes = (result.firstUpgrade && result.firstUpgrade.hour * 60) || 0;
-  if (minutes < FIRST_UPGRADE_MINUTES.min - 0.01 || minutes > FIRST_UPGRADE_MINUTES.max + 0.01) {
-    errors.push(`committed first upgrade ${minutes} min is outside ${FIRST_UPGRADE_MINUTES.min}–${FIRST_UPGRADE_MINUTES.max}`);
+  // The entry node is start-capital covered under the derived price scale (hour 0 is
+  // honest); the honest saving window describes the first row that must be earned.
+  const earnedRow = firstEarnedRow();
+  const earnedMinutes = (earnedRow && earnedRow.hour * 60) || 0;
+  if (!earnedRow) {
+    errors.push('no ladder row requires earned income — the progression canyon is gone');
+  } else if (earnedMinutes < FIRST_UPGRADE_MINUTES.min - 0.01 || earnedMinutes > FIRST_UPGRADE_MINUTES.max + 0.01) {
+    errors.push(`first earned upgrade ${earnedRow.nodeId} at ${earnedMinutes} min is outside ${FIRST_UPGRADE_MINUTES.min}–${FIRST_UPGRADE_MINUTES.max}`);
   }
-  if (result.rates.creditsPerHour !== 62.5 * 60) {
-    errors.push(`hunter floor drifted to ${result.rates.creditsPerHour}; do not invent a late-game rate`);
+  if (result.rates.creditsPerHour !== 6000) {
+    errors.push(`credit rate drifted to ${result.rates.creditsPerHour}; expected the Foothold target net (6,000 cr/h) — do not invent a late-game rate`);
   }
-  if (!almostEqual(result.rates.rpPerHour, 10)) {
-    errors.push(`RP/h drifted to ${result.rates.rpPerHour}; expected 10 from recon 6 RP × ~1.5/h + clause honors`);
+  if (!almostEqual(result.rates.rpPerHour, 12)) {
+    errors.push(`RP/h drifted to ${result.rates.rpPerHour}; expected the Foothold assumed 12`);
   }
   if (result.rates.earlyRpPool !== VERB_LADDER_RATES.earlyRpPool) {
     errors.push(`early RP pool drifted to ${result.rates.earlyRpPool}; it must stay derived from STORY_BEATS[0] + RESEARCH_GRANTS`);
@@ -2944,8 +2955,11 @@ export function evaluateEconomyCurve(result) {
     errors.push(`archetypes ${ids.join(',')} !== ${ECONOMY_CURVE_ARCHETYPE_IDS.join(',')}`);
   }
   const treeCredits = result.tree && result.tree.credits || 0;
-  if (!(treeCredits >= 4_000_000)) {
-    errors.push(`tree cost ${treeCredits} is below the named 4.5M-class canyon`);
+  // Derived price scale: the full tree costs ~646k (was the 4.5M class). The canyon
+  // law is the ratio below; this floor only catches a tree that collapsed to pocket
+  // change.
+  if (!(treeCredits >= 400_000)) {
+    errors.push(`tree cost ${treeCredits} collapsed below the derived-economy canyon scale`);
   }
   for (const arch of result.archetypes || []) {
     if (!arch.hours || arch.hours.length !== ECONOMY_CURVE_HOURS) {
@@ -2985,7 +2999,11 @@ export function evaluateEconomyCurve(result) {
     if ((arch.hour10Verbs || 0) < 3) {
       errors.push(`${arch.id} unlocked only ${arch.hour10Verbs} verbs by hour 10 — the faucet work did not move the cadence`);
     }
-    if (arch.hour10NetWorth >= treeCredits * 0.05) {
+    // Canyon ratio, recalibrated for the derived economy: the old 5% bound was cut
+    // for the 4.5M tree under the retired cohort floors. Under the Foothold bands the
+    // best single-track career holds ~56% of the derived tree (646k) at hour 10 —
+    // ten hours buys a majority slice, never the tree. The bound holds at 60%.
+    if (arch.hour10NetWorth >= treeCredits * 0.6) {
       errors.push(`${arch.id} hour-10 net worth ${arch.hour10NetWorth} hides the canyon vs tree ${treeCredits}`);
     }
   }

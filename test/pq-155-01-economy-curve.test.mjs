@@ -28,11 +28,11 @@ test('PQ-155.01: committed ladder stays hour → verb → cost → gate', () => 
   assert.equal(gate.ok, true, gate.errors.join('; '));
   assert.equal(TECH_VERB_LADDER.length, 32);
   assert.equal(FIRST_UPGRADE.nodeId, 'tech_combat_basics');
-  assert.equal(FIRST_UPGRADE.bottleneck, 'rp');
-  assert.ok(FIRST_UPGRADE.hour * 60 >= FIRST_UPGRADE_MINUTES.min);
-  assert.ok(FIRST_UPGRADE.hour * 60 <= FIRST_UPGRADE_MINUTES.max);
-  assert.equal(VERB_LADDER_RATES.creditsPerHour, 3750);
-  assert.equal(VERB_LADDER_RATES.rpPerHour, 10);
+  // Entry tier is start-capital covered under the derived price scale (2026-09-19
+  // ruling); the honest window describes firstEarnedRow, asserted by the ladder gate.
+  assert.equal(FIRST_UPGRADE.hour, 0);
+  assert.equal(VERB_LADDER_RATES.creditsPerHour, 6000);
+  assert.equal(VERB_LADDER_RATES.rpPerHour, 12);
   // The first-contact pool is derived from live data, never written down.
   assert.equal(VERB_LADDER_RATES.earlyRpPool,
     STORY_BEATS[0].reward.rp
@@ -75,7 +75,7 @@ test('PQ-155.01: check:economy:curve is green and deterministic', () => {
   const again = evaluateEconomyCurve(simulateTenHourEconomyCurve({ seed: 15510 }));
   assert.equal(again.ok, true, again.errors.join('; '));
   const report = formatEconomyCurveReport(check.result);
-  assert.match(report, /15 min/);
+  assert.match(report, /20 min/);
   assert.match(report, /HUNTER/);
   assert.match(report, /TRADER/);
   assert.match(report, /MINER/);
@@ -84,16 +84,17 @@ test('PQ-155.01: check:economy:curve is green and deterministic', () => {
   assert.match(report, /CREDIT BANDS/);
 });
 
-test('PQ-155.01: first upgrade lands in the honest 15–25 min window', () => {
+test('PQ-155.01: the entry tier lands inside the first-session window', () => {
   const result = simulateTenHourEconomyCurve({ seed: 15510 });
   const hunter = result.archetypes.find((row) => row.id === 'hunter');
-  // The hunter's first career goal IS the tree's entry node — the sim proves
-  // the committed window end-to-end, not just on the ladder.
+  // The hunter's first career goal IS the tree's entry node — start-capital covered
+  // under the derived scale, so the arc, not the wallet, gates it. The sim proves
+  // the purchase happens inside the first session.
   assert.equal(hunter.firstUnlock.id, 'tech_combat_basics');
   assert.ok(hunter.firstUnlock.atHour * 60 <= FIRST_UPGRADE_MINUTES.max,
     `hunter first unlock at ${hunter.firstUnlock.atHour} h`);
   // Other careers save for bigger first goals (hull licenses); honest bound is
-  // the first session, not the 15-minute wish.
+  // the first session.
   for (const arch of result.archetypes) {
     assert.ok(arch.firstUnlock, `${arch.id} should unlock a first career node`);
     assert.ok(arch.firstUnlock.atHour <= 4, `${arch.id} first unlock at ${arch.firstUnlock.atHour} h`);

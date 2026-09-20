@@ -2429,8 +2429,19 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
     else count = Math.floor(roll * (maxCount + 1));
     count = Math.min(count, maxCount);
     for (let i = 0; i < count; i++) {
+      // Authored early-window bias: a shape may declare earlyWindowDays /
+      // earlyWindowWeight to schedule more densely inside a sector's first days —
+      // the counter-first law needs its teaching encounter before the toy unlocks
+      // (PQ-030.02, 2026-09-19 proportional-margin ruling). Scheduling only; the
+      // runtime fire-time gates still decide whether it actually happens.
+      const earlyFactor = (candidate) => {
+        const days = Number(candidate.earlyWindowDays) || 0;
+        if (!(days > 0) || !(dayIndex < days)) return 1;
+        return Math.max(1, Number(candidate.earlyWindowWeight) || 1);
+      };
       const enc = pickWeighted(candidates, rng, (candidate) => (
-        ecologyState ? regionalEncounterWeight(ecologyState, sectorId, candidate) : candidate.weight
+        (ecologyState ? regionalEncounterWeight(ecologyState, sectorId, candidate) : (candidate.weight || 1))
+        * earlyFactor(candidate)
       ));
       if (!enc) continue;
       if (enc.rare && rng() < RARE_GATE) continue;     // rare shapes need the extra gate
@@ -2447,6 +2458,36 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
   scheduleTier('major', MAX_MAJOR_PER_DAY, 90, 360);
   scheduleTier('minor', MAX_MINOR_PER_DAY, 45, 480);
   scheduleTier('ambient', MAX_AMBIENT_PER_DAY, 30, 500);
+
+  // Authored teach-day guarantee: a shape may pin earlyWindowGuaranteeDay so the
+  // counter-first law's teaching encounter is SCHEDULED deterministically inside the
+  // sector's first days instead of left to weighted sampling (rare-gated specialist
+  // shapes can starve for dozens of days — the exact drift that broke PQ-030.02).
+  // Same eligibility filters as the tier decks; the runtime fire-time gates still
+  // decide whether it actually happens.
+  const guaranteed = Object.values(encounterCatalog || ENCOUNTERS).filter((e) => {
+    if (Number(e.earlyWindowGuaranteeDay) !== dayIndex || !Array.isArray(e.zoneTypes)) return false;
+    const anchoredHere = e.anchorPoiId && secDef && Array.isArray(secDef.pois)
+      && secDef.pois.some((poi) => poi.id === e.anchorPoiId && poi.pos);
+    if (!anchoredHere && !e.zoneTypes.some((zt) => presentTypes.has(zt))) return false;
+    const g = e.gates || {};
+    if (g.externalOnly) return false;
+    if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
+    if (Number.isFinite(g.minSectorTier) && (!secDef || (secDef.tier | 0) < g.minSectorTier)) return false;
+    if (Number.isFinite(g.maxSecurity) && sectorSecurity > g.maxSecurity) return false;
+    if (Number.isFinite(g.minSecurity) && sectorSecurity < g.minSecurity) return false;
+    return true;
+  });
+  for (const enc of guaranteed) {
+    const zone = pickZoneFor(enc, zonesByType, rng, sectorId);
+    if (!zone) continue;
+    const item = resolveEncounter(enc, zone, sectorId, dayIndex, seq++, rng);
+    if (!item) continue;
+    item.regionalWeight = ecologyState ? regionalEncounterWeight(ecologyState, sectorId, enc) : (enc.weight || 1);
+    // Teaching beats land 1–6 minutes into their day (authored, not tier-derived).
+    item.delay = 60 + rng() * 300;
+    out.push(item);
+  }
 
   // Nominal spacing: keep planned onsets ≥45 s apart (the runtime gate enforces the real law).
   out.sort((a, b) => a.delay - b.delay || a.encounterId.localeCompare(b.encounterId));

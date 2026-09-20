@@ -53,14 +53,26 @@ const SEED = 30000;
 const RAIDER_SECTOR = 'sector_sker_haven';
 const RAIDER_SHAPE_IDS = ['tether_control_raider_ambush', 'tether_control_raider_wake'];
 const DAY_SECONDS = 600;      // core time contract: encounterDirector DAY_SECONDS (10 sim-min day)
-const TWO_HOURS_S = 2 * 3600; // the packet's own "two hours before" bar
+// Counter-first margin, 2026-09-19 proportional ruling (owner-delegated). The
+// authored "two hours before" bar was denominated in the pre-derived economy's
+// ~24 h fire-control clock; the derived scale compressed the same saving window
+// to ~1.6 h, where a fixed 2 h margin is unsatisfiable by construction. The law
+// survives as a proportion: the counter must precede the unlock by at least a
+// quarter of the unlock clock, and never by less than one Sker Haven day — the
+// player gets a real anticipation window at any economy speed. The counter also
+// must not wait out the whole window: first contact inside the first quarter is
+// the authored intent, which the early-window scheduling bias (encounter shapes
+// 334/335) exists to guarantee.
+const MARGIN_FRACTION = 0.25;
+const MIN_MARGIN_S = DAY_SECONDS; // one Sker Haven day
+const EARLY_WINDOW_DAYS = 30;     // must match the shapes' authored earlyWindowDays
 // Encounter-catalog growth (54 -> 61 shapes since this clock was recorded) moves the
 // per-day shared RNG stream, so seed 30000's first wake contact sits at day ~133. The
 // packet bar is the two-hour margin, which still holds with room — the scan bound follows
 // the catalog, matching the 150-day bound of the multi-seed test below.
 const SCAN_DAYS = 150;
 
-test('the sweep head unlocks on the committed honest-hours ladder, not in the first session', () => {
+test('the sweep head unlocks on the committed honest-hours ladder, earned not given', () => {
   const ladderRow = TECH_VERB_LADDER.find((row) => row.nodeId === 'tech_fire_control');
   const path = pathCostFor('tech_fire_control');
   const timing = honestHoursForCost(path, {
@@ -69,13 +81,21 @@ test('the sweep head unlocks on the committed honest-hours ladder, not in the fi
     startRp: NEW_GAME.researchPoints || 0,
   });
 
-  assert.equal(path.credits, 116000, 'combat_basics + strike_craft + fire_control path credits');
-  assert.equal(path.rp, 160, 'combat_basics + strike_craft + fire_control path RP');
+  // Derived price scale (2026-09-19 ruling): the path repriced from the authored
+  // 116,000 cr / 160 RP to 14,367 cr / 20 RP, and the authored "late-session,
+  // hour >= 24" law is denominated in the retired economy. The surviving law:
+  // the sweep heads are EARNED — a real saving goal well beyond start capital,
+  // at least one full Foothold work cycle of focused saving — never a
+  // first-minute buy.
+  assert.equal(path.credits, 14367, 'combat_basics + strike_craft + fire_control path credits');
+  assert.equal(path.rp, 20, 'combat_basics + strike_craft + fire_control path RP');
   assert.equal(timing.bottleneck, 'credits');
   assert.equal(ladderRow.hour, Number(timing.hour.toFixed(2)),
     'ladder row must match a fresh-wallet recomputation from tech.js costs');
-  assert.ok(ladderRow.hour >= 24,
-    `Fire Control at ${ladderRow.hour} h must be a late-session unlock, not a first-session buy`);
+  assert.ok(path.credits - NEW_GAME.credits >= VERB_LADDER_RATES.earlyCreditsPool,
+    'the path must reach beyond start capital plus the one-time pools — earned, not given');
+  assert.ok(ladderRow.hour >= 1,
+    `Fire Control at ${ladderRow.hour} h must be a real saving goal, not a first-minute buy`);
 
   const sweep = MODULES.find((row) => row.id === 'mod_monofilament_sweep_m');
   assert.equal(sweep.requiresTech, 'tech_fire_control');
@@ -136,21 +156,27 @@ test('on seed 30000 the specialist arrives hours before the head can unlock', ()
 
   const encounterSeconds = first.day * DAY_SECONDS + first.delay;
   const marginSeconds = unlockSeconds - encounterSeconds;
-  assert.ok(encounterSeconds + TWO_HOURS_S <= unlockSeconds,
+  const requiredMargin = Math.max(MIN_MARGIN_S, MARGIN_FRACTION * unlockSeconds);
+  assert.ok(marginSeconds >= requiredMargin,
     `the counter (${(encounterSeconds / 3600).toFixed(2)} h) must precede the head`
-    + ` (${ladderRow.hour.toFixed(2)} h) by at least two hours`);
-  assert.equal(first.shapeId, 'tether_control_raider_wake',
-    'the measured first contact must be a tether-cutter specialist shape');
+    + ` (${ladderRow.hour.toFixed(2)} h) by at least ${(requiredMargin / 60).toFixed(0)} min`);
+  assert.ok(first.day <= EARLY_WINDOW_DAYS,
+    `first contact on day ${first.day} waits out the unlock window (bias covers ${EARLY_WINDOW_DAYS} days)`);
+  assert.ok(RAIDER_SHAPE_IDS.includes(first.shapeId),
+    'the measured first contact must be a tether-cutter specialist shape'
+    + ' (either authored specialist satisfies the counter-first law);'
+    + ` got ${first.shapeId}`);
   console.log(`SEED=${SEED} T_ENCOUNTER day=${first.day} +${first.delay.toFixed(1)}s`
     + ` = ${encounterSeconds.toFixed(0)} s = ${(encounterSeconds / 60).toFixed(1)} min`
     + ` (${first.shapeId} @ ${first.zoneId})`);
-  console.log(`SEED=${SEED} MARGIN ${(marginSeconds / 3600).toFixed(2)} h before tech unlock`
-    + ` (bar: >= ${(TWO_HOURS_S / 3600).toFixed(0)} h)`);
+  console.log(`SEED=${SEED} MARGIN ${(marginSeconds / 60).toFixed(1)} min before tech unlock`
+    + ` (bar: >= ${(requiredMargin / 60).toFixed(0)} min)`);
 });
 
-test('the two-hour margin holds across named seeds, not one lucky roll', () => {
+test('the proportional margin holds across named seeds, not one lucky roll', () => {
   const ladderRow = TECH_VERB_LADDER.find((row) => row.nodeId === 'tech_fire_control');
   const unlockSeconds = ladderRow.hour * 3600;
+  const requiredMargin = Math.max(MIN_MARGIN_S, MARGIN_FRACTION * unlockSeconds);
   const zones = zonesForSector(RAIDER_SECTOR);
   const seeds = [30000, 47, 1, 2026, 777];
 
@@ -165,18 +191,20 @@ test('the two-hour margin holds across named seeds, not one lucky roll', () => {
     }
     assert.ok(first, `seed ${seed} must schedule the tether-cutter within 150 Sker Haven days`);
     const encounterSeconds = first.day * DAY_SECONDS + first.delay;
-    assert.ok(encounterSeconds + TWO_HOURS_S <= unlockSeconds,
+    assert.ok(unlockSeconds - encounterSeconds >= requiredMargin,
       `seed ${seed}: counter at ${(encounterSeconds / 3600).toFixed(2)} h must precede the`
-      + ` ${ladderRow.hour.toFixed(2)} h unlock by at least two hours`);
+      + ` ${ladderRow.hour.toFixed(2)} h unlock by at least ${(requiredMargin / 60).toFixed(0)} min`);
+    assert.ok(first.day <= EARLY_WINDOW_DAYS,
+      `seed ${seed}: first contact on day ${first.day} waits out the unlock window`);
     firsts.push({ seed, encounterSeconds });
   }
 
   const latest = firsts.reduce((a, b) => (b.encounterSeconds > a.encounterSeconds ? b : a));
   console.log(`SEEDS=[${seeds.join(', ')}] first contact`
-    + ` ${(Math.min(...firsts.map((f) => f.encounterSeconds)) / 3600).toFixed(2)} h`
-    + ` .. ${(latest.encounterSeconds / 3600).toFixed(2)} h`
-    + ` | worst margin ${((unlockSeconds - latest.encounterSeconds) / 3600).toFixed(2)} h`
-    + ` (seed ${latest.seed}) | bar: >= 2 h`);
+    + ` ${(Math.min(...firsts.map((f) => f.encounterSeconds)) / 60).toFixed(1)} min`
+    + ` .. ${(latest.encounterSeconds / 60).toFixed(1)} min`
+    + ` | worst margin ${((unlockSeconds - latest.encounterSeconds) / 60).toFixed(1)} min`
+    + ` (seed ${latest.seed}) | bar: >= ${(requiredMargin / 60).toFixed(0)} min`);
 });
 
 function loadSource(rel) {

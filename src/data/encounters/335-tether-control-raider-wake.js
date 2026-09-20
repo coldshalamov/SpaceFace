@@ -7,6 +7,12 @@ export const trigger = deepFreeze({
   tier: 'minor',
   deck: 'combat',
   weight: 0.35,
+  // Counter-first law (PQ-030.02, 2026-09-19 ruling): the teaching encounter must
+  // reach the player inside the fire-control saving window, so the shape schedules
+  // densely across a sector's first 30 days.
+  earlyWindowDays: 30,
+  earlyWindowWeight: 14,
+  earlyWindowGuaranteeDay: 5,
   zoneTypes: ['derelict_field', 'outlaw_zone'],
   script: 'ambush',
   pressureCost: 56,

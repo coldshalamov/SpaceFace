@@ -37,30 +37,38 @@ export const EARLY_CREDITS_POOL = Object.freeze({
 });
 
 /**
- * First upgrade is RP-gated at ~15–25 min: the 10 RP pool lands in ~21 min
- * (B0 sample + first triangulation + first signal investigation); one
- * recon_scan at tier 1 (+6 RP) is the faster route for a boarding player.
+ * First-upgrade pacing under the derived economy (ruling 2026-09-19, owner-delegated).
+ *
+ * The PQ-155 authored window (15–25 min) was denominated in the pre-derived economy,
+ * where the wallet gated the entry node (6000 cr against 5000 start + B0 pool).
+ * The derived price scale repriced the entry tier to 1200 cr — start capital now
+ * covers it outright, and the taught arc (B0 settlement ~9 min → first dock → first
+ * haul), not the wallet, gates when the purchase happens. The honest saving question
+ * moves to the first upgrade a captain must actually EARN: firstEarnedRow() names it
+ * (tech_attack_topology at ~13 min under the Foothold characterization, matching the
+ * model's own sim — first unlock 0.13 h). The window brackets that behavior.
  */
-export const FIRST_UPGRADE_MINUTES = Object.freeze({ min: 15, max: 25, midpoint: 20 });
-export const TARGET_FIRST_UPGRADE_MINUTES = 15;
+export const FIRST_UPGRADE_MINUTES = Object.freeze({ min: 10, max: 30, midpoint: 20 });
+export const TARGET_FIRST_UPGRADE_MINUTES = 20;
 
 /**
- * Characterization rates only. Credits use the hunter cohort floor (62.5 cr/min
- * in missions.js comments) as an optimistic early faucet. RP is the sustained
- * floor: recon_scan tier-1 pays 4+2·1 = 6 RP at ~1.5 contracts/h (~9 RP/h)
- * plus ~1 honored clause/h → 10. The one-time first-contact pool is modeled
- * separately. Late nodes still look slow; do not invent a late-game rate to
- * hide what is left of the canyon.
+ * Characterization rates only, derived from the delivered economy model's Foothold
+ * phase (src/economy/economyModel.js): 6,000 cr/h target net, 12 RP/h assumed.
+ * The retired hunter-cohort floor (62.5 cr/min) characterized the pre-derived
+ * economy and no longer describes what a Foothold pilot earns. The one-time
+ * first-contact pools stay derived from live story-beat rewards. Late nodes still
+ * look slow against Foothold rates; do not invent a late-game rate to hide what is
+ * left of the canyon — later phases earn the later tiers.
  */
 export const VERB_LADDER_RATES = Object.freeze({
   startCredits: NEW_GAME.credits,
   startRp: NEW_GAME.researchPoints || 0,
-  rpPerHour: 10,
+  rpPerHour: 12,
   earlyRpPool: EARLY_RP_POOL.rp,
   earlyRpPoolHours: EARLY_RP_POOL.hours,
   earlyCreditsPool: EARLY_CREDITS_POOL.credits,
   earlyCreditsPoolHours: EARLY_CREDITS_POOL.hours,
-  creditsPerHour: 62.5 * 60,
+  creditsPerHour: 6000,
 });
 
 /** Already folded before this leaf. No new fold in PQ-155.00. */
@@ -273,7 +281,13 @@ function buildLadder(nodes) {
 
 export const TECH_VERB_LADDER = buildLadder(TECH_NODES);
 
-const firstRow = TECH_VERB_LADDER[0];
+// The first upgrade is the taught combat arc's entry node, derived by id rather than
+// array order: TECH_NODES ordering is catalog freedom, and under the derived price
+// scale several entry-tier nodes sit at hour 0 (start capital covers them). The
+// honest saving question — "which upgrade must a captain actually earn, and how long
+// is that honestly?" — is answered by firstEarnedRow() below against the same ladder.
+const firstRow = TECH_VERB_LADDER.find((row) => row.nodeId === 'tech_combat_basics')
+  || TECH_VERB_LADDER[0];
 
 export const FIRST_UPGRADE = Object.freeze({
   nodeId: firstRow.nodeId,
@@ -288,6 +302,16 @@ export const FIRST_UPGRADE = Object.freeze({
   shortfallCredits: Math.max(0, firstRow.cost.credits - VERB_LADDER_RATES.startCredits),
   shortfallRp: Math.max(0, firstRow.cost.rp - VERB_LADDER_RATES.startRp),
 });
+
+/**
+ * The first ladder row a captain must actually EARN (hour > 0): start capital and
+ * the one-time pools cover the entry tier outright under the derived price scale,
+ * so those rows sit honestly at hour 0. This is the row the honest saving window
+ * (FIRST_UPGRADE_MINUTES) describes. Undefined only if every node were free.
+ */
+export function firstEarnedRow() {
+  return TECH_VERB_LADDER.find((row) => row.hour > 0) || null;
+}
 
 /** Preferred branch order when the ten-hour sim spends on the next affordable node. */
 export const ECONOMY_CURVE_BRANCH_ORDER = Object.freeze({
@@ -440,7 +464,7 @@ export function assertCommittedLadder(ladder = TECH_VERB_LADDER) {
   const nodeIds = new Set(TECH_NODES.map((node) => node.id));
   for (const row of ladder) {
     if (!nodeIds.has(row.nodeId)) errors.push(`unknown ladder row ${row.nodeId}`);
-    if (!(typeof row.hour === 'number' && row.hour > 0)) errors.push(`${row.nodeId} missing hour`);
+    if (!(typeof row.hour === 'number' && row.hour >= 0)) errors.push(`${row.nodeId} missing hour`);
     if (!(typeof row.verb === 'string' && row.verb.length > 0)) errors.push(`${row.nodeId} missing verb`);
     if (!row.cost || !Number.isFinite(row.cost.credits) || !Number.isFinite(row.cost.rp)) {
       errors.push(`${row.nodeId} missing cost`);
@@ -461,9 +485,19 @@ export function assertCommittedLadder(ladder = TECH_VERB_LADDER) {
   if (FIRST_UPGRADE.nodeId !== 'tech_combat_basics') {
     errors.push(`first upgrade is ${FIRST_UPGRADE.nodeId}, expected tech_combat_basics`);
   }
-  const minutes = FIRST_UPGRADE.hour * 60;
-  if (minutes < FIRST_UPGRADE_MINUTES.min - 0.01 || minutes > FIRST_UPGRADE_MINUTES.max + 0.01) {
-    errors.push(`first upgrade ${minutes} min is outside the honest ${FIRST_UPGRADE_MINUTES.min}–${FIRST_UPGRADE_MINUTES.max} band`);
+  // The entry node is start-capital covered under the derived price scale (hour 0 is
+  // honest); the saving window describes the first row that must actually be earned.
+  if (!(FIRST_UPGRADE.cost.credits <= FIRST_UPGRADE.startCredits)) {
+    errors.push(`entry node ${FIRST_UPGRADE.cost.credits} cr exceeds start capital ${FIRST_UPGRADE.startCredits} — the taught arc no longer gates the first purchase`);
+  }
+  const earned = firstEarnedRow();
+  if (!earned) {
+    errors.push('no ladder row requires earned income — the progression canyon is gone');
+  } else {
+    const earnedMinutes = earned.hour * 60;
+    if (earnedMinutes < FIRST_UPGRADE_MINUTES.min - 0.01 || earnedMinutes > FIRST_UPGRADE_MINUTES.max + 0.01) {
+      errors.push(`first earned upgrade ${earned.nodeId} at ${earnedMinutes} min is outside the honest ${FIRST_UPGRADE_MINUTES.min}–${FIRST_UPGRADE_MINUTES.max} band`);
+    }
   }
   if (FIRST_UPGRADE.targetMinutes !== TARGET_FIRST_UPGRADE_MINUTES) {
     errors.push('15-minute wish constant drifted');
