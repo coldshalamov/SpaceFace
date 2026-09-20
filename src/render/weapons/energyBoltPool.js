@@ -70,6 +70,10 @@ const VERTEX_SHADER = /* glsl */`
     float ballisticWidth = aBoltSize.w >= 1.5 && aBoltSize.w < 3.5
       ? (aBoltSize.w < 2.5 ? 0.32 : 0.22) : 1.0;
     float width = max(aBoltSize.y * ballisticWidth, worldPerPx * minPixels);
+    // Drawn extent is a readability envelope around a moving object, never a hazard boundary:
+    // the dash is a one-sided smear along the velocity axis whose length is dominated by the
+    // distance travelled this frame, and the authoritative collision radius stays with the
+    // simulation. Nothing here is a ring, a shell or a symmetric footprint at a damage radius.
     float dash = max(aBoltSize.x + smear, worldPerPx * uMinLengthPixels);
 
     // Stable 3D orthonormal frame around velocity axis (no camera-facing billboarding)
@@ -90,12 +94,34 @@ const VERTEX_SHADER = /* glsl */`
     } else if (aBoltSize.w < 1.5) {
       shaped.yz *= 1.10 + 0.24 * sin(t * 12.56637 + side * 2.2);
       shaped.x += bow * side * 0.12;
+    } else if (aBoltSize.w >= 1.5 && aBoltSize.w < 2.5) {
+      // Kinetic sabot: a machined dart, not a recoloured pulse. Needle nose, a hard flared
+      // base where the driving band bit, and a rifling twist carried in the velocity frame.
+      shaped.yz *= 0.45 + 0.70 * pow(1.0 - t, 1.9);
+      float spin = (t - 0.5) * 0.62;
+      float cs = cos(spin);
+      float sn = sin(spin);
+      shaped.yz = vec2(shaped.y * cs - shaped.z * sn, shaped.y * sn + shaped.z * cs);
+      shaped.x += (1.0 - side * side) * (1.0 - t) * 0.09;
+    } else if (aBoltSize.w >= 2.5 && aBoltSize.w < 3.5) {
+      // Rail / siege: a relativistic needle with one detached ionisation collar behind the
+      // nose. Thinner than the sabot along its whole length, so the two never read alike.
+      float collar = exp(-pow((t - 0.72) / 0.085, 2.0));
+      shaped.yz *= 0.60 + 0.32 * pow(1.0 - t, 2.2) + collar * 1.18;
+      shaped.x += collar * side * 0.07;
     } else if (aBoltSize.w >= 3.5 && aBoltSize.w < 4.5) {
       shaped.yz *= 0.8 + 0.6 * sin(t * 3.14159265);
       shaped.x += abs(side) * bow * 0.20;
     } else if (aBoltSize.w >= 4.5 && aBoltSize.w < 5.5) {
       shaped.x = (t - 0.5) * 0.6 + side * side * bow * 0.28;
       shaped.yz *= 1.65;
+    } else if (aBoltSize.w >= 5.5) {
+      // Flak: a stubby tumbling fragment. Stepped facets instead of a taper, and a body that
+      // sits off the flight axis, so fragmentation never reads as a short glowing dart.
+      shaped.yz *= (0.82 + 0.36 * step(0.5, fract(t * 3.0))) * 1.22;
+      shaped.x *= 0.58;
+      shaped.y += 0.17 * sin(t * 6.28318 + side);
+      shaped.z += 0.14 * cos(t * 6.28318);
     }
     vec3 world = mid
       + axis * shaped.x * dash

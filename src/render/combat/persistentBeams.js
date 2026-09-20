@@ -44,6 +44,12 @@ function createBeamBatch(THREE, capacity, name) {
   const positions = new Float32Array(capacity * 4 * 3);
   const colors = new Float32Array(capacity * 4 * 3);
   const uvs = new Float32Array(capacity * 4 * 2);
+  // World distance from the aperture to this vertex. Packets are phased on THIS, never on the
+  // normalized uv, so a beam that lengthens as its target runs cannot stretch its own energy
+  // structure like a rubber band. Deliberately OUTSIDE the dynamic-buffer owner: it is 64 floats
+  // for the whole pool, and leaving it unregistered keeps the ranged-publication accounting for
+  // position and colour exactly as it was.
+  const axial = new Float32Array(capacity * 4);
   const indices = new Uint16Array(capacity * 6);
   for (let slot = 0; slot < capacity; slot++) {
     const vertex = slot * 4;
@@ -72,7 +78,10 @@ function createBeamBatch(THREE, capacity, name) {
   geometry.setAttribute('position', position);
   geometry.setAttribute('color', color);
   geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-  return { geometry, positions, colors, position, color };
+  const axialAttribute = new THREE.BufferAttribute(axial, 1);
+  axialAttribute.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute('aSfAxial', axialAttribute);
+  return { geometry, positions, colors, position, color, axial, axialAttribute };
 }
 
 // A sustained beam is an energy conduit, not a colored rectangle. The injected structure gives
@@ -86,29 +95,37 @@ function applyBeamShaderStructure(material, shared, role) {
     shader.uniforms.uSfTime = shared.time;
     shader.uniforms.uSfPulse = shared.pulse;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfBeam = uv;');
+      .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nattribute float aSfAxial;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfBeam = uv;\nvSfAxial = aSfAxial;');
     if (role === 'core') {
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfTime;\nuniform float uSfPulse;')
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nuniform float uSfTime;\nuniform float uSfPulse;')
         .replace('#include <color_fragment>', `#include <color_fragment>
 {
   float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
-  float sfCore = pow(1.0 - sfAcross, 1.35);
-  float sfTravel = 0.5 + 0.5 * sin(vSfBeam.x * 21.0 - uSfTime * 34.0);
-  float sfEnds = smoothstep(0.12, 0.0, vSfBeam.x) + smoothstep(0.88, 1.0, vSfBeam.x);
-  diffuseColor.rgb *= sfCore * (0.8 + 0.3 * sfTravel * uSfPulse) + 0.35 * sfEnds;
+  // A conduit, not a painted rectangle: a hard filament inside a walled body with a defined
+  // outer edge, so the beam keeps its identity with bloom off and over a bright hull.
+  float sfFilament = pow(max(0.0, 1.0 - sfAcross), 6.0);
+  float sfBody = 1.0 - smoothstep(0.52, 0.86, sfAcross);
+  // Packets phased on WORLD distance at a fixed wavelength and a fixed speed. A target running
+  // toward or away no longer squashes or stretches the energy travelling down the line.
+  float sfTravel = 0.5 + 0.5 * sin(vSfAxial * 1.95 - uSfTime * 176.0);
+  // APERTURE ONLY. The contact terminal belongs to the impact owner; a second bright end here
+  // would put two competing primary flashes on a single shot.
+  float sfMuzzle = smoothstep(0.12, 0.0, vSfBeam.x);
+  diffuseColor.rgb *= (sfFilament * 1.20 + sfBody * 0.42) * (0.82 + 0.26 * sfTravel * uSfPulse)
+    + 0.32 * sfMuzzle;
 }`);
     } else {
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfTime;\nuniform float uSfPulse;')
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nvarying float vSfAxial;\nuniform float uSfTime;\nuniform float uSfPulse;')
         .replace('#include <color_fragment>', `#include <color_fragment>
 {
   float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
-  float sfSheath = pow(1.0 - sfAcross, 2.6);
-  float sfTravel = 0.5 + 0.5 * sin(vSfBeam.x * 13.0 - uSfTime * 22.0);
-  float sfEnds = smoothstep(0.2, 0.0, vSfBeam.x) + smoothstep(0.8, 1.0, vSfBeam.x);
-  diffuseColor.rgb *= sfSheath * (0.3 + 0.85 * sfTravel * uSfPulse) + 0.25 * sfEnds * sfSheath;
+  float sfSheath = pow(max(0.0, 1.0 - sfAcross), 2.6);
+  float sfTravel = 0.5 + 0.5 * sin(vSfAxial * 1.12 - uSfTime * 78.0);
+  float sfMuzzle = smoothstep(0.2, 0.0, vSfBeam.x);
+  diffuseColor.rgb *= sfSheath * (0.3 + 0.85 * sfTravel * uSfPulse) + 0.25 * sfMuzzle * sfSheath;
 }`);
     }
   };
@@ -288,8 +305,16 @@ export class PersistentCombatBeamPool {
     return true;
   }
 
-  update(timeS, toLocal, accessibility = null, cameraFloor = 0) {
+  /**
+   * @param {function|null} resolveOrigin Optional live socket lookup, `(entry) => pose|null` in the
+   *   same global frame the receipts arrive in. Sim receipts refresh the aperture once per tick;
+   *   this lets a sustained beam stay welded to the firing socket at display rate while the ship
+   *   turns, instead of stepping. It only moves the drawn origin - the contact end stays exactly
+   *   where the simulation put it, so nothing here can invent a hit.
+   */
+  update(timeS, toLocal, accessibility = null, cameraFloor = 0, resolveOrigin = null) {
     const localize = typeof toLocal === 'function' ? toLocal : identityLocal;
+    const socketOf = typeof resolveOrigin === 'function' ? resolveOrigin : null;
     const now = finite(timeS, 0);
     const reducedFlash = !!(accessibility && (
       accessibility.reducedFlash || accessibility.flashOpacityScale < 1
@@ -304,6 +329,14 @@ export class PersistentCombatBeamPool {
         this._release(entry);
         matricesChanged = true;
         continue;
+      }
+      if (socketOf && entry.ownerId != null) {
+        const socket = socketOf(entry);
+        if (socket && Number.isFinite(socket.x) && Number.isFinite(socket.z)) {
+          entry.fromX = socket.x;
+          entry.fromZ = socket.z;
+          if (Number.isFinite(socket.y)) entry.y = socket.y;
+        }
       }
       localize(entry.fromX, entry.fromZ, this._localA);
       const ax = this._localA.x;
@@ -416,12 +449,27 @@ export class PersistentCombatBeamPool {
     p[start + 3] = ax - hx; p[start + 4] = y; p[start + 5] = az - hz;
     p[start + 6] = bx - hx; p[start + 7] = y; p[start + 8] = bz - hz;
     p[start + 9] = bx + hx; p[start + 10] = y; p[start + 11] = bz + hz;
+    // uv.x runs aperture(0) -> contact(1); the axial coordinate is the same run measured in world
+    // units, so the travelling packets keep one physical wavelength at any beam length.
+    const axialStart = slot * 4;
+    const axial = batch.axial;
+    if (axial) {
+      axial[axialStart] = 0;
+      axial[axialStart + 1] = 0;
+      axial[axialStart + 2] = length;
+      axial[axialStart + 3] = length;
+      batch.axialAttribute.needsUpdate = true;
+    }
   }
 
   _clearSlot(batch, slot) {
     const tracked = this._markSlot(batch, 0, slot);
     const start = slot * 12;
     batch.positions.fill(0, start, start + 12);
+    if (batch.axial) {
+      batch.axial.fill(0, slot * 4, slot * 4 + 4);
+      batch.axialAttribute.needsUpdate = true;
+    }
     if (!tracked) batch.position.needsUpdate = true;
   }
 
