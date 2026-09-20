@@ -115,6 +115,7 @@ import {
   SUBMIT_LANE,
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
+import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
 import { projectedWidthPx } from './lod.js';
 import { resolveWebGlRendererFlags } from './presentPath.js';
 import {
@@ -1753,6 +1754,9 @@ function createShieldAuxMaterial() {
   return new THREE.ShaderMaterial({
     vertexShader: SHIELD_POOL_VERT,
     fragmentShader: SHIELD_POOL_FRAG,
+    // One shared float. The shell's own circulation runs on the simulation clock, so a loaded
+    // shield is visibly working instead of being a still picture that only ramps in brightness.
+    uniforms: shieldShellUniforms(),
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
@@ -2082,6 +2086,19 @@ function queueShipAuxPoolGrowth(pool, shieldCapacity, navCapacity) {
 export async function waitForShipAuxPoolGrowth(pool) {
   while (pool && pool.pendingGrowth) await pool.pendingGrowth;
   return true;
+}
+
+/**
+ * Advance the pooled shield shell's clock from the SIMULATION clock, so a paused game freezes the
+ * shell with everything else, and hold it still under reduced motion.
+ */
+export function tickShieldShellClock(pool, state) {
+  const material = pool && pool.shield && pool.shield.material;
+  if (!material) return 0;
+  const video = state && state.settings && state.settings.video;
+  const a11y = state && state.settings && state.settings.accessibility;
+  const motionReduce = !!((video && video.motionReduce) || (a11y && (a11y.reducedMotion || a11y.motionReduce)));
+  return setShieldShellClock(material, state && state.simTime, motionReduce);
 }
 
 export function syncShipAuxPools(pool, frameOrEntities, meshes) {
@@ -9338,6 +9355,8 @@ export const render = {
           : now;
         const dt = Math.min(0.1, Math.max(0.001, now - previousFlashTime));
         shieldBubble.userData._prevFlashT = now;
+        // Per-ship fallback material: same shell clock as the pooled lane, same sim-time source.
+        setShieldShellClock(shieldBubble.material, simTime, _worldSiteA11y && _worldSiteA11y.motionReduce === true);
 
         const up = entity.shield > 0;
         let flash = 0;
@@ -9677,6 +9696,7 @@ export const render = {
     }
     syncContactShadowPool(this._contactShadowPool, this._entityFrame);
     ensureShipAuxPoolCapacityForFrame(this._shipAuxPool, this._entityFrame, this._meshes);
+    tickShieldShellClock(this._shipAuxPool, this.state);
     syncShipAuxPools(this._shipAuxPool, this._entityFrame);
     const openingShadowRadius = liveShadowCastRadius(state);
     this._frameShadowCastRadius = openingShadowRadius;
@@ -10010,6 +10030,7 @@ export const render = {
     }
     if (!holdOpeningPicture && !holdLoadingGpu) {
       syncContactShadowPool(this._contactShadowPool, this._entityFrame);
+      tickShieldShellClock(this._shipAuxPool, this.state);
       syncShipAuxPools(this._shipAuxPool, this._entityFrame);
     }
     const shadowRadius = Number.isFinite(this._frameShadowCastRadius)

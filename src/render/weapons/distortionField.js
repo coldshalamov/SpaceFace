@@ -18,6 +18,7 @@ const VERTEX_SHADER = /* glsl */`
 `;
 
 const FRAGMENT_SHADER = /* glsl */`
+  uniform float uTime;
   varying vec2 vUv;
   varying float vStrength;
   void main() {
@@ -25,7 +26,15 @@ const FRAGMENT_SHADER = /* glsl */`
     float r = length(d);
     if (r > 1.0) discard;
     float envelope = (1.0 - r) * (1.0 - r) * vStrength;
-    vec2 offset = normalize(d + vec2(1e-4, 0.0)) * envelope * 0.035;
+    // A persistent Well holds one strength forever, so with no clock the lens was a frozen radial
+    // gradient: the space it is bending never appeared to move. Two bounded terms fix that without
+    // changing the peak the well-distortion budget is measured against - a slow shear that winds
+    // the sampled space around the throat, and inward-travelling rings that carry it down.
+    float swirl = 0.34 * envelope * sin(r * 9.0 - uTime * 1.15);
+    vec2 tangent = vec2(-d.y, d.x) / max(r, 1e-4);
+    vec2 radial = normalize(d + vec2(1e-4, 0.0));
+    float draw = 1.0 + 0.22 * sin(r * 13.0 - uTime * 2.1);
+    vec2 offset = (radial * draw + tangent * swirl) * envelope * 0.035;
     // The distortion target is an LDR render target. Encode signed offsets around
     // the neutral midpoint so both directions survive unsigned RG quantization.
     gl_FragColor = vec4(offset * 0.5 + 0.5, envelope, 1.0);
@@ -57,6 +66,7 @@ export class DistortionField {
       transparent: true,
       // Encoded RG is an absolute field (0.5 is neutral), so additive blending
       // would corrupt overlapping samples. Normal blending preserves the encode.
+      uniforms: { uTime: { value: 0 } },
       blending: THREE.NormalBlending,
       depthTest: false,
       depthWrite: false,
@@ -97,7 +107,15 @@ export class DistortionField {
     return slot;
   }
 
-  update(dt) {
+  /**
+   * @param {number} dt seconds since the last update, used when no absolute clock is supplied.
+   * @param {number} [clock] absolute simulation seconds. A persistent field (the Well lens) is
+   *   re-synced with dt 0 every frame, so it must be given the clock directly or it never moves.
+   */
+  update(dt, clock) {
+    this.material.uniforms.uTime.value = Number.isFinite(clock)
+      ? clock
+      : this.material.uniforms.uTime.value + (Number.isFinite(dt) ? dt : 0);
     let live = 0;
     for (let i = 0; i < this.capacity; i++) {
       const s = this.slots[i];

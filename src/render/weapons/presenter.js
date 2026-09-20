@@ -516,7 +516,9 @@ export class WeaponVfxPresenter {
       }
     }
     for (let i = live; i < field.capacity; i++) slots[i].alive = 0;
-    field.update(0);
+    // The well lens is re-synced from scratch each frame, so dt is 0; hand it the simulation clock
+    // directly or its shader has no time at all. Reduced motion already zeroes every well above.
+    field.update(0, this.state && this.state.simTime);
   }
 
   _socketPose(ownerId, origin, angle) {
