@@ -9356,7 +9356,7 @@ export const render = {
         const dt = Math.min(0.1, Math.max(0.001, now - previousFlashTime));
         shieldBubble.userData._prevFlashT = now;
         // Per-ship fallback material: same shell clock as the pooled lane, same sim-time source.
-        setShieldShellClock(shieldBubble.material, simTime, _worldSiteA11y && _worldSiteA11y.motionReduce === true);
+        setShieldShellClock(shieldBubble.material, simTime, _worldSiteA11y && _worldSiteA11y.reducedMotion === true);
 
         const up = entity.shield > 0;
         let flash = 0;
