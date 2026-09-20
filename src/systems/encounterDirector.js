@@ -430,6 +430,21 @@ export const encounterDirector = {
       const maxCd = now + (shape && shape.cooldownS ? shape.cooldownS : 900);
       if (!(fresh.cooldowns[k] <= maxCd)) fresh.cooldowns[k] = maxCd;
     }
+    // A load is a non-continuous sector enter: _onSectorEnter early-returns while _saveRestoring,
+    // and this handler is where the authored entry breath and planner were promised ("jump /
+    // load / boot enters still get the entry breath and planner"). Without it, pending stayed
+    // empty until the next day:tick — up to DAY_SECONDS of dead air after every load — and
+    // pressure then warmed from zero on top of the wait.
+    const sectorId = this._currentSectorId();
+    if (sectorId) {
+      const sec = sectorSecurityOf(state);
+      fresh.pressure.combat = Math.min(POOL_MAX, ENTRY_GRACE_COMBAT + (1 - sec) * 25);
+      fresh.pressure.civilian = Math.min(POOL_MAX, ENTRY_GRACE_CIVIL + sec * 20);
+      fresh.window = [];
+      fresh.lastMeaningfulAt = now;                     // entry breath: first beats land ~40-90s in
+      fresh.lastAmbientAt = now - AMBIENT_GAP_S;
+      this._planSector(sectorId);
+    }
     this._seedCeresActivityAmbush(this._currentSectorId(), { loaded: true });
   },
 
