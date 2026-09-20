@@ -738,12 +738,33 @@ export function buildFragmentGeometry(family, options = {}) {
 // track can warm a fresh edge without inventing a second palette.
 // ---------------------------------------------------------------------------------------------
 
+// Three MULTIPLIES the scalars into the maps: roughnessFactor = roughness * texel.g and
+// metalnessFactor = metalness * texel.b (roughnessmap_fragment / metalnessmap_fragment, both
+// included by three.quarks' particle_physics_frag, whose tile chunks do declare and assign
+// vRoughnessMapUv and vMetalnessMapUv). So the scalars stay at 1 and the authored bands ARE the
+// response. A scalar below 1 here would quietly cancel the surface page — a 0.28 metalness on
+// cargo would drag the torn-steel band's 0.88 down to 0.25 and read the tear as plastic.
 const MATERIAL_SPEC = Object.freeze({
-  [FRAGMENT_FAMILY.METAL]: { color: 0xffffff, roughness: 0.48, metalness: 0.78, role: SHARED_MATERIAL_ROLE.HULL },
-  [FRAGMENT_FAMILY.STONE]: { color: 0xffffff, roughness: 0.88, metalness: 0.06, role: SHARED_MATERIAL_ROLE.ROCK },
-  [FRAGMENT_FAMILY.ICE]: { color: 0xffffff, roughness: 0.22, metalness: 0.02, role: SHARED_MATERIAL_ROLE.ROCK },
-  [FRAGMENT_FAMILY.CARGO]: { color: 0xffffff, roughness: 0.52, metalness: 0.28, role: SHARED_MATERIAL_ROLE.HULL },
+  [FRAGMENT_FAMILY.METAL]: { color: 0xffffff, roughness: 1, metalness: 1, role: SHARED_MATERIAL_ROLE.HULL },
+  [FRAGMENT_FAMILY.STONE]: { color: 0xffffff, roughness: 1, metalness: 1, role: SHARED_MATERIAL_ROLE.ROCK },
+  [FRAGMENT_FAMILY.ICE]: { color: 0xffffff, roughness: 1, metalness: 1, role: SHARED_MATERIAL_ROLE.ROCK },
+  [FRAGMENT_FAMILY.CARGO]: { color: 0xffffff, roughness: 1, metalness: 1, role: SHARED_MATERIAL_ROLE.HULL },
 });
+
+/**
+ * Read the authored surface response at the centre of one family band: { roughness, metalness }
+ * in 0..1, exactly as the shader will multiply it. This is the real per-family material identity,
+ * so it is what a test should assert against rather than the scalars.
+ */
+export function sampleFragmentSurface(atlas, family, band) {
+  const data = atlas && atlas.surface && atlas.surface.image ? atlas.surface.image.data : null;
+  if (!data) return null;
+  const r = fragmentBandRect(family, band);
+  const x = Math.floor(((r.u0 + r.u1) * 0.5) * FRAGMENT_ATLAS_SIZE);
+  const y = Math.floor(((r.v0 + r.v1) * 0.5) * FRAGMENT_ATLAS_SIZE);
+  const i = (y * FRAGMENT_ATLAS_SIZE + x) * 4;
+  return { roughness: data[i + 1] / 255, metalness: data[i + 2] / 255 };
+}
 
 /**
  * One shared-role material per family. `atlas` comes from createFragmentAtlas(); pass null only

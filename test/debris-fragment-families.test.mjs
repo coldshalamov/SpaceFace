@@ -22,6 +22,7 @@ import {
   createFragmentMaterial,
   fragmentBandRect,
   resolveFragmentFamily,
+  sampleFragmentSurface,
 } from '../src/render/vfx/fragmentFamilies.js';
 import { QuarksVfxSystem } from '../src/render/vfx/quarksSystem.js';
 import { makeImpactRecord, createImpactRecord } from '../src/render/combat/impactEventRecord.js';
@@ -147,7 +148,6 @@ test('every family is opaque lit matter with emission disabled, sharing two atla
   assert.equal(atlas.surface.image.width, FRAGMENT_ATLAS_SIZE);
 
   const materials = FRAGMENT_FAMILY_LIST.map((f) => createFragmentMaterial(f, atlas));
-  const roughness = new Set();
   for (const mat of materials) {
     assert.equal(mat.type, 'MeshStandardMaterial', 'solids are scene-lit, never additive');
     assert.equal(mat.transparent, false, 'a fragment is never a ghost');
@@ -161,10 +161,25 @@ test('every family is opaque lit matter with emission disabled, sharing two atla
     assert.equal(mat.roughnessMap, atlas.surface);
     assert.equal(mat.metalnessMap, atlas.surface);
     assert.ok(mat.userData.spacefaceSharedMaterialRole, 'joins an existing shared role');
-    roughness.add(mat.roughness);
+    // Three multiplies scalar by texel, so a scalar below 1 would cancel the authored bands.
+    assert.equal(mat.roughness, 1, 'the surface page, not a scalar, carries the response');
+    assert.equal(mat.metalness, 1, 'the surface page, not a scalar, carries the response');
   }
-  // Distinct material response, not four tints of one surface: ice must not answer light like rock.
-  assert.equal(roughness.size, FRAGMENT_FAMILY_LIST.length, 'each family has its own finish');
+
+  // Distinct material response, read where the shader reads it: ice must not answer light like
+  // rock, and the torn steel on a cargo panel must read as metal rather than as paint.
+  const ice = sampleFragmentSurface(atlas, FRAGMENT_FAMILY.ICE, 'clear');
+  const stone = sampleFragmentSurface(atlas, FRAGMENT_FAMILY.STONE, 'face');
+  const metal = sampleFragmentSurface(atlas, FRAGMENT_FAMILY.METAL, 'bare');
+  const cargoPaint = sampleFragmentSurface(atlas, FRAGMENT_FAMILY.CARGO, 'panel');
+  const cargoTear = sampleFragmentSurface(atlas, FRAGMENT_FAMILY.CARGO, 'bare');
+  assert.ok(ice.roughness < 0.2, 'an ice cleavage plane glints: ' + ice.roughness);
+  assert.ok(stone.roughness > 0.8, 'weathered rock is matte: ' + stone.roughness);
+  assert.ok(ice.roughness < stone.roughness - 0.5, 'ice and rock answer light differently');
+  assert.ok(metal.metalness > 0.8, 'bare torn steel is metal: ' + metal.metalness);
+  assert.ok(stone.metalness < 0.15, 'rock is a dielectric: ' + stone.metalness);
+  assert.ok(cargoTear.metalness > cargoPaint.metalness + 0.5,
+    'the ripped edge reads as steel against the painted face');
 
   for (const mat of materials) mat.dispose();
   atlas.dispose();

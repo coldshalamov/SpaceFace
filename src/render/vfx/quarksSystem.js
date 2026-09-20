@@ -260,10 +260,10 @@ export class QuarksVfxSystem {
     // Spent brass joins the metal family's atlas band rather than minting its own texture and
     // shader variant; only the tint and finish stay brass.
     remapUvIntoBand(casingGeo, FRAGMENT_FAMILY.METAL, 'bare');
+    // Only the tint is brass; the bare-steel band supplies the finish, because a scalar here
+    // would multiply into the surface page and cancel the response it authored.
     const casingMat = createFragmentMaterial(FRAGMENT_FAMILY.METAL, this.fragmentAtlas, {
       color: 0xc9a227,
-      metalness: 0.55,
-      roughness: 0.38,
     });
     casingMat.transparent = true;
     casingMat.name = 'SF_FragmentMat_casing';
