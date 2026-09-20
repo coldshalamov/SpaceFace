@@ -15,8 +15,17 @@
 // numbers, not captures. This harness measures; it does not tune the game.
 
 import { mkdir, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// This harness pins a core for hours, and it runs on the machine the owner plays on: an
+// integrated-GPU laptop where CPU and GPU share one power budget, so background compute is paid
+// for in frame rate. On 2026-09-20, with two 10-hour runs live beside other lanes, the same
+// build measured 59 fps with no freezes and 40 fps with a 100-350 ms freeze every second,
+// minutes apart. Run at the lowest scheduling priority so the game always wins; the ledger is
+// identical (fixed seed, sim time), it just arrives later when someone is playing.
+try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* best effort */ }
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { actions } from '../src/systems/actions.js';
