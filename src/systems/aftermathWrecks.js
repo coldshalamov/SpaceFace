@@ -38,6 +38,16 @@ const ECOLOGY_ROLES = Object.freeze(['scavenger', 'squatter', 'trap']);
 const WRECK_SALVAGE_TIME = 8;
 const FREIGHT_IDENTITY_TEXT_MAX = 160;
 const STRUCTURE_PATCH_RANGE_WU = 2400;
+// Scavenger work loop: a wreck-field scavenger approaches the field's durable wrecks, strips the
+// salvage pool into its own hold, then departs with the goods. Killed while laden, it spills what
+// it stole through the ordinary kill-cargo path (data.cargo.items). Movement rides the shared NPC
+// intent contract (data.intent.moveX/moveZ) — the same steer language every other hull speaks.
+const SCAV_WORK_RANGE_WU = 70;
+const SCAV_WORK_INTERVAL_S = 4;
+const SCAV_TAKE_PER_WORK = 1;
+const SCAV_HOLD_CAP = 6;
+const SCAV_DEPART_RANGE_WU = 2400;
+const SCAV_ARRIVAL_MIN_WU = 520;
 const SHIPLIKE_TYPES = new Set(['ship', 'drone']);
 const DEFAULT_POOL = Object.freeze({ cmdty_scrap_metal: 3, cmdty_salvage_electronics: 1 });
 const STATION_INFO = new Map();
@@ -732,6 +742,202 @@ export const aftermathWrecks = {
     const sectorId = state && state.world && state.world.currentSectorId;
     if (!sectorId || this._saveRestoring) return;
     this._syncEcologyForSector(sectorId);
+    this._driveScavengers(state, sectorId);
+  },
+
+  // Per-tick scavenger behavior. Bounded: one slot per field, fields are few, and slots that are
+  // not live scavengers cost one map lookup. Work pacing rides simTime, never wall time or dt, so
+  // hitching cannot mint extra salvage and the loop stays deterministic per tick order.
+  _driveScavengers(state, sectorId) {
+    const own = ensureAftermathState(state);
+    if (!own) return;
+    for (const field of Object.values(own.ecology || {})) {
+      if (!field || field.sectorId !== sectorId) continue;
+      for (const slot of field.roster || []) {
+        if (!slot || slot.role !== 'scavenger' || slot.status !== 'live') continue;
+        const entity = this._resolveEcologySlot(field, slot);
+        if (entity) this._driveScavenger(state, field, entity);
+      }
+    }
+  },
+
+  _driveScavenger(state, field, entity) {
+    const now = Number(state.simTime) || 0;
+    const data = entity.data || (entity.data = {});
+    const work = data.scavengerWork
+      || (data.scavengerWork = { state: 'approach', holdQty: 0, nextWorkAt: 0, announcedWreckId: null });
+
+    if (work.state === 'depart') {
+      this._scavengerDepart(state, field, entity, work);
+      return;
+    }
+
+    const wreck = this._nearestFieldWreck(field, entity.pos);
+    if (!wreck) {
+      if (work.holdQty > 0) this._startScavengerDepart(state, field, entity, work);
+      else this._scavengerIntent(entity, null);
+      return;
+    }
+
+    const dx = wreck.pos.x - entity.pos.x;
+    const dz = wreck.pos.z - entity.pos.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > SCAV_WORK_RANGE_WU) {
+      work.state = 'approach';
+      this._scavengerIntent(entity, { x: wreck.pos.x, z: wreck.pos.z });
+      return;
+    }
+
+    // At the wreck: hold station and strip the pool on the work clock.
+    work.state = 'work';
+    this._scavengerIntent(entity, null);
+    if (now < (work.nextWorkAt || 0)) return;
+    work.nextWorkAt = now + SCAV_WORK_INTERVAL_S;
+    const taken = this._scavengerTake(state, field, entity, work, wreck);
+    if (taken) {
+      if (work.announcedWreckId !== wreck.id) {
+        work.announcedWreckId = wreck.id;
+        this._emitScavenged(field, entity, wreck, taken, true);
+      } else {
+        this._emitScavenged(field, entity, wreck, taken, false);
+      }
+    }
+    if (work.holdQty >= SCAV_HOLD_CAP || !this._fieldWreckHasSalvage(field)) {
+      this._startScavengerDepart(state, field, entity, work);
+    }
+  },
+
+  // Nearest durable marker-bound wreck in this field. Authored/mission-owned wrecks (salvage.js
+  // derelicts, unique wrecks) are excluded: their pools have other owners.
+  _nearestFieldWreck(field, pos) {
+    const markers = aftermathForSector(this.state, field.sectorId);
+    let best = null;
+    let bestD = Infinity;
+    for (const marker of markers) {
+      if (!marker || aftermathFieldId(marker.sectorId, marker.zoneId) !== field.fieldId) continue;
+      const entity = this._resolveBoundWreck(marker.markerId);
+      if (!entity) continue;
+      const pool = entity.data && entity.data.salvagePool;
+      if (!pool || !Object.values(pool).some((qty) => qty > 0)) continue;
+      const d = Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z);
+      if (!(d < bestD)) continue;
+      bestD = d;
+      best = entity;
+    }
+    return best;
+  },
+
+  _fieldWreckHasSalvage(field) {
+    return !!this._nearestFieldWreck(field, field.pos);
+  },
+
+  // Move one work unit from the wreck's shared salvage pool into the scavenger's hold. The pool
+  // object is the marker's own (poolForMarker passes it by reference), so the drain persists
+  // across rematerialization exactly like a player beam drain. Draining the last unit retires the
+  // marker through the same completion path the player's beam uses.
+  _scavengerTake(state, field, entity, work, wreck) {
+    const pool = wreck.data.salvagePool;
+    if (!pool) return null;
+    const markerId = wreck.data.markerId;
+    const taken = {};
+    let n = SCAV_TAKE_PER_WORK;
+    for (const id of Object.keys(pool).sort((a, b) => a.localeCompare(b))) {
+      if (n <= 0) break;
+      const qty = Math.floor(Number(pool[id]) || 0);
+      if (qty <= 0) continue;
+      const take = Math.min(qty, n);
+      pool[id] = qty - take;
+      if (pool[id] <= 0) delete pool[id];
+      const cargo = entity.data.cargo || (entity.data.cargo = { items: {} });
+      cargo.items[id] = (Math.floor(Number(cargo.items[id]) || 0)) + take;
+      work.holdQty += take;
+      taken[id] = take;
+      n -= take;
+    }
+    if (!Object.keys(taken).length) return null;
+    const remaining = Object.values(pool).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
+    if (remaining <= 0 && markerId) {
+      // Nothing left to fight over: retire the wreck and its marker like a player strip does,
+      // minus the player-recovery receipts (missions/chronicler must not credit the player).
+      // Complete BEFORE killing the body — the completion validator resolves the live binding,
+      // which only recognizes an alive wreck.
+      this._completeByEntity({ wreckId: wreck.id, markerId });
+      wreck.alive = false;
+    }
+    return taken;
+  },
+
+  _startScavengerDepart(state, field, entity, work) {
+    work.state = 'depart';
+    const seed = seedOf(state);
+    const angle = (hash32(seed, field.fieldId, 'scavengerDepart') / 0xffffffff) * Math.PI * 2;
+    work.departTarget = {
+      x: field.pos.x + Math.cos(angle) * SCAV_DEPART_RANGE_WU,
+      z: field.pos.z + Math.sin(angle) * SCAV_DEPART_RANGE_WU,
+    };
+  },
+
+  _scavengerDepart(state, field, entity, work) {
+    const target = work.departTarget
+      || (work.departTarget = { x: field.pos.x + SCAV_DEPART_RANGE_WU, z: field.pos.z });
+    this._scavengerIntent(entity, target);
+    const out = Math.hypot(entity.pos.x - field.pos.x, entity.pos.z - field.pos.z);
+    if (out < SCAV_DEPART_RANGE_WU * 0.9) return;
+    // Gone for good: the ecology budget was spent on this slot, it does not respawn.
+    const slot = (field.roster || []).find((row) => row && row.role === 'scavenger' && row.status === 'live');
+    if (slot) {
+      slot.status = 'gone';
+      if (this._ecologySpawned) this._ecologySpawned.delete(ecologySlotKey(field.fieldId, slot.id));
+    }
+    entity.alive = false;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('wreckEcology:departed', {
+        fieldId: field.fieldId,
+        sectorId: field.sectorId,
+        zoneId: field.zoneId,
+        entityId: entity.id,
+        hold: clonePlain(entity.data && entity.data.cargo && entity.data.cargo.items || {}),
+        holdQty: work.holdQty,
+      });
+    }
+  },
+
+  // Shared NPC steer language: local-frame move axes plus an aim angle. Passive AI never writes
+  // this, so the driver owns the hull's intent while it works the field.
+  _scavengerIntent(entity, target) {
+    const data = entity.data || (entity.data = {});
+    const intent = data.intent || (data.intent = {});
+    if (!target) {
+      intent.moveX = 0;
+      intent.moveZ = 0;
+      intent.fire = false;
+      return;
+    }
+    const dx = target.x - entity.pos.x;
+    const dz = target.z - entity.pos.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const ux = dx / len;
+    const uz = dz / len;
+    const cf = Math.cos(entity.rot || 0);
+    const sf = Math.sin(entity.rot || 0);
+    intent.moveZ = Math.max(-1, Math.min(1, cf * ux + sf * uz));
+    intent.moveX = Math.max(-1, Math.min(1, -sf * ux + cf * uz));
+    intent.aimAngle = Math.atan2(dz, dx);
+    intent.fire = false;
+  },
+
+  _emitScavenged(field, entity, wreck, taken, first) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('wreckEcology:scavenged', {
+      fieldId: field.fieldId,
+      sectorId: field.sectorId,
+      zoneId: field.zoneId,
+      entityId: entity.id,
+      wreckId: wreck.id,
+      markerId: wreck.data.markerId || null,
+      taken,
+      first,
+    });
   },
 
   _recordKill(payload) {
@@ -1429,12 +1635,21 @@ export const aftermathWrecks = {
 
   _spawnInhabitant(field, slot) {
     const seed = seedOf(this.state);
+    if (slot.role === 'scavenger') {
+      // The scavenger arrives from outside work range and flies in — the approach is the tell
+      // that someone is racing you for the loot, so it never materializes on top of the wreck.
+      const ang = (hash32(seed, field.fieldId, slot.id, slot.role, 'arrivalAng') % 360) * (Math.PI / 180);
+      const radius = SCAV_ARRIVAL_MIN_WU + (hash32(seed, field.fieldId, slot.id, slot.role, 'arrivalR') % 400);
+      return this._spawnScavenger(field, {
+        x: field.pos.x + Math.cos(ang) * radius,
+        z: field.pos.z + Math.sin(ang) * radius,
+      });
+    }
     const offset = inhabitantOffset(seed, field.fieldId, slot.id, slot.role);
     const pos = {
       x: field.pos.x + offset.x,
       z: field.pos.z + offset.z,
     };
-    if (slot.role === 'scavenger') return this._spawnScavenger(field, pos);
     if (slot.role === 'squatter') return this._spawnSquatter(field, pos);
     if (slot.role === 'trap') return this._spawnTrap(field, pos);
     return null;
@@ -1468,6 +1683,10 @@ export const aftermathWrecks = {
         defId: archetype === 'reaver_pirate' ? 'ship_corsair' : 'ship_wasp',
         shipClass: 'fighter',
         trafficRole: 'scavenger',
+        // The hold uses the ordinary kill-spill schema (data.cargo.items), so a laden scavenger
+        // that is killed spills what it stole through the shipped cargo path — no special case.
+        cargo: { items: {} },
+        scavengerWork: { state: 'approach', holdQty: 0, nextWorkAt: 0, announcedWreckId: null },
         ai: {
           doctrine: 'scavenger',
           archetype: 'reaver',
