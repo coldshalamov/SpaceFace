@@ -1,0 +1,121 @@
+{
+  "id": "anomaly-cold-halo",
+  "title": "Anomaly — the cold halo",
+  "notes": [
+    "ION anomaly. Deliberately NOT a violet wash: earlier review threw that out and the profile",
+    "still says so. What replaces it is a single large STRUCTURE — the far shell of an old blast,",
+    "two arcs at different radii and angles so the shell reads as a curved surface with thickness",
+    "rather than a drawn ring, plus one dense knot where the shell is brightest.",
+    "The right half of the frame carries a second protected void because the anomaly profile spawns",
+    "a live wormhole there; the sky must not be behind it. Corridor void as everywhere else."
+  ],
+  "width": 2048,
+  "height": 1024,
+  "seed": 44117,
+  "floor": [0.017, 0.019, 0.028],
+  "edgeFade": 0.12,
+  "exposure": 1.0,
+  "knee": 0.68,
+  "budgets": {
+    "median": 0.05,
+    "coverage10": 0.20,
+    "coverage25": 0.10,
+    "corridorCoverage05": 0.015,
+    "edgeMean": 0.042
+  },
+  "layers": [
+    {
+      "kind": "glow",
+      "comment": "The shell's interior, barely there: it tells the eye the arcs enclose something.",
+      "center": [-0.92, 0.22],
+      "radius": 0.96,
+      "squash": 0.94,
+      "rotation": 0.0,
+      "falloff": 2.2,
+      "gain": 0.055,
+      "color": "#2f3c66"
+    },
+    {
+      "kind": "arc",
+      "comment": "Outer shell. Both ends dissolve through the taper — no shared straight cut-off.",
+      "center": [-0.92, 0.20],
+      "radius": 0.86,
+      "squash": 0.90,
+      "rotation": 0.30,
+      "arcCenter": 0.55,
+      "halfSpan": 2.05,
+      "width": 0.095,
+      "taper": 1.45,
+      "gain": 0.42,
+      "color": "#8496cc",
+      "grain": 3.1,
+      "warp": 0.40,
+      "filament": 0.55,
+      "contrast": 0.66
+    },
+    {
+      "kind": "arc",
+      "comment": "Inner shell at a different radius and sweep: two surfaces make a volume, one makes a ring.",
+      "center": [-0.86, 0.16],
+      "radius": 0.52,
+      "squash": 0.82,
+      "rotation": -0.22,
+      "arcCenter": 0.95,
+      "halfSpan": 1.45,
+      "width": 0.062,
+      "taper": 1.7,
+      "gain": 0.26,
+      "color": "#63769f",
+      "grain": 4.2,
+      "warp": 0.34,
+      "filament": 0.48,
+      "contrast": 0.58
+    },
+    {
+      "kind": "mass",
+      "comment": "The bright knot where the shell piles up — the landmark you steer by.",
+      "center": [-1.20, 0.56],
+      "radius": 0.34,
+      "squash": 0.72,
+      "rotation": 0.5,
+      "falloff": 2.1,
+      "gain": 0.34,
+      "color": "#94a4d8",
+      "coreRadius": 0.34,
+      "coreGain": 0.24,
+      "coreColor": "#dbe2f6",
+      "grain": 4.0,
+      "warp": 0.38,
+      "filament": 0.5,
+      "contrast": 0.6
+    },
+    {
+      "kind": "lane",
+      "comment": "Cold dust drawn across the shell's lower limb, so the shell has a near and a far side.",
+      "points": [[-1.90, -0.06], [-1.42, 0.02], [-0.94, 0.04], [-0.48, -0.02], [-0.10, -0.12]],
+      "widths": [0.020, 0.060, 0.078, 0.056, 0.022],
+      "strength": 0.72,
+      "feather": 2.1
+    },
+    {
+      "kind": "void",
+      "comment": "Wormhole headroom: the anomaly profile spawns one here, and it must own its patch of sky.",
+      "center": [1.05, 0.18],
+      "radius": 1.25,
+      "squash": 0.95,
+      "rotation": 0.0,
+      "falloff": 1.2,
+      "strength": 0.96
+    },
+    {
+      "kind": "void",
+      "comment": "Protected play corridor.",
+      "center": [-0.90, -0.66],
+      "radius": 1.70,
+      "squash": 0.84,
+      "rotation": 0.06,
+      "falloff": 1.10,
+      "strength": 0.97
+    }
+  ]
+}

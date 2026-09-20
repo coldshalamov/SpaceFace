@@ -1,0 +1,149 @@
+{
+  "schema": "spaceface.deepSkyPlateManifest.v1",
+  "generator": "tools/art/bake_deep_sky_plates.mjs",
+  "note": "Regenerate with `node tools/art/bake_deep_sky_plates.mjs`. Verify with --check.",
+  "corridor": {
+    "xMax": 0.55,
+    "yMin": 0.5
+  },
+  "defaultBudgets": {
+    "median": 0.06,
+    "coverage10": 0.32,
+    "coverage25": 0.16,
+    "corridorCoverage05": 0.02,
+    "edgeMean": 0.05
+  },
+  "peakResidentBytes": 22369624,
+  "plates": [
+    {
+      "id": "anomaly-cold-halo",
+      "title": "Anomaly — the cold halo",
+      "file": "assets/background/deep-sky/anomaly-cold-halo.png",
+      "source": "assets/background/deep-sky/sources/anomaly-cold-halo.json",
+      "width": 2048,
+      "height": 1024,
+      "sha256": "159e66289279aa10517ca0b4de37ce3c4d2fde7f68bbaeeb4a7e4fa968497701",
+      "fileBytes": 117680,
+      "residentBytes": 11184812,
+      "stats": {
+        "mean": 0.021,
+        "median": 0.0193,
+        "coverage10": 0.0008,
+        "coverage25": 0,
+        "corridorCoverage05": 0,
+        "edgeMean": 0.0194,
+        "quadrantMean": {
+          "upperLeft": 0.026,
+          "upperRight": 0.0192,
+          "lowerLeft": 0.0195,
+          "lowerRight": 0.0192
+        }
+      },
+      "budgets": {
+        "median": 0.05,
+        "coverage10": 0.2,
+        "coverage25": 0.1,
+        "corridorCoverage05": 0.015,
+        "edgeMean": 0.042
+      }
+    },
+    {
+      "id": "belt-ochre-shoal",
+      "title": "Belt — the ochre shoal",
+      "file": "assets/background/deep-sky/belt-ochre-shoal.png",
+      "source": "assets/background/deep-sky/sources/belt-ochre-shoal.json",
+      "width": 2048,
+      "height": 1024,
+      "sha256": "d3caef7eb25946997253d7c891ef8b2dc66a7b8a4c807052ac5283758ccbd87b",
+      "fileBytes": 137969,
+      "residentBytes": 11184812,
+      "stats": {
+        "mean": 0.0236,
+        "median": 0.0204,
+        "coverage10": 0.0032,
+        "coverage25": 0,
+        "corridorCoverage05": 0,
+        "edgeMean": 0.0193,
+        "quadrantMean": {
+          "upperLeft": 0.0199,
+          "upperRight": 0.0324,
+          "lowerLeft": 0.0193,
+          "lowerRight": 0.0227
+        }
+      },
+      "budgets": {
+        "median": 0.055,
+        "coverage10": 0.28,
+        "coverage25": 0.14,
+        "corridorCoverage05": 0.015,
+        "edgeMean": 0.048
+      }
+    },
+    {
+      "id": "core-lantern-shelf",
+      "title": "Core - the Lantern shelf",
+      "file": "assets/background/deep-sky/core-lantern-shelf.png",
+      "source": "assets/background/deep-sky/sources/core-lantern-shelf.json",
+      "width": 2048,
+      "height": 1024,
+      "sha256": "15b77d5746ae286e20bc2126693a8fea27311a290ffdde36cba9421ea83b56a4",
+      "fileBytes": 325895,
+      "residentBytes": 11184812,
+      "stats": {
+        "mean": 0.0577,
+        "median": 0.0224,
+        "coverage10": 0.1434,
+        "coverage25": 0.06,
+        "corridorCoverage05": 0,
+        "edgeMean": 0.0215,
+        "quadrantMean": {
+          "upperLeft": 0.0284,
+          "upperRight": 0.1537,
+          "lowerLeft": 0.0214,
+          "lowerRight": 0.0274
+        }
+      },
+      "budgets": {
+        "median": 0.055,
+        "coverage10": 0.26,
+        "coverage25": 0.13,
+        "corridorCoverage05": 0.015,
+        "edgeMean": 0.045
+      }
+    },
+    {
+      "id": "helios-amber-estuary",
+      "title": "Helios amber estuary",
+      "file": "assets/background/helios-amber-estuary.png",
+      "source": null,
+      "imported": true,
+      "note": "Reviewed 2026-09-19. No editable source; measured and budget-checked, never re-baked.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "d266e7f48f32f76d0f64a9940f80467ea07e17b2a98bec7b3c780d5c43cfdd73",
+      "fileBytes": 1596109,
+      "residentBytes": 8387888,
+      "stats": {
+        "mean": 0.0932,
+        "median": 0.0387,
+        "coverage10": 0.2499,
+        "coverage25": 0.091,
+        "corridorCoverage05": 0,
+        "edgeMean": 0.028,
+        "quadrantMean": {
+          "upperLeft": 0.0922,
+          "upperRight": 0.1689,
+          "lowerLeft": 0.0337,
+          "lowerRight": 0.078
+        }
+      },
+      "budgets": {
+        "median": 0.06,
+        "coverage10": 0.32,
+        "coverage25": 0.16,
+        "corridorCoverage05": 0.02,
+        "edgeMean": 0.05
+      }
+    }
+  ]
+}

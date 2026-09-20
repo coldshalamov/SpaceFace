@@ -1,0 +1,98 @@
+{
+  "id": "belt-ochre-shoal",
+  "title": "Belt — the ochre shoal",
+  "notes": [
+    "EMBER belt. The region's own recipe is `belt_broken_dust_lane`, so the plate answers it: one",
+    "warm ochre shoal on the right, BROKEN into three pieces by two dark lanes. The breaks are the",
+    "identity; an unbroken warm smear would be the same fog every other region could wear.",
+    "A cool grey companion sits high and left, well under the amber stellar river that the star",
+    "formation already draws there, so the two do not fight for the same band of sky.",
+    "Lower-left corridor is an explicit protected void."
+  ],
+  "width": 2048,
+  "height": 1024,
+  "seed": 761203,
+  "floor": [0.021, 0.019, 0.017],
+  "edgeFade": 0.12,
+  "exposure": 1.0,
+  "knee": 0.70,
+  "budgets": {
+    "median": 0.055,
+    "coverage10": 0.28,
+    "coverage25": 0.14,
+    "corridorCoverage05": 0.015,
+    "edgeMean": 0.048
+  },
+  "layers": [
+    {
+      "kind": "glow",
+      "comment": "Shoal haze. Broad, dim, detail-free: it gives the warm mass somewhere to sit.",
+      "center": [1.22, 0.20],
+      "radius": 1.55,
+      "squash": 0.62,
+      "rotation": 0.20,
+      "falloff": 1.45,
+      "gain": 0.075,
+      "color": "#6a4a2e"
+    },
+    {
+      "kind": "mass",
+      "comment": "The shoal. Warm dust lit from within; the lanes below cut it into three.",
+      "center": [1.24, 0.20],
+      "radius": 0.94,
+      "squash": 0.54,
+      "rotation": 0.22,
+      "falloff": 1.80,
+      "gain": 0.44,
+      "color": "#b3884f",
+      "coreRadius": 0.28,
+      "coreGain": 0.20,
+      "coreColor": "#f0d19c",
+      "grain": 2.30,
+      "warp": 0.48,
+      "filament": 0.62,
+      "contrast": 0.70
+    },
+    {
+      "kind": "mass",
+      "comment": "Cool grey companion, high and left. Colour separation keeps the two masses distinct.",
+      "center": [-0.96, 0.62],
+      "radius": 0.66,
+      "squash": 0.42,
+      "rotation": -0.24,
+      "falloff": 2.4,
+      "gain": 0.19,
+      "color": "#6a6670",
+      "grain": 3.4,
+      "warp": 0.30,
+      "filament": 0.34,
+      "contrast": 0.50
+    },
+    {
+      "kind": "lane",
+      "comment": "First break: a wide near lane through the shoal's shoulder.",
+      "points": [[0.44, 0.74], [0.86, 0.50], [1.24, 0.26], [1.58, 0.02], [1.90, -0.18]],
+      "widths": [0.026, 0.080, 0.112, 0.086, 0.034],
+      "strength": 0.86,
+      "feather": 1.9
+    },
+    {
+      "kind": "lane",
+      "comment": "Second break, shallower and further out: three pieces, not two halves.",
+      "points": [[0.62, -0.10], [1.06, -0.02], [1.52, 0.08], [1.96, 0.22]],
+      "widths": [0.020, 0.058, 0.062, 0.024],
+      "strength": 0.68,
+      "feather": 2.2
+    },
+    {
+      "kind": "void",
+      "comment": "Protected play corridor.",
+      "center": [-0.90, -0.62],
+      "radius": 1.72,
+      "squash": 0.86,
+      "rotation": 0.08,
+      "falloff": 1.10,
+      "strength": 0.97
+    }
+  ]
+}
