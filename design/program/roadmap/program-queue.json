@@ -19470,7 +19470,7 @@
       "priority": 9860,
       "title": "Encounter supply hours 5-9",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19480,7 +19480,9 @@
       "checks": [
         "node scripts/run-actual-game-playthrough.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-209.00-REPORT.md"
+      ],
       "brief": "Restore encounter:spawned in hours 5-9 (currently 0 both seeds while the director issues ~160 commands/hour); rerun the six-session battery and diff the hourly tables."
     },
     {
