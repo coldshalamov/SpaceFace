@@ -329,6 +329,36 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   const ends = [];
   f.bus.on('flybyFocus:end', (payload) => ends.push(payload));
   f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.active, true);
+  f.state.input.boost = true;
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.active, false, 'boost cancels the stolen slow-mo lease');
+  assert.equal(ends.at(-1)?.reason, 'cancelled');
+  f.system.destroy();
+}
+
+{
+  const target = hostile(2);
+  const f = runtimeFor([target], { targetId: 'persistent-selection' });
+  const starts = [];
+  f.bus.on('flybyFocus:start', (payload) => starts.push(payload));
+  f.state.input.boost = true;
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.active, false, 'no lease opens while the stick is held');
+  assert.equal(starts.length, 0, 'no acquisition juice for a refused lease');
+  assert.equal(f.state.player.flybyFocus.cooldownUntil, 0, 'a refused lease burns no anti-spam cooldown');
+  f.state.input.boost = false;
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.active, true, 'releasing the stick lets the lease open');
+  f.system.destroy();
+}
+
+{
+  const target = hostile(2);
+  const f = runtimeFor([target], { targetId: 'persistent-selection' });
+  const ends = [];
+  f.bus.on('flybyFocus:end', (payload) => ends.push(payload));
+  f.system.update(DT, f.state);
   target.pos.x = 721;
   f.state.simTime = 0.25;
   f.system.update(DT, f.state);

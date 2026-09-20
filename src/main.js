@@ -458,6 +458,11 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
         afterEach: () => runTransitionGuard.isCurrent(transitionToken),
       });
       if (!resetCompleted || !runTransitionGuard.isCurrent(transitionToken)) return;
+      // Many systems/VFX listen only to the legacy `game:newGame` alias. The public route emits
+      // `game:new`; without this alias, titles, fragile cargo, cloak, and presentation caches
+      // keep the previous run's instance state.
+      bus.emit('game:newGame', { seed: state.meta && state.meta.seed, ...(opts || {}) });
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
       const ships = registry.get('ships');
       if (ships && typeof ships.newGame === 'function') {

@@ -38,6 +38,13 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'aceMemory',
   'lossLedger',
   'factionPresence',
+  'titles',
+  'fragileCargo',
+  'fieldDepletion',
+  'wingMorale',
+  'lossInvestigation',
+  'careerContracts',
+  'cloak',
 ]);
 
 export function resetFreshRunSystems(registry, options = {}) {

@@ -253,6 +253,8 @@ export function createDamageRouter(context, statusService, options = {}) {
 
     if (shieldBroke && bus) bus.emit('shieldDown', { combatantId: target.id, pos: packet.hit && packet.hit.pos || target.pos });
     if (bus) {
+      const empHit = isEmpDamagePacket(packet, origin);
+      const weaponId = origin && origin.kind === 'weapon' ? (origin.weaponId || origin.id || null) : null;
       bus.emit('combat:damage', {
         targetId: target.id,
         attackerId: result.attackerId,
@@ -260,6 +262,8 @@ export function createDamageRouter(context, statusService, options = {}) {
         rawTotal,
         applied: totalApplied,
         type: dominantChannel(packet.channels, model.channelOrder),
+        damageType: empHit ? 'emp' : null,
+        emp: empHit,
         channels: { ...packet.channels },
         shieldDamage,
         armorDamage,
@@ -282,8 +286,16 @@ export function createDamageRouter(context, statusService, options = {}) {
         targetHostileToPlayer,
         subsystemId,
         origin,
-        weaponId: origin && origin.kind === 'weapon' ? (origin.weaponId || origin.id || null) : null,
+        weaponId,
       });
+      if (empHit) {
+        bus.emit('combat:emp', {
+          targetId: target.id,
+          attackerId: result.attackerId,
+          pos: packet.hit && packet.hit.pos || { x: target.pos.x, z: target.pos.z },
+          weaponId,
+        });
+      }
     }
 
     if (before.hull > 0 && target.hull <= 0) {
@@ -297,6 +309,23 @@ export function createDamageRouter(context, statusService, options = {}) {
       else fallbackKill(target, result.attackerId);
     }
     return result;
+  }
+
+  function isEmpDamagePacket(packet, origin) {
+    const weaponId = (origin && (origin.weaponId || origin.id))
+      || (packet && packet.source && packet.source.weaponId)
+      || '';
+    // Match `emp` as a whole id token only: `wpn_emp_disruptor_m` and `mine_emp` yes,
+    // a future `wpn_tempest_launcher` (contains 'temp') no.
+    const id = String(weaponId).toLowerCase();
+    if (id === 'wpn_emp_disruptor_m' || /(^|[^a-z])emp([^a-z]|$)/.test(id)) return true;
+    const channels = packet && packet.channels;
+    return !!(packet && channels && packet.subsystemShare === 1 && packet.shieldBypass === 1
+      && (Number(channels.ion) || 0) > 0
+      && !(Number(channels.kinetic) || 0)
+      && !(Number(channels.thermal) || 0)
+      && !(Number(channels.plasma) || 0)
+      && !(Number(channels.phase) || 0));
   }
 
   function difficultyInvariantDisablePacket(packet) {

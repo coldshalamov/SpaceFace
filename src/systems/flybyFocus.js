@@ -355,6 +355,12 @@ export const flybyFocus = {
       return;
     }
 
+    // The cancel event existed; nothing on the live input path emitted it. Boost or fire is
+    // the player taking the stick back — release the 3s slow-mo lease without wiping cooldown.
+    if (focus.active && st.input && (st.input.boost || st.input.fire)) {
+      this._finish('cancelled', false, true);
+    }
+
     if (focus.active && now >= focus.until) {
       this._finish('expired', false);
       focus.zoom = Math.max(0, focus.zoom - dt * 2.5);
@@ -381,6 +387,11 @@ export const flybyFocus = {
     focus.zoom = Math.max(0, focus.zoom - dt * 2.2);
     if (now < focus.cooldownUntil) return;
     if (st.player && st.player.tether && st.player.tether.active) return;
+
+    // Hands already on the stick (same verb the mid-lease cancel reads): there is no lease to
+    // refuse, so do not open one. Opening here would burn the global anti-spam cooldown and fire
+    // the acquisition juice for a one-frame lease the cancel path would kill on the next tick.
+    if (st.input && (st.input.boost || st.input.fire)) return;
 
     const list = indexedShipLikeScan(st);
     this._expireTargetCooldowns(now);

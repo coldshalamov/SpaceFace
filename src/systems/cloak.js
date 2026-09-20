@@ -41,7 +41,18 @@ export const cloak = {
       for (const event of ['save:restoring', 'game:started', 'dock:docked', 'player:death']) {
         this._unsubs.push(this.bus.on(event, () => this._drop(null)));
       }
+      this._unsubs.push(this.bus.on('game:new', () => this.newGame()));
+      this._unsubs.push(this.bus.on('game:newGame', () => this.newGame()));
     }
+  },
+
+  newGame() {
+    if (!this.state) return;
+    const runtime = ensureCloak(this.state);
+    runtime.active = false;
+    runtime.energy = 1;
+    runtime.radius = 0;
+    runtime.available = false;
   },
 
   destroy() {

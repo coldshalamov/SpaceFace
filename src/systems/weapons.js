@@ -246,6 +246,10 @@ export const weapons = {
       clearAllMomentumSinkPlants(this.state);
       if (this._shuntCooldown) this._shuntCooldown.clear();
     });
+    this._playerIncomingLock = false;
+    on('game:new', () => { this._playerIncomingLock = false; });
+    on('game:started', () => { this._playerIncomingLock = false; });
+    on('save:loaded', () => { this._playerIncomingLock = false; });
   },
 
   update(dt, state) {
@@ -377,6 +381,7 @@ export const weapons = {
       }
       tickMomentumSinkPlant(state, e, this._momentumSinkImpulse, this._entityGetter);
     }
+    this._publishIncomingLock(state);
   },
 
   /**
@@ -505,6 +510,39 @@ export const weapons = {
       // lock decays when target leaves the cone / is gone
       combat.lockProgress = Math.max(0, (combat.lockProgress || 0) - dt / Math.max(0.05, lockTimeS));
       if (combat.lockProgress <= 0) combat.lockTarget = null;
+    }
+  },
+
+  /**
+   * Incoming missile lock on the player. World jump interdiction and the MISSILE LOCK alert
+   * both listen to `combat:lockChanged`; nothing used to emit it, so both stayed dead.
+   */
+  _publishIncomingLock(state) {
+    const playerId = state && state.playerId;
+    let locked = false;
+    let shooterId = null;
+    if (playerId != null) {
+      const ships = (state.entityIndex && (state.entityIndex.weaponShips || state.entityIndex.ships))
+        || state.entityList;
+      for (const e of ships) {
+        if (!e || !e.alive || e.type !== 'ship' || e.id === playerId) continue;
+        const combat = e.data && e.data.combat;
+        if (!combat) continue;
+        if (combat.lockTarget === playerId && (combat.lockProgress || 0) >= 1) {
+          locked = true;
+          shooterId = e.id;
+          break;
+        }
+      }
+    }
+    if (locked === this._playerIncomingLock) return;
+    this._playerIncomingLock = locked;
+    if (this.bus) {
+      this.bus.emit('combat:lockChanged', {
+        locked,
+        targetId: playerId,
+        shooterId,
+      });
     }
   },
 
@@ -1083,6 +1121,7 @@ export const weapons = {
   destroy() {
     for(const off of this._weaponsUnsubs||[])off();
     this._weaponsUnsubs=[];
+    this._playerIncomingLock = false;
   },
 
   // --- SF-10 DEPLOY verb: vector mine ------------------------------------------------------------
