@@ -1928,6 +1928,8 @@ export const lawSecurity = {
     // declared aggro is the only hostility truth left (the old heat-owner rule).
     const provoked = !!(victim && victim.data && victim.data.ai
       && victim.data.ai.retaliationTargetId === state.playerId);
+    const factionLawful = payload.factionLawful === true
+      || !!(victim && victim.data && victim.data.ai && victim.data.ai.lawful === true);
     const factionAggro = !!(victim == null && payload.factionId != null && state.factions
       && state.factions[payload.factionId] && state.factions[payload.factionId].aggro);
     const clearlyHostile = typeof payload.targetHostileToPlayer === 'boolean'
@@ -1949,7 +1951,11 @@ export const lawSecurity = {
       .slice(0, LAW_INCIDENT_WITNESS_CAP);
     const victimStableId = victimStableIdOf(victim, payload);
 
-    if (clearlyHostile) {
+    // A lawful-network victim never takes the cleared early-out, even mid-enforcement: a
+    // patrol engaging a WANTED player is hostile in the combat sense, but destroying it is
+    // still a lawful_kill the network records. Otherwise a wanted player could cull patrols
+    // for free, and first-shot aggression against the law would launder into self-defense.
+    if (clearlyHostile && !factionLawful) {
       // Lawful force: no crime, no heat. Where the law could see the kill it clears the
       // shooter on the record — the lawful-defense leg is an outcome the player can observe.
       if (seen) {
@@ -1965,8 +1971,6 @@ export const lawSecurity = {
       return;
     }
 
-    const factionLawful = payload.factionLawful === true
-      || !!(victim && victim.data && victim.data.ai && victim.data.ai.lawful === true);
     if (!factionLawful && !seen) {
       // Nobody saw it — the law cannot act. Recorded as an explicit outcome, never a licence:
       // the same kill re-adjudicates if a save/reload replays the event under new eyes.

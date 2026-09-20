@@ -38,6 +38,8 @@ import { claims } from '../src/systems/claims.js';
 import { traffic } from '../src/systems/traffic.js';
 import * as FlightDynamics from '../src/core/flightDynamics.js';
 import { heat } from '../src/systems/heat.js';
+import { lawSecurity } from '../src/systems/lawSecurity.js';
+import { createSimulation } from '../src/core/sim.js';
 import { missions } from '../src/systems/missions.js';
 import { DEFAULTS as INPUT_DEFAULTS, input as inputSystem } from '../src/systems/input.js';
 import { autoTargetAssist } from '../src/systems/autoTargetAssist.js';
@@ -3311,26 +3313,49 @@ function checkHeatUsesTargetFactionContext() {
 
   assert.equal(hostileState.player.heat, 0, 'damaging a canonically hostile encounter should not raise piracy heat');
 
-  const lawman = {
-    id: 3,
-    type: 'ship',
-    team: 1,
-    alive: true,
-    flags: {},
-    factionId: 'faction_scn',
-    pos: { x: 20, z: 0 },
-    data: { ai: { lawful: true }, shipClass: 'gunship' },
-    hull: 100,
+  // Kill pricing lives behind the law seam now: entity:killed → lawSecurity adjudication →
+  // signed receipt → heat. Boot the real seam (same shape as test/law-kill-witness.test.mjs)
+  // with the faction already aggro and the frozen truth saying the patrol was engaging the
+  // player — the WANTED-enforcement case the pricing door exists for.
+  const sim = createSimulation({ seed: 43117, systems: [lawSecurity, heat] });
+  const { state: lawState, bus: lawBus } = sim;
+  lawState.mode = 'flight';
+  lawState.world.currentSectorId = 'sector_tethys_junction';
+  if (!lawState.world.sectors) lawState.world.sectors = {};
+  lawState.world.sectors.sector_tethys_junction = {
+    id: 'sector_tethys_junction', factionId: 'faction_scn', security: 0.9, tier: 0,
   };
-  const lawState = makeState(lawman);
-  const lawBus = createBus();
-  heat.init({ state: lawState, bus: lawBus, helpers: {}, registry: { get() { return null; } } });
-  combat.state = lawState;
-  combat.bus = lawBus;
+  lawState.player.heat = 0;
+  const lawPlayer = sim.spawn({
+    type: 'ship', team: 0, pos: { x: 250, z: 10 }, hull: 200, hullMax: 200, radius: 8,
+  });
+  lawState.playerId = lawPlayer.id;
+  if (!lawState.factions.faction_scn) lawState.factions.faction_scn = {};
+  lawState.factions.faction_scn.aggro = true; // already hostile: the whole point of the contract
+  const patrol = sim.spawn({
+    type: 'ship', team: 2, factionId: 'faction_scn',
+    pos: { x: 80, z: 0 }, hull: 80, hullMax: 80, radius: 8,
+    data: { shipClass: 'gunship', ai: { lawful: true } },
+  });
+  const receipts = [];
+  lawBus.on('law:reportIncidentReceipt', (p) => receipts.push(p));
 
-  combat.kill(lawman, lawState.playerId);
+  lawBus.emit('entity:killed', {
+    id: patrol.id,
+    killerId: lawState.playerId,
+    type: 'ship',
+    pos: { x: patrol.pos.x, z: patrol.pos.z },
+    victimClass: 'gunship',
+    factionId: 'faction_scn',
+    factionLawful: true,
+    targetHostileToPlayer: true, // frozen first-hit truth: the patrol was engaging the player
+  });
+  sim.dispose();
 
   assert(lawState.player.heat > 0, 'killing a lawful patrol should raise heat even if its faction is already hostile');
+  assert.equal(receipts.length, 1, 'the patrol kill prices through exactly one law-signed receipt');
+  assert.equal(receipts[0].kind, 'lawful_kill', 'the law records its own dead as lawful_kill');
+  assert.equal(receipts[0].accepted, true, 'the receipt must be an accepted law validation');
 }
 
 function checkWantedHeatUsesVisibleSearchZoneDecay() {
