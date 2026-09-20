@@ -1204,6 +1204,7 @@ export class SpaceBackground {
     this._paintedSkyArt = null;        // resolved { plate, strength, parallax } for this region
     this._paintedSkyAnchorX = 0;       // region-entry anchor: plate parallax is local and bounded
     this._paintedSkyAnchorZ = 0;
+    this._paintedSkyAnchorPending = false;
     this.deepSkyPlates = new DeepSkyPlateResidency({
       loader: (typeof document !== 'undefined' && typeof document.createElementNS === 'function')
         ? new THREE.TextureLoader() : null,
@@ -2805,15 +2806,40 @@ export class SpaceBackground {
       const un = this.layerMaterial.uniforms;
       un.uGroupOrigin.value.copy(this.group.position);
       un.uNebulaOpacity.value = this.nebulaOpacity;
-      // At most one plate upload per transition, and only on a frame with room for it. The blend
-      // strength stays at zero until that upload has happened, so the plate never appears on the
-      // same frame that pays for it.
-      if (this.deepSkyPlates.pump()) this._adoptActiveSkyPlate();
+      // The plate's parallax anchor is the camera position at region entry, but onSectorEnter can
+      // run before the first update() has supplied one (boot, and any entry that precedes a frame).
+      // Anchoring on 0 there would hand the opening region a frame pinned to its margin instead of
+      // the composition the plate was authored for.
+      //
+      // Focused fixtures build this class with Object.create(prototype) and no constructor, so the
+      // anchor has to survive being absent: default it to the world origin rather than propagating
+      // NaN into a uniform, which is a black frame rather than a wrong one.
+      if (!Number.isFinite(this._paintedSkyAnchorX)) this._paintedSkyAnchorX = 0;
+      if (!Number.isFinite(this._paintedSkyAnchorZ)) this._paintedSkyAnchorZ = 0;
+      if (this._paintedSkyAnchorPending) {
+        this._paintedSkyAnchorX = cx;
+        this._paintedSkyAnchorZ = cz;
+        this._paintedSkyAnchorPending = false;
+      }
+      // At most one plate upload per transition, and only on a frame with room for it — AND only
+      // once the outgoing plate has faded out. Promoting mid-fade would cut from one plate's mass
+      // to another's in a single frame while every other part of the sector transition crossfades:
+      // a seam in time rather than in space, but a seam. Waiting costs nothing; the upload is
+      // still paid on a frame chosen for it.
+      if (this.deepSkyPlates && this._paintedSkyStrength < 0.01 && this.deepSkyPlates.pump()) {
+        this._adoptActiveSkyPlate();
+      }
       const skyArt = this._paintedSkyArt;
-      const skyLive = !!skyArt && this.deepSkyPlates.readyId === skyArt.plate;
+      const skyLive = !!skyArt && this.deepSkyPlates
+        && this.deepSkyPlates.readyId === skyArt.plate;
       this._paintedSkyReady = skyLive;
       const skyTarget = skyLive ? skyArt.strength : 0;
       this._paintedSkyStrength += (skyTarget - this._paintedSkyStrength) * Math.min(1, dt * 1.8);
+      // An exponential approach never actually reaches zero, so a plateless region would keep the
+      // `uPaintedSkyStrength > 0.0` branch taken forever and pay a texture fetch per sky pixel for
+      // a contribution of nothing. Snap the tail: the fringe costs exactly one fetch, as it did
+      // before plates existed.
+      if (skyTarget === 0 && this._paintedSkyStrength < 0.002) this._paintedSkyStrength = 0;
       un.uPaintedSkyStrength.value = this._paintedSkyStrength;
       const skyParallax = skyArt?.parallax || 0.003;
       // Cover the viewport without stretching the painted forms on wide or tall displays.
@@ -3134,12 +3160,15 @@ export class SpaceBackground {
    * A region with no plate releases whatever was held: the feature costs a plateless region zero.
    */
   _requestSkyPlate(visualProfile) {
+    if (!this.deepSkyPlates) return;
     const art = resolveBackgroundPaintedSky(visualProfile);
     this._paintedSkyArt = art;
     // Anchor the plate's parallax where the player entered, so every region presents the frame it
-    // was authored for rather than an arbitrary slice chosen by the world coordinate.
+    // was authored for rather than an arbitrary slice chosen by the world coordinate. The camera
+    // position is only trustworthy once update() has run, so latch the intent and take it there.
     this._paintedSkyAnchorX = this.camX;
     this._paintedSkyAnchorZ = this.camZ;
+    this._paintedSkyAnchorPending = true;
     this.deepSkyPlates.request(art ? art.plate : null);
     // The requested plate is not the live one yet. Only pump() promotes it, and only after upload.
     if (!art || this.deepSkyPlates.readyId !== art.plate) this._adoptActiveSkyPlate();
@@ -3147,7 +3176,7 @@ export class SpaceBackground {
 
   /** Point the sky sampler at whatever the residency currently holds. */
   _adoptActiveSkyPlate() {
-    this.paintedSky = this.deepSkyPlates.activeTexture;
+    this.paintedSky = this.deepSkyPlates ? this.deepSkyPlates.activeTexture : null;
     const un = this.layerMaterial && this.layerMaterial.uniforms;
     if (!un || !un.uPaintedSky) return;
     // A sampler always needs a bound texture even at zero strength; the void tile is the stand-in.
