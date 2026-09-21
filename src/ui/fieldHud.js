@@ -110,7 +110,11 @@ export const fieldHud = {
     if (soonest) {
       const label = KIND_LABEL[soonest.kind] || 'FIELD';
       const remain = Number.isFinite(soonest.expireAt) ? Math.max(0, Math.ceil(soonest.expireAt - now)) : null;
-      const stateWord = soonest.engaged ? 'ENGAGED' : 'ARMED';
+      // INF-042: the pill words the enforced lifecycle — a building or fading field never
+      // masquerades as a fully armed one. Records without a phase read as before.
+      const stateWord = soonest.phase === 'winding' ? 'FORMING'
+        : soonest.phase === 'dissipating' ? 'FADING'
+          : soonest.engaged ? 'ENGAGED' : 'ARMED';
       const cls = soonest.kind === 'repulsor' ? 'field-repulsor' : '';
       return { text: remain != null ? `${label} — ${stateWord} ${remain}s` : `${label} — ${stateWord}`, cls };
     }

@@ -69,6 +69,51 @@ function finite(value, fallback = 0) { return Number.isFinite(value) ? value : f
 function positive(value, fallback) { return Number.isFinite(value) && value > 0 ? value : fallback; }
 function nowOf(state) { return Number.isFinite(state.simTime) ? state.simTime : state.tick / 60; }
 
+// INF-042 lifecycle: a deployed Well or Repulsor builds, sustains, and dissipates. The kernel
+// enforces the SAME phase the records publish — strength itself ramps — so the visual
+// lifecycle and the hazard lifecycle cannot disagree: no invisible active field, no
+// harmful-looking expired one. Spans are short against a 9s well; pause freezes them with
+// simTime; cancellation and sector exit remove the field outright (a killed field
+// dissipates nothing). Cone, sheet, seed, and NPC snares (no deploy clock) stay full-force.
+export const FIELD_WINDUP_S = 0.4;
+export const FIELD_DISSIPATE_S = 0.6;
+export const FIELD_PHASE_WINDING = 'winding';
+export const FIELD_PHASE_ACTIVE = 'active';
+export const FIELD_PHASE_DISSIPATING = 'dissipating';
+
+export function fieldLifecyclePhase(createdAt, expireAt, now) {
+  if (!Number.isFinite(createdAt) || !Number.isFinite(expireAt)) {
+    return { phase: FIELD_PHASE_ACTIVE, mult: 1 };
+  }
+  const age = now - createdAt;
+  if (age < FIELD_WINDUP_S) {
+    return { phase: FIELD_PHASE_WINDING, mult: Math.max(0, Math.min(1, age / FIELD_WINDUP_S)) };
+  }
+  const remaining = expireAt - now;
+  if (remaining < FIELD_DISSIPATE_S) {
+    return { phase: FIELD_PHASE_DISSIPATING, mult: Math.max(0, Math.min(1, remaining / FIELD_DISSIPATE_S)) };
+  }
+  return { phase: FIELD_PHASE_ACTIVE, mult: 1 };
+}
+
+/**
+ * Enforce the lifecycle on kernel records in place: the sampler, the predictor, and the
+ * published records all read this same strength afterwards, so one number is the hazard
+ * and the picture. Only clocked Well/Repulsor deployments ramp; everything else passes
+ * through untouched.
+ */
+export function applyFieldLifecycle(fieldsList, now) {
+  if (!Array.isArray(fieldsList)) return;
+  for (const f of fieldsList) {
+    if (!f || (f.kind !== FIELD_KINDS.WELL && f.kind !== FIELD_KINDS.REPULSOR)) continue;
+    if (!Number.isFinite(f.createdAt) || !Number.isFinite(f.expireAt)) continue;
+    if (f.baseStrength == null) f.baseStrength = f.strength;
+    const { phase, mult } = fieldLifecyclePhase(f.createdAt, f.expireAt, now);
+    f.lifecyclePhase = phase;
+    f.strength = f.baseStrength * mult;
+  }
+}
+
 function massStatePolarity(kind) {
   if (kind === FIELD_KINDS.WELL) return 1;
   if (kind === FIELD_KINDS.REPULSOR) return -1;
@@ -1221,6 +1266,8 @@ export const fields = {
     const now = nowOf(state);
     if (this._kernel && typeof this._kernel.expire === 'function') this._kernel.expire(now);
     const fieldsList = this._kernel.list();
+    // INF-042: the lifecycle runs before sampling, so force, predictor, and records agree.
+    applyFieldLifecycle(fieldsList, now);
     if (fieldsList.length === 0 || dt <= 0) {
       this._flushEndedWells(state);
       return { queries: 0, affected: 0, accelSum: 0 };
@@ -1634,6 +1681,9 @@ export const fields = {
       rec.center.x = f.center.x; rec.center.z = f.center.z;
       rec.dir.x = f.dir.x; rec.dir.z = f.dir.z;
       rec.radius = f.radius; rec.strength = f.strength; rec.falloff = f.falloff;
+      // INF-042: the enforced phase travels with the record, so the VFX owner and the HUD
+      // word the same lifecycle the kernel is forcing. Unphased kinds read active.
+      rec.phase = f.lifecyclePhase || FIELD_PHASE_ACTIVE;
       rec.halfAngleRad = f.halfAngleRad; rec.halfWidth = f.halfWidth;
       rec.volume = f.volume || fieldVolumeOf(f);
       rec.palette = FIELD_PALETTE[f.kind] || FIELD_PALETTE[rec.volume] || null;
@@ -1685,6 +1735,7 @@ export const fields = {
     rec.dir.x = 1; rec.dir.z = 0;
     rec.radius = def.radius;
     rec.strength = 0;
+    rec.phase = FIELD_PHASE_ACTIVE;
     rec.falloff = 1;
     rec.halfAngleRad = 0;
     rec.halfWidth = 0;
