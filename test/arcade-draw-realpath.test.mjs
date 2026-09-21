@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { bootRealPath, writeRealPathInput } from '../scripts/lib/bench/realPath.mjs';
 import { autoTargetAssist } from '../src/systems/autoTargetAssist.js';
+import { applyAutoTargetPathProfile } from '../src/systems/flightV3.js';
+import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog.js';
 import { drawWrapAngle } from '../src/core/flight/drawFlightControl.js';
 
 async function boot() {
@@ -39,7 +41,13 @@ for (const [name, points] of Object.entries(shapes)) {
       stroke(host, [{ x: 0, z: 0 }, { x: 900, z: 0 }]);
       sample(host, 120);
       const cruise = Math.hypot(host.player.vel.x, host.player.vel.z);
-      assert.ok(cruise > 145 && cruise < 160, 'starter G cap, not the slower manual cruise denominator');
+      // The draw cap is the drive profile's combatSpeed lifted by the auto-target overdrive —
+      // derive it from the live profile so a propulsion rebalance does not stale the band.
+      const baseCruise = resolveGovernedCombatSpeed(host.player, host.state);
+      const expectedCap = applyAutoTargetPathProfile({ combatSpeed: baseCruise }).combatSpeed;
+      assert.ok(cruise > expectedCap * 0.95 && cruise < expectedCap * 1.05,
+        `starter G cap tracks the driven profile, not a stale constant (${cruise} vs ${expectedCap})`);
+      assert.ok(cruise > baseCruise * 1.2, 'starter G cap, not the slower manual cruise denominator');
       stroke(host, points);
       const rows = sample(host, 300);
       assert.equal(host.proof().sg02Ready, true);

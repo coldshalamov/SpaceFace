@@ -919,6 +919,19 @@ export const RECIPES = [
     gainMult: 0.75,
   },
   {
+    // Shield back online after depletion: a rising energized shimmer — the inverse of the
+    // collapse's falling crackle. Soft and short so recovery reads as relief, not alarm.
+    id: 'sfx_shield_restore',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 660,
+    freqSweep: [660, 1320],
+    sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.012, sustain: 0.04, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.6,
+  },
+  {
     id: 'sfx.armorHit',
     category: 'weapon',
     type: 'noise_burst',

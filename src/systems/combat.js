@@ -982,7 +982,13 @@ export const combat = {
       if (!regenerating && !isDirty(state, e.id, DIRTY.COMBAT | DIRTY.POSE)) continue;
       if (e.flags && e.flags.invuln && e._invulnUntil != null && state.simTime >= e._invulnUntil) e.flags.invuln = false;
       if (e.shieldMax > 0 && e.shield < e.shieldMax && state.simTime - (e.lastDamageT || -1e9) >= (e.shieldRegenDelay || 3)) {
+        const shieldWasDown = e.shield <= 0;
         e.shield = Math.min(e.shieldMax, e.shield + (e.shieldRegenRate || 0) * dt);
+        // Shield collapse has a dramatic cue; coming back online deserved the same notice. Fires
+        // once per depletion->recovery crossing, not per regen tick.
+        if (shieldWasDown && e.shield > 0 && this.bus) {
+          this.bus.emit('shieldRestored', { combatantId: e.id, pos: e.pos ? { x: e.pos.x, z: e.pos.z } : null });
+        }
       }
       if (e.capMax > 0 && e.cap < e.capMax) {
         const regenMult = this.kernel ? this.kernel.capRegenMultiplier(e.id) : 1;

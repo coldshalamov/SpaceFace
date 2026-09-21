@@ -627,7 +627,7 @@ function addWeaponProjectileWarmup(staging, vf, startIndex) {
       data: {
         weaponId: weapon.id,
         damageType: weapon.damageType || 'energy',
-        kind: weapon.ammo || /missile|torpedo/i.test(weapon.id) ? 'missile' : 'bullet',
+        kind: weapon.tracking === 'homing' || /missile|torpedo/i.test(weapon.id) ? 'missile' : 'bullet',
       },
     });
     if (projectile) {

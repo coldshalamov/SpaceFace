@@ -51,8 +51,8 @@ test('persistent roster stays in the reserved right stack at target resolutions'
       `${width}x${height}: compact overflow cap remains active`);
   }
 
-  const uiRoot = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
-  assert.match(uiRoot, /\.sf-rightdock\s*\{[^}]*flex-direction:column/s,
+  const hudStyles = readFileSync(new URL('../src/ui/views/hudStyles.js', import.meta.url), 'utf8');
+  assert.match(hudStyles, /\.sf-rightdock\s*\{[^}]*flex-direction:column/s,
     'roster, selected-target detail, and radar must remain one non-overlapping vertical stack');
 });
 
@@ -100,16 +100,14 @@ test('moving prograde projection retains exact per-HUD records at high refresh',
   let expectedPresentation = null;
   for (const fps of [60, 144, 240]) {
     const calls = [];
-    const inputIdentities = new Set();
-    const outputIdentities = new Set();
     const worldToScreen = (point, out) => {
       assert.ok(out && typeof out === 'object', `${fps} FPS supplies a retained projection output`);
-      inputIdentities.add(point);
-      outputIdentities.add(out);
       out.x = 960 + point.x;
       out.y = 540 + point.z;
       out.onScreen = true;
       calls.push({
+        src: point,
+        dst: out,
         input: { x: point.x, y: point.y, z: point.z },
         output: { x: out.x, y: out.y, onScreen: out.onScreen },
       });
@@ -135,12 +133,25 @@ test('moving prograde projection retains exact per-HUD records at high refresh',
         fixture.hud.frame(1 / fps);
       }
 
-      assert.equal(calls.length, frames * 2, `${fps} FPS projects exactly A and B once per frame`);
+      // Other HUD consumers share worldToScreen on their own cadences (the threat halo scans
+      // hostiles at 30 Hz). The prograde contract is its own pair of records hit once per frame —
+      // identify them by the A/B endpoints they publish on the final frame.
+      const lastCallByRecord = new Map();
+      for (const c of calls) lastCallByRecord.set(c.src, c);
+      const progradeRecords = [...lastCallByRecord.keys()].filter((record) => {
+        const last = lastCallByRecord.get(record).input;
+        return last.x === 100 && (last.z === 220 || last.z === 256);
+      });
+      assert.equal(progradeRecords.length, 2, `${fps} FPS projects exactly A and B once per frame`);
+      const progradeCalls = calls.filter((c) => progradeRecords.includes(c.src));
+      assert.equal(progradeCalls.length, frames * 2, `${fps} FPS prograde calls land once per frame`);
+      const inputIdentities = new Set(progradeCalls.map((c) => c.src));
+      const outputIdentities = new Set(progradeCalls.map((c) => c.dst));
       assert.equal(inputIdentities.size, 2, `${fps} FPS retains exactly two world-point records`);
       assert.equal(outputIdentities.size, 2, `${fps} FPS retains exactly two screen-result records`);
       const [screenA, screenB] = outputIdentities;
       assert.notEqual(screenA, screenB, `${fps} FPS keeps A and B outputs distinct through delta math`);
-      assert.deepEqual(calls.slice(-2), [
+      assert.deepEqual(progradeCalls.slice(-2).map(({ input, output }) => ({ input, output })), [
         {
           input: { x: 100, y: 0, z: 220 },
           output: { x: 1060, y: 760, onScreen: true },
@@ -166,12 +177,14 @@ test('moving prograde projection retains exact per-HUD records at high refresh',
       const heatFill = heatBar?.querySelector('.sf-bar__fill');
       const heatRow = heatBar?.parentNode;
       fixture.player.data.weapons.push({ _heat: 87, heatMax: 100 });
-      fixture.hud.frame(1 / fps);
+      // The heat fill eases through the gauge settle spring (~180 ms); run enough frames for it
+      // to converge before checking the repainted value. The row reveal is immediate.
+      for (let i = 0; i < Math.ceil(fps * 0.5); i += 1) fixture.hud.frame(1 / fps);
       assert.equal(heatFill?.style.transform, 'scaleX(0.87)',
         `${fps} FPS retained heat summary repaints a newly armed mount every frame`);
       assert.equal(heatRow?.style.display, '', `${fps} FPS reveals the newly armed heat row`);
       fixture.player.data.weapons.length = 0;
-      fixture.hud.frame(1 / fps);
+      for (let i = 0; i < Math.ceil(fps * 0.5); i += 1) fixture.hud.frame(1 / fps);
       assert.equal(heatFill?.style.transform, 'scaleX(0)',
         `${fps} FPS retained heat summary clears after the last mount is removed`);
       assert.equal(heatRow?.style.display, 'none', `${fps} FPS retires the unarmed heat row`);
@@ -185,16 +198,14 @@ test('selected-target projections retain exact per-HUD center and radius records
   const identitiesFromPriorHud = new Set();
   for (const fps of [60, 144, 240]) {
     const calls = [];
-    const inputIdentities = new Set();
-    const outputIdentities = new Set();
     const worldToScreen = (point, out) => {
       assert.ok(out && typeof out === 'object', `${fps} FPS supplies a retained target projection output`);
-      inputIdentities.add(point);
-      outputIdentities.add(out);
       out.x = 100 + point.x;
       out.y = 200 + point.z;
       out.onScreen = true;
       calls.push({
+        src: point,
+        dst: out,
         input: { x: point.x, y: point.y, z: point.z },
         output: { x: out.x, y: out.y, onScreen: out.onScreen },
       });
@@ -216,8 +227,21 @@ test('selected-target projections retain exact per-HUD center and radius records
         fixture.hud.frame(1 / fps);
       }
 
-      assert.equal(calls.length, frames * 5,
+      // The threat halo shares worldToScreen on a slower 30 Hz cadence; the selected-target
+      // contract is its own two records hit every frame (center x2, radius x3). Identify them by
+      // the target coordinates they publish on the final frame.
+      const lastCallByRecord = new Map();
+      for (const c of calls) lastCallByRecord.set(c.src, c);
+      const targetRecords = [...lastCallByRecord.keys()].filter((record) => {
+        const last = lastCallByRecord.get(record).input;
+        return last.z === 40 && (last.x === 320 || last.x === 340);
+      });
+      assert.equal(targetRecords.length, 2, `${fps} FPS retains one center and one radius world record`);
+      const targetCalls = calls.filter((c) => targetRecords.includes(c.src));
+      assert.equal(targetCalls.length, frames * 5,
         `${fps} FPS preserves lock, center, and three radius projections per selected-target frame`);
+      const inputIdentities = new Set(targetCalls.map((c) => c.src));
+      const outputIdentities = new Set(targetCalls.map((c) => c.dst));
       assert.equal(inputIdentities.size, 2, `${fps} FPS retains one center and one radius world record`);
       assert.equal(outputIdentities.size, 2, `${fps} FPS retains one center and one radius screen record`);
       for (const identity of [...inputIdentities, ...outputIdentities]) {
@@ -225,7 +249,7 @@ test('selected-target projections retain exact per-HUD center and radius records
           `${fps} FPS target scratch belongs only to its mounted HUD instance`);
         identitiesFromPriorHud.add(identity);
       }
-      assert.deepEqual(calls.slice(-5), [
+      assert.deepEqual(targetCalls.slice(-5).map(({ input, output }) => ({ input, output })), [
         { input: { x: 320, y: 0, z: 40 }, output: { x: 420, y: 240, onScreen: true } },
         { input: { x: 320, y: 0, z: 40 }, output: { x: 420, y: 240, onScreen: true } },
         { input: { x: 346, y: 0, z: 40 }, output: { x: 446, y: 240, onScreen: true } },
@@ -256,7 +280,10 @@ test('selected-target projections retain exact per-HUD center and radius records
   let calls = 0;
   const fixture = mountHudFixture({
     worldToScreen(point) {
-      calls += 1;
+      // The threat halo scans hostiles on the overlay cadence through the same helper;
+      // count only the selected-target projections (selected wreck at x=3000 + radius ring;
+      // hostile contacts sit at x>=3100).
+      if (point.x < 3050) calls += 1;
       return { x: 100 + point.x, y: 200 + point.z, onScreen: true };
     },
   });
@@ -277,16 +304,12 @@ test('moving waypoint marker retains its projection record and exact edge presen
   const identitiesFromPriorHud = new Set();
   for (const fps of [60, 144, 240]) {
     const calls = [];
-    const inputIdentities = new Set();
-    const outputIdentities = new Set();
     const worldToScreen = (point, out) => {
       assert.ok(out && typeof out === 'object', `${fps} FPS supplies the retained waypoint projection output`);
-      inputIdentities.add(point);
-      outputIdentities.add(out);
       out.x = 960 + point.x;
       out.y = 540 + point.z;
       out.onScreen = point.z >= 0;
-      calls.push({ x: point.x, y: point.y, z: point.z, onScreen: out.onScreen });
+      calls.push({ src: point, dst: out, x: point.x, y: point.y, z: point.z, onScreen: out.onScreen });
       return out;
     };
     const fixture = mountHudFixture({ worldToScreen, targetId: null });
@@ -309,8 +332,14 @@ test('moving waypoint marker retains its projection record and exact edge presen
       fixture.hud.forceRefresh();
       fixture.hud.frame(1 / fps);
 
-      assert.ok(calls.length >= 29 && calls.length <= 40,
-        `${fps} FPS waypoint projection remains on the retained overlay-or-slow cadence`);
+      // The objective arrow's own retained record closes each overlay tick (the threat halo's
+      // reservation scan and hostile projections share worldToScreen on the same cadence).
+      const waypointRecord = calls.at(-1) && calls.at(-1).src;
+      const waypointCalls = calls.filter((c) => c.src === waypointRecord);
+      assert.ok(waypointCalls.length >= 29 && waypointCalls.length <= 40,
+        `${fps} FPS waypoint projection remains on the retained overlay-or-slow cadence (got ${waypointCalls.length})`);
+      const inputIdentities = new Set(waypointCalls.map((c) => c.src));
+      const outputIdentities = new Set(waypointCalls.map((c) => c.dst));
       assert.equal(inputIdentities.size, 1, `${fps} FPS retains one waypoint world record`);
       assert.equal(outputIdentities.size, 1, `${fps} FPS retains one waypoint screen record`);
       for (const identity of [...inputIdentities, ...outputIdentities]) {
@@ -318,7 +347,7 @@ test('moving waypoint marker retains its projection record and exact edge presen
           `${fps} FPS waypoint scratch belongs only to its mounted HUD instance`);
         identitiesFromPriorHud.add(identity);
       }
-      assert.deepEqual(calls.at(-1), { x: 0, y: 0, z: -1000, onScreen: false });
+      assert.deepEqual(waypointCalls.at(-1) && (({ src, dst, ...rest }) => rest)(waypointCalls.at(-1)), { x: 0, y: 0, z: -1000, onScreen: false });
 
       const arrow = fixture.document.querySelector('.sf-objarrow');
       const presentation = {

@@ -1497,7 +1497,18 @@ export const audio = {
         this.play(signature.recipeId, { position, gain: 0.64, critical: true });
       }
     });
-    bus.on('shieldRestored', () => {});
+    bus.on('shieldRestored', (p) => {
+      // Shield back online after depletion: soft rising shimmer. NPC restores stay positional at
+      // low gain — play() culls anything past world-hearing range.
+      const pos = p && p.pos;
+      const target = p && p.combatantId ? this.state.entities.get(p.combatantId) : null;
+      const isPlayer = !!(
+        (p && p.combatantId === this.state.playerId) ||
+        (target && target.isPlayer)
+      );
+      const position = pos || (target ? { x: target.pos.x, z: target.pos.z } : null);
+      this.play('sfx_shield_restore', { position, gain: isPlayer ? 0.8 : 0.4 });
+    });
     bus.on('entity:killed', (p) => this._onKilled(p));
     bus.on('entity:destroyed', (p) => this._onDestroyed(p));
     bus.on('player:death', (p) => this._onPlayerDeath(p));

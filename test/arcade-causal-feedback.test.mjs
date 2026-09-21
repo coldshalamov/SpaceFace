@@ -33,15 +33,26 @@ test('ambient gravity fields do not award player Well Golf', () => {
 });
 
 test('enemy kills do not pay player combos; aliases count once and reused ids work', () => {
-  const state = { playerId: 1 };
+  // Gun-kill combos are survival-scoped (runOwnsReward gate), so the fixture needs an active
+  // survival run plus run-cohort victims in state.entities — bare ids are not enough.
+  const mkPirate = (id) => ({ id, type: 'ship', alive: true, team: 1, pos: { x: 0, y: 0, z: 0 },
+    combatSpeed: 150, radius: 10, data: { runCohort: 'survival' } });
+  const state = { playerId: 1, tick: 0, run: { kind: 'survival', phase: 'active', seed: 1, wave: 1 },
+    entities: new Map() };
   const bus = createBus();
   const system = Object.create(stuntGrammar);
   system.init({ state, bus });
+  state.entities.set(2, mkPirate(2));
+  bus.emit('entity:spawned', { id: 2 });
   bus.emit('entity:killed', { id: 2, killerId: 3, weaponId: 'wpn_autocannon_m' });
   assert.equal(state.stunts?.combo?.gunKills || 0, 0);
+  state.entities.set(4, mkPirate(4));
+  bus.emit('entity:spawned', { id: 4 });
   bus.emit('entity:killed', { id: 4, killerId: 1, weaponId: 'wpn_autocannon_m' });
   bus.emit('combat:kill', { targetId: 4, killerId: 1, weaponId: 'wpn_autocannon_m' });
   assert.equal(state.stunts.combo.gunKills, 1);
+  // A respawned hull at a reused numeric id is a new object -> new body life -> counts again.
+  state.entities.set(4, mkPirate(4));
   bus.emit('entity:spawned', { id: 4 });
   bus.emit('entity:killed', { id: 4, killerId: 1, weaponId: 'wpn_autocannon_m' });
   assert.equal(state.stunts.combo.gunKills, 2);

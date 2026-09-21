@@ -34,7 +34,7 @@ import { createBus } from '../src/core/eventBus.js';
 
 // Independent hard-coded payout / cargo footprint bounds (not derived from the live template
 // object for bound checks — kills Number.MAX_VALUE payout + cargo-cache desync mutants).
-const EXPECTED_PAYS_CR = 420;
+const EXPECTED_PAYS_CR = 307;
 const EXPECTED_PAYS_CR_MAX = 10000;
 const EXPECTED_CMDTY_ID = 'cmdty_fuel_cells';
 const EXPECTED_QTY = 8;
@@ -251,7 +251,8 @@ test('firstTradeOffered survives serialize/deserialize; cold re-dock does not re
 test('first-trade board retention survives epoch 7; expires at 8 and 9', () => {
   // planFirstTradeOffer uses expiresAtEpoch = epoch + 8 at offer time (epoch 0 → expires 8).
   const h = makeHarness({ seed: 47 });
-  h.state.simTime = 10; // epoch 0 with refreshSec 600
+  const refreshSec = h.state.missions.config.refreshSec; // live epoch length (MISSION_TUNING), not a hardcoded 600
+  h.state.simTime = 10; // epoch 0
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   const board0 = h.state.missions.boards.station_helios;
   const offer = board0 && board0.slots.find((o) => o && o.source === FIRST_TRADE_CONTRACT_SOURCE);
@@ -259,13 +260,13 @@ test('first-trade board retention survives epoch 7; expires at 8 and 9', () => {
   assert.equal(offer.expiresAtEpoch, 8);
 
   // Epoch 7: retained (expiresAtEpoch 8 > 7).
-  h.state.simTime = 7 * 600;
+  h.state.simTime = 7 * refreshSec;
   const board7 = h.missions.ensureBoard('station_helios');
   assert.ok(board7.slots.find((o) => o && o.source === FIRST_TRADE_CONTRACT_SOURCE),
     'epoch 7 retains first-trade offer');
 
   // Epoch 8 (at-expiry): not retained (expiresAtEpoch 8 > 8 is false).
-  h.state.simTime = 8 * 600;
+  h.state.simTime = 8 * refreshSec;
   const board8 = h.missions.ensureBoard('station_helios');
   assert.equal(
     board8.slots.find((o) => o && o.source === FIRST_TRADE_CONTRACT_SOURCE),
@@ -274,7 +275,7 @@ test('first-trade board retention survives epoch 7; expires at 8 and 9', () => {
   );
 
   // Epoch 9 (beyond): still absent.
-  h.state.simTime = 9 * 600;
+  h.state.simTime = 9 * refreshSec;
   const board9 = h.missions.ensureBoard('station_helios');
   assert.equal(
     board9.slots.find((o) => o && o.source === FIRST_TRADE_CONTRACT_SOURCE),

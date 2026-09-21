@@ -122,7 +122,6 @@ const SHIPPED_WEAPONS = [
     mount: 'launcher',
     dmg: 70, splashDmg: 35, splashRadius: 40, rof: 0.8, dps: 56, damageType: 'explosive', energyCost: 4,
     projSpeed: 320, projSpeedMin: 180, range: 900, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
-    ammo: 'cmdty_munitions',
     impulsePerHit: 150, tumbleTorque: 22, impulseProvenance: 'missile_detonation',
   },
   {
@@ -130,7 +129,7 @@ const SHIPPED_WEAPONS = [
     mount: 'launcher',
     dmg: 49, splashDmg: 24.5, splashRadius: 40, rof: 0.8, dps: 78.4, damageType: 'explosive', energyCost: 4,
     projSpeed: 320, projSpeedMin: 180, range: 900, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
-    ammo: 'cmdty_munitions', splitCount: 2, submunitions: { count: 2, damageMult: 0.70 },
+    splitCount: 2, submunitions: { count: 2, damageMult: 0.70 },
     purchasable: false, unique: true, salvageOnly: true,
     variantBonuses: { submunitionCount: 2, perMissileDamagePct: -0.30 },
     impulsePerHit: 92, tumbleTorque: 15, impulseProvenance: 'nestbreaker_submunition',
@@ -158,7 +157,6 @@ const SHIPPED_WEAPONS = [
     mount: 'launcher',
     dmg: 320, splashDmg: 120, splashRadius: 70, rof: 0.25, dps: 80, damageType: 'explosive', energyCost: 10,
     projSpeed: 240, projSpeedMin: 140, range: 1400, tracking: 'homing', turnRate: 1.4, lockTimeS: 2.5,
-    ammo: 'cmdty_munitions',
     impulsePerHit: 320, tumbleTorque: 48, impulseProvenance: 'torpedo_detonation',
   },
   {
