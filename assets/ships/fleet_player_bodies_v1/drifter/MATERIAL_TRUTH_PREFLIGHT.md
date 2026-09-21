@@ -174,6 +174,20 @@ a central tube with saddlebags split by a hard root crease. Hitch still wins
 formed-shell / skin at D=144. Hitch-plus chase is not closed. Parent unproven /
 not G7.
 
+## C14 chase-form (2026-09-21)
+
+`chase_form_v14` is a reference-first rebuild. Identity frozen. Hitch chase stills
+plus generated workboat planform / chine / well / greenhouse refs before modeling.
+Principled islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+C1–C13 failed as tube/capsule + paddle/saddlebag sponsons. C14 encodes one hard-chine
+workboat beam (sideboards are the gunwale, not a painted |y| Armor lobe). Cargo well
+and greenhouse stay boolean cuts. Three chase reviews REVISE. Close still: well and
+greenhouse read as holes. **Clay `play_chase` tube/paddle is gone** (play+close).
+Abeam still called a raised spine with darker flanking volumes and a hard root crease.
+Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is not closed. Parent
+unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,

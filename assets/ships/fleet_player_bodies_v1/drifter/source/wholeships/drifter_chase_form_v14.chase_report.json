@@ -1,0 +1,65 @@
+{
+  "ok": true,
+  "asset": "ship_drifter",
+  "revision": "chase_form_v14",
+  "cycle": 14,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.846153900747011,
+  "authoredX": 16.77,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 12.1477, 4.7455],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sha256": "6e9b1c3298c27180480735bb8831a1fe6bc0d1909d045e55ffbe69f1f4c0f3ac",
+    "triangles": 19738,
+    "hullTriangles": 13306,
+    "bytes": 2556796,
+    "size": [16.77, 6.58, 2.57]
+  },
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "hitchStills": "/tmp/hitch-c10",
+  "playChase": {
+    "shipW": 13.2,
+    "occupancy": 0.85,
+    "lightGe028": 1.4,
+    "mid": 82.4,
+    "dark": 16.2,
+    "brown": 0.0
+  },
+  "hitchPlayChase": {
+    "shipW": 10.1,
+    "occupancy": 0.52,
+    "lightGe028": 5.3,
+    "mid": 68.5,
+    "dark": 26.3,
+    "brown": 0.3
+  },
+  "gapsTargeted": {
+    "tubePlusPaddle": "reference-first hard-chine workboat; one hull beam; sideboards are the gunwale; wells as boolean cuts"
+  },
+  "tubePaddleReadGoneOnClayPlayChase": true,
+  "tubePaddleReadGoneOnAbeam": false,
+  "reviews": {
+    "play_chase": {
+      "id": "bc-f67830af-3b60-5ecf-b82d-50dac634dacc",
+      "verdict": "REVISE",
+      "note": "VALID framing. Clay is one hard-chine diamond; C13 capsule+paddles gone at D=144. Hitch still wins formed-shell/skin."
+    },
+    "play_chase_abeam": {
+      "id": "bc-115498b4-e82d-53db-be5d-d44c8eb7f017",
+      "verdict": "REVISE",
+      "note": "VALID framing. Still a raised spine with darker flanking volumes and a hard root crease. Wells as holes. Hitch still wins."
+    },
+    "play_chase_close": {
+      "id": "bc-2db28cf7-9797-5fc4-8146-0a999afb2691",
+      "verdict": "REVISE",
+      "note": "VALID framing. One workboat diamond; well is a real mouth (rim/liner/winch/crate); greenhouse a cut tub. Hitch still wins skin."
+    }
+  },
+  "result": "REVISE",
+  "hitchPlusChase": false,
+  "notes": "C14 reference-first hard-chine workboat. Clay play_chase tube/paddle gone. Abeam leftover flanking volumes. Hitch still wins D=144. No seats. No megatex. Hitch/Kestrel/Hornet frozen. Parent unproven / not G7."
+}
