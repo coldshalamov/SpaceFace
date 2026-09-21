@@ -1500,9 +1500,11 @@ export const audio = {
       const signature = FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak;
       this._applyPriorityCue({ id: 'shield.collapse', importance: signature.priority, playerRelevance: isPlayer ? 1 : 0.4 });
       if (isPlayer) {
-        // Player shield blowout: distinct electrical pop + audible alarm cue
+        // Player shield blowout: distinct electrical pop + audible alarm cue. The alarm
+        // reserves the ear (INF-048): the world mix bows for its phrase so the terse
+        // failure reads through combat, then returns on the duck envelope.
         this.play('sfx_shield_blowout_pop', { position, gain: 0.9, critical: true });
-        this.play('sfx_shield_blowout_alarm', { gain: 0.8, critical: true });
+        this.play('sfx_shield_blowout_alarm', { gain: 0.8, critical: true, duck: true });
       } else {
         this.play(signature.recipeId, { position, gain: 0.64, critical: true });
       }
@@ -2515,6 +2517,13 @@ export const audio = {
     }
     // A critical comms cue owns the ear — the world mix bows for its phrase.
     if (busName === 'comms' && (opts.critical || opts.duck)) {
+      this._commsDuck(Number.isFinite(opts.duckSeconds) ? opts.duckSeconds : COMMS_DUCK.defaultS);
+    }
+    // INF-048 — one critical gameplay cue can reserve the same gain position explicitly:
+    // the world mix bows at the published duck levels for its phrase, then returns on the
+    // audio-clock envelope. Explicit opt-in only — critical alone still just cuts the
+    // squelch, and the comms bus itself never bows.
+    if (opts.duck && busName !== 'comms') {
       this._commsDuck(Number.isFinite(opts.duckSeconds) ? opts.duckSeconds : COMMS_DUCK.defaultS);
     }
 
