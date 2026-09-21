@@ -1676,6 +1676,7 @@ export function createHud(ctx, alerts) {
   );
   root.appendChild(dmgInd.el);
   ctx.bus.on('combat:damage', (p) => dmgInd.onDamage(p));
+  ctx.bus.on('projectile:nearMiss', (p) => dmgInd.onNearMiss(p));
   ctx.bus.on('collision', (p) => {
     const other = state.entities && state.entities.get
       ? state.entities.get(p && p.aId === state.playerId ? p.bId : p && p.aId)

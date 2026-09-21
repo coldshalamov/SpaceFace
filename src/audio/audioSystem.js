@@ -571,6 +571,10 @@ export const NEAR_MISS_CRACK = Object.freeze({
   maxGain: 0.95,
   minRate: 0.9,
   maxRate: 1.35,
+  // Relative-speed reference: a heavy slug at ~220 WU/s. Pace only bends the proximity read —
+  // a slow lob at the same distance thumps, a railgun cracks — and unknown speed is exactly
+  // neutral so legacy receipts keep their authored levels.
+  refSpeedWu: 220,
 });
 
 export function resolveNearMissCrack(input = {}) {
@@ -578,10 +582,21 @@ export function resolveNearMissCrack(input = {}) {
   const closeness = Number.isFinite(distance)
     ? clamp(1 - distance / NEAR_MISS_CRACK.maxDistanceWu, 0, 1)
     : 1;
+  const speed = Number(input.speed);
+  const pace = Number.isFinite(speed) ? clamp(speed / NEAR_MISS_CRACK.refSpeedWu, 0, 1) : 0.5;
   return {
     closeness,
-    gain: NEAR_MISS_CRACK.minGain + (NEAR_MISS_CRACK.maxGain - NEAR_MISS_CRACK.minGain) * closeness,
-    rate: NEAR_MISS_CRACK.minRate + (NEAR_MISS_CRACK.maxRate - NEAR_MISS_CRACK.minRate) * closeness,
+    pace,
+    gain: Math.min(
+      NEAR_MISS_CRACK.maxGain,
+      (NEAR_MISS_CRACK.minGain + (NEAR_MISS_CRACK.maxGain - NEAR_MISS_CRACK.minGain) * closeness)
+        * (0.9 + 0.2 * pace),
+    ),
+    rate: Math.min(
+      NEAR_MISS_CRACK.maxRate,
+      (NEAR_MISS_CRACK.minRate + (NEAR_MISS_CRACK.maxRate - NEAR_MISS_CRACK.minRate) * closeness)
+        * (0.95 + 0.1 * pace),
+    ),
   };
 }
 
@@ -2901,7 +2916,7 @@ export const audio = {
     const nowMs = this._wallClockMs();
     if (nowMs - rt._lastWhipMs < NEAR_MISS_CRACK.minGapMs) return;
     rt._lastWhipMs = nowMs;
-    const crack = resolveNearMissCrack({ distance: p.distance });
+    const crack = resolveNearMissCrack({ distance: p.distance, speed: p.speed });
     this.play('sfx_wpn_whip_crack', {
       position: p.pos || null,
       gain: crack.gain,

@@ -710,6 +710,12 @@ export const physics = {
     if (closest.distance <= hitRadius || closest.distance > hitRadius + PLAYER_PROJECTILE_NEAR_MISS_MARGIN) return;
     this._nearMissEmitted.add(proj);
     const pd = proj.data || {};
+    // INF-049 — relative speed at the crossing: a railgun and a lobbed shell at the same
+    // distance must not crack alike. Player-relative, so a chase-tail round reads slower.
+    const pvx = Number(proj.vel && proj.vel.x) || 0;
+    const pvz = Number(proj.vel && proj.vel.z) || 0;
+    const plvx = Number(player.vel && player.vel.x) || 0;
+    const plvz = Number(player.vel && player.vel.z) || 0;
     this.bus.emit('projectile:nearMiss', {
       projectileId: proj.id,
       ownerId: proj.ownerId == null ? null : proj.ownerId,
@@ -717,6 +723,7 @@ export const physics = {
       weaponId: pd.weaponId || null,
       damageType: pd.damageType || 'kinetic',
       distance: closest.distance,
+      speed: Math.hypot(pvx - plvx, pvz - plvz),
       pos: { x: closest.x, z: closest.z },
       direction: segmentDirection(start, end),
       tick: Number.isFinite(state.tick) ? state.tick | 0 : 0,

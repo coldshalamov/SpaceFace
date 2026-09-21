@@ -20,6 +20,30 @@ const LAYER_CUES = Object.freeze({
   hull: Object.freeze({ glyph: 'H', tone: 'danger', ttl: 1.10 }),
 });
 
+// INF-049 — close-shave tick. Not damage: a neutral dash on the side the round crossed,
+// brightness following proximity, gone in half a second. Muted audio or reduced motion
+// still leaves this tick — a failed crack is quiet, never absent.
+const NEAR_MISS_CUE = Object.freeze({
+  layer: 'nearmiss',
+  glyph: '\u2013',
+  tone: 'quiet',
+  severity: 'info',
+  ttl: 0.55,
+  maxDistanceWu: 36,
+});
+
+export function buildNearMissCue(payload = {}) {
+  const distance = Number(payload.distance);
+  if (!Number.isFinite(distance) || distance < 0) return null;
+  const closeness = Math.max(0, Math.min(1, 1 - distance / NEAR_MISS_CUE.maxDistanceWu));
+  return {
+    ...NEAR_MISS_CUE,
+    closeness,
+    brightness: 0.35 + 0.65 * closeness,
+    sourceKey: payload.projectileId == null ? 'nearmiss:unknown' : `nearmiss:${payload.projectileId}`,
+  };
+}
+
 function pct(value, max) {
   return max > 0 ? Math.max(0, Math.min(100, Math.round((Number(value) || 0) / max * 100))) : 0;
 }
@@ -90,6 +114,7 @@ function injectStyle() {
   font:700 12px/1.35 var(--mono, monospace);
   letter-spacing:0;
 }
+.sf-dmgind-marker.layer-nearmiss { --impact-tone:var(--sf-quiet, #9fb4c8); }
 .sf-dmgind-marker.layer-shield { --impact-tone:var(--sf-shield, #4f8fdd); }
 .sf-dmgind-marker.layer-armor { --impact-tone:var(--sf-warn, #ffb35c); }
 .sf-dmgind-marker.layer-hull { --impact-tone:var(--sf-danger, #ff5c5c); }
@@ -201,6 +226,37 @@ export function createDamageIndicators() {
     return true;
   }
 
+  function place(marker, cue, angle, isNew) {
+    if (isNew) activeCount++;
+    marker.cue = cue;
+    marker.angle = angle;
+    marker.age = 0;
+    marker.glyph.textContent = cue.glyph;
+    marker.element.className = `sf-dmgind-marker layer-${cue.layer} severity-${cue.severity}`;
+  }
+
+  function onNearMiss(payload) {
+    // A close shave, not a hit: yields to real damage (free slot only, same projectile
+    // refreshes), sits on the side the round crossed, brightness follows proximity.
+    if (!payload) return false;
+    if (payload.targetId != null && payload.targetId !== this._playerId) return false;
+    const cue = buildNearMissCue(payload);
+    if (!cue) return false;
+    const player = this._player && this._player();
+    if (!player || !player.pos || !payload.pos) return false;
+    const angle = angleToSource(player.pos, payload.pos);
+    for (const marker of markers) {
+      if (marker.age < Infinity && marker.cue && marker.cue.sourceKey === cue.sourceKey) {
+        place(marker, cue, angle, false);
+        return true;
+      }
+    }
+    const free = markers.find((marker) => marker.age === Infinity);
+    if (!free) return false;
+    place(free, cue, angle, true);
+    return true;
+  }
+
   function tick(dt, helpers) {
     if (activeCount <= 0) return;
     const player = this._player && this._player();
@@ -242,7 +298,8 @@ export function createDamageIndicators() {
         marker._sfDisplay = 'flex';
         marker.element.style.display = 'flex';
       }
-      const nextOpacity = String(fadeIn * fadeOut);
+      const brightness = marker.cue.brightness == null ? 1 : marker.cue.brightness;
+      const nextOpacity = String(fadeIn * fadeOut * brightness);
       if (marker._sfOpacity !== nextOpacity) {
         marker._sfOpacity = nextOpacity;
         marker.element.style.opacity = nextOpacity;
@@ -263,6 +320,7 @@ export function createDamageIndicators() {
   return {
     el: root,
     onDamage,
+    onNearMiss,
     tick,
     _activeCount() { return activeCount; },
     _player: null,
