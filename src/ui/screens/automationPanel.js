@@ -621,6 +621,7 @@ export const automationScreen = {
     } else if (this._tab === 'traders') {
       const hireUnlocked = (player.researchedNodes || []).includes('tech_autonomous_fleets');
       parts.push(hireUnlocked ? 1 : 0);
+      parts.push(Math.floor((a.accumulators && a.accumulators.upkeepDebt) || 0));
       for (const t of a.traders || []) {
         const route = t.route ? `${t.route.from || ''}>${t.route.to || ''}` : '';
         parts.push(t.id, t.defId, t.status, route, Math.round(t.ratePerMin || 0));
@@ -823,6 +824,14 @@ export const automationScreen = {
         card.className = 'au-card';
         const route = t.route ? `${escapeHtml(t.route.from || '?')} → ${escapeHtml(t.route.to || '?')}` : 'idle (assign route)';
         const hot = Math.round((t.hotness || 0) * 100);
+        const distressed = t.status === 'distressed';
+        const arrears = Math.floor((a.accumulators && a.accumulators.upkeepDebt) || 0);
+        const stallNote = distressed
+          ? `Frozen: upkeep underpaid${arrears >= 1 ? ` (${arrears} cr arrears)` : ''}. Resume settles it now; otherwise the trader recovers on its own once credits cover upkeep.`
+          : (t.route ? 'Reroute when heat rises or spreads collapse; escorts lower loss risk on dangerous lanes.' : 'Use Route to assign a profitable two-station lane.');
+        const resumeBtn = distressed
+          ? `<button class="au-refuel" data-act="resumeTrader" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Resume</button>`
+          : '';
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${prettyId(def.id)} ${statusPill(t.status)}</div>
@@ -833,8 +842,9 @@ export const automationScreen = {
               <span>route heat ${hot}%</span>
               <span>upkeep ${def.upkeepPerMin}/min</span>
             </div>
-            <div class="au-note">${t.route ? 'Reroute when heat rises or spreads collapse; escorts lower loss risk on dangerous lanes.' : 'Use Route to assign a profitable two-station lane.'}</div>
+            <div class="au-note">${stallNote}</div>
           </div>
+          ${resumeBtn}
           <button class="au-order" data-act="assignRoute" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Route</button>
           <button class="au-recall" data-act="dismiss" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Dismiss</button>`;
         frag.appendChild(card);
@@ -1053,6 +1063,7 @@ export const automationScreen = {
       hireTrader: 'Hiring NPC trader…',
       assignRoute: 'Assigning trade route…',
       dismiss: 'Dismissing trader…',
+      resumeTrader: 'Resuming trader…',
       buildOutpost: 'Constructing outpost…',
       decommission: 'Decommissioning outpost…',
       orderEscort: 'Order: escort.',

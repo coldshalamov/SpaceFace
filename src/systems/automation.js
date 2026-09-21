@@ -1859,6 +1859,7 @@ export const automation = {
       case 'hireTrader': return this.hireTrader(p.targetRef);
       case 'assignRoute': return this.reroute(p.shipId);
       case 'dismiss': return this.dismissTrader(p.shipId);
+      case 'resumeTrader': return this.resumeTrader(p.shipId);
       case 'buildOutpost': return this.buildOutpost(p.targetRef);
       case 'decommission': return this.decommissionOutpost(p.shipId);
       case 'assignFleet': return this.assignFleet(p.targetRef);
@@ -2094,6 +2095,25 @@ export const automation = {
     if (idx < 0) return false;
     a.traders.splice(idx, 1);
     this.toast('Trader dismissed', 'info');
+    return true;
+  },
+
+  // Resume a distressed (upkeep-stalled) trader NOW by settling upkeep arrears immediately.
+  // The passive upkeep tick recovers distressed assets on its own, but only when the debt
+  // accumulator crosses a whole credit — a stalled card offers this so the player is never
+  // stuck watching a frozen trader while holding credits. Fails closed when credits are short.
+  resumeTrader(id) {
+    const a = this.state.automation;
+    const t = a.traders.find((x) => x.id === id);
+    if (!t || t.status !== 'distressed') return false;
+    const arrears = Math.floor((a.accumulators && a.accumulators.upkeepDebt) || 0);
+    if (arrears >= 1 && !this._charge(arrears, 'upkeep')) return false;
+    if (a.accumulators) a.accumulators.upkeepDebt = Math.max(0, (a.accumulators.upkeepDebt || 0) - arrears);
+    if (a.meta) a.meta.graceTimer = 0;
+    t.status = t._prevStatus || (t.route && t.route.from ? 'enroute' : 'idle');
+    delete t._prevStatus;
+    this.bus.emit('automation:assetResumed', { kind: 'trader', id: t.id });
+    this.toast(arrears >= 1 ? `Trader resumed — upkeep settled (-${arrears} cr)` : 'Trader resumed', 'success');
     return true;
   },
 
