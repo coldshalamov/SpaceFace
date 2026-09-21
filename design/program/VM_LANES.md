@@ -33,7 +33,7 @@ mutations still go in [`NOW.md`](./NOW.md). Product status lives in the queue an
 
 | Task | Thread | Host (cloud-agent id or machine) | Branch | State | Exact focus | Last push | Next terminal action |
 |---|---|---|---|---|---|---|---|
-| PQ-050 VM Blender lane | code-work-coordinator | `bc-2adc7f89-1f9d-5b65-8e18-464bd82773fa` | `probe/pq050-vm-setup` | RESULT: DONE | VM Blender+push probe; next leaf PQ-050.01 Hornet chase form | 2026-09-21 `609bbab80` | merge this branch to master; a fresh cloud agent claims PQ-050.01 Hornet chase form — Hitch frozen |
+| PQ-050.01 Hornet chase form | code-work-coordinator | `bc-8188ad27-0dbf-5951-be0b-f48141e18378` | `cursor/pq050-01-hornet-chase-form-8378` | CLAIMED/WORKING | Hornet chase-camera form remaster; Hitch/Kestrel frozen | 2026-09-21 pending-push | install Blender 4.x under /opt; baseline chase stills; form pass |
 
 ## Pointers
 
