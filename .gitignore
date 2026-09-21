@@ -26,6 +26,10 @@ dist/
 # Local agent/tool scratch artifacts (never production source)
 /-
 /.zcode/
+/.vscode/
+/%TEMP%*.json
+# Per-machine agent backup trees (safety copies before risky edits; never repo content)
+/.*-backup*/
 /scripts/_*.mjs
 /scripts/lib/_*.mjs
 /scripts/check-test-temp.mjs
