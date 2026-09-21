@@ -83,3 +83,11 @@ fields thinner/smoother than Hitch; midship greeble still loses; close empty
 fields. C20 cuts continuous panel courses that cross girth hoops (not sparse
 pockets), denser midship hardware, closer-spaced field breakup. No new YZ.
 Mouths not recut. No generated C20 pixels. C16 convex-diamond ref stays selected.
+
+## 2026-09-21 (C21 plated shell)
+
+C20 kept TUBE_PADDLE NO. Remaining REVISE: open hoop/rib cage at D=144;
+midship even corrugation; empty inter-rib fields at D=58. C21 does not add
+girth hoops. Inter-hoop bays become shallow plated insets (seams as cuts
+in a sheet). Midship is formed hardware clusters on that skin. Mouths not
+recut. No generated C21 pixels. C16 convex-diamond ref stays selected.

@@ -268,6 +268,23 @@ formed-shell / skin at D=144 (open hoop/rib cage with inter-hoop gaps
 versus Hitch’s continuous plated shell and denser midship hardware).
 Hitch-plus chase is not closed. Parent unproven / not G7.
 
+## C21 chase-form (2026-09-21)
+
+`chase_form_v21` keeps the C18 diamond, all-slot clay, wells-as-cuts, and
+C19 circular aft nozzles. Mouths not recut. C21 does **not** add girth
+hoops. The nine C18 stations stay as thin seams in a sheet. Inter-hoop
+bays are shallow plated insets. Midship is formed hardware clusters
+(jboxes, valves, walk plates, rails, pipes, hoses) on that skin.
+Close-scale scores break empty fields. Not plate spam. Not |y| Armor.
+Not Deck-on-crown. Principled islands only. Hitch/Hornet untouched.
+No seats. No megatex.
+
+Three chase reviews REVISE. Play+close+abeam `TUBE_PADDLE NO` on clay and
+shaded; wells stay holes; nozzles stay circular; **cage read is gone**.
+Hitch still wins formed-shell / midship hardware at D=144 (C21 plate
+reads flatter/cheaper beside Hitch’s denser skin).
+Hitch-plus chase is not closed. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
