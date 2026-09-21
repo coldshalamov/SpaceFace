@@ -8,7 +8,7 @@
   "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
   "revision": "chase_form_v17",
   "cycle": 5,
-  "disposition": "form_pass_unproven",
+  "disposition": "leaf_chase_pass_parent_unproven",
   "clayStillReadsAsPrimitives": false,
   "independentReview": "pass",
   "independentReviewer": "C5 side-by-side Hornet v17 vs Hitch play_chase/abeam/close 2026-09-21",
@@ -16,6 +16,7 @@
   "independentReviewP0": 0,
   "openGates": [
     "PQ-050 parent unproven",
+    "G7 not claimed",
     "close-range Hitch still richer on painted rivet field and English-word stencil"
   ],
   "forbidden": {
@@ -26,15 +27,23 @@
     "imagenUsedAsBake": false,
     "modeledSeat": false
   },
-  "notes": "PQ-050.01 chase_form_v17 cycle 5. C4 named fails: panel language, lettering, hull-wide dirt, hardware density. This export: darker hull, dorsal plate course, ochre HN+07 on dark plaques, dirt strips nose-to-TE, second hose + cargo crate + beacons. Principled only. Hitch/Kestrel frozen. Chase-distance Hitch-plus PASS for those four notes. Not a megatex clone of Hitch close.",
+  "notes": "PQ-050.01 leaf closeout. chase_form_v17. Five chase cycles. Hitch-plus PASS at chase for the C4 notes. Parent unproven / not G7. Bake/map MTX rows are not_applicable: this leaf used Principled islands after the texture-density crash lesson. Old cycle/iter reports deleted; final set is chase_form_v17.",
   "rows": [
+    {
+      "id": "MTX-01",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Angle bevel ~10 mm then weighted normals on manufactured meshes; hard shade on hull/wings."
+    },
     {
       "id": "MTX-02",
       "state": "implemented",
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Eight chine stations plus dorsal plate course with seam gaps."
+      "notes": "Eight authored chine stations: needle, canard, canopy crown, wing-root, waist, radiator house, drive house, transom."
     },
     {
       "id": "MTX-03",
@@ -42,7 +51,7 @@
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Skin-breaking FAST/EXACT booleans on canopy, radiators, drive, wing panel and rib channels."
+      "notes": "FAST/EXACT booleans cut canopy tub, windshield, dorsal radiator, wing wells, drive well and bore."
     },
     {
       "id": "MTX-04",
@@ -50,7 +59,15 @@
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Chase-visible volumes: wells, hatch, cable, two dorsal hoses, cargo crate, beacons. No seats."
+      "notes": "Chase-visible wells: greenhouse, radiator cassette, drive throat. No seats or cabin kit."
+    },
+    {
+      "id": "MTX-05",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Dorsal plate course with seam gaps; wing tiles; inset dorsal seams."
     },
     {
       "id": "MTX-06",
@@ -58,7 +75,7 @@
       "still": "play_chase.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Blunt-TE wings, fences, extra rib channel, wing tiles, port HN stencil that reads at D=144."
+      "notes": "Lofted blunt-TE diamond wings with root strake, fences, flaps as separate bodies."
     },
     {
       "id": "MTX-07",
@@ -66,7 +83,7 @@
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Dark glass in a raked tub. Antenna aft of the greenhouse."
+      "notes": "Thin dark glass mass in a cut raked tub with brow/rails/sill. No solid brick."
     },
     {
       "id": "MTX-08",
@@ -74,7 +91,7 @@
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Vanes recede in the bore; ceramic heat/soot plus hull-wide dirt plates."
+      "notes": "Open dorsal-aft well, lofted bell, hub, ceramic heat ring, vanes receding in the bore."
     },
     {
       "id": "MTX-09",
@@ -82,7 +99,63 @@
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Dorsal cassette; radiator→drive hose and canopy→rad hose on the skin."
+      "notes": "Dorsal fin cassette in a rimless well; inboard wing radiator wells."
+    },
+    {
+      "id": "MTX-10",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Twin guns with bores, dorsal sensor, four RCS blocks with cups."
+    },
+    {
+      "id": "MTX-11",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Lofted service hoses with end fittings (rad\u2192drive, canopy\u2192rad, port cheek)."
+    },
+    {
+      "id": "MTX-12",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Clamps and cargo latch only at interfaces, not a rivet field."
+    },
+    {
+      "id": "MTX-13",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Bevels applied after transform; hardware uses 0\u20136 mm widths."
+    },
+    {
+      "id": "MTX-14",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Unmirrored port repair, port HN plaque, starboard 07, offset hatch and cargo crate."
+    },
+    {
+      "id": "MTX-15",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Weighted normals reapplied after booleans; hard shade on manufactured names."
+    },
+    {
+      "id": "MTX-16",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Unique UV0 via smart project on exported meshes. No shared atlas."
     },
     {
       "id": "MTX-17",
@@ -90,7 +163,359 @@
       "still": "play_chase.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "No baked maps. Principled islands instead of a 512 density trap."
+      "notes": "No unique bake maps this leaf. Principled islands avoid the 512/4k density trap."
+    },
+    {
+      "id": "MTX-18",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No UV1 tiling detail layer; meso is modeled panels."
+    },
+    {
+      "id": "MTX-20",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-21",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-22",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-23",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-24",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-25",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-26",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-27",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-28",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-30",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-31",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Principled roles: hull, armor, canopy, ceramic, mechanical, radiator, thruster, accent, warning, marking, dirt."
+    },
+    {
+      "id": "MTX-32",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Unique albedo islands (factory gray, ochre HN, teal plate, orange LE, ceramic heat). Not a tinted shared sheet."
+    },
+    {
+      "id": "MTX-33",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-34",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Hull dielectric paint via Principled roughness ~0.44, low metallic."
+    },
+    {
+      "id": "MTX-35",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Mechanical parts metallic 0.38, dark, not chrome."
+    },
+    {
+      "id": "MTX-36",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Canopy opaque dark dielectric with coat; transmission 0."
+    },
+    {
+      "id": "MTX-37",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Ceramic heat plates and soot apron at the drive; TE dirt."
+    },
+    {
+      "id": "MTX-38",
+      "state": "not_applicable",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No rubber seal material on this interceptor."
+    },
+    {
+      "id": "MTX-39",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Hull-wide dirt strips (nose, canard, cheek, spine, waist, wing root, TE)."
+    },
+    {
+      "id": "MTX-40",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No curvature bake; wear is modeled plates, not a map."
+    },
+    {
+      "id": "MTX-41",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Heat/soot concentrated at the drive throat and transom apron."
+    },
+    {
+      "id": "MTX-42",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Geometry lettering HN/07 on dark plaques; not a raised nameplate texture."
+    },
+    {
+      "id": "MTX-43",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No decal atlas; stencil is modeled."
+    },
+    {
+      "id": "MTX-44",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No UV1 detail normal."
+    },
+    {
+      "id": "MTX-45",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Beacons and nav as small colored masses; wells stay dark. No neon hoop."
+    },
+    {
+      "id": "MTX-46",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Forbidden fakes absent: no seat, no tent-on-spine, no washer bell, no liner-filled well."
+    },
+    {
+      "id": "MTX-47",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "LOD0 keeps wells, vanes, hoses, letters, cargo, flaps."
+    },
+    {
+      "id": "MTX-48",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "LOD1 keeps openings, letters, dirt, main hoses; drops antenna/nav/cheek hose."
+    },
+    {
+      "id": "MTX-49",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "LOD2 keeps silhouette, letters, dirt, plates; drops interior hardware."
+    },
+    {
+      "id": "MTX-50",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "GLB export: sockets preserved, collision kept, no image embeds, Y-up."
+    },
+    {
+      "id": "MTX-55",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Interceptor diamond + twin canards + single aft well reads at stamp size."
+    },
+    {
+      "id": "MTX-56",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Three values: dark wells/mechanical, mid hull, ochre/orange accent."
+    },
+    {
+      "id": "MTX-57",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Openings show wall thickness via open wells, not paper holes."
+    },
+    {
+      "id": "MTX-58",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "not_applicable \u2014 PQ-050 chase form is Principled islands; bake/map ladder is the texture-density trap this leaf refused."
+    },
+    {
+      "id": "MTX-59",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "At D=144: role, HN stencil, wells, orange LE, darker hull still read (~15% frame)."
+    },
+    {
+      "id": "MTX-60",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Designed asymmetry: port repair, port HN, starboard 07, offset hatch/cargo."
+    },
+    {
+      "id": "MTX-61",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Panel seams as modeled gaps and mechanical strips, not noise."
+    },
+    {
+      "id": "MTX-62",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Flaps, hatch lid, glass, bell kept as separate bodies."
+    },
+    {
+      "id": "MTX-63",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Meso is geometry; no UV1 micro replacing missing panels."
+    },
+    {
+      "id": "MTX-64",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Quiet wing/hull plates exist; detail clustered at wells, letters, drive."
+    },
+    {
+      "id": "MTX-65",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Closed interceptor massing, not a barge with wings."
+    },
+    {
+      "id": "MTX-66",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Paint, mechanical metal, and ceramic use distinct roughness/metallic."
+    },
+    {
+      "id": "MTX-67",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Controlled ochre/orange accent; no leftover cyan brick."
     }
   ]
 }
