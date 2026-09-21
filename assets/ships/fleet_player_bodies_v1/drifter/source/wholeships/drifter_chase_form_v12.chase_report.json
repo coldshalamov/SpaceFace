@@ -1,0 +1,64 @@
+{
+  "ok": true,
+  "asset": "ship_drifter",
+  "revision": "chase_form_v12",
+  "cycle": 12,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.846153900747011,
+  "authoredX": 16.77,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 11.7415, 5.2668],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sha256": "992b3e915df8a5eff675ac5fc6757101ea0856e6b36c8f96594e238c6620def5",
+    "triangles": 19260,
+    "hullTriangles": 12104,
+    "bytes": 2545468,
+    "size": [16.77, 6.36, 2.853]
+  },
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "hitchStills": "/tmp/hitch-c10",
+  "playChase": {
+    "shipW": 13.1,
+    "occupancy": 0.7,
+    "lightGe028": 2.2,
+    "mid": 73.2,
+    "dark": 24.6,
+    "brown": 0.1
+  },
+  "hitchPlayChase": {
+    "shipW": 10.1,
+    "occupancy": 0.52,
+    "lightGe028": 5.0,
+    "mid": 68.6,
+    "dark": 26.3,
+    "brown": 0.8
+  },
+  "gapsTargeted": {
+    "grayPlateSkin": "chase-scale dorsal bays well-lip to chine; mixed deck/armor courses; no black bars",
+    "kiteSponsons": "constant-chord short sponsons off hull beam with root crease, not mid-body diamond"
+  },
+  "reviews": {
+    "play_chase": {
+      "id": "bc-f961674a-7a2f-5fde-b505-6894bec1ac3b",
+      "verdict": "REVISE",
+      "note": "VALID framing. Hitch still wins formed-shell / skin at D=144. Wells still holes."
+    },
+    "play_chase_abeam": {
+      "id": "bc-a2fc1c23-d31f-5550-8266-988af0aa3fea",
+      "verdict": "REVISE",
+      "note": "VALID framing. Paddle/box sponsons vs Hitch sideboards. Hitch still wins."
+    },
+    "play_chase_close": {
+      "id": "bc-22df6410-22a0-5e1d-a4d3-b13c13a7e123",
+      "verdict": "REVISE",
+      "note": "VALID framing. Well and greenhouse read as holes. Hitch still wins skin."
+    }
+  },
+  "result": "REVISE",
+  "hitchPlusChase": false,
+  "notes": "C12 kept C11 hole/value wins and targeted gray-plate skin + kite sponsons. Hitch still wins D=144. No seats. No megatex. Hitch/Kestrel/Hornet frozen. Parent unproven / not G7."
+}
