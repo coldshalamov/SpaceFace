@@ -126,6 +126,7 @@ import {
   sayHeistCue,
 } from '../missions/heistMissionRuntime.js';
 import { priceProceduralOffer, offerMixForTier, economicRiskTier, standingWorkTier } from '../economy/economyMissionTerms.js';
+import { actionById as salvageActionById } from '../data/salvageActions.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
@@ -440,6 +441,76 @@ export function mutationWreckRouting(m, currentSectorId) {
 export function isMutationRecovery(m) {
   const tag = m && m.mutationTag;
   return tag === 'salvage' || tag === 'recovery' || tag === 'cooked';
+}
+
+/** INF-068: the convoy-wreck pocket geometry — a near-ring offset plus a slow drift. */
+export const CONVOY_WRECK_RING_WU = 60;
+export const CONVOY_WRECK_DRIFT_WU_S = 6;
+
+/**
+ * INF-068: author the convoy-wreck pocket for one salvage successor. The lost hull died where
+ * the stamp says; the pocket spawns one drifting wreck there holding the contract commodity
+ * with its core armed. Arming `data.unstableReactor` is the whole trick: the salvage catalog
+ * answers it with the vent-reactor action (vent or tow clear), and the salvage update ticks
+ * its burst timer — both physical answers work through existing systems, and settlement stays
+ * the canonical credit-plus-dock path. Pure over the mission plus explicit inputs; the caller
+ * supplies rng angles and the clock. Returns null when the mission is not a salvage successor
+ * with a known loss site and a contract commodity.
+ */
+export function convoyWreckPocket(m, opts = {}) {
+  if (!m || m.type !== 'salvage_retrieval' || !isMutationRecovery(m)) return null;
+  const p = m.params || {};
+  const cmdtyId = p.cmdtyId;
+  const qty = Math.max(1, Math.floor(Number(p.qty) || 1));
+  if (!cmdtyId) return null;
+  const routing = mutationWreckRouting(m, opts.currentSectorId || null);
+  if (!routing.wreckPos || !routing.sectorId) return null;
+  const nowS = Number(opts.nowS) || 0;
+  const catalog = (typeof salvageActionById === 'function' && salvageActionById('vent_reactor')) || {};
+  const timerS = Math.max(1, Number(catalog.timerS) || 8);
+  const damage = Math.max(1, Math.min(Number(catalog.burstDamage) || 18, 24));
+  const persistedDueAt = Number(p.convoyWreckDueAt);
+  const dueAt = Number.isFinite(persistedDueAt) ? persistedDueAt : nowS + timerS;
+  const ringAngle = Number(opts.ringAngle) || 0;
+  const driftAngle = Number(opts.driftAngle) || 0;
+  const pos = {
+    x: routing.wreckPos.x + Math.cos(ringAngle) * CONVOY_WRECK_RING_WU,
+    z: routing.wreckPos.z + Math.sin(ringAngle) * CONVOY_WRECK_RING_WU,
+  };
+  return {
+    sectorId: routing.sectorId,
+    dueAt,
+    spec: {
+      type: 'wreck',
+      pos,
+      vel: {
+        x: Math.cos(driftAngle) * CONVOY_WRECK_DRIFT_WU_S,
+        z: Math.sin(driftAngle) * CONVOY_WRECK_DRIFT_WU_S,
+      },
+      rot: 0,
+      radius: 9,
+      mass: 60,
+      hull: 1,
+      hullMax: 1,
+      factionId: null,
+      team: 2,
+      collides: false,
+      flags: { noInterp: true, missionPinned: true, durable: true },
+      data: {
+        parentType: 'ship',
+        unstableReactor: { dueAt, damage, vented: false, burst: false, towedClear: false },
+        authoredSalvagePool: { [cmdtyId]: qty },
+        authoredScanLabel: 'Convoy wreck — unstable core',
+        identityKey: `mission:${m.id}:convoy-wreck`,
+        homeSectorId: routing.sectorId,
+        sectorId: routing.sectorId,
+        durable: true,
+        missionId: m.id,
+        missionTag: m.id,
+        missionPinned: true,
+      },
+    },
+  };
 }
 
 /**
@@ -3175,12 +3246,16 @@ export const missions = {
     // INF-066: a salvage successor's recovery leg marks the wreck it was mutated for. While the
     // hold is short of the full qty the marker sits on the loss site with both legs in words;
     // once recovery is complete it falls through to the generic delivery marker below.
+    // INF-068: no marker on an empty position — once the armed core's clock has run out the
+    // wreck is gone (burst takes the cargo), and the delivery leg below owns the marker.
     if (m.type === 'salvage_retrieval' && isMutationRecovery(m)) {
       const sectorNow = this.state.world && this.state.world.currentSectorId;
       const routing = mutationWreckRouting(m, sectorNow);
       const target = Math.max(1, m.objectiveTarget || (m.params && m.params.qty) || 1);
       const short = (m.objectiveProgress || 0) < target;
-      if (short && routing.wreckPos && routing.sectorId && routing.sectorId === sectorNow) {
+      const armedDueAt = Number(m.params && m.params.convoyWreckDueAt);
+      const clockOut = Number.isFinite(armedDueAt) && armedDueAt <= (Number(this.state.simTime) || 0);
+      if (short && !clockOut && routing.wreckPos && routing.sectorId && routing.sectorId === sectorNow) {
         const home = (station && station.name) || 'home';
         return {
           ...base,
@@ -5745,6 +5820,9 @@ export const missions = {
     // --reload-at golden (same precedent as `clauses`/`heist` in _instanceFromOffer).
     successor.mutatedFromMissionId = m.id;
     successor.mutationTag = descriptor.tag;
+    // INF-068: a salvage successor materializes its convoy-wreck pocket through the ordinary
+    // sector-enter spawn flow — the wreck is a real body to work, not a rumor.
+    if (isMutationRecovery(successor)) successor.needsTargets = true;
     if (descriptor.keepTargets) {
       const kept = Array.isArray(m.targetEntityIds) ? m.targetEntityIds.slice() : [];
       successor.targetEntityIds = kept;
@@ -5810,7 +5888,7 @@ export const missions = {
             ? `The cargo cooked — recover what remains for ${homeName}`
             : `Recover what the wreck left — ${homeName}`,
         brief: descriptor.tag === 'salvage'
-          ? `The convoy is gone. Its wreck is still on the drift; ${homeName} pays for what comes back.`
+          ? `The convoy is gone. Its wreck is still on the drift with an unstable core; tow it clear, vent it, or strip it before it bursts — ${homeName} pays for what comes back.`
           : descriptor.tag === 'cooked'
             ? `The lot vented. What is left still pays at ${homeName}.`
             : `The rescue came second. What is left of the hull still answers questions at ${homeName}.`,
@@ -6465,6 +6543,53 @@ export const missions = {
         if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
       } else if (budget && typeof budget.releaseSome === 'function') {
         budget.releaseSome(requester, 1);
+      }
+    } else if (m.type === 'salvage_retrieval' && isMutationRecovery(m)) {
+      // INF-068: the convoy-wreck pocket. One unstable drifting wreck holding the contract
+      // cargo, spawned where the hull actually died. Tow it clear or vent it (safe), or race
+      // its core (fast) — the burst takes the cargo with it, so the tradeoff is real, and both
+      // answers end in the same canonical credit-plus-dock settlement. No respawn once the
+      // armed core's clock has run out: the wreck had its chance.
+      m.targetEntityIds = (m.targetEntityIds || []).filter((id) => {
+        const e = this.state.entities.get(id);
+        return e && e.alive !== false;
+      });
+      const nowS = Number(this.state.simTime) || 0;
+      const armedDueAt = Number(m.params && m.params.convoyWreckDueAt);
+      const clockOut = Number.isFinite(armedDueAt) && armedDueAt <= nowS;
+      if (!m.targetEntityIds.length && !clockOut) {
+        const budget = helpers.spawnBudget;
+        const requester = `mission:${m.id}`;
+        if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
+          this._noteMissionSpawnDeferred(m, 1, 0);
+        } else {
+          const rng = nextRng();
+          const pocket = convoyWreckPocket(m, {
+            nowS,
+            ringAngle: rng() * Math.PI * 2,
+            driftAngle: rng() * Math.PI * 2,
+            currentSectorId: this.state.world && this.state.world.currentSectorId,
+          });
+          let ent = null;
+          try {
+            ent = pocket && helpers.spawnEntity ? helpers.spawnEntity(pocket.spec) : null;
+          } catch (error) {
+            if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+            throw error;
+          }
+          if (ent) {
+            if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+            this._stampMissionTargetIdentity(ent, m, 0);
+            m.targetEntityIds.push(ent.id);
+            m.params = m.params || {};
+            m.params.lostWreckPos = { x: pocket.spec.pos.x, z: pocket.spec.pos.z };
+            m.params.convoyWreckDueAt = pocket.dueAt;
+            this.bus.emit('mission:updated', { missionId: m.id, targetEntityId: ent.id });
+            if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
+          } else if (budget && typeof budget.releaseSome === 'function') {
+            budget.releaseSome(requester, 1);
+          }
+        }
       }
     } else if (m.type === AUTHORED_SET_PIECE_TYPE) {
       this._spawnAuthoredSetPieceTargets(m, nextRng, px, pz);
