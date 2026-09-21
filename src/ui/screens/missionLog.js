@@ -1425,16 +1425,35 @@ export function storyActionForBeat(beat, state) {
       };
     case 7:
       {
+        // Pre-offer Deep Reach guidance. The live shared gate (story/endings/eligibility.js) is
+        // the truth: a recorded history — the Deep Reach operation, or Kurtz ledger custody
+        // backed by three kinds of recorded work — and the Ash Cache desk. Net worth and branch
+        // standing are door-A commission facts, not a universal gate; this card must not teach
+        // them as one (the endings packet retired that gate and left this card as a residual).
         const facts = snapshotEndingFacts(state);
-        const worth = Math.min(facts.netWorthCr, 100000).toLocaleString();
-        const rep = Math.min(facts.branchRep, 50);
-      return {
-        tone: 'primary',
-        label: 'ENDGAME',
-        title: 'Build sector power',
-        body: `Reach 100,000cr net worth and 50 branch standing. Own a capital hull, claim, or outpost to qualify for a filed ending.`,
-        meta: `${worth}/100,000 CR · ${rep}/50 REP`,
-      };
+        let history;
+        if (facts.deepReachComplete) {
+          history = 'The Deep Reach operation is on record.';
+        } else if (facts.independentWitness) {
+          history = 'Ledger custody and three kinds of recorded work stand on their own.';
+        } else if (facts.hasLedger) {
+          history = `You hold the Kurtz ledger; ${facts.careerEvidence.length} of 3 kinds of`
+            + ' recorded work back it — trades, contracts, named kills, assets, archives, mercy.';
+        } else {
+          history = 'Fly the Deep Reach operation — or take the Kurtz ledger and back it'
+            + ' with 3 kinds of recorded work.';
+        }
+        const desk = facts.deskVisited
+          ? 'The Ash Cache desk has your file.'
+          : 'Dock at Ash Cache in Ashfall Reach and open the desk.';
+        return {
+          tone: 'primary',
+          label: 'ENDGAME',
+          title: facts.readyByHistory ? 'Bring Ashfall your record' : 'Run the Ashfall operation',
+          body: `${history} ${desk} A filed disposition reviews the record, not the purse.`,
+          meta: `HISTORY ${facts.readyByHistory ? 'RECORDED' : 'OPEN'} · DESK ${facts.deskVisited ? 'VISITED' : 'PENDING'}`,
+          mapAction: stationRouteAction('station_ashcache', 'Plot route to Ash Cache'),
+        };
       }
     default:
       return beat ? {
