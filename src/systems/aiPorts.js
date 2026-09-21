@@ -27,7 +27,7 @@ import {
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
-import { isTumbling } from '../combat/tumbleStatus.js';
+import { isRecovering, isTumbling } from '../combat/tumbleStatus.js';
 import {
   ensureActivityClassified,
   entityNeedsAiThink,
@@ -883,6 +883,9 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     // INF-021: the helm reads decontrol off the same frame as everything else, so a yanked
     // ship relents instead of thrusting through its own tumble.
     tumbling: isTumbling(state, entity),
+    // INF-027: post-tumble stabilization reads off the same frame, so tactics can tell a
+    // recovering helm (disrupted thrust, silent guns) from a fully re-engaged one.
+    recovering: isRecovering(state, entity),
     tethered: attachmentsFor(attachmentIndex, entity.id).length > 0,
     capabilities,
     subsystemFractions: subsystemFractionView,

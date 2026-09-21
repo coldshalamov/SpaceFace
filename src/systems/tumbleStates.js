@@ -20,6 +20,7 @@ import {
   MASSLINE_TUMBLE_KIND,
   WEAPON_TUMBLE_KIND,
   WELL_TUMBLE_KIND,
+  isRecovering,
   readTumbleStatus,
   TUMBLE_STATUS_ID,
 } from '../combat/tumbleStatus.js';
@@ -34,6 +35,11 @@ const RCS_TRIGGER_MAXAGE_TICKS = 8;
 const RCS_DEFAULT_S = 1.6;
 const RCS_PROVENANCE = 'rcs_disruptor_spike';
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+// INF-027: post-tumble stabilization window. Long enough to read as its own beat (the ship
+// damps spin and thrusts weakly with no guns), short enough to never be helpless. Sim-time
+// stamped on entity data so save/load cannot strand or skip it.
+const TUMBLE_RECOVERY_S = 0.9;
+const TUMBLE_RECOVERY_THRUST_SCALE = 0.35;
 
 const DRIFT_CONTROL = Object.freeze({
   mode: 'drifting',
@@ -85,24 +91,35 @@ export const tumbleStates = {
       const tumble = e ? readTumbleStatus(state, e) : null;
       const drifting = isNpcDrifting(state, e);
       const rcs = e ? this._rcsDisrupt.get(e) : null;
-      if (!tumble && !drifting && !rcs) continue;
+      const recovering = e ? isRecovering(state, e) : false;
+      const recoveryMarker = !!(e && e.data && Number.isFinite(Number(e.data.recoveringUntil)));
+      if (!tumble && !drifting && !rcs && !recovering && !recoveryMarker) continue;
 
       let tumbleActive = !!tumble;
       if (tumbleActive && (!e.alive || e.id === state.playerId)) {
         this._clearTumbleStatus(e, e.alive ? 'player_immune' : 'entity_dead');
+        clearRecovery(e);
         tumbleActive = false;
       }
-      if (!e.alive) continue;
+      if (!e.alive) { clearRecovery(e); continue; }
 
       if (tumbleActive) {
         const elapsed = now - finite(tumble.data && tumble.data.startedAt, now);
         if (now >= finite(tumble.data && tumble.data.until, now)) {
           this._clearTumbleStatus(e, 'duration_elapsed');
-          if (this.bus) this.bus.emit('massline:tumbleEnd', { victimId: e.id, durationS: elapsed });
+          // INF-027: the opening ends in stabilization, not in full tactics. The helm keeps
+          // damping spin while a fraction of the AI's thrust comes back and guns stay silent;
+          // massline:recovered closes the beat so the end of the opening is recognizable.
+          const recoverUntil = now + TUMBLE_RECOVERY_S;
+          if (e.data) e.data.recoveringUntil = recoverUntil;
+          if (this.bus) {
+            this.bus.emit('massline:tumbleEnd', { victimId: e.id, durationS: elapsed, recoverUntil });
+            this.bus.emit('massline:recovering', { victimId: e.id, recoverUntil });
+          }
           tumbleActive = false;
         }
       }
-      if (!tumbleActive && !drifting && !rcs) continue;
+      if (!tumbleActive && !drifting && !rcs && !isRecovering(state, e) && !recoveryMarker) continue;
 
       if (tumbleActive) {
         writePhysicsControl(e, recoveryControl(e, dt, tumble.data && tumble.data.kind));
@@ -120,6 +137,25 @@ export const tumbleStates = {
           e.data.intent.moveX = 0;
           e.data.intent.moveZ = 0;
         }
+        continue;
+      }
+      if (isRecovering(state, e)) {
+        // INF-027 stabilization response: residual spin keeps damping through the ordinary
+        // recovery control while disrupted (not dead) thrust answers the helm and guns hold.
+        writePhysicsControl(e, recoveryControl(e, dt, tumble && tumble.data && tumble.data.kind));
+        if (e.data && e.data.intent) {
+          e.data.intent.fire = false;
+          e.data.intent.moveX = finite(e.data.intent.moveX) * TUMBLE_RECOVERY_THRUST_SCALE;
+          e.data.intent.moveZ = finite(e.data.intent.moveZ) * TUMBLE_RECOVERY_THRUST_SCALE;
+          e.data.intent.boost = false;
+          e.data.intent.brake = false;
+        }
+        continue;
+      }
+      if (recoveryMarker) {
+        // The stabilization window just elapsed: tactics resume at full authority downstream.
+        clearRecovery(e);
+        if (this.bus) this.bus.emit('massline:recovered', { victimId: e.id });
         continue;
       }
       writePhysicsControl(e, DRIFT_CONTROL);
@@ -242,6 +278,9 @@ export const tumbleStates = {
       mF: law.mF,
     });
     if (!scheduled) return;
+    // A fresh forced tumble cancels any stabilization already in progress: the helm is
+    // decontrolled again, not recovering. Stacking and cap rules above are untouched.
+    clearRecovery(victim);
 
     const profile = resolveFlightProfile(victim, state);
     const body = ensurePhysicsBodySpec(victim);
@@ -369,6 +408,10 @@ function freezeTumbleAnnouncement(payload) {
     tick: finite(payload.tick),
     time: finite(payload.time),
   });
+}
+
+function clearRecovery(entity) {
+  if (entity && entity.data && entity.data.recoveringUntil != null) delete entity.data.recoveringUntil;
 }
 
 function recoveryControl(entity, dt, kind) {

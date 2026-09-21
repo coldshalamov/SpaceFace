@@ -26,6 +26,24 @@ export function isTumbling(state, entityOrId) {
   return readTumbleStatus(state, entityOrId) !== null;
 }
 
+// INF-027: post-tumble stabilization window. tumbleStates stamps entity.data.recoveringUntil
+// (sim seconds) when a forced tumble runs its natural course; the helm reads disrupted until
+// then. Pure read off entity data + sim clock — the same tick always reads the same answer.
+export function isRecovering(state, entityOrId) {
+  const entity = entityOrId && typeof entityOrId === 'object'
+    ? entityOrId
+    : (state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(entityOrId)
+      : null);
+  if (!entity || entity.alive === false) return false;
+  const until = entity.data && Number(entity.data.recoveringUntil);
+  if (!Number.isFinite(until)) return false;
+  const now = Number.isFinite(state && state.simTime)
+    ? state.simTime
+    : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
+  return now < until;
+}
+
 export function readMasslineTumbleStatus(state, entityOrId) {
   const status = readTumbleStatus(state, entityOrId);
   return isMasslineTumble(status) ? status : null;
