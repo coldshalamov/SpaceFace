@@ -6674,8 +6674,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
-      "tris": 9270,
-      "bytes": 879408,
+      "tris": 11090,
+      "bytes": 1034880,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6717,7 +6717,7 @@
           9.1
         ]
       },
-      "note": "PQ-050.01 chase_form_v15. Cycle 3 form: dark framed greenhouse, dark radiator well, wings keep fences. Hitch/Kestrel untouched. Not Hitch-plus; parent stays unproven."
+      "note": "PQ-050.01 chase_form_v16. Cycle 4: factory-gray hull, ochre stencil, teal plate, dorsal hardware, ceramic heat/soot. Hitch/Kestrel untouched. Hitch-plus still open; parent stays unproven."
     },
     {
       "id": "wholeship_inspection_cutter",
