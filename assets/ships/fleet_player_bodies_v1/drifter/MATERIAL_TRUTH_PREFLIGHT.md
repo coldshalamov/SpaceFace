@@ -239,6 +239,20 @@ shaded; wells stay holes. Hitch still wins formed-shell / skin at D=144
 (pocket fields thin; Hitch midship / color / aft nozzle denser).
 Hitch-plus chase is not closed. Parent unproven / not G7.
 
+## C19 chase-form (2026-09-21)
+
+`chase_form_v19` keeps the C18 diamond, all-slot clay, and wells-as-cuts.
+Mouths not recut. C19 densifies inter-hoop inset fields and short stringers,
+adds midship Mark bands plus hatch/clamp/beacon hardware, and cuts a
+chase-facing circular aft nozzle (not a flat cap). Not plate spam.
+Not |y| Armor. Not Deck-on-crown. Principled islands only. Hitch/Hornet
+untouched. No seats. No megatex.
+
+Three chase reviews REVISE. Play+close+abeam `TUBE_PADDLE NO` on clay and
+shaded; wells stay holes. Hitch still wins formed-shell / skin at D=144
+(interstitial fields still thinner/smoother than Hitch’s continuous skin).
+Hitch-plus chase is not closed. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
