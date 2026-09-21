@@ -14,6 +14,8 @@ import { ORES, ASTEROIDS } from '../../data/mining.js';
 import { FACTION_META } from '../../data/factions.js';
 import { createListControls } from '../listControls.js';
 import { formatBindingCode, resolveActionLabel, resolveActionCodes } from '../../systems/input.js';
+import { resolveGamepadBindings, GAMEPAD_DEFAULT_BINDINGS } from '../../systems/gamepad.js';
+import { gamepadGlyphForAction } from '../bindings.js';
 import { BINDINGS } from '../bindings.js';
 import { icon, factionIcon } from '../station/icons.js';
 import { el, words, settle, cue } from '../kit/index.js';
@@ -302,6 +304,66 @@ function liveBoostLabel(state) {
     : resolveActionLabel(state, 'boost');
 }
 
+// INF-059: the gamepad section printed stock button names as literals, so a pad remap
+// (Settings → Controls, PQ-164.01) re-labeled the dock chip and the pad itself while the game's
+// own instructions kept teaching the old buttons. The section is now a projection of the resolved
+// pad map. A stock map (or none) returns the authored dual Xbox/PlayStation table unchanged; a
+// remapped map names each action's current button; a deliberately unbound action says so instead
+// of printing a phantom button.
+const GAMEPAD_ROWS_STOCK = Object.freeze([
+  ['Fly (yaw + throttle)', null, 'Left stick'],
+  ['Aim weapons', null, 'Right stick'],
+  ['Fire', null, 'RT / R2'],
+  ['Mine beam', null, 'LT / L2'],
+  ['Boost', null, 'RB / R1'],
+  ['Brake / reverse', null, 'LB / L1'],
+  ['Massline', null, 'A / X: Massline (dock/accept when prompted)'],
+  ['Anchor Mass Seed', null, 'keyboard verb — rebind under Settings → Controls'],
+  ['Countermeasure', null, 'R3'],
+  ['Drop bomb', null, 'D-Pad Right'],
+  ['Cycle bomb-bay payload', null, 'D-Pad Left'],
+  ['Cycle target', null, 'X / □'],
+  ['Open star-map', null, 'View / Select'],
+  ['Open codex', null, 'Y / △'],
+  ['Open mission log', null, 'Start / Options → Pause → Mission Log'],
+  ['Pause', null, 'Start / Options'],
+  ['Dock / activate', null, 'A / X (when prompted)'],
+  ['Cancel / back', null, 'B / ○'],
+]);
+
+// Row verb, pad action, and the stock-map sentence shape for the live projection.
+const GAMEPAD_ROW_ACTIONS = Object.freeze([
+  ['Fire', 'fire', (g) => g],
+  ['Mine beam', 'mine', (g) => g],
+  ['Boost', 'boost', (g) => g],
+  ['Brake / reverse', 'brake', (g) => g],
+  ['Massline', 'massline', (g) => `${g}: Massline (dock/accept when prompted)`],
+  ['Countermeasure', 'countermeasure', (g) => g],
+  ['Drop bomb', 'dropBomb', (g) => g],
+  ['Cycle bomb-bay payload', 'cycleBomb', (g) => g],
+  ['Cycle target', 'cycleTarget', (g) => g],
+  ['Open star-map', 'map', (g) => g],
+  ['Open codex', 'codex', (g) => g],
+  ['Pause', 'pause', (g) => g],
+  ['Dock / activate', 'accept', (g) => `${g} (when prompted)`],
+  ['Cancel / back', 'cancel', (g) => g],
+]);
+
+const GAMEPAD_STATIC_ROW_INDEXES = Object.freeze(new Set([0, 1, 7, 14]));
+
+export function gamepadControlRows(map) {
+  if (map == null || map === GAMEPAD_DEFAULT_BINDINGS) {
+    return GAMEPAD_ROWS_STOCK.map((row) => row.slice());
+  }
+  const live = new Map(GAMEPAD_ROW_ACTIONS.map(([label, action, shape]) => {
+    const glyph = gamepadGlyphForAction(action, map);
+    return [label, glyph ? shape(glyph) : 'unbound — Settings → Controls'];
+  }));
+  return GAMEPAD_ROWS_STOCK.map((row, i) => (
+    GAMEPAD_STATIC_ROW_INDEXES.has(i) ? row.slice() : [row[0], null, live.get(row[0]) || row[2]]
+  ));
+}
+
 export function controlSections(state) {
   const holdLine = [liveGlyph(state, 'forward'), liveGlyph(state, 'reverse'), livePair(state, 'yawLeft', 'yawRight')]
     .filter(Boolean)
@@ -354,26 +416,7 @@ export function controlSections(state) {
       ['Help', null, 'F1 / H'],
       ['Quick save / load', null, 'F5 / F9'],
     ]],
-    ['Gamepad (Xbox / PlayStation)', [
-      ['Fly (yaw + throttle)', null, 'Left stick'],
-      ['Aim weapons', null, 'Right stick'],
-      ['Fire', null, 'RT / R2'],
-      ['Mine beam', null, 'LT / L2'],
-      ['Boost', null, 'RB / R1'],
-      ['Brake / reverse', null, 'LB / L1'],
-      ['Massline', null, 'A / X: Massline (dock/accept when prompted)'],
-      ['Anchor Mass Seed', null, 'keyboard verb — rebind under Settings → Controls'],
-      ['Countermeasure', null, 'R3'],
-      ['Drop bomb', null, 'D-Pad Right'],
-      ['Cycle bomb-bay payload', null, 'D-Pad Left'],
-      ['Cycle target', null, 'X / □'],
-      ['Open star-map', null, 'View / Select'],
-      ['Open codex', null, 'Y / △'],
-      ['Open mission log', null, 'Start / Options → Pause → Mission Log'],
-      ['Pause', null, 'Start / Options'],
-      ['Dock / activate', null, 'A / X (when prompted)'],
-      ['Cancel / back', null, 'B / ○'],
-    ]],
+    ['Gamepad (Xbox / PlayStation)', gamepadControlRows(resolveGamepadBindings(state && state.settings))],
     ['Touch (phone / tablet)', [
       ['Fly (yaw + throttle)', null, 'Left stick'],
       ['Aim weapons', null, 'Right stick'],
