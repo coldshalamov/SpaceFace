@@ -3478,6 +3478,13 @@ function isProtectedCivilian(entity) {
     || ['hauler', 'courier', 'miner', 'trader', 'civilian', 'fleeing_trader'].some((word) => role.includes(word));
 }
 
+// The adjudication's own protected-body definition, shared read-only with advisory
+// presentation (INF-078): a lawful hull or a protected civilian. Advisory callers never
+// adjudicate — they only name what the law would recognize.
+export function isLawProtectedBody(entity) {
+  return isLawful(entity) || isProtectedCivilian(entity);
+}
+
 function isCivilianHauler(entity) {
   if (!entity || entity.type !== 'ship') return false;
   const data = entity.data || {};

@@ -110,6 +110,58 @@ export function solveCadenceRelease(payload, aim, opts = {}) {
 }
 
 /**
+ * Advisory collateral corridor (INF-078). Names the nearest known body inside the danger
+ * region of the CURRENT predicted throw — the corridor from the payload along the
+ * projected path (or the straight ray to the predicted point) with a readability pad.
+ *
+ * Pure presentation geometry: it never authorizes, prevents, or prices anything. Stale or
+ * degraded solutions, missing predictions, and unmeasurable spots all return null rather
+ * than a certainty the prediction cannot support.
+ *
+ * @param {object} solution mirrored throw solution (predicted, projectedPath, degraded,
+ *   decisionStale, valid).
+ * @param {{x,z}} payloadPos current payload position.
+ * @param {number} payloadRadius physical payload radius.
+ * @param {Array<{x,z,r,label}>} spots known candidate bodies with finite positions/radii.
+ * @returns {{label:string, clearance:number}|null} nearest intersecting spot, if any.
+ */
+export const THROW_COLLATERAL_PAD = 6; // wu — corridor readability tolerance, not aim assist
+export function resolveThrowCollateral(solution, payloadPos, payloadRadius, spots) {
+  if (!solution || solution.valid !== true
+      || solution.degraded === true || solution.decisionStale === true) return null;
+  if (!validPoint(payloadPos) || !validPoint(solution.predicted)) return null;
+  const halfWidth = radius(payloadRadius) + THROW_COLLATERAL_PAD;
+  const waypoints = Array.isArray(solution.projectedPath) && solution.projectedPath.length > 0
+    ? solution.projectedPath.filter(validPoint)
+    : [];
+  const points = [payloadPos, ...waypoints, solution.predicted];
+  let best = null;
+  for (const spot of spots || []) {
+    if (!spot || !validPoint(spot) || !Number.isFinite(spot.r) || spot.r < 0) continue;
+    let distance = Infinity;
+    for (let i = 0; i + 1 < points.length; i++) {
+      distance = Math.min(distance, segmentDistance(points[i], points[i + 1], spot));
+    }
+    if (!Number.isFinite(distance) || distance > spot.r + halfWidth) continue;
+    const clearance = distance - spot.r;
+    if (!best || clearance < best.clearance) {
+      best = {
+        label: typeof spot.label === 'string' && spot.label ? spot.label : 'PROTECTED BODY',
+        clearance,
+      };
+    }
+  }
+  return best;
+}
+
+function segmentDistance(a, b, p) {
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 > 1e-14 ? clamp(((p.x - a.x) * dx + (p.z - a.z) * dz) / len2, 0, 1) : 0;
+  return Math.hypot(p.x - (a.x + dx * t), p.z - (a.z + dz * t));
+}
+
+/**
  * First release aperture within 1.5 s, sampled at fixed ticks. The pair coasts about its measured
  * COM; the aim continues linearly. This forecast is only offered for a settled, near-taut swing.
  * It teaches WHEN to cut. The actual cut is ALWAYS checked against solveCadenceRelease NOW.

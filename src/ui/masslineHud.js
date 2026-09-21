@@ -35,6 +35,11 @@ import {
 // consumes (state.massline2.throw.solution) — one authority, two surfaces: the world diamond
 // below names WHERE the intercept sits, the panel names WHEN/status. No second model exists.
 import { createMasslineCadenceReadout } from './masslineCadenceReadout.js';
+// INF-078: the throw preview names protected bodies inside the predicted corridor using
+// the law's own protected definition and the release geometry's advisory corridor. Read
+// only on both sides — the cue never touches release authority.
+import { isLawProtectedBody } from '../systems/lawSecurity.js';
+import { resolveThrowCollateral } from '../combat/masslineReleaseGeometry.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -282,6 +287,51 @@ export function resolveThrowMarkWorldPoint(throwState, state) {
     z: payload.pos.z + Math.sin(solution.interceptAngle) * 220,
     targetKind: 'point',
   };
+}
+
+// INF-078: collateral-cue inputs. Only KNOWN bodies qualify — alive with a finite
+// position and a measurable radius. The dead, the unpositioned, and the unmeasurable
+// are uncertainty, not evidence, so they never trigger the cue. The actors (payload,
+// player, aim target) are not bystanders.
+function throwPayloadEntity(throwState, state) {
+  const id = throwState && throwState.payloadId;
+  if (id == null || !state || !state.entities || typeof state.entities.get !== 'function') return null;
+  return state.entities.get(id) || null;
+}
+
+function throwPayloadPoint(throwState, state) {
+  const payload = throwPayloadEntity(throwState, state);
+  return payload && payload.pos ? { x: payload.pos.x, z: payload.pos.z } : null;
+}
+
+function throwPayloadRadius(throwState, state) {
+  const payload = throwPayloadEntity(throwState, state);
+  return payload && Number.isFinite(payload.radius) ? payload.radius : 0;
+}
+
+function throwCollateralSpots(state, throwState) {
+  const spots = [];
+  const entities = state && state.entities;
+  if (!entities || typeof entities.forEach !== 'function') return spots;
+  const releaseTarget = throwState && throwState.releaseTarget;
+  const aimId = throwState && throwState.aimTargetId != null
+    ? throwState.aimTargetId
+    : releaseTarget && releaseTarget.targetId;
+  entities.forEach((entity) => {
+    if (!entity || entity.id === (throwState && throwState.payloadId)
+        || entity.id === state.playerId || entity.id === aimId) return;
+    if (entity.alive === false || !entity.pos
+        || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)
+        || !Number.isFinite(entity.radius)) return;
+    if (!isLawProtectedBody(entity)) return;
+    const data = entity.data || {};
+    const raw = data.displayName || data.name || data.label || entity.type || 'body';
+    spots.push({
+      x: entity.pos.x, z: entity.pos.z, r: entity.radius,
+      label: String(raw).slice(0, 28).toUpperCase(),
+    });
+  });
+  return spots;
 }
 
 const EMPTY_HUD_OBJECT = Object.freeze({});
@@ -844,6 +894,23 @@ export const masslineHud = {
     setClass(dom.throwEl, 'ml2-offscreen', cue.offscreen);
     setCssVar(dom.throwEl, '--ml2-c', rampColor(solution.errorRad, solution.tolRad, hot));
     applyCueState(dom.throwEl, dom.throwLabel, cue);
+    // INF-078: one advisory collateral cue. A known protected body inside the predicted
+    // corridor is NAMED, never vetoed: this only extends the caption, release authority
+    // and law adjudication are untouched. Stale/degraded solutions and unknown bodies
+    // stay silent via the corridor helper's own suppression.
+    if (!degradedThrow) {
+      const collateral = resolveThrowCollateral(solution,
+        throwPayloadPoint(throwState, state), throwPayloadRadius(throwState, state),
+        throwCollateralSpots(state, throwState));
+      if (collateral) {
+        const advisory = `${cue.label} · COLLATERAL RISK · ${collateral.label}`;
+        if (dom.throwLabel && dom.throwLabel.textContent !== advisory) {
+          dom.throwLabel.textContent = advisory;
+        }
+        setAttr(dom.throwEl, 'aria-label',
+          `${cue.ariaLabel}, possible collateral risk near ${collateral.label.toLowerCase()}`);
+      }
+    }
     if (degradedThrow) {
       if (dom.throwLabel && dom.throwLabel.textContent !== 'STALE') dom.throwLabel.textContent = 'STALE';
       setAttr(dom.throwEl, 'aria-label', 'Massline throw intercept degraded, target turning');
