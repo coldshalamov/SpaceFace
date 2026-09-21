@@ -4261,42 +4261,42 @@
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/hornet_production_v1.glb",
       "release": "assets/ships/release/parts/wholeships/hornet_production_v1.glb",
-      "sourceSha256": "b86c2bff6dd0e57c51ca718e4792263cf4b82513a2fb6da8bf1c9a3f497954b2",
-      "releaseSha256": "1e1aafd624801637b5640df2aa1d265f33868fda9cf1083449af45cdc997f549",
-      "sourceBytes": 1034880,
-      "releaseBytes": 257316,
+      "sourceSha256": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+      "releaseSha256": "716fe554cb3a31ecc651694ff8c0d1a6ac241ac95a97af6acaeb29c2c4534a56",
+      "sourceBytes": 1188568,
+      "releaseBytes": 290584,
       "textures": 0,
       "ktx2Textures": 0,
-      "meshoptBufferViews": 73,
-      "contractNodeCount": 28
+      "meshoptBufferViews": 77,
+      "contractNodeCount": 29
     },
     {
       "id": "wholeship_hornet_production_v1_lod1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/hornet_production_v1_lod1.glb",
       "release": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb",
-      "sourceSha256": "bdadc1e8667828a1dba258949e81d56575b895ab39135b1efd183256ee238c11",
-      "releaseSha256": "fe5297297cfe0c697b71090cf68078dd88b6024af8a943b74edb37d435df870b",
-      "sourceBytes": 1030816,
-      "releaseBytes": 244648,
+      "sourceSha256": "30db14cb218e18f84a4aa8be5cc50d51c70d6c46af47fc11f0a41f7cd32ef14d",
+      "releaseSha256": "3e40ae16141b40181116471cd0a927c4d8e85efd3c1c2b661a1a2c1fe65f3325",
+      "sourceBytes": 1271540,
+      "releaseBytes": 292084,
       "textures": 0,
       "ktx2Textures": 0,
-      "meshoptBufferViews": 62,
-      "contractNodeCount": 25
+      "meshoptBufferViews": 70,
+      "contractNodeCount": 27
     },
     {
       "id": "wholeship_hornet_production_v1_lod2",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/hornet_production_v1_lod2.glb",
       "release": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb",
-      "sourceSha256": "aede84f4bb5720a482fd207ae3b314b20416555318db07c1338f136b48e4cf49",
-      "releaseSha256": "a0535c43ea934c20200209745e06c8e164e35142de8745d37e0ecb04f556f2b1",
-      "sourceBytes": 675848,
-      "releaseBytes": 165512,
+      "sourceSha256": "11499ad215ee04e49e91d0f034f7029dec33e043caeebcb67b5d16bcacd5304f",
+      "releaseSha256": "27ec72bc755142f08334cd409d718e507524129620fd965e9ddbaa853bee8343",
+      "sourceBytes": 766212,
+      "releaseBytes": 185432,
       "textures": 0,
       "ktx2Textures": 0,
-      "meshoptBufferViews": 50,
-      "contractNodeCount": 22
+      "meshoptBufferViews": 58,
+      "contractNodeCount": 24
     }
   ]
 }

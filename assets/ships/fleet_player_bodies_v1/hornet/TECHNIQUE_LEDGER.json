@@ -2,22 +2,21 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "SF_HORNET_PRODUCTION_V1",
   "shipId": "ship_hornet",
-  "candidateHash": "B86C2BFF6DD0E57C51CA718E4792263CF4B82513A2FB6DA8BF1C9A3F497954B2",
+  "candidateHash": "0F81DCE83E735C911412E1A815C918A349270E69E8DE75BA5022F4A5211D5240",
   "exportGlb": "assets/ships/parts/wholeships/hornet_production_v1.glb",
   "class": "player_flyable",
   "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
-  "revision": "chase_form_v16",
-  "cycle": 4,
+  "revision": "chase_form_v17",
+  "cycle": 5,
   "disposition": "form_pass_unproven",
   "clayStillReadsAsPrimitives": false,
-  "independentReview": "revise",
-  "independentReviewer": "C4 side-by-side Hornet v16 vs Hitch play_chase/abeam/close 2026-09-21",
+  "independentReview": "pass",
+  "independentReviewer": "C5 side-by-side Hornet v17 vs Hitch play_chase/abeam/close 2026-09-21",
   "independentReviewScope": "play_chase, play_chase_abeam, play_chase_close",
   "independentReviewP0": 0,
   "openGates": [
     "PQ-050 parent unproven",
-    "five-cycle Hitch-plus loop incomplete",
-    "Hitch still wins panel language, lettering stencil, hull-wide dirt, hardware density"
+    "close-range Hitch still richer on painted rivet field and English-word stencil"
   ],
   "forbidden": {
     "factoryLoftPlusBoxes": false,
@@ -27,7 +26,7 @@
     "imagenUsedAsBake": false,
     "modeledSeat": false
   },
-  "notes": "PQ-050.01 chase_form_v16 cycle 4. C3 stills: Hitch won unique albedo, dirt, stencil, hardware density. This export: factory-gray hull, port ochre ID bars, unmirrored teal plate + repair, dorsal hatch/cable/hose/antenna, ceramic heat/soot at drive, RCS/nav. Principled blocks, no maps. Hitch/Kestrel frozen. Not a G7 or five-cycle close.",
+  "notes": "PQ-050.01 chase_form_v17 cycle 5. C4 named fails: panel language, lettering, hull-wide dirt, hardware density. This export: darker hull, dorsal plate course, ochre HN+07 on dark plaques, dirt strips nose-to-TE, second hose + cargo crate + beacons. Principled only. Hitch/Kestrel frozen. Chase-distance Hitch-plus PASS for those four notes. Not a megatex clone of Hitch close.",
   "rows": [
     {
       "id": "MTX-02",
@@ -35,7 +34,7 @@
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Eight chine stations: needle, canard, rounded canopy crown, wing-root beam, waist pinch, radiator house, drive house, tapered transom."
+      "notes": "Eight chine stations plus dorsal plate course with seam gaps."
     },
     {
       "id": "MTX-03",
@@ -43,7 +42,7 @@
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Skin-breaking FAST/EXACT booleans on canopy tub + raked windshield, dorsal radiator, wing wells, drive well + cylinder bore."
+      "notes": "Skin-breaking FAST/EXACT booleans on canopy, radiators, drive, wing panel and rib channels."
     },
     {
       "id": "MTX-04",
@@ -51,7 +50,7 @@
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Chase-visible volumes: greenhouse well, dark fin cassette, drive throat, hatch, cable tray, hose. No seats."
+      "notes": "Chase-visible volumes: wells, hatch, cable, two dorsal hoses, cargo crate, beacons. No seats."
     },
     {
       "id": "MTX-06",
@@ -59,7 +58,7 @@
       "still": "play_chase.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Blunt-TE lofted wings, tip fences, TE bars, dogtooth crank, port ochre stencil bars that read at D=144."
+      "notes": "Blunt-TE wings, fences, extra rib channel, wing tiles, port HN stencil that reads at D=144."
     },
     {
       "id": "MTX-07",
@@ -67,7 +66,7 @@
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Dark glass in a raked tub with brow/rails/sill. Antenna mast aft of the greenhouse."
+      "notes": "Dark glass in a raked tub. Antenna aft of the greenhouse."
     },
     {
       "id": "MTX-08",
@@ -75,7 +74,7 @@
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Vanes recede in the bore; ceramic heat plates and soot apron around the throat. No gold mouth collar."
+      "notes": "Vanes recede in the bore; ceramic heat/soot plus hull-wide dirt plates."
     },
     {
       "id": "MTX-09",
@@ -83,7 +82,7 @@
       "still": "play_chase_close.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Dorsal cassette with dark fins; service hose on the dorsal skin from radiator house to drive."
+      "notes": "Dorsal cassette; radiator→drive hose and canopy→rad hose on the skin."
     },
     {
       "id": "MTX-17",
@@ -91,7 +90,7 @@
       "still": "play_chase.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "No baked maps this pass. Principled islands instead of a 512 density trap."
+      "notes": "No baked maps. Principled islands instead of a 512 density trap."
     }
   ]
 }

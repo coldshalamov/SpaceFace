@@ -23,7 +23,7 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
-REVISION = "chase_form_v16"
+REVISION = "chase_form_v17"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "hornet"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -39,7 +39,7 @@ KEEP_SEPARATE = (
 
 # Distinct color blocks that read at ~15% frame width. No 512-map density trap.
 HONEST = {
-    "Material_Hull": {"color": (0.26, 0.28, 0.31), "metallic": 0.10, "roughness": 0.40, "role": "hull"},
+    "Material_Hull": {"color": (0.18, 0.195, 0.21), "metallic": 0.12, "roughness": 0.44, "role": "hull"},
     "Material_Armor": {"color": (0.13, 0.145, 0.17), "metallic": 0.18, "roughness": 0.50, "role": "armor"},
     "Material_Canopy": {"color": (0.012, 0.016, 0.022), "metallic": 0.0, "roughness": 0.06, "role": "glass"},
     "Material_Ceramic": {"color": (0.28, 0.18, 0.10), "metallic": 0.0, "roughness": 0.62, "role": "ceramic"},
@@ -50,6 +50,7 @@ HONEST = {
     "Material_Warning": {"color": (0.78, 0.62, 0.10), "metallic": 0.02, "roughness": 0.42, "role": "warning"},
     # Unmirrored teal island — unique albedo at D=144, not a map dump.
     "Material_Marking": {"color": (0.07, 0.28, 0.24), "metallic": 0.04, "roughness": 0.40, "role": "marking"},
+    "Material_Dirt": {"color": (0.24, 0.14, 0.08), "metallic": 0.02, "roughness": 0.72, "role": "dirt"},
 }
 
 
@@ -283,6 +284,56 @@ def add_hose(name, points, radius, material, segments=8):
     return [body, *fittings]
 
 
+def add_letter_h(prefix, origin, height, width, stroke, thick, material):
+    """Dorsal H: height along X, width along Y. Chase-readable stroke, not a decal."""
+    x, y, z = origin
+    bits = [
+        add_box(f"{prefix}_L", (height, stroke, thick), (x, y - width * 0.5 + stroke * 0.5, z), material, 0.0),
+        add_box(f"{prefix}_R", (height, stroke, thick), (x, y + width * 0.5 - stroke * 0.5, z), material, 0.0),
+        add_box(f"{prefix}_Bar", (stroke, width - stroke, thick), (x, y, z), material, 0.0),
+    ]
+    return bits
+
+
+def add_letter_n(prefix, origin, height, width, stroke, thick, material):
+    x, y, z = origin
+    diag_len = math.hypot(height, width - stroke)
+    angle = math.atan2(width - stroke, height)
+    bits = [
+        add_box(f"{prefix}_L", (height, stroke, thick), (x, y - width * 0.5 + stroke * 0.5, z), material, 0.0),
+        add_box(f"{prefix}_R", (height, stroke, thick), (x, y + width * 0.5 - stroke * 0.5, z), material, 0.0),
+        add_box(
+            f"{prefix}_Diag", (diag_len, stroke * 0.85, thick), (x, y, z), material, 0.0,
+            rotation=(0.0, 0.0, angle),
+        ),
+    ]
+    return bits
+
+
+def add_digit_0(prefix, origin, height, width, stroke, thick, material):
+    x, y, z = origin
+    bits = [
+        add_box(f"{prefix}_T", (stroke, width, thick), (x + height * 0.5 - stroke * 0.5, y, z), material, 0.0),
+        add_box(f"{prefix}_B", (stroke, width, thick), (x - height * 0.5 + stroke * 0.5, y, z), material, 0.0),
+        add_box(f"{prefix}_L", (height - 2 * stroke, stroke, thick), (x, y - width * 0.5 + stroke * 0.5, z), material, 0.0),
+        add_box(f"{prefix}_R", (height - 2 * stroke, stroke, thick), (x, y + width * 0.5 - stroke * 0.5, z), material, 0.0),
+    ]
+    return bits
+
+
+def add_digit_7(prefix, origin, height, width, stroke, thick, material):
+    x, y, z = origin
+    bits = [
+        add_box(f"{prefix}_Top", (stroke, width, thick), (x + height * 0.5 - stroke * 0.5, y, z), material, 0.0),
+        add_box(
+            f"{prefix}_Leg", (height * 0.92, stroke, thick),
+            (x - height * 0.04, y - width * 0.08, z), material, 0.0,
+            rotation=(0.0, 0.0, math.radians(-28.0)),
+        ),
+    ]
+    return bits
+
+
 def add_box(name, dimensions, location, material, bevel=0.006, rotation=(0.0, 0.0, 0.0)):
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, 0.0, 0.0))
     obj = bpy.context.object
@@ -441,6 +492,12 @@ def build_wings(mats, lod):
 
         if lod <= 1:
             cut(wing, panel_cut)
+
+        def rib_cut(name=f"WingRibCut_{tag}", loc=(-0.05, 2.35 * sign, 0.46)):
+            return add_box(name, (0.08, 1.05, 0.20), loc, mech, 0.0)
+
+        if lod <= 1:
+            cut(wing, rib_cut)
         strake = loft_rings(
             f"LOD0_WingStrake_{tag}",
             [
@@ -716,7 +773,7 @@ def build_guns_and_sensor(mats, lod):
 
 
 def build_hardware(mats, lod):
-    """Chase-scale unique albedo, dirt, stencil, and hardware. No maps, no seats."""
+    """Chase-scale panel language, lettering, hull-wide dirt, hardware. No maps, no seats."""
     hull_mat = mats["Material_Hull"]
     armor = mats["Material_Armor"]
     mech = mats["Material_Mechanical"]
@@ -724,23 +781,55 @@ def build_hardware(mats, lod):
     warning = mats["Material_Warning"]
     accent = mats["Material_Accent"]
     marking = mats["Material_Marking"]
+    dirt = mats["Material_Dirt"]
     bits = []
 
     # Unmirrored port repair — 0.9 m plate so D=144 sees a patch, not a rivet.
     bits.append(add_box("LOD0_RepairPatch", (0.92, 0.50, 0.07), (1.42, -0.98, 0.42), armor, 0.002))
     bits.append(add_box("LOD0_RepairWeld", (0.92, 0.05, 0.09), (1.42, -0.74, 0.46), mech, 0.0))
 
-    # Port-wing ochre ID bars (stencil language without a texture dump).
-    for index, x in enumerate((0.22, -0.08, -0.38)):
-        bits.append(add_box(
-            f"LOD0_StencilBar_{index}",
-            (0.16, 0.78, 0.06),
-            (x, -2.72, 0.54),
-            warning, 0.0,
-        ))
+    # Dark plaque + ochre HN on the port wing — lettering stencil, not ID bars.
+    bits.append(add_box("LOD0_LetterPlaque", (1.02, 1.42, 0.05), (0.02, -2.58, 0.52), armor, 0.0))
+    bits.extend(add_letter_h("LOD0_LetterH", (0.02, -2.92, 0.58), 0.78, 0.58, 0.16, 0.07, warning))
+    bits.extend(add_letter_n("LOD0_LetterN", (0.02, -2.22, 0.58), 0.78, 0.56, 0.16, 0.07, warning))
 
     # Starboard teal ID plate — unique albedo island, not mirrored.
     bits.append(add_box("LOD0_MarkingPlate", (0.70, 0.26, 0.07), (0.72, 0.48, 0.72), marking, 0.001))
+
+    # Dark 07 plaque on starboard dorsal — second readable stencil.
+    bits.append(add_box("LOD0_DigitPlaque", (0.88, 0.78, 0.05), (1.58, 0.78, 0.66), armor, 0.0))
+    bits.extend(add_digit_0("LOD0_Letter0", (1.58, 0.58, 0.72), 0.70, 0.30, 0.12, 0.06, warning))
+    bits.extend(add_digit_7("LOD0_Letter7", (1.58, 0.98, 0.72), 0.70, 0.30, 0.12, 0.06, warning))
+
+    # Dorsal plate course with gaps — panel language, not a rivet dump.
+    for index, x in enumerate((1.85, 1.12, 0.38, -0.36)):
+        bits.append(add_box(
+            f"LOD0_Panel_{index}",
+            (0.58, 0.44, 0.055),
+            (x, -0.22, 0.70),
+            armor, 0.001,
+        ))
+        bits.append(add_box(
+            f"LOD0_PanelSeam_{index}",
+            (0.04, 0.44, 0.04),
+            (x - 0.31, -0.22, 0.73),
+            mech, 0.0,
+        ))
+
+    # Hull-wide dirt/soot — not only the drive.
+    bits.append(add_box("LOD0_DirtSpine", (2.85, 0.22, 0.05), (1.15, -0.05, 0.77), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtCheek", (2.05, 0.14, 0.06), (0.25, -0.98, 0.41), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtNose", (0.72, 0.26, 0.06), (4.68, 0.0, 0.22), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtCanard", (0.82, 0.12, 0.05), (4.28, -0.58, 0.20), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtWingRoot", (1.35, 0.16, 0.05), (0.10, 0.92, 0.61), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtWaist", (1.25, 0.18, 0.05), (-1.35, 0.18, 0.62), dirt, 0.0))
+    for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+        bits.append(add_box(
+            f"LOD0_DirtTE_{tag}",
+            (0.18, 1.05, 0.05),
+            (-1.08, 2.45 * sign, 0.30),
+            ceramic, 0.0,
+        ))
 
     if lod > 1:
         return bits
@@ -774,13 +863,34 @@ def build_hardware(mats, lod):
             rotation=(0.0, math.radians(90.0), 0.0), vertices=8,
         ))
 
-    # Service hose rides the dorsal skin radiator → drive, not buried in the loft.
+    # Service hose radiator house → drive house, starboard of spine.
     bits.extend(add_hose(
         "LOD0_Hose_RadDrive",
         [(-2.55, 0.38, 0.72), (-3.05, 0.46, 0.78), (-3.55, 0.44, 0.74), (-4.00, 0.38, 0.62)],
         0.085,
         mech,
     ))
+    # Second hose canopy coaming → radiator, port of spine.
+    bits.extend(add_hose(
+        "LOD0_Hose_CanopyRad",
+        [(2.15, -0.30, 0.78), (0.55, -0.34, 0.76), (-1.05, -0.32, 0.74), (-2.05, -0.28, 0.70)],
+        0.070,
+        mech,
+    ))
+
+    # Unmirrored dorsal cargo crate + lid — hardware density, not a seat.
+    bits.append(add_box("LOD0_CargoCrate", (0.58, 0.40, 0.22), (-0.92, 0.46, 0.78), mech, 0.002))
+    bits.append(add_box("LOD0_CargoLid", (0.62, 0.44, 0.05), (-0.92, 0.46, 0.90), armor, 0.001))
+    bits.append(add_box("LOD0_CargoLatch", (0.08, 0.16, 0.08), (-0.62, 0.46, 0.90), warning, 0.0))
+
+    # Formation beacons along the spine.
+    bits.append(add_box("LOD0_Beacon_Fore", (0.12, 0.12, 0.10), (2.05, 0.0, 0.92), accent, 0.0))
+    bits.append(add_box("LOD0_Beacon_Aft", (0.12, 0.12, 0.10), (-1.55, 0.0, 0.80), warning, 0.0))
+
+    # Wing tiles with gaps so the diamond is plated, not a card.
+    for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+        bits.append(add_box(f"LOD0_WingTile_{tag}_0", (0.58, 0.70, 0.05), (0.62, 2.08 * sign, 0.52), armor, 0.001))
+        bits.append(add_box(f"LOD0_WingTile_{tag}_1", (0.50, 0.52, 0.05), (-0.12, 2.52 * sign, 0.50), armor, 0.001))
 
     if lod != 0:
         return bits
@@ -790,12 +900,20 @@ def build_hardware(mats, lod):
     bits.append(add_cylinder("LOD0_AntennaTip", 0.07, 0.12, (2.42, 0.20, 1.62), armor, 0.0, vertices=8))
     bits.append(add_box("LOD0_Nav_Port", (0.14, 0.14, 0.10), (-0.72, -3.38, 0.58), warning, 0.0))
     bits.append(add_box("LOD0_Nav_Stbd", (0.14, 0.14, 0.10), (-0.72, 3.38, 0.58), accent, 0.0))
+    # Port cheek pipe — extra hardware line at abeam.
+    bits.extend(add_hose(
+        "LOD0_Hose_Cheek",
+        [(1.55, -0.92, 0.42), (0.35, -0.98, 0.46), (-0.85, -0.88, 0.44), (-2.15, -0.72, 0.50)],
+        0.055,
+        mech,
+    ))
     return bits
 
 
 def shade_objects(objs):
     hard = ("Hull", "Wing", "Canard", "Coaming", "Flap", "Armor", "Accent", "Gun",
-            "Repair", "Stencil", "Hatch", "Cable", "RCS", "Nav", "Hose", "Marking", "Heat", "Soot")
+            "Repair", "Stencil", "Hatch", "Cable", "RCS", "Nav", "Hose", "Marking",
+            "Heat", "Soot", "Letter", "Panel", "Dirt", "Cargo", "Beacon", "Plaque")
     for obj in objs:
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
@@ -924,6 +1042,7 @@ def build_one(source: Path, output: Path, lod: int):
         mats["Material_Ceramic"], mats["Material_Radiator"], mats["Material_Thruster"],
         mats["Material_Mechanical"], mats["Material_Accent"], mats["Material_Canopy"],
         mats["Material_Armor"], mats["Material_Warning"], mats["Material_Marking"],
+        mats["Material_Dirt"],
     ):
         group = [
             obj for obj in bpy.data.objects
@@ -1007,7 +1126,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "hornet_chase_form_v16.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "hornet_chase_form_v17.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 
