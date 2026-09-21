@@ -157,6 +157,10 @@ export const save = {
     this._rollbackCaptureActive = false; // strict serializer mode for the pre-load rollback copy
     this._rollbackInProgress = false;  // prevents a failed rollback from recursively retrying itself
     this._sharedStoreReady = !sharedPlayerStoreAvailable();
+    // INF-092: mirror health is independent of boot-sync readiness. True when no shared store
+    // is configured (localStorage is then the only — and fully durable — store), false once a
+    // configured mirror demonstrably misses a write, until a later write lands.
+    this._sharedStoreMirrorHealthy = true;
     this._sharedStorePatch = null;
     this._sharedStoreFlushTimer = null;
     this._dirtyJournal = createSaveDirtyJournal();
@@ -285,22 +289,41 @@ export const save = {
     return this._sharedStoreReady === false;
   },
 
+  // INF-092: truthful mirror health for the status path. Local keys are written synchronously
+  // at every save boundary, so this device is always the durable store; the shared mirror is
+  // best-effort and reported as such.
+  isSharedStoreMirrorHealthy() {
+    return this._sharedStoreMirrorHealthy !== false;
+  },
+
   async _syncSharedPlayerStore() {
     if (this._sharedStoreReady) return;
+    // No configured mirror: local-only shell, nothing to reconcile and nothing at risk.
+    const mirrorConfigured = sharedPlayerStoreAvailable();
+    let ok = true;
+    let error = null;
     try {
       const remote = await fetchSharedPlayerStore();
       const local = collectLocalSharedStoreKeys();
       const merged = mergeSharedStoreKeys(local, remote || {});
       applySharedStoreKeys(merged);
       if (remote != null || Object.keys(local).length > 0) {
-        await pushSharedPlayerStore(merged);
+        const pushed = await pushSharedPlayerStore(merged);
+        if (!pushed) { ok = false; error = 'mirror_unreachable'; }
       }
-    } catch {
+    } catch (err) {
       // Store absence or a failed merge must not block the title screen.
+      ok = false;
+      error = (err && err.message) || 'sync_failed';
     } finally {
       this._sharedStoreReady = true;
+      this._sharedStoreMirrorHealthy = !mirrorConfigured || ok;
       if (this.bus && typeof this.bus.emit === 'function') {
-        this.bus.emit('save:store-synced', { ok: true });
+        // Still emitted in both outcomes: achievements merge + title refresh key off the
+        // timing, and now off a truthful ok. No save write and no transition rides along.
+        this.bus.emit('save:store-synced', Object.assign({ ok, durableStore: 'local' },
+          mirrorConfigured ? { mirror: 'shared' } : { mirror: 'none' },
+          error ? { error } : null));
       }
     }
   },
@@ -319,7 +342,23 @@ export const save = {
       const keys = this._sharedStorePatch;
       this._sharedStorePatch = null;
       if (!keys) return;
-      pushSharedPlayerStore(keys, { keepalive: true }).catch(() => {});
+      // INF-092: a missed mirror write flips health (no toast per save — the flag is the
+      // status); a later landed write clears it with one recovery notice. Neither arm
+      // duplicates a save nor touches transitions.
+      pushSharedPlayerStore(keys, { keepalive: true }).then((landed) => {
+        if (landed) {
+          if (this._sharedStoreMirrorHealthy === false) {
+            this._sharedStoreMirrorHealthy = true;
+            if (this.bus && typeof this.bus.emit === 'function') {
+              this.bus.emit('save:store-synced', { ok: true, mirror: 'shared', durableStore: 'local', mirrorRecovered: true });
+            }
+          }
+        } else {
+          this._sharedStoreMirrorHealthy = false;
+        }
+      }, () => {
+        this._sharedStoreMirrorHealthy = false;
+      });
     };
     if (typeof setTimeout === 'function') this._sharedStoreFlushTimer = setTimeout(flush, 0);
     else flush();

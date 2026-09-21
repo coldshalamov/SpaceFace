@@ -428,9 +428,17 @@ export const ui = {
     replaceMarketNewsOwner(this, ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
     this.alerts = createAlerts(ctx);
     wireSaveFeedback(this.bus);
-    this.bus.on('save:store-synced', () => {
+    // INF-092: the mirror status is truthful — pending stays pending, a failed mirror says
+    // which store is durable, and a later landed write clears the warning. Toasts only; no
+    // duplicate save and no transition rides on this path.
+    this.bus.on('save:store-synced', (payload = {}) => {
       if (this.screenManager && typeof this.screenManager.refreshTop === 'function') {
         try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
+      }
+      if (payload.mirrorRecovered) {
+        this.bus.emit('toast', { text: 'Shared save store reconnected — mirroring resumed.', kind: 'good', ttl: 2600 });
+      } else if (payload.ok === false && payload.mirror === 'shared') {
+        this.bus.emit('toast', { text: 'Shared save store unreachable — saves stay on this device.', kind: 'warn', ttl: 3600 });
       }
     });
 
