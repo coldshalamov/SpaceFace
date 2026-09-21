@@ -112,6 +112,21 @@ Brown fell to 0.8%. Three chase reviews REVISE. Close still: well and greenhouse
 read as holes. Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is
 not closed. No seats. No megatex. Parent unproven / not G7.
 
+## C10 chase-form (2026-09-21)
+
+`chase_form_v10` is the packet “toward ten” close attempt. Keeps C8/C9 wins:
+value split (light 8.6%), well+greenhouse as holes, copper/brown 0.8%. Principled
+islands only. Hitch/Hornet untouched.
+
+C10 targeted the remaining C9 REVISE list: hull-material chine beam (no teal rail),
+nacelle fairings into a tapering shell, longitudinal panel courses instead of wrapping
+girth belts, rooted wing mass, greenhouse cage over an open tub (glass in openings,
+not a lid). Three chase reviews REVISE. Close still: well and greenhouse read as
+holes. Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is not
+closed after ten cycles. Remaining: dorsal kitbash (gantry/clamps/cage bars),
+Hitch’s mid-value formed skin vs Drifter’s gray tube + dark ladder, wings still
+short of Hitch sponson mass in planform. No seats. No megatex. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
