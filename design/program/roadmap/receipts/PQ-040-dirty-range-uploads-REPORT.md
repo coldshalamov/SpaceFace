@@ -456,6 +456,126 @@ candidate that includes `6b1688f79` (or the landed capital-boss module) plus
 one quiet machine window; a repaired candidate mints fresh launch quotas
 automatically because its source digests change.
 
+### Post-rebase acceptance run — 2026-09-21, 05:30Z+
+
+The branch was rebased onto `master` including the boot repair `6b1688f79`;
+the overlay import is now a guarded dynamic import, so the route boots.
+New candidate HEAD `4f4e3ad5898b3cb499547e1513ee42d030b00be3` minted fresh
+launch quotas. Two pre-rebase failure pointers
+(`latest-acceptance-failure.json` under both runtimes) keyed to superseded
+candidate digests — a Browser environment-block at 04:55Z and the Electron
+`capitalBossOverlayMount.js` boot failure at 05:09Z — were deleted as stale
+residue; all run artifacts, claims, and receipts were retained.
+
+The exact Browser broker command was invoked once and the acceptance probe
+ran the complete public route end-to-end (intro → main menu → new game →
+authored flight → ordinary flight → galaxy map → waypoint → dock → station
+hub → WebGL hardware check → `combat_vfx_burst` scenario, seed 47) and both
+attribution variants:
+
+```text
+node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-browser
+```
+
+Claim `20476-e194a3c346d2ab001c435235`, candidate `cb512794`, run
+`performance-dirty-ranges-browser-2026-09-21T05-30-41-316Z-27208-24aa171d`.
+The comparator printed real metrics and returned **FAIL**:
+
+| Metric (combat_vfx_burst, dense) | Dirty-range | Full-span control |
+|---|---:|---:|
+| Logical payload bytes | 1,244,176 | 1,245,244 |
+| Owner-requested upload bytes | 1,267,624 | 16,925,056 |
+| Requested bytes / logical byte | 1.018846 | 13.591759 |
+| Driver upload bytes | 30,359,916 | 39,617,976 |
+| Driver bytes / logical byte | 24.401625 | 31.815432 |
+| Frame p95 (ms) | 149.9 | 316.6 |
+| Window samples | 42 | 32 |
+
+Reductions: owner-requested bytes **−92.50%** (threshold ≥25%: met),
+driver upload bytes **−23.30%** (threshold ≥25%: **missed by 1.7pp**),
+frame p95 −166.7 ms in favor of dirty-range on a heavily loaded host.
+
+Demotions recorded by the broker (verbatim classes): `windows[1] settings
+changed during capture` (timeScale 0.12 → 1 inside the full-span window),
+`contaminating-process-or-authoring-activity` at the end census, post-boot
+`shaderLinks`/`shaderCompiles` inside both windows, `pipeline-warmup
+unsettled` / `pipeline-cache-mismatch` on windows[1], `page/runtime errors
+or warnings were observed`, and `driver upload bytes did not fall by at
+least 25%`.
+
+Two of the demotion classes are structural at this base, not
+environmental:
+
+- `src/ui/capitalBossOverlayMount.js` **does not exist** in this checkout —
+  the capital-boss lane never committed the module. The guarded dynamic
+  import boots the route but still logs `HTTP 404` + `net::ERR_ABORTED` +
+  `[ui] capital boss overlay module unavailable` on every page load, so the
+  zero-page-error/warning requirement is unreachable here. Repairing it is
+  a `src/` change and therefore outside this unit's write set.
+- A `GL_INVALID_VALUE: glGetProgramiv: Program object expected` storm (24
+  warnings) — dead program handles queried during shader work; the harness
+  program-query trap is read-only and merely records the callers, so this
+  is product noise, not instrumentation.
+
+The remaining demotions are host contention: bloomScene GPU bricks of
+211/229/349/781 ms, first-flight build diagnostics, a partsLibrary LOD
+demotion error, and Chrome census churn — every capture frame ran above
+32 ms with backlog shedding (this machine runs the dense scenario at
+~8–10 fps).
+
+The exact Electron broker command was invoked once:
+
+```text
+node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-electron
+```
+
+It minted claim `27272-c0a67162db86fe7f07e2e8ef` (candidate `7b0ba962`) and
+stopped at preflight with `PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED` at
+05:40Z — the 5 s census recorded 1.64 foreign CPU cores aggregate
+(chrome.exe pids 21348, 24592 plus 55 other processes; blender-mcp and
+msedgewebview2 resident). No Electron runtime launched, but the claim-mint
+incremented the launch counter (broker H6 reserves quota at mint), so the
+candidate's single Electron launch is spent without a runtime ever starting.
+
+```yaml
+unit: PQ-040.native-acceptance
+candidateBranch: pq040-native
+candidateHead: 4f4e3ad5898b3cb499547e1513ee42d030b00be3
+candidateWorktree: .worktrees/pq040-native
+staleBrokerStateCleared:
+  - browser/latest-acceptance-failure.json (env-block 04:55Z, candidate 2ce41ac8 — superseded by rebase)
+  - electron/latest-acceptance-failure.json (boot-fail 05:09Z, candidate 2dc52cb4 — superseded by rebase)
+browserManifestInvocations: 1
+browserAcceptanceRuntimeLaunches: 1
+browserBrokerResult: FAIL — comparator printed metrics, windows demoted
+browserCapturedRun:
+  run: performance-dirty-ranges-browser-2026-09-21T05-30-41-316Z-27208-24aa171d
+  comparatorPass: false
+  ownerRequestedByteReductionFraction: 0.9250394132964515   # 1.27 MB ranged vs 16.93 MB full-span
+  driverUploadByteReductionFraction: 0.2330255100528018     # 30.36 MB ranged vs 39.62 MB full-span — under the 25% bar
+  frameP95DeltaMs: -166.7                                    # 149.9 vs 316.6
+  demotedBy:
+    - timeScale 0.12→1 inside full-span capture window
+    - post-boot shaderLinks/shaderCompiles in both windows
+    - windows[1] pipeline warmup unsettled + pipeline-cache mismatch
+    - contaminating process activity at end census
+    - page errors/warnings (capitalBossOverlayMount.js 404 — module absent at this base — plus 24x GL_INVALID_VALUE dead-handle queries and GPU bricks)
+electronManifestInvocations: 1
+electronAcceptanceRuntimeLaunches: 0
+electronBrokerResult: PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED (census 1.64 cores)
+electronLaunchQuotaConsumed: true   # quota reserves at claim mint, before preflight
+numericAcceptance: captured-but-demoted (browser only; electron never launched)
+```
+
+Disposition: **BLOCKED** for clean acceptance at this base — two required
+fixes are `src/` changes outside this unit's write set (commit the missing
+`capitalBossOverlayMount.js` module or drop its import; quiet the dead-handle
+`getProgramParameter` callers). The measured direction is consistent with
+every prior capture — owner-requested bytes drop ~93% and driver bytes ~23%
+— but the packet's ≥25% driver-reduction bar was missed on this run and all
+capture windows were demoted. Electron produced no numbers: its single
+launch was consumed by a preflight environment block.
+
 ## Implemented architecture
 
 ### Scene-scoped publication coordinator
