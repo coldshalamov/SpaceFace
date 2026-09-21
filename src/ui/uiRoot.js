@@ -67,7 +67,6 @@ import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy ne
 import { createAlerts } from './alerts.js';
 import { createComms } from './comms.js';
 import { mountNemesisComms } from './nemesisComms.js';
-import { mountCapitalBossOverlay } from './capitalBossOverlayMount.js';
 import { createWingmanRadial } from './wingmanRadial.js';
 import { firstBootScreenId, shouldAskMotionPreference } from './accessibility.js';
 
@@ -503,13 +502,23 @@ export const ui = {
       this.capitalBossOverlay.destroy();
     }
     this.capitalBossOverlay = null;
+    // Boot repair 2026-09-20: the static import of './capitalBossOverlayMount.js' landed while
+    // the module itself is still an uncommitted worktree file of the capital-boss lane, so every
+    // clean checkout 404'd the whole uiRoot module and the default route never booted. The
+    // guarded dynamic import below restores boot immediately and lights the overlay back up with
+    // no re-wiring the moment that lane commits its packet.
     try {
-      this.capitalBossOverlay = mountCapitalBossOverlay({
-        root: document.getElementById('ui-root'),
-        bus: this.bus,
-        state: this.state,
-        helpers: this.helpers,
-      });
+      import('./capitalBossOverlayMount.js').then(
+        (m) => {
+          this.capitalBossOverlay = m.mountCapitalBossOverlay({
+            root: document.getElementById('ui-root'),
+            bus: this.bus,
+            state: this.state,
+            helpers: this.helpers,
+          });
+        },
+        (e) => { console.warn('[ui] capital boss overlay module unavailable', e); },
+      );
     } catch (e) { console.warn('[ui] capital boss overlay mount failed', e); }
     // ONE decision surface for the whole flight layer (promptDeck): the encounter/inspection/
     // parley/signal/recovery/customs adapters below subscribe to their events and render INTO it.
