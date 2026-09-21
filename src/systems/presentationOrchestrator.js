@@ -101,7 +101,11 @@ export const presentationOrchestrator = {
         // failure here made a normal pilot release fire the full break camera/audio/UI/VFX recipe
         // before the release recoil. Other reasons remain genuine line failures or authored cuts.
         if (payload && payload.reason === 'tether_cut') return false;
-        return this._emitCue('tether.break', payload || {}, {
+        // INF-018: one disappearing rope for every cause was the bug. Overload, externally
+        // severed lines, and vanished endpoints each get their own restrained cue; voluntary
+        // releases stay suppressed here because the releaseRated tiers own that moment.
+        const cueId = tetherBreakCueForReason(payload && payload.reason);
+        return this._emitCue(cueId, payload || {}, {
           sourceEvent: 'tether:broken',
           sourceId: payload && payload.actorId,
           targetId: payload && payload.targetId,
@@ -1585,6 +1589,28 @@ const RELEASE_CUE_BY_CLASSIFICATION = Object.freeze({
   clean: 'tether.release.clean',
   razor: 'tether.release.razor',
 });
+
+// INF-018 — break-reason → presentation cue. Voluntary releases (`tether_cut`) stay
+// suppressed at the call site because the releaseRated tiers own that moment; everything here
+// is an involuntary separation. Overload is the line failing under its own load; severed is an
+// external action interposed across it (hostile blade or specialist cut — the obstruction
+// case); endpoint is the far end ceasing to exist (destroyed, despawned, or sector-changed).
+// Anything unlisted keeps the generic break cue rather than going silent.
+export const TETHER_BREAK_OVERLOAD_REASONS = Object.freeze(new Set([
+  'threshold', 'overload', 'sustained-overload', 'catastrophic-overload', 'snap', 'integrity-failure',
+]));
+export const TETHER_BREAK_SEVERED_REASONS = Object.freeze(new Set([
+  'ace_cut', 'specialist_cut', 'monofilament_sweep',
+]));
+export const TETHER_BREAK_ENDPOINT_REASONS = Object.freeze(new Set([
+  'target_lost', 'controller_lost', 'endpoint_lost',
+]));
+export function tetherBreakCueForReason(reason) {
+  if (TETHER_BREAK_OVERLOAD_REASONS.has(reason)) return 'tether.break.overload';
+  if (TETHER_BREAK_SEVERED_REASONS.has(reason)) return 'tether.break.severed';
+  if (TETHER_BREAK_ENDPOINT_REASONS.has(reason)) return 'tether.break.endpoint';
+  return 'tether.break';
+}
 
 function finiteScore(value) {
   return Number.isFinite(value) ? value : 0;

@@ -242,6 +242,49 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { cameraTrauma: 0.22, particles: 96, voices: 3, uiPulses: 1 },
     tags: ['critical', 'tether', 'break'],
   }),
+  // INF-018: the break family splits by cause while sharing the authored snap lanes: overload fails under its own load (full snap), a severed line is cut across by an external action (full snap), and a vanished endpoint simply ends the line (lighter touch). No new assets, no new lane handlers.
+  'tether.break.overload': recipe({
+    importance: 0.92,
+    dedupeWindowTicks: 10,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_snap',
+      vfx: 'vfx.tether_break',
+      audio: 'audio.tether_break',
+      ui: 'ui.tether_break',
+      accessibility: 'accessibility.break_caption',
+    },
+    budgets: { cameraTrauma: 0.22, particles: 96, voices: 3, uiPulses: 1 },
+    tags: ['critical', 'tether', 'break', 'overload'],
+  }),
+  'tether.break.severed': recipe({
+    importance: 0.92,
+    dedupeWindowTicks: 10,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_snap',
+      vfx: 'vfx.tether_break',
+      audio: 'audio.tether_break',
+      ui: 'ui.tether_break',
+      accessibility: 'accessibility.break_caption',
+    },
+    budgets: { cameraTrauma: 0.22, particles: 96, voices: 3, uiPulses: 1 },
+    tags: ['critical', 'tether', 'break', 'severed'],
+  }),
+  'tether.break.endpoint': recipe({
+    importance: 0.8,
+    dedupeWindowTicks: 10,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_snap',
+      vfx: 'vfx.tether_break',
+      audio: 'audio.tether_break',
+      ui: 'ui.tether_break',
+      accessibility: 'accessibility.break_caption',
+    },
+    budgets: { cameraTrauma: 0.08, particles: 32, voices: 2, uiPulses: 1 },
+    tags: ['critical', 'tether', 'break', 'endpoint'],
+  }),
   // Rung 14 — whip-impact feedback (consumes masslineImpacts' rung-13 tether:whipImpact emit).
   // The payoff crack: the whipped mass slamming a body. Severity rides the cue magnitude so the
   // flash/sting scale with the hit; rating + latched/slung ride the tags. Feedback is the point —
