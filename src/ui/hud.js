@@ -1857,15 +1857,31 @@ export function createHud(ctx, alerts) {
   function triggerElectronicDisruption(cause = 'shield') {
     const isMotionReduced = getMotionReduced() || !!(state.settings && state.settings.video && state.settings.video.motionReduce);
     const isFlashReduced = getFlashReduced() || !!(state.settings && state.settings.video && state.settings.video.flashReduce);
-    if (isMotionReduced || isFlashReduced) return;
+    const reduced = isMotionReduced || isFlashReduced;
+    // The restrained audio blip is the cue under Reduce, not a second effect: the audio system
+    // owns mute gating centrally, so emitting here is silent for muted players and identifying
+    // for everyone else. Never gate words behind the flash gate with it.
+    if (ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+    }
+    if (reduced) {
+      // INF-100: the scanline flash stays off, but the hazard must still read as words — EMP has
+      // no banner or caption anywhere else, so a muted Reduce player would otherwise lose the hit
+      // entirely. A short label replaces the flash; full mode is unchanged below.
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        ctx.bus.emit('toast', {
+          text: cause === 'emp' ? 'EMP HIT — systems disrupted' : 'SHIELDS COLLAPSED',
+          kind: 'warn',
+          ttl: 1.8,
+        });
+      }
+      return;
+    }
     root.classList.remove('sf-hud--glitch');
     if (glitchOverlay) glitchOverlay.classList.remove('active');
     void root.offsetWidth; // force animation restart
     root.classList.add('sf-hud--glitch');
     if (glitchOverlay) glitchOverlay.classList.add('active');
-    if (ctx.bus && typeof ctx.bus.emit === 'function') {
-      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
-    }
     if (disruptionTimeout) clearTimeout(disruptionTimeout);
     disruptionTimeout = setTimeout(() => {
       root.classList.remove('sf-hud--glitch');
