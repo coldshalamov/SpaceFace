@@ -579,6 +579,7 @@ export const onboarding = {
     this._dockControlInRange = false;
     this._gateControlInRange = false;
     this._lastControlMode = null;
+    this._latchDenialStreak = 0;
     if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') {
       // The fresh world may already have reused the old tutorial actor IDs.
       this._teardown({ removeActors: false });
@@ -674,6 +675,7 @@ export const onboarding = {
     if (ob && ob.raid) ob.raid.active = false;
     if (ob && ob.claimed) ob.claimed.active = false;
     this._trainerId = this._derelictId = this._miningRockId = null;
+    this._latchDenialStreak = 0;
     if (this._panel) { this._panel.remove(); this._panel = null; }
     this._bodyEl = null;
     this._titleEl = null;
