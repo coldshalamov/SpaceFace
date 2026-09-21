@@ -388,6 +388,10 @@ export const save = {
       ['world', () => this._callSerialize('world') || {}],
       ['entities', () => this._serializeEntities()],
       ['combat', () => serializeCombatState(state)],
+      // PQ-205.03: the bomb rack (fitted cells, socket count, hangar stock, cooldowns,
+      // selection) is owned and serialized by the bombs system. Absent owner → {} →
+      // deserialize applies the starter kit (additive default for pre-rack saves).
+      ['bombs', () => this._callSerialize('bombs') || {}],
       ['stunts', () => this._callSerialize('stuntGrammar')],
       ['fields', () => this._callSerialize('fields')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
@@ -453,6 +457,7 @@ export const save = {
     data.world = this._callSerialize('world') || {};
     data.entities = this._serializeEntities();
     data.combat = serializeCombatState(state);
+    data.bombs = this._callSerialize('bombs') || {};
     data.stunts = this._callSerialize('stuntGrammar');
     data.fields = this._callSerialize('fields');
     data.missions = this._callSerialize('missions') || this._serializeMissions();
@@ -2931,6 +2936,10 @@ export const save = {
 
       // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
       this._restoreCombat(data.combat, entityIdRemap);
+      // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
+      // selection). No entity ids inside — live bomb actors are transient and never persist.
+      // Missing key (pre-rack save) leaves the owner to apply its starter-kit default.
+      this._callDeserialize('bombs', data.bombs);
 
       // 13. restore missions/automation/settings.
       this._restoreMissions(data.missions);

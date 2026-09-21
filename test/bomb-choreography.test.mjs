@@ -240,8 +240,11 @@ function openField(t, id = 'bomb_goo') {
     assert.equal(readRailModel(t.state, t.state.simTime)[2].state, 'armed');
     t.state.bombs.selectedId = 'bomb_concussion';
     assert.equal(readBombBayModel(t.state, t.state.simTime).state, 'ready');
+    // PQ-205.03: save:loaded sweeps live bomb entities only — the owner deserializer restores
+    // the rack bag; the event itself never resets selection or payload cooldowns.
     t.bus.emit('save:loaded', {});
-    assert.equal(t.state.bombs.selectedId, BOMB_IDS[0]); assert.deepEqual(t.state.bombs.cooldowns, {});
+    assert.equal(t.state.bombs.selectedId, 'bomb_concussion');
+    assert.ok(t.state.bombs.cooldowns.bomb_singularity > 0, 'payload cooldowns survive the load boundary');
   } finally { t.close(); }
 });
 

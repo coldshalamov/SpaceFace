@@ -9,7 +9,9 @@ import { shipworksFrameHtml } from '../../views/stationFrames.js';
 // hulls (no modal). One reused preview mount (createShipPreviewMount) serves both hosts.
 // Field Hardware chrome (kit plates, keys, quiet type) is pinned from this module; Buy / Fit /
 // Make active stay the same verbs.
-// Emits ui:buyShip / ui:setActiveShip / ui:sellShip / ui:buyModule / ui:fitModule / ui:unfitModule.
+// Emits ui:buyShip / ui:setActiveShip / ui:sellShip / ui:buyModule / ui:fitModule / ui:unfitModule
+// plus the PQ-205.03 rack intents: ui:buyPayload / ui:fitPayload / ui:unfitPayload /
+// ui:sellPayload / ui:restockBombRack / ui:upgradeBombRack (the bombs system owns the writes).
 //
 // Engineering numbers come only from presenters/engineeringPreview.js → ships.getDerivedStats.
 // Never invent simplified fittings/geometry or raw module.mods key diffs as flight stats.
@@ -34,6 +36,7 @@ import { SHIPS } from '../../../data/ships.js';
 import { describeHullRole } from '../../../data/shipRoleLattice.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
+import { BOMB_DEFS, BOMB_IDS, BOMB_RACK } from '../../../data/bombs.js';
 import { TURRET_RING_OUTPUT, WEAPONS } from '../../../data/weapons.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
@@ -499,6 +502,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (buy) paintKey(buy, 'primary');
     const activate = sideEl.querySelector('[data-activate-ship]');
     if (activate) paintKey(activate, 'primary');
+    pinKeyrack(sideEl.querySelector('.sx-sw-rack__verbs'));
+    for (const btn of sideEl.querySelectorAll('[data-rack-restock], [data-rack-upgrade]')) paintKey(btn, 'small');
     syncKeys(sideEl);
   }
 
@@ -507,15 +512,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (chooserEl.querySelector('.sf-state')) { dressState(chooserEl); return; }
     for (const label of chooserEl.querySelectorAll('.sx-chooser__kicker, .k-caps, h3')) paintLegend(label, true);
     pinKeyrack(chooserEl.querySelector('.sx-chooser__head .k-words'));
-    for (const btn of chooserEl.querySelectorAll('[data-close], [data-unfit]')) {
-      paintKey(btn, btn.hasAttribute('data-unfit') ? 'legend' : 'small');
+    for (const btn of chooserEl.querySelectorAll('[data-close], [data-unfit], [data-payload-unfit]')) {
+      paintKey(btn, btn.hasAttribute('data-unfit') || btn.hasAttribute('data-payload-unfit') ? 'legend' : 'small');
     }
     for (const row of chooserEl.querySelectorAll('.sx-modrow')) {
       paintRow(row, row.classList.contains('is-eq'));
     }
-    for (const btn of chooserEl.querySelectorAll('[data-buyfit]')) {
-      paintKey(btn, btn.hasAttribute('data-fit-slot') ? 'primary' : 'small');
+    for (const btn of chooserEl.querySelectorAll('[data-buyfit], [data-payload-fit]')) {
+      paintKey(btn, btn.hasAttribute('data-fit-slot') || btn.hasAttribute('data-payload-fit') ? 'primary' : 'small');
     }
+    for (const btn of chooserEl.querySelectorAll('[data-payload-buy], [data-payload-sell]')) paintKey(btn, 'small');
     syncKeys(chooserEl);
   }
 
@@ -538,6 +544,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let ghostActive = false;
   let ghostSource = null;
   let selectedSlot = -1;
+  let payloadSocket = -1;  // rack socket index while the ordnance chooser is open
   let chooserAnchor = null;
   let projectionFrame = 0;
   let pinnedSideTop = -1;
@@ -2039,6 +2046,45 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const activeIndex = Number(ctx.state.player && ctx.state.player.activeShipIndex) || 0;
     const inspectedIndex = owned().indexOf(s);
     const availability = shipworksActionAvailability(ctx.state);
+    // PQ-205.03: the bomb rack rides the same circuit plate — sockets are clickable cells that
+    // open the ordnance chooser; restock and the third-socket weld are berth verbs gated by
+    // outfitting access exactly like the module verbs above.
+    const rack = bombRackModel();
+    const rackCells = rack.cells.map((cell, i) => {
+      const d = cell && BOMB_DEFS[cell.id];
+      const dry = !!d && !(cell.count > 0);
+      const label = d ? d.name : 'Empty socket';
+      const sub = d ? (dry ? `fitted · magazine dry — restock from the hangar` : `${cell.count}/${d.magazine} loaded`) : 'choose ordnance';
+      return `<li class="k-row sx-sw-rack__cell${dry || !d ? ' is-empty' : ''}" data-rack-socket="${i}" tabindex="0" role="button" aria-label="Rack socket ${i + 1}: ${escapeHtml(label)}">` +
+        `<span class="k-row__name">${escapeHtml(label)}<span class="k-row__sub">${escapeHtml(sub)}</span></span>` +
+        `<span class="k-row__num k-38">S${i + 1}</span></li>`;
+    }).join('');
+    const armedCells = rack.cells.filter((c) => c && c.id && c.count > 0).length;
+    const stockTotal = Object.values(rack.stock).reduce((sum, n) => sum + (Number(n) || 0), 0);
+    const anyMagazine = rack.cells.some((c) => c && BOMB_DEFS[c.id]);
+    const restockable = rack.cells.some((c) => c && BOMB_DEFS[c.id] && c.count < BOMB_DEFS[c.id].magazine && (rack.stock[c.id] || 0) > 0);
+    const rackVerbs = [];
+    if (anyMagazine) {
+      const restockLabel = !availability.outfitEnabled ? 'Dock to restock'
+        : restockable ? `Restock · ${fmt(BOMB_RACK.restockFeeCr)} cr` : 'Nothing to restock';
+      const restockHint = !availability.outfitEnabled ? availability.outfitLabel
+        : restockable ? 'Top up every fitted magazine from hangar stock' : 'Rack is full or the hangar has no matching ordnance';
+      rackVerbs.push(`<li><button type="button" class="k-word k-word--fine" data-rack-restock ${availability.outfitEnabled && restockable ? '' : `disabled aria-label="${escapeHtml(restockHint)}"`}>${escapeHtml(restockLabel)}</button></li>`);
+    }
+    if (rack.sockets < BOMB_RACK.socketsMax) {
+      const afford = rack.credits >= BOMB_RACK.socketUpgradeCr;
+      const upgradeLabel = !availability.outfitEnabled ? 'Dock to extend'
+        : afford ? `Third socket · ${fmt(BOMB_RACK.socketUpgradeCr)} cr` : `Third socket · need ${fmt(BOMB_RACK.socketUpgradeCr)} cr`;
+      const upgradeHint = !availability.outfitEnabled ? availability.outfitLabel
+        : afford ? 'Weld a third bomb-rack socket into the bay' : 'Not enough credits';
+      rackVerbs.push(`<li><button type="button" class="k-word k-word--fine" data-rack-upgrade ${availability.outfitEnabled && afford ? '' : `disabled aria-label="${escapeHtml(upgradeHint)}"`}>${escapeHtml(upgradeLabel)}</button></li>`);
+    }
+    const rackBlock =
+      `<div class="sx-sw-rack">` +
+        `<p class="k-caps sx-sw-band__label">Bomb rack <span class="k-38">${armedCells}/${rack.sockets} armed · ${stockTotal} stowed</span></p>` +
+        `<ul class="k-rows sx-sw-rack__cells">${rackCells}</ul>` +
+        (rackVerbs.length ? `<ul class="k-words k-words--row sx-sw-rack__verbs">${rackVerbs.join('')}</ul>` : '') +
+      `</div>`;
     // MAKE ACTIVE is a berth verb — it never renders on the flight host (SCREENS_B §1.2). While
     // docked it stays gated by hull service availability with the reason printed on the verb.
     const activeControl = host === 'flight' ? '' : inspectedIndex !== activeIndex
@@ -2062,8 +2108,31 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         }).join('')}</ul>` +
         `<p class="k-sentence sx-sw-circuit__instruction">Choose a system on the hull to preview compatible hardware.</p>` +
         (activeControl ? `<ul class="k-words k-words--row sx-sw-circuit__acts">${activeControl}</ul>` : '') +
+        rackBlock +
       `</div>`;
     dressSide();
+  }
+
+  // The rack lives on the bombs bag, not the hull record — the bay is one per player, shared
+  // across owned hulls (same ownership lane as selectedId before it). Reads are defensive:
+  // a pre-rack bag reads as a two-socket starter so the plate always renders honest.
+  function bombRackModel() {
+    const rt = (ctx.state && ctx.state.bombs) || {};
+    const rack = rt.rack && typeof rt.rack === 'object' ? rt.rack : null;
+    const sockets = Math.max(1, Math.floor(Number(rack && rack.sockets)) || BOMB_RACK.socketsBase);
+    const cells = [];
+    const source = rack && Array.isArray(rack.cells) ? rack.cells : [];
+    for (let i = 0; i < sockets; i++) {
+      const c = source[i];
+      cells.push(c && BOMB_DEFS[c.id] ? { id: c.id, count: Math.max(0, Math.floor(Number(c.count) || 0)) } : null);
+    }
+    const stock = {};
+    if (rt.stock && typeof rt.stock === 'object') {
+      for (const [id, n] of Object.entries(rt.stock)) {
+        if (BOMB_DEFS[id] && Number.isFinite(Number(n)) && n > 0) stock[id] = Math.floor(Number(n));
+      }
+    }
+    return { sockets, cells, stock, credits: Math.max(0, Number(ctx.state.player && ctx.state.player.credits) || 0) };
   }
 
   function specRow(k, v) { return `<li class="k-row k-row--static sx-kv"><span class="k-row__name k-62">${k}</span><span class="k-row__num">${v}</span></li>`; }
@@ -2320,6 +2389,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const returnFocus = chooserAnchor;
     restoreCurrentPreview();
     selectedSlot = -1;
+    payloadSocket = -1;
     chooserAnchor = null;
     slotfieldEl.classList.remove('is-focusing');
     slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => node.classList.remove('is-selected'));
@@ -2332,6 +2402,88 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       chooserCloseTimer = 0;
       if (returnFocus && returnFocus.isConnected && typeof returnFocus.focus === 'function') returnFocus.focus({ preventScroll: true });
     }, 200);
+  }
+
+  // ---- bomb rack chooser (PQ-205.03) -----------------------------------------------------
+  // Same hang-column grammar as the module chooser: a rack socket row opens the ordnance
+  // list in place of the hulls; Back returns them. Every verb is an intent — the bombs
+  // system owns the rack and the economy owner debits the credits; this screen only asks.
+  function openPayloadChooser(socketIndex, anchorEl) {
+    const rack = bombRackModel();
+    if (!Number.isInteger(socketIndex) || socketIndex < 0 || socketIndex >= rack.sockets) return;
+    emitUiCue(UI_SWITCH_DETENT_CUE);
+    payloadSocket = socketIndex;
+    selectedSlot = -1;
+    chooserAnchor = anchorEl || sideEl.querySelector(`[data-rack-socket="${socketIndex}"]`);
+    renderPayloadChooser();
+    chooserEl.hidden = false;
+    el.classList.add('is-choosing');
+    requestAnimationFrame(() => {
+      chooserEl.classList.add('is-open');
+      const first = chooserEl.querySelector('button:not([disabled])');
+      if (first && typeof first.focus === 'function') first.focus({ preventScroll: true });
+    });
+  }
+
+  function renderPayloadChooser() {
+    if (payloadSocket < 0) return;
+    const rack = bombRackModel();
+    const i = payloadSocket;
+    const cell = rack.cells[i];
+    const cellDef = cell && BOMB_DEFS[cell.id];
+    const availability = shipworksActionAvailability(ctx.state);
+    const outfit = availability.outfitEnabled;
+    const byTierThenPrice = (a, b) => ((a.unlockTier || 0) - (b.unlockTier || 0)) || (a.price - b.price);
+    const catalogue = BOMB_IDS.map((id) => BOMB_DEFS[id]).sort(byTierThenPrice);
+    const rows = catalogue.map((d) => {
+      const stock = rack.stock[d.id] || 0;
+      const inSocket = cellDef && cellDef.id === d.id ? cell.count : 0;
+      const elsewhereIndex = rack.cells.findIndex((c, k) => k !== i && c && c.id === d.id);
+      const afford = rack.credits >= d.price;
+      const sellValue = Math.max(1, Math.floor(d.price * BOMB_RACK.sellbackFraction));
+      const verbs = [];
+      // Load is the primary verb when the hangar actually holds this payload.
+      if (stock > 0) {
+        const move = inSocket ? Math.min(d.magazine - inSocket, stock) : Math.min(d.magazine, stock);
+        if (move > 0) {
+          const word = inSocket ? 'Top up' : elsewhereIndex >= 0 ? 'Move here' : 'Load';
+          verbs.push(`<button type="button" class="k-word k-word--fine k-word--primary sx-modrow__buy" data-payload-fit="${escapeHtml(d.id)}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${word} <small class="k-38">${move} u</small></button>`);
+        }
+      }
+      const buyLabel = !outfit ? 'Dock to buy' : afford ? 'Buy' : `Need ${fmt(d.price)} cr`;
+      const buyHint = !outfit ? availability.outfitLabel : afford ? `Buy one ${d.name} into hangar stock` : 'Not enough credits';
+      verbs.push(`<button type="button" class="k-word k-word--fine sx-modrow__buy" data-payload-buy="${escapeHtml(d.id)}" ${outfit && afford ? '' : `disabled aria-label="${escapeHtml(buyHint)}"`}>${escapeHtml(buyLabel)} <small class="k-38">${fmt(d.price)} cr</small></button>`);
+      if (stock > 0) {
+        verbs.push(`<button type="button" class="k-word k-word--fine sx-modrow__buy" data-payload-sell="${escapeHtml(d.id)}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>Sell <small class="k-38">${fmt(sellValue)} cr</small></button>`);
+      }
+      const seat = inSocket ? `Socket ${i + 1} holds ${inSocket}/${d.magazine}`
+        : elsewhereIndex >= 0 ? `Fitted in socket ${elsewhereIndex + 1}`
+        : stock > 0 ? `${stock} in the hangar` : 'None in the hangar';
+      return (
+        `<li class="k-row sx-modrow${inSocket ? ' is-eq' : ''}" data-payload-row="${escapeHtml(d.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__role">Ordnance · T${d.unlockTier || 0} · magazine ${d.magazine}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(d.sentence)} Fuze ${d.fuzeS}s · cooldown ${d.cooldownS}s.</span>` +
+            `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(seat)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act">${verbs.join('')}</span>` +
+        `</li>`
+      );
+    }).join('');
+    const unfitRow = cellDef
+      ? `<ul class="k-words k-words--row"><li><button type="button" class="k-word k-word--emph sx-chooser__unfit" data-payload-unfit="${i}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${outfit ? `Unload ${escapeHtml(cellDef.name)}` : 'Dock to unload'}</button></li></ul>`
+      : '';
+    chooserEl.innerHTML =
+      `<div class="sx-chooser__panel" role="region" aria-label="Rack socket ${i + 1} ordnance">` +
+        `<header class="sx-chooser__head">` +
+          `<ul class="k-words k-words--row"><li><button type="button" class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">Back</button></li></ul>` +
+          `<p class="k-caps sx-chooser__kicker">Bomb rack · socket ${i + 1} of ${rack.sockets}</p>` +
+          `<h3 class="k-t-sub">Ordnance <span class="k-38">${catalogue.length}</span></h3>` +
+        `</header>` +
+        (outfit ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
+        unfitRow +
+        `<ul class="k-rows sx-chooser__list">${rows || '<li class="k-sentence sx-muted">No ordnance catalogued.</li>'}</ul>` +
+      `</div>`;
+    dressChooser();
   }
 
   function applyModuleGhost(moduleId, slotIndex) {
@@ -2575,6 +2727,26 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   });
 
   sideEl.addEventListener('click', (ev) => {
+    const rackCell = ev.target.closest('[data-rack-socket]');
+    if (rackCell) { openPayloadChooser(Number(rackCell.getAttribute('data-rack-socket')), rackCell); return; }
+    const rackRestock = ev.target.closest('[data-rack-restock]');
+    if (rackRestock) {
+      if (!rackRestock.disabled && ctx.bus) {
+        ctx.bus.emit('ui:restockBombRack', {});
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+        setTimeout(refresh, 70);
+      }
+      return;
+    }
+    const rackUpgrade = ev.target.closest('[data-rack-upgrade]');
+    if (rackUpgrade) {
+      if (!rackUpgrade.disabled && ctx.bus) {
+        ctx.bus.emit('ui:upgradeBombRack', {});
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+        setTimeout(refresh, 70);
+      }
+      return;
+    }
     const slot = ev.target.closest('[data-slot]');
     if (slot) { openChooser(Number(slot.getAttribute('data-slot'))); return; }
     const buy = ev.target.closest('[data-buyship]');
@@ -2589,6 +2761,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ctx.bus.emit('audio:cue', { id: 'ui_accept' });
       setTimeout(refresh, 60);
     }
+  });
+
+  sideEl.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ' && ev.key !== 'Spacebar') return;
+    const rackCell = ev.target.closest('[data-rack-socket]');
+    if (!rackCell) return;
+    ev.preventDefault();
+    openPayloadChooser(Number(rackCell.getAttribute('data-rack-socket')), rackCell);
   });
 
   statsEl.addEventListener('click', async (ev) => {
@@ -2755,6 +2935,49 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let buyConfirmBusy = false;
   chooserEl.addEventListener('click', async (ev) => {
     if (ev.target.closest('[data-close]')) { closeChooser(); return; }
+    // Ordnance verbs (PQ-205.03): every click is an intent to the bombs system — the rack
+    // owner applies it, the economy owner moves the credits. The chooser stays open and
+    // re-reads state so stock counts and socket contents repaint in place.
+    const payloadBuy = ev.target.closest('[data-payload-buy]');
+    if (payloadBuy) {
+      if (!payloadBuy.disabled && ctx.bus) {
+        ctx.bus.emit('ui:buyPayload', { payloadId: payloadBuy.getAttribute('data-payload-buy'), units: 1 });
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+        renderPayloadChooser();
+        renderSide();
+      }
+      return;
+    }
+    const payloadFit = ev.target.closest('[data-payload-fit]');
+    if (payloadFit) {
+      if (!payloadFit.disabled && ctx.bus) {
+        ctx.bus.emit('ui:fitPayload', { socketIndex: payloadSocket, payloadId: payloadFit.getAttribute('data-payload-fit') });
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+        renderPayloadChooser();
+        renderSide();
+      }
+      return;
+    }
+    const payloadSell = ev.target.closest('[data-payload-sell]');
+    if (payloadSell) {
+      if (!payloadSell.disabled && ctx.bus) {
+        ctx.bus.emit('ui:sellPayload', { payloadId: payloadSell.getAttribute('data-payload-sell'), units: 1 });
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+        renderPayloadChooser();
+        renderSide();
+      }
+      return;
+    }
+    const payloadUnfit = ev.target.closest('[data-payload-unfit]');
+    if (payloadUnfit) {
+      if (!payloadUnfit.disabled && ctx.bus) {
+        ctx.bus.emit('ui:unfitPayload', { socketIndex: Number(payloadUnfit.getAttribute('data-payload-unfit')) });
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+        renderPayloadChooser();
+        renderSide();
+      }
+      return;
+    }
     const bf = ev.target.closest('[data-buyfit]');
     if (bf && !bf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
       if (buyConfirmBusy || isConfirmOpen()) return;

@@ -230,9 +230,15 @@ export function readRailModel(state, nowS) {
   };
 }
 
-/** Derived only: this HUD never owns ammo, readiness, selection or countdown clocks. */
+/** Derived only: this HUD never owns ammo, readiness, selection or countdown clocks.
+ * PQ-205.03: the socket shows the LOADED rack only. A bag with no `rack` (hand-built
+ * fixtures that predate the fitted rack) reads exactly as it did before. */
 export function readBombBayModel(state, nowS) {
-  const rt = state.bombs || {}, def = bombDef(rt.selectedId);
+  const rt = state.bombs || {};
+  const cells = rt.rack && Array.isArray(rt.rack.cells) ? rt.rack.cells : null;
+  const loaded = cells ? cells.filter((c) => c && c.count > 0) : null;
+  const cell = loaded ? loaded.find((c) => c.id === rt.selectedId) || loaded[0] : null;
+  const def = cells ? (cell ? bombDef(cell.id) : null) : bombDef(rt.selectedId);
   let deployed = 0, armedCount = 0, fields = 0, worldCount = 0;
   const index = state.entityIndex;
   const source = index?.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.bombs)
@@ -245,16 +251,26 @@ export function readBombBayModel(state, nowS) {
     if (e.data.phase === 'field') fields++;
     if (e.data.phase === 'drift' && nowS >= e.data.armedAt) armedCount++;
   }
-  const until = Math.max(rt.cooldownUntil || 0, rt.cooldowns?.[def.id] || 0);
+  const until = def ? Math.max(rt.cooldownUntil || 0, rt.cooldowns?.[def.id] || 0) : 0;
   const full = deployed >= BOMB_DRIFT.maxActive || worldCount >= BOMB_DRIFT.maxWorldActive;
   const owner = state.entities?.get?.(state.playerId);
   const locked = !owner?.alive || owner.flags?.docked || state.mode !== 'flight';
+  if (cells && !def) {
+    return {
+      name: 'Bay', glyph: 'weapon',
+      state: locked ? 'locked' : 'empty',
+      cooldownMs: 0, deployed, armedCount, fields,
+      badge: 'RACK EMPTY',
+      description: `Bomb rack empty — re-arm at a station shipworks. ${armedCount} armed; ${fields} active fields.`,
+    };
+  }
   return {
     name: def.shortName, glyph: def.field?.kind === 'singularity' ? 'well' : 'weapon',
     state: locked || full ? 'locked' : until > nowS ? 'cooling' : 'ready',
     cooldownMs: Math.max(0, until - nowS) * 1000, deployed, armedCount, fields,
     badge: `BAY ${deployed}/${BOMB_DRIFT.maxActive}`,
-    description: `${def.name}. ${def.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
+    // Rack honesty: the loaded magazine count rides the description, never the name.
+    description: `${def.name}${cell ? ` ×${cell.count} loaded` : ''}. ${def.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
   };
 }
 

@@ -16,9 +16,11 @@ Current save version: `14`
 - `world`
 - `entities`
 - `combat`
+- `bombs`
 - `stunts`
 - `fields`
 - `missions`
+- `capitalBoss`
 - `careerOrigins`
 - `careerLadders`
 - `scenario`
@@ -117,6 +119,8 @@ Current save version: `14`
 | `$.automation.outposts` | array | length 0 |
 | `$.automation.traders` | array | length 0 |
 | `$.bandRadio` | object | {} |
+| `$.bombs` | object | {} |
+| `$.capitalBoss` | null | null |
 | `$.careerLadders` | object | {} |
 | `$.careerOrigins` | object | {} |
 | `$.cargo` | object | {} |

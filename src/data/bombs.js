@@ -45,6 +45,11 @@ export const BOMB_DRIFT = Object.freeze({
 // the damage packet through the one damage router. `field` payloads persist as a volume instead
 // of resolving instantly — see src/systems/bombs.js `_detonate`/`_tickField`.
 //
+// Economy fields (PQ-205.03) — this file is the single data source for ordnance pricing:
+//   price        — credits per unit in station outfitting (bought into hangar stock).
+//   magazine     — units one fitted rack socket holds; fitting loads up to this from stock.
+//   rackCategory — fit family; all eight are 'ordnance' (one bay socket type) today.
+//   unlockTier   — catalogue tier for the outfitting sort; 0 means unrestricted sale.
 // Cooldown scale: bay-rhythm numbers (1.2-3.5 s). The verb's fantasy is laying a TRAIL during a
 // chase — drop at speed, veer off, let them cook behind you — so a drop must cost meaningfully
 // less than a fuze (6 s). On short-fuze payloads the fuze bounds concurrency before maxActive
@@ -57,6 +62,10 @@ export const BOMB_DEFS = Object.freeze({
     shortName: 'Frag',
     name: 'Frag cassette',
     sentence: 'A drifting frag cassette: proximity or fuze, then a clean killing blast.',
+    price: 140,
+    magazine: 4,
+    rackCategory: 'ordnance',
+    unlockTier: 1,
     cooldownS: 1.2,
     fuzeS: 6,
     triggerRadius: 44,
@@ -78,6 +87,10 @@ export const BOMB_DEFS = Object.freeze({
     shortName: 'Shove',
     name: 'Concussion drum',
     sentence: 'A pure shove: hurls hulls and debris; the collisions can still hurt.',
+    price: 110,
+    magazine: 4,
+    rackCategory: 'ordnance',
+    unlockTier: 1,
     cooldownS: 1.6,
     fuzeS: 5,
     triggerRadius: 52,
@@ -100,6 +113,10 @@ export const BOMB_DEFS = Object.freeze({
     shortName: 'Pull',
     name: 'Neutron slug',
     sentence: 'A moving, decaying gravity source: drags a room into a clump and crushes it.',
+    price: 380,
+    magazine: 2,
+    rackCategory: 'ordnance',
+    unlockTier: 3,
     cooldownS: 3.5,
     fuzeS: 4.5,
     triggerRadius: 40,
@@ -137,6 +154,10 @@ export const BOMB_DEFS = Object.freeze({
     shortName: 'Tar',
     name: 'Tarburst bladder',
     sentence: 'Bursts into clinging tar: thrust dies, hull corrodes.',
+    price: 180,
+    magazine: 3,
+    rackCategory: 'ordnance',
+    unlockTier: 2,
     cooldownS: 2.5,
     fuzeS: 6,
     triggerRadius: 40,
@@ -165,6 +186,10 @@ export const BOMB_DEFS = Object.freeze({
     shortName: 'EMP',
     name: 'Static bomb',
     sentence: 'A pure ion pulse through the shields: subsystems dark, capacitors flat.',
+    price: 220,
+    magazine: 3,
+    rackCategory: 'ordnance',
+    unlockTier: 2,
     cooldownS: 1.5,
     fuzeS: 5,
     triggerRadius: 46,
@@ -187,6 +212,10 @@ export const BOMB_DEFS = Object.freeze({
     shortName: 'Burn',
     name: 'Thermite starter',
     sentence: 'Splashes burning thermite: everything in the splash keeps burning.',
+    price: 160,
+    magazine: 4,
+    rackCategory: 'ordnance',
+    unlockTier: 1,
     cooldownS: 1.5,
     fuzeS: 6,
     triggerRadius: 44,
@@ -207,6 +236,10 @@ export const BOMB_DEFS = Object.freeze({
     shortName: 'Spin',
     name: 'Havoc pod',
     sentence: 'A wild impulse and a scramble: drives tumble, verbs lock out.',
+    price: 260,
+    magazine: 3,
+    rackCategory: 'ordnance',
+    unlockTier: 3,
     cooldownS: 3.0,
     fuzeS: 5,
     triggerRadius: 46,
@@ -228,6 +261,10 @@ export const BOMB_DEFS = Object.freeze({
     shortName: 'Mass',
     name: 'Ballast slug',
     sentence: 'Welds a hull to its own inertia: six times the mass, half the ship.',
+    price: 240,
+    magazine: 3,
+    rackCategory: 'ordnance',
+    unlockTier: 2,
     cooldownS: 2.0,
     fuzeS: 6,
     triggerRadius: 44,
@@ -242,7 +279,31 @@ export const BOMB_DEFS = Object.freeze({
 });
 
 // Cycle order (the bay's Comma-key order). Frozen array; index arithmetic in the system.
+// PQ-205.03: this is the CATALOGUE order (shop listing), not the in-flight cycle order —
+// `cycleBomb` walks only the sockets actually fitted on `state.bombs.rack`.
 export const BOMB_IDS = Object.freeze(Object.keys(BOMB_DEFS));
+
+// The fitted-rack economy (PQ-205.03). The ship's bomb bay is a socket rack, not eight
+// mandatory consumables: payloads are bought into hangar stock, loaded into rack sockets
+// at a station outfitting berth (a socket holds up to the payload's `magazine`), and only
+// loaded sockets are droppable/cyclable in flight. All numbers here are economy data —
+// the economy owner still performs every credit write through its transaction seam.
+export const BOMB_RACK = Object.freeze({
+  // Socket count for a fresh hull; a station yard weld extends it once to socketsMax.
+  socketsBase: 2,
+  socketsMax: 3,
+  // Yard service prices: the socket weld is a one-time upgrade; the restock fee is the
+  // flat per-visit handling charge for reloading fitted magazines from hangar stock.
+  socketUpgradeCr: 4500,
+  restockFeeCr: 40,
+  // Hangar resale pays this fraction of the catalogue price per unit.
+  sellbackFraction: 0.5,
+});
+
+// The starter fit for a new hull (and the additive default for pre-rack saves): the two
+// cheapest, most legible verbs — the kill verb (frag) and the shove verb (concussion) —
+// one full magazine each, so a fresh save leaves the yard armed but not solved.
+export const BOMB_STARTER_KIT = Object.freeze(['bomb_frag', 'bomb_concussion']);
 
 export function bombDef(id) {
   return BOMB_DEFS[id] || BOMB_DEFS.bomb_frag;
