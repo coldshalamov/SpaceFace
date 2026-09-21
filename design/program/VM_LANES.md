@@ -33,7 +33,7 @@ mutations still go in [`NOW.md`](./NOW.md). Product status lives in the queue an
 
 | Task | Thread | Host (cloud-agent id or machine) | Branch | State | Exact focus | Last push | Next terminal action |
 |---|---|---|---|---|---|---|---|
-| PQ-050.01 Hornet chase C4 | code-work-coordinator | `bc-8188ad27-0dbf-5951-be0b-f48141e18378` | `cursor/pq050-01-hornet-chase-c4-8378` | RESULT: DONE — v16 live, Hitch-plus still REVISE | Close named C3 chase gaps with geometry+Principled (no megatex); Hitch/Kestrel frozen | 2026-09-21 v16 | remaining Hitch-plus: panel language, lettering, hull-wide dirt, hardware density |
+| PQ-050.01 Hornet chase C5 | code-work-coordinator | `bc-8188ad27-0dbf-5951-be0b-f48141e18378` | `cursor/pq050-01-hornet-chase-c5-8378` | CLAIMED/WORKING | Close four Hitch-plus chase fails: panel language, lettering stencil, hull-wide dirt, hardware density; no megatex; Hitch/Kestrel frozen | 2026-09-21 claim | shoot Hornet v16 vs Hitch chase trio |
 
 ## Pointers
 
