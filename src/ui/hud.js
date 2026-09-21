@@ -871,7 +871,7 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
   return { x, y, width: chipWidth, height: chipHeight, onScreen, directionDeg };
 }
 
-function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+export function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
 function setScaleX(el, value, opts = null) {
   if (!el) return;
   const min = opts && Number.isFinite(opts.min) ? opts.min : 0;
@@ -905,13 +905,22 @@ function setOpacity(el, value) {
   el._sfOpacity = next;
   el.style.opacity = next;
 }
-function setAttr(el, name, value) {
+export function setAttr(el, name, value) {
   if (!el) return;
   const text = String(value);
   const cache = el._sfAttr || (el._sfAttr = Object.create(null));
   if (cache[name] === text) return;
   cache[name] = text;
   el.setAttribute(name, text);
+}
+// removeAttribute is not part of setAttr's cache: poison the slot so the next setAttr writes
+// even when the text matches the pre-clear value, and skip the DOM call once cleared.
+export function clearAttr(el, name) {
+  if (!el) return;
+  const cache = el._sfAttr || (el._sfAttr = Object.create(null));
+  const needsClear = cache[name] !== undefined || el.hasAttribute(name);
+  cache[name] = undefined;
+  if (needsClear) el.removeAttribute(name);
 }
 function setDataEdge(el, edge) {
   if (!el) return;
@@ -928,7 +937,7 @@ function setTitle(el, title) {
   el._sfTitle = next;
   el.title = next;
 }
-function setHidden(el, hidden) {
+export function setHidden(el, hidden) {
   if (!el) return;
   const next = !!hidden;
   if (el._sfHidden === next) return;
@@ -1721,8 +1730,8 @@ export function createHud(ctx, alerts) {
       entityId: payload.entityId,
       until: (state.simTime || 0) + 7,
     };
-    firstUse.textContent = payload.text;
-    firstUse.hidden = false;
+    setText(firstUse, payload.text);
+    setHidden(firstUse, false);
   });
   // The ordinary navigation marker paints at the retained overlay cadence for as long as a live
   // waypoint exists. Keep its projection and presenter records with this HUD instance so the hot
@@ -1764,8 +1773,15 @@ export function createHud(ctx, alerts) {
   const lockLabel = lockRing.querySelector('.sf-lockring__label');
   const lockBrackets = lockRing.querySelector('.sf-lockring__brackets');
   let _wasLocked = false;   // rising-edge tracker for the lock-acquired audio cue
+  // Clear-on-transition trackers: lock-ring data-stage / latch class are removed by DOM calls
+  // only on the frames where the state actually leaves them, not every idle frame.
+  let _lockStageApplied = false;
+  let _latchApplied = false;
   lockRing.addEventListener('animationend', () => {
     lockRing.classList.remove('sf-lockring--latch');
+    // The latch flag tracks both elements; the ring just cleared itself, so the flag now
+    // reflects only the diamond's retained class.
+    _latchApplied = !!(lockDiamond && lockDiamond.classList.contains('sf-lockdiamond--locked'));
   });
 
   // G-LOC peripheral vignette (tunnel vision under sustained high-G turns)
@@ -1842,7 +1858,10 @@ export function createHud(ctx, alerts) {
   const progradeScreenB = { x: 0, y: 0, onScreen: false };
   const progradeTransformOptions = { offset: 'translate(-4px,-1px)', rotate: 0 };
   const weaponHeatScratch = { frac: 0, pct: 0, overheated: false, armed: false };
-  const settleMotion = { reducedMotion: false, shieldRegenRate: 0, inertia: 0 };
+  // `motionReduce` is the key prefersReducedMotion actually reads: passing the resolved flag
+  // means the settle springs never reach its classList/matchMedia fallback — one fresh
+  // MediaQueryList per gauge per frame was the cost.
+  const settleMotion = { reducedMotion: false, motionReduce: false, shieldRegenRate: 0, inertia: 0 };
   const gaugeScaleLimits = { min: -0.04, max: 1.08 };
   const defaultFuel = { current: 100, max: 100 };
   const targetPanelUpdateOptions = { slow: false, weakPoint: null };
@@ -3613,6 +3632,7 @@ export function createHud(ctx, alerts) {
       const stage = isLocked ? 'locked' : (lockProgress < 0.45 ? 'acquiring' : 'tracking');
       setAttr(lockRing, 'data-stage', stage);
       if (lockDiamond) setAttr(lockDiamond, 'data-stage', stage);
+      _lockStageApplied = true;
       if (isLocked) {
         setText(lockLabel, 'LOCKED');
         if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1)');
@@ -3637,8 +3657,11 @@ export function createHud(ctx, alerts) {
     } else {
       setClass(lockRing, 'active', false);
       setClass(lockRing, 'locked', false);
-      lockRing.removeAttribute('data-stage');
-      if (lockDiamond) lockDiamond.removeAttribute('data-stage');
+      if (_lockStageApplied) {
+        _lockStageApplied = false;
+        clearAttr(lockRing, 'data-stage');
+        if (lockDiamond) clearAttr(lockDiamond, 'data-stage');
+      }
       if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1.4)');
       const innerRing = lockRing.firstElementChild;
       if (innerRing) setStyle(innerRing, 'transform', 'none');
@@ -3655,11 +3678,14 @@ export function createHud(ctx, alerts) {
           void lockDiamond.offsetWidth;
           lockDiamond.classList.add('sf-lockdiamond--locked');
         }
-      } else {
+        _latchApplied = true;
+      } else if (_latchApplied) {
+        _latchApplied = false;
         lockRing.classList.remove('sf-lockring--latch');
         if (lockDiamond) lockDiamond.classList.remove('sf-lockdiamond--locked');
       }
-    } else if (!isLocked) {
+    } else if (!isLocked && _latchApplied) {
+      _latchApplied = false;
       lockRing.classList.remove('sf-lockring--latch');
       if (lockDiamond) lockDiamond.classList.remove('sf-lockdiamond--locked');
     }
@@ -4568,6 +4594,7 @@ export function createHud(ctx, alerts) {
       const wpnHeat = weaponHeatSummary(p.data && p.data.weapons, weaponHeatScratch);
       const heatFrac = wpnHeat.frac;
       settleMotion.reducedMotion = getMotionReduced();
+      settleMotion.motionReduce = isMotionReduced;
       settleMotion.shieldRegenRate = p.shieldRegenRate;
       settleMotion.inertia = p.flightModel && p.flightModel.inertia;
       // A gauge never boots empty: the settle springs start at 0 and used to climb for seconds
@@ -5032,16 +5059,16 @@ export function createHud(ctx, alerts) {
 
   function updateFirstUseHint(player) {
     if (!firstUseHint) {
-      if (!firstUse.hidden) firstUse.hidden = true;
+      setHidden(firstUse, true);
       return;
     }
     if ((state.simTime || 0) > firstUseHint.until) {
       firstUseHint = null;
-      firstUse.hidden = true;
+      setHidden(firstUse, true);
       return;
     }
-    firstUse.hidden = false;
-    firstUse.textContent = firstUseHint.text;
+    setHidden(firstUse, false);
+    setText(firstUse, firstUseHint.text);
     let pos = player && player.pos;
     if (firstUseHint.entityId != null && state.entities && state.entities.get) {
       const ent = state.entities.get(firstUseHint.entityId);
@@ -5050,14 +5077,14 @@ export function createHud(ctx, alerts) {
       pos = state.nav.waypoint.pos;
     }
     if (!pos || !helpers.worldToScreen) {
-      firstUse.hidden = firstUseHint.kind !== 'player';
+      setHidden(firstUse, firstUseHint.kind !== 'player');
       return;
     }
     firstUseProjectionWorld.x = pos.x;
     firstUseProjectionWorld.z = pos.z;
     const proj = helpers.worldToScreen(firstUseProjectionWorld, firstUseProjectionScreen);
     if (!proj) {
-      firstUse.hidden = firstUseHint.kind !== 'player';
+      setHidden(firstUse, firstUseHint.kind !== 'player');
       return;
     }
     const x = proj.onScreen ? proj.x : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1280) - 24, proj.x));
