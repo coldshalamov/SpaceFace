@@ -1,7 +1,7 @@
 {
   "ok": true,
   "asset": "ship_drifter",
-  "revision": "chase_form_v10",
+  "revision": "chase_form_v11",
   "lod": 0,
   "source": "/workspace/assets/ships/parts/wholeships/drifter_production_v1.glb",
   "output": "/workspace/assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod0.glb",
@@ -24,37 +24,34 @@
   },
   "size": [
     16.77,
-    6.96,
-    3.126
+    7.58,
+    2.853
   ],
   "boundsMin": [
     -8.82,
-    -3.48,
+    -3.79,
     -1.248
   ],
   "boundsMax": [
     7.95,
-    3.48,
-    1.879
+    3.79,
+    1.605
   ],
-  "triangles": 18244,
-  "hullTriangles": 9862,
+  "triangles": 17416,
+  "hullTriangles": 11274,
   "objects": [
     "COLLISION_HULL",
     "LOD0_Beacon_Aft",
     "LOD0_Beacon_Fore",
     "LOD0_Bell_Port",
     "LOD0_Bell_Stbd",
-    "LOD0_CageBrow",
-    "LOD0_Clamp_Aft_Port",
+    "LOD0_Collar_Port",
     "LOD0_CoolFin_Port_0",
-    "LOD0_CrateLid_0",
-    "LOD0_DirtGreen",
+    "LOD0_DirtNacelle_Port",
     "LOD0_Flap_Port",
     "LOD0_Flap_Stbd",
     "LOD0_Glass",
-    "LOD0_Glass_Port",
-    "LOD0_Glass_Stbd",
+    "LOD0_GunAft_Port",
     "LOD0_HeatBand_Port",
     "LOD0_Hull",
     "LOD0_Nacelle_Port",
@@ -62,5 +59,5 @@
     "LOD0_Winglet_Port",
     "LOD0_Winglet_Stbd"
   ],
-  "bytes": 2434004
+  "bytes": 2305172
 }
