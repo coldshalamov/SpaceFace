@@ -280,7 +280,7 @@ const BLOOM_PYRAMID_NORM = 1.5;
  * their first real HDR frame still has to synchronously compile on the driver.
  */
 export async function compileScenePipelinesForRenderTarget(
-  renderer, renderTarget, subject, camera, lightingScene = subject,
+  renderer, renderTarget, subject, camera, lightingScene = subject, options = {},
 ) {
   if (!renderer || typeof renderer.compileAsync !== 'function') {
     return { skipped: true, reason: 'compileAsync unavailable' };
@@ -291,7 +291,7 @@ export async function compileScenePipelinesForRenderTarget(
   try {
     renderer.setRenderTarget(renderTarget || null);
     const admission = await compilePipelinesContextSafe(
-      renderer, subject, camera, lightingScene || subject,
+      renderer, subject, camera, lightingScene || subject, options,
     );
     if (admission && admission.contextLost) {
       return {
@@ -502,7 +502,15 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
   return batch.handle;
 }
 
-function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
+/** Diagnostics: whether a pooled readiness batch is currently open to joiners. */
+export function scenePipelineReadinessBatchOpen() {
+  return !!(pipelineReadinessBatch && pipelineReadinessBatch.accepting);
+}
+
+function compilePipelinesContextSafe(renderer, subject, camera, lightingScene, options = {}) {
+  // Callers forward a nullable compileOptions slot: an explicit null slips past the `= {}`
+  // default and would throw on the skipSharedBatch read below, rejecting every admission.
+  if (options == null) options = {};
   const canvas = renderer && renderer.domElement;
   const canOwnReadiness = typeof renderer.compile === 'function'
     && renderer.properties && typeof renderer.properties.get === 'function'
@@ -570,12 +578,23 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
       return;
     }
 
-    if (pipelineReadinessBatch && pipelineReadinessBatch.accepting
+    // Deadline compiles (e.g. a mesh already on the live glass) cannot pool their wait into
+    // whoever's batch happens to be open — that owner's drain schedule is not this caller's.
+    // skipSharedBatch keeps this wait on its own poll so it settles on link completion alone.
+    if (options.skipSharedBatch !== true
+      && pipelineReadinessBatch && pipelineReadinessBatch.accepting
       && pipelineReadinessBatch.handle.join(gl, programs, finish)) {
       return;
     }
 
     const generation = contextLossGeneration(gl);
+    // The standalone poll must not wait forever: a link that never reports ready
+    // would hold the compile tail (and every admission serialized behind it)
+    // indefinitely. Past the bound the wait resolves — the driver still finishes
+    // the link on first use, so the worst case is one slow draw, not a dead lane.
+    const readinessDeadline = (typeof performance !== 'undefined' && performance
+        && typeof performance.now === 'function' ? performance.now() : Date.now())
+      + (Number.isFinite(options.readinessTimeoutMs) ? options.readinessTimeoutMs : 20000);
     const checkProgramsReady = () => {
       if (settled) return;
       try {
@@ -597,6 +616,12 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
         }
         if (programs.size === 0) {
           finish({ contextLost: false });
+          return;
+        }
+        if ((typeof performance !== 'undefined' && performance
+            && typeof performance.now === 'function' ? performance.now() : Date.now())
+            >= readinessDeadline) {
+          finish({ contextLost: false, readinessTimedOut: true });
           return;
         }
         timer = setTimeout(checkProgramsReady, 10);
@@ -1490,9 +1515,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     releaseBloomSceneSamplers();
   }
 
-  function compileScenePipelines(subject, camera, lightingScene = subject) {
+  function compileScenePipelines(subject, camera, lightingScene = subject, options = {}) {
     return compileScenePipelinesForRenderTarget(
-      renderer, rtScene, subject, camera, lightingScene,
+      renderer, rtScene, subject, camera, lightingScene, options,
     );
   }
 

@@ -32,10 +32,17 @@ function residencyScratchTargetFor(renderer) {
 // restore honest while each admission's texture uploads still overlap freely.
 const residencyBatchChains = new WeakMap();
 
-function enqueueGeometryResidencyBatches(renderer, work) {
-  const prior = residencyBatchChains.get(renderer) || Promise.resolve();
+// The deadline lane keeps its own chain: an on-glass pending root cannot queue
+// behind ambient residency passes (a sector cook may hold seconds of uploads).
+// Each batch self-contains capture/render/restore inside one synchronous turn,
+// so the two chains interleave safely at batch boundaries.
+const residencyUrgentBatchChains = new WeakMap();
+
+function enqueueGeometryResidencyBatches(renderer, work, options = {}) {
+  const chains = options.urgent === true ? residencyUrgentBatchChains : residencyBatchChains;
+  const prior = chains.get(renderer) || Promise.resolve();
   const run = prior.then(work, work);
-  residencyBatchChains.set(renderer, run.catch(() => null));
+  chains.set(renderer, run.catch(() => null));
   return run;
 }
 
@@ -448,7 +455,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
         reportBlockingSlice(onBlockingSlice, receipt);
       }
       }
-    });
+    }, { urgent: options.urgent === true });
   } finally {
     material.dispose();
   }

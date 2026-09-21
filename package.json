@@ -534,6 +534,7 @@
     "probe:runtime-witness": "node scripts/probe-runtime-witness.mjs",
     "probe:smooth-flight": "node scripts/probe-smooth-flight.mjs",
     "probe:smooth-flight:crucible": "node scripts/probe-smooth-flight.mjs --crucible",
+    "probe:solid-world": "node scripts/probe-solid-world.mjs --headless",
     "check:concept-index": "node scripts/check-concept-index.mjs",
     "check:asset-pipeline-contract": "node scripts/check-asset-pipeline-contract.mjs",
     "build:render-package-pilots": "node scripts/build-render-package-pilots.mjs",

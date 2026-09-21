@@ -612,12 +612,12 @@ test('latched geometry roots compile on the explicit lane, not the ambient quiet
   const queueStart = RENDERER_SOURCE.indexOf('this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({');
   assert.ok(queueStart >= 0, 'the live geometry admission queue must exist');
   const queueBlock = RENDERER_SOURCE.slice(queueStart, queueStart + 2600);
-  assert.match(queueBlock, /compile:\s*\(root\)\s*=>\s*state\.render\.compileObjectPipelines\(root,\s*\{\s*explicit:\s*true\s*\}\)/,
+  assert.match(queueBlock, /compile:\s*\(root\)\s*=>\s*state\.render\.compileObjectPipelines\(\s*root,\s*\{[^}]*explicit:\s*true[^}]*\}\s*,?\s*\)/,
     'latched roots must bypass the ambient compile queue');
   const admitStart = RENDERER_SOURCE.indexOf('const admitSubjectPipelines = (subject');
   assert.ok(admitStart >= 0, 'the subject admission must exist');
   const admitBlock = RENDERER_SOURCE.slice(admitStart, admitStart + 1400);
-  assert.match(admitBlock, /explicit === true\s*\?\s*pipelineAdmissions\.compileExplicit\(subject\)\s*:\s*pipelineAdmissions\.compile\(subject\)/,
+  assert.match(admitBlock, /explicit === true\s*\?\s*pipelineAdmissions\.compileExplicit\(subject[^)]*\)\s*:\s*pipelineAdmissions\.compile\(subject\)/,
     'the explicit flag must route to compileExplicit, not the quiet-window queue');
 });
 
@@ -628,7 +628,7 @@ test('latched geometry roots compile on the explicit lane, not the ambient quiet
 test('the live geometry admission queue drains nearest-deadline-first', () => {
   const queueStart = RENDERER_SOURCE.indexOf('this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({');
   assert.ok(queueStart >= 0, 'the live geometry admission queue must exist');
-  const queueBlock = RENDERER_SOURCE.slice(queueStart, queueStart + 2600);
+  const queueBlock = RENDERER_SOURCE.slice(queueStart, queueStart + 3800);
   assert.match(queueBlock, /priorityOf:\s*\(entity\)\s*=>/,
     'the queue must grade pending roots instead of draining strict FIFO');
   assert.match(queueBlock, /entityIsExplicitRenderFocus\(entity, state\)/,

@@ -239,26 +239,39 @@ export function shouldDrawLootMagnetTrail(playerDx, playerDz, focusDx, focusDz, 
 }
 
 /**
+ * World-space origin the keep/evict radii measure from: the live look-at
+ * (frame-local focus rebased into global) while it exists, else the fallback
+ * (usually the player). The ledger collect disc must use this same origin —
+ * when the look-at leads the hull, a player-centered disc collects rows the
+ * keep radius then evicts, and misses rows the keep radius holds resident.
+ */
+export function tableLookAtOrigin(state, fallbackPos, out) {
+  const target = out || { x: 0, z: 0 };
+  const focus = state && state.camera && state.camera.focus;
+  const hasFocus = Number.isFinite(focus && focus.x) && Number.isFinite(focus && focus.z);
+  if (hasFocus) {
+    const frame = state && state.world && state.world.frameOrigin;
+    target.x = focus.x + (Number.isFinite(frame && frame.x) ? frame.x : 0);
+    target.z = focus.z + (Number.isFinite(frame && frame.z) ? frame.z : 0);
+  } else {
+    target.x = Number.isFinite(fallbackPos && fallbackPos.x) ? fallbackPos.x : 0;
+    target.z = Number.isFinite(fallbackPos && fallbackPos.z) ? fallbackPos.z : 0;
+  }
+  return target;
+}
+
+const _lookAtOriginScratch = { x: 0, z: 0 };
+
+/**
  * Focus is frame-local. World positions stay galactic-global. Convert focus
  * to global with world.frameOrigin before subtracting, or a rebase culls
  * every on-glass light when the camera is shoved.
  */
 export function tableLookAtDelta(state, fallbackPos, entityPos, out) {
   const target = out || { x: 0, z: 0 };
-  const focus = state && state.camera && state.camera.focus;
-  const hasFocus = Number.isFinite(focus && focus.x) && Number.isFinite(focus && focus.z);
-  let originX;
-  let originZ;
-  if (hasFocus) {
-    const frame = state && state.world && state.world.frameOrigin;
-    originX = focus.x + (Number.isFinite(frame && frame.x) ? frame.x : 0);
-    originZ = focus.z + (Number.isFinite(frame && frame.z) ? frame.z : 0);
-  } else {
-    originX = Number.isFinite(fallbackPos && fallbackPos.x) ? fallbackPos.x : 0;
-    originZ = Number.isFinite(fallbackPos && fallbackPos.z) ? fallbackPos.z : 0;
-  }
-  target.x = (Number.isFinite(entityPos && entityPos.x) ? entityPos.x : 0) - originX;
-  target.z = (Number.isFinite(entityPos && entityPos.z) ? entityPos.z : 0) - originZ;
+  const origin = tableLookAtOrigin(state, fallbackPos, _lookAtOriginScratch);
+  target.x = (Number.isFinite(entityPos && entityPos.x) ? entityPos.x : 0) - origin.x;
+  target.z = (Number.isFinite(entityPos && entityPos.z) ? entityPos.z : 0) - origin.z;
   return target;
 }
 

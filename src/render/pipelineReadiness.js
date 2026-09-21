@@ -202,12 +202,12 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   }
 
   /** Time only the synchronous compileBatch call (until it returns a value/promise). */
-  function invokeCompileBatch(subjects, path) {
+  function invokeCompileBatch(subjects, path, compileOptions) {
     // Optional observer is inert: no clock reads or metadata when nothing is listening.
-    if (!onBlockingSlice) return compileBatch(subjects);
+    if (!onBlockingSlice) return compileBatch(subjects, compileOptions);
     const started = now();
     try {
-      const result = compileBatch(subjects);
+      const result = compileBatch(subjects, compileOptions);
       reportSlice(path, subjects.length, now() - started);
       return result;
     } catch (error) {
@@ -375,14 +375,24 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     capturePending,
     subjectsForCaptured,
     waitForCaptured,
-    compileExplicit(subject) {
+    compileExplicit(subject, compileOptions = null) {
       // Diagnostics may deliberately compile a complete installed scene after a render-target
       // switch. Keep that opt-in pass serialized, but never attach the startup moving-fixpoint wait.
-      flushQueued();
-      const run = compileTail.then(() => invokeCompileBatch([subject], 'explicit'));
+      // The explicit caller is deadline work: fold the still-queued ambient set into this run
+      // instead of flushing it as a separate tail link the deadline then has to sit behind.
+      const ambient = queued;
+      queued = [];
+      clearTimers();
+      const merged = [subject, ...ambient.map((entry) => entry.subject)];
+      const run = compileTail.then(() => invokeCompileBatch(merged, 'explicit', compileOptions));
       compileTail = run.catch(() => null);
+      run.then(
+        (result) => { for (const entry of ambient) entry.resolve(result); },
+        (error) => { for (const entry of ambient) entry.reject(error); },
+      );
       return run;
     },
+
     resumeAutoFlush() {
       boundedResume = true;
       clearTimers();
@@ -677,7 +687,18 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
         : cookLiveSceneGpu(state, { present: true, skipBuffers: true })
     ));
     render.liveScenePresentReady = presentCook;
-    const presentResult = await settleWithin(presentCook, timeoutMs);
+    // PQ-210.00 — a survival arena cooks its whole bounded field (hulls, promoted rock
+    // variants, site props) behind this wait; the default 20 s window routinely truncates it
+    // on a busy host, and the overflow lands inside the fight at the deferred-hold release.
+    // The inner prepare budget is already the survival-aware one (60 s) but the settle, queue
+    // drain, post-opening sweep and pool census each carry their own cap on top of it — a
+    // contended host can spend ~2x that before the last pipeline lands. Give the gate room
+    // for the whole sequence so the shell is what pays, not the round. Non-survival routes
+    // keep 20 s.
+    const presentBudgetMs = state && state.run && state.run.kind === 'survival'
+      ? Math.max(timeoutMs, 360000)
+      : timeoutMs;
+    const presentResult = await settleWithin(presentCook, presentBudgetMs);
     const presentOutcome = settleOutcome(presentResult);
     recordOpeningCookStep(render, 'wait.prepareLiveSectorBeforeFlight', presentStarted, presentOutcome);
     if (presentOutcome === 'timeout') {

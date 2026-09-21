@@ -9,6 +9,7 @@ import {
   authoredPrefetchRadius,
   glassCornerWu,
   residencyPrefetchRadius,
+  tableLookAtOrigin,
   tableTravelSpeed,
   timeToEnterRadiusSeconds,
   TABLE_COLLECT_HORIZON_SECONDS,
@@ -161,12 +162,19 @@ function rememberMeshSpatialKey(state, origin, radius) {
   _meshSpatialKey.farVersion = far && Number.isFinite(far.version) ? far.version : 0;
 }
 
+const _ledgerCollectOrigin = { x: 0, z: 0 };
+
 function appendNearbyLedgerRows(state, out) {
   const player = state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : null;
-  const origin = player && player.pos;
-  if (!origin) return;
+  if (!player || !player.pos) return;
+  // Collect and keep must share one origin. The keep radius (entityWithinPlayerRadius →
+  // tableLookAtDelta) measures from the live look-at, which velocity-lead pushes ahead of
+  // the hull; a player-centered collect disc then feeds rows the keep radius already
+  // dropped and skips rows it still holds — the leading-edge pop the on-glass-disposals
+  // counter exists to prove is gone.
+  const origin = tableLookAtOrigin(state, player.pos, _ledgerCollectOrigin);
   const radius = presentationCollectRadius(state);
   if (!(radius > 0)) return;
   const travel = tableTravelSpeed(state);

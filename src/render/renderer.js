@@ -17,13 +17,14 @@ import {
   createSpaceReflectionEnvironment,
   SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
 } from './spaceReflectionEnvironment.js';
-import { createVisualFactory, setEnvMapForShips, upgradeBareRockMaterials } from './visualFactory.js';
+import { asteroidLeafResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, instantiatePackagedPrimitives, setEnvMapForShips, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
   createBloom,
   compileScenePipelinesForRenderTarget,
   programWrapperDead,
+  scenePipelineReadinessBatchOpen,
   warmScenePipelinesForRenderTarget,
   DEFAULT_BLOOM_STRENGTH,
   DEFAULT_CINEMATIC_TOE,
@@ -61,9 +62,15 @@ import {
   waitForOpeningCompositionSettled,
   retryAuthoredPartLibrary,
   syncAuthoredInstancePools,
+  spawnableShipArchetypePrewarmUrls,
+  warmRenderPackageShipPool,
+  poolWitnessPalettesForState,
+  rosterPoolWitnessFilePalettes,
+  PART_LIBRARY_CONTRACT,
 } from './partsLibrary.js';
 import {
   bindAuthoredAssetPerfCounters,
+  loadAuthoredPart,
   prepareSectorEntry,
   preloadAuthoredParts,
 } from './assetLoader.js';
@@ -75,8 +82,10 @@ import {
   isBorrowedAsteroidInstanceResource,
   registerAsteroidBaseLeaf,
   releaseAsteroidInstancesForEntity,
+  reserveAsteroidInstanceCapacity,
   resolveAsteroidInstanceEntityId,
   syncAsteroidInstancePool,
+  warmAsteroidInstanceVariants,
 } from './asteroidInstancePool.js';
 import {
   beginRenderEntityFrame,
@@ -299,6 +308,9 @@ import { getActivityFrame } from '../core/worldActivityManager.js';
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
 const _residencyLookDelta = { x: 0, z: 0 };
+// Shared empty list for the on-glass pending diagnostics — the per-frame sync
+// publishes it instead of slicing an array that holds nothing.
+const EMPTY_ON_GLASS_PENDING_IDS = Object.freeze([]);
 const _cullLocalXZ = { x: 0, z: 0 };
 const _shadowLocalXZ = { x: 0, z: 0 };
 const _w2sLocalXZ = { x: 0, z: 0 };
@@ -835,18 +847,31 @@ export function holdFirstFlightStreaming(state) {
   return (Number(state.simTime) || 0) < 20;
 }
 
+/** True while a survival run is live — the crucible cooks its whole arena behind the shell. */
+function survivalRunHoldsArena(state) {
+  const run = state && state.run;
+  return !!(run && run.kind === 'survival' && run.phase && run.phase !== 'inactive');
+}
+
 /** Pure render-streaming policy used by reconciliation and focused tests. */
-export function isEntityRenderRelevant(entity, state, radius = null) {
+export function isEntityRenderRelevant(entity, state, radius = null, options = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
-  if (state && state.render && (
+  const bypassShellGates = !!(options && options.bypassShellGates === true);
+  if (!bypassShellGates && state && state.render && (
     state.render.liveSectorGpuAdmission === true
     || state.render.sectorShellAdmission === true
   )) {
     if (isFirstFlightCookEntity(entity, state)) return true;
     const firstFlightIds = state.render.liveSectorFirstFlightIds;
-    return !!(firstFlightIds && typeof firstFlightIds.has === 'function' && firstFlightIds.has(entity.id));
-  }
-  if (state && state.mode === 'loading') {
+    if (firstFlightIds && typeof firstFlightIds.has === 'function' && firstFlightIds.has(entity.id)) return true;
+    // PQ-210.00 — outside a survival run the non-first-flight set waits for the +20 s residency
+    // hold release; inside one that release lands mid-round as a link burst. The crucible arena
+    // is bounded, so during its loading window every meshable entity is relevant — the whole
+    // arena builds behind the shell and the release finds nothing left to stream.
+    if (survivalRunHoldsArena(state)) return true;
+    return false;
+  } else if (!bypassShellGates && state && state.mode === 'loading') {
+    if (survivalRunHoldsArena(state)) return true;
     return isInitialAuthoredCompositionEntity(entity, state);
   }
   if (entityIsExplicitRenderFocus(entity, state)) return true;
@@ -919,7 +944,13 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
 /** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
 export function isEntityAuthoredUpgradeRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false) return false;
-  if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
+  // A live survival run cooks its whole arena behind the shell (PQ-210.00) — every authored body
+  // must request its upgrade during loading or the deferred-hold release pays the compose and the
+  // program links inside the round.
+  if (state && state.mode === 'loading') {
+    if (survivalRunHoldsArena(state)) return true;
+    return isInitialAuthoredCompositionEntity(entity, state);
+  }
   // Hull check first: isInboundDecodeHull runs the time-to-glass clause on the
   // shelf-extrapolated position, which the raw-pos policy cannot express for
   // ledger rows. Non-hull rows fall through to the spatial policy — explicit
@@ -1253,6 +1284,22 @@ function entityIsOnReadableGlass(entity, state) {
     runwayWu: 0,
     radius: entityVisualCullRadius(entity),
   }) === TABLE_BAND.GLASS;
+}
+
+/**
+ * PQ-210.03 — count the exact defect class "I fly kind of away from something and it'll
+ * pop out of existence": a residency-driven evict disposing a mesh whose entity is on the
+ * live readable glass. The counter is cumulative on state.render and is republished into
+ * entityViewSync diagnostics every frame so probes can assert it stays 0. The gate matches
+ * the pending gauge's liveScreen test: a route transition carries a stale camera focus and
+ * legitimately evicts off-screen roots, so only the live flight screen counts.
+ */
+function noteOnGlassResidencyEviction(state, entity) {
+  if (state.mode !== 'flight'
+      || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)) return;
+  if (!entityIsOnReadableGlass(entity, state)) return;
+  const renderState = state.render || (state.render = {});
+  renderState.onGlassDisposals = (renderState.onGlassDisposals | 0) + 1;
 }
 
 function meshNeedsAuthoredDecode(owner, entity) {
@@ -4377,6 +4424,25 @@ export const render = {
         if (!this._meshes || this.scene !== liveScene) return;
         let count = 0;
         for (const mesh of this._meshes.values()) count += upgradeBareRockMaterials(mesh);
+        // Prewarm roots (asteroid exemplars + the leaf-variant blanket) are scene-mounted but
+        // not in _meshes: they must re-skin too or the warmed program stays the bare variant
+        // while live rocks draw the PBR one.
+        for (const root of this._rosterPrewarmRoots || []) count += upgradeBareRockMaterials(root);
+        // Pool chunks warmed while leaves were bare bind the bare material; empty buckets may
+        // rebind to the real leaf pair so the first registration matches.
+        try {
+          warmAsteroidInstanceVariants(this._asteroidInstancePool,
+            [0, 1, 2, 3, 4].map((variant) => asteroidLeafResources('ast_common_rock', variant)));
+        } catch (_) { /* pool warm is best-effort */ }
+        // Re-skin swapped material objects — the new PBR materials have never compiled. Behind
+        // the shell this is a batch compile; in flight it is the same admission a cold draw
+        // would have paid, just earlier and deduped.
+        if (count > 0
+            && state && state.render && typeof state.render.compileObjectPipelines === 'function') {
+          for (const root of this._rosterPrewarmRoots || []) {
+            try { state.render.compileObjectPipelines(root, { explicit: true }); } catch (_) { /* best effort */ }
+          }
+        }
         if (count > 0) console.info(`[render] rock surface library ready; re-skinned ${count} bare rock mesh(es)`);
       }).catch(() => {});
     }
@@ -4744,6 +4810,10 @@ export const render = {
     this._rosterPrewarmIds = new Set();
     this._rosterPrewarmWeaponIds = new Set();
     this._rosterPrewarmRoots = [];
+    this._rosterPrewarmPending = new Set();
+    // Hidden root holding one instantiated copy of every mountable accessory record — the
+    // fitSeed picks mounts per entity id, so only the whole catalog covers every live spawn.
+    this._rosterPartCatalogRoot = null;
     this._sectorBoundaryPreparations = createSectorBoundaryGenerationManager({
       startBudgetPerTurn: RUNTIME_MESH_BUILD_BUDGET,
       scheduleNextStartTurn: scheduleSectorBoundaryBuildTurn,
@@ -5014,13 +5084,13 @@ export const render = {
       const envMap = this._envMap;
       if (envMap && subject) bindEnvironmentToStandardMaterials(subject, envMap);
     };
-    const compileSubjectColorAndDepth = (subject, route) => {
+    const compileSubjectColorAndDepth = (subject, route, compileOptions = null) => {
       // Color only. Per-root shadowMap.render during sliced flight compiles threw
       // (WebGLProgram.setProgram on a null material state) and split ~460 ms depth
       // links across presents, which raised hitch count. Opening and post-opening
       // each run one batched compileShadowDepthPipelines behind the loading shell.
       stampSubjectEnv(subject);
-      return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene));
+      return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene, compileOptions));
     };
     const touchExactTargetSubject = (subject) => {
       stampSubjectEnv(subject);
@@ -5029,10 +5099,15 @@ export const render = {
       }
       return touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene);
     };
-    const compileForCurrentTarget = (subjects, requestedRoute = null) => {
+    const compileForCurrentTarget = (subjects, compileOptions) => {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
       if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
-      const route = requestedRoute || this._selectPostRoute();
+      const counters = (state && state.perfRuntime && state.perfRuntime.tier1) || null;
+      const priorSubject = counters ? counters.admissionSubject : null;
+      if (counters) {
+        counters.admissionSubject = batch.map(admissionSubjectLabel).join(',');
+      }
+      const route = this._selectPostRoute();
       const restoreShadows = armAdmissionShadows({
         renderer,
         light: this._keyLight,
@@ -5066,7 +5141,10 @@ export const render = {
           admitFlightShadowDepth();
           return result;
         })
-        .finally(restoreShadows);
+        .finally(() => {
+          if (counters) counters.admissionSubject = priorSubject;
+          restoreShadows();
+        });
       if (shouldSliceCompileAcrossPresents({
         mode: state.mode,
         firstPlayable: Number.isFinite(state.render && state.render.firstPlayableFrameAt),
@@ -5074,12 +5152,12 @@ export const render = {
         const sliced = batch.flatMap((root) => collectCompileSubjects(root));
         return finish(compileSubjectsAcrossPresents(
           sliced,
-          (subject) => compileSubjectColorAndDepth(subject, route),
+          (subject) => compileSubjectColorAndDepth(subject, route, compileOptions),
           yieldToNextPresent,
         ));
       }
       if (batch.length === 1) {
-        return finish(compileSubjectColorAndDepth(batch[0], route));
+        return finish(compileSubjectColorAndDepth(batch[0], route, compileOptions));
       }
       // Compile together so Three can dedupe programs, but put every live root back on its
       // original parent. Group.add() steals children; a later clear() used to leave ships
@@ -5088,7 +5166,7 @@ export const render = {
       staging.name = 'SF_AuthoredPipelineAdmissionBatch';
       const homes = batch.map((root) => captureObjectHome(root));
       for (const root of batch) staging.add(root);
-      return finish(compileSubjectColorAndDepth(staging, route).finally(() => {
+      return finish(compileSubjectColorAndDepth(staging, route, compileOptions).finally(() => {
         for (const home of homes) restoreObjectHome(home);
         staging.clear();
       }));
@@ -5121,21 +5199,29 @@ export const render = {
       // could publish — that wait IS the late-hull problem. Slice the yields like the cook
       // lanes do so several small uploads share one frame gap; the latch still holds the
       // subject until residency settles, and real yields still land between presents.
-      const yieldSlice = createSlicedYield(async () => {
-        if (state.mode === 'flight' && Number.isFinite(state.render && state.render.firstPlayableFrameAt)) {
-          await yieldToNextPresent();
-        } else {
-          await yieldToBrowser();
-        }
-      }, { sliceMs: ADMISSION_SLICE_TARGET_MS });
+      // unSliced is the on-glass deadline lane: the uploads all land in this one turn because
+      // an invisible on-screen object is worse than one bounded upload burst.
+      const unSliced = admissionOptions && admissionOptions.unSliced === true;
+      const yieldSlice = unSliced
+        ? null
+        : createSlicedYield(async () => {
+          if (state.mode === 'flight' && Number.isFinite(state.render && state.render.firstPlayableFrameAt)) {
+            await yieldToNextPresent();
+          } else {
+            await yieldToBrowser();
+          }
+        }, { sliceMs: ADMISSION_SLICE_TARGET_MS });
       return prepareStartupGpuResidency(renderer, subject, {
         includeGeometry: true,
         // Late-admitted roots carry dormant pools (plume/RCS layers sit at count 0 until
         // thrust). Skipping them leaves the full-capacity instance buffers unuploaded, so the
         // first 0->N activation pays the upload inside a presented frame — the mid-flight brick.
         includeEmpty: true,
+        // unSliced is the on-glass deadline lane: its residency batches ride the
+        // urgent chain instead of queueing behind ambient uploads.
+        urgent: unSliced,
         yieldToMain: async () => {
-          await yieldSlice();
+          if (yieldSlice) await yieldSlice();
           if (typeof admissionOptions.isActive === 'function' && admissionOptions.isActive() !== true) {
             throw new Error('Authored GPU residency owner became inactive before texture upload');
           }
@@ -5184,8 +5270,26 @@ export const render = {
       data.pipelinesPending = false;
       pendingPipelineSubjects.delete(subject);
     };
+    const admissionSubjectLabel = (root) => {
+      // userData.hull is a live THREE.Object3D on authored boundaries — never a label. Any
+      // non-primitive reaching the counter's event payload serializes the whole subtree.
+      const raw = (root && root.userData && (root.userData.rosterPrewarm
+        || root.userData.sfStableEntityKey || root.userData.entityId))
+        || (root && root.name)
+        || (root && root.userData && typeof root.userData.kind === 'string'
+          ? `${root.type || 'object'}:${root.userData.kind}` : null)
+        || (root && root.parent && typeof root.parent.name === 'string' && root.parent.name
+          ? `${root.type || 'object'}<-${root.parent.name}` : null)
+        || (root && root.type) || 'unnamed';
+      return (typeof raw === 'string' || typeof raw === 'number') ? String(raw) : 'unnamed';
+    };
     const admitSubjectPipelines = (subject, admissionOptions = {}) => {
       markSubjectPipelinesPending(subject, true);
+      // Label the whole chain — compile, residency, exact-target touch — so a link that lands in
+      // any continuation is attributed to the subject that produced it, not just its frame index.
+      const counters = (state && state.perfRuntime && state.perfRuntime.tier1) || null;
+      const priorSubject = counters ? counters.admissionSubject : null;
+      if (counters) counters.admissionSubject = admissionSubjectLabel(subject);
       // Latched roots (geometryPending, still invisible) are deadline work, not
       // ambient work: the tracker's quiet window and first-flight auto-flush
       // hold exist to coalesce background compiles, but a root that cannot
@@ -5194,7 +5298,7 @@ export const render = {
       // the subject on the shared compile tail — still present-sliced in
       // flight, so the link lands on its own beats rather than inside a draw.
       const compilation = admissionOptions && admissionOptions.explicit === true
-        ? pipelineAdmissions.compileExplicit(subject)
+        ? pipelineAdmissions.compileExplicit(subject, admissionOptions)
         : pipelineAdmissions.compile(subject);
       return compilation
         .then((result) => {
@@ -5239,6 +5343,7 @@ export const render = {
           return result;
         })
         .finally(() => {
+          if (counters) counters.admissionSubject = priorSubject;
           markSubjectPipelinesPending(subject, false);
         });
     };
@@ -5298,6 +5403,7 @@ export const render = {
       if (outstandingResidency) return outstandingResidency;
       return gpuResidencyAdmissions.prepare(subject, {
         isActive: options.isActive,
+        unSliced: options.unSliced === true,
       });
     };
     state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
@@ -5319,9 +5425,35 @@ export const render = {
       // Latched roots are deadline work: skip the ambient compile queue's quiet
       // window and first-flight auto-flush hold via the explicit lane. The
       // compile still lands present-sliced, just without the coalescing wait.
-      compile: (root) => state.render.compileObjectPipelines(root, { explicit: true }),
+      // skipSharedBatch keeps the program-readiness wait on this lane's own
+      // poll — joining a foreign batch parks the root on someone else's drain.
+      compile: (root) => state.render.compileObjectPipelines(
+        root,
+        { explicit: true, skipSharedBatch: true },
+      ),
       prepare: (root, options) => state.render.prepareAuthoredGpuResidency(root, options),
+      // The deadline burst pays ONE merged residency pass: a single work list
+      // and chain link instead of N serialized per-root uploads.
+      prepareBatch: (roots, options) => state.render.prepareAuthoredGpuResidency(roots, options),
       yieldToMain: yieldToNextPresent,
+      // Urgency must match the on-glass pending gauge below: same live camera
+      // focus origin, same glass extents, same root position. A root that reads
+      // pending-on-glass but fails this lane's test would serialize through the
+      // per-entry path and sit invisible for a whole compile wait.
+      isUrgent: (entity, root) => {
+        if (state.mode !== 'flight'
+            || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+            || !root || !root.position) return false;
+        const bounds = this._entityViewCullBounds();
+        if (!Number.isFinite(bounds.glassHalfX) || !Number.isFinite(bounds.glassHalfZ)) return false;
+        const data = root.userData || {};
+        const hlodRadius = data.hlod && Number(data.hlod.visualRadius);
+        const radius = Number.isFinite(hlodRadius) && hlodRadius > 0
+          ? hlodRadius
+          : entityVisualCullRadius(entity, root);
+        return Math.abs(root.position.x - bounds.x) <= bounds.glassHalfX + radius
+          && Math.abs(root.position.z - bounds.z) <= bounds.glassHalfZ + radius;
+      },
       // One root per present is the GPU-pacing contract; WHICH root drains next
       // is a deadline choice. Explicit focus first, then earliest
       // time-to-glass — a hull crossing the screen edge must not sit behind a
@@ -5348,6 +5480,48 @@ export const render = {
     });
     state.render.yieldToNextPresent = yieldToNextPresent;
     state.render.openingAdmission = openingCohort;
+    // PQ-210.03 probe/debug surface: report one entity's pending-root state.
+    state.render.debugGeometryPending = (entityId) => {
+      if (typeof entityId === 'string' && /^\d+$/.test(entityId)) entityId = Number(entityId);
+      const world = this._presentationWorld;
+      const out = { entityId };
+      if (world && typeof world.handleForEntityId === 'function') {
+        const handle = world.handleForEntityId(entityId, this._presentationHandleScratch);
+        const slot = handle && handle.slot;
+        if (slot != null && world.alive[slot] === 1) {
+          const entity = world.entityRefs[slot];
+          const bound = world.meshRefs[slot];
+          out.slot = slot;
+          out.worldEntityId = world.entityIds[slot];
+          out.entityIdField = entity ? entity.id : null;
+          out.entityAlive = entity ? entity.alive !== false : null;
+          out.boundMesh = !!bound;
+          if (bound) {
+            const data = bound.userData || {};
+            out.boundPending = data.geometryPending === true;
+            out.boundResident = data.spacefaceGeometryResident === true;
+            out.boundIsMeshesEntry = this._meshes && this._meshes.get(out.worldEntityId) === bound;
+            out.entityMeshIsBound = !!(entity && entity.mesh === bound);
+            out.queue = this._liveGeometryAdmissions
+                && typeof this._liveGeometryAdmissions.debugRoot === 'function'
+              ? this._liveGeometryAdmissions.debugRoot(bound)
+              : null;
+          }
+        }
+      }
+      const mesh = this._meshes && this._meshes.get(entityId);
+      out.mesh = !!mesh;
+      if (!mesh) return out;
+      const data = mesh.userData || {};
+      out.pending = data.geometryPending === true;
+      out.resident = data.spacefaceGeometryResident === true;
+      if (out.queue == null) {
+        out.queue = this._liveGeometryAdmissions && typeof this._liveGeometryAdmissions.debugRoot === 'function'
+          ? this._liveGeometryAdmissions.debugRoot(mesh)
+          : null;
+      }
+      return out;
+    };
     const buildOpeningSubmissionPlan = () => {
       // prepareFrame() selects the final entity poses without rendering while the loading shell is
       // visible. Refresh world matrices once so frustum/layer admission observes those exact poses,
@@ -5836,7 +6010,11 @@ export const render = {
       const prepareNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now());
       const prepareStarted = prepareNow();
-      const PREPARE_BUDGET_MS = 20000;
+      // PQ-210.00 — a survival arena is bounded and every parked build/compose/pool chunk
+      // releases at the ~20 s deferred-hold latch INSIDE the fight (links + first-draw uploads
+      // measured at +22-27 s on the owner's iGPU). The loading shell hides the extra seconds;
+      // each step below stays individually bounded so a hang still fails open.
+      const PREPARE_BUDGET_MS = survivalRunHoldsArena(state) ? 60000 : 20000;
       const remainingMs = () => Math.max(400, PREPARE_BUDGET_MS - (prepareNow() - prepareStarted));
       let meshBuildDrains = 0;
       const drainMeshBuildsBehindShell = async (deadlineMs = 8000) => {
@@ -6012,6 +6190,73 @@ export const render = {
       const firstFlightEntities = recook
         ? openingEntities
         : collectFirstFlightCookEntities(state);
+      // PQ-210.00 — a live survival run cannot pay the deferred-streaming burst that lands when
+      // the first-flight residency hold releases ~20 s in: every prop, wreck and beacon inside
+      // the arena would build and link inside the fight. isEntityRenderRelevant already answers
+      // true for the whole entity list under survival loading, so the cook covers the arena.
+      if (!recook && survivalRunHoldsArena(state)) {
+        const cookSeen = new Set();
+        for (const entity of firstFlightEntities) {
+          if (entity && entity.id != null) cookSeen.add(entity.id);
+        }
+        // Asteroid field records only become entities — and register their pool variant chunk —
+        // when promoted, normally by proximity. The first rock of an uncovered typeId|variant
+        // key therefore promotes mid-round and links SF_CommonRockInstances_* inside the fight.
+        // A 30 s round at boost speed out-travels any fixed radius, so coverage must be over the
+        // key space, not distance: scan the whole field nearest-first and promote one real record
+        // per uncovered key (bounded by typeId|tint|variant count, not by field size).
+        // Enqueue these builds BEFORE the widened entity set: the queue drains FIFO, and a
+        // promoted rock left unbuilt never registers its leaf — the variant chunk then springs
+        // into existence mid-round, cold, exactly what this exists to prevent.
+        if (player && player.pos) {
+          const coveredKeys = new Set();
+          for (const entity of state.entityList || []) {
+            if (entity && entity.type === 'asteroid' && entity.alive !== false) {
+              coveredKeys.add(asteroidFirstFlightCookKey(entity));
+            }
+          }
+          const field = state.world && state.world.asteroidField;
+          const px = Number(player.pos.x) || 0;
+          const pz = Number(player.pos.z) || 0;
+          const reach = (field && Array.isArray(field.rocks) ? field.rocks : [])
+            .filter((rec) => rec && rec.alive !== false && rec.liveEntityId == null && rec.pos)
+            .sort((left, right) => {
+              const dlx = (Number(left.pos.x) || 0) - px;
+              const dlz = (Number(left.pos.z) || 0) - pz;
+              const drx = (Number(right.pos.x) || 0) - px;
+              const drz = (Number(right.pos.z) || 0) - pz;
+              return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
+            });
+          const promotedRocks = [];
+          for (const rec of reach) {
+            const key = asteroidFirstFlightCookKey(rec);
+            if (coveredKeys.has(key)) continue;
+            const promoted = promoteAsteroidFieldRock(state, rec.id, this._simHelpers,
+              'survival-roster-prewarm');
+            if (!promoted) continue;
+            coveredKeys.add(key);
+            if (!cookSeen.has(promoted.id)) {
+              cookSeen.add(promoted.id);
+              promotedRocks.push(promoted);
+            }
+          }
+          if (promotedRocks.length > 0) {
+            enqueueMissingMeshBuilds(
+              promotedRocks,
+              this._meshes,
+              this._meshBuildQueuedIds,
+              this._meshBuildQueue,
+            );
+            for (const entity of promotedRocks) firstFlightEntities.push(entity);
+          }
+        }
+        for (const entity of state.entityList || []) {
+          if (!entity || entity.id == null || cookSeen.has(entity.id)) continue;
+          if (!isEntityRenderRelevant(entity, state)) continue;
+          cookSeen.add(entity.id);
+          firstFlightEntities.push(entity);
+        }
+      }
       state.render.liveSectorFirstFlightIds = new Set(
         firstFlightEntities.map((entity) => entity && entity.id).filter((id) => id != null),
       );
@@ -6038,7 +6283,14 @@ export const render = {
       recordOpeningCookStep(state.render, 'live.rocksAndLeftoverMeshes', liveStepStarted, 'resolved', {
         firstFlightEntities: firstFlightEntities.length,
       });
-      await drainMeshBuildsBehindShell();
+      // Survival's widened cook enqueues the whole arena, not just the opening table — the
+      // 8 s default can leave a backlog that drains as in-flight builds + links, and a spent
+      // remainingMs() would skip the drain entirely, pushing boundary builds into the first
+      // flight seconds. Give a live run a real floor; the shared PREPARE_BUDGET_MS cap still
+      // bounds the steps around it.
+      await drainMeshBuildsBehindShell(survivalRunHoldsArena(state)
+        ? Math.max(30000, remainingMs())
+        : 8000);
       liveStepStarted = prepareNow();
       // Routine telemetry, not a defect: every New Game cooks the first-flight set behind the
       // loading shell. console.warn would fail release evidence's zero-warning contract.
@@ -6057,7 +6309,11 @@ export const render = {
           holdLeftoverFx: true,
           warmFirstFlightFx: true,
           yieldToMain: yieldLiveSectorGpu,
-          deadlineMs: Math.min(20000, remainingMs()),
+          // Survival: the pool-warm/stamp/depth steps at the tail of the cook are what keep
+          // mid-round registrations from creating cold chunks inside the fight — a 20 s
+          // internal deadline under host load skips exactly those. The arena is bounded and
+          // the shell hides the time, so the cook gets the same scale as the settle below.
+          deadlineMs: survivalRunHoldsArena(state) ? 45000 : Math.min(20000, remainingMs()),
         });
       recordOpeningCookStep(state.render, 'live.cook', liveStepStarted, recook ? 'skipped' : 'resolved');
       // Leftover FX compiles (entity:fx:77/80/81) must finish behind the shell.
@@ -6167,10 +6423,160 @@ export const render = {
         let firstPictureError = null;
         if (ownsFirstPictureBarrier) {
           try {
-            await this.prepareOpeningFirstPicture(remainingMs());
+            // An over-budget cook passes remainingMs()<=0 and the cohort deadline math inside
+            // throws "opening authored boundary cohort timed out" before the barrier even runs —
+            // the firstFramePoolCensus 'error' ledger row. The barrier is the coverage mechanism
+            // itself (committed authored leaves + pool chunks must exist before the census counts
+            // them), so survival keeps an absolute floor rather than skipping the only pass that
+            // makes the chunk buffers visible to it.
+            await this.prepareOpeningFirstPicture(survivalRunHoldsArena(state)
+              ? Math.max(30000, remainingMs())
+              : remainingMs());
           } catch (error) {
             firstPictureError = String(error && error.message || error);
           }
+        }
+        // PQ-210.00 — a roster-prewarm exemplar whose authored/packaged job settles late would
+        // queue its compiles behind the flight release and link inside the fight. Hold the
+        // shell until the cohort has actually settled (bounded — a hung load must not pin
+        // loading), then let the post-opening sweep below compile whatever it attached.
+        if (this._rosterPrewarmPending && this._rosterPrewarmPending.size > 0) {
+          const prewarmStarted = prepareNow();
+          // The survival cohort includes the ~140-file part/place/archetype catalog, and the
+          // earlier cook steps can spend the whole PREPARE_BUDGET_MS window before this wait
+          // runs — clipping to remainingMs() then released the shell after ~3 s while holders
+          // were still attaching, so their links/uploads landed inside the fight. The settle
+          // gets an absolute cap instead: the outer gpu-resources wait tolerates the overrun,
+          // and the post-opening sweep + whole-scene census below still run after it to cover
+          // whatever the cohort attached last.
+          const settleCapMs = survivalRunHoldsArena(state) ? 45000 : 8000;
+          const deadline = prewarmStarted + settleCapMs;
+          let timedOut = false;
+          // An empty pending set is not a settled cohort: the catalog's per-holder compiles
+          // join the ambient admission queue during loading (compileObjectPipelines
+          // fire-and-forgets outside liveSectorGpuAdmission), so their links can still be
+          // queued when the last load resolves. Flush + drain that queue inside the same
+          // hold or the leftovers land as off-frame links inside the fight.
+          for (;;) {
+            while (this._rosterPrewarmPending.size > 0) {
+              const waitSliceMs = deadline - prepareNow();
+              if (waitSliceMs <= 0) { timedOut = true; break; }
+              flushPipelinesBehindShell();
+              await Promise.race([
+                Promise.allSettled([...this._rosterPrewarmPending]),
+                new Promise((resolve) => setTimeout(resolve, Math.min(waitSliceMs, 250))),
+              ]);
+            }
+            if (timedOut || (pipelineAdmissions.pendingCount | 0) === 0) break;
+            flushPipelinesBehindShell();
+            const drain = Promise.resolve(state.render.drainPendingPipelineAdmissions())
+              .catch(() => null);
+            const waitSliceMs = deadline - prepareNow();
+            if (waitSliceMs <= 0) { timedOut = true; break; }
+            await Promise.race([
+              drain,
+              new Promise((resolve) => setTimeout(resolve, Math.min(waitSliceMs, 250))),
+            ]);
+          }
+          recordOpeningCookStep(state.render, 'live.rosterPrewarmSettle', prewarmStarted,
+            timedOut ? 'timeout' : 'resolved', {
+              left: this._rosterPrewarmPending ? this._rosterPrewarmPending.size : 0,
+              queuedPipelines: pipelineAdmissions.pendingCount | 0,
+            });
+          // The post-opening pass released before this cohort settled, so late-attached
+          // exemplar subtrees and the authored pool chunks their compose created were never
+          // swept. Un-latch so the call below re-runs it — the pass dedupes warm work and
+          // re-collects pools/scene drawables, so only genuinely cold subjects cost links.
+          this._postOpeningPipelineAdmissionReleased = false;
+        }
+        // Survival's widened cook enqueues the arena's authored jobs long after the early
+        // upgradeQueueIdle wait ran, and a settle timeout can leave jobs in flight when the
+        // finally below re-arms the first-flight holds. Anything parked then releases at the
+        // ~20 s latch and composes inside the fight — the mid-round wr:/wreck/pool-chunk burst.
+        // Drain the queue to idle while the publication gate is still open and
+        // liveSectorGpuAdmission is still on, so those commits publish here and the sweep +
+        // census below cover them.
+        if (!recook && survivalRunHoldsArena(state)) {
+          const drainStarted = prepareNow();
+          const drainDeadline = drainStarted + 30000;
+          let drainResult = null;
+          let drainOutcome = 'resolved';
+          for (;;) {
+            const sliceMs = drainDeadline - prepareNow();
+            if (sliceMs <= 0) { drainOutcome = 'timeout'; break; }
+            try {
+              drainResult = await waitForAuthoredUpgradeQueueIdle(scene, {
+                timeoutMs: Math.min(sliceMs, 4000),
+                yieldToMain: yieldAndFlushLiveSectorGpu,
+              });
+            } catch (error) {
+              drainOutcome = 'error';
+              drainResult = { error: String(error && error.message || error) };
+              break;
+            }
+            if (drainResult && drainResult.idle === true) break;
+            flushPipelinesBehindShell();
+            try {
+              await state.render.drainPendingPipelineAdmissions();
+            } catch (_) { /* drain errors surface in the ledger above */ }
+          }
+          recordOpeningCookStep(state.render, 'live.survivalUpgradeDrain', drainStarted, drainOutcome, {
+            pending: drainResult ? drainResult.pending : undefined,
+            inFlight: drainResult ? drainResult.inFlight : undefined,
+            compiling: drainResult ? drainResult.compiling : undefined,
+            error: drainResult ? drainResult.error : undefined,
+          });
+          // The drain's commits ran under the open gate with liveSectorGpuAdmission on; whatever
+          // they attached still needs the sweep below to see it — unlatch even on timeout, since
+          // the iterations that did run may already have published new subtrees.
+          this._postOpeningPipelineAdmissionReleased = false;
+        }
+        // Pool chunks created during the roster settle/drain (witness promotions, drained
+        // boundary commits) postdate cook.rockPools — and under host load that step can be
+        // budget-skipped entirely. Either way their instanced color programs and shadow-depth
+        // variants stay cold: the first live chunk draw or shadow refresh would link them
+        // inside the round (the +0s Asteroid_*/GLTFKit_InstancePool_* depth residuals). The
+        // census below owns buffers; this seal owns programs. Program-key dedupe keeps
+        // already-warm subjects near-free, so the re-run only pays for genuinely cold chunks.
+        if (!recook && survivalRunHoldsArena(state)) {
+          const poolSealStarted = prepareNow();
+          let poolSealRoots = 0;
+          let poolSealOutcome = 'resolved';
+          try {
+            const latePoolRoots = collectInstancePoolCompileRoots(scene);
+            poolSealRoots = latePoolRoots.length;
+            if (latePoolRoots.length > 0) {
+              const sealRoute = this._selectPostRoute();
+              const whileRevealed = (subject, run) => {
+                const restoreSubject = revealSubjectForCompile(subject);
+                try { return run(); } finally { restoreSubject(); }
+              };
+              const sealUnits = uniqueAdmissionUnits(
+                latePoolRoots.flatMap((root) => collectCompileSubjects(root)),
+              );
+              for (const subject of sealUnits) {
+                await whileRevealed(subject, () => compileSubjectColorAndDepth(subject, sealRoute));
+              }
+              compileShadowDepthPipelines({
+                renderer,
+                light: this._keyLight,
+                camera: this.cam && this.cam.obj,
+                subjects: latePoolRoots,
+                forceEnable: this._shadowSettingOn === true,
+                THREE,
+                captureObjectHome,
+                restoreObjectHome,
+                stagingName: 'SF_SurvivalPoolSealShadowDepth',
+              });
+            } else {
+              poolSealOutcome = 'skipped';
+            }
+          } catch (error) {
+            poolSealOutcome = 'error';
+            console.warn('[render] survival pool program seal failed', error);
+          }
+          recordOpeningCookStep(state.render, 'live.poolProgramSeal', poolSealStarted,
+            poolSealOutcome, { roots: poolSealRoots });
         }
         if (this._postOpeningPipelineAdmissionReleased !== true
             && typeof state.render.preparePostOpeningPipelines === 'function') {
@@ -6207,6 +6613,34 @@ export const render = {
             error: firstPictureError || undefined,
             reason: firstFrameResidency && firstFrameResidency.reason,
           });
+      }
+      // Final ambient seal: the post-opening sweep, the census and every late chunk admission
+      // enqueue compiles through compileObjectPipelines, which fire-and-forgets into the shared
+      // lane during loading — anything still pending at release drips into the first flight
+      // seconds as off-frame links. Drain to empty (new items can arrive mid-drain) before the
+      // finally below closes the admission window.
+      if (!recook) {
+        const sealStarted = prepareNow();
+        const sealDeadline = sealStarted + (survivalRunHoldsArena(state) ? 30000 : 8000);
+        let sealOutcome = 'resolved';
+        for (;;) {
+          if ((pipelineAdmissions.pendingCount | 0) === 0) break;
+          const sliceMs = sealDeadline - prepareNow();
+          if (sliceMs <= 0) { sealOutcome = 'timeout'; break; }
+          flushPipelinesBehindShell();
+          try {
+            await Promise.race([
+              Promise.resolve(state.render.drainPendingPipelineAdmissions()),
+              new Promise((resolve) => setTimeout(resolve, Math.min(sliceMs, 250))),
+            ]);
+          } catch (error) {
+            sealOutcome = 'error';
+            break;
+          }
+        }
+        recordOpeningCookStep(state.render, 'live.finalPipelineSeal', sealStarted, sealOutcome, {
+          queuedPipelines: pipelineAdmissions.pendingCount | 0,
+        });
       }
       // The opening receipt froze inside prepareOpeningGpuResources while authored upgrades were
       // still in flight — the capturedPipelineDrain above can only wait on the queue it captured.
@@ -6253,6 +6687,23 @@ export const render = {
       const cookStarted = cookNow();
       const cookDeadlineMs = Number.isFinite(options.deadlineMs) ? options.deadlineMs : 22000;
       const cookOverBudget = () => cookNow() - cookStarted > cookDeadlineMs;
+      // PQ-210.00 — the entity set this cook must upload/register/compile. The sector
+      // preparation step publishes the exact ids it built in liveSectorFirstFlightIds (a
+      // survival run widens it to the whole arena plus promoted field rocks); resolving the
+      // published set keeps buffer residency, leaf stamping and compile in sync with what
+      // was actually admitted. Outside that flow the generic first-flight census applies.
+      const cookSectorEntities = (() => {
+        const ids = state.render && state.render.liveSectorFirstFlightIds;
+        if (ids && typeof ids[Symbol.iterator] === 'function') {
+          const out = [];
+          for (const id of ids) {
+            const entity = resolveWorldPresentationEntity(state, id);
+            if (entity) out.push(entity);
+          }
+          if (out.length > 0) return out;
+        }
+        return collectFirstFlightCookEntities(state);
+      })();
       // Compile the live next sector on the bloom target AFTER the shadow map
       // exists so physical keys include numDirLightShadows. Hidden / count-0
       // drawables must be revealed — Three's compile() skips object.visible === false,
@@ -6348,7 +6799,7 @@ export const render = {
         const openingSubjects = (cookPicturePlan && cookPicturePlan.compileSubjects) || [];
         const openingRoots = [];
         const seenOpening = new Set();
-        for (const entity of collectFirstFlightCookEntities(state)) {
+        for (const entity of cookSectorEntities) {
           if (entity && entity.type === 'asteroid') continue;
           const root = (this._meshes && this._meshes.get(entity.id)) || (entity && entity.mesh);
           if (!root || seenOpening.has(root)) continue;
@@ -6583,10 +7034,16 @@ export const render = {
         seenBufferRoots.add(root);
         firstFlightBufferRoots.push(root);
       };
-      for (const entity of collectFirstFlightCookEntities(state)) {
+      // PQ-210.00 — cookSectorEntities is the set this cook actually built (the whole arena
+      // plus promoted field rocks under survival). Everything built must also upload behind
+      // the shell: a widened entity absent here first-uploads inside the round.
+      const survivalCook = survivalRunHoldsArena(state);
+      for (const entity of cookSectorEntities) {
         // Nearby opening ships first-drew mule/wasp LOD0 in bloom (129 ms).
-        // Rocks and the 47-A spindle still need buffers; wrecks stay out.
-        if (!entity || entity.type === 'wreck') continue;
+        // Rocks and the 47-A spindle still need buffers; wrecks stay out of the generic
+        // opening set — but under survival nothing may first-upload mid-round, so arena
+        // wrecks ride the same buffer residency as everything else the cook built.
+        if (!entity || (entity.type === 'wreck' && !survivalCook)) continue;
         // Same-sector F9 recook: 1x1 only rematerialized opening hulls.
         // Re-uploading rocks, 47-A, and instance pools TDR'd Intel in gpu-resources.
         if (options.skipCompile === true && !isInitialAuthoredCompositionEntity(entity, state)) {
@@ -6668,7 +7125,11 @@ export const render = {
       if (typeof state.render.restLiveFlightEffectsAfterCook === 'function') {
         state.render.restLiveFlightEffectsAfterCook();
       }
-      for (const entity of collectFirstFlightCookEntities(state)) {
+      // PQ-210.00 — stamp the same widened set: a survival-promoted rock left pending registers
+      // its pool leaf only when the in-flight residency queue releases it, creating the variant
+      // chunk mid-round and linking the instanced program inside the fight.
+      const stampedCookRoots = [];
+      for (const entity of cookSectorEntities) {
         if (!entity || (entity.type !== 'asteroid' && entity.type !== 'payload')) continue;
         const root = (this._meshes && this._meshes.get(entity.id)) || entity.mesh;
         if (!root) continue;
@@ -6676,6 +7137,35 @@ export const render = {
         data.geometryPending = false;
         data.spacefaceGeometryResident = true;
         registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, root);
+        // Held builds skip their build-time compile, so the leaf's non-instanced program (the
+        // direct-draw / leaf-bucket path) is still cold; collect these roots for the compile
+        // batch below or their first in-flight admission links it mid-round.
+        stampedCookRoots.push(root);
+      }
+      // Chunks grow by power-of-two rebuilds; a rebuild allocates a fresh instanceMatrix buffer,
+      // i.e. a bufferData the fight would pay mid-round. Size every live bucket to the field's
+      // total poolable count per variant while still behind the shell.
+      const fieldRecords = state.world && state.world.asteroidField
+        && Array.isArray(state.world.asteroidField.rocks) ? state.world.asteroidField.rocks : null;
+      if (fieldRecords && this._asteroidInstancePool) {
+        const requiredByVariant = [0, 0, 0, 0, 0];
+        const countRock = (rock) => {
+          if (!rock || rock.alive === false) return;
+          const data = rock.data || {};
+          // Mirrors the leaf stamp in visualFactory: only untinted common rocks pool.
+          if (data.typeId !== 'ast_common_rock' || data.tint != null) return;
+          const key = asteroidFirstFlightCookKey(rock);
+          const variant = Number(key.slice(key.lastIndexOf('|') + 1)) | 0;
+          if (variant >= 0 && variant < requiredByVariant.length) requiredByVariant[variant]++;
+        };
+        for (const rec of fieldRecords) countRock(rec);
+        // Promoted entities reuse the record's id — skip field ids so they count once.
+        const fieldIds = new Set(fieldRecords.map((rec) => rec && rec.id));
+        for (const entity of state.entityList || []) {
+          if (!entity || entity.type !== 'asteroid' || fieldIds.has(entity.id)) continue;
+          countRock(entity);
+        }
+        reserveAsteroidInstanceCapacity(this._asteroidInstancePool, requiredByVariant);
       }
       for (const root of firstFlightBufferRoots) {
         if (!root) continue;
@@ -6689,30 +7179,61 @@ export const render = {
       // flight). Admit the pools now, still behind the loading shell.
       let rockPools = { skipped: true, reason: 'not-warming-first-flight-fx' };
       if (warmFirstFlightFx && !cookOverBudget()) {
-        const rockPoolRoots = collectInstancePoolCompileRoots(scene).filter(isAsteroidInstancePoolRoot);
+        // Publish every common-rock variant chunk now: a variant whose first registration lands
+        // mid-round otherwise creates its InstancedMesh inside the fight — cold instanced
+        // program, fresh instanceMatrix bufferData. Empty chunks draw nothing and cost one
+        // compile batch line each.
+        try {
+          warmAsteroidInstanceVariants(this._asteroidInstancePool,
+            [0, 1, 2, 3, 4].map((variant) => asteroidLeafResources('ast_common_rock', variant)));
+        } catch (error) {
+          console.warn('[render] asteroid instance pool warm failed', error);
+        }
+        // Every pool root — asteroid variant chunks AND authored package chunks
+        // (GLTFKit_InstancePool_*) — not just the rock pools: authored chunks created during
+        // the cook's compose passes carry the same cold instanced program into flight.
+        const poolRoots = collectInstancePoolCompileRoots(scene);
+        // Held-build owner roots whose leaf programs never compiled (see the stamp loop above).
+        const cookCompileRoots = [...poolRoots, ...stampedCookRoots];
         const rockPoolsStarted = cookNow();
-        if (rockPoolRoots.length > 0) {
+        if (cookCompileRoots.length > 0) {
           const whileRevealed = (subject, run) => {
             const restoreSubject = revealSubjectForCompile(subject);
             try { return run(); } finally { restoreSubject(); }
           };
           try {
             rockPools = await admitOpeningUnitsAcrossSlices({
-              units: uniqueAdmissionUnits(rockPoolRoots.flatMap((root) => collectCompileSubjects(root))),
+              units: uniqueAdmissionUnits(cookCompileRoots.flatMap((root) => collectCompileSubjects(root))),
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
               compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
               touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
               yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser,
             });
+            // The color pass leaves each new chunk's castShadow depth variant unlinked, and the
+            // post-opening shadow pass already released before these chunks existed (leaf
+            // registration happens in the stamp loop above). Prime depth on the same subjects
+            // or the fight's first shadow refresh links it inside a measured frame.
+            const depthResult = compileShadowDepthPipelines({
+              renderer,
+              light: this._keyLight,
+              camera: cam.obj,
+              subjects: cookCompileRoots,
+              forceEnable: this._shadowSettingOn === true,
+              THREE,
+              captureObjectHome,
+              restoreObjectHome,
+              stagingName: 'SF_CookRockPoolShadowDepth',
+            });
+            if (rockPools && typeof rockPools === 'object') rockPools.depth = depthResult;
           } catch (error) {
             rockPools = { skipped: false, error: String(error && error.message || error) };
           }
         } else {
-          rockPools = { skipped: true, reason: 'no-asteroid-instance-pools' };
+          rockPools = { skipped: true, reason: 'no-instance-pools' };
         }
         recordOpeningCookStep(state.render, 'cook.rockPools', rockPoolsStarted,
           rockPools.skipped === true ? 'skipped' : (rockPools.error ? 'error' : 'resolved'), {
-            roots: rockPoolRoots.length,
+            roots: cookCompileRoots.length,
           });
       }
       return { skipped: false, liveScene: true, programs, present, buffers, rockPools };
@@ -6901,6 +7422,15 @@ export const render = {
       const openingSubjects = (state.render.openingSubmissionPlan
         && state.render.openingSubmissionPlan.compileSubjects) || [];
       const lateEntities = collectLateAdmittedCompileRoots(this._meshes, openingSubjects);
+      // Re-run the common-rock variant warm: a bucket warmed before the rock surface library
+      // decoded still binds the bare leaf material, and re-skinning makes live registrations
+      // mismatch it. The empty-bucket rebind lands the real chunk here, still behind the shell.
+      try {
+        warmAsteroidInstanceVariants(this._asteroidInstancePool,
+          [0, 1, 2, 3, 4].map((variant) => asteroidLeafResources('ast_common_rock', variant)));
+      } catch (error) {
+        console.warn('[render] post-opening asteroid pool warm failed', error);
+      }
       const poolRoots = collectInstancePoolCompileRoots(scene);
       const lateCandidates = [];
       const seenLate = new Set();
@@ -6915,8 +7445,20 @@ export const render = {
         seenLate.add(root);
         lateCandidates.push(root);
       }
+      // Roster prewarm roots (hull/wreck/deployable exemplars + the mountable-part catalog)
+      // are mounted directly on the scene, not in _meshes, and their color programs are
+      // already linked — so neither lateEntities nor the color-miss sweep can return them.
+      // Their shadow-depth variants would otherwise stay cold and link on the fight's first
+      // caster refresh. Admitting them here is a deduped no-op for anything already warm.
+      const prewarmRoots = [...(this._rosterPrewarmRoots || [])];
+      if (this._rosterPartCatalogRoot) prewarmRoots.push(this._rosterPartCatalogRoot);
+      for (const root of prewarmRoots) {
+        if (!root || seenLate.has(root)) continue;
+        seenLate.add(root);
+        lateCandidates.push(root);
+      }
       let lateColor = queued;
-      const lateCompileRoots = [...lateEntities, ...poolRoots, ...uncompiledScene];
+      const lateCompileRoots = [...lateEntities, ...poolRoots, ...uncompiledScene, ...prewarmRoots];
       if (lateCompileRoots.length > 0) {
         try {
           const route = this._selectPostRoute();
@@ -8187,49 +8729,93 @@ export const render = {
         ? state.render.compileObjectPipelines(subject, { explicit: true })
         : Promise.resolve({ skipped: true })
     );
-    for (const spec of specs) {
-      if (!spec || spec.type !== 'ship' || spec.id == null) continue;
+    // The ruleset also spawns wrecks: every kill lands one, and the packaged body is picked by
+    // hashId(id) across the whole variant table. The renderer owns that family (there is no
+    // enemyId), so the wreck exemplars are minted here through the same production build.
+    const exemplarSpecs = specs.concat(
+      wreckVisualExemplarSpecs(),
+      combatSpawnableExemplarSpecs(),
+      // Asteroid field records promote into entities on approach; one real build per canonical
+      // type warms the leaf + detail material family the promotion can ever draw.
+      asteroidVisualExemplarSpecs(),
+    );
+    for (const spec of exemplarSpecs) {
+      if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
       if (this._rosterPrewarmIds.has(spec.id)
           || (this._meshes && this._meshes.has(spec.id))) continue;
       // Record before building: a re-entrant emit during vf.build must not double-queue the
       // same exemplar.
       this._rosterPrewarmIds.add(spec.id);
-      let boundary = null;
-      try {
-        boundary = this.vf.build(spec);
-      } catch (error) {
-        console.warn('[render] survival roster prewarm build failed', spec.id, error);
-        continue;
-      }
-      if (!boundary) continue;
-      boundary.visible = false;
-      boundary.position.set(0, 0, 0);
-      this.scene.add(boundary);
-      this._rosterPrewarmRoots.push(boundary);
-      try {
-        const admitted = requestAuthoredUpgrade(boundary, this.renderer, this.scene, {
-          deferPackagePoolActivation: true,
-          deferBoundaryPublication: true,
-          overlapAuthoredPipelineCompile: false,
-          residencyRole: 'survival-roster-prewarm',
-          sectorId: (state && state.world && state.world.currentSectorId) || null,
-          isResidencyOwnerActive: () => this._rosterPrewarmIds.has(spec.id)
-            && boundary.parent === this.scene,
-        });
-        Promise.resolve(admitted).then((result) => {
-          // A procedural hull carries no authored GLB, so the upgrade request resolves
-          // 'no-authored-upgrade' — still run the production compile/residency/exact-target
-          // lane or its material would link on first draw inside the fight. The id check
-          // keeps a released exemplar from re-uploading buffers onto a dead root.
-          if (result && result.status === 'no-authored-upgrade'
-              && this._rosterPrewarmIds && this._rosterPrewarmIds.has(spec.id)) {
-            compilePipelines(boundary).catch(() => null);
+      // A whole-ship render package only promotes into a GLTFKit_InstancePool chunk when a
+      // SECOND distinct owner registers the same (geometry, material) key — the first parks as
+      // a direct-mesh candidate. A hull flown by a single enemy type would otherwise promote on
+      // the first live twin spawn, creating the chunk (program link + bufferData) inside the
+      // round. Two identical exemplar owners per ship spec force that promotion here, behind
+      // the shell; non-package specs never reach the pool path, so the twin is a no-op for them.
+      const witnessCount = spec.type === 'ship' ? 2 : 1;
+      for (let witness = 0; witness < witnessCount; witness++) {
+        let boundary = null;
+        try {
+          boundary = this.vf.build(spec);
+        } catch (error) {
+          console.warn('[render] survival roster prewarm build failed', spec.id, error);
+          break;
+        }
+        if (!boundary) break;
+        boundary.visible = false;
+        boundary.position.set(0, 0, 0);
+        boundary.userData = boundary.userData || {};
+        boundary.userData.rosterPrewarm = spec.id;
+        this.scene.add(boundary);
+        this._rosterPrewarmRoots.push(boundary);
+        try {
+          const admitted = requestAuthoredUpgrade(boundary, this.renderer, this.scene, {
+            // Pool activation publishes each family's shared *_Packaged_Batch chunk at count 0 —
+            // the exemplar is invisible so no slot commits a matrix, but the chunk's buffers and
+            // programs exist before flight instead of first-landing inside a wave spawn's draw.
+            deferPackagePoolActivation: false,
+            deferBoundaryPublication: true,
+            // Same value live entities get during loading (mode !== 'flight'): the serial slot
+            // releases once the boundary reaches the pipeline gate, so the whole roster cohort
+            // finishes inside the cook instead of draining as off-frame links during the fight.
+            overlapAuthoredPipelineCompile: true,
+            // Twin exemplars of one spec share entity.id — the upgrade queue dedupes on
+            // entity:${type}:${id}, so without an explicit key the second boundary's job folds
+            // into the first's completion and never composes (stays 'loading', blocks the
+            // opening cohort wait, and the pool sees only one owner). Same spec = same
+            // fitSeed/palette = the exact chunk keys the second witness must promote.
+            upgradeJobKey: witness > 0 ? `rosterPrewarm:${spec.id}:w${witness}` : undefined,
+            residencyRole: 'survival-roster-prewarm',
+            sectorId: (state && state.world && state.world.currentSectorId) || null,
+            isResidencyOwnerActive: () => this._rosterPrewarmIds.has(spec.id)
+              && boundary.parent === this.scene,
+          });
+          // Track the full admission→compile chain so the cook can hold the shell until the
+          // cohort has actually settled — a job that finishes after the last ambient drain would
+          // otherwise link inside the fight.
+          const settled = Promise.resolve(admitted).then((result) => {
+            // A procedural hull resolves 'no-authored-upgrade'; a packaged body (wreck exemplars)
+            // resolves true once its GLB attaches. Either way the settled root's programs must
+            // link behind the shell — recompiling an already-authored boundary dedups to a no-op.
+            // The id check keeps a released exemplar from re-uploading buffers onto a dead root.
+            if (result !== undefined
+                && this._rosterPrewarmIds && this._rosterPrewarmIds.has(spec.id)) {
+              return compilePipelines(boundary).catch(() => null);
+            }
+            return null;
+          }, (error) => {
+            console.warn('[render] survival roster prewarm admission failed', spec.id, error);
+            return null;
+          });
+          if (this._rosterPrewarmPending) {
+            this._rosterPrewarmPending.add(settled);
+            settled.finally(() => {
+              if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
+            });
           }
-        }, (error) => {
+        } catch (error) {
           console.warn('[render] survival roster prewarm admission failed', spec.id, error);
-        });
-      } catch (error) {
-        console.warn('[render] survival roster prewarm admission failed', spec.id, error);
+        }
       }
     }
     // Projectile exemplars: every weapon id the roster fields gets one hidden bolt through the
@@ -8271,12 +8857,238 @@ export const render = {
         mesh.position.set(0, 0, 0);
         this.scene.add(mesh);
         this._rosterPrewarmRoots.push(mesh);
-        compilePipelines(mesh).catch((error) => {
+        const settled = compilePipelines(mesh).catch((error) => {
           console.warn('[render] survival roster projectile warm failed', weaponId, error);
         });
+        if (this._rosterPrewarmPending) {
+          this._rosterPrewarmPending.add(settled);
+          settled.finally(() => {
+            if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
+          });
+        }
       } catch (error) {
         console.warn('[render] survival roster projectile warm failed', weaponId, error);
       }
+    }
+    // Leaf-variant blanket: each type's exemplar only touches its hashId-picked displacement
+    // variant, but a mid-round promotion can draw any of the five siblings. One hidden leaf mesh
+    // per (type, variant) puts every shared geometry buffer + non-instanced program on the GPU
+    // before flight — a late build then costs object creation only.
+    try {
+      const leafWarm = buildAsteroidLeafWarmGroup();
+      leafWarm.visible = false;
+      this.scene.add(leafWarm);
+      this._rosterPrewarmRoots.push(leafWarm);
+      const leafSettled = compilePipelines(leafWarm).catch((error) => {
+        console.warn('[render] asteroid leaf-variant warm failed', error);
+      });
+      if (this._rosterPrewarmPending) {
+        this._rosterPrewarmPending.add(leafSettled);
+        leafSettled.finally(() => {
+          if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(leafSettled);
+        });
+      }
+    } catch (error) {
+      console.warn('[render] asteroid leaf-variant warm failed', error);
+    }
+    this._admitRosterPartCatalog(compilePipelines, specs);
+  },
+
+  /**
+   * Warm the mountable accessory catalog. fitSeed hashes (entity.id|defId|faction), so sibling
+   * spawns of one enemy id can mount different cockpit/engine/fin/weapon/greeble/gear/pod
+   * records — no single exemplar composition covers the space. The whole non-hull catalog is
+   * ~30 small GLBs: decoded in parallel (capped), instantiated once into a hidden root, then
+   * compiled in a single batched pass so shared programs dedupe. Hull picks are definition-
+   * stable (archetype/role), so the roster exemplar subtrees already cover them; place files
+   * ride the sector cook. Tracked in _rosterPrewarmPending so the cook's shell hold covers it.
+   */
+  _admitRosterPartCatalog(compilePipelines, rosterSpecs) {
+    if (this._rosterPartCatalogRoot) return;
+    const scene = this.scene;
+    const renderer = this.renderer;
+    const state = this.state;
+    const slots = PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.slots;
+    if (!scene || !renderer || !slots || typeof compilePipelines !== 'function') return;
+    const releaseRoot = PART_LIBRARY_CONTRACT.releaseRoot || 'assets/ships/release/parts/';
+    const files = [];
+    // Every slot, hull and place included: world-site components and lane props materialize
+    // on approach mid-round from place GLBs, and unmapped hulls fall back to a seeded hull
+    // pick — both are the same GLB-material surface the fight must find already linked.
+    // The slot argument matters, not just the file: the authored cache keys on url::slot, so
+    // a catalog load under the wrong slot decodes a second blueprint whose geometry/material
+    // objects the census stamps but the production attach never reuses — the live draw then
+    // links and uploads cold anyway.
+    for (const slot of Object.keys(slots)) {
+      for (const file of slots[slot] || []) {
+        if (typeof file === 'string' && file.length > 0) files.push({ file, slot });
+      }
+    }
+    // Whole-ship bodies the roster can draw beyond the exemplar's own pick: hostile/traffic/
+    // faction-kit selections plus every separate-file LOD sibling a distance demotion lazily
+    // loads. The exemplar covers its own lod0; a live spawn demoting to lod1 is a new GLB.
+    // authoredPreloadPlanForEntity files whole-ships under the hull slot.
+    for (const file of spawnableShipArchetypePrewarmUrls()) {
+      if (typeof file === 'string' && file.length > 0) files.push({ file, slot: 'hull' });
+    }
+    const uniqueFiles = [...new Map(files.map((entry) => [entry.file, entry])).values()];
+    if (!uniqueFiles.length) return;
+    const root = new THREE.Group();
+    root.name = 'SF_RosterPrewarm_PartCatalog';
+    root.visible = false;
+    scene.add(root);
+    this._rosterPartCatalogRoot = root;
+    const catalogProgress = { total: uniqueFiles.length, loaded: 0, holders: 0, compiles: 0 };
+    if (state && state.render) state.render.rosterCatalogProgress = catalogProgress;
+    const sectorId = (state && state.world && state.world.currentSectorId) || null;
+    // Hidden witness pairs shared by the whole catalog: render-package records pool their
+    // rigid opaque nodes per (geometry, sharedMaterial) key only when a second owner appears,
+    // and chunk creation mid-round costs a program link plus a first instanceMatrix upload.
+    // The shared material bakes the entity palette, so one owner pair is needed per palette
+    // the run can produce — hostile fallback, free traffic, and the sector's controlling
+    // faction (roster enemies are covered exactly by their twin exemplar builds).
+    // Instantiating each package under these stubs promotes every such key behind the shell;
+    // the stubs sit under the hidden root so no matrix is ever submitted and the chunks stay
+    // resident at count 0.
+    let poolWitnesses = null;
+    const ensurePoolWitnesses = () => {
+      if (poolWitnesses) return poolWitnesses.pairs.size > 0;
+      if (this._rosterPartCatalogRoot !== root) return false;
+      // Chunk keys bake sharedMaterialFor(material, tags, palette): one witness pair per
+      // palette a ship-mountable file can be composed under. The fallback band (hostile,
+      // civilian, free fleet, sector faction) covers every traffic/law composer the round
+      // can field. Roster faction palettes apply ONLY to each roster ship's own whole-ship
+      // LOD siblings — lod0 keys already promote through the twin exemplar builds, so the
+      // warm's marginal coverage is the lod1/lod2 demotion files. Roster palettes across
+      // the whole catalog was ~16k candidates and starved the cook.
+      const { palettes: fallbackPalettes } = poolWitnessPalettesForState(state);
+      const rosterFilePalettes = rosterPoolWitnessFilePalettes(rosterSpecs);
+      const signatureOf = (palette) => [
+        palette.hull, palette.accent, palette.thruster, palette.dark,
+        palette.finish, palette.wear,
+        palette.tints ? JSON.stringify(palette.tints) : '',
+      ].join('|');
+      const pairs = new Map();
+      const pairFor = (palette) => {
+        const signature = signatureOf(palette || {});
+        let pair = pairs.get(signature);
+        if (!pair) {
+          const i = pairs.size;
+          const ownerA = new THREE.Group();
+          ownerA.name = `SF_RosterPrewarm_PoolWitness_${i}A`;
+          const ownerB = new THREE.Group();
+          ownerB.name = `SF_RosterPrewarm_PoolWitness_${i}B`;
+          root.add(ownerA);
+          root.add(ownerB);
+          pair = { ownerA, ownerB, palette };
+          pairs.set(signature, pair);
+        }
+        return pair;
+      };
+      const fallbackPairs = fallbackPalettes.map(pairFor);
+      const normalize = (file) => String(file || '').replace(/\\/g, '/').split(/[?#]/, 1)[0]
+        .replace(/^.*\/parts\//, '');
+      poolWitnesses = {
+        pairs,
+        fallbackPairs,
+        pairsFor(entry) {
+          const extras = rosterFilePalettes.get(normalize(entry && entry.file));
+          if (!extras || extras.size === 0) return fallbackPairs;
+          return fallbackPairs.concat([...extras.values()].map(pairFor));
+        },
+      };
+      return poolWitnesses.pairs.size > 0;
+    };
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < uniqueFiles.length && this._rosterPartCatalogRoot === root
+          && !(state && state.mode === 'flight')) {
+        const entry = uniqueFiles[cursor++];
+        catalogProgress.loaded = cursor;
+        const record = await loadAuthoredPart(`${releaseRoot}${entry.file}`, {
+          renderer,
+          slot: entry.slot,
+          optional: true,
+          residencyRole: 'survival-roster-prewarm',
+          sectorId,
+          isResidencyOwnerActive: () => this._rosterPartCatalogRoot === root
+            && root.parent === scene,
+        }).catch(() => null);
+        if (!record || this._rosterPartCatalogRoot !== root) continue;
+        const holder = new THREE.Group();
+        holder.visible = false;
+        root.add(holder);
+        try {
+          instantiatePackagedPrimitives(record, holder, { includeAllLods: true });
+          // Mounted parts can also draw through the authored instance pools
+          // (GLTFKit_InstancePool_*), whose chunks are InstancedMesh draws over the same
+          // geometry+material — a different program variant (USE_INSTANCING) that linked
+          // mid-fight at +6.5 s. A count-0 twin links that exact variant behind the shell.
+          const seenPairs = new Set();
+          for (const primitive of record.primitives || []) {
+            if (!primitive || !primitive.geometry || !primitive.material) continue;
+            const pairKey = `${primitive.geometry.uuid}:${primitive.material.uuid}`;
+            if (seenPairs.has(pairKey)) continue;
+            seenPairs.add(pairKey);
+            const inst = new THREE.InstancedMesh(primitive.geometry, primitive.material, 1);
+            inst.count = 0;
+            inst.visible = true;
+            inst.frustumCulled = false;
+            inst.name = 'SF_RosterPrewarm_InstanceTwin';
+            holder.add(inst);
+          }
+        } catch (error) {
+          console.warn('[render] roster part catalog instantiate failed', entry.file, error);
+          continue;
+        }
+        // Live attach canonicalizes the shared materials' program-family keys (attachPackagedBody
+        // does it at admission; boundaries do it post-upgrade). Compile under the same canonical
+        // key or every place body relinks its real program at first draw — the wr:/beacon/wreck
+        // cluster this pass exists to prevent.
+        canonicalizeObjectSurfaceProgramKeys(holder);
+        // Render-package pilots carry their merged LOD nodes inside the package plan, not
+        // record.primitives — the holder above never touches them. Force their pool keys to
+        // promote now so the first live spawn joins an existing chunk instead of creating one.
+        // The warm prepares+activates its deferred chunk admissions itself; track the promise
+        // so the cook's settle waits for the chunk programs/buffers, not just the GLB decode.
+        if (record.renderPackage && entry.slot !== 'place' && ensurePoolWitnesses()) {
+          const poolWarm = Promise.resolve()
+            .then(() => warmRenderPackageShipPool(scene, record, poolWitnesses.pairsFor(entry)))
+            .then((warmed) => { catalogProgress.poolCandidates = (catalogProgress.poolCandidates || 0) + warmed; })
+            .catch(() => null);
+          if (this._rosterPrewarmPending) {
+            this._rosterPrewarmPending.add(poolWarm);
+            poolWarm.finally(() => {
+              if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(poolWarm);
+            });
+          }
+        }
+        // Compile each holder as it lands: enqueued early, the ambient drain absorbs them
+        // across the whole load window instead of one end-of-load burst outlasting the cook.
+        catalogProgress.holders += 1;
+        const compiled = Promise.resolve(compilePipelines(holder))
+          .catch(() => null)
+          .then((result) => { catalogProgress.compiles += 1; return result; });
+        if (this._rosterPrewarmPending) {
+          this._rosterPrewarmPending.add(compiled);
+          compiled.finally(() => {
+            if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(compiled);
+          });
+        }
+      }
+    };
+    const workers = [];
+    // Eight lanes: the catalog must finish inside the cook window — every file left unloaded
+    // becomes an in-flight GLB decode + program link on the entity that first draws it. The
+    // decode burst is bounded (each lane serially awaits) and the GPU pipe crash that once
+    // argued for fewer lanes was a transport bug, not decode load.
+    for (let i = 0, n = Math.min(8, uniqueFiles.length); i < n; i++) workers.push(worker());
+    const settled = Promise.allSettled(workers);
+    if (this._rosterPrewarmPending) {
+      this._rosterPrewarmPending.add(settled);
+      settled.finally(() => {
+        if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
+      });
     }
   },
 
@@ -8285,6 +9097,17 @@ export const render = {
     this._rosterPrewarmRoots = [];
     if (this._rosterPrewarmIds) this._rosterPrewarmIds.clear();
     if (this._rosterPrewarmWeaponIds) this._rosterPrewarmWeaponIds.clear();
+    if (this._rosterPrewarmPending) this._rosterPrewarmPending.clear();
+    if (this._rosterPartCatalogRoot) {
+      const catalog = this._rosterPartCatalogRoot;
+      this._rosterPartCatalogRoot = null;
+      try {
+        if (catalog.parent) catalog.parent.remove(catalog);
+        if (this._contextLost !== true) disposeObject(catalog);
+      } catch (error) {
+        console.warn('[render] roster part catalog release failed', reason, error);
+      }
+    }
     for (const root of roots) {
       if (!root) continue;
       try {
@@ -8694,8 +9517,13 @@ export const render = {
       // instead of drawn on the wrong boundary.
       const stampedKey = m && m.userData ? m.userData.sfStableEntityKey : undefined;
       const mismatched = !!(e && e.alive !== false && stampedKey != null && stableMeshKeyForEntity(e) !== stampedKey);
-      if (!e || e.alive === false || mismatched
-          || (!keepResidentSet && !isEntityRenderRelevant(e, state, renderResidencyRadius(state, 'evict', e)))) {
+      // Residency eviction of an on-glass entity is the visible "pop out of
+      // existence" defect — count it so probes can prove the class stays at 0.
+      const residencyEvict = !!(e && e.alive !== false && !mismatched)
+        && !keepResidentSet
+        && !isEntityRenderRelevant(e, state, renderResidencyRadius(state, 'evict', e));
+      if (!e || e.alive === false || mismatched || residencyEvict) {
+        if (residencyEvict) noteOnGlassResidencyEviction(state, e);
         this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(m); disposeObject(m); this._meshes.delete(id); noteShadowMeshRemoved(this, m);
@@ -8758,8 +9586,10 @@ export const render = {
     for (const [id, mesh] of this._meshes) {
       stats.meshVisits++;
       const entity = resolveWorldPresentationEntity(state, id);
-      if (!entity || entity.alive === false
-          || !isEntityRenderRelevant(entity, state, renderResidencyRadius(state, 'evict', entity))) {
+      const residencyEvict = !!(entity && entity.alive !== false)
+        && !isEntityRenderRelevant(entity, state, renderResidencyRadius(state, 'evict', entity));
+      if (!entity || entity.alive === false || residencyEvict) {
+        if (residencyEvict) noteOnGlassResidencyEviction(state, entity);
         this._unbindPresentationMesh(id, mesh);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(mesh);
@@ -8947,6 +9777,15 @@ export const render = {
           || !isEntityRenderRelevant(e, this.state)) continue;
       const m = this.vf.build(e);
       if (!m) { e._noMesh = true; continue; }
+      // In-flight builds are the deferred-streaming tail: naming each one in the counter log
+      // is how the smooth-flight probe attributes a mid-round link burst to a real entity.
+      const tier1 = this.state.perfRuntime && this.state.perfRuntime.tier1;
+      if (this.state.mode === 'flight' && tier1 && typeof tier1.recordEvent === 'function') {
+        tier1.recordEvent('meshBuild', {
+          entityId: e.id, type: e.type || '',
+          typeId: (e.data && (e.data.typeId || e.data.enemyId || e.data.defId)) || '',
+        });
+      }
       if (e.type === 'asteroid' && !m.name) m.name = `Asteroid_${e.id}`;
       if (this.state.mode === 'flight' && (Number(this.state.simTime) || 0) < 3) {
         console.warn('[render] first-flight build', {
@@ -9252,6 +10091,12 @@ export const render = {
     let hlodProxyVisible = 0;
     let hlodObjectsSwapped = 0;
     let shadowPolicyRefreshes = 0;
+    // PQ-210.03 — longest any root has been sitting pending-and-on-glass this frame.
+    // The live-geometry queue must show such roots within ~0.25 s; this gauge proves it.
+    let onGlassPendingMaxS = 0;
+    let onGlassPendingCount = 0;
+    const onGlassPendingIds = this._onGlassPendingIds || (this._onGlassPendingIds = []);
+    onGlassPendingIds.length = 0;
 
     beginRenderEntityFrame(this._entityFrame);
 
@@ -9396,6 +10241,26 @@ export const render = {
       const onLiveGlass = Number.isFinite(bounds.glassHalfX) && Number.isFinite(bounds.glassHalfZ)
         && Math.abs(mesh.position.x - bounds.x) <= bounds.glassHalfX + lodRadius
         && Math.abs(mesh.position.z - bounds.z) <= bounds.glassHalfZ + lodRadius;
+      // The live-glass deadline only exists once the live screen does: a root
+      // pending behind the loading shell is not on glass yet — its clock starts
+      // at the first playable frame, same gate the admission lane serves.
+      const liveScreen = this.state.mode === 'flight'
+        && Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
+      if (userData.geometryPending === true && onLiveGlass && liveScreen) {
+        if (!Number.isFinite(userData.onGlassPendingSince)) userData.onGlassPendingSince = now;
+        const pendingS = now - userData.onGlassPendingSince;
+        if (pendingS > onGlassPendingMaxS) onGlassPendingMaxS = pendingS;
+        onGlassPendingCount++;
+        if (onGlassPendingIds.length < 16) {
+          const flags = `${userData.spacefaceGeometryResident === true ? 'R' : '-'}` +
+            `${entity && entity.mesh === mesh ? '' : ':stalemesh'}`;
+          onGlassPendingIds.push(
+            `${entityId}:${pendingS.toFixed(1)}:${entity ? 'e' : 'noent'}:${flags}`,
+          );
+        }
+      } else if (userData.onGlassPendingSince != null) {
+        userData.onGlassPendingSince = null;
+      }
       const visibilityChanged = !(!posed && protectedRoot)
         && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
           isPlayer,
@@ -9579,6 +10444,29 @@ export const render = {
     diagnostics.runwayWu = Math.round(bounds.runway || 0);
     diagnostics.prefetchRadius = Math.round(renderResidencyRadius(this.state, 'prefetch'));
     diagnostics.evictRadius = Math.round(renderResidencyRadius(this.state, 'evict'));
+    // PQ-210.03 — live solid-world guarantees: no residency evict may dispose an
+    // on-glass mesh, and a pending root on the live glass resolves in ~0.25 s.
+    diagnostics.onGlassDisposals = (this.state.render && this.state.render.onGlassDisposals) | 0;
+    diagnostics.onGlassPendingMaxS = onGlassPendingMaxS;
+    diagnostics.onGlassPendingCount = onGlassPendingCount;
+    diagnostics.onGlassPendingIds = onGlassPendingIds.length
+      ? onGlassPendingIds.slice()
+      : EMPTY_ON_GLASS_PENDING_IDS;
+    const geoQueue = this._liveGeometryAdmissions;
+    const geoStats = geoQueue && typeof geoQueue.stats === 'function' ? geoQueue.stats() : null;
+    diagnostics.liveGeometryQueued = geoStats ? geoStats.queued : 0;
+    diagnostics.liveGeometryUrgentQueued = geoStats ? geoStats.urgentQueued : 0;
+    diagnostics.liveGeometryDraining = !!(geoStats && geoStats.draining);
+    diagnostics.liveGeometryAdmitted = geoStats ? geoStats.admitted : 0;
+    diagnostics.liveGeometrySkipped = geoStats ? geoStats.skipped : 0;
+    diagnostics.liveGeometryUrgentBatches = geoStats ? geoStats.urgentBatches : 0;
+    diagnostics.liveGeometryLastBatchMs = geoStats ? geoStats.lastBatchMs : 0;
+    diagnostics.liveGeometryPendingIds = geoStats ? geoStats.pendingIds : [];
+    diagnostics.liveGeometryPendingTypes = geoStats ? geoStats.pendingTypes : [];
+    diagnostics.liveGeometryEnqueued = geoStats ? geoStats.enqueuedTotal : 0;
+    diagnostics.liveGeometryDeduped = geoStats ? geoStats.dedupedTotal : 0;
+    diagnostics.liveGeometryStage = geoStats ? geoStats.drainStage : 'none';
+    diagnostics.pipelineReadinessBatchOpen = scenePipelineReadinessBatchOpen();
     const probeOn = !!(this.state.perfRuntime
       && (this.state.perfRuntime.hitchAttributionEnabled
         || this.state.perfRuntime.renderWorkEnabled));
@@ -11167,17 +12055,17 @@ export const render = {
     return this.renderer.render(scene, camera);
   },
 
-  _compilePostRoute(route, subject, camera, lightingScene) {
+  _compilePostRoute(route, subject, camera, lightingScene, options = {}) {
     if (route === POST_PROCESS_ROUTE.GRAPH) {
       return compileScenePipelinesForRenderTarget(
-        this.renderer, this._renderGraph.sceneTarget, subject, camera, lightingScene,
+        this.renderer, this._renderGraph.sceneTarget, subject, camera, lightingScene, options,
       );
     }
     if (route === POST_PROCESS_ROUTE.BLOOM) {
-      return this.bloom.compileScenePipelines(subject, camera, lightingScene);
+      return this.bloom.compileScenePipelines(subject, camera, lightingScene, options);
     }
     return compileScenePipelinesForRenderTarget(
-      this.renderer, null, subject, camera, lightingScene,
+      this.renderer, null, subject, camera, lightingScene, options,
     );
   },
 
