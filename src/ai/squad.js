@@ -318,7 +318,7 @@ function assignRoles(members) {
 // behavior opts out of destruction (non-lethal interdiction, convoys, fixed-route logistics —
 // e.g. K1 fulfillment) run authored tactic contracts and never draw one.
 
-const IDENTITY_WING_ROLE = Object.freeze({
+export const IDENTITY_WING_ROLE = Object.freeze({
   swarm_pack: 'flank',
   ranged_disengager: 'kite',
   mine_layer_wake: 'area_denial',

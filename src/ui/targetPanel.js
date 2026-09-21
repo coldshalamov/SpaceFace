@@ -31,6 +31,7 @@ import { glyphSvg } from './glyphs.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
+import { IDENTITY_WING_ROLE } from '../ai/squad.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -237,6 +238,29 @@ function readableMotive(value) {
   return MOTIVE_LABEL[key] || (key ? key.replace(/_/g, ' ').toUpperCase() : '');
 }
 
+// INF-022: targeting one member of a tracking wing names the wing and its rough role.
+// Everything comes off the entity the panel already holds: the spawn-stamped squad id,
+// the doctrine identity stamped alongside it (a mine-layer reads as area denial the same
+// way in the panel as in the wing grammar), and the live combat target for the tracking
+// half. Pure and DOM-free for headless checks.
+export function wingLineFor(target, playerId) {
+  if (!target) return null;
+  const ai = (target.data && target.data.ai) || {};
+  const squadId = ai.squadId != null ? String(ai.squadId).trim() : '';
+  if (!squadId) return null;
+  const doctrineId = ai.combatDoctrineId != null ? String(ai.combatDoctrineId) : '';
+  const wingRole = IDENTITY_WING_ROLE[doctrineId] || (doctrineId ? 'press' : null);
+  const tracking = target.data && target.data.combat && target.data.combat.targetId != null
+    && playerId != null && target.data.combat.targetId === playerId;
+  const shortId = squadId.length > 18 ? squadId.slice(0, 17) + '…' : squadId;
+  let line = `WING ${shortId.toUpperCase()}`;
+  // Role slugs are already display-shaped (area_denial reads AREA DENIAL), so the panel
+  // shares the grammar's vocabulary instead of keeping a second table to drift.
+  if (wingRole) line += ` · ${wingRole.replace(/_/g, ' ').toUpperCase()}`;
+  if (tracking) line += ' · TRACKING YOU';
+  return line;
+}
+
 function playerWeaponRange(player) {
   const data = player && player.data || {};
   const weapons = Array.isArray(data.weapons) ? data.weapons : [];
@@ -347,6 +371,8 @@ export function targetIntelReadout(target, player, state, distance = Infinity) {
     threatTier,
     threatPips: tierPips(threatTier),
     rangeBand: targetRangeBand(distance, player),
+    // INF-022: targeting a wing member names the wing and its rough role.
+    wing: wingLineFor(target, state && state.playerId),
   });
 }
 
@@ -606,19 +632,20 @@ export function createTargetPanel(ctx) {
       const tacticalTarget = t.type === 'ship' || t.type === 'drone';
       const intel = tacticalTarget ? targetIntelReadout(t, p, state, dist) : null;
       const intelKey = intel
-        ? `${tid}:${intel.intent}:${intel.motive}:${intel.workStatus || ''}:${intel.recoveryPrompt || ''}:${intel.threatTier}:${intel.rangeBand}`
+        ? `${tid}:${intel.intent}:${intel.motive}:${intel.workStatus || ''}:${intel.recoveryPrompt || ''}:${intel.threatTier}:${intel.rangeBand}:${intel.wing || ''}`
         : '';
       if (intel && intelKey !== lastIntelKey) {
         lastIntelKey = intelKey;
         const workBit = intel.workStatus ? ` · ${intel.workStatus}` : '';
         const recoveryBit = intel.recoveryPrompt ? ` · ${intel.recoveryPrompt}` : '';
+        const wingBit = intel.wing ? ` · ${intel.wing}` : '';
         // J07: threat leaves the paragraph and becomes a badge. Spelling out INTENT/MOTIVE/THREAT
         // was eight words to answer one question you ask constantly in a fight. The badge answers
         // it as a shape; the sentence keeps only what a shape cannot carry.
-        setText(elIntent, `${intel.intent} · ${intel.motive}${workBit}${recoveryBit}`);
+        setText(elIntent, `${intel.intent} · ${intel.motive}${workBit}${recoveryBit}${wingBit}`);
         setText(elRange, intel.rangeBand);
         if (elIntent.style.display !== 'block') elIntent.style.display = 'block';
-        const aria = `Current target: ${nextName}, ${nextClass || 'contact'}, intent ${intel.intent}, motive ${intel.motive}, threat ${intel.threatTier}, ${intel.rangeBand}${intel.workStatus ? `, ${intel.workStatus}` : ''}${intel.recoveryPrompt ? `, ${intel.recoveryPrompt}` : ''}`;
+        const aria = `Current target: ${nextName}, ${nextClass || 'contact'}, intent ${intel.intent}, motive ${intel.motive}, threat ${intel.threatTier}, ${intel.rangeBand}${intel.workStatus ? `, ${intel.workStatus}` : ''}${intel.recoveryPrompt ? `, ${intel.recoveryPrompt}` : ''}${intel.wing ? `, ${intel.wing}` : ''}`;
         if (el._sfAriaLabel !== aria) {
           el._sfAriaLabel = aria;
           el.setAttribute('aria-label', aria);
