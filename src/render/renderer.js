@@ -273,6 +273,8 @@ import {
   deferWebGlContextRestore,
   detachStaleWebGlDisposeListeners,
   isWebGlContextUnavailable,
+  pauseSimForContextLoss,
+  resumeSimAfterContextRestore,
 } from './contextResourceLifecycle.js';
 import {
   assertDynamicBufferOwnerWritable,
@@ -4320,7 +4322,10 @@ export const render = {
         state.render.envMap = null;
         setEnvMapForShips(null);
         if (typeof console !== 'undefined') console.warn('[render] WebGL context lost — awaiting restore');
-        bus.emit('toast', { text: 'Graphics context lost — recovering…', kind: 'warn', ttl: 4 });
+        // The picture is frozen: halt the sim behind it so nothing kills the player while they
+        // cannot see, and say paused — a frozen GPU batch is not "working".
+        pauseSimForContextLoss(state);
+        bus.emit('toast', { text: 'Graphics context lost — game paused, recovering…', kind: 'warn', ttl: 8 });
       }, false);
       lifecycle.listen(canvas, 'webglcontextrestored', () => {
         // Three.js owns an earlier listener that replaces its context-bound caches. Keep the
@@ -4364,6 +4369,7 @@ export const render = {
                   .then(lifecycle.guard((restored) => {
                     if (!restored.ok) return;
                     this._publishAssetResidencyDiagnostics();
+                    resumeSimAfterContextRestore(state);
                     bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
                   }));
               }));
@@ -4504,6 +4510,7 @@ export const render = {
                 return;
               }
               this._publishAssetResidencyDiagnostics();
+              resumeSimAfterContextRestore(state);
               bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
             }));
         }));
@@ -9241,6 +9248,9 @@ export const render = {
   destroy() {
     try { this._contextRestoreReceipt?.cancel?.(); } catch (_) { /* best effort */ }
     this._contextRestoreReceipt = null;
+    // Never strand a context-loss pause on a dead renderer: teardown is not recovery, but the
+    // sim must not stay halted behind a canvas that will never draw again.
+    try { if (this.state) resumeSimAfterContextRestore(this.state); } catch (_) { /* best effort */ }
     const lifecycle = this._rendererLifecycle;
     if (!lifecycle) return false;
     const destroyed = lifecycle.destroy();

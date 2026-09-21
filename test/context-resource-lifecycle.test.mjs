@@ -3,12 +3,16 @@ import { test } from 'node:test';
 
 import {
   collectContextLossRoots,
+  CONTEXT_LOSS_TIME_EFFECT_SOURCE,
   createWebGlDisposeListenerProvenance,
   deferWebGlContextRestore,
   describeWebGlDisposeListenerProvenance,
   detachStaleWebGlDisposeListeners,
   isWebGlContextUnavailable,
+  pauseSimForContextLoss,
+  resumeSimAfterContextRestore,
 } from '../src/render/contextResourceLifecycle.js';
+import { createTimeEffects } from '../src/core/timeEffects.js';
 import {
   receiptReportsContextLost,
   runWebGlContextRestoreRebuild,
@@ -314,6 +318,45 @@ test('draw boundary observes a lost GL context before its asynchronous event arr
   assert.equal(isWebGlContextUnavailable(false, {
     getContext() { throw new Error('driver unavailable'); },
   }), true);
+});
+
+test('context loss halts the sim through the time-effects ledger, never a direct write', () => {
+  const state = { timeScale: 1, render: { contextRecovery: {} } };
+  const prior = pauseSimForContextLoss(state);
+  assert.equal(prior, 1);
+  assert.equal(state.timeScale, 0);
+  assert.equal(state.render.contextRecovery.simPaused, true);
+  // A repeated loss is idempotent — one ledger source, still halted.
+  pauseSimForContextLoss(state);
+  assert.equal(state.timeScale, 0);
+  assert.equal(CONTEXT_LOSS_TIME_EFFECT_SOURCE, 'webgl-context-loss');
+});
+
+test('context loss never erases a surviving menu pause, and recovery never clears it', () => {
+  const state = { timeScale: 1, render: { contextRecovery: {} } };
+  createTimeEffects(state).set('menu', { scale: 0 });
+  pauseSimForContextLoss(state);
+  assert.equal(state.timeScale, 0);
+  const after = resumeSimAfterContextRestore(state);
+  assert.equal(after, 0, 'the menu hold must survive context recovery');
+  assert.equal(state.timeScale, 0);
+  assert.equal(state.render.contextRecovery.simPaused, false);
+  createTimeEffects(state).clear('menu');
+  assert.equal(state.timeScale, 1);
+});
+
+test('successful restore resumes the sim; failed states stay halted without a resume call', () => {
+  const state = { timeScale: 1, render: { contextRecovery: {} } };
+  pauseSimForContextLoss(state);
+  assert.equal(state.timeScale, 0);
+  const after = resumeSimAfterContextRestore(state);
+  assert.equal(after, 1);
+  assert.equal(state.timeScale, 1);
+  assert.equal(state.render.contextRecovery.simPaused, false);
+  // A second resume with no hold is a harmless no-op, never a timeScale write race.
+  assert.equal(resumeSimAfterContextRestore(state), 1);
+  assert.equal(resumeSimAfterContextRestore(null), 1);
+  assert.equal(pauseSimForContextLoss(null), 0);
 });
 
 function resource(fields, listeners) {

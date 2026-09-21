@@ -7,6 +7,17 @@
 // reports INVALID_OPERATION. Function names are not provenance: release minification renames Three's
 // callbacks and a foreign listener can have the same name. The renderer-generation probe records the
 // exact opaque callback identities instead; context loss consumes that provenance once.
+//
+// A lost context also freezes the picture the player is watching. The simulation must halt with it:
+// stepping combat, AI, and the clock behind a dead canvas is an invisible ambush, and a frozen GPU
+// batch is not "working". The pause below rides the time-effects minimum ledger (the sole owner of
+// the time-scale scalar), so a menu/pause/cutscene hold already in force survives the outage and
+// recovery clears exactly this hold — never another system's.
+
+import { createTimeEffects } from '../core/timeEffects.js';
+
+// Source key in the time-effects minimum ledger while the WebGL context is lost.
+export const CONTEXT_LOSS_TIME_EFFECT_SOURCE = 'webgl-context-loss';
 
 export const WEBGL_DISPOSE_LISTENER_KINDS = Object.freeze([
   'instancedMeshes',
@@ -236,4 +247,33 @@ function visitMaterialValue(value, visitResource, depth) {
 function enqueueRestoreMicrotask(callback) {
   if (typeof queueMicrotask === 'function') queueMicrotask(callback);
   else Promise.resolve().then(callback);
+}
+
+/**
+ * Halt the simulation while the WebGL context is lost. Returns the effective scale before the
+ * hold so callers can log it. Idempotent: a repeated loss re-requests the same ledger source.
+ * Never touches state.timeScale directly — only the time-effects service owns that scalar.
+ */
+export function pauseSimForContextLoss(state) {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return 0;
+  const service = createTimeEffects(state);
+  const prior = service.getEffectiveScale();
+  service.set(CONTEXT_LOSS_TIME_EFFECT_SOURCE, { scale: 0 });
+  const recovery = state.render && typeof state.render === 'object' ? state.render.contextRecovery : null;
+  if (recovery && typeof recovery === 'object') recovery.simPaused = true;
+  return prior;
+}
+
+/**
+ * Release the context-loss hold after the GPU rebuild succeeds. Returns the effective scale after
+ * the release so callers can confirm a surviving menu/pause hold (0) versus a resumed sim (1).
+ * A failed rebuild must NOT call this: the picture is still dead, so the sim stays halted.
+ */
+export function resumeSimAfterContextRestore(state) {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return 1;
+  const service = createTimeEffects(state);
+  service.clear(CONTEXT_LOSS_TIME_EFFECT_SOURCE);
+  const recovery = state.render && typeof state.render === 'object' ? state.render.contextRecovery : null;
+  if (recovery && typeof recovery === 'object') recovery.simPaused = false;
+  return service.getEffectiveScale();
 }
