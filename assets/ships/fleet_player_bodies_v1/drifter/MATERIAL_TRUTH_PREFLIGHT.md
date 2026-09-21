@@ -226,6 +226,19 @@ Three chase reviews REVISE. Play+close+abeam `TUBE_PADDLE NO` on clay and
 shaded; wells stay holes. Hitch still wins formed-shell / skin at D=144.
 Hitch-plus chase is not closed. Parent unproven / not G7.
 
+## C18 chase-form (2026-09-21)
+
+`chase_form_v18` keeps the C17 diamond, all-slot clay, and wells-as-cuts.
+C18 cuts chase-scale girth hoops, inset pockets, and athwartship Course
+bands into the one shell, plus recess-cut hardware and pin-light beacons.
+Not plate spam. Not |y| Armor. Not Deck-on-crown. Mouths not recut.
+Principled islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+Three chase reviews REVISE. Play+close+abeam `TUBE_PADDLE NO` on clay and
+shaded; wells stay holes. Hitch still wins formed-shell / skin at D=144
+(pocket fields thin; Hitch midship / color / aft nozzle denser).
+Hitch-plus chase is not closed. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
