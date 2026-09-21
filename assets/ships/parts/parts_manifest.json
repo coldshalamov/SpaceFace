@@ -6674,8 +6674,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
-      "tris": 8090,
-      "bytes": 810592,
+      "tris": 9246,
+      "bytes": 902184,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6707,17 +6707,17 @@
           -4.55
         ],
         "max": [
-          5.7,
-          1.353253,
+          5.78,
+          1.294,
           4.55
         ],
         "dimensionsM": [
           10.88,
-          2.274,
+          2.344,
           9.1
         ]
       },
-      "note": "PQ-050.01 chase_form_v13. Live player interceptor form pass (chase camera). Principled color blocks, no 512-map bake. Hitch/Kestrel untouched. Not self-accepted; parent stays unproven."
+      "note": "PQ-050.01 chase_form_v14. Revise: blunt wings, scooped canopy well, dark recessed drive vanes. Principled color blocks. Hitch/Kestrel untouched. Not self-accepted; parent stays unproven."
     },
     {
       "id": "wholeship_inspection_cutter",
