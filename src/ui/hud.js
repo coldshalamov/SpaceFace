@@ -23,6 +23,7 @@ import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
 import { glyphSvg } from './glyphs.js';
+import { wantedReasonText } from './wantedReason.js';
 import { SHIPS } from '../data/ships.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
@@ -3518,18 +3519,22 @@ export function createHud(ctx, alerts) {
 
   // WANTED indicator (V2 §20b / cut-list #15): a persistent red alert when the player's heat is
   // above the lawful-engagement threshold. Event-driven from the heat system's heat:changed.
+  // INF-077: the alert traces the heat to its convicting incident (see wantedReason.js) —
+  // the accepted receipt's kind, affected party, and witness/jurisdiction basis. Suspicion
+  // without a receipt shows no reason at all, never a witness claim.
   let wantedActive = false;
   if (alerts) {
     ctx.bus.on('heat:changed', (p) => {
       const v = p && typeof p.value === 'number' ? p.value : (state.player && state.player.heat) || 0;
       const wanted = v >= 0.15;
       const tier = v >= 0.6 ? 'HIGH' : v >= 0.35 ? 'MODERATE' : 'LOW';
+      const reason = wantedReasonText(p, state.player);
       if (wanted && !wantedActive) {
-        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED · LAW ENFORCEMENT ACTIVE', ttl: Infinity });
+        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED · LAW ENFORCEMENT ACTIVE' + reason, ttl: Infinity });
         wantedActive = true;
       } else if (wanted && wantedActive) {
         // refresh the text to show the new tier (raise dedups by key but updates text/sev)
-        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED (' + tier + ') · HUNTERS INBOUND', ttl: Infinity });
+        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED (' + tier + ') · HUNTERS INBOUND' + reason, ttl: Infinity });
       } else if (!wanted && wantedActive) {
         alerts.clear('wanted');
         wantedActive = false;
