@@ -34,6 +34,7 @@ import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { applyMineLayerVerb } from '../ai/mineLayerVerb.js';
+import { applyNpcBombMirror } from '../ai/npcBombMirror.js';
 import {
   ENEMY_DOCTRINE_OVERRIDES,
   MISSION_TAG_BOSS_DOCTRINE,
@@ -454,6 +455,8 @@ export function createTacticalAISystem({
         }
         // The mine-layer's area-denial verb: the doctrine telegraphed `wake_mines` and is flying
         // its drop line; this port releases real mines behind the hull through the mines system.
+        // PQ-205.02: the same telegraphed pass also calls bombs.drop / commandDetonate so the
+        // pirate in front of the player lays a shootable drift bomb.
         if (entity && !capitalBossOrder(state, entity.id)?.suppressStockFire && nemesisFireAllowed(entity, state) && doctrine && doctrine.doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) {
           applyMineLayerVerb({
             state,
@@ -461,6 +464,15 @@ export function createTacticalAISystem({
             doctrinePhase: doctrine.phase,
             tick,
             placeMine: ctxRef.helpers && ctxRef.helpers.placeMine,
+          });
+          const bombsSys = ctxRef.registry && typeof ctxRef.registry.get === 'function'
+            ? ctxRef.registry.get('bombs')
+            : null;
+          applyNpcBombMirror({
+            state,
+            entity,
+            doctrinePhase: doctrine.phase,
+            bombs: bombsSys,
           });
         }
         if (entity && fieldsSys && !capitalBossOrder(state, entity.id)?.suppressStockFire && nemesisFireAllowed(entity, state)) applyNpcFieldDeploy(entity, state, fieldsSys);

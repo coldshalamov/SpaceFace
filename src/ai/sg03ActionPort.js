@@ -43,6 +43,11 @@ const TACTICAL_PROFILE = Object.freeze({
     targetKinds: Object.freeze([ContactKind.SHIP]),
     preferredRange: 180,
   }),
+  action_drop_bomb: Object.freeze({
+    tags: Object.freeze(['attack', 'deploy']),
+    targetKinds: Object.freeze([ContactKind.SHIP]),
+    preferredRange: 340,
+  }),
 });
 
 /** Convert the canonical SG-03 ActionDef into the read-only tactical view consumed by SG-06. */

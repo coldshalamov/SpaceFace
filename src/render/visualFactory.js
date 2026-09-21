@@ -3878,7 +3878,7 @@ const BOMB_ACCENTS = Object.freeze({
 //   anchor      dense box slug + collar rings + pylons    — the ballast
 function buildBomb(e) {
   const payloadId = String(e && e.data && e.data.bombId || 'bomb_frag');
-  const R = Math.max(0.6, Number(e && e.radius) || 1.4);
+  const R = Math.max(0.6, Number(e && e.data && e.data.visualRadius) || 1.4);
   const g = new THREE.Group();
 
   const shell = getMaterial('bomb:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({

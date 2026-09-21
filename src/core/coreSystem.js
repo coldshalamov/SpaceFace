@@ -594,7 +594,9 @@ function appendEntityIndex(index, e) {
       index.charges.push(e);
       break;
     case 'bomb':
-      // Drift bombs (src/systems/bombs.js): logical fuze entities — not shootable, not colliders.
+      // Drift bombs: kinematic fuze entities. Collidable for projectile sweeps (PQ-205.02)
+      // while physicsBody stays false — bombs own their pose. Not a combat damageable;
+      // projectile:hit is retired by the bombs owner exactly once.
       index.bombs.push(e);
       break;
     case 'massSeed':
@@ -723,6 +725,10 @@ function isMovableEntity(e) {
     // point. Movable membership puts it in the incremental dynamic layer (rehash follows pos) and
     // earns prevPos snapshots so renderer interpolation doesn't judder the travel animation.
     case 'massSeed':
+      return true;
+    // PQ-205.02: kinematic drift bombs participate in the spatial-dynamic layer so the
+    // projectile-sweep hash follows the capsule. Pose is still bomb-owned (physicsBody:false).
+    case 'bomb':
       return true;
     default:
       return false;

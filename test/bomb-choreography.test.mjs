@@ -42,13 +42,15 @@ function openField(t, id = 'bomb_goo') {
   assert.equal(sweptBombContact(NaN, 0, 1, 0, 10), Infinity);
 });
 
- test('drift bombs are excluded from both physics-body enrollment and foreign interpolation ownership', () => {
+ test('drift bombs stay out of Rapier and keep bomb-owned kinematics, but join the spatial-dynamic layer so the projectile-sweep hash follows them', () => {
   const t = bombScenario({ velocity: { x: 80, z: 0 } });
   try {
     const bomb = t.drop(), x = bomb.pos.x;
     assert.equal(shouldSyncPhysicsBodyEntity(bomb), false);
+    assert.equal(bomb.physicsBody, false);
     assert.equal(t.state.entityIndex.physicsBodies.includes(bomb), false);
-    assert.equal(t.state.entityIndex.movables.includes(bomb), false);
+    assert.equal(t.state.entityIndex.movables.includes(bomb), true, 'kinematic interp + sweep hash');
+    assert.equal(t.state.entityIndex.collidables.includes(bomb), true, 'projectile-sweep proxy');
     t.tick(); near(bomb.prevPos.x, x);
     const x2 = bomb.pos.x; assert.ok(x2 > x, 'the live index actually advances the bomb'); t.tick(); near(bomb.prevPos.x, x2);
     t.player.vel.x = -300;

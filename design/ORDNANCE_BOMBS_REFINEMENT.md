@@ -227,6 +227,14 @@ asset/cue needs catalog validation and reduced-flash/motion checks. Do not decla
 
 ### C. NPC mirror and shootable counterplay
 
+**PQ-205.02 closed the NPC mirror and shootable proxy.** The mine-layer wake doctrine is the
+one telegraphed pursuit-lane: after `wake_mines`, `src/ai/npcBombMirror.js` calls `bombs.drop`
+(frag cassette) and `commandDetonate` — no copied fuze. The capsule is a moving projectile-sweep
+proxy (`adaptBombProjectileProxy`: `collides`, `Masks.PROJECTILE`, `physicsBody:false`, pose from
+the kinematic owner). Destroying it is **inert** in every pre-burst phase (safe, armed, warning):
+the payload does not cook. Same-tick bullet/command/expiry races retire or detonate exactly once.
+Receipt: `design/program/roadmap/receipts/PQ-205.02-REPORT.md`.
+
 NPCs call `bombs.drop(owner, payloadId, state)` and `commandDetonate(owner.id, state)`; no copied
 fuze/cooldown/effect implementation. Keep their ammunition/acquisition policy in its proper owner.
 Start with one telegraphed pursuit-lane doctrine. Exercise owner death, faction changes, capacity,

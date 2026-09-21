@@ -11,7 +11,7 @@ export function bombScenario(options = {}) {
   const ctx = { state, bus, helpers, registry: { get: () => null } };
   const coreSystem = Object.create(core); coreSystem.init(ctx);
   const events = new Map(), damage = [], impulses = [];
-  for (const name of ['dropped', 'armed', 'primed', 'detonated', 'fieldEnded', 'released', 'denied', 'commanded', 'cycle', 'rackChanged', 'stockChanged']) {
+  for (const name of ['dropped', 'armed', 'primed', 'detonated', 'fieldEnded', 'released', 'denied', 'commanded', 'cycle', 'rackChanged', 'stockChanged', 'destroyed']) {
     events.set(name, []); bus.on(`bombs:${name}`, p => events.get(name).push(p));
   }
   const hits = [];

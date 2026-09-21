@@ -10,6 +10,7 @@ import { shipworksStationAccess } from './ships.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { Masks } from '../core/entity.js';
 import { FIELD_COUPLING } from '../data/fields.js';
 import {
   integrateBombDrift, sweptBombContact, compareBombEntityIds, bombSurfaceFalloff,
@@ -18,6 +19,10 @@ import {
 
 export const BOMB_TYPE = 'bomb';
 export const BOMB_SHOVE_CAP = 8;
+// Sweep disc the live projectile path tests. Larger than the visual capsule so a combat-zoom
+// shot can actually hit the thing; the mesh keeps BOMB_VISUAL_RADIUS via data.visualRadius.
+export const BOMB_PROXY_RADIUS = 4.2;
+export const BOMB_VISUAL_RADIUS = 1.4;
 const DAMAGE_TYPES = new Set(['ship', 'drone', 'station']);
 const LOOSE_TYPES = new Set(['asteroid', 'wreck', 'pickup', 'payload']);
 const EMPTY = Object.freeze([]);
@@ -120,6 +125,31 @@ function considerShove(rows, id, dx, dz, mag) {
   if (mag > rows[weakest].mag) rows[weakest] = Object.freeze({ id, dx, dz, mag });
 }
 
+/**
+ * Authoritative pose adapter for the projectile-sweep proxy.
+ * The bomb stays the kinematic owner (`physicsBody:false`, analytic drift). This publishes the
+ * live pose into the existing physics.sweepProjectiles collidable (no second integrator, no
+ * Rapier body). Returns the sweep disc or null.
+ */
+export function adaptBombProjectileProxy(bomb) {
+  if (!bomb || bomb.type !== BOMB_TYPE || !bomb.pos) return null;
+  const d = bomb.data;
+  const live = bomb.alive !== false && d && d.phase !== 'spent';
+  bomb.physicsBody = false;
+  bomb.collides = live;
+  bomb.collisionMask = Masks.PROJECTILE;
+  bomb.radius = BOMB_PROXY_RADIUS;
+  if (d && d.visualRadius == null) d.visualRadius = BOMB_VISUAL_RADIUS;
+  return {
+    x: bomb.pos.x,
+    z: bomb.pos.z,
+    vx: Number(bomb.vel && bomb.vel.x) || 0,
+    vz: Number(bomb.vel && bomb.vel.z) || 0,
+    radius: BOMB_PROXY_RADIUS,
+    collides: bomb.collides,
+  };
+}
+
 export const bombs = {
   name: 'bombs',
   saveSnapshotOwned: true,
@@ -156,6 +186,7 @@ export const bombs = {
       // applied the starter kit to a pre-rack save). This sweep only releases live bomb
       // entities; persistent bag state must survive the load boundary.
       this.bus.on('save:loaded', () => this.releaseAll('save_loaded')),
+      this.bus.on('projectile:hit', (p) => this._onProjectileHit(p)),
       this.bus.on('ui:buyPayload', rackIntent((p) => this.buyPayload(p))),
       this.bus.on('ui:fitPayload', rackIntent((p) => this.fitPayload(p))),
       this.bus.on('ui:unfitPayload', rackIntent((p) => this.unfitPayload(p))),
@@ -367,7 +398,8 @@ export const bombs = {
     this._targets.sort(compareBombEntityIds);
   },
 
-  // Public common release path for later AI adoption. No NPC doctrine is enabled by this PR.
+  // Public common release path for player and NPC doctrine. NPCs call this plus commandDetonate
+  // (src/ai/npcBombMirror.js); they do not copy fuze/cooldown/effect code.
   // Caller must hold a live entity; it cannot smuggle an unregistered owner into attribution.
   // Rack law (PQ-205.03): the PLAYER may only drop a payload sitting loaded in a rack socket,
   // and each drop consumes one unit of it. Non-player owners bypass the rack entirely — NPC
@@ -404,15 +436,18 @@ export const bombs = {
     const pos = { x: owner.pos.x - Math.cos(heading) * standoff, z: owner.pos.z - Math.sin(heading) * standoff };
     const bomb = this.helpers.spawnEntity({
       type: BOMB_TYPE, pos, vel: { x: vx, z: vz }, rot: heading,
-      radius: 1.4, mass: 2, collides: false, physicsBody: false, team: owner.team, ownerId: owner.id,
+      radius: BOMB_PROXY_RADIUS, mass: 2, collides: true, physicsBody: false,
+      collisionMask: Masks.PROJECTILE, team: owner.team, ownerId: owner.id,
       data: {
         kind: 'bomb', bombId: def.id, ownerId: owner.id, phase: 'drift', armed: false,
         armedAt: now + BOMB_DRIFT.armS, detonateAt: now + def.fuzeS,
         spawnedAt: now, fieldStartedAt: 0, fieldEndsAt: 0, nextFieldTick: 0,
         triggered: false, spinRadS: 0, sectorId: state.world?.currentSectorId || null,
+        visualRadius: BOMB_VISUAL_RADIUS, retired: false,
       },
     });
     if (!bomb) return null;
+    adaptBombProjectileProxy(bomb);
     bomb.data.spinRadS = (Math.abs(Math.trunc(bomb.id)) % 2 ? 1 : -1) * BOMB_DRIFT.maxSpinRadS;
     bay.cooldownUntil = now + BOMB_DRIFT.releaseIntervalS;
     bay.cooldowns[payloadId] = now + def.cooldownS;
@@ -449,7 +484,7 @@ export const bombs = {
     let count = 0;
     for (const e of liveBombList(state)) {
       if (e?.alive && e.type === BOMB_TYPE && e.data?.ownerId === ownerId && e.data.phase === 'drift'
-        && simNow(state) >= e.data.armedAt) {
+        && !e.data.retired && simNow(state) >= e.data.armedAt) {
         this._prime(e, 'command', simNow(state)); count++;
       }
     }
@@ -459,7 +494,7 @@ export const bombs = {
 
   _prime(bomb, trigger, now) {
     const d = bomb.data;
-    if (d.phase !== 'drift') return false;
+    if (!d || d.retired || d.phase !== 'drift') return false;
     d.phase = 'warning';
     d.trigger = trigger;
     d.warningAt = now;
@@ -476,8 +511,10 @@ export const bombs = {
     for (const bomb of this._active) {
       if (!bomb.alive) continue;
       const d = bomb.data;
+      if (d.retired) continue;
       const x0 = bomb.pos.x, z0 = bomb.pos.z;
-      // Bombs are outside core's physics-movable index, so their owner snapshots interpolation.
+      // Kinematic owner snapshots interpolation here so fixtures that skip core.preStep still
+      // interpolate; live ticks also snapshot in preStep because bombs are spatial-dynamic.
       if (bomb.prevPos) { bomb.prevPos.x = x0; bomb.prevPos.z = z0; }
       bomb.prevRot = bomb.rot;
       integrateBombDrift(this._motion, x0, z0, bomb.vel.x, bomb.vel.z, dt, d.phase === 'field'
@@ -486,6 +523,7 @@ export const bombs = {
       bomb.pos.x = this._motion.x; bomb.pos.z = this._motion.z;
       bomb.vel.x = this._motion.vx; bomb.vel.z = this._motion.vz;
       bomb.rot += (d.spinRadS || 0) * dt;
+      adaptBombProjectileProxy(bomb);
       if (d.phase === 'field') {
         if (now >= d.fieldEndsAt) this._endField(bomb, state, 'expired');
         continue;
@@ -535,7 +573,7 @@ export const bombs = {
   },
 
   _detonate(bomb, d, state, trigger) {
-    if (!bomb.alive || d.triggered || (d.phase !== 'drift' && d.phase !== 'warning')) return false;
+    if (!bomb.alive || !d || d.retired || d.triggered || (d.phase !== 'drift' && d.phase !== 'warning')) return false;
     const def = bombDef(d.bombId), pos = { x: bomb.pos.x, z: bomb.pos.z };
     d.triggered = true; d.detonatedTick = state.tick;
     const result = def.field?.kind === 'singularity' ? null
@@ -543,7 +581,7 @@ export const bombs = {
     if (def.field) {
       d.phase = 'field'; d.fieldStartedAt = simNow(state); d.fieldEndsAt = d.fieldStartedAt + def.field.durationS;
       d.nextFieldTick = state.tick + def.field.tickEveryTicks;
-    } else { d.phase = 'spent'; bomb.alive = false; }
+    } else { d.phase = 'spent'; d.retired = true; bomb.alive = false; }
     this._emitDetonated(bomb, d, def, state, pos, trigger, result);
     return true;
   },
@@ -678,7 +716,7 @@ export const bombs = {
   _endField(bomb, state, reason) {
     if (!bomb.alive || bomb.data.phase !== 'field') return;
     const d = bomb.data, def = bombDef(d.bombId), pos = { x: bomb.pos.x, z: bomb.pos.z };
-    bomb.alive = false; d.phase = 'spent';
+    bomb.alive = false; d.phase = 'spent'; d.retired = true;
     if (reason === 'expired' && def.field?.kind === 'singularity') {
       const result = this._blastVictims(state, { pos, def, ownerId: d.ownerId, originId: bomb.id, trigger: 'collapse',
         impulseOverride: def.field.collapseImpulse, damageOverride: def.field.collapseDamage });
@@ -700,6 +738,42 @@ export const bombs = {
     this.bus.emit('combat:routeDamage', request);
     return null;
   },
+
+  _onProjectileHit(payload) {
+    if (!this.state || !payload) return false;
+    const target = this.state.entities.get(payload.targetId);
+    if (!target || target.type !== BOMB_TYPE) return false;
+    return this.retire(target, 'projectile', this.state, { shotBy: payload.ownerId });
+  },
+
+  // Inert destruction: shooting the capsule (or its field source) retires the bomb exactly once
+  // and never detonates it. Arming law is preserved — an unarmed shot cannot cook the payload.
+  // Warning-phase shots still defuse; a fuze that already resolved this tick in _tickBombs wins
+  // because physics sweeps after bombs in UPDATE_ORDER. `shotBy` (projectile hits) names the
+  // shooter so consumers can attribute the shoot-down; `ownerId` stays the dropper.
+  retire(bomb, reason = 'destroyed', state = this.state, { shotBy = null } = {}) {
+    if (!bomb || bomb.type !== BOMB_TYPE || !bomb.data) return false;
+    const d = bomb.data;
+    if (d.retired || d.phase === 'spent' || bomb.alive === false) return false;
+    d.retired = true;
+    const pos = { x: bomb.pos.x, z: bomb.pos.z };
+    const payloadId = d.bombId;
+    const ownerId = d.ownerId;
+    const bombId = bomb.id;
+    if (d.phase === 'field') {
+      this._endField(bomb, state, reason);
+    } else {
+      bomb.alive = false;
+      d.phase = 'spent';
+    }
+    adaptBombProjectileProxy(bomb);
+    this.bus?.emit('bombs:destroyed', {
+      bombId, payloadId, ownerId, shotBy, pos, reason, trigger: reason,
+    });
+    this.bus?.emit('audio:cue', { id: 'massline.bombDrop', position: pos, gain: 0.35, bombId, payloadId });
+    return true;
+  },
+
   releaseAll(reason = 'release') {
     if (!this.state) return 0;
     let count = 0;
@@ -707,7 +781,7 @@ export const bombs = {
       if (!e?.alive || e.type !== BOMB_TYPE) continue;
       if (e.data?.phase === 'field') this._endField(e, this.state, reason);
       e.alive = false;
-      if (e.data) e.data.phase = 'spent';
+      if (e.data) { e.data.phase = 'spent'; e.data.retired = true; }
       count++;
     }
     this._ownerCooldowns?.clear();

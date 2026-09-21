@@ -12,3 +12,4 @@ export * from './trace.js';
 export * from './specialistPlans.js';
 export * from './specialistCounterplay.js';
 export * from './npcFieldDeploy.js';
+export * from './npcBombMirror.js';

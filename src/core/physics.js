@@ -676,6 +676,9 @@ export const physics = {
       for (const tgt of candidates) {
         if (!tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile') continue;
         if (proj.ownerId === tgt.id) continue;
+        // A kinematic bomb proxy stands in for its owner's own ordnance: the owner's fire
+        // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
+        if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
         if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
         if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0))) continue;
         if (!bestTarget || hit.t < bestHit.t) {

@@ -70,8 +70,10 @@ const SWARM_REFORM_TICKS = 24;
 // line up its fixed gun. At 200 WU the target crosses most of the firing band during the cue;
 // return fire then knocks the fragile attacker off aim before its first useful salvo.
 const SWARM_INGRESS_RANGE_WU = 340;
-// Mine-layer wake: flank, telegraph the salted wake, fly the drop line, disengage. The mine
-// itself is dropped by the tacticalAI verb port (src/ai/mineLayerVerb.js) during 'mine_drop'.
+// Mine-layer wake: flank, telegraph the salted wake, fly the drop line, disengage.
+// PQ-205.02: the drop line is the pursuit-lane bomb doctrine — npcBombMirror calls
+// bombs.drop / commandDetonate after the wake_mines telegraph. Physical mines still
+// seed from mineLayerVerb during the same phase.
 const MINE_FLANK_RANGE_WU = 340;
 const MINE_DROP_TICKS = 70;
 const MINE_DISENGAGE_TICKS = 45;
@@ -886,10 +888,9 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       faceTarget = true;
       preferredRange = 300;
     } else if (phase === 'mine_drop') {
-      // The drop line: keep the nose off the target so the hull flies its wake PAST the player;
-      // The drop line releases behind the hull along its own motion: the mine verb
-      // (action_drop_bomb through the shared bombs.drop seam) makes this a drift-bomb
-      // pass now, not a gun run. INF-030.
+      // The drop line: keep the nose off the target so the hull flies its wake PAST the player.
+      // NPC bombs release through bombs.drop (npcBombMirror + action_drop_bomb); commandDetonate
+      // commits the fuze after arming. INF-030 / PQ-205.02.
       maneuverKind = ManeuverKind.INTERCEPT;
       faceTarget = false;
       preferredRange = 340;

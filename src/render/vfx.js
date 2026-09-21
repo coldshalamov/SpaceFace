@@ -2134,6 +2134,7 @@ export const vfx = {
     // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md): per-payload reads, never one generic ball.
     add('bombs:detonated', (p) => this._onBombDetonated(p));
     add('bombs:fieldEnded', (p) => this._onBombFieldEnded(p));
+    add('bombs:destroyed', (p) => this._onBombDestroyed(p));
     add('ai:telegraph', (p) => this._onAiTelegraph(p));
     add('ai:flee', (p) => this._onAiFlee(p));
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
@@ -9236,6 +9237,14 @@ export const vfx = {
       // The tar settles: one last dull puff, nothing bright.
       this._spawnSprite(SPR_PUFF, p.pos.x, 0.06, p.pos.z, 1.8, 0.6, 2.4, 0.3, 0, '#6f8f3a', 0, 0, 2.4, 0);
     }
+  },
+
+  // PQ-205.02 inert shoot-down: the capsule pops, it does not cook. A short dull puff, no blast.
+  _onBombDestroyed(p) {
+    if (!this._scene || !p || !p.pos) return;
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = acc.flashOpacityScale < 1;
+    this._spawnSprite(SPR_PUFF, p.pos.x, 0.08, p.pos.z, reduced ? 0.7 : 1.1, 0.45, 1.6, 0.4, 0, '#c8d0d4', 0, 0, 1.8, 0);
   },
 
   // SF-10 wall-impact payoff (combat:collisionConsequence). A light hull slammed into terrain /
