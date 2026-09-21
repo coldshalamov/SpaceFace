@@ -491,7 +491,8 @@ test('the first-frame pool census seal is not gated on KHR or the prepare budget
   assert.ok(barrierIndex >= 0, 'the KHR first-picture barrier must still exist');
   assert.ok(sealIndex > barrierIndex,
     'the seal must run after the barrier decision, not inside it');
-  const between = body.slice(barrierIndex, sealIndex);
+  const between = body.slice(barrierIndex, sealIndex)
+    .split('\n').map((line) => line.replace(/\/\/.*$/, '')).join('\n');
   assert.doesNotMatch(between, /PREPARE_BUDGET_MS/,
     'no prepare-budget gate may sit between the barrier decision and the seal');
 });

@@ -65,10 +65,18 @@ import {
   warmRenderPackageShipPool,
   poolWitnessPalettesForState,
   rosterPoolWitnessFilePalettes,
+  swarmRosterShipExemplarSpecs,
+  paletteWarmSubjectsForRecord,
+  spawnableShipArchetypePrewarmUrls,
+  PQ_193_05_WRECK_PACKAGED_FILES,
+  PQ_193_05_DRONE_PACKAGED_FILE,
+  PQ_193_05_GATE_PACKAGED_FILE,
+  OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID,
   PART_LIBRARY_CONTRACT,
 } from './partsLibrary.js';
 import {
   bindAuthoredAssetPerfCounters,
+  listDecodedAuthoredParts,
   loadAuthoredPart,
   prepareSectorEntry,
   preloadAuthoredParts,
@@ -443,6 +451,10 @@ const CACHE_LEASE_MAX_IDLE_MS = 30_000;
 // The opening first-picture hold is a startup latch measured in frames, not seconds. If the paint
 // latch has not ended it after this long, the paint callback is never coming; resume streaming.
 const OPENING_PICTURE_HOLD_FAILSAFE_MS = 15000;
+// An armed first-playable paint release is expected to land within two frames (~33 ms). If the
+// stamp is still missing after this much longer, treat the armed afterBrowserPaint chain as lost
+// and let shouldScheduleFirstPlayablePaintRelease re-arm it (the release is idempotent).
+const FIRST_PLAYABLE_PAINT_REARM_MS = 2000;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -3870,6 +3882,8 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._openingFirstPicturePrepared = false;
   owner._openingPictureHoldSinceMs = null;
   owner._firstPlayablePaintScheduled = false;
+  owner._firstPlayablePaintScheduledAtMs = null;
+  owner._firstPlayablePaintRearms = 0;
   owner._meshReconcileDirty = false;
   owner._initialMeshReconcileComplete = false;
   owner._renderResidencyPollS = 0;
@@ -4947,6 +4961,8 @@ export const render = {
       failures: () => this._sectorBoundaryPreparations.inspectFailures(),
     };
     this._firstPlayablePaintScheduled = false;
+    this._firstPlayablePaintScheduledAtMs = null;
+    this._firstPlayablePaintRearms = 0;
     this._hazardVisuals = []; // hazard zone visual meshes for the current sector
     this._meshReconcileDirty = true;
     this._initialMeshReconcileComplete = false;
@@ -6354,8 +6370,11 @@ export const render = {
           // Survival: the pool-warm/stamp/depth steps at the tail of the cook are what keep
           // mid-round registrations from creating cold chunks inside the fight — a 20 s
           // internal deadline under host load skips exactly those. The arena is bounded and
-          // the shell hides the time, so the cook gets the same scale as the settle below.
-          deadlineMs: survivalRunHoldsArena(state) ? 45000 : Math.min(20000, remainingMs()),
+          // the shell hides the time, so the cook gets real room: PQ-210.00's bounded roster
+          // warm adds bounded decode + compile + shadow-depth stages on top, and truncating
+          // them is what drains program links into the round. 120 s stays far under the
+          // 360 s outer gate and every inner step is still individually capped.
+          deadlineMs: survivalRunHoldsArena(state) ? 120000 : Math.min(20000, remainingMs()),
         });
       recordOpeningCookStep(state.render, 'live.cook', liveStepStarted, recook ? 'skipped' : 'resolved');
       // Leftover FX compiles (entity:fx:77/80/81) must finish behind the shell.
@@ -7123,6 +7142,53 @@ export const render = {
       if (bufferFirstFlightFx) {
         for (const root of firstFlightRoots) addFirstFlightBufferRoot(root);
       }
+      // PQ-210.00 — mount every asteroid (type, variant) leaf pair, not only the ones this
+      // field currently shows. A rock promoted mid-round picks its variant by hashId(id), so
+      // the first live draw of an untouched pair links its color + shadow-depth programs and
+      // uploads its buffers inside the fight — the measured Asteroid_3xx links at +0.5 s and
+      // +22 s of seed 4242. One hidden 30-mesh group covers the whole space behind the shell;
+      // it joins the cook.rockPools compile below and is removed when the cook ends.
+      let asteroidLeafWarmRoot = null;
+      if (warmFirstFlightFx) {
+        try {
+          asteroidLeafWarmRoot = buildAsteroidLeafWarmGroup();
+          asteroidLeafWarmRoot.visible = false;
+          scene.add(asteroidLeafWarmRoot);
+          addFirstFlightBufferRoot(asteroidLeafWarmRoot);
+          // In _rosterPrewarmRoots so the bare→PBR upgrade sweep reaches it if the rock
+          // surface library lands after this build — a leaf group left on bare materials
+          // compiles a program family live rocks never draw.
+          this._rosterPrewarmRoots.push(asteroidLeafWarmRoot);
+        } catch (error) {
+          console.warn('[render] asteroid leaf warm group failed', error);
+          asteroidLeafWarmRoot = null;
+        }
+      }
+      // PQ-210.00 — the bounded roster warm: begin() mounts procedural/spawnable exemplars and
+      // starts the explicit packaged-body decodes before the buffer census; finish() below
+      // instantiates every decoded record into the hidden root so the compile batch and
+      // shadow pass cover it. No contract sweep — that measured 140 decodes / ~4000 pool roots
+      // and was the launch regression in the receipt.
+      let crucibleWarm = null;
+      let crucibleWarmRoot = null;
+      if (warmFirstFlightFx && survivalCook && !cookOverBudget()) {
+        try {
+          crucibleWarm = this._beginCrucibleBoundedRosterWarm({
+            yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser,
+          });
+        } catch (error) {
+          console.warn('[render] crucible bounded roster warm begin failed', error);
+          crucibleWarm = null;
+        }
+        if (crucibleWarm && crucibleWarm.root) {
+          crucibleWarmRoot = crucibleWarm.root;
+          scene.add(crucibleWarmRoot);
+          addFirstFlightBufferRoot(crucibleWarmRoot);
+          // Stays mounted hidden for the run — _releaseSurvivalRosterPrewarm tears the root
+          // down at run end, and the bare→PBR sweep reaches it via _rosterPrewarmRoots.
+          this._rosterPrewarmRoots.push(crucibleWarmRoot);
+        }
+      }
       const restoreFirstFlight = !bufferFirstFlightFx
         ? []
         : firstFlightRoots.map((root) => revealSubjectForCompile(root));
@@ -7247,21 +7313,65 @@ export const render = {
         } catch (error) {
           console.warn('[render] asteroid instance pool warm failed', error);
         }
+        // Finish the bounded warm LAST before the compile-root snapshot: the census of decoded
+        // authored records is a snapshot, and upgrade-queue jobs still decoding during the cook
+        // only become warmable once this runs (the +21 s site/wreck links were mid-cook decodes
+        // the early snapshot missed). Over budget, skip it — the procedural exemplars mounted
+        // at begin() still compile; awaiting in-flight decodes is the part that can stall.
+        const crucibleWarmStarted = cookNow();
+        if (crucibleWarm && !cookOverBudget()) {
+          try {
+            await this._finishCrucibleBoundedRosterWarm(crucibleWarm, {
+              yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser,
+              budgetRemainingMs: () => cookDeadlineMs - (cookNow() - cookStarted),
+            });
+          } catch (error) {
+            console.warn('[render] crucible bounded roster warm finish failed', error);
+          }
+        }
+        recordOpeningCookStep(state.render, 'cook.crucibleWarm', crucibleWarmStarted,
+          crucibleWarm ? 'resolved' : 'skipped', {
+            progress: state.render && state.render.crucibleWarmProgress
+              ? JSON.stringify(state.render.crucibleWarmProgress).slice(0, 120)
+              : undefined,
+          });
         // Every pool root — asteroid variant chunks AND authored package chunks
         // (GLTFKit_InstancePool_*) — not just the rock pools: authored chunks created during
         // the cook's compose passes carry the same cold instanced program into flight.
         const poolRoots = collectInstancePoolCompileRoots(scene);
-        // Held-build owner roots whose leaf programs never compiled (see the stamp loop above).
+        // Held-build owner roots whose leaf programs never compiled (see the stamp loop above),
+        // plus the leaf-variant blanket: its meshes share the exact cached geometry/material a
+        // mid-round promotion draws, so the pass primes every variant's color + depth programs.
         const cookCompileRoots = [...poolRoots, ...stampedCookRoots];
+        if (asteroidLeafWarmRoot) cookCompileRoots.push(asteroidLeafWarmRoot);
+        if (crucibleWarmRoot) cookCompileRoots.push(crucibleWarmRoot);
+        // PQ-210.00 — far-field content mounts at cook but sits outside the near-field
+        // openingRoots cohort: stations, place props and scenario dressing first-enter the
+        // camera/shadow frustum when the fight drifts, and their programs + buffers paid the
+        // +21 s link/upload cluster in the probe. uniqueAdmissionUnits dedupes by material and
+        // geometry object, so widening the batch to every mounted mesh costs one compile+touch
+        // per distinct family, not per mesh — the leaf's whole point is paying that here,
+        // behind the shell, instead of inside the round.
+        const cookCompileSubjects = cookCompileRoots.length > 0
+          ? cookCompileRoots.flatMap((root) => collectCompileSubjects(root))
+          : [];
+        const sceneCompileSubjects = (survivalCook && !cookOverBudget())
+          ? collectCompileSubjects(scene)
+          : [];
+        const cookUnits = uniqueAdmissionUnits(cookCompileSubjects.concat(sceneCompileSubjects));
         const rockPoolsStarted = cookNow();
-        if (cookCompileRoots.length > 0) {
+        if (cookCompileRoots.length > 0 || sceneCompileSubjects.length > 0) {
           const whileRevealed = (subject, run) => {
             const restoreSubject = revealSubjectForCompile(subject);
             try { return run(); } finally { restoreSubject(); }
           };
           try {
             rockPools = await admitOpeningUnitsAcrossSlices({
-              units: uniqueAdmissionUnits(cookCompileRoots.flatMap((root) => collectCompileSubjects(root))),
+              units: cookUnits,
+              // The scene-wide set can be hundreds of units on a survival cook — the issue and
+              // touch loops honour deadlineMs and stop issuing when the cook window closes
+              // (drain itself is bounded by the readiness batch's own timeout).
+              deadlineMs: cookDeadlineMs - (cookNow() - cookStarted),
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
               compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
               touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
@@ -7275,7 +7385,14 @@ export const render = {
               renderer,
               light: this._keyLight,
               camera: cam.obj,
-              subjects: cookCompileRoots,
+              // Scene-wide on the survival cook: the reveal pass clears frustumCulled, so
+              // mounted far-field casters (stations, props) draw their depth variant in the
+              // one staging render instead of linking it when the fight drifts into range.
+              // It's a single synchronous render — skip it entirely rather than start it
+              // once the cook window has already closed.
+              subjects: (survivalCook && !cookOverBudget())
+                ? cookCompileRoots.concat([scene])
+                : cookCompileRoots,
               forceEnable: this._shadowSettingOn === true,
               THREE,
               captureObjectHome,
@@ -7293,6 +7410,9 @@ export const render = {
           rockPools.skipped === true ? 'skipped' : (rockPools.error ? 'error' : 'resolved'), {
             roots: cookCompileRoots.length,
           });
+      }
+      if (asteroidLeafWarmRoot && asteroidLeafWarmRoot.parent === scene) {
+        scene.remove(asteroidLeafWarmRoot);
       }
       return { skipped: false, liveScene: true, programs, present, buffers, rockPools };
     };
@@ -8671,6 +8791,8 @@ export const render = {
         this._pendingPostOpeningSector = null;
         this._openingPictureHoldSinceMs = null;
         this._firstPlayablePaintScheduled = false;
+        this._firstPlayablePaintScheduledAtMs = null;
+        this._firstPlayablePaintRearms = 0;
         this._firstFlightDeferredHold = true;
         // A fresh opening owns the absolute first-flight window again. Leaving an arrival deadline
         // here would make Continue (restored simTime already past it) release on frame one, or a
@@ -8907,7 +9029,7 @@ export const render = {
           data: {
             weaponId: weapon.id,
             damageType: weapon.damageType || 'energy',
-            kind: weapon.ammo || /missile|torpedo/i.test(weapon.id) ? 'missile' : 'bullet',
+            kind: weapon.tracking === 'homing' || /missile|torpedo/i.test(weapon.id) ? 'missile' : 'bullet',
           },
         });
         if (!mesh) continue;
@@ -9162,6 +9284,336 @@ export const render = {
         if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
       });
     }
+  },
+
+  /**
+   * PQ-210.00 — the bounded form of the roster warm, built on the live cook path with no bus
+   * event and no contract sweep. The receipt (design/program/roadmap/receipts/
+   * PQ-210.00-REPORT.md) measured the wired emitter as a launch regression because the part
+   * catalog decoded ~140 files and promoted ~4000 pool roots; this instead warms the authored
+   * surface the sector already paid to decode — the preload plan retains exactly the spawnable
+   * archetype hulls plus the place/part files live entities resolve — plus the few packaged
+   * bodies a round can mint without an entity plan (wreck variants by hashId, custody pod,
+   * drone, gate, hulk/debris dressing). Procedural families (pickups, mines, projectiles, the
+   * ship fallback a hostile draws while its package composes) come from real vf.build
+   * exemplars.
+   *
+   * Two phases because decodes settle late: begin() mounts exemplars and starts the explicit
+   * decodes before the buffer census; finish() runs just before the cook snapshots compile
+   * roots so records decoded DURING the cook (the upgrade queue still held pending jobs when
+   * its idle wait timed out) are instantiated into the root in time for the compile batch and
+   * the end-of-cook scene residency census. Palette coverage comes from
+   * paletteWarmSubjectsForRecord — hidden meshes + count-0 instanced twins link the direct and
+   * USE_INSTANCING palette-material families without publishing the per-(key x palette) chunk
+   * fleet that was itself the regression. The root stays mounted hidden for the run and
+   * releases through _releaseSurvivalRosterPrewarm.
+   */
+  _beginCrucibleBoundedRosterWarm(options = {}) {
+    const { renderer, scene, state } = this;
+    if (!renderer || !scene || !this.vf) return null;
+    const warm = {
+      root: new THREE.Group(),
+      decodes: [],
+      pendingAttachments: [],
+      building: true,
+    };
+    const root = warm.root;
+    root.name = 'SF_CrucibleBoundedWarm';
+    root.visible = false;
+    root.userData.rosterPrewarm = 'bounded-cook';
+    const sectorId = (state && state.world && state.world.currentSectorId) || null;
+    const track = (promise) => {
+      const settled = Promise.resolve(promise).catch(() => null);
+      if (this._rosterPrewarmPending) {
+        this._rosterPrewarmPending.add(settled);
+        settled.finally(() => {
+          if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
+        });
+      }
+      return settled;
+    };
+    warm.track = track;
+
+    // Procedural spawnables: pickups (gem / credit chip / custody-pod canister), mines and
+    // vector mines — the same exemplar spec table the dormant roster path used. Wreck
+    // exemplars ride along too: every kill mints a wreck entity and its procedural shell
+    // draws until (or instead of) the authored body attaches.
+    for (const spec of combatSpawnableExemplarSpecs('crucible-warm:spawnable:')
+      .concat(wreckVisualExemplarSpecs('crucible-warm:wreck:'))) {
+      try {
+        const mesh = this.vf.build(spec);
+        if (!mesh) continue;
+        mesh.visible = false;
+        root.add(mesh);
+        // Packaged bodies (the custody pod's capsule) attach through the boundary hook once a
+        // renderer exists; calling it here mounts the authored body inside the warm root, and
+        // finish() awaits the attach ahead of the compile batch.
+        if (typeof mesh.userData?.requestAuthoredUpgrade === 'function') {
+          warm.pendingAttachments.push(track(mesh.userData.requestAuthoredUpgrade(renderer, scene, {
+            residencyRole: 'crucible-roster-warm',
+            sectorId,
+          })));
+        }
+      } catch (error) {
+        console.warn('[render] crucible warm spawnable build failed', spec && spec.id, error);
+      }
+    }
+    // The procedural hulls a hostile draws while its authored package composes — Group:ship
+    // linked inside the fight when a wave spawn presented before its boundary resolved. One
+    // exemplar per swarm-roster enemy carries that enemy's (defId, silhouette, factionId) so
+    // the built fallback is the same program family the live spawn draws — a generic kestrel
+    // misses the drone_swarm/bruiser_armor/dreadnought families entirely.
+    for (const spec of swarmRosterShipExemplarSpecs('crucible-warm:ship:')) {
+      try {
+        const ship = this.vf.build(spec);
+        if (ship) { ship.visible = false; root.add(ship); }
+      } catch (error) {
+        console.warn('[render] crucible warm ship fallback build failed', spec && spec.id, error);
+      }
+    }
+    // World-site fixtures mint a fresh MeshBasicMaterial per socket on first approach — the
+    // additive/transparent/no-tonemap program family is identical across them, so one exemplar
+    // mesh links the variant every beacon/pin/dressing fixture will draw.
+    try {
+      const fixture = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 1),
+        new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.5,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          toneMapped: false,
+        }),
+      );
+      fixture.name = 'SF_CrucibleWarm_SiteFixture';
+      fixture.visible = false;
+      root.add(fixture);
+    } catch (error) {
+      console.warn('[render] crucible warm site fixture build failed', error);
+    }
+    // One hidden bolt per weapon id — same exemplar shape the roster path used — so a gun the
+    // roster fields mid-round never links its tracer program inside the fight.
+    for (const weapon of WEAPONS) {
+      if (!weapon || !weapon.id) continue;
+      try {
+        const mesh = this.vf.build({
+          id: `crucible-warm:projectile:${weapon.id}`, type: 'projectile', team: 0,
+          radius: weapon.size === 'L' ? 1.1 : weapon.size === 'M' ? 0.85 : 0.65,
+          pos: { x: 0, y: 0, z: 0 }, prevPos: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 },
+          rot: 0, flags: {},
+          data: {
+            weaponId: weapon.id,
+            damageType: weapon.damageType || 'energy',
+            kind: weapon.tracking === 'homing' || /missile|torpedo/i.test(weapon.id) ? 'missile' : 'bullet',
+          },
+        });
+        if (mesh) { mesh.visible = false; root.add(mesh); }
+      } catch (error) {
+        console.warn('[render] crucible warm projectile build failed', weapon.id, error);
+      }
+    }
+
+    // Explicit decodes: the bodies that materialize mid-round without an entity plan entry.
+    // Slot choice matters — the authored cache keys on url::slot and a mismatched slot decodes
+    // a second blueprint whose materials the production attach never reuses. These resolve
+    // through finish()'s await — a cache hit where the sector preload already decoded them,
+    // and the bounded substitute for the swept catalog where not.
+    const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
+      || 'assets/ships/release/parts/';
+    const explicitFiles = [
+      ...PQ_193_05_WRECK_PACKAGED_FILES.map((file) => ({ file, slot: 'place' })),
+      { file: PQ_193_05_DRONE_PACKAGED_FILE, slot: 'place' },
+      { file: PQ_193_05_GATE_PACKAGED_FILE, slot: 'place' },
+      // authoredPayloadSlotForEntity: 'pod' for the custody capsule, 'place' for the spindle.
+      { file: 'pods/pod_cargo_container.glb', slot: 'pod' },
+      { file: 'places/place_breakaway_sp07.glb', slot: 'place' },
+      ...Object.values(OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID)
+        .map((file) => ({ file, slot: 'place' })),
+      ...spawnableShipArchetypePrewarmUrls().map((file) => ({ file, slot: 'hull' })),
+    ];
+    for (const { file, slot } of explicitFiles) {
+      warm.decodes.push(track(loadAuthoredPart(`${releaseRoot}${file}`, {
+        renderer,
+        slot,
+        optional: true,
+        residencyRole: 'crucible-roster-warm',
+        sectorId,
+        isResidencyOwnerActive: () => warm.building === true,
+      })));
+    }
+    return warm;
+  },
+
+  async _finishCrucibleBoundedRosterWarm(warm, options = {}) {
+    const { renderer, scene, state } = this;
+    if (!warm || !warm.root || !renderer || !scene) return null;
+    const root = warm.root;
+    const yieldStep = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+    const budgetLeft = typeof options.budgetRemainingMs === 'function'
+      ? options.budgetRemainingMs
+      : () => Infinity;
+    const sectorId = (state && state.world && state.world.currentSectorId) || null;
+    // The explicit decodes and packaged-body attaches get the share of the cook budget that is
+    // actually left — never an unbounded wait: an unbounded one once held the shell for the
+    // whole 360 s gate and drained the warm's own compiles into flight (the
+    // wait.prepareLiveSectorBeforeFlight timeout). Whatever is still pending when the window
+    // closes lands through the normal live-admission lane instead.
+    const decodeWaitMs = Math.max(0, Math.min(budgetLeft() - 12000, 45000));
+    if (decodeWaitMs > 0) {
+      await Promise.race([
+        Promise.allSettled(warm.decodes.concat(warm.pendingAttachments)),
+        new Promise((resolve) => setTimeout(resolve, decodeWaitMs)),
+      ]);
+    }
+
+    // The warm set: every blueprint the runtime has decoded — live entities' plans, the
+    // spawnable archetypes, boundary compositions that already ran, plus the packaged bodies
+    // just decoded. Instantiating each once links every material family it carries.
+    // settledOnly — snapshot what finished decoding, never await the registry's pending tasks.
+    let records = [];
+    try {
+      records = await listDecodedAuthoredParts(renderer, { settledOnly: true });
+    } finally {
+      // A mid-finish throw must not leave residency leases pointing at a live owner.
+      warm.building = false;
+    }
+    const { palettes: fallbackPalettes } = poolWitnessPalettesForState(state);
+    const rosterFilePalettes = rosterPoolWitnessFilePalettes(state && state.entityList);
+    const signatureOf = (palette) => [
+      palette && palette.hull, palette && palette.accent, palette && palette.thruster,
+      palette && palette.dark, palette && palette.finish, palette && palette.wear,
+      palette && palette.tints ? JSON.stringify(palette.tints) : '',
+    ].join('|');
+    // Palette dedupe is PER RECORD: sharedMaterialFor keys on the record's own material
+    // objects, so the same palette on another record's materials is a different family.
+    const palettesFor = (extraMap) => {
+      const out = [];
+      const seen = new Set();
+      for (const palette of fallbackPalettes.concat(extraMap ? [...extraMap.values()] : [])) {
+        const signature = signatureOf(palette || {});
+        if (seen.has(signature)) continue;
+        seen.add(signature);
+        out.push(palette);
+      }
+      return out;
+    };
+    // (geometry, material) dedupe IS global — records sharing cached materials produce the
+    // same subject, and uniqueAdmissionUnits would only collapse them later anyway.
+    const seenWarmPairs = new Set();
+    const normalizeFile = (url) => String(url || '')
+      .replace(/\\/g, '/').split(/[?#]/, 1)[0].replace(/^.*\/parts\//, '');
+    const packageInstances = [];
+    let instantiated = 0;
+    let paletteSubjects = 0;
+    for (const { cacheKey, record } of records) {
+      if (!record) continue;
+      const parts = String(cacheKey || '').split('::');
+      const url = parts[0];
+      const slot = parts[1];
+      const holder = new THREE.Group();
+      holder.visible = false;
+      try {
+        if (Array.isArray(record.primitives) && record.primitives.length > 0) {
+          // includeAllLods: a dedicated lod1/lod2 FILE's primitives all carry the non-lod0
+          // tag — filtering them would warm nothing for the demoted sibling a live ship
+          // swaps to at range.
+          instantiatePackagedPrimitives(record, holder, { includeAllLods: true });
+          // Count-0 instanced twins link the USE_INSTANCING variant the authored instance pools
+          // draw — a later mid-round chunk creation then owes only its instanceMatrix upload.
+          for (const primitive of record.primitives) {
+            if (!primitive || !primitive.geometry || !primitive.material) continue;
+            const pairKey = `${primitive.geometry.uuid}:${primitive.material.uuid}`;
+            if (seenWarmPairs.has(pairKey)) continue;
+            seenWarmPairs.add(pairKey);
+            const twin = new THREE.InstancedMesh(primitive.geometry, primitive.material, 1);
+            twin.count = 0;
+            twin.visible = true;
+            twin.frustumCulled = false;
+            twin.name = 'SF_CrucibleWarm_InstanceTwin';
+            holder.add(twin);
+          }
+        }
+        if (record.renderPackage && typeof record.renderPackage.createInstance === 'function') {
+          try {
+            const instance = record.renderPackage.createInstance({
+              name: `SF_CrucibleWarm_${record.assetId || 'package'}`,
+              residencyRole: 'crucible-roster-warm',
+              sectorId,
+            });
+            if (instance && instance.root) {
+              holder.add(instance.root);
+              packageInstances.push(instance);
+            }
+          } catch (error) {
+            console.warn('[render] crucible warm package instance failed', record.assetId || url, error);
+          }
+          // Palette-material coverage WITHOUT chunk promotion: a live ship boundary draws its
+          // poolable surfaces through sharedMaterialFor(material, tags, palette) — a family the
+          // authored-material exemplar never links. One hidden direct mesh + one count-0
+          // instanced twin per (poolable key x palette) warms both variants; sharedMaterialFor
+          // dedupes across records, so identical palettes collapse to the same units.
+          if (slot === 'hull') {
+            const extras = rosterFilePalettes.get(normalizeFile(url));
+            for (const palette of palettesFor(extras)) {
+              let subjects = [];
+              try { subjects = paletteWarmSubjectsForRecord(record, palette); }
+              catch (error) {
+                console.warn('[render] crucible warm palette subjects failed', record.assetId || url, error);
+              }
+              for (const subject of subjects) {
+                if (!subject || !subject.geometry || !subject.material) continue;
+                const key = `${subject.geometry.uuid}:${subject.material.uuid}`;
+                if (seenWarmPairs.has(key)) continue;
+                seenWarmPairs.add(key);
+                const direct = new THREE.Mesh(subject.geometry, subject.material);
+                direct.visible = true;
+                direct.frustumCulled = false;
+                direct.name = 'SF_CrucibleWarm_PaletteMesh';
+                holder.add(direct);
+                const twin = new THREE.InstancedMesh(subject.geometry, subject.material, 1);
+                twin.count = 0;
+                twin.visible = true;
+                twin.frustumCulled = false;
+                twin.name = 'SF_CrucibleWarm_PaletteTwin';
+                holder.add(twin);
+                paletteSubjects += 1;
+              }
+            }
+          }
+        }
+        canonicalizeObjectSurfaceProgramKeys(holder);
+        if (holder.children.length > 0) {
+          root.add(holder);
+          instantiated += 1;
+        }
+      } catch (error) {
+        console.warn('[render] crucible warm instantiate failed', cacheKey, error);
+      }
+      if (instantiated % 6 === 0 && yieldStep) await yieldStep();
+      // Over budget, stop instantiating — the holders already mounted still compile, and
+      // spending the rest of the cook here is what pushed the compile batch into flight.
+      if (budgetLeft() <= 4000) break;
+    }
+    // Let the package instances' residency leases release with the root at teardown — the hook
+    // is the one disposeObject already honours on userData.
+    if (packageInstances.length > 0) {
+      root.userData.releaseAuthoredAssetResidency = () => {
+        for (const instance of packageInstances) {
+          try { instance && typeof instance.dispose === 'function' && instance.dispose(); }
+          catch (_) { /* teardown is best-effort */ }
+        }
+      };
+    }
+    if (state && state.render) {
+      state.render.crucibleWarmProgress = {
+        records: records.length,
+        instantiated,
+        packageInstances: packageInstances.length,
+        paletteSubjects,
+      };
+    }
+    return root;
   },
 
   _releaseSurvivalRosterPrewarm(reason) {
@@ -11303,7 +11755,10 @@ export const render = {
         // synchronous driver brick). Hold the frame while any handle is unsettled, bounded by the
         // opening-picture failsafe so a dead chain degrades to the old fail-open instead of
         // wedging behind a black canvas.
-        const pendingAdmission = this._openingAdmissionPendingCount();
+        const pendingAdmission = this._openingAdmissionPendingCount()
+          + (typeof this.state.render.pendingPipelineAdmissions === 'function'
+            ? Number(this.state.render.pendingPipelineAdmissions()) || 0
+            : 0);
         if (pendingAdmission > 0) {
           const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
             ? performance.now()
@@ -11318,6 +11773,19 @@ export const render = {
               pendingAdmissionHandles: pendingAdmission,
               refusedFrames: refusals,
             };
+            // The ambient lane's auto-flush is deferred for the first flight window, so a queued
+            // compile only ever pumps through waitForCaptured here or the paced one-per-present
+            // drain — the release-then-pay order this gate exists to prevent. Entities spawning
+            // on the opening beats keep re-queuing; each refused frame re-captures, so their
+            // compiles still finish behind the shell instead of draining inside visible frames.
+            if (typeof this.state.render.pendingPipelineAdmissions === 'function'
+                && Number(this.state.render.pendingPipelineAdmissions()) > 0
+                && !this._openingPreSubmitDrain) {
+              this._openingPreSubmitDrain = Promise.resolve()
+                .then(() => this.state.render.drainPendingPipelineAdmissions())
+                .catch(() => {})
+                .finally(() => { this._openingPreSubmitDrain = null; });
+            }
             // The bounded hold is the designed path on fire-and-forget runners, so the first
             // refusal is telemetry (strict-warning gates must not read it as a defect); a hold
             // still counting at 2-second cadence is the abnormal signal worth warning about.
@@ -11692,6 +12160,9 @@ export const render = {
     if (useCpu) perf.recordRenderWork('drawPreparedFrame', performance.now() - t0);
     if (shouldScheduleFirstPlayablePaintRelease(this)) {
       this._firstPlayablePaintScheduled = true;
+      this._firstPlayablePaintScheduledAtMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now();
       const lifecycle = this._rendererLifecycle;
       const release = lifecycle
         ? lifecycle.guard(() => applyFirstPlayablePaintRelease(this))
@@ -12334,9 +12805,26 @@ export function shouldReleaseFirstFlightDeferredHold(owner) {
 export function shouldScheduleFirstPlayablePaintRelease(owner) {
   const state = owner && owner.state;
   if (!state || state.mode !== 'flight') return false;
-  if (owner._firstPlayablePaintScheduled === true) return false;
   const render = state.render;
-  if (!render || !Number.isFinite(render.firstPlayableFrameAt)) return true;
+  const stampMissing = !render || !Number.isFinite(render.firstPlayableFrameAt);
+  if (owner._firstPlayablePaintScheduled === true) {
+    // The armed afterBrowserPaint chain (rAF -> timer -> rAF) can drop its callback
+    // without a trace — a lifecycle timer resolving during a transient inactive
+    // window, or a rAF delivery lost under main-thread contention. applyFirstPlayablePaintRelease
+    // is idempotent, so a duplicate delivery is harmless while a dropped one wedges
+    // the latch forever: firstPlayableFrameAt gates mesh streaming, the residency
+    // hold, and every opening-latch release. Re-arm once the arm outlives a grace
+    // window far beyond the chain's ~33 ms transit.
+    if (!stampMissing) return false;
+    const armedAtMs = Number(owner._firstPlayablePaintScheduledAtMs) || 0;
+    const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
+    if (armedAtMs > 0 && nowMs - armedAtMs <= FIRST_PLAYABLE_PAINT_REARM_MS) return false;
+    owner._firstPlayablePaintRearms = (owner._firstPlayablePaintRearms || 0) + 1;
+    return true;
+  }
+  if (stampMissing) return true;
   return owner._deferNoncriticalMeshStreaming === true;
 }
 

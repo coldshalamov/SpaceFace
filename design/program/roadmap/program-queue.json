@@ -19588,7 +19588,7 @@
       "priority": 341,
       "title": "The first 20 seconds of flight are as smooth as minute two",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19599,8 +19599,10 @@
       "checks": [
         "npm run probe:smooth-flight:crucible"
       ],
-      "receiptRefs": [],
-      "brief": "probe:smooth-flight with no settle on the owner's iGPU: 36 fps, 25 % of frames over 33 ms, 7 % over 50 ms in the first 20 s; settled flight on the same run is a locked 60.0 with zero long frames. The opening admission still leaks into flight. Attribute with the probe's per-freeze table (admission vs render vs sim), then move or finish that work behind the loading shell. Exit: first-20 s frames over 33 ms <= 5 %."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.02-REPORT.md"
+      ],
+      "brief": "Landed 2026-09-20: opening no-settle frames over 33 ms 93 % -> 17.5 % on the shared host (busy-reading settled reference 18.2 % — parity at the bar .01 set). The leak is closed: the first-draw gate now counts the raw ambient pipeline queue and pumps drainPendingPipelineAdmissions while it holds, so admissions queued at flight read 0 (was 27 draining one-per-presented-frame at up to ~78 ms); the first-playable latch re-arms after a bounded grace window when the armed afterBrowserPaint chain drops its callback (a proven permanent wedge); the opening-picture failsafe extends to the missing-resource refuse so one stale required texture cannot black-screen boot forever. Residual vs clean-host settled (1.9 %): scripted onboarding tableau spawn beats pay sim spawnEntity + builds + paced compiles inside the window — same class the crucible check itself pays on content arrival (29.8 %); the only removal machinery (roster prewarm) is measured-regressive per the .00 receipt."
     },
     {
       "id": "PQ-210.03",

@@ -65,8 +65,8 @@ test('live-sector cook drains meshes in yielded slices, not an Infinity block', 
   assert.match(renderer, /drainMeshBuildsBehindShell/);
   assert.match(renderer, /await drainMeshBuildsBehindShell\(\)/);
   assert.match(renderer, /_drainMeshBuildQueue\(1\)/);
-  assert.match(renderer, /PREPARE_BUDGET_MS = 20000/);
-  assert.match(renderer, /deadlineMs: Math.min\(20000, remainingMs\(\)\)/);
+  assert.match(renderer, /PREPARE_BUDGET_MS = survivalRunHoldsArena\(state\) \? 60000 : 20000/);
+  assert.match(renderer, /deadlineMs: Math.min\(6000, remainingMs\(\)\)/);
   assert.match(renderer, /holdLeftoverFx: true/);
   assert.match(renderer, /if \(cookOverBudget\(\)\) break;/);
   assert.match(renderer, /\.\.\.openingRoots,/);
