@@ -443,11 +443,6 @@ def delete_render_meshes():
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-def inset_panel_seams(hull):
-    """Unused in C6: full-face insets rectangularized the formed shell at D=144."""
-    return hull
-
-
 def build_hull(mats):
     hull_mat = mats["Material_Hull"]
     armor = mats["Material_Armor"]
@@ -469,10 +464,10 @@ def build_hull(mats):
     ]
     rings = [chine_ring(x, hw, hh, zc, keel, 0.0, flat, box) for x, hw, hh, zc, keel, flat, box in stations]
     hull = loft_rings("LOD0_Hull", rings, hull_mat, 0.014)
-    # Four chase-scale ring frames in the skin — not a plate carpet, not voxel seams.
+    # Four chase-scale ring frames through crown-to-keel — cutter must reach the deck.
     for index, x in enumerate((5.35, 2.85, -2.05, -5.55)):
-        def ring_frame(name=f"FrameCut_{index}", loc=(x, 0.0, 0.28)):
-            return add_box(name, (0.22, 4.55, 2.05), loc, hull_mat, 0.0)
+        def ring_frame(name=f"FrameCut_{index}", loc=(x, 0.0, 0.22)):
+            return add_box(name, (0.28, 4.70, 2.85), loc, hull_mat, 0.0)
         cut(hull, ring_frame)
     extras = []
     extras.append(add_box("LOD0_DeckFore_Port", (2.35, 0.28, 0.06), (5.05, -0.82, 1.12), deck, 0.002))
@@ -480,6 +475,8 @@ def build_hull(mats):
     extras.append(add_box("LOD0_DeckWaist_Port", (2.05, 0.26, 0.06), (0.15, -1.18, 1.18), deck, 0.002))
     extras.append(add_box("LOD0_DeckWaist_Stbd", (2.05, 0.26, 0.06), (0.15, 1.18, 1.18), deck, 0.002))
     extras.append(add_box("LOD0_KeelStrake", (12.6, 0.32, 0.12), (-0.20, 0.0, -1.18), armor, 0.002))
+    extras.append(add_box("LOD0_BowArmorDeck", (2.15, 1.05, 0.07), (6.35, 0.0, 0.62), armor, 0.002))
+    extras.append(add_box("LOD0_AftArmorDeck", (2.65, 1.45, 0.08), (-4.55, 0.0, 1.16), armor, 0.002))
     for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
         extras.append(loft_rings(
             f"LOD0_ArmorCheek_{tag}",
@@ -603,6 +600,10 @@ def build_cargo_well(hull, mats, lod):
     bits.append(add_box("LOD0_WellRim_Stbd", (4.18, 0.10, 0.12), (0.15, 1.00, 1.28), warning, 0.0))
     bits.append(add_box("LOD0_WellRim_Fore", (0.10, 2.00, 0.12), (2.24, 0.0, 1.28), warning, 0.0))
     bits.append(add_box("LOD0_WellRim_Aft", (0.10, 2.00, 0.12), (-1.94, 0.0, 1.28), warning, 0.0))
+    bits.append(add_box("LOD0_WellCoaming_Port", (4.32, 0.22, 0.16), (0.15, -1.16, 1.20), armor, 0.001))
+    bits.append(add_box("LOD0_WellCoaming_Stbd", (4.32, 0.22, 0.16), (0.15, 1.16, 1.20), armor, 0.001))
+    bits.append(add_box("LOD0_WellCoaming_Fore", (0.22, 2.22, 0.16), (2.38, 0.0, 1.20), armor, 0.001))
+    bits.append(add_box("LOD0_WellCoaming_Aft", (0.22, 2.22, 0.16), (-2.08, 0.0, 1.20), armor, 0.001))
     bits.append(add_box("LOD0_WellGrate", (1.55, 0.72, 0.05), (0.55, 0.28, 0.12), mats["Material_Radiator"], 0.0))
     bits.append(add_box("LOD0_Gantry", (0.14, 1.92, 0.14), (0.15, 0.0, 1.52), mech, 0.001))
     if lod < 2:

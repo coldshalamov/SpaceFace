@@ -58,6 +58,18 @@ over a cut tub. Side-by-side play_chase / abeam / close vs frozen Hitch: Hitch s
 wins manufactured density at D=144. Three chase reviews REVISE. Hitch-plus chase is
 not closed. No seats. No megatex. Parent unproven / not G7.
 
+## C6 chase-form (2026-09-21)
+
+`chase_form_v6` on the same live sockets. Principled islands only. Hitch/Hornet untouched.
+
+Plate-stacking stalled. Before modeling, C5 stills vs Hitch named three chase-visible
+failures: (1) silhouette as stacked blocks vs Hitch’s formed shell, (2) cargo well and
+greenhouse not dominating as dark landmarks, (3) orange chevron/D2 bricks louder than
+the hull. C6 rebuilt hull stations (fuller cargo waist, formed bow, faired nacelles),
+enlarged the well and greenhouse as holes, quieted the hull, and cut hardware to three
+clusters. Three chase reviews REVISE. Hitch still wins D=144. Hitch-plus chase is not
+closed. No seats. No megatex. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
