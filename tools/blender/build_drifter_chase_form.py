@@ -23,7 +23,7 @@ import bmesh
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v1"
+REVISION = "chase_form_v2"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "drifter"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -307,6 +307,17 @@ def add_digit_2(prefix, origin, height, width, stroke, thick, material):
     return bits
 
 
+def add_digit_0(prefix, origin, height, width, stroke, thick, material):
+    x, y, z = origin
+    bits = [
+        add_box(f"{prefix}_SpineP", (height, stroke, thick), (x, y - width * 0.5 + stroke * 0.5, z), material, 0.0),
+        add_box(f"{prefix}_SpineS", (height, stroke, thick), (x, y + width * 0.5 - stroke * 0.5, z), material, 0.0),
+        add_box(f"{prefix}_Top", (stroke, width, thick), (x + height * 0.5 - stroke * 0.5, y, z), material, 0.0),
+        add_box(f"{prefix}_Bot", (stroke, width, thick), (x - height * 0.5 + stroke * 0.5, y, z), material, 0.0),
+    ]
+    return bits
+
+
 def add_box(name, dimensions, location, material, bevel=0.006, rotation=(0.0, 0.0, 0.0)):
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.0, 0.0, 0.0))
     obj = bpy.context.object
@@ -398,7 +409,7 @@ def inset_dorsal_seams(hull):
     bm.faces.ensure_lookup_table()
     faces = [face for face in bm.faces if face.normal.z > 0.42 and face.calc_area() > 0.05]
     if faces:
-        bmesh.ops.inset_region(bm, faces=faces, thickness=0.052, depth=-0.040, use_boundary=True)
+        bmesh.ops.inset_region(bm, faces=faces, thickness=0.072, depth=-0.068, use_boundary=True)
     bm.to_mesh(mesh)
     bm.free()
     mesh.update()
@@ -427,6 +438,15 @@ def build_hull(mats):
     rings = [chine_ring(x, hw, hh, zc, keel, 0.0, flat, box) for x, hw, hh, zc, keel, flat, box in stations]
     hull = loft_rings("LOD0_Hull", rings, hull_mat, 0.012)
     inset_dorsal_seams(hull)
+    for index, x in enumerate((5.90, 3.55, -2.35, -4.45, -6.05)):
+        def dorsal_seam(name=f"DorsalSeamCut_{index}", loc=(x, 0.0, 1.16)):
+            return add_box(name, (0.08, 1.05, 0.18), loc, hull_mat, 0.0)
+        cut(hull, dorsal_seam)
+    for index, x in enumerate((6.05, 3.70, 2.40, -2.20, -3.80, -5.60)):
+        for sign, side in ((-1.0, "P"), (1.0, "S")):
+            def flank_seam(name=f"FlankSeamCut_{side}_{index}", loc=(x, 1.22 * sign, 0.72)):
+                return add_box(name, (0.08, 0.42, 0.36), loc, hull_mat, 0.0)
+            cut(hull, flank_seam)
     extras = []
     # Walkways beside the openings — never a lid over the tub or the hold.
     extras.append(add_box("LOD0_DeckFore_Port", (2.20, 0.42, 0.07), (4.40, -0.92, 1.04), deck, 0.002))
@@ -507,6 +527,37 @@ def build_nacelles(mats, lod):
                     (-4.40 - index * 0.28, yc, 1.10),
                     mats["Material_Radiator"], 0.0,
                 ))
+            bits.append(add_box(
+                f"LOD0_NacTile_{tag}",
+                (1.42, 0.58, 0.09),
+                (-4.35, yc, 1.14),
+                armor, 0.001,
+            ))
+            bits.append(add_box(
+                f"LOD0_NacTileAft_{tag}",
+                (1.05, 0.50, 0.08),
+                (-6.05, yc, 1.12),
+                armor, 0.001,
+            ))
+            bits.append(add_box(
+                f"LOD0_NacSeam_{tag}",
+                (0.08, 0.62, 0.10),
+                (-4.90, yc, 1.16),
+                mats["Material_Mechanical"], 0.0,
+            ))
+            bits.append(add_box(
+                f"LOD0_NacCheek_{tag}",
+                (1.85, 0.16, 0.42),
+                (-5.20, yc + 0.62 * sign, 0.55),
+                armor, 0.001,
+            ))
+            for bolt in range(6 if lod == 0 else 3):
+                bits.append(add_box(
+                    f"LOD0_NacBolt_{tag}_{bolt}",
+                    (0.16, 0.16, 0.11),
+                    (-3.65 - bolt * 0.32, yc * 0.68, 1.18),
+                    mats["Material_Mechanical"], 0.0,
+                ))
     return bits, report
 
 
@@ -526,6 +577,18 @@ def build_winglets(mats, lod):
         bits.append(wing)
         bits.append(add_box(f"LOD0_WingRoot_{tag}", (1.15, 0.42, 0.22), (0.95, 1.62 * sign, 0.28), armor, 0.002))
         bits.append(add_box(f"LOD0_WingTip_{tag}", (0.28, 0.22, 0.12), (0.55, 2.86 * sign, 0.24), warning, 0.0))
+        bits.append(add_box(f"LOD0_WingTile_{tag}_0", (0.98, 0.78, 0.08), (0.88, 2.08 * sign, 0.46), armor, 0.001))
+        bits.append(add_box(f"LOD0_WingTile_{tag}_1", (0.68, 0.62, 0.07), (0.38, 2.52 * sign, 0.44), armor, 0.001))
+        bits.append(add_box(f"LOD0_WingTile_{tag}_2", (0.52, 0.48, 0.06), (1.18, 2.38 * sign, 0.42), armor, 0.001))
+        bits.append(add_box(f"LOD0_WingSeam_{tag}", (0.08, 0.88, 0.08), (0.50, 2.22 * sign, 0.48), mats["Material_Mechanical"], 0.0))
+        if lod == 0:
+            for bolt in range(4):
+                bits.append(add_box(
+                    f"LOD0_WingBolt_{tag}_{bolt}",
+                    (0.14, 0.14, 0.09),
+                    (0.55 + bolt * 0.18, 1.82 * sign, 0.50),
+                    mats["Material_Mechanical"], 0.0,
+                ))
         if lod == 0:
             def flap_slot(name=f"FlapSlot_{tag}", loc=(0.55, 2.28 * sign, 0.20)):
                 return add_box(name, (0.10, 0.72, 0.22), loc, hull_mat, 0.0)
@@ -556,9 +619,8 @@ def build_cargo_well(hull, mats, lod):
     bits.append(add_box("LOD0_GantryRail_Stbd", (2.20, 0.06, 0.08), (0.10, 0.64, 1.32), mech, 0.0))
     if lod < 2:
         crates = [
-            ((0.58, 0.42, 0.38), (0.55, -0.28, 0.28), armor),
-            ((0.48, 0.36, 0.32), (-0.35, 0.22, 0.26), warning),
-            ((0.42, 0.32, 0.28), (0.85, 0.32, 0.24), mats["Material_Accent"]),
+            ((0.40, 0.30, 0.26), (0.72, -0.34, 0.20), armor),
+            ((0.34, 0.26, 0.22), (-0.55, 0.30, 0.18), warning),
         ]
         for index, (dim, loc, mat) in enumerate(crates):
             bits.append(add_box(f"LOD0_Crate_{index}", dim, loc, mat, 0.002))
@@ -589,11 +651,13 @@ def build_greenhouse(hull, mats, lod):
     if lod < 2:
         report["windshield"] = cut(hull, windshield)
     bits = add_open_well("LOD0_Tub", (1.68, 0.84, 0.78), (4.85, 0.0, 0.48), mech, floor=True, open_aft=False)
-    bits.append(add_box("LOD0_Coaming_Port", (1.78, 0.045, 0.10), (4.85, -0.44, 1.18), armor, 0.001))
-    bits.append(add_box("LOD0_Coaming_Stbd", (1.78, 0.045, 0.10), (4.85, 0.44, 1.18), armor, 0.001))
-    bits.append(add_box("LOD0_Coaming_Fore", (0.16, 0.84, 0.10), (5.68, 0.0, 1.20), armor, 0.001, rotation=(0.0, math.radians(-18.0), 0.0)))
-    bits.append(add_box("LOD0_Coaming_Aft", (0.16, 0.84, 0.10), (4.02, 0.0, 1.16), armor, 0.001))
-    bits.append(add_box("LOD0_Mullion_Mid", (0.06, 0.78, 0.10), (4.85, 0.0, 1.16), armor, 0.0))
+    bits.append(add_box("LOD0_Coaming_Port", (1.78, 0.10, 0.12), (4.85, -0.44, 1.20), armor, 0.001))
+    bits.append(add_box("LOD0_Coaming_Stbd", (1.78, 0.10, 0.12), (4.85, 0.44, 1.20), armor, 0.001))
+    bits.append(add_box("LOD0_Coaming_Fore", (0.18, 0.84, 0.12), (5.68, 0.0, 1.22), armor, 0.001, rotation=(0.0, math.radians(-18.0), 0.0)))
+    bits.append(add_box("LOD0_Coaming_Aft", (0.18, 0.84, 0.12), (4.02, 0.0, 1.18), armor, 0.001))
+    bits.append(add_box("LOD0_Mullion_Mid", (0.08, 0.78, 0.12), (4.85, 0.0, 1.18), armor, 0.0))
+    bits.append(add_box("LOD0_Mullion_Fore", (0.08, 0.78, 0.12), (5.32, 0.0, 1.20), armor, 0.0))
+    bits.append(add_box("LOD0_Mullion_Aft", (0.08, 0.78, 0.12), (4.38, 0.0, 1.16), armor, 0.0))
     if lod < 2:
         bits.append(add_box(
             "LOD0_Glass",
@@ -679,8 +743,9 @@ def build_hardware(hull, mats, lod):
     bits.append(add_box("LOD0_AccentFlank_Port", (4.8, 0.08, 0.16), (1.10, -1.72, 0.22), accent, 0.0))
     bits.append(add_box("LOD0_AccentFlank_Stbd", (4.8, 0.08, 0.16), (1.10, 1.72, 0.22), accent, 0.0))
 
-    bits.append(add_box("LOD0_Chevron_0", (0.55, 0.42, 0.06), (-3.20, 0.0, 1.12), warning, 0.0, rotation=(0.0, 0.0, math.radians(28.0))))
-    bits.append(add_box("LOD0_Chevron_1", (0.55, 0.42, 0.06), (-3.70, 0.0, 1.12), warning, 0.0, rotation=(0.0, 0.0, math.radians(-28.0))))
+    bits.append(add_box("LOD0_Chevron_0", (0.78, 0.58, 0.07), (-3.15, 0.0, 1.14), warning, 0.0, rotation=(0.0, 0.0, math.radians(28.0))))
+    bits.append(add_box("LOD0_Chevron_1", (0.78, 0.58, 0.07), (-3.75, 0.0, 1.14), warning, 0.0, rotation=(0.0, 0.0, math.radians(-28.0))))
+    bits.append(add_box("LOD0_Chevron_2", (0.62, 0.46, 0.06), (-4.25, 0.0, 1.14), warning, 0.0, rotation=(0.0, 0.0, math.radians(28.0))))
 
     def rad_cut():
         return add_box("RadWellCut", (1.42, 0.78, 0.42), (-2.55, 0.0, 1.12), mech, 0.0)
@@ -693,23 +758,82 @@ def build_hardware(hull, mats, lod):
 
     bits.append(add_box("LOD0_HatchLid", (0.78, 0.52, 0.10), (2.35, 0.42, 1.16), armor, 0.002))
     bits.append(add_box("LOD0_HatchHinge", (0.10, 0.52, 0.12), (2.72, 0.42, 1.18), mech, 0.0))
+    bits.append(add_box("LOD0_HatchLid_Port", (0.62, 0.44, 0.10), (3.20, -0.78, 1.14), armor, 0.002))
+    bits.append(add_box("LOD0_HatchHinge_Port", (0.10, 0.44, 0.12), (3.50, -0.78, 1.16), mech, 0.0))
 
     bits.append(add_box("LOD0_RepairPatch", (1.05, 0.55, 0.07), (2.10, -1.15, 0.48), armor, 0.002))
     bits.append(add_box("LOD0_RepairWeld", (1.05, 0.05, 0.09), (2.10, -0.88, 0.52), mech, 0.0))
 
-    for index, x in enumerate((5.85, 3.15, 2.05, -2.35, -4.45)):
-        bits.append(add_box(f"LOD0_Panel_{index}", (0.95, 0.58, 0.07), (x, -0.78 if index % 2 == 0 else 0.82, 1.08), armor, 0.001))
-        bits.append(add_box(f"LOD0_PanelSeam_{index}", (0.05, 0.64, 0.08), (x - 0.50, -0.78 if index % 2 == 0 else 0.82, 1.10), mech, 0.0))
+    # Chase-scale plate course on both flanks. Skip the well mouth (x ~ -1.3..1.5).
+    for index, x in enumerate((6.35, 5.15, 3.35, 2.15, -2.15, -3.45, -4.75, -6.15)):
+        z_plate = 0.72 if x > 6.0 else (0.98 if x > 4.5 else 1.12)
+        for sign, side in ((-1.0, "P"), (1.0, "S")):
+            bits.append(add_box(
+                f"LOD0_Panel_{side}_{index}",
+                (1.18, 0.74, 0.12),
+                (x, 1.02 * sign, z_plate),
+                armor, 0.001,
+            ))
+            bits.append(add_box(
+                f"LOD0_PanelSeam_{side}_{index}",
+                (0.09, 0.80, 0.10),
+                (x - 0.60, 1.02 * sign, z_plate + 0.02),
+                mech, 0.0,
+            ))
+            if lod == 0:
+                bits.append(add_box(
+                    f"LOD0_PanelBolt_{side}_{index}",
+                    (0.16, 0.16, 0.10),
+                    (x + 0.32, 0.78 * sign, z_plate + 0.06),
+                    mech, 0.0,
+                ))
+                bits.append(add_box(
+                    f"LOD0_PanelBolt2_{side}_{index}",
+                    (0.16, 0.16, 0.10),
+                    (x - 0.22, 1.18 * sign, z_plate + 0.06),
+                    mech, 0.0,
+                ))
 
-    bits.append(add_box("LOD0_LetterPlaque", (0.85, 1.15, 0.05), (2.05, 1.18, 1.10), armor, 0.0))
-    bits.extend(add_letter_d("LOD0_LetterD", (2.05, 0.92, 1.16), 0.70, 0.48, 0.14, 0.07, warning))
-    bits.extend(add_digit_2("LOD0_Letter2", (2.05, 1.42, 1.16), 0.70, 0.40, 0.12, 0.07, warning))
+    # Walkway plates beside the openings — overlapping armor, never a lid.
+    for index, x in enumerate((5.35, 4.15, 2.55, 1.85)):
+        for sign, side in ((-1.0, "P"), (1.0, "S")):
+            bits.append(add_box(
+                f"LOD0_WalkPlate_{side}_{index}",
+                (0.88, 0.38, 0.07),
+                (x, 1.08 * sign, 1.12),
+                armor, 0.001,
+            ))
+    bits.append(add_box("LOD0_BowPlate_0", (0.95, 0.72, 0.08), (6.55, 0.0, 0.58), armor, 0.001))
+    bits.append(add_box("LOD0_BowPlate_1", (0.72, 0.48, 0.07), (7.15, 0.42, 0.48), armor, 0.001))
+    bits.append(add_box("LOD0_BowPlate_2", (0.72, 0.48, 0.07), (7.15, -0.42, 0.48), armor, 0.001))
+    bits.append(add_box("LOD0_BowSeam", (0.08, 0.88, 0.09), (6.95, 0.0, 0.62), mech, 0.0))
 
-    bits.append(add_box("LOD0_DirtWell", (2.40, 0.18, 0.05), (0.10, -0.82, 1.20), dirt, 0.0))
-    bits.append(add_box("LOD0_DirtSpine", (3.40, 0.16, 0.05), (2.40, 0.08, 1.12), dirt, 0.0))
-    bits.append(add_box("LOD0_DirtNacelle_Port", (1.85, 0.14, 0.05), (-5.20, -1.86, 1.08), dirt, 0.0))
-    bits.append(add_box("LOD0_DirtNacelle_Stbd", (1.85, 0.14, 0.05), (-5.20, 1.86, 1.08), dirt, 0.0))
-    bits.append(add_box("LOD0_DirtBow", (0.85, 0.28, 0.05), (6.85, 0.0, 0.42), dirt, 0.0))
+    # Outboard D2 on the port winglet — chase-readable stroke, not a deck sticker.
+    bits.append(add_box("LOD0_LetterPlaque", (1.32, 1.78, 0.05), (0.72, -2.36, 0.50), armor, 0.0))
+    bits.extend(add_letter_d("LOD0_LetterD", (0.72, -2.74, 0.56), 1.08, 0.72, 0.20, 0.09, warning))
+    bits.extend(add_digit_2("LOD0_Letter2", (0.72, -1.96, 0.56), 1.08, 0.60, 0.18, 0.09, warning))
+    # Starboard 02 — second stencil, not a mirrored D.
+    bits.append(add_box("LOD0_DigitPlaque", (1.18, 1.55, 0.05), (0.68, 2.28, 0.50), armor, 0.0))
+    bits.extend(add_digit_0("LOD0_Letter0", (0.68, 1.92, 0.56), 0.98, 0.52, 0.16, 0.09, warning))
+    bits.extend(add_digit_2("LOD0_Letter02", (0.68, 2.62, 0.56), 0.98, 0.52, 0.16, 0.09, warning))
+    # Dorsal 02 aft of greenhouse, starboard of spine.
+    bits.append(add_box("LOD0_DorsalPlaque", (1.05, 0.88, 0.05), (3.55, 0.92, 1.16), armor, 0.0))
+    bits.extend(add_digit_0("LOD0_Dorsal0", (3.55, 0.68, 1.22), 0.82, 0.36, 0.14, 0.07, warning))
+    bits.extend(add_digit_2("LOD0_Dorsal2", (3.55, 1.14, 1.22), 0.82, 0.36, 0.14, 0.07, warning))
+
+    bits.append(add_box("LOD0_DirtWell", (2.55, 0.36, 0.06), (0.10, -0.88, 1.20), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtSpine", (3.80, 0.32, 0.06), (2.40, 0.10, 1.14), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtNacelle_Port", (2.15, 0.28, 0.06), (-5.20, -1.86, 1.10), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtNacelle_Stbd", (2.15, 0.28, 0.06), (-5.20, 1.86, 1.10), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtBow", (1.15, 0.42, 0.06), (6.75, 0.0, 0.46), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtWing_Port", (1.45, 0.32, 0.06), (0.70, -2.12, 0.48), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtWing_Stbd", (1.25, 0.28, 0.06), (0.70, 2.12, 0.48), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtFlank", (2.55, 0.28, 0.07), (3.35, -1.12, 0.54), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtAft", (1.85, 0.32, 0.06), (-4.85, 0.22, 1.08), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtWaist", (1.65, 0.30, 0.06), (-1.85, 0.22, 1.14), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtCheek", (1.85, 0.22, 0.06), (4.55, 1.05, 0.52), dirt, 0.0))
+    bits.append(add_box("LOD0_HeatPlate_Port", (1.05, 0.38, 0.10), (-6.35, -1.55, 0.92), mats["Material_Ceramic"], 0.001))
+    bits.append(add_box("LOD0_HeatPlate_Stbd", (1.05, 0.38, 0.10), (-6.35, 1.55, 0.92), mats["Material_Ceramic"], 0.001))
 
     bits.append(add_box("LOD0_CableTray", (3.20, 0.14, 0.10), (1.80, 0.22, 1.22), mech, 0.001))
     bits.append(add_box("LOD0_CableClamp_Fore", (0.12, 0.20, 0.14), (3.20, 0.22, 1.26), armor, 0.0))
@@ -719,28 +843,52 @@ def build_hardware(hull, mats, lod):
     bits.append(add_box("LOD0_RCS_Stbd", (0.22, 0.18, 0.16), (-1.20, 1.90, 0.15), mech, 0.002))
     bits.append(add_cylinder("LOD0_RCSCup_Port", 0.06, 0.08, (-1.20, -2.02, 0.15), hull_mat, 0.0, vertices=8))
     bits.append(add_cylinder("LOD0_RCSCup_Stbd", 0.06, 0.08, (-1.20, 2.02, 0.15), hull_mat, 0.0, vertices=8))
+    bits.append(add_box("LOD0_RCS_ForePort", (0.22, 0.16, 0.16), (6.35, -0.62, 0.22), mech, 0.002))
+    bits.append(add_box("LOD0_RCS_ForeStbd", (0.22, 0.16, 0.16), (6.35, 0.62, 0.22), mech, 0.002))
+    bits.append(add_box("LOD0_RCS_AftPort", (0.24, 0.18, 0.16), (-6.85, -0.72, 0.28), mech, 0.002))
+    bits.append(add_box("LOD0_RCS_AftStbd", (0.24, 0.18, 0.16), (-6.85, 0.72, 0.28), mech, 0.002))
+    bits.append(add_cylinder("LOD0_RCSCup_ForePort", 0.055, 0.08, (6.48, -0.62, 0.22), hull_mat, 0.0, rotation=(0.0, math.radians(90.0), 0.0), vertices=8))
+    bits.append(add_cylinder("LOD0_RCSCup_ForeStbd", 0.055, 0.08, (6.48, 0.62, 0.22), hull_mat, 0.0, rotation=(0.0, math.radians(90.0), 0.0), vertices=8))
 
     bits.append(add_box("LOD0_SensorPedestal", (0.10, 0.10, 0.22), (0.60, 0.0, 1.58), mech, 0.002))
     bits.append(add_cylinder("LOD0_SensorDish", 0.16, 0.06, (0.60, 0.0, 1.72), armor, 0.0, vertices=10))
     bits.append(add_box("LOD0_AntennaMast", (0.08, 0.08, 0.55), (5.15, 0.28, 1.72), mech, 0.0))
     bits.append(add_cylinder("LOD0_AntennaTip", 0.06, 0.10, (5.15, 0.28, 2.02), armor, 0.0, vertices=8))
 
-    bits.append(add_box("LOD0_Beacon_Fore", (0.12, 0.12, 0.10), (3.55, 0.0, 1.28), accent, 0.0))
-    bits.append(add_box("LOD0_Beacon_Aft", (0.12, 0.12, 0.10), (-6.20, 0.0, 1.12), warning, 0.0))
-    bits.append(add_box("LOD0_Nav_Port", (0.12, 0.12, 0.08), (0.55, -2.86, 0.28), warning, 0.0))
-    bits.append(add_box("LOD0_Nav_Stbd", (0.12, 0.12, 0.08), (0.55, 2.86, 0.28), accent, 0.0))
+    bits.append(add_box("LOD0_Beacon_Fore", (0.14, 0.14, 0.12), (3.55, 0.0, 1.28), accent, 0.0))
+    bits.append(add_box("LOD0_Beacon_Aft", (0.14, 0.14, 0.12), (-6.20, 0.0, 1.12), warning, 0.0))
+    bits.append(add_box("LOD0_Nav_Port", (0.14, 0.14, 0.10), (0.55, -2.86, 0.28), warning, 0.0))
+    bits.append(add_box("LOD0_Nav_Stbd", (0.14, 0.14, 0.10), (0.55, 2.86, 0.28), accent, 0.0))
+    bits.append(add_cylinder("LOD0_Lamp_Well", 0.09, 0.07, (1.55, 0.58, 1.24), accent, 0.0, vertices=8))
+    bits.append(add_cylinder("LOD0_Lamp_Rad", 0.09, 0.07, (-3.15, -0.38, 1.16), warning, 0.0, vertices=8))
 
     if lod == 0:
         bits.extend(add_hose(
             "LOD0_Hose_WellRad",
             [(1.35, 0.55, 1.22), (0.40, 0.62, 1.32), (-1.80, 0.40, 1.22), (-2.55, 0.28, 1.18)],
-            0.032, mech, 8,
+            0.070, mech, 8,
         ))
         bits.extend(add_hose(
             "LOD0_Hose_Nacelle_Stbd",
             [(-3.40, 1.10, 1.10), (-4.60, 1.55, 1.18), (-5.80, 1.82, 1.12)],
-            0.028, mech, 8,
+            0.065, mech, 8,
         ))
+        bits.extend(add_hose(
+            "LOD0_Hose_Nacelle_Port",
+            [(-3.40, -1.10, 1.10), (-4.60, -1.55, 1.18), (-5.80, -1.82, 1.12)],
+            0.065, mech, 8,
+        ))
+        bits.extend(add_hose(
+            "LOD0_Hose_BowRad",
+            [(4.55, -0.38, 1.18), (2.85, -0.42, 1.22), (0.85, -0.36, 1.18), (-2.05, -0.28, 1.10)],
+            0.062, mech, 8,
+        ))
+        for i, x in enumerate((-0.85, -0.15, 0.55, 1.15)):
+            bits.append(add_box(f"LOD0_WellBolt_P_{i}", (0.14, 0.14, 0.09), (x, -0.70, 1.22), mech, 0.0))
+            bits.append(add_box(f"LOD0_WellBolt_S_{i}", (0.14, 0.14, 0.09), (x, 0.70, 1.22), mech, 0.0))
+        for i, x in enumerate((5.55, 4.65, 3.75, 2.85, -3.15, -4.05, -4.95)):
+            bits.append(add_box(f"LOD0_Fastener_P_{i}", (0.16, 0.16, 0.10), (x, -1.22, 1.16), mech, 0.0))
+            bits.append(add_box(f"LOD0_Fastener_S_{i}", (0.16, 0.16, 0.10), (x, 1.22, 1.16), mech, 0.0))
         bits.append(add_box("LOD0_MiningHouse", (0.55, 0.28, 0.22), (7.35, 0.0, -0.12), armor, 0.002))
         bits.append(add_cylinder(
             "LOD0_MiningBit", 0.07, 0.42, (7.62, 0.0, -0.12), mech, 0.0,
@@ -753,7 +901,9 @@ def shade_objects(objs):
     hard = ("Hull", "Winglet", "Nacelle", "Flap", "Armor", "Accent", "Gun",
             "Repair", "Hatch", "Cable", "RCS", "Nav", "Hose", "Deck",
             "Heat", "Panel", "Dirt", "Crate", "Beacon", "Coaming", "Well",
-            "Gantry", "Chevron", "Collar", "Longeron", "Spine", "Letter")
+            "Gantry", "Chevron", "Collar", "Longeron", "Spine", "Letter",
+            "Bolt", "Tile", "Lamp", "Plaque", "Fastener", "WalkPlate", "BowPlate",
+            "HeatPlate", "Digit")
     for obj in objs:
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
@@ -968,7 +1118,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "drifter_chase_form_v1.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "drifter_chase_form_v2.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 
