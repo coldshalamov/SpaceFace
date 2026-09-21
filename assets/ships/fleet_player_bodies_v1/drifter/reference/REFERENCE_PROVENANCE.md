@@ -30,3 +30,14 @@ Hitch chase stills used as form-language input (nested same-value slabs), not id
 | `c14/drifter_c14_sideboard_as_beam.png` | chine / sideboard | Cursor GenerateImage, 2026-09-21 | Sideboard is the gunwale of the same shell | YZ hard-chine station; small deck lip | Circular tube section; paddle glued to a sausage |
 | `c14/drifter_c14_cargo_well_cut.png` | dorsal cargo well | Cursor GenerateImage, 2026-09-21 | Boolean hole with rim, liner, crates, winch | Hole you can see into | Flush lid; painted rectangle |
 | `c14/drifter_c14_greenhouse_framed_hole.png` | greenhouse | Cursor GenerateImage, 2026-09-21 | Framed panes in a cage over a cut tub | Thin glass in a metal cage | Solid brick; fighter bubble; seats |
+
+## 2026-09-21 (C15 abeam leftover)
+
+C14 play+close killed tube/paddle. Abeam still called a raised spine with darker
+flanking volumes and a hard root crease. C15 refs freeze that leftover before
+the loft change. Cycle-14 files stay selected for planform / well / greenhouse.
+
+| File | Component | Tool | What it is used to decide | Selected | Rejected |
+|---|---|---|---|---|---|
+| `c15/drifter_c15_abeam_continuous_beam.png` | abeam hull silhouette | Cursor GenerateImage, 2026-09-21 | One continuous faceted beam from the side-top; nacelles grown from aft flanks; well a hole | Sloped topside; no saddlebag split | Raised cabin spine; dark paddle sponsons |
+| `c15/drifter_c15_yz_sloped_chine.png` | YZ station | Cursor GenerateImage, 2026-09-21 | Hard-chine trapezoid: small lip, angled topside, no vertical slab | SELECTED tub/trapezoid | REJECT circular tube + paddle lobes |

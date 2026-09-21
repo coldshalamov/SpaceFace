@@ -22,7 +22,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v14"
+REVISION = "chase_form_v15"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "drifter"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -37,7 +37,8 @@ KEEP_SEPARATE = (
 # Distinct color blocks that read at ~15% frame width. No 512-map density trap.
 # C8–C13 wins: wells as holes, no teal beam rail, shell-cut lips, light near Hitch.
 # C14: one hard-chine workboat beam (sideboards ARE the hull). No paddle lobes.
-# Armor is keel/bilge only — painting |y| as Armor made C13's dark paddles.
+# C15: kill C14's abeam leftover — no vertical slab at y=beam (raised spine +
+# dark flank). Armor is keel/bilge only — painting |y| as Armor made C13 paddles.
 HONEST = {
     "Material_Hull": {"color": (0.108, 0.132, 0.140), "metallic": 0.16, "roughness": 0.54, "role": "hull"},
     "Material_Armor": {"color": (0.072, 0.082, 0.088), "metallic": 0.22, "roughness": 0.56, "role": "armor"},
@@ -206,38 +207,43 @@ def loft_rings(name, rings, material, bevel=0.010, cap=True):
 
 
 def shell_ring(st):
-    """One YZ station of a hard-chine workboat.
+    """One YZ station of a sloped-chine workboat.
 
-    Outer Y is the hull beam on both the deck edge and the topside — no extra
-    wing lobe. C13's (hw, wing) pair is what reviewers read as capsule+paddles.
+    C14 put two points at y=beam (lip and topside) — a 1 m vertical slab.
+    Abeam read that as a raised spine plus a darker flanking face and a hard
+    root crease. C15: max beam is a short lip, then the topside slants
+    in-and-down. Still one half-beam. No (hw, wing) paddle lobe.
     """
-    x, beam, hh, zc, keel, flat, box, chine = st
+    x, beam, hh, zc, keel, flat, box, _chine = st
     flat = max(0.0, min(1.0, float(flat)))
     box = max(0.0, min(1.0, float(box)))
-    chine = max(0.0, min(1.0, float(chine)))
     beam = max(0.22, float(beam))
-    crown = zc + hh * (1.0 - 0.08 * flat)
-    deck_inner = beam * (0.16 + 0.10 * flat)
+    crown = zc + hh * (0.94 - 0.04 * flat)
+    deck_inner = beam * (0.18 + 0.14 * flat)
+    deck_y = beam * (0.58 + 0.16 * flat)
+    deck_z = crown - hh * 0.06
+    shoulder_y = beam * (0.84 + 0.08 * flat)
+    shoulder_z = crown - hh * 0.16
     gunwale_y = beam
-    gunwale_z = crown - hh * 0.05 * flat
-    lip_z = gunwale_z + 0.06 + 0.10 * chine
-    topside_z = zc + hh * (0.18 - 0.10 * box)
-    chine_y = beam * (0.96 - 0.04 * box)
-    chine_z = zc - hh * (0.06 + 0.12 * box)
-    side_y = beam * (0.86 - 0.08 * box)
-    side_z = zc - hh * (0.32 + 0.06 * box)
-    bilge_y = beam * (0.58 - 0.08 * box)
-    bilge_z = zc - hh * (0.62 + 0.08 * box)
+    lip_z = crown - hh * 0.20
+    topside_y = beam * (0.93 - 0.04 * box)
+    topside_z = zc + hh * (0.30 - 0.06 * box)
+    chine_y = beam * (0.80 - 0.06 * box)
+    chine_z = zc - hh * (0.08 + 0.08 * box)
+    side_y = beam * (0.66 - 0.08 * box)
+    side_z = zc - hh * (0.40 + 0.06 * box)
+    bilge_y = beam * (0.46 - 0.08 * box)
+    bilge_z = zc - hh * (0.68 + 0.06 * box)
     keel_y = beam * (0.16 - 0.04 * box)
     keel_z = zc - hh - keel * (1.0 - 0.18 * box)
 
     def half(sign):
         return [
             (x, sign * deck_inner, crown),
-            (x, sign * beam * (0.48 + 0.10 * flat), crown - hh * 0.02),
-            (x, sign * gunwale_y * 0.90, gunwale_z),
+            (x, sign * deck_y, deck_z),
+            (x, sign * shoulder_y, shoulder_z),
             (x, sign * gunwale_y, lip_z),
-            (x, sign * gunwale_y, topside_z),
+            (x, sign * topside_y, topside_z),
             (x, sign * chine_y, chine_z),
             (x, sign * side_y, side_z),
             (x, sign * bilge_y, bilge_z),
@@ -543,8 +549,8 @@ def delete_render_meshes():
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-# C14 hard-chine workboat. Endpoints stay C6 (envelope).
-# One half-beam per station — no (hw, wing) pair. Gradual beam growth; no paddle LE.
+# C15 sloped-chine workboat. Endpoints stay C6 (envelope). Stations unchanged
+# from C14 (one half-beam; no paddle LE). The YZ ring is what changes.
 # (x, beam, hh, zc, keel, flat, box, chine)
 HULL_STATIONS = [
     (7.95, 0.42, 0.46, 0.10, 0.16, 0.18, 0.22, 0.10),
@@ -561,7 +567,7 @@ HULL_STATIONS = [
 ]
 
 
-def densify_stations(stations, mids=17):
+def densify_stations(stations, mids=20):
     """Mid-span stations for a smoother loft. Endpoints (envelope) stay C6."""
     out = [stations[0]]
     for a, b in zip(stations, stations[1:]):
@@ -593,9 +599,10 @@ def hull_half_at(x):
 
 
 def paint_shell(hull, mats):
-    """Deck on the crown, armor on keel/bilge, hull on the topside — same mesh.
+    """Deck on the inner crown only, armor on keel/bilge, hull on the slope.
 
-    Do not assign Armor by |y|. That is how C13's sideboards became dark paddles.
+    C14's Deck threshold (zc+hh*0.28) painted the upper vertical wall a second
+    value — abeam read that as a darker flank. Do not assign Armor by |y|.
     """
     mesh = hull.data
     mesh.materials.clear()
@@ -608,7 +615,7 @@ def paint_shell(hull, mats):
         _beam, hh, zc = hull_half_at(centroid.x)
         if centroid.z < zc - hh * 0.38:
             poly.material_index = 1
-        elif centroid.z > zc + hh * 0.28:
+        elif centroid.z > zc + hh * 0.55:
             poly.material_index = 2
         else:
             poly.material_index = 0
@@ -633,12 +640,7 @@ def build_hull(mats):
         def dorsal_seam(name=f"DorsalSeam_{side}", loc=(-0.20, 0.85 * sign, 1.18)):
             return add_box(name, (9.2, 0.12, 0.18), loc, hull_mat, 0.0)
         cut(hull, dorsal_seam)
-        def mid_seam(name=f"MidSeam_{side}", loc=(-0.20, 1.70 * sign, 1.05)):
-            return add_box(name, (8.8, 0.12, 0.18), loc, hull_mat, 0.0)
-        cut(hull, mid_seam)
-        def gunwale_seam(name=f"GunwaleSeam_{side}", loc=(-0.20, 2.45 * sign, 0.55)):
-            return add_box(name, (8.6, 0.12, 0.20), loc, hull_mat, 0.0)
-        cut(hull, gunwale_seam)
+        # C14 MidSeam + GunwaleSeam split the abeam face into spine vs flank.
         def bilge_seam(name=f"BilgeSeam_{side}", loc=(-0.40, 1.55 * sign, -0.36)):
             return add_box(name, (8.0, 0.12, 0.20), loc, hull_mat, 0.0)
         cut(hull, bilge_seam)
@@ -655,7 +657,7 @@ def build_nacelles(mats, lod):
     report = {}
     # First stations sit inside the hull half-width so the pod is a swept fairing, not a trailer.
     station_core = [
-        (0.45, 0.48, 0.20, 0.34, 0.16, 0.05, 0.36, 0.20),
+        (0.45, 0.40, 0.18, 0.30, 0.16, 0.05, 0.36, 0.20),
         (-1.10, 0.90, 0.32, 0.50, 0.20, 0.05, 0.26, 0.26),
         (-2.70, 1.34, 0.50, 0.66, 0.24, 0.05, 0.16, 0.32),
         (-4.40, 1.66, 0.62, 0.78, 0.26, 0.05, 0.12, 0.36),
@@ -1230,7 +1232,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "drifter_chase_form_v14.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "drifter_chase_form_v15.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 

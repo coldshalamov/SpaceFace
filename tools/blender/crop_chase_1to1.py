@@ -16,6 +16,7 @@ NAMES = (
     "play_chase_abeam.png",
     "play_chase_close.png",
     "clay_play_chase.png",
+    "clay_play_chase_abeam.png",
     "clay_play_chase_close.png",
 )
 
