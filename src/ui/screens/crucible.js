@@ -55,6 +55,11 @@ import {
   runShareCodeForRun,
   shareTextHref,
 } from './shareCode.js';
+import {
+  buildSandboxLaunchConfig,
+  requestSandboxGame,
+  SCENARIO_PRESETS,
+} from '../sandbox/sandboxSetup.js';
 import { SURVIVAL_MUTATOR_BY_ID } from '../../data/survivalMutators.js';
 import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
@@ -1064,6 +1069,27 @@ export const crucibleScreen = {
     shareBody.appendChild(codeRow);
     shareBody.appendChild(ghostRow);
     shareBody.appendChild(shareNote);
+
+    // INF-039: the practice room — a fixed sling arrangement on the door, not a setup. One
+    // heavy anchor, two inert targets, the physics kit, one fixed seed. It launches into
+    // live flight through the ordinary sandbox route, but the preset grants nothing, inert
+    // targets pay nothing, and no survival run means no results settle and no records file.
+    // Relaunching rebuilds the identical room, which is the reset.
+    {
+      const practicePreset = SCENARIO_PRESETS.find((preset) => preset && preset.id === 'sling_practice');
+      if (practicePreset) {
+        const practiceRow = el('div', 'k-row sf-crd-practice');
+        const practiceWord = word('Practice room', 'k-word--emph');
+        practiceWord.setAttribute('aria-label', 'Practice room: sling range. No records, no rewards. Relaunch to reset.');
+        practiceWord.addEventListener('click', () => {
+          cue('confirm');
+          requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(practicePreset.config));
+        });
+        practiceRow.appendChild(practiceWord);
+        practiceRow.appendChild(el('p', 'k-t-fine k-38', practicePreset.description));
+        settings.appendChild(practiceRow);
+      }
+    }
 
     // The record goes last, below the three settings: the door's job is to start a run, and the
     // reason to start another one is context for that, not a competitor for it. Reading the

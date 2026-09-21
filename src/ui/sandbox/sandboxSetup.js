@@ -248,6 +248,25 @@ export const SCENARIO_PRESETS = Object.freeze([
     }),
   },
   {
+    // INF-039: the practice room. One heavy massline anchor, two inert targets, the default
+    // physical kit — arranged so a swung throw carries into collision. Fixed seed, zero
+    // grants: relaunching rebuilds the identical room, and nothing here can pay campaign
+    // rewards (inert targets carry no bounty or loot) or file records (no survival run, no
+    // results settle). Bounded on purpose: this is a room, not an editor.
+    id: 'sling_practice',
+    title: 'Sling Practice',
+    description: 'One anchor, two targets, the physics kit. Latch, swing, and throw a target into collision — relaunch to reset. Nothing here pays or records.',
+    config: Object.freeze({
+      scenarioId: 'sling_practice',
+      seed: 39039,
+      shipId: 'ship_hornet',
+      physicsLoadout: 'physics_toolkit',
+      targetDrones: Object.freeze({ count: 2, distance: 260, shipId: 'ship_hornet' }),
+      masslineRange: Object.freeze({ distance: 210, mass: 900 }),
+      cameraCandidate: 'wide_gameplay',
+    }),
+  },
+  {
     id: 'physics_swarm',
     title: 'Physics Combat Swarm',
     description: 'Ten disposable lights, two mediums and three collision anchors for force-first combat.',
