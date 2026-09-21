@@ -75,3 +75,11 @@ Hitch midship color/greeble at play, Hitch close panel density + circular aft
 nozzle. C19 densifies inter-hoop cuts, midship Mark bands + hardware, and a
 dorsal-facing circular nozzle cut. No new YZ. Mouths not recut. No generated
 C19 pixels. C16 convex-diamond ref stays selected.
+
+## 2026-09-21 (C20 continuous skin)
+
+C19 kept TUBE_PADDLE NO and circular nozzles. Remaining REVISE: interstitial
+fields thinner/smoother than Hitch; midship greeble still loses; close empty
+fields. C20 cuts continuous panel courses that cross girth hoops (not sparse
+pockets), denser midship hardware, closer-spaced field breakup. No new YZ.
+Mouths not recut. No generated C20 pixels. C16 convex-diamond ref stays selected.
