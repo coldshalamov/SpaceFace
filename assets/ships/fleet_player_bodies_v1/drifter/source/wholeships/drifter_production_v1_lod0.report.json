@@ -1,7 +1,7 @@
 {
   "ok": true,
   "asset": "ship_drifter",
-  "revision": "chase_form_v2",
+  "revision": "chase_form_v3",
   "lod": 0,
   "source": "/workspace/assets/ships/parts/wholeships/drifter_production_v1.glb",
   "output": "/workspace/assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod0.glb",
@@ -37,8 +37,8 @@
     3.055,
     2.07
   ],
-  "triangles": 16524,
-  "hullTriangles": 3574,
+  "triangles": 16864,
+  "hullTriangles": 3578,
   "objects": [
     "COLLISION_HULL",
     "LOD0_AccentFlank_Port",
@@ -60,5 +60,5 @@
     "LOD0_Winglet_Port",
     "LOD0_Winglet_Stbd"
   ],
-  "bytes": 1513812
+  "bytes": 1536260
 }

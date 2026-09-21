@@ -23,6 +23,17 @@ fastener rows, dirt islands. Cargo well stays a rimmed hole; greenhouse stays gl
 over a cut tub. Three chase reviews returned REVISE: Hitch still wins manufactured density at
 D=144. Stencil now reads at close/abeam. No seats. No megatex. Parent unproven / not G7.
 
+## C3 chase-form (2026-09-21)
+
+`chase_form_v3` on the same live sockets. Principled islands only. Hitch/Hornet untouched.
+
+C2 remaining note was Hitch-plus manufactured density at D=144. C3 enlarged nacelle armor tiles
+and cheek plates, thickened spine/longerons/accent flanks, grew panel plates and seam channels,
+bolts to 0.22, stronger hull/armor value split, split the dorsal cable tray so it no longer
+spans the well mouth, and routed hoses beside the well. Cargo well stays a rimmed hole;
+greenhouse stays glass in a cage over a cut tub. Three chase reviews returned REVISE: Hitch
+still wins manufactured density at D=144. No seats. No megatex. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
