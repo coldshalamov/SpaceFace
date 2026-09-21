@@ -887,11 +887,13 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       preferredRange = 300;
     } else if (phase === 'mine_drop') {
       // The drop line: keep the nose off the target so the hull flies its wake PAST the player;
-      // the mine verb releases behind the hull along its own motion.
+      // The drop line releases behind the hull along its own motion: the mine verb
+      // (action_drop_bomb through the shared bombs.drop seam) makes this a drift-bomb
+      // pass now, not a gun run. INF-030.
       maneuverKind = ManeuverKind.INTERCEPT;
       faceTarget = false;
       preferredRange = 340;
-      allowedActionId = 'action_burst';
+      allowedActionId = 'action_drop_bomb';
     } else {
       maneuverKind = ManeuverKind.INTERCEPT;
       preferredRange = 300;

@@ -230,6 +230,15 @@ export function createActionService(context, attachments, routeDamage) {
       case 'cutAttachment':
         result = attachments.cut(instance.target && instance.target.attachmentId, actor.id, effect.reason || 'action_cut');
         break;
+      case 'dropBomb': {
+        // INF-030: the mine verb. Releases through the shared bombs.drop seam so NPC ordnance
+        // inherits the player's physical rules (standoff behind heading, full velocity
+        // inheritance), attribution (ownerId/team), cooldowns, and world caps. The bombs system
+        // is resolved off the kernel context registry and the effect fails closed without it,
+        // so kernels built for isolated fixtures never detonate the world by accident.
+        result = executeBombDrop(actor, effect);
+        break;
+      }
       case 'damage': {
         if (usesMountedBurst(actor, instance.actionId, state.playerId)) {
           result = { ok: true, reason: 'mounted_weapons_own_burst' };
@@ -382,6 +391,24 @@ export function createActionService(context, attachments, routeDamage) {
     if (targetDef.kind === 'point') return Number.isFinite(target.x) && Number.isFinite(target.z) ? { ok: true } : { ok: false, reason: 'point_target_invalid' };
     if (targetDef.kind === 'none') return { ok: true };
     return { ok: false, reason: 'target_kind_invalid' };
+  }
+
+  function executeBombDrop(actor, effect) {
+    const payloadId = effect && effect.payloadId;
+    if (typeof payloadId !== 'string' || !payloadId) return { ok: false, reason: 'bomb_payload_missing' };
+    const registry = context && context.registry;
+    const bombs = registry && typeof registry.get === 'function' ? registry.get('bombs') : null;
+    if (!bombs || typeof bombs.drop !== 'function') return { ok: false, reason: 'bomb_service_unavailable' };
+    let bomb = null;
+    try {
+      bomb = bombs.drop(actor, payloadId, state);
+    } catch (error) {
+      return { ok: false, reason: `bomb_drop_failed:${String(error && error.message || error)}` };
+    }
+    // drop() returns null on every refusal (cooldowns, caps, unregistered owner): the budgets
+    // stay bounded because the refusal IS the bound. A released bomb carries its entity id.
+    if (!bomb) return { ok: false, reason: 'bomb_release_refused' };
+    return { ok: true, bombId: bomb.id };
   }
 
   function movementMultiplier(actorId) {

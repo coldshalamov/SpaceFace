@@ -50,6 +50,7 @@ export const COMBAT_CUE_IDS = Object.freeze([
   'combat.action.sling.start', 'combat.action.sling.release', 'combat.action.sling.end',
   'combat.action.cut.start', 'combat.action.cut.snap', 'combat.action.cut.end',
   'combat.action.burst.start', 'combat.action.burst.fire', 'combat.action.burst.end',
+  'combat.action.drop.start', 'combat.action.drop.release', 'combat.action.drop.end',
   'combat.action.cancel', 'combat.action.reject',
   'combat.damage.shield', 'combat.damage.armor', 'combat.damage.hull', 'combat.damage.kill', 'combat.damage.charge',
   'cruise.charging', 'cruise.engaged', 'cruise.dropped',
@@ -154,6 +155,23 @@ export const ACTION_DEFS = Object.freeze([
       },
     }],
     cues: { start: 'combat.action.burst.start', active: 'combat.action.burst.fire', end: 'combat.action.burst.end', cancel: 'combat.action.cancel', reject: 'combat.action.reject' },
+  },
+  {
+    // INF-030: the mine verb the wake doctrine was written for. An NPC drift-bomb release
+    // through the shared bombs.drop seam: same physical rules (standoff behind heading, full
+    // velocity inheritance), same attribution (ownerId/team), same cooldowns and world caps as
+    // the player's own bay. The 'attack' tag keeps utility scoring honest (needs a target, pays
+    // for range); the doctrine's mine_drop phase is the only author that allows it, and the
+    // 240-tick action cooldown holds one bomb per pass even if the phase re-enters early.
+    id: 'action_drop_bomb', version: 1, tags: ['weapon', 'attack', 'deploy'],
+    phases: { startupTicks: 0, activeTicks: 1, recoveryTicks: 2 },
+    cancelWindows: [],
+    cooldownTicks: 240, costs: { capacitor: 10, heat: 4 },
+    target: { kind: 'entity', required: true, hostile: true },
+    requiresCapabilities: [],
+    movement: null,
+    effects: [{ at: 'activeStart', type: 'dropBomb', payloadId: 'bomb_goo' }],
+    cues: { start: 'combat.action.drop.start', active: 'combat.action.drop.release', end: 'combat.action.drop.end', cancel: 'combat.action.cancel', reject: 'combat.action.reject' },
   },
 ]);
 
