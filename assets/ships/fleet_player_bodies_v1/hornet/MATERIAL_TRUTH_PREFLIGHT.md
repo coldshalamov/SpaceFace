@@ -2,7 +2,7 @@
 
 Class: player flyable interceptor. Hitch untouched.
 
-**2026-09-21 chase_form_v16.** Cycle 4 after C3 side-by-side: Hitch still won unique albedo, dirt, stencil, hardware density. This pass: factory-gray hull (not foam-white), port ochre ID bars, unmirrored teal plate + repair patch, dorsal hatch/cable tray/hose/antenna, ceramic heat/soot at the drive, RCS and nav beacons. Geometry + Principled islands that read at D=144. No maps, no seats. Hitch/Kestrel frozen. Hitch-plus still REVISE (panel language, lettering, hull-wide dirt, hardware density). Not a five-cycle close.
+**2026-09-21 chase_form_v17.** Cycle 5 (packet minimum). C4 stills lost panel language, lettering, hull-wide dirt, and hardware density to Hitch. This pass: darker hull, dorsal plate course with seams, ochre HN + 07 on dark plaques, dirt strips from nose to TE, second hose, cargo crate, beacons. Principled islands, no maps. Hitch/Kestrel frozen. **PASS at chase distance** for those four notes. Hitch close is still richer on painted rivets and an English word — not cloned.
 
 ## Visible-zone register (supported cameras: 3/4, starboard, rear)
 
