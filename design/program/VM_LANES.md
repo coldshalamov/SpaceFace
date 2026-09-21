@@ -33,7 +33,7 @@ mutations still go in [`NOW.md`](./NOW.md). Product status lives in the queue an
 
 | Task | Thread | Host (cloud-agent id or machine) | Branch | State | Exact focus | Last push | Next terminal action |
 |---|---|---|---|---|---|---|---|
-| PQ-050.01 Hornet chase form | code-work-coordinator | `bc-8188ad27-0dbf-5951-be0b-f48141e18378` | `cursor/pq050-01-hornet-chase-form-8378` | RESULT: DONE | Hornet chase_form_v13 wired to parts LOD0/1/2; Hitch/Kestrel frozen | 2026-09-21 (this push) | released; parent PQ-050 stays unproven; reviewers REVISE vs Hitch-plus |
+| PQ-050.01 Hornet chase form | code-work-coordinator | `bc-8188ad27-0dbf-5951-be0b-f48141e18378` | `cursor/pq050-01-hornet-chase-form-8378` | RESULT: DONE | Hornet chase_form_v13 wired to parts+release LOD0/1/2; Hitch/Kestrel frozen | 2026-09-21 `34e029e31` | released; parent PQ-050 stays unproven; reviewers REVISE vs Hitch-plus |
 
 ## Pointers
 
