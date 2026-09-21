@@ -1,0 +1,65 @@
+{
+  "ok": true,
+  "asset": "ship_drifter",
+  "revision": "chase_form_v13",
+  "cycle": 13,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.846153900747011,
+  "authoredX": 16.77,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 12.1477, 5.8086],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sha256": "8e1943a85f56f7e8cb97b17fa21804ac13059e8c19f1050c9c853cf967a0f52f",
+    "triangles": 19370,
+    "hullTriangles": 12978,
+    "bytes": 2591536,
+    "size": [16.77, 6.58, 3.146]
+  },
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "hitchStills": "/tmp/hitch-c10",
+  "playChase": {
+    "shipW": 13.1,
+    "occupancy": 0.79,
+    "lightGe028": 1.7,
+    "mid": 73.5,
+    "dark": 24.8,
+    "brown": 0.0
+  },
+  "hitchPlayChase": {
+    "shipW": 10.1,
+    "occupancy": 0.52,
+    "lightGe028": 5.3,
+    "mid": 68.5,
+    "dark": 26.3,
+    "brown": 0.3
+  },
+  "gapsTargeted": {
+    "tubePlusBoxes": "one multi-station lofted shell; well+greenhouse boolean cuts; no parented hull boxes",
+    "paddleSponsons": "sideboard lobes encoded in the same station rings, faired into the beam"
+  },
+  "tubePaddleReadGone": false,
+  "reviews": {
+    "play_chase": {
+      "id": "bc-415125ad-a358-555e-8248-6a7751a89d78",
+      "verdict": "REVISE",
+      "note": "VALID framing. Clay still pale capsule + dark paddle sponsons. Hitch still wins formed-shell / skin at D=144. Well called a lid at D=144; close still shows a hole."
+    },
+    "play_chase_abeam": {
+      "id": "bc-57153f15-bf3e-537e-be5c-c74d5d8c7dcc",
+      "verdict": "REVISE",
+      "note": "VALID framing. Central tube + darker paddle/saddlebag sponsons split by a hard root crease, not one faired beam. Hitch still wins."
+    },
+    "play_chase_close": {
+      "id": "bc-24f7085f-e7e9-5354-a2cb-74201be35320",
+      "verdict": "REVISE",
+      "note": "VALID framing. Well and greenhouse read as holes on this still (crates/winch/liner in the mouth). Hitch still wins skin. Lid claim rejected."
+    }
+  },
+  "result": "REVISE",
+  "hitchPlusChase": false,
+  "notes": "C13 rebuilt the primary body as one lofted shell with faired sideboard lobes. Independent reviews still read tube + paddles. Hitch still wins D=144. No seats. No megatex. Hitch/Kestrel/Hornet frozen. Parent unproven / not G7."
+}
