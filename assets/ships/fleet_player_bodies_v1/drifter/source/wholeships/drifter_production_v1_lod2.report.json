@@ -19,21 +19,21 @@
   },
   "size": [
     16.77,
-    7.58,
+    6.92,
     2.853
   ],
   "boundsMin": [
     -8.82,
-    -3.79,
+    -3.46,
     -1.248
   ],
   "boundsMax": [
     7.95,
-    3.79,
+    3.46,
     1.605
   ],
-  "triangles": 14014,
-  "hullTriangles": 10924,
+  "triangles": 13698,
+  "hullTriangles": 10608,
   "objects": [
     "COLLISION_HULL.002",
     "LOD0_Beacon_Aft",
@@ -51,5 +51,5 @@
     "LOD0_Winglet_Port",
     "LOD0_Winglet_Stbd"
   ],
-  "bytes": 1889404
+  "bytes": 1845940
 }

@@ -37,15 +37,15 @@ KEEP_SEPARATE = (
 
 # Distinct color blocks that read at ~15% frame width. No 512-map density trap.
 # C8–C10 wins: value split ~8%, wells as holes, no teal beam rail, copper/brown ~0.8%.
-# C11: lift armor/mech into mid so the shell is not clay-gray + black bars. Do not
-# re-brighten the hull into light>=0.28.
+# C11: formed mid skin like Hitch. Hull sits mid-dark so light>=0.28 stays ~8%
+# without restoring black dorsal bars. Armor/deck are plates, not a clay tube.
 HONEST = {
-    "Material_Hull": {"color": (0.16, 0.20, 0.21), "metallic": 0.14, "roughness": 0.48, "role": "hull"},
-    "Material_Armor": {"color": (0.085, 0.100, 0.108), "metallic": 0.22, "roughness": 0.56, "role": "armor"},
-    "Material_Deck": {"color": (0.11, 0.12, 0.11), "metallic": 0.10, "roughness": 0.56, "role": "deck"},
+    "Material_Hull": {"color": (0.105, 0.132, 0.140), "metallic": 0.16, "roughness": 0.54, "role": "hull"},
+    "Material_Armor": {"color": (0.062, 0.074, 0.082), "metallic": 0.24, "roughness": 0.58, "role": "armor"},
+    "Material_Deck": {"color": (0.078, 0.086, 0.082), "metallic": 0.12, "roughness": 0.58, "role": "deck"},
     "Material_Canopy": {"color": (0.012, 0.016, 0.022), "metallic": 0.0, "roughness": 0.06, "role": "glass"},
     "Material_Ceramic": {"color": (0.07, 0.065, 0.06), "metallic": 0.08, "roughness": 0.62, "role": "ceramic"},
-    "Material_Mechanical": {"color": (0.10, 0.11, 0.12), "metallic": 0.38, "roughness": 0.50, "role": "mechanical"},
+    "Material_Mechanical": {"color": (0.055, 0.060, 0.066), "metallic": 0.40, "roughness": 0.50, "role": "mechanical"},
     "Material_Radiator": {"color": (0.045, 0.038, 0.036), "metallic": 0.22, "roughness": 0.52, "role": "radiator"},
     "Material_Thruster": {"color": (0.028, 0.028, 0.032), "metallic": 0.28, "roughness": 0.50, "role": "thruster"},
     "Material_Accent": {"color": (0.04, 0.32, 0.30), "metallic": 0.06, "roughness": 0.42, "role": "accent"},
@@ -288,6 +288,43 @@ def greenhouse_ring(x, hw, hh, zc):
         z = zc + hh * max(math.cos(ang), -0.12)
         pts.append((x, y, z))
     return pts
+
+
+def dorsal_lip_ring(x, half_y, rise=0.05, outer=0.16, inner=0.05):
+    """Closed lip around a dorsal cut. Formed shell edge, not four boxes on the deck."""
+    hw, hh, zc = hull_half_at(x)
+    z_crown = zc + hh * 0.90
+    z_in = z_crown - 0.14
+    hy = min(half_y, max(0.28, hw * 0.92))
+    return [
+        (x, -hy + inner, z_in),
+        (x, -hy - outer, z_crown + rise),
+        (x, -hy - outer * 0.55, z_crown - 0.08),
+        (x, -hy + inner, z_in - 0.08),
+        (x, hy - inner, z_in - 0.08),
+        (x, hy + outer * 0.55, z_crown - 0.08),
+        (x, hy + outer, z_crown + rise),
+        (x, hy - inner, z_in),
+    ]
+
+
+def mullion_long_ring(x, y, z, half_w=0.028, drop=0.10):
+    """Thin longitudinal glazing bar. Chase-readable stroke, not a cube cage."""
+    return [
+        (x, y - half_w, z),
+        (x, y + half_w, z),
+        (x, y + half_w, z - drop),
+        (x, y - half_w, z - drop),
+    ]
+
+
+def mullion_athwart_ring(x, y, z, half_w=0.028, drop=0.10):
+    return [
+        (x - half_w, y, z),
+        (x + half_w, y, z),
+        (x + half_w, y, z - drop),
+        (x - half_w, y, z - drop),
+    ]
 
 
 def airfoil(x_le, y, z, chord, thick):
@@ -699,39 +736,39 @@ def build_winglets(mats, lod):
     armor = mats["Material_Armor"]
     bits = []
     for sign, tag in ((1.0, "Stbd"), (-1.0, "Port")):
-        # Sponson, not a mid-body card: long chord along the cargo waist, root in the
-        # hull beam, blunt tip. Abeam must read thickness in X, not a glued ear.
+        # Hitch-comparable sponson: long chord along the cargo waist, slow taper,
+        # blunt tip. Not a diamond card glued at mid-body.
         rings = [
-            airfoil(2.95, 1.18 * sign, 0.10, 4.45, 1.32),
-            airfoil(2.35, 1.82 * sign, 0.16, 3.72, 1.08),
-            airfoil(1.55, 2.52 * sign, 0.22, 2.85, 0.76),
-            airfoil(0.65, 3.18 * sign, 0.26, 1.85, 0.50),
-            airfoil(-0.10, 3.70 * sign, 0.24, 1.05, 0.36),
+            airfoil(2.65, 1.02 * sign, 0.16, 3.95, 1.12),
+            airfoil(2.25, 1.88 * sign, 0.22, 3.65, 0.98),
+            airfoil(1.55, 2.48 * sign, 0.26, 3.25, 0.82),
+            airfoil(0.55, 2.98 * sign, 0.28, 2.55, 0.62),
+            airfoil(-0.45, 3.38 * sign, 0.24, 1.65, 0.44),
         ]
         wing = loft_rings(f"LOD0_Winglet_{tag}", rings, hull_mat, 0.014)
         bits.append(wing)
         bits.append(loft_rings(
             f"LOD0_WingStrake_{tag}",
             [
-                airfoil(3.05, 0.92 * sign, 0.08, 3.55, 1.05),
-                airfoil(2.95, 1.18 * sign, 0.10, 4.45, 1.32),
+                airfoil(2.75, 0.82 * sign, 0.12, 3.15, 0.88),
+                airfoil(2.65, 1.02 * sign, 0.16, 3.95, 1.12),
             ],
             hull_mat, 0.012, cap=True,
         ))
         bits.append(add_cylinder(
-            f"LOD0_WingTip_{tag}", 0.07, 0.10, (0.05, 3.72 * sign, 0.24),
+            f"LOD0_WingTip_{tag}", 0.08, 0.12, (-0.35, 3.38 * sign, 0.24),
             mats["Material_Warning"] if sign < 0 else mats["Material_Accent"],
             0.0, vertices=8,
         ))
         if lod == 0:
-            def flap_slot(name=f"FlapSlot_{tag}", loc=(0.15, 2.45 * sign, 0.16)):
-                return add_box(name, (0.18, 1.15, 0.32), loc, hull_mat, 0.0)
+            def flap_slot(name=f"FlapSlot_{tag}", loc=(0.35, 2.35 * sign, 0.18)):
+                return add_box(name, (0.22, 1.05, 0.36), loc, hull_mat, 0.0)
             cut(wing, flap_slot)
             bits.append(loft_rings(
                 f"LOD0_Flap_{tag}",
                 [
-                    airfoil(0.55, 2.05 * sign, 0.10, 0.78, 0.22),
-                    airfoil(-0.15, 3.05 * sign, 0.14, 0.50, 0.16),
+                    airfoil(0.45, 1.95 * sign, 0.12, 0.85, 0.26),
+                    airfoil(-0.25, 2.85 * sign, 0.16, 0.58, 0.20),
                 ],
                 armor, 0.006, cap=True,
             ))
@@ -749,11 +786,12 @@ def build_cargo_well(hull, mats, lod):
 
     report = {"mouth": cut(hull, mouth)}
     bits = add_open_well("LOD0_Well", (4.05, 1.88, 1.28), (0.15, 0.0, 0.52), mech, floor=True, open_aft=False, wall=0.070)
-    # Formed lip of the shell, not a black ladder of boxes on the deck.
-    bits.append(add_box("LOD0_WellCoaming_Port", (4.20, 0.14, 0.12), (0.15, -1.04, 1.26), hull_mat, 0.002))
-    bits.append(add_box("LOD0_WellCoaming_Stbd", (4.20, 0.14, 0.12), (0.15, 1.04, 1.26), hull_mat, 0.002))
-    bits.append(add_box("LOD0_WellCoaming_Fore", (0.14, 2.08, 0.12), (2.22, 0.0, 1.26), hull_mat, 0.002))
-    bits.append(add_box("LOD0_WellCoaming_Aft", (0.14, 2.08, 0.12), (-1.92, 0.0, 1.26), hull_mat, 0.002))
+    # Lip is a lofted cut-edge of the shell, not four boxes on the deck.
+    bits.append(loft_rings(
+        "LOD0_WellLip",
+        [dorsal_lip_ring(x, 1.04) for x in (2.22, 1.15, 0.15, -0.85, -1.92)],
+        hull_mat, 0.006, cap=True,
+    ))
     bits.append(add_box("LOD0_WellGrate", (1.55, 0.72, 0.05), (0.55, 0.28, 0.08), mats["Material_Radiator"], 0.0))
     bits.append(add_cylinder(
         "LOD0_Winch", 0.22, 0.40, (0.15, 0.0, 0.22), mech, 0.0,
@@ -784,29 +822,70 @@ def build_greenhouse(hull, mats, lod):
     if lod < 2:
         report["windshield"] = cut(hull, windshield)
     bits = add_open_well("LOD0_Tub", (2.48, 1.18, 0.92), (5.20, 0.0, 0.48), mech, floor=True, open_aft=False)
-    # Thin formed lip of the hull around the cut. No cube cage, no roof lid.
-    bits.append(add_box("LOD0_Coaming_Port", (2.48, 0.10, 0.10), (5.20, -0.64, 1.28), hull_mat, 0.002))
-    bits.append(add_box("LOD0_Coaming_Stbd", (2.48, 0.10, 0.10), (5.20, 0.64, 1.28), hull_mat, 0.002))
-    bits.append(add_box("LOD0_Coaming_Fore", (0.12, 1.20, 0.10), (6.38, 0.0, 1.30), hull_mat, 0.002, rotation=(0.0, math.radians(-20.0), 0.0)))
-    bits.append(add_box("LOD0_Coaming_Aft", (0.12, 1.20, 0.10), (4.02, 0.0, 1.26), hull_mat, 0.002))
+    # Formed hull lip around the tub cut. Greenhouse sits in that hole.
+    bits.append(loft_rings(
+        "LOD0_GreenLip",
+        [
+            dorsal_lip_ring(6.38, 0.48, rise=0.03, outer=0.12),
+            dorsal_lip_ring(5.85, 0.66, rise=0.04, outer=0.14),
+            dorsal_lip_ring(5.20, 0.70, rise=0.04, outer=0.14),
+            dorsal_lip_ring(4.55, 0.50, rise=0.03, outer=0.12),
+        ],
+        hull_mat, 0.005, cap=True,
+    ))
     if lod < 2:
         visor = loft_rings(
             "LOD0_Glass",
             [
-                greenhouse_ring(6.38, 0.22, 0.12, 1.14),
-                greenhouse_ring(5.85, 0.50, 0.22, 1.18),
-                greenhouse_ring(5.20, 0.54, 0.18, 1.16),
-                greenhouse_ring(4.58, 0.36, 0.10, 1.12),
+                greenhouse_ring(6.42, 0.38, 0.16, 1.06),
+                greenhouse_ring(5.90, 0.64, 0.28, 1.12),
+                greenhouse_ring(5.20, 0.68, 0.26, 1.10),
+                greenhouse_ring(4.52, 0.46, 0.16, 1.04),
             ],
             glass, 0.002, cap=True,
         )
         bits.append(visor)
 
-        def visor_hatch(name="VisorHatchCut", loc=(5.20, 0.0, 1.32)):
-            return add_box(name, (1.55, 0.72, 0.28), loc, glass, 0.0)
+        def visor_hatch(name="VisorHatchCut", loc=(5.20, 0.0, 1.34)):
+            return add_box(name, (0.52, 0.30, 0.10), loc, glass, 0.0)
 
         cut(visor, visor_hatch)
-        bits.append(add_box("LOD0_Mullion_Mid", (0.06, 1.00, 0.10), (5.20, 0.0, 1.20), hull_mat, 0.0))
+        bits.append(loft_rings(
+            "LOD0_Mullion_Spine",
+            [
+                mullion_long_ring(6.18, 0.0, 1.24),
+                mullion_long_ring(5.20, 0.0, 1.28),
+                mullion_long_ring(4.72, 0.0, 1.20),
+            ],
+            hull_mat, 0.0, cap=True,
+        ))
+        bits.append(loft_rings(
+            "LOD0_Mullion_Port",
+            [
+                mullion_long_ring(6.05, -0.28, 1.20),
+                mullion_long_ring(5.20, -0.32, 1.24),
+                mullion_long_ring(4.78, -0.22, 1.16),
+            ],
+            hull_mat, 0.0, cap=True,
+        ))
+        bits.append(loft_rings(
+            "LOD0_Mullion_Stbd",
+            [
+                mullion_long_ring(6.05, 0.28, 1.20),
+                mullion_long_ring(5.20, 0.32, 1.24),
+                mullion_long_ring(4.78, 0.22, 1.16),
+            ],
+            hull_mat, 0.0, cap=True,
+        ))
+        bits.append(loft_rings(
+            "LOD0_Mullion_Athwart",
+            [
+                mullion_athwart_ring(5.20, -0.42, 1.22),
+                mullion_athwart_ring(5.20, 0.0, 1.26),
+                mullion_athwart_ring(5.20, 0.42, 1.22),
+            ],
+            hull_mat, 0.0, cap=True,
+        ))
     return bits, report
 
 
@@ -888,8 +967,8 @@ def build_hardware(hull, mats, lod):
     bits.append(add_box("LOD0_DirtTransom", (1.85, 0.40, 0.06), (-6.55, 0.0, 1.08), dirt, 0.0))
 
     # Cluster 2 — nacelle roots: heat dirt + one hose per pod. Cowl/collar/throat live on the nacelle.
-    bits.append(add_box("LOD0_DirtNacelle_Port", (2.45, 0.36, 0.06), (-5.40, -1.80, 1.08), dirt, 0.0))
-    bits.append(add_box("LOD0_DirtNacelle_Stbd", (2.45, 0.36, 0.06), (-5.40, 1.80, 1.08), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtNacelle_Port", (1.65, 0.28, 0.05), (-5.40, -1.80, 1.08), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtNacelle_Stbd", (1.65, 0.28, 0.05), (-5.40, 1.80, 1.08), dirt, 0.0))
     bits.append(add_box("LOD0_HeatPlate_Port", (1.15, 0.38, 0.10), (-6.45, -1.48, 0.92), mats["Material_Ceramic"], 0.001))
     bits.append(add_box("LOD0_HeatPlate_Stbd", (1.15, 0.38, 0.10), (-6.45, 1.48, 0.92), mats["Material_Ceramic"], 0.001))
 
@@ -913,8 +992,8 @@ def build_hardware(hull, mats, lod):
     bits.append(add_cylinder("LOD0_SensorDish", 0.14, 0.05, (0.60, 0.0, 1.58), armor, 0.0, vertices=10))
     bits.append(add_cylinder("LOD0_Beacon_Fore", 0.05, 0.08, (3.85, 0.0, 1.32), accent, 0.0, vertices=8))
     bits.append(add_cylinder("LOD0_Beacon_Aft", 0.05, 0.08, (-6.35, 0.0, 1.14), warning, 0.0, vertices=8))
-    bits.append(add_cylinder("LOD0_Nav_Port", 0.05, 0.08, (0.05, -3.72, 0.28), warning, 0.0, vertices=8))
-    bits.append(add_cylinder("LOD0_Nav_Stbd", 0.05, 0.08, (0.05, 3.72, 0.28), accent, 0.0, vertices=8))
+    bits.append(add_cylinder("LOD0_Nav_Port", 0.05, 0.08, (-0.35, -3.38, 0.24), warning, 0.0, vertices=8))
+    bits.append(add_cylinder("LOD0_Nav_Stbd", 0.05, 0.08, (-0.35, 3.38, 0.24), accent, 0.0, vertices=8))
 
     if lod == 0:
         bits.extend(add_hose(
@@ -943,7 +1022,7 @@ def shade_objects(objs):
             "Bolt", "Tile", "Lamp", "Plaque", "Fastener", "WalkPlate", "BowPlate",
             "HeatPlate", "Digit", "Flank", "Vent", "LowPanel", "Clamp", "Course",
             "Girth", "Stringer", "Saddle", "Winch", "Chine", "Fairing", "Strake",
-            "Cage", "Mullion")
+            "Cage", "Mullion", "WellLip", "GreenLip")
     for obj in objs:
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
