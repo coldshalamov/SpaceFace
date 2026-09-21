@@ -7,6 +7,10 @@ import { spawnSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { createChronicler } from '../src/systems/chronicler.js';
 import { createBus, OUTPUTS, receipts } from '../tests/chronicler/harness.mjs';
+import os from 'node:os';
+
+try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* best effort: background compute yields to the game */ }
+
 const args = Object.fromEntries(process.argv.slice(2).map(a => {
   const i = a.indexOf('='); return i < 0 ? [a, true] : [a.slice(0, i), a.slice(i + 1)];
 }));

@@ -18,6 +18,9 @@ import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { startFreshServer } from './capture-ui-matrix.mjs';
+import os from 'node:os';
+
+try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* best effort: background compute yields to the game */ }
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const args = parseArgs(process.argv.slice(2));

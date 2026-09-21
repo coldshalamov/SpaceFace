@@ -144,9 +144,10 @@ and the GPU share one power budget: background compute is paid for in the game's
 locked 60 fps with no freezes and 40 fps with a 100–350 ms freeze every second, minutes apart. The
 owner experiences that as "the performance is weird".
 
-- Any harness that can run longer than two minutes lowers its own OS priority first
-  (`os.setPriority(os.constants.priority.PRIORITY_LOW)`), as `run-actual-game-playthrough.mjs` does.
-  The results are identical; they arrive later when someone is playing.
+- Background compute on the play machine always runs at the lowest OS priority: every harness that
+  can run over two minutes sets `os.setPriority(os.constants.priority.PRIORITY_LOW)` at process
+  start, because CPU and iGPU share one power budget and a pinned core costs the game frames. The
+  results are identical; they arrive later when someone is playing.
 - The owner's rule of 2026-09-15 still stands on top of this: no 45-minute captures, soaks or
   batteries inside a session, by you or by a lane you launch.
 - Every performance number you report carries the whole-machine CPU line beside it

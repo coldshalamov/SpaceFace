@@ -17,6 +17,9 @@ import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { flybyFocus } from '../src/systems/flybyFocus.js';
 import { weapons } from '../src/systems/weapons.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
+import os from 'node:os';
+
+try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* best effort: background compute yields to the game */ }
 
 const DT = SIM_DT;
 const SIM_SECONDS = 32;

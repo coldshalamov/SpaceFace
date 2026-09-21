@@ -19,6 +19,9 @@ import {
 } from '../src/data/featureFlags.js';
 import { buildWeaponDamagePacket } from '../src/systems/weapons.js';
 import { collisionConsequences } from '../src/systems/collisionConsequences.js';
+import os from 'node:os';
+
+try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* best effort: background compute yields to the game */ }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');

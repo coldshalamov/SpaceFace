@@ -1,5 +1,8 @@
 import { performance } from 'node:perf_hooks';
+import os from 'node:os';
 import { createCombatKernel } from '../src/combat/kernel.js';
+
+try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* best effort: background compute yields to the game */ }
 
 const iterations = Number(process.argv[2]) || 25_000;
 const attacker = ship(1, 0, 0);

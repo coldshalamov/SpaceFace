@@ -18,6 +18,9 @@ import { runCrucibleBench, CRUCIBLE_ARENAS, CRUCIBLE_LOADOUTS, CRUCIBLE_DEFAULT_
 import { runFlightBench } from './lib/bench/flightBench.mjs';
 import { runVerbBench } from './lib/bench/verbBench.mjs';
 import { captureFrameStrip, DEFAULT_STRIP_DIR } from './lib/bench/frameStripCapture.mjs';
+import os from 'node:os';
+
+try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* best effort: background compute yields to the game */ }
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const RECEIPTS_DIR = join(ROOT, 'design/program/roadmap/receipts/fun-loop');

@@ -25,6 +25,9 @@ import {
   parseHeadedReleaseSoakArgs,
   statusToExitCode,
 } from './lib/releaseSoakEvidenceChecker.mjs';
+import os from 'node:os';
+
+try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* best effort: background compute yields to the game */ }
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEFAULT_RECEIPT_DIR = path.join(ROOT, '.devshots', 'spec2');

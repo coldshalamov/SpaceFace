@@ -47,6 +47,9 @@ import {
   getDerivedStats,
   ships as shipsSystem,
 } from '../src/systems/ships.js';
+import os from 'node:os';
+
+try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* best effort: background compute yields to the game */ }
 
 assert.equal(typeof window, 'undefined', 'career earnings benchmark must run headless');
 

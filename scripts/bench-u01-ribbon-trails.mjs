@@ -9,6 +9,9 @@ import {
   createRibbonTrail,
   RIBBON_TRAIL_INTERPOLATION_CAP,
 } from '../src/render/engineTrailSurfaces.js';
+import os from 'node:os';
+
+try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* best effort: background compute yields to the game */ }
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT = path.join(ROOT, '.devshots', 'graphics', 'u01-trails');
