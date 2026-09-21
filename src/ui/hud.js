@@ -335,6 +335,21 @@ export function objectiveTravelReadout(state, wp, out = null) {
   return result;
 }
 
+// INF-019: the contacts-roster closing marker reads steady. The raw marker recomputes
+// per sample and straddles its show threshold while contacts slide past, so a borderline
+// value flickers the glyph on and off every sample. A freshly accepted value holds for a
+// further beat: chatter inside the window keeps showing the old text, and a genuinely
+// sustained change lands the moment the hold expires. Pure over the caller's clock so both
+// the roster (wall time) and tests (fixed stamps) share it.
+export const CLOSING_MARKER_HOLD_MS = 350;
+export function steadyClosingMarker(prev, rawText, nowMs) {
+  const text = prev && typeof prev.text === 'string' ? prev.text : '';
+  const holdUntil = prev && Number.isFinite(prev.holdUntil) ? prev.holdUntil : 0;
+  if (rawText === text) return { text, holdUntil, changed: false };
+  if (nowMs < holdUntil) return { text, holdUntil, changed: false };
+  return { text: rawText, holdUntil: nowMs + CLOSING_MARKER_HOLD_MS, changed: true };
+}
+
 function mtWaypointDistance(state, wp) {
   return objectiveTravelReadout(state, wp).distanceText;
 }
@@ -4046,7 +4061,12 @@ export function createHud(ctx, alerts) {
     const rvz = ((e.vel && e.vel.z) || 0) - ((player.vel && player.vel.z) || 0);
     const closingSpeed = -((rvx * c.dx + rvz * c.dz) / (c.dist || 1));
     const speedIcon = closingSpeed >= 0.5 ? '▸' : (closingSpeed <= -0.5 ? '▹' : '');
-    const speedText = Math.abs(closingSpeed) >= 0.5 ? `${speedIcon}${Math.round(Math.abs(closingSpeed))}` : '';
+    const rawSpeedText = Math.abs(closingSpeed) >= 0.5 ? `${speedIcon}${Math.round(Math.abs(closingSpeed))}` : '';
+    // INF-019: the per-sample marker holds a beat once accepted — no threshold flicker,
+    // no digit churn, and still exactly one textContent write per accepted change.
+    const speedMark = steadyClosingMarker(rec.speedMark, rawSpeedText, performance.now());
+    rec.speedMark = speedMark;
+    const speedText = speedMark.text;
     const dist = Math.round(c.dist);
     const unscanned = c.isWreck && !scannedWreck;
     const selected = e.id === targetId;
