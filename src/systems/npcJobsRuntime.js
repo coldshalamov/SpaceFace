@@ -3479,11 +3479,35 @@ export const npcJobsRuntime = {
     const entry = this._byId()[jobId];
     if (!entry || !entry.job) return false;
     if (entry.control) return false;
+    const wasFlee = entry.job.phase === NPC_JOB_PHASE.FLEE;
     resume(entry.job);
+    // INF-073: a rescued worker says so. One contextual acknowledgment per genuine return —
+    // the bus event for watchers, a short toast for the pilot, both cooled down per job.
+    if (wasFlee && entry.job.phase !== NPC_JOB_PHASE.FLEE) this._noteResumed(entry, jobId, 'manual');
     entry.threatId = null;
     this._clearViolenceStamp(entry);
     this._threatQueryDirty = true;
     return true;
+  },
+
+  _noteResumed(entry, jobId, via) {
+    if (!entry || !entry.job || !this.bus || typeof this.bus.emit !== 'function') return;
+    const now = Number(this.state && this.state.simTime) || 0;
+    // Every return is on the record; only the pilot-facing toast is cooled down.
+    const quiet = Number.isFinite(entry.lastResumeAckT) && now - entry.lastResumeAckT < 60;
+    if (!quiet) entry.lastResumeAckT = now;
+    const kindLabel = { miner: 'Miner', hauler: 'Hauler', salvor: 'Salvor', tender: 'Tender', courier: 'Courier' }[entry.job.kind] || 'Crew';
+    try {
+      this.bus.emit('npcjobs:resumed', {
+        jobId, kind: entry.job.kind, phase: entry.job.phase,
+        sectorId: entry.sectorId || null, simTime: now, via: via || 'threat_clear',
+      });
+    } catch { /* advisory only */ }
+    if (!quiet) {
+      try {
+        this.bus.emit('toast', { text: `${kindLabel} back to work — thanks for the cover.`, kind: 'info', ttl: 4 });
+      } catch { /* advisory only */ }
+    }
   },
 
   _reconcileThreatResult(entry, resultId) {
@@ -3505,6 +3529,10 @@ export const npcJobsRuntime = {
       }
       if (violenceActive) return;
       resume(job);
+      // INF-073: the threat is gone and the worker returns — acknowledge the rescue once.
+      for (const [jobId, candidate] of Object.entries(this._byId())) {
+        if (candidate === entry) { this._noteResumed(entry, jobId, 'threat_clear'); break; }
+      }
       entry.threatId = null;
       this._clearViolenceStamp(entry);
       return;
