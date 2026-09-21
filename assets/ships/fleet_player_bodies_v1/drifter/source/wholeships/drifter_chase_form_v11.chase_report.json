@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "glb": "/workspace/assets/ships/parts/wholeships/drifter_production_v1.glb",
+  "ship": "drifter",
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "runtimeScale": 1.846153900747011,
+  "authoredX": 16.769999504089355,
+  "targetWU": 30.96,
+  "size": [
+    30.96,
+    12.7754,
+    5.2668
+  ],
+  "stills": {
+    "play_chase.png": "/tmp/drifter-c11/play_chase.png",
+    "play_chase_abeam.png": "/tmp/drifter-c11/play_chase_abeam.png",
+    "play_chase_close.png": "/tmp/drifter-c11/play_chase_close.png"
+  },
+  "clay": "/tmp/drifter-c11/clay_play_chase.png"
+}
