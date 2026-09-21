@@ -14,3 +14,8 @@ C1 is a formed explorer needle: cabin shoulder, survey-deck well as a hole,
 greenhouse glass in a cut tub, twin nacelle throats in the primary loft, swept
 wings grown from the beam, real mast (stem/yard/dishes). Clay all-slot. No extra
 wrapping hoops. Parent unproven / not G7.
+
+C1 RESULT: REVISE. Play+abeam+close TUBE_PADDLE YES / CAGE_READ YES; Hitch still
+wins formed-shell at chase cameras. Wells boolean-true; play-size well read is
+shallow. No seats. No megatex. Hitch/Kestrel/Hornet/Drifter freeze hashes
+unchanged.
