@@ -128,7 +128,13 @@ export class WeaponDischargePool {
     d[0]=s.x-sa*offset+ca*axial;d[1]=s.y;d[2]=s.z+ca*offset+sa*axial;d[3]=s.angle;
     d[4]=type;d[5]=a0;d[6]=a1;d[7]=r0;d[8]=r1;d[9]=width;d[10]=lift;d[11]=0;
     d[12]=c.r;d[13]=c.g;d[14]=c.b;d[15]=this.opacity;
-    d[16]=(s.role===0&&s.source==='machined-burst')?Math.max(0,1-s.age/Math.max(.001,s.life))*(1.2+0.8*Math.sin(this.time*12.566+s.seed*6.283))*(0.4+0.6*(Number.isFinite(s.opacity)?s.opacity:1)):0;d[17]=phase>=0?phase:s.seed;d[18]=frontMode;d[19]=this.style;
+    // INF-009: discharge flow rides the effect clock inside the shot envelope. machined-burst
+    // (kinetic default-kit guns) and split-aperture (the starter pulse-bolt coherent family) each
+    // get their own rhythm; every other family keeps the untouched zero path. Reduced flash is
+    // preserved through s.opacity (flash.opacity0 arrives already scaled); reduced motion freezes
+    // transport in-shader via uMotion-scaled vCycle.z, so no lifecycle handling changes here.
+    const dischargeFlowEnvelope=s.role===0?Math.max(0,1-s.age/Math.max(.001,s.life))*(0.4+0.6*(Number.isFinite(s.opacity)?s.opacity:1)):0;
+    d[16]=s.source==='machined-burst'?dischargeFlowEnvelope*(1.2+0.8*Math.sin(this.time*12.566+s.seed*6.283)):s.source==='split-aperture'?dischargeFlowEnvelope*(1.0+0.5*Math.sin(this.time*25.133+s.seed*6.283)):0;d[17]=phase>=0?phase:s.seed;d[18]=frontMode;d[19]=this.style;
     d[20]=1;d[21]=1;d[22]=1;d[23]=s.pitch;
     this.batch.add(d);
   }

@@ -693,11 +693,13 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
     // The inner prepare budget is already the survival-aware one (60 s) but the settle, queue
     // drain, post-opening sweep and pool census each carry their own cap on top of it — a
     // contended host can spend ~2x that before the last pipeline lands. Give the gate room
-    // for the whole sequence so the shell is what pays, not the round. Non-survival routes
-    // keep 20 s.
+    // for the whole sequence so the shell is what pays, not the round. PQ-210.02 gives the
+    // open route the same margin: its prepare budget is 40 s and the tail steps sit on top
+    // of it, so a 20 s gate still releases mid-cook. 120 s is the bounded ceiling — a fast
+    // host finishes early, a wedged cook still fails open.
     const presentBudgetMs = state && state.run && state.run.kind === 'survival'
       ? Math.max(timeoutMs, 360000)
-      : timeoutMs;
+      : Math.max(timeoutMs, 120000);
     const presentResult = await settleWithin(presentCook, presentBudgetMs);
     const presentOutcome = settleOutcome(presentResult);
     recordOpeningCookStep(render, 'wait.prepareLiveSectorBeforeFlight', presentStarted, presentOutcome);

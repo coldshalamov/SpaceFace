@@ -78,6 +78,10 @@ export function revealSubjectForCompile(subject) {
   const visit = (object) => {
     if (!object || seen.has(object)) return;
     seen.add(object);
+    // Authored-fallback layers stay hidden for the object's whole live life — live play never
+    // unhides them. Revealing one for a touch/depth pass would upload buffers (e.g. a wreck's
+    // merged proc shell) that no presented frame can ever draw.
+    if (object.userData && object.userData.authoredReadableFallbackLayer === true) return;
     const entry = {
       object,
       visible: object.visible,

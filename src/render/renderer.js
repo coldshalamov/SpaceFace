@@ -62,7 +62,6 @@ import {
   waitForOpeningCompositionSettled,
   retryAuthoredPartLibrary,
   syncAuthoredInstancePools,
-  spawnableShipArchetypePrewarmUrls,
   warmRenderPackageShipPool,
   poolWitnessPalettesForState,
   rosterPoolWitnessFilePalettes,
@@ -949,7 +948,13 @@ export function isEntityAuthoredUpgradeRelevant(entity, state, radius = null) {
   // program links inside the round.
   if (state && state.mode === 'loading') {
     if (survivalRunHoldsArena(state)) return true;
-    return isInitialAuthoredCompositionEntity(entity, state);
+    if (isInitialAuthoredCompositionEntity(entity, state)) return true;
+    // PQ-210.02 — the cook widened the first-flight set to every mesh flight owes.
+    // Those roots must request their authored body while the upgrade queue is
+    // resumed behind the shell, or the PackagedBody install lands mid-flight as an
+    // in-frame decode + link burst at the deferred-hold release.
+    const firstFlightIds = state.render && state.render.liveSectorFirstFlightIds;
+    return !!(firstFlightIds && typeof firstFlightIds.has === 'function' && firstFlightIds.has(entity.id));
   }
   // Hull check first: isInboundDecodeHull runs the time-to-glass clause on the
   // shelf-extrapolated position, which the raw-pos policy cannot express for
@@ -6014,6 +6019,10 @@ export const render = {
       // releases at the ~20 s deferred-hold latch INSIDE the fight (links + first-draw uploads
       // measured at +22-27 s on the owner's iGPU). The loading shell hides the extra seconds;
       // each step below stays individually bounded so a hang still fails open.
+      // PQ-210.02 — the open route deserves the same room: widened cook coverage means more
+      // entities finish behind the shell, and the 20 s envelope left the buffer census,
+      // upgrade compose, and post-opening pipeline waits timing out into presented flight.
+      // The cap is a fail-open ceiling, not a target — a fast host still exits early.
       const PREPARE_BUDGET_MS = survivalRunHoldsArena(state) ? 60000 : 20000;
       const remainingMs = () => Math.max(400, PREPARE_BUDGET_MS - (prepareNow() - prepareStarted));
       let meshBuildDrains = 0;
@@ -6256,6 +6265,39 @@ export const render = {
           cookSeen.add(entity.id);
           firstFlightEntities.push(entity);
         }
+      }
+      // PQ-210.02 — outside survival the cook covered only the opening table: the
+      // residency hold then parked every other mesh flight owes (wrecks, drones,
+      // payloads, beacons, POIs, inbound hulls, field-rock variants) and the ~20 s
+      // release drained them inside presented frames. Answer the same question the
+      // post-hold reconcile answers — the collected presentation set through the
+      // ordinary relevance policy with the shell gates bypassed — so those builds,
+      // compiles and uploads happen behind the shell and the release finds nothing.
+      if (!recook && !survivalRunHoldsArena(state)) {
+        const cookSeen = new Set();
+        for (const entity of firstFlightEntities) {
+          if (entity && entity.id != null) cookSeen.add(entity.id);
+        }
+        const presentation = this._presentationMeshScratch
+          || (this._presentationMeshScratch = []);
+        presentation.length = 0;
+        collectMeshPresentationEntities(state, presentation);
+        for (const entity of presentation) {
+          if (!entity || entity.id == null || cookSeen.has(entity.id)) continue;
+          // Field-rock records keep their own deliberate coverage (8-key variant
+          // cap + proximity promote + the prewarmed instanced pool); widening them
+          // here would build standalone meshes the pool contract never expects.
+          if (entity.type === 'asteroid') continue;
+          // The loading-time activity frame can be a stale complete set that would
+          // exclude live entities it does not name; the prefetch-radius clause is
+          // the same distance policy the post-release reconcile applies to them.
+          if (!isEntityRenderRelevant(entity, state, null, { bypassShellGates: true })
+              && !entityWithinPlayerRadius(entity, state,
+                renderResidencyRadius(state, 'prefetch', entity))) continue;
+          cookSeen.add(entity.id);
+          firstFlightEntities.push(entity);
+        }
+        presentation.length = 0;
       }
       state.render.liveSectorFirstFlightIds = new Set(
         firstFlightEntities.map((entity) => entity && entity.id).filter((id) => id != null),
@@ -6514,7 +6556,12 @@ export const render = {
               drainResult = { error: String(error && error.message || error) };
               break;
             }
-            if (drainResult && drainResult.idle === true) break;
+            // pending=0 + inFlight=0 + no compile means the queue holds no work — a stuck
+            // 'running' bookkeeping flag (dedupe-churned diagnostics) must not spin the drain
+            // to its deadline while the cook waits behind it.
+            if (drainResult && (drainResult.idle === true
+                || (drainResult.pending === 0 && drainResult.inFlight === 0
+                  && drainResult.compiling !== true))) break;
             flushPipelinesBehindShell();
             try {
               await state.render.drainPendingPipelineAdmissions();
@@ -6541,6 +6588,7 @@ export const render = {
         if (!recook && survivalRunHoldsArena(state)) {
           const poolSealStarted = prepareNow();
           let poolSealRoots = 0;
+          let poolSealUnits = 0;
           let poolSealOutcome = 'resolved';
           try {
             const latePoolRoots = collectInstancePoolCompileRoots(scene);
@@ -6551,12 +6599,22 @@ export const render = {
                 const restoreSubject = revealSubjectForCompile(subject);
                 try { return run(); } finally { restoreSubject(); }
               };
+              // Same admitOpeningUnitsAcrossSlices driver as cook.rockPools: the units object
+              // dedupes by material/geometry so thousands of count-0 pool chunks sharing a
+              // program family compile as one unit, sliced so the seal cannot monopolize a
+              // frame. (Iterating the returned object itself throws — it is not a list.)
               const sealUnits = uniqueAdmissionUnits(
                 latePoolRoots.flatMap((root) => collectCompileSubjects(root)),
               );
-              for (const subject of sealUnits) {
-                await whileRevealed(subject, () => compileSubjectColorAndDepth(subject, sealRoute));
-              }
+              poolSealUnits = sealUnits.programSubjects.length;
+              await admitOpeningUnitsAcrossSlices({
+                units: sealUnits,
+                beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
+                compileOne: (subject) => whileRevealed(subject,
+                  () => compileSubjectColorAndDepth(subject, sealRoute)),
+                touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
+                yieldToMain: yieldToBrowser,
+              });
               compileShadowDepthPipelines({
                 renderer,
                 light: this._keyLight,
@@ -6576,7 +6634,7 @@ export const render = {
             console.warn('[render] survival pool program seal failed', error);
           }
           recordOpeningCookStep(state.render, 'live.poolProgramSeal', poolSealStarted,
-            poolSealOutcome, { roots: poolSealRoots });
+            poolSealOutcome, { roots: poolSealRoots, units: poolSealUnits });
         }
         if (this._postOpeningPipelineAdmissionReleased !== true
             && typeof state.render.preparePostOpeningPipelines === 'function') {
@@ -8924,13 +8982,14 @@ export const render = {
         if (typeof file === 'string' && file.length > 0) files.push({ file, slot });
       }
     }
-    // Whole-ship bodies the roster can draw beyond the exemplar's own pick: hostile/traffic/
-    // faction-kit selections plus every separate-file LOD sibling a distance demotion lazily
-    // loads. The exemplar covers its own lod0; a live spawn demoting to lod1 is a new GLB.
-    // authoredPreloadPlanForEntity files whole-ships under the hull slot.
-    for (const file of spawnableShipArchetypePrewarmUrls()) {
-      if (typeof file === 'string' && file.length > 0) files.push({ file, slot: 'hull' });
-    }
+    // The whole-ship archetype sweep (hostile/traffic/faction-kit picks plus every separate-file
+    // LOD sibling a distance demotion lazily loads) used to be appended here. Measured out
+    // 2026-09-21: with it, this catalog decodes 140 files — its own header above says "~30 small
+    // GLBs" — and that is 110 s of the 141 s the prewarm added to launch-to-flight, plus ~4000
+    // pool roots for cook.rockPools and the first-frame census to walk. A demoted lod1 costs one
+    // lazy GLB load on a distant hull; the catalog was paying for all of them on every launch.
+    // Restore it only with a covered wave-arrival measurement that shows it earns the seconds:
+    // design/program/roadmap/receipts/PQ-210.00-REPORT.md.
     const uniqueFiles = [...new Map(files.map((entry) => [entry.file, entry])).values()];
     if (!uniqueFiles.length) return;
     const root = new THREE.Group();
@@ -8986,15 +9045,25 @@ export const render = {
         return pair;
       };
       const fallbackPairs = fallbackPalettes.map(pairFor);
+      // A per-slot palette BAND was tried here on 2026-09-21 and measured out: every palette any
+      // roster spec composes under, for every non-hull slot. A palette is a material colour, not
+      // a program feature — three.js keys the program cache on defines, so the band linked
+      // nothing the fallback band had not already linked. What it did produce was 1598 seal units
+      // over 4588 pool roots (against 14 over 25 with the prewarm off). The indexed tier below is
+      // the whole warm; see design/program/roadmap/receipts/PQ-210.00-REPORT.md.
+      const allMountablePairs = fallbackPairs;
       const normalize = (file) => String(file || '').replace(/\\/g, '/').split(/[?#]/, 1)[0]
         .replace(/^.*\/parts\//, '');
       poolWitnesses = {
         pairs,
         fallbackPairs,
         pairsFor(entry) {
-          const extras = rosterFilePalettes.get(normalize(entry && entry.file));
-          if (!extras || extras.size === 0) return fallbackPairs;
-          return fallbackPairs.concat([...extras.values()].map(pairFor));
+          if (entry && entry.slot === 'hull') {
+            const extras = rosterFilePalettes.get(normalize(entry && entry.file));
+            if (!extras || extras.size === 0) return fallbackPairs;
+            return fallbackPairs.concat([...extras.values()].map(pairFor));
+          }
+          return allMountablePairs;
         },
       };
       return poolWitnesses.pairs.size > 0;
@@ -9019,7 +9088,10 @@ export const render = {
         holder.visible = false;
         root.add(holder);
         try {
-          instantiatePackagedPrimitives(record, holder, { includeAllLods: true });
+          // lod0 only: the live attach path mounts lod0, so warming lod1/lod2 primitives builds
+          // holders the production draw never reuses. (The option stays on the function for a
+          // dedicated lod1/lod2 FILE, whose own primitives carry the non-lod0 tag.)
+          instantiatePackagedPrimitives(record, holder);
           // Mounted parts can also draw through the authored instance pools
           // (GLTFKit_InstancePool_*), whose chunks are InstancedMesh draws over the same
           // geometry+material — a different program variant (USE_INSTANCING) that linked
@@ -11440,7 +11512,35 @@ export const render = {
                 .catch(() => {})
                 .finally(() => { this._openingPreSubmitDrain = null; });
             }
-            return false;
+            // Bounded hold, same failsafe as the admission-pending gate above: a
+            // missing-set entry whose owner churned out of the plan can never be
+            // submitted by the first picture (the sets are object identity — a truly
+            // attached-but-unuploaded resource is not "missing"), so a refused entry
+            // that survives the whole recovery window is a stale receipt row, not a
+            // first-draw risk. Degrade to fail-open instead of parking every frame
+            // behind a black canvas while the sim runs.
+            const holdNowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
+              ? performance.now()
+              : Date.now();
+            if (this._openingMissingHoldSinceMs == null) this._openingMissingHoldSinceMs = holdNowMs;
+            if (holdNowMs - this._openingMissingHoldSinceMs <= OPENING_PICTURE_HOLD_FAILSAFE_MS) {
+              return false;
+            }
+            if (this._openingMissingHoldFailOpen !== true) {
+              this._openingMissingHoldFailOpen = true;
+              console.error('[render] opening submission pre-submit gate failed open after failsafe '
+                + JSON.stringify({
+                  reason: preSubmitValidation.reason || null,
+                  missingProgramKeys: preSubmitValidation.missingProgramKeys || [],
+                  missingProgramBindings: preSubmitValidation.missingProgramBindings || [],
+                  missingGeometryBufferIds: preSubmitValidation.missingGeometryBufferIds || [],
+                  missingTextureIds: preSubmitValidation.missingTextureIds || [],
+                  missingShadowResourceIds: preSubmitValidation.missingShadowResourceIds || [],
+                  refusedFrames: refusals,
+                }));
+            }
+          } else {
+            this._openingMissingHoldSinceMs = null;
           }
           this.state.render.openingSubmissionPreSubmitValidation = {
             ...preSubmitValidation,

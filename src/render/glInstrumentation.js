@@ -96,8 +96,8 @@ export function installGlInstrumentation(gl, counters) {
   // --- A: shader programs ---------------------------------------------------------------------
   // linkProgram is the definitive signal. Polling `renderer.info.programs` across frames misses any
   // program created and released between two samples, and can never say who caused it.
-  wrap('linkProgram', (original) => function linkProgram() {
-    counters.countShaderLink();
+  wrap('linkProgram', (original) => function linkProgram(program) {
+    counters.countShaderLink('', '', program);
     return original.apply(this, arguments);
   });
   wrap('compileShader', (original) => function compileShader() {
