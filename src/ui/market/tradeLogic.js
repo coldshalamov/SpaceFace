@@ -504,14 +504,43 @@ function tradeRunCapacity(state, def, buyHere, margin) {
     if (freeVolume < vol) loadReason = 'hold full';
     else if (credits < buyHere) loadReason = 'need ' + fmtCr(buyHere) + ' CR/u';
   }
+  // INF-085: name the binding constraint so the card can state its cargo limit.
+  const loadBound = loadUnits <= 0 ? 'none' : (holdUnits <= affordableUnits ? 'hold' : 'credits');
   return {
     holdUnits,
     affordableUnits,
     loadUnits,
+    loadBound,
     loadCost: Math.round(loadUnits * buyHere),
     loadProfit: Math.round(loadUnits * margin),
     loadVolume: Math.round(loadUnits * vol * 10) / 10,
     loadReason,
+  };
+}
+
+/**
+ * INF-085: one trade-route card as reproducible forecast. Gross spread (buy→sell),
+ * known cost (the load's purchase), net, cargo limit with its binding constraint, and
+ * intelligence age are DISTINCT fields — never a bare "+X cr" that reads as guaranteed
+ * profit. The destination price is remembered intel (memory/scan) or the live feed,
+ * named as such; the route action itself is untouched.
+ */
+export function formatRouteCard(trade) {
+  const units = Math.max(0, Math.floor(Number(trade && trade.loadUnits) || 0));
+  const buy = Math.round(Number(trade && trade.buyHere) || 0);
+  const sell = Math.round(Number(trade && trade.sellThere) || 0);
+  const cost = Math.round(Number(trade && trade.loadCost) || 0);
+  const net = Math.round(Number(trade && trade.loadProfit) || 0);
+  const bound = trade && trade.loadBound === 'credits'
+    ? 'credits bind'
+    : `hold fits ${Math.max(0, Math.floor(Number(trade && trade.holdUnits) || 0))} u`;
+  const intel = (trade && trade.intelLabel) || 'unknown intel';
+  const demand = trade && trade.destinationDemand && trade.destinationDemand.label
+    ? ` · ${trade.destinationDemand.label}` : '';
+  return {
+    units,
+    sub: `${units} u · cost ${cost.toLocaleString('en-US')} · buy ${buy.toLocaleString('en-US')} → sell ${sell.toLocaleString('en-US')} · ${intel} · ${bound}${demand}`,
+    profitText: net > 0 ? `+${net.toLocaleString('en-US')} cr` : '—',
   };
 }
 
@@ -578,13 +607,15 @@ function newestMemorySeenAt(stationMemory) {
 export function describeTradeIntel(state, trade) {
   if (!trade) return 'unknown intel';
   if (trade.intelSource === 'market') return 'market feed';
-  if (trade.intelSource === 'memory') return 'price memory';
+  // INF-085: remembered prices carry their age — a 20-minute-old memory must read as
+  // old on the card, not as timeless knowledge. The live feed stays ageless (it is now).
   const now = Math.max(0, Number(state && state.simTime) || 0);
   const seen = Math.max(0, Number(trade.seenAtT != null ? trade.seenAtT : trade.age) || 0);
   const ageS = Math.max(0, now - seen);
-  if (ageS < 120) return 'fresh intel';
+  const base = trade.intelSource === 'scanned' ? 'scan' : 'price memory';
+  if (ageS < 120) return `${base} · fresh`;
   const minutes = Math.max(1, Math.round(ageS / 60));
-  return (minutes >= 15 ? 'stale ' : '') + minutes + 'm intel';
+  return `${minutes >= 15 ? 'stale ' : ''}${base} · ${minutes}m old`;
 }
 
 export function computeBestTrades(state, hereStationId) {

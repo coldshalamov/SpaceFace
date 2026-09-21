@@ -20,7 +20,7 @@ import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresen
 import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPresenter.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
-import { computeBestTrades, applyTradeNavigation } from '../../market/tradeLogic.js';
+import { computeBestTrades, applyTradeNavigation, formatRouteCard } from '../../market/tradeLogic.js';
 import {
   dressState,
   ensureInteriorStyle,
@@ -729,21 +729,19 @@ export function createMarketScreen(ctx) {
   }
 
   // Best trade runs from here + one-click course plotting (canonical logic, same nav contract).
+  // INF-085: the card is a forecast with distinct spread/cost/limit/age (formatRouteCard);
+  // the Set course action below is untouched.
   function renderRoutes(state) {
     let trades = [];
     try { trades = computeBestTrades(state, stationId(state)) || []; } catch (_) { trades = []; }
     const rows = trades.slice(0, 3).map((t) => {
       const dest = STATION_NAME.get(t.destStation) || t.destStation;
-      const profit = Number(t.loadProfit) || 0;
-      const units = Number(t.loadUnits) || 0;
-      const demandReason = t.destinationDemand && t.destinationDemand.drivers && t.destinationDemand.drivers.length
-        ? ` · ${t.destinationDemand.label}`
-        : '';
+      const card = formatRouteCard(t);
       return (
         `<li class="k-row k-row--static sx-route-row">` +
           `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))} → ${entitySpanHtml('station:' + t.destStation, escapeHtml(dest))}</span>` +
-            `<span class="k-row__sub">${units > 0 ? fmt(units) + ' u run' : ''}${escapeHtml(demandReason)}</span></span>` +
-          `<span class="k-row__num sx-route-row__s${profit > 0 ? ' k-good' : ''}">${profit > 0 ? '+' + fmt(profit) + ' cr' : '—'}</span>` +
+            `<span class="k-row__sub">${escapeHtml(card.sub)}</span></span>` +
+          `<span class="k-row__num sx-route-row__s${t.loadProfit > 0 ? ' k-good' : ''}">${escapeHtml(card.profitText)}</span>` +
           `<button type="button" class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">Set course</button>` +
         `</li>`
       );
