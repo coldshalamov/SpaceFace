@@ -18,6 +18,7 @@ import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
+import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
 import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
@@ -390,6 +391,9 @@ export const save = {
       ['stunts', () => this._callSerialize('stuntGrammar')],
       ['fields', () => this._callSerialize('fields')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
+      // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
+      // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
+      ['capitalBoss', () => this._callSerialize('capitalBossEncounters')],
       ['careerOrigins', () => this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {})],
       ['careerLadders', () => this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {})],
       ['scenario', () => this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {})],
@@ -452,6 +456,7 @@ export const save = {
     data.stunts = this._callSerialize('stuntGrammar');
     data.fields = this._callSerialize('fields');
     data.missions = this._callSerialize('missions') || this._serializeMissions();
+    data.capitalBoss = this._callSerialize('capitalBossEncounters');
     data.careerOrigins = this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {});
     data.careerLadders = this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {});
     data.scenario = this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {});
@@ -2992,6 +2997,13 @@ export const save = {
         }
         this.state.enemyMind = data.enemyMind;
       }
+      // Packet 09: capital boss fights restore AFTER world + persistent entities + combat + the
+      // mission owner (ledgers/target ids reconciled above), never before. Restore puts the saved
+      // score records back at the same saved tick; rematerialized runtime ids are then resolved
+      // per fight through the durable role keys and the overlay rebinds (new runtime ids cancel
+      // stale world-space geometry and grant the resume warmup). Absent slice (old saves) is a
+      // no-op; a present slice without its owner is a hard error rather than silent loss.
+      this._restoreCapitalBossFights(data.capitalBoss);
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
       // reconstructed from the live director. Clear tracking so stale cross-save references and
@@ -3216,6 +3228,44 @@ export const save = {
       return null;
     };
     restoreCombatState(state, d, resolveEntityRef);
+  },
+
+  /**
+   * Packet 09: restore the capital boss scores, then rebind each non-terminal fight onto the
+   * rematerialized runtime ids. Ordering contract (INTEGRATION-NOTES §6): world/combat/mission
+   * owners restore FIRST (the score alone cannot preserve native subsystem damage), then the
+   * score's restore() replays the saved records at the same saved tick, and finally the durable
+   * role keys resolve the new ids. A fight whose boss did not rematerialize stays unresolved/
+   * suspended (absence is not a kill); rebind is only called when a COMPLETE binding exists.
+   */
+  _restoreCapitalBossFights(snapshot) {
+    if (snapshot == null) return;
+    const sys = this.registry && this.registry.get && this.registry.get('capitalBossEncounters');
+    if (!sys || typeof sys.restore !== 'function') {
+      throw new Error('Capital boss save present but the capitalBossEncounters owner is missing');
+    }
+    sys.restore(snapshot);
+    const state = this.state;
+    const fights = (state.capitalBossEncounters && state.capitalBossEncounters.fights) || {};
+    const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
+    for (const record of Object.values(fights)) {
+      // Mission owner reconciles its numeric target ids and the two issuance ledgers against the
+      // durable actor/wing keys at the same point the score rebinds.
+      if (missionsSys && typeof missionsSys.reconcileCapitalBossOwner === 'function') {
+        try {
+          missionsSys.reconcileCapitalBossOwner(record);
+        } catch (error) {
+          console.error('[save] capital boss mission reconcile', record && record.fightId, error);
+        }
+      }
+      if (record.terminal) continue;
+      const binding = resolveCapitalBossRoleBinding({
+        record,
+        targetId: state.playerId,
+        entities: state.entityList || [],
+      });
+      if (binding && typeof sys.rebind === 'function') sys.rebind(record.fightId, binding);
+    }
   },
 
   _restoreSettings(d) {

@@ -90,6 +90,11 @@ import {
 } from '../data/missionConditions.js';
 import { AUTHORED_SET_PIECE_ENCOUNTERS } from '../data/encounters/set-piece-authored.js';
 import { capitalBossEncounter } from '../data/encounters/capital-boss.js';
+import {
+  decorateCapitalBossSpawnSpec,
+  capitalBossBallastPosition,
+  spawnCapitalActorOnce,
+} from '../missions/capitalBossSpawn.js';
 import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
@@ -937,6 +942,16 @@ export const missions = {
   // =========================================================================================
   update(dt, state) {
     if (state.mode && state.mode !== 'flight') return; // sim frozen while docked/paused
+    // Flush settlement-detached capital boss fights AFTER the score's own fixed-tick step has run
+    // at least once past the terminal observation, so capitalBoss:ended (final voice/telemetry)
+    // is emitted before the record is removed.
+    if (this._pendingCapitalBossDetaches && this._pendingCapitalBossDetaches.size) {
+      const pending = this._pendingCapitalBossDetaches;
+      this._pendingCapitalBossDetaches = new Set();
+      for (const fightId of pending) {
+        this.bus.emit('capitalBoss:detach', { fightId });
+      }
+    }
     const active = state.missions.active;
     const now = state.simTime;
     for (let i = active.length - 1; i >= 0; i--) {
@@ -4388,35 +4403,54 @@ export const missions = {
     const encounterId = m && m.params && m.params.encounterId;
     const encounter = capitalBossEncounter(encounterId);
     if (!helpers || !helpers.spawnEntity || !encounter) return;
-    const have = this._countAuthoredRoles(m);
-    const occupied = new Set((m.targetEntityIds || []).map((id) => (
-      missionTargetSlotOf(this.state.entities.get(id), m.id)
-    )).filter((slot) => slot != null));
-    const nextSlot = () => {
-      let slot = 0;
-      while (occupied.has(slot)) slot += 1;
-      occupied.add(slot);
-      return slot;
-    };
+    const state = this.state;
+    m.params = m.params || {};
+    // Finite cast: the ledger is the durable issuance record serialized with mission params.
+    // Keys are authored role slots `missionId/role/index`. A spent, dead or consumed actor keeps
+    // its issued slot forever; only a genuinely denied spawn (null, slot never created) may retry.
+    const actorLedger = (m.params.capitalActorLedger ??= {});
     const sector = SECTOR_BY_ID.get(m.destSectorId);
     const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
-    for (const actor of encounter.actors || []) {
+    // Stable authored indices 0..count-1, never haveCount..want: a count of alive rocks cannot
+    // distinguish "never spawned" from "spent", so the old count-based loop would replenish
+    // ammunition after consumption or reload.
+    const orderedActors = [
+      ...(encounter.actors || []).filter((a) => a && a.role === PHYSICAL_ROLE.CAPITAL),
+      ...(encounter.actors || []).filter((a) => a && a.role !== PHYSICAL_ROLE.CAPITAL),
+    ];
+    // The capital's placed pose anchors the authored ballast layout. This is INITIAL layout for
+    // this spawn batch only — never a per-tick formation constraint or a teleport of a live rock.
+    let bossPose = null;
+    const liveBoss = this._physicalTargetOf(m, PHYSICAL_ROLE.CAPITAL);
+    if (liveBoss && liveBoss.alive !== false) {
+      bossPose = { pos: { x: liveBoss.pos.x, z: liveBoss.pos.z }, rot: liveBoss.rot || 0 };
+    }
+
+    for (const actor of orderedActors) {
       const want = Math.max(1, actor.count || 1);
-      const haveCount = have[actor.role] || 0;
-      for (let i = haveCount; i < want; i++) {
-        const durableSlot = nextSlot();
-        const rng = nextRng(durableSlot);
-        const ang = rng() * Math.PI * 2;
-        const r = 200 + rng() * 80;
-        const pos = actor.hostile
-          ? (missionHostileSpawnPos(this.state, { x: px, z: pz }, rng) || {
-            x: px + 360, z: pz + 180,
-          })
-          : { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
+      const isCapital = actor.role === PHYSICAL_ROLE.CAPITAL;
+      for (let actorIndex = 0; actorIndex < want; actorIndex++) {
+        const actorKey = `${m.id}/${actor.role}/${actorIndex}`;
+        if (Object.hasOwn(actorLedger, actorKey)) continue;
+        const rng = nextRng(actorKey);
+        const rot = rng() * Math.PI * 2;
+        let pos;
+        if (isCapital) {
+          pos = missionHostileSpawnPos(state, { x: px, z: pz }, rng) || { x: px + 360, z: pz + 180 };
+        } else if (bossPose) {
+          const anchored = capitalBossBallastPosition(encounter, bossPose, actorIndex);
+          pos = { x: anchored.x, z: anchored.z };
+        } else {
+          // Boss not placed yet this pass (denial is retryable): hold the ballast on the mission
+          // ring rather than inventing a boss pose.
+          const ang = rng() * Math.PI * 2;
+          const r = 200 + rng() * 80;
+          pos = { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
+        }
         let spec;
         if (actor.kind === 'ship') {
           spec = makeEnemySpawnSpec(actor.archetype || 'bruiser_brawler', Math.round((lvLo + lvHi) / 2), pos, {
-            startedTick: this.state.tick,
+            startedTick: state.tick,
             motive: 'capital_interdiction',
             engagementTrigger: 'capital_boss_contract',
           });
@@ -4442,13 +4476,14 @@ export const missions = {
           if (actor.shipClass) spec.data.shipClass = actor.shipClass;
           spec.flags = spec.flags || {};
           spec.flags.invuln = false;
+          spec.rot = rot;
         } else {
           spec = {
             type: actor.kind === 'asteroid' ? 'asteroid' : 'wreck',
             team: 2,
             pos,
             vel: { x: 0, z: 0 },
-            rot: rng() * Math.PI * 2,
+            rot,
             radius: actor.radius || 12,
             mass: actor.mass || 40,
             hull: actor.hull || 80,
@@ -4465,12 +4500,148 @@ export const missions = {
         spec.data.capitalSubsystemRoles = { ...(encounter.subsystemRoles || CAPITAL_BOSS.subsystemRoles) };
         spec.data.capitalImmunity = false;
         if (actor.tetherable) spec.data.tetherable = true;
-        const ent = helpers.spawnEntity(spec);
-        if (!ent) continue;
-        this._stampMissionTargetIdentity(ent, m, durableSlot);
-        m.targetEntityIds.push(ent.id);
+        // Instance missionTag is kept (mission ownership); the decorator assigns the explicit
+        // DEFINITION doctrine in data.ai.combatDoctrineId and stamps persistence/save identity.
+        decorateCapitalBossSpawnSpec(spec, actor, encounter, { missionId: m.id, index: actorIndex });
+        const entity = spawnCapitalActorOnce({
+          ledger: actorLedger,
+          spec,
+          spawnEntity: (owned) => this.spawnOwnedCapitalBossActor(m, owned),
+        });
+        if (entity && isCapital) {
+          bossPose = { pos: { x: entity.pos.x, z: entity.pos.z }, rot: entity.rot || rot };
+        }
       }
     }
+    // The whole initial cast exists (or its denials are ledgered): start the authored score
+    // synchronously so stock fire is closed before the capital's first AI decision tick.
+    if (Object.hasOwn(actorLedger, `${m.id}/${PHYSICAL_ROLE.CAPITAL}/0`)) {
+      const boss = this._physicalTargetOf(m, PHYSICAL_ROLE.CAPITAL);
+      if (boss) {
+        this.bus.emit('capitalBoss:start', {
+          encounterId: encounter.id,
+          fightId: m.id,
+          bossId: boss.id,
+          targetId: state.playerId,
+          mirror: 1,
+        });
+      }
+    }
+  },
+
+  /**
+   * The ONE mission-owned spawn boundary for a capital boss cast (and wing members). Enforces the
+   * native spawn budget, adjusts an authored placement that would overlap the player, another live
+   * body or a protected area (the authored offset is a desire, not a bypass of native placement
+   * safety), stamps durable mission identity on the owner's numeric target slot, and registers the
+   * returned id. A null/throwing native spawn never leaks a budget grant.
+   */
+  spawnOwnedCapitalBossActor(m, spec) {
+    const helpers = this.helpers;
+    if (!m || !helpers || typeof helpers.spawnEntity !== 'function') {
+      throw new Error('Capital boss owned spawn requires the mission spawn owner');
+    }
+    if (!spec || !spec.pos) return null;
+    const state = this.state;
+    const jitterKey = (spec.data && (spec.data.capitalBossActorKey || spec.data.capitalBossWingKey)) || m.id;
+    spec.pos = capitalBossAdjustedPlacement(
+      state,
+      spec.pos,
+      Number.isFinite(spec.radius) ? spec.radius : 12,
+      jitterKey,
+    );
+    if (!spec.pos) return null; // hard safety floor violated: denied, retryable, nothing issued
+    const budget = helpers.spawnBudget;
+    const requester = `mission:${m.id}`;
+    if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
+      return null;
+    }
+    let ent = null;
+    try {
+      ent = helpers.spawnEntity(spec);
+    } catch (error) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!ent) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return null;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+    this._stampMissionTargetIdentity(ent, m, this._nextCapitalBossTargetSlot(m));
+    m.targetEntityIds.push(ent.id);
+    return ent;
+  },
+
+  /** Mission owner's numeric durable-slot allocator. Separate from authored role indices. */
+  _nextCapitalBossTargetSlot(m) {
+    const occupied = new Set((m.targetEntityIds || []).map((id) => (
+      missionTargetSlotOf(this.state.entities.get(id), m.id)
+    )).filter((slot) => slot != null));
+    let slot = 0;
+    while (occupied.has(slot)) slot += 1;
+    return slot;
+  },
+
+  /**
+   * The living-world adopt view is shipLike/wrecks by design ("never rocks or FX"), so the capital
+   * cast's mission-pinned BALLAST bodies (asteroids) silently fall out of targetEntityIds on every
+   * adopt pass. Under the old count-based spawner that shed turned into the renewable-ammunition
+   * fountain; under the finite ledger it must instead be repaired by CONTENT: durable actor/wing
+   * keys re-attach their live bodies, and issued slots never mint replacements.
+   */
+  _reattachCapitalBossCastTargets(m) {
+    if (!isCapitalBossMission(m)) return 0;
+    const prefix = `${m.id}/`;
+    const have = new Set(m.targetEntityIds || []);
+    let reattached = 0;
+    for (const e of this.state.entityList || []) {
+      if (!e || e.alive === false) continue;
+      const key = e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey);
+      if (!key || !String(key).startsWith(prefix) || have.has(e.id)) continue;
+      m.targetEntityIds.push(e.id);
+      have.add(e.id);
+      reattached += 1;
+    }
+    return reattached;
+  },
+
+  /**
+   * Restore-side owner reconciliation for one restored fight: re-adopt live rematerialized
+   * targets (durable mission+slot identity is the save seam), re-attach the authored cast by
+   * durable key (the adopt view never yields asteroids), and re-point issuance ledger entity ids
+   * at their durable-key rematerializations. Issued slots are never re-minted and spent/denied
+   * slots are preserved; an absent entity keeps its issued slot (it may be temporarily unloaded —
+   * absence is not permission to respawn).
+   */
+  reconcileCapitalBossOwner(record) {
+    const fightId = record && record.fightId;
+    if (fightId == null) return 0;
+    const m = (this.state.missions.active || []).find((row) => (
+      row && row.id === fightId && isCapitalBossMission(row)
+    ));
+    if (!m) return 0;
+    this._adoptLiveMissionTargets(m);
+    this._reattachCapitalBossCastTargets(m);
+    let repointed = 0;
+    const liveByKey = new Map();
+    for (const e of this.state.entityList || []) {
+      const key = e && e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey);
+      if (key && e.alive !== false) liveByKey.set(String(key), e);
+    }
+    const repoint = (ledger) => {
+      for (const [slot, entry] of Object.entries(ledger || {})) {
+        if (!entry || entry.entityId == null) continue;
+        const live = liveByKey.get(String(slot));
+        if (live && live.id !== entry.entityId) {
+          entry.entityId = live.id;
+          repointed += 1;
+        }
+      }
+    };
+    repoint(m.params && m.params.capitalActorLedger);
+    repoint(m.params && m.params.capitalWingLedger);
+    return repointed;
   },
 
   _countAuthoredRoles(m) {
@@ -5696,6 +5867,8 @@ export const missions = {
     });
     // Continue: adopt rematerialized hosts before deciding to spawn (avoids duplicate targets).
     this._adoptLiveMissionTargets(m);
+    // The adopt view never yields asteroids: re-attach the authored capital cast by durable key.
+    this._reattachCapitalBossCastTargets(m);
     // _spawnTargetsFor computes the exact remaining quota, so partial cap grants can top up later.
     this._spawnTargetsFor(m);
     this._refreshTrackedMissionNav(m);
@@ -5879,6 +6052,9 @@ export const missions = {
     if (!helpers || !helpers.spawnEntity) return;
     // Prefer live rematerialized hosts (Continue) over fresh spawns.
     this._adoptLiveMissionTargets(m);
+    // The adopt view never yields asteroids: re-attach the authored capital cast by durable key
+    // BEFORE the finite-ledger spawn pass decides what is still owed.
+    this._reattachCapitalBossCastTargets(m);
     const player = helpers.player ? helpers.player() : this.state.entities.get(this.state.playerId);
     const px = player ? player.pos.x : 0, pz = player ? player.pos.z : 0;
     const nextRng = (durableSlot = null) => {
@@ -6203,6 +6379,15 @@ export const missions = {
 
   /** Mark mission target entities dead when the mission settles (avoid orphans). */
   _cleanupTargets(m) {
+    // Capital boss contracts hand the authored score back at the settlement boundary. The detach
+    // is DEFERRED to this system's next update tick: settlement can land synchronously inside the
+    // kill event, before the score's fixed-tick step has emitted capitalBoss:ended with its final
+    // voice/telemetry. Between settlement and the flush the cast is already swept (or terminal),
+    // so no living capital is ever ungated.
+    if (isCapitalBossMission(m)) {
+      this._pendingCapitalBossDetaches = this._pendingCapitalBossDetaches || new Set();
+      this._pendingCapitalBossDetaches.add(String(m.id));
+    }
     const follow = m.params && m.params.poiSignalFollowup;
     const world = this.registry && this.registry.get && this.registry.get('world');
     if (follow && world && typeof world.markWorldRecordDestroyed === 'function') {
@@ -7189,6 +7374,54 @@ function outsideMissionPortSafety(state, pos) {
     if (gate && gate.pos && distSq(pos, gate.pos) < 1000 * 1000) return false;
   }
   return true;
+}
+
+/** True when the authored cast placement is comfortable: port-safe and clear of live bodies. */
+function capitalBossPlacementClear(state, pos, radius) {
+  if (!outsideMissionPortSafety(state, pos)) return false;
+  const player = state.entities && state.entities.get(state.playerId);
+  if (player && player.alive !== false && player.pos) {
+    const pad = radius + (player.radius || 10) + 150;
+    if (distSq(pos, player.pos) < pad * pad) return false;
+  }
+  const list = state.entityList;
+  if (Array.isArray(list)) {
+    for (const other of list) {
+      if (!other || other.alive === false || !other.pos || other.collides === false) continue;
+      const pad = radius + (other.radius || 10) + 60;
+      if (distSq(pos, other.pos) < pad * pad) return false;
+    }
+  }
+  return true;
+}
+
+const CAPITAL_BOSS_PLACEMENT_ATTEMPTS = 10;
+
+/**
+ * Authored capital offsets are initial-layout DESIRES. When one would overlap the player, another
+ * live body or a protected area, spin the spawn deterministically around the desired point (seeded
+ * from the durable actor key — never Math.random) until it is comfortable. Returns null only when
+ * the hard safety floor (port safety + player clearance) cannot be met anywhere tried: a genuinely
+ * denied spawn is retryable and issues nothing.
+ */
+function capitalBossAdjustedPlacement(state, pos, radius, jitterKey) {
+  if (capitalBossPlacementClear(state, pos, radius)) return pos;
+  const baseSeed = hash32(state && state.meta && state.meta.seed || 1, String(jitterKey || 'capital-boss'));
+  for (let attempt = 0; attempt < CAPITAL_BOSS_PLACEMENT_ATTEMPTS; attempt++) {
+    const spin = ((baseSeed ^ hash32(state && state.meta && state.meta.seed || 1, attempt + 1)) >>> 0)
+      / 4294967296 * Math.PI * 2;
+    const dist = 220 + (((baseSeed >>> 8) ^ hash32(state && state.meta && state.meta.seed || 1, attempt + 7)) >>> 0) % 940;
+    const candidate = { x: pos.x + Math.cos(spin) * dist, z: pos.z + Math.sin(spin) * dist };
+    if (capitalBossPlacementClear(state, candidate, radius)) return candidate;
+  }
+  // Hard floor only: never on top of the player, never inside a protected area.
+  if (!outsideMissionPortSafety(state, pos)) return null;
+  const player = state.entities && state.entities.get(state.playerId);
+  if (player && player.alive !== false && player.pos) {
+    const pad = radius + (player.radius || 10) + 40;
+    if (distSq(pos, player.pos) < pad * pad) return null;
+  }
+  return pos;
 }
 
 function distSq(a, b) {

@@ -172,7 +172,9 @@ test('PQ-152.02 catalog stays ten authored pieces and adds its own capital type'
   assert.equal(CAPITAL_BOSS_ENCOUNTER.id, CAPITAL_BOSS_ENCOUNTER_ID);
   assert.deepEqual(CAPITAL_BOSS.subsystemRoles, CAPITAL_BOSS_SUBSYSTEM_ROLES);
   assert.equal(OFFER_MIX.trade_hub.length, 10, 'positional mix stays ten columns');
-  assert.equal(OFFER_MIX.trade_hub.tow_recovery, 0);
+  // Updated honestly with the mid-game economy heartbeat (b65ad1f40): trade_hub now carries two
+  // tow_recovery columns by workload share; the old structural-zero pin predates that landing.
+  assert.equal(OFFER_MIX.trade_hub.tow_recovery, 2);
 });
 
 test('PQ-152.02 seed 15220 posts the capital boss on Coalition, not Helios', () => {
@@ -214,7 +216,11 @@ test('PQ-152.02 seed 15220 physics-only kill, thrown-mass subsystems, tumble, gu
     assert.equal(capital.data && capital.data.capitalImmunity, false);
     assert.equal(capital.data && capital.data.reinforcements, undefined, 'no phase/reinforce theatre');
     assert.ok((capital.mass || 0) >= 200, 'the hull is a heavy');
-    assert.ok((capital.hull || 0) <= 120, 'the heavy is killable by thrown mass');
+    // Packet 09 authored capitals (hull 680) replaced the old 96-hulk tuning; the pin tracks
+    // the authored spec so a silent re-tune still fails here. Killability is proven below.
+    assert.equal(capital.hull, CAPITAL_BOSS_ENCOUNTER.actors.find((a) => a.role === 'capital_hull').hull,
+      'spawned hull matches the authored capital spec');
+    assert.ok((capital.hull || 0) <= 700, 'the heavy is killable by thrown mass');
 
     const startHull = capital.hull;
     let throws = 0;
@@ -255,7 +261,9 @@ test('PQ-152.02 seed 15220 physics-only kill, thrown-mass subsystems, tumble, gu
     const gunMission = acceptCapital(guns);
     const gunCapitalHull = targetsByRole(guns, gunMission, 'capital_hull')[0];
     let shots = 0;
-    while (gunCapitalHull.alive !== false && shots < 80) {
+    // Packet 09 hull is 680; the probe shot is 8 kinetic, and the score budget allows the gun
+    // path up to 105 reference-seconds (~105 shots). 140 keeps headroom above that ceiling.
+    while (gunCapitalHull.alive !== false && shots < 140) {
       gunCapital(guns, gunCapitalHull);
       shots += 1;
     }

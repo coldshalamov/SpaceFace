@@ -32,6 +32,9 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'aiPorts', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'bombs', 'massSeed',
   'uniqueLootAbilities', 'fields', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
+  // Packet 09 (Three Capitals): the score system validates helpers.routeCombatDamage /
+  // getCombatCapabilities at init, so it initialises after the combat kernel installs them.
+  'capitalBossEncounters',
   'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
   'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'mining',
@@ -69,7 +72,13 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'aceMemory', 'factionPresence',
   // Nemesis ordering contract (integration notes §2): engine → encounter host → tacticalAI,
   // so the AI sees spawned rival entities and current fire gates on the same fixed tick.
-  'nemesis', 'nemesisEncounter', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
+  // Packet 09 ordering contract (integration notes §3): the capital score sits immediately
+  // before the tactical slot so its published orders precede AI action consumption on the SAME
+  // fixed tick, and its observation reads the subsystem/status transitions the previous tick's
+  // combat pass committed (kernel capabilities are effective by then). The fire gate itself also
+  // re-runs inside tacticalAI on both full-decision and cached ticks, so a score-owned capital
+  // can never double-fire through stock intent.
+  'nemesis', 'nemesisEncounter', 'capitalBossEncounters', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
   'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
   // Bombs read the shared chargeDetonate edge before impulseCharges consumes it.
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'impulseCharges', 'mines', 'massSeed',
