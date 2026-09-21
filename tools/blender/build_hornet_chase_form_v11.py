@@ -2,8 +2,9 @@
 
 Imports the live Hornet only for root, sockets, and collision. Replaces the
 render meshes with one closed interceptor that reads at the live chase camera:
-changing hull stations, lofted diamond wings, a framed dorsal canopy well, a
-dorsal radiator cassette, and a single dorsal-aft drive throat. No seats.
+changing hull stations, lofted diamond wings with blunt tips, a cut dorsal
+canopy well (glass in the tub, no roof plate), a dorsal radiator cassette, and
+a single dorsal-aft drive throat with vanes receding in the bore. No seats.
 Hitch/Kestrel are never loaded.
 
 Does not rescale the root — live sockets already sit in the ~10.8 m authored
@@ -22,7 +23,7 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
-REVISION = "chase_form_v13"
+REVISION = "chase_form_v14"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "hornet"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -34,7 +35,6 @@ KEEP_SEPARATE = (
     "LOD0_Canard_",
     "LOD0_Glass",
     "LOD0_Bell",
-    "LOD0_Coaming",
 )
 
 # Distinct color blocks that read at ~15% frame width. No 512-map density trap.
@@ -226,18 +226,21 @@ def chine_ring(x, hw, hh, zc=0.12, keel=0.10, yc=0.0, flat=0.0, box=0.0):
 
 
 def airfoil(x_le, y, z, chord, thick):
+    """Closed section with a blunt trailing edge so the panel holds thickness at D=144."""
+    te = thick * 0.28
     return [
-        (x_le, y, z),
-        (x_le - chord * 0.08, y, z + thick * 0.45),
-        (x_le - chord * 0.20, y, z + thick * 0.88),
-        (x_le - chord * 0.38, y, z + thick),
-        (x_le - chord * 0.58, y, z + thick * 0.72),
-        (x_le - chord * 0.78, y, z + thick * 0.32),
-        (x_le - chord, y, z),
-        (x_le - chord * 0.80, y, z - thick * 0.38),
-        (x_le - chord * 0.52, y, z - thick * 0.58),
-        (x_le - chord * 0.24, y, z - thick * 0.42),
-        (x_le - chord * 0.08, y, z - thick * 0.18),
+        (x_le, y, z + thick * 0.06),
+        (x_le - chord * 0.10, y, z + thick * 0.52),
+        (x_le - chord * 0.24, y, z + thick * 0.94),
+        (x_le - chord * 0.42, y, z + thick),
+        (x_le - chord * 0.64, y, z + thick * 0.82),
+        (x_le - chord, y, z + te),
+        (x_le - chord, y, z - te * 0.72),
+        (x_le - chord * 0.64, y, z - thick * 0.58),
+        (x_le - chord * 0.40, y, z - thick * 0.52),
+        (x_le - chord * 0.18, y, z - thick * 0.34),
+        (x_le - chord * 0.04, y, z - thick * 0.10),
+        (x_le, y, z - thick * 0.04),
     ]
 
 
@@ -346,7 +349,7 @@ def build_hull(mats):
     stations = [
         (5.42, 0.09, 0.07, 0.10, 0.04, 0.05, 0.04),
         (4.32, 0.28, 0.20, 0.15, 0.07, 0.14, 0.08),
-        (3.12, 0.48, 0.74, 0.42, 0.10, 0.82, 0.10),  # canopy shoulder, taller
+        (3.12, 0.50, 0.86, 0.46, 0.10, 0.28, 0.10),  # canopy crown, not a table
         (1.32, 1.08, 0.44, 0.18, 0.12, 0.20, 0.10),  # wing-root beam
         (-0.55, 0.50, 0.24, 0.14, 0.10, 0.08, 0.08),  # waist pinch
         (-2.15, 0.70, 0.38, 0.20, 0.12, 0.12, 0.22),  # radiator house
@@ -378,61 +381,74 @@ def build_wings(mats, lod):
     accent = mats["Material_Accent"]
     wings = []
     for sign, tag in ((1.0, "Stbd"), (-1.0, "Port")):
+        # Cranked planform, blunt TE, outer stations stay thick so D=144 is a slab not a card.
         rings = [
-            airfoil(1.78, 0.92 * sign, 0.15, 3.55, 1.08),
-            airfoil(1.02, 1.48 * sign, 0.18, 2.78, 0.64),
-            airfoil(0.12, 2.20 * sign, 0.20, 1.98, 0.38),
-            airfoil(-0.72, 2.88 * sign, 0.21, 1.18, 0.20),
-            airfoil(-1.18, 3.40 * sign, 0.20, 0.64, 0.13),
+            airfoil(1.92, 0.88 * sign, 0.16, 3.72, 1.14),
+            airfoil(1.22, 1.40 * sign, 0.20, 3.10, 0.82),
+            airfoil(0.28, 2.02 * sign, 0.26, 2.42, 0.56),
+            airfoil(-0.42, 2.68 * sign, 0.28, 1.62, 0.40),
+            airfoil(-0.88, 3.36 * sign, 0.26, 1.08, 0.32),
         ]
         wing = loft_rings(f"LOD0_Wing_{tag}", rings, hull_mat, 0.014)
 
-        def slot_cut(name=f"FlapSlotCut_{tag}", loc=(-0.78, 1.85 * sign, 0.16)):
-            return add_box(name, (0.40, 1.62, 0.38), loc, mech, 0.0)
+        def slot_cut(name=f"FlapSlotCut_{tag}", loc=(-0.72, 1.82 * sign, 0.18)):
+            return add_box(name, (0.42, 1.55, 0.46), loc, mech, 0.0)
 
         if lod <= 1:
             cut(wing, slot_cut)
         strake = loft_rings(
             f"LOD0_WingStrake_{tag}",
             [
-                airfoil(1.88, 0.72 * sign, 0.10, 2.85, 0.70),
-                airfoil(1.78, 0.92 * sign, 0.15, 3.55, 1.08),
+                airfoil(2.02, 0.68 * sign, 0.12, 2.95, 0.78),
+                airfoil(1.92, 0.88 * sign, 0.16, 3.72, 1.14),
             ],
             hull_mat, 0.012,
         )
         dogtooth = loft_rings(
             f"LOD0_WingTooth_{tag}",
             [
-                airfoil(0.55, 1.92 * sign, 0.26, 0.72, 0.16),
-                airfoil(0.12, 2.20 * sign, 0.20, 0.48, 0.10),
+                airfoil(0.72, 1.78 * sign, 0.40, 1.12, 0.30),
+                airfoil(0.22, 2.08 * sign, 0.30, 0.78, 0.20),
             ],
             armor, 0.004,
         )
         armor_pad = loft_rings(
             f"LOD0_WingArmor_{tag}",
             [
-                airfoil(0.05, 2.10 * sign, 0.28, 1.48, 0.09),
-                airfoil(-0.62, 2.78 * sign, 0.26, 0.92, 0.06),
-                airfoil(-1.08, 3.28 * sign, 0.24, 0.46, 0.04),
+                airfoil(0.18, 2.00 * sign, 0.44, 1.72, 0.18),
+                airfoil(-0.38, 2.64 * sign, 0.40, 1.18, 0.14),
+                airfoil(-0.78, 3.24 * sign, 0.36, 0.72, 0.12),
             ],
             armor, 0.003,
         )
-        wings.extend([wing, strake, dogtooth, armor_pad])
+        fence = add_box(
+            f"LOD0_WingFence_{tag}",
+            (0.78, 0.058, 0.46),
+            (-0.72, 3.38 * sign, 0.34),
+            armor, 0.002,
+        )
+        te_bar = add_box(
+            f"LOD0_WingTE_{tag}",
+            (0.12, 1.28, 0.18),
+            (-1.12, 2.52 * sign, 0.24),
+            armor, 0.002,
+        )
+        wings.extend([wing, strake, dogtooth, armor_pad, fence, te_bar])
         if lod == 0:
             flap = loft_rings(
                 f"LOD0_Flap_{tag}",
                 [
-                    airfoil(-0.68, 1.78 * sign, 0.10, 0.62, 0.10),
-                    airfoil(-1.05, 2.18 * sign, 0.13, 0.34, 0.055),
+                    airfoil(-0.62, 1.72 * sign, 0.12, 0.68, 0.14),
+                    airfoil(-0.98, 2.14 * sign, 0.16, 0.40, 0.08),
                 ],
                 armor, 0.006,
             )
             stripe = loft_rings(
                 f"LOD0_Accent_{tag}",
                 [
-                    airfoil(1.80, 1.08 * sign, 0.38, 0.70, 0.055),
-                    airfoil(0.85, 1.92 * sign, 0.32, 0.40, 0.038),
-                    airfoil(-0.10, 2.62 * sign, 0.26, 0.22, 0.024),
+                    airfoil(1.94, 1.02 * sign, 0.42, 0.72, 0.07),
+                    airfoil(0.92, 1.88 * sign, 0.38, 0.44, 0.05),
+                    airfoil(-0.02, 2.58 * sign, 0.32, 0.26, 0.04),
                 ],
                 accent, 0.002,
             )
@@ -440,16 +456,16 @@ def build_wings(mats, lod):
     canard_p = loft_rings(
         "LOD0_Canard_Port",
         [
-            airfoil(4.62, -0.32, 0.08, 0.96, 0.15),
-            airfoil(4.18, -1.02, 0.09, 0.44, 0.06),
+            airfoil(4.62, -0.32, 0.10, 1.05, 0.22),
+            airfoil(4.12, -1.08, 0.12, 0.58, 0.12),
         ],
         hull_mat, 0.006,
     )
     canard_s = loft_rings(
         "LOD0_Canard_Stbd",
         [
-            airfoil(4.62, 0.32, 0.08, 0.96, 0.15),
-            airfoil(4.18, 1.02, 0.09, 0.44, 0.06),
+            airfoil(4.62, 0.32, 0.10, 1.05, 0.22),
+            airfoil(4.12, 1.08, 0.12, 0.58, 0.12),
         ],
         hull_mat, 0.006,
     )
@@ -459,28 +475,59 @@ def build_wings(mats, lod):
 
 def build_canopy(hull, mats, lod):
     hull_mat = mats["Material_Hull"]
+    armor = mats["Material_Armor"]
     mech = mats["Material_Mechanical"]
     glass = mats["Material_Canopy"]
     report = {}
 
     def tub():
-        # Starts above the canopy crown and eats a well the chase camera can see.
-        return add_box("VisorTubCut", (1.95, 0.96, 1.05), (3.18, 0.0, 0.78), hull_mat, 0.0)
+        # Eat the rounded crown so the chase camera looks into a well, not at a roof plate.
+        return add_box("VisorTubCut", (1.88, 0.86, 1.22), (3.18, 0.0, 0.88), hull_mat, 0.0)
 
     report["tub"] = cut(hull, tub)
-    bits = add_open_well("LOD0_Tub", (1.72, 0.80, 0.62), (3.18, 0.0, 0.46), mech, floor=True, open_aft=False)
-    coaming = add_box("LOD0_Coaming", (2.08, 1.08, 0.055), (3.18, 0.0, 1.05), hull_mat, 0.002)
 
-    def coaming_hole():
-        return add_box("CoamingCut", (1.74, 0.84, 0.18), (3.18, 0.0, 1.05), hull_mat, 0.0)
+    def windshield():
+        # Narrower, raked forward bite so the well is a cockpit, not a postage stamp.
+        return add_box(
+            "VisorWindshieldCut",
+            (0.95, 0.52, 0.95),
+            (3.82, 0.0, 0.98),
+            hull_mat,
+            0.0,
+            rotation=(0.0, math.radians(-22.0), 0.0),
+        )
 
-    report["coaming"] = cut(coaming, coaming_hole)
-    bits.append(coaming)
+    report["windshield"] = cut(hull, windshield)
+    bits = add_open_well("LOD0_Tub", (1.48, 0.62, 0.82), (3.12, 0.0, 0.46), mech, floor=True, open_aft=False)
+    # One dark brow over the windshield — not a four-sided roof plate.
+    bits.append(add_box(
+        "LOD0_VisorBrow",
+        (0.22, 0.58, 0.08),
+        (3.92, 0.0, 1.18),
+        armor,
+        0.001,
+        rotation=(0.0, math.radians(-18.0), 0.0),
+    ))
+    report["coaming"] = False
     if lod <= 1:
-        # Glass sits in the well, 3 cm below the rim — a shell, not a sticker.
-        pane_p = add_box("LOD0_Glass_Port", (1.58, 0.36, 0.016), (3.18, -0.19, 0.99), glass, 0.0)
-        pane_s = add_box("LOD0_Glass_Stbd", (1.58, 0.36, 0.016), (3.18, 0.19, 0.99), glass, 0.0)
-        mullion = add_box("LOD0_GlassMullion", (1.52, 0.035, 0.028), (3.18, 0.0, 1.00), hull_mat, 0.0)
+        # Glass sits deep in the tub and pitches with the windshield.
+        pane_p = add_box(
+            "LOD0_Glass_Port",
+            (1.28, 0.26, 0.022),
+            (3.22, -0.14, 0.62),
+            glass,
+            0.0,
+            rotation=(0.0, math.radians(-16.0), 0.0),
+        )
+        pane_s = add_box(
+            "LOD0_Glass_Stbd",
+            (1.28, 0.26, 0.022),
+            (3.22, 0.14, 0.62),
+            glass,
+            0.0,
+            rotation=(0.0, math.radians(-16.0), 0.0),
+        )
+        mullion = add_box("LOD0_VisorMullion", (1.22, 0.026, 0.09), (3.18, 0.0, 0.66), armor, 0.0)
         bits.extend([pane_p, pane_s, mullion])
     return bits, report
 
@@ -518,31 +565,41 @@ def build_drive(hull, mats, lod):
 
     orient = axis.to_track_quat("Z", "Y").to_matrix()
     rings = []
-    for depth, radius in ((-0.92, 0.08), (-0.64, 0.12), (-0.32, 0.28), (-0.06, 0.40), (0.05, 0.36)):
+    for depth, radius in ((-1.08, 0.07), (-0.76, 0.11), (-0.46, 0.22), (-0.22, 0.32), (-0.04, 0.36)):
         rings.append(circle_ring(mouth + axis * depth, axis, radius, 12))
     bell = loft_rings("LOD0_Bell", rings, thruster, 0.006, cap=False)
     bits.append(bell)
+    hub = loft_rings(
+        "LOD0_Hub",
+        [
+            circle_ring(mouth + axis * -0.72, axis, 0.08, 10),
+            circle_ring(mouth + axis * -0.50, axis, 0.10, 10),
+        ],
+        thruster, 0.003, cap=True,
+    )
+    bits.append(hub)
     if lod <= 1:
-        collar = loft_rings(
-            "LOD0_Collar",
+        # Heat ring lives inside the bore, not as a gold collar on the mouth.
+        heat = loft_rings(
+            "LOD0_HeatRing",
             [
-                circle_ring(mouth + axis * 0.02, axis, 0.46, 12),
-                circle_ring(mouth + axis * 0.08, axis, 0.42, 12),
+                circle_ring(mouth + axis * -0.56, axis, 0.20, 12),
+                circle_ring(mouth + axis * -0.48, axis, 0.18, 12),
             ],
-            ceramic, 0.003, cap=False,
+            ceramic, 0.002, cap=False,
         )
-        bits.append(collar)
-    vane_count = 8 if lod == 0 else 5 if lod == 1 else 0
+        bits.append(heat)
+    vane_count = 6 if lod == 0 else 4 if lod == 1 else 0
     for index in range(vane_count):
         angle = index * math.tau / max(vane_count, 1)
-        local = Vector((0.20 * math.cos(angle), 0.20 * math.sin(angle), -0.05))
+        local = Vector((0.15 * math.cos(angle), 0.15 * math.sin(angle), -0.42))
         world = mouth + (orient @ local)
         rot = (orient @ Matrix.Rotation(angle, 3, "Z")).to_euler()
         vane = add_box(
             f"LOD0_Vane_{index}",
-            (0.28, 0.032, 0.16),
+            (0.046, 0.016, 0.50),
             tuple(world),
-            ceramic, 0.0,
+            thruster, 0.0,
             rotation=(rot.x, rot.y, rot.z),
         )
         bits.append(vane)
@@ -844,7 +901,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "hornet_chase_form_v13.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "hornet_chase_form_v14.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 

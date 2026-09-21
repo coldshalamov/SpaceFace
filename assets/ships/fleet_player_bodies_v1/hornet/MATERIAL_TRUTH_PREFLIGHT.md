@@ -2,7 +2,7 @@
 
 Class: player flyable interceptor. Hitch untouched.
 
-**2026-09-21 chase_form_v13.** Form pass on Principled color blocks (no 512-map bake). Supported review cameras are live chase (`play_chase` / `play_chase_abeam` / `play_chase_close`), not studio 3/4. No seats. Parent remains unproven.
+**2026-09-21 chase_form_v14.** Revise of v13 chase-still notes: blunt/fence wings vs D=144 cards, scooped canopy well (no roof plate), dark vanes receding in the drive throat. Principled color blocks. Supported cameras: live chase only. No seats. Parent remains unproven. Hitch/Kestrel frozen.
 
 ## Visible-zone register (supported cameras: 3/4, starboard, rear)
 
@@ -10,11 +10,11 @@ Class: player flyable interceptor. Hitch untouched.
 |---|---|---|---|
 | Pressure hull | billed | Rolled/faceted interceptor shell, cool gray dielectric paint, chines | Clay tube, shared Wasp sheet |
 | Armor tiles | billed | Dark teal-gray plates with gaps and thickness | Decal-thick boxes, hex stamp |
-| Cockpit tub | billed | Cut dorsal well, seat + console | Sealed void, teal brick |
-| Greenhouse | billed | 1–2 cm dark glass in metal frames | Solid transmission blob |
-| Wings / canards | billed | Diamond airfoil, thick root fillet, flap slot | Cards |
+| Cockpit tub | billed | Cut dorsal well, glass in the tub | Sealed void, roof picture-frame |
+| Greenhouse | billed | Dark glass dropped into the well | Solid transmission blob |
+| Wings / canards | billed | Blunt-TE diamond, tip fence, flap slot | Cards |
 | Side / dorsal wells | billed | Skin-breaking radiator/rack holes | Dark plates |
-| Drive | billed | Unboltable casing, ceramic collar, throat, vanes | Glow disk |
+| Drive | billed | Open dorsal-aft throat, dark recessed vanes | Glow disk, gold fan-on-tail |
 | RCS / sensor / turret | billed | Hardware in bays / on gimbal | Neon hoop |
 | Hoses | billed | Curves with end fittings | Long boxes |
 | Repair patch / stencil | billed | One port patch; spray marking in albedo | Random cubes; raised plaque |

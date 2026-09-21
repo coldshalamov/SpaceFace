@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "glb": "/workspace/assets/ships/fleet_player_bodies_v1/hornet/source/wholeships/hornet_production_v1_lod0.glb",
+  "ship": "hornet",
+  "engine": "CYCLES_CPU",
+  "samples": 16,
+  "runtimeScale": 2.582824798358982,
+  "authoredX": 10.655000686645508,
+  "targetWU": 27.52,
+  "size": [
+    27.52,
+    17.6097,
+    5.0623
+  ],
+  "stills": {
+    "play_chase.png": "/tmp/hornet-v14b/play_chase.png",
+    "play_chase_abeam.png": "/tmp/hornet-v14b/play_chase_abeam.png",
+    "play_chase_close.png": "/tmp/hornet-v14b/play_chase_close.png"
+  },
+  "clay": "/tmp/hornet-v14b/clay_play_chase.png"
+}
