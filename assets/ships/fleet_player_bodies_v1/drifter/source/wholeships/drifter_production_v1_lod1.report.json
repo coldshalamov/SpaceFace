@@ -37,8 +37,8 @@
     3.46,
     1.605
   ],
-  "triangles": 15890,
-  "hullTriangles": 10986,
+  "triangles": 16410,
+  "hullTriangles": 11506,
   "objects": [
     "COLLISION_HULL.001",
     "LOD0_Beacon_Aft",
@@ -57,5 +57,5 @@
     "LOD0_Winglet_Port",
     "LOD0_Winglet_Stbd"
   ],
-  "bytes": 2091508
+  "bytes": 2162068
 }

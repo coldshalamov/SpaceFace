@@ -290,21 +290,27 @@ def greenhouse_ring(x, hw, hh, zc):
     return pts
 
 
-def dorsal_lip_ring(x, half_y, rise=0.05, outer=0.16, inner=0.05):
-    """Closed lip around a dorsal cut. Formed shell edge, not four boxes on the deck."""
+def side_lip_ring(x, sign, half_y, rise=0.05, outer=0.16):
+    """One rail of a dorsal cut. Never spans the mouth (that lofted a lid)."""
     hw, hh, zc = hull_half_at(x)
     z_crown = zc + hh * 0.90
-    z_in = z_crown - 0.14
-    hy = min(half_y, max(0.28, hw * 0.92))
+    y = half_y * sign
     return [
-        (x, -hy + inner, z_in),
-        (x, -hy - outer, z_crown + rise),
-        (x, -hy - outer * 0.55, z_crown - 0.08),
-        (x, -hy + inner, z_in - 0.08),
-        (x, hy - inner, z_in - 0.08),
-        (x, hy + outer * 0.55, z_crown - 0.08),
-        (x, hy + outer, z_crown + rise),
-        (x, hy - inner, z_in),
+        (x, y - 0.05 * sign, z_crown - 0.12),
+        (x, y + outer * sign, z_crown + rise),
+        (x, y + outer * 0.50 * sign, z_crown - 0.08),
+        (x, y - 0.02 * sign, z_crown - 0.20),
+    ]
+
+
+def end_lip_ring(y, x_pos, sign_x, rise=0.04, outer=0.14):
+    hw, hh, zc = hull_half_at(x_pos)
+    z_crown = zc + hh * 0.90
+    return [
+        (x_pos - 0.04 * sign_x, y, z_crown - 0.12),
+        (x_pos + outer * sign_x, y, z_crown + rise),
+        (x_pos + outer * 0.50 * sign_x, y, z_crown - 0.08),
+        (x_pos - 0.02 * sign_x, y, z_crown - 0.20),
     ]
 
 
@@ -786,11 +792,23 @@ def build_cargo_well(hull, mats, lod):
 
     report = {"mouth": cut(hull, mouth)}
     bits = add_open_well("LOD0_Well", (4.05, 1.88, 1.28), (0.15, 0.0, 0.52), mech, floor=True, open_aft=False, wall=0.070)
-    # Lip is a lofted cut-edge of the shell, not four boxes on the deck.
+    # Four independent rails. One closed loft around the mouth filled the hole.
+    well_xs = (2.22, 1.15, 0.15, -0.85, -1.92)
+    for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+        bits.append(loft_rings(
+            f"LOD0_WellLip_{tag}",
+            [side_lip_ring(x, sign, 1.04) for x in well_xs],
+            hull_mat, 0.004, cap=True,
+        ))
     bits.append(loft_rings(
-        "LOD0_WellLip",
-        [dorsal_lip_ring(x, 1.04) for x in (2.22, 1.15, 0.15, -0.85, -1.92)],
-        hull_mat, 0.006, cap=True,
+        "LOD0_WellLip_Fore",
+        [end_lip_ring(y, 2.22, 1.0) for y in (-1.00, -0.35, 0.35, 1.00)],
+        hull_mat, 0.004, cap=True,
+    ))
+    bits.append(loft_rings(
+        "LOD0_WellLip_Aft",
+        [end_lip_ring(y, -1.92, -1.0) for y in (-1.00, -0.35, 0.35, 1.00)],
+        hull_mat, 0.004, cap=True,
     ))
     bits.append(add_box("LOD0_WellGrate", (1.55, 0.72, 0.05), (0.55, 0.28, 0.08), mats["Material_Radiator"], 0.0))
     bits.append(add_cylinder(
@@ -822,16 +840,23 @@ def build_greenhouse(hull, mats, lod):
     if lod < 2:
         report["windshield"] = cut(hull, windshield)
     bits = add_open_well("LOD0_Tub", (2.48, 1.18, 0.92), (5.20, 0.0, 0.48), mech, floor=True, open_aft=False)
-    # Formed hull lip around the tub cut. Greenhouse sits in that hole.
+    # Independent rails around the tub. Do not loft a closed ring across the hole.
+    green_xs = (6.38, 5.85, 5.20, 4.55)
+    for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+        bits.append(loft_rings(
+            f"LOD0_GreenLip_{tag}",
+            [side_lip_ring(x, sign, 0.64, rise=0.03, outer=0.12) for x in green_xs],
+            hull_mat, 0.003, cap=True,
+        ))
     bits.append(loft_rings(
-        "LOD0_GreenLip",
-        [
-            dorsal_lip_ring(6.38, 0.48, rise=0.03, outer=0.12),
-            dorsal_lip_ring(5.85, 0.66, rise=0.04, outer=0.14),
-            dorsal_lip_ring(5.20, 0.70, rise=0.04, outer=0.14),
-            dorsal_lip_ring(4.55, 0.50, rise=0.03, outer=0.12),
-        ],
-        hull_mat, 0.005, cap=True,
+        "LOD0_GreenLip_Fore",
+        [end_lip_ring(y, 6.38, 1.0, rise=0.03, outer=0.10) for y in (-0.58, -0.20, 0.20, 0.58)],
+        hull_mat, 0.003, cap=True,
+    ))
+    bits.append(loft_rings(
+        "LOD0_GreenLip_Aft",
+        [end_lip_ring(y, 4.55, -1.0, rise=0.03, outer=0.10) for y in (-0.58, -0.20, 0.20, 0.58)],
+        hull_mat, 0.003, cap=True,
     ))
     if lod < 2:
         visor = loft_rings(
