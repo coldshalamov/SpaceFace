@@ -23,6 +23,7 @@ import { resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
 import { canvasFont, canvasFonts, invalidateCanvasFonts } from '../canvasFonts.js';
 import { drawGlyph } from '../glyphs.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../../world/livingWorldViews.js';
+import { objectiveText } from './missionLog.js';
 
 // Friendly commodity/station names for the route panel (single source: the data catalogs).
 const COMM_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
@@ -1103,14 +1104,11 @@ export const localmapScreen = {
   },
 };
 
+// INF-058: the map's tracked-mission line is the log's objective projection, not a fourth
+// independently inferred summary. missionProgressText kept its name (one call site) but is now
+// a straight delegation, so a progress transition changes every surface in the same tick.
 function missionProgressText(m) {
-  const progress = Math.max(0, m.objectiveProgress || 0);
-  const target = Math.max(1, m.objectiveTarget || 1);
-  if (m.type === 'mining_quota') return `Mine ${progress}/${target} units`;
-  if (m.type === 'bulk_trade') return `Sell ${progress}/${target} units`;
-  if (m.type === 'patrol_clear') return `Clear ${progress}/${target} hostiles`;
-  if (m.type === 'recon_scan') return `Scan ${progress}/${target} sites`;
-  return progress > 0 ? `${progress}/${target}` : 'Proceed to the objective';
+  return objectiveText(m);
 }
 
 function fmtClock(value) {

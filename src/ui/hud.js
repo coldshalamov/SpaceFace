@@ -40,6 +40,7 @@ import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wr
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
+import { objectiveText } from './screens/missionLog.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
 import { createForkInstrument } from './forkInstrument.js';
@@ -206,11 +207,6 @@ const STATION_ROLE_LABELS = {
   research: 'Research',
 };
 
-function mtCmdtyName(id) {
-  const c = MT_CMDTY_BY_ID.get(id);
-  return c ? c.name : (id || 'cargo').replace('cmdty_', '').replace(/_/g, ' ');
-}
-
 function cargoDisplayName(id) {
   const c = MT_CMDTY_BY_ID.get(id) || PERSISTENT_CARGO_BY_ID.get(id);
   return c ? c.name : (id || 'cargo').replace('cmdty_', '').replace(/_/g, ' ');
@@ -229,10 +225,6 @@ function cargoVolumeForRow(state, id, qty, def) {
   if (isPersistentCargoId(state, id) && PERSISTENT_CARGO_BY_ID.has(id)) return 0;
   const volPerU = def ? (def.volPerU || 1) : 1;
   return qty * volPerU;
-}
-
-function mtStationName(id) {
-  return MT_STATION_BY_ID.get(id) || 'destination';
 }
 
 function mtSectorName(id) {
@@ -298,33 +290,12 @@ export function resolveHudNavStation(state, stationId) {
   return null;
 }
 
+// INF-058: one objective projection. The HUD used to run its own poorer copy of the mission log's
+// objective wording — no set-piece phases, no express/open hauler variants, no survey-sample recon
+// — so the same contract read differently in flight than in the log. Every surface (HUD, log,
+// local map, station contracts) now speaks missionLog.objectiveText, the existing projection.
 function mtObjectiveText(m) {
-  const p = m.params || {};
-  const prog = m.objectiveProgress || 0;
-  const tgt = m.objectiveTarget || 1;
-  const dest = mtStationName(m.destStationId);
-  switch (m.type) {
-    case 'cargo_delivery':
-    case 'salvage_retrieval':
-    case 'passenger_transport':
-      return `Deliver to ${dest}`;
-    case 'bulk_trade':
-      return `Sell ${prog}/${tgt} ${mtCmdtyName(p.cmdtyId)}`;
-    case 'mining_quota':
-      return `Mine ${prog}/${tgt} ${mtCmdtyName(p.cmdtyId)}`;
-    case 'bounty_hunt':
-      return 'Eliminate target';
-    case 'patrol_clear':
-      return `Clear ${prog}/${tgt} hostiles`;
-    case 'escort':
-      return `Escort to ${dest}`;
-    case 'recon_scan':
-      return `Scan ${prog}/${tgt} targets`;
-    case 'smuggling_run':
-      return `Deliver contraband to ${dest}`;
-    default:
-      return `${prog}/${tgt}`;
-  }
+  return objectiveText(m);
 }
 
 function mtFmtTime(s) {

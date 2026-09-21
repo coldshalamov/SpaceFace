@@ -32,6 +32,7 @@ import { mountDataState } from '../../uiPrimitives.js';
 import { factionIcon, icon } from '../icons.js';
 import { missionBoardReadiness } from '../stationHubModel.js';
 import { recommendMissionBoardOffer } from '../stationMissionModel.js';
+import { objectiveText } from '../../screens/missionLog.js';
 import {
   dressState,
   ensureInteriorStyle,
@@ -559,10 +560,13 @@ export function createContractsScreen(ctx) {
             : (needs && attention.kind === 'pickup'
               ? 'Starts here'
               : (atDest ? 'Destination berth' : destName(m)));
+          // INF-058: the station row carries the same objective wording as the HUD, log and map —
+          // the next concrete action with its live progress, not a title and a berth alone.
+          const sub = [objectiveText(m), status].filter(Boolean).join(' · ');
           return (
             `<li class="k-row k-row--static sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
               `<span class="k-row__name sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
-              `<span class="k-row__sub sx-job__meta${needs ? ' k-signal' : ''}">${escapeHtml(status)}</span>` +
+              `<span class="k-row__sub sx-job__meta${needs ? ' k-signal' : ''}">${escapeHtml(sub)}</span>` +
               `<button type="button" class="k-word k-word--fine sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">${tracked ? 'Tracked' : 'Track'}</button>` +
             `</li>`
           );
