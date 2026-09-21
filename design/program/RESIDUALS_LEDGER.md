@@ -118,7 +118,9 @@ heading/capture is not the proof and agents review by reading the live owner.
   half connects to `PQ-206.00`. (6) sling combat value is seed luck — open, relates to `PQ-206.01`.
   (7) sector boundaries flap — **closed by `3e84b438e`** (hysteresis on free-flight sector
   membership, `test/sector-membership-hysteresis.test.mjs`); verify only, no leaf. (8) ambient radio
-  silent **`bark:shown` 0** — carried under `PQ-207.02`. (9) decisions/hour below bar — measurement
+  silent **`bark:shown` 0** — **resolved by `PQ-207.02`** (phantom event name; real seams
+  `barkDirector:voice`/`voice:surface{channel}`/`band:tune` measured non-zero on the same session
+  JSONs — see `roadmap/receipts/PQ-207.02-REPORT.md`). (9) decisions/hour below bar — measurement
   consequence of (1)/(2), no separate leaf. (10) mining is a click-farm (~92 shots/rock) — open,
   relates to `PQ-209.02`.
 - Proposed queue leaf: `PQ-209.00`–`.02` (§E).

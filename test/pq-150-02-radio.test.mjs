@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
+import { createPlaythroughLedger } from '../scripts/lib/bench/playthroughLedger.mjs';
 import { BARK_SITUATIONS } from '../src/data/barks.js';
 import { BAND_EVENT_KEYS, eligibleBandLines } from '../src/data/bandRadio.js';
 import { bandRadio } from '../src/systems/bandRadio.js';
@@ -253,4 +254,52 @@ test('PQ-150.02 seed 15002: eight live chatter classes already fire; captions on
     0,
     'radio stays on the one-voice floor; presentation:caption is a second surface',
   );
+});
+
+// PQ-207.02 — census correction. The 2026-09 compass measured `bark:shown` at 0/10h and called the
+// ambient layer silent, but no emitter of that name exists. The real seams are
+// `barkDirector:voice` (admitted to the one-voice queue; audioSystem plays its squelch on this
+// receipt) and `voice:surface` with a channel field (the arbiter actually taking the floor). The
+// Band's opt-in tuner fires `band:cycle`/`band:tune`; zero there means never invoked, not dead.
+test('PQ-207.02 census: ledger counts the real shown seams, not the phantom bark:shown', () => {
+  const h = boot(SEED);
+  const { sim, state, bus } = h;
+  const ledger = createPlaythroughLedger({ state, bus, archetype: 'census', seed: SEED });
+
+  spawnNpc(sim, {
+    factionId: 'faction_free',
+    fsm: 'patrol',
+    pos: { x: 180, z: 0 },
+    data: { barkSituation: 'patrol-greeting' },
+  });
+  step(sim, 1);
+  bus.emit('band:tune', { channelId: 'the_margin', source: 'test' });
+  const radio = sim.registry.get('bandRadio');
+  for (let i = 0; i < 12 && !h.surfaces.some((row) => row.channel === 'band'); i += 1) {
+    state.simTime += 20;
+    state.bandRadio.nextLineAtS = 0;
+    radio.update(0, state);
+    step(sim, 0);
+  }
+
+  // A chronicler offer shares the band channel but is not tuner output — it must not count.
+  bus.emit('voice:surface', { id: 'band:ch:test', channel: 'band', kind: 'chronicler', text: 'story offer' });
+
+  const result = ledger.finish();
+  const detail = result.hours_detail[0];
+  const barkFloors = h.surfaces.filter((row) => row.channel === 'bark');
+  const bandFloors = h.surfaces.filter((row) => row.channel === 'band' && row.kind === 'band');
+
+  assert.equal(detail.eventTypes['bark:shown'] || 0, 0, 'bark:shown remains unemitted on the live route');
+  assert.equal(detail.barksAudible, h.voices.length, 'barksAudible counts queue admission');
+  assert.ok(detail.barksAudible > 0, 'barkDirector admitted at least one bark');
+  assert.equal(detail.barksSurfaced, barkFloors.length, 'barksSurfaced counts the floor, not admission');
+  assert.ok(detail.barksSurfaced > 0, 'a bark reached the floor');
+  assert.equal(detail.bandTunes, 1, 'one band:tune invocation counted');
+  assert.ok(bandFloors.length > 0, 'tuned band spoke on the floor');
+  assert.equal(detail.bandLinesSurfaced, bandFloors.length);
+  assert.equal(result.totals.barksSurfaced, detail.barksSurfaced, 'totals aggregate surfaced barks');
+  assert.equal(result.totals.bandTunes, 1);
+  assert.ok(result.firsts.firstBarkSurfaced != null, 'first surfaced bark is timestamped');
+  assert.ok(result.firsts.firstBandTune != null, 'first tuner invocation is timestamped');
 });

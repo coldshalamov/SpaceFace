@@ -27,7 +27,10 @@ const TARGETED_TYPES = new Set([
   'law:fineAssessed', 'law:impoundPosted',
   // Onboarding thesis-first route proof events (fixed-seed first-hour milestones).
   'firsthour:milestone',
-  'encounter:started', 'encounter:ended', 'bark:shown', 'barkDirector:voice', 'voice:surface',
+  'encounter:started', 'encounter:ended', 'barkDirector:voice', 'voice:surface',
+  // bark:shown is the phantom name the 2026-09 compass listened for — no emitter exists. Keep it
+  // targeted so a future emitter is caught, but the census reads the real seams below.
+  'bark:shown', 'band:tune', 'band:cycle',
   'story:factChanged', 'scenario:factChanged',
   'loot:spawned', 'salvage:collected', 'cargo:pickedUp', 'pickup:collected',
 ]);
@@ -89,7 +92,7 @@ export function createPlaythroughLedger({ state, bus, archetype, seed }) {
       asteroidsMined: 0, salvagePickups: 0,
       wantedTimeS: 0, heatPeak: 0, wantedEvents: 0, wantedResolved: 0,
       lawResponses: 0, pursuitsStarted: 0, pursuitsResolved: 0,
-      barksAudible: 0, finesPaidCr: 0,
+      barksAudible: 0, barksSurfaced: 0, bandLinesSurfaced: 0, bandTunes: 0, finesPaidCr: 0,
       chains: [],              // {kind, ticks[], spanS, events[]}
       decisionsThisHour: 0,
       quietLongestGapS: 0,
@@ -99,7 +102,8 @@ export function createPlaythroughLedger({ state, bus, archetype, seed }) {
     for (const key of ['firstKill', 'firstPlayerKill', 'firstDeath', 'firstDock', 'firstSale',
       'firstTetherAttach', 'firstMissionAccept', 'firstSectorChange', 'first10kCredits',
       'firstHostileFireAtPlayer', 'firstChain', 'firstWanted', 'firstWantedResolved',
-      'firstPursuit', 'firstBarkAudible', 'firstLawResponse', 'firstFinePaid',
+      'firstPursuit', 'firstBarkAudible', 'firstBarkSurfaced', 'firstBandTune',
+      'firstLawResponse', 'firstFinePaid',
       'firstFullChain']) {
       if (firsts[key] == null) firsts[key] = null; // declare; filled when observed
     }
@@ -224,8 +228,26 @@ export function createPlaythroughLedger({ state, bus, archetype, seed }) {
     } else if (type === 'law:incidentResolved' || type === 'law:wantedWarrantReleased') {
       hourBucket.pursuitsResolved++;
     } else if (type === 'barkDirector:voice' || type === 'bark:shown') {
+      // barkDirector:voice = admitted to the one-voice queue (audioSystem also plays the comms
+      // squelch on this receipt). bark:shown is the legacy census name — no emitter as of 2026-09.
       hourBucket.barksAudible++;
       if (firsts.firstBarkAudible == null) firsts.firstBarkAudible = state.tick;
+    } else if (type === 'voice:surface') {
+      // voice:surface is the real "shown" seam: the arbiter took this entry onto the floor. Count
+      // per channel so barks and Band lines measure delivery, not just queue admission. Counts are
+      // floor presentations, not distinct lines — a preempted-and-repromoted entry surfaces twice.
+      if (data && data.channel === 'bark') {
+        hourBucket.barksSurfaced++;
+        if (firsts.firstBarkSurfaced == null) firsts.firstBarkSurfaced = state.tick;
+      } else if (data && data.channel === 'band' && data.kind === 'band') {
+        // kind==='band' is the tuner's own copy (bandRadio._say). The chronicler offers stories on
+        // the same channel with kind==='chronicler' — those are not tuner output.
+        hourBucket.bandLinesSurfaced++;
+      }
+    } else if (type === 'band:tune' || type === 'band:cycle') {
+      // The Band is opt-in: silence on band:* means nobody cycled the tuner, not dead wiring.
+      hourBucket.bandTunes++;
+      if (firsts.firstBandTune == null) firsts.firstBandTune = state.tick;
     } else if (type === 'salvage:collected' || type === 'cargo:pickedUp' || type === 'pickup:collected') {
       hourBucket.salvagePickups++;
       chainWindow.push({ tick: state.tick, tS: state.simTime, kind: 'salvagePickup', data: slim(data || {}) });
@@ -387,7 +409,7 @@ export function createPlaythroughLedger({ state, bus, archetype, seed }) {
       commodityBoughtCr: 0, asteroidsMined: 0, salvagePickups: 0, decisions: decisions.length,
       wantedTimeS: 0, heatPeak: 0, wantedEvents: 0, wantedResolved: 0,
       lawResponses: 0, pursuitsStarted: 0, pursuitsResolved: 0,
-      barksAudible: 0, finesPaidCr: 0,
+      barksAudible: 0, barksSurfaced: 0, bandLinesSurfaced: 0, bandTunes: 0, finesPaidCr: 0,
       distinctVerbsObserved: 0,
     };
     const allEventTypes = new Set();
@@ -408,7 +430,9 @@ export function createPlaythroughLedger({ state, bus, archetype, seed }) {
       agg.wantedEvents += h.wantedEvents; agg.wantedResolved += h.wantedResolved;
       agg.lawResponses += h.lawResponses;
       agg.pursuitsStarted += h.pursuitsStarted; agg.pursuitsResolved += h.pursuitsResolved;
-      agg.barksAudible += h.barksAudible; agg.finesPaidCr += h.finesPaidCr;
+      agg.barksAudible += h.barksAudible; agg.barksSurfaced += h.barksSurfaced;
+      agg.bandLinesSurfaced += h.bandLinesSurfaced; agg.bandTunes += h.bandTunes;
+      agg.finesPaidCr += h.finesPaidCr;
       for (const [k, v] of Object.entries(h.killsByCause)) killCauses[k] = (killCauses[k] || 0) + v;
       for (const [k, v] of Object.entries(h.eventTypes)) allEventTypes.add(k);
       for (const s of h.sectorEnters) sectorVisits[s] = (sectorVisits[s] || 0) + 1;
