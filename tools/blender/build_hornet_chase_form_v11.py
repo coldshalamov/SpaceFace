@@ -23,7 +23,7 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
-REVISION = "chase_form_v14"
+REVISION = "chase_form_v15"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "hornet"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -44,7 +44,7 @@ HONEST = {
     "Material_Canopy": {"color": (0.012, 0.016, 0.022), "metallic": 0.0, "roughness": 0.06, "role": "glass"},
     "Material_Ceramic": {"color": (0.46, 0.36, 0.22), "metallic": 0.0, "roughness": 0.60, "role": "ceramic"},
     "Material_Mechanical": {"color": (0.04, 0.042, 0.048), "metallic": 0.38, "roughness": 0.50, "role": "mechanical"},
-    "Material_Radiator": {"color": (0.38, 0.14, 0.05), "metallic": 0.18, "roughness": 0.52, "role": "radiator"},
+    "Material_Radiator": {"color": (0.11, 0.05, 0.03), "metallic": 0.22, "roughness": 0.48, "role": "radiator"},
     "Material_Thruster": {"color": (0.025, 0.026, 0.03), "metallic": 0.30, "roughness": 0.48, "role": "thruster"},
     "Material_Accent": {"color": (0.74, 0.24, 0.06), "metallic": 0.02, "roughness": 0.38, "role": "accent"},
     "Material_Warning": {"color": (0.08, 0.085, 0.09), "metallic": 0.16, "roughness": 0.50, "role": "warning"},
@@ -335,7 +335,7 @@ def inset_dorsal_seams(hull):
     bm.faces.ensure_lookup_table()
     faces = [face for face in bm.faces if face.normal.z > 0.42 and face.calc_area() > 0.05]
     if faces:
-        bmesh.ops.inset_region(bm, faces=faces, thickness=0.034, depth=-0.022, use_boundary=True)
+        bmesh.ops.inset_region(bm, faces=faces, thickness=0.048, depth=-0.038, use_boundary=True)
     bm.to_mesh(mesh)
     bm.free()
     mesh.update()
@@ -396,6 +396,12 @@ def build_wings(mats, lod):
 
         if lod <= 1:
             cut(wing, slot_cut)
+
+        def panel_cut(name=f"WingPanelCut_{tag}", loc=(0.35, 1.95 * sign, 0.48)):
+            return add_box(name, (1.85, 0.08, 0.22), loc, mech, 0.0)
+
+        if lod <= 1:
+            cut(wing, panel_cut)
         strake = loft_rings(
             f"LOD0_WingStrake_{tag}",
             [
@@ -498,37 +504,24 @@ def build_canopy(hull, mats, lod):
         )
 
     report["windshield"] = cut(hull, windshield)
-    bits = add_open_well("LOD0_Tub", (1.48, 0.62, 0.82), (3.12, 0.0, 0.46), mech, floor=True, open_aft=False)
-    # One dark brow over the windshield — not a four-sided roof plate.
-    bits.append(add_box(
-        "LOD0_VisorBrow",
-        (0.22, 0.58, 0.08),
-        (3.92, 0.0, 1.18),
-        armor,
-        0.001,
-        rotation=(0.0, math.radians(-18.0), 0.0),
-    ))
+    bits = add_open_well("LOD0_Tub", (1.62, 0.72, 0.78), (3.22, 0.0, 0.48), mech, floor=True, open_aft=False)
+    # Dark lips around the well — a framed greenhouse, not a hull-colored roof plate.
+    bits.append(add_box("LOD0_VisorRail_Port", (1.70, 0.040, 0.09), (3.22, -0.40, 1.14), armor, 0.001))
+    bits.append(add_box("LOD0_VisorRail_Stbd", (1.70, 0.040, 0.09), (3.22, 0.40, 1.14), armor, 0.001))
+    bits.append(add_box("LOD0_VisorBrow", (0.20, 0.72, 0.09), (4.02, 0.0, 1.16), armor, 0.001, rotation=(0.0, math.radians(-18.0), 0.0)))
+    bits.append(add_box("LOD0_VisorSill", (0.20, 0.72, 0.08), (2.40, 0.0, 1.12), armor, 0.001))
     report["coaming"] = False
     if lod <= 1:
-        # Glass sits deep in the tub and pitches with the windshield.
-        pane_p = add_box(
-            "LOD0_Glass_Port",
-            (1.28, 0.26, 0.022),
-            (3.22, -0.14, 0.62),
+        # Thick dark glass mass in the well, near the rim, so D=144 sees a greenhouse.
+        pane = add_box(
+            "LOD0_Glass",
+            (1.48, 0.62, 0.14),
+            (3.22, 0.0, 0.92),
             glass,
             0.0,
-            rotation=(0.0, math.radians(-16.0), 0.0),
+            rotation=(0.0, math.radians(-12.0), 0.0),
         )
-        pane_s = add_box(
-            "LOD0_Glass_Stbd",
-            (1.28, 0.26, 0.022),
-            (3.22, 0.14, 0.62),
-            glass,
-            0.0,
-            rotation=(0.0, math.radians(-16.0), 0.0),
-        )
-        mullion = add_box("LOD0_VisorMullion", (1.22, 0.026, 0.09), (3.18, 0.0, 0.66), armor, 0.0)
-        bits.extend([pane_p, pane_s, mullion])
+        bits.append(pane)
     return bits, report
 
 
@@ -617,24 +610,18 @@ def build_radiators(hull, mats, lod):
         return add_box("RadiatorDorsalCut", (1.72, 0.82, 0.72), (-2.08, 0.0, 0.52), hull_mat, 0.0)
 
     report["dorsal"] = cut(hull, dorsal)
-    bits.extend(add_open_well("LOD0_RadDorsal", (1.48, 0.68, 0.42), (-2.08, 0.0, 0.28), mech, floor=True, open_aft=False))
-    dorsal_rim = add_box("LOD0_RadDorsalRim", (1.78, 0.88, 0.04), (-2.08, 0.0, 0.58), hull_mat, 0.001)
-
-    def dorsal_rim_hole():
-        return add_box("RadDorsalRimCut", (1.48, 0.66, 0.12), (-2.08, 0.0, 0.58), hull_mat, 0.0)
-
-    cut(dorsal_rim, dorsal_rim_hole)
-    bits.append(dorsal_rim)
+    bits.extend(add_open_well("LOD0_RadDorsal", (1.48, 0.68, 0.48), (-2.08, 0.0, 0.22), mech, floor=True, open_aft=False))
+    # No hull-colored picture-frame rim. Fins live in the well so D=144 sees a dark cassette.
     dorsal_fins = 9 if lod == 0 else 5 if lod == 1 else 0
     for index in range(dorsal_fins):
         bits.append(add_box(
             f"LOD0_RadiatorFin_Dorsal_{index}",
-            (0.07, 0.54, 0.20),
-            (-2.62 + index * 0.135, 0.0, 0.22),
+            (0.055, 0.50, 0.22),
+            (-2.62 + index * 0.135, 0.0, 0.08),
             rad, 0.001,
         ))
     if lod <= 1:
-        bits.append(add_box("LOD0_RadiatorHeader_Dorsal", (1.42, 0.06, 0.06), (-2.08, 0.28, 0.30), rad, 0.001))
+        bits.append(add_box("LOD0_RadiatorHeader_Dorsal", (1.38, 0.05, 0.05), (-2.08, 0.24, 0.16), rad, 0.001))
 
     for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
         wing = next((obj for obj in bpy.data.objects if obj.name == f"LOD0_Wing_{tag}"), None)
@@ -901,7 +888,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "hornet_chase_form_v14.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "hornet_chase_form_v15.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 
