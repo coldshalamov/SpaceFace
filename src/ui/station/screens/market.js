@@ -66,6 +66,17 @@ export function maxAffordableQuantity({ limit, credits, quote }) {
   }
   return low;
 }
+/**
+ * INF-084: the stated-terms binding for the go handler. Returns the rounded quoted
+ * total when the stashed render quote covers exactly the confirmed quantity, else
+ * undefined (no binding — the authority settles at the live price, as before).
+ */
+export function expectedTotalForTerms(lastQuotedTerms, qty) {
+  if (!lastQuotedTerms || lastQuotedTerms.qty !== qty) return undefined;
+  const total = Math.round(Number(lastQuotedTerms.total));
+  return Number.isFinite(total) && total >= 0 ? total : undefined;
+}
+
 export function legalityRole(legal) {
   if (legal === 'contraband') return 'foe';
   if (legal === 'restricted') return 'goal';
@@ -265,6 +276,11 @@ export function createMarketScreen(ctx) {
   let selectedId = null;
   let mode = 'buy';   // 'buy' | 'sell'
   let qty = 1;
+  // INF-084: the stated accepted terms — the live quote behind the receipt the pilot is
+  // looking at when they press Buy/Sell. The go handler binds the trade to these, so a
+  // market move between render and confirm aborts with an explanation instead of a
+  // surprise settlement. Refreshed on every console render; never read blind.
+  let lastQuotedTerms = null;
   let cargoOnly = false;
   let marketFilter = 'all';
   let marketQuery = '';
@@ -669,6 +685,7 @@ export function createMarketScreen(ctx) {
     // execute() reuses the same economy integral, including the bulk price impact, on confirm.
     const quote = selectedTradeQuote(state, r);
     const quoteReady = !!(quote && quote.ok);
+    lastQuotedTerms = quoteReady ? { qty, total: quote.total } : null;
     const total = quoteReady ? quote.total : unit * qty;
     const quoteUnit = quoteReady ? quote.unitAvg : unit;
     const creditReady = mode !== 'buy' || (quoteReady && quote.total <= cr);
@@ -834,7 +851,14 @@ export function createMarketScreen(ctx) {
       tradeBusy = true;
       go.disabled = true;
       if (ctx.bus) {
-        ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', { commodityId: selectedId, qty: tradeQty });
+        // INF-084: bind the trade to the stated terms so a stale quote cannot settle
+        // silently at a worse price. tradeBusy already stops a repeated confirmation
+        // from emitting twice in-screen.
+        ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', {
+          commodityId: selectedId,
+          qty: tradeQty,
+          expectedTotal: expectedTotalForTerms(lastQuotedTerms, tradeQty),
+        });
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
       deferRefresh(80, true);

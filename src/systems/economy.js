@@ -770,8 +770,8 @@ export const economy = {
     });
 
     // ---- trade intents from UI ------------------------------------------------------------
-    bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty); });
-    bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty); });
+    bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty, { expectedTotal: p.expectedTotal }); });
+    bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty, { expectedTotal: p.expectedTotal }); });
     bus.on('economy:marketOpened', (p) => {
       if (!p || !p.stationId) return;
       this.refreshStationDemand(p.stationId);
@@ -1445,7 +1445,11 @@ export const economy = {
   /** execute(stationId, cmdtyId, side, qty, opts?) -> { ok, qty, unitAvg, total, profit?, reason, duplicate? }.
    *  Validate-then-apply (transactional): a failed credit/cargo/stock check changes nothing.
    *  PQ-177.06: opts.intentId makes a successful commit idempotent — the same plan returns the
-   *  prior receipt instead of paying twice. */
+   *  prior receipt instead of paying twice.
+   *  INF-084: opts.expectedTotal binds the stated accepted terms. A buy settles only at or
+   *  below it, a sell only at or above it; otherwise nothing moves and the caller gets
+   *  { ok:false, reason:'price_changed', expectedTotal, liveTotal } to explain why fresh
+   *  confirmation is needed. Absent expectedTotal keeps today's live-price behavior. */
   execute(stationId, commodityId, side, qty, opts = null) {
     const state = this.state;
     if (stationId === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state)) {
@@ -1461,6 +1465,10 @@ export const economy = {
       return { ok: false, reason: 'bad_intent_id' };
     }
     const requestedQty = qty;
+    // INF-084: the stated accepted terms ride along for the pre-apply price check below.
+    // Non-finite or negative expectations mean "no binding", never "free".
+    const expectedTotal = opts && Number.isFinite(Number(opts.expectedTotal)) && Number(opts.expectedTotal) >= 0
+      ? Number(opts.expectedTotal) : null;
     this._tradeIntentsInFlight ||= new Set();
     if (intentId && this._tradeIntentsInFlight.has(intentId)) return { ok: false, reason: 'intent_pending' };
     if (this._tradeExecutionInFlight) return { ok: false, reason: 'trade_pending' };
@@ -1503,6 +1511,11 @@ export const economy = {
       const fq = this.quote(stationId, commodityId, 'buy', qty);
       const cost = round(fq.total);
       if (normalizeCredits(state.player.credits) < cost) return { ok: false, reason: 'credits', need: cost };
+      // INF-084: worse than the stated terms settles nothing — the caller explains and
+      // asks for fresh confirmation instead. Better-or-equal flows through below.
+      if (expectedTotal != null && cost > expectedTotal) {
+        return { ok: false, reason: 'price_changed', expectedTotal, liveTotal: cost, qty };
+      }
       // APPLY
       const added = this.addToCargo(cargoSys, state, commodityId, qty);
       if (added <= 0) return { ok: false, reason: 'cargo_full' };
@@ -1525,6 +1538,10 @@ export const economy = {
       const fq = this.quote(stationId, commodityId, 'sell', qty);
       const gross = round(fq.total);
       if (normalizeCredits(state.player.credits) > CREDITS_MAX - gross) return { ok: false, reason: 'credits_cap' };
+      // INF-084: a sale may never settle for less than stated. See the buy branch above.
+      if (expectedTotal != null && gross < expectedTotal) {
+        return { ok: false, reason: 'price_changed', expectedTotal, liveTotal: gross, qty };
+      }
       // APPLY
       const removed = this.removeFromCargo(cargoSys, state, commodityId, qty);
       if (removed <= 0) return { ok: false, reason: 'no_cargo' };
@@ -1680,7 +1697,7 @@ export const economy = {
   },
 
   /** UI/NPC entry: validate against the docked station context then execute. */
-  handleTrade(commodityId, side, qty) {
+  handleTrade(commodityId, side, qty, opts = null) {
     const state = this.state;
     const stationId = this.dockedStationId();
     if (!stationId) {
@@ -1694,16 +1711,20 @@ export const economy = {
       });
       return;
     }
-    const res = this.execute(stationId, commodityId, side, qty);
+    const res = this.execute(stationId, commodityId, side, qty, opts);
     if (!res.ok) {
+      // INF-084: a stale quote explains itself — the market moved past the stated terms,
+      // so nothing settled and the screen should ask for fresh confirmation.
       const msg = res.reason === 'credits' ? 'Insufficient credits'
         : res.reason === 'cargo_full' ? 'Cargo hold full'
         : res.reason === 'no_cargo' ? 'Nothing to sell'
         : res.reason === 'mission_cargo_locked' ? 'Sealed contract cargo cannot be sold'
         : res.reason === 'black_market_locked' ? 'Smuggler Den requires the Quiet entrance delivery. Follow the Tethys contact.'
         : res.reason === 'no_stock' ? 'Station out of stock'
+        : res.reason === 'price_changed'
+          ? `Price changed since the quote (${Math.round(res.liveTotal)} vs ${Math.round(res.expectedTotal)} cr) — review and confirm again.`
         : 'Trade failed';
-      this.bus.emit('toast', { text: msg, kind: 'error', ttl: 2 });
+      this.bus.emit('toast', { text: msg, kind: 'error', ttl: 3 });
       this.bus.emit('economy:tradeFailed', {
         stationId,
         commodityId,
@@ -1711,6 +1732,8 @@ export const economy = {
         qty: Math.max(0, Math.floor(Number(qty) || 0)),
         reason: res.reason || 'invalid',
         need: res.need,
+        expectedTotal: res.expectedTotal,
+        liveTotal: res.liveTotal,
       });
     }
     return res;
