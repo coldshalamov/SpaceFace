@@ -519,7 +519,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7e14b388104c644776209dfe8582d120008bb565565e3ae65eed14399eb02d1c",
+  "contentHash": "72c5fade45eba0559a51d07055a2f9f516c6d537711b12a1d1bf44006f7ec1d4",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -550,49 +550,49 @@
     {
       "bounds": {
         "max": [
-          -0.26999998092651367,
-          1.1801140308380127,
-          3.4600558280944824
+          1.375,
+          1.1800334453582764,
+          3.1800894737243652
         ],
         "min": [
           -6.400000095367432,
-          -0.050114020705223083,
-          -0.5400558114051819
+          -0.05003345012664795,
+          -2.460089683532715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "818f17b477c7cab609b49c870a446593babe26973e26dd725b062c45fb4918be",
+      "geometryHash": "2c93bc7693e697703e5720e33b71637bc564eb775c8e70b0e5d086dd8fd8a11e",
       "id": "sf.render.drifter-production-v1.node.lod0-beacon-aft.primitive.0",
-      "indexCount": 576,
+      "indexCount": 612,
       "indexed": true,
       "materialHash": "6fc63b030f70ab3be43f12c0ad314e635a733493b1bc640bb7001af4b6f46356",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.019",
+      "meshName": "Cylinder.021",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-beacon-aft",
       "primitiveIndex": 0,
-      "vertexCount": 408
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
-          3.9000139236450195,
-          1.359817385673523,
+          3.8999836444854736,
+          1.360121726989746,
           2.7699999809265137
         ],
         "min": [
-          -0.4300139844417572,
-          -0.1498173326253891,
-          -3.4600000381469727
+          -0.7999839186668396,
+          -0.1501217484474182,
+          -3.179999828338623
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cc4d01a28f9d75259c14e9c832171120a34ce63129724f3f7ab5c2012f06a27f",
+      "geometryHash": "65a4c47235be08fd9b1b4e183fb31b545842591285c53456f94e9e81d42d17e9",
       "id": "sf.render.drifter-production-v1.node.lod0-beacon-fore.primitive.0",
       "indexCount": 900,
       "indexed": true,
       "materialHash": "1d7b74efef1d3707cda66509c4d3df074fd21000d0d8081927299b7bb9bd49b0",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.018",
+      "meshName": "Cylinder.020",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-beacon-fore",
       "primitiveIndex": 0,
       "vertexCount": 576
@@ -617,7 +617,7 @@
       "indexed": true,
       "materialHash": "6b4ff7c0bb58681d99692dfcedbc2377351063819cfcf8804dc468d4a8f821de",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Bell_Port_Mesh.001",
+      "meshName": "LOD0_Bell_Port_Mesh",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-bell-port",
       "primitiveIndex": 0,
       "vertexCount": 76
@@ -642,7 +642,7 @@
       "indexed": true,
       "materialHash": "6b4ff7c0bb58681d99692dfcedbc2377351063819cfcf8804dc468d4a8f821de",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Bell_Stbd_Mesh.001",
+      "meshName": "LOD0_Bell_Stbd_Mesh",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-bell-stbd",
       "primitiveIndex": 0,
       "vertexCount": 78
@@ -652,25 +652,25 @@
         "max": [
           7.625,
           1.6049467325210571,
-          2.855182409286499
+          2.854940891265869
         ],
         "min": [
           -7.240000247955322,
           -0.5399467349052429,
-          -2.7651822566986084
+          -2.7799408435821533
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e591ecd42656006cf16f89bb93d90c404937cd5d4162c65c59ab302a5498cbc",
+      "geometryHash": "7b50b218be31b3290862d47706c1fd46004168e0930f8c29d5279ef4a4479551",
       "id": "sf.render.drifter-production-v1.node.lod0-collar-port.primitive.0",
-      "indexCount": 5988,
+      "indexCount": 7212,
       "indexed": true,
-      "materialHash": "468052ae193ea26d315db97aa3c0442808584eeff49f65459e5cad6453a4f773",
+      "materialHash": "43b55a1ebab419a7711b0844711b586f5d53f0e75adc5012fd710b27be1fd654",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
+      "meshName": "Cylinder.001",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-collar-port",
       "primitiveIndex": 0,
-      "vertexCount": 4292
+      "vertexCount": 5203
     },
     {
       "bounds": {
@@ -692,7 +692,7 @@
       "indexed": true,
       "materialHash": "ed3ea66bdda2b1cabc5cb0d384e3a284f1f6bd16d96a91c3b140277c985bac97",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.022",
+      "meshName": "Cube.026",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-coolfin-port-0",
       "primitiveIndex": 0,
       "vertexCount": 288
@@ -717,7 +717,7 @@
       "indexed": true,
       "materialHash": "ccb79ab4d41841cd0d66ba0e6e462eb1c52eb2558179f39a1c09049862994dd4",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.083",
+      "meshName": "Cube.089",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-dirtnacelle-port",
       "primitiveIndex": 0,
       "vertexCount": 72
@@ -725,52 +725,52 @@
     {
       "bounds": {
         "max": [
-          0.4470959007740021,
-          0.37986746430397034,
-          2.8500144481658936
+          -0.8525596857070923,
+          0.3793809413909912,
+          2.87998628616333
         ],
         "min": [
-          -0.8274850845336914,
-          -0.030315261334180832,
-          1.949985384941101
+          -1.5482758283615112,
+          0.03276495635509491,
+          2.480013847351074
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4eac001a65daa1c5bf71da03b5103fc4abdc0721def814e82f994a01ad7bdd26",
+      "geometryHash": "3365dbdf8f1c685d374b451b693a22c78b8592435bf148bea910933a2cf8aaed",
       "id": "sf.render.drifter-production-v1.node.lod0-flap-port.primitive.0",
       "indexCount": 612,
       "indexed": true,
-      "materialHash": "468052ae193ea26d315db97aa3c0442808584eeff49f65459e5cad6453a4f773",
+      "materialHash": "43b55a1ebab419a7711b0844711b586f5d53f0e75adc5012fd710b27be1fd654",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Flap_Port_Mesh",
+      "meshName": "LOD0_Flap_Port_Mesh.001",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-flap-port",
       "primitiveIndex": 0,
-      "vertexCount": 450
+      "vertexCount": 458
     },
     {
       "bounds": {
         "max": [
-          0.4470959007740021,
-          0.37986746430397034,
-          -1.949985384941101
+          -0.8525596857070923,
+          0.3793809413909912,
+          -2.480013847351074
         ],
         "min": [
-          -0.8274850845336914,
-          -0.030315261334180832,
-          -2.8500144481658936
+          -1.5482758283615112,
+          0.03276495635509491,
+          -2.87998628616333
         ]
       },
       "drawMode": 4,
-      "geometryHash": "43720b11d579e1a23b08629e7a4c0aa2c46c82cf92940fd874678efe3eafaa07",
+      "geometryHash": "9e55e8ec28e8cf2a744fb77da55fccea51010ed4984acca028215c7c9e0c27ed",
       "id": "sf.render.drifter-production-v1.node.lod0-flap-stbd.primitive.0",
       "indexCount": 612,
       "indexed": true,
-      "materialHash": "468052ae193ea26d315db97aa3c0442808584eeff49f65459e5cad6453a4f773",
+      "materialHash": "43b55a1ebab419a7711b0844711b586f5d53f0e75adc5012fd710b27be1fd654",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Flap_Stbd_Mesh",
+      "meshName": "LOD0_Flap_Stbd_Mesh.001",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-flap-stbd",
       "primitiveIndex": 0,
-      "vertexCount": 450
+      "vertexCount": 458
     },
     {
       "bounds": {
@@ -792,7 +792,7 @@
       "indexed": true,
       "materialHash": "65e6f8e59553d653deed77898f0fadc0c09ad5b3d0ee533238e0c784dc059076",
       "materialPipelineKey": "blend",
-      "meshName": "LOD0_Glass_Mesh",
+      "meshName": "LOD0_Glass_Mesh.001",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-glass",
       "primitiveIndex": 0,
       "vertexCount": 347
@@ -801,26 +801,26 @@
       "bounds": {
         "max": [
           7.829999923706055,
-          1.152131199836731,
+          1.3406195640563965,
           1.989479660987854
         ],
         "min": [
           -8.289999961853027,
-          -0.1899312287569046,
+          -0.1903548240661621,
           -1.989479660987854
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c8df9f0535ed9b8f7146f539c3b19fd56e5865314766dc723e8a3d6b671ab35d",
+      "geometryHash": "f101f5c4052cd4977b3134a503d4e9e55982ac2a303e14901d496e401a4a6616",
       "id": "sf.render.drifter-production-v1.node.lod0-gunaft-port.primitive.0",
-      "indexCount": 6348,
+      "indexCount": 8052,
       "indexed": true,
-      "materialHash": "03b9c526e5ed8e8aed81bb8bb126253e76b9b2ec6befe12f260103e01ce280be",
+      "materialHash": "38272725ce1b3ec10f0b3335d5af876279b0401f1216fe4348275b89d57f3147",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.064",
+      "meshName": "Cube.070",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-gunaft-port",
       "primitiveIndex": 0,
-      "vertexCount": 4813
+      "vertexCount": 6005
     },
     {
       "bounds": {
@@ -842,7 +842,7 @@
       "indexed": true,
       "materialHash": "489284b03adce7326f349823e22b0d58aa230893fb9bdb820cd8428edacd558f",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
+      "meshName": "Cylinder.003",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-heatband-port",
       "primitiveIndex": 0,
       "vertexCount": 1008
@@ -851,76 +851,76 @@
       "bounds": {
         "max": [
           7.949999809265137,
-          1.3398656845092773,
+          1.2922730445861816,
           2.3519062995910645
         ],
         "min": [
           -8.479999542236328,
-          -1.2474569082260132,
+          -1.2479159832000732,
           -2.3519062995910645
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7aa6b32f809e03d160c6cd1d7bb8a8ccdd29eeb954c24792426a5b53a43761d",
+      "geometryHash": "883dbc9b780dd066c66c3bb405ff6afa167282a36c2cc7d868c3b0ee2a249772",
       "id": "sf.render.drifter-production-v1.node.lod0-hull.primitive.0",
-      "indexCount": 21606,
+      "indexCount": 20796,
       "indexed": true,
-      "materialHash": "689f30cd52522bafaf9c31005a9163d24b09dbc259ffbda321cd2416b746a11b",
+      "materialHash": "8b87ce866f969560b1834a6102881b4951f050f427e8fa10a435b1380dd585cf",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Hull_Mesh.001",
+      "meshName": "LOD0_Hull_Mesh",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 13748
+      "vertexCount": 12826
     },
     {
       "bounds": {
         "max": [
           6.4788360595703125,
-          0.8805657625198364,
-          2.3057756423950195
+          1.3133326768875122,
+          2.505340337753296
         ],
         "min": [
-          -6.537501811981201,
-          -0.5956120491027832,
-          -2.3057756423950195
+          -6.500397205352783,
+          -1.2398933172225952,
+          -2.505340337753296
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8079adac78f140d877529315c6980fc6ef10403a7dedcb041c5954ebadce773",
+      "geometryHash": "7e032e6ac0cd9c98b017c5b15462918607f9630d1833d7e7d9e4de13b66927de",
       "id": "sf.render.drifter-production-v1.node.lod0-hull.primitive.1",
-      "indexCount": 6768,
+      "indexCount": 5016,
       "indexed": true,
-      "materialHash": "65d04f95c75f3fcb2aa6f029feb95672d96f308d729b46751607eb8d2fede9c6",
+      "materialHash": "43b55a1ebab419a7711b0844711b586f5d53f0e75adc5012fd710b27be1fd654",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Hull_Mesh.001",
+      "meshName": "LOD0_Hull_Mesh",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-hull",
       "primitiveIndex": 1,
-      "vertexCount": 5018
+      "vertexCount": 3743
     },
     {
       "bounds": {
         "max": [
-          6.0997633934021,
-          -1.1200964450836182,
-          0.16045410931110382
+          3.687436103820801,
+          1.3083184957504272,
+          2.3579232692718506
         ],
         "min": [
-          -6.500397205352783,
-          -1.2394342422485352,
-          -0.16045410931110382
+          -6.537501811981201,
+          -0.5529491305351257,
+          -2.3579232692718506
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f828e5ca3e97aa1182227bdded22d3c81e8fb5b3c1e992e986f3433112f1a64",
+      "geometryHash": "ab7334e6956979c0cfe6130580b73f537e59962c54d3a470795b13d352fc9f9b",
       "id": "sf.render.drifter-production-v1.node.lod0-hull.primitive.2",
-      "indexCount": 324,
+      "indexCount": 4632,
       "indexed": true,
-      "materialHash": "468052ae193ea26d315db97aa3c0442808584eeff49f65459e5cad6453a4f773",
+      "materialHash": "7127e2714efc6021edc90b2bd4626bc7f9f99d7624e36d5318d824569192bbc8",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Hull_Mesh.001",
+      "meshName": "LOD0_Hull_Mesh",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-hull",
       "primitiveIndex": 2,
-      "vertexCount": 280
+      "vertexCount": 3480
     },
     {
       "bounds": {
@@ -940,9 +940,9 @@
       "id": "sf.render.drifter-production-v1.node.lod0-nacelle-port.primitive.0",
       "indexCount": 1968,
       "indexed": true,
-      "materialHash": "689f30cd52522bafaf9c31005a9163d24b09dbc259ffbda321cd2416b746a11b",
+      "materialHash": "8b87ce866f969560b1834a6102881b4951f050f427e8fa10a435b1380dd585cf",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Nacelle_Port_Mesh.001",
+      "meshName": "LOD0_Nacelle_Port_Mesh",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-nacelle-port",
       "primitiveIndex": 0,
       "vertexCount": 1267
@@ -965,9 +965,9 @@
       "id": "sf.render.drifter-production-v1.node.lod0-nacelle-stbd.primitive.0",
       "indexCount": 1968,
       "indexed": true,
-      "materialHash": "689f30cd52522bafaf9c31005a9163d24b09dbc259ffbda321cd2416b746a11b",
+      "materialHash": "8b87ce866f969560b1834a6102881b4951f050f427e8fa10a435b1380dd585cf",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Nacelle_Stbd_Mesh.001",
+      "meshName": "LOD0_Nacelle_Stbd_Mesh",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-nacelle-stbd",
       "primitiveIndex": 0,
       "vertexCount": 1270
@@ -975,65 +975,58 @@
     {
       "bounds": {
         "max": [
-          2.6441705226898193,
-          1.2785921096801758,
-          3.380093812942505
+          1.2025001049041748,
+          1.240066647529602,
+          3.0800676345825195
         ],
         "min": [
-          -2.096604585647583,
-          -0.4872441589832306,
-          1.0199062824249268
+          -1.3799999952316284,
+          -0.2613411843776703,
+          2.179932117462158
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1fcdea935a4db447f5a3021b03ac922b49b6d7cb506b93bb1335f36ddb8c384",
+      "geometryHash": "1bbc0a94c4a089805c712a220039a405778c86cb60aed816a0a5876cb6942643",
       "id": "sf.render.drifter-production-v1.node.lod0-winglet-port.primitive.0",
-      "indexCount": 1014,
+      "indexCount": 966,
       "indexed": true,
-      "materialHash": "689f30cd52522bafaf9c31005a9163d24b09dbc259ffbda321cd2416b746a11b",
+      "materialHash": "8b87ce866f969560b1834a6102881b4951f050f427e8fa10a435b1380dd585cf",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Winglet_Port_Mesh.001",
+      "meshName": "LOD0_Winglet_Port_Mesh",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-winglet-port",
       "primitiveIndex": 0,
-      "vertexCount": 726
+      "vertexCount": 720
     },
     {
       "bounds": {
         "max": [
-          2.6441705226898193,
-          1.2785921096801758,
-          -1.0199062824249268
+          1.2025001049041748,
+          1.240066647529602,
+          -2.179932117462158
         ],
         "min": [
-          -2.096604585647583,
-          -0.4872441589832306,
-          -3.380093812942505
+          -1.3799999952316284,
+          -0.2613411843776703,
+          -3.0800676345825195
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1af33fee1db59a2be07beb1d64b81be73fb17683dd0ba950620cba0b42820b9",
+      "geometryHash": "02c626c851610c4cb6fe5552dc492fcd682a3672f8d29d935db1d6642b3ceb4d",
       "id": "sf.render.drifter-production-v1.node.lod0-winglet-stbd.primitive.0",
-      "indexCount": 1014,
+      "indexCount": 966,
       "indexed": true,
-      "materialHash": "689f30cd52522bafaf9c31005a9163d24b09dbc259ffbda321cd2416b746a11b",
+      "materialHash": "8b87ce866f969560b1834a6102881b4951f050f427e8fa10a435b1380dd585cf",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Winglet_Stbd_Mesh.001",
+      "meshName": "LOD0_Winglet_Stbd_Mesh",
       "nodeId": "sf.render.drifter-production-v1.node.lod0-winglet-stbd",
       "primitiveIndex": 0,
-      "vertexCount": 730
+      "vertexCount": 736
     }
   ],
   "hlods": [],
   "kind": "ship",
   "lods": [],
   "materials": [
-    {
-      "hash": "03b9c526e5ed8e8aed81bb8bb126253e76b9b2ec6befe12f260103e01ce280be",
-      "id": "material:03b9c526e5ed8e8aed81bb8b",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
     {
       "hash": "1d7b74efef1d3707cda66509c4d3df074fd21000d0d8081927299b7bb9bd49b0",
       "id": "material:1d7b74efef1d3707cda66509",
@@ -1042,8 +1035,15 @@
       "textures": []
     },
     {
-      "hash": "468052ae193ea26d315db97aa3c0442808584eeff49f65459e5cad6453a4f773",
-      "id": "material:468052ae193ea26d315db97a",
+      "hash": "38272725ce1b3ec10f0b3335d5af876279b0401f1216fe4348275b89d57f3147",
+      "id": "material:38272725ce1b3ec10f0b3335",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "43b55a1ebab419a7711b0844711b586f5d53f0e75adc5012fd710b27be1fd654",
+      "id": "material:43b55a1ebab419a7711b0844",
       "name": "Material_Armor",
       "pipelineKey": "opaque:double",
       "textures": []
@@ -1056,23 +1056,9 @@
       "textures": []
     },
     {
-      "hash": "65d04f95c75f3fcb2aa6f029feb95672d96f308d729b46751607eb8d2fede9c6",
-      "id": "material:65d04f95c75f3fcb2aa6f029",
-      "name": "Material_Deck",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "65e6f8e59553d653deed77898f0fadc0c09ad5b3d0ee533238e0c784dc059076",
       "id": "material:65e6f8e59553d653deed7789",
       "name": "Material_Canopy",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "689f30cd52522bafaf9c31005a9163d24b09dbc259ffbda321cd2416b746a11b",
-      "id": "material:689f30cd52522bafaf9c3100",
-      "name": "Material_Hull",
       "pipelineKey": "opaque:double",
       "textures": []
     },
@@ -1087,6 +1073,20 @@
       "hash": "6fc63b030f70ab3be43f12c0ad314e635a733493b1bc640bb7001af4b6f46356",
       "id": "material:6fc63b030f70ab3be43f12c0",
       "name": "Material_Warning",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "7127e2714efc6021edc90b2bd4626bc7f9f99d7624e36d5318d824569192bbc8",
+      "id": "material:7127e2714efc6021edc90b2b",
+      "name": "Material_Deck",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8b87ce866f969560b1834a6102881b4951f050f427e8fa10a435b1380dd585cf",
+      "id": "material:8b87ce866f969560b1834a61",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:double",
       "textures": []
     },
@@ -2581,42 +2581,42 @@
       "sha256": "1b0f9d72f79110e0567d73dcdd09c56212d5a1d42ed41bf19ca5c41832ea17d2"
     },
     "sourceGlb": {
-      "bytes": 504148,
-      "sha256": "405329c789d112ee24756bf60edc386f79f4040bf4d70892f026252047d05846",
+      "bytes": 543204,
+      "sha256": "86ac761d37f07261f51b648c58f540d18067d3244ac0c1a72761c266cf3760e7",
       "uri": "drifter_production_v1.glb"
     },
     "sourceManifest": {
       "bytes": 182691,
-      "sha256": "6910dc486a2e18de637244c5b0035c67001e9d295f6542e5ae24f837cde31297",
+      "sha256": "773ac8f818c8da352a4c2f44bf9c086ef72ffb34a47873ee30cacbeeb2cb19e5",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 859716,
-    "sha256": "717eaed6070827f94b565bccff98a14207a1a8cb70eee6d7f80a1038c14e3917",
+    "bytes": 930664,
+    "sha256": "699e9f95eea660eb6199100e789665f0781fb7ac2947c24a472cb1a5b1a96b11",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.43499231338500977,
-        0.17874491214752197,
-        0.000027894973754882812
+        0.17851537466049194,
+        0.00004482269287109375
       ],
       "max": [
         7.949999809265137,
         1.6049467325210571,
-        3.4600558280944824
+        3.1800894737243652
       ],
       "min": [
         -8.819984436035156,
-        -1.2474569082260132,
-        -3.4600000381469727
+        -1.2479159832000732,
+        -3.179999828338623
       ],
       "size": [
         16.769984245300293,
-        2.8524036407470703,
-        6.920055866241455
+        2.8528627157211304,
+        6.360089302062988
       ]
     },
     "hidden": [
@@ -3116,7 +3116,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 18,
+        "planIndex": 17,
         "role": "hull"
       },
       {
@@ -3486,7 +3486,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull_Mesh001",
+        "name": "LOD0_Hull_Mesh",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -3513,7 +3513,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull_Mesh001_1",
+        "name": "LOD0_Hull_Mesh_1",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -3540,7 +3540,7 @@
           0,
           1
         ],
-        "name": "LOD0_Hull_Mesh001_2",
+        "name": "LOD0_Hull_Mesh_2",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -3660,7 +3660,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/drifter_production_v1.glb"
   },
-  "runtimeHash": "e847319542deeb5ea33a482d55b986864876f77ac2d4a9a285644faa03b7b46a",
+  "runtimeHash": "0a8714d284ec4f8e65e8d965cb9754d1414cc894630c79c5b18b63276f27d44f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3668,12 +3668,12 @@
         "max": [
           7.949999809265137,
           1.6049467325210571,
-          3.4600558280944824
+          3.1800894737243652
         ],
         "min": [
           -8.819984436035156,
-          -1.2474569082260132,
-          -3.4600000381469727
+          -1.2479159832000732,
+          -3.179999828338623
         ]
       },
       "id": "sf.render.drifter-production-v1.body",
