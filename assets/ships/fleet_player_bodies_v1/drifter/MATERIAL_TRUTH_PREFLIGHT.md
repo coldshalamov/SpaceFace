@@ -13,6 +13,16 @@ Cycle 1 shipped the REVISE from three chase reviews: the cargo well is a rimmed 
 (not an orange parking-lot lid), the greenhouse glass sits in the cut tub (not a roof
 plate), nacelle stations grow out of the flank. Hitch still wins chase. Parent unproven.
 
+## C2 chase-form (2026-09-21)
+
+`chase_form_v2` on the same live sockets. Principled islands only. Hitch/Hornet untouched.
+
+C1 remaining notes were panel language, hardware density, and stencil. C2 added chase-scale
+flank plates and seam channels, outboard D2 plus starboard/dorsal 02 glyphs, thicker hoses,
+fastener rows, dirt islands. Cargo well stays a rimmed hole; greenhouse stays glass in a cage
+over a cut tub. Three chase reviews returned REVISE: Hitch still wins manufactured density at
+D=144. Stencil now reads at close/abeam. No seats. No megatex. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
