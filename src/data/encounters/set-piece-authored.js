@@ -178,6 +178,22 @@ export const AUTHORED_SET_PIECE_ENCOUNTERS = Object.freeze({
       },
     ],
   }),
+  heavy_tow: piece('set_piece_heavy_tow', {
+    shape: {
+      situation: 'set_piece',
+      place: 'mining_belt',
+      twist: 'named',
+      actor: 'faction_dmc',
+    },
+    placeName: 'Ceres dead-weight berth',
+    twist: 'Two hundred mass on the line. A winched hitch turns with you; a loose one pendulums.',
+    actors: [
+      {
+        role: 'slag_core', kind: 'asteroid', scanLabel: 'DEAD-WEIGHT CORE',
+        count: 1, radius: 24, mass: 200, hull: 420, tetherable: true,
+      },
+    ],
+  }),
   ore_crusher: piece('set_piece_ore_crusher', {
     shape: {
       situation: 'set_piece',
