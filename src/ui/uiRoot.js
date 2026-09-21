@@ -299,7 +299,16 @@ function saveSlotLabel(slot) {
   return 'Slot ' + id;
 }
 
+function skippedNewerNotice(skippedNewer) {
+  if (!skippedNewer || !skippedNewer.slot) return '';
+  return ` Newest save (${saveSlotLabel(skippedNewer.slot)}) was damaged — not loaded.`;
+}
+
 function saveErrorText(payload = {}) {
+  return saveErrorReasonText(payload) + skippedNewerNotice(payload.skippedNewer);
+}
+
+function saveErrorReasonText(payload = {}) {
   const slot = saveSlotLabel(payload.slot);
   switch (payload.reason) {
     case 'no_player': return 'Start or load a game before saving';
@@ -345,12 +354,16 @@ function wireSaveFeedback(bus) {
       ttl: (slot === 'auto' || slot === 'autosave') ? 1400 : 2200,
     });
   });
-  bus.on('save:loaded', ({ slot, visualGatePending, recovered } = {}) => {
+  bus.on('save:loaded', ({ slot, visualGatePending, recovered, skippedNewer } = {}) => {
     if (recovered) return;
+    // INF-091: when Continue resolves past a dead newer slot, the receipt says so out loud.
+    const skip = skippedNewer && skippedNewer.slot
+      ? `. Newest save (${saveSlotLabel(skippedNewer.slot)}) was damaged — loaded the newest playable instead.`
+      : '';
     bus.emit('toast', {
-      text: (visualGatePending ? 'Restoring ' : 'Loaded ') + saveSlotLabel(slot),
+      text: (visualGatePending ? 'Restoring ' : 'Loaded ') + saveSlotLabel(slot) + skip,
       kind: visualGatePending ? 'info' : 'good',
-      ttl: visualGatePending ? 2200 : 2400,
+      ttl: skip ? 3600 : (visualGatePending ? 2200 : 2400),
     });
   });
   bus.on('save:recovered', ({ slot } = {}) => {

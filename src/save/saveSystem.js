@@ -1283,6 +1283,37 @@ export const save = {
     return best;
   },
 
+  // INF-091: when Continue resolves past a NEWER raw-indexed slot, say so explicitly instead of
+  // silently downgrading. Returns { slot, reason, recoveryReason } when the newest raw-indexed
+  // slot has no playable generation in either copy, else null. Both generations are re-validated
+  // here (never trusted from meta), transient storage failures yield null rather than a verdict,
+  // and no bytes are touched — the dead copies stay on disk for forensics/manual export.
+  _newerUnplayableSkip() {
+    let raw = null;
+    try {
+      if (typeof localStorage === 'undefined') return null;
+      raw = normalizeSlotIndex(this._readIndex());
+    } catch (err) { return null; }
+    let best = null, bestT = -1;
+    for (const slot in raw) {
+      if (!isOccupiedSlotMeta(raw[slot])) continue;
+      const t = slotMetaScore(raw[slot]);
+      if (t >= bestT) { bestT = t; best = slot; }
+    }
+    if (!best) return null;
+    if (this._latestSlot() === best) return null; // newest is playable — no skip
+    let primaryRaw = null, backupRaw = null;
+    try {
+      primaryRaw = localStorage.getItem(LS_PREFIX + best);
+      backupRaw = localStorage.getItem(RECOVERY_PREFIX + best);
+    } catch (err) { return null; }
+    const primary = this._prepareEnvelopeString(primaryRaw);
+    if (primary.ok) return null;
+    const backup = this._prepareEnvelopeString(backupRaw);
+    if (backup.ok) return null;
+    return { slot: best, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' };
+  },
+
   deleteSlot(slot) {
     try {
       if (typeof localStorage !== 'undefined') {
@@ -2575,16 +2606,27 @@ export const save = {
    *  snapshotted for one rollback attempt if restore fails. Returns true only for an accepted load. */
   load(slot) {
     slot = slot || 'quick';
+    // INF-091: the Continue route resolves 'latest' past a dead newest slot. Compute the skip
+    // BEFORE resolving so both the loaded receipt and the failure below can name it explicitly.
+    let skippedNewer = null;
     if (slot === 'latest') {
+      try { skippedNewer = this._newerUnplayableSkip(); } catch (err) { skippedNewer = null; }
       const resolved = this._latestSlot();
-      if (!resolved) { this.bus.emit('save:error', { slot, reason: 'no_save' }); return false; }
+      if (!resolved) {
+        this.bus.emit('save:error', Object.assign({ slot, reason: 'no_save' },
+          skippedNewer ? { skippedNewer } : null));
+        return false;
+      }
       slot = resolved;
     }
     let raw = null;
     try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
     catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
     const primary = this._prepareEnvelopeString(raw);
-    if (primary.ok) return this._restorePreparedEnvelope(primary, slot);
+    if (primary.ok) {
+      return this._restorePreparedEnvelope(primary, slot,
+        skippedNewer ? { skippedNewer } : undefined);
+    }
 
     // A named load and title Continue both recover from the previous valid generation. Validation
     // happens before any destructive restore, and the corrupt bytes are never rotated over backup.
@@ -2593,7 +2635,8 @@ export const save = {
     catch (err) { /* primary failure below remains the player-facing reason */ }
     const backup = this._prepareEnvelopeString(backupRaw);
     if (backup.ok) {
-      const restored = this._restorePreparedEnvelope(backup, slot, { emitError: false, recovered: true });
+      const restored = this._restorePreparedEnvelope(backup, slot, Object.assign(
+        { emitError: false, recovered: true }, skippedNewer ? { skippedNewer } : null));
       if (restored) {
         let promoted = false;
         try {
@@ -2613,7 +2656,9 @@ export const save = {
         return true;
       }
     }
-    this.bus.emit('save:error', { slot, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' });
+    this.bus.emit('save:error', Object.assign(
+      { slot, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' },
+      skippedNewer ? { skippedNewer } : null));
     return false;
   },
 
@@ -2770,6 +2815,8 @@ export const save = {
           reason: 'load_failed',
           rollback: rollbackError ? 'failed' : 'restored',
           error: restoreErrorMessage(err),
+          // INF-091: a failed Continue-load still names the dead newer slot it resolved past.
+          ...(options.skippedNewer ? { skippedNewer: options.skippedNewer } : null),
         };
         if (rollbackError) payload.rollbackError = restoreErrorMessage(rollbackError);
         this.bus.emit('save:error', payload);
@@ -3046,6 +3093,9 @@ export const save = {
         slot,
         visualGatePending: !!finalizeLoadedGame,
         recovered: options.recovered === true,
+        // INF-091: Continue resolved past a dead newer slot — the receipt names it explicitly
+        // instead of silently downgrading. Absent for named loads.
+        ...(options.skippedNewer ? { skippedNewer: options.skippedNewer } : null),
         // Genie 02: arc snapshot for the tension director's save:loaded handler (schema-checked,
         // clock-guarded; non-exact resets are emitted as tension:reset, never silently dropped).
         tensionDirector: data.tensionDirector || null,
