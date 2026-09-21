@@ -1045,10 +1045,21 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   function massDeltaChipText(metric) {
     if (!metric) return '';
+    if (metric.delta == null || metric.before == null || metric.after == null) return `${metric.label} —`;
     if (metric.id === 'turn' || metric.id === 'topSpeed') return `${metric.label} ${plusMinus(metric.pct)}%`;
     if (metric.id === 'stopDistance') return `${metric.label} ${plusMinus(metric.delta, 0)}m`;
     if (metric.id === 'bank') return `${metric.label} ${plusMinus(metric.delta, 2)}`;
     return `${metric.label} ${plusMinus(metric.delta, 1)}`;
+  }
+
+  // INF-081: situational predictions carry their assumption on hover/focus — a stop
+  // distance is a forecast under stated conditions, while fit stats need no caveat.
+  function massDeltaChipHtml(metric) {
+    const text = massDeltaChipText(metric);
+    if (metric && metric.basis === 'situational' && metric.assumption) {
+      return `<span title="${escapeHtml(metric.verb + ' · ' + metric.assumption)}">${escapeHtml(text)}</span>`;
+    }
+    return escapeHtml(text);
   }
 
   function recordRowsHtml(model) {
@@ -1393,7 +1404,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         ? ghostMassDelta.metrics.filter((metric) => ['turn', 'topSpeed', 'stopDistance', 'bank'].includes(metric.id))
         : [];
       const ghostLine = ghostMetrics.length
-        ? `<p class="k-t-fine k-38 sx-sw-ghost">${ghostMetrics.slice(0, 4).map((metric) => escapeHtml(massDeltaChipText(metric))).join(' · ')}</p>`
+        ? `<p class="k-t-fine k-38 sx-sw-ghost">${ghostMetrics.slice(0, 4).map((metric) => massDeltaChipHtml(metric)).join(' · ')}</p>`
         : '';
       return (
         (meta ? `<p class="k-t-fine k-38 sx-sw-band__meta">${escapeHtml(meta)}</p>` : '') +

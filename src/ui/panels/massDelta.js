@@ -6,13 +6,18 @@
 import { MODULES } from '../../data/modules.js';
 import { SHIPS } from '../../data/ships.js';
 import { buildSlotList, fits, getDerivedStats } from '../../systems/ships.js';
+import { estimateBrakingSolution } from '../../core/flight/flightTelemetry.js';
 
 export const MASS_DELTA_METRICS = Object.freeze([
-  Object.freeze({ id: 'turn', label: 'Turn', source: 'derived.turnRate', unit: 'pct', verbDown: 'sluggish', verbUp: 'twitchier' }),
-  Object.freeze({ id: 'topSpeed', label: 'Top speed', source: 'derived.maxSpeed', unit: 'pct', verbDown: 'slower', verbUp: 'faster' }),
-  Object.freeze({ id: 'stopDistance', label: 'Stop distance', source: 'flightModel.stopDistanceEstimate', unit: 'wu', verbDown: 'shorter stop', verbUp: 'longer stop' }),
-  Object.freeze({ id: 'bank', label: 'Bank', source: 'derived.bankFactor', unit: 'raw', verbDown: 'flatter', verbUp: 'rollier' }),
-  Object.freeze({ id: 'massRatio', label: 'Mass ratio', source: 'derived.mass/baseMass', unit: 'raw', verbDown: 'lighter', verbUp: 'heavier' }),
+  Object.freeze({ id: 'turn', label: 'Turn', source: 'derived.turnRate', unit: 'pct', basis: 'fit', verbDown: 'sluggish', verbUp: 'twitchier' }),
+  Object.freeze({ id: 'topSpeed', label: 'Top speed', source: 'derived.maxSpeed', unit: 'pct', basis: 'fit', verbDown: 'slower', verbUp: 'faster' }),
+  // INF-081: braking is a SITUATIONAL prediction, not a fit stat — it depends on speed,
+  // attitude, and load. The value comes from the live braking solution (same function,
+  // same derived propulsion profile the undocked ship flies with), evaluated at the
+  // canonical probe: top speed, cruising attitude. Fit stats are unconditional.
+  Object.freeze({ id: 'stopDistance', label: 'Stop distance', source: 'flight.brakingSolution', unit: 'wu', basis: 'situational', assumption: 'best stop from displayed top speed', verbDown: 'shorter stop', verbUp: 'longer stop' }),
+  Object.freeze({ id: 'bank', label: 'Bank', source: 'derived.bankFactor', unit: 'raw', basis: 'fit', verbDown: 'flatter', verbUp: 'rollier' }),
+  Object.freeze({ id: 'massRatio', label: 'Mass ratio', source: 'derived.mass/baseMass', unit: 'raw', basis: 'fit', verbDown: 'lighter', verbUp: 'heavier' }),
 ]);
 
 const MODULE_BY_ID = new Map(MODULES.map((moduleDef) => [moduleDef.id, moduleDef]));
@@ -84,15 +89,35 @@ export function summarizeStats(shipId, fittings = [], player = null) {
   const shipDef = SHIP_BY_ID.get(shipId);
   if (!shipDef) return null;
   const derived = getDerivedStats(shipId, fittings, player);
-  const model = derived.flightModel || {};
   const baseMass = finite(shipDef.mass, 1);
   return Object.freeze({
     turn: finite(derived.turnRate, 0),
     topSpeed: finite(derived.maxSpeed, 0),
-    stopDistance: stopDistanceEstimate(model),
+    stopDistance: liveStopDistance(derived),
     bank: finite(derived.bankFactor, 0),
     massRatio: baseMass > 0 ? finite(derived.mass, baseMass) / baseMass : 1,
   });
+}
+
+/**
+ * INF-081: stop distance from the LIVE braking solution, not a parallel formula. The old
+ * readout used v^2/2·reverseAccel only, which ignores the flip-and-burn the arrival cue
+ * and the route follower assume — it quoted stops roughly twice as long as the ship
+ * actually flies. This feeds the derived propulsion profile of THIS fit (the same shape
+ * resolvePropulsionProfile hydrates undocked) into the same estimator, at the canonical
+ * probe both displays can share: displayed top speed, cruising attitude. Null when the
+ * fit cannot move or cannot brake, so displays render '—' instead of a fantasy number.
+ */
+export function liveStopDistance(derived) {
+  const speed = finite(derived && derived.maxSpeed, 0);
+  if (!(speed > 0)) return null;
+  const solution = estimateBrakingSolution(
+    { pos: { x: 0, z: 0 }, vel: { x: speed, z: 0 }, rot: 0, angVel: 0 },
+    (derived && derived.propulsion) || {},
+  );
+  if (!solution) return null;
+  const best = Math.min(solution.directDistance, solution.flipBurnDistance);
+  return Number.isFinite(best) ? best : null;
 }
 
 export function stopDistanceEstimate(flightModel) {
@@ -110,8 +135,27 @@ export function formatMassDelta(metrics = []) {
 }
 
 function deltaMetric(metric, beforeStats, afterStats) {
-  const before = finite(beforeStats && beforeStats[metric.id], 0);
-  const after = finite(afterStats && afterStats[metric.id], 0);
+  const rawBefore = beforeStats && beforeStats[metric.id];
+  const rawAfter = afterStats && afterStats[metric.id];
+  // A null side (e.g. a fit that cannot brake) is unknown, not zero: the readout must
+  // not print a confident +0 against a fantasy baseline.
+  if (rawBefore == null || rawAfter == null) {
+    return Object.freeze({
+      id: metric.id,
+      label: metric.label,
+      source: metric.source,
+      before: null,
+      after: null,
+      delta: null,
+      pct: null,
+      unit: metric.unit,
+      basis: metric.basis || 'fit',
+      assumption: metric.assumption || null,
+      verb: 'unknown',
+    });
+  }
+  const before = finite(rawBefore, 0);
+  const after = finite(rawAfter, 0);
   const delta = after - before;
   const pct = before !== 0 ? (delta / Math.abs(before)) * 100 : 0;
   return Object.freeze({
@@ -123,11 +167,14 @@ function deltaMetric(metric, beforeStats, afterStats) {
     delta: round3(delta),
     pct: round2(pct),
     unit: metric.unit,
+    basis: metric.basis || 'fit',
+    assumption: metric.assumption || null,
     verb: delta < 0 ? metric.verbDown : (delta > 0 ? metric.verbUp : 'unchanged'),
   });
 }
 
 function formatDelta(metric) {
+  if (metric.before == null || metric.after == null || metric.delta == null) return '—';
   if (metric.unit === 'pct') return `${signed(round1(metric.pct))}%`;
   if (metric.unit === 'wu') return `${signed(Math.round(metric.delta))}m`;
   return signed(metric.delta);

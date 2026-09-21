@@ -440,9 +440,13 @@ export function outfittingEngineeringFeelHtml(packet) {
       escapeHtml(packet.detail || 'No compatible hardpoint on this hull.') + '</div>';
   } else if (packet.mode === 'preview' && packet.delta && packet.delta.ok) {
     const changed = packet.delta.metrics.filter(meaningfulEngineeringDelta);
-    const chips = changed.map((metric) =>
-      '<span class="st-outfit-feel-delta" title="' + escapeHtml(metric.verb) + '">' +
-        escapeHtml(metric.label) + ' <b>' + escapeHtml(engineeringDelta(metric)) + '</b></span>').join('');
+    const chips = changed.map((metric) => {
+      // INF-081: situational predictions state their assumption where fit stats do not —
+      // a stop distance is a forecast under stated conditions, not a bolted-on number.
+      const note = metric.basis === 'situational' && metric.assumption ? ' · ' + metric.assumption : '';
+      return '<span class="st-outfit-feel-delta" title="' + escapeHtml(metric.verb + note) + '">' +
+        escapeHtml(metric.label) + ' <b>' + escapeHtml(engineeringDelta(metric)) + '</b></span>';
+    }).join('');
     changeHtml = '<div class="st-outfit-feel-preview"><b>' +
       escapeHtml(packet.previewName || 'Fitting') + ' preview</b>' +
       (chips || '<span class="st-outfit-feel-note">No handling change in the live flight model.</span>') +
