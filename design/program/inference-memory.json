@@ -1363,6 +1363,19 @@
       "integration": "live",
       "commit": "07dd7c6be",
       "verification": "focused_green"
+    },
+    {
+      "id": "endgame-preoffer-gate-card",
+      "date": "2026-09-21",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Mission log pre-offer Deep Reach card taught the retired universal ending gate (100k net worth + 50 branch standing + capital/claim/outpost). Now drives from snapshotEndingFacts: the live shared gate (Deep Reach operation OR ledger custody + 3 career-evidence kinds, Ash Cache desk) with real kind counts, gate-state meta, and a star-map handoff to Ash Cache. Closes the endings packet's named report-only residual. m5-story-public-route 9/9 (3 new), endings family 39/39; baseline 12/15 with the same 3 documented foreign reds.",
+      "fingerprint": "verb=repair,subject=endgame-guidance,sector=ashfall_reach,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "036cf6445",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
