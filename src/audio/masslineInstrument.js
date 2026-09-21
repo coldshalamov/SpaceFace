@@ -160,6 +160,34 @@ export function masslineInstrumentCaption(event) {
   return MASSLINE_CAPTIONS[event] || null;
 }
 
+// INF-050 — the throw whoosh bends with the line that let go. Tension (strain/load 0..1)
+// sets how hard and bright the release reads: a slack lob sighs, a max-tension sling
+// cracks. Missing telemetry is exactly neutral so legacy cues keep their authored voice.
+// Pure. Bounds hold the recipe inside its authored mix position (player SFX, never voice).
+export const THROW_WHOOSH = Object.freeze({
+  minGain: 0.55,
+  maxGain: 0.9,
+  minRate: 0.9,
+  maxRate: 1.35,
+});
+
+export function resolveThrowWhoosh(input = {}) {
+  const strain = Number.isFinite(input.strain) ? input.strain : null;
+  const load = Number.isFinite(input.load) ? input.load : null;
+  const tension = strain != null && load != null
+    ? clamp((strain + load) / 2, 0, 1)
+    : strain != null ? clamp(strain, 0, 1)
+      : load != null ? clamp(load, 0, 1)
+        : 0.5;
+  return Object.freeze({
+    schema: 'spaceface.masslineThrowWhoosh.v1',
+    tension: Math.round(tension * 1000) / 1000,
+    gain: Math.round((THROW_WHOOSH.minGain + (THROW_WHOOSH.maxGain - THROW_WHOOSH.minGain) * tension) * 1000) / 1000,
+    rate: Math.round((THROW_WHOOSH.minRate + (THROW_WHOOSH.maxRate - THROW_WHOOSH.minRate) * tension) * 1000) / 1000,
+    seed: MASSLINE_INSTRUMENT_SEED,
+  });
+}
+
 export function masslineEventsAreDistinct() {
   const recipes = MASSLINE_INSTRUMENT_EVENTS.map((event) => MASSLINE_RECIPES[event]);
   const captions = MASSLINE_INSTRUMENT_EVENTS.map((event) => MASSLINE_CAPTIONS[event]);

@@ -17,6 +17,7 @@ import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireC
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { forecastCadenceWindow } from '../combat/masslineReleaseGeometry.js';
+import { resolveThrowWhoosh } from '../audio/masslineInstrument.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // forward-only queue ceiling; 5 fixed ticks at 60 Hz
@@ -462,6 +463,13 @@ export const masslineThrow = {
     const attachments = combatAttachments(this);
     const attachmentId = state.player.tether.attachmentId;
     if (!attachments || attachmentId == null) return false;
+    // INF-050 — snapshot the line's tension BEFORE the cut releases it; the throw whoosh
+    // bends with the strain/load the sling actually let go with, not a flat authored voice.
+    const tetherSnapshot = state.player && state.player.tether ? state.player.tether : null;
+    const whoosh = resolveThrowWhoosh({
+      strain: tetherSnapshot ? tetherSnapshot.strain : null,
+      load: tetherSnapshot ? tetherSnapshot.load : null,
+    });
     const result = attachments.cut(attachmentId, player.id, 'tether_cut');
     if (!result || !result.ok) return false;
 
@@ -505,7 +513,12 @@ export const masslineThrow = {
     };
 
     this.bus.emit('massline:throw', { ...runtime.lastThrow });
-    this.bus.emit('audio:cue', { id: 'massline.throw', position: { x: payload.pos.x, z: payload.pos.z } });
+    this.bus.emit('audio:cue', {
+      id: 'massline.throw',
+      position: { x: payload.pos.x, z: payload.pos.z },
+      gain: whoosh.gain,
+      rate: whoosh.rate,
+    });
     this.bus.emit('presentation:vfxCue', {
       id: 'massline.throw', lane: 'massline_throw',
       pos: { x: payload.pos.x, z: payload.pos.z },
