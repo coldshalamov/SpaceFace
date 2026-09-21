@@ -68,7 +68,7 @@ import {
   selectPlacePackageLayer,
 } from './flightReadySet.js';
 import { PRESENTATION_TIER } from '../world/activityClassification.js';
-import { canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
+import { canonicalizeObjectSurfaceProgramKeys, canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { sharedMaterialRoleFromAuthored, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 
@@ -1736,6 +1736,10 @@ export function spawnableShipArchetypePrewarmUrls() {
     ...Object.values(SPAN_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp,
+    // Separate-file LOD siblings load lazily on distance demotion — a far spawn's lod1/lod2 body
+    // is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp link).
+    ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID)
+      .flatMap((family) => [family.lod1, family.lod2].filter(Boolean)),
   ]);
 }
 
@@ -1920,6 +1924,10 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     };
     boundary.userData.authoredAssetState = 'loading';
     const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
+      // Two exemplar boundaries built from one spec share entity.id — without an explicit key the
+      // second dedupes into the first's completion and its own compose never runs (the parked
+      // 'loading' boundary that hung the opening cohort wait and left roster pool chunks cold).
+      key: typeof requestOptions.upgradeJobKey === 'string' ? requestOptions.upgradeJobKey : undefined,
       boundary,
       fallbackRoot,
       entity: liveEntity,
@@ -8518,6 +8526,189 @@ function canPoolRenderPackageShipMesh(source, tags = {}) {
   if (source.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
     || source.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return false;
   return true;
+}
+
+// PQ-210.00 — force the render-package instance pool to promote without a live ship pair.
+// Pool chunks key on (geometry, sharedMaterialFor(material, tags, palette)) and only promote
+// when a second distinct owner registers the same key, so each palette that can appear in the
+// round needs its own pair of witnesses. The stubs mount under a hidden catalog root, so
+// visibleProxyChainReachesOwner never submits a matrix for them — the chunk keeps count 0,
+// draws nothing, and simply stays resident for the round.
+//
+// The warm also prepares and activates the deferred chunk admissions it creates. Leaving them
+// to the orphan lane paces a catalog-sized backlog one-per-present into the flight window —
+// the exact off-frame link/upload drip this pass exists to prevent. Witness slots contribute
+// no visible matrices, so activation publishes each chunk at count 0.
+//
+// witnessPairs: [{ ownerA, ownerB, palette }] — one entry per live palette.
+export async function warmRenderPackageShipPool(scene, record, witnessPairs, options = {}) {
+  if (!record?.renderPackage) return 0;
+  if (!scene?.isScene) return 0;
+  // Always the ordinary instance route: createFlightInstance ignores createNode, so only
+  // createInstance feeds the pool candidate path.
+  const createPackageInstance = record.renderPackage.createInstance?.bind(record.renderPackage);
+  if (typeof createPackageInstance !== 'function' || !Array.isArray(witnessPairs)) return 0;
+  const tagsByName = new Map([
+    ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
+    ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
+  ]);
+  // One probe instance with a bare-group createNode enumerates the shared plan entries —
+  // planNodes/planEntries come back without a single real clone. The candidate registrations
+  // below then clone only the poolable sources, so a package pays O(poolable × palettes)
+  // instead of O(nodes × palettes) clones per warm.
+  let planEntries = null;
+  try {
+    const probe = createPackageInstance({
+      name: `SF_PoolWitnessProbe_${record.assetId || 'package'}`,
+      residencyRole: 'survival-roster-prewarm',
+      createNode: () => new THREE.Group(),
+    });
+    planEntries = probe?.planEntries || null;
+  } catch (error) {
+    console.warn('[partsLibrary] pool witness probe failed for', record.assetId || record.url, error);
+    return 0;
+  }
+  if (!Array.isArray(planEntries)) return 0;
+
+  const poolAdmissions = new Set();
+  const poolableSources = [];
+  for (const entry of planEntries) {
+    const source = entry?.source;
+    if (!source?.isMesh) continue;
+    const tags = tagsByName.get(source.name) || source.userData?.spacefaceTags || {};
+    if (!canPoolRenderPackageShipMesh(source, tags)) continue;
+    poolableSources.push({ source, tags });
+  }
+  const poolState = sceneState(scene);
+  let warmed = 0;
+  for (const pair of witnessPairs) {
+    if (!pair || !pair.ownerA?.isObject3D || !pair.ownerB?.isObject3D) continue;
+    // One (geometry, sharedMaterial) key needs exactly two distinct owners to promote — a
+    // package with duplicate-material nodes still promotes once per key, and a key that a
+    // twin exemplar or live boundary already pushed into the pool needs no witness at all.
+    const uniqueKeys = new Map();
+    for (const { source, tags } of poolableSources) {
+      const material = sharedMaterialFor(source.material, tags, pair.palette || {});
+      // Pool identity prefers the geometry's first-writer-wins batch stamp — stamp BEFORE
+      // keying so this check reads the same identity admitRenderPackageShipPoolCandidate
+      // will compute (and the same one a primitives-path stamp already established).
+      stampGeometryBatchKey(source.geometry, `${record.assetId || 'PackageShip'}|${source.name || 'Mesh'}`);
+      const key = instancePoolKey(source.geometry, material);
+      if (uniqueKeys.has(key)) continue;
+      if (packagePoolSlots(poolState && poolState.pools.get(key)).length > 0) continue;
+      uniqueKeys.set(key, { source, material });
+    }
+    for (const owner of [pair.ownerA, pair.ownerB]) {
+      for (const { source, material } of uniqueKeys.values()) {
+        try {
+          const object = source.clone(false);
+          object.material = material;
+          object.userData = {
+            ...(object.userData || {}),
+            spacefacePackageMaterialPrepared: true,
+          };
+          // Stamp the shared pool material's canonical family key now — production boundaries
+          // canonicalize at upgrade completion, and a chunk that compiled under the raw key
+          // would relink the canonical program at its first live draw.
+          canonicalizeObjectSurfaceProgramKeys(object);
+          admitRenderPackageShipPoolCandidate(
+            scene,
+            owner,
+            object,
+            source.geometry,
+            material,
+            `${record.assetId || 'PackageShip'}_${source.name || 'Mesh'}`,
+            poolAdmissions,
+          );
+          warmed++;
+        } catch (error) {
+          console.warn('[partsLibrary] pool witness candidate failed for', record.assetId || record.url, error);
+        }
+      }
+    }
+  }
+  if (poolAdmissions.size > 0) {
+    // Do NOT route each chunk through prepareRenderPackagePoolAdmission here: that enqueues one
+    // ambient pipeline item per chunk (~2k across the catalog) into a lane that is already the
+    // cook's bottleneck, for compiles that are all program-family dedupes. The holder's count-0
+    // instance twin already linked the color family, and the survival cook's post-settle pool
+    // seal (color+depth) plus the first-frame residency census (buffers) cover the published
+    // count-0 chunk wholesale. Mark prepared and publish — the pool exists for live joins and
+    // its instanceMatrix upload rides the census instead of 2k lane slots.
+    for (const admission of poolAdmissions) {
+      if (!admission || admission.cancelled) continue;
+      if (!admission.prepared) {
+        admission.result = { skipped: true, reason: 'roster warm: pool seal + census own GPU state' };
+        admission.prepared = true;
+      }
+      try { activateRenderPackagePoolAdmission(admission); }
+      catch (error) {
+        console.warn('[partsLibrary] pool witness chunk activation failed', record.assetId || record.url, error);
+      }
+    }
+  }
+  return warmed;
+}
+
+// The palette set a hidden pool warm must cover for the current run: pool chunk keys bake the
+// shared material, which bakes paletteFor(entity). NPC palettes are deterministic faction/team
+// bases (per-entity appearance overrides are a player-only feature), so the fallback trio plus
+// the sector faction cover every traffic/law/civilian composer the round can field. Roster
+// palettes are deliberately NOT included: the twin exemplar builds promote each roster ship's
+// chunk keys under its exact palette already, and adding faction palettes here multiplies
+// candidates by poolable-node count for zero new coverage.
+export function poolWitnessPalettesForState(state) {
+  const palettes = [];
+  const seen = new Set();
+  const add = (entity) => {
+    const palette = paletteFor(entity || {});
+    const signature = [
+      palette.hull, palette.accent, palette.thruster, palette.dark,
+      palette.finish, palette.wear,
+      palette.tints ? JSON.stringify(palette.tints) : '',
+    ].join('|');
+    if (seen.has(signature)) return;
+    seen.add(signature);
+    palettes.push(palette);
+  };
+  const sector = (state && state.world && state.world.sectors
+      && state.world.sectors[state.world.currentSectorId])
+    || (state && state.world && state.world.currentSector)
+    || null;
+  add({ team: 1 });
+  // No factionId resolves the civilian fallback — place/site/dressing entities land here.
+  add({ team: 2 });
+  add({ team: 2, factionId: 'faction_free' });
+  add({ team: 2, factionId: (sector && sector.factionId) || 'faction_free' });
+  return { palettes };
+}
+
+// Roster ships promote their own lod0 chunk keys through the twin exemplar builds, but a live
+// spawn demoting to lod1/lod2 mid-round composes a SIBLING file under the same faction palette
+// — a chunk key the exemplar never created. Map each roster ship's whole-ship LOD files to its
+// exact palette so the catalog warm covers just those (file, palette) pairs instead of every
+// palette on every package.
+export function rosterPoolWitnessFilePalettes(entities) {
+  const byFile = new Map();
+  for (const entity of entities || []) {
+    if (!entity || entity.type !== 'ship') continue;
+    const palette = paletteFor(entity);
+    const signature = [
+      palette.hull, palette.accent, palette.thruster, palette.dark,
+      palette.finish, palette.wear,
+      palette.tints ? JSON.stringify(palette.tints) : '',
+    ].join('|');
+    for (const level of [0, 1, 2]) {
+      let file = null;
+      try { file = wholeShipLodFileForEntity(entity, level); } catch (_) { file = null; }
+      const normalized = normalizePartUrl(file).replace(/^.*\/parts\//, '');
+      if (!normalized) continue;
+      let palettes = byFile.get(normalized);
+      if (!palettes) byFile.set(normalized, palettes = new Map());
+      if (!palettes.has(signature)) palettes.set(signature, palette);
+    }
+  }
+  return byFile;
 }
 
 function admitRenderPackageShipPoolCandidate(
