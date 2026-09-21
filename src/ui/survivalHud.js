@@ -218,6 +218,7 @@ export const survivalHud = {
 
   destroy() {
     if (typeof document !== 'undefined') document.body?.classList?.remove('sf-swarm-flight');
+    this._swarmFlightClass = null;
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
     if (this._dom && this._dom.root && this._dom.root.parentNode) {
@@ -240,7 +241,11 @@ export const survivalHud = {
     if (!st) return;
     const run = st.run;
     const live = !!(run && run.kind === 'survival' && run.phase !== 'inactive');
-    document.body?.classList?.toggle('sf-swarm-flight', live && run.ruleset === 'swarm' && st.mode === 'flight');
+    const swarmFlight = live && run.ruleset === 'swarm' && st.mode === 'flight';
+    if (this._swarmFlightClass !== swarmFlight) {
+      this._swarmFlightClass = swarmFlight;
+      document.body?.classList?.toggle('sf-swarm-flight', swarmFlight);
+    }
     if (!live || st.mode !== 'flight' || (st.ui && st.ui.docked)) {
       this._hide();
       return;
@@ -274,7 +279,7 @@ export const survivalHud = {
       // so they sit as a figure with no slash and no fill.
       const progress = this._waveProgress;
       const ready = !!(progress && Number.isInteger(progress.durationTicks) && progress.durationTicks > 0);
-      dom.threat.hidden = !ready;
+      this._setHidden(dom.threat, !ready);
       if (ready) {
         const remainingTicks = Number.isInteger(progress.remainingTicks) ? Math.max(0, progress.remainingTicks) : 0;
         const durationTicks = progress.durationTicks;
@@ -284,32 +289,32 @@ export const survivalHud = {
         this._setText(dom.threatWord, 'NEXT WAVE');
         this._setText(dom.threatFig, clock);
         this._setStyle(dom.threatFill, 'width', `${Math.round(waveElapsedFill(remainingTicks, durationTicks) * 100)}%`);
-        dom.threat.setAttribute('aria-label', `Next wave in ${clock}`);
-        dom.threat.setAttribute('aria-valuemin', '0');
-        dom.threat.setAttribute('aria-valuenow', String(remainingSeconds));
-        dom.threat.setAttribute('aria-valuemax', String(durationSeconds));
+        this._setAttr(dom.threat, 'aria-label', `Next wave in ${clock}`);
+        this._setAttr(dom.threat, 'aria-valuemin', '0');
+        this._setAttr(dom.threat, 'aria-valuenow', String(remainingSeconds));
+        this._setAttr(dom.threat, 'aria-valuemax', String(durationSeconds));
       }
       if (dom.killWord && dom.killFig) {
-        dom.killWord.hidden = false;
-        dom.killFig.hidden = false;
+        this._setHidden(dom.killWord, false);
+        this._setHidden(dom.killFig, false);
         this._setText(dom.killWord, 'KILLS');
         this._setText(dom.killFig, num(census.resolved));
       }
     } else if (showThreat) {
-      dom.threat.hidden = false;
-      if (dom.killWord) dom.killWord.hidden = true;
-      if (dom.killFig) dom.killFig.hidden = true;
+      this._setHidden(dom.threat, false);
+      if (dom.killWord) this._setHidden(dom.killWord, true);
+      if (dom.killFig) this._setHidden(dom.killFig, true);
       this._setText(dom.threatWord, swarm ? 'HOSTILES' : 'THREAT');
       this._setText(dom.threatFig, `${census.remaining} / ${Math.max(census.total, census.remaining)}`);
       const fill = census.total > 0 ? (census.total - census.remaining) / census.total : 1;
       this._setStyle(dom.threatFill, 'width', `${Math.round(Math.max(0, Math.min(1, fill)) * 100)}%`);
-      dom.threat.setAttribute('aria-label', 'Hostiles remaining');
-      dom.threat.setAttribute('aria-valuenow', String(census.remaining));
-      dom.threat.setAttribute('aria-valuemax', String(Math.max(census.total, census.remaining)));
+      this._setAttr(dom.threat, 'aria-label', 'Hostiles remaining');
+      this._setAttr(dom.threat, 'aria-valuenow', String(census.remaining));
+      this._setAttr(dom.threat, 'aria-valuemax', String(Math.max(census.total, census.remaining)));
     } else {
-      dom.threat.hidden = true;
-      if (dom.killWord) dom.killWord.hidden = true;
-      if (dom.killFig) dom.killFig.hidden = true;
+      this._setHidden(dom.threat, true);
+      if (dom.killWord) this._setHidden(dom.killWord, true);
+      if (dom.killFig) this._setHidden(dom.killFig, true);
     }
 
     // The chain, if the ruleset has one. A swarm run shows the chain and hides the style
@@ -317,7 +322,7 @@ export const survivalHud = {
     // that says so in a number the player is already watching.
     const chain = swarm ? this._chain : 0;
     const showChain = swarm && chain > 0;
-    dom.chainRow.hidden = !showChain;
+    this._setHidden(dom.chainRow, !showChain);
     if (showChain) {
       this._setText(dom.chainFig, `${chain}`);
       this._setText(dom.chainBest, this._chainBest > chain ? `best ${this._chainBest}` : '');
@@ -340,7 +345,7 @@ export const survivalHud = {
       } else if (dom.chainRow.dataset.urgency) {
         delete dom.chainRow.dataset.urgency;
       }
-      dom.chainRow.setAttribute('aria-label', badge
+      this._setAttr(dom.chainRow, 'aria-label', badge
         ? `Kill chain ${chain}, last kill ${badge}${final ? ', ending' : ''}`
         : `Kill chain ${chain}${final ? ', ending' : ''}`);
     }
@@ -350,10 +355,10 @@ export const survivalHud = {
     const combo=st.stunts?.combo;
     const styleMult=combo?styleMultiplier(combo):1;
     const showStyle=!!combo?.activeCount;
-    dom.styleWord.hidden = !showStyle;
-    dom.styleFig.hidden = !showStyle;
+    this._setHidden(dom.styleWord, !showStyle);
+    this._setHidden(dom.styleFig, !showStyle);
     if (showStyle) this._setText(dom.styleFig, `${Math.floor(combo.activePoints)} pending ×${styleMult.toFixed(2)} · ${2-combo.bridges.length} links`);
-    dom.line.hidden=!showStyle;
+    this._setHidden(dom.line, !showStyle);
     if(showStyle)this._setText(dom.line,combo.acts.map(a=>a.name).join(' → '));
 
     this._setText(dom.score, num(run.score));
@@ -363,21 +368,21 @@ export const survivalHud = {
 
     const simTime = Number.isFinite(st.simTime) ? st.simTime : 0;
     if (this._earn && simTime <= this._earnUntil) {
-      dom.earn.hidden = false;
+      this._setHidden(dom.earn, false);
       this._setText(dom.earn, this._earn);
     } else {
       if (this._earn) this._clearEarn();
-      dom.earn.hidden = true;
+      this._setHidden(dom.earn, true);
     }
 
     // PQ-174.06: after a death the readout keeps the cause and the missed telegraph on the
     // glass, beside the LOST word — a death the player cannot read is a bug report.
     if (this._death && dom.death) {
-      dom.death.hidden = false;
+      this._setHidden(dom.death, false);
       this._setText(dom.death, deathLineFor(this._death.receipt, this._killerTell(), this._death.simTime));
-      dom.death.setAttribute('aria-label', 'Cause of death');
+      this._setAttr(dom.death, 'aria-label', 'Cause of death');
     } else if (dom.death) {
-      dom.death.hidden = true;
+      this._setHidden(dom.death, true);
     }
   },
 
@@ -496,11 +501,11 @@ export const survivalHud = {
   // ---- DOM ------------------------------------------------------------------
 
   _hide() {
-    if (this._dom && this._dom.root) this._dom.root.hidden = true;
+    if (this._dom && this._dom.root) this._setHidden(this._dom.root, true);
   },
 
   _show(dom) {
-    if (dom.root.hidden) dom.root.hidden = false;
+    this._setHidden(dom.root, false);
   },
 
   _setText(node, text) {
@@ -524,6 +529,28 @@ export const survivalHud = {
     if (this._last[key] === value) return;
     this._last[key] = value;
     node.style[prop] = value;
+  },
+
+  // INF-003: the same last-written discipline for attributes and visibility. Raw
+  // setAttribute/hidden writes every frame are the readout's largest remaining repeated DOM
+  // mutation on a steady tick — the aria strings change at most once a second while the update
+  // runs at frame rate. Values are string/boolean-coerced so 0 and '0' share one slot.
+  _setAttr(node, name, value) {
+    if (!node) return;
+    const text = String(value);
+    const key = `${node.__crunKey}:attr:${name}`;
+    if (this._last[key] === text) return;
+    this._last[key] = text;
+    node.setAttribute(name, text);
+  },
+
+  _setHidden(node, value) {
+    if (!node) return;
+    const next = !!value;
+    const key = `${node.__crunKey}:hidden`;
+    if (this._last[key] === next) return;
+    this._last[key] = next;
+    node.hidden = next;
   },
 
   _ensureDom() {
@@ -628,6 +655,9 @@ export const survivalHud = {
       chainRow, chainFig, chainCause, chainBest, chainDeplete,
       score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
     };
+    // Rebuilt nodes reuse the same __crunKey values: drop the last-written cache so the first
+    // update repaints fresh nodes instead of trusting slots another mount wrote.
+    this._last = Object.create(null);
     return this._dom;
   },
 
