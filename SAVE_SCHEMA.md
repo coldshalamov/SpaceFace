@@ -327,8 +327,10 @@ Current save version: `14`
 | `$.settings.accessibility.dyslexiaFont` | boolean | false |
 | `$.settings.accessibility.flashReduce` | boolean | false |
 | `$.settings.accessibility.highContrast` | boolean | false |
+| `$.settings.accessibility.motionAsked` | boolean | false |
 | `$.settings.accessibility.motionDefaultVersion` | number | 1 |
 | `$.settings.accessibility.motionPreference` | string | full |
+| `$.settings.accessibility.motionPrompted` | boolean | false |
 | `$.settings.audio` | object | {} |
 | `$.settings.audio.defaultMuteVersion` | number | 1 |
 | `$.settings.audio.master` | number | 0.55 |

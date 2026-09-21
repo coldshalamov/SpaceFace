@@ -59,7 +59,9 @@ export function getForcedColorsActive() { return _forcedColorsActive; }
 // ---------------------------------------------------------------------------------------------------
 export const COLORBLIND_MODES = ['none', 'protanopia', 'deuteranopia', 'tritanopia'];
 export const MOTION_PREFERENCES = ['system', 'reduce', 'full'];
+export const MOTION_ASK_CHOICES = ['full', 'reduce'];
 export const CAPTION_SIZES = ['small', 'medium', 'large'];
+export const FIRST_BOOT_MOTION_ASK_ID = 'motionAsk';
 
 const PALETTES = {
   none: {
@@ -248,6 +250,26 @@ function systemMotionReduced() {
   catch (_) { return false; }
 }
 
+/**
+ * First boot with the OS reduced-motion hint must ask Full or Reduce. Full without motionAsked is
+ * the silent default, never a stored answer. An explicit Reduce or System is already a choice.
+ * Pass `osReduced` from tests; omit it to read the live media query.
+ */
+export function shouldAskMotionPreference(settings, osReduced) {
+  const reduced = osReduced == null ? systemMotionReduced() : !!osReduced;
+  if (!reduced) return false;
+  const access = settings && settings.accessibility && typeof settings.accessibility === 'object'
+    ? settings.accessibility
+    : {};
+  if (access.motionAsked === true) return false;
+  const preference = normalizedMotionPreference(settings);
+  return preference !== 'reduce' && preference !== 'system';
+}
+
+export function firstBootScreenId(settings, osReduced) {
+  return shouldAskMotionPreference(settings, osReduced) ? FIRST_BOOT_MOTION_ASK_ID : 'mainMenu';
+}
+
 function applyMotionPreference(settings, root) {
   const preference = normalizedMotionPreference(settings);
   const reduced = preference === 'reduce' || (preference === 'system' && systemMotionReduced());
@@ -425,13 +447,16 @@ export const MOTION_CHOICE_COPY = Object.freeze({
   reduceLabel: 'Reduce',
 });
 
-/** True when the settings tree already carries an explicit persisted motion choice. */
+/** True when the settings tree already carries an explicit persisted motion choice.
+ *  Reconciled (PQ-210.07): the shipped defaults carry motionPreference 'full' AND
+ *  video.motionReduce, so key/value presence cannot prove a choice — only the motionAsked
+ *  marker does. Reduce/System exist only when someone set them; unmarked Full is the default. */
 export function hasExplicitMotionChoice(settings) {
+  const a = settings && settings.accessibility && typeof settings.accessibility === 'object'
+    ? settings.accessibility : null;
+  if (a && a.motionAsked === true) return true;
   const explicit = pick(settings, 'accessibility.motionPreference', null);
-  if (MOTION_PREFERENCES.includes(explicit)) return true;
-  // Migration seam: an explicitly persisted boolean is also a settled choice.
-  const video = settings && settings.video && typeof settings.video === 'object' ? settings.video : null;
-  return !!(video && Object.prototype.hasOwnProperty.call(video, 'motionReduce'));
+  return explicit === 'reduce' || explicit === 'system';
 }
 
 /** True when the one-time motion prompt has already been answered or shown. */
@@ -455,22 +480,30 @@ export function shouldPromptMotionChoice(settings, osReduced) {
 }
 
 /**
- * Persist an explicit first-boot motion choice exactly once. `choice` is 'reduce' or 'full'.
- * Sets accessibility.motionPreference + motionPrompted and syncs the existing
- * video.motionReduce runtime contract. Returns the persisted choice.
+ * Persist an explicit motion choice exactly once. Accepts 'full', 'reduce', and 'system'
+ * (the Settings screen offers all three; the first-boot prompt offers Full / Reduce).
+ * Sets accessibility.motionPreference plus BOTH settled flags — motionPrompted (INF-007
+ * one-time gate) and motionAsked (first-boot screen gate) — and syncs the existing
+ * video.motionReduce runtime contract for explicit reduce/full ('system' resolves to the
+ * effective value inside applyMotionPreference). Returns the persisted choice, null when
+ * the input is not a motion preference. `target` is an optional root element override.
  */
-export function recordMotionChoice(settings, choice) {
-  const normalized = choice === 'reduce' ? 'reduce' : 'full';
-  const s = settings && typeof settings === 'object' ? settings : {};
+export function recordMotionChoice(settings, choice, target) {
+  if (!settings || typeof settings !== 'object') return null;
+  if (!MOTION_PREFERENCES.includes(choice)) return null;
+  const s = settings;
   if (!s.accessibility || typeof s.accessibility !== 'object') s.accessibility = {};
-  s.accessibility.motionPreference = normalized;
+  s.accessibility.motionPreference = choice;
+  s.accessibility.motionAsked = true;
   s.accessibility.motionPrompted = true;
   if (!s.video || typeof s.video !== 'object') s.video = {};
-  s.video.motionReduce = normalized === 'reduce';
+  if (choice === 'reduce') s.video.motionReduce = true;
+  else if (choice === 'full') s.video.motionReduce = false;
   // Apply immediately so the live runtime booleans agree without waiting for the next
   // settings:changed cycle. applyMotionPreference is idempotent and headless-safe.
-  try { applyMotionPreference(s, typeof document !== 'undefined' ? document.documentElement : null); } catch (_) {}
-  return normalized;
+  const root = target || (typeof document !== 'undefined' ? document.documentElement : null);
+  try { applyMotionPreference(s, root); } catch (_) {}
+  return choice;
 }
 
 /**

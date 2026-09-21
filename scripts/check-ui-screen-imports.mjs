@@ -15,6 +15,7 @@ const checks = [
   ['../src/ui/screens/drill.js', 'drillScreen'],
   ['../src/ui/screens/base.js', 'baseScreen'],
   ['../src/ui/screens/mainMenu.js', 'mainMenuScreen'],
+  ['../src/ui/screens/motionAsk.js', 'motionAskScreen'],
   ['../src/ui/screens/newGame.js', 'newGameScreen'],
   ['../src/ui/screens/pause.js', 'pauseScreen'],
   ['../src/ui/screens/gameOver.js', 'gameOverScreen'],
@@ -153,6 +154,7 @@ const localizedCoreCopySrc = readFileSync(new URL('../src/ui/localizedCoreCopy.j
 // localmap.js and starmap.js.
 const MIGRATED_SCREENS = Object.freeze([
   ['mainMenu', '../src/ui/screens/mainMenu.js'],
+  ['motionAsk', '../src/ui/screens/motionAsk.js'],
   ['newGame', '../src/ui/screens/newGame.js'],
   ['pause', '../src/ui/screens/pause.js'],
   ['settings', '../src/ui/screens/settings.js'],

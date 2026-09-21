@@ -20,6 +20,7 @@ import { injectHudCss } from '../src/ui/views/hudStyles.js';
  *  listed as unavailable on purpose: better an honest hole than a fake that looks finished. */
 const SCREENS = Object.freeze({
   mainMenu: () => import('../src/ui/screens/mainMenu.js').then((m) => m.mainMenuScreen),
+  motionAsk: () => import('../src/ui/screens/motionAsk.js').then((m) => m.motionAskScreen),
   newGame: () => import('../src/ui/screens/newGame.js').then((m) => m.newGameScreen),
   pause: () => import('../src/ui/screens/pause.js').then((m) => m.pauseScreen),
   settings: () => import('../src/ui/screens/settings.js').then((m) => m.settingsScreen),

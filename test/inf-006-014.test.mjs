@@ -138,12 +138,21 @@ test('INF-007: fresh profile with OS reduced-motion is asked once', () => {
 
 test('INF-007: explicit prior choices and migration are preserved', () => {
   assert.equal(shouldPromptMotionChoice({ accessibility: { motionPreference: 'reduce' } }, true), false);
-  assert.equal(shouldPromptMotionChoice({ accessibility: { motionPreference: 'full' } }, true), false);
   assert.equal(shouldPromptMotionChoice({ accessibility: { motionPreference: 'system' } }, true), false);
-  // Migrated profile: an explicitly persisted boolean is a settled choice.
+  // PQ-210.07 reconciliation: the shipped DEFAULTS carry motionPreference 'full' and
+  // video.motionReduce, so an unmarked 'full' is the silent default, not a stored answer —
+  // it must not settle the ask. An explicitly chosen Full carries the motionAsked marker.
+  assert.equal(shouldPromptMotionChoice({ accessibility: { motionPreference: 'full' } }, true), true,
+    'unmarked Full is the silent default: the one-time ask must fire');
+  assert.equal(shouldPromptMotionChoice({ accessibility: { motionPreference: 'full', motionAsked: true } }, true), false,
+    'a marked Full is a stored answer: never re-asked');
+  // Migrated profile: key-presence alone cannot prove a choice (the defaults carry the same
+  // keys), so an unmarked legacy profile is asked once and settles when it answers.
   const migrated = { video: { motionReduce: true } };
-  assert.equal(hasExplicitMotionChoice(migrated), true);
-  assert.equal(shouldPromptMotionChoice(migrated, true), false);
+  assert.equal(hasExplicitMotionChoice(migrated), false);
+  assert.equal(shouldPromptMotionChoice(migrated, true), true);
+  const migratedAnswered = { video: { motionReduce: true }, accessibility: { motionAsked: true } };
+  assert.equal(shouldPromptMotionChoice(migratedAnswered, true), false);
   assert.equal(motionPromptSettled({ accessibility: { motionPrompted: true } }), true);
   const full = {};
   assert.equal(recordMotionChoice(full, 'full'), 'full');
@@ -255,6 +264,30 @@ test('INF-009: default-kit muzzle flow evolves on the effect clock, then stops c
   const otherFamily = sourceSlot({ source: 'rail-shear' });
   pool._strip(otherFamily, 0, 0, 0, 2, 0.5);
   assert.equal(seen[seen.length - 1][16], 0, 'only the default-kit family changes in this unit');
+});
+
+test('INF-009: starter pulse-bolt (split-aperture) flow evolves, then stops cleanly', () => {
+  // The shipped starter gun is wpn_pulse_laser_s (STARTER_WEAPON_ID): energy damage maps it to
+  // the pulse-bolt variant, whose source is split-aperture — the family a fresh profile fires.
+  const { pool, seen } = dischargeHarness();
+  const slot = sourceSlot({ source: 'split-aperture', variant: 'pulse-bolt' });
+  pool._strip(slot, 0, 0, 0, 2, 0.5);
+  const fresh = seen[seen.length - 1][16];
+  assert.ok(fresh > 0, `starter muzzle flow is live during the shot (got ${fresh})`);
+  slot.age = 0.09;
+  pool._strip(slot, 0, 0, 0, 2, 0.5);
+  const late = seen[seen.length - 1][16];
+  assert.ok(late < fresh, `the envelope decays across the shot (${late} < ${fresh})`);
+  pool.time = 0.05;
+  slot.age = 0;
+  pool._strip(slot, 0, 0, 0, 2, 0.5);
+  assert.notEqual(seen[seen.length - 1][16], fresh, 'the flow rides the effect clock');
+  const impact = sourceSlot({ role: 1, source: 'split-aperture', variant: 'pulse-bolt' });
+  pool._strip(impact, 0, 0, 0, 2, 0.5);
+  assert.equal(seen[seen.length - 1][16], 0, 'impact strips keep the untouched path');
+  const dim = sourceSlot({ source: 'split-aperture', variant: 'pulse-bolt', opacity: 0.2 });
+  pool._strip(dim, 0, 0, 0, 2, 0.5);
+  assert.ok(seen[seen.length - 1][16] < fresh, 'reduced flash scales the flow down');
 });
 
 // --- INF-010: Crucible retry -----------------------------------------------------------

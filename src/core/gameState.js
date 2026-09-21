@@ -55,7 +55,7 @@ function defaultSettings() {
       colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
       // Full by default: the OS reduced-motion hint is an explicit opt-in (System), never a silent
       // one — Windows "Animation effects: off" is a desktop tweak, not a request to strip combat feel.
-      motionPreference: 'full', motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION, captions: false, audioCues: true, captionSize: 'medium', captionBackground: true,
+      motionPreference: 'full', motionAsked: false, motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION, captions: false, audioCues: true, captionSize: 'medium', captionBackground: true,
     },
   };
 }

@@ -39,6 +39,7 @@ import {
   CHECKLIST_ITEMS,
   evaluateChecklist,
 } from '../accessibilityChecklist.js';
+import { recordMotionChoice } from '../accessibility.js';
 import { el, words, settle, cue } from '../kit/index.js';
 
 const SETTINGS_SHEET_ID = 'of-settings-css';
@@ -425,7 +426,10 @@ export const settingsScreen = {
       // feel module reads settings.video.motionReduce every trigger, so the preference takes effect now.
       rowSelect('Motion effects', () => (s.accessibility && s.accessibility.motionPreference) || (vd.motionReduce ? 'reduce' : 'full'),
         [['system', 'Follow system'], ['reduce', 'Reduced'], ['full', 'Full']],
-        (v) => this._set(ctx, 'accessibility', 'motionPreference', v));
+        (v) => {
+          recordMotionChoice(s, v);
+          this._set(ctx, 'accessibility', 'motionPreference', v);
+        });
       rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v, persist) => this._set(ctx, 'video', 'screenShake', v, persist));
       rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v, persist) => {
         this._set(ctx, null, 'uiScale', v, persist);
@@ -533,7 +537,7 @@ export const settingsScreen = {
       }
     } else if (refs.active === 'Access') {
       const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
-        motionPreference: 'full', captions: true, audioCues: true, captionSize: 'medium', captionBackground: true });
+        motionPreference: 'full', motionAsked: false, captions: true, audioCues: true, captionSize: 'medium', captionBackground: true });
       // Language: the default route is English; choosing here switches the live locale and re-renders
       // every mounted screen through the shared document bridge (no reload).
       rowSelect('Language', () => chosenLocale(s), LANGUAGE_OPTIONS.map((option) => [option.id, option.label]),
@@ -550,7 +554,10 @@ export const settingsScreen = {
       rowToggle('Readable font', () => !!ac.dyslexiaFont, (v) => this._set(ctx, 'accessibility', 'dyslexiaFont', v));
       rowSelect('Motion effects', () => ac.motionPreference || (s.video.motionReduce ? 'reduce' : 'full'),
         [['system', 'Follow system'], ['reduce', 'Reduced'], ['full', 'Full']],
-        (v) => this._set(ctx, 'accessibility', 'motionPreference', v));
+        (v) => {
+          recordMotionChoice(s, v);
+          this._set(ctx, 'accessibility', 'motionPreference', v);
+        });
       rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));
       rowToggle('Audio cues', () => ac.audioCues !== false, (v) => this._set(ctx, 'accessibility', 'audioCues', v));
       const statement = build.note('Accessibility statement: contrast, reduced motion, remap, text scale, assists, and captions are listed below. Every voiced bark is captioned when Gameplay captions is on.');

@@ -153,7 +153,8 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
 .k-world--plate { left: 0; width: 100%; background-position: center; background-size: cover;
   background-repeat: no-repeat; opacity: 1;
   transition: opacity var(--k-d-temp) var(--k-ease); }
-[data-screen="mainMenu"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-title.jpg'); }
+[data-screen="mainMenu"] .k-world--plate,
+[data-screen="motionAsk"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-title.jpg'); }
 [data-screen="crucible"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-crucible-door.jpg'); }
 [data-screen="station"]  .k-world--plate { background-image: url('../assets/cinematics/menu_hangar_bg.jpg'); }
 /* The stage is live: the still steps aside and the renderer's world is the picture. */

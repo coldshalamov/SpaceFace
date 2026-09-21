@@ -69,6 +69,7 @@ import { createComms } from './comms.js';
 import { mountNemesisComms } from './nemesisComms.js';
 import { mountCapitalBossOverlay } from './capitalBossOverlayMount.js';
 import { createWingmanRadial } from './wingmanRadial.js';
+import { firstBootScreenId, shouldAskMotionPreference } from './accessibility.js';
 
 // id-of-export → { load, export }. Order matters only for nicer console logs.
 // Use literal dynamic-import call sites, not import(path): esbuild can rewrite these to bundled
@@ -96,6 +97,7 @@ const SCREEN_MODULES = [
   { path: './asteroid/asteroidScreen.js', load: () => import('./asteroid/asteroidScreen.js'), name: 'asteroidScreen' },
   { path: './screens/base.js', load: () => import('./screens/base.js'), name: 'baseScreen' },
   { path: './screens/mainMenu.js', load: () => import('./screens/mainMenu.js'), name: 'mainMenuScreen' },
+  { path: './screens/motionAsk.js', load: () => import('./screens/motionAsk.js'), name: 'motionAskScreen' },
   { path: './screens/newGame.js', load: () => import('./screens/newGame.js'), name: 'newGameScreen' },
   { path: './screens/pause.js', load: () => import('./screens/pause.js'), name: 'pauseScreen' },
   { path: './screens/gameOver.js', load: () => import('./screens/gameOver.js'), name: 'gameOverScreen' },
@@ -125,7 +127,7 @@ const SCREEN_MODULES = [
 // are huge modules; starting them in the same microtask as mainMenu freezes the loading
 // terminal. They still register before first dock/map use via the deferred wave below.
 const BOOT_SCREEN_EXPORTS = new Set([
-  'mainMenuScreen', 'newGameScreen', 'pauseScreen', 'gameOverScreen',
+  'mainMenuScreen', 'motionAskScreen', 'newGameScreen', 'pauseScreen', 'gameOverScreen',
   'settingsScreen', 'saveLoadScreen', 'helpScreen', 'creditsScreen',
   'crucibleScreen', 'crucibleResultsScreen',
 ]);
@@ -734,11 +736,13 @@ export const ui = {
         this._pendingMainMenu = false;
         return;
       }
+      const askMotion = shouldAskMotionPreference(this.state.settings);
       const menuReady = this._registeredScreens &&
         this._registeredScreens.has('mainMenu') &&
-        this._registeredScreens.has('newGame');
+        this._registeredScreens.has('newGame') &&
+        (!askMotion || this._registeredScreens.has('motionAsk'));
       if (this.screenManager && menuReady) {
-        if (!this.screenManager.top()) this.screenManager.pushScreen('mainMenu');
+        if (!this.screenManager.top()) this.screenManager.pushScreen(firstBootScreenId(this.state.settings));
         this._pendingMainMenu = false;
       } else {
         this._pendingMainMenu = true;
@@ -1234,7 +1238,7 @@ export const ui = {
         }
         // If we are in menu mode and the title flow just became usable, show it. The title screen
         // waits for its primary New Game target so players never click a half-registered menu.
-        if ((def.id === 'mainMenu' || def.id === 'newGame') &&
+        if ((def.id === 'mainMenu' || def.id === 'newGame' || def.id === 'motionAsk') &&
           this.state.mode === 'menu' && (this._pendingMainMenu || !this.screenManager.isOpen())) {
           try { if (this._showMainMenuWhenReady) this._showMainMenuWhenReady(); }
           catch (e) { console.error(e); }

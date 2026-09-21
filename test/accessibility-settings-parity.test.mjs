@@ -8,6 +8,9 @@ const { createGameState } = await import('../src/core/gameState.js');
 const {
   ACCESSIBILITY_SETTINGS_SCHEMA,
   applyAccessibility,
+  shouldAskMotionPreference,
+  recordMotionChoice,
+  firstBootScreenId,
 } = await import('../src/ui/accessibility.js');
 
 const state = createGameState(606);
@@ -18,6 +21,7 @@ const root = createRoot();
 // effects" off (a desktop tweak); the old 'system' default inherited that silently and stripped
 // hit-stop, trauma, event lights and force-field motion. Full is the default; System is an opt-in.
 assert.equal(state.settings.accessibility.motionPreference, 'full');
+assert.equal(state.settings.accessibility.motionAsked, false);
 assert.equal(state.settings.accessibility.captions, false,
   'captions are an opt-in: every captioned event already has its sound and its effect (Package 0, 2026-09-14)');
 assert.equal(state.settings.accessibility.captionSize, 'medium');
@@ -35,6 +39,12 @@ applied = applyAccessibility(state.settings, root);
 assert.equal(applied.motionReduced, false, 'the OS hint must never strip combat feel from a player who did not ask');
 assert.equal(state.settings.video.motionReduce, false);
 assert.equal(root.classList.contains('sf-reduce-motion'), false);
+assert.equal(shouldAskMotionPreference(state.settings, true), true,
+  'first boot with the OS hint must ask before anyone plays');
+assert.equal(firstBootScreenId(state.settings, true), 'motionAsk');
+assert.equal(shouldAskMotionPreference(state.settings, false), false,
+  'without the OS hint, Full is the answer and there is nothing to ask');
+assert.equal(firstBootScreenId(state.settings, false), 'mainMenu');
 
 media.setMatches(false);
 state.settings.accessibility.motionPreference = 'system';
@@ -68,6 +78,7 @@ const settingsSource = readFileSync(new URL('../src/ui/screens/settings.js', imp
 assert.match(settingsSource, /setAttribute\('role', 'tablist'\)/);
 assert.match(settingsSource, /labelEl\.htmlFor = id/);
 assert.match(settingsSource, /'Follow system'/);
+assert.match(settingsSource, /recordMotionChoice/);
 assert.match(settingsSource, /'Gameplay captions'/);
 assert.match(settingsSource, /'Solid caption backing'/);
 
@@ -85,14 +96,20 @@ const persistedState = createGameState(607);
 const bus = createBus();
 save.init({ state: persistedState, bus, helpers: {}, registry: { get: () => null } });
 Object.assign(persistedState.settings.accessibility, {
-  motionPreference: 'reduce', captions: false, captionSize: 'large', captionBackground: false,
+  motionPreference: 'reduce', motionAsked: true, captions: false, captionSize: 'large', captionBackground: false,
 });
 bus.emit('settings:changed', { section: 'accessibility', key: 'captions', value: false });
 const profile = JSON.parse(localStorage.getItem('sf.settings.profile.v1'));
 assert.equal(profile.settings.accessibility.motionPreference, 'reduce');
+assert.equal(profile.settings.accessibility.motionAsked, true);
 assert.equal(profile.settings.accessibility.captions, false);
 assert.equal(profile.settings.accessibility.captionSize, 'large');
 assert.equal(profile.settings.accessibility.captionBackground, false);
+
+const uiRootSource = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+assert.match(uiRootSource, /shouldAskMotionPreference/);
+assert.match(uiRootSource, /motionAskScreen/);
+assert.match(uiRootSource, /pushScreen\(firstBootScreenId\(/);
 
 console.log('Accessibility settings parity OK - system motion, captions, labels, scale and gamepad focus are wired.');
 
