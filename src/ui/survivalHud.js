@@ -21,7 +21,7 @@ import {
 } from '../systems/survivalResults.js';
 import { runXpForLevel } from '../core/runState.js';
 import { styleMultiplier } from '../systems/stuntCombo.js';
-import { SWARM_CHAIN_VARIED_STEP } from '../systems/swarmChain.js';
+import { SWARM_CHAIN_VARIED_STEP, SWARM_CHAIN_WARN_S, SWARM_CHAIN_WINDOW_S } from '../systems/swarmChain.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
@@ -84,6 +84,18 @@ export function chainCauseBadge(cause, step) {
   const word = cause.replace(/_/g, ' ').toUpperCase();
   if (step === SWARM_CHAIN_VARIED_STEP) return `${word} +2`;
   return word;
+}
+
+/**
+ * Seconds left in the chain window from the kill's sim-time anchor (INF-032). Pure: the same
+ * subtraction swarmChain's lapse check runs — `expiresIn` restated from the event's `at` — so
+ * the mark agrees with the four-second window by construction. Slow time advances simTime
+ * slowly and pause freezes it, so the mark slows and freezes with the window itself. A
+ * missing anchor reads as a full window: a chain that just started owes no depletion.
+ */
+export function chainWindowRemaining(chainAt, simNow) {
+  if (!Number.isFinite(chainAt) || !Number.isFinite(simNow)) return SWARM_CHAIN_WINDOW_S;
+  return Math.max(0, chainAt + SWARM_CHAIN_WINDOW_S - simNow);
 }
 
 /** Live census for the wave: how many bodies are still out there, and how many are owed. */
@@ -175,6 +187,7 @@ export const survivalHud = {
     this._chainBest = 0;
     this._chainCause = null;
     this._chainStep = 0;
+    this._chainAt = null;
     this._waveProgress = null;
     this._death = null;
     this._lastTells = [];
@@ -191,6 +204,7 @@ export const survivalHud = {
       this._chainBest = 0;
       this._chainCause = null;
       this._chainStep = 0;
+      this._chainAt = null;
     }));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveProgress', (p) => this._onWaveProgress(p)));
@@ -313,9 +327,22 @@ export const survivalHud = {
       if (dom.chainCause) dom.chainCause.hidden = !badge;
       const tier = chain >= 50 ? 'peak' : (chain >= 15 ? 'hot' : 'warm');
       if (dom.chainRow.dataset.tier !== tier) dom.chainRow.dataset.tier = tier;
+      // The depletion mark: what share of the four-second window is left, from the kill's own
+      // sim-time anchor. A 2px underline, never a second panel, and the number is untouched.
+      const simNow = Number.isFinite(st.simTime) ? st.simTime : 0;
+      const remaining = chainWindowRemaining(this._chainAt, simNow);
+      const deplete = Math.max(0, Math.min(1, remaining / SWARM_CHAIN_WINDOW_S));
+      this._setStyle(dom.chainDeplete, 'width', `${Math.round(deplete * 100)}%`);
+      // The last second reads as colour plus a word — never flashing, never motion. INF-032.
+      const final = remaining <= SWARM_CHAIN_WARN_S;
+      if (final) {
+        if (dom.chainRow.dataset.urgency !== 'final') dom.chainRow.dataset.urgency = 'final';
+      } else if (dom.chainRow.dataset.urgency) {
+        delete dom.chainRow.dataset.urgency;
+      }
       dom.chainRow.setAttribute('aria-label', badge
-        ? `Kill chain ${chain}, last kill ${badge}`
-        : `Kill chain ${chain}`);
+        ? `Kill chain ${chain}, last kill ${badge}${final ? ', ending' : ''}`
+        : `Kill chain ${chain}${final ? ', ending' : ''}`);
     }
 
     // Style is a live figure, not a phase readout: it decays as you repeat yourself and climbs as
@@ -400,12 +427,15 @@ export const survivalHud = {
     // The variety result, exactly as swarmChain scored it — never re-derived here. INF-031.
     this._chainCause = payload && typeof payload.cause === 'string' ? payload.cause : null;
     this._chainStep = payload && Number.isFinite(payload.step) ? payload.step : 0;
+    // The window anchor for the depletion mark — the same sim clock the lapse runs on. INF-032.
+    this._chainAt = payload && Number.isFinite(payload.at) ? payload.at : null;
   },
 
   _onChainBroken() {
     this._chain = 0;
     this._chainCause = null;
     this._chainStep = 0;
+    this._chainAt = null;
   },
 
   _onWavePlanned(payload) {
@@ -460,6 +490,7 @@ export const survivalHud = {
     this._chainBest = 0;
     this._chainCause = null;
     this._chainStep = 0;
+    this._chainAt = null;
   },
 
   // ---- DOM ------------------------------------------------------------------
@@ -545,6 +576,10 @@ export const survivalHud = {
     const chainFig = make('span', 'sf-crun__chainfig', chainRow);
     const chainCause = make('span', 'sf-crun__chaincause', chainRow);
     const chainBest = make('span', 'sf-crun__chainbest', chainRow);
+    // The window depletion mark: a 2px underline on its own flex line, reusing the threat
+    // track/fill grammar. The number above it is never touched. INF-032.
+    const chainDepleteTrack = make('span', 'sf-crun__track sf-crun__track--chain', chainRow);
+    const chainDeplete = make('span', 'sf-crun__fill sf-crun__fill--you', chainDepleteTrack);
     chainRow.hidden = true;
 
     const figures = make('div', 'sf-crun__row sf-crun__row--figs', root);
@@ -590,7 +625,7 @@ export const survivalHud = {
     host.appendChild(root);
     this._dom = {
       root, label, waveN, phase, threat, threatWord, threatFill, threatFig,
-      chainRow, chainFig, chainCause, chainBest,
+      chainRow, chainFig, chainCause, chainBest, chainDeplete,
       score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
     };
     return this._dom;
@@ -638,7 +673,9 @@ export const survivalHud = {
   .sf-crun__fig--goal { color:var(--dp-lamp-hot, var(--sf-goal, #e3a13d)); text-shadow:var(--dp-emit-lamp, none); }
   /* The chain. Three channels as always — the word, the figure and its colour — so a forced-colors
      or colour-blind reader loses nothing. No animation, so reduced-motion needs no variant. */
-  .sf-crun__chain { display:flex; align-items:baseline; gap:8px; }
+  .sf-crun__chain { display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 8px; }
+  .sf-crun__track--chain { flex:1 1 100%; min-width:0; height:2px; }
+  .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:var(--dp-danger-hot, var(--sf-foe)); }
   .sf-crun__chainfig { font-family:var(--dp-face-etch, var(--sf-data-face)); font-variation-settings:"wght" 820, "wdth" 84;
     font-weight:700; font-size:26px; line-height:1.05; font-variant-numeric:tabular-nums;
     color:var(--dp-lamp-hot, var(--sf-you)); text-shadow:var(--dp-emit-lamp, none); }
@@ -659,7 +696,8 @@ export const survivalHud = {
     .sf-crun { border:0; background:Canvas; color:CanvasText; }
     .sf-crun__fill { background:Highlight; forced-color-adjust:none; }
     .sf-crun__wave, .sf-crun__chainfig, .sf-crun__chaincause, .sf-crun__fig--goal, .sf-crun__earn { color:CanvasText; text-shadow:none; }
-    .sf-crun__phase--hot, .sf-crun__death, .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig { color:Highlight; text-shadow:none; }
+    .sf-crun__phase--hot, .sf-crun__death, .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig,
+    .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:Highlight; text-shadow:none; }
   }
   @media (max-width: 900px) {
     .sf-crun { min-width:0; }

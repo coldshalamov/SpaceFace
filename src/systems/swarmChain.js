@@ -41,6 +41,8 @@ export const SWARM_CHAIN_WINDOW_S = 4;
 /** Chain gained by an ordinary kill, and by one that arrived differently from the last. */
 export const SWARM_CHAIN_STEP = 1;
 export const SWARM_CHAIN_VARIED_STEP = 2;
+/** Remaining seconds at which the chain says its one final warning. INF-032. */
+export const SWARM_CHAIN_WARN_S = 1;
 /** Nothing above this pays more; the number keeps climbing, the score stops running away. */
 export const SWARM_CHAIN_SCORE_CAP = 60;
 
@@ -134,9 +136,25 @@ export const swarmChain = {
     // advance around them; a chain must not die because the player was reading three cards.
     if (run.phase !== 'active' && run.phase !== 'cleanup') {
       this._lastKillAt = simTimeOf(st);
+      this._pinned = true;
       return;
     }
-    if (simTimeOf(st) - this._lastKillAt > SWARM_CHAIN_WINDOW_S) this._break('lapsed');
+    // Back from a menu with a live chain: re-announce it from NOW so every readout restarts
+    // its window instead of draining through the menu stay. INF-032.
+    if (this._pinned) {
+      this._pinned = false;
+      this._emit('swarm:chain', {
+        chain: this._chain, best: this._best, cause: this._lastCause, step: this._lastStep,
+        at: simTimeOf(st), wave: run.wave,
+      });
+    }
+    const remaining = SWARM_CHAIN_WINDOW_S - (simTimeOf(st) - this._lastKillAt);
+    if (remaining <= 0) { this._break('lapsed'); return; }
+    // The last second gets exactly one soft warning per chain — no countdown chatter. INF-032.
+    if (remaining <= SWARM_CHAIN_WARN_S && !this._warned) {
+      this._warned = true;
+      this._emit('audio:cue', { id: 'ui_alert', gain: 0.45 });
+    }
   },
 
   /** Live chain state, for the readout and for tests. Read-only. */
@@ -155,9 +173,12 @@ export const swarmChain = {
     this._chain = 0;
     this._best = 0;
     this._lastCause = null;
+    this._lastStep = 0;
     this._lastKillAt = 0;
     this._milestone = 0;
     this._pendingMilestone = 0;
+    this._warned = false;
+    this._pinned = false;
   },
 
   _onKilled(payload) {
@@ -181,7 +202,10 @@ export const swarmChain = {
     const step = continues ? swarmChainStep(cause, this._lastCause) : SWARM_CHAIN_STEP;
     this._chain = continues ? this._chain + step : step;
     this._lastCause = cause;
+    this._lastStep = step;
     this._lastKillAt = now;
+    // A fresh kill opens a fresh window, so the last-second warning arms again. INF-032.
+    this._warned = false;
     if (this._chain > this._best) this._best = this._chain;
 
     const bonus = swarmChainBonus(this._chain);
@@ -198,8 +222,10 @@ export const swarmChain = {
       if (milestone > this._pendingMilestone) this._pendingMilestone = milestone;
     }
     // cause AND step travel together so the readout shows the variety bonus from this result
-    // instead of calculating a second score of its own. INF-031.
-    this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, step, wave: run.wave });
+    // instead of calculating a second score of its own. INF-031. `at` anchors the readout's
+    // depletion mark to the same sim clock the lapse check runs on — slow time and pause
+    // slow and freeze the mark with the window itself. INF-032.
+    this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, step, at: now, wave: run.wave });
   },
 
   _onRunEnded() {
@@ -214,9 +240,12 @@ export const swarmChain = {
     const ended = this._chain;
     this._chain = 0;
     this._lastCause = null;
+    this._lastStep = 0;
     this._milestone = 0;
     // A lapsed chain takes its unsaid milestone with it — congratulating a dead number is noise.
     this._pendingMilestone = 0;
+    this._warned = false;
+    this._pinned = false;
     this._emit('swarm:chainBroken', { chain: ended, best: this._best, reason });
   },
 
