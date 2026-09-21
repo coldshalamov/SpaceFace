@@ -375,6 +375,87 @@ candidate blocks the acceptance now — the remaining requirement is one quiet
 machine window (no foreign Chrome/Electron/Blender CPU) long enough to run
 Browser then Electron on a candidate that includes the route fix.
 
+## Native acceptance attempt — 2026-09-21
+
+Continuation on the isolated worktree `.worktrees/pq040-native`, branch
+`pq040-native`. The uncommitted dynamic-buffer-ranges fixture retarget was
+committed first (`a58b18149`). All three Browser fast gates are green on the
+candidate: 55/55, 6/6, and the render hot-path contract (`Render hot-path
+contract OK`). The Electron route's settle-gate fix
+(`consumePageConditionValue` at `flight-input`) is present in this candidate.
+
+The exact Browser broker command was invoked once:
+
+```text
+node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-browser
+```
+
+It minted claim `25836-0089fb65f2ff734abcf35d9e` and consumed the candidate's
+single launch quota (candidate `2ce41ac8`), then the spawned probe stopped at
+preflight with `PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED`: the 5 s census
+recorded 2.69 foreign CPU cores aggregate against a 0.125 threshold, driven by
+two chrome.exe processes (~6.9 and ~6.3 CPU-seconds each). No acceptance
+runtime launched. This is an environment block, not a Browser failure — but
+the quota is spent, so a retry on this candidate returns `blocked_repeat`.
+
+A Browser diagnostic (`node scripts/check-performance-dirty-ranges.mjs
+--runtime=browser --diagnostic`, non-promoting, no quota) then failed ~75 s in
+at `page.waitForFunction` timeout with `tick: 0`, no player, no ships. Its
+error evidence is unambiguous: `HTTP 404
+/src/ui/capitalBossOverlayMount.js` + `net::ERR_ABORTED` — the static import at
+`src/ui/uiRoot.js:70` (landed in `7ff338881`) references a module that exists
+only as the capital-boss lane's uncommitted worktree file, so the whole
+uiRoot module graph aborts and the default route never boots on any clean
+checkout of this branch.
+
+A quiet window did open (census `active=false`, 0.004–0.04 cores, two
+consecutive samples). The exact Electron broker command was invoked once:
+
+```text
+node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-electron
+```
+
+It consumed the Electron candidate's single launch quota (candidate
+`2dc52cb4`, claim `23276-b9b90e397f36e6a0d2f333f8`), passed the start census
+quiet (0.022 cores), provisioned Electron 43.2.0, and launched — then failed
+at page boot on the identical `HTTP 404 /src/ui/capitalBossOverlayMount.js`
+(`CSP-safe page condition timed out after 30000ms`, `tick: 0`). The run's own
+census shows the machine stayed quiet through the entire attempt
+(0.022 → 0.053 cores): this failure is the committed boot defect, not
+contention.
+
+Root cause is already diagnosed and repaired on `master`: `6b1688f79` ("Boot
+repair: the capital-boss overlay import landed before its module") converts
+the static import to a guarded dynamic import. This branch predates the
+repair, and fixing the candidate requires a `src/ui/uiRoot.js` change, which
+is outside this task's write set.
+
+```yaml
+unit: PQ-040.native-acceptance
+candidateBranch: pq040-native
+candidateHead: a58b18149c744b1bfacea012e285a679a0a35ef6
+candidateWorktree: .worktrees/pq040-native
+fastGateResult: 55 pass / 0 fail + 6 pass / 0 fail + render hot-path OK
+browserManifestInvocations: 1
+browserAcceptanceRuntimeLaunches: 0
+browserBrokerResult: PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED
+browserLaunchQuotaConsumed: true
+browserDiagnosticResult: FAIL at boot — HTTP 404 src/ui/capitalBossOverlayMount.js (dangling import, no measurement windows)
+electronManifestInvocations: 1
+electronAcceptanceRuntimeLaunches: 1
+electronBrokerResult: FAIL at boot — HTTP 404 src/ui/capitalBossOverlayMount.js, census quiet 0.022→0.053 cores
+electronLaunchQuotaConsumed: true
+dirtyVsFullSpanNumbers: none produced on this candidate (both runtimes died at page boot)
+rootCause: src/ui/uiRoot.js:70 static import of src/ui/capitalBossOverlayMount.js, a module that exists only as another lane's uncommitted worktree file (landed 7ff338881); repaired on master by 6b1688f79 guarded dynamic import
+numericAcceptance: unproven
+```
+
+Disposition: **BLOCKED**. The candidate cannot boot the default route, so no
+dirty-range versus full-span numbers exist for it. The next attempt needs a
+candidate that includes `6b1688f79` (or the landed capital-boss module) plus
+one quiet machine window; a repaired candidate mints fresh launch quotas
+automatically because its source digests change.
+
 ## Implemented architecture
 
 ### Scene-scoped publication coordinator
