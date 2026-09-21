@@ -396,6 +396,10 @@ export function createGamepad(ctx) {
       if (!pad && wasConnected) {
         this.connected = false;
         this.id = '';
+        // INF-098: genuine disconnect seen — the next acquisition is a REconnect, so
+        // buttons already down then are live holds, not fresh presses. Boot-time first
+        // acquisition keeps the historical first-tick edge contract (PQ-164.00).
+        this._sawDisconnect = true;
         this._resetState();
         if (bus && bus.emit) bus.emit('gamepad:disconnected', {});
         return;
@@ -403,6 +407,20 @@ export function createGamepad(ctx) {
       if (pad && !wasConnected) {
         this.connected = true;
         this.id = pad.id || 'gamepad';
+        // INF-098: buttons already down at (re)connect are live holds, not fresh presses.
+        // Prime raw-button memory so the remap queue sees no phantom edge, and suppress
+        // action `pressed` for this one frame so reconnecting cannot fire, buy, or confirm
+        // by itself. `prev` still records held, so the next frame reports honestly, and a
+        // release + re-press produces a real fresh edge. Boot-time first acquisition
+        // keeps the historical edge (PQ-164.00); only a post-disconnect reconnect primes.
+        if (this._sawDisconnect) {
+          this._sawDisconnect = false;
+          for (const name in STD) {
+            const b = pad.buttons && pad.buttons[STD[name]];
+            this._prevButtons[name] = !!(b && (b.pressed || b.value > 0.5));
+          }
+          this._suppressEdgesOnce = true;
+        }
         // G9: connection is a discrete activity event — bump shared sequence.
         if (inputHost && typeof inputHost._bumpActivityStamp === 'function') {
           const stamp = inputHost._bumpActivityStamp(live);
@@ -472,7 +490,7 @@ export function createGamepad(ctx) {
         const was = !!prev[action];
         actions[action] = {
           held,
-          pressed: held && !was,
+          pressed: held && !was && !this._suppressEdgesOnce,
           released: !held && was,
           value,
         };
@@ -489,6 +507,8 @@ export function createGamepad(ctx) {
       } else {
         this.actions = actions;
       }
+      // INF-098: the reconnect-frame edge suppression is consumed here — exactly one frame.
+      this._suppressEdgesOnce = false;
 
       if (activity) {
         // G9: update tick every held frame for cross-tick recency, but only bump the
