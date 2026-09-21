@@ -63,6 +63,25 @@ function safeToken(value, fallback = '') {
     .slice(0, 48);
 }
 
+/**
+ * INF-074: one rescue remembered. A single named subrecord (same precedent as
+ * vonnFreightLoss): the recovery receipt id plus the sector it happened in. Valid only for
+ * a real rescue receipt — the writer filters the outcome, this only validates shape.
+ */
+export function normalizeRescueMemory(raw = {}) {
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const recordId = String(source.recordId || '').trim().slice(0, 96);
+  const sectorId = String(source.sectorId || '').trim().slice(0, 96);
+  if (!recordId || !sectorId) return null;
+  return {
+    schemaVersion: 1,
+    recordId,
+    sectorId,
+    simTime: Number.isFinite(source.simTime) ? Math.max(0, source.simTime) : 0,
+    acknowledged: source.acknowledged === true,
+  };
+}
+
 export function normalizeStationContactRecord(raw = {}) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   const flags = {};
@@ -74,6 +93,7 @@ export function normalizeStationContactRecord(raw = {}) {
   }
   const talkCount = boundedInt(source.talkCount, 0, 9999);
   const vonnFreightLoss = normalizeVonnFreightLoss(source.vonnFreightLoss);
+  const rescueMemory = normalizeRescueMemory(source.rescueMemory);
   const record = {
     schemaVersion: STATION_CONTACT_MEMORY_VERSION,
     met: source.met === true || talkCount > 0,
@@ -94,6 +114,8 @@ export function normalizeStationContactRecord(raw = {}) {
   // This is intentionally a single named subrecord rather than another general-purpose flag bag.
   // It is valid only for the exact independent freight/aftermath identity accepted by its reader.
   if (vonnFreightLoss) record.vonnFreightLoss = vonnFreightLoss;
+  // INF-074: same single-subrecord rule for the one remembered rescue.
+  if (rescueMemory) record.rescueMemory = rescueMemory;
   return record;
 }
 

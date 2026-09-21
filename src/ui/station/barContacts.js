@@ -628,6 +628,14 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   if (memory && memory.met) add('Contact', stationContactStanding(memory), 'story');
   else if (contact.canonicalKey) add('Contact', 'New recurring contact', 'story');
 
+  // INF-074: the one remembered rescue. Barkeeps only, unacknowledged only — it sits beside
+  // the barkeep's standing Survey/service tags, pairing the recognition with the existing
+  // work on offer instead of dangling alone.
+  if (role === 'barkeep' && memory && memory.rescueMemory && !memory.rescueMemory.acknowledged) {
+    const heard = SECTOR_BY_ID.get(memory.rescueMemory.sectorId);
+    add('Rescue', `Word is you pulled crew out of a wreck${heard && heard.name ? ' in ' + heard.name : ''}. The bar remembers.`, 'story');
+  }
+
   if (role === 'merchant') {
     const route = bestTradeRoute(state, stationId);
     if (route) add('Route', commodityName(route.cmdtyId) + ' -> ' + stationName(route.sellStationId) + ' +' + Math.round(route.spread) + '/u', 'ok');

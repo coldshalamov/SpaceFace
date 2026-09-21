@@ -503,6 +503,7 @@ export function createBarScreen(ctx) {
       emitBarContactChoice(ctx.bus, {
         contactId: c.id, choiceId, stationId: sid(),
         canonicalKey: c.canonicalKey || null, trackerId: c.trackerId || null, name: c.name,
+        role: c.role || null, // INF-074: lets contact memory tell barkeeps from merchants
       });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     }
