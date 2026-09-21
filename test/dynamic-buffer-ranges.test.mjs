@@ -1260,23 +1260,35 @@ test('tether topology coordinates stay resident while the rope positions move', 
   fixture._initTetherCable();
 
   const cable = fixture._tetherCable;
-  const topologyAttributes = [
-    cable.mesh.geometry.attributes.aAlong,
-    cable.mesh.geometry.attributes.aSide,
-    cable.glow.geometry.attributes.aAlong,
-    cable.glow.geometry.attributes.aSide,
+  const sideAttributes = [
+    cable.core.geometry.attributes.aSide,
+    cable.sheath.geometry.attributes.aSide,
+    cable.collars.geometry.attributes.aSide,
   ];
-  const expectedAlong = [];
-  const expectedSide = [];
-  for (let index = 0; index <= cable.SEG; index++) {
-    expectedAlong.push(Math.fround(index / cable.SEG), Math.fround(index / cable.SEG));
-    expectedSide.push(-1, 1);
-  }
-  assert.deepEqual(Array.from(topologyAttributes[0].array), expectedAlong);
-  assert.deepEqual(Array.from(topologyAttributes[1].array), expectedSide);
-  assert.deepEqual(Array.from(topologyAttributes[2].array), expectedAlong);
-  assert.deepEqual(Array.from(topologyAttributes[3].array), expectedSide);
-  for (const attribute of topologyAttributes) assert.equal(attribute.usage, THREE.StaticDrawUsage);
+  const dynamicAttributes = [
+    cable.core.geometry.attributes.position,
+    cable.core.geometry.attributes.aAlong,
+    cable.sheath.geometry.attributes.position,
+    cable.sheath.geometry.attributes.aAlong,
+    cable.collars.geometry.attributes.position,
+    cable.collars.geometry.attributes.aAlong,
+  ];
+  // aSide is the authored-once topology coordinate: -1/+1 edge pairs on the two ribbon draws and a
+  // -1/0/+1 cross-section on the ferrules, all StaticDrawUsage. aAlong and position are resident
+  // buffers rewritten in place each active frame - the span count follows curvature, so a static
+  // i/SEG gradient would strand the shader's travelling pulse on a fraction of the line.
+  const expectedRibbonSide = [];
+  for (let index = 0; index <= cable.SEG; index++) expectedRibbonSide.push(-1, 1);
+  assert.deepEqual(Array.from(sideAttributes[0].array), expectedRibbonSide);
+  assert.deepEqual(Array.from(sideAttributes[1].array), expectedRibbonSide);
+  const expectedCollarSide = [];
+  for (let row = 0; row < cable.BANDS * 4; row++) expectedCollarSide.push(-1, 0, 1);
+  assert.deepEqual(Array.from(sideAttributes[2].array), expectedCollarSide);
+  for (const attribute of sideAttributes) assert.equal(attribute.usage, THREE.StaticDrawUsage);
+  for (const attribute of dynamicAttributes) assert.equal(attribute.usage, THREE.DynamicDrawUsage);
+  // Nothing is drawn until the first active frame fills the live tessellation prefix.
+  assert.ok(cable.core.along.every((value) => value === 0));
+  assert.equal(cable.core.geometry.drawRange.count, 0);
 
   const player = {
     id: 1, alive: true, radius: 6, rot: 0,
@@ -1308,22 +1320,42 @@ test('tether topology coordinates stay resident while the rope positions move', 
   fixture._spawnParticle = () => {};
   fixture._t = 1;
 
-  const topologyVersions = topologyAttributes.map((attribute) => attribute.version);
+  const residentVersions = sideAttributes.map((attribute) => attribute.version);
+  const dynamicVersions = dynamicAttributes.map((attribute) => attribute.version);
+  const residentBuffers = dynamicAttributes.map((attribute) => attribute.array);
   const positionVersion = cable.mesh.geometry.attributes.position.version;
   fixture._updateTetherCable(1 / 60);
   assert.equal(cable.mesh.geometry.attributes.position.version, positionVersion + 1,
     'the moving rope position buffer must still publish each active frame');
-  assert.deepEqual(topologyAttributes.map((attribute) => attribute.version), topologyVersions,
-    'fixed tether coordinates must not republish during a rope update');
-  assert.equal(topologyAttributes.reduce((sum, attribute) => sum + attribute.array.byteLength, 0), 800,
-    'one active tether frame avoids four full uploads totaling 800 bytes');
+  assert.deepEqual(sideAttributes.map((attribute) => attribute.version), residentVersions,
+    'the authored cross-section coordinates must not republish during a rope update');
+  for (let index = 0; index < dynamicAttributes.length; index++) {
+    assert.equal(dynamicAttributes[index].version, dynamicVersions[index] + 1,
+      'positions and the live aAlong prefix republish every active frame');
+    assert.equal(dynamicAttributes[index].array, residentBuffers[index],
+      'the resident buffers are rewritten in place, never reallocated');
+  }
+  // The travelling pulse parameter mirrors the centreline's live span count, duplicated across the
+  // strip's two edge vertices.
+  const segments = cable.centerline.segments;
+  assert.ok(segments >= 1 && segments <= cable.SEG);
+  const expectedLiveAlong = [];
+  for (let index = 0; index <= segments; index++) {
+    expectedLiveAlong.push(cable.centerline.along[index], cable.centerline.along[index]);
+  }
+  assert.deepEqual(Array.from(cable.core.along.slice(0, (segments + 1) * 2)), expectedLiveAlong,
+    'aAlong tracks the live tessellation so the pulse spans the whole drawn line');
+  assert.equal(cable.core.geometry.drawRange.count, segments * 6);
+  assert.equal(
+    sideAttributes.reduce((sum, attribute) => sum + attribute.array.byteLength, 0),
+    (2 * (cable.SEG + 1) * 2 + cable.BANDS * 12) * Float32Array.BYTES_PER_ELEMENT,
+    'one active tether frame keeps 1,264 cross-section bytes resident instead of re-uploading',
+  );
 
-  cable.mesh.geometry.dispose();
-  cable.glow.geometry.dispose();
-  cable.band.geometry.dispose();
-  cable.mesh.material.dispose();
-  cable.glow.material.dispose();
-  cable.band.material.dispose();
+  for (const part of [cable.mesh, cable.glow, cable.band, cable.anchorCore]) {
+    part.geometry.dispose();
+    part.material.dispose();
+  }
 });
 
 test('authored instance chunks publish only moved, hidden, released, and reused matrix slots', () => {
