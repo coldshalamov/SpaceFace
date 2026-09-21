@@ -22,7 +22,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v19"
+REVISION = "chase_form_v20"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "drifter"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -44,6 +44,8 @@ KEEP_SEPARATE = (
 # athwartship Course bands (never |y| / never Deck-on-crown). Clay stays all-slot.
 # C19: denser inter-hoop panel fields, midship Mark bands + hardware that read
 # at D=144, circular aft nozzle cut (chase-up). Mouths not recut. Same diamond.
+# C20: continuous panel courses that CROSS girth hoops (not sparse pockets),
+# denser midship greeble, closer field breakup at close. No |y| paint. Nozzles kept.
 HONEST = {
     "Material_Hull": {"color": (0.108, 0.132, 0.140), "metallic": 0.16, "roughness": 0.54, "role": "hull"},
     "Material_Armor": {"color": (0.072, 0.082, 0.088), "metallic": 0.22, "roughness": 0.56, "role": "armor"},
@@ -64,6 +66,16 @@ HONEST = {
 GIRTH_XS = (6.40, 5.00, 3.40, 2.20, 0.20, -1.80, -3.50, -5.40, -6.70)
 # Midship value BETWEEN hoops (same on spine and flank). Off well/greenhouse mouths.
 MARK_XS = (2.80, -2.65, -4.45)
+# Extra athwartship ribs — connect the hoop grid into a continuous skin.
+EXTRA_GIRTH_XS = tuple(
+    a + t * (b - a)
+    for a, b in zip(GIRTH_XS, GIRTH_XS[1:])
+    for t in (0.33, 0.50, 0.67)
+)
+# Dorsal stringer lanes. Inboard of the beam so they are not paddles.
+STRINGER_YS = (0.50, 0.98, 1.46)
+# Lengthwise spans that skip well / greenhouse mouths.
+STRINGER_SPANS = ((6.92, 3.58), (3.18, -2.18), (-2.48, -6.98))
 
 
 def parse_args(argv):
@@ -624,11 +636,12 @@ def paint_shell(hull, mats):
         centroid = sum(verts, Vector()) / max(len(verts), 1)
         _beam, hh, zc = hull_half_at(centroid.x)
         on_girth = any(abs(centroid.x - gx) < 0.40 for gx in GIRTH_XS)
+        on_extra = any(abs(centroid.x - gx) < 0.18 for gx in EXTRA_GIRTH_XS)
         on_mark = any(abs(centroid.x - mx) < 0.58 for mx in MARK_XS)
         island = (int(abs(centroid.x) * 3.0) + int(centroid.z * 5.0)) % 9 == 0
         if centroid.z < zc - hh * 0.38:
             poly.material_index = 1
-        elif on_girth:
+        elif on_girth or on_extra:
             poly.material_index = 2
         elif on_mark:
             poly.material_index = 3
@@ -653,6 +666,15 @@ def build_hull(mats):
             return add_box(name, (0.18, width, 2.85), loc, hull_mat, 0.0)
 
         cut(hull, ring_frame)
+    # Thinner athwartship ribs between hoops — same wrap, not paddles.
+    for index, x in enumerate(EXTRA_GIRTH_XS):
+        st = hull_station_at(x)
+        beam = st[1]
+
+        def extra_frame(name=f"ExtraCut_{index}", loc=(x, 0.0, 0.10), width=min(beam * 2.04, 6.4)):
+            return add_box(name, (0.10, width, 2.80), loc, hull_mat, 0.0)
+
+        cut(hull, extra_frame)
     for sign, side in ((-1.0, "P"), (1.0, "S")):
         def dorsal_seam(name=f"DorsalSeam_{side}", loc=(-0.20, 0.38 * sign, 1.22)):
             return add_box(name, (9.2, 0.10, 0.14), loc, hull_mat, 0.0)
@@ -695,19 +717,35 @@ def build_hull(mats):
         def pocket(n=name, d=dims, l=loc):
             return add_box(n, d, l, hull_mat, 0.0)
         cut(hull, pocket)
-    # Short stringers BETWEEN hoops only — not a full-length spine.
-    for index, (fore, aft) in enumerate(zip(GIRTH_XS, GIRTH_XS[1:])):
-        mid = 0.5 * (fore + aft)
-        length = abs(fore - aft) - 0.52
-        if length < 0.55:
-            continue
-        well = -2.05 <= mid <= 2.35
-        green = 3.85 <= mid <= 6.55
-        y_off = 1.20 if (well or green) else 0.74
-        for sign, side in ((-1.0, "P"), (1.0, "S")):
-            def field_seam(n=f"FieldSeam_{index}_{side}", loc=(mid, y_off * sign, 1.16), span=length):
-                return add_box(n, (span * 0.90, 0.09, 0.11), loc, hull_mat, 0.0)
-            cut(hull, field_seam)
+    # Continuous dorsal courses that CROSS girth hoops. Split around mouths
+    # so they do not lid the well/greenhouse. Inboard y — not flank paddles.
+    def dorsal_blocked(x, y):
+        if abs(x - 0.15) < 2.22 and abs(y) < 1.08:
+            return True
+        if abs(x - 5.20) < 1.48 and abs(y) < 0.76:
+            return True
+        return False
+
+    for span_i, (x0, x1) in enumerate(STRINGER_SPANS):
+        mid = 0.5 * (x0 + x1)
+        span = abs(x0 - x1)
+        for y in STRINGER_YS:
+            if dorsal_blocked(mid, y):
+                continue
+            for sign, side in ((-1.0, "P"), (1.0, "S")):
+                def course(n=f"Course_{span_i}_{side}_{int(y * 100)}", loc=(mid, y * sign, 1.14), length=span):
+                    return add_box(n, (length - 0.10, 0.07, 0.09), loc, hull_mat, 0.0)
+                cut(hull, course)
+    # Close-scale tiles at hoop midpoints × stringer lanes — break empty fields.
+    for tile_i, (fore, aft) in enumerate(zip(GIRTH_XS, GIRTH_XS[1:])):
+        mx = 0.5 * (fore + aft)
+        for y in STRINGER_YS:
+            if dorsal_blocked(mx, y):
+                continue
+            for sign, side in ((-1.0, "P"), (1.0, "S")):
+                def tile(n=f"Tile_{tile_i}_{side}_{int(y * 100)}", loc=(mx, y * sign, 1.12)):
+                    return add_box(n, (0.38, 0.22, 0.08), loc, hull_mat, 0.0)
+                cut(hull, tile)
     paint_shell(hull, mats)
     return hull, extras
 
@@ -1079,6 +1117,21 @@ def build_hardware(hull, mats, lod):
     bits.append(add_cylinder("LOD0_HatchHub", 0.10, 0.10, (2.80, 0.0, 1.30), armor, 0.0, vertices=8))
     bits.append(add_box("LOD0_MarkPlaque", (0.72, 0.28, 0.06), (2.80, 0.0, 1.36), warning, 0.0))
 
+    # Aft-of-well hatch + midship fastener row (outboard of the mouth).
+    def hatch_aft_cut():
+        return add_cylinder("HatchCut_Aft", 0.26, 0.20, (-2.65, 0.0, 1.16), hull_mat, 0.0, vertices=14)
+
+    cut(hull, hatch_aft_cut)
+    bits.append(add_cylinder("LOD0_HatchRing_Aft", 0.24, 0.07, (-2.65, 0.0, 1.22), mech, 0.0, vertices=14))
+    bits.append(add_cylinder("LOD0_HatchHub_Aft", 0.08, 0.09, (-2.65, 0.0, 1.24), armor, 0.0, vertices=8))
+    bits.append(add_box("LOD0_MarkPlaque_Aft", (0.58, 0.22, 0.05), (-2.65, 0.0, 1.28), warning, 0.0))
+    for bolt_i, bx in enumerate((-1.70, -0.80, 0.15, 1.05, 1.95)):
+        for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+            bits.append(add_cylinder(
+                f"LOD0_Fastener_{tag}_{bolt_i}", 0.055, 0.08,
+                (bx, 1.24 * sign, 1.16), mech, 0.0, vertices=8,
+            ))
+
     bits.append(add_box("LOD0_RCS_Port", (0.22, 0.18, 0.16), (-1.20, -1.90, 0.15), mech, 0.002))
     bits.append(add_box("LOD0_RCS_Stbd", (0.22, 0.18, 0.16), (-1.20, 1.90, 0.15), mech, 0.002))
     bits.append(add_cylinder("LOD0_RCSCup_Port", 0.06, 0.08, (-1.20, -2.02, 0.15), hull_mat, 0.0, vertices=8))
@@ -1345,7 +1398,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "drifter_chase_form_v19.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "drifter_chase_form_v20.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 
