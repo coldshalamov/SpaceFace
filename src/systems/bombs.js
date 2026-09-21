@@ -42,6 +42,28 @@ function liveBombList(state) {
   return index?.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.bombs)
     ? index.bombs : state?.entityList || EMPTY;
 }
+// Typed buckets whose union is exactly the population the target predicate can accept:
+// DAMAGE_TYPES (ship/drone/station) plus LOOSE_TYPES (asteroid/wreck/pickup/payload) for the
+// movable() branch. Craft is ship/drone, so no other entity type can ever pass — the union cannot
+// omit a valid target, including noncolliding movable cargo and wrecks. Buckets are disjoint by
+// entity type (one switch push per type in coreSystem.appendEntityIndex), so no candidate is
+// visited twice. The live predicate is still applied per candidate, so in-place deaths (alive flip
+// with no list change) filter exactly as the full scan did. Anything but a ready index with all
+// seven buckets falls back to the complete scan.
+const BOMB_TARGET_BUCKETS = Object.freeze(['ships', 'drones', 'stations', 'asteroids', 'wrecks', 'pickups', 'payloads']);
+function bombTargetBuckets(index) {
+  if (!index?.__spacefaceEntityIndexV1 || index.ready !== true) return null;
+  const buckets = [];
+  for (const key of BOMB_TARGET_BUCKETS) {
+    const list = index[key];
+    if (!Array.isArray(list)) return null;
+    buckets.push(list);
+  }
+  return buckets;
+}
+function pushBombTarget(out, e) {
+  if (e?.alive && e.pos && (DAMAGE_TYPES.has(e.type) || movable(e))) out.push(e);
+}
 // ---- fitted rack (PQ-205.03) ----------------------------------------------------------
 // state.bombs is the player's one bomb-bay bag, additive over the pre-rack shape:
 //   selectedId    — payload id the bay verb drops next (always a LOADED cell, or null).
@@ -385,15 +407,21 @@ export const bombs = {
 
   // One eligibility scan and one stable order per occupied tick, NOT eight payload-specific
   // whole-world scans. The spatial hash excludes noncolliding loose bodies: using it alone
-  // would silently drop valid targets. This complete scan is bounded by live world population.
+  // would silently drop valid targets. The canonical typed index covers exactly the eligible
+  // types instead, so clutter the predicate can never accept (fx, projectiles, mines, gates,
+  // statics) is never visited; without a ready index this stays a complete scan bounded by
+  // live world population.
   _collect(state) {
     this._active.length = 0;
     for (const e of liveBombList(state)) if (e?.alive && e.type === BOMB_TYPE && e.data) this._active.push(e);
     this._active.sort(compareBombEntityIds);
     this._targets.length = 0;
     if (!this._active.length) return;
-    for (const e of state.entityList || EMPTY) {
-      if (e?.alive && e.pos && (DAMAGE_TYPES.has(e.type) || movable(e))) this._targets.push(e);
+    const buckets = bombTargetBuckets(state?.entityIndex);
+    if (buckets) {
+      for (const list of buckets) for (const e of list) pushBombTarget(this._targets, e);
+    } else {
+      for (const e of state.entityList || EMPTY) pushBombTarget(this._targets, e);
     }
     this._targets.sort(compareBombEntityIds);
   },
