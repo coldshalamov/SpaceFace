@@ -22,7 +22,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v17"
+REVISION = "chase_form_v18"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "drifter"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -40,19 +40,25 @@ KEEP_SEPARATE = (
 # aft stations widen so drives sit in the primary loft. Armor is keel/bilge only.
 # C17: clay abeam spine/flank was Deck+Armor slots surviving a slot-0-only clay
 # override. Outer diamond is one Hull value; Armor stays keel. No extra plates.
+# C18: Hitch-plus skin cut INTO that diamond — girth courses, inset pockets,
+# athwartship Course bands (never |y| / never Deck-on-crown). Clay stays all-slot.
 HONEST = {
     "Material_Hull": {"color": (0.108, 0.132, 0.140), "metallic": 0.16, "roughness": 0.54, "role": "hull"},
     "Material_Armor": {"color": (0.072, 0.082, 0.088), "metallic": 0.22, "roughness": 0.56, "role": "armor"},
     "Material_Deck": {"color": (0.090, 0.100, 0.096), "metallic": 0.12, "roughness": 0.58, "role": "deck"},
+    "Material_Course": {"color": (0.074, 0.090, 0.096), "metallic": 0.20, "roughness": 0.50, "role": "hull"},
     "Material_Canopy": {"color": (0.012, 0.016, 0.022), "metallic": 0.0, "roughness": 0.06, "role": "glass"},
     "Material_Ceramic": {"color": (0.07, 0.065, 0.06), "metallic": 0.08, "roughness": 0.62, "role": "ceramic"},
     "Material_Mechanical": {"color": (0.048, 0.052, 0.058), "metallic": 0.40, "roughness": 0.50, "role": "mechanical"},
     "Material_Radiator": {"color": (0.045, 0.038, 0.036), "metallic": 0.22, "roughness": 0.52, "role": "radiator"},
     "Material_Thruster": {"color": (0.028, 0.028, 0.032), "metallic": 0.28, "roughness": 0.50, "role": "thruster"},
-    "Material_Accent": {"color": (0.04, 0.32, 0.30), "metallic": 0.06, "roughness": 0.42, "role": "accent"},
-    "Material_Warning": {"color": (0.36, 0.16, 0.05), "metallic": 0.02, "roughness": 0.44, "role": "warning"},
+    "Material_Accent": {"color": (0.12, 0.85, 0.72), "metallic": 0.04, "roughness": 0.28, "role": "accent", "emit": 4.2},
+    "Material_Warning": {"color": (0.85, 0.38, 0.10), "metallic": 0.02, "roughness": 0.32, "role": "warning", "emit": 3.0},
     "Material_Dirt": {"color": (0.07, 0.055, 0.045), "metallic": 0.02, "roughness": 0.78, "role": "dirt"},
 }
+
+# Athwartship station marks. Wrap the ONE beam — never a longitudinal spine/flank split.
+GIRTH_XS = (6.40, 5.00, 3.40, 2.20, 0.20, -1.80, -3.50, -5.40, -6.70)
 
 
 def parse_args(argv):
@@ -519,8 +525,11 @@ def make_materials():
         bsdf.inputs["Base Color"].default_value = (*spec["color"], 1.0)
         bsdf.inputs["Metallic"].default_value = spec["metallic"]
         bsdf.inputs["Roughness"].default_value = spec["roughness"]
+        emit = float(spec.get("emit") or 0.0)
         if "Emission Strength" in bsdf.inputs:
-            bsdf.inputs["Emission Strength"].default_value = 0.0
+            bsdf.inputs["Emission Strength"].default_value = emit
+        if emit > 0.0 and "Emission Color" in bsdf.inputs:
+            bsdf.inputs["Emission Color"].default_value = (*spec["color"], 1.0)
         if "Transmission Weight" in bsdf.inputs:
             bsdf.inputs["Transmission Weight"].default_value = 0.0
         if spec["role"] == "glass" and "Coat Weight" in bsdf.inputs:
@@ -592,23 +601,30 @@ def hull_half_at(x):
 
 
 def paint_shell(hull, mats):
-    """One Hull value on the outer diamond. Armor on keel/bilge only.
+    """Hull diamond + keel Armor + athwartship Course hoops + sparse Dirt.
 
-    C16 Deck-on-crown (zc+hh*0.70) was a second albedo down the dorsal center.
-    Clay only overrode slot 0, so abeam read a dark spine + lighter flanks + a
-    hard value join. Do not paint Deck on the outer shell. Do not assign Armor
-    by |y|.
+    Never Deck-on-crown. Never Armor-by-|y|. Course is a hoop at girth stations
+    (same value on spine and flank), so clay+shaded cannot grow a paddle split.
+    Clay still overrides every slot (C17).
     """
     mesh = hull.data
     mesh.materials.clear()
     mesh.materials.append(mats["Material_Hull"])
     mesh.materials.append(mats["Material_Armor"])
+    mesh.materials.append(mats["Material_Course"])
+    mesh.materials.append(mats["Material_Dirt"])
     for poly in mesh.polygons:
         verts = [mesh.vertices[index].co for index in poly.vertices]
         centroid = sum(verts, Vector()) / max(len(verts), 1)
         _beam, hh, zc = hull_half_at(centroid.x)
+        on_girth = any(abs(centroid.x - gx) < 0.40 for gx in GIRTH_XS)
+        island = (int(abs(centroid.x) * 2.0) + int(centroid.z * 6.0)) % 13 == 0
         if centroid.z < zc - hh * 0.38:
             poly.material_index = 1
+        elif on_girth:
+            poly.material_index = 2
+        elif island and centroid.z > zc - hh * 0.05:
+            poly.material_index = 3
         else:
             poly.material_index = 0
 
@@ -618,14 +634,14 @@ def build_hull(mats):
     rings = [shell_ring(st) for st in densify_stations(HULL_STATIONS)]
     hull = loft_rings("LOD0_Hull", rings, hull_mat, 0.016)
     extras = []
-    # Formed-shell language: shallow girth + longitudinal stringers on the ONE beam.
-    girth_xs = (5.80, 2.20, -1.80, -5.40)
-    for index, x in enumerate(girth_xs):
+    # Chase-scale girth hoops cut into the ONE beam. Wider than C17 so they
+    # read at D=144 (~6.5 px/m). Athwartship only — not a spine/flank split.
+    for index, x in enumerate(GIRTH_XS):
         st = hull_station_at(x)
         beam = st[1]
 
-        def ring_frame(name=f"FrameCut_{index}", loc=(x, 0.0, 0.10), width=min(beam * 2.05, 6.4)):
-            return add_box(name, (0.10, width, 2.85), loc, hull_mat, 0.0)
+        def ring_frame(name=f"FrameCut_{index}", loc=(x, 0.0, 0.10), width=min(beam * 2.08, 6.5)):
+            return add_box(name, (0.18, width, 2.85), loc, hull_mat, 0.0)
 
         cut(hull, ring_frame)
     for sign, side in ((-1.0, "P"), (1.0, "S")):
@@ -636,6 +652,23 @@ def build_hull(mats):
         def bilge_seam(name=f"BilgeSeam_{side}", loc=(-0.40, 1.55 * sign, -0.36)):
             return add_box(name, (8.0, 0.12, 0.20), loc, hull_mat, 0.0)
         cut(hull, bilge_seam)
+    # Inset panel pockets — negative space in the shell, off well/greenhouse mouths.
+    pockets = (
+        ("SkinBow_P", (0.58, 0.36, 0.14), (6.88, -0.58, 0.86)),
+        ("SkinBow_S", (0.58, 0.36, 0.14), (6.88, 0.58, 0.86)),
+        ("SkinGap_P", (0.72, 0.48, 0.16), (3.12, -0.92, 1.10)),
+        ("SkinGap_S", (0.72, 0.48, 0.16), (3.12, 0.92, 1.10)),
+        ("SkinAft_P", (0.88, 0.46, 0.16), (-4.55, -0.72, 1.02)),
+        ("SkinAft_S", (0.88, 0.46, 0.16), (-4.55, 0.72, 1.02)),
+        ("SkinFlank_P", (1.15, 0.20, 0.52), (1.55, -2.42, 0.28)),
+        ("SkinFlank_S", (1.15, 0.20, 0.52), (1.55, 2.42, 0.28)),
+        ("SkinFlankAft_P", (0.95, 0.18, 0.44), (-4.80, -2.05, 0.22)),
+        ("SkinFlankAft_S", (0.95, 0.18, 0.44), (-4.80, 2.05, 0.22)),
+    )
+    for name, dims, loc in pockets:
+        def pocket(n=name, d=dims, l=loc):
+            return add_box(n, d, l, hull_mat, 0.0)
+        cut(hull, pocket)
     paint_shell(hull, mats)
     return hull, extras
 
@@ -749,9 +782,12 @@ def build_cargo_well(hull, mats, lod):
     ))
     bits.append(add_box("LOD0_WellGrate", (1.55, 0.72, 0.05), (0.55, 0.28, 0.08), mats["Material_Radiator"], 0.0))
     bits.append(add_cylinder(
-        "LOD0_Winch", 0.22, 0.40, (0.15, 0.0, 0.22), mech, 0.0,
+        "LOD0_Winch", 0.32, 0.56, (0.15, 0.0, 0.22), mech, 0.0,
         rotation=(math.radians(90.0), 0.0, 0.0), vertices=10,
     ))
+    bits.append(add_box("LOD0_Gantry_Port", (0.16, 0.16, 0.62), (-2.22, -1.18, 1.18), mech, 0.002))
+    bits.append(add_box("LOD0_Gantry_Stbd", (0.16, 0.16, 0.62), (-2.22, 1.18, 1.18), mech, 0.002))
+    bits.append(add_box("LOD0_GantryBeam", (0.14, 2.20, 0.12), (-2.22, 0.0, 1.46), mech, 0.002))
     if lod < 2:
         bits.append(add_box("LOD0_Crate_0", (0.52, 0.38, 0.32), (1.05, -0.42, 0.08), armor, 0.002))
         bits.append(add_box("LOD0_Crate_1", (0.42, 0.32, 0.26), (-0.85, 0.38, 0.08), warning, 0.002))
@@ -927,12 +963,37 @@ def build_hardware(hull, mats, lod):
         bits.append(add_box(f"LOD0_RadFin_{index}", (0.10, 0.62, 0.26), (-3.55 + index * 0.28, 0.0, 0.98), rad, 0.0))
     bits.append(add_box("LOD0_RadHeader", (1.42, 0.06, 0.06), (-3.05, 0.32, 1.12), rad, 0.0))
 
-    # Cluster 2 — heat dirt on the hull slope (no nacelle-roof plates).
+    # Cluster 2 — heat / dirt CUT into the aft slope (not glued plates).
     yc = drive_half_y()
-    bits.append(add_box("LOD0_DirtNacelle_Port", (1.45, 0.22, 0.05), (-5.40, -yc * 0.82, 0.62), dirt, 0.0))
-    bits.append(add_box("LOD0_DirtNacelle_Stbd", (1.45, 0.22, 0.05), (-5.40, yc * 0.82, 0.62), dirt, 0.0))
-    bits.append(add_box("LOD0_HeatPlate_Port", (1.05, 0.28, 0.08), (-6.45, -yc * 0.70, 0.48), mats["Material_Ceramic"], 0.001))
-    bits.append(add_box("LOD0_HeatPlate_Stbd", (1.05, 0.28, 0.08), (-6.45, yc * 0.70, 0.48), mats["Material_Ceramic"], 0.001))
+    for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+        def heat_cut(name=f"HeatRecess_{tag}", loc=(-6.45, yc * 0.70 * sign, 0.48)):
+            return add_box(name, (1.05, 0.28, 0.16), loc, hull_mat, 0.0)
+
+        cut(hull, heat_cut)
+        def dirt_cut(name=f"DirtRecess_{tag}", loc=(-5.40, yc * 0.82 * sign, 0.62)):
+            return add_box(name, (1.45, 0.22, 0.12), loc, dirt, 0.0)
+
+        cut(hull, dirt_cut)
+        # Vent bank cut into the mid-flank, slats sit in the pocket.
+        beam = hull_station_at(2.40)[1]
+        def vent_cut(name=f"VentPocket_{tag}", loc=(2.40, beam * 0.74 * sign, 0.24)):
+            return add_box(name, (0.92, 0.18, 0.44), loc, hull_mat, 0.0)
+
+        cut(hull, vent_cut)
+        if lod < 2:
+            for index in range(4 if lod == 0 else 3):
+                bits.append(add_box(
+                    f"LOD0_VentSlat_{tag}_{index}",
+                    (0.10, 0.14, 0.34),
+                    (2.05 + index * 0.22, beam * 0.74 * sign, 0.24),
+                    rad, 0.0,
+                ))
+        # Clamp recesses along the 2.20 girth (hardware in a cut, not a plate carpet).
+        def clamp_cut(name=f"ClampRecess_{tag}", loc=(2.20, 1.15 * sign, 1.08)):
+            return add_box(name, (0.28, 0.22, 0.14), loc, hull_mat, 0.0)
+
+        cut(hull, clamp_cut)
+        bits.append(add_box(f"LOD0_Clamp_{tag}", (0.22, 0.16, 0.10), (2.20, 1.15 * sign, 1.10), mech, 0.0))
 
     bits.append(add_box("LOD0_RCS_Port", (0.22, 0.18, 0.16), (-1.20, -1.90, 0.15), mech, 0.002))
     bits.append(add_box("LOD0_RCS_Stbd", (0.22, 0.18, 0.16), (-1.20, 1.90, 0.15), mech, 0.002))
@@ -943,10 +1004,11 @@ def build_hardware(hull, mats, lod):
     bits.append(add_box("LOD0_RCS_AftPort", (0.24, 0.18, 0.16), (-6.85, -0.72, 0.28), mech, 0.002))
     bits.append(add_box("LOD0_RCS_AftStbd", (0.24, 0.18, 0.16), (-6.85, 0.72, 0.28), mech, 0.002))
 
-    bits.append(add_cylinder("LOD0_Beacon_Fore", 0.05, 0.08, (3.85, 0.0, 1.32), accent, 0.0, vertices=8))
-    bits.append(add_cylinder("LOD0_Beacon_Aft", 0.05, 0.08, (-6.35, 0.0, 1.14), warning, 0.0, vertices=8))
-    bits.append(add_cylinder("LOD0_Nav_Port", 0.05, 0.08, (0.15, -3.24, 0.16), warning, 0.0, vertices=8))
-    bits.append(add_cylinder("LOD0_Nav_Stbd", 0.05, 0.08, (0.15, 3.24, 0.16), accent, 0.0, vertices=8))
+    bits.append(add_cylinder("LOD0_Beacon_Fore", 0.12, 0.16, (3.85, 0.0, 1.34), accent, 0.0, vertices=8))
+    bits.append(add_cylinder("LOD0_Beacon_Aft", 0.12, 0.16, (-6.35, 0.0, 1.16), warning, 0.0, vertices=8))
+    bits.append(add_cylinder("LOD0_Nav_Port", 0.10, 0.14, (0.15, -3.24, 0.18), warning, 0.0, vertices=8))
+    bits.append(add_cylinder("LOD0_Nav_Stbd", 0.10, 0.14, (0.15, 3.24, 0.18), accent, 0.0, vertices=8))
+    bits.append(add_cylinder("LOD0_Beacon_Well", 0.10, 0.14, (-2.22, 0.0, 1.58), accent, 0.0, vertices=8))
 
     if lod == 0:
         bits.extend(add_hose(
@@ -1191,7 +1253,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "drifter_chase_form_v17.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "drifter_chase_form_v18.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 

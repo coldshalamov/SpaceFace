@@ -60,3 +60,10 @@ C16 geometry (one diamond, nacelle bodies gone) held on shaded. Clay
 hard value/seam: `paint_shell` assigned Deck to the crown (slot 2) and Armor
 to the keel (slot 1), while `apply_clay` only replaced slot 0. Not a new YZ.
 C16 convex-diamond ref stays selected. No generated C17 pixels.
+
+## 2026-09-21 (C18 Hitch-plus skin)
+
+C17 cleared clay+shaded TUBE_PADDLE on all three cameras. Remaining REVISE is
+Hitch formed-shell / skin at D=144. C18 cuts chase-scale girth hoops, inset
+pockets, and athwartship Course bands into the C16 diamond. No new YZ. No
+generated C18 pixels. C16 convex-diamond ref stays selected.
