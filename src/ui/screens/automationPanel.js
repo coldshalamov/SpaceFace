@@ -624,7 +624,8 @@ export const automationScreen = {
       parts.push(Math.floor((a.accumulators && a.accumulators.upkeepDebt) || 0));
       for (const t of a.traders || []) {
         const route = t.route ? `${t.route.from || ''}>${t.route.to || ''}` : '';
-        parts.push(t.id, t.defId, t.status, route, Math.round(t.ratePerMin || 0));
+        parts.push(t.id, t.defId, t.status, route, Math.round(t.ratePerMin || 0),
+          t.lastReceipt ? `${t.lastReceipt.n}:${Math.round(t.lastReceipt.credited || 0)}` : '');
       }
     } else if (this._tab === 'outposts') {
       const buildUnlocked = (player.researchedNodes || []).includes('tech_outpost_charter');
@@ -832,6 +833,7 @@ export const automationScreen = {
         const resumeBtn = distressed
           ? `<button class="au-refuel" data-act="resumeTrader" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Resume</button>`
           : '';
+        const receiptLine = formatTraderReceipt(t);
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${prettyId(def.id)} ${statusPill(t.status)}</div>
@@ -843,6 +845,7 @@ export const automationScreen = {
               <span>upkeep ${def.upkeepPerMin}/min</span>
             </div>
             <div class="au-note">${stallNote}</div>
+            ${receiptLine ? `<div class="au-note">${receiptLine}</div>` : ''}
           </div>
           ${resumeBtn}
           <button class="au-order" data-act="assignRoute" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Route</button>
@@ -1492,6 +1495,16 @@ function recipeText(r) {
   const ins = r.inputs ? Object.entries(r.inputs).map(([k, v]) => `${v}× ${commodityName(k)}`).join(' + ') : '?';
   const out = r.output ? Object.entries(r.output).map(([k, v]) => `${v}× ${commodityName(k)}`).join(' + ') : '?';
   return `${ins} → ${out}`;
+}
+
+// INF-088: one-line financial telling of the trader's last completed delivery, rendered
+// from the job record's own receipt (no second ledger). Pure for testability.
+export function formatTraderReceipt(t) {
+  const r = t && t.lastReceipt;
+  if (!r) return '';
+  const legs = `${escapeHtml(String(r.qty))}u ${escapeHtml(String(r.from))}→${escapeHtml(String(r.to))} · bought @${fmtCr(r.buyUnit)} · sold @${fmtCr(r.sellUnit)} · fuel ${fmtCr(r.fuelCost)}`;
+  if (r.result === 'paid') return `Last delivery #${r.n}: ${legs} · net +${fmtCr(r.credited)} cr`;
+  return `Last delivery #${r.n}: ${legs} · no payout — spread covered no costs`;
 }
 
 function statusPill(status) {

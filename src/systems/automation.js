@@ -1449,18 +1449,37 @@ export const automation = {
   },
 
   _completeTraderCycle(t, def, a, idx) {
-    const profit = this._computeTraderProfit(t, def);
+    const quote = this._traderCycleQuote(t, def);
+    const profit = quote.profit;
     t.lastCycleProfit = Math.round(profit);
     // hotness rises each consecutive cycle on the same route (forces re-routing — the management cost)
     t.hotness = clamp((t.hotness || 0) + HOTNESS_GAIN, 0, 1);
 
+    // Compact delivery receipt on the job record itself (not a second ledger): purchase, sale,
+    // cost, and result entries. Outlay/revenue are working-capital legs — informational only;
+    // the ONLY credit is `credited` below, which is exactly what the economy owner receives.
+    // A receipt is record-only, so save/load can never pay it twice.
+    t.cycles = (t.cycles || 0) + 1;
+    const eff = quote.tradeEff * quote.hotPenalty;
+    t.lastReceipt = {
+      n: t.cycles,
+      from: t.route.from, to: t.route.to, good: quote.good,
+      qty: quote.units,
+      buyUnit: quote.buyA, sellUnit: quote.sellB,
+      outlay: quote.units * quote.buyA * eff,
+      revenue: quote.units * quote.sellB * eff,
+      fuelCost: quote.fuelCost,
+      credited: profit > 0 ? profit : 0,
+      result: profit > 0 ? 'paid' : 'no_spread',
+    };
+
     if (profit > 0) {
-      this.creditPassive(profit, 'trader');
+      this.creditPassive(t.lastReceipt.credited, 'trader');
       // self-limit: each cycle pushes prices so the next spread shrinks (§ spec).
       this._applyTradePressure(t);
     }
     this.bus.emit('automation:traderCycleCompleted', {
-      kind: 'trader', id: t.id, defId: t.defId,
+      kind: 'trader', id: t.id, defId: t.defId, receipt: { ...t.lastReceipt },
     });
 
     // danger-scaled loss roll
@@ -1479,11 +1498,21 @@ export const automation = {
 
   // profit = cargoVol * max(0, sellB - buyA) * tradeEff - routeFuelCost  (spec Formula).
   _computeTraderProfit(t, def) {
+    return this._traderCycleQuote(t, def).profit;
+  },
+
+  // Component quote behind the profit formula, so a completed cycle can itemize the same
+  // numbers it was paid on. Numbers here are identical to _computeTraderProfit by construction.
+  _traderCycleQuote(t, def) {
     const good = t.route.good || DRONE_ORE_ID;
     const buyA = this._stationPrice(t.route.from, good, 'buy', def.cargoVol);
     const sellB = this._stationPrice(t.route.to, good, 'sell', def.cargoVol);
+    const tradeEff = def && def.tradeEff != null ? def.tradeEff : 0.9;
+    const hotPenalty = 1 - 0.5 * (t.hotness || 0);
+    const fuelCost = this._routeFuelCost(t);
     // hotness collapses the realized spread (route fatigue), on top of the economy's price move.
-    return traderProfitPerCycle(def, buyA, sellB, { hotness: t.hotness || 0, routeFuelCost: this._routeFuelCost(t) });
+    const profit = traderProfitPerCycle(def, buyA, sellB, { hotness: t.hotness || 0, routeFuelCost: fuelCost });
+    return { good, units: def.cargoVol || 0, buyA, sellB, tradeEff, hotPenalty, fuelCost, profit };
   },
 
   // cheap pre-roll estimate for the header (no qty-impact integral, just last prices).
