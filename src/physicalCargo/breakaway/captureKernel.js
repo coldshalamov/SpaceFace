@@ -106,6 +106,9 @@ function clear(state, out, reason) {
 
 const SCRATCH_A = { depth: 0, lateral: 0 };
 const SCRATCH_B = { depth: 0, lateral: 0 };
+// Large enough that -expm1(-rate·dt) is exactly 1 in doubles: a full-stop request inside the
+// receiver's own force/torque caps, never an unbounded impulse.
+const HOLD_DAMPING_RATE = 1e9;
 
 /**
  * Swept centre-plane crossing with full lateral clearance. Never captures from the side or back.
@@ -187,16 +190,21 @@ export function stepCapture(
     out.reason = 'advance_into_fork';
     return out;
   }
+  const stable = Math.hypot(sample.vx, sample.vz) <= receiver.settleSpeed
+    && Math.abs(sample.omegaY) <= receiver.settleOmega;
+  // A stable load must be HELD, not merely damped: exponential decay asymptotes and leaves a
+  // creep that walks a "stopped" load into a rail or back out the mouth, and the contact kick
+  // then throws custody away one tick after ready. Below settle speed the brake grabs fully —
+  // the same force cap, just fraction 1 — while a real knock still breaks stability and gets
+  // the ordinary dissipative impulse.
   dampingImpulse({
     vx: sample.vx, vz: sample.vz, mass: sample.mass, dt: TICK_DT,
-    rate: receiver.dampingRate, maxForce: receiver.maxForce,
+    rate: stable ? HOLD_DAMPING_RATE : receiver.dampingRate, maxForce: receiver.maxForce,
   }, out.impulse);
   out.torqueY = angularDampingImpulse({
     omegaY: sample.omegaY, inertiaY: sample.inertiaY, dt: TICK_DT,
-    rate: receiver.angularDampingRate, maxTorque: receiver.maxTorque,
+    rate: stable ? HOLD_DAMPING_RATE : receiver.angularDampingRate, maxTorque: receiver.maxTorque,
   });
-  const stable = Math.hypot(sample.vx, sample.vz) <= receiver.settleSpeed
-    && Math.abs(sample.omegaY) <= receiver.settleOmega;
   if (stable) {
     state.settledTicks++;
     if (state.settledTicks >= receiver.settleTicks) {
