@@ -1011,8 +1011,11 @@ export const localmapScreen = {
       meta.push({ text: `${BINDINGS.localmap.label} Local Map`, hot: true });
     }
 
-    if (wp && wp.pos && player && player.pos) {
-      const d = Math.hypot(wp.pos.x - player.pos.x, wp.pos.z - player.pos.z);
+    // Distance reads the same resolved position the waypoint diamond draws above (the live hull
+    // when the course tracks an entity), not the authored click-time fix (INF-056).
+    const wpPos = wp ? resolveWaypointPresentationPosition(state, wp) : null;
+    if (wpPos && player && player.pos) {
+      const d = Math.hypot(wpPos.x - player.pos.x, wpPos.z - player.pos.z);
       meta.push({ text: Math.round(d) + ' u', hot: false });
     } else if (wp && !wp.pos) {
       const targetSectorId = wp.sectorId || null;

@@ -133,6 +133,7 @@ import {
   upsertRecord,
 } from '../world/worldRecords.js';
 import { forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
 import {
   dropAsteroidFieldSector,
   insertAsteroidFieldRock,
@@ -3915,7 +3916,16 @@ export const world = {
         reason: payload.reason || label,
         pos,
       };
-      if (targetEntityId != null) this.state.nav.waypoint.targetEntityId = targetEntityId;
+      if (targetEntityId != null) {
+        this.state.nav.waypoint.targetEntityId = targetEntityId;
+        // INF-056: the course aimed at a live body, so bind the presentation id too — flight
+        // (resolveAutopilotTarget) re-resolves the entity every tick, and with the bind every
+        // instrument resolves the same moving position through the canonical resolver. Dead or
+        // despawned targets bind nothing; the authored pos stays the fail-closed place. The save
+        // whitelist drops the field, so a loaded waypoint falls back to pos the same way.
+        const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, targetEntityId);
+        if (presentationEntityId != null) this.state.nav.waypoint.presentationEntityId = presentationEntityId;
+      }
       // A physical gate is a local position with an inter-sector completion condition. Preserve the
       // destination identity so navigation can retire the old-sector marker only after authoritative
       // sector entry; ordinary local fixes intentionally carry no targetSectorId.
