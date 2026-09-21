@@ -2,7 +2,7 @@
 
 Class: player flyable interceptor. Hitch untouched.
 
-**2026-09-21 chase_form_v15.** Cycle 3 after three v14 reviews all said REVISE. Dark framed greenhouse (readable at D=144), dark radiator well instead of an orange grate, wing panel channel. Principled color blocks. Live chase only. No seats. Parent unproven. Hitch/Kestrel frozen. Hitch still wins on albedo/dirt/stencil/hardware density.
+**2026-09-21 chase_form_v16.** Cycle 4 after C3 side-by-side: Hitch still won unique albedo, dirt, stencil, hardware density. This pass: factory-gray hull (not foam-white), port ochre ID bars, unmirrored teal plate + repair patch, dorsal hatch/cable tray/hose/antenna, ceramic heat/soot at the drive, RCS and nav beacons. Geometry + Principled islands that read at D=144. No maps, no seats. Hitch/Kestrel frozen. Hitch-plus still REVISE (panel language, lettering, hull-wide dirt, hardware density). Not a five-cycle close.
 
 ## Visible-zone register (supported cameras: 3/4, starboard, rear)
 

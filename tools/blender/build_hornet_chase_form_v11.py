@@ -23,7 +23,7 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
-REVISION = "chase_form_v15"
+REVISION = "chase_form_v16"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "hornet"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -39,15 +39,17 @@ KEEP_SEPARATE = (
 
 # Distinct color blocks that read at ~15% frame width. No 512-map density trap.
 HONEST = {
-    "Material_Hull": {"color": (0.76, 0.77, 0.79), "metallic": 0.05, "roughness": 0.34, "role": "hull"},
-    "Material_Armor": {"color": (0.14, 0.16, 0.19), "metallic": 0.16, "roughness": 0.48, "role": "armor"},
+    "Material_Hull": {"color": (0.26, 0.28, 0.31), "metallic": 0.10, "roughness": 0.40, "role": "hull"},
+    "Material_Armor": {"color": (0.13, 0.145, 0.17), "metallic": 0.18, "roughness": 0.50, "role": "armor"},
     "Material_Canopy": {"color": (0.012, 0.016, 0.022), "metallic": 0.0, "roughness": 0.06, "role": "glass"},
-    "Material_Ceramic": {"color": (0.46, 0.36, 0.22), "metallic": 0.0, "roughness": 0.60, "role": "ceramic"},
+    "Material_Ceramic": {"color": (0.28, 0.18, 0.10), "metallic": 0.0, "roughness": 0.62, "role": "ceramic"},
     "Material_Mechanical": {"color": (0.04, 0.042, 0.048), "metallic": 0.38, "roughness": 0.50, "role": "mechanical"},
     "Material_Radiator": {"color": (0.11, 0.05, 0.03), "metallic": 0.22, "roughness": 0.48, "role": "radiator"},
     "Material_Thruster": {"color": (0.025, 0.026, 0.03), "metallic": 0.30, "roughness": 0.48, "role": "thruster"},
     "Material_Accent": {"color": (0.74, 0.24, 0.06), "metallic": 0.02, "roughness": 0.38, "role": "accent"},
-    "Material_Warning": {"color": (0.08, 0.085, 0.09), "metallic": 0.16, "roughness": 0.50, "role": "warning"},
+    "Material_Warning": {"color": (0.78, 0.62, 0.10), "metallic": 0.02, "roughness": 0.42, "role": "warning"},
+    # Unmirrored teal island — unique albedo at D=144, not a map dump.
+    "Material_Marking": {"color": (0.07, 0.28, 0.24), "metallic": 0.04, "roughness": 0.40, "role": "marking"},
 }
 
 
@@ -242,6 +244,43 @@ def airfoil(x_le, y, z, chord, thick):
         (x_le - chord * 0.04, y, z - thick * 0.10),
         (x_le, y, z - thick * 0.04),
     ]
+
+
+def add_cylinder(name, radius, depth, location, material, bevel=0.0, rotation=(0.0, 0.0, 0.0), vertices=10):
+    bpy.ops.mesh.primitive_cylinder_add(
+        radius=radius, depth=depth, vertices=vertices, location=(0.0, 0.0, 0.0),
+    )
+    obj = bpy.context.object
+    obj.name = name
+    obj.rotation_euler = rotation
+    obj.location = location
+    apply_object(obj)
+    obj.select_set(False)
+    return finish_mesh(obj, material, bevel)
+
+
+def add_hose(name, points, radius, material, segments=8):
+    """Fat service hose as a lofted tube with end fittings — not a long box."""
+    pts = [Vector(p) for p in points]
+    rings = []
+    for index, point in enumerate(pts):
+        if index < len(pts) - 1:
+            axis = pts[index + 1] - point
+        else:
+            axis = point - pts[index - 1]
+        if axis.length < 1e-5:
+            axis = Vector((-1.0, 0.0, 0.0))
+        rings.append(circle_ring(point, axis, radius, segments))
+    body = loft_rings(name, rings, material, 0.002, cap=True)
+    start_axis = pts[1] - pts[0]
+    end_axis = pts[-1] - pts[-2]
+    start_rot = start_axis.to_track_quat("Z", "Y").to_euler()
+    end_rot = end_axis.to_track_quat("Z", "Y").to_euler()
+    fittings = [
+        add_cylinder(f"{name}_FitFore", radius * 1.45, 0.10, tuple(pts[0]), material, 0.0, (start_rot.x, start_rot.y, start_rot.z), 8),
+        add_cylinder(f"{name}_FitAft", radius * 1.45, 0.10, tuple(pts[-1]), material, 0.0, (end_rot.x, end_rot.y, end_rot.z), 8),
+    ]
+    return [body, *fittings]
 
 
 def add_box(name, dimensions, location, material, bevel=0.006, rotation=(0.0, 0.0, 0.0)):
@@ -676,8 +715,87 @@ def build_guns_and_sensor(mats, lod):
     return bits
 
 
+def build_hardware(mats, lod):
+    """Chase-scale unique albedo, dirt, stencil, and hardware. No maps, no seats."""
+    hull_mat = mats["Material_Hull"]
+    armor = mats["Material_Armor"]
+    mech = mats["Material_Mechanical"]
+    ceramic = mats["Material_Ceramic"]
+    warning = mats["Material_Warning"]
+    accent = mats["Material_Accent"]
+    marking = mats["Material_Marking"]
+    bits = []
+
+    # Unmirrored port repair — 0.9 m plate so D=144 sees a patch, not a rivet.
+    bits.append(add_box("LOD0_RepairPatch", (0.92, 0.50, 0.07), (1.42, -0.98, 0.42), armor, 0.002))
+    bits.append(add_box("LOD0_RepairWeld", (0.92, 0.05, 0.09), (1.42, -0.74, 0.46), mech, 0.0))
+
+    # Port-wing ochre ID bars (stencil language without a texture dump).
+    for index, x in enumerate((0.22, -0.08, -0.38)):
+        bits.append(add_box(
+            f"LOD0_StencilBar_{index}",
+            (0.16, 0.78, 0.06),
+            (x, -2.72, 0.54),
+            warning, 0.0,
+        ))
+
+    # Starboard teal ID plate — unique albedo island, not mirrored.
+    bits.append(add_box("LOD0_MarkingPlate", (0.70, 0.26, 0.07), (0.72, 0.48, 0.72), marking, 0.001))
+
+    if lod > 1:
+        return bits
+
+    # Offset dorsal hatch + hinge (starboard of spine, not a centered lid).
+    bits.append(add_box("LOD0_HatchLid", (0.68, 0.50, 0.10), (1.05, 0.18, 0.78), armor, 0.002))
+    bits.append(add_box("LOD0_HatchHinge", (0.10, 0.50, 0.12), (1.42, 0.18, 0.80), mech, 0.0))
+
+    # Spine cable tray sits ON the dorsal skin so D=144 can count a dark line.
+    bits.append(add_box("LOD0_CableTray", (2.55, 0.14, 0.12), (0.40, 0.12, 0.74), mech, 0.001))
+    bits.append(add_box("LOD0_CableClamp_Fore", (0.12, 0.20, 0.16), (1.48, 0.12, 0.80), armor, 0.0))
+    bits.append(add_box("LOD0_CableClamp_Aft", (0.12, 0.20, 0.16), (-0.62, 0.12, 0.80), armor, 0.0))
+
+    # Ceramic heat / soot around the drive — dirt that reads at chase distance.
+    bits.append(add_box("LOD0_HeatPlate_Port", (0.78, 0.30, 0.09), (-4.05, -0.58, 0.52), ceramic, 0.001))
+    bits.append(add_box("LOD0_HeatPlate_Stbd", (0.78, 0.30, 0.09), (-4.05, 0.58, 0.52), ceramic, 0.001))
+    bits.append(add_box("LOD0_SootApron", (0.90, 0.62, 0.07), (-4.95, 0.0, 0.08), ceramic, 0.001))
+
+    # Four RCS blocks with dark cups — hardware density, not skin stickers.
+    rcs = (
+        ("ForePort", (4.38, -0.32, 0.22), (0.22, 0.16, 0.16)),
+        ("ForeStbd", (4.38, 0.32, 0.22), (0.22, 0.16, 0.16)),
+        ("AftPort", (-4.78, -0.38, 0.18), (0.24, 0.18, 0.16)),
+        ("AftStbd", (-4.78, 0.38, 0.18), (0.24, 0.18, 0.16)),
+    )
+    for tag, loc, dim in rcs:
+        bits.append(add_box(f"LOD0_RCS_{tag}", dim, loc, mech, 0.002))
+        cup_loc = (loc[0] + (0.10 if "Fore" in tag else -0.10), loc[1], loc[2])
+        bits.append(add_cylinder(
+            f"LOD0_RCSCup_{tag}", 0.055, 0.08, cup_loc, hull_mat, 0.0,
+            rotation=(0.0, math.radians(90.0), 0.0), vertices=8,
+        ))
+
+    # Service hose rides the dorsal skin radiator → drive, not buried in the loft.
+    bits.extend(add_hose(
+        "LOD0_Hose_RadDrive",
+        [(-2.55, 0.38, 0.72), (-3.05, 0.46, 0.78), (-3.55, 0.44, 0.74), (-4.00, 0.38, 0.62)],
+        0.085,
+        mech,
+    ))
+
+    if lod != 0:
+        return bits
+
+    antenna = add_box("LOD0_AntennaMast", (0.10, 0.10, 0.62), (2.42, 0.20, 1.28), mech, 0.0)
+    bits.append(antenna)
+    bits.append(add_cylinder("LOD0_AntennaTip", 0.07, 0.12, (2.42, 0.20, 1.62), armor, 0.0, vertices=8))
+    bits.append(add_box("LOD0_Nav_Port", (0.14, 0.14, 0.10), (-0.72, -3.38, 0.58), warning, 0.0))
+    bits.append(add_box("LOD0_Nav_Stbd", (0.14, 0.14, 0.10), (-0.72, 3.38, 0.58), accent, 0.0))
+    return bits
+
+
 def shade_objects(objs):
-    hard = ("Hull", "Wing", "Canard", "Coaming", "Flap", "Armor", "Accent", "Gun")
+    hard = ("Hull", "Wing", "Canard", "Coaming", "Flap", "Armor", "Accent", "Gun",
+            "Repair", "Stencil", "Hatch", "Cable", "RCS", "Nav", "Hose", "Marking", "Heat", "Soot")
     for obj in objs:
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
@@ -788,8 +906,9 @@ def build_one(source: Path, output: Path, lod: int):
     drive_bits, drive_report = build_drive(hull, mats, lod)
     rad_bits, rad_report = build_radiators(hull, mats, lod)
     extra = build_guns_and_sensor(mats, lod)
+    hardware = build_hardware(mats, lod)
 
-    built = [hull, *courses, *wings, *canopy_bits, *drive_bits, *rad_bits, *extra]
+    built = [hull, *courses, *wings, *canopy_bits, *drive_bits, *rad_bits, *extra, *hardware]
     for obj in built:
         if obj and obj.name in bpy.data.objects:
             parent_keep_world(obj, root)
@@ -804,7 +923,7 @@ def build_one(source: Path, output: Path, lod: int):
     for material in (
         mats["Material_Ceramic"], mats["Material_Radiator"], mats["Material_Thruster"],
         mats["Material_Mechanical"], mats["Material_Accent"], mats["Material_Canopy"],
-        mats["Material_Armor"],
+        mats["Material_Armor"], mats["Material_Warning"], mats["Material_Marking"],
     ):
         group = [
             obj for obj in bpy.data.objects
@@ -888,7 +1007,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "hornet_chase_form_v15.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "hornet_chase_form_v16.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 
