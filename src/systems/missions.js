@@ -443,6 +443,48 @@ export function isMutationRecovery(m) {
   return tag === 'salvage' || tag === 'recovery' || tag === 'cooked';
 }
 
+/**
+ * INF-069: the convoy client's three-state arc, bound to live settlement — never to intent.
+ * `recovering` answers the first salvage credit; `completed` answers the dock (full thanks
+ * only when the full manifest actually changed hands, short-settle otherwise); `failed`
+ * answers abandonment or expiry with a closed file and no thanks. Returns null for every
+ * mission that is not a salvage successor, so ordinary contracts keep their own voice and
+ * the client can neither thank for unperformed work nor re-introduce itself after settling
+ * (settlement fires once; the reaction carries a once-flag at the call site).
+ */
+export function convoyClientVoice(m, outcome, homeName) {
+  if (!isMutationRecovery(m)) return null;
+  const home = String(homeName || 'home');
+  const sender = `${home} Salvage Desk`;
+  const p = (m && m.params) || {};
+  const qty = Math.max(1, Math.floor(Number(p.qty) || 1));
+  if (outcome === 'recovering') {
+    return {
+      sender,
+      text: `You're into the wreck — bring what's left of it home to ${home}. The desk pays for what comes back.`,
+    };
+  }
+  if (outcome === 'completed') {
+    if (p.completionMethod === 'partial_recovery') {
+      return {
+        sender,
+        text: `Short manifest logged. It isn't the whole convoy, but it settles what came home to ${home}.`,
+      };
+    }
+    return {
+      sender,
+      text: `Full ${qty}u manifest home at ${home}. The convoy's file is closed with thanks — settled in full.`,
+    };
+  }
+  if (outcome === 'failed' || outcome === 'expired') {
+    return {
+      sender,
+      text: `The wreck's gone cold and the file is closed at ${home}. No payment, no blame — there was nothing left to bring home.`,
+    };
+  }
+  return null;
+}
+
 /** INF-068: the convoy-wreck pocket geometry — a near-ring offset plus a slow drift. */
 export const CONVOY_WRECK_RING_WU = 60;
 export const CONVOY_WRECK_DRIFT_WU_S = 6;
@@ -3674,6 +3716,20 @@ export const missions = {
             objectiveProgress: m.objectiveProgress,
             salvageRecovered: true,
           });
+          // INF-069: the client's reaction to the player's approach — once, on the first real
+          // credit, persisted on the mission so Continue never repeats it.
+          if (before <= 0 && m.params && !m.params.convoyClientReacted) {
+            m.params.convoyClientReacted = true;
+            const voice = convoyClientVoice(m, 'recovering', this._stationName(m.destStationId));
+            if (voice) {
+              this.bus.emit('comms:popup', {
+                sender: voice.sender,
+                text: voice.text,
+                category: 'personal',
+                ttl: 8,
+              });
+            }
+          }
         }
       }
     }
@@ -5492,6 +5548,11 @@ export const missions = {
   },
 
   _missionClientName(m) {
+    // INF-069: a salvage successor answers in its home station's voice, not the board's.
+    if (isMutationRecovery(m)) {
+      const home = this._stationName(m && m.destStationId);
+      return `${home || 'Contract Board'}${home ? ' Salvage Desk' : ''}`;
+    }
     const fac = m && m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
     return fac ? (fac.short || fac.name) + ' Contract' : 'Contract Board';
   },
@@ -5518,8 +5579,13 @@ export const missions = {
         return 'Bulk ore received at ' + dest + '. The refinery logged the tether-haul and cleared the contract.';
       case 'mining_quota':
         return 'Quota received. The assay office logged ' + cargo + '; the rest of the rock can stay quiet.';
-      case 'salvage_retrieval':
+      case 'salvage_retrieval': {
+        // INF-069: the convoy client's answer to the actual outcome — full thanks only when
+        // the full manifest changed hands (this branch runs inside settlement, never on intent).
+        const voice = convoyClientVoice(m, 'completed', this._stationName(m && m.destStationId));
+        if (voice) return voice.text;
         return 'Recovery logged. Useful wreckage became inventory before another crew filed the claim.';
+      }
       case 'smuggling_run':
         return 'The cargo disappeared into ' + dest + '\'s books without becoming a customs story.';
       case 'bounty_hunt':
@@ -5557,6 +5623,11 @@ export const missions = {
 
   _missionLossDebriefText(m, reason) {
     const dest = this._destName(m);
+    // INF-069: the convoy client's answer to abandonment or expiry — a closed file, no thanks.
+    if (isMutationRecovery(m)) {
+      const voice = convoyClientVoice(m, 'failed', this._stationName(m && m.destStationId));
+      if (voice) return voice.text;
+    }
     if (reason === 'target_lost') return 'The mark was destroyed before you closed in near ' + dest + '. The contract is void — deposit refunded, no standing lost.';
     if (reason === 'deadline') return 'Deadline missed near ' + dest + '. The board has already marked the lane cold.';
     if (reason === 'abandoned') return 'Contract abandoned. Progress was cleared from the board and the client will remember the gap.';
