@@ -1,7 +1,7 @@
 {
   "ok": true,
   "asset": "ship_hornet",
-  "revision": "chase_form_v14",
+  "revision": "chase_form_v15",
   "lod": 2,
   "source": "/workspace/assets/ships/parts/wholeships/hornet_production_v1_lod2.glb",
   "output": "/workspace/assets/ships/fleet_player_bodies_v1/hornet/source/wholeships/hornet_production_v1_lod2.glb",
@@ -34,8 +34,8 @@
     3.409,
     1.294
   ],
-  "triangles": 4894,
-  "hullTriangles": 2844,
+  "triangles": 4878,
+  "hullTriangles": 2504,
   "objects": [
     "COLLISION_HULL.002",
     "LOD0_Bell",
@@ -48,5 +48,5 @@
     "LOD0_Wing_Port",
     "LOD0_Wing_Stbd"
   ],
-  "bytes": 531812
+  "bytes": 506656
 }

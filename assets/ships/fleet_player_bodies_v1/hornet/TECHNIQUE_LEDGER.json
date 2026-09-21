@@ -2,21 +2,22 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "SF_HORNET_PRODUCTION_V1",
   "shipId": "ship_hornet",
-  "candidateHash": "DEFA87BF90BCF24FA090727F267C0048D42807D9371A58C29A138C09D3E8BC0C",
+  "candidateHash": "9A2587EB2807BD4A9768165777AC33C2D12248B840D9383A738DC1A46E9739A3",
   "exportGlb": "assets/ships/parts/wholeships/hornet_production_v1.glb",
   "class": "player_flyable",
   "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
-  "revision": "chase_form_v14",
-  "cycle": 1,
+  "revision": "chase_form_v15",
+  "cycle": 3,
   "disposition": "form_pass_unproven",
   "clayStillReadsAsPrimitives": false,
-  "independentReview": "pending_after_revise",
-  "independentReviewer": "three chase-still subagents 2026-09-21 REVISE on v13; this leaf revises those three notes",
+  "independentReview": "revise",
+  "independentReviewer": "three chase-still subagents 2026-09-21 C3 on v14 all REVISE",
   "independentReviewScope": "play_chase, play_chase_abeam, play_chase_close",
   "independentReviewP0": 0,
   "openGates": [
     "PQ-050 parent unproven",
-    "five-cycle Hitch-plus loop incomplete"
+    "five-cycle Hitch-plus loop incomplete",
+    "Hitch still wins side-by-side: unique albedo, dirt, stencil, hardware density"
   ],
   "forbidden": {
     "factoryLoftPlusBoxes": false,
@@ -26,7 +27,7 @@
     "imagenUsedAsBake": false,
     "modeledSeat": false
   },
-  "notes": "PQ-050.01 chase_form_v14 REVISE of card-wings, picture-frame canopy, fan-on-tail. Principled color blocks. Hitch/Kestrel frozen. Ledger is not a G7 close.",
+  "notes": "PQ-050.01 chase_form_v15 cycle 3. v14 chase reviews REVISE: canopy invisible at D=144, dorsal cassette an orange grate, wings still a simple diamond. This export: dark framed greenhouse, dark radiator well (no hull rim), wing panel channel. Principled blocks. Hitch/Kestrel frozen. Not a G7 close.",
   "rows": [
     {
       "id": "MTX-02",

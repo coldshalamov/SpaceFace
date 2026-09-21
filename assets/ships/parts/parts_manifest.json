@@ -6674,8 +6674,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
-      "tris": 9246,
-      "bytes": 902184,
+      "tris": 9270,
+      "bytes": 879408,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6717,7 +6717,7 @@
           9.1
         ]
       },
-      "note": "PQ-050.01 chase_form_v14. Revise: blunt wings, scooped canopy well, dark recessed drive vanes. Principled color blocks. Hitch/Kestrel untouched. Not self-accepted; parent stays unproven."
+      "note": "PQ-050.01 chase_form_v15. Cycle 3 form: dark framed greenhouse, dark radiator well, wings keep fences. Hitch/Kestrel untouched. Not Hitch-plus; parent stays unproven."
     },
     {
       "id": "wholeship_inspection_cutter",

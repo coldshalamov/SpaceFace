@@ -2,7 +2,7 @@
 
 Class: player flyable interceptor. Hitch untouched.
 
-**2026-09-21 chase_form_v14.** Revise of v13 chase-still notes: blunt/fence wings vs D=144 cards, scooped canopy well (no roof plate), dark vanes receding in the drive throat. Principled color blocks. Supported cameras: live chase only. No seats. Parent remains unproven. Hitch/Kestrel frozen.
+**2026-09-21 chase_form_v15.** Cycle 3 after three v14 reviews all said REVISE. Dark framed greenhouse (readable at D=144), dark radiator well instead of an orange grate, wing panel channel. Principled color blocks. Live chase only. No seats. Parent unproven. Hitch/Kestrel frozen. Hitch still wins on albedo/dirt/stencil/hardware density.
 
 ## Visible-zone register (supported cameras: 3/4, starboard, rear)
 
