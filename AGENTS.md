@@ -19,6 +19,7 @@ the named outcome of the job you were given, then stop. Full working agreement:
 | **No instruction, "next", "go", or "make it better"** | **`build_map.md` §1** — `node scripts/program-dispatch.mjs --next` |
 | Program map, "next N" / "what next" | **`build_map.md`**, then `design/program/NOW.md` |
 | Occupied now? | `design/program/NOW.md` + `node scripts/check-now-liveness.mjs` |
+| Long-horizon VM / Blender / cloud agent work | **`design/program/VM_LANES.md`** |
 | Implement a feature/fix | `docs/MODULE_MAP.md` → nearest nested `AGENTS.md` |
 | Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
 | Player-facing graphics / Blender/GLB | `docs/visual-assets/README.md` → `assets/AGENTS.md` |
