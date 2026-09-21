@@ -32,7 +32,7 @@ from spaceface_chase_camera import (  # noqa: E402
 )
 
 ASSEMBLY_HULL_UNITS = 1.72
-RADIUS = {"hornet": 16.0, "kestrel": 14.0, "hitch": 14.0}
+RADIUS = {"hornet": 16.0, "kestrel": 14.0, "hitch": 14.0, "drifter": 18.0}
 
 
 def parse_args(argv):
