@@ -41,3 +41,14 @@ the loft change. Cycle-14 files stay selected for planform / well / greenhouse.
 |---|---|---|---|---|---|
 | `c15/drifter_c15_abeam_continuous_beam.png` | abeam hull silhouette | Cursor GenerateImage, 2026-09-21 | One continuous faceted beam from the side-top; nacelles grown from aft flanks; well a hole | Sloped topside; no saddlebag split | Raised cabin spine; dark paddle sponsons |
 | `c15/drifter_c15_yz_sloped_chine.png` | YZ station | Cursor GenerateImage, 2026-09-21 | Hard-chine trapezoid: small lip, angled topside, no vertical slab | SELECTED tub/trapezoid | REJECT circular tube + paddle lobes |
+
+## 2026-09-21 (C16 abeam silhouette)
+
+C15 play+close stayed TUBE_PADDLE NO. Abeam still called raised spine + darker
+flanks + hard root crease. C16 changes the YZ station (not more fairing on
+separate sponson meshes). Separate nacelle bodies are deleted; aft hull
+stations widen so the drives sit in the primary loft.
+
+| File | Component | Tool | What it is used to decide | Selected | Rejected |
+|---|---|---|---|---|---|
+| `c16/drifter_c16_yz_convex_beam.png` | YZ station / abeam outline | Cursor GenerateImage, 2026-09-21 | Convex diamond: max beam at mid-height; sideboard is the slope | SELECTED convex diamond | REJECT lid+vertical walls; REJECT tube+paddles |

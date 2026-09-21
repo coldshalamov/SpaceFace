@@ -200,6 +200,20 @@ Three chase reviews REVISE. Play+close stay `TUBE_PADDLE NO`; wells stay holes.
 darker flanking volumes and a hard root crease. Hitch still wins formed-shell /
 skin at D=144. Hitch-plus chase is not closed. Parent unproven / not G7.
 
+## C16 chase-form (2026-09-21)
+
+`chase_form_v16` keeps the C14/C15 play+close wins and wells-as-cuts. The YZ is a
+convex diamond (max beam at mid-height). Separate nacelle body lofts are deleted;
+aft hull stations widen so the drives are throats in the primary shell. No extra
+fairing bands on sponson meshes. Principled islands only. Hitch/Hornet untouched.
+No seats. No megatex.
+
+Three chase reviews REVISE. Play+close stay `TUBE_PADDLE NO`; wells stay holes.
+**Abeam TUBE_PADDLE is not gone** — clay still read as a dark spine with lighter
+flanking volumes and a hard value/seam at the root (shaded closer to one diamond).
+Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is not closed.
+Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,

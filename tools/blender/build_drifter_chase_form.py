@@ -22,14 +22,12 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v15"
+REVISION = "chase_form_v16"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "drifter"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
 
 KEEP_SEPARATE = (
-    "LOD0_Flap_",
-    "LOD0_Nacelle_",
     "LOD0_Glass",
     "LOD0_Bell_",
 )
@@ -37,8 +35,9 @@ KEEP_SEPARATE = (
 # Distinct color blocks that read at ~15% frame width. No 512-map density trap.
 # C8–C13 wins: wells as holes, no teal beam rail, shell-cut lips, light near Hitch.
 # C14: one hard-chine workboat beam (sideboards ARE the hull). No paddle lobes.
-# C15: kill C14's abeam leftover — no vertical slab at y=beam (raised spine +
-# dark flank). Armor is keel/bilge only — painting |y| as Armor made C13 paddles.
+# C15: no vertical slab at y=beam. Abeam still read spine+flanks (separate nacelle
+# bodies + remaining YZ fold). C16: convex diamond YZ; nacelle bodies deleted;
+# aft stations widen so drives sit in the primary loft. Armor is keel/bilge only.
 HONEST = {
     "Material_Hull": {"color": (0.108, 0.132, 0.140), "metallic": 0.16, "roughness": 0.54, "role": "hull"},
     "Material_Armor": {"color": (0.072, 0.082, 0.088), "metallic": 0.22, "roughness": 0.56, "role": "armor"},
@@ -207,50 +206,41 @@ def loft_rings(name, rings, material, bevel=0.010, cap=True):
 
 
 def shell_ring(st):
-    """One YZ station of a sloped-chine workboat.
+    """Convex diamond YZ. Max beam at mid-height. Sideboard is the slope.
 
-    C14 put two points at y=beam (lip and topside) — a 1 m vertical slab.
-    Abeam read that as a raised spine plus a darker flanking face and a hard
-    root crease. C15: max beam is a short lip, then the topside slants
-    in-and-down. Still one half-beam. No (hw, wing) paddle lobe.
+    C14/C15 put a gunwale lip (two points near the same Y, large dZ) — abeam
+    read that as a raised spine + darker flanking face + hard root crease.
+    One half-beam. No (hw, wing) paddle lobe. Consecutive half-points may not
+    share Y while dropping more than 0.22 m (that is a vertical slab).
     """
     x, beam, hh, zc, keel, flat, box, _chine = st
     flat = max(0.0, min(1.0, float(flat)))
     box = max(0.0, min(1.0, float(box)))
     beam = max(0.22, float(beam))
-    crown = zc + hh * (0.94 - 0.04 * flat)
-    deck_inner = beam * (0.18 + 0.14 * flat)
-    deck_y = beam * (0.58 + 0.16 * flat)
-    deck_z = crown - hh * 0.06
-    shoulder_y = beam * (0.84 + 0.08 * flat)
-    shoulder_z = crown - hh * 0.16
-    gunwale_y = beam
-    lip_z = crown - hh * 0.20
-    topside_y = beam * (0.93 - 0.04 * box)
-    topside_z = zc + hh * (0.30 - 0.06 * box)
-    chine_y = beam * (0.80 - 0.06 * box)
-    chine_z = zc - hh * (0.08 + 0.08 * box)
-    side_y = beam * (0.66 - 0.08 * box)
-    side_z = zc - hh * (0.40 + 0.06 * box)
-    bilge_y = beam * (0.46 - 0.08 * box)
-    bilge_z = zc - hh * (0.68 + 0.06 * box)
-    keel_y = beam * (0.16 - 0.04 * box)
+    crown = zc + hh * (0.90 - 0.06 * flat)
     keel_z = zc - hh - keel * (1.0 - 0.18 * box)
+    beam_z = zc + hh * 0.02 * (1.0 - box)
 
     def half(sign):
         return [
-            (x, sign * deck_inner, crown),
-            (x, sign * deck_y, deck_z),
-            (x, sign * shoulder_y, shoulder_z),
-            (x, sign * gunwale_y, lip_z),
-            (x, sign * topside_y, topside_z),
-            (x, sign * chine_y, chine_z),
-            (x, sign * side_y, side_z),
-            (x, sign * bilge_y, bilge_z),
-            (x, sign * keel_y, keel_z),
+            (x, sign * beam * 0.18, crown - hh * 0.02),
+            (x, sign * beam * (0.42 + 0.06 * flat), crown - hh * 0.18),
+            (x, sign * beam * (0.70 + 0.04 * flat), zc + hh * 0.38),
+            (x, sign * beam * (0.92 + 0.02 * (1.0 - box)), zc + hh * 0.14),
+            (x, sign * beam, beam_z),
+            (x, sign * beam * (0.90 - 0.04 * box), zc - hh * 0.18),
+            (x, sign * beam * (0.68 - 0.08 * box), zc - hh * 0.48),
+            (x, sign * beam * (0.40 - 0.06 * box), zc - hh * 0.78),
+            (x, sign * beam * 0.14, keel_z),
         ]
 
-    return [(x, 0.0, crown)] + half(1.0) + [(x, 0.0, keel_z + keel * 0.08)] + list(reversed(half(-1.0)))
+    pts = half(1.0)
+    for a, b in zip(pts, pts[1:]):
+        if abs(a[1] - b[1]) < 0.05 and abs(a[2] - b[2]) > 0.22:
+            raise RuntimeError(
+                f"vertical slab in YZ at x={a[0]:.2f} dy={abs(a[1] - b[1]):.3f} dz={abs(a[2] - b[2]):.3f}"
+            )
+    return [(x, 0.0, crown)] + pts + [(x, 0.0, keel_z + keel * 0.08)] + list(reversed(half(-1.0)))
 
 
 def chine_ring(x, hw, hh, zc=0.12, keel=0.10, yc=0.0, flat=0.0, box=0.0):
@@ -549,8 +539,9 @@ def delete_render_meshes():
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-# C15 sloped-chine workboat. Endpoints stay C6 (envelope). Stations unchanged
-# from C14 (one half-beam; no paddle LE). The YZ ring is what changes.
+# C16 convex-diamond workboat. Endpoints stay C6 (envelope). Bow/mid beam
+# keep the C14 diamond planform (play_chase TUBE_PADDLE NO). Aft stations
+# widen so drive volume lives in the primary loft — no separate sponson mesh.
 # (x, beam, hh, zc, keel, flat, box, chine)
 HULL_STATIONS = [
     (7.95, 0.42, 0.46, 0.10, 0.16, 0.18, 0.22, 0.10),
@@ -560,14 +551,14 @@ HULL_STATIONS = [
     (1.60, 3.12, 1.18, 0.14, 0.12, 0.82, 0.42, 0.34),
     (0.15, 3.20, 1.20, 0.14, 0.12, 0.86, 0.44, 0.36),
     (-2.00, 3.14, 1.16, 0.14, 0.10, 0.78, 0.44, 0.34),
-    (-4.00, 2.68, 1.08, 0.16, 0.10, 0.52, 0.40, 0.28),
-    (-5.70, 2.08, 0.96, 0.18, 0.08, 0.32, 0.36, 0.20),
-    (-7.20, 1.42, 0.84, 0.16, 0.08, 0.20, 0.30, 0.14),
-    (-8.48, 0.82, 0.66, 0.12, 0.06, 0.14, 0.26, 0.10),
+    (-4.00, 2.90, 1.10, 0.14, 0.10, 0.60, 0.40, 0.28),
+    (-5.70, 2.62, 1.00, 0.16, 0.08, 0.40, 0.36, 0.22),
+    (-7.20, 2.20, 0.88, 0.16, 0.08, 0.22, 0.32, 0.16),
+    (-8.48, 1.10, 0.70, 0.12, 0.06, 0.14, 0.26, 0.10),
 ]
 
 
-def densify_stations(stations, mids=20):
+def densify_stations(stations, mids=26):
     """Mid-span stations for a smoother loft. Endpoints (envelope) stay C6."""
     out = [stations[0]]
     for a, b in zip(stations, stations[1:]):
@@ -615,7 +606,7 @@ def paint_shell(hull, mats):
         _beam, hh, zc = hull_half_at(centroid.x)
         if centroid.z < zc - hh * 0.38:
             poly.material_index = 1
-        elif centroid.z > zc + hh * 0.55:
+        elif centroid.z > zc + hh * 0.70:
             poly.material_index = 2
         else:
             poly.material_index = 0
@@ -648,88 +639,54 @@ def build_hull(mats):
     return hull, extras
 
 
-def build_nacelles(mats, lod):
+def drive_half_y():
+    """Aft drive sits inside the primary beam, not outboard of a tapering tube."""
+    return hull_station_at(-6.80)[1] * 0.70
+
+
+def build_nacelles(hull, mats, lod):
+    """Drive throats cut into the primary hull. No separate sponson loft.
+
+    C15 KEEP_SEPARATE nacelle bodies were extra darker volumes on play_chase_abeam.
+    Collars/heat bands/fins are small hardware on the hull, not a second body.
+    """
     hull_mat = mats["Material_Hull"]
     armor = mats["Material_Armor"]
     ceramic = mats["Material_Ceramic"]
-    warning = mats["Material_Warning"]
     bits = []
     report = {}
-    # First stations sit inside the hull half-width so the pod is a swept fairing, not a trailer.
-    station_core = [
-        (0.45, 0.40, 0.18, 0.30, 0.16, 0.05, 0.36, 0.20),
-        (-1.10, 0.90, 0.32, 0.50, 0.20, 0.05, 0.26, 0.26),
-        (-2.70, 1.34, 0.50, 0.66, 0.24, 0.05, 0.16, 0.32),
-        (-4.40, 1.66, 0.62, 0.78, 0.26, 0.05, 0.12, 0.36),
-        (-6.20, 1.80, 0.68, 0.84, 0.28, 0.04, 0.10, 0.40),
-        (-8.10, 1.76, 0.50, 0.62, 0.26, 0.04, 0.08, 0.42),
-    ]
+    yc_abs = drive_half_y()
     for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
-        rings = [
-            chine_ring(x, hw, hh, zc, keel, yc_abs * sign, flat, box)
-            for x, yc_abs, hw, hh, zc, keel, flat, box in station_core
-        ]
-        nacelle = loft_rings(f"LOD0_Nacelle_{tag}", rings, hull_mat, 0.012)
-        bits.append(nacelle)
-        yc = 1.80 * sign
-        bits.append(loft_rings(
-            f"LOD0_NacelleCowl_{tag}",
-            [
-                chine_ring(-3.05, 0.36, 0.12, 0.92, 0.02, yc, 0.18, 0.20),
-                chine_ring(-5.05, 0.48, 0.14, 0.98, 0.02, yc, 0.12, 0.24),
-                chine_ring(-6.85, 0.38, 0.12, 0.92, 0.02, yc, 0.10, 0.28),
-            ],
-            hull_mat, 0.006, cap=True,
-        ))
+        yc = yc_abs * sign
+
+        def throat(name=f"NacelleThroat_{tag}", loc=(-7.55, yc, 0.28)):
+            return add_box(name, (1.55, 0.72, 0.78), loc, hull_mat, 0.0)
+
+        report[f"throat_{tag}"] = cut(hull, throat)
+        if lod < 2:
+            def slot(name=f"NacelleSlot_{tag}", loc=(-5.10, yc, 0.62)):
+                return add_box(name, (1.45, 0.42, 0.32), loc, hull_mat, 0.0)
+
+            report[f"slot_{tag}"] = cut(hull, slot)
         bits.append(add_cylinder(
-            f"LOD0_Collar_{tag}", 0.82, 0.24, (-6.45, yc, 0.28), armor, 0.002,
+            f"LOD0_Collar_{tag}", 0.70, 0.22, (-6.85, yc, 0.28), armor, 0.002,
             rotation=(0.0, math.radians(90.0), 0.0), vertices=12,
         ))
         bits.append(add_cylinder(
-            f"LOD0_HeatBand_{tag}", 0.66, 0.12, (-7.25, yc, 0.28), ceramic, 0.0,
+            f"LOD0_HeatBand_{tag}", 0.58, 0.10, (-7.35, yc, 0.28), ceramic, 0.0,
             rotation=(0.0, math.radians(90.0), 0.0), vertices=12,
         ))
         if lod < 2:
-            def slot(name=f"NacelleSlot_{tag}", loc=(-4.75, yc, 0.98)):
-                return add_box(name, (1.65, 0.50, 0.42), loc, hull_mat, 0.0)
-
-            def throat(name=f"NacelleThroat_{tag}", loc=(-7.55, yc, 0.58)):
-                return add_box(name, (1.45, 0.76, 0.82), loc, hull_mat, 0.0)
-
-            report[f"slot_{tag}"] = cut(nacelle, slot)
-            report[f"throat_{tag}"] = cut(nacelle, throat)
-            def nac_girth_fore(name=f"NacGirthFore_{tag}", loc=(-3.55, yc, 0.28)):
-                return add_box(name, (0.40, 1.15, 1.15), loc, hull_mat, 0.0)
-            def nac_girth_aft(name=f"NacGirthAft_{tag}", loc=(-5.85, yc, 0.28)):
-                return add_box(name, (0.40, 1.35, 1.35), loc, hull_mat, 0.0)
-            cut(nacelle, nac_girth_fore)
-            cut(nacelle, nac_girth_aft)
-            bits.append(loft_rings(
-                f"LOD0_NacPanel_Fore_{tag}",
-                [
-                    chine_ring(-2.85, 0.18, 0.42, 0.28, 0.02, yc, 0.20, 0.22),
-                    chine_ring(-4.05, 0.20, 0.48, 0.28, 0.02, yc, 0.16, 0.24),
-                ],
-                armor, 0.002, cap=True,
-            ))
-            bits.append(loft_rings(
-                f"LOD0_NacPanel_Aft_{tag}",
-                [
-                    chine_ring(-5.15, 0.20, 0.50, 0.28, 0.02, yc, 0.14, 0.26),
-                    chine_ring(-6.45, 0.18, 0.44, 0.28, 0.02, yc, 0.12, 0.28),
-                ],
-                armor, 0.002, cap=True,
-            ))
             bits.append(add_box(
-                f"LOD0_IntakeGrill_{tag}", (0.12, 0.58, 0.42),
-                (-3.15, yc * 0.92, 0.36), mats["Material_Mechanical"], 0.0,
+                f"LOD0_IntakeGrill_{tag}", (0.12, 0.48, 0.32),
+                (-4.85, yc, 0.36), mats["Material_Mechanical"], 0.0,
             ))
             fin_count = 3 if lod == 0 else 2
             for index in range(fin_count):
                 bits.append(add_box(
                     f"LOD0_CoolFin_{tag}_{index}",
-                    (0.22, 0.08, 0.32),
-                    (-4.35 - index * 0.32, yc, 1.12),
+                    (0.22, 0.08, 0.26),
+                    (-5.15 - index * 0.32, yc, 0.78),
                     mats["Material_Radiator"], 0.0,
                 ))
     return bits, report
@@ -900,7 +857,7 @@ def build_drives(mats, lod):
     bits = []
     report = {}
     for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
-        y = 1.80 * sign
+        y = drive_half_y() * sign
         rings = [
             circle_ring((-7.85, y, 0.28), (-1.0, 0.0, 0.0), 0.50, 12),
             circle_ring((-8.38, y, 0.28), (-1.0, 0.0, 0.0), 0.42, 12),
@@ -969,11 +926,12 @@ def build_hardware(hull, mats, lod):
         bits.append(add_box(f"LOD0_RadFin_{index}", (0.10, 0.62, 0.26), (-3.55 + index * 0.28, 0.0, 0.98), rad, 0.0))
     bits.append(add_box("LOD0_RadHeader", (1.42, 0.06, 0.06), (-3.05, 0.32, 1.12), rad, 0.0))
 
-    # Cluster 2 — nacelle roots: heat dirt + one hose per pod. Cowl/collar/throat live on the nacelle.
-    bits.append(add_box("LOD0_DirtNacelle_Port", (1.65, 0.28, 0.05), (-5.40, -1.80, 1.08), dirt, 0.0))
-    bits.append(add_box("LOD0_DirtNacelle_Stbd", (1.65, 0.28, 0.05), (-5.40, 1.80, 1.08), dirt, 0.0))
-    bits.append(add_box("LOD0_HeatPlate_Port", (1.15, 0.38, 0.10), (-6.45, -1.48, 0.92), mats["Material_Ceramic"], 0.001))
-    bits.append(add_box("LOD0_HeatPlate_Stbd", (1.15, 0.38, 0.10), (-6.45, 1.48, 0.92), mats["Material_Ceramic"], 0.001))
+    # Cluster 2 — heat dirt on the hull slope (no nacelle-roof plates).
+    yc = drive_half_y()
+    bits.append(add_box("LOD0_DirtNacelle_Port", (1.45, 0.22, 0.05), (-5.40, -yc * 0.82, 0.62), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtNacelle_Stbd", (1.45, 0.22, 0.05), (-5.40, yc * 0.82, 0.62), dirt, 0.0))
+    bits.append(add_box("LOD0_HeatPlate_Port", (1.05, 0.28, 0.08), (-6.45, -yc * 0.70, 0.48), mats["Material_Ceramic"], 0.001))
+    bits.append(add_box("LOD0_HeatPlate_Stbd", (1.05, 0.28, 0.08), (-6.45, yc * 0.70, 0.48), mats["Material_Ceramic"], 0.001))
 
     bits.append(add_box("LOD0_RCS_Port", (0.22, 0.18, 0.16), (-1.20, -1.90, 0.15), mech, 0.002))
     bits.append(add_box("LOD0_RCS_Stbd", (0.22, 0.18, 0.16), (-1.20, 1.90, 0.15), mech, 0.002))
@@ -992,12 +950,12 @@ def build_hardware(hull, mats, lod):
     if lod == 0:
         bits.extend(add_hose(
             "LOD0_Hose_Nacelle_Stbd",
-            [(-3.40, 1.15, 0.72), (-4.90, 1.52, 0.88), (-6.10, 1.76, 0.92)],
+            [(-3.40, 1.15, 0.55), (-4.90, drive_half_y() * 0.72, 0.48), (-6.10, drive_half_y() * 0.85, 0.42)],
             0.12, mech, 8,
         ))
         bits.extend(add_hose(
             "LOD0_Hose_Nacelle_Port",
-            [(-3.40, -1.15, 0.72), (-4.90, -1.52, 0.88), (-6.10, -1.76, 0.92)],
+            [(-3.40, -1.15, 0.55), (-4.90, -drive_half_y() * 0.72, 0.48), (-6.10, -drive_half_y() * 0.85, 0.42)],
             0.12, mech, 8,
         ))
         bits.append(add_box("LOD0_MiningHouse", (0.55, 0.28, 0.22), (7.35, 0.0, -0.12), armor, 0.002))
@@ -1122,7 +1080,7 @@ def build_one(source: Path, output: Path, lod: int):
     delete_render_meshes()
     mats = make_materials()
     hull, hull_extras = build_hull(mats)
-    nacelles, nacelle_report = build_nacelles(mats, lod)
+    nacelles, nacelle_report = build_nacelles(hull, mats, lod)
     flaps = build_flaps(hull, mats, lod)
     well_bits, well_report = build_cargo_well(hull, mats, lod)
     green_bits, green_report = build_greenhouse(hull, mats, lod)
@@ -1232,7 +1190,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "drifter_chase_form_v15.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "drifter_chase_form_v16.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 
