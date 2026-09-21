@@ -35,6 +35,7 @@ import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { validateRunState } from '../core/runState.js';
 import { styleCauseFromKill } from './survivalStyle.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { createRewardDeathLedger } from '../combat/rewardEligibility.js';
 
 /** Seconds allowed between kills before the chain lapses. Fixed, so a player can learn it. */
 export const SWARM_CHAIN_WINDOW_S = 4;
@@ -100,6 +101,7 @@ export const swarmChain = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this._unsubs = [];
+    this._deathLedger = createRewardDeathLedger();
     this._reset();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p)));
@@ -179,6 +181,8 @@ export const swarmChain = {
     this._pendingMilestone = 0;
     this._warned = false;
     this._pinned = false;
+    // A new run is new bodies: last run's claims die with it. INF-034.
+    if (this._deathLedger) this._deathLedger.clear();
   },
 
   _onKilled(payload) {
@@ -195,6 +199,10 @@ export const swarmChain = {
     if (!runOwnsReward(victim)) return;
     const actor = payload.killerId ?? payload.provenance?.actorId;
     if (actor !== this.state.playerId) return;
+    // One authoritative death per body: a second terminal observation of the same hull is
+    // observed, not paid — no second step, no second bonus, no second milestone. A reused
+    // entity id carrying a NEW body object is a new life and pays independently. INF-034.
+    if (this._deathLedger && !this._deathLedger.claim(victim)) return;
 
     const now = simTimeOf(this.state);
     const cause = styleCauseFromKill(payload);

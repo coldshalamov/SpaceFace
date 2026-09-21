@@ -47,6 +47,41 @@ export function runOwnsReward(entity) {
   return data.runCohort === 'survival';
 }
 
+/**
+ * One authoritative death per body (INF-034). Reward consumers each listen to terminal
+ * death events, and one physical kill can reach them as several observations — the damage
+ * router's `entity:killed`, a later sweep or second routing for the same hull. The first
+ * observation claims the body for payment; later ones for the SAME body object are
+ * duplicates and pay nothing. A new body life under a reused entity id is a different
+ * object, so it stays independently eligible. Bounded: the oldest claim falls off past
+ * the limit, so a ledger never grows with a run.
+ */
+export function createRewardDeathLedger(limit = 512) {
+  const cap = Number.isInteger(limit) && limit > 0 ? limit : 512;
+  const claimed = new Map();
+  const ledgerKey = (entity) => `${typeof entity.id}:${String(entity.id)}`;
+  return {
+    /**
+     * Claim this death for payment. True on the first observation of a body, false when
+     * the same body already paid. Bodies without an entity or id cannot be keyed and are
+     * never claimed here — callers keep their existing no-victim behavior for those.
+     */
+    claim(entity) {
+      if (!entity || entity.id == null) return false;
+      const key = ledgerKey(entity);
+      if (claimed.get(key) === entity) return false;
+      claimed.set(key, entity);
+      if (claimed.size > cap) {
+        const oldest = claimed.keys().next();
+        if (!oldest.done) claimed.delete(oldest.value);
+      }
+      return true;
+    },
+    clear() { claimed.clear(); },
+    get size() { return claimed.size; },
+  };
+}
+
 /** One mission marker is sufficient to reserve every generic kill-reward path for missions. */
 export function missionOwnsReward(entity) {
   const data = entity && entity.data || {};
