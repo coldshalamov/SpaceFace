@@ -28,6 +28,7 @@
 // with its key in fine print; the focused one bright. The refit is a column of hardpoint rows.
 
 import { SURVIVAL_DRAFT_CHOICES } from '../../data/survivalDraft.js';
+import { WEAPONS } from '../../data/weapons.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
 import { el, settle, cue } from '../kit/index.js';
 import { crucibleFittingDescription } from '../crucibleCombatReadout.js';
@@ -166,6 +167,62 @@ export function rememberedSpareChoice(options, remembered) {
   return match ? String(match.instanceId) : null;
 }
 
+const WEAPON_DEF_BY_ID = new Map(WEAPONS.map((def) => [def && def.id, def]));
+
+function finiteNum(value) {
+  return Number.isFinite(value) ? value : null;
+}
+
+function shortNum(value) {
+  return String(Math.round(value * 10) / 10);
+}
+
+/** A spare's option label. Weapon spares carry their authored figures; anything else stays bare. */
+function spareOptionLabel(spare) {
+  const base = spare.name || prettyDefId(spare.defId);
+  const def = spare && WEAPON_DEF_BY_ID.get(spare.defId);
+  const dps = finiteNum(def && def.dps);
+  const impulse = finiteNum(def && def.impulsePerHit);
+  if (dps == null && impulse == null) return base;
+  const parts = [];
+  if (dps != null) parts.push(`${shortNum(dps)} dps`);
+  if (impulse != null) parts.push(`impulse ${shortNum(impulse)}`);
+  return `${base} — ${parts.join(' · ')}`;
+}
+
+/**
+ * One honest fitting comparison (INF-036): weapon spares for the same empty hardpoint,
+ * contrasted on the two authored axes combat actually pays — sustained fire (dps) and
+ * shove (impulsePerHit, the physics-kill currency). Both spares take the SAME slot, so
+ * mount scaling applies equally and the leaders hold in the next encounter. The numbers
+ * are the defs' own; no range, homing, heat, or other capability is ever claimed, so the
+ * screen cannot imply a fitting can do what it cannot. Null unless two or more spares
+ * resolve to weapon defs carrying both figures — one comparison, everywhere else untouched.
+ */
+export function weaponSpareContrast(spares) {
+  const entries = [];
+  for (const spare of Array.isArray(spares) ? spares : []) {
+    const def = spare && WEAPON_DEF_BY_ID.get(spare.defId);
+    const dps = finiteNum(def && def.dps);
+    const impulse = finiteNum(def && def.impulsePerHit);
+    if (dps == null || impulse == null) continue;
+    entries.push({ name: spare.name || prettyDefId(spare.defId), dps, impulse });
+  }
+  if (entries.length < 2) return null;
+  if (entries.every((e) => e.dps === entries[0].dps && e.impulse === entries[0].impulse)) return null;
+  let fire = entries[0];
+  let shove = entries[0];
+  for (const entry of entries) {
+    if (entry.dps > fire.dps) fire = entry;
+    if (entry.impulse > shove.impulse) shove = entry;
+  }
+  if (fire === shove) {
+    return `${fire.name} leads sustained fire (${shortNum(fire.dps)} dps) and shove (impulse ${shortNum(fire.impulse)}).`;
+  }
+  return `Most sustained fire: ${fire.name} (${shortNum(fire.dps)} dps). `
+    + `Hardest shove: ${shove.name} (impulse ${shortNum(shove.impulse)}).`;
+}
+
 /** One refit row, in words. `options` is every spare that legally fits this hardpoint. */
 export function refitRowLines(row) {
   if (!row) return null;
@@ -178,12 +235,13 @@ export function refitRowLines(row) {
       action: 'Strip',
       disabled: false,
       options: [],
+      contrast: null,
     };
   }
   const spares = Array.isArray(row.spares) ? row.spares : [];
   const options = spares.map((spare) => ({
     instanceId: spare.instanceId,
-    label: spare.name || prettyDefId(spare.defId),
+    label: spareOptionLabel(spare),
   }));
   return {
     label,
@@ -191,6 +249,7 @@ export function refitRowLines(row) {
     action: 'Fit',
     disabled: options.length === 0,
     options,
+    contrast: weaponSpareContrast(spares),
   };
 }
 
@@ -672,6 +731,9 @@ export const crucibleRefitScreen = {
       } else {
         left.appendChild(el('div', 'k-row__sub', lines.value));
       }
+      // INF-036: the honest comparison, under the picker — the picker itself is untouched,
+      // so customization is preserved and the contrast only advises.
+      if (lines.contrast) left.appendChild(el('div', 'k-row__sub', lines.contrast));
       item.appendChild(left);
 
       const action = word(lines.action, lines.action === 'Strip' ? 'k-word--body k-word--danger' : 'k-word--body');
