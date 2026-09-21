@@ -997,6 +997,42 @@ function applyLifetime(lifetime, compact) {
   return next;
 }
 
+/**
+ * Per-run confidence (INF-040). An estimate, never a stake: it moves with one fixed rule —
+ * half a point of prior plus a tenth per cleared wave, capped — and it touches no wallet,
+ * no score, no award. Nothing in the sim spends, stakes, or multiplies it, because there
+ * is no wager anywhere in this module: confidence is observed, then read back as advice.
+ * A pure function of cleared waves, so identical play histories always produce identical
+ * confidence sequences under fixed-seed replay.
+ */
+export const CONFIDENCE_START = 0.5;
+export const CONFIDENCE_WAVE_STEP = 0.1;
+export const CONFIDENCE_CAP = 0.9;
+export const OVERCONFIDENT_DEATH_AT = 0.7;
+export const OVERCONFIDENCE_STREAK_AT = 2;
+
+export function runConfidenceFor(wavesCleared) {
+  const cleared = Number.isInteger(wavesCleared) && wavesCleared > 0 ? wavesCleared : 0;
+  return Math.min(CONFIDENCE_CAP, CONFIDENCE_START + CONFIDENCE_WAVE_STEP * cleared);
+}
+
+/** A destructive overconfidence: the run died while its estimate said it was fine. */
+export function isDestructiveOverconfidence(row) {
+  return !!row && row.outcome === 'defeat'
+    && typeof row.confidence === 'number' && row.confidence >= OVERCONFIDENT_DEATH_AT;
+}
+
+/** Trailing rows of destructive overconfidence — history is oldest-first, so walk back. */
+export function overconfidenceStreak(history) {
+  const rows = Array.isArray(history) ? history : [];
+  let streak = 0;
+  for (let index = rows.length - 1; index >= 0; index--) {
+    if (!isDestructiveOverconfidence(rows[index])) break;
+    streak++;
+  }
+  return streak;
+}
+
 export function compactRunResult(result, run, newly) {
   const challenge = challengeFromRun(run);
   const dailyDateKey = resolveDailyDateKey(result, run);
@@ -1015,6 +1051,9 @@ export function compactRunResult(result, run, newly) {
     score: result && Number.isInteger(result.score) ? result.score : 0,
     credits: result && Number.isInteger(result.credits) ? result.credits : 0,
     xp: result && Number.isInteger(result.xp) ? result.xp : 0,
+    // INF-040: the estimate files with the row it describes. Score, credits, and every
+    // award are set above from the result alone — confidence never feeds them.
+    confidence: runConfidenceFor(result && result.wavesCleared),
     picks: Array.isArray(result && result.picks) ? result.picks.map((pick) => ({
       verb: pick && pick.verb ? pick.verb : null,
       defId: pick && pick.defId ? pick.defId : null,
@@ -1101,6 +1140,11 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   };
   saveCrucibleMeta(next, storage);
   consumeQueuedDailyDateKey();
+  // INF-040: the streak rides home on the result so the review surface can answer repeated
+  // destructive overconfidence with advice — assisted flight, never a wager. There is no
+  // daily-easy-mode and no cadet tier to name; the honest response points at the real
+  // assists the settings already carry.
+  compact.overconfidenceStreak = overconfidenceStreak(next.history);
   return {
     profile: next,
     result: compact,

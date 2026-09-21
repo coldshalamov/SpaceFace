@@ -45,6 +45,7 @@ import {
   weeklyMutatorForNow,
   bestLineRows,
   normalizeBestLine,
+  OVERCONFIDENCE_STREAK_AT,
   roundProgress,
 } from '../../systems/survivalRecords.js';
 import {
@@ -1599,6 +1600,25 @@ export function comboRows(summary) {
   return rows;
 }
 
+/**
+ * The run's confidence, read back as advice (INF-040). DOM-free: the story band renders
+ * `text`. The estimate itself is settled facts (cleared waves); the streak answers repeated
+ * destructive overconfidence by naming a real assist — assisted flight — never a wager,
+ * never a staked reward. Null when the result carries no estimate, so older plates read
+ * exactly as before.
+ */
+export function confidenceLine(result) {
+  const confidence = result && typeof result.confidence === 'number' ? result.confidence : null;
+  if (confidence == null) return null;
+  const wave = Number.isInteger(result.wave) && result.wave > 0 ? result.wave : 0;
+  const text = `Confidence ${confidence.toFixed(2)} — held to wave ${wave}.`;
+  const streak = Number.isInteger(result.overconfidenceStreak) ? result.overconfidenceStreak : 0;
+  if (streak >= OVERCONFIDENCE_STREAK_AT) {
+    return `${text} Confident runs keep ending early — consider assisted flight (Settings → Flight mode) before the next one.`;
+  }
+  return text;
+}
+
 /** The recent chained tricks, newest last, as name/detail pairs for the chain list. */
 export function comboTrickLines(summary) {
   const entries = summary && Array.isArray(summary.lastTricks) ? summary.lastTricks : [];
@@ -1663,6 +1683,10 @@ function renderStory(band, result) {
   for (const line of lines) {
     band.appendChild(el('p', 'k-sentence sf-crres__story-line', line));
   }
+  // INF-040: the estimate, read back as advice on the existing review surface — one line,
+  // never a trait, never a wager.
+  const confidence = confidenceLine(result);
+  if (confidence) band.appendChild(el('p', 'k-sentence sf-crres__confidence', confidence));
 }
 
 function renderCombo(band, summary) {
