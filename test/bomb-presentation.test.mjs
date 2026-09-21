@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { BOMB_DRIFT } from '../src/data/bombs.js';
-import { BombPresentationBatch, updateBombPresentation, releaseBombPresentation, bombPresentationStats, BOMB_PRESENTATION_MAX_VERTICES } from '../src/render/bombPresentation.js';
+import { BombPresentationBatch, updateBombPresentation, releaseBombPresentation, bombPresentationStats, BOMB_PRESENTATION_MAX_VERTICES, createBombTelegraphMaterial, createBombPresentationPrecompileMesh } from '../src/render/bombPresentation.js';
 function entity(id = 1, kind = 'bomb_singularity') {
   return { id, alive: true, type: 'bomb', pos: { x: 1000, z: 2000 }, prevPos: { x: 1000, z: 2000 },
     vel: { x: 80, z: 0 }, data: { bombId: kind, phase: 'field', fieldStartedAt: 0, fieldEndsAt: 5, spawnedAt: 0, armed: true } };
@@ -29,8 +29,45 @@ test('field geometry is bounded, finite and stable in memory under maximum occup
   for (let i = 3; i < colors.length; i += 4) assert.ok(colors[i] >= 0 && colors[i] <= 1);
   for (let i = 0; i < 120; i++) { s.simTime = 1 + i / 1200; batch.update(s, entities, 0.5); }
   assert.equal(batch.positions, positions); assert.equal(batch.colors, colors);
+  assert.equal(batch.normals.length, BOMB_PRESENTATION_MAX_VERTICES * 3);
   for (const e of entities) e.alive = false; batch.update(s, entities, 1);
   assert.equal(batch.count, 0); assert.equal(batch.mesh.visible, false); batch.dispose(); batch.dispose();
+});
+test('telegraphs occupy volume and gravity/tar are distinct structures', () => {
+  const pull = entity(1, 'bomb_singularity'), tar = entity(2, 'bomb_goo');
+  const s = world([pull]);
+  const b = new BombPresentationBatch(s.render.scene);
+  b.update(s, [pull], 1);
+  let minY = Infinity, maxY = -Infinity;
+  for (let i = 1; i < b.count * 3; i += 3) {
+    minY = Math.min(minY, b.positions[i]); maxY = Math.max(maxY, b.positions[i]);
+  }
+  assert.ok(maxY - minY > 2, 'gravity well has vertical structure, not a floor overlay');
+  const pullCount = b.count;
+  b.update(world([tar]), [tar], 1);
+  minY = Infinity; maxY = -Infinity;
+  for (let i = 1; i < b.count * 3; i += 3) {
+    minY = Math.min(minY, b.positions[i]); maxY = Math.max(maxY, b.positions[i]);
+  }
+  assert.ok(maxY - minY > 1.2, 'tar cloud piles above the plane');
+  assert.ok(b.count !== pullCount, 'pull and tar do not share one CAD motif');
+  assert.equal(b.mesh.material.name, 'BombTelegraphGeometry');
+  assert.equal(b.mesh.material.type, 'MeshStandardMaterial');
+  b.dispose();
+});
+test('cook warmup uses the live telegraph program recipe', () => {
+  const live = createBombTelegraphMaterial();
+  const mesh = createBombPresentationPrecompileMesh();
+  assert.equal(mesh.userData.precompileRetainedPipeline, 'bomb-telegraph');
+  assert.equal(mesh.material.name, live.name);
+  assert.equal(mesh.material.type, live.type);
+  assert.equal(mesh.material.vertexColors, true);
+  assert.equal(mesh.material.transparent, true);
+  assert.equal(mesh.material.depthWrite, false);
+  assert.equal(mesh.material.side, live.side);
+  assert.equal(mesh.material.roughness, live.roughness);
+  assert.equal(mesh.material.metalness, live.metalness);
+  live.dispose(); mesh.geometry.dispose(); mesh.material.dispose();
 });
 test('moving fields follow interpolation and floating origin without writing simulation state', () => {
   const e = entity(), s = world([e]); e.pos.x += 20;

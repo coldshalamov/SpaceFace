@@ -162,7 +162,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   assert.deepEqual(lateWorldOwners.sort(), ['SF_Precompile_L5b_Wormhole', 'Spindle_Locked_Core_Glow']);
   assert.deepEqual(retainedPipelineOwners.sort(), [
     'authored-opaque-clearcoat', 'authored-opaque-clearcoat-transmission',
-    'authored-opaque-standard', 'common-rock-instanced-pbr', 'hitch-main-plume',
+    'authored-opaque-standard', 'bomb-telegraph', 'common-rock-instanced-pbr', 'hitch-main-plume',
     'ship-shield-bubble', 'vfx-salvo',
   ]);
   assert.deepEqual(retainedAuthoredOpaquePipelines.sort((a, b) => a.id.localeCompare(b.id)), [
@@ -194,7 +194,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
     getPrecompileKeepAliveDiagnostics(renderer).retainedPipelines.sort(),
     [
       'authored-opaque-clearcoat', 'authored-opaque-clearcoat-transmission',
-      'authored-opaque-standard', 'common-rock-instanced-pbr', 'hitch-main-plume',
+      'authored-opaque-standard', 'bomb-telegraph', 'common-rock-instanced-pbr', 'hitch-main-plume',
       'ship-shield-bubble', 'vfx-salvo',
     ],
   );
@@ -204,6 +204,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
     'each retained material must expose its owner and exact renderer program key');
   assert.ok(retainedPrograms.some((entry) => entry.owner === 'vfx-salvo'));
   assert.ok(retainedPrograms.some((entry) => entry.owner === 'authored-opaque-standard'));
+  assert.ok(retainedPrograms.some((entry) => entry.owner === 'bomb-telegraph'));
   assert.deepEqual(canopyVariants, [
     {
       id: 'surface', map: false, normalMap: false, aoMap: false,

@@ -14,6 +14,7 @@ import { build47aScenarioProp } from './scenarioProps47a.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { createWormholePipelineMesh } from './spaceBackground.js';
 import { createVfxPrecompileSalvo, visiblePointLightBudget } from './vfx.js';
+import { createBombPresentationPrecompileMesh } from './bombPresentation.js';
 export { visiblePointLightBudget };
 import { waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
 import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
@@ -279,6 +280,7 @@ async function precompileNow(
       addBeamWarmup(globalWarmup);
       canopyPipelineWarmup = addAuthoredCanopyPipelineWarmup(globalWarmup);
       addAuthoredOpaquePipelineWarmup(canopyPipelineWarmup);
+      addBombPresentationWarmup(canopyPipelineWarmup);
       addLateWorldPipelineWarmup(canopyPipelineWarmup);
       // Only the common-rock probe needs decoded rock maps. Awaiting them here overlaps the texture
       // load with every ship/global compile above instead of idling the driver before any work.
@@ -800,6 +802,14 @@ function addAuthoredCanopyPipelineWarmup(staging) {
   }
   staging.add(root);
   return root;
+}
+
+function addBombPresentationWarmup(root) {
+  if (!root) return null;
+  const mesh = createBombPresentationPrecompileMesh();
+  mesh.position.set(14, 36, 0);
+  root.add(mesh);
+  return mesh;
 }
 
 function addAuthoredOpaquePipelineWarmup(root) {

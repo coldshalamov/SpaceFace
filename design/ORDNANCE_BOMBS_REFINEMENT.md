@@ -170,13 +170,15 @@ this layer while preserving reach. The existing burst owner still applies its ow
 policy. A static mesh budget is not a measured frame-time or a visual-quality pass. Procedural bodies
 still have their existing mesh cost; this patch does not claim to have batched those too.
 
-**Visual acceptance remains open.** This execution environment blocked Chromium navigation with
-`ERR_BLOCKED_BY_ADMINISTRATOR`; a direct context check also did not obtain WebGL. The source packet
-omits the authored media. No screenshot or full-flight beauty/performance claim is fabricated.
-`test/fixtures/bomb-choreography/presentation.html` is an inspection fixture using the production
-mesh and existing procedural bodies, explicitly labelled as not the game. Inspect it at real
-combat zoom, then the default route. Replace/reshape a motif that looks like a diagram instead of
-matter. The fixture's enlarged body scale is for examination, not runtime tuning.
+**PQ-205.00 closed the look/hitch walk.** The telegraph is a lit `MeshStandardMaterial` batch with
+Y-volume: drift collars and wakes, standing warning vanes at the live blast radius, a broken crater
+lip + inner well for gravity, and gapped veins + mounds for tar. Combat-tilt inspection (50° FOV,
+60° tilt, zoom 58/144/330) plus reduced motion/flash is in
+`test/fixtures/bomb-choreography/presentation.html` using the production mesh. First-use program is
+retained by the existing cook as `bomb-telegraph`. Occupancy on a 14-CPU host (isolated save,
+fixture camera pulled back so 24 bombs stay in frustum): fill p95 0.0 / 0.2 / 0.6 ms at 0 / 6 / 24
+bombs; frame p95 includes the unbatched procedural bodies. Stills stay in `.devshots` and are not
+committed. Remaining 6A items (audio, NPC, rack) belong to `.01`–`.03`.
 
 ## 6. Propagation jobs for repository agents (finish outcomes, not paperwork)
 
@@ -265,6 +267,10 @@ legacy and V3 reload comparisons, massline aggregate, input-label, VFX-technique
 other physics checks passed. Two environment/packet limitations: UI screen imports lack
 `@floating-ui/dom`; render-package planning has no binary render packages in the source artifact.
 Neither golden was edited. These limitations are not described as completed route acceptance.
+
+PQ-205.00 added the combat-tilt look walk and occupancy numbers (see
+`design/program/roadmap/receipts/PQ-205.00-REPORT.md`). Focused re-run: bombs + choreography +
+presentation 36/36; authored-precompile residency includes `bomb-telegraph`.
 
 Node testing used the repository's exact vendored Three 0.184 and embedded Rapier exposed locally
 under their package names. Those local node_modules symlinks are not repository changes. No

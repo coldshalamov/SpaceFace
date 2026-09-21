@@ -19199,7 +19199,7 @@
       "priority": 9820,
       "title": "Bomb-bay route acceptance and look/feel",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "browser-gpu"
@@ -19211,7 +19211,9 @@
       "checks": [
         "node --test test/bombs.test.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-205.00-REPORT.md"
+      ],
       "brief": "Walk the default Browser/Electron route with an isolated save across all eight safe/armed/committed/burst states plus gravity/tar fields at normal and minimum zoom and reduced motion/flash; capture a fixed-seed hitch and frame-pacing number for 0/6/24 bombs."
     },
     {
