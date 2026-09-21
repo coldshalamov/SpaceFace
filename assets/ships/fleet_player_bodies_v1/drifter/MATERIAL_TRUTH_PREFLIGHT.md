@@ -34,6 +34,18 @@ spans the well mouth, and routed hoses beside the well. Cargo well stays a rimme
 greenhouse stays glass in a cage over a cut tub. Three chase reviews returned REVISE: Hitch
 still wins manufactured density at D=144. No seats. No megatex. Parent unproven / not G7.
 
+## C4 chase-form (2026-09-21)
+
+`chase_form_v4` on the same live sockets. Principled islands only. Hitch/Hornet untouched.
+
+C3 remaining note was Hitch-plus manufactured density at D=144. C4 added a lower flank plate
+course, more boolean seam channels, larger D2/02 on the winglets plus abeam hull-side D2/02,
+thicker hoses, port+starboard split cable trays, vent banks, and more dirt islands. Cargo well
+stays a rimmed hole; greenhouse stays glass in a cage over a cut tub. Three chase reviews
+returned REVISE: Hitch still wins manufactured density at D=144. Rejected “well is a lid /
+greenhouse missing / rebuild as voxel loft” (close stills show rimmed hole + cage over a cut
+tub). No seats. No megatex. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
