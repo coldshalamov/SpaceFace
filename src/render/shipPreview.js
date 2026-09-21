@@ -204,7 +204,7 @@ export async function runShipPreview(SF) {
       } catch (err) { console.warn('[shipPreview] snapshot failed', name, err); }
       tmp.remove(mesh);
       // dispose the per-entity graph (cached geo/mat/tex are left alone by design)
-      mesh.traverse((c) => { if (c.geometry) c.geometry.dispose && c.geometry.dispose(); });
+      mesh.traverse((c) => { if (c.geometry) (!c.geometry.userData || !c.geometry.userData.spacefaceSharedAsset) && c.geometry.dispose && c.geometry.dispose(); });
     }
   }
 
@@ -255,7 +255,7 @@ export async function runShipPreview(SF) {
         console.log('[shipPreview] variant shot', name); count++;
       } catch (err) { console.warn('[shipPreview] variant snapshot failed', name, err); }
       tmp.remove(mesh);
-      mesh.traverse((c) => { if (c.geometry) c.geometry.dispose && c.geometry.dispose(); });
+      mesh.traverse((c) => { if (c.geometry) (!c.geometry.userData || !c.geometry.userData.spacefaceSharedAsset) && c.geometry.dispose && c.geometry.dispose(); });
     }
   }
 
@@ -311,7 +311,7 @@ export async function runShipPreview(SF) {
       console.log('[shipPreview] world shot', ws.name); count++;
     } catch (err) { console.warn('[shipPreview] world snapshot failed', ws.name, err); }
     tmp.remove(ws.mesh);
-    ws.mesh.traverse((c) => { if (c.geometry) c.geometry.dispose && c.geometry.dispose(); });
+    ws.mesh.traverse((c) => { if (c.geometry) (!c.geometry.userData || !c.geometry.userData.spacefaceSharedAsset) && c.geometry.dispose && c.geometry.dispose(); });
   }
 
   // ---- PLANET PASS — capture habitable (night-side city lights) + dead + lava planets under the
@@ -375,7 +375,7 @@ export async function runShipPreview(SF) {
       console.log('[shipPreview] bolt shot', bv.name); count++;
     } catch (err) { console.warn('[shipPreview] bolt snapshot failed', bv.name, err); }
     tmp.remove(mesh);
-    mesh.traverse((c) => { if (c.geometry) c.geometry.dispose && c.geometry.dispose(); });
+    mesh.traverse((c) => { if (c.geometry) (!c.geometry.userData || !c.geometry.userData.spacefaceSharedAsset) && c.geometry.dispose && c.geometry.dispose(); });
   }
 
   // restore

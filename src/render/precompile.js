@@ -1018,7 +1018,10 @@ function retainPipelineWarmup(renderer, root) {
 function disposeObject(root) {
   root.traverse((object) => {
     if (object.userData?.precompileBorrowedResources) return;
-    if (object.geometry && typeof object.geometry.dispose === 'function') object.geometry.dispose();
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
     const materials = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
     for (const material of materials) {
       for (const key of ['map', 'alphaMap', 'aoMap', 'emissiveMap', 'metalnessMap', 'roughnessMap', 'normalMap']) {

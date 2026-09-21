@@ -80,7 +80,10 @@ function mergeOpaqueMeshes(root, meshes, batchName, { disposeSourceGeometry = tr
 
   for (const mesh of meshes) {
     if (mesh.parent) mesh.parent.remove(mesh);
-    if (disposeSourceGeometry && mesh.geometry) mesh.geometry.dispose();
+    if (disposeSourceGeometry && mesh.geometry
+      && !(mesh.geometry.userData && mesh.geometry.userData.spacefaceSharedAsset)) {
+      mesh.geometry.dispose();
+    }
   }
   root.add(merged);
   return merged;

@@ -388,12 +388,23 @@ export function createPerfCounters() {
      * path means the link happened inside a real render, not an admission.
      */
     admissionSubject: null,
+    // The Object3D currently inside renderBufferDirect — set by the renderer's draw wrapper
+    // while instrumentation is on. admissionSubject says WHICH admission lane a link belongs
+    // to; drawObject names the actual mesh whose material/geometry pair produced the program,
+    // which is the difference between "the wasp admission linked something" and "the patrol-kit
+    // hull plate linked its depth variant". Stored as the object (not its name) so a draw call
+    // pays one store and nothing else; the name is resolved only on the rare link event.
+    drawObject: null,
 
     countShaderLink(cacheKey = '', name = '', glProgram = null) {
       if (!enabled) return;
       record('shaderLinks', 1);
+      const drawn = api.drawObject;
       api.recordEvent('shaderLink', {
         cacheKey, name, glProgram,
+        drawObject: drawn
+          ? `${drawn.name || drawn.type || 'unnamed'}${drawn.isInstancedMesh ? ':instanced' : ''}`
+          : null,
         // Label only, never the subject itself: a live Object3D here would embed its entire
         // subtree (geometries, attribute arrays) into the event and explode any serializer.
         subject: (typeof api.admissionSubject === 'string' || typeof api.admissionSubject === 'number')
@@ -419,18 +430,23 @@ export function createPerfCounters() {
       record(full ? 'textureUploads' : 'textureSubUploads', 1);
     },
     countMipmapGeneration() { record('mipmapGenerations', 1); },
-    countBufferUpload(full, bytes = 0) {
+    countBufferUpload(full, bytes = 0, sourceData = null) {
       if (!enabled) return;
       record(full ? 'bufferFullUploads' : 'bufferPartialUploads', 1);
       record('bufferUploadBytes', Number.isFinite(bytes) && bytes > 0 ? bytes : 0);
       // Full uploads are rare (new geometry / instanced-chunk buffers); partials are the
       // per-frame dynamic traffic and are never recorded. Tag the same subject as link
-      // events so a residual upload wave names its admission.
+      // events so a residual upload wave names its admission. The CPU-side source array
+      // rides along so an in-page probe can resolve buffer → geometry-attribute identity;
+      // it is an object reference and must be stripped before the snapshot serializes.
       if (full) {
         api.recordEvent('bufferFullUpload', {
           bytes: Number.isFinite(bytes) && bytes > 0 ? bytes : 0,
           subject: (typeof api.admissionSubject === 'string' || typeof api.admissionSubject === 'number')
             ? api.admissionSubject : null,
+          sourceData: (sourceData && typeof sourceData === 'object'
+            && (ArrayBuffer.isView(sourceData) || sourceData instanceof ArrayBuffer))
+            ? sourceData : null,
         });
       }
     },

@@ -885,6 +885,11 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
     if (survivalRunHoldsArena(state)) return true;
     return isInitialAuthoredCompositionEntity(entity, state);
   }
+  // The survival cook admits the whole bounded arena behind the shell. If flight reverts to the
+  // distance/activity gates, the first residency sweep evicts every far-field mesh the cook just
+  // warmed — and the approach re-mount pays compose + compile + upload inside the round (the
+  // +30-50 s wr:/place/station link cluster). Keep the arena relevant for the run's life.
+  if (survivalRunHoldsArena(state)) return true;
   if (entityIsExplicitRenderFocus(entity, state)) return true;
   const tier = entity.activity && entity.activity.presentationTier;
   const activityFrame = state && state.render && state.render.activityFrame;
@@ -3322,6 +3327,91 @@ function requestAuthoredUpgrade(mesh, renderer, scene, options = {}) {
   }
 }
 
+/**
+ * PQ-210.00 — the survival player hull as a warm exemplar. The player entity spawns at the
+ * flight transition (its mesh mounts after the first-paint mesh-defer release), so no live
+ * boundary exists for any cook-time settle to admit. The authored selection is still fully
+ * determined by state.player.ownedShips[activeShipIndex] — the same source bootstrapScene
+ * reads — so an exemplar built from that record composes the identical whole-ship file and
+ * program family behind the shell. A live entity wins when it already exists.
+ */
+function cruciblePlayerShipExemplarSpec(state) {
+  const live = playerEntityForRenderState(state);
+  if (live && live.type === 'ship' && live.data && live.data.defId) {
+    return {
+      ...live,
+      id: 'crucible-warm:ship:player',
+      pos: { x: 0, y: 0, z: 0 },
+      prevPos: { x: 0, y: 0, z: 0 },
+      vel: { x: 0, y: 0, z: 0 },
+    };
+  }
+  const owned = state && state.player && Array.isArray(state.player.ownedShips)
+    ? state.player.ownedShips[state.player.activeShipIndex]
+    : null;
+  const defId = owned && owned.defId;
+  if (!defId) return null;
+  return {
+    id: 'crucible-warm:ship:player',
+    type: 'ship',
+    team: 0,
+    isPlayer: true,
+    factionId: 'faction_free',
+    radius: 8,
+    pos: { x: 0, y: 0, z: 0 },
+    prevPos: { x: 0, y: 0, z: 0 },
+    vel: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    alive: true,
+    flags: {},
+    data: {
+      defId,
+      factionId: 'faction_free',
+      team: 0,
+      lootTableId: null,
+      fittings: Array.isArray(owned.fittings) ? owned.fittings : [],
+      appearance: owned.appearance || null,
+      livingHull: owned.livingHull || null,
+    },
+  };
+}
+
+/**
+ * PQ-210.00 — scene-level roots containing a drawable whose material was never compiled.
+ * Bloom's unready-drawable pass applies this exact test in flight (no currentProgram on the
+ * material record), hides the drawable, and queues its scene-level root through the pipeline
+ * admission lane — the mid-round GLTFKit and wr:component link clusters. Running the same
+ * scan behind the shell catches subtrees that attached after the last scene-wide compile
+ * (packaged-body resolves that landed between post-opening and the boundary settle).
+ */
+function collectNeverLinkedSceneRoots(scene, renderer) {
+  const props = renderer && renderer.properties;
+  const roots = [];
+  if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
+    return roots;
+  }
+  const seen = new Set();
+  scene.traverse((object) => {
+    if (!object || !(object.isMesh || object.isSkinnedMesh || object.isInstancedMesh
+        || object.isPoints || object.isLine || object.isSprite)) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    let neverLinked = false;
+    for (const material of materials) {
+      if (!material) continue;
+      let rec = null;
+      try { rec = props.get(material); } catch (_) { rec = null; }
+      if (!rec || !rec.currentProgram) { neverLinked = true; break; }
+    }
+    if (!neverLinked) return;
+    let root = object;
+    while (root.parent && root.parent !== scene) root = root.parent;
+    if (seen.has(root)) return;
+    seen.add(root);
+    roots.push(root);
+  });
+  return roots;
+}
+
 // Prepare the live directional-shadow camera before asteroid visibility consumes its frustum.
 // The renderer's actual shadow-map state is authoritative: a setting can remain on while zero
 // receivers intentionally disable the map for this frame.
@@ -4032,6 +4122,23 @@ export const render = {
       perfCounters.setEnabled(true);
       const instrumentedGl = renderer.getContext();
       if (instrumentedGl) this._glInstrumentation = installGlInstrumentation(instrumentedGl, perfCounters);
+      // Draw-call attribution: link events name the mesh being drawn, not just the admission
+      // lane. renderBufferDirect's fifth argument is the Object3D; the wrapper stores it on the
+      // counters for the call's duration (linkProgram runs inside getProgram inside here).
+      // Exists only under perfCountersRequested — the uninstrumented path keeps Three's own
+      // method untouched.
+      if (typeof renderer.renderBufferDirect === 'function' && !renderer.__sfDrawObjectWrapped) {
+        const originalRenderBufferDirect = renderer.renderBufferDirect;
+        renderer.renderBufferDirect = function renderBufferDirect(camera, scene, geometry, material, object, group) {
+          perfCounters.drawObject = object || null;
+          try {
+            return originalRenderBufferDirect.call(this, camera, scene, geometry, material, object, group);
+          } finally {
+            perfCounters.drawObject = null;
+          }
+        };
+        renderer.__sfDrawObjectWrapped = true;
+      }
       // Family H (DOM mutations / layout reads / longtasks): same install-on-enable contract —
       // with the opt-in absent no observer is constructed and no prototype is patched.
       this._domInstrumentation = installDomInstrumentation(perfCounters);
@@ -4332,6 +4439,7 @@ export const render = {
                 THREE,
                 captureObjectHome,
                 restoreObjectHome,
+                lightingScene: scene,
                 stagingName: 'SF_ContextRestoreShadowDepth',
               });
               await this._compilePostRoute(restoredPostRoute, scene, cam.obj, scene);
@@ -4461,6 +4569,40 @@ export const render = {
           for (const root of this._rosterPrewarmRoots || []) {
             try { state.render.compileObjectPipelines(root, { explicit: true }); } catch (_) { /* best effort */ }
           }
+          // warmAsteroidInstanceVariants rebound pool chunks onto the PBR leaf materials — the
+          // instanced depth variant is a different program from the leaf exemplar's plain-mesh
+          // one, so a pool chunk rebound after the cook's depth pass still links cold on the
+          // first shadow refresh (the +48 s Asteroid_* depth residual). Recompile the pool
+          // roots' color+depth on the same admission.
+          try {
+            for (const poolRoot of collectInstancePoolCompileRoots(liveScene)) {
+              try { state.render.compileObjectPipelines(poolRoot, { explicit: true }); } catch (_) { /* best effort */ }
+            }
+          } catch (_) { /* pool recompile is best-effort */ }
+          // The color recompile above routes through compileObjectPipelines, whose depth arm
+          // (admitFlightShadowDepth) no-ops outside flight — so a reskin that lands after the
+          // cook's scene-wide depth pass re-skins materials whose PBR depth variant was never
+          // linked, and the first live shadow draw pays it (the Asteroid_313 mapUv NOVEL). One
+          // batched pass over the prewarm + pool roots links those variants in any mode.
+          try {
+            const depthSubjects = (this._rosterPrewarmRoots || [])
+              .concat(collectInstancePoolCompileRoots(liveScene))
+              .filter((root) => root && root.parent);
+            if (depthSubjects.length > 0) {
+              compileShadowDepthPipelines({
+                renderer,
+                light: this._keyLight,
+                camera: this.cam && this.cam.obj,
+                subjects: depthSubjects,
+                forceEnable: this._shadowSettingOn === true,
+                THREE,
+                captureObjectHome,
+                restoreObjectHome,
+                lightingScene: this.scene,
+                stagingName: 'SF_RockReskinShadowDepth',
+              });
+            }
+          } catch (_) { /* depth recompile is best-effort */ }
         }
         if (count > 0) console.info(`[render] rock surface library ready; re-skinned ${count} bare rock mesh(es)`);
       }).catch(() => {});
@@ -4642,6 +4784,7 @@ export const render = {
           THREE,
           captureObjectHome,
           restoreObjectHome,
+          lightingScene: scene,
           stagingName: 'SF_BootShadowMapPrime',
         });
         // VFX init() runs after renderer.init() returns. A 140 ms wait can finish
@@ -5139,7 +5282,10 @@ export const render = {
         // scheduled shadow refresh would link it inside a measured frame. One batched pass per
         // admission (post-opening's pattern) keeps depth links off the draw path. The earlier
         // failure ran shadowMap.render per subject inside the sliced loop; this runs once per
-        // call after all color compiles, inside the armed-shadow window.
+        // call after all color compiles, inside the armed-shadow window. It also runs at
+        // admission START: a sliced color compile spans presents, and a frame landing between
+        // slices draws the mounted mesh's depth variant cold (the +22s GLTFKit_StaticGroup
+        // links). Staging first means no presented frame can outrun the link.
         if (state.mode !== 'flight' || this._shadowSettingOn !== true) return;
         try {
           compileShadowDepthPipelines({
@@ -5151,14 +5297,19 @@ export const render = {
             THREE,
             captureObjectHome,
             restoreObjectHome,
+            lightingScene: scene,
             stagingName: 'SF_FlightShadowDepthAdmission',
           });
         } catch (error) {
           console.warn('[render] flight shadow-depth admission failed', error);
         }
       };
+      admitFlightShadowDepth();
       const finish = (promise) => Promise.resolve(promise)
         .then((result) => {
+          // A second pass catches anything the sliced color compile mounted mid-flight
+          // (async primitive instantiation inside a batch root); program-key dedupe makes it
+          // near-free when the start pass already covered the batch.
           admitFlightShadowDepth();
           return result;
         })
@@ -5238,6 +5389,9 @@ export const render = {
         // thrust). Skipping them leaves the full-capacity instance buffers unuploaded, so the
         // first 0->N activation pays the upload inside a presented frame — the mid-flight brick.
         includeEmpty: true,
+        // Per-batch source names ride the admission subject so the probe can attribute an
+        // in-flight bufferData to the exact meshes that still first-bind inside a round.
+        counters: (state && state.perfRuntime && state.perfRuntime.tier1) || null,
         // unSliced is the on-glass deadline lane: its residency batches ride the
         // urgent chain instead of queueing behind ambient uploads.
         urgent: unSliced,
@@ -5733,6 +5887,7 @@ export const render = {
       THREE,
       captureObjectHome,
       restoreObjectHome,
+      lightingScene: scene,
       stagingName: 'SF_OpeningShadowPipelineAdmission',
     });
     const compileOpeningSubmissionPlan = async (plan) => {
@@ -5753,6 +5908,7 @@ export const render = {
         THREE,
         captureObjectHome,
         restoreObjectHome,
+        lightingScene: scene,
         stagingName: 'SF_OpeningShadowMapPrime',
       });
       // The content-hash-bound set drives the global deletion: A-B is deferred, while the exact
@@ -5907,9 +6063,7 @@ export const render = {
         settled: pipelineAdmissions.settledCount,
         upgradeJobs: upgrades.pending,
         upgradeInFlight: upgrades.inFlight,
-        upgradeCompiling: (upgrades.jobs || []).filter((job) => (
-          job.lifecycle === 'in-flight' || job.status === 'compiling-pipelines'
-        )).length,
+        upgradeCompiling: upgrades.compiling || 0,
         meshBuilds: this._meshBuildQueue.length - this._meshBuildQueueHead,
       };
     };
@@ -6558,8 +6712,39 @@ export const render = {
         // liveSectorGpuAdmission is still on, so those commits publish here and the sweep +
         // census below cover them.
         if (!recook && survivalRunHoldsArena(state)) {
+          // PQ-210.00 — approach-triggered boundaries (wr:/poi:/place/station dressing) only
+          // start their compose on first render otherwise; under the shell nothing renders
+          // them, so they were still linking at +47 s inside the fight. Kick every mounted
+          // boundary still awaiting admission BEFORE the drain pumps the queue — the serial
+          // lane then decodes and composes them behind the shell, their commits publish into
+          // preparedAuthoredRoots, and the collect + compile batch below covers them. The
+          // bounded warm's later begin() re-runs this sweep for boundaries mounted in between;
+          // requestAuthoredUpgrade is idempotent over the admission state.
+          try {
+            const sectorId = (state.world && state.world.currentSectorId) || null;
+            for (const [, mesh] of this._meshes || []) {
+              const data = mesh && mesh.userData;
+              if (!data || typeof data.requestAuthoredUpgrade !== 'function') continue;
+              if (data.authoredAssetState !== 'awaiting-authored-admission') continue;
+              try {
+                // The module wrapper re-stamps canonical surface program keys on the composed
+                // clone — calling the boundary hook raw would skip that dedupe.
+                requestAuthoredUpgrade(mesh, renderer, scene, {
+                  residencyRole: 'crucible-roster-warm',
+                  sectorId,
+                });
+              } catch (_) { /* a refused request leaves the live trigger armed */ }
+            }
+          } catch (error) {
+            console.warn('[render] crucible pre-drain boundary kick failed', error);
+          }
           const drainStarted = prepareNow();
-          const drainDeadline = drainStarted + 30000;
+          // The serial lane runs ~1.5 s per boundary under load and the kicked cohort numbers
+          // in the dozens — a 30 s floor released the shell with a site job still in
+          // 'compiling-pipelines', and its off-frame compiles landed inside the round (+78 s
+          // wr:/st:/place cluster). 60 s floor, 90 s cap; the outer gpu-resources gate has the
+          // headroom and every step after this one stays individually bounded.
+          const drainDeadline = drainStarted + Math.min(90000, Math.max(60000, remainingMs()));
           let drainResult = null;
           let drainOutcome = 'resolved';
           for (;;) {
@@ -6643,6 +6828,7 @@ export const render = {
                 THREE,
                 captureObjectHome,
                 restoreObjectHome,
+                lightingScene: scene,
                 stagingName: 'SF_SurvivalPoolSealShadowDepth',
               });
             } else {
@@ -6719,6 +6905,175 @@ export const render = {
           queuedPipelines: pipelineAdmissions.pendingCount | 0,
         });
       }
+      // PQ-210.00 — last barrier for the arena's authored jobs. The drain above runs early so
+      // kicked boundaries overlap the cook, but overlap releases the serial queue slot once a
+      // job's compile stages: dozens of place/site jobs can still be inside their detached
+      // completeAdmission when the drain's budget lapses. If the shell releases with any of them
+      // open, their compiles and residency uploads land inside the round (the +30-45 s
+      // GLTFKit_*/wr:* off-frame link cluster) and their commits park on the first-flight gate.
+      // The publication gate is still open here and liveSectorGpuAdmission still on, so a
+      // bounded settle can take every mounted boundary to a terminal state before flight — and
+      // it runs before the receipt recapture below so the opening plan sees the final graph.
+      if (!recook && survivalRunHoldsArena(state)) {
+        const settleStarted = prepareNow();
+        const settleSectorId = (state.world && state.world.currentSectorId) || null;
+        // Re-kick mounted boundaries still holding 'awaiting-authored-admission' — anything
+        // left here otherwise requests on its first live draw. Idempotent, so it runs inside
+        // the wait loop: boundaries that mount or reset while the drain runs are picked up on
+        // the next pass.
+        const kickMountedBoundaries = () => {
+          try {
+            for (const [, mesh] of this._meshes || []) {
+              const data = mesh && mesh.userData;
+              if (!data || typeof data.requestAuthoredUpgrade !== 'function') continue;
+              if (data.authoredAssetState !== 'awaiting-authored-admission') continue;
+              try {
+                requestAuthoredUpgrade(mesh, renderer, scene, {
+                  residencyRole: 'crucible-roster-warm',
+                  sectorId: settleSectorId,
+                });
+              } catch (_) { /* a refused request leaves the live trigger armed */ }
+            }
+          } catch (_) { /* best effort — the drain below still bounds the wait */ }
+        };
+        // Direct-load boundaries (attachPackagedBody: wreck/site-component/payload bodies)
+        // bypass the upgrade queue entirely — queue idle says nothing about them. Their async
+        // attach resolves on the boundary's own promise, so 'loading' meshes count as
+        // outstanding work; otherwise the settle releases while their subtrees still hold
+        // never-compiled materials. Bounded: past the loads wait cap the loop proceeds anyway
+        // and the never-linked sweep below compiles whatever has attached by then.
+        const loadsWaitDeadline = settleStarted
+          + Math.min(25000, Math.max(5000, remainingMs() / 4));
+        const pendingBoundaryLoads = () => {
+          if (prepareNow() > loadsWaitDeadline) return 0;
+          let count = 0;
+          try {
+            for (const [, mesh] of this._meshes || []) {
+              const data = mesh && mesh.userData;
+              if (data && data.authoredAssetState === 'loading') count += 1;
+            }
+          } catch (_) { /* census failure must not wedge the settle */ }
+          return count;
+        };
+        const settleDeadline = settleStarted + Math.min(120000, Math.max(60000, remainingMs()));
+        let settleResult = null;
+        let settleOutcome = 'resolved';
+        let neverLinkedSweeps = 0;
+        let lastNeverLinked = 0;
+        for (;;) {
+          const sliceMs = settleDeadline - prepareNow();
+          if (sliceMs <= 0) { settleOutcome = 'timeout'; break; }
+          kickMountedBoundaries();
+          try {
+            settleResult = await waitForAuthoredUpgradeQueueIdle(scene, {
+              timeoutMs: Math.min(sliceMs, 4000),
+              yieldToMain: yieldAndFlushLiveSectorGpu,
+            });
+          } catch (error) {
+            settleOutcome = 'error';
+            settleResult = { error: String(error && error.message || error) };
+            break;
+          }
+          const queueIdle = settleResult && (settleResult.idle === true
+              || (settleResult.pending === 0 && settleResult.inFlight === 0
+                && settleResult.compiling !== true));
+          if (queueIdle && pendingBoundaryLoads() === 0
+              && (pipelineAdmissions.pendingCount | 0) === 0) {
+            // Last gate before release: packaged bodies that resolved after the post-opening
+            // uncompiled sweep hold materials no compile ever linked — bloom's unready-drawable
+            // pass routes each through this exact admission lane inside the round (the
+            // wr:component/* and GLTFKit_* clusters). Admit those scene roots now, behind the
+            // shell. The sweep cap bounds the case where a root legitimately never links
+            // (hidden fallback layers are deliberately compile-skipped).
+            const stragglers = collectNeverLinkedSceneRoots(scene, renderer);
+            if (stragglers.length === 0 || neverLinkedSweeps >= 4) break;
+            neverLinkedSweeps += 1;
+            lastNeverLinked = stragglers.length;
+            for (const subject of stragglers) {
+              if (settleDeadline - prepareNow() <= 0) { settleOutcome = 'timeout'; break; }
+              try {
+                await admitSubjectPipelines(subject);
+              } catch (_) { /* admission errors surface through the queue diagnostics */ }
+            }
+            if (settleOutcome === 'timeout') break;
+            continue;
+          }
+          flushPipelinesBehindShell();
+          try {
+            await state.render.drainPendingPipelineAdmissions();
+          } catch (_) { /* drain errors surface in the ledger above */ }
+        }
+        recordOpeningCookStep(state.render, 'live.survivalBoundarySettle', settleStarted, settleOutcome, {
+          queuedPipelines: pipelineAdmissions.pendingCount | 0,
+          pending: settleResult ? settleResult.pending : undefined,
+          inFlight: settleResult ? settleResult.inFlight : undefined,
+          compiling: settleResult ? settleResult.compiling : undefined,
+          neverLinkedRoots: lastNeverLinked || undefined,
+          neverLinkedSweeps: neverLinkedSweeps || undefined,
+          error: settleResult ? settleResult.error : undefined,
+        });
+        // Final shadow-depth sweep. cook.rockPools' scene-wide depth pass ran BEFORE this
+        // settle: boundaries it admitted (straggler pipeline comps, late decodes) got color
+        // compiles only — admitFlightShadowDepth deliberately no-ops outside flight — so their
+        // casters' depth variants stayed cold and linked inside the round (the +22-25 s
+        // wr:component/GLTFKit_StaticGroup cluster). The living-hull decal meshes are the same
+        // class: the root sits detached until the first hit lands, then the ship's shadow
+        // policy promotes its opaque instanced patch/tally meshes to casters and their
+        // depth variants link mid-round (the +21 s LivingHull_RepairPatches link). One
+        // scene-wide staging render here covers every caster the settle produced, plus the
+        // living-hull subtree under beginGpuWarmup (full instance counts, root visible).
+        // Program-key dedupe keeps already-warm variants cheap — this pays only for what the
+        // settle changed.
+        if (this._shadowSettingOn === true) {
+          const depthSweepStarted = prepareNow();
+          let depthSweepOutcome = 'resolved';
+          let depthSweepSubjects = 0;
+          let depthSweepNames = null;
+          let restoreLivingHullWarm = null;
+          try {
+            const livingHullRoot = this._livingHullPresentation && this._livingHullPresentation.root;
+            if (livingHullRoot && typeof this._livingHullPresentation.beginGpuWarmup === 'function') {
+              try {
+                restoreLivingHullWarm = this._livingHullPresentation.beginGpuWarmup() || null;
+              } catch (_) { /* warmup is cosmetic — the sweep still runs without it */ }
+            }
+            const sweepSubjects = [scene];
+            if (livingHullRoot) sweepSubjects.push(livingHullRoot);
+            const sweepResult = compileShadowDepthPipelines({
+              renderer,
+              light: this._keyLight,
+              camera: this.cam && this.cam.obj,
+              subjects: sweepSubjects,
+              forceEnable: true,
+              THREE,
+              captureObjectHome,
+              restoreObjectHome,
+              lightingScene: scene,
+              stagingName: 'SF_SurvivalPostSettleShadowDepth',
+            });
+            depthSweepSubjects = sweepResult && sweepResult.subjects || 0;
+            if (sweepResult && sweepResult.skipped === true) depthSweepOutcome = 'skipped';
+            depthSweepNames = sweepResult && sweepResult.stagedNames || null;
+            // Diagnostic surface for the smooth-flight probe: which key each named staged
+            // caster produced — a live NOVEL key diffs against this to name the drifted field.
+            if (state && state.render && sweepResult && sweepResult.stagedKeys) {
+              state.render.survivalDepthSweepKeys = sweepResult.stagedKeys;
+            }
+          } catch (error) {
+            depthSweepOutcome = 'error';
+            console.warn('[render] survival post-settle shadow depth sweep failed', error);
+          } finally {
+            if (restoreLivingHullWarm) {
+              try { restoreLivingHullWarm(); } catch (_) { /* best effort */ }
+            }
+          }
+          recordOpeningCookStep(state.render, 'live.survivalDepthSweep', depthSweepStarted,
+            depthSweepOutcome, {
+              subjects: depthSweepSubjects,
+              staged: depthSweepNames ? depthSweepNames.join('|').slice(0, 200) : undefined,
+            });
+        }
+      }
       // The opening receipt froze inside prepareOpeningGpuResources while authored upgrades were
       // still in flight — the capturedPipelineDrain above can only wait on the queue it captured.
       // Composition, cook, and material settle have all resolved now, so the exact leaf and
@@ -6752,7 +7107,13 @@ export const render = {
         state.render.liveSectorGpuAdmission = false;
         state.render.liveSectorFirstFlightIds = null;
         holdAuthoredUpgradeQueueForFirstFlight(scene);
-        freezeOpeningGraphPublication(this);
+        // A survival cook mounts the whole arena as content, not a protected first picture:
+        // freezing the publication gate here only parks finished boundary commits on the ~20 s
+        // first-flight latch, which bursts them into the round. Leave the gate released so a
+        // job commits the moment its admission settles; the settle step above is the barrier.
+        // The VFX hold still arms — first-paint VFX batching is unrelated to the commit gate.
+        if (!survivalRunHoldsArena(state)) freezeOpeningGraphPublication(this);
+        else state.render.openingVfxFrozen = true;
       }
     };
     state.render.cookLiveSceneGpu = async (options = {}) => {
@@ -7397,6 +7758,7 @@ export const render = {
               THREE,
               captureObjectHome,
               restoreObjectHome,
+              lightingScene: scene,
               stagingName: 'SF_CookRockPoolShadowDepth',
             });
             if (rockPools && typeof rockPools === 'object') rockPools.depth = depthResult;
@@ -7567,6 +7929,7 @@ export const render = {
         THREE,
         captureObjectHome,
         restoreObjectHome,
+        lightingScene: scene,
         stagingName: 'SF_PostOpeningShadowMapPrime',
       });
       syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
@@ -7678,6 +8041,7 @@ export const render = {
         THREE,
         captureObjectHome,
         restoreObjectHome,
+        lightingScene: scene,
         stagingName: 'SF_PostOpeningShadowDepthAdmission',
       });
       this._postOpeningPipelineAdmissionReleased = true;
@@ -9315,12 +9679,17 @@ export const render = {
       root: new THREE.Group(),
       decodes: [],
       pendingAttachments: [],
+      boundaryKicks: [],
       building: true,
     };
     const root = warm.root;
     root.name = 'SF_CrucibleBoundedWarm';
     root.visible = false;
     root.userData.rosterPrewarm = 'bounded-cook';
+    // Mount immediately: queue-lane boundary requests refuse detached roots
+    // (boundaryBelongsToScene), and the ship kicks below run through that check. The caller
+    // re-adds the root after begin() returns — re-adding to the same parent is a no-op.
+    if (root.parent !== scene) scene.add(root);
     const sectorId = (state && state.world && state.world.currentSectorId) || null;
     const track = (promise) => {
       const settled = Promise.resolve(promise).catch(() => null);
@@ -9363,13 +9732,64 @@ export const render = {
     // exemplar per swarm-roster enemy carries that enemy's (defId, silhouette, factionId) so
     // the built fallback is the same program family the live spawn draws — a generic kestrel
     // misses the drone_swarm/bruiser_armor/dreadnought families entirely.
-    for (const spec of swarmRosterShipExemplarSpecs('crucible-warm:ship:')) {
+    const shipSpecs = swarmRosterShipExemplarSpecs('crucible-warm:ship:');
+    // The player hull joins the set: its live entity only spawns at the flight transition,
+    // so without an exemplar its authored compose (the GLTFKit_ship_wasp cluster) runs inside
+    // the round. The enemy roster never reaches the defId-resolved wasp file — hostiles map
+    // to ashline_dart/ashline_lode via lootTableId — so the player record needs its own row.
+    const playerShipSpec = cruciblePlayerShipExemplarSpec(state);
+    if (playerShipSpec) shipSpecs.push(playerShipSpec);
+    for (const spec of shipSpecs) {
       try {
         const ship = this.vf.build(spec);
-        if (ship) { ship.visible = false; root.add(ship); }
+        if (!ship) continue;
+        ship.visible = false;
+        root.add(ship);
+        // Whole-ship exemplars build a zero-draw substrate: the fallback above warms nothing
+        // for them. Kick the boundary through the production upgrade queue so the composed
+        // clone compiles and uploads behind the shell — a live spawn's identical compose then
+        // finds the record's program family already linked. upgradeJobKey keeps each exemplar
+        // job distinct from both its siblings and the live entity's later request.
+        if (typeof ship.userData?.requestAuthoredUpgrade === 'function') {
+          const entry = { id: spec.id, boundary: ship, result: undefined };
+          warm.boundaryKicks.push(entry);
+          const kick = track(requestAuthoredUpgrade(ship, renderer, scene, {
+            residencyRole: 'crucible-roster-warm',
+            sectorId,
+            upgradeJobKey: `crucible-warm:job:${spec.id}`,
+          }));
+          kick.then((result) => { entry.result = result; });
+          warm.pendingAttachments.push(kick);
+        }
       } catch (error) {
-        console.warn('[render] crucible warm ship fallback build failed', spec && spec.id, error);
+        console.warn('[render] crucible warm ship build failed', spec && spec.id, error);
       }
+    }
+    // Approach-triggered authored upgrades: place/poi/wr: component boundaries only start their
+    // compose on first render — under the shell nothing renders them, so they composed at +22 s
+    // inside the fight (the wr:world_site_*/GLTFKit_place_* link cluster). Every meshable arena
+    // entity already passed isEntityAuthoredUpgradeRelevant during loading; kick any boundary
+    // still awaiting admission now and the queue drain + post-opening pipeline steps compose and
+    // compile it behind the shell instead.
+    try {
+      for (const [, mesh] of this._meshes || []) {
+        const data = mesh && mesh.userData;
+        if (!data || typeof data.requestAuthoredUpgrade !== 'function') continue;
+        if (data.authoredAssetState !== 'awaiting-authored-admission') continue;
+        try {
+          // The module wrapper re-stamps canonical surface program keys on the composed clone —
+          // calling the boundary hook raw would skip that dedupe.
+          const kick = requestAuthoredUpgrade(mesh, renderer, scene, {
+            residencyRole: 'crucible-roster-warm',
+            sectorId,
+          });
+          // Backstop for boundaries mounted after the pre-drain kick: finish() awaits these
+          // completions (budget-guarded) so a late mount still composes before the batch.
+          if (kick) warm.pendingAttachments.push(track(kick));
+        } catch (_) { /* a refused request leaves the live trigger armed */ }
+      }
+    } catch (error) {
+      console.warn('[render] crucible warm boundary kick failed', error);
     }
     // World-site fixtures mint a fresh MeshBasicMaterial per socket on first approach — the
     // additive/transparent/no-tonemap program family is identical across them, so one exemplar
@@ -9461,8 +9881,15 @@ export const render = {
     // closes lands through the normal live-admission lane instead.
     const decodeWaitMs = Math.max(0, Math.min(budgetLeft() - 12000, 45000));
     if (decodeWaitMs > 0) {
+      // rockSurfaceLibraryReady rides along: the PBR leaf material flips vertexColors on, which
+      // changes the depth program key — if the library lands in-flight the reskin recompile
+      // races live draws and the first PBR rock pays a draw-time depth link (Asteroid_367).
+      // Holding the batch until it lands lets the reskin .then rebind + recompile under the
+      // shell ahead of the depth pass.
       await Promise.race([
-        Promise.allSettled(warm.decodes.concat(warm.pendingAttachments)),
+        Promise.allSettled(
+          warm.decodes.concat(warm.pendingAttachments, [this.rockSurfaceLibraryReady]),
+        ),
         new Promise((resolve) => setTimeout(resolve, decodeWaitMs)),
       ]);
     }
@@ -9530,6 +9957,9 @@ export const render = {
             twin.count = 0;
             twin.visible = true;
             twin.frustumCulled = false;
+            // Caster flag so the depth pass compiles the instanced depth variant a live
+            // pool chunk draws — non-casters are skipped and link cold in-flight.
+            twin.castShadow = true;
             twin.name = 'SF_CrucibleWarm_InstanceTwin';
             holder.add(twin);
           }
@@ -9569,12 +9999,17 @@ export const render = {
                 const direct = new THREE.Mesh(subject.geometry, subject.material);
                 direct.visible = true;
                 direct.frustumCulled = false;
+                // castShadow on both forms: the scene-wide depth pass only compiles casters,
+                // and a live hull mesh draws this palette share's depth variant as a caster.
+                // Without it the share's color warms but its depth links in-flight.
+                direct.castShadow = true;
                 direct.name = 'SF_CrucibleWarm_PaletteMesh';
                 holder.add(direct);
                 const twin = new THREE.InstancedMesh(subject.geometry, subject.material, 1);
                 twin.count = 0;
                 twin.visible = true;
                 twin.frustumCulled = false;
+                twin.castShadow = true;
                 twin.name = 'SF_CrucibleWarm_PaletteTwin';
                 holder.add(twin);
                 paletteSubjects += 1;
@@ -9606,11 +10041,26 @@ export const render = {
       };
     }
     if (state && state.render) {
+      // Per-kick evidence: the ship exemplar's request status ('admitted', 'cancelled-*', ...)
+      // plus the boundary's terminal state and the record it actually composed. A live hull
+      // that still links in flight is then attributable — never-kicked vs composed-but-drifted.
+      const kicks = (warm.boundaryKicks || []).map((entry) => {
+        const data = entry.boundary && entry.boundary.userData || {};
+        const status = entry.result && typeof entry.result === 'object'
+          ? (entry.result.status || JSON.stringify(entry.result))
+          : (entry.result === undefined ? 'pending' : String(entry.result));
+        return `${String(entry.id || '').replace(/^crucible-warm:ship:/, '')}`
+          + `=${data.authoredAssetState || 'none'}`
+          + `/${data.authoredVisualRoot || '-'}`
+          + `/${status}`;
+      });
       state.render.crucibleWarmProgress = {
         records: records.length,
         instantiated,
         packageInstances: packageInstances.length,
         paletteSubjects,
+        shipKicks: kicks.length,
+        shipStates: kicks.join(',').slice(0, 900),
       };
     }
     return root;
@@ -11424,7 +11874,16 @@ export const render = {
               // freezing the graph so Continue captures its final material and geometry identity.
               if (cohort && cohort.prepared === true) continue;
             }
-            freezeOpeningGraphPublication(this);
+            // A survival arena is mounted content, not a curated first picture: freezing the
+            // publication gate here parks every boundary job that finishes its admission between
+            // now and the ~20 s first-flight latch — the cook drains can never reach idle on
+            // gate-parked jobs, and the queued commits burst into the round as late mounts.
+            // Keep only the VFX hold; the cook's boundary settle is the real barrier.
+            if (survivalRunHoldsArena(this.state)) {
+              if (this.state && this.state.render) this.state.render.openingVfxFrozen = true;
+            } else {
+              freezeOpeningGraphPublication(this);
+            }
             this._bakeEnv();
             this._openingEnvFrozen = true;
             succeeded = true;

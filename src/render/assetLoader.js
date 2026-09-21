@@ -747,6 +747,41 @@ export function disposeAuthoredAssetRuntime(renderer) {
   });
 }
 
+/**
+ * Every authored blueprint this renderer's runtime has already decoded — the sector preload's
+ * exact warm set, enumerated without re-deriving the plan or fetching anything new. Map values
+ * are admitted task promises, so awaiting them is a cache read (or waits out a decode already in
+ * flight), never a network request. PQ-210.00's bounded roster warm instantiates these instead
+ * of sweeping the part contract for files the sector cannot draw. Failed decodes resolve null
+ * and are skipped.
+ */
+export async function listDecodedAuthoredParts(renderer, options = {}) {
+  const runtimePromise = authoredAssetRuntimeRegistry.peek(renderer);
+  if (!runtimePromise) return [];
+  let runtime;
+  try {
+    runtime = await runtimePromise;
+  } catch {
+    return [];
+  }
+  if (!runtime || runtime.retiring) return [];
+  const out = [];
+  const pending = Symbol('pending');
+  for (const [cacheKey, task] of runtime.assets) {
+    try {
+      // settledOnly: a cook-time census must snapshot what is decoded, never wait out a decode
+      // still in flight — awaiting the whole queue once measured a 360 s shell hold. Racing
+      // each task against an already-resolved sentinel keeps resolved records and skips the
+      // pending ones (they land through the live late-admission lane when they finish).
+      const record = options.settledOnly === true
+        ? await Promise.race([task, Promise.resolve(pending)])
+        : await task;
+      if (record && record !== pending) out.push({ cacheKey, record });
+    } catch { /* a rejected task stays a decode failure, not a warm subject */ }
+  }
+  return out;
+}
+
 function runtimeFor(renderer) {
   return authoredAssetRuntimeRegistry.get(renderer);
 }

@@ -336,7 +336,10 @@ export function mergeRigidOpaqueAcrossRoot(root) {
       sourceMeshes += rec.meshes.length;
     } catch (_) {
       if (mergedMesh && mergedMesh.parent) mergedMesh.parent.remove(mergedMesh);
-      if (mergedMesh && mergedMesh.geometry) mergedMesh.geometry.dispose();
+      if (mergedMesh && mergedMesh.geometry
+        && !(mergedMesh.geometry.userData && mergedMesh.geometry.userData.spacefaceSharedAsset)) {
+        mergedMesh.geometry.dispose();
+      }
     }
   }
   return { groups: groups.size, mergedMeshes, sourceMeshes };
@@ -399,7 +402,10 @@ function optimizeStaticBatches(root) {
       for (const mesh of rec.meshes) rec.parent.remove(mesh);
     } catch (_) {
       if (mergedMesh && mergedMesh.parent) mergedMesh.parent.remove(mergedMesh);
-      if (mergedMesh && mergedMesh.geometry) mergedMesh.geometry.dispose();
+      if (mergedMesh && mergedMesh.geometry
+        && !(mergedMesh.geometry.userData && mergedMesh.geometry.userData.spacefaceSharedAsset)) {
+        mergedMesh.geometry.dispose();
+      }
     }
   }
 
@@ -417,6 +423,23 @@ function isBatchCandidate(obj) {
   return true;
 }
 
+// The merged sf-static-merge output is byte-identical across same-spec builds (source geometries
+// are getGeometry-cached and subtree transforms are deterministic), so key it by content and share
+// one BufferGeometry: the warm compose uploads it once and later same-spec entities draw resident
+// buffers instead of paying a first-draw upload mid-round.
+const _staticMergeGeometryCache = new Map();
+const STATIC_MERGE_CACHE_LIMIT = 128;
+
+function rememberStaticMergeGeometry(signature, geometry) {
+  const userData = geometry.userData || (geometry.userData = {});
+  userData.spacefaceSharedAsset = true;
+  if (_staticMergeGeometryCache.has(signature)) return;
+  if (_staticMergeGeometryCache.size >= STATIC_MERGE_CACHE_LIMIT) {
+    _staticMergeGeometryCache.delete(_staticMergeGeometryCache.keys().next().value);
+  }
+  _staticMergeGeometryCache.set(signature, geometry);
+}
+
 function mergeMeshGeometries(rec) {
   const first = rec.meshes[0].geometry;
   const attrNames = Object.keys(first.attributes).sort();
@@ -424,11 +447,28 @@ function mergeMeshGeometries(rec) {
     const attr = first.getAttribute(name);
     return { name, itemSize: attr.itemSize, normalized: attr.normalized, Ctor: attr.array.constructor };
   });
+
+  // Signature pass: the merged bytes are a pure function of each source geometry plus its
+  // parent-relative transform. Identical builds therefore share the cached merge.
+  _batchInv.copy(rec.parent.matrixWorld).invert();
+  const sigParts = [first.uuid, String(rec.meshes.length)];
+  for (const mesh of rec.meshes) {
+    _batchLocal.multiplyMatrices(_batchInv, mesh.matrixWorld);
+    sigParts.push(mesh.geometry.uuid);
+    sigParts.push(Array.prototype.join.call(_batchLocal.elements, ','));
+  }
+  const signature = sigParts.join('|');
+  const cached = _staticMergeGeometryCache.get(signature);
+  if (cached) {
+    _staticMergeGeometryCache.delete(signature);
+    _staticMergeGeometryCache.set(signature, cached);
+    return cached;
+  }
+
   const arrays = new Map();
   for (const def of attrDefs) arrays.set(def.name, new def.Ctor(rec.vertexCount * def.itemSize));
 
   let write = 0;
-  _batchInv.copy(rec.parent.matrixWorld).invert();
   for (const mesh of rec.meshes) {
     const g = mesh.geometry;
     const index = g.index;
@@ -462,6 +502,7 @@ function mergeMeshGeometries(rec) {
   }
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
+  rememberStaticMergeGeometry(signature, geometry);
   return geometry;
 }
 
@@ -2975,6 +3016,17 @@ export function wreckVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:wre
     alive: true,
     data: { wreckClass: 'military', parentType: 'military' },
   });
+  // A kill on a reactor-hulled ship mints an unstable_reactor_wreck — the glowing core is a
+  // separate emissive material family the plain battlefield/military exemplars never build,
+  // so its first draw linked inside the round (the +19.9 s Group:wreck draw-time link).
+  specs.push({
+    id: `${prefix}reactor`,
+    type: 'wreck',
+    pos: { x: 0, y: 0, z: 0 },
+    radius: 14,
+    alive: true,
+    data: { wreckClass: 'battlefield', parentType: 'reactor' },
+  });
   return specs;
 }
 
@@ -3032,6 +3084,19 @@ export function buildAsteroidLeafWarmGroup() {
       mesh.userData.rosterPrewarmLeaf = `asteroid:${res.typeId}:${variant}`;
       root.add(mesh);
     }
+    // Leaf pairs alone never mount the variant extras — crystal shards, the translucent gas
+    // hull, ore veins — which are their own shared material families a mid-round rock of that
+    // type draws live (the residual Asteroid_* color link at +21 s of seed 4242). One real
+    // buildAsteroid root per type links them behind the shell; every extra is shared-cache, so
+    // a single exemplar covers every variant of the type.
+    const exemplar = buildAsteroid({
+      id: `leafwarm:${typeId}`, type: 'asteroid', pos: { x: 0, y: 0, z: 0 },
+      radius: 12, alive: true, data: { typeId },
+    });
+    if (exemplar) {
+      exemplar.userData.rosterPrewarmLeaf = `asteroid:${typeId}:full`;
+      root.add(exemplar);
+    }
   }
   return root;
 }
@@ -3059,6 +3124,20 @@ export function combatSpawnableExemplarSpecs(idPrefix = 'survival-roster-prewarm
     { ...base(), id: `${prefix}pickup:gem`, type: 'pickup', radius: 2.2, data: { kind: 'commodity' } },
     { ...base(), id: `${prefix}pickup:credit`, type: 'pickup', radius: 2.2, data: { kind: 'credit_chip' } },
     { ...base(), id: `${prefix}pickup:pod`, type: 'pickup', radius: 2.2, data: { freightCustodyPod: true } },
+    // POI/lane beacons clone their lens material per entity — without an exemplar the clone's
+    // program family is novel the first time a beacon mounts inside a live round.
+    { ...base(), id: `${prefix}beacon`, type: 'beacon', radius: 10, data: {} },
+    { ...base(), id: `${prefix}beacon:dead`, type: 'beacon', radius: 10, data: { laneBeaconDead: true } },
+    // Lane traffic haulers bypass the authored path entirely (`case 'freighter'` builds the
+    // procedural mule directly — cockpit-glass clearcoat, tinted hull, glow trims). A hauler
+    // that mounts on the residency-hold release otherwise links that whole family in-flight.
+    // One exemplar per bounded layout variant: laneTrafficVisualEntity quantizes the seeded
+    // scatter to LANE_FREIGHTER_VARIANTS, so warming all eight covers every live hauler's
+    // merged buffers (see laneTrafficVisualEntity for the sharing contract).
+    ...Array.from({ length: LANE_FREIGHTER_VARIANTS }, (_, variant) => ({
+      ...base(), id: `${prefix}freighter:${variant}`, type: 'freighter', radius: 12,
+      data: { laneVariant: variant },
+    })),
   ];
 }
 
@@ -4275,10 +4354,22 @@ function buildBeacon(e) {
 // fittings, so it cannot ride the ship path raw — a default kestrel in player cyan would read as a
 // friendly fighter. Wrap it as a neutral-team Mule hauler: the same silhouette the manufactured
 // routes are described by, in a neutral gray instead of the player's palette.
+//
+// The build seeds its deck-scatter/paint layout with hashId(id) — unbounded per entity, so every
+// hauler's merged static-batch geometry is byte-unique and a mid-round spawn owes a first-draw
+// upload inside the fight. Bound the layout identity to LANE_FREIGHTER_VARIANTS instead: the warm
+// exemplar set builds every variant, each variant's merged buffers are shared+cached, and a live
+// hauler's first draw is all resident memory. Variety stays visible (8 distinct layouts), just
+// finite — the same contract the asteroid field already keeps (5 displacement variants/rock type).
+const LANE_FREIGHTER_VARIANTS = 8;
 function laneTrafficVisualEntity(e) {
   const data = (e && e.data) || {};
+  const variant = Number.isFinite(Number(data.laneVariant))
+    ? Math.abs(data.laneVariant | 0) % LANE_FREIGHTER_VARIANTS
+    : hashId(e && e.id) % LANE_FREIGHTER_VARIANTS;
   return {
     ...e,
+    id: `lane-freighter-variant:${variant}`,
     team: 2,
     data: { ...data, defId: data.defId || 'ship_mule' },
   };

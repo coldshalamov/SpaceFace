@@ -176,11 +176,25 @@ export function warmAsteroidInstanceVariants(pool, resources) {
     if (!bucket || !res.geometry || !res.material) continue;
     // A live bucket's bound resources are authoritative — records already draw through the
     // chunk built from them. Only an empty bucket may rebind (e.g. a warm landed before the
-    // rock surface library decoded and the leaf material was re-skinned in place).
-    if (bucket.records.length > 0) continue;
+    // rock surface library decoded and the leaf material was re-skinned in place). Exception:
+    // a bucket that bound a BARE rock material before the library decoded must follow the
+    // reskin even with records — upgradeBareRockMaterials already rebound every registered
+    // leaf's material object to this exact resource, so the bucket reference is the stale one.
+    // Without it the chunk keeps drawing the mapless variant and its depth program links cold
+    // the first time the shadow camera covers a pooled rock in flight (Asteroid_368 NOVEL).
+    const boundBare = bucket.material && bucket.material.userData
+      && bucket.material.userData.spacefaceBareRock;
+    if (bucket.records.length > 0 && !(boundBare && bucket.geometry === res.geometry)) continue;
     if (bucket.mesh && bucket.geometry === res.geometry && bucket.material === res.material) continue;
     bucket.geometry = res.geometry;
     bucket.material = res.material;
+    if (bucket.records.length > 0) {
+      // Live chunk: swap the material in place — the instanceMatrix buffer and committed
+      // record slots are untouched, so no rebuild or fresh bufferData is needed.
+      if (bucket.mesh) bucket.mesh.material = res.material;
+      warmed += 1;
+      continue;
+    }
     ensureCapacity(pool, bucket, 1, bucket.mesh != null);
     if (bucket.mesh) warmed += 1;
   }

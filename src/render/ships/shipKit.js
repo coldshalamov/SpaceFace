@@ -601,7 +601,9 @@ export function mergeStaticByMaterial(parent, keepSeparate) {
     merged.name = `${parent.name || 'Ship'}_Static_${(meshes[0].material.name || meshes[0].material.uuid.slice(0, 8))}`;
     for (const mesh of meshes) {
       parent.remove(mesh);
-      mesh.geometry.dispose();
+      if (!(mesh.geometry.userData && mesh.geometry.userData.spacefaceSharedAsset)) {
+        mesh.geometry.dispose();
+      }
     }
     parent.add(merged);
   }

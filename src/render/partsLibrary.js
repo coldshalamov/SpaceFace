@@ -9,6 +9,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
+import { SWARM_ROSTER, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
@@ -191,7 +193,6 @@ const CULL_FRUSTUM = new THREE.Frustum();
 const CULL_CAMERA_POSITION = new THREE.Vector3();
 const CULL_SPHERE = new THREE.Sphere(new THREE.Vector3(), INSTANCE_FRUSTUM_PAD);
 let fallbackNavLightGeometry = null;
-const FALLBACK_NAV_LIGHT_MAT = new THREE.Matrix4();
 const SHIP_ASSEMBLY_SLOTS = Object.freeze(['hull', 'cockpit', 'engine', 'fin', 'weapon', 'greeble', 'gear', 'pod']);
 const STATION_ARCHETYPE_FILES = Object.freeze([
   'places/place_station_trade_hub.glb',
@@ -1923,6 +1924,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       ...requestOptions,
     };
     boundary.userData.authoredAssetState = 'loading';
+    boundary.userData.authoredUpgradeRequestedAt = Date.now();
     const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
       // Two exemplar boundaries built from one spec share entity.id — without an explicit key the
       // second dedupes into the first's completion and its own compose never runs (the parked
@@ -1944,6 +1946,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
         if (boundary.userData.authoredAssetState === 'loading') {
           boundary.userData.authoredAssetState = 'awaiting-authored-admission';
         }
+        boundary.userData.authoredReadmissionReason = 'cancelled-before-queue-detached';
         armed = true;
         if (trigger) trigger.onBeforeRender = authoredAssetTrigger;
       }
@@ -2176,7 +2179,10 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     return false;
   }
   const publicationWait = waitForOpeningGraphPublicationRelease();
-  if (publicationWait) await publicationWait;
+  if (publicationWait) {
+    boundary.userData.authoredPreparePhase = 'awaiting-publication';
+    await publicationWait;
+  }
   if (!boundary.parent) {
     await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
     releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-before-publication');
@@ -2793,7 +2799,10 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       return false;
     }
     const publicationWait = waitForOpeningGraphPublicationRelease();
-    if (publicationWait) await publicationWait;
+    if (publicationWait) {
+      boundary.userData.authoredPreparePhase = 'awaiting-publication';
+      await publicationWait;
+    }
     if (!boundary.parent) {
       await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-before-publication');
@@ -4502,17 +4511,25 @@ export function describeAuthoredUpgradeQueue(scene) {
   if (!state) return { present: false, pending: 0, inFlight: 0, running: false, held: false, jobs: [] };
   const jobs = [];
   const seen = new Set();
+  // `jobs` is a display sample, but the aggregate flags must scan the whole set: overlap
+  // releases the serial slot once a job's pipeline stages, so dozens of detached admissions can
+  // be mid-compile while the first eight entries already read settled — an idle verdict sampled
+  // from the truncated list released the cook with site/place jobs still linking into flight.
+  let compiling = 0;
   for (const job of [...state.jobs, ...state.byBoundary.values()]) {
     if (!job || seen.has(job)) continue;
     seen.add(job);
-    jobs.push({
-      key: job.key || null,
-      lifecycle: job.lifecycle || null,
-      status: job.boundary && job.boundary.userData
-        ? job.boundary.userData.authoredAssetState
-        : null,
-    });
-    if (jobs.length >= 8) break;
+    const status = job.boundary && job.boundary.userData
+      ? job.boundary.userData.authoredAssetState
+      : null;
+    if (job.lifecycle === 'in-flight' || status === 'compiling-pipelines') compiling += 1;
+    if (jobs.length < 8) {
+      jobs.push({
+        key: job.key || null,
+        lifecycle: job.lifecycle || null,
+        status,
+      });
+    }
   }
   return {
     present: true,
@@ -4520,6 +4537,7 @@ export function describeAuthoredUpgradeQueue(scene) {
     inFlight: state.inFlight,
     running: !!state.running,
     held: state.openingHandoffHold === true || state.firstFlightHandoffHold === true,
+    compiling,
     jobs,
   };
 }
@@ -4597,9 +4615,7 @@ export async function waitForAuthoredUpgradeQueueIdle(scene, options = {}) {
       pending: described.pending,
       inFlight: described.inFlight,
       running: described.running,
-      compiling: (described.jobs || []).some((job) => (
-        job.lifecycle === 'in-flight' || job.status === 'compiling-pipelines'
-      )),
+      compiling: described.compiling > 0,
     };
   };
   const pump = () => {
@@ -5418,7 +5434,10 @@ async function commitAuthoredBoundary(
   boundary, fallbackRoot, entity, library, scene, options, setActive, preparedAuthored = null,
 ) {
   const publicationWait = waitForOpeningGraphPublicationRelease();
-  if (publicationWait) await publicationWait;
+  if (publicationWait) {
+    boundary.userData.authoredPreparePhase = 'awaiting-publication';
+    await publicationWait;
+  }
   if (!boundary.parent) {
     if (preparedAuthored) {
       await disposePreparedShipBoundaryResources(boundary, preparedAuthored);
@@ -7934,20 +7953,37 @@ function staticBatchGroupKey(tags = {}) {
   ].join('|');
 }
 
+function staticBatchLeafCacheKey(entry, tags) {
+  const prim = entry && entry.primitive;
+  const name = prim && prim.name || '';
+  const primElements = prim && prim.matrix && prim.matrix.elements;
+  const partElements = entry && entry.partMatrix && entry.partMatrix.elements;
+  const url = entry && entry.record && entry.record.url || '';
+  const t = tags || {};
+  return `${url}|${t.lod || 'always'}|${t.damageRole || ''}|${name}|${primElements ? Array.from(primElements).join(',') : ''}|${partElements ? Array.from(partElements).join(',') : ''}`;
+}
+
 function flushStaticBatch(parent, bindings, bucket, options = {}) {
   const material = resolveCanonicalHullMaterial(bucket.material);
   const merged = buildStaticBatchGeometry(bucket, options);
   if (!merged) {
     const tier1Geometry = tier1CausalCounters();
     for (const entry of bucket.entries) {
-      const geometry = entry.primitive.geometry.clone();
-      if (tier1Geometry) {
-        tier1Geometry.countGeometryConstructed(1, 'static-batch-clone');
-        tier1Geometry.countGeometryTransform('static-batch');
+      // The transform-bound leaf is byte-identical across same-class boundaries; share the
+      // cached clone instead of re-uploading the same buffers at every live compose.
+      const leafKey = staticBatchLeafCacheKey(entry, bucket.tags);
+      let geometry = takeCachedStaticBatchGeometry(leafKey);
+      if (!geometry) {
+        geometry = entry.primitive.geometry.clone();
+        if (tier1Geometry) {
+          tier1Geometry.countGeometryConstructed(1, 'static-batch-clone');
+          tier1Geometry.countGeometryTransform('static-batch');
+        }
+        promoteStaticPositionToFloat(geometry);
+        geometry.applyMatrix4(entry.primitive.matrix);
+        geometry.applyMatrix4(entry.partMatrix);
+        rememberStaticBatchGeometry(leafKey, geometry);
       }
-      promoteStaticPositionToFloat(geometry);
-      geometry.applyMatrix4(entry.primitive.matrix);
-      geometry.applyMatrix4(entry.partMatrix);
       addStaticBatchMesh(parent, bindings, geometry, material, bucket.tags, [entry.record && entry.record.url], entry.primitive.name);
     }
     return;
@@ -7962,6 +7998,24 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
     return;
   }
 
+  // The group merge is byte-identical across same-class boundaries: bucket keys already encode
+  // urls/tags/entry transforms, so their sorted join is a stable group key. Share the merged
+  // output or every live compose re-uploads the same buffers mid-round.
+  const groupCacheKey = buckets.map(staticBatchGeometryCacheKey).sort().join('&&');
+  const cachedGroup = takeCachedStaticBatchGeometry(groupCacheKey);
+  if (cachedGroup) {
+    const materialsCached = buckets.map((bucket) => resolveCanonicalHullMaterial(bucket.material));
+    const urlsCached = new Set();
+    let partsCached = 0;
+    for (const bucket of buckets) {
+      partsCached += bucket.entries.length;
+      for (const url of bucket.urls) urlsCached.add(url);
+    }
+    addStaticBatchMesh(parent, bindings, cachedGroup, materialsCached, buckets[0].tags,
+      [...urlsCached], `StaticGroup_${partsCached}_${materialsCached.length}`);
+    return;
+  }
+
   const geometries = [];
   const materials = [];
   const urls = new Set();
@@ -7970,7 +8024,10 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
     const geometry = buildStaticBatchGeometry(bucket, options);
     if (!geometry) {
       for (const pending of geometries) {
-        if (pending && typeof pending.dispose === 'function') pending.dispose();
+        if (pending && typeof pending.dispose === 'function'
+          && !(pending.userData && pending.userData.spacefaceSharedAsset)) {
+          pending.dispose();
+        }
       }
       for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback, options);
       return;
@@ -7987,7 +8044,10 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
   const merged = canMergeStaticBatchGeometries(normalized) ? mergeGeometries(normalized, true) : null;
   if (tier1Geometry && merged) tier1Geometry.countGeometryMerge(normalized.length, 'static-batch-group');
   for (const geometry of normalized) {
-    if (geometry && typeof geometry.dispose === 'function') {
+    // Bucket geometries are shared cache entries now — disposing one steals the resident
+    // buffer from every other boundary that drew it. Only fresh normalized copies dispose.
+    if (geometry && typeof geometry.dispose === 'function'
+      && !(geometry.userData && geometry.userData.spacefaceSharedAsset)) {
       if (tier1Geometry) tier1Geometry.countResourcesDisposed(1, 'static-batch-group');
       geometry.dispose();
     }
@@ -7996,6 +8056,7 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
     for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback, options);
     return;
   }
+  rememberStaticBatchGeometry(groupCacheKey, merged);
   addStaticBatchMesh(parent, bindings, merged, materials, buckets[0].tags, [...urls], `StaticGroup_${partCount}_${materials.length}`);
 }
 
@@ -8026,7 +8087,7 @@ function buildStaticBatchGeometry(bucket, options = {}) {
   }
   if (merged) {
     rememberStaticBatchGeometry(cacheKey, merged);
-    return typeof merged.clone === 'function' ? merged.clone() : merged;
+    return merged;
   }
   return null;
 }
@@ -8066,7 +8127,8 @@ export function normalizeStaticBatchGeometries(geometries, options = {}) {
     if (!preserveIndexedGeometry && next.index && typeof next.toNonIndexed === 'function') {
       next = next.toNonIndexed();
       if (tier1Geometry) tier1Geometry.countGeometryDeindex('static-batch');
-      if (next !== geometry && typeof geometry.dispose === 'function') {
+      if (next !== geometry && typeof geometry.dispose === 'function'
+        && !(geometry.userData && geometry.userData.spacefaceSharedAsset)) {
         if (tier1Geometry) tier1Geometry.countResourcesDisposed(1, 'static-batch-deindex');
         geometry.dispose();
       }
@@ -8650,6 +8712,51 @@ export async function warmRenderPackageShipPool(scene, record, witnessPairs, opt
   return warmed;
 }
 
+/**
+ * PQ-210.00 — (geometry, sharedMaterial) pairs a live ship boundary could draw for this record
+ * under `palette`, with no pool side effects: the same probe-instance enumeration
+ * warmRenderPackageShipPool uses, stopped before candidate registration. The bounded crucible
+ * warm mounts these as hidden meshes/count-0 instanced twins, which links the direct and
+ * USE_INSTANCING palette-material program families behind the shell WITHOUT publishing the
+ * per-(key × palette) chunk fleet the receipt measured as the launch regression (a mid-round
+ * chunk then only owes its small instanceMatrix upload — the program family is already warm).
+ */
+export function paletteWarmSubjectsForRecord(record, palette) {
+  if (!record?.renderPackage) return [];
+  const createPackageInstance = record.renderPackage.createInstance?.bind(record.renderPackage);
+  if (typeof createPackageInstance !== 'function') return [];
+  const tagsByName = new Map([
+    ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
+    ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
+  ]);
+  let planEntries = null;
+  try {
+    const probe = createPackageInstance({
+      name: `SF_PaletteWarmProbe_${record.assetId || 'package'}`,
+      residencyRole: 'crucible-roster-warm',
+      createNode: () => new THREE.Group(),
+    });
+    planEntries = probe?.planEntries || null;
+  } catch (error) {
+    console.warn('[partsLibrary] palette warm probe failed for', record.assetId || record.url, error);
+    return [];
+  }
+  if (!Array.isArray(planEntries)) return [];
+  const uniqueKeys = new Map();
+  for (const entry of planEntries) {
+    const source = entry?.source;
+    if (!source?.isMesh) continue;
+    const tags = tagsByName.get(source.name) || source.userData?.spacefaceTags || {};
+    if (!canPoolRenderPackageShipMesh(source, tags)) continue;
+    const material = sharedMaterialFor(source.material, tags, palette || {});
+    stampGeometryBatchKey(source.geometry, `${record.assetId || 'PackageShip'}|${source.name || 'Mesh'}`);
+    const key = instancePoolKey(source.geometry, material);
+    if (uniqueKeys.has(key)) continue;
+    uniqueKeys.set(key, { geometry: source.geometry, material });
+  }
+  return [...uniqueKeys.values()];
+}
+
 // The palette set a hidden pool warm must cover for the current run: pool chunk keys bake the
 // shared material, which bakes paletteFor(entity). NPC palettes are deterministic faction/team
 // bases (per-entity appearance overrides are a player-only feature), so the fallback trio plus
@@ -8690,8 +8797,8 @@ export function poolWitnessPalettesForState(state) {
 // palette on every package.
 export function rosterPoolWitnessFilePalettes(entities) {
   const byFile = new Map();
-  for (const entity of entities || []) {
-    if (!entity || entity.type !== 'ship') continue;
+  const addFor = (entity) => {
+    if (!entity || entity.type !== 'ship') return;
     const palette = paletteFor(entity);
     const signature = [
       palette.hull, palette.accent, palette.thruster, palette.dark,
@@ -8707,8 +8814,64 @@ export function rosterPoolWitnessFilePalettes(entities) {
       if (!palettes) byFile.set(normalized, palettes = new Map());
       if (!palettes.has(signature)) palettes.set(signature, palette);
     }
-  }
+  };
+  for (const entity of entities || []) addFor(entity);
+  // Static swarm roster: the wave planner draws future waves from SWARM_ROSTER +
+  // SWARM_BOSS_ROTATION packages, so a wave-2+ ship's (file, faction-palette) pair is
+  // enumerable from data alone — no live entity needed. Without this a choir zealot
+  // (same ashline_dart.glb file as the wave-1 wasp, different faction palette) promotes
+  // its chunk inside the fight.
+  for (const pseudo of swarmRosterShipExemplarSpecs()) addFor(pseudo);
   return byFile;
+}
+
+/**
+ * Ship-shaped pseudo-entities for every enemy the swarm wave planner can field — the same
+ * (lootTableId, defId, silhouette, factionId) surface a real combat spawn carries, so
+ * wholeShipLodFileForEntity/paletteFor/vf.build resolve exactly what the live spawn resolves.
+ * Admission subjects only — never registered with the sim.
+ */
+export function swarmRosterShipExemplarSpecs(idPrefix = 'crucible-warm:ship:') {
+  const prefix = String(idPrefix || 'crucible-warm:ship:');
+  return swarmRosterEnemyDefs().map((def) => ({
+    id: `${prefix}${def.id}`,
+    type: 'ship',
+    team: 1,
+    factionId: def.factionId,
+    radius: 8,
+    pos: { x: 0, y: 0, z: 0 },
+    prevPos: { x: 0, y: 0, z: 0 },
+    vel: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    alive: true,
+    flags: {},
+    data: {
+      lootTableId: def.id,
+      defId: def.shipId,
+      silhouette: def.silhouette,
+      shipClass: def.shipClass,
+    },
+  }));
+}
+
+let _swarmRosterEnemyDefsCache = null;
+function swarmRosterEnemyDefs() {
+  if (_swarmRosterEnemyDefsCache) return _swarmRosterEnemyDefsCache;
+  const ids = new Set();
+  for (const entry of SWARM_ROSTER || []) {
+    if (entry && entry.enemyId) ids.add(entry.enemyId);
+  }
+  for (const boss of SWARM_BOSS_ROTATION || []) {
+    for (const pkg of (boss && boss.packages) || []) {
+      if (pkg && pkg.enemyId) ids.add(pkg.enemyId);
+    }
+  }
+  const byId = new Map();
+  for (const def of ENEMY_TYPES || []) {
+    if (def && def.id) byId.set(def.id, def);
+  }
+  _swarmRosterEnemyDefsCache = [...ids].map((id) => byId.get(id)).filter(Boolean);
+  return _swarmRosterEnemyDefsCache;
 }
 
 function admitRenderPackageShipPoolCandidate(
@@ -10912,20 +11075,28 @@ function buildFallbackFin(hull, materials, placement) {
 }
 
 function buildFallbackNavLights(hull, materials, bindings) {
+  // Two plain meshes on the shared sphere geometry — a per-ship InstancedMesh would owe a fresh
+  // instanceMatrix bufferData on first draw, inside the round. Shared geometry is already
+  // resident, so this variant uploads nothing. One extra draw call per nav-light-less hull.
   const material = materials.accent.clone();
-  const lights = new THREE.InstancedMesh(getFallbackNavLightGeometry(), material, 2);
+  const lights = new THREE.Group();
   lights.name = 'GLTFKit_Nav_Lights';
-  lights.setMatrixAt(0, FALLBACK_NAV_LIGHT_MAT.makeTranslation(0.25, 0.18, -0.38));
-  lights.setMatrixAt(1, FALLBACK_NAV_LIGHT_MAT.makeTranslation(0.25, 0.18, 0.38));
-  lights.instanceMatrix.needsUpdate = true;
-  lights.castShadow = false;
-  lights.receiveShadow = false;
-  lights.userData.keepSeparate = true;
-  lights.userData.spacefaceNoShadow = true;
+  for (const side of [-1, 1]) {
+    const light = new THREE.Mesh(getFallbackNavLightGeometry(), material);
+    light.name = `GLTFKit_Nav_Lights_${side < 0 ? 'port' : 'starboard'}`;
+    light.position.set(0.25, 0.18, side * 0.38);
+    light.castShadow = false;
+    light.receiveShadow = false;
+    light.userData.keepSeparate = true;
+    light.userData.spacefaceNoShadow = true;
+    light.userData.damageRole = 'navLight';
+    light.userData.spacefaceTags = { damageRole: 'navLight' };
+    lights.add(light);
+    bindings.navLights.push(light);
+  }
   lights.userData.damageRole = 'navLight';
   lights.userData.spacefaceTags = { damageRole: 'navLight' };
   hull.add(lights);
-  bindings.navLights.push(lights);
   return lights;
 }
 
@@ -11043,9 +11214,15 @@ function disposeDetachedObject(root) {
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') disposePresentation();
   root.traverse((object) => {
-    if (object.geometry && typeof object.geometry.dispose === 'function') object.geometry.dispose();
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
     const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
-    for (const material of materials) if (material && typeof material.dispose === 'function') material.dispose();
+    for (const material of materials) {
+      if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
   });
 }
 
