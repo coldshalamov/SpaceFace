@@ -2201,9 +2201,10 @@ export const vfx = {
   },
 
   /**
-   * Shift live local VFX anchors by origin rebase delta. Long ribbon history is the exception: it is
-   * cleared so the next live nozzle pose reseeds without a screen-crossing bridge. Aligns the
-   * internal membrane to the current world origin so a later sync is a no-op (no double shift).
+   * Shift live local VFX anchors by origin rebase delta. Ribbon history shifts with the frame
+   * (INF-047): the laid samples are still true, only re-expressed — wiping them would retract
+   * a wake across a mere coordinate change. Aligns the internal membrane to the current world
+   * origin so a later sync is a no-op (no double shift).
    */
   reprojectFrame(dx, dz) {
     const ox = Number.isFinite(dx) ? dx : 0;
@@ -2267,9 +2268,13 @@ export const vfx = {
       // current nozzle on the next update instead of risking one frame that joins two coordinate
       // spaces with a screen-crossing strip.
       if (this._ribbonTrails && this._ribbonTrails.size) {
+        // INF-047: a frame-origin jump is a coordinate change, not a teleport — the laid
+        // samples are still true, so re-express them in the new frame instead of wiping the
+        // wake. Only trails without a shift path fall back to clear.
         for (const trail of this._ribbonTrails.values()) {
           if (!trail) continue;
-          if (typeof trail.clear === 'function') trail.clear();
+          if (typeof trail.reproject === 'function') trail.reproject(ox, oz);
+          else if (typeof trail.clear === 'function') trail.clear();
         }
       }
       if (this._weaponPresenter && typeof this._weaponPresenter.reproject === 'function') {
@@ -13481,7 +13486,17 @@ export const vfx = {
       const driveInfo = this._engineDriveFor(e);
       const speed = Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
       if (speed < 4 && driveInfo.drive < 0.04) {
-        this._retireRibbonTrail(e.id, !isPlayer);
+        // INF-047: a stopped hull stops EARNING history; the committed wake stays where it
+        // was laid and fades by age alone (trail.retire), never wiped because the speed
+        // read zero. Only the age factor changes its visibility.
+        const retiring = this._ribbonTrails.get(e.id);
+        if (retiring && typeof retiring.retire === 'function' && typeof retiring.rebuild === 'function') {
+          retiring.retire(this._t);
+          retiring.rebuild(0.6, (this._t * (flashReduce ? 0.18 : 0.34)) % 1, this._t, 1.5);
+          if (retiring.inspect().visiblePointCount > 0) active = true;
+        } else {
+          this._retireRibbonTrail(e.id, !isPlayer);
+        }
         continue;
       }
       if (!isPlayer) {

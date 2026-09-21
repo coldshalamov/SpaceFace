@@ -24,6 +24,15 @@ const TRAIL_OPACITY = 2;
 export const RIBBON_TRAIL_INTERPOLATION_CAP = 32;
 
 /**
+ * INF-047 — seconds a retired wake stays visible while it ages out. A hull that stops
+ * earning history (slow/still nozzle) keeps its committed samples where they were laid;
+ * only their age changes their visibility, fading over this fixed clock — never wiped
+ * because the speed read zero, never stretched by current speed. Matches the ContrailTrail
+ * TRAIL_SECONDS lifetime so both wake lanes retire on the same beat.
+ */
+export const RIBBON_RETIRE_FADE_S = 1.2;
+
+/**
  * Cross-section of the NPC wake ribbon (M2, closing the B7 row in VFX_QUALITY_AUDIT_2026-09-16).
  *
  * The strip is two vertices wide and stays that way — its vertex layout is a published contract
@@ -510,6 +519,10 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
   let fullRebuildCount = 0;
   let headSyncCount = 0;
   let lastCadenceToken = null;
+  // INF-047 — retirement clock (render-clock seconds, -1 = earning). Set by retire(),
+  // cancelled by any new sample. While set, rebuild() fades the committed wake by age
+  // alone and releases it once fully aged; positions are never touched.
+  let retireAt = -1;
 
   const applyPresentation = (opacity, scroll, time, radiance) => {
     if (opacity != null) {
@@ -641,6 +654,8 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
   };
 
   const appendHistory = (x, z, rot) => {
+    // Any committed sample cancels retirement: the hull is earning history again.
+    retireAt = -1;
     pts[historyHead * 3] = x;
     pts[historyHead * 3 + 1] = z;
     pts[historyHead * 3 + 2] = rot;
@@ -651,6 +666,7 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
   const seedLive = (x, z, rot, owner) => {
     historyHead = 0;
     historyCount = 0;
+    retireAt = -1;
     hasLive = true;
     liveX = committedX = x;
     liveZ = committedZ = z;
@@ -842,6 +858,20 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
       return true;
     },
     rebuild(opacity, scroll, time, radiance) {
+      // INF-047 — a retired wake fades by age alone: the release clock started in retire(),
+      // positions are never touched, and only the age factor scales visibility. Fully aged
+      // history is released once, at the end, not wiped when the speed read zero.
+      if (retireAt >= 0) {
+        const age = (Number.isFinite(time) ? time : retireAt) - retireAt;
+        const remaining = 1 - age / RIBBON_RETIRE_FADE_S;
+        if (!(remaining > 0)) {
+          clearHistory();
+          renderedCount = 0;
+          mesh.visible = false;
+          return;
+        }
+        opacity = (opacity == null ? 1 : opacity) * remaining;
+      }
       applyPresentation(opacity, scroll, time, radiance);
       const count = hasLive ? Math.min(nSeg, historyCount + 1) : 0;
       if (count < 2 || mat.uniforms.uOpacity.value <= 0.001) {
@@ -903,9 +933,21 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
         renderedCount,
         fullRebuildCount,
         headSyncCount,
+        retired: retireAt >= 0,
       };
     },
-    clear() { clearHistory(); },
+    clear() { clearHistory(); retireAt = -1; },
+    /**
+     * INF-047 — stop earning history without moving it. The committed wake stays where it
+     * was laid; rebuild() fades it by age over RIBBON_RETIRE_FADE_S and releases it once
+     * fully aged. Any new sample (follow/push/seedLive) cancels retirement. No-op when
+     * there is no history to keep.
+     */
+    retire(nowS) {
+      if (retireAt >= 0 || !hasLive || historyCount < 1) return false;
+      retireAt = Number.isFinite(nowS) ? nowS : 0;
+      return true;
+    },
     dispose() { scene.remove(mesh); geo.dispose(); mat.dispose(); },
   };
 }
