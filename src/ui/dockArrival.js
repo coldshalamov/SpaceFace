@@ -297,8 +297,20 @@ export function buildDockArrival(state = {}, station = {}) {
   const traffic = localTraffic(state, stationId) || route;
   const paperwork = paperworkFor(state);
   const eventCard = leftoverEventCard(state, stationId);
-  const ledger = leftoverLedgerCard(state);
-  const mechanic = leftoverMechanicCard(state);
+  const ledgerCard = leftoverLedgerCard(state);
+  const mechanicCard = leftoverMechanicCard(state);
+  // One berth mechanic, one header (PQ-207.01): when the hull card and the ledger recap
+  // would both paint "Mechanic", the hull article carries the recap as a second sentence
+  // instead of stacking a second name plate. The ledger article still paints when it is
+  // the only voice on the berth.
+  const mechanic = (ledgerCard && mechanicCard)
+    ? {
+      ...mechanicCard,
+      badge: `${mechanicCard.badge} · ${ledgerCard.badge}`,
+      body: `${mechanicCard.body} ${ledgerCard.body}`,
+    }
+    : mechanicCard;
+  const ledger = mechanic ? null : ledgerCard;
   const patch = leftoverStructurePatch(state, station);
   const serviceCount = Array.isArray(station.services) ? station.services.length : 0;
   const identity = String(station.name || stationId || 'Station');

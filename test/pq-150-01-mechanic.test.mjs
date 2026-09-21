@@ -258,7 +258,7 @@ test('leftover heat or leftover ship ledger adds leftover rap line', () => {
   assert.match(filedLine, /ship ledger already has a fact/i);
 });
 
-test('leftover mechanic article sits beside leftover campaign ledger', () => {
+test('one Mechanic header carries hull and ledger instead of naming the speaker twice', () => {
   const frame = stationFrameHtml();
   assert.match(frame, /sxb-berth__ledger/, 'Orbital berth still hosts leftover campaign ledger');
   assert.match(frame, /sxb-berth__mechanic/, 'Orbital berth hosts leftover mechanic hull article');
@@ -285,19 +285,26 @@ test('leftover mechanic article sits beside leftover campaign ledger', () => {
   assert.ok(ledger, 'leftover campaign ledger still reads leftover receipts');
   assert.equal(ledger.title, 'Mechanic');
   const { view, mechanicEl, ledgerEl, painted } = paintMechanic(state);
-  assert.ok(view.ledger, 'leftover arrival keeps leftover campaign ledger');
-  assert.ok(view.mechanic, 'leftover arrival also carries leftover mechanic hull card');
-  assert.equal(painted.ledger.title, 'Mechanic');
+  assert.ok(view.mechanic, 'leftover arrival carries the merged mechanic card');
+  assert.equal(view.ledger, null, 'PQ-207.01: a second Mechanic plate is not emitted');
+  assert.equal(painted.ledger, null, 'PQ-207.01: ledger article stays hidden when merged');
   assert.equal(painted.mechanic.title, 'Mechanic');
-  assert.equal(ledgerEl.hidden, false, 'leftover campaign ledger article stays shown');
-  assert.equal(mechanicEl.hidden, false, 'leftover mechanic article is shown beside it');
-  assert.match(ledgerEl.querySelector('.sxb-event__body').textContent, /I was /);
-  assert.match(mechanicEl.querySelector('.sxb-event__body').textContent, /hard/i);
-  assert.notEqual(
-    ledgerEl.querySelector('.sxb-event__body').textContent,
-    mechanicEl.querySelector('.sxb-event__body').textContent,
-    'leftover mechanic does not replace leftover campaign ledger',
+  assert.equal(mechanicEl.hidden, false, 'the one Mechanic article is shown');
+  assert.equal(ledgerEl.hidden, true, 'no second Mechanic name plate beside it');
+  const mergedBody = mechanicEl.querySelector('.sxb-event__body').textContent;
+  assert.match(mergedBody, /hard/i, 'hull verdict still leads');
+  assert.match(mergedBody, /I was /, 'ledger recap rides the same header');
+  assert.equal(
+    mechanicEl.querySelector('.sxb-event__badge').textContent,
+    'HULL · LEDGER',
+    'merged badge names both channels honestly',
   );
+
+  const ledgerOnly = paintMechanic(leftoverLedgerState());
+  assert.equal(ledgerOnly.painted.mechanic, null, 'no hull voice without an owned hull line');
+  assert.equal(ledgerOnly.ledgerEl.hidden, false, 'ledger article paints when it is the only voice');
+  assert.equal(ledgerOnly.ledgerEl.querySelector('.sxb-event__title').textContent, 'Mechanic');
+  assert.match(ledgerOnly.ledgerEl.querySelector('.sxb-event__body').textContent, /I was /);
 });
 
 test('leftover mechanic names only leftover scar classes the hull carries', () => {
