@@ -3893,48 +3893,6 @@
       "contractNodeCount": 21
     },
     {
-      "id": "wholeship_drifter_production_v1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/drifter_production_v1.glb",
-      "release": "assets/ships/release/parts/wholeships/drifter_production_v1.glb",
-      "sourceSha256": "354ee4ea682c0f5b0b9e5d9ffd4283841e20ab39dcaffdb7bebc5d41bce25b06",
-      "releaseSha256": "a29d33d4cd7d06fb556c6edf197ec001a780154fa505442e67d4047c050325d4",
-      "sourceBytes": 21993196,
-      "releaseBytes": 13603280,
-      "textures": 27,
-      "ktx2Textures": 27,
-      "meshoptBufferViews": 64,
-      "contractNodeCount": 24
-    },
-    {
-      "id": "wholeship_drifter_production_v1_lod1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/drifter_production_v1_lod1.glb",
-      "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb",
-      "sourceSha256": "b87538f6e5d3fef5d3a1c155ddd6204e624d3621812cba76f62d864f1cdcd56b",
-      "releaseSha256": "0b20dcebd214cb4a449101ce4ad0d4f0d597f8da50983f42427941a5cfdff2e7",
-      "sourceBytes": 10833548,
-      "releaseBytes": 4977900,
-      "textures": 27,
-      "ktx2Textures": 27,
-      "meshoptBufferViews": 48,
-      "contractNodeCount": 20
-    },
-    {
-      "id": "wholeship_drifter_production_v1_lod2",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/drifter_production_v1_lod2.glb",
-      "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb",
-      "sourceSha256": "3709244f2899fac5ab45102811b06771f5684c161f7b7eb8d471f08c12aecd7f",
-      "releaseSha256": "044a5839c304cd0cd346476c2d3c1a1547870e2bf00c9e1c46349abd498d9dcb",
-      "sourceBytes": 9827692,
-      "releaseBytes": 4453548,
-      "textures": 24,
-      "ktx2Textures": 24,
-      "meshoptBufferViews": 43,
-      "contractNodeCount": 19
-    },
-    {
       "id": "wholeship_bastion_production_v1_lod1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/bastion_production_v1_lod1.glb",
@@ -4297,6 +4255,48 @@
       "ktx2Textures": 0,
       "meshoptBufferViews": 58,
       "contractNodeCount": 24
+    },
+    {
+      "id": "wholeship_drifter_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/drifter_production_v1.glb",
+      "sourceSha256": "6408b790fbc19887dfd88c4d6ab8944cdfcf56532b020fd0b228fda804d2025c",
+      "releaseSha256": "67df19577a5a6022a525f41079cf6b0574df9e0ca6593a0020628ebc236244b5",
+      "sourceBytes": 1016424,
+      "releaseBytes": 246156,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 81,
+      "contractNodeCount": 29
+    },
+    {
+      "id": "wholeship_drifter_production_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/drifter_production_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb",
+      "sourceSha256": "6a714886a59b5b953a88b29919e41027e6c5cfb3e263b10093ca766e1780c9d2",
+      "releaseSha256": "bc4acc8461ce50fd47861e94061f66b167a69ca829a1ae0612aace896eb8bd0a",
+      "sourceBytes": 924556,
+      "releaseBytes": 224048,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 74,
+      "contractNodeCount": 27
+    },
+    {
+      "id": "wholeship_drifter_production_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/drifter_production_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb",
+      "sourceSha256": "c80d65ea7327c945ed08c1cbf8506b4d0b8ee6ddb8c7fba1c280584009606ab4",
+      "releaseSha256": "e4de5da7f2c2c51c7e8fc86b30c1245d0a25a16e6ea8f490a6316fc89b04be1c",
+      "sourceBytes": 843912,
+      "releaseBytes": 203676,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 65,
+      "contractNodeCount": 25
     }
   ]
 }

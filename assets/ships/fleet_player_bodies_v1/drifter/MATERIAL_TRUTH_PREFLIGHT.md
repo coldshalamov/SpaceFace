@@ -1,8 +1,17 @@
 # Drifter material-truth preflight (PQ-050.02)
 
 Class: player flyable multirole utility. Hitch untouched. Hornet identity not reused.
-Revision: cycle 28 accepted causal form/surface rebuild, 2026-08-26. Supersedes the
-cycle-18 record and the rejected Cycle 26 close/rear construction.
+
+## C1 chase-form (2026-09-21)
+
+Live authoring source for this leaf is `tools/blender/build_drifter_chase_form.py`
+(`chase_form_v1`), not `build_drifter_mtx.py`. Principled islands only — no 512/1024
+map density trap. Chase cameras only. No seats. Sockets and collision imported from
+the live GLB and asserted unchanged. Hitch/Kestrel never loaded.
+
+Cycle 1 shipped the REVISE from three chase reviews: the cargo well is a rimmed hole
+(not an orange parking-lot lid), the greenhouse glass sits in the cut tub (not a roof
+plate), nacelle stations grow out of the flank. Hitch still wins chase. Parent unproven.
 
 ## 0. Frozen identity
 
