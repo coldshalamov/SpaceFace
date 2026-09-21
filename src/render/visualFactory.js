@@ -342,8 +342,12 @@ export function mergeRigidOpaqueAcrossRoot(root) {
   return { groups: groups.size, mergedMeshes, sourceMeshes };
 }
 
-function freezeStaticPresentation(root) {
-  freezeStaticChildMatrices(optimizeStaticBatchesForRoot(root));
+function freezeStaticPresentation(root, options = {}) {
+  // merge:false keeps every child on its shared cached geometry. The per-entity merge produces a
+  // unique sf-static-merge buffer per build, which a mid-round spawn then pays as a first-draw
+  // upload inside the fight; shared children upload once at warm time and never again.
+  if (options.merge !== false) optimizeStaticBatchesForRoot(root);
+  freezeStaticChildMatrices(root);
   return root;
 }
 
@@ -2938,6 +2942,126 @@ function wreckPackagedFile(e) {
   return WRECK_PACKAGED_FILES[hashId(e && e.id) % WRECK_PACKAGED_FILES.length];
 }
 
+/**
+ * PQ-210.00 — hidden exemplar specs covering every packaged body a mid-round kill can land.
+ * wreckPackagedFile picks across WRECK_PACKAGED_FILES by hashId(id), so the exemplar ids scan
+ * the prefix until every residue class is represented; the hazardous identity resolves to index
+ * 0 of the same table, and the military class resolves to the corvette turret explicitly. These
+ * are admission subjects only — never registered as entities.
+ */
+export function wreckVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:wreck:') {
+  const prefix = String(idPrefix || 'survival-roster-prewarm:wreck:');
+  const specs = [];
+  const covered = new Set();
+  for (let i = 0; covered.size < WRECK_PACKAGED_FILES.length && i < 64; i += 1) {
+    const id = `${prefix}${i}`;
+    const variant = hashId(id) % WRECK_PACKAGED_FILES.length;
+    if (covered.has(variant)) continue;
+    covered.add(variant);
+    specs.push({
+      id,
+      type: 'wreck',
+      pos: { x: 0, y: 0, z: 0 },
+      radius: 12,
+      alive: true,
+      data: { wreckClass: 'battlefield', parentType: 'ship' },
+    });
+  }
+  specs.push({
+    id: `${prefix}military`,
+    type: 'wreck',
+    pos: { x: 0, y: 0, z: 0 },
+    radius: 14,
+    alive: true,
+    data: { wreckClass: 'military', parentType: 'military' },
+  });
+  return specs;
+}
+
+/**
+ * PQ-210.00 — one real buildAsteroid root per canonical type. Sector field records promote into
+ * entities by approach, so the first rock of a type the ruleset can spawn must not compose its
+ * leaf/detail materials inside the round. Variant detail layouts are id-seeded, but every
+ * material is shared-cache — one exemplar per type covers all variants' programs.
+ */
+export function asteroidVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:asteroid:') {
+  const prefix = String(idPrefix || 'survival-roster-prewarm:asteroid:');
+  return Object.keys(AST_TYPE).map((typeId) => ({
+    id: `${prefix}${typeId}`,
+    type: 'asteroid',
+    pos: { x: 0, y: 0, z: 0 },
+    radius: 12,
+    alive: true,
+    data: { typeId },
+  }));
+}
+
+/**
+ * The shared leaf pair (displaced geometry + surface material) for one asteroid type and
+ * displacement variant — the exact cached objects buildAsteroid hands to the live leaf mesh.
+ * The pool warm binds these so a pre-created chunk is byte-identical to what real rocks
+ * register with; tint only repaints the material color uniform, so untinted covers it.
+ */
+export function asteroidLeafResources(typeId, variantIdx) {
+  const canonical = canonicalAstTypeId(typeId);
+  const def = AST_TYPE[canonical] || AST_TYPE.ast_common_rock;
+  const variant = Math.abs(variantIdx | 0) % 5;
+  return {
+    typeId: canonical,
+    variant,
+    geometry: astDisplacedGeometry(canonical, def, variant),
+    material: astMaterial(canonical, def, null),
+  };
+}
+
+/**
+ * One leaf mesh per (canonical type, displacement variant) — 6 types × 5 variants. The exemplar
+ * builds above only touch the hashId-picked variant; a rock of another variant promoted
+ * mid-round draws a sibling geometry whose buffers would upload on first draw. Mounting every
+ * leaf pair here lets one compile+touch pass upload them all behind the shell.
+ */
+export function buildAsteroidLeafWarmGroup() {
+  const root = new THREE.Group();
+  root.name = 'SF_AsteroidLeafPrewarm';
+  for (const typeId of Object.keys(AST_TYPE)) {
+    for (let variant = 0; variant < 5; variant++) {
+      const res = asteroidLeafResources(typeId, variant);
+      const mesh = new THREE.Mesh(res.geometry, res.material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData.rosterPrewarmLeaf = `asteroid:${res.typeId}:${variant}`;
+      root.add(mesh);
+    }
+  }
+  return root;
+}
+
+/**
+ * PQ-210.00 — the fight mints entities that are not roster hulls: the jackal doctrine drops mines,
+ * deploy weapons can field vector mines, and kills drop loot pickups. One exemplar per material
+ * set covers the class — the commodity gem is a single feature-identical program family across
+ * colors, while credit chips and custody pods build different material sets and get their own.
+ * These are admission subjects only — never registered as entities.
+ */
+export function combatSpawnableExemplarSpecs(idPrefix = 'survival-roster-prewarm:spawnable:') {
+  const prefix = String(idPrefix || 'survival-roster-prewarm:spawnable:');
+  const base = () => ({
+    pos: { x: 0, y: 0, z: 0 },
+    prevPos: { x: 0, y: 0, z: 0 },
+    vel: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    alive: true,
+    flags: {},
+  });
+  return [
+    { ...base(), id: `${prefix}mine`, type: 'mine', radius: 6, data: { kind: 'mine' } },
+    { ...base(), id: `${prefix}vectormine`, type: 'vectormine', radius: 1.6, data: { kind: 'vector_mine' } },
+    { ...base(), id: `${prefix}pickup:gem`, type: 'pickup', radius: 2.2, data: { kind: 'commodity' } },
+    { ...base(), id: `${prefix}pickup:credit`, type: 'pickup', radius: 2.2, data: { kind: 'credit_chip' } },
+    { ...base(), id: `${prefix}pickup:pod`, type: 'pickup', radius: 2.2, data: { freightCustodyPod: true } },
+  ];
+}
+
 function isLod0Primitive(primitive) {
   const lod = primitive && primitive.tags && primitive.tags.lod;
   if (lod && String(lod).toLowerCase() !== 'lod0') return false;
@@ -2946,11 +3070,14 @@ function isLod0Primitive(primitive) {
   return true;
 }
 
-function instantiatePackagedPrimitives(record, parent) {
+export function instantiatePackagedPrimitives(record, parent, options = {}) {
+  // Warmth passes set includeAllLods: a dedicated lod1/lod2 file's primitives carry the
+  // non-lod0 tag themselves, and filtering them would warm an empty holder.
+  const includeAllLods = options && options.includeAllLods === true;
   const tmp = new THREE.Matrix4();
   for (const primitive of record && record.primitives || []) {
     if (!primitive || !primitive.geometry || !primitive.material) continue;
-    if (!isLod0Primitive(primitive)) continue;
+    if (!includeAllLods && !isLod0Primitive(primitive)) continue;
     const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
     mesh.name = primitive.name || 'PackagedPrimitive';
     if (primitive.matrix && primitive.matrix.isMatrix4) tmp.copy(primitive.matrix);
@@ -3338,11 +3465,19 @@ function consolidateWreckDrawCalls(group) {
 function buildMine(e) {
   const R = Math.max(1, Number(e && e.radius) || 6);
   const g = new THREE.Group();
-  const casing = getMaterial('mine:casing', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: 0x252d31, roughness: 0.68, metalness: 0.58,
-  }), SHARED_MATERIAL_ROLE.HULL));
+  // Dropped ordnance, not a board token: the casing wears the same generated panel/bevel/wear
+  // surface language as the ship hulls (gunmetal panels, amber ordnance markings), so a mine
+  // reads as a machined canister that belongs in the same foundry as the ships around it.
+  const casing = hullMaterial({ hull: '#29333a', accent: '#d98a2b', emissive: '#000000' }, 8);
   const exposed = getMaterial('mine:exposed-alloy', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: 0x747b7f, roughness: 0.39, metalness: 0.82,
+    color: 0x7d8488, roughness: 0.36, metalness: 0.84,
+    roughnessMap: getTexture('noise:rough', () =>
+      makeNoiseTexture({ size: 256, seed: 99, octaves: 4, baseCells: 5, contrast: 1.1, brightness: 0.1 })),
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const darkwork = getMaterial('mine:darkwork', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x161c20, roughness: 0.62, metalness: 0.6,
+    roughnessMap: getTexture('noise:rough', () =>
+      makeNoiseTexture({ size: 256, seed: 99, octaves: 4, baseCells: 5, contrast: 1.1, brightness: 0.1 })),
   }), SHARED_MATERIAL_ROLE.HULL));
   const warningSafe = getMaterial('mine:warning-lens:safe', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'MineWarningLensSafe',
@@ -3355,36 +3490,118 @@ function buildMine(e) {
     roughness: 0.24, metalness: 0.12,
   }), SHARED_MATERIAL_ROLE.HULL));
 
+  // Lathe-turned pressure canister: rolled base rim, straight wall, shoulder, recessed deck —
+  // the silhouette of a munition body, not a flat-sided puck.
   const hull = new THREE.Mesh(
-    getGeometry('mine:canister-hull', () => new THREE.CylinderGeometry(0.48, 0.52, 0.42, 6)),
+    getGeometry('mine:canister-hull-v2', () => new THREE.LatheGeometry([
+      [0.00, -0.26], [0.30, -0.26], [0.40, -0.23], [0.46, -0.13], [0.475, 0.00],
+      [0.46, 0.10], [0.40, 0.17], [0.31, 0.215], [0.26, 0.235], [0.00, 0.245],
+    ].map(([x, y]) => new THREE.Vector2(x, y)), 20)),
     casing,
   );
   hull.name = 'MinePressureHull';
   g.add(hull);
-  const cap = new THREE.Mesh(
-    getGeometry('mine:canister-cap', () => new THREE.CylinderGeometry(0.36, 0.40, 0.08, 6)),
-    exposed,
-  );
-  cap.name = 'MineAccessCap';
-  cap.position.y = 0.22;
-  g.add(cap);
+
+  // Anchor spikes under the skirt — an emplaced charge visibly seats into the surface below.
+  const spikeGeo = getGeometry('mine:anchor-spike', () =>
+    new THREE.ConeGeometry(0.07, 0.20, 4).rotateX(Math.PI));
+  for (let i = 0; i < 3; i++) {
+    const a = i * Math.PI * 2 / 3 + Math.PI / 6;
+    const spike = new THREE.Mesh(spikeGeo, darkwork);
+    spike.name = `MineAnchorSpike_${i + 1}`;
+    spike.position.set(Math.cos(a) * 0.30, -0.30, Math.sin(a) * 0.30);
+    g.add(spike);
+  }
+
+  // Bolted girth band: the armor ring plus evenly spaced stud heads, a clamped casing joint.
   const armorRing = new THREE.Mesh(
-    getGeometry('mine:armor-ring', () => new THREE.TorusGeometry(0.46, 0.05, 6, 12).rotateX(Math.PI / 2)),
+    getGeometry('mine:armor-ring-v2', () => new THREE.TorusGeometry(0.475, 0.042, 8, 24).rotateX(Math.PI / 2)),
     exposed,
   );
   armorRing.name = 'MineArmorRing';
-  armorRing.position.y = 0.08;
+  armorRing.position.y = -0.02;
   g.add(armorRing);
+  const studGeo = getGeometry('mine:ring-stud', () =>
+    new THREE.CylinderGeometry(0.026, 0.03, 0.075, 6).rotateZ(Math.PI / 2));
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4;
+    const stud = new THREE.Mesh(studGeo, darkwork);
+    stud.name = `MineRingStud_${i + 1}`;
+    stud.position.set(Math.cos(a) * 0.478, -0.02, Math.sin(a) * 0.478);
+    stud.rotation.y = -a;
+    g.add(stud);
+  }
+
+  // Top deck: machined access cap, service panel, and a domed warning beacon recessed in a bezel.
+  const cap = new THREE.Mesh(
+    getGeometry('mine:canister-cap-v2', () => new THREE.CylinderGeometry(0.28, 0.33, 0.05, 16)),
+    exposed,
+  );
+  cap.name = 'MineAccessCap';
+  cap.position.y = 0.25;
+  g.add(cap);
+  const panel = new THREE.Mesh(
+    getGeometry('mine:data-panel', () => new THREE.BoxGeometry(0.16, 0.022, 0.11)),
+    darkwork,
+  );
+  panel.name = 'MineDataPanel';
+  panel.position.set(0.19, 0.272, 0.10);
+  panel.rotation.y = -0.35;
+  g.add(panel);
+  const bezel = new THREE.Mesh(
+    getGeometry('mine:lens-bezel', () => new THREE.TorusGeometry(0.155, 0.032, 8, 20).rotateX(Math.PI / 2)),
+    darkwork,
+  );
+  bezel.name = 'MineLensBezel';
+  bezel.position.y = 0.265;
+  g.add(bezel);
   const lens = new THREE.Mesh(
-    getGeometry('mine:warning-lens', () => new THREE.CylinderGeometry(0.15, 0.18, 0.06, 12)),
+    getGeometry('mine:warning-lens-dome', () =>
+      new THREE.SphereGeometry(0.115, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5)),
     warningSafe,
   );
   lens.name = 'MineArmingLens';
-  lens.position.y = 0.16;
+  lens.position.y = 0.255;
   g.add(lens);
 
-  const vaneGeometry = getGeometry('mine:sensor-vane', () => new THREE.BoxGeometry(0.42, 0.055, 0.13));
-  const tipGeometry = getGeometry('mine:sensor-tip', () => new THREE.ConeGeometry(0.09, 0.26, 6).rotateZ(-Math.PI / 2));
+  // Whip aerials off the deck — proximity sensor rods; static hardware, not part of the sweep.
+  const whipGeo = getGeometry('mine:whip-aerial', () => mergeGeometries([
+    new THREE.CylinderGeometry(0.012, 0.02, 0.5, 6).translate(0, 0.25, 0),
+    new THREE.SphereGeometry(0.032, 8, 6).translate(0, 0.51, 0),
+  ], false));
+  const whipSpecs = [
+    { a: -Math.PI * 0.28, tilt: -0.26 },
+    { a: Math.PI * 0.72, tilt: 0.32 },
+  ];
+  for (let i = 0; i < whipSpecs.length; i++) {
+    const { a, tilt } = whipSpecs[i];
+    const whip = new THREE.Mesh(whipGeo, darkwork);
+    whip.name = `MineWhipAerial_${i + 1}`;
+    whip.position.set(Math.cos(a) * 0.22, 0.27, Math.sin(a) * 0.22);
+    whip.rotation.set(0, -a, tilt);
+    g.add(whip);
+  }
+
+  // Bearing race under the orbiting sensor crown — the rail the vanes ride on.
+  const track = new THREE.Mesh(
+    getGeometry('mine:sensor-track', () => new THREE.TorusGeometry(0.72, 0.028, 6, 28).rotateX(Math.PI / 2)),
+    darkwork,
+  );
+  track.name = 'MineSensorTrack';
+  track.position.y = -0.055;
+  g.add(track);
+
+  // Sensor crown: instrument paddles riding the track, horn pickups outboard. Names + orbit
+  // radii are the pinned contract updateRuntimeState sweeps each frame.
+  const vaneGeometry = getGeometry('mine:sensor-vane-v2', () => mergeGeometries([
+    new THREE.BoxGeometry(0.42, 0.055, 0.13),
+    new THREE.CylinderGeometry(0.055, 0.055, 0.10, 8).translate(-0.24, 0.02, 0),
+    new THREE.BoxGeometry(0.10, 0.08, 0.15).translate(0.20, 0.01, 0),
+  ], false));
+  const tipGeometry = getGeometry('mine:prox-horn', () => mergeGeometries([
+    new THREE.CylinderGeometry(0.028, 0.036, 0.14, 6).translate(-0.10, 0.0, 0),
+    new THREE.ConeGeometry(0.075, 0.18, 8).rotateZ(-Math.PI / 2).translate(0.04, 0.0, 0),
+  ], false));
   for (let i = 0; i < 4; i++) {
     const angle = i * Math.PI / 2;
     const vane = new THREE.Mesh(vaneGeometry, casing);
@@ -3444,13 +3661,16 @@ function buildMine(e) {
 }
 
 // SF-10 vector mine (type 'vectormine'). A compact IMPULSE emitter — deliberately distinct from the
-// armored, orange-warning damage mine above: a cool-blue charge core with four radial emitter fins
-// (the directional-shove motif) and an arming pip that lights when it goes live.
+// armored, orange-warning damage mine above: a cool-blue charge core caged in a machined gimbal
+// cradle, four radial emitter arms riding the equator (the directional-shove motif), and an arming
+// pip on a mast that lights when it goes live.
 function buildVectorMine(e) {
   const R = Math.max(0.8, Number(e && e.radius) || 1.6);
   const g = new THREE.Group();
-  const shell = getMaterial('vmine:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+  const shell = getMaterial('vmine:shell-v2', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x1c2a3a, roughness: 0.5, metalness: 0.66,
+    roughnessMap: getTexture('noise:rough', () =>
+      makeNoiseTexture({ size: 256, seed: 99, octaves: 4, baseCells: 5, contrast: 1.1, brightness: 0.1 })),
   }), SHARED_MATERIAL_ROLE.HULL));
   const emitterSafe = getMaterial('vmine:emitter:safe', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'VectorMineEmitterSafe',
@@ -3460,20 +3680,57 @@ function buildVectorMine(e) {
     name: 'VectorMineEmitterArmed',
     color: 0x5ab4ff, emissive: 0x2a8cff, emissiveIntensity: 1.5, roughness: 0.28, metalness: 0.2,
   }), SHARED_MATERIAL_ROLE.HULL));
-  const core = new THREE.Mesh(getGeometry('vmine:core', () => new THREE.OctahedronGeometry(0.5, 0)), shell);
+  const core = new THREE.Mesh(getGeometry('vmine:core-v2', () => new THREE.OctahedronGeometry(0.44, 0)), shell);
   core.name = 'VectorMineCore';
   g.add(core);
-  const finGeo = getGeometry('vmine:emitter', () => new THREE.BoxGeometry(0.55, 0.07, 0.16));
+  // Fixed gimbal cradle: two perpendicular machined arcs caging the spinning core — the charge
+  // sits in a frame, so it reads as a field generator, not a spinning jewel.
+  const gimbalGeo = getGeometry('vmine:gimbal', () =>
+    new THREE.TorusGeometry(0.42, 0.038, 6, 22, Math.PI * 0.92));
+  const gimbalA = new THREE.Mesh(gimbalGeo, shell);
+  gimbalA.name = 'VectorMineGimbalA';
+  gimbalA.rotation.z = Math.PI * 0.54;
+  g.add(gimbalA);
+  const gimbalB = new THREE.Mesh(gimbalGeo, shell);
+  gimbalB.name = 'VectorMineGimbalB';
+  gimbalB.rotation.set(0, Math.PI / 2, Math.PI * 0.54);
+  g.add(gimbalB);
+  // Deployed keel + foot: the body visibly sits on something, not floating jewelry.
+  const keel = new THREE.Mesh(
+    getGeometry('vmine:keel', () => mergeGeometries([
+      new THREE.CylinderGeometry(0.10, 0.14, 0.16, 8).translate(0, -0.30, 0),
+      new THREE.CylinderGeometry(0.22, 0.24, 0.05, 8).translate(0, -0.40, 0),
+    ], false)),
+    shell,
+  );
+  keel.name = 'VectorMineKeel';
+  g.add(keel);
+  // Emitter arms carry material groups: the blade + root boss stay machined shell while only the
+  // nozzle cone takes the armed/safe emitter material — the field lights the tips, not a glowing
+  // pinwheel.
+  const finGeo = getGeometry('vmine:emitter-v2', () => mergeGeometries([
+    new THREE.BoxGeometry(0.38, 0.07, 0.15),
+    new THREE.CylinderGeometry(0.055, 0.07, 0.11, 6).rotateZ(Math.PI / 2).translate(-0.22, 0, 0),
+    new THREE.ConeGeometry(0.065, 0.15, 6).rotateZ(-Math.PI / 2).translate(0.235, 0, 0),
+  ], true));
   const emitters = [];
   for (let i = 0; i < 4; i++) {
     const angle = i * Math.PI / 2;
-    const fin = new THREE.Mesh(finGeo, emitterSafe);
+    const fin = new THREE.Mesh(finGeo, [shell, shell, emitterSafe]);
     fin.name = `VectorMineEmitter_${i + 1}`;
     fin.position.set(Math.cos(angle) * 0.62, 0, Math.sin(angle) * 0.62);
     fin.rotation.y = -angle;
     g.add(fin);
     emitters.push(fin);
   }
+  // Arming pip rides a short mast above the cradle — a beacon, not a floating shard.
+  const mast = new THREE.Mesh(
+    getGeometry('vmine:pip-mast', () => new THREE.CylinderGeometry(0.045, 0.06, 0.10, 6)),
+    shell,
+  );
+  mast.name = 'VectorMinePipMast';
+  mast.position.y = 0.30;
+  g.add(mast);
   const pip = new THREE.Mesh(getGeometry('vmine:pip', () => new THREE.OctahedronGeometry(0.16, 0)), emitterSafe);
   pip.name = 'VectorMineArmingPip';
   pip.position.y = 0.36;
@@ -3491,7 +3748,11 @@ function buildVectorMine(e) {
     const t = Number.isFinite(now) ? now : 0;
     if (nextArmed !== visualArmed) {
       visualArmed = nextArmed;
-      for (const m of emitters) m.material = nextArmed ? emitterArmed : emitterSafe;
+      for (const m of emitters) {
+        m.material = Array.isArray(m.material)
+          ? [shell, shell, nextArmed ? emitterArmed : emitterSafe]
+          : (nextArmed ? emitterArmed : emitterSafe);
+      }
       g.userData.visualArmed = nextArmed;
     }
     // Armed: the radial emitter fins orbit the core — a live field generator visibly spinning —
@@ -4229,7 +4490,7 @@ export function createVisualFactory() {
         if (!e) return null;
         switch (e.type) {
           case 'ship': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));
-          case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e)));
+          case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e), { merge: false }));
           case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
           case 'pickup': return stampBuiltVisual(buildPickup(e));
           case 'projectile': return stampBuiltVisual(buildProjectile(e));
@@ -4241,7 +4502,7 @@ export function createVisualFactory() {
           case 'bomb': return stampBuiltVisual(buildBomb(e));
           case 'massSeed': return stampBuiltVisual(buildMassSeed(e));
           case 'masslineSnareAnchor': return stampBuiltVisual(buildMasslineSnareAnchor(e));
-          case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e)), wreckPackagedFile(e), e));
+          case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e), { merge: false }), wreckPackagedFile(e), e));
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
           case 'planet': return stampBuiltVisual(freezeStaticPresentation(buildPlanetSiteVisual(e)));
           // Lane/route infrastructure: buoys are scannable props (OFFLINE reads as an unlit lens);
