@@ -216,6 +216,7 @@ import {
   writeMasslineReleaseArcGeometry,
 } from './masslineReleaseArc.js';
 import { shipPitchCandidates } from './shipPitchPresentation.js';
+import { TargetContour, resolveTargetContour } from './targetContour.js';
 import {
   MOMENTUM_SINK_VFX_COLORS,
   MOMENTUM_SINK_VFX_HZ,
@@ -1398,6 +1399,8 @@ export const vfx = {
     }
     disposeVfxRoot(this._arcPreview && this._arcPreview.mesh, disposeState);
     disposeVfxRoot(this._masslineReleaseArc && this._masslineReleaseArc.mesh, disposeState);
+    invokeVfxDisposer(this._targetContour, 'target contour');
+    this._targetContour = null;
     disposeVfxRoot(this._seamMarkers && this._seamMarkers.mesh, disposeState);
 
     const planetSkim = this._planetSkim;
@@ -1509,6 +1512,7 @@ export const vfx = {
     this._tetherCable = null;
     this._arcPreview = null;
     this._masslineReleaseArc = null;
+    this._targetContour = null;
     this._lights = [];
     this._freeLights = null;
     this._energy = null;
@@ -1553,6 +1557,7 @@ export const vfx = {
     }
     add(this._arcPreview && this._arcPreview.mesh);
     add(this._masslineReleaseArc && this._masslineReleaseArc.mesh);
+    add(this._targetContour && this._targetContour.mesh);
     add(this._seamMarkers && this._seamMarkers.mesh);
     add(this._combatBeams && this._combatBeams.group);
     add(this._fieldGeom && this._fieldGeom.mesh);
@@ -1758,6 +1763,7 @@ export const vfx = {
     this._initTetherCable();
     this._initArcPreview();
     this._initMasslineReleaseArc();
+    this._initTargetContour();
     this._initSeamMarkers();
     this._initCombatBeams();
     this._initArcadeStructural();
@@ -2276,6 +2282,7 @@ export const vfx = {
       this._energy?.plasmaStream?.reproject?.(ox, oz);
       this._arcadeStructural?.reproject(dx, dz);
       this._fieldGeom?.reproject(ox, oz);
+      this._targetContour?.reproject(ox, oz);
     }
     // Prevent double-reproject when both renderer prepareFrame and vfx.update observe the same seq.
     if (this._frameMembrane) this._frameMembrane.reset(this.state);
@@ -7993,6 +8000,37 @@ export const vfx = {
   // R3B release window: a preallocated, vertex-coloured annulus around the captured world target.
   // The pure planner consumes only the transient releaseTarget + existing predictor/rating truth;
   // this adapter owns Three.js buffers, frame-local projection, fade, and accessibility.
+  // INF-045 — disciplined target contour: one world-space ring on the locked/engaged
+  // target, drawn after the field force surfaces (renderOrder 17 > 16) with depth testing ON.
+  // Force surfaces never write depth, so the contour reads through a Well; hulls and rock do,
+  // so real occluders still win. Tint alone carries faction (red hostile, cyan otherwise).
+  _targetContour: null,
+  _initTargetContour() {
+    if (!this._scene || this._targetContour) return;
+    this._targetContour = new TargetContour(this._scene);
+  },
+  _resetTargetContour() {
+    const contour = this._targetContour;
+    if (!contour) return;
+    contour.clear();
+  },
+  _updateTargetContour() {
+    const contour = this._targetContour;
+    if (!contour) return false;
+    const state = this.state;
+    if (!state || state.mode !== 'flight') {
+      contour.clear();
+      return false;
+    }
+    const resolved = resolveTargetContour(state);
+    if (!resolved) {
+      contour.clear();
+      return false;
+    }
+    const local = this._toLocalXZ(resolved.x, resolved.z, this._spawnLocalXZ);
+    contour.setTarget(local.x, local.z, resolved.radius, resolved.hostile);
+    return true;
+  },
   _masslineReleaseArc: null,
   _initMasslineReleaseArc() {
     if (!this._scene) return;
@@ -10551,6 +10589,8 @@ export const vfx = {
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
     this._updateTumbleBodyLanguageVfx(dt);
     this._updateStatusAttachedVfx(dt);
+    // INF-045: the lock contour tracks the target every frame it exists.
+    sub.targetContour = this._updateTargetContour() ? 1 : 0;
     // M1 doctrine telegraphs — sustain FLYBY/TETHER/CHARGE cues across the pre-fire window.
     if (this._doctrineTellActive > 0) this._updateDoctrineTells(dt);
     if (this._arcPreviewActive()) {
