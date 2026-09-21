@@ -127,6 +127,21 @@ closed after ten cycles. Remaining: dorsal kitbash (gantry/clamps/cage bars),
 Hitch’s mid-value formed skin vs Drifter’s gray tube + dark ladder, wings still
 short of Hitch sponson mass in planform. No seats. No megatex. Parent unproven / not G7.
 
+## C11 chase-form (2026-09-21)
+
+`chase_form_v11` keeps C8–C10 wins: wells as holes, no teal beam rail, brown ~0%.
+Principled islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+C11 targeted the four C10 leftovers: (1) dorsal openings as cuts in a formed
+shell (independent lip rails; a first closed loft bridged the cargo mouth and
+was split), (2) mid-heavy hull (light>=0.28 = 2.2% vs Hitch 5%; armor as plates
+not black bars), (3) slower-taper sponson planform, (4) thin-shell framed
+greenhouse in the tub (small hatch, lofted mullions). Three chase reviews
+REVISE. Close still: well and greenhouse read as holes. Hitch still wins
+formed-shell / skin at D=144. Hitch-plus chase is not closed. Remaining:
+gray-plate skin and kite sponsons vs Hitch’s formed multi-value shell. Parent
+unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
