@@ -257,6 +257,10 @@ export const recoveryEncounter = {
     this._listen('salvage:reactorVented', (payload) => this._hazardCleared(payload || {}, 'vented'));
     this._listen('salvage:reactorTowedClear', (payload) => this._hazardCleared(payload || {}, 'towed_clear'));
     this._listen('salvage:reactorBurst', (payload) => this._hazardBurst(payload || {}));
+    // INF-072: the tracked wreck can leave the world outside the decision flow — beam
+    // stripped or destroyed. Close the call on the event so no immortal marker survives it.
+    this._listen('salvage:completed', (payload) => this._onWreckSalvaged(payload || {}));
+    this._listen('entity:destroyed', (payload) => this._onWreckGone(payload || {}));
     this._listen('salvage:placed', (payload) => this._rebindSector(payload && payload.sectorId));
     this._listen('sector:exit', (payload) => this._onSectorExit(payload || {}));
     this._listen('sector:enter', (payload) => this._rebindSector(payload && payload.sectorId));
@@ -458,6 +462,28 @@ export const recoveryEncounter = {
     if (!record || record.phase !== 'hazard') return false;
     record.hazardResolution = 'burst';
     return this._complete(record, 'failed', { failure: 'reactor_burst', credits: 0, repDelta: 0, cargo: {} });
+  },
+
+  /**
+   * INF-072: a distress call points at a real, expiring situation. The beam can strip a
+   * tracked wreck outside the decision flow, and combat can destroy it outright — either
+   * way the call must clear instead of marking an immortal position. A beam-stripped wreck
+   * closes as a strip with no desk payout (the beam already paid in cargo); a destroyed
+   * wreck closes as a wreck-destroyed failure. Both carry the last-known pos in the
+   * receipt, and both settle once through _complete's outcome guard.
+   */
+  _onWreckSalvaged(payload) {
+    const record = this._recordByEntity(payload && (payload.wreckId != null ? payload.wreckId : payload.targetId));
+    if (!record || (this.state.recoveryEncounters && this.state.recoveryEncounters.outcomes[record.id])) return false;
+    const loot = payload && payload.loot && typeof payload.loot === 'object' ? { ...payload.loot } : {};
+    return this._complete(record, 'strip', { credits: 0, repDelta: 0, cargo: loot });
+  },
+
+  _onWreckGone(payload) {
+    if (!payload || payload.id == null || payload.reason === 'save_restore') return false;
+    const record = this._recordByEntity(payload.id);
+    if (!record || (this.state.recoveryEncounters && this.state.recoveryEncounters.outcomes[record.id])) return false;
+    return this._complete(record, 'failed', { failure: 'wreck_destroyed', credits: 0, repDelta: 0, cargo: {} });
   },
 
   _choose(payload) {
