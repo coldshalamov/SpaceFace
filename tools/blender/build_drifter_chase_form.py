@@ -22,7 +22,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v16"
+REVISION = "chase_form_v17"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "drifter"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -38,6 +38,8 @@ KEEP_SEPARATE = (
 # C15: no vertical slab at y=beam. Abeam still read spine+flanks (separate nacelle
 # bodies + remaining YZ fold). C16: convex diamond YZ; nacelle bodies deleted;
 # aft stations widen so drives sit in the primary loft. Armor is keel/bilge only.
+# C17: clay abeam spine/flank was Deck+Armor slots surviving a slot-0-only clay
+# override. Outer diamond is one Hull value; Armor stays keel. No extra plates.
 HONEST = {
     "Material_Hull": {"color": (0.108, 0.132, 0.140), "metallic": 0.16, "roughness": 0.54, "role": "hull"},
     "Material_Armor": {"color": (0.072, 0.082, 0.088), "metallic": 0.22, "roughness": 0.56, "role": "armor"},

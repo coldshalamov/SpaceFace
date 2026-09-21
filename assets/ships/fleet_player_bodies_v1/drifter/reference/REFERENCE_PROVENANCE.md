@@ -52,3 +52,11 @@ stations widen so the drives sit in the primary loft.
 | File | Component | Tool | What it is used to decide | Selected | Rejected |
 |---|---|---|---|---|---|
 | `c16/drifter_c16_yz_convex_beam.png` | YZ station / abeam outline | Cursor GenerateImage, 2026-09-21 | Convex diamond: max beam at mid-height; sideboard is the slope | SELECTED convex diamond | REJECT lid+vertical walls; REJECT tube+paddles |
+
+## 2026-09-21 (C17 clay abeam value)
+
+C16 geometry (one diamond, nacelle bodies gone) held on shaded. Clay
+`play_chase_abeam` still read a dark longitudinal spine + lighter flanks + a
+hard value/seam: `paint_shell` assigned Deck to the crown (slot 2) and Armor
+to the keel (slot 1), while `apply_clay` only replaced slot 0. Not a new YZ.
+C16 convex-diamond ref stays selected. No generated C17 pixels.
