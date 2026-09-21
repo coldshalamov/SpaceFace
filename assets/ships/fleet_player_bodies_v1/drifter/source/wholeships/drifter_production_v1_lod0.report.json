@@ -1,7 +1,7 @@
 {
   "ok": true,
   "asset": "ship_drifter",
-  "revision": "chase_form_v12",
+  "revision": "chase_form_v13",
   "lod": 0,
   "source": "/workspace/assets/ships/parts/wholeships/drifter_production_v1.glb",
   "output": "/workspace/assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod0.glb",
@@ -24,21 +24,21 @@
   },
   "size": [
     16.77,
-    6.36,
-    2.853
+    6.58,
+    3.146
   ],
   "boundsMin": [
     -8.82,
-    -3.18,
-    -1.248
+    -3.29,
+    -1.166
   ],
   "boundsMax": [
     7.95,
-    3.18,
-    1.605
+    3.29,
+    1.98
   ],
-  "triangles": 19260,
-  "hullTriangles": 12104,
+  "triangles": 19370,
+  "hullTriangles": 12978,
   "objects": [
     "COLLISION_HULL",
     "LOD0_Beacon_Aft",
@@ -55,9 +55,7 @@
     "LOD0_HeatBand_Port",
     "LOD0_Hull",
     "LOD0_Nacelle_Port",
-    "LOD0_Nacelle_Stbd",
-    "LOD0_Winglet_Port",
-    "LOD0_Winglet_Stbd"
+    "LOD0_Nacelle_Stbd"
   ],
-  "bytes": 2545468
+  "bytes": 2591536
 }
