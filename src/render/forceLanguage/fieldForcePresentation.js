@@ -186,11 +186,15 @@ export class FieldForcePresentation {
     const r=this.radius;this.orientation=0;this.style=1;
     this._rim(r-r*.009,r*.009,4,.75,true);
     // Pressure fronts propagate whenever the tool exists, even with no affected targets.
+    // INF-043: nested shells, each band running inner->outer, so the traveling crest physically
+    // moves outward — the shared transport cue reads push without palette. Bands stay inside the
+    // truth boundary and the throat (r<0.45r) carries no crest geometry, so covered victims stay
+    // readable. This mirrors the Well scythes, which run outer->inner for the inward verb.
     this._member('membrane');
     for(let front=0;front<3;front++)for(let sector=0;sector<4;sector++){
       const a=sector*TAU/4+0.09+front*.19;this.phaseOffset=front/3+sector/4;
-      const rr=this.moving?r:r*(.25+front*.25);
-      this._surface(0,a,a+1.19,rr,rr,r*.038,r*.05,0,front/3,this.moving?1:0,0,.92);
+      const r0=r*(0.45+0.15*front),r1=r*(0.63+0.15*front);
+      this._surface(0,a,a+1.19,r0,r1,r*.038,r*.05,0,front/3,this.moving?1:0,0,.92);
     }
     // The splayed ribs are the emitter's hardware: they hold the shells apart and do not breathe.
     this._member('spar');
