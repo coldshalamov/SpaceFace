@@ -38,6 +38,26 @@ const ANCHOR_TYPE_ID = 'ast_common_rock';
 const SOLID_TYPES = new Set(['asteroid', 'station', 'wreck']);
 const SOLID_INDEX_BUCKETS = Object.freeze(['asteroids', 'stations', 'wrecks']);
 
+// INF-017 — opening layout. Wave 1 of a swarm run gets one substantial anchor on a clear
+// sling corridor: close enough that inbound enemies stream past it (inside the 213 wu spawn
+// ring's inner edge), far enough that nothing spawns on top of it and the player never
+// starts inside it. The corridor is a capsule from the telegraph pos to the anchor; lane
+// rocks that would block it are skipped. Enemy composition is untouched — the gun-only
+// route stays exactly as authored.
+export const OPENING_ANCHOR_DIST = 150;
+export const OPENING_ANCHOR_SIZE = 44;
+export const OPENING_ANCHOR_BEARING_RAD = 0.7;
+export const OPENING_CORRIDOR_HALF = 100;
+
+/** Center distance from point (qx,qz) to segment P-A; pure geometry for tests and layout. */
+export function segmentDistance(px, pz, ax, az, qx, qz) {
+  const dx = ax - px, dz = az - pz;
+  const lenSq = dx * dx + dz * dz;
+  if (!(lenSq > 1e-9)) return Math.hypot(qx - px, qz - pz);
+  const t = Math.max(0, Math.min(1, ((qx - px) * dx + (qz - pz) * dz) / lenSq));
+  return Math.hypot(qx - (px + dx * t), qz - (pz + dz * t));
+}
+
 function visitSolidAnchorCandidates(state, fn) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
@@ -119,14 +139,7 @@ export const terrainAnchors = {
     // whole layout rotates with the run seed; it stays readable from the opening camera.
     const layout = [[-116, -160], [116, -115], [-142, 80], [148, 140], [-35, 292], [48, -302]];
     const rotation = ((Number(payload.arenaSeed) >>> 0) % 360) * Math.PI / 180;
-    for (let i = 0; i < want; i++) {
-      const size = arcade ? 32 + ((i + present) % 3) * 7
-        : ANCHOR_SIZE_MIN + this._rng() * (ANCHOR_SIZE_MAX - ANCHOR_SIZE_MIN);
-      const ang = this._rng() * Math.PI * 2;
-      const dist = 140 + this._rng() * (ANCHOR_RADIUS * 0.55);
-      const point = layout[(i + present) % layout.length];
-      const dx = arcade ? point[0] * Math.cos(rotation) - point[1] * Math.sin(rotation) : Math.cos(ang) * dist;
-      const dz = arcade ? point[0] * Math.sin(rotation) + point[1] * Math.cos(rotation) : Math.sin(ang) * dist;
+    const spawnAnchor = (dx, dz, size) => {
       const oreHP = Math.round(360 + size * 14);
       this.helpers.spawnEntity({
         type: 'asteroid',
@@ -150,6 +163,43 @@ export const terrainAnchors = {
           despawnAt: now + ANCHOR_TTL_S,
         },
       });
+    };
+    // INF-017: the opening wave of a swarm run leads with one substantial anchor on a clear
+    // sling corridor. Inbound enemies converge player-ward through its neighborhood; the
+    // composition is untouched, so the gun-only route is exactly as authored.
+    let opening = null;
+    if (arcade && payload.encounterId === 'survival-arena-w1') {
+      const bearing = OPENING_ANCHOR_BEARING_RAD + rotation;
+      const dx = Math.cos(bearing) * OPENING_ANCHOR_DIST;
+      const dz = Math.sin(bearing) * OPENING_ANCHOR_DIST;
+      let occupied = false;
+      visitSolidAnchorCandidates(state, (e) => {
+        if (occupied || !e || e.alive === false || !e.pos || !SOLID_TYPES.has(e.type)) return;
+        if (!(Number.isFinite(e.radius) && e.radius >= OPENING_ANCHOR_SIZE * 0.9)) return;
+        const ex = e.pos.x - (pos.x + dx), ez = e.pos.z - (pos.z + dz);
+        if (ex * ex + ez * ez <= 130 * 130) occupied = true;
+      });
+      if (!occupied) opening = { dx, dz };
+    }
+    let placed = 0;
+    if (opening && placed < want) {
+      spawnAnchor(opening.dx, opening.dz, OPENING_ANCHOR_SIZE);
+      placed++;
+    }
+    for (let scan = 0; placed < want && scan < layout.length * 2; scan++) {
+      const i = placed;
+      const size = arcade ? 32 + ((i + present) % 3) * 7
+        : ANCHOR_SIZE_MIN + this._rng() * (ANCHOR_SIZE_MAX - ANCHOR_SIZE_MIN);
+      const ang = this._rng() * Math.PI * 2;
+      const dist = 140 + this._rng() * (ANCHOR_RADIUS * 0.55);
+      const point = layout[(scan + present) % layout.length];
+      const dx = arcade ? point[0] * Math.cos(rotation) - point[1] * Math.sin(rotation) : Math.cos(ang) * dist;
+      const dz = arcade ? point[0] * Math.sin(rotation) + point[1] * Math.cos(rotation) : Math.sin(ang) * dist;
+      if (opening && segmentDistance(0, 0, opening.dx, opening.dz, dx, dz) < OPENING_CORRIDOR_HALF) {
+        continue;
+      }
+      spawnAnchor(dx, dz, size);
+      placed++;
     }
   },
 
