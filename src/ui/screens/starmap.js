@@ -788,15 +788,61 @@ export const starmapScreen = {
       if (button) this._onAction(button.dataset.act);
     });
 
-    if (typeof ResizeObserver !== 'undefined') {
-      this._ro = new ResizeObserver(() => this._resize());
-      this._ro.observe(rootEl.querySelector('.sm-canvas-wrap'));
+    this._ensureResizeObserver();
+    this._ensureFieldLive(ctx);
+  },
+
+  // INF-094: the map's live observers are owned here, not orphaned. The resize observer and
+  // the two field subscriptions are created once per mount and released by dispose(), so a
+  // remount (releaseScreen rebuilds from scratch) returns to baseline instead of stacking
+  // observers on detached roots.
+  _ensureResizeObserver() {
+    if (this._ro || typeof ResizeObserver === 'undefined') return !!this._ro;
+    const wrap = this._root && this._root.querySelector
+      ? this._root.querySelector('.sm-canvas-wrap') : null;
+    if (!wrap) return false;
+    this._ro = new ResizeObserver(() => this._resize());
+    this._ro.observe(wrap);
+    return true;
+  },
+
+  _releaseResizeObserver() {
+    if (this._ro) {
+      try { this._ro.disconnect(); } catch (_) { /* observer already gone */ }
+      this._ro = null;
     }
-    if (!this._fieldListener && ctx.bus && ctx.bus.on) {
+  },
+
+  _ensureFieldLive(ctx) {
+    if (this._fieldLiveUnsubs || !ctx || !ctx.bus || typeof ctx.bus.on !== 'function') {
+      return !!(this._fieldLiveUnsubs && this._fieldLiveUnsubs.length);
+    }
+    if (!this._fieldListener) {
       this._fieldListener = () => { if (this._visible) this.refresh(this._ctx); };
-      ctx.bus.on('sectorsim:fieldAdvanced', this._fieldListener);
-      ctx.bus.on('sectorsim:transitOutcome', this._fieldListener);
     }
+    const offA = ctx.bus.on('sectorsim:fieldAdvanced', this._fieldListener);
+    const offB = ctx.bus.on('sectorsim:transitOutcome', this._fieldListener);
+    this._fieldLiveUnsubs = [offA, offB].filter((off) => typeof off === 'function');
+    return true;
+  },
+
+  _releaseFieldLive() {
+    if (this._fieldLiveUnsubs) {
+      for (const off of this._fieldLiveUnsubs) { try { off(); } catch (_) {} }
+      this._fieldLiveUnsubs = null;
+    }
+  },
+
+  dispose() {
+    this._visible = false;
+    this._stopAnimLoop();
+    this._releaseResizeObserver();
+    this._releaseFieldLive();
+    this._root = null;
+    this._canvas = null;
+    this._g = null;
+    this._els = null;
+    this._nodes = [];
   },
 
   onShow(ctx) {
