@@ -523,7 +523,7 @@ demotion error, and Chrome census churn — every capture frame ran above
 32 ms with backlog shedding (this machine runs the dense scenario at
 ~8–10 fps).
 
-The exact Electron broker command was invoked twice:
+The exact Electron broker command was invoked three times:
 
 ```text
 node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-electron
@@ -551,6 +551,35 @@ node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-elect
   for the same prepare under comparable load; on Electron it starved past
   the 120 s condition. Zero measurement windows; all comparison metrics
   null.
+- Invocation 3 (06:14Z, candidate `056cee97`): a second environment block —
+  Chrome churned to 1.40 cores during the fast-gate lead before the start
+  census sampled; quota consumed at claim mint, no launch.
+- Diagnostic 1 (06:15Z, no quota): `node scripts/check-performance-dirty-ranges.mjs
+  --runtime=electron --diagnostic`. Route docked but the market UI never
+  opened (`dock-input` threw; probe continued from proven docked state),
+  then station recovery failed — `station recovery requires a visible
+  public Departure Check or Undock action`. Cause in console:
+  `HTTP 404 /node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs`
+  → `screen module "./station/stationScreen.js" unavailable` and
+  `"./ship/shipScreen.js" unavailable` → `[screenManager] unknown screen
+  "station"` — the station screen cannot mount on this Electron serve path,
+  so no undock control exists.
+- Diagnostic 2 (06:24Z, machine quiet ~0.01–0.04 cores): identical failure —
+  dock-prompt recover loop, re-approach, re-dock, market UI blocked, no
+  visible Departure Check/Undock. Same floating-ui 404. Also present:
+  `[render] first-present GPU admission failed … renderer lifecycle
+  destroyed during opening yield` and `asteroid instance pool dispose
+  failed TypeError: Cannot read properties of null (reading
+  'isInterleavedBufferAt')`.
+
+Consistent across all three Electron launches: authored-ship admission
+starves on the packaged shell (3/22 and 3/19 authored; the 06:06 run's own
+console shows `authored composition failed; no substitute visual published`
+for the player entity plus `opening GPU resources incomplete; entering
+flight`). Combined with the intermittent `floating-ui` 404 killing the
+station screen, the Electron route cannot reach the measurement windows at
+this base — every failure is upstream of the comparator and none implicates
+the dirty-range coordinator.
 
 ```yaml
 unit: PQ-040.native-acceptance
@@ -575,27 +604,40 @@ browserCapturedRun:
     - windows[1] pipeline warmup unsettled + pipeline-cache mismatch
     - contaminating process activity at end census
     - page errors/warnings (capitalBossOverlayMount.js 404 — module absent at this base — plus 24x GL_INVALID_VALUE dead-handle queries and GPU bricks)
-electronManifestInvocations: 2
+electronManifestInvocations: 3
 electronAcceptanceRuntimeLaunches: 1
+electronDiagnosticRuns: 2
 electronBrokerResult: >-
-  FAIL — full route completed (consumePageConditionValue + guarded import
-  verified on the packaged shell), then combat_vfx_burst scenario prepare
-  timed out at 120s waiting for authored presentation (3/22 authored,
-  18 missing meshes, 1 pending); zero windows, all metrics null
-electronLaunchQuotaConsumed: true   # quota reserves at claim mint, before preflight
+  FAIL — the one real acceptance launch completed the route
+  (consumePageConditionValue + guarded import verified on the packaged
+  shell) then timed out at scenario prepare on authored presentation
+  (3/22 authored, 18 missing); two diagnostics died earlier at the
+  dock-input/station-recovery gate (floating-ui 404 -> station screen
+  unmountable -> no undock control); zero windows, all metrics null
+electronUpstreamDefects:
+  - authored-ship admission starves on the packaged shell in every launch
+    (renderer lifecycle destroyed during opening yield; authored
+    composition failed for the player entity; scenario injected entities
+    never admit) — consistent under load and under quiet
+  - intermittent HTTP 404 on node_modules/@floating-ui/dom through the
+    Electron serve path -> stationScreen.js/shipScreen.js imports fail ->
+    screenManager reports unknown screen "station"
+  - src/ui/capitalBossOverlayMount.js absent at this base (shared with
+    Browser): guarded import boots but logs page errors every run
 numericAcceptance: captured-but-demoted (browser only; electron produced no windows)
 ```
 
-Disposition: **BLOCKED** for clean acceptance at this base — two required
-fixes are `src/` changes outside this unit's write set (commit the missing
-`capitalBossOverlayMount.js` module or drop its import; quiet the dead-handle
-`getProgramParameter` callers). The measured direction is consistent with
-every prior capture — owner-requested bytes drop ~93% and driver bytes ~23%
-— but the packet's ≥25% driver-reduction bar was missed on this run and all
-capture windows were demoted. Electron's one real launch completed the
-route but starved at authored-ship admission inside the scenario prepare
-load likely, a possible shell-specific admission stall not ruled out; no
-Electron dirty-vs-full numbers exist for this candidate.
+Disposition: **BLOCKED** for clean acceptance at this base — the required
+fixes are `src/` changes outside this unit's write set: commit the missing
+`capitalBossOverlayMount.js` module or drop its import, quiet the
+dead-handle `getProgramParameter` callers, and repair the packaged-shell
+authored-admission/renderer-lifecycle path plus the floating-ui serve 404
+that make the Electron route unable to mount the station screen or admit
+authored ships. The measured direction is consistent with every prior
+capture — owner-requested bytes drop ~93% and driver bytes ~23% — but the
+packet's ≥25% driver-reduction bar was missed on this run and all capture
+windows were demoted. Electron produced no dirty-vs-full numbers: three
+launches all died upstream of the comparator.
 
 ## Implemented architecture
 
