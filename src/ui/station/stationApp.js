@@ -685,6 +685,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   commsToggle.addEventListener('click', () => setCommsOpen(!commsOpen));
 
   function showReceipt(kind, title, delta = '') {
+    // INF-095: receipts are a shown-tree concern. Skipping while hidden also stops stale
+    // flight-time receipts greeting the next dock.
+    if (!shown) return;
     if (receiptTimer) clearTimeout(receiptTimer);
     receiptHistory.push({ kind: String(kind || 'STATION'), title: String(title || ''), delta: String(delta || '') });
     if (receiptHistory.length > 12) receiptHistory.shift();
@@ -719,6 +722,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   subscribe('station:navigate', (request = {}) => {
+    // INF-095: a hidden app takes no navigation — it would corrupt the active tab for the
+    // next dock. onShow re-renders the current destination from live state.
+    if (!shown) return;
     const destination = DESTINATIONS.some((d) => d.id === request.destination)
       ? request.destination : null;
     if (!destination) return;
@@ -748,6 +754,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // Board/active list can change while docked (accept, auto turn-in). Refresh rail attention.
     // A newly posted B5 choice may claim this dock session's one existing auto-open. If an earlier
     // mission handoff already used it, the Missions badge updates without yanking the player back.
+    // INF-095: hidden in flight, this is pure waste (plus hidden auto-opens) — onShow recomputes.
+    if (!shown) return;
     applyDockAttention({ allowAutoOpen: payload.onboardingChoice === true });
   });
   subscribe('credits:changed', (p = {}) => {
@@ -1120,6 +1128,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   function refresh(_nextCtx, options = {}) {
+    // INF-095: the cached app survives undock; event-driven refreshes while hidden are DOM
+    // churn nobody sees. onShow renders everything from live state, so resume needs no catch-up.
+    if (!shown) return;
     renderStatus();
     effects.syncPolicy();
     applyDockAttention({ allowAutoOpen: false, refreshActive: !options.periodic });
