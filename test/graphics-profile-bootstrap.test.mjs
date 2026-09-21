@@ -75,14 +75,19 @@ test('bootstrap rejects malformed profiles and preserves locked runtime backends
   assert.equal(state.settings.video.particleQuality, 'high');
 });
 
-test('pre-policy profiles default to mute before registry while explicit post-policy audio survives', () => {
+// PQ-210.04 / PQ-158.06: action audio ships on by default. v1 of the migration policy force-muted
+// every older profile once (the procedural stack was opt-in); v2 reverses that default — older
+// profiles cannot distinguish a deliberate mute from the policy default, so they all receive one
+// unmute. A mute made under the current policy keeps the stamped version and is never touched.
+test('pre-v2 profiles are unmuted once before registry while post-policy choices survive', () => {
   const legacyStorage = storageWith(JSON.stringify({
     version: 1,
-    settings: { audio: { master: 0.9, muted: false } },
+    settings: { audio: { master: 0.9, muted: true } },
   }));
   const migrated = createGameState(4);
   assert.equal(bootstrapProfileSettingsBeforeRegistry(migrated, legacyStorage), true);
-  assert.equal(migrated.settings.audio.muted, true);
+  assert.equal(migrated.settings.audio.muted, false,
+    'a v1 muted profile cannot tell policy-mute from player-mute, so the audible default wins once');
   assert.equal(migrated.settings.audio.defaultMuteVersion, AUDIO_DEFAULT_MUTE_VERSION);
   assert.equal(legacyStorage.writes(), 0, 'boot migration must not rewrite a profile behind the player');
 
@@ -91,15 +96,27 @@ test('pre-policy profiles default to mute before registry while explicit post-po
     settings: {
       audio: {
         master: 0.9,
-        muted: false,
+        muted: true,
         defaultMuteVersion: AUDIO_DEFAULT_MUTE_VERSION,
       },
     },
   }));
   const optedIn = createGameState(5);
   assert.equal(bootstrapProfileSettingsBeforeRegistry(optedIn, optedInStorage), true);
-  assert.equal(optedIn.settings.audio.muted, false,
-    'an explicit unmute made under the current policy must remain a player choice');
+  assert.equal(optedIn.settings.audio.muted, true,
+    'an explicit mute made under the current policy must remain a player choice');
+
+  const futureStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: {
+      audio: { muted: true, defaultMuteVersion: AUDIO_DEFAULT_MUTE_VERSION + 1 },
+    },
+  }));
+  const future = createGameState(6);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(future, futureStorage), true);
+  assert.equal(future.settings.audio.muted, true,
+    'a stamp from a newer policy version is left alone — its semantics belong to that version');
+  assert.equal(future.settings.audio.defaultMuteVersion, AUDIO_DEFAULT_MUTE_VERSION + 1);
 });
 
 // OWNER, 2026-09-20: "the vfx for the attacks is limp and a lot of times doesn't even move, it'll be

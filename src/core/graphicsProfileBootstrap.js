@@ -5,7 +5,7 @@
 export const PROFILE_SETTINGS_KEY = 'sf.settings.profile.v1';
 export const MASSLINE_BINDING_PROFILE_SPACE = 'space-v1';
 export const MASSLINE_BINDING_PROFILE_LEGACY = 'legacy-f-v1';
-export const AUDIO_DEFAULT_MUTE_VERSION = 1;
+export const AUDIO_DEFAULT_MUTE_VERSION = 2;
 export const GAME_MOTION_DEFAULT_VERSION = 1;
 
 const LOCKED_GAMEPLAY_KEYS = Object.freeze([
@@ -48,16 +48,20 @@ export function migrateLegacyMasslineBindingProfile(settings) {
 }
 
 /**
- * The procedural-only audio stack is opt-in until the authored sound pass replaces it. Profiles
- * and saves written before this policy have no way to distinguish an intentional unmute from the
- * old audible default, so they receive one silent migration. A later explicit unmute carries the
- * current version and remains the player's choice.
+ * Action audio is on by default (PQ-158.06 landed the minimal combat sound pass; PQ-210.04 makes
+ * the demo audible). Version 1 of this policy force-muted every older profile once because the
+ * procedural-only stack was opt-in; v2 reverses that default for the same reason — a profile that
+ * predates the policy cannot distinguish an intentional mute from the old audible default. The
+ * one-time stamp still protects every choice made under the current version: a player who mutes
+ * after this migration keeps the current version on their profile and is never touched again.
+ * A stamp from a NEWER policy version is left alone — its semantics belong to that version.
  */
 export function migrateDefaultMutedAudioProfile(settings) {
   if (!isPlainObject(settings)) return settings;
   if (!isPlainObject(settings.audio)) settings.audio = {};
-  if (settings.audio.defaultMuteVersion !== AUDIO_DEFAULT_MUTE_VERSION) {
-    settings.audio.muted = true;
+  const stamp = settings.audio.defaultMuteVersion;
+  if (typeof stamp !== 'number' || stamp < AUDIO_DEFAULT_MUTE_VERSION) {
+    settings.audio.muted = false;
     settings.audio.defaultMuteVersion = AUDIO_DEFAULT_MUTE_VERSION;
   }
   return settings;

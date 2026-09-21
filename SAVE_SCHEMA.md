@@ -332,7 +332,7 @@ Current save version: `14`
 | `$.settings.accessibility.motionPreference` | string | full |
 | `$.settings.accessibility.motionPrompted` | boolean | false |
 | `$.settings.audio` | object | {} |
-| `$.settings.audio.defaultMuteVersion` | number | 1 |
+| `$.settings.audio.defaultMuteVersion` | number | 2 |
 | `$.settings.audio.master` | number | 0.55 |
 | `$.settings.audio.music` | number | 0.32 |
 | `$.settings.audio.muted` | boolean | false |
