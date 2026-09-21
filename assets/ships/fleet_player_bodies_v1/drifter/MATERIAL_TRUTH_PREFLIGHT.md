@@ -82,6 +82,24 @@ D=144, mixed albedo islands, and selective dirt. Three chase reviews REVISE. Clo
 well and greenhouse read as holes. Hitch still wins D=144. Hitch-plus chase is not closed.
 No seats. No megatex. Parent unproven / not G7.
 
+## C8 chase-form (2026-09-21)
+
+`chase_form_v8` on the same live sockets and C6 shell. Principled islands only.
+Hitch/Hornet untouched.
+
+Before modeling, C7 `play_chase` vs Hitch named five chase-pixel gaps:
+(1) value split — Drifter light>=0.28 was 26% of ship pixels vs Hitch 6%;
+(2) dark-well area — wells sat in a light teal slab;
+(3) panel seams at D=144 — girth cuts used hull material and vanished;
+(4) unique dark albedo — Hitch ~94% mid+dark, Drifter's dark was the minority;
+(5) hardware clusters — orange D2/02 louder than equipment.
+
+C8 darkened hull/deck, lofted dark girth bands and stringers, armor saddles around
+well+greenhouse, larger gantry/winch/clamps, teal identity on dark plaques. Light
+fraction fell to 8%. Close still: well and greenhouse read as holes. Three chase
+reviews REVISE. Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is
+not closed. No seats. No megatex. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
