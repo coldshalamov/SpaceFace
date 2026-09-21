@@ -375,6 +375,270 @@ candidate blocks the acceptance now — the remaining requirement is one quiet
 machine window (no foreign Chrome/Electron/Blender CPU) long enough to run
 Browser then Electron on a candidate that includes the route fix.
 
+## Native acceptance attempt — 2026-09-21
+
+Continuation on the isolated worktree `.worktrees/pq040-native`, branch
+`pq040-native`. The uncommitted dynamic-buffer-ranges fixture retarget was
+committed first (`a58b18149`). All three Browser fast gates are green on the
+candidate: 55/55, 6/6, and the render hot-path contract (`Render hot-path
+contract OK`). The Electron route's settle-gate fix
+(`consumePageConditionValue` at `flight-input`) is present in this candidate.
+
+The exact Browser broker command was invoked once:
+
+```text
+node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-browser
+```
+
+It minted claim `25836-0089fb65f2ff734abcf35d9e` and consumed the candidate's
+single launch quota (candidate `2ce41ac8`), then the spawned probe stopped at
+preflight with `PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED`: the 5 s census
+recorded 2.69 foreign CPU cores aggregate against a 0.125 threshold, driven by
+two chrome.exe processes (~6.9 and ~6.3 CPU-seconds each). No acceptance
+runtime launched. This is an environment block, not a Browser failure — but
+the quota is spent, so a retry on this candidate returns `blocked_repeat`.
+
+A Browser diagnostic (`node scripts/check-performance-dirty-ranges.mjs
+--runtime=browser --diagnostic`, non-promoting, no quota) then failed ~75 s in
+at `page.waitForFunction` timeout with `tick: 0`, no player, no ships. Its
+error evidence is unambiguous: `HTTP 404
+/src/ui/capitalBossOverlayMount.js` + `net::ERR_ABORTED` — the static import at
+`src/ui/uiRoot.js:70` (landed in `7ff338881`) references a module that exists
+only as the capital-boss lane's uncommitted worktree file, so the whole
+uiRoot module graph aborts and the default route never boots on any clean
+checkout of this branch.
+
+A quiet window did open (census `active=false`, 0.004–0.04 cores, two
+consecutive samples). The exact Electron broker command was invoked once:
+
+```text
+node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-electron
+```
+
+It consumed the Electron candidate's single launch quota (candidate
+`2dc52cb4`, claim `23276-b9b90e397f36e6a0d2f333f8`), passed the start census
+quiet (0.022 cores), provisioned Electron 43.2.0, and launched — then failed
+at page boot on the identical `HTTP 404 /src/ui/capitalBossOverlayMount.js`
+(`CSP-safe page condition timed out after 30000ms`, `tick: 0`). The run's own
+census shows the machine stayed quiet through the entire attempt
+(0.022 → 0.053 cores): this failure is the committed boot defect, not
+contention.
+
+Root cause is already diagnosed and repaired on `master`: `6b1688f79` ("Boot
+repair: the capital-boss overlay import landed before its module") converts
+the static import to a guarded dynamic import. This branch predates the
+repair, and fixing the candidate requires a `src/ui/uiRoot.js` change, which
+is outside this task's write set.
+
+```yaml
+unit: PQ-040.native-acceptance
+candidateBranch: pq040-native
+candidateHead: a58b18149c744b1bfacea012e285a679a0a35ef6
+candidateWorktree: .worktrees/pq040-native
+fastGateResult: 55 pass / 0 fail + 6 pass / 0 fail + render hot-path OK
+browserManifestInvocations: 1
+browserAcceptanceRuntimeLaunches: 0
+browserBrokerResult: PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED
+browserLaunchQuotaConsumed: true
+browserDiagnosticResult: FAIL at boot — HTTP 404 src/ui/capitalBossOverlayMount.js (dangling import, no measurement windows)
+electronManifestInvocations: 1
+electronAcceptanceRuntimeLaunches: 1
+electronBrokerResult: FAIL at boot — HTTP 404 src/ui/capitalBossOverlayMount.js, census quiet 0.022→0.053 cores
+electronLaunchQuotaConsumed: true
+dirtyVsFullSpanNumbers: none produced on this candidate (both runtimes died at page boot)
+rootCause: src/ui/uiRoot.js:70 static import of src/ui/capitalBossOverlayMount.js, a module that exists only as another lane's uncommitted worktree file (landed 7ff338881); repaired on master by 6b1688f79 guarded dynamic import
+numericAcceptance: unproven
+```
+
+Disposition: **BLOCKED**. The candidate cannot boot the default route, so no
+dirty-range versus full-span numbers exist for it. The next attempt needs a
+candidate that includes `6b1688f79` (or the landed capital-boss module) plus
+one quiet machine window; a repaired candidate mints fresh launch quotas
+automatically because its source digests change.
+
+### Post-rebase acceptance run — 2026-09-21, 05:30Z+
+
+The branch was rebased onto `master` including the boot repair `6b1688f79`;
+the overlay import is now a guarded dynamic import, so the route boots.
+New candidate HEAD `4f4e3ad5898b3cb499547e1513ee42d030b00be3` minted fresh
+launch quotas. Two pre-rebase failure pointers
+(`latest-acceptance-failure.json` under both runtimes) keyed to superseded
+candidate digests — a Browser environment-block at 04:55Z and the Electron
+`capitalBossOverlayMount.js` boot failure at 05:09Z — were deleted as stale
+residue; all run artifacts, claims, and receipts were retained.
+
+The exact Browser broker command was invoked once and the acceptance probe
+ran the complete public route end-to-end (intro → main menu → new game →
+authored flight → ordinary flight → galaxy map → waypoint → dock → station
+hub → WebGL hardware check → `combat_vfx_burst` scenario, seed 47) and both
+attribution variants:
+
+```text
+node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-browser
+```
+
+Claim `20476-e194a3c346d2ab001c435235`, candidate `cb512794`, run
+`performance-dirty-ranges-browser-2026-09-21T05-30-41-316Z-27208-24aa171d`.
+The comparator printed real metrics and returned **FAIL**:
+
+| Metric (combat_vfx_burst, dense) | Dirty-range | Full-span control |
+|---|---:|---:|
+| Logical payload bytes | 1,244,176 | 1,245,244 |
+| Owner-requested upload bytes | 1,267,624 | 16,925,056 |
+| Requested bytes / logical byte | 1.018846 | 13.591759 |
+| Driver upload bytes | 30,359,916 | 39,617,976 |
+| Driver bytes / logical byte | 24.401625 | 31.815432 |
+| Frame p95 (ms) | 149.9 | 316.6 |
+| Window samples | 42 | 32 |
+
+Reductions: owner-requested bytes **−92.50%** (threshold ≥25%: met),
+driver upload bytes **−23.30%** (threshold ≥25%: **missed by 1.7pp**),
+frame p95 −166.7 ms in favor of dirty-range on a heavily loaded host.
+
+Demotions recorded by the broker (verbatim classes): `windows[1] settings
+changed during capture` (timeScale 0.12 → 1 inside the full-span window),
+`contaminating-process-or-authoring-activity` at the end census, post-boot
+`shaderLinks`/`shaderCompiles` inside both windows, `pipeline-warmup
+unsettled` / `pipeline-cache-mismatch` on windows[1], `page/runtime errors
+or warnings were observed`, and `driver upload bytes did not fall by at
+least 25%`.
+
+Two of the demotion classes are structural at this base, not
+environmental:
+
+- `src/ui/capitalBossOverlayMount.js` **does not exist** in this checkout —
+  the capital-boss lane never committed the module. The guarded dynamic
+  import boots the route but still logs `HTTP 404` + `net::ERR_ABORTED` +
+  `[ui] capital boss overlay module unavailable` on every page load, so the
+  zero-page-error/warning requirement is unreachable here. Repairing it is
+  a `src/` change and therefore outside this unit's write set.
+- A `GL_INVALID_VALUE: glGetProgramiv: Program object expected` storm (24
+  warnings) — dead program handles queried during shader work; the harness
+  program-query trap is read-only and merely records the callers, so this
+  is product noise, not instrumentation.
+
+The remaining demotions are host contention: bloomScene GPU bricks of
+211/229/349/781 ms, first-flight build diagnostics, a partsLibrary LOD
+demotion error, and Chrome census churn — every capture frame ran above
+32 ms with backlog shedding (this machine runs the dense scenario at
+~8–10 fps).
+
+The exact Electron broker command was invoked three times:
+
+```text
+node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-electron
+```
+
+- Invocation 1 (05:40Z, candidate `7b0ba962`): claim
+  `27272-c0a67162db86fe7f07e2e8ef` minted, then preflight stopped with
+  `PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED` — census 1.64 foreign CPU
+  cores aggregate. No runtime launched, but the claim-mint incremented the
+  launch counter (broker H6 reserves quota at mint).
+- Invocation 2 (06:06Z, candidate `6007bee5` — after the receipt commit
+  re-minted quota; the superseded-candidate env-block pointer was cleared):
+  claim `20272-4c2e274ab365daa18766a961` consumed, run
+  `performance-dirty-ranges-electron-2026-09-21T06-06-56-162Z-20252-349da123`.
+  The route **completed end-to-end** (intro → authored-flight-ready →
+  ordinary-flight-input → galaxy map → dock → station hub → WebGL →
+  performance-captured), proving the guarded overlay import and the
+  `consumePageConditionValue` settle gate on the packaged shell. It then
+  died inside the baseline attribution: the `combat_vfx_burst` scenario
+  prepare wait hit `CSP-safe page condition timed out after 120000ms`
+  (`navigated` 06:08:42 → restore at 06:10:42 with no `prepared` line).
+  Route state at failure: `authoredPresentationSafe: false` — 22 ships,
+  only 3 authored-presented, 18 `missing`, 1 `pending`; the injected
+  entities' authored admission never completed. The Browser run took ~75 s
+  for the same prepare under comparable load; on Electron it starved past
+  the 120 s condition. Zero measurement windows; all comparison metrics
+  null.
+- Invocation 3 (06:14Z, candidate `056cee97`): a second environment block —
+  Chrome churned to 1.40 cores during the fast-gate lead before the start
+  census sampled; quota consumed at claim mint, no launch.
+- Diagnostic 1 (06:15Z, no quota): `node scripts/check-performance-dirty-ranges.mjs
+  --runtime=electron --diagnostic`. Route docked but the market UI never
+  opened (`dock-input` threw; probe continued from proven docked state),
+  then station recovery failed — `station recovery requires a visible
+  public Departure Check or Undock action`. Cause in console:
+  `HTTP 404 /node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs`
+  → `screen module "./station/stationScreen.js" unavailable` and
+  `"./ship/shipScreen.js" unavailable` → `[screenManager] unknown screen
+  "station"` — the station screen cannot mount on this Electron serve path,
+  so no undock control exists.
+- Diagnostic 2 (06:24Z, machine quiet ~0.01–0.04 cores): identical failure —
+  dock-prompt recover loop, re-approach, re-dock, market UI blocked, no
+  visible Departure Check/Undock. Same floating-ui 404. Also present:
+  `[render] first-present GPU admission failed … renderer lifecycle
+  destroyed during opening yield` and `asteroid instance pool dispose
+  failed TypeError: Cannot read properties of null (reading
+  'isInterleavedBufferAt')`.
+
+Consistent across all three Electron launches: authored-ship admission
+starves on the packaged shell (3/22 and 3/19 authored; the 06:06 run's own
+console shows `authored composition failed; no substitute visual published`
+for the player entity plus `opening GPU resources incomplete; entering
+flight`). Combined with the intermittent `floating-ui` 404 killing the
+station screen, the Electron route cannot reach the measurement windows at
+this base — every failure is upstream of the comparator and none implicates
+the dirty-range coordinator.
+
+```yaml
+unit: PQ-040.native-acceptance
+candidateBranch: pq040-native
+candidateHead: 4f4e3ad5898b3cb499547e1513ee42d030b00be3
+candidateWorktree: .worktrees/pq040-native
+staleBrokerStateCleared:
+  - browser/latest-acceptance-failure.json (env-block 04:55Z, candidate 2ce41ac8 — superseded by rebase)
+  - electron/latest-acceptance-failure.json (boot-fail 05:09Z, candidate 2dc52cb4 — superseded by rebase)
+browserManifestInvocations: 1
+browserAcceptanceRuntimeLaunches: 1
+browserBrokerResult: FAIL — comparator printed metrics, windows demoted
+browserCapturedRun:
+  run: performance-dirty-ranges-browser-2026-09-21T05-30-41-316Z-27208-24aa171d
+  comparatorPass: false
+  ownerRequestedByteReductionFraction: 0.9250394132964515   # 1.27 MB ranged vs 16.93 MB full-span
+  driverUploadByteReductionFraction: 0.2330255100528018     # 30.36 MB ranged vs 39.62 MB full-span — under the 25% bar
+  frameP95DeltaMs: -166.7                                    # 149.9 vs 316.6
+  demotedBy:
+    - timeScale 0.12→1 inside full-span capture window
+    - post-boot shaderLinks/shaderCompiles in both windows
+    - windows[1] pipeline warmup unsettled + pipeline-cache mismatch
+    - contaminating process activity at end census
+    - page errors/warnings (capitalBossOverlayMount.js 404 — module absent at this base — plus 24x GL_INVALID_VALUE dead-handle queries and GPU bricks)
+electronManifestInvocations: 3
+electronAcceptanceRuntimeLaunches: 1
+electronDiagnosticRuns: 2
+electronBrokerResult: >-
+  FAIL — the one real acceptance launch completed the route
+  (consumePageConditionValue + guarded import verified on the packaged
+  shell) then timed out at scenario prepare on authored presentation
+  (3/22 authored, 18 missing); two diagnostics died earlier at the
+  dock-input/station-recovery gate (floating-ui 404 -> station screen
+  unmountable -> no undock control); zero windows, all metrics null
+electronUpstreamDefects:
+  - authored-ship admission starves on the packaged shell in every launch
+    (renderer lifecycle destroyed during opening yield; authored
+    composition failed for the player entity; scenario injected entities
+    never admit) — consistent under load and under quiet
+  - intermittent HTTP 404 on node_modules/@floating-ui/dom through the
+    Electron serve path -> stationScreen.js/shipScreen.js imports fail ->
+    screenManager reports unknown screen "station"
+  - src/ui/capitalBossOverlayMount.js absent at this base (shared with
+    Browser): guarded import boots but logs page errors every run
+numericAcceptance: captured-but-demoted (browser only; electron produced no windows)
+```
+
+Disposition: **BLOCKED** for clean acceptance at this base — the required
+fixes are `src/` changes outside this unit's write set: commit the missing
+`capitalBossOverlayMount.js` module or drop its import, quiet the
+dead-handle `getProgramParameter` callers, and repair the packaged-shell
+authored-admission/renderer-lifecycle path plus the floating-ui serve 404
+that make the Electron route unable to mount the station screen or admit
+authored ships. The measured direction is consistent with every prior
+capture — owner-requested bytes drop ~93% and driver bytes ~23% — but the
+packet's ≥25% driver-reduction bar was missed on this run and all capture
+windows were demoted. Electron produced no dirty-vs-full numbers: three
+launches all died upstream of the comparator.
+
 ## Implemented architecture
 
 ### Scene-scoped publication coordinator
