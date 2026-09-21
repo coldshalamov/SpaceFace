@@ -46,6 +46,18 @@ returned REVISE: Hitch still wins manufactured density at D=144. Rejected “wel
 greenhouse missing / rebuild as voxel loft” (close stills show rimmed hole + cage over a cut
 tub). No seats. No megatex. Parent unproven / not G7.
 
+## C5 chase-form (2026-09-21)
+
+`chase_form_v5` on the same live sockets. Principled islands only. Hitch/Hornet untouched.
+
+Packet-minimum Hitch-plus close attempt. C5 cut inset panel channels into dorsal and
+flank skin, added girth seams, replaced the equal-size plate carpet with mixed plate
+sizes and clamp rails, thinned chevrons toward paint, added port dorsal + aft 02 and
+more dirt islands. Cargo well stays a rimmed hole; greenhouse stays glass in a cage
+over a cut tub. Side-by-side play_chase / abeam / close vs frozen Hitch: Hitch still
+wins manufactured density at D=144. Three chase reviews REVISE. Hitch-plus chase is
+not closed. No seats. No megatex. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,

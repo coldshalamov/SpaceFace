@@ -1,0 +1,204 @@
+{
+  "ok": true,
+  "revision": "chase_form_v5",
+  "lods": [
+    {
+      "ok": true,
+      "asset": "ship_drifter",
+      "revision": "chase_form_v5",
+      "lod": 0,
+      "source": "/workspace/assets/ships/parts/wholeships/drifter_production_v1.glb",
+      "output": "/workspace/assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod0.glb",
+      "greenhouse": {
+        "tub": true,
+        "windshield": true
+      },
+      "cargoWell": {
+        "mouth": true
+      },
+      "nacelle": {
+        "slot_Port": true,
+        "throat_Port": true,
+        "slot_Stbd": true,
+        "throat_Stbd": true
+      },
+      "drive": {
+        "Port": true,
+        "Stbd": true
+      },
+      "size": [
+        16.7,
+        6.575,
+        3.302
+      ],
+      "boundsMin": [
+        -8.78,
+        -3.385,
+        -1.082
+      ],
+      "boundsMax": [
+        7.92,
+        3.19,
+        2.22
+      ],
+      "triangles": 21876,
+      "hullTriangles": 4146,
+      "objects": [
+        "COLLISION_HULL",
+        "LOD0_AccentFlank_Port",
+        "LOD0_Aft0_Bot",
+        "LOD0_AftPlaque",
+        "LOD0_AntennaMast",
+        "LOD0_Bell_Port",
+        "LOD0_Bell_Stbd",
+        "LOD0_CoolFin_Port_0",
+        "LOD0_CrateLid_0",
+        "LOD0_DirtAft",
+        "LOD0_Flap_Port",
+        "LOD0_Flap_Stbd",
+        "LOD0_Glass",
+        "LOD0_HeatBand_Port",
+        "LOD0_Hull",
+        "LOD0_Nacelle_Port",
+        "LOD0_Nacelle_Stbd",
+        "LOD0_Winglet_Port",
+        "LOD0_Winglet_Stbd"
+      ],
+      "bytes": 2553412
+    },
+    {
+      "ok": true,
+      "asset": "ship_drifter",
+      "revision": "chase_form_v5",
+      "lod": 1,
+      "source": "/workspace/assets/ships/parts/wholeships/drifter_production_v1_lod1.glb",
+      "output": "/workspace/assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod1.glb",
+      "greenhouse": {
+        "tub": true,
+        "windshield": true
+      },
+      "cargoWell": {
+        "mouth": true
+      },
+      "nacelle": {
+        "slot_Port": true,
+        "throat_Port": true,
+        "slot_Stbd": true,
+        "throat_Stbd": true
+      },
+      "drive": {
+        "Port": true,
+        "Stbd": true
+      },
+      "size": [
+        16.7,
+        6.575,
+        3.302
+      ],
+      "boundsMin": [
+        -8.78,
+        -3.385,
+        -1.082
+      ],
+      "boundsMax": [
+        7.92,
+        3.19,
+        2.22
+      ],
+      "triangles": 18672,
+      "hullTriangles": 4090,
+      "objects": [
+        "COLLISION_HULL.001",
+        "LOD0_AccentFlank_Port",
+        "LOD0_Aft0_Bot",
+        "LOD0_AftPlaque",
+        "LOD0_AntennaMast",
+        "LOD0_Bell_Port",
+        "LOD0_Bell_Stbd",
+        "LOD0_CoolFin_Port_0",
+        "LOD0_CrateLid_0",
+        "LOD0_DirtAft",
+        "LOD0_Glass",
+        "LOD0_HeatBand_Port",
+        "LOD0_Hull",
+        "LOD0_Nacelle_Port",
+        "LOD0_Nacelle_Stbd",
+        "LOD0_Winglet_Port",
+        "LOD0_Winglet_Stbd"
+      ],
+      "bytes": 2302688
+    },
+    {
+      "ok": true,
+      "asset": "ship_drifter",
+      "revision": "chase_form_v5",
+      "lod": 2,
+      "source": "/workspace/assets/ships/parts/wholeships/drifter_production_v1_lod2.glb",
+      "output": "/workspace/assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod2.glb",
+      "greenhouse": {
+        "tub": true,
+        "windshield": false
+      },
+      "cargoWell": {
+        "mouth": true
+      },
+      "nacelle": {},
+      "drive": {
+        "Port": true,
+        "Stbd": true
+      },
+      "size": [
+        16.7,
+        6.575,
+        3.302
+      ],
+      "boundsMin": [
+        -8.78,
+        -3.385,
+        -1.082
+      ],
+      "boundsMax": [
+        7.92,
+        3.19,
+        2.22
+      ],
+      "triangles": 17260,
+      "hullTriangles": 3882,
+      "objects": [
+        "COLLISION_HULL.002",
+        "LOD0_AccentFlank_Port",
+        "LOD0_Aft0_Bot",
+        "LOD0_AftPlaque",
+        "LOD0_AntennaMast",
+        "LOD0_Bell_Port",
+        "LOD0_Bell_Stbd",
+        "LOD0_DirtAft",
+        "LOD0_HeatBand_Port",
+        "LOD0_Hull",
+        "LOD0_Nacelle_Port",
+        "LOD0_Nacelle_Stbd",
+        "LOD0_RadFin_0",
+        "LOD0_Winglet_Port",
+        "LOD0_Winglet_Stbd"
+      ],
+      "bytes": 2134084
+    }
+  ],
+  "promoted": [
+    {
+      "from": "/workspace/assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod0.glb",
+      "to": "/workspace/assets/ships/parts/wholeships/drifter_production_v1.glb",
+      "bytes": 2553412
+    },
+    {
+      "from": "/workspace/assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod1.glb",
+      "to": "/workspace/assets/ships/parts/wholeships/drifter_production_v1_lod1.glb",
+      "bytes": 2302688
+    },
+    {
+      "from": "/workspace/assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod2.glb",
+      "to": "/workspace/assets/ships/parts/wholeships/drifter_production_v1_lod2.glb",
+      "bytes": 2134084
+    }
+  ]
+}
