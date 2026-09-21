@@ -66,7 +66,7 @@ export const BOMB_DEFS = Object.freeze({
     damageType: 'explosive',
     statuses: [],
     visual: Object.freeze({ language: 'studded-frag-cassette', core: '#ffd9a8', accent: '#ff8a3a' }),
-    audioCue: 'sfx_explosion_small',
+    audioCue: 'bombs.frag.burst',
   }),
 
   // 2. The pure shove. Zero damage by design (the vector-mine law: an impulse payload whose
@@ -87,7 +87,7 @@ export const BOMB_DEFS = Object.freeze({
     damageType: 'explosive',
     statuses: [],
     visual: Object.freeze({ language: 'wide-shove-drum', core: '#d7e6ff', accent: '#39d0ff' }),
-    audioCue: 'sfx_explosion_small',
+    audioCue: 'bombs.concussion.shove',
   }),
 
   // 3. THE NEUTRON SLUG — the moving, decaying gravity source PHYSICAL_PLAY_GRAMMAR proposed
@@ -124,7 +124,9 @@ export const BOMB_DEFS = Object.freeze({
       collapseDamage: 16,
     }),
     visual: Object.freeze({ language: 'gyro-neutron-slug', core: '#a6f0ff', accent: '#39d0ff' }),
-    audioCue: 'sfx_explosion_small',
+    audioCue: 'bombs.slug.inhale',
+    fieldLoopCue: 'bombs.slug.inhale',
+    collapseAudioCue: 'bombs.slug.collapse',
   }),
 
   // 4. The slow + DoT verb. Bursts into a lingering tar volume that re-applies status_goo
@@ -194,7 +196,7 @@ export const BOMB_DEFS = Object.freeze({
     damageType: 'thermal',
     statuses: [{ id: 'status_burning', stacks: 2 }],
     visual: Object.freeze({ language: 'vented-thermite-canister', core: '#ffb35c', accent: '#ff5a2a' }),
-    audioCue: 'sfx_explosion_small',
+    audioCue: 'bombs.thermite.ignite',
   }),
 
   // 7. The destabilize verb. A wild impulse plus the standing tumbling status — the target's
@@ -215,7 +217,7 @@ export const BOMB_DEFS = Object.freeze({
     damageType: 'kinetic',
     statuses: [{ id: 'status_tumbling', stacks: 1 }],
     visual: Object.freeze({ language: 'irregular-havoc-pod', core: '#ff8ad8', accent: '#d86fff' }),
-    audioCue: 'sfx_explosion_small',
+    audioCue: 'bombs.scrambler.spin',
   }),
 
   // 8. The pin verb. Applies the standing PINNED physicsResponse (massScale ×6): the caught hull
@@ -235,7 +237,7 @@ export const BOMB_DEFS = Object.freeze({
     damageType: 'kinetic',
     statuses: [{ id: 'status_pinned', stacks: 1 }],
     visual: Object.freeze({ language: 'dense-ballast-slug', core: '#5ad8c8', accent: '#2fa898' }),
-    audioCue: 'sfx_explosion_small',
+    audioCue: 'bombs.anchor.settle',
   }),
 });
 

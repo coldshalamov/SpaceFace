@@ -18,6 +18,7 @@
 
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
+import { bindBombAudio, isBombFieldLoopCue, isBombStatusLoopCue, startBombFieldLoop } from './bombAudio.js';
 import { resolveMasslineInstrument } from './masslineInstrument.js';
 import {
   resolveThemeMatrix,
@@ -907,10 +908,19 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.combat.damage_applied': 'sfx.hullHit',
   'presentation.combat.near_miss': 'sfx_combat_near_miss',
   'presentation.combat.player_hit': 'sfx.playerDamage',
-  // Bomb payload detonations (src/data/bombs.js audioCue). The other six payloads name
-  // sfx_explosion_small directly; these two semantic ids must not collapse to sfx_ui_click.
-  'bombs.goo.burst': 'sfx_explosion_small',
-  'bombs.emp.pulse': 'sfx_cm_ecm',
+  // Drift-bomb bay (PQ-205.01). Semantic ids from src/data/bombs.js — dedicated recipes, never
+  // the UI click and never one shared boom for eight verbs.
+  'bombs.frag.burst': 'sfx_bomb_frag_burst',
+  'bombs.concussion.shove': 'sfx_bomb_concussion_shove',
+  'bombs.slug.inhale': 'sfx_bomb_slug_inhale',
+  'bombs.slug.collapse': 'sfx_bomb_slug_collapse',
+  'bombs.goo.burst': 'sfx_bomb_goo_burst',
+  'bombs.emp.pulse': 'sfx_bomb_emp_pulse',
+  'bombs.thermite.ignite': 'sfx_bomb_thermite_ignite',
+  'bombs.scrambler.spin': 'sfx_bomb_scrambler_spin',
+  'bombs.anchor.settle': 'sfx_bomb_anchor_settle',
+  'combat.status.burning': 'sfx_bomb_thermite_burn',
+  'combat.status.goo': 'sfx_bomb_goo_residue',
   [FIRST_HOUR_AUDIO_SIGNATURES.enemyKill.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.enemyKill.recipeId,
   [FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak.recipeId,
   'presentation.subsystem.disabled': 'sfx_subsystem_disabled',
@@ -1717,6 +1727,7 @@ export const audio = {
     });
     bus.on('game:started', () => { /* context already (or soon) created on gesture */ });
     bindMinimalActionAudio(this, bus);
+    bindBombAudio(this, bus);
 
     // If a context already exists (hot reload), wire immediately.
     if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
@@ -3751,6 +3762,7 @@ export const audio = {
     const recipe = AUDIO_RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
     const entity = options.entity || null;
+    const follow = options.follow === true || options.trackId != null;
     const busName = getBusForRecipe(recipe, recipeId);
     // UI/combat voices are intentionally not hidden by residency: a player-facing warning or a
     // nearby combat receipt must remain audible. Continuous remote engine/ambient loops, however,
@@ -3779,7 +3791,7 @@ export const audio = {
 
     let dest = targetBus;
     let panner = null;
-    if (pan !== 0 && ctx.createStereoPanner) {
+    if ((pan !== 0 || follow) && ctx.createStereoPanner) {
       panner = ctx.createStereoPanner();
       panner.pan.value = pan;
       panner.connect(targetBus);
@@ -3799,6 +3811,7 @@ export const audio = {
     v._baseGain = this._ampFor(recipe) * (gain == null ? 1 : gain);
     v.busName = busName;
     v.loop = true;
+    if (options.trackId != null) v.trackId = options.trackId;
     v.role = busName === 'engine'
       ? 'engineLoop'
       : ((recipe.category === 'weapon' || String(recipeId).includes('wpn')) ? 'weaponLoop' : busName);
@@ -4197,6 +4210,16 @@ export const audio = {
     }
     if (opts.duck) this._duckMusic(opts.duckSeconds || 0.8);
     if (instrumentOwned) return;
+    if (isBombFieldLoopCue(id)) {
+      startBombFieldLoop(this, opts);
+      return;
+    }
+    // Continuous status cues are owned by the tracked status loops (syncBombAudioLoops); a
+    // one-shot here would be an untracked continuous voice with no stop path.
+    if (isBombStatusLoopCue(id)) {
+      if (typeof this._syncBombAudio === 'function') this._syncBombAudio();
+      return;
+    }
     const isCritical = importance >= PRIORITY_DUCK_THRESHOLD || !!opts.duck || !!(signature && signature.warning);
     const voice = this.play(rid, {
       gain: opts.gain == null ? 0.8 : opts.gain,
@@ -4897,6 +4920,7 @@ export const audio = {
       this._updateDryFire();
     }
     if (rt._loopPositionDirty || now >= (rt._nextLoopPositionUpdate || 0)) {
+      if (typeof this._syncBombAudio === 'function') this._syncBombAudio();
       this._updateLoopPositions(now);
       rt._nextLoopPositionUpdate = now + LOOP_POSITION_UPDATE_S;
       rt._loopPositionDirty = false;
@@ -4942,7 +4966,9 @@ export const audio = {
       const priorityDuck = isWeaponLoop
         ? (rt._priorityDuckWeapon == null ? 1 : rt._priorityDuckWeapon)
         : 1;
-      const gainTarget = Math.max(0.0001, (v._baseGain || 0.3) * att * priorityDuck);
+      const envelope = Number.isFinite(v._fieldEnvelope) ? v._fieldEnvelope : 1;
+      const statusScale = Number.isFinite(v._statusScale) ? v._statusScale : 1;
+      const gainTarget = Math.max(0.0001, (v._baseGain || 0.3) * att * priorityDuck * envelope * statusScale);
       if (!Number.isFinite(v._audioGainTarget) || Math.abs(v._audioGainTarget - gainTarget) > 1e-5) {
         try { v.gain.gain.setTargetAtTime(gainTarget, t, 0.05); } catch (_) {}
         v._audioGainTarget = gainTarget;

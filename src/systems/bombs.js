@@ -266,7 +266,11 @@ export const bombs = {
       pos, vel: { x: bomb.vel.x, z: bomb.vel.z }, radius: def.radius, trigger,
       hits: result?.hits || EMPTY, shoves: result?.shoves || EMPTY,
     });
-    this.bus.emit('audio:cue', { id: def.audioCue, position: pos, gain: 0.65 });
+    const cueId = trigger === 'collapse' && def.collapseAudioCue ? def.collapseAudioCue : def.audioCue;
+    this.bus.emit('audio:cue', {
+      id: cueId, position: pos, gain: 0.65,
+      bombId: bomb.id, payloadId: def.id, trigger, trackId: bomb.id,
+    });
   },
 
   _blastVictims(state, { pos, def, ownerId, originId, trigger, impulseOverride = null, damageOverride = null }) {

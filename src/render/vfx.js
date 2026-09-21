@@ -80,6 +80,11 @@ import {
   tableVfxDrawWuFromState,
 } from './tabletopPolicy.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import {
+  collectStatusAttachedVictims,
+  planStatusAttachedEmit,
+  statusAttachedAccessibility,
+} from './statusAttachedVfx.js';
 import { addShieldContact } from './weapons/shieldContacts.js';
 import {
   createStationSideEventVfxFrameScratch,
@@ -1416,6 +1421,7 @@ export const vfx = {
     this._hexRgbCache?.clear?.();
     this._rcsScaleCache?.clear?.();
     this._tumbleVfxCd?.clear?.();
+    this._statusAttachedCd?.clear?.();
     this._trailCandidates = null;
     this._ribbonCandidates = null;
     this._projectileCandidates = null;
@@ -2091,12 +2097,12 @@ export const vfx = {
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
     add('heat:changed', (p) => this._onLawHeatChanged(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('save:restoring', () => this._resetRibbonTrails());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('world:playerRelocated', () => this._resetRibbonTrails());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -2365,7 +2371,10 @@ export const vfx = {
   ) {
     if (this.state?.render?.openingVfxFrozen === true) return null;
     if (!this._scene) return null;
-    if (kind === SPR_FLASH || kind === SPR_COMBUSTION) {
+    // Status-attached marks arrive pre-scaled by their own accessibility plan and life-clipped to
+    // the owning status; a second pass here would double-dim them and clamp short-lived marks'
+    // life UP past the status owner (flashMinLife), so they spawn with the bypass raised.
+    if ((kind === SPR_FLASH || kind === SPR_COMBUSTION) && !this._spawnFlashAccessibilityBypass) {
       const authored = this._flashAccessibilityScratch;
       authored.life = life;
       authored.size0 = size0;
@@ -10541,6 +10550,7 @@ export const vfx = {
     }
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
     this._updateTumbleBodyLanguageVfx(dt);
+    this._updateStatusAttachedVfx(dt);
     // M1 doctrine telegraphs — sustain FLYBY/TETHER/CHARGE cues across the pre-fire window.
     if (this._doctrineTellActive > 0) this._updateDoctrineTells(dt);
     if (this._arcPreviewActive()) {
@@ -12560,6 +12570,55 @@ export const vfx = {
       flashReduce: !!(settings.accessibility && settings.accessibility.flashReduce),
       ...extra,
     };
+  },
+
+  _updateStatusAttachedVfx(dt) {
+    if (!this._scene || !this.state || this.state.mode !== 'flight') return;
+    if (!this._statusAttachedCd) this._statusAttachedCd = new Map();
+    if (!this._statusAttachedVictims) this._statusAttachedVictims = [];
+    const acc = statusAttachedAccessibility(this.state.settings);
+    const victims = collectStatusAttachedVictims(this.state, this._statusAttachedVictims);
+    const live = this._statusAttachedLive || (this._statusAttachedLive = new Set());
+    live.clear();
+    const cd = this._statusAttachedCd;
+    const frameDt = Math.max(0, dt || 0);
+    this._spawnFlashAccessibilityBypass = true;
+    for (let i = 0; i < victims.length; i++) {
+      const victim = victims[i];
+      const key = String(victim.entityId) + ':' + victim.statusId;
+      live.add(key);
+      const plan = planStatusAttachedEmit(victim, cd.get(key) || 0, acc, frameDt);
+      cd.set(key, plan.nextCadenceAgeS);
+      if (!plan.emit) continue;
+      const sprites = plan.sprites;
+      for (let s = 0; s < sprites.length; s++) {
+        const sprite = sprites[s];
+        const kind = sprite.kind === 'combustion' ? SPR_COMBUSTION : SPR_PUFF;
+        this._spawnSprite(
+          kind,
+          victim.x + sprite.offset,
+          sprite.y,
+          victim.z,
+          sprite.life,
+          sprite.size0,
+          sprite.size1,
+          sprite.opacity0,
+          sprite.opacity1,
+          sprite.color,
+          sprite.vx,
+          sprite.vz,
+          1.15,
+          0,
+        );
+      }
+    }
+    this._spawnFlashAccessibilityBypass = false;
+    const stale = this._statusAttachedStale || (this._statusAttachedStale = []);
+    stale.length = 0;
+    for (const key of cd.keys()) {
+      if (!live.has(key)) stale.push(key);
+    }
+    for (let i = 0; i < stale.length; i++) cd.delete(stale[i]);
   },
 
   /**

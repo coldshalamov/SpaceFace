@@ -352,6 +352,18 @@ const EMITTED_CUES = {
   sfx_mining_seam_reward: { distinct: true },   // mining.js seam bonus (layered impact+bell)
   sfx_vector_mine: { distinct: true },          // weapons.js SF-09 vector-mine directional detonation
   sfx_rcs_disrupt: { distinct: true },          // weapons.js SF-10 RCS-disruptor ion hit
+  // Drift-bomb bay (PQ-205.01): eight payload voices + slug collapse + status-owned loops.
+  'bombs.frag.burst': { distinct: true },
+  'bombs.concussion.shove': { distinct: true },
+  'bombs.slug.inhale': { distinct: true },
+  'bombs.slug.collapse': { distinct: true },
+  'bombs.goo.burst': { distinct: true },
+  'bombs.emp.pulse': { distinct: true },
+  'bombs.thermite.ignite': { distinct: true },
+  'bombs.scrambler.spin': { distinct: true },
+  'bombs.anchor.settle': { distinct: true },
+  'combat.status.burning': { distinct: true },
+  'combat.status.goo': { distinct: true },
   // Massline Physics Identity (Wave M2): throw/sling/tumble/bullet-time/cloak/jettison semantics.
   'massline.throw': { distinct: true }, 'massline.solutionLock': { distinct: true },
   'massline.sling': { distinct: true }, 'massline.tumble': { distinct: true },
