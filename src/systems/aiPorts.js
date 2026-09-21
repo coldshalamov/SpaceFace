@@ -27,6 +27,7 @@ import {
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
+import { isTumbling } from '../combat/tumbleStatus.js';
 import {
   ensureActivityClassified,
   entityNeedsAiThink,
@@ -879,6 +880,9 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     energyFraction: fraction(entity.cap, entity.capMax, 1),
     heatFraction: clamp(finite(runtime && runtime.heat, 0) / heatMax, 0, 1),
     disabled: isDisabled(runtime, entity),
+    // INF-021: the helm reads decontrol off the same frame as everything else, so a yanked
+    // ship relents instead of thrusting through its own tumble.
+    tumbling: isTumbling(state, entity),
     tethered: attachmentsFor(attachmentIndex, entity.id).length > 0,
     capabilities,
     subsystemFractions: subsystemFractionView,

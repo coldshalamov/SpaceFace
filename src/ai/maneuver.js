@@ -130,6 +130,27 @@ export class ManeuverPlanner {
       };
       this.byEntity.set(entityId, runtime);
     }
+    // INF-021: a decontrolled ship relents — no drive, no torque, no boost, no brake.
+    // The hull keeps whatever velocity the yank gave it, so the tumble reads as drift;
+    // when the status clears, ordinary planning resumes off current truth and the ship
+    // re-engages cleanly. Deterministic: status plus tick only, never wall time.
+    if (self.tumbling === true) {
+      runtime.stationaryTicks = 0;
+      const held = makeThrusterRequest(entityId, tick, {
+        kind: ManeuverKind.HOLD,
+        forceLocal: { forward: 0, right: 0 },
+        torqueYaw: 0,
+        boost: false,
+        brake: false,
+        targetHeading: self.rot,
+        horizonTicks: 1,
+        trajectory: EMPTY_TRAJECTORY,
+        reason: 'decontrolled_tumble',
+      }, { freeze: this.freeze });
+      runtime.lastKind = ManeuverKind.HOLD;
+      runtime.lastRequest = held;
+      return held;
+    }
 
     // Tactical Enemy Mind waypoints take locomotion ownership explicitly. Authored formations
     // remain in charge for unmodified pilots and ordinary hull-doctrine PRESS behavior.
