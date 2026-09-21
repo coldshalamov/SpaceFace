@@ -2,6 +2,8 @@
 
 Class: player flyable multirole utility. Hitch untouched. Hornet identity not reused.
 
+**2026-09-21 leaf closeout.** Twenty-two chase cycles complete. Hitch-plus PASS at chase cameras (C22 KEEP ×3; TUBE_PADDLE NO; CAGE_READ NO). Parent PQ-050 unproven / not G7. TECHNIQUE_LEDGER filled for mandatory player-flyable rows (bake/map rows `not_applicable` — Principled islands). Old cycle/iter reports deleted; final set is `chase_form_v22`. Drifter is frozen for later leaves.
+
 ## C1 chase-form (2026-09-21)
 
 Live authoring source for this leaf is `tools/blender/build_drifter_chase_form.py`
