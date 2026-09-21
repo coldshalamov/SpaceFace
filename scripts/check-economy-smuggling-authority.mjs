@@ -99,12 +99,13 @@ try {
   const sys = { ...economyContracts };
   sys.state = state;
   const bag = ensureFieldContractState(state);
-  markStationEpochEvaluated(bag, 'st_check', 5);
+  // Economy Pulse: deserialize() discards non-canonical station ids, so use a real catalog station.
+  markStationEpochEvaluated(bag, 'station_ceres', 5);
   const blob = sys.serialize();
-  markStationEpochEvaluated(bag, 'st_check', 99);
+  markStationEpochEvaluated(bag, 'station_ceres', 99);
   sys.deserialize(blob);
-  assert.equal(sys.hasEvaluated('st_check', 5), true);
-  assert.equal(sys.hasEvaluated('st_check', 99), false);
+  assert.equal(sys.hasEvaluated('station_ceres', 5), true);
+  assert.equal(sys.hasEvaluated('station_ceres', 99), false);
 } finally {
   Math.random = random;
   Date.now = now;
