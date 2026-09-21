@@ -44,6 +44,27 @@ const MARK_PREDICTION_S = 1 / 120;
 // to outlive the next attempt.
 const MASSLINE_DENIAL_PILL_S = 1.2;
 
+// INF-015 — each denial names the condition plus one useful next action. Keys are the
+// normalized copy previewStatusCopy emits, so the pill and the acquisition caption agree.
+const DENIAL_NEXT_ACTION = Object.freeze({
+  'LINE BLOCKED': 'REPOSITION FOR A CLEAR LINE',
+  'OUT OF RANGE': 'CLOSE IN',
+  'PROTECTED': 'PICK ANOTHER TARGET',
+  'COOLDOWN': 'RELEASE AND RETRY',
+  'ENDPOINT LOST': 'REACQUIRE',
+  'REACQUIRE': 'REACQUIRE',
+  'PAIR OUT OF RANGE': 'CLOSE IN',
+  'ONE HEAVY ENDPOINT MAX': 'PICK A LIGHTER PAIR',
+  'WOULD FORM LOOP': 'CUT THE ACTIVE LINE FIRST',
+  'CUT ACTIVE LINE': 'CUT THE ACTIVE LINE FIRST',
+  'NO TARGET': 'AIM AT A BODY',
+  'LINE FAILED': 'CHECK THE FIT AND RETRY',
+  'UNAVAILABLE': 'REPOSITION AND RETRY',
+});
+export function denialNextAction(status, reason) {
+  return DENIAL_NEXT_ACTION[previewStatusCopy(status, reason)] ?? 'REPOSITION AND RETRY';
+}
+
 // INF-013 — compact relative-mass interpretation for the acquisition readout: which body is
 // going to move, read from the same effective masses the live physics path couples
 // (entity.physicsBody.mass ?? entity.mass, the masses stepMassline receives as owner/target).
@@ -426,14 +447,26 @@ export const masslineHud = {
     this._lineLoad = null;
     // M3: every denied latch gets words — the bus event is the one seam all six emit sites share.
     // The denial lands on a state field so it joins the HUD signature and redraws on arrival/expiry.
+    // INF-015: a held latch input must not re-announce the same denial every tick, and a
+    // successful latch clears a stale pill immediately instead of letting it linger its floor.
     if (ctx.bus && typeof ctx.bus.on === 'function') {
       ctx.bus.on('tether:latchDenied', (p) => {
         if (!this.state) return;
+        const reason = p && p.reason;
+        const targetId = p && p.targetId;
+        const now = finite(this.state.simTime);
+        const current = this.state.masslineDenial;
+        if (current && Number.isFinite(current.untilSimTime) && current.untilSimTime > now
+          && current.reason === reason && current.targetId === targetId) return;
         this.state.masslineDenial = {
-          reason: p && p.reason,
-          targetId: p && p.targetId,
-          untilSimTime: finite(this.state.simTime) + MASSLINE_DENIAL_PILL_S,
+          reason,
+          targetId,
+          untilSimTime: now + MASSLINE_DENIAL_PILL_S,
         };
+      });
+      ctx.bus.on('tether:latched', () => {
+        if (!this.state) return;
+        this.state.masslineDenial = null;
       });
     }
   },
@@ -487,6 +520,11 @@ export const masslineHud = {
   _updateAcquisitionPreview(dom, state, player, w2s) {
     // M3: a live latch denial wins the slot for its full 1.2 s floor — a press that grabbed
     // nothing must still say so, in words, at the spot it was aimed.
+    // INF-015: a successful latch clears the pill at once — the tether mirror is the truth,
+    // not the pill timer.
+    if (state.masslineDenial && state.player && state.player.tether && state.player.tether.active) {
+      state.masslineDenial = null;
+    }
     const denial = state.masslineDenial;
     if (denial && finite(state.simTime) < finite(denial.untilSimTime)) {
       return this._renderDenialPill(dom, state, player, w2s, denial);
@@ -593,7 +631,8 @@ export const masslineHud = {
     const cueX = pinned ? pinned.x : screen.x;
     const cueY = pinned ? pinned.y : screen.y;
     const status = previewStatusCopy('invalid', denial.reason);
-    const text = `MASSLINE · ${status}`;
+    const action = denialNextAction('invalid', denial.reason);
+    const text = `MASSLINE · ${status} — ${action}`;
     const captionWidth = estimateCaptionWidth(text);
     // The ship sits at screen centre: the caption goes on the side of the mark AWAY from it (so it
     // never lies across the hull), unless that side has no room.
@@ -619,7 +658,7 @@ export const masslineHud = {
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)${labelShift}`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
-    setAttr(dom.previewEl, 'aria-label', `Massline denied, ${status.toLowerCase()}`);
+    setAttr(dom.previewEl, 'aria-label', `Massline denied, ${status.toLowerCase()}, ${action.toLowerCase()}`);
     setAttr(dom.previewEl, 'data-receipt-id', '');
     setAttr(dom.previewEl, 'data-target-id', String(denial.targetId ?? ''));
     setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
