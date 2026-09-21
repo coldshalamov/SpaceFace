@@ -443,6 +443,24 @@ export function isMutationRecovery(m) {
 }
 
 /**
+ * INF-067: is an ordinary bounty contract void because its mark is gone? True when the killed
+ * entity is a tagged target, the objective is still unmet, and every tagged target is dead or
+ * gone (the just-killed id counts as gone unconditionally — the event IS its death). Authored
+ * (storyTag) bounties own their own failure branches and never void here. Pure over the
+ * instance plus a liveness predicate, so tests pin it without the system.
+ */
+export function bountyTargetLost(m, killedId, isGone) {
+  if (!m || m.status !== 'active' || m.type !== 'bounty_hunt') return false;
+  if (m.storyTag) return false;
+  const ids = Array.isArray(m.targetEntityIds) ? m.targetEntityIds : [];
+  if (!ids.includes(killedId)) return false;
+  const target = Math.max(1, m.objectiveTarget || 1);
+  if ((m.objectiveProgress || 0) >= target) return false;
+  const gone = typeof isGone === 'function' ? isGone : () => true;
+  return ids.every((id) => id === killedId || gone(id));
+}
+
+/**
  * INF-066: partial-recovery settlement math. A successor that docks short of its full qty
  * settles once for what is actually aboard: proportional pay on the successor's own (already
  * halved) stake. Returns null when nothing is aboard — the caller keeps the legacy
@@ -3590,7 +3608,7 @@ export const missions = {
   _onKill(p) {
     if (!p) return;
     const byPlayer = p.killerId === this.state.playerId;
-    if (!byPlayer) return; // mission kills only count for the player
+    if (!byPlayer) { this._voidLostBountyTargets(p); return; } // mission kills only count for the player
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active') continue;
@@ -3614,6 +3632,26 @@ export const missions = {
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + 1);
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
+    }
+  },
+
+  /**
+   * INF-067: a tagged bounty target destroyed by someone else. When the mark is gone with the
+   * objective unmet, the contract voids fairly (no penalty, deposit back) instead of stranding
+   * the player in a mission whose destination no longer exists. Never respawns the target.
+   */
+  _voidLostBountyTargets(p) {
+    if (!p || p.id == null) return;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (missionObservesClauseEvent(m, 'entity:killed')) continue;
+      const gone = (id) => {
+        const e = this.state.entities && this.state.entities.get(id);
+        return !e || e.alive === false;
+      };
+      if (bountyTargetLost(m, p.id, gone)) {
+        this._failMission(m, i, 'target_lost');
+      }
     }
   },
 
@@ -5444,6 +5482,7 @@ export const missions = {
 
   _missionLossDebriefText(m, reason) {
     const dest = this._destName(m);
+    if (reason === 'target_lost') return 'The mark was destroyed before you closed in near ' + dest + '. The contract is void — deposit refunded, no standing lost.';
     if (reason === 'deadline') return 'Deadline missed near ' + dest + '. The board has already marked the lane cold.';
     if (reason === 'abandoned') return 'Contract abandoned. Progress was cleared from the board and the client will remember the gap.';
     if (reason === 'escort_abandoned') return 'Escort contract voided. The convoy was left outside acceptable coverage.';
@@ -5883,9 +5922,15 @@ export const missions = {
 
     // Failure rep penalty to the offering faction. We emit faction:repDelta directly and keep the
     // mission:failed payload factionId-FREE so factions' onMissionLost doesn't ALSO penalise.
-    const penalty = missionRepDeltaFor(m, 'failed');
+    // INF-067: a voided contract (target lost to a third party) is not the player's fault — no
+    // penalty, and the deposit comes back. Rewards and penalties follow the visible resolution.
+    const voided = reason === 'target_lost';
+    const penalty = voided ? 0 : missionRepDeltaFor(m, 'failed');
     if (m.factionId && penalty < 0) {
       this.bus.emit('faction:repDelta', { factionId: m.factionId, delta: penalty, reason: `mission_failed:${m.type}` });
+    }
+    if (voided && m.collateral_cr > 0) {
+      this.bus.emit('economy:grantCredits', { amount: m.collateral_cr, reason: `collateral_refund:${m.id}` });
     }
     // A preloaded manifest belongs to the failed contract. Remove the remaining sealed quantity
     // through cargo authority so abandoning and reissuing cannot duplicate freight.
@@ -5894,7 +5939,7 @@ export const missions = {
     this._logCompletion(m.type, 0, false);
     this._recordMissionReceipt(m, 'failed', reason || 'failed', {
       rewardCr: 0,
-      collateralLostCr: m.collateral_cr || 0,
+      collateralLostCr: voided ? 0 : m.collateral_cr || 0,
       repDelta: penalty,
       contractCargoRemoved,
       setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
@@ -5917,8 +5962,11 @@ export const missions = {
       ...setPieceEventFields(m, setPieceTransition),
     });
     // A mutated failure is not a scolding: the toast says what the situation turned INTO.
+    // A voided contract is not a scolding either: it says the job is gone and the deposit is back.
     if (mutation) {
       this.bus.emit('toast', { text: mutation.toastText, kind: 'warn', ttl: 5 });
+    } else if (voided) {
+      this.bus.emit('toast', { text: `Contract void: the mark for ${m.title} was destroyed — deposit refunded.`, kind: 'warn', ttl: 5 });
     } else {
       this.bus.emit('toast', { text: `Mission FAILED: ${m.title}`, kind: 'error', ttl: 4 });
     }
