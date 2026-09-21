@@ -218,6 +218,16 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   // Ecology roles: durable telegraph + counter hints for HUD/comms (presentation consumers).
   if (def.telegraph) spec.data.telegraph = { ...def.telegraph };
   if (def.counterHint) spec.data.counterHint = def.counterHint;
+  // INF-025: authored directional armor (Mirrorjaw prow/stern split). Clamped here so a bad
+  // row can neither immunize a hull nor multiply damage without bound; the router stays pure.
+  if (def.directionalArmor && typeof def.directionalArmor === 'object') {
+    spec.data.directionalArmor = {
+      frontArcDeg: clampDirectionalArc(def.directionalArmor.frontArcDeg),
+      frontMult: clampDirectionalMult(def.directionalArmor.frontMult),
+      rearArcDeg: clampDirectionalArc(def.directionalArmor.rearArcDeg),
+      rearMult: clampDirectionalMult(def.directionalArmor.rearMult),
+    };
+  }
   if (def.fieldAnchor) spec.data.fieldAnchor = { ...def.fieldAnchor };
   if (def.telegraph && def.telegraph.cue && !opts.approachTelegraph) {
     // Prefer role cue when doctrine telegraph is generic.
@@ -449,6 +459,22 @@ function freezeKillImpact(value) {
 
 function finiteKillMetric(value) {
   return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
+// INF-025: clamp authored directional-armor rows at the spawn seam. Arcs stay within a
+// hemisphere per side; multipliers stay finite and bounded so a bad row can neither
+// immunize a hull (frontMult 0 still routes heat/statuses, never full immunity) nor
+// multiply damage without bound.
+function clampDirectionalArc(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 150;
+  return Math.min(180, Math.max(0, n));
+}
+
+function clampDirectionalMult(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(10, Math.max(0, n));
 }
 
 export const combat = {

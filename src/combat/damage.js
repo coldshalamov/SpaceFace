@@ -38,6 +38,18 @@ export function createDamageRouter(context, statusService, options = {}) {
 
   function routeDamage(input) {
     const packet = normalizeDamagePacket(input && input.packet, catalog.damageModel.channelOrder);
+    const target = entity(input && input.targetId);
+    const attacker = entity(input && input.attackerId);
+    // INF-025: authored directional armor. A heavy with data.directionalArmor sheds shots that
+    // arrive on its mirror prow and takes bonus damage on its exposed stern, so circling changes
+    // the outcome instead of inflating health. Pure geometry off hit.pos (attacker pos fallback);
+    // packets without a source direction route neutrally (DoTs, fields, self-hits).
+    const directional = resolveDirectionalArmor(target, attacker, packet);
+    if (directional.factor !== 1) {
+      for (const channel of catalog.damageModel.channelOrder) {
+        packet.channels[channel] = (packet.channels[channel] || 0) * directional.factor;
+      }
+    }
     // Run difficulty only scales hits involving the local player (outgoing or incoming). Ambient
     // NPC brawls stay on the authored baseline so sector ecology is not difficulty-rewritten.
     const diffScale = difficultyInvariantDisablePacket(packet)
@@ -49,8 +61,6 @@ export function createDamageRouter(context, statusService, options = {}) {
       }
       packet.heat = (packet.heat || 0) * diffScale;
     }
-    const target = entity(input && input.targetId);
-    const attacker = entity(input && input.attackerId);
     const origin = input && input.origin || null;
     const rawTotal = sumChannels(packet.channels);
 
@@ -185,6 +195,8 @@ export function createDamageRouter(context, statusService, options = {}) {
       subsystemId,
       subsystemDamage,
       subsystemResult,
+      directionalArc: directional.arc,
+      directionalFactor: directional.factor,
       heatApplied,
       shieldBroke,
       dominantLayer: hullDamage > 0 ? 'hull' : armorDamage > 0 ? 'armor' : shieldDamage > 0 ? 'shield' : null,
@@ -456,6 +468,42 @@ export function createDamageRouter(context, statusService, options = {}) {
   }
 
   return routeDamage;
+}
+
+// INF-025: authored directional armor for heavies. Config lives on target.data.directionalArmor
+// ({ frontArcDeg, frontMult, rearArcDeg, rearMult }); +X local is the nose. Returns a neutral
+// { factor: 1, arc: null } for targets without config or packets without a source direction, so
+// ordinary ships and directionless damage (DoTs, fields) route exactly as before. Pure: no writes,
+// no RNG, no wall clock — the same hit geometry always yields the same factor.
+const DIRECTIONAL_NEUTRAL = Object.freeze({ factor: 1, arc: null });
+
+function resolveDirectionalArmor(target, attacker, packet) {
+  const config = target && target.data && target.data.directionalArmor;
+  if (!config || typeof config !== 'object') return DIRECTIONAL_NEUTRAL;
+  const from = (packet && packet.hit && packet.hit.pos) || (attacker && attacker.pos) || null;
+  if (!from || !target.pos) return DIRECTIONAL_NEUTRAL;
+  const dx = (Number(from.x) || 0) - (Number(target.pos.x) || 0);
+  const dz = (Number(from.z) || 0) - (Number(target.pos.z) || 0);
+  if (!(Math.hypot(dx, dz) > 1e-9)) return DIRECTIONAL_NEUTRAL;
+  const facing = Number(target.rot) || 0;
+  const delta = Math.abs(Math.atan2(Math.sin(Math.atan2(dz, dx) - facing), Math.cos(Math.atan2(dz, dx) - facing)));
+  const frontHalf = (clampDirectionalArc(config.frontArcDeg, 150) * Math.PI / 180) / 2;
+  const rearHalf = (clampDirectionalArc(config.rearArcDeg, 150) * Math.PI / 180) / 2;
+  if (delta <= frontHalf) return { factor: clampDirectionalMult(config.frontMult, 1), arc: 'front' };
+  if (delta >= Math.PI - rearHalf) return { factor: clampDirectionalMult(config.rearMult, 1), arc: 'rear' };
+  return DIRECTIONAL_NEUTRAL;
+}
+
+function clampDirectionalArc(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(180, Math.max(0, n));
+}
+
+function clampDirectionalMult(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(10, Math.max(0, n));
 }
 
 // PQ-015: seed the selected combat subsystem as the hit target for player focus-fire. Pure guard,
