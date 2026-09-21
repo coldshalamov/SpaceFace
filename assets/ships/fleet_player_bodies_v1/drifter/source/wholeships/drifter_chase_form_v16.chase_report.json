@@ -1,0 +1,67 @@
+{
+  "ok": true,
+  "asset": "ship_drifter",
+  "revision": "chase_form_v16",
+  "cycle": 16,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.846153900747011,
+  "authoredX": 16.77,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 12.1477, 4.7455],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sha256": "e928017d155b20a2aaa303fec5fb2e40a4b55dd3ee6abb5b7fe11cc0097664ca",
+    "triangles": 20280,
+    "hullTriangles": 14856,
+    "bytes": 2787672,
+    "size": [16.77, 6.58, 2.57]
+  },
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "hitchStills": "/tmp/hitch-c10",
+  "playChase": {
+    "shipW": 13.2,
+    "occupancy": 0.78,
+    "lightGe028": 4.7,
+    "mid": 88.5,
+    "dark": 6.8,
+    "brown": 0.0
+  },
+  "hitchPlayChase": {
+    "shipW": 10.1,
+    "occupancy": 0.52,
+    "lightGe028": 8.5,
+    "mid": 86.4,
+    "dark": 5.2,
+    "brown": 0.5
+  },
+  "gapsTargeted": {
+    "abeamSponsonBodies": "convex-diamond YZ; delete separate nacelle body lofts; widen aft stations so drives are throats in the primary shell"
+  },
+  "tubePaddleReadGoneOnPlayChase": true,
+  "tubePaddleReadGoneOnClose": true,
+  "tubePaddleReadGoneOnAbeam": false,
+  "preReviewAbeamGate": "agent judged clay+shaded TUBE_PADDLE NO (pods gone, one diamond); independent abeam review still YES on clay dark-spine / light-flank value split",
+  "reviews": {
+    "play_chase": {
+      "id": "bc-9ba5dc94-9b18-509c-b9fc-e0bfe206e15d",
+      "verdict": "REVISE",
+      "note": "VALID framing. TUBE_PADDLE NO. WELLS HOLES. Hitch still wins formed-shell/skin."
+    },
+    "play_chase_abeam": {
+      "id": "bc-61320a73-43a5-5ec5-8aca-b0d4c24d1ee1",
+      "verdict": "REVISE",
+      "note": "VALID framing. Clay still reads dark longitudinal spine + lighter side volumes + hard value/seam at the root (TUBE_PADDLE YES). Shaded closer to one diamond. Wells as holes. Hitch still wins skin."
+    },
+    "play_chase_close": {
+      "id": "bc-6f6024c6-dbe9-50e5-a956-1f4e926d9bfd",
+      "verdict": "REVISE",
+      "note": "VALID framing. One workboat; well is a hole. TUBE_PADDLE NO. Hitch still wins skin."
+    }
+  },
+  "result": "REVISE",
+  "hitchPlusChase": false,
+  "notes": "C16 convex-diamond + absorb nacelle bodies. Play+close TUBE_PADDLE NO kept. Abeam TUBE_PADDLE YES (clay). Hitch still wins D=144. No seats. No megatex. Hitch/Kestrel/Hornet frozen. Parent unproven / not G7."
+}
