@@ -142,6 +142,21 @@ formed-shell / skin at D=144. Hitch-plus chase is not closed. Remaining:
 gray-plate skin and kite sponsons vs Hitch’s formed multi-value shell. Parent
 unproven / not G7.
 
+## C12 chase-form (2026-09-21)
+
+`chase_form_v12` keeps C8–C11 wins: wells as holes, no teal beam rail, brown ~0%,
+light near Hitch (2.2% vs Hitch 5.0%), greenhouse as a framed hole. Principled
+islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+C12 targeted the two C11 leftovers: (1) chase-scale dorsal panel bays from well
+lip to chine with mixed deck/armor courses (not clay + black bars), (2)
+constant-chord short sponsons off the hull beam (not a mid-body kite diamond).
+Three chase reviews REVISE. Close still: well and greenhouse read as holes.
+Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is not closed.
+Remaining: inset panel language in the hull loft (not glued gray slabs) and
+Hitch-scale lofted sideboards with root fillet (not short paddles). Parent
+unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
