@@ -2,6 +2,8 @@
 
 Class: player flyable interceptor. Hitch untouched.
 
+**2026-09-21 leaf closeout.** Five chase cycles complete. Hitch-plus PASS at chase for the C4 notes. Parent PQ-050 unproven / not G7. TECHNIQUE_LEDGER filled for mandatory player-flyable rows (bake/map rows `not_applicable` — Principled islands). Old cycle/iter reports deleted; final set is `chase_form_v17`.
+
 **2026-09-21 chase_form_v17.** Cycle 5 (packet minimum). C4 stills lost panel language, lettering, hull-wide dirt, and hardware density to Hitch. This pass: darker hull, dorsal plate course with seams, ochre HN + 07 on dark plaques, dirt strips from nose to TE, second hose, cargo crate, beacons. Principled islands, no maps. Hitch/Kestrel frozen. **PASS at chase distance** for those four notes. Hitch close is still richer on painted rivets and an English word — not cloned.
 
 ## Visible-zone register (supported cameras: 3/4, starboard, rear)

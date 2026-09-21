@@ -33,7 +33,7 @@ mutations still go in [`NOW.md`](./NOW.md). Product status lives in the queue an
 
 | Task | Thread | Host (cloud-agent id or machine) | Branch | State | Exact focus | Last push | Next terminal action |
 |---|---|---|---|---|---|---|---|
-| PQ-050.01 Hornet chase C5 | code-work-coordinator | `bc-8188ad27-0dbf-5951-be0b-f48141e18378` | `cursor/pq050-01-hornet-chase-c5-8378` | RESULT: DONE — v17 live, chase Hitch-plus PASS | Close four C4 chase fails with geometry+Principled; Hitch/Kestrel frozen | 2026-09-21 v17 | close-range Hitch still richer on painted rivets / English word |
+| PQ-050.01 Hornet | code-work-coordinator | `bc-8188ad27-0dbf-5951-be0b-f48141e18378` | `cursor/pq050-01-hornet-leaf-close-8378` | RESULT: DONE (chase five-cycle PASS; parent unproven) | Leaf closeout: ledger filled, old cycle/iter reports deleted, v17 final chase set kept | 2026-09-21 closeout | next ordered leaf PQ-050.02 Drifter |
 
 ## Pointers
 
