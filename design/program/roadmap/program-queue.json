@@ -16472,7 +16472,7 @@
       "priority": 417,
       "title": "Every mention is a door",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-162.00",
         "PQ-180.00"
@@ -16493,7 +16493,9 @@
         "npm run check:entity-links",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-183.00-REPORT.md"
+      ],
       "brief": "Entity links adopted on every surface in the manifest, including the station and legacy modules; the check fails an unlinked entity name. DONE WHEN: `check:entity-links` covers ≥ 30 surfaces with zero unlinked mentions."
     },
     {

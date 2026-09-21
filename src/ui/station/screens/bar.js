@@ -25,6 +25,7 @@ import {
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
 import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
 import { BINDINGS } from '../../bindings.js';
 import { missionConsequenceSummary, missionPreflight } from '../../missionPreflight.js';
 import {
@@ -231,7 +232,7 @@ export function createBarScreen(ctx) {
     const offer = pendingFrontierRumorOffer;
     if (!offer) return '';
     return `<section class="sx-bar-offer" aria-label="Frontier rumor card">` +
-      `<p class="k-sentence sx-bar-offer__state">${escapeHtml(offer.kindLabel)} · ${escapeHtml(offer.sectorName)} search area · ${fmt(offer.price)} cr.</p>` +
+      `<p class="k-sentence sx-bar-offer__state">${escapeHtml(offer.kindLabel)} · ${entitySpanHtml('sector:' + offer.sectorId, escapeHtml(offer.sectorName))} search area · ${fmt(offer.price)} cr.</p>` +
       `<p class="k-sentence sx-bar-offer__warning">Approximate bearing only — no waypoint or automatic discovery.</p>` +
       offerWord(`data-buy-frontier-rumor="${escapeHtml(offer.id)}"`, `Buy rumor card · ${fmt(offer.price)} cr`) +
     `</section>`;
@@ -371,14 +372,14 @@ export function createBarScreen(ctx) {
 
     const surveyRow = survey
       ? `<li class="k-row k-row--static sx-lead sx-lead--survey">` +
-          `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${escapeHtml(survey.sectorName)}</span>` +
+          `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${entitySpanHtml('sector:' + survey.sectorId, escapeHtml(survey.sectorName))}</span>` +
             `<span class="k-row__sub sx-lead__s">${escapeHtml(surveyOfferLabel ? (surveyOfferLabel(survey) || 'Nav data') : 'Nav data')}</span></span>` +
           `<button type="button" class="k-word k-word--fine sx-lead__go" data-survey="${escapeHtml(survey.sectorId)}"${credits >= survey.price ? '' : ' disabled'}>Buy · ${fmt(survey.price)} cr</button>` +
         `</li>`
       : '';
 
     const leadRows = leads.map((m) => `<li class="k-row k-row--static sx-lead">` +
-        `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${escapeHtml(m.title || 'Contract')}</span>` +
+        `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${mid(m) ? entitySpanHtml('contract:' + mid(m), escapeHtml(m.title || 'Contract')) : escapeHtml(m.title || 'Contract')}</span>` +
           `<span class="k-row__sub sx-lead__s">${fmt(rewardOf(m))} cr</span></span>` +
         `<button type="button" class="k-word k-word--fine sx-lead__go" data-inspect="${escapeHtml(String(mid(m)))}">Inspect</button>` +
       `</li>`).join('');

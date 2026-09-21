@@ -22,6 +22,7 @@ import {
   factionContractLadderRows,
 } from '../../factionStanding.js';
 import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
 import { icon, factionIcon } from '../icons.js';
 
 const STATION_FACTION = new Map();
@@ -189,7 +190,7 @@ export function createFactionsScreen(ctx) {
       `<div class="sx-fac-overview">` +
         `<span class="sx-fac-crest" aria-hidden="true">${crest(f.id, 'hero')}</span>` +
         `<p class="k-caps">${f.id === authorityId ? 'Current station authority' : 'External power'}</p>` +
-        `<h2 class="k-display k-t-title sx-fac-ident__name">${escapeHtml(f.name)}</h2>` +
+        `<h2 class="k-display k-t-title sx-fac-ident__name">${entitySpanHtml('faction:' + f.id, escapeHtml(f.name))}</h2>` +
         `<p class="k-sentence k-sentence--emph sx-fac-ident__flag">${f.id === authorityId ? 'Current station authority' : 'External power'}` +
           `${controls.length ? ` · ${escapeHtml(controls.slice(0, 3).join(' · '))}` : ' · no confirmed jurisdiction at this berth'}</p>` +
         `<div class="sx-fac-heroes" aria-label="Standing with ${escapeHtml(f.name)}">` +

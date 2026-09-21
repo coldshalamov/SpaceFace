@@ -13,6 +13,7 @@ import { droneBayCapacityForState, normalizeAutomationRecordId } from '../../sys
 import { describeProgrammedMinerOperation } from '../../systems/automationOperations.js';
 import { shipworksStationAccess } from '../../systems/ships.js';
 import { escapeHtml } from '../comms.js';
+import { entitySpanHtml } from '../entityResolver.js';
 import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 
@@ -882,7 +883,7 @@ export const automationScreen = {
         const operation = describeOutpostOperation(o, def);
         const inputHtml = operation.inputs.length
           ? operation.inputs.map((input) => `
-              <strong>${escapeHtml(input.label)}</strong>
+              <strong>${entitySpanHtml('commodity:' + input.goodId, escapeHtml(input.label))}</strong>
               <span class="au-flow-v">${escapeHtml(rateText(input.actualPerMin, 'u/min'))}${input.short ? ' · short' : ''}</span>`).join('')
           : `<strong>No feedstock</strong><span class="au-flow-v">self-contained facility</span>`;
         const outputRate = comparisonRateText(operation.output.actualPerMin, operation.output.targetPerMin, operation.output.unit);
@@ -892,7 +893,7 @@ export const automationScreen = {
         card.innerHTML = `
           <div class="grow">
             <div class="au-outpost-head">
-              <div class="nm">${prettyId(def.id)} <span class="au-pill">${o.sectorId ? prettyId(o.sectorId) : 'unsited'}</span></div>
+              <div class="nm">${prettyId(def.id)} <span class="au-pill">${o.sectorId ? entitySpanHtml('sector:' + o.sectorId, escapeHtml(prettyId(o.sectorId))) : 'unsited'}</span></div>
             </div>
             <div class="au-outpost-flow" data-state="${escapeHtml(operation.state)}" role="img" aria-label="${escapeHtml(operation.accessibleSummary)}">
               <div class="au-flow-node">
@@ -908,7 +909,7 @@ export const automationScreen = {
               <span class="au-flow-link" aria-hidden="true"></span>
               <div class="au-flow-node">
                 <span class="au-flow-k">Output</span>
-                <strong>${escapeHtml(operation.output.label)}</strong>
+                <strong>${operation.output.goodId && operation.output.goodId !== 'credits' ? entitySpanHtml('commodity:' + operation.output.goodId, escapeHtml(operation.output.label)) : escapeHtml(operation.output.label)}</strong>
                 <span class="au-flow-v">${escapeHtml(outputRate)}</span>
                 <span class="au-flow-v">${escapeHtml(storageText)} ${storageBar(operation.storage.fill)}</span>
               </div>
@@ -972,7 +973,7 @@ export const automationScreen = {
         const deployment = describeWingmanDeployment(fs);
         card.innerHTML = `
           <div class="grow">
-            <div class="nm">${escapeHtml(fs.name) || prettyId(fs.defId || 'wingman')} ${statusPill(fs.status)}</div>
+            <div class="nm">${fs.defId ? entitySpanHtml('hull:' + fs.defId, escapeHtml(fs.name) || prettyId(fs.defId)) : (escapeHtml(fs.name) || prettyId('wingman'))} ${statusPill(fs.status)}</div>
             <div class="meta">
               <span>order ${escapeHtml(order)}</span>
               <span>deploy ${deploymentPill(deployment)}</span>
@@ -1003,8 +1004,8 @@ export const automationScreen = {
         card.className = 'au-card';
         card.innerHTML = `
           <div class="grow">
-            <div class="nm">${escapeHtml(s.customName) || prettyId(s.defId)}</div>
-            <div class="meta"><span>${prettyId(s.defId)}</span><span>starts on escort</span></div>
+            <div class="nm">${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(s.customName) || prettyId(s.defId)) : (escapeHtml(s.customName) || '')}</div>
+            <div class="meta"><span>${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(prettyId(s.defId))) : ''}</span><span>starts on escort</span></div>
             <div class="au-note">Assigned ships remain in the automation ledger and spawn as live wingmen in-sector.</div>
           </div>
           <button class="au-buy" data-act="assignFleet" data-ref="${i}" data-kind="ownedShip">Assign as Wingman</button>`;

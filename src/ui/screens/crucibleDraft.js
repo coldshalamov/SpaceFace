@@ -32,6 +32,7 @@ import { WEAPONS } from '../../data/weapons.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
 import { el, settle, cue } from '../kit/index.js';
 import { crucibleFittingDescription } from '../crucibleCombatReadout.js';
+import { decorateEntityNode } from '../entityResolver.js';
 
 /** A kit word (`button.k-word`). The caller appends it. */
 function word(label, className) {
@@ -232,6 +233,7 @@ export function refitRowLines(row) {
     return {
       label,
       value: row.name || prettyDefId(row.defId),
+      valueRef: String(row.defId).startsWith('mod_') ? 'module:' + row.defId : null,
       action: 'Strip',
       disabled: false,
       options: [],
@@ -729,7 +731,9 @@ export const crucibleRefitScreen = {
         left.appendChild(sub);
         row._pick = pick;
       } else {
-        left.appendChild(el('div', 'k-row__sub', lines.value));
+        const valueEl = el('div', 'k-row__sub', lines.value);
+        if (lines.valueRef) decorateEntityNode(valueEl, lines.valueRef);
+        left.appendChild(valueEl);
       }
       // INF-036: the honest comparison, under the picker — the picker itself is untouched,
       // so customization is preserved and the contrast only advises.

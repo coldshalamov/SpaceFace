@@ -14,6 +14,7 @@ import { WEAPONS } from '../../../data/weapons.js';
 import { SHIPS } from '../../../data/ships.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
 
 const NAME = new Map();
 for (const c of COMMODITIES) NAME.set('commodity:' + c.id, c.name);
@@ -30,6 +31,13 @@ const FACILITY_LABEL = { refinery: 'refinery station', fab: 'fabrication station
 
 function niceName(id, kind) { return NAME.get((kind || 'commodity') + ':' + id) || String(id).replace(/^cmdty_|^mod_|^wpn_|^ship_/, '').replace(/_/g, ' '); }
 function matName(id) { return CMDTY_NAME.get(id) || String(id).replace(/^cmdty_/, '').replace(/_/g, ' '); }
+// A fabricator output names a catalogue thing; map its kind onto the resolver vocabulary so the
+// name is a door. Weapons and anything off-vocabulary degrade to plain text inside entitySpanHtml.
+const OUTPUT_ENTITY_TYPE = { commodity: 'commodity', module: 'module', ship: 'hull' };
+function outputLink(id, kind, escapedLabel) {
+  const type = OUTPUT_ENTITY_TYPE[kind || 'commodity'];
+  return type ? entitySpanHtml(type + ':' + id, escapedLabel) : escapedLabel;
+}
 function researched(state) { const r = state && state.player && (state.player.researchedNodes || state.player.researched); return new Set(Array.isArray(r) ? r : []); }
 function items(state) { return (state && state.player && state.player.cargo && state.player.cargo.items) || {}; }
 function stationType(ctx) {
@@ -123,7 +131,7 @@ export function createIndustryScreen(ctx) {
       const ok = have >= need;
       return (
         `<li class="k-row k-row--static sx-fab-in${ok ? ' is-ok' : ' is-missing'}">` +
-          `<span class="${ok ? 'k-row__name' : 'k-bad'} sx-fab-in__name">${escapeHtml(matName(id))}</span>` +
+          `<span class="${ok ? 'k-row__name' : 'k-bad'} sx-fab-in__name">${entitySpanHtml('commodity:' + id, escapeHtml(matName(id)))}</span>` +
           (ok ? '' : `<button type="button" class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market">Source in market</button>`) +
           `<span class="k-row__num sx-fab-in__q${ok ? '' : ' k-bad'}">${have} <span class="k-62">/ ${need}</span></span>` +
         `</li>`
@@ -148,7 +156,7 @@ export function createIndustryScreen(ctx) {
     stageEl.innerHTML =
       `<div class="sx-fab">` +
         `<p class="k-caps sx-fab-head__cat">${CAT_LABEL[bp.category] || bp.category} · Tier ${bp.tier}</p>` +
-        `<h2 class="k-display k-t-title sx-fab-head__name">${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))}</h2>` +
+        `<h2 class="k-display k-t-title sx-fab-head__name">${outputLink(bp.outputs.id, bp.outputs.kind, escapeHtml(niceName(bp.outputs.id, bp.outputs.kind)))}</h2>` +
         (bp.desc ? `<p class="k-sentence sx-fab-head__desc">${escapeHtml(bp.desc)}</p>` : '') +
         `<div class="sx-fab-heroes">` +
           `<div class="k-hero k-hero--hero sx-fab-out"><span class="k-hero__n">${bp.outputs.qty || 1}</span><span class="k-hero__w">${escapeHtml(bp.outputs.kind)} per run</span></div>` +

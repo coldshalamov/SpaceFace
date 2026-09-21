@@ -15,6 +15,7 @@ import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { BODY_MODULES } from '../../data/claimableBodies.js';
 import { escapeMarkup as escapeHtml } from '../views/identity.js';
+import { entitySpanHtml } from '../entityResolver.js';
 import { el, hero, settle, cue } from '../kit/index.js';
 import {
   wrapCanvasLines,
@@ -1237,10 +1238,10 @@ function disabledActionHtml(readiness) {
 /** The ships and modules a node unlocks, as static kit rows (name · kind). */
 function unlockRowsHtml(u) {
   if (!u) return '';
-  const row = (name, kind) => `<li class="k-row k-row--static"><span class="k-row__name">${name}</span><span class="k-row__sub">${kind}</span></li>`;
+  const row = (name, kind, ref) => `<li class="k-row k-row--static"><span class="k-row__name">${ref ? entitySpanHtml(ref, name) : name}</span><span class="k-row__sub">${kind}</span></li>`;
   const rows = [];
-  if (u.ships && u.ships.length) rows.push(...u.ships.map(unlockDisplayName).map((name) => row(name, 'ship')));
-  if (u.modules && u.modules.length) rows.push(...u.modules.map(unlockDisplayName).map((name) => row(name, 'module')));
+  if (u.ships && u.ships.length) rows.push(...u.ships.map((id) => row(unlockDisplayName(id), 'ship', 'hull:' + id)));
+  if (u.modules && u.modules.length) rows.push(...u.modules.map((id) => row(unlockDisplayName(id), 'module', 'module:' + id)));
   return rows.join('');
 }
 

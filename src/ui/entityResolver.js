@@ -23,6 +23,8 @@ import { COMMODITIES, COMMODITY_FLAVOR } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
+import { WEAPONS } from '../data/weapons.js';
+import { BODY_MODULES } from '../data/claimableBodies.js';
 import { aceById } from '../data/namedAces.js';
 import { stuntDossierForNetwork } from '../combat/stuntWitnesses.js';
 
@@ -35,7 +37,7 @@ const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
-const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
+const MODULE_BY_ID = new Map(MODULES.concat(WEAPONS, BODY_MODULES).map((m) => [m.id, m]));
 const STATION_BY_ID = new Map();
 const SECTOR_OF_STATION = new Map();
 for (const sec of SECTORS) {
@@ -324,11 +326,11 @@ function hullDossier(state, id) {
 function moduleDossier(state, id) {
   const m = MODULE_BY_ID.get(id);
   if (!m) return null;
-  const facts = [
-    { k: 'Slot', v: `${String(m.slotType || '').replace(/_/g, ' ')} · ${m.size || ''}`.trim(), tone: 'calm' },
-    { k: 'Mass', v: String(m.mass), tone: 'calm', num: true },
-    { k: 'Price', v: creditText(m.price), tone: 'goal', num: true },
-  ];
+  const facts = [];
+  if (m.slotType || m.size) facts.push({ k: 'Slot', v: `${String(m.slotType || '').replace(/_/g, ' ')} · ${m.size || ''}`.trim(), tone: 'calm' });
+  if (m.mass != null) facts.push({ k: 'Mass', v: String(m.mass), tone: 'calm', num: true });
+  if (m.price != null || m.cost != null) facts.push({ k: 'Price', v: creditText(m.price ?? m.cost), tone: 'goal', num: true });
+  if (m.slots != null) facts.push({ k: 'Site slots', v: String(m.slots), tone: 'calm', num: true });
   // Every module advertises a power DRAW against a capacity the UI has never shown (§11.11 #2).
   // Naming it here is the cheapest place that gap becomes visible before J2 lands.
   if (m.energyDraw != null) facts.push({ k: 'Power draw', v: String(m.energyDraw), tone: m.energyDraw > 0 ? 'foe' : 'calm', num: true });
@@ -337,7 +339,10 @@ function moduleDossier(state, id) {
   if (mods && mods.length) {
     lines.push({ label: 'Changes', text: mods.map((k) => `${k.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()} ${m.mods[k] > 0 ? '+' : ''}${m.mods[k]}`).join(' · ') });
   }
-  return { kicker: 'Module · tier ' + String(m.tier ?? '?'), facts, lines, links: [], route: { screen: 'ship', focus: 'module:' + id } };
+  if (m.desc) lines.push({ label: 'About', text: String(m.desc) });
+  const kind = m.slotType === 'weapon' ? 'Weapon' : (m.slotType ? 'Module' : 'Installation');
+  const kicker = m.tier != null ? `${kind} · tier ${m.tier}` : kind;
+  return { kicker, facts, lines, links: [], route: { screen: 'ship', focus: 'module:' + id } };
 }
 
 function captainDossier(state, id) {
@@ -374,6 +379,15 @@ function contractDossier(state, id) {
     state && state.missions && state.missions.available,
     state && state.missions && state.missions.offered,
   ];
+  // Station mission boards hold live offers too — a board row must open the same dossier or it is
+  // a door into an empty room.
+  const boards = state && state.missions && state.missions.boards;
+  if (boards) {
+    for (const sid in boards) {
+      const slots = boards[sid] && boards[sid].slots;
+      if (Array.isArray(slots)) pools.push(slots);
+    }
+  }
   let rec = null;
   for (const pool of pools) {
     if (!pool) continue;
@@ -383,16 +397,21 @@ function contractDossier(state, id) {
   }
   if (!rec) return null;
   const facts = [];
-  if (rec.reward != null) facts.push({ k: 'Pays', v: creditText(rec.reward), tone: 'goal', num: true });
+  // Board offers pay in `reward_cr` and go to `destSectorId`; accepted missions carry
+  // `reward`/`sectorId`. Read both spellings — the dossier must not depend on which pool answered.
+  const reward = rec.reward ?? rec.rewardCr ?? rec.reward_cr;
+  if (reward != null) facts.push({ k: 'Pays', v: creditText(reward), tone: 'goal', num: true });
   const owner = factionLabel(rec.factionId);
   if (owner) facts.push({ k: 'Posted by', v: owner, tone: 'calm' });
   if (rec.status) facts.push({ k: 'Status', v: String(rec.status).replace(/_/g, ' '), tone: 'calm' });
+  else facts.push({ k: 'Status', v: 'On offer', tone: 'calm' });
   const lines = [];
-  if (rec.description || rec.summary) lines.push({ label: 'Terms', text: String(rec.description || rec.summary) });
+  if (rec.description || rec.summary || rec.brief) lines.push({ label: 'Terms', text: String(rec.description || rec.summary || rec.brief) });
   const links = [];
   if (rec.factionId && FACTION_BY_ID.has(rec.factionId)) links.push({ ref: 'faction:' + rec.factionId, label: FACTION_BY_ID.get(rec.factionId).name });
-  if (rec.sectorId && SECTOR_BY_ID.has(rec.sectorId)) links.push({ ref: 'sector:' + rec.sectorId, label: SECTOR_BY_ID.get(rec.sectorId).name });
-  return { kicker: 'Contract', facts, lines, links, route: rec.sectorId ? { screen: 'chart', focus: 'sector:' + rec.sectorId } : null };
+  const sectorId = rec.sectorId || rec.destSectorId;
+  if (sectorId && SECTOR_BY_ID.has(sectorId)) links.push({ ref: 'sector:' + sectorId, label: SECTOR_BY_ID.get(sectorId).name });
+  return { kicker: 'Contract', label: rec.title || null, facts, lines, links, route: sectorId ? { screen: 'chart', focus: 'sector:' + sectorId } : null };
 }
 
 const DOSSIERS = {
@@ -425,7 +444,7 @@ export function resolveEntity(state, ref) {
   let body = null;
   try { body = build(state, parsed.id); } catch (_) { return null; }
   if (!body) return null;
-  const label = entityLabel(ref) || (parsed.type === 'contract' ? 'Contract' : null);
+  const label = entityLabel(ref) || body.label || (parsed.type === 'contract' ? 'Contract' : null);
   if (!label) return null;
   return {
     type: parsed.type, id: parsed.id, ref, label,

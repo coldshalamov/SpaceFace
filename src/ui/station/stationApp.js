@@ -29,6 +29,7 @@ import { SECTORS } from '../../data/sectors.js';
 import { FACTION_META } from '../../data/factions.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { escapeHtml } from '../comms.js';
+import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
 import { confirm } from '../confirm.js';
 import {
   holdUnitSellPrice,
@@ -182,6 +183,7 @@ function resolveStation(ctx) {
   return {
     name: s.name || String(id),
     typeLabel: titleCaseWords(s.type || 'berth') + (s.size ? ' · Class ' + s.size : ''),
+    factionId: s.factionId || null,
     factionName: fac ? fac.name : '',
     services: Array.isArray(s.services) ? s.services.slice() : [],
   };
@@ -1001,7 +1003,28 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
     const st = resolveStation(ctx);
     setTextIfChanged(crestName, st.name || 'Station');
-    setTextIfChanged(identEl, [st.typeLabel, st.factionName].filter(Boolean).join(' · '));
+    // The berth you are docked at is itself a door: the crest name opens the station dossier.
+    const dockedRef = stationId() ? 'station:' + stationId() : null;
+    if (crestName && crestName.getAttribute('data-entity') !== dockedRef) {
+      crestName.classList.remove('sf-entity-link');
+      crestName.removeAttribute('data-entity');
+      crestName.removeAttribute('role');
+      crestName.removeAttribute('tabindex');
+      if (dockedRef) decorateEntityNode(crestName, dockedRef);
+    }
+    // The ident line carries the holding faction's name — a faction door, not just a caption.
+    const identSig = `${st.typeLabel}|${st.factionName}`;
+    if (identEl && identEl.dataset.identSig !== identSig) {
+      identEl.dataset.identSig = identSig;
+      const parts = [];
+      if (st.typeLabel) parts.push(escapeHtml(st.typeLabel));
+      if (st.factionName) {
+        parts.push(st.factionId
+          ? entitySpanHtml('faction:' + st.factionId, escapeHtml(st.factionName))
+          : escapeHtml(st.factionName));
+      }
+      identEl.innerHTML = parts.join(' · ');
+    }
     // Ticker line stays under the name. Leftover event card (badge/title/body/eventId) paints
     // beside it when this berth has a stored leftover card or a live leftover event. Leftover
     // story ledger paints on .sxb-berth__ledger through the same leftover writer.

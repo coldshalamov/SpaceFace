@@ -36,6 +36,7 @@ import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
 import { TURRET_RING_OUTPUT, WEAPONS } from '../../../data/weapons.js';
 import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
 import { describeOutfittingSpendConfirm } from '../../outfittingSpendConfirm.js';
 import { moduleRiskStrip } from '../../panels/moduleRisk.js';
@@ -1244,7 +1245,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // condition verb as a fine word after the name (it carries the why).
     nameplateEl.innerHTML =
       `<div class="sx-sw__crestLine">` +
-        `<h2 class="k-display k-t-title sx-sw__name">${escapeHtml(model.def.name)}</h2>` +
+        `<h2 class="k-display k-t-title sx-sw__name">${entitySpanHtml('hull:' + model.def.id, escapeHtml(model.def.name))}</h2>` +
         `<span class="k-t-fine k-62 sx-sw__condition${conditionClass}"${whyAttr(model.condition && model.condition.why)}>` +
           `<span class="sx-sw__conditionVerb">${escapeHtml(titleCaseWords(verb))}</span>${percent}` +
         `</span>` +
@@ -2002,7 +2003,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // The stage-right column: the hull's name, its price as the hero number, the spec as rows,
       // Buy as one primary word.
       sideEl.innerHTML =
-        `<h3 class="k-t-sub sx-sw-side__name">${escapeHtml(def.name)}</h3>` +
+        `<h3 class="k-t-sub sx-sw-side__name">${entitySpanHtml('hull:' + def.id, escapeHtml(def.name))}</h3>` +
         `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${def.price > 0 ? fmt(def.price) : 'Starter'}</span><span class="k-hero__w">${def.price > 0 ? 'credits' : 'hull'}</span></div>` +
         `<ul class="k-rows sx-spec">` +
           specRow('Class', (def.role || 'ship') + ' · T' + def.tier) +
@@ -2254,7 +2255,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             : `<button type="button" class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(d.price || 0)} cr</small></button>`;
       return (
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
             `<span class="k-row__sub sx-modrow__meta">${chips}${riskChips}</span>` +
@@ -2268,7 +2269,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
       return (
         `<li class="k-row sx-modrow is-locked" data-refused-module="${escapeHtml(d.id)}" tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d)}</span>` +
             `<span class="k-row__sub k-38 sx-modrow__role" data-refusal>${escapeHtml(sentence)}</span></span>` +

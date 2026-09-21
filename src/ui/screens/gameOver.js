@@ -10,6 +10,8 @@
 
 import { STORY_BEATS } from '../../data/missions.js';
 import { el, settle, cue } from '../kit/index.js';
+import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
+import { escapeHtml } from '../comms.js';
 import { injectDeckplate } from '../deckplate/index.js';
 
 /** The receipt's fields and their labels. The kicker, the second line, the hero words and the
@@ -412,6 +414,8 @@ export const gameOverScreen = {
       const text = key === 'insurance' ? LABEL.insurance + ': ' + values[key] : values[key];
       if (els[key] && els[key].textContent !== text) els[key].textContent = text;
     }
+    // The named recovery berth is a station door, not just a caption.
+    if (els.dock && recovery.stationId) decorateEntityNode(els.dock, 'station:' + recovery.stationId);
     // No recovery cost to report: the readout leaves the report instead of showing a lone dash.
     const costHero = els.cost && typeof els.cost.closest === 'function' ? els.cost.closest('.k-hero') : null;
     if (costHero) costHero.hidden = values.cost === '-';
@@ -444,11 +448,16 @@ export const gameOverScreen = {
         : 'Recovery receipt unavailable. Load a save or start a new run.';
     }
     if (this._recoveryEl) {
-      this._recoveryEl.textContent = recoverable
-        ? `RECOVERY BERTH · ${recovery.stationName || 'lawful dock'} · ${costText} · ${cargoText}`
-        : ironman
+      if (recoverable) {
+        const dockHtml = recovery.stationId
+          ? entitySpanHtml('station:' + recovery.stationId, escapeHtml(recovery.stationName || 'lawful dock'))
+          : escapeHtml(recovery.stationName || 'lawful dock');
+        this._recoveryEl.innerHTML = `RECOVERY BERTH · ${dockHtml} · ${escapeHtml(costText)} · ${escapeHtml(cargoText)}`;
+      } else {
+        this._recoveryEl.textContent = ironman
           ? 'This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.'
           : 'No recovery consequences were applied. Load a valid save or begin a new run.';
+      }
     }
     setWordHidden(this._retryButton, !recoverable);
     setWordHidden(this._loadButton, false);

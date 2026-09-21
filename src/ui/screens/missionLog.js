@@ -403,6 +403,7 @@ function tradeRouteAction(state) {
     tone: owned > 0 ? 'primary' : 'warn',
     label: 'TRADE ROUTE',
     title: stationName,
+    titleRef: waypoint.stationId ? 'station:' + waypoint.stationId : null,
     body,
     meta,
     mapAction,
@@ -760,22 +761,23 @@ function commandWordsHtml(action, mapMissionId) {
 
 /** Resolve named contact + location for a career chip (read-only map + mission join). */
 function careerContactLocation(chip, state) {
-  if (!chip) return { contact: null, location: null };
+  if (!chip) return { contact: null, contactRef: null, location: null, locationParts: [] };
   const map = chip.mapAction || null;
   const stationId = map && map.stationId ? map.stationId : null;
   const stn = stationId ? STATION_INFO.get(stationId) : null;
   const sectorId = (map && map.sectorId) || (stn && stn.sectorId) || null;
   const sec = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
   const locationParts = [];
-  if (stn && stn.name) locationParts.push(stn.name);
-  else if (stationId) locationParts.push(prettyId(stationId, 'Station'));
-  if (sec && sec.name) locationParts.push(sec.name);
-  else if (sectorId && !(stn && stn.sectorName)) locationParts.push(prettyId(sectorId, 'Sector'));
-  else if (stn && stn.sectorName && !(sec && sec.name)) locationParts.push(stn.sectorName);
-  const location = locationParts.length ? locationParts.join(' · ') : null;
+  if (stn && stn.name) locationParts.push({ text: stn.name, ref: 'station:' + stationId });
+  else if (stationId) locationParts.push({ text: prettyId(stationId, 'Station'), ref: 'station:' + stationId });
+  if (sec && sec.name) locationParts.push({ text: sec.name, ref: 'sector:' + sectorId });
+  else if (sectorId && !(stn && stn.sectorName)) locationParts.push({ text: prettyId(sectorId, 'Sector'), ref: 'sector:' + sectorId });
+  else if (stn && stn.sectorName && !(sec && sec.name)) locationParts.push({ text: stn.sectorName, ref: sectorId ? 'sector:' + sectorId : null });
+  const location = locationParts.length ? locationParts.map((p) => p.text).join(' · ') : null;
 
   // Contact: faction short (linked ladder mission) or professional path title — never portraits.
   let contact = chip.title || null;
+  let contactRef = null;
   const linkedId = chip.linkedMissionId || null;
   if (linkedId && state && state.missions && Array.isArray(state.missions.active)) {
     const m = state.missions.active.find((x) => x && x.id === linkedId);
@@ -783,10 +785,11 @@ function careerContactLocation(chip, state) {
       const fac = FACTION_BY_ID.get(m.factionId);
       if (fac && (fac.short || fac.name)) {
         contact = String(fac.short || fac.name);
+        contactRef = 'faction:' + m.factionId;
       }
     }
   }
-  return { contact, location };
+  return { contact, contactRef, location, locationParts };
 }
 
 /**
@@ -962,11 +965,13 @@ function careerChipHtml(chip, state) {
         + escapeHtml([placeContact ? ('Contact ' + placeContact) : '', place.location ? ('Location ' + place.location) : ''].filter(Boolean).join(', '))
         + '">'
         + (placeContact
-          ? '<span class="sf-mlog-career-contact">' + escapeHtml(placeContact) + '</span>'
+          ? '<span class="sf-mlog-career-contact">' + (place.contactRef ? entitySpanHtml(place.contactRef, escapeHtml(placeContact)) : escapeHtml(placeContact)) + '</span>'
           : '')
         + (placeContact && place.location ? '<span class="sf-mlog-career-place-sep" aria-hidden="true"> · </span>' : '')
         + (place.location
-          ? '<span class="sf-mlog-career-location">' + escapeHtml(place.location) + '</span>'
+          ? '<span class="sf-mlog-career-location">'
+            + place.locationParts.map((p) => (p.ref ? entitySpanHtml(p.ref, escapeHtml(p.text)) : escapeHtml(p.text))).join(' · ')
+            + '</span>'
           : '')
         + '</div>'
       : '')
@@ -2310,7 +2315,7 @@ export const missionLogScreen = {
     this._recommendEl.innerHTML = actions.map((a) => (
       '<div class="k-rows"><div class="k-row k-row--static sf-mlog-rec-item sf-mlog-rec-item--' + escapeHtml(a.tone || 'info') + '" data-current-action="true">' +
         '<div>' +
-          '<span class="k-row__name sf-mlog-rec-title">' + escapeHtml(a.title || 'Next action') + '</span>' +
+          '<span class="k-row__name sf-mlog-rec-title">' + (a.titleRef ? entitySpanHtml(a.titleRef, escapeHtml(a.title || 'Next action')) : escapeHtml(a.title || 'Next action')) + '</span>' +
           '<div class="k-row__sub sf-mlog-rec-body">' + escapeHtml((a.brief && a.brief.how) || a.body || '') + '</div>' +
           (a.meta ? '<div class="k-row__sub sf-mlog-rec-meta">' + escapeHtml(wordText(a.meta)) + '</div>' : '') +
           '<div class="k-row__sub sf-mlog-rec-marker">' + escapeHtml(wordText(a.mapAction

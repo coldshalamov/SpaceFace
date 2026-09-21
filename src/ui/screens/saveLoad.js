@@ -13,6 +13,7 @@ import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength } from '../../save/saveSyst
 import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
 import { confirm } from '../confirm.js';
 import { el, rows, words, hero, settle, cue } from '../kit/index.js';
+import { decorateEntityNode } from '../entityResolver.js';
 import { createStageHull, STAGE_HULL_RELEASE_MS } from './stageHull.js';
 import { injectDeckplate } from '../deckplate/index.js';
 
@@ -637,13 +638,23 @@ export function savePortraitFieldsPresent(portrait) {
   });
 }
 
+function paintEntityLine(node, ref, text) {
+  if (!node) return;
+  node.textContent = text;
+  node.classList.remove('sf-entity-link');
+  node.removeAttribute('data-entity');
+  node.removeAttribute('role');
+  node.removeAttribute('tabindex');
+  if (ref) decorateEntityNode(node, ref);
+}
+
 export function paintSavePortrait(nodes, portrait) {
   if (!nodes || !portrait) return portrait;
-  if (nodes.hull) nodes.hull.textContent = portrait.hull.line;
+  paintEntityLine(nodes.hull, portrait.hull && portrait.hull.id ? 'hull:' + portrait.hull.id : null, portrait.hull.line);
   if (nodes.scars) nodes.scars.textContent = portrait.scars.line;
   if (nodes.titles) nodes.titles.textContent = portrait.titles.line;
   if (nodes.rapSheet) nodes.rapSheet.textContent = portrait.rapSheet.line;
-  if (nodes.grudge) nodes.grudge.textContent = portrait.grudge.line;
+  paintEntityLine(nodes.grudge, portrait.grudge && portrait.grudge.aceId ? 'captain:' + portrait.grudge.aceId : null, portrait.grudge.line);
   return portrait;
 }
 
@@ -909,7 +920,8 @@ export const saveLoadScreen = {
       ? (portrait && portrait.hull && portrait.hull.fittings) || (defId === NEW_GAME.shipId ? NEW_GAME.fittedModules : null)
       : NEW_GAME.fittedModules;
 
-    refs.shipName.textContent = occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : slotLabel(id);
+    paintEntityLine(refs.shipName, occupied && defId ? 'hull:' + defId : null,
+      occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : slotLabel(id));
     if (occupied && portrait) {
       paintSavePortrait({
         scars: refs.scars, titles: refs.titles, rapSheet: refs.rapSheet, grudge: refs.grudge,

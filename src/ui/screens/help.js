@@ -19,6 +19,7 @@ import { gamepadGlyphForAction } from '../bindings.js';
 import { BINDINGS } from '../bindings.js';
 import { icon, factionIcon } from '../station/icons.js';
 import { el, words, settle, cue } from '../kit/index.js';
+import { decorateEntityNode } from '../entityResolver.js';
 import { injectDeckplate } from '../deckplate/index.js';
 
 const FH_KEY = {
@@ -497,9 +498,15 @@ function register(head, body, { sortedIndex = 0, ariaLabel = 'Register' } = {}) 
   const tbody = el('tbody');
   for (const cells of body) {
     const tr = el('tr');
-    cells.forEach(([text, extra], index) => {
+    cells.forEach(([text, extra, ref], index) => {
       const cls = [head[index].num ? 'k-num fh-data' : index === 0 ? 'k-name fh-emphasis' : 'fh-body', extra || ''].filter(Boolean).join(' ');
       const td = el('td', cls, text);
+      if (ref) {
+        td.textContent = '';
+        const linkText = el('span', '', text);
+        decorateEntityNode(linkText, ref);
+        td.appendChild(linkText);
+      }
       pin(td, { 'border-top': '0', 'box-shadow': 'none' });
       tr.appendChild(td);
     });
@@ -693,7 +700,7 @@ export const helpScreen = {
       { label: 'Shield', num: true }, { label: 'Speed', num: true }, { label: 'Cargo', num: true }, { label: 'Price', num: true },
     ];
     const body = sorted.map((s) => [
-      [s.name],
+      [s.name, null, 'hull:' + s.id],
       [s.role.replace(/_/g, ' ')],
       ['T' + s.tier],
       [s.hull],
@@ -719,7 +726,7 @@ export const helpScreen = {
       const legalRole = legalityRole(c.legality);
       const legalCls = legalRole === 'calm' ? '' : 'is-' + legalRole + (legalRole === 'foe' ? ' k-bad' : '');
       return [
-        [c.name],
+        [c.name, null, 'commodity:' + c.id],
         [c.category],
         [c.basePrice + ' cr'],
         [c.volPerU != null ? c.volPerU.toFixed(1) : '-'],
@@ -747,7 +754,7 @@ export const helpScreen = {
       { label: 'Mass', num: true }, { label: 'Volume', num: true }, { label: 'Tags' },
     ];
     const oreBody = rawOres.map((o) => [
-      [o.name],
+      [o.name, null, 'commodity:' + o.id],
       ['T' + o.tier],
       [o.baseValue + ' cr'],
       [o.mass.toFixed(1)],
@@ -788,7 +795,9 @@ export const helpScreen = {
       crest.innerHTML = crestHtml(f.id);
       row.appendChild(crest);
       const main = el('div');
-      main.appendChild(el('span', 'k-row__name fh-emphasis', f.name + ' (' + f.short + ')'));
+      const fname = el('span', 'k-row__name fh-emphasis', f.name + ' (' + f.short + ')');
+      decorateEntityNode(fname, 'faction:' + f.id);
+      main.appendChild(fname);
       const sub = [
         f.controls && f.controls.length ? 'Controls: ' + f.controls.join(', ') : '',
         f.startingRep != null ? 'Starting rep: ' + (f.startingRep > 0 ? '+' : '') + f.startingRep : '',

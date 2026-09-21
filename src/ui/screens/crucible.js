@@ -36,6 +36,7 @@ import {
 } from '../../data/swarmMode.js';
 import { survivalArenaById } from '../../data/survivalArenas.js';
 import { SURVIVAL_RUN_WAVE_COUNT } from '../../systems/survivalRun.js';
+import { decorateEntityNode } from '../entityResolver.js';
 import {
   dailySeedForNow,
   ghostRaceOffer,
@@ -850,7 +851,15 @@ export const crucibleScreen = {
     const hullSentence = el('p', 'k-sentence sf-crd-hull-sub', '');
     function syncHull() {
       const starter = COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || COMBAT_LAB_STARTER_PACKAGES[0];
-      hullSentence.textContent = starter ? hullBlurb(starter) : '';
+      if (starter && starter.hullId) {
+        const name = starter.hullId.replace(/^ship_/, '');
+        const blurb = hullBlurb(starter);
+        hullSentence.innerHTML = blurb.startsWith(name)
+          ? `${entitySpanHtml('hull:' + starter.hullId, escapeHtml(name))}${escapeHtml(blurb.slice(name.length))}`
+          : `${entitySpanHtml('hull:' + starter.hullId, escapeHtml(name))} — ${escapeHtml(blurb)}`;
+      } else {
+        hullSentence.textContent = starter ? hullBlurb(starter) : '';
+      }
       for (const other of buttons) syncChoice(other, other.dataset.starterId === starterId);
     }
     for (const starter of COMBAT_LAB_STARTER_PACKAGES) {

@@ -28,6 +28,8 @@ import { BINDINGS } from '../bindings.js';
 import { SECTORS } from '../../data/sectors.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 import { coreText } from '../localizedCoreCopy.js';
+import { entitySpanHtml } from '../entityResolver.js';
+import { escapeHtml } from '../comms.js';
 import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
@@ -342,6 +344,9 @@ export function pauseStatusLines(state) {
   if (tracked) {
     return {
       objective: 'TRACKED · ' + missionTitle(tracked) + ' · ' + missionProgress(tracked) + deadlineText(state, tracked),
+      objectiveMention: missionId(tracked)
+        ? { ref: 'contract:' + missionId(tracked), label: missionTitle(tracked), pre: 'TRACKED · ', post: ' · ' + missionProgress(tracked) + deadlineText(state, tracked) }
+        : null,
       next: missionNextStep(tracked),
       save: saveLine(state),
     };
@@ -350,6 +355,9 @@ export function pauseStatusLines(state) {
     const candidate = active[0];
     return {
       objective: 'UNTRACKED CONTRACT · ' + missionTitle(candidate) + ' · ' + missionProgress(candidate) + deadlineText(state, candidate),
+      objectiveMention: missionId(candidate)
+        ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'UNTRACKED CONTRACT · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
+        : null,
       next: 'Next: open Mission Log (' + BINDINGS.missionLog.label + '), Track Nav on a contract, then resume with a clear marker.',
       save: saveLine(state),
     };
@@ -392,7 +400,14 @@ function renderFlightBrief(ctx) {
   const lines = pauseStatusLines(ctx && ctx.state);
   if (lines.objective !== briefLast.objective) {
     briefLast.objective = lines.objective;
-    els.briefObjective.textContent = lines.objective;
+    const mention = lines.objectiveMention;
+    if (mention && mention.ref) {
+      els.briefObjective.innerHTML = escapeHtml(mention.pre)
+        + entitySpanHtml(mention.ref, escapeHtml(mention.label))
+        + escapeHtml(mention.post);
+    } else {
+      els.briefObjective.textContent = lines.objective;
+    }
   }
   if (lines.next !== briefLast.next) {
     briefLast.next = lines.next;

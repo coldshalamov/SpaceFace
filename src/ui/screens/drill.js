@@ -8,6 +8,8 @@ import {
   avatarMoveProgress,
 } from '../../systems/drill.js';
 import { COMMODITIES } from '../../data/commodities.js';
+import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
+import { escapeHtml } from '../comms.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { formatBindingCode, resolveActionCodes } from '../../systems/input.js';
 
@@ -601,10 +603,12 @@ function renderDrillLegend(gridEl, field, drillTier = 1) {
   for (const oreId of ores) {
     const req = drillTierReqForOre(oreId);
     const locked = drillTier < req;
-    gridEl.appendChild(makeLegendItem(commodityName(oreId), oreId, {
+    const legendItem = makeLegendItem(commodityName(oreId), oreId, {
       locked,
       badge: locked ? `MK${req}` : null,
-    }));
+    });
+    decorateEntityNode(legendItem.querySelector('.drill-legend-label'), 'commodity:' + oreId);
+    gridEl.appendChild(legendItem);
   }
 
   if (ores.length === 0) {
@@ -2483,7 +2487,10 @@ export const drillScreen = {
         row.style.padding = '3px 0';
         const label = document.createElement('span');
         label.className = 'lbl';
-        label.textContent = `${name} × ${qty}`;
+        const oreName = document.createElement('span');
+        oreName.textContent = name;
+        decorateEntityNode(oreName, 'commodity:' + commodityId);
+        label.append(oreName, ` × ${qty}`);
         const value = document.createElement('span');
         value.className = 'val';
         value.textContent = `${qty * basePrice} Cr`;
@@ -2636,7 +2643,7 @@ export const drillScreen = {
             const payLine = rockEmpty
               ? '<br><strong style="color:var(--sf-goal);">ROCK PLAYED OUT — this vein pays 0 until recovery</strong>'
               : '';
-            html = `<strong>${name.toUpperCase()} VEIN</strong><br>Estimate ${basePrice} Cr/u · yield ${t.yieldU || 0}u${workLine}<br>Risk ${t.risk || 'low'} · ${tierLine}${payLine}`;
+            html = `<strong>${entitySpanHtml('commodity:' + t.ore, escapeHtml(name.toUpperCase()))} VEIN</strong><br>Estimate ${basePrice} Cr/u · yield ${t.yieldU || 0}u${workLine}<br>Risk ${t.risk || 'low'} · ${tierLine}${payLine}`;
           }
         } else {
           html = '<span style="color:var(--sf-calm);">Target</span><br>Asteroid boundary';
@@ -2857,7 +2864,10 @@ function showDrillSummaryModal(yieldLog) {
     
     const nameText = document.createElement('span');
     nameText.className = 'name';
-    nameText.textContent = `${name} (x${qty})`;
+    const oreLink = document.createElement('span');
+    oreLink.textContent = name;
+    decorateEntityNode(oreLink, 'commodity:' + commodityId);
+    nameText.append(oreLink, ` (x${qty})`);
     left.appendChild(nameText);
     
     row.appendChild(left);
@@ -2897,7 +2907,10 @@ function showDrillSummaryModal(yieldLog) {
       close();
     } else if (event.key === 'Tab') {
       event.preventDefault();
-      closeBtn.focus();
+      const focusables = Array.from(box.querySelectorAll('button, [data-entity]'));
+      const idx = focusables.indexOf(document.activeElement);
+      const next = focusables[(idx + (event.shiftKey ? -1 : 1) + focusables.length) % focusables.length];
+      (next || closeBtn).focus();
     }
   };
   closeBtn.onclick = close;
