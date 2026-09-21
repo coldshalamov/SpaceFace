@@ -1,0 +1,97 @@
+{
+  "schema": "spaceface.advancedModelTechniqueLedger.v1",
+  "assetId": "SF_HORNET_PRODUCTION_V1",
+  "shipId": "ship_hornet",
+  "candidateHash": "AF45A63027DDFA9A74D5AEB77A18B69F7682022BDD129E01725756561A55A655",
+  "exportGlb": "assets/ships/parts/wholeships/hornet_production_v1.glb",
+  "class": "player_flyable",
+  "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
+  "revision": "chase_form_v13",
+  "cycle": 1,
+  "disposition": "form_pass_unproven",
+  "clayStillReadsAsPrimitives": false,
+  "independentReview": "revise",
+  "independentReviewer": "three chase-still subagents 2026-09-21",
+  "independentReviewScope": "play_chase, play_chase_abeam, play_chase_close",
+  "independentReviewP0": 0,
+  "openGates": [
+    "PQ-050 parent unproven",
+    "five-cycle Hitch-plus loop incomplete",
+    "reviewers REVISE vs A-list / Hitch-plus"
+  ],
+  "forbidden": {
+    "factoryLoftPlusBoxes": false,
+    "sharedSheetTint": false,
+    "shadeSmoothWholeObject": false,
+    "internalVoidCalledBay": false,
+    "imagenUsedAsBake": false,
+    "modeledSeat": false
+  },
+  "notes": "PQ-050.01 chase-camera FORM increment. Principled color blocks (no 512-map density trap). Hitch/Kestrel frozen. Ledger is not a G7 close.",
+  "rows": [
+    {
+      "id": "MTX-02",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Eight chine stations: needle, canard, tall canopy, wing-root beam, waist pinch, radiator house, drive house, tapered transom."
+    },
+    {
+      "id": "MTX-03",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Skin-breaking FAST/EXACT booleans on canopy tub, dorsal radiator, wing wells, drive well + cylinder bore. Thin well walls, not a 70% liner."
+    },
+    {
+      "id": "MTX-04",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Chase-visible volumes only: canopy cavity, copper fin cassette, drive throat with vanes. No seats."
+    },
+    {
+      "id": "MTX-06",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": false,
+      "notes": "Lofted diamond wings, thick root, flap slot, canards. Reviewers still read outer panels as cards at D=144."
+    },
+    {
+      "id": "MTX-07",
+      "state": "implemented",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Framed dark canopy over a cut tub; glass recessed below coaming. Reviewers still call the coaming a picture-frame."
+    },
+    {
+      "id": "MTX-08",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Up-aft lofted bell in an open dorsal well, ceramic collar cap=False, 8 vanes. Reviewers want the fan deeper in the bore."
+    },
+    {
+      "id": "MTX-09",
+      "state": "implemented",
+      "still": "play_chase_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Dorsal cassette with 9 copper fins in a rimmed well; inboard wing wells also cut. Dorsal cassette is the chase-readable one."
+    },
+    {
+      "id": "MTX-17",
+      "state": "not_applicable",
+      "still": "play_chase.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No baked maps this pass. Packet: do not lower texture sizes to chase GPU; Principled blocks instead of a 512 density trap."
+    }
+  ]
+}

@@ -6674,8 +6674,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
-      "tris": 48306,
-      "bytes": 12589996,
+      "tris": 8090,
+      "bytes": 810592,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6712,12 +6712,12 @@
           4.55
         ],
         "dimensionsM": [
-          10.8,
-          2.403252,
+          10.88,
+          2.274,
           9.1
         ]
       },
-      "note": "Fleet remaster production Hornet. Live player interceptor. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
+      "note": "PQ-050.01 chase_form_v13. Live player interceptor form pass (chase camera). Principled color blocks, no 512-map bake. Hitch/Kestrel untouched. Not self-accepted; parent stays unproven."
     },
     {
       "id": "wholeship_inspection_cutter",
