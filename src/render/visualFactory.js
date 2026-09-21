@@ -342,8 +342,12 @@ export function mergeRigidOpaqueAcrossRoot(root) {
   return { groups: groups.size, mergedMeshes, sourceMeshes };
 }
 
-function freezeStaticPresentation(root) {
-  freezeStaticChildMatrices(optimizeStaticBatchesForRoot(root));
+function freezeStaticPresentation(root, options = {}) {
+  // merge:false keeps every child on its shared cached geometry. The per-entity merge produces a
+  // unique sf-static-merge buffer per build, which a mid-round spawn then pays as a first-draw
+  // upload inside the fight; shared children upload once at warm time and never again.
+  if (options.merge !== false) optimizeStaticBatchesForRoot(root);
+  freezeStaticChildMatrices(root);
   return root;
 }
 
@@ -2938,6 +2942,126 @@ function wreckPackagedFile(e) {
   return WRECK_PACKAGED_FILES[hashId(e && e.id) % WRECK_PACKAGED_FILES.length];
 }
 
+/**
+ * PQ-210.00 — hidden exemplar specs covering every packaged body a mid-round kill can land.
+ * wreckPackagedFile picks across WRECK_PACKAGED_FILES by hashId(id), so the exemplar ids scan
+ * the prefix until every residue class is represented; the hazardous identity resolves to index
+ * 0 of the same table, and the military class resolves to the corvette turret explicitly. These
+ * are admission subjects only — never registered as entities.
+ */
+export function wreckVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:wreck:') {
+  const prefix = String(idPrefix || 'survival-roster-prewarm:wreck:');
+  const specs = [];
+  const covered = new Set();
+  for (let i = 0; covered.size < WRECK_PACKAGED_FILES.length && i < 64; i += 1) {
+    const id = `${prefix}${i}`;
+    const variant = hashId(id) % WRECK_PACKAGED_FILES.length;
+    if (covered.has(variant)) continue;
+    covered.add(variant);
+    specs.push({
+      id,
+      type: 'wreck',
+      pos: { x: 0, y: 0, z: 0 },
+      radius: 12,
+      alive: true,
+      data: { wreckClass: 'battlefield', parentType: 'ship' },
+    });
+  }
+  specs.push({
+    id: `${prefix}military`,
+    type: 'wreck',
+    pos: { x: 0, y: 0, z: 0 },
+    radius: 14,
+    alive: true,
+    data: { wreckClass: 'military', parentType: 'military' },
+  });
+  return specs;
+}
+
+/**
+ * PQ-210.00 — one real buildAsteroid root per canonical type. Sector field records promote into
+ * entities by approach, so the first rock of a type the ruleset can spawn must not compose its
+ * leaf/detail materials inside the round. Variant detail layouts are id-seeded, but every
+ * material is shared-cache — one exemplar per type covers all variants' programs.
+ */
+export function asteroidVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:asteroid:') {
+  const prefix = String(idPrefix || 'survival-roster-prewarm:asteroid:');
+  return Object.keys(AST_TYPE).map((typeId) => ({
+    id: `${prefix}${typeId}`,
+    type: 'asteroid',
+    pos: { x: 0, y: 0, z: 0 },
+    radius: 12,
+    alive: true,
+    data: { typeId },
+  }));
+}
+
+/**
+ * The shared leaf pair (displaced geometry + surface material) for one asteroid type and
+ * displacement variant — the exact cached objects buildAsteroid hands to the live leaf mesh.
+ * The pool warm binds these so a pre-created chunk is byte-identical to what real rocks
+ * register with; tint only repaints the material color uniform, so untinted covers it.
+ */
+export function asteroidLeafResources(typeId, variantIdx) {
+  const canonical = canonicalAstTypeId(typeId);
+  const def = AST_TYPE[canonical] || AST_TYPE.ast_common_rock;
+  const variant = Math.abs(variantIdx | 0) % 5;
+  return {
+    typeId: canonical,
+    variant,
+    geometry: astDisplacedGeometry(canonical, def, variant),
+    material: astMaterial(canonical, def, null),
+  };
+}
+
+/**
+ * One leaf mesh per (canonical type, displacement variant) — 6 types × 5 variants. The exemplar
+ * builds above only touch the hashId-picked variant; a rock of another variant promoted
+ * mid-round draws a sibling geometry whose buffers would upload on first draw. Mounting every
+ * leaf pair here lets one compile+touch pass upload them all behind the shell.
+ */
+export function buildAsteroidLeafWarmGroup() {
+  const root = new THREE.Group();
+  root.name = 'SF_AsteroidLeafPrewarm';
+  for (const typeId of Object.keys(AST_TYPE)) {
+    for (let variant = 0; variant < 5; variant++) {
+      const res = asteroidLeafResources(typeId, variant);
+      const mesh = new THREE.Mesh(res.geometry, res.material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData.rosterPrewarmLeaf = `asteroid:${res.typeId}:${variant}`;
+      root.add(mesh);
+    }
+  }
+  return root;
+}
+
+/**
+ * PQ-210.00 — the fight mints entities that are not roster hulls: the jackal doctrine drops mines,
+ * deploy weapons can field vector mines, and kills drop loot pickups. One exemplar per material
+ * set covers the class — the commodity gem is a single feature-identical program family across
+ * colors, while credit chips and custody pods build different material sets and get their own.
+ * These are admission subjects only — never registered as entities.
+ */
+export function combatSpawnableExemplarSpecs(idPrefix = 'survival-roster-prewarm:spawnable:') {
+  const prefix = String(idPrefix || 'survival-roster-prewarm:spawnable:');
+  const base = () => ({
+    pos: { x: 0, y: 0, z: 0 },
+    prevPos: { x: 0, y: 0, z: 0 },
+    vel: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    alive: true,
+    flags: {},
+  });
+  return [
+    { ...base(), id: `${prefix}mine`, type: 'mine', radius: 6, data: { kind: 'mine' } },
+    { ...base(), id: `${prefix}vectormine`, type: 'vectormine', radius: 1.6, data: { kind: 'vector_mine' } },
+    { ...base(), id: `${prefix}pickup:gem`, type: 'pickup', radius: 2.2, data: { kind: 'commodity' } },
+    { ...base(), id: `${prefix}pickup:credit`, type: 'pickup', radius: 2.2, data: { kind: 'credit_chip' } },
+    { ...base(), id: `${prefix}pickup:pod`, type: 'pickup', radius: 2.2, data: { freightCustodyPod: true } },
+  ];
+}
+
 function isLod0Primitive(primitive) {
   const lod = primitive && primitive.tags && primitive.tags.lod;
   if (lod && String(lod).toLowerCase() !== 'lod0') return false;
@@ -2946,11 +3070,14 @@ function isLod0Primitive(primitive) {
   return true;
 }
 
-function instantiatePackagedPrimitives(record, parent) {
+export function instantiatePackagedPrimitives(record, parent, options = {}) {
+  // Warmth passes set includeAllLods: a dedicated lod1/lod2 file's primitives carry the
+  // non-lod0 tag themselves, and filtering them would warm an empty holder.
+  const includeAllLods = options && options.includeAllLods === true;
   const tmp = new THREE.Matrix4();
   for (const primitive of record && record.primitives || []) {
     if (!primitive || !primitive.geometry || !primitive.material) continue;
-    if (!isLod0Primitive(primitive)) continue;
+    if (!includeAllLods && !isLod0Primitive(primitive)) continue;
     const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
     mesh.name = primitive.name || 'PackagedPrimitive';
     if (primitive.matrix && primitive.matrix.isMatrix4) tmp.copy(primitive.matrix);
@@ -4229,7 +4356,7 @@ export function createVisualFactory() {
         if (!e) return null;
         switch (e.type) {
           case 'ship': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));
-          case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e)));
+          case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e), { merge: false }));
           case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
           case 'pickup': return stampBuiltVisual(buildPickup(e));
           case 'projectile': return stampBuiltVisual(buildProjectile(e));
@@ -4241,7 +4368,7 @@ export function createVisualFactory() {
           case 'bomb': return stampBuiltVisual(buildBomb(e));
           case 'massSeed': return stampBuiltVisual(buildMassSeed(e));
           case 'masslineSnareAnchor': return stampBuiltVisual(buildMasslineSnareAnchor(e));
-          case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e)), wreckPackagedFile(e), e));
+          case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e), { merge: false }), wreckPackagedFile(e), e));
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
           case 'planet': return stampBuiltVisual(freezeStaticPresentation(buildPlanetSiteVisual(e)));
           // Lane/route infrastructure: buoys are scannable props (OFFLINE reads as an unlit lens);
