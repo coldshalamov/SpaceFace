@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "asset": "ship_drifter",
+  "revision": "chase_form_v3",
+  "cycle": 3,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.8538922367426278,
+  "authoredX": 16.7,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 11.6888, 5.8431],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sha256": "543d4e08063fdfcefd824c4d92791fc0ac3ce06f42899843d7365f20ce4faad4",
+    "triangles": 16864,
+    "hullTriangles": 3578,
+    "bytes": 1536260,
+    "size": [16.7, 6.305, 3.152]
+  },
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "reviews": {
+    "play_chase": "VALID framing. Three explore reviews: REVISE. Hitch still wins panel language and hardware density at D=144. Cable tray split Fore/Aft so it does not span the well mouth. Well is a rimmed hole; greenhouse is a cage over a cut tub. Rejected UV-spray/megatex and seat asks.",
+    "play_chase_abeam": "VALID framing. D2 and 02 still read. Well mouth empty. Hitch still denser on manufactured meso.",
+    "play_chase_close": "VALID framing. Larger plates, thicker hoses, split trays, hull/armor split. Well is a hole with small crates; greenhouse glass in the tub. Hitch still wins D=144 density."
+  },
+  "result": "REVISE",
+  "hitchPlusChase": false,
+  "notes": "C3 closed the spanning-tray note and grew chase-scale plates, hardware, and hull/armor contrast. Hitch still wins overall chase density at D=144. No seats. No megatex. Hitch/Kestrel/Hornet frozen. Parent unproven / not G7."
+}
