@@ -2104,32 +2104,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.drifter-production-v1",
-    "expectedContentHash": "4f40ded5f0951e9a9948c97f0a1e7d21fcd10e3e28490db20a1ec8ee39502d12",
+    "expectedContentHash": "8057a8f1e8b8cc516e2922de9aeaedb049577a2f639d3968b4ef217f76606f41",
     "key": "drifter-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1/render-package.json",
     "runtimeAssetId": "SF_DRIFTER_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "f7f2e01d79db2fb27f8d21aad065bda977649624ab875ce9bda6d756f23b2d96",
+    "sourceSha256": "65d26725ad675d419eebe758c5739fc7b4b4e291fa811c46aa2c331302a5b50f",
     "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1.glb"
   },
   {
     "assetId": "sf.render.drifter-production-v1-lod1",
-    "expectedContentHash": "98779116e0b8dadc3f837988cf12a2e9fab10bb7100f34d1d279b54e1901ea0a",
+    "expectedContentHash": "03a32ae913a580fa0e7762e6be60d6b90c7d164a165250acb725616269a79f2d",
     "key": "drifter-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_DRIFTER_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "c39326eb7824453cf9376ce9913d68f08769e83004e70723adfc382b770f038e",
+    "sourceSha256": "61a68e0d25f51aa7b693fa2419f118a3554046ab9e8cb5717b6402522d16340e",
     "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.drifter-production-v1-lod2",
-    "expectedContentHash": "ffa8a139e4a52f1c79e228e3c378628c83c01ed43e3d604dc003e0bd12a1a979",
+    "expectedContentHash": "e530135c4e5e7bd0d6b0e727339bc0e2b73f8402ba93b2698825e2f1ef69dc90",
     "key": "drifter-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_DRIFTER_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "66ca136fbdb4eb32ed738ca8ffa7d527e099f0cb3470e01626c6101ee9681fc5",
+    "sourceSha256": "d211a5d8fc1473827c4be95ab1e518bd88897fae11677793bce10bb9bf0ebcaf",
     "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb"
   },
   {

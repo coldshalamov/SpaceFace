@@ -110,6 +110,12 @@ def main():
     clay = render_chase_still(
         camera, out / "clay_play_chase.png", distance=DISTANCE_DEFAULT, heading_deg=0.0, focus=tuple(center),
     )
+    clay_abeam = render_chase_still(
+        camera, out / "clay_play_chase_abeam.png", distance=DISTANCE_DEFAULT, heading_deg=90.0, focus=tuple(center),
+    )
+    clay_close = render_chase_still(
+        camera, out / "clay_play_chase_close.png", distance=DISTANCE_CLOSE, heading_deg=0.0, focus=tuple(center),
+    )
     restore_mats(meshes, backups)
     report = {
         "ok": True,
@@ -123,6 +129,8 @@ def main():
         "size": [round(float(v), 4) for v in size],
         "stills": {name: str(path) for name, path in written.items()},
         "clay": str(clay),
+        "clayAbeam": str(clay_abeam),
+        "clayClose": str(clay_close),
     }
     (out / "chase_report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report))

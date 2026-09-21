@@ -188,6 +188,18 @@ Abeam still called a raised spine with darker flanking volumes and a hard root c
 Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is not closed. Parent
 unproven / not G7.
 
+## C15 chase-form (2026-09-21)
+
+`chase_form_v15` keeps the C14 one-beam identity and wells-as-cuts. The YZ ring
+drops the 1 m vertical slab at `y=beam` (C14 abeam leftover) for a sloped chine.
+MidSeam and GunwaleSeam removed so they cannot split spine from flank. Principled
+islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+Three chase reviews REVISE. Play+close stay `TUBE_PADDLE NO`; wells stay holes.
+**Abeam TUBE_PADDLE is not gone** — reviewer still called a raised spine with
+darker flanking volumes and a hard root crease. Hitch still wins formed-shell /
+skin at D=144. Hitch-plus chase is not closed. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
