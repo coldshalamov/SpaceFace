@@ -216,8 +216,18 @@ function coneReadoutHtml({ regime, quoteAge }) {
   return `<p class="k-sentence sx-mkt-cone-read">${bits.join(' · ')}</p>`;
 }
 
-function saleLineHtml({ sell, saleQty }) {
+function saleLineHtml({ sell, saleQty, saleQuote }) {
   const qty = Math.max(1, Math.floor(Number(saleQty) || 1));
+  // INF-083: a contemplated batch is quoted through the economy owner for the FULL
+  // quantity — stock-sensitive average over the whole move, never unit×qty. The legacy
+  // unit×qty read stays as the fail-soft fallback (exact for a single unit).
+  if (saleQuote && saleQuote.ok && Number.isFinite(Number(saleQuote.total))) {
+    const q = Math.max(1, Math.floor(Number(saleQuote.qty) || qty));
+    const avg = Math.round(Number(saleQuote.unitAvg));
+    const credits = Math.round(Number(saleQuote.total));
+    const partial = saleQuote.partial ? ` · fills ${fmt(q)} u` : '';
+    return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${q}" data-sale-credits="${credits}">Contemplated sale · ${fmt(q)} × ${fmt(avg)} cr = ${fmt(credits)} cr${partial}</p>`;
+  }
   const unit = Number(sell);
   if (!Number.isFinite(unit)) return '';
   const credits = Math.round(unit * qty);
@@ -229,7 +239,7 @@ function chartKeyHtml(hasForecast) {
   return `<p class="k-t-fine sx-mkt-chart-key"><span data-history-key>Last ten minutes</span><span data-forecast-key>Forecast</span></p>`;
 }
 
-export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', hist = [], forecast = [], now, regime = '', quoteAge = '', saleQty = 1, trackedGuidance = null, producedBy, consumedBy, stationType }) {
+export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', hist = [], forecast = [], now, regime = '', quoteAge = '', saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType }) {
   const legalText = ({ legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' })[legal] || String(legal);
   const chainHtml = supplyChainHtml(presentSupplyChain({ producedBy, consumedBy, stationType }));
   const forecastPts = forecastSamples(forecast);
@@ -243,7 +253,7 @@ export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml
     ${coneReadoutHtml({ regime, quoteAge })}
     ${buildChart(hist, avg, `sxmkt-${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, name, { forecast: forecastPts, now })}
     ${chartKeyHtml(forecastPts.length > 0)}
-    ${saleLineHtml({ sell, saleQty })}
+    ${saleLineHtml({ sell, saleQty, saleQuote })}
     <ul class="k-rows sx-mkt-stats">${statRow('Buy', fmt(buy) + ' cr', 'you pay')}${statRow('Sell', fmt(sell) + ' cr', 'station pays')}${statRow('Galactic average', fmt(avg) + ' cr')}${statRow('Demand', demandWord)}</ul>`;
 }
 export function marketReceiptRow(k, v, tone) {

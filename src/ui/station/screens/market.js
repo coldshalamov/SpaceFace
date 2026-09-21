@@ -428,6 +428,18 @@ export function createMarketScreen(ctx) {
     try { return economy.quote(sid, row.id, mode, quantity); } catch (_) { return null; }
   }
 
+  // INF-083: the contemplated-sale line quotes the FULL batch through the economy
+  // owner (stock-sensitive average, partial-aware), never unit×qty. Quoting writes
+  // nothing — stock moves only in execute() on confirm.
+  function contemplatedSaleQuote(sid, cmdtyId, quantity) {
+    const economy = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
+    if (!economy || typeof economy.quote !== 'function' || !stationId) return null;
+    try {
+      const q = economy.quote(stationId, cmdtyId, 'sell', Math.max(1, Math.floor(Number(quantity) || 1)));
+      return q && q.ok ? q : null;
+    } catch (_) { return null; }
+  }
+
   function tradeQuantityLimit(state, row) {
     if (mode === 'sell') return heldQty(state, row.id);
     const free = holdFree(state);
@@ -621,7 +633,8 @@ export function createMarketScreen(ctx) {
       demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, hist, trackedGuidance,
       producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
-      quoteAge: quoteAgeWord(state, sid, r.id), saleQty: qty });
+      quoteAge: quoteAgeWord(state, sid, r.id), saleQty: qty,
+      saleQuote: contemplatedSaleQuote(sid, r.id, qty) });
     dressStage();
     renderLaunderLedger(state);
   }
