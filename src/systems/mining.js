@@ -929,6 +929,9 @@ export const mining = {
       if (!e.alive || (e.type !== 'pickup' && e.type !== 'payload')) continue;
       const pickupData = e.data || {};
       if (pickupData.anchored) continue;
+      // A facility-owned heist capsule is custody freight, not scrap: the magnet's velocity write
+      // corrupts the fork's fresh-custody sample, and a collection would consume a mission load.
+      if (pickupData.heistFacilityRole === 'cargo_capsule') continue;
       if (state.player && state.player.tether && state.player.tether.targetId === e.id) continue;
       const embargoUntil = Number(pickupData.pickupEmbargoUntil);
       if (Number.isFinite(embargoUntil) && state.simTime < embargoUntil) {
