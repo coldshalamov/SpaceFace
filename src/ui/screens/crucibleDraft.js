@@ -53,6 +53,44 @@ function canAnimate() {
     && typeof document.createElement === 'function' && typeof HTMLElement === 'function';
 }
 
+/**
+ * INF-060 focus discipline for rebuilds. Both surfaces rebuild their cards/rows on every refresh,
+ * which used to destroy the focused element: a pad player moving through offers lost their place
+ * on every purchase, and the refit dropped focus entirely (the fresh rows contain nothing
+ * focused). The rebuild helpers capture where focus was, and restore it afterwards — the same
+ * card (by offer id) on the draft, the same control (by row and kind) on the refit — falling back
+ * to the surface's own re-claim. Also scrolls the focused control into view: the refit stage is a
+ * scroll column and a pad move to a hardpoint below the fold must bring the row with it.
+ */
+function focusedControlId(rootEl) {
+  const active = typeof document !== 'undefined' ? document.activeElement : null;
+  if (!active || !rootEl || typeof rootEl.contains !== 'function' || !rootEl.contains(active)) return null;
+  if (active.dataset && active.dataset.offerId) return { card: active.dataset.offerId };
+  const rowEl = active.closest ? active.closest('.sf-cru-row') : null;
+  if (!rowEl) return null;
+  const rows = rowEl.parentNode ? [...rowEl.parentNode.children] : [];
+  return { rowIndex: rows.indexOf(rowEl), kind: active.tagName === 'SELECT' ? 'pick' : 'action' };
+}
+
+function restoreFocusedControl(rootEl, saved) {
+  if (!saved) return null;
+  if (typeof document === 'undefined') return null;
+  let target = null;
+  if (saved.card) target = rootEl.querySelector(`[data-offer-id="${saved.card}"]`);
+  if (saved.rowIndex != null) {
+    const row = rootEl.querySelectorAll('.sf-cru-row')[saved.rowIndex];
+    if (row) target = saved.kind === 'pick' ? row.querySelector('select') : row.querySelector('button');
+  }
+  if (target && typeof target.focus === 'function') {
+    try {
+      target.focus();
+      if (typeof target.scrollIntoView === 'function') target.scrollIntoView({ block: 'nearest' });
+      return target;
+    } catch { /* focus is best-effort */ }
+  }
+  return null;
+}
+
 function draftOwner(ctx) {
   const registry = ctx && ctx.registry;
   if (!registry || typeof registry.get !== 'function') return null;
@@ -113,6 +151,19 @@ export function rerollControlLines(state, notice = null) {
     disabled: !s.available,
     notice: notice || s.note || '',
   };
+}
+
+/**
+ * INF-060: the remembered spare choice for a hardpoint, honored only while it still fits. The
+ * refit keeps the player's per-hardpoint pick across refreshes; a choice whose instance was
+ * consumed (fitted elsewhere) or that no longer fits is pruned rather than silently re-applied.
+ * Pure so a check can pin the guard without a DOM.
+ */
+export function rememberedSpareChoice(options, remembered) {
+  if (remembered == null) return null;
+  const match = (Array.isArray(options) ? options : [])
+    .find((o) => String(o.instanceId) === String(remembered));
+  return match ? String(match.instanceId) : null;
 }
 
 /** One refit row, in words. `options` is every spare that legally fits this hardpoint. */
@@ -321,6 +372,9 @@ export const crucibleDraftScreen = {
         : `Wave ${wave} cleared. Choose a new weapon.`)
       : `Wave ${wave} cleared. Nothing new fits this hull.`;
 
+    // INF-060: a purchase rebuilds the cards; the player stays on the same offer instead of
+    // being thrown back to the first card (or into detached-focus limbo).
+    const savedFocus = focusedControlId(rootEl);
     cards.innerHTML = '';
     const categoryFor = offer => offer.defId.startsWith('wpn_') ? 'Weapons'
       : /engine|shield|thermal|afterburner|chaff/.test(offer.defId) ? 'Survival' : 'Rigs';
@@ -352,13 +406,16 @@ export const crucibleDraftScreen = {
       : '';
     this._hint.textContent = keys && this._wallet.textContent ? ` · ${keys}` : keys;
 
-    // Only claim focus when it is not already inside this surface. A refused re-roll must not
-    // yank the player off the control they just used.
-    const active = typeof document !== 'undefined' ? document.activeElement : null;
-    if (!active || !rootEl.contains || !rootEl.contains(active)) {
-      const target = cards.querySelector('button:not(:disabled)') || this._skip;
-      if (target && typeof target.focus === 'function') {
-        try { target.focus(); } catch { /* focus is best-effort */ }
+    // Only claim focus when it is not already inside this surface, and when the rebuild did not
+    // just restore the player's place. A refused re-roll must not yank the player off the
+    // control they just used.
+    if (!restoreFocusedControl(rootEl, savedFocus)) {
+      const active = typeof document !== 'undefined' ? document.activeElement : null;
+      if (!active || !rootEl.contains || !rootEl.contains(active)) {
+        const target = cards.querySelector('button:not(:disabled)') || this._skip;
+        if (target && typeof target.focus === 'function') {
+          try { target.focus(); } catch { /* focus is best-effort */ }
+        }
       }
     }
   },
@@ -403,6 +460,7 @@ export const crucibleRefitScreen = {
 
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
+    this._spareChoice = new Map(); // INF-060: chosen spare per hardpoint, kept across refreshes.
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-refit');
     rootEl.dataset.kReady = '0';
     rootEl.dataset.stamp = 'CRUCIBLE / REFIT';
@@ -472,10 +530,37 @@ export const crucibleRefitScreen = {
     // Same reasoning as the draft: the run is paused here, so Escape must mean something.
     rootEl.addEventListener('keydown', (event) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      done.click();
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        done.click();
+        return;
+      }
+      // INF-060 keyboard parity with the pad's spatial nav: Up/Down walk the hardpoint rows.
+      // A focused select keeps its native arrows (they change the spare), so the walk only
+      // claims the key on buttons.
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        const active = document.activeElement;
+        if (!active || active.tagName === 'SELECT') return;
+        const walkable = [...rootEl.querySelectorAll('.sf-cru-row button, .sf-cru-row select, .k-foot .k-word')]
+          .filter((el) => !el.disabled && !el.hidden && typeof el.focus === 'function');
+        const here = walkable.indexOf(active);
+        if (here < 0 || walkable.length === 0) return;
+        event.preventDefault();
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        const next = walkable[(here + step + walkable.length) % walkable.length];
+        next.focus();
+        if (typeof next.scrollIntoView === 'function') next.scrollIntoView({ block: 'nearest' });
+      }
     });
+    // Scroll-to-focused: a pad move (the shared gamepad layer moves DOM focus) or a keyboard walk
+    // to a hardpoint below the fold must bring the row into the scroll column.
+    this._stageEl = rootEl.querySelector('.sf-cru-stage');
+    if (this._stageEl) {
+      this._stageEl.addEventListener('focusin', (event) => {
+        const t = event && event.target;
+        if (t && typeof t.scrollIntoView === 'function') t.scrollIntoView({ block: 'nearest' });
+      });
+    }
 
     this._regions = { title: h, stage, foot };
     rootEl.dataset.kReady = '1';
@@ -506,6 +591,9 @@ export const crucibleRefitScreen = {
     if (this._done) this._done.textContent = context.state.run?.phase === 'draft' ? 'Back to armory' : 'Launch next round';
     if (this._extract) this._extract.hidden = !canExtract(context.state.run);
     if (this._refitHint) this._refitHint.textContent = context.state.run?.phase === 'draft' ? 'Esc back to armory' : 'Esc launch';
+    // INF-060: a fit/strip rebuilds every row. Capture where the player was (and which spare they
+    // had chosen per hardpoint) so the rebuild neither drops focus nor resets their picks.
+    const savedFocus = focusedControlId(rootEl);
     rows.innerHTML = '';
 
     for (const row of this._rows_data(context)) {
@@ -525,6 +613,17 @@ export const crucibleRefitScreen = {
           opt.value = String(option.instanceId);
           pick.appendChild(opt);
         }
+        // INF-060: restore the player's earlier choice for this hardpoint when it still fits, and
+        // remember edits — acting on hardpoint 1 must not silently reset hardpoint 2's pick.
+        const remembered = rememberedSpareChoice(lines.options, this._spareChoice.get(row.slotIndex));
+        if (remembered != null) {
+          pick.value = remembered;
+        } else {
+          this._spareChoice.delete(row.slotIndex);
+        }
+        pick.addEventListener('change', () => {
+          this._spareChoice.set(row.slotIndex, pick.value);
+        });
         const sub = el('div', 'k-row__sub');
         sub.appendChild(pick);
         left.appendChild(sub);
@@ -557,6 +656,11 @@ export const crucibleRefitScreen = {
       item.appendChild(action);
       rows.appendChild(item);
     }
+
+    // INF-060: put the player back where the rebuild found them (same row, same control kind).
+    // If their row vanished entirely — a strip removed the spare picker — the rebuild leaves
+    // focus alone rather than yanking them to the footer.
+    restoreFocusedControl(rootEl, savedFocus);
 
     const owner = draftOwner(context);
     const notice = owner && typeof owner.lastNotice === 'function' ? owner.lastNotice() : null;
