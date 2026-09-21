@@ -1,4 +1,4 @@
-import { contractDossierView, termRow, commitWordHtml } from '../../views/contractPresentation.js';
+import { briefingDiagramHtml, contractDossierView, termRow, commitWordHtml } from '../../views/contractPresentation.js';
 import { contractsFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/contracts.js — station Missions board (internal id remains contracts).
 // A kit panel (Frontend Task C §1.5): the posted jobs and the player's own missions as rows down
@@ -21,6 +21,7 @@ import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
 import {
+  missionBriefingDiagram,
   missionCargoFootprint,
   missionConsequenceSummary,
   missionPreflight,
@@ -352,6 +353,9 @@ export function missionDossierHtml(m, state, options = {}) {
     ? `Accept ${title} and bind its route. ${readiness.detail}.`
     : `Cannot accept ${title}. ${readiness.detail}.`;
 
+  // INF-065: one mission (escort) briefed as a physical situation from its live target,
+  // route, and known hazards, paired with a concrete approach — not another flavor paragraph.
+  const briefing = missionBriefingDiagram(m, state, origin);
   return contractDossierView({
     typeName: typeLabel(m.type),
     titleHtml: entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title)),
@@ -359,6 +363,7 @@ export function missionDossierHtml(m, state, options = {}) {
     reward: reward(m).toLocaleString('en-US'),
     summary: authoredSummary,
     routeHtml: `${originEntityHtml(state, origin)} → ${destEntityHtml(m)} · ${escapeHtml(routeText)}`,
+    briefingHtml: briefingDiagramHtml(briefing),
     riskHtml: riskSentence(m, consequences, facShort),
     termsHtml: (cargoName ? termRow('Payload', cargoEntityHtml(cargo, cargoName), cargo.qty ? `${num(cargo.qty)} u` : '') : '')
       + termRow('Time', escapeHtml(m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible')))
