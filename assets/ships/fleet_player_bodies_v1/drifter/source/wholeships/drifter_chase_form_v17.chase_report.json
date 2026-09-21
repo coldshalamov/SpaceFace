@@ -1,0 +1,69 @@
+{
+  "ok": true,
+  "asset": "ship_drifter",
+  "revision": "chase_form_v17",
+  "cycle": 17,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.846153900747011,
+  "authoredX": 16.77,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 12.1477, 4.7455],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sha256": "0cc9f942670172e2ce74d99cfb3f3d61283f970b80694185c99530d8e6d4bff5",
+    "triangles": 20280,
+    "hullTriangles": 14856,
+    "bytes": 2786516,
+    "size": [16.77, 6.58, 2.57]
+  },
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "hitchStills": "/tmp/hitch-c10",
+  "playChase": {
+    "shipW": 13.2,
+    "occupancy": 0.77,
+    "lightGe028": 4.8,
+    "mid": 88.9,
+    "dark": 6.3,
+    "brown": 0.0
+  },
+  "hitchPlayChase": {
+    "shipW": 10.1,
+    "occupancy": 0.52,
+    "lightGe028": 8.3,
+    "mid": 86.6,
+    "dark": 5.2,
+    "brown": 0.3
+  },
+  "gapsTargeted": {
+    "clayAbeamSpineFlank": "apply_clay all material slots; paint_shell Hull on outer diamond (no Deck-on-crown); dorsal seams inboard"
+  },
+  "tubePaddleReadGoneOnPlayChase": true,
+  "tubePaddleReadGoneOnClose": true,
+  "tubePaddleReadGoneOnAbeam": true,
+  "tubePaddleReadGoneOnAbeamClay": true,
+  "tubePaddleReadGoneOnAbeamShaded": true,
+  "diagnosis": "C16 clay leftover was multiple hull mats + slot-0-only clay override, not a new YZ crease.",
+  "reviews": {
+    "play_chase": {
+      "id": "bc-ec07df2a-a635-58cb-aae9-b59eb0fe8664",
+      "verdict": "REVISE",
+      "note": "VALID framing. TUBE_PADDLE NO. WELLS HOLES. Hitch still wins formed-shell/skin."
+    },
+    "play_chase_abeam": {
+      "id": "bc-9e6caf1d-524f-532e-9357-1ef7546489e9",
+      "verdict": "REVISE",
+      "note": "VALID framing. Clay+shaded TUBE_PADDLE NO (C16 dark-spine value split gone). Wells as holes. Hitch still wins skin."
+    },
+    "play_chase_close": {
+      "id": "bc-b519a806-77f0-5dca-b569-cea761736f77",
+      "verdict": "REVISE",
+      "note": "VALID framing. One workboat; well is a hole. TUBE_PADDLE NO. Hitch still wins skin."
+    }
+  },
+  "result": "REVISE",
+  "hitchPlusChase": false,
+  "notes": "C17 clay all-slot override + one Hull value on the outer diamond. Play+close+abeam TUBE_PADDLE NO (clay and shaded). Hitch still wins D=144. No seats. No megatex. Hitch/Kestrel/Hornet frozen. Parent unproven / not G7."
+}
