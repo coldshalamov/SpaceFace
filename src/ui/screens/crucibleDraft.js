@@ -194,6 +194,27 @@ export function refitRowLines(row) {
   };
 }
 
+/**
+ * The extraction settlement preview (INF-033). DOM-free so a check can assert the wording
+ * without a screen: what leaving secures, what flying on risks, and which amounts are
+ * run-only. Every figure is read straight from the live run — the same figures the results
+ * plate settles (`resultRows` in crucible.js records run.score / run.credits / run.wave) —
+ * so the confirmed outcome matches the preview exactly. Run credits never become campaign
+ * credits anywhere in the sim, hence the run-only line; and the shop spends the run wallet,
+ * hence the risk line. Null when there is no survival run to settle.
+ */
+export function extractionPreviewLines(run) {
+  if (!run || typeof run !== 'object' || run.kind !== 'survival') return null;
+  const score = Number.isInteger(run.score) && run.score > 0 ? run.score : 0;
+  const salvage = Number.isInteger(run.credits) && run.credits > 0 ? run.credits : 0;
+  const wave = Number.isInteger(run.wave) && run.wave > 0 ? run.wave : 0;
+  return {
+    secured: `Keeps score ${score}, salvage ${salvage} cr and wave ${wave} — recorded as the run's final result.`,
+    risk: `Fly on to wave ${wave + 1}: the shop spends salvage, and death ends the run where it falls.`,
+    amounts: 'Salvage and score are run-only — never campaign credits.',
+  };
+}
+
 export const crucibleDraftScreen = {
   id: 'crucibleDraft',
   // Locked: the run is paused on this choice, and Escape must not leave the phase machine
@@ -515,11 +536,17 @@ export const crucibleRefitScreen = {
     {
       const out = addWord(words, word('Extract — end the run here', 'k-word--emph'));
       this._extract = out;
-      out.hidden = !canExtract(ctx?.state?.run);
-      out.title = 'Bank this run and stop, instead of flying on until something kills you.';
       out.addEventListener('click', () => {
         requestSurvivalExtraction(ctx.bus);
       });
+      // INF-033: the settlement preview — what leaving secures, what flying on risks, and
+      // which amounts are run-only. Refreshed with the button; the figures are live at
+      // refresh time, so a kill between the preview and the press still settles exactly.
+      const preview = el('p', 'k-t-fine k-38 sf-cru-fine sf-cru-extract', '');
+      preview.setAttribute('role', 'status');
+      foot.appendChild(preview);
+      this._extractPreview = preview;
+      this._syncExtract(ctx);
     }
     foot.appendChild(words);
     this._refitHint = el('p', 'k-t-fine k-38 sf-cru-fine sf-cru-hint',
@@ -583,13 +610,27 @@ export const crucibleRefitScreen = {
     if (canAnimate()) cue('close');
   },
 
+  _syncExtract(context) {
+    const run = context && context.state ? context.state.run : null;
+    const show = !!this._extract && canExtract(run);
+    if (this._extract) this._extract.hidden = !show;
+    if (!this._extractPreview) return;
+    this._extractPreview.hidden = !show;
+    if (!show) return;
+    const lines = extractionPreviewLines(run);
+    const text = lines ? `${lines.secured} ${lines.risk} ${lines.amounts}` : '';
+    if (this._extractPreview.textContent !== text) this._extractPreview.textContent = text;
+    // The button's description carries the same settlement, so the offer reads whole to AT.
+    if (this._extract && this._extract.title !== text) this._extract.title = text;
+  },
+
   refresh(ctx) {
     const rows = this._rows;
     const context = ctx || this._ctx;
     if (!rows || !context) return;
     this._ctx = context;
     if (this._done) this._done.textContent = context.state.run?.phase === 'draft' ? 'Back to armory' : 'Launch next round';
-    if (this._extract) this._extract.hidden = !canExtract(context.state.run);
+    this._syncExtract(context);
     if (this._refitHint) this._refitHint.textContent = context.state.run?.phase === 'draft' ? 'Esc back to armory' : 'Esc launch';
     // INF-060: a fit/strip rebuilds every row. Capture where the player was (and which spare they
     // had chosen per hardpoint) so the rebuild neither drops focus nor resets their picks.
