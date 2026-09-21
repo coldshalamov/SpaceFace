@@ -523,19 +523,34 @@ demotion error, and Chrome census churn — every capture frame ran above
 32 ms with backlog shedding (this machine runs the dense scenario at
 ~8–10 fps).
 
-The exact Electron broker command was invoked once:
+The exact Electron broker command was invoked twice:
 
 ```text
 node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-electron
 ```
 
-It minted claim `27272-c0a67162db86fe7f07e2e8ef` (candidate `7b0ba962`) and
-stopped at preflight with `PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED` at
-05:40Z — the 5 s census recorded 1.64 foreign CPU cores aggregate
-(chrome.exe pids 21348, 24592 plus 55 other processes; blender-mcp and
-msedgewebview2 resident). No Electron runtime launched, but the claim-mint
-incremented the launch counter (broker H6 reserves quota at mint), so the
-candidate's single Electron launch is spent without a runtime ever starting.
+- Invocation 1 (05:40Z, candidate `7b0ba962`): claim
+  `27272-c0a67162db86fe7f07e2e8ef` minted, then preflight stopped with
+  `PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED` — census 1.64 foreign CPU
+  cores aggregate. No runtime launched, but the claim-mint incremented the
+  launch counter (broker H6 reserves quota at mint).
+- Invocation 2 (06:06Z, candidate `6007bee5` — after the receipt commit
+  re-minted quota; the superseded-candidate env-block pointer was cleared):
+  claim `20272-4c2e274ab365daa18766a961` consumed, run
+  `performance-dirty-ranges-electron-2026-09-21T06-06-56-162Z-20252-349da123`.
+  The route **completed end-to-end** (intro → authored-flight-ready →
+  ordinary-flight-input → galaxy map → dock → station hub → WebGL →
+  performance-captured), proving the guarded overlay import and the
+  `consumePageConditionValue` settle gate on the packaged shell. It then
+  died inside the baseline attribution: the `combat_vfx_burst` scenario
+  prepare wait hit `CSP-safe page condition timed out after 120000ms`
+  (`navigated` 06:08:42 → restore at 06:10:42 with no `prepared` line).
+  Route state at failure: `authoredPresentationSafe: false` — 22 ships,
+  only 3 authored-presented, 18 `missing`, 1 `pending`; the injected
+  entities' authored admission never completed. The Browser run took ~75 s
+  for the same prepare under comparable load; on Electron it starved past
+  the 120 s condition. Zero measurement windows; all comparison metrics
+  null.
 
 ```yaml
 unit: PQ-040.native-acceptance
@@ -560,11 +575,15 @@ browserCapturedRun:
     - windows[1] pipeline warmup unsettled + pipeline-cache mismatch
     - contaminating process activity at end census
     - page errors/warnings (capitalBossOverlayMount.js 404 — module absent at this base — plus 24x GL_INVALID_VALUE dead-handle queries and GPU bricks)
-electronManifestInvocations: 1
-electronAcceptanceRuntimeLaunches: 0
-electronBrokerResult: PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED (census 1.64 cores)
+electronManifestInvocations: 2
+electronAcceptanceRuntimeLaunches: 1
+electronBrokerResult: >-
+  FAIL — full route completed (consumePageConditionValue + guarded import
+  verified on the packaged shell), then combat_vfx_burst scenario prepare
+  timed out at 120s waiting for authored presentation (3/22 authored,
+  18 missing meshes, 1 pending); zero windows, all metrics null
 electronLaunchQuotaConsumed: true   # quota reserves at claim mint, before preflight
-numericAcceptance: captured-but-demoted (browser only; electron never launched)
+numericAcceptance: captured-but-demoted (browser only; electron produced no windows)
 ```
 
 Disposition: **BLOCKED** for clean acceptance at this base — two required
@@ -573,8 +592,10 @@ fixes are `src/` changes outside this unit's write set (commit the missing
 `getProgramParameter` callers). The measured direction is consistent with
 every prior capture — owner-requested bytes drop ~93% and driver bytes ~23%
 — but the packet's ≥25% driver-reduction bar was missed on this run and all
-capture windows were demoted. Electron produced no numbers: its single
-launch was consumed by a preflight environment block.
+capture windows were demoted. Electron's one real launch completed the
+route but starved at authored-ship admission inside the scenario prepare
+load likely, a possible shell-specific admission stall not ruled out; no
+Electron dirty-vs-full numbers exist for this candidate.
 
 ## Implemented architecture
 
