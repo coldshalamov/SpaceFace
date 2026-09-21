@@ -400,6 +400,66 @@ function missionMutationFor(reason) {
   }
   return null;
 }
+
+/**
+ * INF-066: stamp where a lost escortee died. The destroy payload carries the last position but
+ * the entity row is already deleted (coreSystem), so the sector + pos must be captured here —
+ * this is what routes the salvage successor to the true wreck instead of the old destination.
+ * Returns null when nothing usable survives (callers keep the legacy fallbacks).
+ */
+export function escortLossSite(pos, sectorId) {
+  if (!pos || typeof pos !== 'object') return null;
+  const x = Number(pos.x);
+  const z = Number(pos.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z) || sectorId == null) return null;
+  return { sectorId: String(sectorId), wreckPos: { x, z } };
+}
+
+/**
+ * INF-066: resolve a salvage successor's recovery site. Reads the stamped loss site first
+ * (escort failure), then the successor's own carried params, then the legacy fallback chain —
+ * one helper for both the offer builder (failing mission) and the waypoint/salvage hooks
+ * (successor mission) so the two can never disagree about where the wreck is.
+ */
+export function mutationWreckRouting(m, currentSectorId) {
+  const p = (m && m.params) || {};
+  const stampedPos = m && m._escorteeWreckPos;
+  const paramPos = p.lostWreckPos;
+  const rawPos = (stampedPos && Number.isFinite(stampedPos.x) && Number.isFinite(stampedPos.z))
+    ? stampedPos
+    : (paramPos && Number.isFinite(paramPos.x) && Number.isFinite(paramPos.z) ? paramPos : null);
+  const sectorId = (m && m._escorteeSectorId) || p.lostSectorId
+    || (m && m.destSectorId) || currentSectorId || null;
+  return {
+    sectorId: sectorId == null ? null : String(sectorId),
+    wreckPos: rawPos ? { x: rawPos.x, z: rawPos.z } : null,
+  };
+}
+
+/** INF-066: salvage-family mutation tags — the only missions with a recovery leg. */
+export function isMutationRecovery(m) {
+  const tag = m && m.mutationTag;
+  return tag === 'salvage' || tag === 'recovery' || tag === 'cooked';
+}
+
+/**
+ * INF-066: partial-recovery settlement math. A successor that docks short of its full qty
+ * settles once for what is actually aboard: proportional pay on the successor's own (already
+ * halved) stake. Returns null when nothing is aboard — the caller keeps the legacy
+ * "not carrying" path. Pure; the caller consumes via the cargo single-writer.
+ */
+export function mutationPartialSettlement(have, need, rewardCr) {
+  const needQty = Math.max(1, Math.floor(Number(need) || 1));
+  const haveQty = Math.max(0, Math.floor(Number(have) || 0));
+  const deliverQty = Math.min(haveQty, needQty);
+  if (deliverQty <= 0) return null;
+  const partial = deliverQty < needQty;
+  return {
+    deliverQty,
+    partial,
+    payCr: Math.max(0, Math.round((Number(rewardCr) || 0) * deliverQty / needQty)),
+  };
+}
 const LONG_READ_RUMOR_EVENT = Object.freeze({
   news: 'news:headline',
   comms_intercept: 'comms:popup',
@@ -3094,6 +3154,26 @@ export const missions = {
       return base;
     }
 
+    // INF-066: a salvage successor's recovery leg marks the wreck it was mutated for. While the
+    // hold is short of the full qty the marker sits on the loss site with both legs in words;
+    // once recovery is complete it falls through to the generic delivery marker below.
+    if (m.type === 'salvage_retrieval' && isMutationRecovery(m)) {
+      const sectorNow = this.state.world && this.state.world.currentSectorId;
+      const routing = mutationWreckRouting(m, sectorNow);
+      const target = Math.max(1, m.objectiveTarget || (m.params && m.params.qty) || 1);
+      const short = (m.objectiveProgress || 0) < target;
+      if (short && routing.wreckPos && routing.sectorId && routing.sectorId === sectorNow) {
+        const home = (station && station.name) || 'home';
+        return {
+          ...base,
+          stationId: null,
+          sectorId: routing.sectorId,
+          pos: { x: routing.wreckPos.x, z: routing.wreckPos.z },
+          reason: `Recover the convoy wreck, then deliver to ${home}`,
+        };
+      }
+    }
+
     if (m.type === 'mining_quota') {
       const asteroid = this._nearestAsteroid();
       if (asteroid) {
@@ -3476,6 +3556,34 @@ export const missions = {
       this._completeMission(m, i);
       return true;
     }
+    // INF-066: mutation-successor recovery legs credit real salvage work. Loot the player's own
+    // beam pulled from a wreck in the loss sector counts toward the contract commodity — the
+    // goods are fungible scrap, so sector + commodity is the honest bound, and the dock
+    // settlement below still requires the goods to be aboard before anything pays.
+    if (p.loot && typeof p.loot === 'object') {
+      const sectorNow = this.state.world && this.state.world.currentSectorId;
+      for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+        const m = this.state.missions.active[i];
+        if (!m || m.status !== 'active' || m.type !== 'salvage_retrieval') continue;
+        if (!isMutationRecovery(m)) continue;
+        const routing = mutationWreckRouting(m, sectorNow);
+        if (!routing.sectorId || routing.sectorId !== sectorNow) continue;
+        const cmdtyId = m.params && m.params.cmdtyId;
+        const got = cmdtyId ? Math.max(0, Math.floor(Number(p.loot[cmdtyId]) || 0)) : 0;
+        if (got <= 0) continue;
+        const target = Math.max(1, m.objectiveTarget || (m.params && m.params.qty) || 1);
+        const before = m.objectiveProgress || 0;
+        m.objectiveProgress = Math.min(target, before + got);
+        if (m.objectiveProgress !== before) {
+          this._refreshTrackedMissionNav(m);
+          this.bus.emit('mission:updated', {
+            missionId: m.id,
+            objectiveProgress: m.objectiveProgress,
+            salvageRecovered: true,
+          });
+        }
+      }
+    }
     return false;
   },
 
@@ -3515,11 +3623,18 @@ export const missions = {
     // else happened this tick — not an immediate failure. It is stamped from the live tick because
     // this listener runs synchronously with the destruction that caused it.
     this._heistEach((h) => heistMissionRuntime.onEntityDestroyed(this._heistCtx(), h, p.id));
-    // Escort fail: the escortee entity died.
+    // Escort fail: the escortee entity died. Stamp the loss site first (INF-066) — the
+    // destroy payload's last pos is the only pointer to the hull, and the entity row is
+    // already deleted, so the salvage successor routes to the true wreck from this stamp.
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'escort') continue;
       if (m._escorteeId != null && m._escorteeId === p.id) {
+        const site = escortLossSite(p.pos, this.state.world && this.state.world.currentSectorId);
+        if (site) {
+          m._escorteeSectorId = site.sectorId;
+          m._escorteeWreckPos = site.wreckPos;
+        }
         this._failMission(m, i, 'escortee_lost');
       }
     }
@@ -5162,6 +5277,34 @@ export const missions = {
       // Cargo/passenger/salvage/smuggling: require the actual cargo to be aboard, then consume it.
       if (t === 'cargo_delivery' || t === 'passenger_transport'
           || t === 'salvage_retrieval' || t === 'smuggling_run') {
+        // INF-066: a salvage successor that docks short of its full qty settles ONCE for what is
+        // actually aboard — proportional pay on its own (halved) stake, goods consumed through
+        // the cargo single-writer, mission completed as a partial recovery. Ordinary salvage
+        // and every other type keep the legacy all-or-nothing path below.
+        if (t === 'salvage_retrieval' && isMutationRecovery(m) && m.params && m.params.cmdtyId) {
+          const need = Math.max(1, m.params.qty || 1);
+          const cargo = this.state.player && this.state.player.cargo;
+          const have = Number((cargo && cargo.items && cargo.items[m.params.cmdtyId]) || 0);
+          if (have > 0 && have < need) {
+            const deal = mutationPartialSettlement(have, need, m.reward_cr);
+            if (deal && deal.partial) {
+              removeCargo(this.state, m.params.cmdtyId, deal.deliverQty);
+              this.bus.emit('cargo:delivered', {
+                commodityId: m.params.cmdtyId, qty: deal.deliverQty,
+                missionId: m.id, stationId: m.destStationId,
+              });
+              m.reward_cr = deal.payCr;
+              m.params.completionMethod = 'partial_recovery';
+              this.bus.emit('toast', {
+                text: `Partial recovery: ${deal.deliverQty}/${need}u brought home — settled for ${deal.payCr.toLocaleString('en-US')} cr.`,
+                kind: 'warn',
+                ttl: 4,
+              });
+              this._completeMission(m, i);
+              continue;
+            }
+          }
+        }
         if (!this._deliverCargo(m)) {
           if (m.storyTag === CONTRACT_47A_B0_TAG) {
             m.params.sampleRecovered = false;
@@ -5611,15 +5754,17 @@ export const missions = {
     if (descriptor.tag === 'salvage' || descriptor.tag === 'recovery' || descriptor.tag === 'cooked') {
       // The wreck the convoy left is the content. Commodity/qty derive from the failing id; the
       // pointer to the lost hull and its sector read straight off the mission — nothing invented.
+      // INF-066: the loss-site stamp (escort failure) feeds the shared routing helper, so the
+      // successor's recovery leg starts where the hull actually died, not at the old destination.
       const cmdtyId = MUTATION_SALVAGE_CMDTYS[
         (hash32(String(m.id), reasonText, 'mutation-salvage-cmdty') >>> 0) % MUTATION_SALVAGE_CMDTYS.length
       ];
       const qty = 2 + ((hash32(String(m.id), reasonText, 'mutation-salvage-qty') >>> 0) % 3);
+      const routing = mutationWreckRouting(m, state.world && state.world.currentSectorId);
       return {
         ...base,
         destStationId: homeStationId,
-        destSectorId: m._escorteeSectorId || m.destSectorId
-          || (state.world && state.world.currentSectorId) || null,
+        destSectorId: routing.sectorId,
         title: descriptor.tag === 'salvage'
           ? `Salvage the convoy wreck — bring it home to ${homeName}`
           : descriptor.tag === 'cooked'
@@ -5634,6 +5779,8 @@ export const missions = {
           cmdtyId,
           qty,
           lostEntityId: m._escorteeId != null ? m._escorteeId : null,
+          lostSectorId: routing.sectorId,
+          lostWreckPos: routing.wreckPos,
           brokenClause: clauseId,
           mutationReroute: true,
         },
