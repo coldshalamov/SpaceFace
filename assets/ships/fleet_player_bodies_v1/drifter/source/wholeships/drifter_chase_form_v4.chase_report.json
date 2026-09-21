@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "asset": "ship_drifter",
+  "revision": "chase_form_v4",
+  "cycle": 4,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.8538922367426278,
+  "authoredX": 16.7,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 12.1893, 6.1211],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sha256": "38295e7bee628b3c882977603c7ef1229d426490c56e6b150496c0476ae6e81a",
+    "triangles": 21029,
+    "hullTriangles": 3635,
+    "bytes": 1836868,
+    "size": [16.7, 6.575, 3.302]
+  },
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "reviews": {
+    "play_chase": "VALID framing. Three explore reviews: REVISE. Hitch still wins panel language and hardware density at D=144. Flank D2/02 and extra plate course added. Well is a rimmed hole; greenhouse is a cage over a cut tub. Rejected UV-spray/megatex, seat asks, and 'rebuild as voxel loft'.",
+    "play_chase_abeam": "VALID framing. Hull-side D2/02 plus winglet glyphs read. Well mouth empty. Hitch still denser on manufactured meso.",
+    "play_chase_close": "VALID framing. Lower plate course, thicker hoses, split trays both sides, vent banks. Well is a hole with small crates; greenhouse glass in the tub. Hitch still wins D=144 density."
+  },
+  "result": "REVISE",
+  "hitchPlusChase": false,
+  "notes": "C4 grew chase-scale plates, abeam stencil, hardware, and dirt. Hitch still wins overall chase density at D=144. No seats. No megatex. Hitch/Kestrel/Hornet frozen. Parent unproven / not G7."
+}
