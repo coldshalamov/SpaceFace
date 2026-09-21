@@ -30,7 +30,11 @@
 // authoritative (encounterDirector owns timeout choices).
 //
 // The pure helpers (planLadder, routeDigit, deadlineText) are exported for headless tests
-// (test/prompt-deck.test.mjs); this module must stay importable without a DOM.
+// (test/prompt-deck.test.mjs); this module must stay importable without a DOM. kit/motion.js is
+// DOM-free at module scope (every document/window read is inside the exported functions), so the
+// static import keeps that contract while closing the async-import window below.
+
+import { settle, reducedMotion } from './kit/motion.js';
 
 const FULL_SLOTS = 2;          // full glass frames on the ladder before collapse to chips
 const EXPIRY_GRACE_S = 2.5;    // display-expire grace after a passed deadline (producer may still resolve)
@@ -143,14 +147,9 @@ export function createPromptDeck(ctx = {}) {
   const entries = new Map();
   let seqCounter = 0;
   let destroyed = false;
-  let settleIn = null;
   let raisedId = null;
   let raisedExplicit = false;
   let lastLiveText = '';
-
-  try {
-    import('./kit/motion.js').then((kit) => { settleIn = kit.settle; }).catch(() => { settleIn = null; });
-  } catch (_) { settleIn = null; }
 
   function fenced() {
     return !!(state && state.ui && state.ui.fulfillmentBlackoutActive === true);
@@ -494,6 +493,7 @@ export function createPromptDeck(ctx = {}) {
     if (destroyed || !spec || !spec.id) return false;
     const normalized = normalizeSpec(spec);
     let entry = entries.get(normalized.id);
+    const isNew = !entry;
     if (entry) {
       entry.spec = { ...entry.spec, ...normalized };
       renderFrame(entry);
@@ -510,8 +510,10 @@ export function createPromptDeck(ctx = {}) {
     if (fenced() || !inFlight()) { root.hidden = true; return true; }
     layout();
     if (!modalOpen()) root.hidden = false;
-    if (settleIn && !entry.frameEl.hidden) {
-      try { settleIn(entry.frameEl, { from: 'right', state: 'deck-offer' }); } catch (_) {}
+    // Entrance settles new cards only — a producer re-asserting a live offer must not replay the
+    // slide, and a card mid-exit is already gone from the entries map so it never reaches here.
+    if (isNew && !entry.frameEl.hidden) {
+      try { settle(entry.frameEl, { from: 'right', state: 'deck-offer' }); } catch (_) {}
     }
     announce(entry);
     return true;
@@ -567,8 +569,23 @@ export function createPromptDeck(ctx = {}) {
     const entry = entries.get(id);
     if (!entry) return false;
     entries.delete(id);
-    entry.frameEl && entry.frameEl.remove();
-    entry.chipEl && entry.chipEl.remove();
+    // Resolved/expired cards get a short exit slide instead of a pop-out; the frame stays mounted
+    // for the transition window so layout() is not re-run per frame. Reduced motion removes
+    // instantly — the state change is already unambiguous via the card disappearing.
+    const frame = entry.frameEl;
+    if (frame && frame.isConnected && !reducedMotion()) {
+      frame.classList.add('sf-prompt--leaving');
+      frame.style.pointerEvents = 'none';
+      const chip = entry.chipEl;
+      if (chip && chip.isConnected) chip.classList.add('sf-prompt-chip--leaving');
+      setTimeout(() => {
+        frame.remove();
+        if (chip) chip.remove();
+      }, 170);
+    } else {
+      if (frame) frame.remove();
+      entry.chipEl && entry.chipEl.remove();
+    }
     if (raisedId === id) raisedId = null;
     layout();
     return true;

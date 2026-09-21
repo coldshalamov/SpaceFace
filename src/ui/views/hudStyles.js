@@ -132,6 +132,18 @@ export function injectHudCss() {
   .sf-stat--chip { opacity:0; transform:translateY(5px); pointer-events:none;
     transition:opacity .28s var(--ease, ease), transform .28s var(--ease, ease); }
   .sf-stat--chip.sf-chip-show { opacity:1; transform:translateY(0); pointer-events:auto; }
+  /* Directional money pulse: income flares mint and settles; spend dips amber. One-shot, no
+     strobe — the count-up tween already owns the digits, this only tints the readout. */
+  .sf-stat--chip.sf-credits--gain .sf-stat__v { animation:sf-cred-gain .55s ease-out; }
+  .sf-stat--chip.sf-credits--spend .sf-stat__v { animation:sf-cred-spend .55s ease-out; }
+  @keyframes sf-cred-gain {
+    0% { color:#8dffb6; text-shadow:0 0 14px rgb(141 255 182 / .55); }
+    100% { color:var(--hud-cyan); text-shadow:none; }
+  }
+  @keyframes sf-cred-spend {
+    0% { color:var(--hud-amber); text-shadow:0 0 10px rgb(255 190 92 / .45); }
+    100% { color:var(--hud-cyan); text-shadow:none; }
+  }
   /* Hover-affordance: these are readouts; underline the key to hint at the tooltip. */
   .sf-stat--info { cursor:default; user-select:none; }
   /* Line-control key hint. Sits under the tether readout only while a line is attached, which is

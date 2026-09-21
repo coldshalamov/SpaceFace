@@ -7277,6 +7277,7 @@ export const render = {
     onBus('player:respawn', () => cam.snapToPlayer && cam.snapToPlayer());
     globalShipMicroMotion.bindEvents(bus);
     globalAsteroidMotion.bindEvents(bus);
+    globalPickupMotion.bindEvents(bus);
     // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
     // quality in the settings screen did nothing (only the initial value was used) — a "slider that
     // doesn't work" sore thumb. We forward the values to the systems that own them.
@@ -8161,6 +8162,7 @@ export const render = {
     disposeRendererOwnedResources(this, { contextLost: this._contextLost === true });
     globalShipMicroMotion.unbindEvents();
     globalAsteroidMotion.unbindEvents();
+    globalPickupMotion.unbindEvents();
     this._resizeHandler = null;
     this._videoSettingsOff = null;
     return destroyed;

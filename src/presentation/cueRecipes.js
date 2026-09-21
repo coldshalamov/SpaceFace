@@ -360,6 +360,40 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { cameraTrauma: 0.1, particles: 56, voices: 1, uiPulses: 1 },
     tags: ['critical', 'combat', 'subsystem'],
   }),
+  // Subsystem reboot completion (combat:subsystemEnabled). Deliberately lighter than the disable
+  // cue: restoration is confirmation, not alarm — no camera steal, smaller spark budget, and the
+  // accessibility caption carries the "which system came back" fact via the emitted subsystemId.
+  'subsystem.restored': recipe({
+    importance: 0.62,
+    dedupeWindowTicks: 30,
+    material: 'subsystem',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.subsystem_restored',
+      audio: 'audio.subsystem_restored',
+      ui: 'ui.subsystem_brackets',
+      accessibility: 'accessibility.subsystem_caption',
+    },
+    budgets: { particles: 24, voices: 1, uiPulses: 1 },
+    tags: ['combat', 'subsystem', 'recovery'],
+  }),
+  // Ordinance reaching its authored lifetime (weapons:mineExpired). Before this leaf the event had
+  // zero presentation consumers, so an armed mine simply vanished. A small expiry puff only —
+  // silent lane set keeps a routine timeout from ever competing with a real detonation.
+  'ordnance.expired': recipe({
+    importance: 0.34,
+    dedupeWindowTicks: 12,
+    material: 'ordnance',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.ordnance_expired',
+      audio: 'audio.none',
+      ui: 'ui.none',
+      accessibility: 'accessibility.none',
+    },
+    budgets: { cameraTrauma: 0, particles: 14, lights: 0, voices: 0, uiPulses: 0 },
+    tags: ['ordnance', 'expiry'],
+  }),
   'scenario.signal.pulse': recipe({
     importance: 0.68,
     dedupeWindowTicks: 30,

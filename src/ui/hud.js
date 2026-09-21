@@ -3567,7 +3567,17 @@ export function createHud(ctx, alerts) {
     _credT = 0;
     creditsDirty = false;
     setText(elCredits, Math.round(_credFrom).toLocaleString());
-    if (_credTo !== _credFrom) chipShow('credits');   // money moved — surface the chip
+    if (_credTo !== _credFrom) {
+      chipShow('credits');   // money moved — surface the chip
+      // Directional pulse on the readout: income reads mint, spend reads amber. Removing + reflow
+      // restarts the one-shot animation when credits move again before the last pulse finished.
+      const chip = chipEls.credits;
+      if (chip) {
+        chip.classList.remove('sf-credits--gain', 'sf-credits--spend');
+        void chip.offsetWidth;
+        chip.classList.add(_credTo > _credFrom ? 'sf-credits--gain' : 'sf-credits--spend');
+      }
+    }
   }
   // Advance the tween on the 10Hz slow tick while a tween is in flight. When at rest this is a no-op.
   function tickCreditsTween(dt) {

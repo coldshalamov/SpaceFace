@@ -39,8 +39,14 @@ export function createInfrastructureMotionTracker() {
         driftRotZ: phase * 0.2,
         portalSwirl: 0,
         portalScale: 1.0,
+        portalBase: -1,    // captured lazily — portal/hubGlow bases are R-scaled at build
+        hubGlowBase: -1,
         arcTimer: 0,
         arcIntensity: 0,
+        arcCount: 0,
+        hash: h,
+        dishNodes: null,   // lazy [{ node, baseY }] — swept sensor hardware, scanned once
+        dishScanned: false,
       };
       infrastructureStates.set(entityId, rec);
     }
@@ -71,7 +77,8 @@ export function createInfrastructureMotionTracker() {
     const breath = Math.sin(simTime * 2.2 + rec.phase) * (0.04 + approachFactor * 0.08);
     rec.portalScale = 1.0 + breath;
 
-    // Find and animate gate components
+    // Find and animate gate components. This tracker is the sole transform owner — bases are
+    // captured on first contact because build code pre-scales nodes by the structure radius.
     if (mesh.userData) {
       const innerRing = mesh.userData.innerRing;
       const portal = mesh.userData.portal;
@@ -79,11 +86,21 @@ export function createInfrastructureMotionTracker() {
 
       if (innerRing) innerRing.rotation.z = rec.portalSwirl * 0.65;
       if (portal) {
+        if (rec.portalBase < 0) {
+          rec.portalBase = (portal.scale && Number.isFinite(portal.scale.x)) ? portal.scale.x : 1;
+        }
         portal.rotation.z = -rec.portalSwirl;
-        portal.scale.setScalar(rec.portalScale);
+        if (portal.scale && typeof portal.scale.setScalar === 'function') {
+          portal.scale.setScalar(rec.portalBase * rec.portalScale);
+        }
       }
       if (hubGlow) {
-        hubGlow.scale.setScalar(1.0 + breath * 1.5);
+        if (rec.hubGlowBase < 0) {
+          rec.hubGlowBase = (hubGlow.scale && Number.isFinite(hubGlow.scale.x)) ? hubGlow.scale.x : 1;
+        }
+        if (hubGlow.scale && typeof hubGlow.scale.setScalar === 'function') {
+          hubGlow.scale.setScalar(rec.hubGlowBase * (1.0 + breath * 1.5));
+        }
       }
     }
   }
@@ -94,19 +111,49 @@ export function createInfrastructureMotionTracker() {
     const rec = getState(entity.id);
     const reducedMotion = options.motionReduce === true;
 
-    // Continuous rotation of habitation rings
+    // Continuous rotation of habitation rings — per-station rate variety from the id hash.
+    const ringRate = 0.03 + rec.dishSweepSpeed * 0.04;
     if (!reducedMotion) {
       const ring1 = mesh.userData && mesh.userData.ring1;
       if (ring1) {
-        ring1.rotation.z += 0.045 * dt;
+        ring1.rotation.z += ringRate * dt;
       }
-      // Animate secondary ring or dishes if present in children
-      if (mesh.children) {
+      const ring2 = mesh.userData && mesh.userData.ring2;
+      if (ring2) {
+        ring2.rotation.z -= ringRate * 0.7 * dt;
+      } else if (mesh.children) {
+        // Fallback: name-matched secondary ring (procedural builds register userData.ring2).
         for (const child of mesh.children) {
-          if (child.name && child.name.includes('ring2')) {
-            child.rotation.z -= 0.032 * dt;
+          if (child.name && child.name.indexOf('ring2') >= 0) {
+            child.rotation.z -= ringRate * 0.7 * dt;
           }
         }
+      }
+    }
+
+    // Sensor-dish sweep: slow yaw hunting on dish/radar/antenna hardware. Procedural stations
+    // have none today; authored station kits that name nodes this way light up for free.
+    if (!rec.dishScanned) {
+      rec.dishScanned = true;
+      if (mesh.children) {
+        for (const child of mesh.children) {
+          const n = child.name ? child.name.toLowerCase() : '';
+          if ((n.indexOf('dish') >= 0 || n.indexOf('radar') >= 0 || n.indexOf('antenna') >= 0)
+              && child.rotation) {
+            if (!rec.dishNodes) rec.dishNodes = [];
+            rec.dishNodes.push({
+              node: child,
+              baseY: Number.isFinite(child.rotation.y) ? child.rotation.y : 0,
+            });
+          }
+        }
+      }
+    }
+    if (rec.dishNodes) {
+      const sweep = reducedMotion ? 0 : Math.sin(simTime * rec.dishSweepSpeed + rec.phase) * 1.2;
+      for (let i = 0; i < rec.dishNodes.length; i++) {
+        const d = rec.dishNodes[i];
+        d.node.rotation.y = d.baseY + sweep;
       }
     }
   }
@@ -130,14 +177,24 @@ export function createInfrastructureMotionTracker() {
       body.rotation.z = rec.driftRotZ;
     }
 
-    // Intermittent electrical arc discharge
+    // Intermittent electrical arc discharge — deterministic schedule from the id hash (each
+    // strike advances the mix), and the discharge physically JOLTS the dead hull: a brief
+    // asymmetric twitch riding on the drift pose.
     rec.arcTimer -= dt;
     if (rec.arcTimer <= 0) {
-      rec.arcTimer = 1.2 + Math.random() * 3.5;
+      const next = hashId(String(entity.id) + ':' + rec.arcCount);
+      rec.arcCount++;
+      rec.arcTimer = 1.2 + ((next & 0xff) / 255) * 3.5;
       rec.arcIntensity = 1.0;
     }
     if (rec.arcIntensity > 0) {
       rec.arcIntensity = Math.max(0, rec.arcIntensity - dt * 6.0);
+      if (!reducedMotion) {
+        const body = (mesh.children && mesh.children[0]) || mesh;
+        const jolt = rec.arcIntensity * rec.arcIntensity * 0.028;
+        body.rotation.y += Math.sin(simTime * 71.0 + rec.phase) * jolt;
+        body.rotation.z += Math.cos(simTime * 83.0 + rec.phase * 1.7) * jolt;
+      }
     }
   }
 

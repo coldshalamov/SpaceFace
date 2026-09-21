@@ -127,8 +127,15 @@ html.sf-reduce-flash #hud.sf-hud--blowout {
   filter: none;
   opacity: 0.85;
 }
-#modal-backdrop { inset: 0; z-index: 90; display: none; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--bg) 62%, transparent), color-mix(in srgb, var(--bg) 86%, transparent)); opacity: 0; visibility: hidden; pointer-events: none; }
+/* Display stays block and visibility animates the swap: a none->block toggle cannot transition,
+   which is why the backdrop used to hard-cut under every screen open. The hide transition delays
+   visibility until after the fade so the layer stays clickable-looking but non-interactive. */
+#modal-backdrop { inset: 0; z-index: 90; display: block; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--bg) 62%, transparent), color-mix(in srgb, var(--bg) 86%, transparent)); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 180ms var(--ease, ease), visibility 0s linear 180ms; }
 #modal-backdrop[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  #modal-backdrop, body.ui-modal-open #modal-backdrop { transition: none; }
+}
+html.sf-reduce-motion #modal-backdrop { transition: none; }
 #screens { inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
 #screens > * { pointer-events: auto; }
 
@@ -186,7 +193,7 @@ html.sf-reduce-flash #hud.sf-hud--blowout {
 #alerts { left: var(--sf-safe-inset-x, 0px); right: var(--sf-safe-inset-x, 0px); top: 13%; transform: none; z-index: 1100; display: flex; flex-direction: column; gap: 6px; align-items: center; }
 
 body.ui-modal-open #hud { opacity: 0; pointer-events: none; }
-body.ui-modal-open #modal-backdrop { display: block; opacity: 1; visibility: visible; pointer-events: auto; }
+body.ui-modal-open #modal-backdrop { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 200ms var(--ease, ease), visibility 0s; }
 body.ui-modal-open #sf-onboarding,
 body.ui-modal-open .sf-ob-intro { display: none; }
 

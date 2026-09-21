@@ -86,6 +86,9 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'tether.release.razor': 'presentation.tether.release',
   'shield.collapse': 'presentation.shield.collapse',
   'subsystem.disabled': 'presentation.subsystem.disabled',
+  // Power coming back online reuses the authored shield-restore voice — a rising re-energize
+  // signature, deliberately NOT the subsystem_disabled pop, which means the opposite transition.
+  'subsystem.restored': 'sfx_shield_restore',
   'scenario.signal.pulse': 'presentation.scenario.signal',
   'scenario.comms.kessler': 'presentation.comms.kessler',
   'scenario.comms.denial': 'presentation.comms.denial',
@@ -120,6 +123,7 @@ const UI_CUES = Object.freeze({
   'massline.release.missed': uiCue('presentation:massline:release-missed', 'info', 'MISSED WINDOW', 1.1),
   'shield.collapse': uiCue('presentation:shield:collapse', 'danger', 'SHIELDS COLLAPSED', 1.8),
   'subsystem.disabled': uiCue('presentation:subsystem:disabled', 'warn', 'SUBSYSTEM DISABLED', 1.8, true),
+  'subsystem.restored': uiCue('presentation:subsystem:restored', 'info', 'SUBSYSTEM RESTORED', 1.5, true),
   'scenario.signal.pulse': uiCue('presentation:scenario:signal', 'info', 'UNREGISTERED SIGNAL', 2.2, true),
   'scenario.comms.kessler': uiCue('presentation:scenario:kessler', 'info', 'PRIORITY COMMS', 2.2, true),
   'scenario.comms.denial': uiCue('presentation:scenario:denial', 'warn', 'OFFICIAL DENIAL', 2.2, true),
@@ -142,6 +146,7 @@ const CAPTIONS = Object.freeze({
   'massline.release.missed': 'Massline release window missed.',
   'shield.collapse': 'Shield collapse.',
   'subsystem.disabled': 'Subsystem disabled.',
+  'subsystem.restored': 'Subsystem restored.',
   'scenario.signal.pulse': 'Unregistered signal pulse.',
   'scenario.comms.kessler': 'Priority communication from Kessler.',
   'scenario.comms.denial': 'Official channel denies the shipment.',
@@ -626,6 +631,9 @@ function shapeForCue(id) {
   if (id && (id.startsWith('tether.') || id.startsWith('massline.counter_tether.'))) return 'arc';
   if (id === 'shield.collapse') return 'ring';
   if (id === 'subsystem.disabled') return 'bracket';
+  // Restoration takes the recovery ring glyph — the same non-colour shape a greyscale player reads
+  // on world_site.recovery — so enable and disable edges never share a silhouette.
+  if (id === 'subsystem.restored') return 'ring';
   if (id && id.startsWith('scenario.comms.')) return 'diamond';
   if (id && id.startsWith('scenario.objective.')) return 'split';
   return 'pulse';

@@ -226,6 +226,23 @@ export const presentationOrchestrator = {
         subsystemId: payload && payload.subsystemId,
         material: 'subsystem',
       })),
+      // The enable edge existed (subsystems.js emits it with cueId 'combat.subsystem.restored') but
+      // nothing translated it: a rebooted drive/sensor/weapon returned silently. Lighter sibling of
+      // the disable cue — confirmation, not alarm.
+      this.bus.on('combat:subsystemEnabled', (payload) => this._emitCue('subsystem.restored', payload || {}, {
+        sourceEvent: 'combat:subsystemEnabled',
+        targetId: payload && payload.targetId,
+        subsystemId: payload && payload.subsystemId,
+        material: 'subsystem',
+      })),
+      // Vector-mine lifetime expiry carried position and owner but reached no presentation lane —
+      // an armed mine popped out of the world. Small puff; ownerId is the source so a player's own
+      // mine expiring still infers participant relevance.
+      this.bus.on('weapons:mineExpired', (payload) => this._emitCue('ordnance.expired', payload || {}, {
+        sourceEvent: 'weapons:mineExpired',
+        sourceId: payload && payload.ownerId,
+        material: 'ordnance',
+      })),
       this.bus.on('scenario:branchResolved', (payload) => this._onScenarioBranchResolved(payload || {})),
       this.bus.on('game:new', () => this._resetRuntime()),
       this.bus.on('game:started', () => this._resetRuntime()),

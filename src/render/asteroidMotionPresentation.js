@@ -10,6 +10,11 @@
 //   4. Thermal Fracture Strain: As the ore body depletes, the rock trembles harder under the beam
 //      and swells a few percent along a deterministic crack axis (transforms only — asteroid
 //      materials are shared/instanced). Yield shatter seeds each chunk's tumble kick.
+//   5. Arrival Materialize: Rocks arriving mid-play (field regrowth, reinforcement spawns) settle
+//      in with a fast scale ramp + tumble kick instead of popping into existence.
+//   6. Rich-Core Breach & Charge Tremor: mining:richCoreExposed slams a sharp strain pulse through
+//      the rock — the skin visibly breaches — and richCoreChargeStart builds an escalating tremor
+//      until the charge resolves or fizzles.
 //
 // PURE RENDER-ONLY PRESENTATION: Never alters physics positions/radii, zero per-frame garbage.
 
@@ -90,6 +95,7 @@ export function createAsteroidMotionTracker() {
   const asteroidStates = new Map();
   let busSubscribers = [];
   let currentMinedTargetId = null;
+  let lastSimTime = 0;
   const veinScratch = {
     axisAngle: 0,
     swell: 0,
@@ -121,6 +127,9 @@ export function createAsteroidMotionTracker() {
         wobblePhase: 0,
         miningAgitation: 0,
         fracture: 0,
+        materializeT0: -1,
+        breachT0: -1,
+        chargeT0: -1,
         scaleBodyRef: null,
         baseScaleX: 1,
         baseScaleY: 1,
@@ -176,6 +185,43 @@ export function createAsteroidMotionTracker() {
     rec.wobbleMag = Math.min(0.3, Math.max(rec.wobbleMag, split.wobble + 0.12));
   }
 
+  // Arrival materialize: a fresh rock calves in with a scale ramp plus a small deterministic
+  // tumble kick — newly spawned stone never hangs motionless.
+  function onSpawned(payload) {
+    const entity = payload && payload.entity;
+    const id = payload && payload.id != null ? payload.id : (entity && entity.id);
+    const type = (payload && payload.type) || (entity && entity.type);
+    if (id == null || type !== 'asteroid') return;
+    const rec = getState(id);
+    rec.materializeT0 = lastSimTime;
+    const split = resolveYieldSplitPattern('field', id);
+    rec.spinX += split.spinX * 0.2;
+    rec.spinY += split.spinY * 0.2;
+    rec.spinZ += split.spinZ * 0.2;
+  }
+
+  // Rich-core breach: the rock's skin visibly slams open when the core is exposed.
+  function onRichCoreExposed(payload) {
+    const id = payload && payload.asteroidId;
+    if (id == null) return;
+    const rec = getState(id);
+    rec.breachT0 = lastSimTime;
+    rec.wobbleMag = Math.min(0.3, Math.max(rec.wobbleMag, 0.16));
+  }
+
+  function onRichCoreChargeStart(payload) {
+    const id = payload && payload.asteroidId;
+    if (id == null) return;
+    getState(id).chargeT0 = lastSimTime;
+  }
+
+  function onRichCoreDone(payload) {
+    const id = payload && payload.asteroidId;
+    if (id == null) return;
+    const rec = asteroidStates.get(id);
+    if (rec) rec.chargeT0 = -1;
+  }
+
   function bindEvents(bus) {
     if (!bus || typeof bus.on !== 'function') return;
     busSubscribers.push(bus.on('combat:damage', onDamage));
@@ -186,6 +232,11 @@ export function createAsteroidMotionTracker() {
     busSubscribers.push(bus.on('mining:stop', onMiningStop));
     busSubscribers.push(bus.on('combat:beamStop', onMiningStop));
     busSubscribers.push(bus.on('asteroid:chunked', onAsteroidChunked));
+    busSubscribers.push(bus.on('entity:spawned', onSpawned));
+    busSubscribers.push(bus.on('mining:richCoreExposed', onRichCoreExposed));
+    busSubscribers.push(bus.on('mining:richCoreChargeStart', onRichCoreChargeStart));
+    busSubscribers.push(bus.on('mining:richCoreCompleted', onRichCoreDone));
+    busSubscribers.push(bus.on('mining:richCoreFizzle', onRichCoreDone));
   }
 
   function unbindEvents() {
@@ -202,6 +253,7 @@ export function createAsteroidMotionTracker() {
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
     const reducedMotion = options.motionReduce === true;
+    lastSimTime = simTime;
 
     // 1. Advance 3-axis tumble
     if (!reducedMotion) {
@@ -251,6 +303,36 @@ export function createAsteroidMotionTracker() {
       jitterZ = Math.cos(jitPhase * 1.25) * mag;
     }
 
+    // 4b. Rich-core charge tremor — a lower, slower shudder that ramps with charge time and
+    //     stops the instant the charge resolves or fizzles (chargeT0 cleared by the done events).
+    if (!reducedMotion && rec.chargeT0 >= 0) {
+      const ramp = Math.min(1, (simTime - rec.chargeT0) / 1.6);
+      const cm = ramp * 0.035;
+      jitterX += Math.sin(simTime * 63.0 + rec.rotY) * cm;
+      jitterZ += Math.cos(simTime * 57.0 + rec.rotX) * cm;
+    }
+
+    // 4c. Arrival materialize + rich-core breach: transient scale envelopes multiplied onto the
+    //     fracture swell base — absolute application, no drift.
+    let scaleMul = 1;
+    if (rec.materializeT0 >= 0) {
+      const k = (simTime - rec.materializeT0) / 0.45;
+      if (k >= 1) {
+        rec.materializeT0 = -1;
+      } else {
+        const e = 1 - Math.pow(1 - k, 3);
+        scaleMul *= (0.6 + 0.4 * e) * (1 + Math.sin(k * Math.PI) * 0.04);
+      }
+    }
+    if (rec.breachT0 >= 0) {
+      const k = (simTime - rec.breachT0) / 1.1;
+      if (k >= 1) {
+        rec.breachT0 = -1;
+      } else {
+        scaleMul *= 1 + Math.sin(k * Math.PI) * 0.055 * (1 - k * 0.4);
+      }
+    }
+
     // Apply rotation and jitter to the main asteroid body mesh
     // Asteroid mesh is child 0 or userData.asteroidInstanceBody
     const body = (mesh.userData && mesh.userData.asteroidInstanceBody)
@@ -286,12 +368,12 @@ export function createAsteroidMotionTracker() {
         const along = 1 + s;
         const across = 1 - s * 0.4;
         body.scale.set(
-          rec.baseScaleX * (along * ca * ca + across * sa * sa),
-          rec.baseScaleY,
-          rec.baseScaleZ * (along * sa * sa + across * ca * ca),
+          rec.baseScaleX * (along * ca * ca + across * sa * sa) * scaleMul,
+          rec.baseScaleY * scaleMul,
+          rec.baseScaleZ * (along * sa * sa + across * ca * ca) * scaleMul,
         );
       } else {
-        body.scale.set(rec.baseScaleX, rec.baseScaleY, rec.baseScaleZ);
+        body.scale.set(rec.baseScaleX * scaleMul, rec.baseScaleY * scaleMul, rec.baseScaleZ * scaleMul);
       }
     }
   }

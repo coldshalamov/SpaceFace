@@ -613,6 +613,9 @@ export const feel = {
     this._fovPunch = 0;       // envelope: authored punch amplitude (deg), may stack
     this._fovPunchApplied = 0; // what the PerspectiveCamera actually carries (rise-rate limited)
     this._vig = 0;            // current vignette opacity (0..1)
+    this._hullCritEl = null;
+    this._hullCritOn = false;
+    this._hullCritDepth = 0;
     // (FOV base is derived live from settings.video.fov each frame — no cached field, so the FOV
     // slider and the punch never fight.)
 
@@ -634,12 +637,29 @@ export const feel = {
 .sf-feel-vig--hit   { background:radial-gradient(circle at 50% 55%, rgba(255,90,70,0) 45%, rgba(255,60,50,1) 100%); }
 .sf-feel-vig--death { background:radial-gradient(circle at 50% 50%, rgba(255,30,50,0) 25%, rgba(255,20,40,1) 100%); }
 #sf-speed-lines { position:absolute; inset:0; z-index:1201; pointer-events:none; opacity:0; }
+/* Persistent low-hull heartbeat — distinct from the hit vignette above (one-shot decay). A red
+   edge with a lub-dub double swell on a 1.5s cycle; --crit scales depth as hull approaches zero.
+   Under reduced motion/flash it holds a steady edge tint instead of beating. */
+#sf-hull-crit { position:absolute; inset:0; z-index:1199; pointer-events:none; opacity:0;
+  background:radial-gradient(ellipse at 50% 52%, rgba(255,40,30,0) 58%, rgba(255,45,35,.9) 100%);
+  display:none; }
+#sf-hull-crit.on { display:block; animation:sf-hull-beat 1.5s ease-in-out infinite; }
+@keyframes sf-hull-beat {
+  0%, 100% { opacity:calc(var(--crit, 1) * .10); }
+  9%  { opacity:calc(var(--crit, 1) * .30); }
+  18% { opacity:calc(var(--crit, 1) * .16); }
+  27% { opacity:calc(var(--crit, 1) * .24); }
+  45% { opacity:calc(var(--crit, 1) * .10); }
+}
+html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
+  animation:none; opacity:calc(var(--crit, 1) * .14); }
     `;
     document.head.appendChild(s);
   },
 
   _mountVignette() {
     this._ensureVignette();
+    this._ensureHullCrit();
     this._mountSpeedLines();
   },
 
@@ -654,6 +674,16 @@ export const feel = {
     el.style.display = 'none';
     root.appendChild(el);
     this._vigEl = el;
+    return el;
+  },
+
+  _ensureHullCrit() {
+    if (this._hullCritEl && this._hullCritEl.isConnected) return this._hullCritEl;
+    const root = document.getElementById('hud') || document.body;
+    const el = document.createElement('div');
+    el.id = 'sf-hull-crit';
+    root.appendChild(el);
+    this._hullCritEl = el;
     return el;
   },
 
@@ -1623,6 +1653,26 @@ export const feel = {
       this._vig += -this._vig * VIG_DECAY * frameDt;
       if (this._vig < 0.001) { this._vig = 0; vigEl.style.opacity = '0'; vigEl.style.display = 'none'; }
       else vigEl.style.opacity = String(this._vig);
+    }
+
+    // ---- low-hull heartbeat ----
+    // The 'HULL CRITICAL' alert banner says it once; this edge keeps saying it without stealing
+    // attention. Class toggles only on state change; --crit deepens the beat as hull approaches
+    // zero, written at a coarser epsilon so it doesn't churn style recalcs every frame.
+    const critPlayer = state.entities && state.entities.get(state.playerId);
+    const critFrac = critPlayer && critPlayer.hullMax > 0 ? Math.max(0, critPlayer.hull / critPlayer.hullMax) : 1;
+    const crit = critFrac > 0 && critFrac < 0.25;
+    if (crit !== this._hullCritOn) {
+      this._hullCritOn = crit;
+      const el = crit ? this._ensureHullCrit() : this._hullCritEl;
+      if (el) el.classList.toggle('on', crit);
+    }
+    if (crit && this._hullCritEl) {
+      const depth = 1 + ((0.25 - critFrac) / 0.25) * 0.7;   // 1.0 at 25% hull → ~1.7 near zero
+      if (Math.abs(depth - this._hullCritDepth) > 0.02) {
+        this._hullCritDepth = depth;
+        this._hullCritEl.style.setProperty('--crit', depth.toFixed(2));
+      }
     }
 
     // ---- speed-lines overlay ----

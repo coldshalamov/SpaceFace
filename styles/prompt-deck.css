@@ -204,6 +204,18 @@
   outline-offset: 2px;
 }
 
+/* Exit beat: the card is already detached from the entries map, so this only has to read as
+   "leaving", not reserve ladder space. Slides out the same edge it entered from. */
+.sf-prompt--leaving {
+  opacity: 0;
+  transform: translateX(14px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+.sf-prompt-chip--leaving {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
 /* Small viewports: one rule for the whole family — a bottom sheet above the command bar. This
    replaces the three divergent per-card breakpoints the deck retired. */
 @media (max-width: 900px), (max-height: 620px) {

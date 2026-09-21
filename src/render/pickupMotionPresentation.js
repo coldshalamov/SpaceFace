@@ -5,10 +5,14 @@
 //      axes with natural buoyant zero-G angular momentum.
 //   2. Magnetic Tractor Vortex: When pulled toward the ship's cargo bay, pickups accelerate their
 //      tumble and spiral inward in a magnetic funnel, compressing into the intake scoop.
-//   3. Transponder Warning Strobes: Rhythmic aviation-grade double-flash sequences on chits and canisters.
+//   3. Transponder Warning Strobes: Rhythmic aviation-grade double-flash sequences on chits and
+//      canisters, carried as a scale ping on the body (materials are shared — a kick reads as the
+//      beacon discharge hitting the hull).
 //   4. Intake response: inside the last stretch the spin SETTLES, the body turns to face the
 //      scoop and is drawn in lengthwise. Collection is the object arriving — a thing the player
 //      chased, turning and going in — not a reward firework thrown around where it used to be.
+//   5. Eject Materialize: pickups calved out of rocks and wrecks pop in with a fast overshoot
+//      scale ramp — an ejection, not a pop-in.
 //
 // PURE RENDER-ONLY PRESENTATION: Never modifies physical collection radii or sim cargo quantities.
 // Nothing here writes to the entity, creates a pickup or adds a body; it only poses the mesh the
@@ -154,6 +158,8 @@ export function createPickupMotionTracker() {
   const pickupStates = new Map();
   const vortexScratch = { radius: 0, x: 0, z: 0 };
   const stretchScratch = { transverse: 1, along: 1 };
+  let busSubscribers = [];
+  let lastSimTime = 0;
 
   function getState(pickupId) {
     let rec = pickupStates.get(pickupId);
@@ -174,10 +180,34 @@ export function createPickupMotionTracker() {
         rotZ: phase * 0.3,
         vortexAngle: phase,
         scaleRatio: 1.0,
+        materializeT0: -1,
       };
       pickupStates.set(pickupId, rec);
     }
     return rec;
+  }
+
+  // Fresh drop: pickups ejected from rocks/wrecks pop in with an overshoot ramp — reads as
+  // ejection, not pop-in.
+  function onSpawned(payload) {
+    const entity = payload && payload.entity;
+    const id = payload && payload.id != null ? payload.id : (entity && entity.id);
+    const type = (payload && payload.type) || (entity && entity.type);
+    if (id == null || type !== 'pickup') return;
+    getState(id).materializeT0 = lastSimTime;
+  }
+
+  function bindEvents(bus) {
+    if (!bus || typeof bus.on !== 'function') return;
+    busSubscribers.push(bus.on('entity:spawned', onSpawned));
+  }
+
+  function unbindEvents() {
+    for (const unsub of busSubscribers) {
+      if (typeof unsub === 'function') unsub();
+    }
+    busSubscribers = [];
+    pickupStates.clear();
   }
 
   function updatePickupMotion(entity, mesh, simTime, frameDt, playerEntity, options = {}) {
@@ -185,6 +215,7 @@ export function createPickupMotionTracker() {
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
     const reducedMotion = options.motionReduce === true;
+    lastSimTime = simTime;
 
     // Check distance to player for tractor beam suction vortex
     let isMagnetized = false;
@@ -246,15 +277,40 @@ export function createPickupMotionTracker() {
     targetObj.position.y = bob;
     targetObj.position.z = vortexOffsetZ;
 
+    // Transponder strobe: aviation-grade double-flash carried as a scale ping (two sharp kicks
+    // ~150ms apart per cycle, phased per drop). Deterministic, zero-allocation.
+    let strobe = 0;
+    const cyc = (simTime * 0.62 + rec.phase / (Math.PI * 2)) % 1;
+    if (cyc < 0.10) strobe = Math.exp(-cyc * 60);
+    else if (cyc > 0.14 && cyc < 0.24) strobe = Math.exp(-(cyc - 0.14) * 60) * 0.7;
+    if (reducedMotion) strobe *= 0.5;
+
+    // Eject materialize: overshoot ramp on arrival.
+    let matMul = 1;
+    if (rec.materializeT0 >= 0) {
+      const k = (simTime - rec.materializeT0) / 0.35;
+      if (k >= 1) {
+        rec.materializeT0 = -1;
+      } else {
+        const e = 1 - Math.pow(1 - k, 3);
+        matMul = (0.25 + 0.75 * e) * (1 + Math.sin(k * Math.PI) * 0.15);
+      }
+    }
+
     const scale = targetObj.scale;
-    if (alignment > 0 && scale && typeof scale.set === 'function') {
-      // Squeezed across the throat and drawn out along the approach: the body is being taken in,
-      // not shrunk in place. Local +Z is the approach axis once the yaw blend has landed.
-      const stretch = resolveIntakeStretch(alignment, stretchScratch);
-      const s = rec.scaleRatio;
-      scale.set(s * stretch.transverse, s * stretch.transverse, s * stretch.along);
-    } else if (rec.scaleRatio < 0.98) {
-      targetObj.scale.setScalar(rec.scaleRatio);
+    const s = rec.scaleRatio * matMul * (1 + strobe * 0.035);
+    if (scale && typeof scale.set === 'function') {
+      if (alignment > 0) {
+        // Squeezed across the throat and drawn out along the approach: the body is being taken
+        // in, not shrunk in place. Local +Z is the approach axis once the yaw blend has landed.
+        const stretch = resolveIntakeStretch(alignment, stretchScratch);
+        scale.set(s * stretch.transverse, s * stretch.transverse, s * stretch.along);
+      } else {
+        scale.set(s, s, s);
+      }
+    } else if (scale && typeof scale.setScalar === 'function') {
+      // Scalar-only mock/lite rigs lose the intake stretch but keep the compression + ping.
+      scale.setScalar(s);
     }
   }
 
@@ -268,6 +324,8 @@ export function createPickupMotionTracker() {
   }
 
   return {
+    bindEvents,
+    unbindEvents,
     updatePickupMotion,
     prune,
   };

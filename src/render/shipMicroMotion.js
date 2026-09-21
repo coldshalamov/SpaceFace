@@ -30,6 +30,21 @@
 //      plume for a beat — a punchy afterburner light-off for player and NPC alike.
 //  18. Death Spiral: A witnessed ship kill leaves a tumbling hulk — runaway RCS, secondary armor-seam
 //      pops, then a core detonation flash — before the wreck settles to dead drift.
+//  19. Materialize-on-Spawn: Ships and drones arrive — a fast scale settle with a breath of
+//      overshoot — instead of popping into existence mid-frame. Player respawn rides the same ramp.
+//  20. Dock Two-Beat Clamp & Undock Push: Berth contact lands a clonk, then a second, lighter
+//      clamp-lock beat; undocking pushes the hull off the cradle. (The docked/undocked events carry
+//      no entity id — they are player-intent events, resolved to the player hull on the next frame.)
+//  21. Cloak Phase Ripple: cloak:engaged/dropped ripples the hull scale — a shimmer that reads as
+//      the field washing over the ship, which previously got only an audio cue.
+//  22. Massline Swing-Dash Bank: ship:swingDash rolls the hull into the arc and stretches it along
+//      the swing — the slingshot finally has a body.
+//  23. Subsystem Reboot Self-Test: combat:subsystemEnabled runs a short control-check — a gimbal
+//      sweep and a roll rock — the way a pilot wiggles the stick after a bus comes back.
+//  24. Shield-State Breath: the hull inhales when the field re-inflates (0 → up) and exhales on
+//      collapse — a slow single-beat scale swell keyed off the live shield edge.
+//  25. Critical-Hull List: a ship under ~28% hull carries a seeded off-axis list, periodic strain
+//      coughs, and a sputtering gimbal — a dying craft reads dying before the kill lands.
 //
 // PURE RENDER-ONLY PRESENTATION: Never mutates sim state, determinism-safe, zero per-frame garbage.
 // Transform-only mesh edits (position/rotation/scale); shared materials are never touched.
@@ -72,6 +87,26 @@ const RECENT_KILL_SLOTS = 8;
 const MAX_BELL_PIVOTS = 6;
 const MAX_RCS_PIVOTS = 4;
 const MOUNT_SCAN_NODE_CAP = 64;
+
+// Materialize ramp (spawn/respawn): settle from ~55% scale with one overshoot breath.
+const MATERIALIZE_S = 0.55;
+const MATERIALIZE_OVERSHOOT = 0.05;
+// Cloak ripple: three-field-wobble decaying envelope.
+const CLOAK_WAVE_S = 0.6;
+const CLOAK_WAVE_AMP = 0.045;
+// Swing-dash: bank into the arc + slight stretch along the swing axis.
+const SWING_DASH_S = 0.85;
+const SWING_BANK_MAX = 0.10;
+const SWING_STRETCH_MAX = 0.055;
+// Subsystem reboot self-test window.
+const REBOOT_S = 0.7;
+// Shield-state breath (collapse exhale / restore inhale).
+const SHIELD_BREATH_S = 0.5;
+const SHIELD_BREATH_AMP = 0.045;
+// Critical-hull list: slow seeded bias + periodic strain coughs under this fraction.
+const CRIT_HULL_FRAC = 0.28;
+const CRIT_LIST_MAX = 0.035;
+const DOCK_CLAMP_SECOND_S = 0.22;   // clamp-lock beat after berth contact
 
 const RECOIL_DEFS = Object.freeze({
   light:     { kickX: 0.12, pitchRise: 0.015, heatCost: 0.08 },
@@ -208,6 +243,24 @@ export function createShipMicroMotionTracker() {
         spiralPopCd: 0,
         spiralRcsCd: 0,
         spiralRcsSide: 1,
+
+        // Materialize ramp + hull-scale capture (base scale restored multiplicatively)
+        materializeT0: -1,
+        hullScaleX: 1,
+        hullScaleY: 1,
+        hullScaleZ: 1,
+
+        // Player-intent queue (dock/cloak/respawn events carry no entity id)
+        pendingPlayer: null, // lazy array of kind strings
+
+        // Timed one-shot windows (simTime stamps; -1 = idle)
+        cloakWaveT0: -1,
+        swingDashT0: -1,
+        rebootT0: -1,
+        shieldBreathT0: -1,
+        shieldBreathDir: 0,   // +1 restore inhale, -1 collapse exhale
+        prevShield: null,
+        dockClampAt: -1,      // pending second clamp beat
 
         lastUpdate: 0,
       };
@@ -347,13 +400,65 @@ export function createShipMicroMotionTracker() {
     rec.jumpProgress = 0;
   }
 
+  // dock:docked / dock:undocked carry only { stationId } — player-intent events (balance
+  // harnesses emit them for script hops too, where no hull exists). Queue and resolve to the
+  // player record on its next update.
+  const pendingPlayerActions = [];
+
+  function queuePlayerAction(kind) {
+    if (pendingPlayerActions.length < 8) pendingPlayerActions.push(kind);
+    else { pendingPlayerActions.shift(); pendingPlayerActions.push(kind); }
+  }
+
+  function applyPlayerAction(rec, kind, simTime) {
+    if (kind === 'docked') {
+      rec.recoilVelX -= 1.4; // heavy mechanical clamp rebound
+      rec.flinchVelPitch += Math.sin(rec.idlePhase * 7.13) * 1.25;
+      rec.flinchShudder = Math.max(rec.flinchShudder, 0.5);
+      rec.dockClampAt = simTime + DOCK_CLAMP_SECOND_S;
+    } else if (kind === 'undocked') {
+      rec.recoilVelX -= 0.9; // cradle push-off
+      rec.flinchVelRoll += Math.cos(rec.idlePhase * 5.71) * 0.9;
+      rec.flinchShudder = Math.max(rec.flinchShudder, 0.3);
+    } else if (kind === 'respawn') {
+      rec.materializeT0 = simTime;
+    } else if (kind === 'cloakOn' || kind === 'cloakOff') {
+      rec.cloakWaveT0 = simTime;
+    }
+  }
+
   function onDocked(payload) {
     const id = payload && (payload.playerId || payload.id);
-    if (!id) return;
-    const rec = getRecord(id);
-    rec.recoilVelX -= 1.4; // heavy mechanical clamp rebound
-    rec.flinchVelPitch += (Math.random() - 0.5) * 2.5;
-    rec.flinchShudder = Math.max(rec.flinchShudder, 0.5);
+    if (id != null) {
+      applyPlayerAction(getRecord(id), 'docked', lastSimTime);
+      return;
+    }
+    queuePlayerAction('docked');
+  }
+
+  function onUndocked(payload) {
+    const id = payload && (payload.playerId || payload.id);
+    if (id != null) {
+      applyPlayerAction(getRecord(id), 'undocked', lastSimTime);
+      return;
+    }
+    queuePlayerAction('undocked');
+  }
+
+  function onPlayerRespawn() { queuePlayerAction('respawn'); }
+  function onCloakEngaged() { queuePlayerAction('cloakOn'); }
+  function onCloakDropped() { queuePlayerAction('cloakOff'); }
+
+  function onSwingDash(payload) {
+    const shipId = payload && payload.shipId;
+    if (shipId == null) return;
+    getRecord(shipId).swingDashT0 = lastSimTime;
+  }
+
+  function onSubsystemEnabled(payload) {
+    const targetId = payload && payload.targetId;
+    if (targetId == null) return;
+    getRecord(targetId).rebootT0 = lastSimTime;
   }
 
   function onKilled(payload) {
@@ -388,6 +493,10 @@ export function createShipMicroMotionTracker() {
     if (id == null) return;
     const type = (payload && payload.type) || (entity && entity.type);
     if (type === 'wreck') spiralDone.delete(id);
+    // Ships and drones materialize on arrival instead of popping in mid-frame.
+    if (type === 'ship' || type === 'drone') {
+      getRecord(id).materializeT0 = lastSimTime;
+    }
   }
 
   function clearSpiralMemory() {
@@ -431,6 +540,14 @@ export function createShipMicroMotionTracker() {
     rec.bellCount = 0;
     rec.rcsNozzleCount = 0;
     rec.flareApplied = 1;
+    // Capture the hull's authored base scale — the materialize/breath/ripple channels write
+    // multiplicatively on top of it every frame.
+    if (hull && hull.scale) {
+      rec.hullScaleX = Number.isFinite(hull.scale.x) ? hull.scale.x : 1;
+      rec.hullScaleY = Number.isFinite(hull.scale.y) ? hull.scale.y : 1;
+      rec.hullScaleZ = Number.isFinite(hull.scale.z) ? hull.scale.z : 1;
+      rec.hullScaleDirty = false;
+    }
     if (!rec.bells) rec.bells = [];
     if (!rec.rcsNozzles) rec.rcsNozzles = [];
     const roots = [];
@@ -506,6 +623,12 @@ export function createShipMicroMotionTracker() {
     busSubscribers.push(bus.on('jump:arrive', onJumpArrive));
     busSubscribers.push(bus.on('jump:chargeAbort', onJumpChargeAbort));
     busSubscribers.push(bus.on('dock:docked', onDocked));
+    busSubscribers.push(bus.on('dock:undocked', onUndocked));
+    busSubscribers.push(bus.on('player:respawn', onPlayerRespawn));
+    busSubscribers.push(bus.on('cloak:engaged', onCloakEngaged));
+    busSubscribers.push(bus.on('cloak:dropped', onCloakDropped));
+    busSubscribers.push(bus.on('ship:swingDash', onSwingDash));
+    busSubscribers.push(bus.on('combat:subsystemEnabled', onSubsystemEnabled));
   }
 
   function unbindEvents() {
@@ -526,6 +649,33 @@ export function createShipMicroMotionTracker() {
     const reducedMotion = options.motionReduce === true;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getRecord(entity.id);
+
+    // Player-intent queue: dock/cloak/respawn events carry no entity id — resolve to the
+    // player record the first frame it updates after the event.
+    if (pendingPlayerActions.length > 0 && entity.id === options.playerId) {
+      for (let i = 0; i < pendingPlayerActions.length; i++) {
+        applyPlayerAction(rec, pendingPlayerActions[i], simTime);
+      }
+      pendingPlayerActions.length = 0;
+    }
+    // Second clamp-lock beat after berth contact — the berth grabs, then seats.
+    if (rec.dockClampAt > 0 && simTime >= rec.dockClampAt) {
+      rec.dockClampAt = -1;
+      rec.recoilVelX -= 0.7;
+      rec.flinchShudder = Math.max(rec.flinchShudder, 0.28);
+    }
+    // Shield-state edge: field re-inflates → the hull inhales; collapses → it exhales.
+    const shieldNow = Number.isFinite(entity.shield) ? entity.shield : null;
+    if (shieldNow != null && rec.prevShield != null) {
+      if (rec.prevShield <= 0 && shieldNow > 0) {
+        rec.shieldBreathT0 = simTime;
+        rec.shieldBreathDir = 1;
+      } else if (rec.prevShield > 0 && shieldNow <= 0) {
+        rec.shieldBreathT0 = simTime;
+        rec.shieldBreathDir = -1;
+      }
+    }
+    if (shieldNow != null) rec.prevShield = shieldNow;
 
     // 1. Recoil spring integration (Hooke's law + damping)
     const kRecoil = 240.0;
@@ -684,6 +834,40 @@ export function createShipMicroMotionTracker() {
     rec.prevLatV = latV;
     rec.prevYawRate = yawRate;
 
+    // Massline swing-dash: bank into the arc (toward lateral velocity) + stretch along the
+    // swing axis. The slingshot finally has a body.
+    let swingBank = 0;
+    let swingStretch = 0;
+    if (rec.swingDashT0 >= 0) {
+      const sk = (simTime - rec.swingDashT0) / SWING_DASH_S;
+      if (sk >= 1) {
+        rec.swingDashT0 = -1;
+      } else {
+        const env = Math.sin(sk * Math.PI) * (reducedMotion ? 0.5 : 1);
+        swingBank = env * SWING_BANK_MAX * (latV >= 0 ? 1 : -1);
+        swingStretch = env * SWING_STRETCH_MAX;
+      }
+    }
+
+    // Critical-hull list: a dying craft carries a seeded off-axis list with periodic strain
+    // coughs and a sputtering gimbal — it reads dying before the kill lands.
+    let critList = 0;
+    let critCough = 0;
+    const hullMax = Number.isFinite(entity.hullMax) && entity.hullMax > 0 ? entity.hullMax : 0;
+    if (hullMax > 0 && Number.isFinite(entity.hull)) {
+      const frac = entity.hull / hullMax;
+      if (frac < CRIT_HULL_FRAC) {
+        const sev = 1 - Math.max(0, frac) / CRIT_HULL_FRAC;
+        critList = Math.sin(simTime * 0.35 + rec.idlePhase) * CRIT_LIST_MAX * sev;
+        if (!reducedMotion) {
+          const c = Math.sin(simTime * 1.7 + rec.idlePhase * 2.3);
+          critCough = Math.pow(Math.max(0, c), 14) * 0.02 * sev;
+          rec.flinchShudder = Math.max(rec.flinchShudder, critCough * 6);
+          rec.gimbalYaw += Math.sin(simTime * 9.7 + rec.idlePhase) * 0.028 * sev;
+        }
+      }
+    }
+
     // Boost rising edge: afterburner light-off punch, gimbal snap, plume flare window.
     if (isBoosting && !rec.prevBoosting) {
       rec.boostFlashT = BOOST_FLASH_S;
@@ -704,6 +888,20 @@ export function createShipMicroMotionTracker() {
     const gimbalK = 1 - Math.exp(-GIMBAL_SMOOTH * dt);
     rec.gimbalYaw += (targetGimbalYaw - rec.gimbalYaw) * gimbalK;
     rec.gimbalPitch += (targetGimbalPitch - rec.gimbalPitch) * gimbalK;
+
+    // Subsystem reboot self-test: a short control-check sweep on the gimbal plus a roll rock,
+    // the way a pilot wiggles the stick after a bus comes back.
+    let rebootRock = 0;
+    if (rec.rebootT0 >= 0) {
+      const rk = (simTime - rec.rebootT0) / REBOOT_S;
+      if (rk >= 1) {
+        rec.rebootT0 = -1;
+      } else {
+        const renv = 1 - rk;
+        rec.gimbalYaw += Math.sin(rk * Math.PI * 4) * 0.10 * renv;
+        rebootRock = Math.sin(rk * Math.PI * 2) * 0.022 * renv;
+      }
+    }
     // Plume flare is multiplicative over the drive-state base (which resets scale every
     // frame): unapply last frame's factor first so mock graphs without a drive driver
     // cannot compound, then apply this frame's.
@@ -782,8 +980,52 @@ export function createShipMicroMotionTracker() {
     }
 
     // Additive secondary angular micro-motion
-    hull.rotation.x += (rec.flinchRoll + idleBreathRoll + rcsRoll) * (reducedMotion ? 0.3 : 1.0);
+    hull.rotation.x += (rec.flinchRoll + idleBreathRoll + rcsRoll + swingBank + rebootRock
+      + critList + critCough) * (reducedMotion ? 0.3 : 1.0);
     hull.rotation.z += (rec.recoilPitch + rec.flinchPitch + rec.accelSurge + idleBreathPitch + rcsPitchKick) * (reducedMotion ? 0.3 : 1.0);
+
+    // Hull-scale channels: materialize ramp, cloak ripple, swing stretch, shield breath.
+    // hull.scale is set-once-at-build everywhere, so this tracker owns it multiplicatively
+    // off the base captured by scanMountPivots.
+    let scaleX = 1, scaleY = 1, scaleZ = 1;
+    if (rec.materializeT0 >= 0) {
+      const k = (simTime - rec.materializeT0) / MATERIALIZE_S;
+      if (k >= 1) {
+        rec.materializeT0 = -1;
+      } else {
+        const e = 1 - Math.pow(1 - k, 3);
+        const f = (0.55 + 0.45 * e) * (1 + Math.sin(k * Math.PI) * MATERIALIZE_OVERSHOOT);
+        scaleX *= f; scaleY *= f; scaleZ *= f;
+      }
+    }
+    if (rec.cloakWaveT0 >= 0) {
+      const k = (simTime - rec.cloakWaveT0) / CLOAK_WAVE_S;
+      if (k >= 1) {
+        rec.cloakWaveT0 = -1;
+      } else {
+        const w = Math.sin(k * Math.PI * 3) * CLOAK_WAVE_AMP * (1 - k);
+        scaleX += w; scaleZ += w; scaleY -= w * 0.6;
+      }
+    }
+    if (swingStretch > 0) scaleX += swingStretch;
+    if (rec.shieldBreathT0 >= 0) {
+      const k = (simTime - rec.shieldBreathT0) / SHIELD_BREATH_S;
+      if (k >= 1) {
+        rec.shieldBreathT0 = -1;
+      } else {
+        const w = Math.sin(k * Math.PI) * SHIELD_BREATH_AMP * rec.shieldBreathDir;
+        scaleX += w; scaleY += w * 0.7; scaleZ += w;
+      }
+    }
+    const scaleActive = scaleX !== 1 || scaleY !== 1 || scaleZ !== 1;
+    if (hull.scale && (scaleActive || rec.hullScaleDirty)) {
+      const tx = rec.hullScaleX * scaleX;
+      const ty = rec.hullScaleY * scaleY;
+      const tz = rec.hullScaleZ * scaleZ;
+      if (typeof hull.scale.set === 'function') hull.scale.set(tx, ty, tz);
+      else { hull.scale.x = tx; hull.scale.y = ty; hull.scale.z = tz; }
+      rec.hullScaleDirty = scaleActive;
+    }
 
     // 9. Weapon thermal dissipation & cooling fin blackbody glow
     if (rec.isVenting) {
@@ -1042,6 +1284,12 @@ export function createShipMicroMotionTracker() {
     onJumpArrive,
     onJumpChargeAbort,
     onDocked,
+    onUndocked,
+    onPlayerRespawn,
+    onCloakEngaged,
+    onCloakDropped,
+    onSwingDash,
+    onSubsystemEnabled,
     onKilled,
     onSpawned,
     prune,

@@ -2365,16 +2365,16 @@ function blinkerFixture(color, scale, phase, blinkers) {
   return root;
 }
 
-// Attach a self-animating onBeforeRender that spins rings and pulses nav blinkers. The driver MUST
-// be hosted on a renderable child mesh — Three fires onBeforeRender only on render-list objects
-// (isMesh/isSprite), never on a plain Group. `host` is that always-present mesh.
-function animateStation(host, blinkers, ring1, portal) {
-  if (!host || (!blinkers.length && !ring1 && !portal)) return;
-  host.frustumCulled = false; // keep rings/blinkers ticking while the core is on-screen
+// Attach a self-animating onBeforeRender that pulses nav blinkers. The driver MUST be hosted on
+// a renderable child mesh — Three fires onBeforeRender only on render-list objects (isMesh/
+// isSprite), never on a plain Group. `host` is that always-present mesh. Transform motion (rings,
+// portal swirl, hub glow) is owned by infrastructureMotion's sim-time tracker — writing wall-clock
+// absolutes here would stomp the approach-reactive spins every render pass.
+function animateStation(host, blinkers) {
+  if (!host || !blinkers.length) return;
+  host.frustumCulled = false; // keep blinkers ticking while the core is on-screen
   host.onBeforeRender = () => {
     const t = nowSec();
-    if (ring1) ring1.rotation.z = t * 0.05;
-    if (portal) portal.rotation.y = t * 0.4;
     for (let i = 0; i < blinkers.length; i++) {
       const b = blinkers[i], bl = b.userData.blink;
       const on = (((t * bl.hz + bl.phase) % 1) + 1) % 1 > 0.5 ? 1 : 0.25; // step(0.5, fract(...))
@@ -2503,8 +2503,8 @@ function buildGate(e, pal) {
     orient.add(b);
   }
 
-  // Animate: spin inner ring, swirl portal, pulse blinkers.
-  animateGate(outerRing, innerRing, portal, hubGlow, blinkers, R);
+  // Animate: pulse blinkers. Ring spin, portal swirl, and hub glow live in infrastructureMotion.
+  animateGate(outerRing, blinkers);
   // Gates carry the faction's paint profile too (grimy frontier jump-rings vs pristine chrome
   // core gates) so the world reads consistently across stations and travel infrastructure.
   applyStructureProfile(g, pal, R, hashId(e.id));
@@ -2531,14 +2531,14 @@ function gateHullMaterial(pal, isWormhole) {
   });
 }
 
-function animateGate(host, innerRing, portal, hubGlow, blinkers, R) {
-  if (!host) return;
+// Blinkers only — inner-ring spin, portal swirl, and hub-glow breath are owned by
+// infrastructureMotion (sim-time, player-approach reactive, reduced-motion aware). Wall-clock
+// absolute writes here ran after the tracker every render pass and silently defeated it.
+function animateGate(host, blinkers) {
+  if (!host || !blinkers.length) return;
   host.frustumCulled = false;
   host.onBeforeRender = () => {
     const t = nowSec();
-    if (innerRing) innerRing.rotation.z = t * 0.5;
-    if (portal) portal.rotation.z = -t * 0.7;
-    if (hubGlow) hubGlow.scale.setScalar(R * (1 + 0.06 * Math.sin(t * 2.0)));
     for (let i = 0; i < blinkers.length; i++) {
       const b = blinkers[i], bl = b.userData.blink;
       const on = (((t * bl.hz + bl.phase) % 1) + 1) % 1 > 0.5 ? 1 : 0.25;
@@ -2571,7 +2571,8 @@ function buildStation(e) {
   const r1 = new THREE.Mesh(getGeometry('stat:ring1', () => new THREE.TorusGeometry(0.8, 0.06, 8, 28)), ringMat);
   r1.rotation.x = Math.PI / 2; r1.scale.setScalar(R); g.add(r1); g.userData.ring1 = r1;
   const r2 = new THREE.Mesh(getGeometry('stat:ring2', () => new THREE.TorusGeometry(0.62, 0.05, 8, 24)), ringMat);
-  r2.rotation.set(Math.PI / 2, 0, 0.6); r2.scale.setScalar(R); g.add(r2);
+  r2.name = 'stat:ring2';
+  r2.rotation.set(Math.PI / 2, 0, 0.6); r2.scale.setScalar(R); g.add(r2); g.userData.ring2 = r2;
   // docking spars
   const spars = [];
   for (let i = 0; i < 4; i++) {
@@ -2608,7 +2609,7 @@ function buildStation(e) {
   // outposts (grime + patches), pristine chrome core stations (env-map foil + insignia). Reads the
   // faction personality via resolvePalette's profile, exactly like ships.
   applyStructureProfile(g, pal, R, hashId(e.id));
-  animateStation(core, blinkers, r1, null);
+  animateStation(core, blinkers);
   g.userData.kind = 'station';
   return g;
 }
@@ -2746,14 +2747,10 @@ function buildCreditChip(e) {
   g.userData.interactionKind = 'pickup';
   g.userData.pickupVisual = 'credit_chip';
   g.userData.visualLanguage = 'minted-credit-chip';
-  const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
   const host = stack.children[0];
   host.frustumCulled = false;
-  host.onBeforeRender = () => {
-    const t = nowSec();
-    stack.rotation.y = t * 1.35 + ph;
-    stack.position.y = 0.35 * Math.sin(t * 1.8 + ph);
-  };
+  // Tumble/bob/vortex/intake transforms are owned by pickupMotionPresentation (sim-time,
+  // tractor-aware). Wall-clock writes here stomped the intake alignment every render pass.
   return g;
 }
 
@@ -2780,11 +2777,10 @@ function buildPickup(e) {
   g.userData.kind = 'pickup'; g.userData.gem = gem;
   const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
   gem.frustumCulled = false;
+  // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
+  // pickupMotionPresentation (sim-time, tractor-aware). Material is cloned per-gem (line above).
   gem.onBeforeRender = () => {
     const t = nowSec();
-    gem.rotation.y = t * 2.2 + ph;
-    gem.rotation.x = t * 1.1;
-    gem.position.y = 0.6 * Math.sin(t * 2 + ph);
     gem.material.emissiveIntensity = 1.5 * (1 + 0.28 * Math.sin(t * 3 + ph));
   };
   return g;
@@ -3364,16 +3360,44 @@ function buildMine(e) {
   g.userData.kind = 'mine';
   g.userData.interactionKind = 'combat-mine';
   g.userData.visualLanguage = 'armored-proximity-mine';
+  const mineVanes = [];
+  for (const child of g.children) {
+    if (child.name && (child.name.indexOf('MineSensorVane') === 0
+        || child.name.indexOf('MineProximityAntenna') === 0)) {
+      mineVanes.push(child);
+    }
+  }
+  const minePhase = (hashId(e.id) % 100) / 100 * Math.PI * 2;
   let visualArmed = null;
-  g.userData.updateRuntimeState = (entity) => {
+  let armedAt = -1;
+  g.userData.updateRuntimeState = (entity, now) => {
     const nextArmed = entity?.data?.armed === true;
-    if (nextArmed === visualArmed) return;
-    visualArmed = nextArmed;
-    lens.material = nextArmed ? warningArmed : warningSafe;
-    lens.scale.setScalar(nextArmed ? 1 : 0.82);
-    g.userData.visualArmed = nextArmed;
+    const t = Number.isFinite(now) ? now : 0;
+    if (nextArmed !== visualArmed) {
+      visualArmed = nextArmed;
+      lens.material = nextArmed ? warningArmed : warningSafe;
+      lens.scale.setScalar(nextArmed ? 1 : 0.82);
+      g.userData.visualArmed = nextArmed;
+      if (nextArmed) armedAt = t;
+    }
+    // Sensor sweep: vanes and proximity tips orbit the hull once the field goes live.
+    const spin = nextArmed ? t * 0.55 + minePhase : 0;
+    for (let i = 0; i < mineVanes.length; i++) {
+      const v = mineVanes[i];
+      const a = (i % 4) * Math.PI / 2 + spin;
+      const r = v.name.indexOf('MineProximityAntenna') === 0 ? 0.96 : 0.67;
+      v.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+      v.rotation.y = -a;
+    }
+    // Arm pop: the pressure hull snaps a brief swell as the field spins up.
+    let pop = 1;
+    if (nextArmed && armedAt >= 0) {
+      const age = t - armedAt;
+      if (age < 0.5) pop = 1 + 0.10 * Math.exp(-age * 8);
+    }
+    g.scale.setScalar(R * pop);
   };
-  g.userData.updateRuntimeState(e);
+  g.userData.updateRuntimeState(e, 0);
   return g;
 }
 
@@ -3417,15 +3441,30 @@ function buildVectorMine(e) {
   g.userData.kind = 'vectormine';
   g.userData.interactionKind = 'impulse-mine';
   g.userData.visualLanguage = 'radial-impulse-emitter';
+  const vmPhase = (hashId(e.id) % 100) / 100 * Math.PI * 2;
+  const vmFins = emitters.slice(0, 4); // pip is emitters[4]
   let visualArmed = null;
-  g.userData.updateRuntimeState = (entity) => {
+  g.userData.updateRuntimeState = (entity, now) => {
     const nextArmed = entity?.data?.armed === true;
-    if (nextArmed === visualArmed) return;
-    visualArmed = nextArmed;
-    for (const m of emitters) m.material = nextArmed ? emitterArmed : emitterSafe;
-    g.userData.visualArmed = nextArmed;
+    const t = Number.isFinite(now) ? now : 0;
+    if (nextArmed !== visualArmed) {
+      visualArmed = nextArmed;
+      for (const m of emitters) m.material = nextArmed ? emitterArmed : emitterSafe;
+      g.userData.visualArmed = nextArmed;
+    }
+    // Armed: the radial emitter fins orbit the core — a live field generator visibly spinning —
+    // and the arming pip rides a slow bob on top.
+    const spin = nextArmed ? t * 0.9 + vmPhase : 0;
+    for (let i = 0; i < vmFins.length; i++) {
+      const fin = vmFins[i];
+      const a = i * Math.PI / 2 + spin;
+      fin.position.set(Math.cos(a) * 0.62, 0, Math.sin(a) * 0.62);
+      fin.rotation.y = -a;
+    }
+    pip.position.y = 0.36 + (nextArmed ? Math.sin(t * 3.1 + vmPhase) * 0.05 : 0);
+    core.rotation.y = spin * 1.6;
   };
-  g.userData.updateRuntimeState(e);
+  g.userData.updateRuntimeState(e, 0);
   return g;
 }
 
@@ -3481,16 +3520,27 @@ function buildImpulseCharge(e) {
   g.userData.kind = 'charge';
   g.userData.interactionKind = 'impulse-charge';
   g.userData.visualLanguage = 'sticky-impulse-charge';
+  const chargePhase = (hashId(e.id) % 100) / 100 * Math.PI * 2;
   let visualArmed = null;
-  g.userData.updateRuntimeState = (entity) => {
+  g.userData.updateRuntimeState = (entity, now) => {
     const nextArmed = entity?.data?.armed === true;
-    if (nextArmed === visualArmed) return;
-    visualArmed = nextArmed;
-    statusStrip.material = nextArmed ? armed : safe;
-    statusStrip.scale.set(nextArmed ? 1 : 0.72, 1, 1);
-    g.userData.visualArmed = nextArmed;
+    const t = Number.isFinite(now) ? now : 0;
+    if (nextArmed !== visualArmed) {
+      visualArmed = nextArmed;
+      statusStrip.material = nextArmed ? armed : safe;
+      g.userData.visualArmed = nextArmed;
+    }
+    // A live charge hums: status strip breathes on x, and the pressure body carries a tiny
+    // high-frequency shiver so "armed" reads in silhouette, not just color.
+    if (nextArmed) {
+      statusStrip.scale.set(1 + Math.sin(t * 4.6 + chargePhase) * 0.12, 1, 1);
+      body.position.y = Math.sin(t * 41.0 + chargePhase) * 0.012;
+    } else {
+      statusStrip.scale.set(0.72, 1, 1);
+      body.position.y = 0;
+    }
   };
-  g.userData.updateRuntimeState(e);
+  g.userData.updateRuntimeState(e, 0);
   return g;
 }
 

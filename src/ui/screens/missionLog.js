@@ -1973,9 +1973,9 @@ export const missionLogScreen = {
     // Kit motion: the title and hang settle from the left, the stage from the right. The gamepad
     // check's fake document has no element styles; settle is best-effort there.
     try {
-      settle(this._headEl, { from: 'left' });
-      settle(this._hangEl, { from: 'left', delay: 40 });
-      settle(this._stageEl, { from: 'right', delay: 80 });
+      settle(this._headEl, { from: 'left', state: 'missionLog:open' });
+      settle(this._hangEl, { from: 'left', delay: 40, state: 'missionLog:open' });
+      settle(this._stageEl, { from: 'right', delay: 80, state: 'missionLog:open' });
     } catch (_) { /* fake DOM */ }
     this._focusPrimaryControl();
   },
