@@ -157,6 +157,23 @@ Remaining: inset panel language in the hull loft (not glued gray slabs) and
 Hitch-scale lofted sideboards with root fillet (not short paddles). Parent
 unproven / not G7.
 
+## C13 chase-form (2026-09-21)
+
+`chase_form_v13` keeps C8–C12 wins: wells as holes, no teal beam rail, brown ~0%,
+light near Hitch (1.7% vs Hitch 5.3%), greenhouse as a framed hole. Principled
+islands only. Hitch/Hornet untouched. No seats. No megatex.
+
+C13 is a full-job rebuild of the primary body, not more dorsal plates: (1) one
+continuous multi-station lofted shell with sideboard lobes in the station rings,
+(2) cargo well + greenhouse as boolean cuts (mouths not recut), (3) girth /
+stringer / wing-root seams cut into that shell, hull/armor/deck painted on the
+same mesh. Three chase reviews REVISE. Close still: well and greenhouse read as
+holes (crates/winch/liner in the mouth). **Tube/paddle read is not gone** —
+play still called a pale capsule with dark paddle sponsons; abeam still called
+a central tube with saddlebags split by a hard root crease. Hitch still wins
+formed-shell / skin at D=144. Hitch-plus chase is not closed. Parent unproven /
+not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
