@@ -1,47 +1,45 @@
 import { stationIcon, stationSealHtml, stationSymbolsHtml } from '../station/stationArt.js';
 // Production station frames. Pure markup; controllers retain all state, intent, focus and lifecycle ownership.
 // These exact functions also power the isolated presentation fixture; no game systems are substituted.
+// Field Hardware POSTER/BENCH: stencil name, legend tape, vitals plate, destination keys on the
+// bottom rail, smoked workspace — the 3D berth is the picture, not a website behind words.
 
 export function stationFrameHtml() {
   return `${stationSymbolsHtml()}
     <div class="k-world k-world--plate sxb-berth__plate" aria-hidden="true"></div>
     <canvas class="k-world sxb-berth__world" aria-hidden="true"></canvas>
     <header class="sxb-berth">
+      <span class="sxb-berth__lamp" aria-hidden="true"></span>
       <div class="so-station-mark">${stationSealHtml()}</div>
-      <div class="so-station-title"><p class="sxb-berth__ident"></p><h1 class="sxb-berth__name"></h1></div>
-      <button type="button" class="so-command-trigger" aria-haspopup="dialog" aria-controls="so-command-palette">${stationIcon('search')}<span>Find a service</span><kbd>Ctrl K</kbd></button>
-      <div class="sxb-purse" aria-label="Available credits"><div class="sxb-purse__label">Available credits</div><div class="sxb-purse__value">0</div><span class="so-credit-delta" aria-hidden="true"></span></div>
-    </header>
-    <nav class="of-facility-rail" aria-label="Station facilities"><div class="sxb-ops__dock"></div><span class="so-berth-status">${stationIcon('signal')}Docked</span></nav>
-    <aside class="sxb-crown" aria-label="Ship vitals and services"><ul class="sxb-vitals"></ul></aside>
-    <div class="so-context">
+      <div class="so-station-title"><p class="sxb-berth__ident fh-legend" data-fh-lit="on"></p><h1 class="sxb-berth__name fh-hero"></h1></div>
+      <button type="button" class="so-command-trigger fh-key fh-key--small" aria-haspopup="dialog" aria-controls="so-command-palette">${stationIcon('search')}<span>Find a service</span><kbd>Ctrl K</kbd></button>
+      <div class="sxb-tape">
+        <p class="sxb-berth__news"></p>
+        <article class="sxb-event" hidden><span class="sxb-event__badge"></span><strong class="sxb-event__title"></strong><p class="sxb-event__body"></p></article>
+        <article class="sxb-event sxb-berth__ledger" hidden><span class="sxb-event__badge"></span><strong class="sxb-event__title"></strong><p class="sxb-event__body"></p></article>
+        <article class="sxb-event sxb-berth__mechanic" hidden><span class="sxb-event__badge"></span><strong class="sxb-event__title"></strong><p class="sxb-event__body"></p></article>
+        <p class="sxb-berth__patch" hidden></p><p class="sxb-berth__route" hidden></p>
+      </div>
       <div class="sxb-handoff" hidden></div>
-      <details class="so-bulletin"><summary>${stationIcon('comms')}<span>Station intelligence</span><span class="so-disclosure">+</span></summary>
-        <div class="sxb-tape"><p class="sxb-berth__news"></p>
-          <article class="sxb-event" hidden><span class="sxb-event__badge"></span><strong class="sxb-event__title"></strong><p class="sxb-event__body"></p></article>
-          <article class="sxb-event sxb-berth__ledger" hidden><span class="sxb-event__badge"></span><strong class="sxb-event__title"></strong><p class="sxb-event__body"></p></article>
-          <article class="sxb-event sxb-berth__mechanic" hidden><span class="sxb-event__badge"></span><strong class="sxb-event__title"></strong><p class="sxb-event__body"></p></article>
-          <p class="sxb-berth__patch" hidden></p><p class="sxb-berth__route" hidden></p>
-        </div>
-      </details>
-    </div>
-    <div class="sx-screen__body" id="sx-panel" role="tabpanel" tabindex="0" data-so-light></div>
+    </header>
+    <aside class="sxb-crown fh-plate fh-plate--edge" aria-label="Ship vitals and services"><div class="sxb-purse" aria-label="Available credits"><div class="sxb-purse__label">Credits</div><div class="sxb-purse__value">0</div><span class="so-credit-delta" aria-hidden="true"></span></div><ul class="sxb-vitals"></ul></aside>
+    <div class="sx-screen__body fh-window" id="sx-panel" role="tabpanel" tabindex="0"></div>
     <footer class="sxb-ops">
-      <div class="so-session-mark">${stationIcon('check')}<span>Berth operations</span><span class="so-session-hint">Your ship. Your next move.</span></div>
+      <nav class="of-facility-rail" aria-label="Station facilities"><div class="sxb-ops__dock"></div><span class="so-berth-status">${stationIcon('signal')}Docked</span></nav>
       <aside class="sx-comms" aria-label="Station communications">
         <div class="sx-receipt" role="status" aria-live="polite" aria-atomic="true" hidden>
           <svg class="so-transfer" viewBox="0 0 64 24" aria-hidden="true"><path d="M2 12h50m-7-6 7 6-7 6" fill="none" stroke="currentColor" pathLength="1"/></svg>
           <span class="sx-receipt__kind"></span><strong class="sx-receipt__title"></strong><span class="sx-receipt__delta"></span>
         </div>
-        <button type="button" class="sx-comms__toggle" aria-expanded="false" aria-controls="sx-comms-history" aria-label="Open station communications history">${stationIcon('comms')}<span>Comms</span><span class="sx-comms__count" hidden>0</span></button>
-        <button type="button" class="sxb-help" aria-expanded="false" aria-label="Explain the active station operation" data-why="Context help">${stationIcon('help')}<span>Help</span></button>
-        <div class="sx-comms__history" id="sx-comms-history" aria-label="Berth session log" hidden></div>
+        <button type="button" class="sx-comms__toggle fh-key fh-key--small" aria-expanded="false" aria-controls="sx-comms-history" aria-label="Open station communications history">${stationIcon('comms')}<span>Comms</span><span class="sx-comms__count" hidden>0</span></button>
+        <button type="button" class="sxb-help fh-key fh-key--small" aria-expanded="false" aria-label="Explain the active station operation" data-why="Context help">${stationIcon('help')}<span>Help</span></button>
+        <div class="sx-comms__history fh-plate fh-plate--raised" id="sx-comms-history" aria-label="Berth session log" hidden></div>
       </aside>
-      <div class="sxb-launch-seat"><button type="button" class="sxb-launch" data-act="undock" data-pop-owner>
+      <div class="sxb-launch-seat"><button type="button" class="sxb-launch fh-key fh-key--primary" data-act="undock" data-pop-owner>
         <span class="sxb-launch__light" aria-hidden="true"></span><span class="sxb-launch__copy"><span class="sxb-launch__label">Undock</span><span class="sxb-launch__state"></span></span>${stationIcon('launch')}
       </button></div>
     </footer>
-    <div class="sx-pop" hidden></div>`;
+    <div class="sx-pop fh-plate fh-plate--raised" hidden></div>`;
 }
 
 export function marketFrameHtml() {

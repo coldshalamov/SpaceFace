@@ -69,13 +69,14 @@ function resolveTarget(tab) {
   return action ? { action } : {};
 }
 
-// Field Hardware tokens + component layer first, then the station layout sheet.
-// tokens/fh live under assets/ui/kit so nine-slice urls resolve; station.css beats orbital.css.
+// Field Hardware tokens + component layer first. Interior layout lives in station-orbital.css;
+// station.css loads last so the berth chrome (kit plates, keys, stencil name) beats the leftover
+// Orbital Command website walls.
 const STATION_STYLES = [
   { id: 'sx-fh-tokens', href: '/assets/ui/kit/tokens/tokens.css' },
   { id: 'sx-fh-css', href: '/assets/ui/kit/kit/fh.css' },
-  { id: 'sx-station-css', href: '/styles/station.css' },
   { id: 'sx-station-orbital-css', href: '/styles/station-orbital.css' },
+  { id: 'sx-station-css', href: '/styles/station.css' },
 ];
 // Also called by the in-flight THE SHIP screen (src/ui/ship/shipScreen.js): the shared shipworks
 // stage wears .sx-sw* classes styled only by this sheet, so opening F2 before the first dock must
@@ -216,7 +217,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   // The host `.screen` is the kit screen; `.sx-app` is a plain wrapper (display: contents) so the
   // regions below sit directly on the kit grid. `app.className` is seeded exactly once (the hub-
   // classes check reads that) and never wiped.
-  if (rootEl && rootEl.classList) rootEl.classList.add('k-screen', 'sx-berth', 'sx-observatory');
+  if (rootEl && rootEl.classList) {
+    rootEl.classList.add('k-screen', 'sx-berth', 'sx-observatory');
+    rootEl.setAttribute('data-fh-temp', 'docked');
+    rootEl.setAttribute('data-fh-register', 'bench');
+  }
   const app = document.createElement('div');
   app.className = 'sx-app';
   app.innerHTML = stationFrameHtml();
@@ -607,6 +612,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   let arrivedOnce = false;
   function applyDestinationRegister(id) {
     if (rootEl && rootEl.classList) rootEl.classList.toggle('k-screen--dense', DENSE.has(id));
+    if (rootEl && rootEl.setAttribute) {
+      rootEl.setAttribute('data-fh-register', arriving && !arrivedOnce ? 'poster' : 'bench');
+    }
     const hero = !TITLE_SIZED.has(id) || (arriving && !arrivedOnce);
     crestName.classList.toggle('k-t-hero', hero);
     crestName.classList.toggle('k-t-title', !hero);
@@ -1176,7 +1184,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (receiptTimer) { clearTimeout(receiptTimer); receiptTimer = 0; }
       receiptEl.hidden = true;
       setCommsOpen(false);
-      app.querySelector('.so-bulletin').open = false;
+      const bulletin = app.querySelector('.so-bulletin');
+      if (bulletin) bulletin.open = false;
       closePop();
       dock.setAttention(null);
       lastMissionAttention = null;
@@ -1188,6 +1197,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     dispose() {
       shown = false; commands.dispose(); effects.dispose();
       rootEl.classList.remove('sx-observatory');
+      rootEl.removeAttribute('data-fh-temp');
+      rootEl.removeAttribute('data-fh-register');
       berth.dispose();
       stopFloating();
       if (popCloseTimer) clearTimeout(popCloseTimer);

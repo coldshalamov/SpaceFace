@@ -43,6 +43,7 @@ const SCREENS = Object.freeze({
   replay: () => import('../src/ui/screens/replay.js').then((m) => m.replayScreen),
   clips: () => import('../src/ui/screens/clips.js').then((m) => m.clipsScreen),
   sandbox: () => import('../src/ui/screens/sandbox.js').then((m) => m.sandboxScreen),
+  station: () => import('../src/ui/station/stationScreen.js').then((m) => m.stationScreen),
 });
 
 /** The flight HUD is not a .mount() screen; it is the always-mounted overlay createHud() builds
@@ -50,9 +51,8 @@ const SCREENS = Object.freeze({
  *  with a real GameState and the real kit/deckplate sheets — so --shot=flight frames the true
  *  instrument, not a mock. */
 
-/** Screens that exist but need the running game (a docked berth, a live sector, a hull render). */
+/** Screens that exist but need the running game (a live sector, a hull render). */
 const NEEDS_THE_GAME = Object.freeze({
-  station: 'needs a live docked berth (renderer + station app)',
   ship: 'needs a live hull to inspect',
   chart: 'needs the live sector geography',
   'crucible-door': 'needs the arena stage',
@@ -101,13 +101,15 @@ function seededState() {
   };
   state.world.currentSectorId = 'sector_helios';
   state.ui.docked = false;
+  state.ui.dockedStationId = null;
+  state.player.credits = 18400;
   // A hull the instruments can read. Empty GameState has playerId 0 and no entity, so the
   // cluster paints "NO DATA" and the power rail stays an empty div until the first frame.
   const hull = {
     id: 0, type: 'ship', alive: true, team: 1, radius: 12,
     pos: { x: 0, y: 0, z: 0 }, vel: { x: 46, y: 0, z: 18 }, angVel: 0,
     hull: 86, hullMax: 100, shield: 64, shieldMax: 100, armorHp: 20, armorMax: 30,
-    cap: 80, capMax: 100, energy: 80, energyMax: 100, maxSpeed: 180,
+    cap: 80, capMax: 100, energy: 80, energyMax: 100, maxSpeed: 180, fuel: 62, fuelMax: 100,
     boost: { energy: 70, max: 100, dashCost: 28, dashImpulse: 0, dashCdT: 0 },
     data: {
       defId: 'ship_kestrel', callsign: 'KESTREL',
@@ -223,6 +225,11 @@ async function goto(id) {
   document.body.classList.add('k-screen-top');
   document.body.dataset.kScreen = id;
   const root = document.createElement('div');
+  if (id === 'station') {
+    root.dataset.screen = 'station';
+    state.ui.docked = true;
+    state.ui.dockedStationId = 'station_helios';
+  }
   screensEl.appendChild(root);
   try {
     const screen = await loader();

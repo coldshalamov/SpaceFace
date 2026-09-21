@@ -123,15 +123,16 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
 #screens .of-pause .k-words > li:first-child .k-word { font-size: 21px; min-height: 52px; }
 #screens .of-pause .k-fine { position: static; color: var(--of-muted); margin: 0; }
 
-/* STATION / a real place above, an operational register below. */
-#screens [data-screen='station'].k-screen {
+/* Station composition lives in station.css + Field Hardware. This file
+   must not paint an opaque ground or a word-list over the live berth. */
+#screens [data-screen='station']:not(.sx-observatory).k-screen {
   inset: 0; padding: 0; border: 0; background: var(--of-ground); box-shadow: none;
   grid-template-columns: 190px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) 72px;
   grid-template-areas: 'title title' 'hang stage' 'foot foot'; gap: 0;
 }
 #screens .sx-app { display: contents; }
-#screens .sxb-berth__world { z-index: -2; opacity: .16; pointer-events: none; }
-#screens .sxb-berth {
+#screens [data-screen='station']:not(.sx-observatory) .sxb-berth__world { z-index: -2; opacity: .16; pointer-events: none; }
+#screens [data-screen='station']:not(.sx-observatory) .sxb-berth {
   position: relative; grid-area: title; min-height: 140px; padding: 26px 520px 23px 98px;
   border-bottom: 1px solid var(--of-line); background: #18211de8;
 }
@@ -171,7 +172,7 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
 #screens .sxb-vital__acts { min-width: 48px; gap: 4px; }
 #screens .sxb-vital__acts .k-word { min-height: 24px; padding: 3px 6px; font-size: 12px; background: #26332a; border: 0; color: var(--of-good); }
 #screens .sxb-vital__ok { font-size: 12px; }
-#screens .of-facility-rail { grid-area: hang; padding: 24px 14px; background: #141d19; border-right: 1px solid var(--of-line); min-height: 0; overflow: auto; }
+#screens [data-screen='station']:not(.sx-observatory) .of-facility-rail { grid-area: hang; padding: 24px 14px; background: #141d19; border-right: 1px solid var(--of-line); min-height: 0; overflow: auto; }
 .of-rail-label { margin: 0 12px 20px; font-size: 12px; color: var(--of-dim); text-transform: uppercase; letter-spacing: .13em; }
 #screens .sx-dock__group--nav { display: flex; flex-direction: column; align-items: stretch; gap: 5px; }
 #screens .sx-dock__group--nav > li { width: 100%; }
@@ -188,7 +189,7 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
 #screens #sx-panel .k-panel { grid-template-columns: minmax(260px, .8fr) minmax(0, 1.3fr); }
 #screens #sx-panel .k-hang { padding-right: 26px; border-right: 1px solid var(--of-line); }
 #screens #sx-panel .k-stage { padding-right: 5px; }
-#screens .sxb-ops { grid-area: foot; min-height: 72px; padding: 12px 30px; margin: 0; border-top: 1px solid var(--of-line); background: #1c2620; display: flex; align-items: center; }
+#screens [data-screen='station']:not(.sx-observatory) .sxb-ops { grid-area: foot; min-height: 72px; padding: 12px 30px; margin: 0; border-top: 1px solid var(--of-line); background: #1c2620; display: flex; align-items: center; }
 #screens .sx-comms { flex: 1; flex-direction: row; justify-content: flex-start; gap: 12px; }
 #screens .sx-receipt { font-size: 14px; white-space: normal; }
 #screens .sx-comms__history { left: 0; transform: none; width: min(540px, 80vw); padding: 20px; background: #1a251f; border: 1px solid #56634e; box-shadow: 0 10px 40px #0008; }
@@ -422,11 +423,11 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
 }
 @media (min-width: 2200px) {
   #screens .k-screen:not(.of-title):not(.of-pause):not([data-screen='station']) { inset-inline: max(var(--of-margin), calc((100vw - 2100px)/2)); }
-  #screens [data-screen='station'].k-screen { grid-template-columns: 230px minmax(0,1fr); }
+  #screens [data-screen='station']:not(.sx-observatory).k-screen { grid-template-columns: 230px minmax(0,1fr); }
   #screens #sx-panel { padding: 36px max(40px, calc((100vw - 2100px)/2)); }
 }
 @media (max-width: 1100px) {
-  #screens [data-screen='station'].k-screen { grid-template-columns: 150px minmax(0,1fr); }
+  #screens [data-screen='station']:not(.sx-observatory).k-screen { grid-template-columns: 150px minmax(0,1fr); }
   #screens .sxb-berth { padding-left: 76px; padding-right: 430px; }
   #screens .sxb-berth .of-port-mark { left: 22px; width: 35px; }
   #screens .sxb-crown { width: 390px; gap: 18px; right: 20px; }
@@ -444,7 +445,7 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
   :root { --of-margin: 12px; --of-gap: 18px; --k-hang: 210px; --k-fs-title: 36px; }
   #screens .k-screen { padding: 20px; grid-template-columns: 190px minmax(0,1fr); }
   #screens .of-pause.k-screen { width: min(540px,90vw); grid-template-columns: 1fr; }
-  #screens [data-screen='station'].k-screen { grid-template-columns: 1fr; grid-template-rows: auto auto minmax(0,1fr) 65px; grid-template-areas:'title' 'hang' 'stage' 'foot'; }
+  #screens [data-screen='station']:not(.sx-observatory).k-screen { grid-template-columns: 1fr; grid-template-rows: auto auto minmax(0,1fr) 65px; grid-template-areas:'title' 'hang' 'stage' 'foot'; }
   #screens .of-facility-rail { padding: 8px 12px; border: 0; border-bottom: 1px solid var(--of-line); overflow: auto; }
   #screens .of-rail-label { display: none; }
   #screens .sx-dock__group--nav { flex-direction: row; flex-wrap: nowrap; gap: 4px; }
@@ -479,14 +480,14 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
   #screens .k-screen > .k-hang { padding: 0 0 15px; border-right: 0; border-bottom: 1px solid var(--of-line); max-height: 220px; }
   #screens .k-screen > .k-stage { min-height: 240px; }
   #screens .of-pause.k-screen { width: 100%; grid-template-areas:'title' 'stage' 'foot'; grid-template-rows:auto minmax(0,1fr) auto; padding: 24px; }
-  #screens [data-screen='station'].k-screen { overflow: hidden; padding: 0; grid-template-areas:'title' 'vitals' 'hang' 'stage' 'foot'; grid-template-rows:auto auto auto minmax(0,1fr) auto; }
+  #screens [data-screen='station']:not(.sx-observatory).k-screen { overflow: hidden; padding: 0; grid-template-areas:'title' 'vitals' 'hang' 'stage' 'foot'; grid-template-rows:auto auto auto minmax(0,1fr) auto; }
   #screens .sxb-berth { padding: 18px 18px 15px 66px; min-height: 86px; }
   #screens .sxb-berth__name { font-size: 24px; }
   #screens .sxb-berth__news { padding-right: 80px; max-height: 3em; overflow: auto; }
   #screens .sxb-berth__patch,
   #screens .sxb-berth__route { padding-right: 80px; }
   #screens .sxb-event { padding-right: 12px; }
-  #screens .sxb-crown { position: static; grid-area: vitals; align-self: stretch; justify-self: stretch; width: auto; margin: 0; padding: 8px 16px; border-bottom: 1px solid var(--of-line); background: #1d2920; }
+  #screens [data-screen='station']:not(.sx-observatory) .sxb-crown { position: static; grid-area: vitals; align-self: stretch; justify-self: stretch; width: auto; margin: 0; padding: 8px 16px; border-bottom: 1px solid var(--of-line); background: #1d2920; }
   #screens .sxb-vitals { display: flex; flex-wrap: wrap; gap: 6px 14px; }
   #screens .sxb-vitals .k-row { display: flex; gap: 6px; min-height: 26px; flex: 1 0 110px; }
   #screens .sxb-vital__acts .k-word { min-height: 28px; }
