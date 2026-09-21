@@ -91,3 +91,12 @@ midship even corrugation; empty inter-rib fields at D=58. C21 does not add
 girth hoops. Inter-hoop bays become shallow plated insets (seams as cuts
 in a sheet). Midship is formed hardware clusters on that skin. Mouths not
 recut. No generated C21 pixels. C16 convex-diamond ref stays selected.
+
+## 2026-09-21 (C22 formed-shell)
+
+C21 kept TUBE_PADDLE NO and killed the cage. Remaining REVISE: flat/cheap
+plate vs Hitch formed-shell massing; midship hardware still loses; sparse
+close breakup around wells. C22 adds overlapping courses / panel steps /
+deeper recesses on the plated skin (no extra hoops), chase-readable midship
+clusters, and well-lip scores outboard of the mouths. Mouths not recut.
+No generated C22 pixels. C16 convex-diamond ref stays selected.

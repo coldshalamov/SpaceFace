@@ -22,7 +22,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v21"
+REVISION = "chase_form_v22"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "drifter"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -47,7 +47,9 @@ KEEP_SEPARATE = (
 # C20: extra wrapping ribs + crossing stringers — read as an open hoop/rib cage.
 # C21: stop the cage. Same 9 girth stations as seams in a sheet (no extra hoops).
 # Inter-hoop bays are shallow plated insets. Midship is formed hardware clusters.
-# No |y| paint. Nozzles kept. Mouths not recut.
+# C22: formed-shell relief on that plated skin — overlapping courses / panel
+# steps / deeper recesses (not extra wrapping hoops). Denser midship hardware
+# and well-lip breakup. No |y| paint. Nozzles kept. Mouths not recut.
 HONEST = {
     "Material_Hull": {"color": (0.108, 0.132, 0.140), "metallic": 0.16, "roughness": 0.54, "role": "hull"},
     "Material_Armor": {"color": (0.072, 0.082, 0.088), "metallic": 0.22, "roughness": 0.56, "role": "armor"},
@@ -676,18 +678,20 @@ def build_hull(mats):
             return True
         return False
 
-    # Continuous plated bays: one shallow inset plate per inter-hoop field.
-    # Opaque skin with a seam at the girth — not open ribs with air between.
+    # Continuous plated bays: inset plates per inter-hoop field. C22 varies
+    # recess depth so the sheet has steps, not one flat cheap face.
     for bay_i, (fore, aft) in enumerate(zip(GIRTH_XS, GIRTH_XS[1:])):
         mx = 0.5 * (fore + aft)
         span = max(0.55, abs(fore - aft) - 0.22)
         beam = hull_station_at(mx)[1]
+        inset = 0.050 if bay_i % 2 == 0 else 0.100
+        flank_t = 0.060 if bay_i % 2 == 0 else 0.100
         for sign, side in ((-1.0, "P"), (1.0, "S")):
             y_dorsal = 0.98 * sign
             y_inner = 0.58 * sign
             if not dorsal_blocked(mx, y_dorsal):
-                def plate(n=f"PlateDorsal_{bay_i}_{side}", loc=(mx, y_dorsal, 1.16), length=span, yw=min(1.18, beam * 0.40)):
-                    return add_box(n, (length, yw, 0.050), loc, hull_mat, 0.0)
+                def plate(n=f"PlateDorsal_{bay_i}_{side}", loc=(mx, y_dorsal, 1.16), length=span, yw=min(1.18, beam * 0.40), dz=inset):
+                    return add_box(n, (length, yw, dz), loc, hull_mat, 0.0)
                 cut(hull, plate)
                 def score_a(n=f"ScoreA_{bay_i}_{side}", loc=(mx + span * 0.18, y_dorsal, 1.17)):
                     return add_box(n, (0.045, 0.64, 0.040), loc, hull_mat, 0.0)
@@ -695,12 +699,20 @@ def build_hull(mats):
                     return add_box(n, (0.045, 0.64, 0.040), loc, hull_mat, 0.0)
                 cut(hull, score_a)
                 cut(hull, score_b)
+                # Overlapping course ON the skin — a panel step, not a wrapping hoop.
+                shift = -0.16 if bay_i % 2 == 0 else 0.16
+                extras.append(add_box(
+                    f"LOD0_Lap_{bay_i}_{side}",
+                    (max(0.48, span * 0.50), 0.74, 0.078),
+                    (mx + shift, y_dorsal, 1.22),
+                    hull_mat, 0.0,
+                ))
             elif not dorsal_blocked(mx, y_inner):
-                def plate_in(n=f"PlateInner_{bay_i}_{side}", loc=(mx, y_inner, 1.16), length=span * 0.70):
-                    return add_box(n, (length, 0.40, 0.048), loc, hull_mat, 0.0)
+                def plate_in(n=f"PlateInner_{bay_i}_{side}", loc=(mx, y_inner, 1.16), length=span * 0.70, dz=inset):
+                    return add_box(n, (length, 0.40, dz), loc, hull_mat, 0.0)
                 cut(hull, plate_in)
-            def flank(n=f"PlateFlank_{bay_i}_{side}", loc=(mx, beam * 0.82 * sign, 0.28), length=span * 0.88):
-                return add_box(n, (length, 0.065, 0.82), loc, hull_mat, 0.0)
+            def flank(n=f"PlateFlank_{bay_i}_{side}", loc=(mx, beam * 0.82 * sign, 0.28), length=span * 0.88, yt=flank_t):
+                return add_box(n, (length, yt, 0.82), loc, hull_mat, 0.0)
             cut(hull, flank)
 
     # Thin longitudinal scores in the sheet (not raised Course stringers).
@@ -714,6 +726,23 @@ def build_hull(mats):
                 def score(n=f"StringerScore_{span_i}_{side}_{int(y * 100)}", loc=(mid, y * sign, 1.18), length=span):
                     return add_box(n, (length - 0.12, 0.036, 0.040), loc, hull_mat, 0.0)
                 cut(hull, score)
+
+    # C22: well / greenhouse lip scores. Outboard of mouths — no lids, no recuts.
+    for sign, side in ((-1.0, "P"), (1.0, "S")):
+        def well_lip(n=f"WellLipScore_{side}", loc=(0.15, 1.18 * sign, 1.18)):
+            return add_box(n, (3.55, 0.075, 0.065), loc, hull_mat, 0.0)
+        cut(hull, well_lip)
+        for xi, x in enumerate((-1.90, -0.80, 0.15, 1.10, 2.15)):
+            def well_tick(n=f"WellTick_{side}_{xi}", loc=(x, 1.24 * sign, 1.18)):
+                return add_box(n, (0.06, 0.38, 0.055), loc, hull_mat, 0.0)
+            cut(hull, well_tick)
+        def green_lip(n=f"GreenLipScore_{side}", loc=(5.20, 0.88 * sign, 1.10)):
+            return add_box(n, (2.20, 0.065, 0.055), loc, hull_mat, 0.0)
+        cut(hull, green_lip)
+        for xi, x in enumerate((4.40, 5.20, 6.00)):
+            def green_tick(n=f"GreenTick_{side}_{xi}", loc=(x, 0.92 * sign, 1.10)):
+                return add_box(n, (0.055, 0.28, 0.048), loc, hull_mat, 0.0)
+            cut(hull, green_tick)
     paint_shell(hull, mats)
     return hull, extras
 
@@ -1094,29 +1123,55 @@ def build_hardware(hull, mats, lod):
     bits.append(add_cylinder("LOD0_HatchHub_Aft", 0.08, 0.09, (-2.65, 0.0, 1.24), armor, 0.0, vertices=8))
     bits.append(add_box("LOD0_MarkPlaque_Aft", (0.58, 0.22, 0.05), (-2.65, 0.0, 1.28), warning, 0.0))
 
-    # C21: formed hardware clusters ON the plated skin — not even corrugation.
-    bits.append(add_box("LOD0_Jbox_Fore", (0.52, 0.38, 0.20), (2.80, -0.78, 1.24), mech, 0.0))
-    bits.append(add_box("LOD0_Jbox_ForeLid", (0.42, 0.28, 0.07), (2.80, -0.78, 1.34), armor, 0.0))
-    bits.append(add_cylinder("LOD0_Valve_Fore", 0.10, 0.18, (2.80, -1.08, 1.26), mech, 0.0, vertices=8))
-    bits.append(add_box("LOD0_WalkPlate_ForeP", (0.88, 0.46, 0.06), (2.80, -1.48, 1.16), armor, 0.0))
-    bits.append(add_box("LOD0_WalkPlate_ForeS", (0.88, 0.46, 0.06), (2.80, 1.48, 1.16), armor, 0.0))
-    bits.append(add_box("LOD0_Rail_ForeP", (1.28, 0.10, 0.08), (2.70, -1.52, 1.30), mech, 0.0))
-    bits.append(add_box("LOD0_Rail_ForeS", (1.28, 0.10, 0.08), (2.70, 1.52, 1.30), mech, 0.0))
+    # C21/C22: formed hardware clusters ON the plated skin — chase-readable.
+    bits.append(add_box("LOD0_Jbox_Fore", (0.64, 0.46, 0.24), (2.80, -0.82, 1.26), mech, 0.0))
+    bits.append(add_box("LOD0_Jbox_ForeLid", (0.50, 0.34, 0.08), (2.80, -0.82, 1.38), armor, 0.0))
+    bits.append(add_cylinder("LOD0_Valve_Fore", 0.12, 0.20, (2.80, -1.14, 1.28), mech, 0.0, vertices=8))
+    bits.append(add_box("LOD0_WalkPlate_ForeP", (1.05, 0.52, 0.07), (2.80, -1.52, 1.16), armor, 0.0))
+    bits.append(add_box("LOD0_WalkPlate_ForeS", (1.05, 0.52, 0.07), (2.80, 1.52, 1.16), armor, 0.0))
+    bits.append(add_box("LOD0_Rail_ForeP", (1.42, 0.11, 0.09), (2.70, -1.56, 1.32), mech, 0.0))
+    bits.append(add_box("LOD0_Rail_ForeS", (1.42, 0.11, 0.09), (2.70, 1.56, 1.32), mech, 0.0))
     bits.append(add_cylinder(
-        "LOD0_Pipe_Fore", 0.075, 0.86, (2.80, 0.0, 1.08),
+        "LOD0_Pipe_Fore", 0.085, 0.96, (2.80, 0.0, 1.08),
         mech, 0.0, rotation=(math.radians(90.0), 0.0, 0.0), vertices=8,
     ))
-    bits.append(add_box("LOD0_Jbox_Aft", (0.46, 0.34, 0.16), (-2.65, 0.82, 1.16), mech, 0.0))
-    bits.append(add_box("LOD0_Jbox_AftLid", (0.36, 0.24, 0.06), (-2.65, 0.82, 1.24), armor, 0.0))
-    bits.append(add_cylinder("LOD0_Valve_Aft", 0.09, 0.16, (-2.65, 1.10, 1.18), mech, 0.0, vertices=8))
-    bits.append(add_box("LOD0_WalkPlate_AftP", (0.80, 0.42, 0.055), (-2.65, -1.42, 1.12), armor, 0.0))
-    bits.append(add_box("LOD0_WalkPlate_AftS", (0.80, 0.42, 0.055), (-2.65, 1.42, 1.12), armor, 0.0))
-    bits.append(add_box("LOD0_Rail_AftP", (1.10, 0.09, 0.07), (-2.70, -1.46, 1.24), mech, 0.0))
-    bits.append(add_box("LOD0_Rail_AftS", (1.10, 0.09, 0.07), (-2.70, 1.46, 1.24), mech, 0.0))
+    bits.append(add_box("LOD0_Manifold_Fore", (0.78, 0.50, 0.28), (1.85, -1.40, 1.26), mech, 0.0))
+    bits.append(add_box("LOD0_Manifold_ForeCap", (0.60, 0.38, 0.10), (1.85, -1.40, 1.40), armor, 0.0))
     bits.append(add_cylinder(
-        "LOD0_Pipe_Hold", 0.065, 0.72, (-2.65, 0.0, 1.02),
+        "LOD0_Pipe_ForeX", 0.085, 1.35, (2.10, -1.40, 1.12),
+        mech, 0.0, rotation=(0.0, math.radians(90.0), 0.0), vertices=8,
+    ))
+    bits.append(add_box("LOD0_Bracket_ForeP", (0.24, 0.16, 0.24), (1.85, -1.66, 1.18), mech, 0.0))
+    bits.append(add_box("LOD0_Bracket_ForeS", (0.24, 0.16, 0.24), (1.85, 1.66, 1.18), mech, 0.0))
+    def hatch_waist():
+        return add_cylinder("HatchCut_Waist", 0.24, 0.18, (1.55, 0.0, 1.20), hull_mat, 0.0, vertices=12)
+    cut(hull, hatch_waist)
+    bits.append(add_cylinder("LOD0_HatchRing_Waist", 0.22, 0.07, (1.55, 0.0, 1.26), mech, 0.0, vertices=12))
+    bits.append(add_cylinder("LOD0_HatchHub_Waist", 0.08, 0.08, (1.55, 0.0, 1.28), armor, 0.0, vertices=8))
+    bits.append(add_box("LOD0_Jbox_Aft", (0.56, 0.40, 0.20), (-2.65, 0.86, 1.18), mech, 0.0))
+    bits.append(add_box("LOD0_Jbox_AftLid", (0.44, 0.28, 0.07), (-2.65, 0.86, 1.28), armor, 0.0))
+    bits.append(add_cylinder("LOD0_Valve_Aft", 0.10, 0.18, (-2.65, 1.16, 1.20), mech, 0.0, vertices=8))
+    bits.append(add_box("LOD0_WalkPlate_AftP", (0.92, 0.48, 0.06), (-2.65, -1.46, 1.12), armor, 0.0))
+    bits.append(add_box("LOD0_WalkPlate_AftS", (0.92, 0.48, 0.06), (-2.65, 1.46, 1.12), armor, 0.0))
+    bits.append(add_box("LOD0_Rail_AftP", (1.22, 0.10, 0.08), (-2.70, -1.50, 1.26), mech, 0.0))
+    bits.append(add_box("LOD0_Rail_AftS", (1.22, 0.10, 0.08), (-2.70, 1.50, 1.26), mech, 0.0))
+    bits.append(add_cylinder(
+        "LOD0_Pipe_Hold", 0.075, 0.82, (-2.65, 0.0, 1.02),
         mech, 0.0, rotation=(math.radians(90.0), 0.0, 0.0), vertices=8,
     ))
+    bits.append(add_box("LOD0_Manifold_Aft", (0.68, 0.44, 0.24), (-1.55, 1.38, 1.20), mech, 0.0))
+    bits.append(add_cylinder(
+        "LOD0_Pipe_AftX", 0.075, 1.18, (-1.80, 1.38, 1.08),
+        mech, 0.0, rotation=(0.0, math.radians(90.0), 0.0), vertices=8,
+    ))
+    bits.append(add_box("LOD0_WellCheek_P", (3.20, 0.18, 0.09), (0.15, -1.28, 1.24), armor, 0.0))
+    bits.append(add_box("LOD0_WellCheek_S", (3.20, 0.18, 0.09), (0.15, 1.28, 1.24), armor, 0.0))
+    for i, bx in enumerate((-1.85, -0.95, -0.10, 0.75, 1.60, 2.15)):
+        for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+            bits.append(add_cylinder(
+                f"LOD0_WellBolt_{tag}_{i}", 0.058, 0.09,
+                (bx, 1.30 * sign, 1.28), mech, 0.0, vertices=8,
+            ))
 
     for bolt_i, bx in enumerate((-1.70, -0.80, 0.15, 1.05, 1.95)):
         for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
@@ -1168,6 +1223,16 @@ def build_hardware(hull, mats, lod):
             [(-2.00, 0.94, 0.68), (-2.65, 1.02, 0.84), (-3.40, 0.90, 0.64)],
             0.09, mech, 8,
         ))
+        bits.extend(add_hose(
+            "LOD0_Hose_WellLip_P",
+            [(2.15, -1.22, 0.78), (0.15, -1.30, 0.92), (-1.85, -1.20, 0.74)],
+            0.10, mech, 8,
+        ))
+        bits.extend(add_hose(
+            "LOD0_Hose_WellLip_S",
+            [(2.15, 1.22, 0.78), (0.15, 1.30, 0.92), (-1.85, 1.20, 0.74)],
+            0.10, mech, 8,
+        ))
         bits.append(add_box("LOD0_MiningHouse", (0.55, 0.28, 0.22), (7.35, 0.0, -0.12), armor, 0.002))
         bits.append(add_cylinder(
             "LOD0_MiningBit", 0.07, 0.42, (7.62, 0.0, -0.12), mech, 0.0,
@@ -1186,7 +1251,8 @@ def shade_objects(objs):
             "Girth", "Stringer", "Saddle", "Winch", "Chine", "Fairing", "Strake",
             "Cage", "Mullion", "WellLip", "GreenLip", "RoofPlate", "Sponson",
             "Nozzle", "Hatch", "Mark", "Field", "Plate", "Score", "Pipe",
-            "Valve", "Jbox", "Walk", "Cover", "Rail")
+            "Valve", "Jbox", "Walk", "Cover", "Rail", "Lap", "Bracket",
+            "Manifold", "Cheek", "WellBolt", "Tick")
     for obj in objs:
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
@@ -1402,7 +1468,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "drifter_chase_form_v21.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "drifter_chase_form_v22.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 
