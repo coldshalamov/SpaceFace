@@ -100,6 +100,18 @@ fraction fell to 8%. Close still: well and greenhouse read as holes. Three chase
 reviews REVISE. Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is
 not closed. No seats. No megatex. Parent unproven / not G7.
 
+## C9 chase-form (2026-09-21)
+
+`chase_form_v9` keeps C8 value split (light ~8%) and well holes. Principled islands
+only. Hitch/Hornet untouched.
+
+Remaining C8 vs Hitch: kitbash silhouette, card-thin teal rails, copper bars
+(8.5% vs 0.6%). C9 densified the hull loft, replaced accent boxes with a formed
+chine, inset girth bands, thicker winglets, framed canopy, darker ceramic/dirt.
+Brown fell to 0.8%. Three chase reviews REVISE. Close still: well and greenhouse
+read as holes. Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is
+not closed. No seats. No megatex. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
