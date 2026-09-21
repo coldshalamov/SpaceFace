@@ -8,6 +8,7 @@ import {
   TraceLayer,
   clamp,
   distance2,
+  finite,
   hashUnit,
   makeThrusterRequest,
   saturate,
@@ -456,7 +457,7 @@ function desiredForIntent(intent, self, target, contactIndex, seed, entityId, co
       return target ? orbit(self, target, orbitRadius, seed, entityId, intent.lateralSign) : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.7);
     }
     case ManeuverKind.SCREEN:
-      return screen(self, target, intent.formationSlot, intent.formationVelocity);
+      return screen(self, target, intent.formationSlot, intent.formationVelocity, intent.formationBound);
     case ManeuverKind.APPROACH_SOCKET:
     case ManeuverKind.CUT_TETHER:
       return target ? seekPoint(self, target.pos, 1) : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.8);
@@ -535,12 +536,30 @@ function orbit(self, target, radius, seed, entityId, lateralSign = 0) {
   return { x: tangentX + radialX * 1.15, z: tangentZ + radialZ * 1.15, arrivalDistance: Math.abs(dist - radius) };
 }
 
-function screen(self, target, formationSlot, formationVelocity) {
+// INF-024: a screen holds station — it leans toward the threat but never farther than it
+// can go without tripping its own formation-rejoin (bound × rejoin fraction). The old
+// 35%-of-the-way point put a distant threat hundreds of wu off the slot, so the ship
+// lunged out, got yanked home by rejoin, and lunged again: a heroic-chase yo-yo with no
+// readable station. The leash keeps the excursion inside the rejoin radius with margin,
+// so the screen reads as a held line between protectee and threat.
+export const SCREEN_THREAT_LEASH_FRACTION = 0.55;
+export const SCREEN_THREAT_LEASH_MAX = 120;
+export function screenPoint(slot, targetPos, bound) {
+  const sx = finite(slot && slot.x, 0), sz = finite(slot && slot.z, 0);
+  const tx = finite(targetPos && targetPos.x, NaN), tz = finite(targetPos && targetPos.z, NaN);
+  if (!Number.isFinite(tx) || !Number.isFinite(tz)) return { x: sx, z: sz };
+  const dx = tx - sx, dz = tz - sz;
+  const dist = Math.hypot(dx, dz);
+  if (!(dist > 1)) return { x: sx, z: sz };
+  const saneBound = Number.isFinite(bound) && bound > 0 ? bound : 170;
+  const leash = Math.min(SCREEN_THREAT_LEASH_MAX, SCREEN_THREAT_LEASH_FRACTION * saneBound);
+  const reach = Math.min(dist * 0.35, leash);
+  return { x: sx + (dx / dist) * reach, z: sz + (dz / dist) * reach };
+}
+
+function screen(self, target, formationSlot, formationVelocity, formationBound) {
   if (!target) return trackPoint(self, formationSlot, formationVelocity, 0.8);
-  const point = {
-    x: formationSlot.x * 0.65 + target.pos.x * 0.35,
-    z: formationSlot.z * 0.65 + target.pos.z * 0.35,
-  };
+  const point = screenPoint(formationSlot, target.pos, formationBound);
   const vel = formationVelocity || ZERO_VEL;
   const blended = {
     x: (vel.x || 0) * 0.65 + (target.vel && target.vel.x || 0) * 0.35,
