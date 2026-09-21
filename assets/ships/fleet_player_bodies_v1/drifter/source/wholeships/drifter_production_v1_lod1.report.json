@@ -1,7 +1,7 @@
 {
   "ok": true,
   "asset": "ship_drifter",
-  "revision": "chase_form_v16",
+  "revision": "chase_form_v17",
   "lod": 1,
   "source": "/workspace/assets/ships/parts/wholeships/drifter_production_v1_lod1.glb",
   "output": "/workspace/assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod1.glb",
@@ -53,5 +53,5 @@
     "LOD0_HeatBand_Port",
     "LOD0_Hull"
   ],
-  "bytes": 2606328
+  "bytes": 2605168
 }

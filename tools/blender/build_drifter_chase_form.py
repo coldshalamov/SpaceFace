@@ -22,7 +22,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v16"
+REVISION = "chase_form_v17"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "drifter"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -38,6 +38,8 @@ KEEP_SEPARATE = (
 # C15: no vertical slab at y=beam. Abeam still read spine+flanks (separate nacelle
 # bodies + remaining YZ fold). C16: convex diamond YZ; nacelle bodies deleted;
 # aft stations widen so drives sit in the primary loft. Armor is keel/bilge only.
+# C17: clay abeam spine/flank was Deck+Armor slots surviving a slot-0-only clay
+# override. Outer diamond is one Hull value; Armor stays keel. No extra plates.
 HONEST = {
     "Material_Hull": {"color": (0.108, 0.132, 0.140), "metallic": 0.16, "roughness": 0.54, "role": "hull"},
     "Material_Armor": {"color": (0.072, 0.082, 0.088), "metallic": 0.22, "roughness": 0.56, "role": "armor"},
@@ -590,24 +592,23 @@ def hull_half_at(x):
 
 
 def paint_shell(hull, mats):
-    """Deck on the inner crown only, armor on keel/bilge, hull on the slope.
+    """One Hull value on the outer diamond. Armor on keel/bilge only.
 
-    C14's Deck threshold (zc+hh*0.28) painted the upper vertical wall a second
-    value — abeam read that as a darker flank. Do not assign Armor by |y|.
+    C16 Deck-on-crown (zc+hh*0.70) was a second albedo down the dorsal center.
+    Clay only overrode slot 0, so abeam read a dark spine + lighter flanks + a
+    hard value join. Do not paint Deck on the outer shell. Do not assign Armor
+    by |y|.
     """
     mesh = hull.data
     mesh.materials.clear()
     mesh.materials.append(mats["Material_Hull"])
     mesh.materials.append(mats["Material_Armor"])
-    mesh.materials.append(mats["Material_Deck"])
     for poly in mesh.polygons:
         verts = [mesh.vertices[index].co for index in poly.vertices]
         centroid = sum(verts, Vector()) / max(len(verts), 1)
         _beam, hh, zc = hull_half_at(centroid.x)
         if centroid.z < zc - hh * 0.38:
             poly.material_index = 1
-        elif centroid.z > zc + hh * 0.70:
-            poly.material_index = 2
         else:
             poly.material_index = 0
 
@@ -628,8 +629,8 @@ def build_hull(mats):
 
         cut(hull, ring_frame)
     for sign, side in ((-1.0, "P"), (1.0, "S")):
-        def dorsal_seam(name=f"DorsalSeam_{side}", loc=(-0.20, 0.85 * sign, 1.18)):
-            return add_box(name, (9.2, 0.12, 0.18), loc, hull_mat, 0.0)
+        def dorsal_seam(name=f"DorsalSeam_{side}", loc=(-0.20, 0.38 * sign, 1.22)):
+            return add_box(name, (9.2, 0.10, 0.14), loc, hull_mat, 0.0)
         cut(hull, dorsal_seam)
         # C14 MidSeam + GunwaleSeam split the abeam face into spine vs flank.
         def bilge_seam(name=f"BilgeSeam_{side}", loc=(-0.40, 1.55 * sign, -0.36)):
@@ -1190,7 +1191,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "drifter_chase_form_v16.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "drifter_chase_form_v17.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 

@@ -214,6 +214,18 @@ flanking volumes and a hard value/seam at the root (shaded closer to one diamond
 Hitch still wins formed-shell / skin at D=144. Hitch-plus chase is not closed.
 Parent unproven / not G7.
 
+## C17 chase-form (2026-09-21)
+
+`chase_form_v17` keeps the C16 convex-diamond hull (no separate nacelle bodies)
+and the C14–C16 play+close wins. Clay leftover was multiple hull mats plus a
+slot-0-only clay override. C17 overrides every material slot and paints the
+outer diamond one Hull value (Armor stays keel). Principled islands only.
+Hitch/Hornet untouched. No seats. No megatex.
+
+Three chase reviews REVISE. Play+close+abeam `TUBE_PADDLE NO` on clay and
+shaded; wells stay holes. Hitch still wins formed-shell / skin at D=144.
+Hitch-plus chase is not closed. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
