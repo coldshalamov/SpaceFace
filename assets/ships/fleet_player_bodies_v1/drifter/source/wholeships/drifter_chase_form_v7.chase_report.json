@@ -1,0 +1,32 @@
+{
+  "ok": true,
+  "asset": "ship_drifter",
+  "revision": "chase_form_v7",
+  "cycle": 7,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.846153900747011,
+  "authoredX": 16.77,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 11.9354, 5.5802],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sha256": "b5e13bbd1daec21781ec689001b65980d32f15a704a04e13cf57ac414f71e048",
+    "triangles": 12924,
+    "hullTriangles": 5734,
+    "bytes": 1709464,
+    "size": [16.77, 6.465, 3.023]
+  },
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "hitchStills": "/tmp/hitch-c7",
+  "reviews": {
+    "play_chase": "VALID framing. Skin seams/clamps present; well+greenhouse still dark masses. Hitch still wins formed-shell / density at D=144.",
+    "play_chase_abeam": "VALID framing. Flank courses and D2/02. Hitch still denser on manufactured meso.",
+    "play_chase_close": "VALID framing. Well and greenhouse read as holes. Hitch still wins skin density."
+  },
+  "result": "REVISE",
+  "hitchPlusChase": false,
+  "notes": "C7 kept the C6 shell and added chase-readable skin in the hull. Hitch still wins D=144. No seats. No megatex. Hitch/Kestrel/Hornet frozen. Parent unproven / not G7."
+}

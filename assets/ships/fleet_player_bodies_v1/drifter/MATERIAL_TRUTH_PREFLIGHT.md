@@ -70,6 +70,18 @@ enlarged the well and greenhouse as holes, quieted the hull, and cut hardware to
 clusters. Three chase reviews REVISE. Hitch still wins D=144. Hitch-plus chase is not
 closed. No seats. No megatex. Parent unproven / not G7.
 
+## C7 chase-form (2026-09-21)
+
+`chase_form_v7` on the same live sockets and C6 shell. Principled islands only.
+Hitch/Hornet untouched.
+
+C6 remaining note was formed-shell / skin density at D=144. C7 kept stations, landmark
+wells, and faired nacelles. It cut chase-scale girth and stringer channels into the hull,
+added formed armor courses (not a plate carpet), clamp/fastener language that reads at
+D=144, mixed albedo islands, and selective dirt. Three chase reviews REVISE. Close still:
+well and greenhouse read as holes. Hitch still wins D=144. Hitch-plus chase is not closed.
+No seats. No megatex. Parent unproven / not G7.
+
 ## 0. Frozen identity
 
 ~16.5 m overall, twin nacelle drives outboard aft, short winglets, front + rear guns,
