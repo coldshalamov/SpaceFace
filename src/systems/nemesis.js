@@ -155,7 +155,10 @@ export function createNemesisSystem() {
       this._log('announced', plan.reason, id);
       this._emit('nemesis:announced', { requestId: id, aceId: RIVAL.id, sectorId: sector(state),
         notBefore: m.pending.notBefore, chapter: plan.chapter, kit: plan.primary,
-        tell: NEMESIS_KITS[plan.primary].tell, opening: NEMESIS_KITS[plan.primary].opening });
+        tell: NEMESIS_KITS[plan.primary].tell, opening: NEMESIS_KITS[plan.primary].opening,
+        // INF-075: the wing refit rides along undisclosed no more — consumers derive its
+        // tell/opening from the kit table exactly like the primary.
+        secondary: plan.secondary || null });
     },
     _started(p) {
       const m = this.state.nemesis, pending = m.pending;
@@ -179,6 +182,15 @@ export function createNemesisSystem() {
         primary: a.plan.primary, units: a.plan.evidenceUnits, episodes: a.plan.evidenceEpisodes,
         confidence: a.plan.confidence, tell: kit.tell, opening: kit.opening,
       });
+      // INF-075: the wing states its own reason. Same evidence units the planner counted —
+      // never a confidence the plan does not store, never knowledge the memory lacks.
+      if (a.plan.secondary) {
+        const wing = NEMESIS_KITS[a.plan.secondary];
+        if (wing) this._voice('prediction', `ORRA (wing): ${wing.response}`, {
+          secondary: a.plan.secondary, units: a.plan.evidenceUnits, episodes: a.plan.evidenceEpisodes,
+          tell: wing.tell, opening: wing.opening,
+        });
+      }
       this._emit('nemesis:engaged', { encounterId: a.id, aceId: RIVAL.id, bossId: a.bossId,
         plan: a.plan, crewIds: a.crewIds, t: now });
     },
