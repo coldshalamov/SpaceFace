@@ -19543,7 +19543,7 @@
       "priority": 339,
       "title": "Crucible roster prewarm: no wave freezes the fight",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
