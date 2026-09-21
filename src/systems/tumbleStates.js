@@ -28,6 +28,7 @@ import {
   HITSTUN_IMPULSE_EVENT,
   readRecentImpulseProvenance,
   resolveHitstunLaw,
+  signedHitSide,
 } from '../combat/impulseKernel.js';
 import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
 
@@ -203,7 +204,10 @@ export const tumbleStates = {
       deltaV: finite(payload.relSpeed, finite(payload.massSpeed)),
       attackerId: payload.targetId,
       attackerMass: positive(payload.mass, massOf(entityById(state, payload.targetId))),
-      hitSide: numericParity(payload.victimId) ? 1 : -1,
+      // INF-044 — the spin side comes from the receipt's contact read (kick direction x
+      // contact offset), not the victim id. A mass striking port spins the victim opposite
+      // to one striking starboard; head-on reads fall back to id parity via signedHitSide.
+      hitSide: whipReceiptHitSide(victim, payload),
       requireMassline: true,
       provenance: Object.freeze({
         schemaVersion: 1,
@@ -452,6 +456,22 @@ function entityById(state, id) {
 
 function massOf(entity) {
   return positive(entity && (entity.physicsBody && entity.physicsBody.mass || entity.mass), 1);
+}
+
+// INF-044 — resolve the whip tumble's spin side from the receipt's contact read. The kick
+// direction is the incoming relative velocity (the way the victim gets knocked); the contact
+// offset is the receipt's hull point. Legacy receipts without geometry fall back to id parity
+// inside signedHitSide, preserving the old behavior exactly where there is nothing to read.
+function whipReceiptHitSide(victim, payload) {
+  const vel = payload && payload.vel;
+  const pos = payload && payload.pos;
+  if (victim && vel && pos
+    && Number.isFinite(vel.x) && Number.isFinite(vel.z)
+    && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+    && Math.hypot(vel.x, vel.z) > 1e-9) {
+    return signedHitSide(victim, { x: vel.x, z: vel.z }, { pos: { x: pos.x, z: pos.z } }, victim.id);
+  }
+  return numericParity(payload && payload.victimId) ? 1 : -1;
 }
 
 function numericParity(value) {

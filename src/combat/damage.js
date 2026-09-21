@@ -543,7 +543,7 @@ export function normalizeDamagePacket(packet = {}, channelOrder = ['kinetic', 't
   };
 }
 
-export function scalarHitToDamagePacket({ damage = 0, damageType = 'kinetic', pos = null, penetration = 0, impulse = null, tumbleTorque = 0, heat = 0, statuses = [], source = null, subsystemShare = null, shieldBypass = 0 } = {}) {
+export function scalarHitToDamagePacket({ damage = 0, damageType = 'kinetic', pos = null, approach = null, normal = null, penetration = 0, impulse = null, tumbleTorque = 0, heat = 0, statuses = [], source = null, subsystemShare = null, shieldBypass = 0 } = {}) {
   const amount = Math.max(0, Number(damage) || 0);
   const channels = { kinetic: 0, thermal: 0, ion: 0, plasma: 0, phase: 0 };
   switch (damageType) {
@@ -566,7 +566,11 @@ export function scalarHitToDamagePacket({ damage = 0, damageType = 'kinetic', po
     tumbleTorque: Math.max(0, Number(tumbleTorque) || 0),
     heat: Math.max(0, Number(heat) || 0),
     statuses,
-    hit: pos ? { pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 } } : null,
+    hit: (pos || approach || normal) ? {
+      pos: pos ? { x: Number(pos.x) || 0, z: Number(pos.z) || 0 } : null,
+      approach: approach ? { x: Number(approach.x) || 0, z: Number(approach.z) || 0 } : null,
+      normal: normal ? { x: Number(normal.x) || 0, z: Number(normal.z) || 0 } : null,
+    } : null,
     source: source && typeof source === 'object' ? { ...source } : null,
     // Subsystem-targeting + shield coupling (EMP/disable verb, spec §9). subsystemShare 1.0 = all
     // damage to components; shieldBypass 1.0 = ignores shields entirely.

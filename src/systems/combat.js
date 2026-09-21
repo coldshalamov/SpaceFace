@@ -552,10 +552,17 @@ export const combat = {
     const momentum = Number.isFinite(payload.momentum) ? Math.max(0, payload.momentum) : 0;
     const damage = Math.min(WHIP_DAMAGE_MAX, momentum * WHIP_DAMAGE_MOMENTUM_SCALE);
     if (damage <= 0) return null;
+    // INF-044 — the damage rides the receipt's contact read (point, incoming axis, outward
+    // side), so the victim's sparks vent from the struck side instead of the hull center.
+    const contact = payload.pos && Number.isFinite(payload.pos.x) && Number.isFinite(payload.pos.z)
+      ? { x: payload.pos.x, z: payload.pos.z }
+      : { x: victim.pos.x, z: victim.pos.z };
     const packet = scalarHitToDamagePacket({
       damage,
       damageType: 'kinetic',
-      pos: { x: victim.pos.x, z: victim.pos.z },
+      pos: contact,
+      approach: payload.approach,
+      normal: payload.normal,
       source: { kind: 'massline_whip', massId: payload.targetId ?? null },
     });
     packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };

@@ -4,7 +4,7 @@
 // swing — the tethered (or just-released) MASS whacking into a solid body. It writes ONLY its own
 // runtime subtree at state.player.masslineImpacts and emits two documented events:
 // `tether:whipImpact` ({ targetId, victimId, relSpeed, massSpeed, mass, momentum, slung, severity,
-// rating, tick, time }) and the fitted-head-only `massline:sweepImpact` ({ headId, targetId,
+// rating, pos, normal, axisSigned, vel, approach, tick, time }) and the fitted-head-only `massline:sweepImpact` ({ headId, targetId,
 // victimId, transverseSpeed, reducedMass, momentum, pos, severity, rating, tick, time }). It never
 // mutates entities, attachments, the tether, or sibling subtrees.
 //
@@ -294,6 +294,12 @@ export const masslineImpacts = {
       rating,
       tick,
       time: now,
+      // INF-044 — the contact side, so every consumer reads the receipt instead of a center:
+      // contact point on the victim hull facing the mass, the outward normal toward the side
+      // the energy came from (signed — the mass is genuinely there), and the incoming relative
+      // velocity with its unit approach. Port, starboard, head-on, and glancing contacts all
+      // differ here; consumers must not re-derive them.
+      ...whipContactGeometry(mass, victim),
     };
     runtime.impacts.push(record);
     if (runtime.impacts.length > WHIP_LOG_CAP) runtime.impacts.shift();
@@ -475,6 +481,46 @@ function freshRuntime() {
 }
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+// INF-044 — contact geometry for a whip impact, read once at the emit site from the two
+// bodies the observer already holds. No collision math is invented here: the mass and the
+// victim overlap (or the swept path crossed) by the time _emitImpact runs, so the side the
+// mass is on IS the contact side. Pure, allocation-light (one small object per emit, not per
+// tick), deterministic.
+function whipContactGeometry(mass, victim) {
+  const mvx = finite(mass && mass.pos && mass.pos.x, 0);
+  const mvz = finite(mass && mass.pos && mass.pos.z, 0);
+  const vvx = finite(victim && victim.pos && victim.pos.x, 0);
+  const vvz = finite(victim && victim.pos && victim.pos.z, 0);
+  const rvx = finite(mass && mass.vel && mass.vel.x, 0) - finite(victim && victim.vel && victim.vel.x, 0);
+  const rvz = finite(mass && mass.vel && mass.vel.z, 0) - finite(victim && victim.vel && victim.vel.z, 0);
+  // Outward normal: victim center -> mass. Degenerate (coincident centers) falls back to the
+  // side the energy came from, i.e. against the relative motion; a true zero stays +X.
+  let nx = mvx - vvx;
+  let nz = mvz - vvz;
+  if (!(Math.hypot(nx, nz) > 1e-6)) {
+    nx = -rvx;
+    nz = -rvz;
+  }
+  let nlen = Math.hypot(nx, nz);
+  if (!(nlen > 1e-6)) {
+    nx = 1;
+    nz = 0;
+    nlen = 1;
+  }
+  nx /= nlen;
+  nz /= nlen;
+  const victimRadius = Math.max(0, finite(victim && victim.radius, 0));
+  const speed = Math.hypot(rvx, rvz);
+  const approach = speed > 1e-6 ? { x: rvx / speed, z: rvz / speed } : null;
+  return {
+    pos: { x: vvx + nx * victimRadius, z: vvz + nz * victimRadius },
+    normal: { x: nx, z: nz },
+    axisSigned: true,
+    vel: { x: rvx, z: rvz },
+    approach,
+  };
+}
 
 function finite(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
