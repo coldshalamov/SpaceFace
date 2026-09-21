@@ -47,21 +47,23 @@ export function createMasslineCadenceReadout(parent) {
       const tether=state?.player?.tether, solution=state?.massline2?.throw?.solution;
       root.hidden=!tether?.active;
       if(root.hidden)return;
-      const window=solution?.window,open=!!(solution?.valid&&solution.onSolution&&!solution.decisionStale);
+      const window=solution?.window,open=!!(solution?.valid&&solution.onSolution&&!solution.decisionStale&&!solution.degraded);
       const field=solution?.fieldAware===true;
+      const degraded=solution?.degraded===true;
       const entry=window?.reliable&&Number.isFinite(window.enterS)?window.enterS:null;
       const phase=String(tether.cadence?.phase||'coast').replaceAll('_',' ').toUpperCase();
       text(el.phase,phase);
-      text(el.status,!solution?'Choose an exit target':open?'ON VECTOR':field?'CURVED FLIGHT':entry!=null?`COAST · ${entry.toFixed(2)} s`:'Build the next angle');
+      text(el.status,!solution?'Choose an exit target':open?'ON VECTOR':degraded?'TARGET TURNING':field?'CURVED FLIGHT':entry!=null?`COAST · ${entry.toFixed(2)} s`:'Build the next angle');
       text(el.hint,!solution?'Fly, draw, coast. A manual cut remains yours.':open?
         (field?'Snapshot field model intersects the target.':'Current free-flight path intersects the target.'):
+        degraded?'Target is turning — the straight-line read is stale. Wait for a steady course.':
         field?'Field snapshot only; future motion may differ.':entry!=null?'Next aperture if both bodies coast.':
         window?.reason==='coast_required'?'Stop drawing to read the coast window.':'No near-term aperture. Turn or change radius.');
       text(el.speed,Number.isFinite(solution?.payloadSpeed)?solution.payloadSpeed.toFixed(0):'—');
       const clearance=solution?.clearance;
       text(el.clearance,Number.isFinite(clearance)?`${clearance>=0?'+':''}${clearance.toFixed(1)}`:'—');
       text(el.length,Number.isFinite(tether.restLength)?tether.restLength.toFixed(0):'—');
-      root.dataset.open=String(open);root.dataset.field=String(field);
+      root.dataset.open=String(open);root.dataset.field=String(field);root.dataset.degraded=String(degraded);
       const start=entry==null?0:Math.min(1.5,entry), end=entry==null?0:Math.min(1.5,window.exitS??1.5);
       el.bar.setAttribute('x',String(start/1.5*296));el.bar.setAttribute('width',String(Math.max(0,end-start)/1.5*296));
       el.bar.setAttribute('opacity',window?.exitS==null?'0.45':'1');

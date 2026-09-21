@@ -28,6 +28,34 @@ const AIM_QUERY_RADIUS = 220;       // cursor-aim entity search radius around ai
 
 const AIMABLE_TYPES = new Set(['ship', 'drone', 'asteroid', 'station', 'wreck', 'payload']);
 
+// INF-016 — turning-target confidence. The intercept solver extrapolates the aim target
+// ballistically, so a target changing course invalidates the release read without invalidating
+// the geometry: reachability (can the payload get there) stays on the straight-line solver,
+// while interception (is this the timed frame) degrades. Heading history is entity kinematics
+// plus fixed ticks only — deterministic, no steering: the throw is never aimed for the player.
+export const TURN_TRACK_WINDOW_TICKS = 15;
+export const TURN_DEGRADE_RAD = 0.12;
+export const TURN_MIN_SPEED = 15;
+export function assessTargetTurn(track, targetId, vel, tick) {
+  const t = Math.max(0, Math.trunc(Number(tick) || 0));
+  if (targetId == null || !vel || !Number.isFinite(vel.x) || !Number.isFinite(vel.z)) {
+    return { track: null, degraded: false, turnRate: 0 };
+  }
+  const speed = Math.hypot(vel.x, vel.z);
+  let samples = track && track.id === targetId && Array.isArray(track.samples) ? track.samples : [];
+  samples = [...samples.filter((s) => t - s.tick <= TURN_TRACK_WINDOW_TICKS), { vx: vel.x, vz: vel.z, tick: t }];
+  const next = { id: targetId, samples };
+  if (speed < TURN_MIN_SPEED) return { track: next, degraded: false, turnRate: 0 };
+  const oldest = samples[0];
+  const oldSpeed = Math.hypot(oldest.vx, oldest.vz);
+  if (oldSpeed < TURN_MIN_SPEED || samples.length < 2) return { track: next, degraded: false, turnRate: 0 };
+  const dot = oldest.vx * vel.x + oldest.vz * vel.z;
+  const cos = Math.max(-1, Math.min(1, dot / (oldSpeed * speed)));
+  const angle = Math.acos(cos);
+  const windowS = Math.max(1 / 60, (t - oldest.tick) / 60);
+  return { track: next, degraded: angle > TURN_DEGRADE_RAD, turnRate: angle / windowS };
+}
+
 const FALLBACK = Object.freeze({
   armed: false,
   payloadId: null,
@@ -59,6 +87,8 @@ export const masslineThrow = {
     this._pendingSnap = null;
     this._throwPrediction = {};
     this._selfPrediction = {};
+    this._throwTurnTrack = null;
+    this._selfTurnTrack = null;
     this._pendingReleaseValidation = null;
     this._releaseLatchActive = false;
     this._releaseLatchPayloadId = null;
@@ -87,6 +117,7 @@ export const masslineThrow = {
     if (state) writeIdle(ensureThrowSubtree(state));
     this._clearReleaseLatch();
     this._throwPrediction = {}; this._selfPrediction = {};
+    this._throwTurnTrack = null; this._selfTurnTrack = null;
     this._swing = null; this._pendingSnap = null; this._windowForecast = null;
     this._pendingReleaseValidation = null; this._armAuthorized = false;
     this._releaseAttemptTick = -1; this._solutionWasOn = false;
@@ -148,11 +179,21 @@ export const masslineThrow = {
     }
     runtime.aimTargetId = aim.entity ? aim.entity.id : null;
     runtime.aimSynthetic = !aim.entity;
+    // INF-016: a turning aim target invalidates the cached pre-turn sample and degrades the
+    // read. The geometry below still solves straight-line from current endpoints.
+    const turn = assessTargetTurn(this._throwTurnTrack, aim.entity ? aim.entity.id : null,
+      aim.entity ? aim.entity.vel : null, state.tick);
+    this._throwTurnTrack = turn.track;
+    if (turn.degraded) this._throwPrediction = {};
     const fieldSampler = this._buildFieldSampler(state, payload);
     const solution = sampleThrowSolution(this._throwPrediction, payload, aim.target, {
       tick: state.tick, omega: kin.omega, identity, fieldSampler,
       requireFresh: armed || !!this._pendingSnap,
     });
+    solution.degraded = turn.degraded;
+    solution.turnRate = turn.turnRate;
+    solution.reachable = solution.valid === true;
+    if (turn.degraded) solution.onSolution = false;
     // The player gets a release read BEFORE committing, not only while the release is armed.
     // Forecast cost is bounded and runs at 15 Hz. The contact gate above is current-tick truth.
     const movingWinch = Math.abs(finite(tether.cadence && tether.cadence.reelVelocity)) > 2;
@@ -175,7 +216,7 @@ export const masslineThrow = {
     solution.window = window;
     solution.timeToSolution = solution.onSolution ? 0 : window.enterS;
     runtime.solution = mirrorSolution(runtime.solution, solution);
-    const onNow = !!(solution.valid && solution.onSolution && !solution.decisionStale);
+    const onNow = !!(solution.valid && solution.onSolution && !solution.decisionStale && !solution.degraded);
     if (onNow !== this._solutionWasOn) {
       if (onNow) this.bus.emit('audio:cue', { id: 'massline.solutionLock' });
       this.bus.emit('massline:releaseWindow', { sourceId: player.id, payloadId: payload.id,
@@ -316,7 +357,15 @@ export const masslineThrow = {
   // Self-sling solution (case B): the PLAYER is the payload; the aim is the selected target.
   _selfSolution(state, player, omega) {
     const aim = this._resolveSelfAim(state);
-    if (!aim) return null;
+    if (!aim) { this._selfTurnTrack = null; return null; }
+    // INF-016: same turning-target rule as the throw read — a maneuvering self-sling
+    // destination cannot leave a release-ready marker from its pre-turn course.
+    const selfAimEntity = aim.targetId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(aim.targetId) : null;
+    const selfTurn = assessTargetTurn(this._selfTurnTrack, aim.targetId,
+      selfAimEntity ? selfAimEntity.vel : null, state.tick);
+    this._selfTurnTrack = selfTurn.track;
+    if (selfTurn.degraded) this._selfPrediction = {};
     const baseSpeed = Math.hypot(finite(player.vel && player.vel.x), finite(player.vel && player.vel.z));
     const anticipatedBonusDv = selfSlingBonusDv(
       baseSpeed,
@@ -347,9 +396,12 @@ export const masslineThrow = {
       targetId: aim.targetId,
       targetKind: aim.kind,
       valid: true,
+      reachable: true,
+      degraded: selfTurn.degraded,
+      turnRate: selfTurn.turnRate,
       errorRad: solution.errorRad,
       tolRad: solution.tolRad,
-      onSolution: solution.onSolution,
+      onSolution: selfTurn.degraded ? false : solution.onSolution,
       timeToSolution: solution.timeToSolution,
       interceptAngle: solution.interceptAngle,
       payloadSpeed: solution.payloadSpeed,
@@ -573,6 +625,9 @@ function mirrorSolution(existing, solution) {
   out.model = solution.model;
   out.decisionTick = solution.decisionTick;
   out.decisionStale = solution.decisionStale === true;
+  out.degraded = solution.degraded === true;
+  out.turnRate = Number.isFinite(solution.turnRate) ? solution.turnRate : 0;
+  out.reachable = solution.valid === true;
   out.window = solution.window || null;
   out.fieldAware = !!solution.fieldAware;
   out.projectedPath = solution.projectedPath || null;

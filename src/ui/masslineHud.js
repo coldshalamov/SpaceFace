@@ -154,6 +154,9 @@ export const MASSLINE_HUD_CSS = `
   transition:border-color 80ms linear, box-shadow 80ms linear; }
 #sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { outline:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); outline-offset:4px; }
 #sf-ml2 .ml2-throw.ml2-hot .ml2-diamond { animation:ml2pulse 0.5s ease-in-out infinite; }
+/* INF-016: a degraded intercept reads as shape, not colour — dashed outline, never hot. */
+#sf-ml2 .ml2-throw.ml2-degraded .ml2-diamond { border-style:dashed; box-shadow:none; }
+#sf-ml2 .ml2-self.ml2-degraded { opacity:0.45; }
 @keyframes ml2pulse { 0%,100% { transform:rotate(45deg) scale(1); } 50% { transform:rotate(45deg) scale(1.3); } }
 #sf-ml2 .ml2-self { width:0; height:0; margin:-7px 0 0 -7px;
   border-left:7px solid transparent; border-right:7px solid transparent;
@@ -352,6 +355,10 @@ function writeMasslineHudFields(fields, state, player) {
   fields[index++] = solution.clearance;
   fields[index++] = !!solution.decisionStale;
   fields[index++] = !!solution.fieldAware;
+  // INF-016: degraded confidence repaints the diamond the tick the target's turn trips it.
+  fields[index++] = !!solution.degraded;
+  fields[index++] = Math.round((Number(solution.turnRate) || 0) * 20) / 20;
+  fields[index++] = !!(selfSolution && selfSolution.degraded);
   const cadenceWindow = solution.window;
   fields[index++] = !!cadenceWindow && !!cadenceWindow.reliable;
   fields[index++] = cadenceWindow && cadenceWindow.enterS;
@@ -829,11 +836,19 @@ export const masslineHud = {
     if (!cue.visible) { setStyle(dom.throwEl, 'display', 'none'); return; }
     setStyle(dom.throwEl, 'display', 'block');
     setStyle(dom.throwEl, 'transform', `translate3d(${cue.x}px, ${cue.y}px, 0)`);
-    const hot = !!solution.onSolution;
+    // INF-016: degraded confidence is its own mark — dashed, never hot, labelled STALE.
+    const degradedThrow = solution.degraded === true;
+    const hot = !!solution.onSolution && !degradedThrow;
     setClass(dom.throwEl, 'ml2-hot', hot);
+    setClass(dom.throwEl, 'ml2-degraded', degradedThrow);
     setClass(dom.throwEl, 'ml2-offscreen', cue.offscreen);
     setCssVar(dom.throwEl, '--ml2-c', rampColor(solution.errorRad, solution.tolRad, hot));
     applyCueState(dom.throwEl, dom.throwLabel, cue);
+    if (degradedThrow) {
+      if (dom.throwLabel && dom.throwLabel.textContent !== 'STALE') dom.throwLabel.textContent = 'STALE';
+      setAttr(dom.throwEl, 'aria-label', 'Massline throw intercept degraded, target turning');
+      setAttr(dom.throwEl, 'data-window-state', 'degraded');
+    }
   },
 
   _updateSelfMark(dom, throwState, state, w2s) {
@@ -853,10 +868,18 @@ export const masslineHud = {
     if (!cue.visible) { setStyle(dom.selfEl, 'display', 'none'); return; }
     setStyle(dom.selfEl, 'display', 'block');
     setStyle(dom.selfEl, 'transform', `translate3d(${cue.x}px, ${cue.y - 26}px, 0)`);
-    setClass(dom.selfEl, 'ml2-hot', !!self.onSolution);
+    // INF-016: the self-sling cue degrades exactly like the throw diamond.
+    const degradedSelf = self.degraded === true;
+    setClass(dom.selfEl, 'ml2-hot', !!self.onSolution && !degradedSelf);
+    setClass(dom.selfEl, 'ml2-degraded', degradedSelf);
     setClass(dom.selfEl, 'ml2-offscreen', cue.offscreen);
     setCssVar(dom.selfEl, '--ml2-c', rampColor(self.errorRad, self.tolRad, self.onSolution));
     applyCueState(dom.selfEl, dom.selfLabel, cue);
+    if (degradedSelf) {
+      if (dom.selfLabel && dom.selfLabel.textContent !== 'STALE') dom.selfLabel.textContent = 'STALE';
+      setAttr(dom.selfEl, 'aria-label', 'Massline self-sling intercept degraded, target turning');
+      setAttr(dom.selfEl, 'data-window-state', 'degraded');
+    }
   },
 
   _updateCloakRing(dom, cloakState, player, w2s) {
