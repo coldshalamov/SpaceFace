@@ -19,3 +19,10 @@ C1 RESULT: REVISE. Play+abeam+close TUBE_PADDLE YES / CAGE_READ YES; Hitch still
 wins formed-shell at chase cameras. Wells boolean-true; play-size well read is
 shallow. No seats. No megatex. Hitch/Kestrel/Hornet/Drifter freeze hashes
 unchanged.
+
+## C2 chase-form (2026-09-21)
+
+`chase_form_v2`. Kill tube/paddle + cage first: formed explorer loft (mid ≠
+bow), thick-root wings grown from the shell, shallow crown/flank scores (no
+wrapping rings), deeper greenhouse/survey holes, formed survey pylon. Clay
+all-slot. Hitch/Hornet/Drifter never loaded. Parent unproven / not G7.
