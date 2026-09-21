@@ -121,7 +121,10 @@ export const PRESENTATION_RECIPES = Object.freeze({
   }),
   'combat.damage.applied': recipe({
     importance: 0.66,
-    dedupeWindowTicks: 0,
+    // One tick: the same pair struck twice in one tick is one composed response — the same
+    // pair/tick merging the vfx impact lane already performs — while distinct ticks (rapid
+    // repeaters land ~11 ticks apart) each answer. INF-041.
+    dedupeWindowTicks: 1,
     material: 'damage',
     lanes: { ...laneSet('vfx.direct_combat_damage'), audio: 'audio.combat_aftermath' },
     // combat:damage already owns the physical shield/armor/hull voice.
