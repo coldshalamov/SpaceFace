@@ -648,6 +648,9 @@ export const npcJobsRuntime = {
       if (this.bus && typeof this.bus.emit === 'function') {
         try { this.bus.emit(intent.event, intent); } catch { /* a listener must not corrupt the record */ }
       }
+      // INF-071: the miner→hauler handoff rides the same intents. Never throws: a ledger
+      // failure must not corrupt the deterministic record the kernel just wrote.
+      try { this._noteHandoffIntent(intent); } catch { /* ledger is advisory, the job is not */ }
     };
 
     if (this.bus && typeof this.bus.on === 'function') {
@@ -753,9 +756,62 @@ export const npcJobsRuntime = {
       || Array.isArray(state.npcJobs.siteCouriers)) {
       state.npcJobs.siteCouriers = {};
     }
+    // INF-071: the handoff ledger. One lot slot per sector: a miner's UNLOAD posts the lot,
+    // a hauler's LOAD claims it (same cargo identity on both intents). A claimed lot leaves
+    // the slot — it is aboard the hull and dies with it. Standing stock persists (and saves).
+    if (!state.npcJobs.lots || typeof state.npcJobs.lots !== 'object'
+      || Array.isArray(state.npcJobs.lots)) {
+      state.npcJobs.lots = {};
+    }
     return state.npcJobs;
   },
   _byId() { return this._ensureState().byId; },
+  _lots() { return this._ensureState().lots; },
+
+  /**
+   * INF-071: complete the miner→hauler handoff with one shared cargo identity. A miner's
+   * UNLOAD posts a lot at its sector; a hauler's LOAD claims the standing lot, and the claim
+   * names the miner's job — the same lot on both sides of the handoff, watchable on the bus.
+   * A claimed lot leaves the slot: it is aboard the hull and dies with it (ruling 5 ends the
+   * job; nothing is re-posted). A LOAD with no standing lot is announced as an empty run
+   * instead of departing with ghost freight. A post over an unclaimed lot replaces it openly
+   * (lotReplaced), never silently. Advisory only: the kernel flow never waits on the ledger.
+   */
+  _noteHandoffIntent(intent) {
+    if (!intent || typeof intent !== 'object') return;
+    const entry = intent.jobId != null ? this._byId()[intent.jobId] : null;
+    const sectorId = entry && entry.sectorId;
+    if (!sectorId) return;
+    const lots = this._lots();
+    const now = Number(this.state && this.state.simTime) || 0;
+    if (intent.event === 'npcjobs:unload' && intent.kind === NPC_JOB_KIND.MINER) {
+      const loop = entry && entry.job ? entry.job.loopCount | 0 : 0;
+      const posted = { lotId: `lot:${intent.jobId}:l${loop}`, kind: 'ore', postedBy: intent.jobId, postedAt: now, sectorId };
+      const replaced = lots[sectorId] && lots[sectorId].lotId !== posted.lotId ? lots[sectorId] : null;
+      lots[sectorId] = posted;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        if (replaced) {
+          this.bus.emit('npcjobs:lotReplaced', { oldLotId: replaced.lotId, lotId: posted.lotId, sectorId, postedBy: posted.postedBy, simTime: now });
+        }
+        this.bus.emit('npcjobs:lotPosted', { lotId: posted.lotId, sectorId, postedBy: posted.postedBy, simTime: now });
+      }
+      return;
+    }
+    if (intent.event === 'npcjobs:load' && intent.kind === NPC_JOB_KIND.HAULER) {
+      const standing = lots[sectorId] || null;
+      if (standing && standing.lotId) {
+        lots[sectorId] = null;
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('npcjobs:lotClaimed', {
+            lotId: standing.lotId, sectorId, haulerJobId: intent.jobId,
+            sourceJobId: standing.postedBy, simTime: now,
+          });
+        }
+      } else if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('npcjobs:loadEmpty', { haulerJobId: intent.jobId, sectorId, simTime: now });
+      }
+    }
+  },
 
   // ── transient exact-Ceres formation authority ───────────────────────────────────────────────
   // This fixed two-slot cache is intentionally outside GameState/save data. It retains object
@@ -1552,7 +1608,7 @@ export const npcJobsRuntime = {
   },
 
   newGame() {
-    this.state.npcJobs = { byId: {}, siteCouriers: {} };
+    this.state.npcJobs = { byId: {}, siteCouriers: {}, lots: {} };
     this._pendingMinerFieldRetargets = new Map();
     this._heaveToLease = null;
     this._fieldRetargetScanAccum = 0;
@@ -3721,6 +3777,12 @@ export const npcJobsRuntime = {
     if (couriers && typeof couriers === 'object' && !Array.isArray(couriers) && Object.keys(couriers).length) {
       out.siteCouriers = JSON.parse(JSON.stringify(couriers));
     }
+    // INF-071: standing handoff stock persists across Continue — material sitting at the
+    // pocket does not vanish on load. Validated on the way back in (see deserialize).
+    const lots = this.state.npcJobs && this.state.npcJobs.lots;
+    if (lots && typeof lots === 'object' && !Array.isArray(lots) && Object.keys(lots).length) {
+      out.lots = JSON.parse(JSON.stringify(lots));
+    }
     return out;
   },
 
@@ -3769,9 +3831,23 @@ export const npcJobsRuntime = {
         towNextScanSimT: 0,
       };
     }
-    this.state.npcJobs = { byId, siteCouriers: {} };
+    this.state.npcJobs = { byId, siteCouriers: {}, lots: {} };
     if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
       this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));
+    }
+    // INF-071: restore standing handoff stock, dropping malformed rows (a corrupt lot is
+    // dropped, never resurrected — same fail-safe as corrupt job records above).
+    if (data && data.lots && typeof data.lots === 'object' && !Array.isArray(data.lots)) {
+      for (const [sectorId, lot] of Object.entries(data.lots)) {
+        if (!sectorId || !lot || typeof lot !== 'object' || typeof lot.lotId !== 'string' || !lot.lotId) continue;
+        this.state.npcJobs.lots[sectorId] = {
+          lotId: lot.lotId,
+          kind: 'ore',
+          postedBy: typeof lot.postedBy === 'string' ? lot.postedBy : null,
+          postedAt: Number.isFinite(Number(lot.postedAt)) ? Number(lot.postedAt) : 0,
+          sectorId,
+        };
+      }
     }
     this._threatQueries?.reset();
     this._lastThreatQueryTick = null;
