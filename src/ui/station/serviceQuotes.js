@@ -126,6 +126,30 @@ function protectionFraction(entity) {
   return Math.min(hullFrac, armorFrac);
 }
 
+// INF-089: the speakable reason a disabled service verb carries — exact blocking condition
+// plus the nearest valid action. Only quotes that declare a disabledReason get one; done-state
+// facts (full tank, intact hull) stay quiet spans, and advisory partials stay enabled.
+export function disabledServiceWhy(quote) {
+  if (!quote || !quote.disabled) return '';
+  const parts = [quote.disabledReason, quote.remedy].map((s) => String(s || '').trim()).filter(Boolean);
+  return parts.join(' — ');
+}
+
+function escWhyAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// INF-089: a dead-end verb that keeps its place in the tab order. aria-disabled (not disabled)
+// so keyboard/controller focus can reach it; the whyReveal layer reads data-why on hover AND
+// focus, and the click path toasts the same phrase instead of failing silently.
+export function disabledVitalActHtml(id, label, text, why) {
+  const copy = `${label} · ${text}`;
+  return `<button type="button" class="k-word k-word--fine fh-key fh-key--small sxb-vital__act k-38"` +
+    ` data-vital-act="${escWhyAttr(id)}" data-why="${escWhyAttr(why)}" aria-disabled="true"` +
+    ` aria-label="${escWhyAttr(label + '. ' + why)}">${escWhyAttr(copy)}</button>`;
+}
+
 function recommendationCandidate(service, quote, stationServices, opts) {
   const row = serviceRow(service);
   const offered = isServiceOffered(service, stationServices);
@@ -210,6 +234,9 @@ export function serviceQuote(type, state, entity) {
     }
     const affordableUnits = Math.max(0, Math.floor(credits / SERVICE_PRICES.fuelCrPerUnit));
     if (credits < cost && affordableUnits <= 0) {
+      // INF-089 dead end: broke with an empty tank. The blocking condition is exact and the
+      // remedy names the nearest real credit source (cargo in the hold → Market sell).
+      const carrying = Number(state && state.player && state.player.cargo && state.player.cargo.usedVolume) > 0;
       return {
         amount: 0,
         cost,
@@ -217,6 +244,9 @@ export function serviceQuote(type, state, entity) {
         buttonLabel: 'Refuel',
         disabled: true,
         disabledReason: 'need ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u',
+        remedy: carrying
+          ? 'Sell cargo at the Market to raise fuel money'
+          : 'Take a station contract or sell salvage, then refuel',
         chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u', kind: 'bad' }],
       };
     }

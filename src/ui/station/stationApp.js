@@ -14,6 +14,7 @@ import { stationOperationToSurface } from '../commandDeckRefitHooks.js';
 import { createCommandDock } from './dock.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { el } from '../kit/index.js';
+import { disabledServiceWhy, disabledVitalActHtml } from './serviceQuotes.js';
 import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
 import { createStationCommands } from './stationCommands.js';
@@ -776,7 +777,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         if (!r) return { text: '—' };
         const title = [r.buttonLabel, r.detail, r.cost > 0 ? `${fmtCr(r.cost)} credits` : '']
           .filter(Boolean).join(' · ');
-        if (r.disabled) return { text: r.buttonLabel || 'OK', disabled: true, tone: 'gain', title };
+        if (r.disabled) return { text: r.buttonLabel || 'OK', disabled: true, tone: 'gain', title, why: disabledServiceWhy(r) };
         const contents = type === 'ammo' && r.amount > 0 ? `${fmtCr(r.amount)} mun · ` : '';
         return { text: contents + fmtCr(r.cost) + ' cr', tone: 'warn', title };
       };
@@ -832,7 +833,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (typeof opts.serviceQuote === 'function') {
         try { quote = opts.serviceQuote(type, state(), playerEntity(state())); } catch (_) { quote = null; }
       }
-      if (quote && quote.disabled) return false;
+      // A stale click on a dead-end verb explains itself instead of dying silently; the
+      // quote is recomputed live so the reason always matches current credits/hold.
+      if (quote && quote.disabled) {
+        const why = disabledServiceWhy(quote) || quote.detail || 'That service is unavailable right now.';
+        if (bus) bus.emit('toast', { text: `${quote.buttonLabel || 'Service'} unavailable: ${why}`, kind: 'warn', ttl: 3 });
+        return false;
+      }
       if (type === 'insurance') {
         if (quote) void runInsuranceService(quote);
         return false;
@@ -896,6 +903,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (!cost) return '';
     const text = String(cost.text == null ? '' : cost.text);
     if (cost.disabled) {
+      // A dead-end verb with a speakable reason keeps its tab stop (aria-disabled + data-why)
+      // instead of collapsing to a span that never explains itself. Ghost verbs keep their
+      // hide-when-unaffordable contract, and done-state facts stay quiet spans.
+      if (!ghost && cost.why) return disabledVitalActHtml(id, label, text, cost.why);
       return ghost ? '' : `<span class="sxb-vital__ok k-t-fine k-38">${escapeHtml(text)}</span>`;
     }
     const cls = 'k-word k-word--fine fh-key fh-key--small sxb-vital__act' + (ghost ? ' sxb-vital__act--ghost' : '');
