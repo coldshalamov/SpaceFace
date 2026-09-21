@@ -302,6 +302,81 @@ test('distanceToProxy is exact for circle, capsule, and obb primitives', () => {
 // purity + determinism
 // ---------------------------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------------------------
+// station_ring_hub (shared generic-station manifest) + gate_jump_ring (open throat)
+// ---------------------------------------------------------------------------------------------
+
+test('station_ring_hub validates and expands identically to the Helios proof', () => {
+  const HUB = COLLISION_PROXY_MANIFESTS.station_ring_hub;
+  assert.ok(HUB, 'shared station manifest exists');
+  const result = validateCollisionProxyManifest(HUB);
+  assert.deepEqual(result.issues, []);
+  assert.equal(HUB.flags, COLLISION_PROXY_FLAGS);
+  // Same silhouette as the Helios proof — generic stations render the same procedural build.
+  const expanded = expandProxyPrimitives(HUB, { corridorBearingDeg: 135 });
+  assert.equal(expanded.length, 23);
+  const bound = measureSilhouetteBound(HUB, { corridorBearingDeg: 135 });
+  assert.ok(Math.abs(bound.bound - 0.21913732326007512) < EPS);
+  const gap = measureCorridorGapWidth(HUB, { corridorBearingDeg: 135 });
+  assert.ok(Math.abs(gap.width - 0.52) < EPS);
+  // Generic manifest claims no specific station ids — world.js declares it explicitly.
+  assert.equal(HUB.stationIds.length, 0);
+  assert.equal(collisionProxyIdForStation('station_generic_x'), null);
+});
+
+test('gate_jump_ring rotates to the stamped approach bearing and keeps a real open throat', () => {
+  const GATE = COLLISION_PROXY_MANIFESTS.gate_jump_ring;
+  assert.ok(GATE, 'gate manifest exists');
+  assert.deepEqual(validateCollisionProxyManifest(GATE).issues, []);
+  assert.equal(GATE.frame, 'approach');
+
+  // Bearing 0 = fly-through along +X: tubes sit on the lateral axis at ±0.90, hub behind at −0.28.
+  const at0 = expandProxyPrimitives(GATE, { entity: { data: { corridorBearingDeg: 0 } } });
+  assert.equal(at0.length, 3);
+  const port = at0.find((p) => p.id === 'tube-port');
+  const hub = at0.find((p) => p.id === 'hub');
+  assert.ok(Math.abs(port.x) < EPS && Math.abs(port.z - 0.90) < EPS);
+  assert.ok(Math.abs(hub.x - (-0.28)) < EPS && Math.abs(hub.z) < EPS);
+
+  // Bearing 90 rotates the whole assembly: tubes land on ±X, hub moves to −Z (behind portal).
+  const at90 = expandProxyPrimitives(GATE, { entity: { data: { corridorBearingDeg: 90 } } });
+  const port90 = at90.find((p) => p.id === 'tube-port');
+  const hub90 = at90.find((p) => p.id === 'hub');
+  assert.ok(Math.abs(port90.x - (-0.90)) < 1e-9 && Math.abs(port90.z) < 1e-9);
+  assert.ok(Math.abs(hub90.x) < 1e-9 && Math.abs(hub90.z - (-0.28)) < 1e-9);
+
+  // The throat between the tubes is genuinely navigable. At the hub's depth (−0.28R) the lane
+  // between hub edge (±0.20) and tube edge (±0.75) is 0.55R wide — a mid-lane point clears both.
+  let lane = Infinity;
+  for (const p of at0) lane = Math.min(lane, distanceToProxy({ x: -0.28, z: 0.475 }, p));
+  assert.ok(Math.abs(lane - 0.275) < EPS, `lane clearance pinned (got ${lane})`);
+  assert.ok(lane >= 0.16 + 0.02, 'a radius-0.16R ship threads the open lane at hub depth');
+  // At the portal plane itself (x=0) the hub doesn't reach — the full 0.75R half-width is open.
+  let mouth = Infinity;
+  for (const p of at0) mouth = Math.min(mouth, distanceToProxy({ x: 0, z: 0.55 }, p));
+  assert.ok(Math.abs(mouth - 0.20) < EPS, `mouth clearance pinned (got ${mouth})`);
+  // And the hub truthfully blocks dead-center just behind the portal plane — drawn geometry.
+  let center = Infinity;
+  for (const p of at0) center = Math.min(center, distanceToProxy({ x: -0.28, z: 0 }, p));
+  assert.ok(center <= 0, 'the power-core hub must stay solid');
+});
+
+test('proxyWorldPrimitives applies the approach frame — world geometry matches registration', () => {
+  const GATE = COLLISION_PROXY_MANIFESTS.gate_jump_ring;
+  const gate = {
+    id: 'gate-1', type: 'station', pos: { x: 500, z: -200 }, rot: 0,
+    data: { dockRadius: 70, corridorBearingDeg: 90, collisionProxy: 'gate_jump_ring' },
+  };
+  const world = proxyWorldPrimitives(gate, GATE);
+  const port = world.find((p) => p.id === 'tube-port');
+  const hubw = world.find((p) => p.id === 'hub');
+  // bearing 90: local (0,0.9) → world (−0.9,0)·70 → port tube sits 63 wu toward −X of center.
+  assert.ok(Math.abs(port.x - (500 - 63)) < 1e-6);
+  assert.ok(Math.abs(port.z - (-200)) < 1e-6);
+  assert.ok(Math.abs(port.r - 0.15 * 70) < EPS);
+  assert.ok(Math.abs(hubw.z - (-200 - 0.28 * 70)) < 1e-6);
+});
+
 test('the module is pure: no clock, no RNG, no Three.js, no GLB parsing', () => {
   const source = readFileSync(new URL('../src/data/collisionProxyManifests.js', import.meta.url), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')

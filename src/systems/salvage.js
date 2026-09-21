@@ -20,6 +20,7 @@
 import { zonesForSector, VESTA_DERELICT_SALVAGE_SOURCE } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
+import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './aftermathWrecks.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 
@@ -437,8 +438,10 @@ export const salvage = {
         mass: WRECK_MASS,
         hull: 1,
         hullMax: 1,
+        physicsBody: { shape: 'capsule' },
         data: {
           parentType: isCommunicator ? 'communicator' : 'debris',
+          proportions: WRECK_COLLIDER_PROPORTIONS,
           loot: [],
           salvagePool: pool,
           salvageTimeLeft: WRECK_SALVAGE_TIME,
@@ -479,8 +482,10 @@ export const salvage = {
         mass: WRECK_MASS,
         hull: 1,
         hullMax: 1,
+        physicsBody: { shape: 'capsule' },
         data: {
           parentType: 'freighter',
+          proportions: WRECK_COLLIDER_PROPORTIONS,
           loot: [],
           salvagePool: clonePool(record.remainingPool),
           salvageTimeLeft: WRECK_SALVAGE_TIME,

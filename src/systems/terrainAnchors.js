@@ -15,6 +15,7 @@
 // A long TTL remains only as orphan/fizzle insurance. Deterministic: own seeded stream.
 // Flag-gated; not in the sim harness; encounterDirector itself is untouched.
 import { massline2Flag } from '../data/featureFlags.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { Masks } from '../core/entity.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import {
@@ -132,6 +133,7 @@ export const terrainAnchors = {
         pos: { x: pos.x + dx, z: pos.z + dz },
         vel: { x: 0, z: 0 },
         radius: size,
+        physicsBody: { radius: asteroidColliderRadius(ANCHOR_TYPE_ID, size) },
         // 2D-area-ish density scaling: these read (and sling, §4.1 anchor-mass bonus) as monoliths.
         mass: Math.round(size * size * 40),
         angVel: (this._rng() - 0.5) * 0.12,
@@ -194,7 +196,7 @@ export const terrainAnchors = {
       collides: true,
       physicsBody: {
         schemaVersion: 1,
-        radius,
+        radius: asteroidColliderRadius(ANCHOR_TYPE_ID, radius),
         mass,
         inertiaY: Math.max(120, Math.round(mass * 0.08)),
         dynamic: false,
@@ -291,7 +293,7 @@ export const terrainAnchors = {
       collides: true,
       physicsBody: {
         schemaVersion: 1,
-        radius,
+        radius: asteroidColliderRadius(ANCHOR_TYPE_ID, radius),
         mass,
         inertiaY: Math.max(120, Math.round(mass * 0.08)),
         dynamic: false,

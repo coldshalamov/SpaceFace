@@ -109,4 +109,12 @@ export function pickWreckClass(key) {
   return 'fresh'; // float tail guard
 }
 
+// Capsule fit for the shared wreck silhouette — the broken spine and rib arcs run ±0.9R along
+// local X and the hull plates reach ~±0.65R in Z. The two service spars poke to ~±0.85R in Z but
+// are 0.035R rods: covering them fully would need a near-ball and lose the elongated fit, so the
+// capsule accepts that thin-tip overshoot (same p90 rule as asteroid bump bounds). Spawn sites opt
+// in by stamping physicsBody:{shape:'capsule'} plus data.proportions; wrecks without the stamp
+// keep the legacy ball collider bit-identical.
+export const WRECK_COLLIDER_PROPORTIONS = Object.freeze({ length: 1.8, halfWidth: 0.58, height: 0.45 });
+
 export default WRECK_CLASSES;

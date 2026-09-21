@@ -2,6 +2,7 @@
 // Promote into entityList only for mine / ram / tether (and NPC mining picks).
 
 import { allocateEntityId, makeEntity } from '../core/entity.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
 import { advanceResourceBody } from './worldCatchup.js';
 
@@ -244,6 +245,7 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     hull: data.oreHP,
     hullMax: data.oreHPMax,
     collides: true,
+    physicsBody: { radius: asteroidColliderRadius(data.typeId, rec.radius) },
     data,
   });
   if (!ent) return null;

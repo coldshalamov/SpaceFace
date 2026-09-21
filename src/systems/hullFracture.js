@@ -5,6 +5,7 @@
 // spawn to two wreck pieces along one catalog seam. Not a general destruction solver.
 
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import {
   fractureThresholdWU,
   hullClassForMass,
@@ -81,6 +82,7 @@ function unitDir(dir) {
 function wreckPhysicsBody(mass, radius) {
   return {
     schemaVersion: 1,
+    shape: 'capsule',
     radius,
     mass,
     inertiaY: 0.5 * mass * radius * radius,
@@ -111,6 +113,7 @@ function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label 
       name: label,
       fractureSeamId: seam.id,
       fracturePiece: role,
+      proportions: WRECK_COLLIDER_PROPORTIONS,
       loot: [],
       salvagePool: salvagePool || { cmdty_scrap_metal: 1 },
       salvageTimeLeft: 6,

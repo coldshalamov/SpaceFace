@@ -130,6 +130,8 @@ import { Masks } from '../core/entity.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
 import { COMMODITIES } from '../data/commodities.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -4219,6 +4221,7 @@ export const missions = {
         hull: 220,
         hullMax: 220,
         collides: true,
+        physicsBody: { radius: asteroidColliderRadius(null, 16) },
         data: {
           missionTag: m.id,
           physicalRole: PHYSICAL_ROLE.SLAG_CORE,
@@ -4244,9 +4247,11 @@ export const missions = {
         hullMax: 160,
         collides: true,
         collisionMask: MISSION_WRECK_COLLISION_MASK,
+        physicsBody: { shape: 'capsule' },
         data: {
           missionTag: m.id,
           physicalRole: PHYSICAL_ROLE.TOWER,
+          proportions: WRECK_COLLIDER_PROPORTIONS,
           scanLabel: 'DEAD TOWER',
           tetherable: true,
         },
@@ -4270,9 +4275,11 @@ export const missions = {
           hullMax: 36,
           collides: true,
           collisionMask: MISSION_WRECK_COLLISION_MASK,
+          physicsBody: { shape: 'capsule' },
           data: {
             missionTag: m.id,
             physicalRole: PHYSICAL_ROLE.POD,
+            proportions: WRECK_COLLIDER_PROPORTIONS,
             scanLabel: 'LIFE POD',
             tetherable: true,
           },

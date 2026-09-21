@@ -4578,19 +4578,25 @@ export const vfx = {
     const tx = -nz;
     const tz = nx;
     const serial = this._collisionPatternSerial(p);
+    // Severity from real exchanged momentum: dp is impulse·impactScale (mass·wu/s), so a full
+    // speed hull contact (~8-20k) reads meaningfully hotter than a docking graze (~hundreds).
+    // The composed hit and the bespoke spall scale together — a hard bounce throws further.
+    const impactDp = Number(p && p.dp) || Math.abs(Number(p && p.impulse)) || 0;
+    const severity = Math.max(0.06, Math.min(0.95, 0.06 + impactDp / 14000));
+    const mag = 0.7 + severity * 0.9;
     const pairCount = reduced ? 1 : 2;
     this._c0.set('#fff4dc');
     this._c1.set('#8b6b4b');
     for (let pair = 0; pair < pairCount; pair++) {
       const angleOffset = 0.22 + pair * 0.18
         + explosionPatternSigned(serial, 'terrain-spall', pair, 21) * 0.06;
-      const speed = (reduced ? 9 : 14)
-        + explosionPattern01(serial, 'terrain-spall', pair, 22) * (reduced ? 5 : 12);
+      const speed = ((reduced ? 9 : 14)
+        + explosionPattern01(serial, 'terrain-spall', pair, 22) * (reduced ? 5 : 12)) * mag;
       for (let half = 0; half < 2; half++) {
         const angle = base + angleOffset + half * Math.PI;
         this._spawnParticle(p.pos.x, p.pos.z, Math.cos(angle) * speed, Math.sin(angle) * speed,
           reduced ? 0.20 : 0.30, reduced ? 0.65 : 0.9, 0,
-          this._c0, this._c1, 2.6, 0, 0, angle, reduced ? 1.8 : 2.6);
+          this._c0, this._c1, 2.6, 0, 0, angle, (reduced ? 1.8 : 2.6) * mag);
       }
     }
     // Opposed tangent scars and dust tongues keep the contact axis readable without inventing an
@@ -4598,15 +4604,15 @@ export const vfx = {
     for (const side of [-1, 1]) {
       this._spawnProjectileTrailStreak(
         p.pos.x + nx * side * 0.06, 0.16, p.pos.z + nz * side * 0.06,
-        reduced ? 0.20 : 0.28, 0.05, reduced ? 1.1 : 1.8,
+        reduced ? 0.20 : 0.28, 0.05 * mag, (reduced ? 1.1 : 1.8) * mag,
         (reduced ? 0.24 : 0.46) * accessibility.flashOpacityScale,
         '#ead6b8', 0, 0, tx * side, tz * side,
       );
       this._spawnSprite(SPR_PUFF,
         p.pos.x + nx * side * 0.12, 0.04, p.pos.z + nz * side * 0.12,
-        reduced ? 0.36 : 0.52, 0.45, reduced ? 1.1 : 1.8,
+        reduced ? 0.36 : 0.52, 0.45 * mag, (reduced ? 1.1 : 1.8) * mag,
         (reduced ? 0.12 : 0.22) * accessibility.flashOpacityScale, 0,
-        '#786a5b', nx * side * 1.2, nz * side * 1.2, 2.2, base,
+        '#786a5b', nx * side * 1.2 * mag, nz * side * 1.2 * mag, 2.2, base,
       );
     }
     // IMPACTS: the composed contact. axisSigned is FALSE — an SG-02 solver normal is an axis, and
@@ -4617,10 +4623,10 @@ export const vfx = {
     _impactOpts.serial = serial;
     _impactOpts.targetId = p.aId ?? p.targetId ?? null;
     _impactOpts.eventClass = undefined;
-    _impactOpts.priority = 0.35;
+    _impactOpts.priority = 0.3 + severity * 0.4;
     _impactOpts.hero = false;
     const composed = this._composeImpact(
-      p.pos.x, 0.2, p.pos.z, nx, 0, nz, false, 0.08, 'hull', 1.6, _impactOpts,
+      p.pos.x, 0.2, p.pos.z, nx, 0, nz, false, severity, 'hull', 1.6 * mag, _impactOpts,
     );
     if (!composed && this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(p.pos.x, p.pos.z, this._spawnLocalXZ);

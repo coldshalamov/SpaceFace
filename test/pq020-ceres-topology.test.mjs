@@ -13,8 +13,12 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // 14 of the cathedral's 15 bodies and the sluice's 4 wrecks at boot; the census now counts
 // live + shelved against the plan and records `shelvedEntities`. Prior digest
 // f09251bb6637c48f264551a386a30ffc76d33b5d4a42fee87867e1f6243ec5a1.
+// Re-pinned again for the compound-collision rollout: stations now register the 23-primitive
+// ring-hub proxy and gates the 3-primitive jump-ring proxy instead of one center ball each,
+// so the sector collider count rises 23 → 66. Entity/type census unchanged. Prior digest
+// d07a76c72022e2199191e5e991267ba3e137a31705c4beb5d909b7909cbc593b.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  'd07a76c72022e2199191e5e991267ba3e137a31705c4beb5d909b7909cbc593b';
+  'efa15466778447cf900b74fee7fa4f483168f7ce1bd826468139e289ffbe5cd0';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -134,7 +138,10 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
     byType: { asteroid: 6, fx: 9, ship: 2, station: 6 },
     collidable: 14,
   });
-  assert.equal(first.structuralCost.colliders, 14);
+  // Colliders went 14 → 66 with the compound-collision rollout: each station registers the
+  // 23-primitive ring-hub proxy and each gate the 3-primitive jump-ring proxy (2×23 + 4×3 +
+  // 6 asteroids + 2 ship capsules), replacing the one-ball-per-entity count.
+  assert.equal(first.structuralCost.colliders, 66);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
   assert.equal(first.structuralCost.worldSite.shelvedEntities, 14);

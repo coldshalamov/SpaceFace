@@ -39,6 +39,7 @@ import {
 } from './siteLogistics.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { presentationOwnerAdmissionForWorldRecord } from '../core/presentationAdmission.js';
 import { WORLD_SITE_MANIFESTS, worldSiteManifestById } from '../data/worldSiteManifests.js';
@@ -1433,6 +1434,7 @@ export const asteroidSites = {
         angVel: 0,
         hull: 1e9, hullMax: 1e9,
         collides: true,
+        physicsBody: { radius: asteroidColliderRadius(site.anchor.typeId, site.anchor.radius) },
         data: {
           typeId: site.anchor.typeId,
           yieldU: site.anchor.yieldU,

@@ -6,6 +6,7 @@
 import { FLAVOR_SOURCE_BY_REF } from '../data/flavor/index.generated.js';
 import { ENCOUNTERS } from '../data/encounters/index.generated.js';
 import { salvagePoolForWreck } from '../data/salvageLegality.js';
+import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
@@ -1112,9 +1113,11 @@ export const uniqueWrecks = {
         hull: 1,
         hullMax: 1,
         factionId: def.factionId,
+        physicsBody: { shape: 'capsule' },
         data: {
           uniqueWreckId: def.id,
           authoredWreckId: def.id,
+          proportions: WRECK_COLLIDER_PROPORTIONS,
           aftermathMarkerId: authored.markerId,
           sectorId: def.sectorId,
           parentType: authored.parentType,

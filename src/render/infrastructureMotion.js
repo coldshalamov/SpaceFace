@@ -115,7 +115,9 @@ export function createInfrastructureMotionTracker() {
     const ringRate = 0.03 + rec.dishSweepSpeed * 0.04;
     if (!reducedMotion) {
       const ring1 = mesh.userData && mesh.userData.ring1;
-      if (ring1) {
+      // gapLocked rings carry a real corridor arc aligned to the collision proxy's navigable
+      // gap — spinning them would swing the drawn opening away from the collider's opening.
+      if (ring1 && !(ring1.userData && ring1.userData.gapLocked)) {
         ring1.rotation.z += ringRate * dt;
       }
       const ring2 = mesh.userData && mesh.userData.ring2;
@@ -164,7 +166,10 @@ export function createInfrastructureMotionTracker() {
     const rec = getState(entity.id);
     const reducedMotion = options.motionReduce === true;
 
-    // Slow zero-G dead drift tumbling
+    // Slow zero-G dead drift: a bounded wobble riding the entity's real yaw. Wrecks now carry an
+    // elongated capsule collider aligned with the spine, so the visual may only oscillate around
+    // the sim-authored heading — an accumulating tumble would swing the drawn hulk through space
+    // the collider doesn't occupy.
     if (!reducedMotion) {
       rec.driftRotX += rec.driftRate * 0.7 * dt;
       rec.driftRotY += rec.driftRate * dt;
@@ -172,9 +177,9 @@ export function createInfrastructureMotionTracker() {
 
       // Apply to first child or mesh root
       const body = (mesh.children && mesh.children[0]) || mesh;
-      body.rotation.x = rec.driftRotX;
-      body.rotation.y = rec.driftRotY;
-      body.rotation.z = rec.driftRotZ;
+      body.rotation.x = Math.sin(rec.driftRotX) * 0.16;
+      body.rotation.y = Math.sin(rec.driftRotY) * 0.10;
+      body.rotation.z = Math.cos(rec.driftRotZ) * 0.12;
     }
 
     // Intermittent electrical arc discharge — deterministic schedule from the id hash (each

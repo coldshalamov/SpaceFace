@@ -50,6 +50,7 @@ import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from '
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
+import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -2404,13 +2405,18 @@ function buildGate(e, pal) {
   const g = new THREE.Group();
   const blinkers = [];
 
-  // Orient the opening toward sector center. The gate sits at (pos.x,pos.z) on the
-  // disc rim, so radial-in = -(pos.x,pos.z). Torus/Circle geometries live in the XY
-  // plane (vertical, opening facing +Z); a Y-rotation of atan2(dx,dz) points +Z toward
-  // (dx,dz). So yaw = atan2(-pos.x, -pos.z) aims the opening at sector center.
-  const px = (e.pos && e.pos.x) || 1;
-  const pz = (e.pos && e.pos.z) || 0;
-  const yaw = Math.atan2(-px, -pz);
+  // Orient the opening along the stamped approach bearing. world.js stamps
+  // data.corridorBearingDeg = world bearing toward the sector origin — the same bearing the
+  // gate_jump_ring proxy uses as its +X fly-through axis — so the drawn portal and the open
+  // collider throat agree. Torus/Circle geometries live in the XY plane (vertical, opening
+  // facing +Z); a Y-rotation of atan2(dx,dz) points +Z toward (dx,dz). With the approach
+  // direction (cosB, sinB), yaw = atan2(cosB, sinB) = π/2 − B. Fallback for un-stamped
+  // fixtures: aim at the local origin (the legacy -(pos) guess — only valid for origin sectors).
+  const bearingDeg = e.data && Number.isFinite(e.data.corridorBearingDeg)
+    ? e.data.corridorBearingDeg : null;
+  const yaw = bearingDeg != null
+    ? Math.PI / 2 - bearingDeg * (Math.PI / 180)
+    : Math.atan2(-((e.pos && e.pos.x) || 1), -((e.pos && e.pos.z) || 0));
   const orient = new THREE.Group();
   orient.rotation.y = yaw;
   g.add(orient);
@@ -2568,11 +2574,47 @@ function buildStation(e) {
   }
   // rings on two axes
   const ringMat = m;
-  const r1 = new THREE.Mesh(getGeometry('stat:ring1', () => new THREE.TorusGeometry(0.8, 0.06, 8, 28)), ringMat);
-  r1.rotation.x = Math.PI / 2; r1.scale.setScalar(R); g.add(r1); g.userData.ring1 = r1;
+  // Compound-proxy stations cut a real navigable gap in ring1 at the (snapped) corridor bearing —
+  // the same opening the proxy's ring-chain leaves, so the drawn ring and the collider agree.
+  // Stations without a proxy manifest keep the full ring.
+  const stationProxy = resolveCollisionProxyManifest(e);
+  const corridorDeg = stationProxy && stationProxy.docking
+    ? effectiveCorridorBearingDeg(stationProxy, e)
+    : null;
+  const r1 = corridorDeg == null
+    ? new THREE.Mesh(getGeometry('stat:ring1', () => new THREE.TorusGeometry(0.8, 0.06, 8, 28)), ringMat)
+    : new THREE.Mesh(getGeometry('stat:ring1:arc', () => new THREE.TorusGeometry(0.8, 0.06, 8, 28, Math.PI * 2 - (50 * Math.PI / 180))), ringMat);
+  r1.rotation.x = Math.PI / 2;
+  if (corridorDeg != null) {
+    // TorusGeometry sweeps from local +X CCW; after rotation.x the ring lies flat with local angle
+    // mapping 1:1 to the proxy's (cos,sin)→(x,z) bearing. Arc covers [0,310°]; the gap centers at
+    // spin+335°, so spin = bearing+25° puts it on the corridor lane. gapLocked tells the
+    // infrastructure tracker this ring's arc must NOT spin (the collider gap would drift).
+    r1.rotation.z = (corridorDeg + 25) * (Math.PI / 180);
+    r1.userData.gapLocked = true;
+  }
+  r1.scale.setScalar(R); g.add(r1); g.userData.ring1 = r1;
+  if (corridorDeg != null) {
+    // Gate-post pylons cap the cut ring ends + paired guide lights mark the lane into the berth.
+    for (const side of [-1, 1]) {
+      const a = (corridorDeg + side * 25) * (Math.PI / 180);
+      const cx = Math.cos(a), cz = Math.sin(a);
+      const cap = new THREE.Mesh(getGeometry('stat:ringcap', () => new THREE.BoxGeometry(0.10, 0.34, 0.10)), ringMat);
+      cap.position.set(cx * R * 0.8, 0, cz * R * 0.8);
+      cap.scale.setScalar(R);
+      cap.receiveShadow = true; cap.castShadow = true;
+      g.add(cap);
+      const guide = blinkerFixture(side < 0 ? '#5fffa0' : pal.accent, R * 0.05, side * 0.5, blinkers);
+      guide.position.set(cx * R * 0.8, R * 0.2, cz * R * 0.8);
+      g.add(guide);
+    }
+  }
   const r2 = new THREE.Mesh(getGeometry('stat:ring2', () => new THREE.TorusGeometry(0.62, 0.05, 8, 24)), ringMat);
   r2.name = 'stat:ring2';
-  r2.rotation.set(Math.PI / 2, 0, 0.6); r2.scale.setScalar(R); g.add(r2); g.userData.ring2 = r2;
+  // True 0.6-rad tilt about the X axis — matches the proxy's projected ellipse (0.62 × 0.51, minor
+  // on Z). The previous set(π/2, 0, 0.6) was an in-plane spin: the ring rendered flat and the
+  // collider under-covered the silhouette.
+  r2.rotation.set(Math.PI / 2 + 0.6, 0, 0); r2.scale.setScalar(R); g.add(r2); g.userData.ring2 = r2;
   // docking spars
   const spars = [];
   for (let i = 0; i < 4; i++) {

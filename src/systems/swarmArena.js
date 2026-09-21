@@ -37,6 +37,7 @@
 // callbacks from swarmReinforceCount (which survivalWave already calls on the sim tick).
 
 import { mulberry32 } from '../core/rng.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { validateRunState } from '../core/runState.js';
 import {
   SWARM_BREATH_SECONDS,
@@ -684,6 +685,7 @@ export const swarmArena = {
         pos: { x: spot.x, z: spot.z },
         vel: { x: 0, z: 0 },
         radius: size,
+        physicsBody: { radius: asteroidColliderRadius(TYPE_ID, size) },
         // Same 2D-area density scaling terrainAnchors uses, so these read (and sling) as monoliths.
         mass: Math.round(size * size * 40),
         angVel: (rng() - 0.5) * 0.12,

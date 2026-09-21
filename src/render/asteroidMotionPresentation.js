@@ -130,6 +130,14 @@ export function createAsteroidMotionTracker() {
         materializeT0: -1,
         breachT0: -1,
         chargeT0: -1,
+        shoveX: 0,
+        shoveZ: 0,
+        shoveVelX: 0,
+        shoveVelZ: 0,
+        mass: 0,
+        px: 0,
+        pz: 0,
+        radius: 16,
         scaleBodyRef: null,
         baseScaleX: 1,
         baseScaleY: 1,
@@ -149,19 +157,49 @@ export function createAsteroidMotionTracker() {
     rec.wobbleMag = Math.min(0.22, rec.wobbleMag + dmg * 0.008);
   }
 
+  // physics:impact — the payload carries real exchanged momentum (dp = impulse·impactScale),
+  // the contact normal (axis A→B), and the contact point. A struck rock rings along the push
+  // axis, takes a lever-arm tumble kick from where the hit landed, and keeps the generic
+  // rotation wobble for bodies whose kinematics aren't cached yet.
   function onImpact(payload) {
     if (!payload) return;
     const aId = payload.aId || (payload.entityA && payload.entityA.id);
     const bId = payload.bId || (payload.entityB && payload.entityB.id);
-    const dv = Number(payload.deltaV) || Number(payload.dv) || 20;
+    const dp = Number(payload.dp) || Math.abs(Number(payload.impulse)) || 0;
+    let nx = Number(payload.normal && payload.normal.x);
+    let nz = Number(payload.normal && payload.normal.z);
+    const nLen = Math.hypot(nx, nz);
+    if (!(nLen > 1e-8)) { nx = 0; nz = 0; } else { nx /= nLen; nz /= nLen; }
+    const cx = Number(payload.pos && payload.pos.x);
+    const cz = Number(payload.pos && payload.pos.z);
 
-    for (const id of [aId, bId]) {
-      if (!id) continue;
+    const strike = (id, pushX, pushZ) => {
+      if (id == null) return;
       const rec = asteroidStates.get(id);
-      if (rec) {
-        rec.wobbleMag = Math.min(0.28, rec.wobbleMag + dv * 0.005);
+      if (!rec) return;
+      const mass = rec.mass > 0 ? rec.mass : 600;
+      const dv = Math.min(40, dp / mass);
+      rec.wobbleMag = Math.min(0.28, rec.wobbleMag + 0.03 + dv * 0.05);
+      if (!(pushX || pushZ)) return;
+      // Contact shudder: a small directional ring that springs back — the rock visibly takes
+      // the hit on the struck side. Sim owns the real Δv; this is the surface ring, ≤0.5 wu.
+      const kick = Math.min(3.2, 0.4 + dv * 0.9);
+      rec.shoveVelX += pushX * kick;
+      rec.shoveVelZ += pushZ * kick;
+      // Lever-arm tumble kick: planar torque r×F rocks the spin axis the way a real off-center
+      // hit would. Normalized by hull radius so rim hits turn harder than dead-center ones.
+      if (Number.isFinite(cx) && Number.isFinite(cz)) {
+        const r = rec.radius > 0 ? rec.radius : 16;
+        const rx = Math.max(-r, Math.min(r, cx - rec.px)) / r;
+        const rz = Math.max(-r, Math.min(r, cz - rec.pz)) / r;
+        const torque = rx * pushZ - rz * pushX; // planar cross, + = spins the nose toward push
+        rec.spinY += torque * dv * 0.045;
+        rec.spinX += rz * dv * 0.02;
+        rec.spinZ -= rx * dv * 0.02;
       }
-    }
+    };
+    strike(aId, -nx, -nz);
+    strike(bId, nx, nz);
   }
 
   function onMiningContact(payload) {
@@ -255,6 +293,15 @@ export function createAsteroidMotionTracker() {
     const reducedMotion = options.motionReduce === true;
     lastSimTime = simTime;
 
+    // Kinematics for lever-arm impact response: contact offset is measured from the body's
+    // current sim position; mass converts exchanged momentum into a plausible Δv.
+    if (entity.pos && Number.isFinite(entity.pos.x)) {
+      rec.px = entity.pos.x;
+      rec.pz = Number.isFinite(entity.pos.z) ? entity.pos.z : 0;
+    }
+    rec.mass = Number.isFinite(entity.mass) && entity.mass > 0 ? entity.mass : 0;
+    if (Number.isFinite(entity.radius) && entity.radius > 0) rec.radius = entity.radius;
+
     // 1. Advance 3-axis tumble
     if (!reducedMotion) {
       rec.rotX += rec.spinX * dt;
@@ -333,6 +380,22 @@ export function createAsteroidMotionTracker() {
       }
     }
 
+    // 4d. Contact shudder spring — the directional ring imparted by physics:impact. Stiff pull
+    //     back to rest so the rock snaps off the blow and settles in ~0.3s; reduced motion
+    //     collapses it to a single small displacement rather than a visible oscillation.
+    if (Math.abs(rec.shoveX) > 1e-4 || Math.abs(rec.shoveZ) > 1e-4
+      || Math.abs(rec.shoveVelX) > 1e-4 || Math.abs(rec.shoveVelZ) > 1e-4) {
+      const kShove = 90;
+      const cShove = 2 * Math.sqrt(kShove) * 0.85;
+      rec.shoveVelX += (-kShove * rec.shoveX - cShove * rec.shoveVelX) * dt;
+      rec.shoveVelZ += (-kShove * rec.shoveZ - cShove * rec.shoveVelZ) * dt;
+      rec.shoveX = Math.max(-0.6, Math.min(0.6, rec.shoveX + rec.shoveVelX * dt));
+      rec.shoveZ = Math.max(-0.6, Math.min(0.6, rec.shoveZ + rec.shoveVelZ * dt));
+      if (Math.abs(rec.shoveX) < 1e-4 && Math.abs(rec.shoveVelX) < 1e-4) { rec.shoveX = 0; rec.shoveVelX = 0; }
+      if (Math.abs(rec.shoveZ) < 1e-4 && Math.abs(rec.shoveVelZ) < 1e-4) { rec.shoveZ = 0; rec.shoveVelZ = 0; }
+    }
+    const shoveScale = reducedMotion ? 0.3 : 1;
+
     // Apply rotation and jitter to the main asteroid body mesh
     // Asteroid mesh is child 0 or userData.asteroidInstanceBody
     const body = (mesh.userData && mesh.userData.asteroidInstanceBody)
@@ -343,8 +406,8 @@ export function createAsteroidMotionTracker() {
     body.rotation.y = rec.rotY;
     body.rotation.z = rec.rotZ + wobbleOffsetZ;
 
-    body.position.x = jitterX;
-    body.position.z = jitterZ;
+    body.position.x = jitterX + rec.shoveX * shoveScale;
+    body.position.z = jitterZ + rec.shoveZ * shoveScale;
 
     // 5. Crack-axis strain swell. Materials are shared/instanced, so the fracture reads through
     //    transforms only: a ≤2.5% ellipsoid swell along the deterministic vein axis plus a slow

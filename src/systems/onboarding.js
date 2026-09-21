@@ -28,6 +28,8 @@ import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   FIRST_TRADE_CONTRACT_DEST_STATION_ID,
@@ -1113,7 +1115,8 @@ export const onboarding = {
     const wreck = this.helpers.spawnEntity({
       type: 'wreck', pos, vel: { x: 0, z: 0 }, radius: 14, mass: 900,
       hull: 1, hullMax: 1, // derelict — already dead, tether-only
-      data: { parentType: 'ship', loot: [], salvagePool: {}, salvageTimeLeft: 0, onboarding: true, kind: 'derelict' },
+      physicsBody: { shape: 'capsule' },
+      data: { parentType: 'ship', proportions: WRECK_COLLIDER_PROPORTIONS, loot: [], salvagePool: {}, salvageTimeLeft: 0, onboarding: true, kind: 'derelict' },
     });
     if (wreck) this._derelictId = wreck.id;
   },
@@ -1208,6 +1211,7 @@ export const onboarding = {
       mass: 180,
       hull: 60,
       hullMax: 60,
+      physicsBody: { radius: asteroidColliderRadius('ast_common_rock', 18) },
       data: {
         typeId: 'ast_common_rock', oreHP: 60, oreHPMax: 60, yieldU: SEAM_ORE_TARGET,
         onboarding: true, onboardingTraining: true, trainingMining: true,
@@ -1905,6 +1909,7 @@ export const onboarding = {
       mass: 4000,
       hull: 5000,
       hullMax: 5000,
+      physicsBody: { radius: asteroidColliderRadius('ast_raid_throw_rock', 26) },
       data: {
         onboarding: true, raidRole: 'throwRock',
         typeId: 'ast_raid_throw_rock',

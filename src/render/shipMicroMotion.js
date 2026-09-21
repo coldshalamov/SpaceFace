@@ -183,6 +183,16 @@ export function createShipMicroMotionTracker() {
         flinchShudder: 0,
         flinchVelRoll: 0,
         flinchVelPitch: 0,
+        // Directional bounce: cosmetic yaw swing off the contact lever arm (render-only; the
+        // solver deliberately strips player sim yaw — we replay its measured kick).
+        impactYaw: 0,
+        impactVelYaw: 0,
+        // Last-seen kinematics so physics:impact (a sim-tick event) can place the contact lever.
+        mass: 400,
+        px: 0,
+        pz: 0,
+        rot: 0,
+        radius: 12,
 
         // Weapon thermal & venting
         weaponHeat: 0,
@@ -326,21 +336,65 @@ export function createShipMicroMotionTracker() {
     if (!payload) return;
     const aId = payload.aId || (payload.entityA && payload.entityA.id);
     const bId = payload.bId || (payload.entityB && payload.entityB.id);
-    const dv = Number(payload.deltaV) || Number(payload.dv) || 15;
-    const intensity = Math.min(1.5, dv / 40.0);
+    // Real exchanged momentum — deltaV/dv were never on this payload, so the old flinch read a
+    // constant fallback. dp is impulse·impactScale (mass·wu/s); per-hull Δv = dp/mass.
+    const dp = Number(payload.dp) || Math.abs(Number(payload.impulse)) || 0;
+    const nx = Number.isFinite(payload.normal && payload.normal.x) ? payload.normal.x : 0;
+    const nz = Number.isFinite(payload.normal && payload.normal.z) ? payload.normal.z : 0;
+    const hasContact = Number.isFinite(payload.pos && payload.pos.x) && Number.isFinite(payload.pos.z);
+    const cx = hasContact ? payload.pos.x : null;
+    const cz = hasContact ? payload.pos.z : null;
 
-    if (aId) {
-      const rec = getRecord(aId);
-      rec.flinchVelPitch += (Math.random() - 0.5) * intensity * 4.0;
-      rec.flinchVelRoll += (Math.random() - 0.5) * intensity * 5.0;
-      rec.flinchShudder = Math.min(0.4, rec.flinchShudder + intensity * 0.3);
+    // The contact normal points a→b: a is pushed along −n, b along +n.
+    applyImpactFlinch(aId, -nx, -nz, dp, cx, cz);
+    applyImpactFlinch(bId, nx, nz, dp, cx, cz);
+
+    // Player cosmetic yaw: the authority measured this kick and then deliberately suppressed it
+    // (the player is not ammunition). Replay it as a damped swing through the player queue —
+    // impacts carry no playerId, so it resolves on the player hull's next update like dock/cloak.
+    if (payload.playerInvolved && Number.isFinite(payload.solverPlayerYawRateKick)
+        && Math.abs(payload.solverPlayerYawRateKick) > 0.02) {
+      queuePlayerYawKick(clamp(payload.solverPlayerYawRateKick, -3.2, 3.2));
     }
-    if (bId) {
-      const rec = getRecord(bId);
-      rec.flinchVelPitch += (Math.random() - 0.5) * intensity * 4.0;
-      rec.flinchVelRoll += (Math.random() - 0.5) * intensity * 5.0;
-      rec.flinchShudder = Math.min(0.4, rec.flinchShudder + intensity * 0.3);
+  }
+
+  // Directional bounce for one involved hull. push = the impulse direction on this entity in
+  // world XZ; the contact point gives the lever arm that drives pitch/roll weighting and yaw.
+  function applyImpactFlinch(id, pushX, pushZ, dp, cx, cz) {
+    if (id == null) return;
+    const rec = getRecord(id);
+    const mass = Number.isFinite(rec.mass) && rec.mass > 0 ? rec.mass : 400;
+    const dv = dp / mass;
+    const intensity = clamp(dv / 28, 0.10, 1.6);   // ~28 wu/s of shove reads as a full hit
+
+    // Ship frame: +X forward, +Z starboard (same convention as the RCS/flight math below).
+    const rot = Number.isFinite(rec.rot) ? rec.rot : 0;
+    const cf = Math.cos(rot);
+    const sf = Math.sin(rot);
+    const pushFwd = pushX * cf + pushZ * sf;
+    const pushLat = pushX * -sf + pushZ * cf;
+
+    // Lever arm from the measured contact point, normalized by hull radius.
+    let leverFwd = 0;
+    let leverLat = 0;
+    let leverYaw = 0;
+    if (cx != null) {
+      const rx = cx - rec.px;
+      const rz = cz - rec.pz;
+      const invR = 1 / (Number.isFinite(rec.radius) && rec.radius > 0 ? rec.radius : 12);
+      leverFwd = clamp((rx * cf + rz * sf) * invR, -1.4, 1.4);
+      leverLat = clamp((rx * -sf + rz * cf) * invR, -1.4, 1.4);
+      leverYaw = clamp((rx * pushZ - rz * pushX) * invR, -1.4, 1.4); // r × push
     }
+
+    rec.flinchVelPitch += -pushFwd * (0.55 + Math.abs(leverFwd) * 0.9) * intensity * 3.2;
+    rec.flinchVelRoll += -pushLat * (0.55 + Math.abs(leverLat) * 0.9) * intensity * 3.6;
+    // NPCs get their yaw from the solver already; this swing still helps them read the impact
+    // direction — it is small beside the real angular response and shares the damped spring.
+    rec.impactVelYaw += leverYaw * intensity * 2.4;
+    rec.flinchX += pushFwd * intensity * 0.30;
+    rec.flinchZ += pushLat * intensity * 0.30;
+    rec.flinchShudder = Math.min(0.4, rec.flinchShudder + intensity * 0.3);
   }
 
   function onHazardEnter(payload) {
@@ -404,10 +458,17 @@ export function createShipMicroMotionTracker() {
   // harnesses emit them for script hops too, where no hull exists). Queue and resolve to the
   // player record on its next update.
   const pendingPlayerActions = [];
+  // Player-only yaw swing queue (impacts carry no playerId; resolved on the player's next update).
+  const pendingPlayerYawKicks = [];
 
   function queuePlayerAction(kind) {
     if (pendingPlayerActions.length < 8) pendingPlayerActions.push(kind);
     else { pendingPlayerActions.shift(); pendingPlayerActions.push(kind); }
+  }
+
+  function queuePlayerYawKick(kick) {
+    if (pendingPlayerYawKicks.length < 4) pendingPlayerYawKicks.push(kick);
+    else { pendingPlayerYawKicks.shift(); pendingPlayerYawKicks.push(kick); }
   }
 
   function applyPlayerAction(rec, kind, simTime) {
@@ -548,6 +609,8 @@ export function createShipMicroMotionTracker() {
       rec.hullScaleZ = Number.isFinite(hull.scale.z) ? hull.scale.z : 1;
       rec.hullScaleDirty = false;
     }
+    // Authored hull yaw (packaged hulls can carry one) — the impact swing writes relative to it.
+    rec.hullYawBase = hull && hull.rotation && Number.isFinite(hull.rotation.y) ? hull.rotation.y : 0;
     if (!rec.bells) rec.bells = [];
     if (!rec.rcsNozzles) rec.rcsNozzles = [];
     const roots = [];
@@ -658,6 +721,18 @@ export function createShipMicroMotionTracker() {
       }
       pendingPlayerActions.length = 0;
     }
+    if (pendingPlayerYawKicks.length > 0 && entity.id === options.playerId) {
+      for (let i = 0; i < pendingPlayerYawKicks.length; i++) {
+        rec.impactVelYaw += pendingPlayerYawKicks[i];
+      }
+      pendingPlayerYawKicks.length = 0;
+    }
+    // Last-seen kinematics for directional impact decomposition (physics:impact fires mid-tick).
+    rec.mass = Number.isFinite(entity.mass) && entity.mass > 0 ? entity.mass : 400;
+    rec.px = entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : 0;
+    rec.pz = entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : 0;
+    rec.rot = Number.isFinite(entity.rot) ? entity.rot : 0;
+    rec.radius = Number.isFinite(entity.radius) && entity.radius > 0 ? entity.radius : 12;
     // Second clamp-lock beat after berth contact — the berth grabs, then seats.
     if (rec.dockClampAt > 0 && simTime >= rec.dockClampAt) {
       rec.dockClampAt = -1;
@@ -704,6 +779,13 @@ export function createShipMicroMotionTracker() {
     rec.flinchX *= Math.max(0, 1 - dt * 16.0);
     rec.flinchZ *= Math.max(0, 1 - dt * 16.0);
     rec.flinchShudder *= Math.max(0, 1 - dt * 12.0);
+
+    // Directional bounce yaw spring — slightly slower than the flinch pair so the swing reads as
+    // a swing, not a twitch. Clamped: a bounce rocks the ship, it never spins it around.
+    const kYaw = 150.0;
+    const cYaw = 15.0;
+    rec.impactVelYaw += (-kYaw * rec.impactYaw - cYaw * rec.impactVelYaw) * dt;
+    rec.impactYaw = clamp(rec.impactYaw + rec.impactVelYaw * dt, -0.38, 0.38);
 
     // 3. Environmental hazard atmospheric buffet
     if (rec.inHazard && !reducedMotion) {
@@ -983,6 +1065,10 @@ export function createShipMicroMotionTracker() {
     hull.rotation.x += (rec.flinchRoll + idleBreathRoll + rcsRoll + swingBank + rebootRock
       + critList + critCough) * (reducedMotion ? 0.3 : 1.0);
     hull.rotation.z += (rec.recoilPitch + rec.flinchPitch + rec.accelSurge + idleBreathPitch + rcsPitchKick) * (reducedMotion ? 0.3 : 1.0);
+    // Impact yaw swing on the hull channel — unowned here (entity sync only resets the root yaw,
+    // which is −entity.rot, so sim-frame yaw writes mirrored). Absolute set around the authored
+    // base, spring-decays back to it.
+    hull.rotation.y = (rec.hullYawBase || 0) - rec.impactYaw * (reducedMotion ? 0.3 : 1.0);
 
     // Hull-scale channels: materialize ramp, cloak ripple, swing stretch, shield breath.
     // hull.scale is set-once-at-build everywhere, so this tracker owns it multiplicatively

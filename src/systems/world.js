@@ -64,6 +64,7 @@ import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import {
   FIELD_REGROWTH_BATCH_MAX,
   FIELD_REGROWTH_BATCH_MIN,
@@ -1714,11 +1715,13 @@ export const world = {
       const size = st.size || 'M';
       const dockRadius = size === 'L' ? 90 : size === 'S' ? 60 : 72;
       const collisionRadius = size === 'L' ? 42 : size === 'S' ? 26 : 34;
-      // PQ-008 compound collision proxies: stations with an authored manifest declare it here.
-      // The corridor bearing faces the sector origin (the natural traffic approach), stamped in
-      // station-local degrees (station rot is 0); the manifest snaps it to an inter-spar lane.
-      const collisionProxyId = collisionProxyIdForStation(st.id);
-      const sectorOrigin = collisionProxyId ? this._sectorOrigin(sector.id) : null;
+      // PQ-008 compound collision proxies: every procedural station shares the ring-hub
+      // silhouette (buildStation), so every station gets the compound proxy — a single ball
+      // let ships fly through the drawn rings and spars. The corridor bearing faces the sector
+      // origin (the natural traffic approach), stamped in station-local degrees (station rot is
+      // 0); the manifest snaps it to an inter-spar lane.
+      const collisionProxyId = collisionProxyIdForStation(st.id) || 'station_ring_hub';
+      const sectorOrigin = this._sectorOrigin(sector.id);
       const corridorBearingDeg = sectorOrigin && Number.isFinite(sectorOrigin.x)
         ? Math.atan2(sectorOrigin.z - pos.z, sectorOrigin.x - pos.x) * (180 / Math.PI)
         : null;
@@ -1908,6 +1911,8 @@ export const world = {
         type: 'asteroid', pos,
         radius: size, mass: 200 + size * 40, angVel,
         hull: oreHP, hullMax: oreHP, collides: true,
+        // The render mesh's displaced bumps exceed entity.radius; the collider covers them.
+        physicsBody: { radius: asteroidColliderRadius(def.id, size) },
         data,
       })
       : insertAsteroidFieldRock(this.state, {
@@ -1993,11 +1998,20 @@ export const world = {
       const nb = safeSector(this.state, nbId);
       const dockRadius = opts.wormhole ? 80 : 70;
       const collisionRadius = opts.wormhole ? 38 : 32;
+      // Gate throat proxy: two side tubes + rear hub around a genuinely open portal. The stamped
+      // bearing faces the sector origin — the same direction buildGate aims the opening — so the
+      // proxy bar lands across the ring, never blocking the throat.
+      const sectorOrigin = this._sectorOrigin(sector.id);
+      const corridorBearingDeg = sectorOrigin && Number.isFinite(sectorOrigin.x)
+        ? Math.atan2(sectorOrigin.z - pos.z, sectorOrigin.x - pos.x) * (180 / Math.PI)
+        : null;
       const ent = this.helpers.spawnEntity({
         type: 'station', factionId: sector.factionId, pos,
         radius: collisionRadius, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
         data: {
           stationId: null, isGate: true, gateTo: nbId, dockRadius,
+          collisionProxy: 'gate_jump_ring',
+          ...(Number.isFinite(corridorBearingDeg) ? { corridorBearingDeg } : {}),
           placeScale: dockRadius / 14,
           homeSectorId: sector.id,
           collisionRadius,

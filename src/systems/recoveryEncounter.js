@@ -9,6 +9,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { SECTORS } from '../data/sectors.js';
+import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 const STATE_VERSION = 1;
@@ -612,8 +613,10 @@ export const recoveryEncounter = {
       mass: 1800,
       hull: 1,
       hullMax: 1,
+      physicsBody: { shape: 'capsule' },
       data: {
         parentType: record.sourceKind === 'distress' ? 'communicator' : 'ship',
+        proportions: WRECK_COLLIDER_PROPORTIONS,
         salvagePointId: record.salvagePointId,
         recoveryEncounterId: record.id,
         salvagePool: {},

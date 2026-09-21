@@ -15,6 +15,8 @@
 // Single-writer (§0.6): cargo is owned by the cargo module; we route ore through its addCargo
 // helper / pickup:collected event and only fall back to a direct write while cargo is a stub.
 import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
@@ -1124,9 +1126,11 @@ export const mining = {
       mass,
       hull: 1,
       hullMax: 1,
+      physicsBody: { shape: 'capsule' },
       data: {
         parentType: 'ship',
         kind: 'wreck',
+        proportions: WRECK_COLLIDER_PROPORTIONS,
         label: 'Salvage Wreck',
         scanLabel: 'Salvage Wreck',
         name: 'Salvage Wreck',
@@ -1417,6 +1421,7 @@ export const mining = {
           z: ast.pos.z + Math.sin(ang) * dist,
         },
         radius,
+        physicsBody: { radius: asteroidColliderRadius(ast.data && ast.data.typeId, radius) },
         // A core chunk is deliberately heavy — the sluggish tow IS the mechanic — but it is capped
         // strictly below the parent the player was already able to tether, so this cannot put a load
         // on the Massline that the parent could not. Lines still do not snap under haul.

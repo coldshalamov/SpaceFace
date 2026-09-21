@@ -11,7 +11,7 @@ import { hash32 } from '../core/rng.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
-import { wreckClassById } from '../data/wreckClasses.js';
+import { wreckClassById, WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { SECTORS } from '../data/sectors.js';
 import {
   causalAftermath,
@@ -1389,8 +1389,10 @@ export const aftermathWrecks = {
       mass: mass != null ? mass : 1e6,
       hull: 1,
       hullMax: 1,
+      physicsBody: { shape: 'capsule' },
       data: {
         parentType: marker.wreckClass === 'military' ? 'military' : 'ship',
+        proportions: WRECK_COLLIDER_PROPORTIONS,
         loot: [],
         salvagePool: poolForMarker(marker),
         salvageTimeLeft: WRECK_SALVAGE_TIME,

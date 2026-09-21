@@ -15,6 +15,7 @@
 // rolling log of interventions for the "your save is your story" law.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 
 const MAX_ACTIVE = 4;        // cap concurrent interventions so a mass-loss event doesn't spam wrecks
 const ALERT_TTL = 12;        // seconds the "intervention available" alert stays on the HUD
@@ -70,8 +71,10 @@ export const intervention = {
     const wreck = this.helpers.spawnEntity({
       type: 'wreck', pos, radius: 8, mass: 1e6,
       hull: 1, hullMax: 1,
+      physicsBody: { shape: 'capsule' },
       data: {
         parentType: p.kind || 'asset',
+        proportions: WRECK_COLLIDER_PROPORTIONS,
         loot: [],
         salvagePool: pool,
         salvageTimeLeft: 8, // a bit longer than a ship wreck so there's time to fly out

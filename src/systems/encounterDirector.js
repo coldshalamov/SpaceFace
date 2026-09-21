@@ -58,6 +58,7 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptTextWithFallback } from '../data/encounters.js';
 import { ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
+import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { ENCOUNTER_SCRIPTS } from './encounterScripts.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
@@ -1111,8 +1112,10 @@ export const encounterDirector = {
       mass: 1e6,
       hull: 1,
       hullMax: 1,
+      physicsBody: { shape: 'capsule' },
       data: {
         parentType: 'debris',
+        proportions: WRECK_COLLIDER_PROPORTIONS,
         loot: [],
         salvagePool: opts.pool || { cmdty_scrap_metal: 2 },
         salvageTimeLeft: 8,

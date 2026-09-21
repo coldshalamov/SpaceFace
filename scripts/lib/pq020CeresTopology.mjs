@@ -77,8 +77,13 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // plan (cathedral 15/15, 14 shelved; sluice 5/5, 4 shelved) and records `shelvedEntities`. The
 // core live cost is unchanged. Prior digest was
 // f09251bb6637c48f264551a386a30ffc76d33b5d4a42fee87867e1f6243ec5a1.
+// Re-pinned for the compound-collision rollout: stations now register the 23-primitive
+// station_ring_hub proxy and gates the 3-primitive gate_jump_ring proxy instead of one center
+// ball each, so the sector collider count rises 23 → 66. Entity/type census and world-site
+// materialization are unchanged. Prior digest was
+// d07a76c72022e2199191e5e991267ba3e137a31705c4beb5d909b7909cbc593b.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'd07a76c72022e2199191e5e991267ba3e137a31705c4beb5d909b7909cbc593b';
+  'efa15466778447cf900b74fee7fa4f483168f7ce1bd826468139e289ffbe5cd0';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({

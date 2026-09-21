@@ -80,12 +80,17 @@ function sparCapsules() {
   });
 }
 
-export const COLLISION_PROXY_MANIFESTS = Object.freeze({
-  helios_trade_hub: Object.freeze({
+// Every non-gate station renders through the same procedural silhouette (buildStation in
+// visualFactory): greebled core cylinder, two flat-ish rings, four cardinal docking spars.
+// The Helios normalized footprint IS that silhouette, so the same compound proxy serves every
+// station at any dockRadius. station_ring_hub is the shared rollout manifest; Helios keeps its
+// authored id for pinning continuity.
+function ringHubManifest(id, stationIds) {
+  return Object.freeze({
     schemaVersion: COLLISION_PROXY_SCHEMA_VERSION,
-    id: 'helios_trade_hub',
+    id,
     // Station ids this manifest may be declared for (world wiring + fixtures).
-    stationIds: Object.freeze(['station_helios']),
+    stationIds: Object.freeze(stationIds),
     flags: COLLISION_PROXY_FLAGS,
     // Normalized coordinates scale by entity.data.dockRadius (fall back to entity.radius).
     referenceRadius: 'dockRadius',
@@ -150,6 +155,48 @@ export const COLLISION_PROXY_MANIFESTS = Object.freeze({
         inputBlend: 0.75,          // assist fades by inputMag*inputBlend; player always blends
       }),
     }),
+  });
+}
+
+export const COLLISION_PROXY_MANIFESTS = Object.freeze({
+  helios_trade_hub: ringHubManifest('helios_trade_hub', ['station_helios']),
+  // Shared silhouette proxy for every procedural station — declared by world.js for any station
+  // id without a more specific manifest. Same primitives + corridor docking as the Helios proof.
+  station_ring_hub: ringHubManifest('station_ring_hub', []),
+
+  // ---------------------------------------------------------------------------
+  // Jump gate / wormhole throat (buildGate in visualFactory, R = dockRadius 70/80):
+  //   vertical hull torus — in the ship plane it reads as a BAR perpendicular to the approach
+  //   axis: two tube cross-sections at ±0.90R (tube half-width 0.14R), a power-core hub at
+  //   −0.28R behind the portal face, and a genuinely OPEN throat between the tubes (~1.5R wide).
+  //   The previous single ball sat dead-center in that opening — an invisible wall across the
+  //   one place a pilot is meant to fly through. Pylon caps live at |y|≈0.64R (off-plane) so
+  //   they take no proxy.
+  //
+  // `frame: 'approach'` rotates all primitives by the entity's stamped corridorBearingDeg —
+  // world.js stamps the bearing toward the sector origin (the direction the portal faces), so
+  // +X in manifest space is always the fly-through axis.
+  // ---------------------------------------------------------------------------
+  gate_jump_ring: Object.freeze({
+    schemaVersion: COLLISION_PROXY_SCHEMA_VERSION,
+    id: 'gate_jump_ring',
+    stationIds: Object.freeze([]),
+    flags: COLLISION_PROXY_FLAGS,
+    referenceRadius: 'dockRadius',
+    frame: 'approach',
+    // Fallback when no bearing is stamped: bar perpendicular to +X (opening along ±X).
+    frameBearingDeg: 0,
+    footprint: Object.freeze({
+      tube: Object.freeze({ offset: 0.90, halfWidth: 0.15 }),
+      hub: Object.freeze({ x: -0.28, r: 0.20 }),
+      throatHalfWidth: 0.75,
+    }),
+    silhouetteBound: 0.10,
+    primitives: Object.freeze([
+      Object.freeze({ kind: 'circle', id: 'tube-port', x: 0, z: 0.90, r: 0.15 }),
+      Object.freeze({ kind: 'circle', id: 'tube-star', x: 0, z: -0.90, r: 0.15 }),
+      Object.freeze({ kind: 'circle', id: 'hub', x: -0.28, z: 0, r: 0.20 }),
+    ]),
   }),
 });
 
@@ -200,12 +247,17 @@ export function effectiveCorridorBearingDeg(manifest, entity) {
 }
 
 /** Expand a manifest to a flat, bounded primitive list in normalized station-local units. Chains
- * become circles; the ring gap sector is cut around the effective corridor bearing. */
+ * become circles; the ring gap sector is cut around the effective corridor bearing. Manifests
+ * declaring `frame: 'approach'` rotate every primitive by the entity's stamped approach bearing
+ * (data.corridorBearingDeg), so +X in manifest space faces the corridor/portal axis. */
 export function expandProxyPrimitives(manifest, options = {}) {
   if (!manifest) return [];
   const corridorDeg = Number.isFinite(options.corridorBearingDeg)
     ? options.corridorBearingDeg
     : effectiveCorridorBearingDeg(manifest, options.entity || null);
+  const frameDeg = manifest.frame === 'approach'
+    ? wrapDeg(approachBearingDeg(manifest, options, corridorDeg))
+    : 0;
   const out = [];
   for (const primitive of manifest.primitives || []) {
     if (out.length >= MAX_PROXY_PRIMITIVES) break;
@@ -215,7 +267,41 @@ export function expandProxyPrimitives(manifest, options = {}) {
       out.push({ ...primitive });
     }
   }
+  if (frameDeg !== 0) rotateProxyPrimitives(out, frameDeg * DEG);
   return out;
+}
+
+/** Bearing the 'approach' frame rotates to: explicit option > stamped entity field > manifest
+ * fallback > the resolved corridor bearing (docking manifests share the stamped lane). */
+function approachBearingDeg(manifest, options, corridorDeg) {
+  if (Number.isFinite(options.approachBearingDeg)) return options.approachBearingDeg;
+  const stamped = options.entity && options.entity.data && options.entity.data.corridorBearingDeg;
+  if (Number.isFinite(stamped)) return stamped;
+  if (Number.isFinite(manifest.frameBearingDeg)) return manifest.frameBearingDeg;
+  return corridorDeg;
+}
+
+function rotateProxyPrimitives(primitives, rad) {
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  for (const primitive of primitives) {
+    if (primitive.kind === 'circle' || primitive.kind === 'obb') {
+      const x = finite(primitive.x);
+      const z = finite(primitive.z);
+      primitive.x = c * x - s * z;
+      primitive.z = s * x + c * z;
+      if (primitive.kind === 'obb') {
+        primitive.angleDeg = wrapDeg(finite(primitive.angleDeg) + rad / DEG);
+      }
+    } else if (primitive.kind === 'capsule') {
+      for (const key of ['a', 'b']) {
+        const x = finite(primitive[`${key}x`]);
+        const z = finite(primitive[`${key}z`]);
+        primitive[`${key}x`] = c * x - s * z;
+        primitive[`${key}z`] = s * x + c * z;
+      }
+    }
+  }
 }
 
 /** World-space primitives for an entity (registration + debug publication). Entity rotation is
@@ -223,7 +309,9 @@ export function expandProxyPrimitives(manifest, options = {}) {
 export function proxyWorldPrimitives(entity, manifest) {
   const scale = proxyScaleFor(entity, manifest);
   const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
-  const local = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg });
+  // Pass the entity through: 'approach'-framed manifests (gates) rotate by the stamped bearing,
+  // and a debug/test path that omits it would silently publish unrotated primitives.
+  const local = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg, entity });
   const rot = finite(entity && entity.rot);
   const c = Math.cos(rot);
   const s = Math.sin(rot);
@@ -419,18 +507,26 @@ export function measureSilhouetteBound(manifest, options = {}) {
   const corridorDeg = Number.isFinite(options.corridorBearingDeg)
     ? options.corridorBearingDeg
     : effectiveCorridorBearingDeg(manifest, options.entity || null);
-  const proxies = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg });
+  const proxies = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg, entity: options.entity || null });
   const footprint = manifest.footprint;
   if (!footprint) return { bound: 0, proxyToFootprint: 0, footprintToProxy: 0 };
-  const footprintSamples = sampleFootprint(manifest, corridorDeg);
+  const footprintSamples = sampleFootprint(manifest, corridorDeg, options);
   let footprintToProxy = 0;
   for (const p of footprintSamples) {
     const d = distanceToProxySet(p, proxies);
     if (d > footprintToProxy) footprintToProxy = d;
   }
+  // distanceToFootprint math lives in the un-rotated manifest frame; approach-framed proxies
+  // are un-rotated for the comparison (a no-op for frameless manifests).
+  const frameRad = manifest.frame === 'approach'
+    ? wrapDeg(approachBearingDeg(manifest, options, corridorDeg)) * DEG
+    : 0;
+  const fc = Math.cos(-frameRad);
+  const fs = Math.sin(-frameRad);
   let proxyToFootprint = 0;
   for (const p of sampleProxyBoundaries(proxies)) {
-    const d = distanceToFootprint(p, footprint);
+    const local = frameRad !== 0 ? { x: fc * p.x - fs * p.z, z: fs * p.x + fc * p.z } : p;
+    const d = distanceToFootprint(local, footprint);
     if (d > proxyToFootprint) proxyToFootprint = d;
   }
   return {
@@ -545,10 +641,30 @@ function expandChain(primitive, corridorDeg, out) {
   }
 }
 
-function sampleFootprint(manifest, corridorDeg) {
+function sampleFootprint(manifest, corridorDeg, options = {}) {
   const f = manifest.footprint;
   const samples = [];
   const STEP = 2; // degrees — dense enough that the measured bound is stable to ~1e-3
+  if (f.tube) {
+    // Gate footprint: two throat-tube circles + hub circle (approach frame).
+    const frameDeg = manifest.frame === 'approach'
+      ? wrapDeg(approachBearingDeg(manifest, options, corridorDeg))
+      : 0;
+    const c = Math.cos(frameDeg * DEG);
+    const s = Math.sin(frameDeg * DEG);
+    const pushCircle = (cx, cz, r) => {
+      const rx = c * cx - s * cz;
+      const rz = s * cx + c * cz;
+      for (let deg = 0; deg < 360; deg += STEP) {
+        const a = deg * DEG;
+        samples.push({ x: rx + Math.cos(a) * r, z: rz + Math.sin(a) * r });
+      }
+    };
+    pushCircle(0, f.tube.offset, f.tube.halfWidth);
+    pushCircle(0, -f.tube.offset, f.tube.halfWidth);
+    if (f.hub) pushCircle(f.hub.x, f.hub.z || 0, f.hub.r);
+    return samples;
+  }
   // Core disc boundary.
   for (let deg = 0; deg < 360; deg += STEP) {
     const a = deg * DEG;
@@ -667,6 +783,16 @@ function distanceToSegment(p, a, b) {
 
 function distanceToFootprint(point, footprint) {
   let best = Infinity;
+  if (footprint.tube) {
+    // Gate footprint (approach frame): distance to either throat-tube circle surface / hub surface.
+    const t = footprint.tube;
+    best = Math.abs(Math.hypot(point.x, point.z - t.offset) - t.halfWidth);
+    best = Math.min(best, Math.abs(Math.hypot(point.x, point.z + t.offset) - t.halfWidth));
+    if (footprint.hub) {
+      best = Math.min(best, Math.abs(Math.hypot(point.x - footprint.hub.x, point.z - (footprint.hub.z || 0)) - footprint.hub.r));
+    }
+    return best;
+  }
   // Core disc.
   best = Math.min(best, Math.abs(Math.hypot(point.x, point.z) - footprint.coreRadius));
   // Spar rectangles.
