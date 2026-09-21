@@ -861,6 +861,54 @@ function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling
  * recomputes handling from mass. Starts the ship at FULL hull/shield/cap.
  */
 export function getDerivedStats(defId, fittings = [], player = null) {
+  const key = derivedStatsKey(defId, fittings, player);
+  const hit = derivedStatsCache.get(key);
+  if (hit) {
+    // LRU refresh; the clone keeps the canonical immune to key-rebinding writers (combat).
+    derivedStatsCache.delete(key);
+    derivedStatsCache.set(key, hit);
+    return { ...hit };
+  }
+  const fresh = computeDerivedStats(defId, fittings, player);
+  if (derivedStatsCache.size >= DERIVED_STATS_CACHE_MAX) {
+    const oldest = derivedStatsCache.keys().next();
+    if (!oldest.done) derivedStatsCache.delete(oldest.value);
+  }
+  derivedStatsCache.set(key, fresh);
+  return { ...fresh };
+}
+
+/**
+ * INF-097: derived-stat memo. Shipworks re-derives the same hull composition on every
+ * refresh/hover, and each full fold walks every fitted module. The cache keys on the EXACT
+ * inputs the fold reads (hull, positional fittings, the player fields that alter numbers:
+ * efficiency mults/presence, cargo usedMass, identity flags, combat profile). Any change that
+ * alters numbers misses the key and recomputes — invalidation is structural, not manual.
+ *
+ * Contract: the cached canonical is never handed out. Every call returns a fresh TOP-LEVEL
+ * clone, because combat rebinds `derived.propulsion` on entity-owned blocks and ship code
+ * stores blocks on entities. Nested blocks (propulsion, flightModel, roleIdentity) are shared
+ * and must be treated read-only — replace keys, never mutate in place (no such writer exists).
+ * LRU-bounded (64) so ghost-hover spam cannot grow it.
+ */
+const DERIVED_STATS_CACHE_MAX = 64;
+const derivedStatsCache = new Map();
+
+function derivedStatsKey(defId, fittings, player) {
+  const eff = (player && player.efficiencyMods) || {};
+  return JSON.stringify([
+    defId || 'ship_kestrel',
+    Array.isArray(fittings) ? fittings : [],
+    player ? {
+      s: eff.shieldRegenMult, e: eff.energyRegenMult, c: eff.cargoCapMult,
+      h: eff.hiddenCargoPct, k: eff.scannerCloak, ep: player.efficiencyMods != null,
+      m: player.cargo && player.cargo.usedMass,
+      ip: player.isPlayer, id: player.id, st: player.stats != null, cp: player.combatProfile,
+    } : null,
+  ]);
+}
+
+function computeDerivedStats(defId, fittings = [], player = null) {
   const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
   const eff = (player && player.efficiencyMods) || {};
   const miningYieldMult = 1; // not applied to ship stats; mining system reads efficiencyMods itself
