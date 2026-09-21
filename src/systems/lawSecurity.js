@@ -1160,6 +1160,15 @@ export const lawSecurity = {
     ai.lawful = true;
     ai.passive = false;
     ai.securityTargetId = attacker.id;
+    // INF-029: the reported track starts from last-seen information, not a live feed. Snapshot
+    // the offender's position at dispatch; the perception seam keeps reporting this scene while
+    // live sightings refresh it, so breaking observation changes pursuit and reacquisition
+    // restores accuracy. Save-safe plain data next to the target id it describes.
+    if (attacker.pos) {
+      ai.securityTargetPos = { x: Number(attacker.pos.x) || 0, z: Number(attacker.pos.z) || 0 };
+    } else {
+      delete ai.securityTargetPos;
+    }
     // A dispatched enforcement action does not withdraw on attrition: the incident's own
     // stand-down decides when the response ends, not squad morale. Without this, responders
     // catching stray fire from a suspect's sustained assault rout before the exchange resolves.
@@ -1272,6 +1281,7 @@ export const lawSecurity = {
       if (matchesWitnessIncident || ai.securityTargetId === targetId) {
         const isHolder = matchesWitnessIncident && ai.witnessRole === 'hold';
         ai.securityTargetId = null;
+        ai.securityTargetPos = null;
         releaseResponseMoraleClaim(ai);
         ai.witnessRole = null;
         ai.witnessIncidentId = null;
@@ -1593,6 +1603,7 @@ export const lawSecurity = {
       holderAi.lawful = true;
       holderAi.passive = false;
       holderAi.securityTargetId = null;
+      holderAi.securityTargetPos = null;
       releaseResponseMoraleClaim(holderAi);
       holderAi.witnessRole = 'hold';
       holderAi.witnessIncidentId = incident.id;
@@ -1631,6 +1642,7 @@ export const lawSecurity = {
     } else {
       if (holderAi.securityTargetId != null) {
         holderAi.securityTargetId = null;
+        holderAi.securityTargetPos = null;
         releaseResponseMoraleClaim(holderAi);
       }
       if (holderData.combat && (holderData.combat.targetId === incident.attackerId || holderData.combat.lockTarget === incident.attackerId)) {
