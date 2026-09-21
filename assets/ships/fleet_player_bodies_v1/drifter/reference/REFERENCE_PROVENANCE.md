@@ -67,3 +67,11 @@ C17 cleared clay+shaded TUBE_PADDLE on all three cameras. Remaining REVISE is
 Hitch formed-shell / skin at D=144. C18 cuts chase-scale girth hoops, inset
 pockets, and athwartship Course bands into the C16 diamond. No new YZ. No
 generated C18 pixels. C16 convex-diamond ref stays selected.
+
+## 2026-09-21 (C19 leftovers)
+
+C18 kept TUBE_PADDLE NO. Remaining REVISE: thin pocket fields between hoops,
+Hitch midship color/greeble at play, Hitch close panel density + circular aft
+nozzle. C19 densifies inter-hoop cuts, midship Mark bands + hardware, and a
+dorsal-facing circular nozzle cut. No new YZ. Mouths not recut. No generated
+C19 pixels. C16 convex-diamond ref stays selected.
