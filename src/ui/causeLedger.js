@@ -81,6 +81,37 @@ export function driverPhrase(signal, sectorName) {
   return out;
 }
 
+function stationShort(stationId) {
+  return String(stationId || '').replace(/^station_/, '').replace(/_/g, ' ') || 'this station';
+}
+
+/**
+ * lanePressureLine(state, stationId, commodityId) -> one record-cited cause line or null.
+ *
+ * INF-090: completes the market explanation with a concrete, player-known cause. When the
+ * player's own hauler lane completed a PAID delivery of this good touching this station, the
+ * price move and the displayed cause share one source record: the delivery receipt
+ * (automation.js writes the receipt in the same cycle that emits the economy:applyTradePressure
+ * events, and only paid cycles emit pressure — so result==='paid' is the honesty gate).
+ * The respond path names the existing Automation-board Route verb; the tooltip tier carries
+ * no buttons by design.
+ * PURE + deterministic. Returns null (renders NOTHING) when no paid lane record matches —
+ * never a fabricated shortage or crisis.
+ */
+export function lanePressureLine(state, stationId, commodityId) {
+  const traders = state && state.automation && state.automation.traders;
+  if (!stationId || !commodityId || !Array.isArray(traders)) return null;
+  const hit = traders.find((t) => t && t.lastReceipt && t.lastReceipt.result === 'paid'
+    && t.lastReceipt.good === commodityId
+    && (t.lastReceipt.from === stationId || t.lastReceipt.to === stationId));
+  if (!hit) return null;
+  const r = hit.lastReceipt;
+  const leg = r.from === stationId
+    ? 'buys here, lifting the buy price'
+    : 'sells here, pressing the sell price down';
+  return `Your hauler lane ${stationShort(r.from)}→${stationShort(r.to)} (delivery #${r.n}) ${leg}. Re-route it from the Automation board to let the spread recover.`;
+}
+
 /**
  * causeFor(state, sectorId) -> stable current field snapshot + 1–3 sanctioned cause receipts
  * or null for an unknown sector.
@@ -155,7 +186,15 @@ export const causeLedger = {
       if (!row || !row.closest || !row.closest('.st-market, .sx-mkt')) { this._hideTip(); return; }
       const model = this._state && this._state.ui && this._state.ui.causeLedger;
       const lines = model && model.lines;
-      const text = lines && [lines.pricePressure, lines.danger].filter(Boolean).join('\n');
+      // INF-090: per-commodity lane record. The row carries the good; the docked station is
+      // the market being read. A paid lane receipt on this station+good appends its line.
+      let lane = null;
+      try {
+        const cmdty = row.getAttribute && row.getAttribute('data-cmdty');
+        const docked = this._state && this._state.ui && this._state.ui.dockedStationId;
+        lane = cmdty ? lanePressureLine(this._state, docked, cmdty) : null;
+      } catch (_) { lane = null; }
+      const text = [lines && lines.pricePressure, lines && lines.danger, lane].filter(Boolean).join('\n');
       if (!text) { this._hideTip(); return; }
       this._showTip(text, ev.clientX, ev.clientY);
     };
