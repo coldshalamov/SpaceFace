@@ -1491,6 +1491,36 @@ export function comboTrickLines(summary) {
   return lines;
 }
 
+/**
+ * The run's one real achievement beside the score (INF-035). DOM-free: the ledger band
+ * renders `text`, nothing else. The stunt branch names ONLY what the strongest bank's
+ * normalized acts name — normalizeBestLine refuses acts without evidence, so a named
+ * launch, collision, or victim is always traced to receipts, never timed into existence.
+ * A run with no bank gets an honest alternative from its own figures, never a fake stunt;
+ * a run with nothing at all gets null and the ledger reads exactly as before.
+ */
+export function featDiagram(result) {
+  const line = normalizeBestLine({
+    ...(result && result.bestLine),
+    seed: result && result.seed,
+    recordRules: result && result.recordRules,
+  });
+  if (line && line.acts.length) {
+    return {
+      kind: 'stunt',
+      text: `Best stunt: ${line.acts.map((a) => a.name).join(' → ')} · ${line.points} banked`,
+    };
+  }
+  const n = (v) => (Number.isInteger(v) && v > 0 ? v : 0);
+  const bestChain = n(result && result.bestChain);
+  if (bestChain > 0) return { kind: 'chain', text: `No stunts banked — best chain ${bestChain}.` };
+  const kills = n(result && result.kills);
+  if (kills > 0) {
+    return { kind: 'kills', text: kills === 1 ? 'No stunts banked — 1 kill.' : `No stunts banked — ${kills} kills.` };
+  }
+  return null;
+}
+
 /* --- band renderers. DOM assembly only; every word above them is already decided. --- */
 
 /** Label/value pairs as static kit rows. `hook` is the inert class a route check reads. */
@@ -1609,6 +1639,10 @@ function renderLastSeconds(band, trail) {
 
 function renderLedger(band, result) {
   band.appendChild(pairRows(resultRows(result), 'sf-crd-grid'));
+  // INF-035: the one real achievement, small and beside the score — the strongest banked
+  // stunt as a cause-to-consequence line, or an honest alternative when there is none.
+  const feat = featDiagram(result);
+  if (feat) band.appendChild(el('p', 'k-sentence sf-crres__feat', feat.text));
 }
 
 /**
