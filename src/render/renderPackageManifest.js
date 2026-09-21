@@ -2204,12 +2204,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hornet-production-v1",
-    "expectedContentHash": "6666927d39606d834dd17133c76ef817dcb5b0116d97580280dcf8bfcf1ca0e3",
+    "expectedContentHash": "c218be9e6337c7742d86bd2dc6cfbd2f35554378693587f1487480f141d8d024",
     "key": "hornet-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1/render-package.json",
     "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "7eb57e23a78d7d896058c29d89a4c88590dd775f14b8ff2a5118f9c07cf24e68",
+    "sourceSha256": "0d3fb12a19a12af83be3a86feda7beb0760d258a2a6d78ad4dbaa784d63e8a63",
     "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1.glb"
   },
   {
@@ -2404,22 +2404,22 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hornet-production-v1-lod1",
-    "expectedContentHash": "5325ab2fb52e35ea6e90f62b649d1238baa27c4982f047e6e9ccc45db9afadc0",
+    "expectedContentHash": "b56e5b5eb19485f639b2e25d96a3633c339e304835b1f8605a3bd9b69ad62d49",
     "key": "hornet-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "b3aa462f7295c7aa107ca795a2d254affdaf15b9bcac1f354a586bfa1e448850",
+    "sourceSha256": "08d9d6b051c316fdb03e2df1114c51039dfc5fb66853cc4d5a940b9d240936d9",
     "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.hornet-production-v1-lod2",
-    "expectedContentHash": "633e01f1dee448eea0503b1d0aa3f70b9a37c0bc8104f5f32b0dc415c931450f",
+    "expectedContentHash": "93066508fd0ccab69399483214acdd4ffd6cffae8c3f7bdbb4055faad456ddb7",
     "key": "hornet-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "a4ff02d6b064581ff5d2641d57069de062d56811d514e4d4cdd315cbca45a916",
+    "sourceSha256": "34a5764fa4f9accb08797bb95baf6f63bef374388a43235b6c67143bdd5b57f0",
     "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb"
   },
   {

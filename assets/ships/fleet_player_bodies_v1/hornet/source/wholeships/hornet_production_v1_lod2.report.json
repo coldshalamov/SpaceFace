@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "asset": "ship_hornet",
+  "revision": "chase_form_v13",
+  "lod": 2,
+  "source": "/workspace/assets/ships/parts/wholeships/hornet_production_v1_lod2.glb",
+  "output": "/workspace/assets/ships/fleet_player_bodies_v1/hornet/source/wholeships/hornet_production_v1_lod2.glb",
+  "canopy": {
+    "tub": true,
+    "coaming": true
+  },
+  "drive": {
+    "dorsal": true,
+    "aft": true
+  },
+  "radiator": {
+    "dorsal": true,
+    "Port": true,
+    "Stbd": true
+  },
+  "size": [
+    10.6,
+    6.8,
+    1.745
+  ],
+  "boundsMin": [
+    -5.18,
+    -3.4,
+    -0.521
+  ],
+  "boundsMax": [
+    5.42,
+    3.4,
+    1.224
+  ],
+  "triangles": 3894,
+  "hullTriangles": 2728,
+  "objects": [
+    "COLLISION_HULL.002",
+    "LOD0_Bell",
+    "LOD0_Canard_Port",
+    "LOD0_Canard_Stbd",
+    "LOD0_Coaming",
+    "LOD0_Drive_Fore",
+    "LOD0_Hull",
+    "LOD0_Wing_Port",
+    "LOD0_Wing_Stbd",
+    "LOD0_WingArmor_Port"
+  ],
+  "bytes": 525236
+}

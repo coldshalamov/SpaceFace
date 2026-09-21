@@ -2,6 +2,8 @@
 
 Class: player flyable interceptor. Hitch untouched.
 
+**2026-09-21 chase_form_v13.** Form pass on Principled color blocks (no 512-map bake). Supported review cameras are live chase (`play_chase` / `play_chase_abeam` / `play_chase_close`), not studio 3/4. No seats. Parent remains unproven.
+
 ## Visible-zone register (supported cameras: 3/4, starboard, rear)
 
 | Zone | Class | Fiction | Forbidden |
