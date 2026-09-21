@@ -21,6 +21,7 @@ import {
 } from '../systems/survivalResults.js';
 import { runXpForLevel } from '../core/runState.js';
 import { styleMultiplier } from '../systems/stuntCombo.js';
+import { SWARM_CHAIN_VARIED_STEP } from '../systems/swarmChain.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
@@ -70,6 +71,19 @@ export function objectiveWord(objectiveKind) {
 export function arenaLabel(arenaId) {
   if (!arenaId) return 'ARENA';
   return String(arenaId).replace(/_/g, ' ').toUpperCase();
+}
+
+/**
+ * The variety badge beside the chain figure (INF-031). Pure: the HUD never re-derives the
+ * bonus — swarmChain's own cause/step result arrives on the `swarm:chain` event and this only
+ * words it. A varied kill reads `COLLISION +2`; a repeated one reads `GUN`. Null when there is
+ * no cause to show, so the row stays a bare number.
+ */
+export function chainCauseBadge(cause, step) {
+  if (typeof cause !== 'string' || cause.length === 0) return null;
+  const word = cause.replace(/_/g, ' ').toUpperCase();
+  if (step === SWARM_CHAIN_VARIED_STEP) return `${word} +2`;
+  return word;
 }
 
 /** Live census for the wave: how many bodies are still out there, and how many are owed. */
@@ -159,6 +173,8 @@ export const survivalHud = {
     this._objective = null;
     this._chain = 0;
     this._chainBest = 0;
+    this._chainCause = null;
+    this._chainStep = 0;
     this._waveProgress = null;
     this._death = null;
     this._lastTells = [];
@@ -171,6 +187,10 @@ export const survivalHud = {
       this._waveProgress = null;
       this._death = null;
       this._lastTells = [];
+      this._chain = 0;
+      this._chainBest = 0;
+      this._chainCause = null;
+      this._chainStep = 0;
     }));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveProgress', (p) => this._onWaveProgress(p)));
@@ -287,9 +307,15 @@ export const survivalHud = {
     if (showChain) {
       this._setText(dom.chainFig, `${chain}`);
       this._setText(dom.chainBest, this._chainBest > chain ? `best ${this._chainBest}` : '');
+      // The cause glyph: what the last kill arrived as, and +2 when it varied the chain.
+      const badge = chainCauseBadge(this._chainCause, this._chainStep);
+      this._setText(dom.chainCause, badge || '');
+      if (dom.chainCause) dom.chainCause.hidden = !badge;
       const tier = chain >= 50 ? 'peak' : (chain >= 15 ? 'hot' : 'warm');
       if (dom.chainRow.dataset.tier !== tier) dom.chainRow.dataset.tier = tier;
-      dom.chainRow.setAttribute('aria-label', `Kill chain ${chain}`);
+      dom.chainRow.setAttribute('aria-label', badge
+        ? `Kill chain ${chain}, last kill ${badge}`
+        : `Kill chain ${chain}`);
     }
 
     // Style is a live figure, not a phase readout: it decays as you repeat yourself and climbs as
@@ -371,10 +397,15 @@ export const survivalHud = {
     if (payload && Number.isFinite(payload.best) && payload.best > this._chainBest) {
       this._chainBest = payload.best;
     }
+    // The variety result, exactly as swarmChain scored it — never re-derived here. INF-031.
+    this._chainCause = payload && typeof payload.cause === 'string' ? payload.cause : null;
+    this._chainStep = payload && Number.isFinite(payload.step) ? payload.step : 0;
   },
 
   _onChainBroken() {
     this._chain = 0;
+    this._chainCause = null;
+    this._chainStep = 0;
   },
 
   _onWavePlanned(payload) {
@@ -427,6 +458,8 @@ export const survivalHud = {
     this._objective = null;
     this._chain = 0;
     this._chainBest = 0;
+    this._chainCause = null;
+    this._chainStep = 0;
   },
 
   // ---- DOM ------------------------------------------------------------------
@@ -510,6 +543,7 @@ export const survivalHud = {
     const chainWord = make('span', 'sf-crun__word', chainRow);
     chainWord.textContent = 'CHAIN';
     const chainFig = make('span', 'sf-crun__chainfig', chainRow);
+    const chainCause = make('span', 'sf-crun__chaincause', chainRow);
     const chainBest = make('span', 'sf-crun__chainbest', chainRow);
     chainRow.hidden = true;
 
@@ -556,7 +590,7 @@ export const survivalHud = {
     host.appendChild(root);
     this._dom = {
       root, label, waveN, phase, threat, threatWord, threatFill, threatFig,
-      chainRow, chainFig, chainBest,
+      chainRow, chainFig, chainCause, chainBest,
       score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
     };
     return this._dom;
@@ -613,6 +647,9 @@ export const survivalHud = {
     text-shadow:0 0 10px var(--dp-danger-bloom, transparent); }
   .sf-crun__chainbest { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
+  .sf-crun__chaincause { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-weight:700; font-size:11px;
+    letter-spacing:.12em; text-transform:uppercase; font-variant-numeric:tabular-nums;
+    color:var(--dp-lamp-hot, var(--sf-goal, #e3a13d)); }
   .sf-crun__earn { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-lamp-hot, var(--sf-you)); text-shadow:var(--dp-emit-lamp, none); }
   .sf-crun__death { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
@@ -621,7 +658,7 @@ export const survivalHud = {
   @media (forced-colors: active) {
     .sf-crun { border:0; background:Canvas; color:CanvasText; }
     .sf-crun__fill { background:Highlight; forced-color-adjust:none; }
-    .sf-crun__wave, .sf-crun__chainfig, .sf-crun__fig--goal, .sf-crun__earn { color:CanvasText; text-shadow:none; }
+    .sf-crun__wave, .sf-crun__chainfig, .sf-crun__chaincause, .sf-crun__fig--goal, .sf-crun__earn { color:CanvasText; text-shadow:none; }
     .sf-crun__phase--hot, .sf-crun__death, .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig { color:Highlight; text-shadow:none; }
   }
   @media (max-width: 900px) {

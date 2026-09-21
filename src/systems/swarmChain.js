@@ -119,6 +119,14 @@ export const swarmChain = {
    */
   update(dt, state) {
     const st = state || this.state;
+    // One queued milestone toast per tick, highest mark first — a burst that crossed several
+    // marks says one line. A dead run drops it: the results plate already owns that moment.
+    // INF-031.
+    if (this._pendingMilestone > 0) {
+      const mark = this._pendingMilestone;
+      this._pendingMilestone = 0;
+      if (liveSwarmRun(st)) this._emit('toast', { text: `CHAIN ${mark}`, kind: 'good', ttl: 1.8 });
+    }
     if (this._chain <= 0) return;
     const run = liveSwarmRun(st);
     if (!run) { this._break('run_over'); return; }
@@ -149,6 +157,7 @@ export const swarmChain = {
     this._lastCause = null;
     this._lastKillAt = 0;
     this._milestone = 0;
+    this._pendingMilestone = 0;
   },
 
   _onKilled(payload) {
@@ -183,10 +192,14 @@ export const swarmChain = {
     const milestone = swarmChainMilestone(this._chain, this._milestone);
     if (milestone) {
       this._milestone = milestone;
-      // Milestones only. A line per kill would bury every other thing the fight has to say.
-      this._emit('toast', { text: `CHAIN ${milestone}`, kind: 'good', ttl: 1.8 });
+      // Queued, not spoken: a multi-kill burst in one tick can cross several marks, and a stack
+      // of toasts would bury every other thing the fight has to say. update() says the highest
+      // one once. INF-031.
+      if (milestone > this._pendingMilestone) this._pendingMilestone = milestone;
     }
-    this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, wave: run.wave });
+    // cause AND step travel together so the readout shows the variety bonus from this result
+    // instead of calculating a second score of its own. INF-031.
+    this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, step, wave: run.wave });
   },
 
   _onRunEnded() {
@@ -202,6 +215,8 @@ export const swarmChain = {
     this._chain = 0;
     this._lastCause = null;
     this._milestone = 0;
+    // A lapsed chain takes its unsaid milestone with it — congratulating a dead number is noise.
+    this._pendingMilestone = 0;
     this._emit('swarm:chainBroken', { chain: ended, best: this._best, reason });
   },
 
