@@ -12473,13 +12473,19 @@ export const vfx = {
     return driveId && this._rcsScaleCache.get(driveId) || this._rcsDefaultScale;
   },
 
-  /** Signed player actuator truth published by flightV3; presentation never re-simulates physics. */
+  /** Signed applied-acceleration truth published by flightV3; presentation never re-simulates physics. */
   _actuatorsFor(e) {
     const state = this.state;
-    if (e && state.playerId != null && e.id !== state.playerId) return null;
-    const runtime = state.flightRuntime;
-    const telemetry = runtime && runtime.telemetry;
-    if (telemetry && telemetry.actuators) return telemetry.actuators;
+    // INF-046 — the propulsion kernel publishes applied acceleration into EVERY stepped
+    // entity's _flightFrame, so nozzle truth is no longer player-only. The player keeps the
+    // richer runtime telemetry (manual/assist provenance); an NPC reads its own frame.
+    // Returning the player's block for an NPC would light the wrong ship's nozzles.
+    const isPlayer = !e || state.playerId == null || e.id === state.playerId;
+    if (isPlayer) {
+      const runtime = state.flightRuntime;
+      const telemetry = runtime && runtime.telemetry;
+      if (telemetry && telemetry.actuators) return telemetry.actuators;
+    }
     const frame = e && e._flightFrame;
     if (frame && frame.actuators && Number.isFinite(frame.actuators.reverse)) return frame.actuators;
     const acc = frame && frame.acceleration;
