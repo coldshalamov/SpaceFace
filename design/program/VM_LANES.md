@@ -40,7 +40,7 @@ Freeze for later leaves: Hitch/Kestrel always; Hornet + Drifter live LODs once c
 
 | Task | Thread | Host | Branch / PR | State | Exact focus | Next |
 |---|---|---|---|---|---|---|
-| `PQ-050.03` Ranger chase | code-work-coordinator | `grok-bot-box` (was Cursor cloud; **moved off Cursor cloud agents — Grok Bot budget**) | C1 was [PR 150](https://github.com/coldshalamov/SpaceFace/pull/150); C2 cancelled mid-flight | **WORKING** (resume on Grok Bot computer) | Player explorer chase-form; kill TUBE_PADDLE + CAGE_READ from C1 reviews | Resume C2 on box after `gh` auth + Blender install; do not start other PQ-050 ships |
+| `PQ-050.03` Ranger chase C2 | code-work-coordinator | `grok-bot-box` | `leaf/pq050-03-ranger-chase-c2-box` / [PR 151](https://github.com/coldshalamov/SpaceFace/pull/151) | **WORKING** | chase_form_v2: kill TUBE_PADDLE + CAGE_READ; continuous lofted shell + plated skin; wells as holes; Hitch/Hornet/Drifter frozen | Build + chase stills + honest RESULT; supersede stale PR 150 |
 
 ## Pointers
 
