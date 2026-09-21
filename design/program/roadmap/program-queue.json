@@ -19554,7 +19554,9 @@
       "checks": [
         "npm run probe:smooth-flight:crucible"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.00-REPORT.md"
+      ],
       "brief": "Measured 2026-09-20 on the owner's Intel iGPU, Crucible seed 4242 default kit. First reading (host 50 % busy): 21 freezes over 100 ms in 30 s, worst 250 ms, made of 15-20 ms of game work plus 120-146 ms of pipeline admission. The loop's compile drain was then budgeted against what truly remains of the callback (sim included) instead of the present alone; two consecutive runs at 32 % host read 57-58 fps with ONE freeze over 100 ms. That one is reproducible: about 22 s into the seed, a 22-26 ms sim frame (a wave spawning) followed by 183-200 ms outside the game's callback - the driver linking and uploading hull types the GPU has never drawn. PQ-129.05 warms hulls on approach; a wave has no approach. First print wave-start times beside freeze times in the probe to prove causality. Then at run launch, behind the loading shell, route one REAL exemplar of every hull, projectile and VFX family the ruleset can spawn through the production admission path (real authored material - synthetic stand-ins never converge, measured 2026-08-28), and admit each next round's additions in the shop. Exit is a count: zero program links and zero first-draw uploads during a round; zero frames over 100 ms per 30 s. Never spawn sim entities to warm; never cut quality."
     },
     {
@@ -19606,7 +19608,7 @@
       "priority": 342,
       "title": "Nothing on the live screen unloads or waits",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [],
       "paths": [
@@ -19617,7 +19619,9 @@
       "checks": [
         "npm run probe:smooth-flight:crucible"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.03-REPORT.md"
+      ],
       "brief": "Landed 2026-09-20: residency honours the live glass, evict >= prefetch, on-screen rows exempt from the first-flight hold, retired rock batches rebuild. Remaining: add a live onGlassDisposals counter in reconcileMeshResidency (mesh disposed while entityIsOnReadableGlass) and hold it at 0; entityMeshVisibility hides geometryPending roots BEFORE the onLiveGlass override, so an on-screen root waits on a one-at-a-time drain - bound that wait to 0.25 s; appendNearbyLedgerRows collects around the player while the keep radius is centred on the camera look-at (up to 400 WU apart) - give them one origin."
     },
     {
