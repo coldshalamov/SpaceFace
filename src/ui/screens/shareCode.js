@@ -25,6 +25,7 @@ import {
 import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import {
   CRUCIBLE_ARENA_ID,
+  crucibleSetupFor,
   crucibleStarterIdForSetup,
   normalizeCrucibleRuleset,
   normalizeSeed,
@@ -61,6 +62,38 @@ export function runShareCodeForRun(setup, result, { ghostHash = null } = {}) {
     weeklyMutatorId: typeof src.weeklyMutatorId === 'string' ? src.weeklyMutatorId : null,
     ghostHash: Number.isInteger(ghostHash) ? ghostHash : null,
   });
+}
+
+/**
+ * The door's Copy-code action as a pure step (INF-038): the pending door configuration —
+ * starter, seed, arena, ruleset, mutators, challenge keys — encoded with the same envelope
+ * the paste path decodes, so a copied code reproduces the intended configuration. Fails
+ * closed with a reason; never a half code.
+ */
+export function doorRunShareCode({
+  starterId, seed, arenaId, ruleset, mutators = [], dailyDateKey = null, weeklyMutatorId = null,
+} = {}) {
+  const setup = crucibleSetupFor({ starterId, seed, arenaId, ruleset });
+  if (!setup.ok || !setup.value) {
+    const reason = setup && Array.isArray(setup.issues) && setup.issues[0]
+      ? setup.issues[0].message
+      : 'Crucible setup invalid';
+    return { ok: false, error: reason };
+  }
+  const code = runShareCodeForRun(
+    {
+      ...setup.value,
+      dailyDateKey: typeof dailyDateKey === 'string' && dailyDateKey ? dailyDateKey : null,
+      weeklyMutatorId: typeof weeklyMutatorId === 'string' && weeklyMutatorId ? weeklyMutatorId : null,
+    },
+    {
+      seed: normalizeSeed(seed),
+      ruleset,
+      mutators: Array.isArray(mutators) ? mutators : [],
+    },
+  );
+  if (typeof code !== 'string' || !code) return { ok: false, error: 'Code could not be written for this setup' };
+  return { ok: true, code };
 }
 
 /**

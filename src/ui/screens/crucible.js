@@ -49,6 +49,7 @@ import {
 } from '../../systems/survivalRecords.js';
 import {
   applyRunShareCode,
+  doorRunShareCode,
   ghostShareForRun,
   importGhostShareText,
   runShareCodeForRun,
@@ -802,9 +803,12 @@ export const crucibleScreen = {
       const week = weeklyDoorCard();
       if (daily) {
         sub.textContent = DAILY_CARD.blurb;
+        // INF-038: the current daily challenge names itself — UTC date key and seed — so the
+        // door shows WHICH shared run today is, not just that a daily exists.
+        const challenge = `Today's challenge ${utcDateKeyNow()} · seed ${dailySeedForNow()}.`;
         modeSentence.textContent = weekly
-          ? `${DAILY_CARD.sub} This week: ${week.name}. ${week.blurb}`
-          : DAILY_CARD.sub;
+          ? `${DAILY_CARD.sub} This week: ${week.name}. ${week.blurb} ${challenge}`
+          : `${DAILY_CARD.sub} ${challenge}`;
         if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : DAILY_CARD.verb;
         seedInput.readOnly = true;
         seedInput.setAttribute('aria-readonly', 'true');
@@ -986,6 +990,46 @@ export const crucibleScreen = {
     });
     codeRow.appendChild(codeInput);
     codeRow.appendChild(useCode);
+    // INF-038: the share-code action goes both ways. Copy encodes THIS door — starter, seed,
+    // arena, ruleset, mutators, challenge keys — with the same envelope pasting decodes, so a
+    // copied code reproduces the intended configuration. The code lands selected in the field
+    // (manual copy always works); the clipboard write is a best-effort local convenience,
+    // never a service.
+    const copyCode = word('Copy code', 'k-word--fine');
+    paintKey(copyCode, 'small');
+    copyCode.addEventListener('click', () => {
+      const terms = doorChallengeTerms();
+      const dateKey = daily ? utcDateKeyNow() : terms.shareDailyKey;
+      const res = doorRunShareCode({
+        starterId,
+        seed: normalizeSeed(seedInput.value),
+        arenaId,
+        ruleset,
+        mutators: terms.challengeMutators,
+        dailyDateKey: dateKey,
+        weeklyMutatorId: terms.weeklyMutatorId,
+      });
+      if (!res.ok) {
+        shareNote.textContent = res.error || 'Code could not be written for this setup.';
+        cue('deny');
+        return;
+      }
+      codeInput.value = res.code;
+      try { codeInput.focus(); codeInput.select(); } catch { /* manual copy stays available */ }
+      let copied = false;
+      try {
+        const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : null;
+        if (clipboard && typeof clipboard.writeText === 'function') {
+          copied = true;
+          clipboard.writeText(res.code).catch(() => { /* the selected field is the fallback */ });
+        }
+      } catch { /* the selected field is the fallback */ }
+      shareNote.textContent = copied
+        ? 'Code copied — pasting it elsewhere reproduces this seed, build, and rules.'
+        : 'Code ready in the field — copy it from there.';
+      cue('confirm');
+    });
+    codeRow.appendChild(copyCode);
     const ghostRow = el('div', 'k-words k-words--row sf-crd-share');
     const ghostInput = el('input', 'k-input sf-crd-ghost-code');
     ghostInput.type = 'text';
@@ -1047,10 +1091,8 @@ export const crucibleScreen = {
     const foot = el('footer', 'k-foot sf-crd-foot');
     const footWords = el('ul', 'k-words k-words--row');
     footWords.setAttribute('aria-label', 'Crucible');
-    const enter = word('Hold the line', 'k-word--emph k-word--primary');
-    enterButton = enter;
-    paintKey(enter, 'hazard');
-    enter.addEventListener('click', () => {
+    // The one launch path, shared by Enter and Quick play. INF-038.
+    function launchCurrent() {
       const setup = crucibleSetupFor({
         starterId,
         seed: normalizeSeed(seedInput.value),
@@ -1093,6 +1135,31 @@ export const crucibleScreen = {
         if (practiceQueued) queuePracticeRun();
       }
       requestCrucibleRun(ctx.bus, payload, ruleset);
+    }
+    const quick = word('Quick play', 'k-word--emph');
+    quick.setAttribute('aria-label', 'Quick play: Swarm now on a fresh seed');
+    quick.addEventListener('click', () => {
+      // Quick play is the fast game with nothing to decide: Swarm, a fresh seed, no
+      // challenge keys, no ghost. Hull and arena stay as chosen — those are loadout.
+      ruleset = SWARM_RULESET;
+      daily = false;
+      weekly = false;
+      practiceQueued = false;
+      pendingShare = null;
+      raceGhost = false;
+      seedInput.value = String(freshSeed());
+      freeSeed = seedInput.value;
+      syncMode();
+      syncHull();
+      syncGhost();
+      launchCurrent();
+    });
+    addWord(footWords, quick);
+    const enter = word('Hold the line', 'k-word--emph k-word--primary');
+    enterButton = enter;
+    paintKey(enter, 'hazard');
+    enter.addEventListener('click', () => {
+      launchCurrent();
     });
     addWord(footWords, enter);
     // The one way back, drawn by the deckplate sheet like every screen's (keycap + ESC chip).
