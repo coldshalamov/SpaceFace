@@ -21,6 +21,26 @@ const FACTION_COLOR = Object.create(null);
 const SECTOR_NAME = new Map(SECTORS.map((s) => [s.id, s.name]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const DEFAULT_MEMORY_COMMODITY = 'cmdty_ore_iron';
+
+// INF-057 star-map context memory. The screen read a camera bag from state.ui on open, but
+// nothing ever WROTE it — a dead read, so every close forgot the pan/zoom the player had set.
+// The camera now rides the screenMemory contract like every other screen's remembered state:
+// flat primitives, authored defaults on restore-first, written on hide. The galaxy camera is
+// location-independent (it spans the topology, not one sector), so unlike the local map there
+// is no sector reframe here — the selection already re-frames to the current sector each show.
+const CAMERA_DEFAULT = Object.freeze({ cx: 0, cy: 0, zoom: 1 });
+
+export function restoreStarMapCamera(bag) {
+  if (!bag) return { ...CAMERA_DEFAULT };
+  const cx = Number(bag.camCx);
+  const cy = Number(bag.camCy);
+  const zoom = Number(bag.camZoom);
+  return {
+    cx: Number.isFinite(cx) ? cx : CAMERA_DEFAULT.cx,
+    cy: Number.isFinite(cy) ? cy : CAMERA_DEFAULT.cy,
+    zoom: Number.isFinite(zoom) && zoom > 0 ? Math.min(3, Math.max(0.5, zoom)) : CAMERA_DEFAULT.zoom,
+  };
+}
 for (const f of FACTION_META) {
   FACTION_NAME[f.id] = f.short || f.name || f.id;
   FACTION_COLOR[f.id] = f.color || '#84a0c8';
@@ -784,8 +804,11 @@ export const starmapScreen = {
     this._selectedId = state.world && state.world.currentSectorId || null;
     this._hoverId = null;
     this._hoverInfo = null;
-    const saved = state.ui && state.ui.starmapView;
-    this._cam = saved ? { cx: saved.cx || 0, cy: saved.cy || 0, zoom: saved.zoom || 1 } : { cx: 0, cy: 0, zoom: 1 };
+    // INF-057: authored defaults first (singleton rule — never merge over a previous session's
+    // camera), then the remembered camera from the screenMemory contract, written on hide.
+    this._cam = { ...CAMERA_DEFAULT };
+    const mem = this._ctx.screenMemory;
+    if (mem) this._cam = restoreStarMapCamera(mem.get('starmap'));
     this._visible = true;
     invalidateCanvasFonts();
     this._resize();
@@ -794,6 +817,10 @@ export const starmapScreen = {
   },
 
   onHide() {
+    const mem = this._ctx && this._ctx.screenMemory;
+    if (mem && this._cam) {
+      mem.set('starmap', { camCx: this._cam.cx, camCy: this._cam.cy, camZoom: this._cam.zoom });
+    }
     this._visible = false;
     this._stopAnimLoop();
   },

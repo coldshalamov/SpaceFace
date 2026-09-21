@@ -185,7 +185,7 @@ export function createGameState(seed) {
     traffic: { freighters: [] },
     ui: {
       screenStack: [], docked: false, activeStationTab: 'market', radarRange: 4000, toasts: [], alerts: [],
-      trackedMissionId: null, starmapView: { cx: 0, cy: 0, zoom: 1 },
+      trackedMissionId: null,
       // One-shot map-authority open payload (mapAuthority.js → galaxyMap.onShow). Not gameplay-critical;
       // cleared on consume. Defaults null so saves without the field hydrate cleanly.
       mapOpenIntent: null,

@@ -77,6 +77,43 @@ export function anchoredZoomFocus(anchor, playerPos, center, scale, marginPx = 2
 }
 
 /**
+ * INF-057 map context memory. The view used to reset to zoom 1 on every open, so an accidental
+ * close threw away the inspection; and nothing keyed the memory to a sector, so a camera carried
+ * from Helios would resurface in Ceres. The bag is the screenMemory contract: flat primitives
+ * only, keyed by the sector the context belongs to. Restore applies ONLY when the saved sector is
+ * the sector the player is still in — a genuine location change reframes to the authored defaults
+ * (ship-centered, zoom 1). The anchor restores too, so the view re-derives the same inspected
+ * point; the ship-visibility clamp keeps even a stale anchor recoverable.
+ */
+export function mapZoomMemoryPatch(zoom, anchor, sectorId) {
+  return {
+    sectorId: sectorId || '',
+    zoom: Number.isFinite(Number(zoom)) && Number(zoom) > 0 ? Number(zoom) : 1,
+    anchorWx: anchor ? anchor.world.x : null,
+    anchorWz: anchor ? anchor.world.z : null,
+    anchorSx: anchor ? anchor.screen.x : null,
+    anchorSy: anchor ? anchor.screen.y : null,
+  };
+}
+
+export function restoreMapZoomMemory(bag, currentSectorId) {
+  const fresh = { zoom: 1, anchor: null };
+  if (!bag || !bag.sectorId || bag.sectorId !== currentSectorId) return fresh;
+  const zoom = Number(bag.zoom);
+  const out = { zoom: Number.isFinite(zoom) && zoom > 0 ? zoom : 1, anchor: null };
+  // null/undefined are NOT numbers here: Number(null) is 0, which would silently place a
+  // half-written anchor at the origin. Every coordinate must be a real finite number.
+  const real = (n) => n != null && Number.isFinite(Number(n));
+  if ([bag.anchorWx, bag.anchorWz, bag.anchorSx, bag.anchorSy].every(real)) {
+    out.anchor = {
+      world: { x: Number(bag.anchorWx), z: Number(bag.anchorWz) },
+      screen: { x: Number(bag.anchorSx), y: Number(bag.anchorSy) },
+    };
+  }
+  return out;
+}
+
+/**
  * Greedy label placement. `jobs` is any array of {x, y, dx, text, font, priority}; `measure`
  * returns a pixel width for (text, font). Higher-priority jobs claim their spot first; within a
  * tier the incoming order (the map model's stable sort) decides, so the same world state always
@@ -434,10 +471,22 @@ export const localmapScreen = {
   },
 
   onShow() {
+    // INF-057: authored defaults first (screen modules are singletons — never merge over whatever
+    // a previous session left here), then the remembered context only when it belongs to the
+    // sector the player is still in. A new sector reframes instead of inheriting the old extent.
     this._zoom = 1;
     this._targetZoom = 1;
     this._zoomAnchor = null;
     this._viewFocus = null;
+    const state = this._ctx && this._ctx.state;
+    const currentSectorId = state && state.world && state.world.currentSectorId || null;
+    const mem = this._ctx && this._ctx.screenMemory;
+    if (mem) {
+      const restored = restoreMapZoomMemory(mem.get('localmap'), currentSectorId);
+      this._zoom = restored.zoom;
+      this._targetZoom = restored.zoom;
+      this._zoomAnchor = restored.anchor;
+    }
     this._visible = true;
     invalidateCanvasFonts();
     cancelAnimationFrame(this._animFrame);
@@ -481,6 +530,15 @@ export const localmapScreen = {
   },
 
   onHide() {
+    // INF-057: write the context back before the screen quiets, so an accidental close loses
+    // nothing. popScreen calls onHide before its own bookkeeping (screenManager), and the
+    // screenMemory bag is the save-backed contract — flat primitives keyed to the sector.
+    const mem = this._ctx && this._ctx.screenMemory;
+    if (mem) {
+      const state = this._ctx.state;
+      const currentSectorId = state && state.world && state.world.currentSectorId || null;
+      mem.set('localmap', mapZoomMemoryPatch(this._zoom, this._zoomAnchor, currentSectorId));
+    }
     this._visible = false;
     cancelAnimationFrame(this._animFrame);
   },
