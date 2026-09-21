@@ -17,6 +17,7 @@ export const DRIVE_FAMILIES = Object.freeze({
 });
 
 const INF = Number.POSITIVE_INFINITY;
+const DRIVE_FAMILY_SET = new Set(Object.values(DRIVE_FAMILIES));
 const DERIVED_RUNTIME_PROFILE_CACHE = new WeakMap();
 const PLAYER_TRANSLATION_PROFILE_CACHE = new WeakMap();
 // Cruise-phase derivations are pure functions of the base profile; cached so the player's
@@ -302,6 +303,12 @@ export const PROPULSION_PROFILES = Object.freeze({
   }),
 });
 
+// Per-entity memo for the partial-authored merge below. The merge itself depends only on
+// (authored, base); both are stored and compared by reference, so a fitting rewrite or a role/mass
+// re-inference invalidates cleanly. The win is a stable profile identity per tick: callers stop
+// paying three spread objects, and downstream WeakMap caches (player feel, cruise) finally hit.
+const MERGED_PROFILE_CACHE = new WeakMap();
+
 const ROLE_DEFAULTS = Object.freeze({
   starter: 'drive_reaction_m',
   scout: 'drive_reaction_s',
@@ -344,12 +351,21 @@ export function resolvePropulsionProfile(entity, state = null) {
       const base = authored.id && PROPULSION_PROFILES[authored.id]
         ? PROPULSION_PROFILES[authored.id]
         : inferProfile(entity);
-      profile = normalizeProfile({
-        ...base,
-        ...authored,
-        resources: { ...(base.resources || {}), ...(authored.resources || {}) },
-        assist: { ...(base.assist || {}), ...(authored.assist || {}) },
-      });
+      let entry = MERGED_PROFILE_CACHE.get(entity);
+      if (!entry || entry.authored !== authored || entry.base !== base) {
+        entry = {
+          authored,
+          base,
+          profile: normalizeProfile({
+            ...base,
+            ...authored,
+            resources: { ...(base.resources || {}), ...(authored.resources || {}) },
+            assist: { ...(base.assist || {}), ...(authored.assist || {}) },
+          }),
+        };
+        MERGED_PROFILE_CACHE.set(entity, entry);
+      }
+      profile = entry.profile;
     }
   }
 
@@ -445,7 +461,18 @@ export function getPropulsionProfile(id) {
 }
 
 export function normalizeProfile(profile) {
-  const family = Object.values(DRIVE_FAMILIES).includes(profile && profile.family)
+  // Identity fast path: an object already stamped with the current schema version and a valid
+  // family/id/label/solverSpeedLimit is by construction normalized — normalizeProfile is
+  // idempotent, so re-spreading it (stepPropulsion does this every tick) buys nothing.
+  if (profile
+    && profile.schemaVersion === PROPULSION_SCHEMA_VERSION
+    && typeof profile.id === 'string'
+    && typeof profile.label === 'string'
+    && (Number.isFinite(profile.solverSpeedLimit) || profile.solverSpeedLimit === INF)
+    && DRIVE_FAMILY_SET.has(profile.family)) {
+    return profile;
+  }
+  const family = DRIVE_FAMILY_SET.has(profile && profile.family)
     ? profile.family
     : DRIVE_FAMILIES.REACTION;
   const out = {
