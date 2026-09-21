@@ -11,6 +11,18 @@ import { createPauseFrame } from '../views/menuFrames.js';
 // only pause-mode presentation and navigation intents.
 
 import { injectDeckplate } from '../deckplate/index.js';
+// This screen's own finish layer (styles/pause.css) — the verb stack's spacing and the footer
+// strip. A <link> appended after the deckplate sheet wins equal-specificity rules by order.
+const PAUSE_STYLE_URL = new URL('../../../styles/pause.css', import.meta.url).href;
+const PAUSE_STYLE_ID = 'sf-pause-style';
+function injectPauseCss(doc = globalThis.document) {
+  if (!doc || !doc.head || doc.getElementById(PAUSE_STYLE_ID)) return;
+  const link = doc.createElement('link');
+  link.id = PAUSE_STYLE_ID;
+  link.rel = 'stylesheet';
+  link.href = PAUSE_STYLE_URL;
+  doc.head.appendChild(link);
+}
 import { confirm } from '../confirm.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS } from '../../data/sectors.js';
@@ -630,9 +642,11 @@ export const pauseScreen = {
 
   mount(rootEl, ctx) {
     injectDeckplate();
+    injectPauseCss();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-narrow');
     rootEl.classList.add('k-screen', 'k-screen--stage');
+    rootEl.dataset.screen = 'pause';
     delete rootEl.dataset.stamp;
 
     const { title, briefKicker, briefObjective, briefNext, briefSave } = createPauseFrame(rootEl, {
@@ -656,15 +670,18 @@ export const pauseScreen = {
     const handlers = new Map();
     // Deckplate (FRONTEND_PROGRAM Wave 2): verbs are grouped under etched legends and carry a kit
     // glyph; the order and every label are unchanged, so one roving list still reaches them all.
-    const mk = (label, fn, { primary = false, danger = false, dev = false, current = false, group = null, icon = null, keycap = false } = {}) => {
+    const mk = (label, fn, { primary = false, danger = false, dev = false, current = false, group = null, icon = null, keycap = false, hint = null, keys = null } = {}) => {
       const action = 'pause-' + items.length;
-      items.push({ label, action, primary, danger, current, group, icon, keycap });
+      items.push({ label, action, primary, danger, current, group, icon, keycap, hint, keys });
       handlers.set(action, fn);
       return action;
     };
-    const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true, current: true, icon: 'chevron-right' });
+    // `hint` draws a keycap at the row's right edge; only keys that are live over this modal get
+    // one — Esc resumes (this screen's own onKey), F5/F9 quick save/load through the modal input
+    // branch, and the flight bindings the label already names (J, M) come through `keycap`.
+    const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true, current: true, icon: 'chevron-right', hint: 'Esc', keys: 'Escape' });
     mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'), { group: 'Game', icon: 'settings' });
-    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { group: 'Game', icon: 'install' });
+    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { group: 'Game', icon: 'install', hint: 'F5', keys: 'F5' });
     // Load discards unsaved current progress after a slot is chosen — confirm with the live run context first.
     mk(coreText('load'), async () => {
       const ok = await confirm({
@@ -673,7 +690,7 @@ export const pauseScreen = {
         confirmLabel: 'Open Load', danger: true,
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
-    }, { group: 'Game', icon: 'remove' });
+    }, { group: 'Game', icon: 'remove', hint: 'F9', keys: 'F9' });
     mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', icon: 'missions', keycap: true });
     // THE SHIP (F2 in flight; SCREENS_B §1.2 route wiring). From pause the same instrument opens
     // with its pause-menu entry; the key case lives in the flight-only key router.
@@ -733,17 +750,33 @@ export const pauseScreen = {
     list.classList.add('sf-pause-words');
     for (const item of items) {
       const button = list.querySelector(`[data-action="${item.action}"]`);
-      if (button && item.dev) button.classList.add('k-38');
+      if (!button) continue;
+      if (item.dev) button.classList.add('k-38');
+      if (item.keys) button.setAttribute('aria-keyshortcuts', item.keys);
     }
 
     stage.appendChild(list);
     rootEl.appendChild(stage);
 
+    // The column ends in a legend strip, not an air gap: the keys that are live while this modal
+    // is up as machined caps, then the build mark — the two .k-fine lines the pause grid's foot
+    // area is sized for.
+    const foot = el('footer', 'sf-pause-foot');
+    const keysLine = el('p', 'k-fine sf-pause-foot__keys');
+    const keyHint = (cap, verb) => {
+      keysLine.appendChild(el('span', 'sf-pause-key', cap));
+      keysLine.appendChild(el('span', 'sf-pause-key-verb', verb));
+    };
+    keyHint('Esc', 'Resume');
+    keyHint('F5', 'Quick Save');
+    keyHint('F9', 'Quick Load');
+    foot.appendChild(keysLine);
     const version = el('p', 'k-fine');
     version.dataset.role = 'version';
     const versionText = el('span', '', leftoverVersionLabel(CREDITS));
     version.appendChild(versionText);
-    rootEl.appendChild(version);
+    foot.appendChild(version);
+    rootEl.appendChild(foot);
     rootEl.setAttribute('aria-keyshortcuts', 'Escape');
 
     const bResume = list.querySelector(`[data-action="${resumeAction}"]`);

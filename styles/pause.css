@@ -1,0 +1,57 @@
+/* ── PAUSE finish layer ─────────────────────────────────────────────────────────
+   Loaded by src/ui/screens/pause.js (injectPauseCss) — a <link> appended after the
+   deckplate sheet, so equal-specificity rules here win by order. Owns only what the
+   deckplate pause block does not: the seam spacing that lets every verb land inside
+   the plate at 1080 (the EXIT keys were clipped 22px past the pane's lower edge),
+   and the footer strip that ends the column as a legend plate instead of an air gap.
+   No colours are redefined — everything keys off the deckplate tokens. */
+
+/* Group seams: the deckplate gives 16px over each etched legend; six seams of that is
+   what pushed the exit keys under the bezel. 7px still reads as a group break. */
+#screens .of-pause .k-words__group { margin: 7px 0 2px; }
+
+/* Secondary verbs are key tiles, not full rows — 46px keeps icon + legend readable
+   and lets the Reference / Media / Exit banks seat inside the glass. */
+#screens .of-pause .k-words > li:is([data-group="Reference"], [data-group="Media"], [data-group="Exit"]) { margin-top: 0; }
+#screens .of-pause .k-words > li:is([data-group="Reference"], [data-group="Media"], [data-group="Exit"]) .k-word {
+  min-height: 46px; padding: 5px 4px 4px; gap: 4px;
+}
+#screens .of-pause .k-stage { padding: 6px 6px 8px; }
+
+/* The foot strip: one etched seam, the modal-live keys as machined caps on the left,
+   the build mark on the right — the deliberate end of the column. */
+#screens .of-pause .sf-pause-foot {
+  grid-area: foot; display: flex; flex-direction: column; gap: 4px;
+  padding-top: 9px;
+  background: linear-gradient(180deg, rgb(0 0 0 / .6) 0 1px, rgb(255 236 204 / .07) 1px 2px) top / 100% 2px no-repeat;
+}
+#screens .of-pause .sf-pause-foot .k-fine { display: flex; align-items: center; }
+#screens .of-pause .sf-pause-foot__keys { flex-wrap: wrap; gap: 3px 6px; }
+#screens .of-pause .sf-pause-foot__keys + .k-fine { margin-top: 0; }
+#screens .of-pause .sf-pause-key {
+  display: inline-grid; place-items: center; min-width: 20px; height: 19px;
+  padding: 0 5px 1px; box-sizing: border-box; flex: 0 0 auto;
+  border-style: solid; border-color: transparent; border-width: 3px 4px 5px;
+  border-image: url("/assets/ui/deckplate/hw/keycap.svg") 10 10 12 / 3px 4px 5px / 0 stretch;
+  background: var(--dp-metal-3, #2b2f36); color: var(--dp-ink, #e8e2d4);
+  font-family: var(--dp-face-etch, inherit); font-variation-settings: "wght" 800, "wdth" 75;
+  font-size: 10px; line-height: 1; letter-spacing: .06em; text-transform: uppercase;
+}
+#screens .of-pause .sf-pause-key-verb { color: var(--dp-ink-mute, #8f8672); margin-right: 4px; }
+#screens .of-pause .sf-pause-foot .k-fine[data-role="version"] { justify-content: flex-end; }
+
+@media (max-height: 760px) {
+  /* Keep the short-frame compact set the deckplate already owns — these restate it so
+     this later sheet doesn't widen the stack back out. */
+  #screens .of-pause .k-words__group { margin: 4px 0 1px; }
+  #screens .of-pause .k-words > li:is([data-group="Reference"], [data-group="Media"], [data-group="Exit"]) .k-word {
+    min-height: 30px; padding: 4px 4px 3px; gap: 0;
+  }
+  #screens .of-pause .sf-pause-foot { padding-top: 6px; gap: 2px; }
+  #screens .of-pause .sf-pause-key { height: 17px; min-width: 18px; font-size: 9px; }
+}
+
+@media (forced-colors: active) {
+  #screens .of-pause .sf-pause-foot { background: none; border-top: 1px solid CanvasText; }
+  #screens .of-pause .sf-pause-key { border-image: none; border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+}
