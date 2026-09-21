@@ -55,6 +55,13 @@ const FIRE_CONE = 0.30;             // rad half-angle: only fire when aim is wit
 const ATTACK_TELEGRAPH_S = 0.5;
 const ALPHA_TELEGRAPH_S = 0.8;
 const HEAVY_WEAPON_DPS = 40;
+// INF-028: fair reinforcement ingress. The package is rolled at call time but the player keeps
+// flying through the delay (faster hulls can cross the whole ring), so the spawn point is
+// re-checked against the player's LIVE position and pushed out to this clearance. Arrivals
+// additionally hold fire for this long after spawning: the earliest damaging action always
+// follows the call-time warning, never the spawn tick.
+const REINFORCEMENT_ARRIVAL_CLEAR_WU = 120;
+const REINFORCEMENT_ARRIVAL_HOLD_FIRE_S = 2.0;
 const AI_BARK_COOLDOWN_S = 4;
 const SCATTER_S = 8;
 const WEDGE_SLOT_ANGLE = 35 * Math.PI / 180;
@@ -126,14 +133,23 @@ export const ai = {
     // Process pending reinforcements
     const pending = state.combat.pendingReinforcements;
     if (pending && pending.length > 0) {
+      const playerShip = state.entities && state.entities.get
+        ? state.entities.get(state.playerId)
+        : null;
       for (let i = pending.length - 1; i >= 0; i--) {
         const r = pending[i];
         if (state.simTime >= r.spawnAt) {
           pending.splice(i, 1);
           try {
-            const spec = makeEnemySpawnSpec(r.typeId, r.level, r.pos);
+            // INF-028: the call-time roll stands (the warning stays truthful), but ingress is
+            // re-selected against the player's live position so the package cannot arrive on top
+            // of a fast-moving player, and guns stay silent for the arrival beat after spawning.
+            const pos = clearReinforcementArrival(r.pos, playerShip && playerShip.pos);
+            const spec = makeEnemySpawnSpec(r.typeId, r.level, pos, { startedTick: state.tick });
             spec.data = spec.data || {};
             spec.data.reinforcements = null; // reinforcements don't call their own reinforcements
+            spec.data.ai = spec.data.ai || {};
+            spec.data.ai.arrivalHoldUntil = finiteSimTime(state) + REINFORCEMENT_ARRIVAL_HOLD_FIRE_S;
             this.helpers.spawnEntity(spec);
             this.bus.emit('toast', { text: 'Reinforcements have arrived!', kind: 'danger', ttl: 2 });
           } catch (err) {
@@ -254,6 +270,11 @@ export const ai = {
     intent.aimAngle = target ? predAng : e.rot;
     const effectiveFsm = this._effectiveFsm(ai, state);
     const telegraphHoldingFire = this._telegraphHoldingFire(ai, state);
+    // INF-028: a fresh reinforcement arrival holds fire for its ingress beat even when the
+    // attack telegraph resolves first. The marker is data (save-safe) and self-clearing.
+    const arrivalHoldUntil = Number(ai.arrivalHoldUntil);
+    const arrivalHoldingFire = Number.isFinite(arrivalHoldUntil) && simTime(state) < arrivalHoldUntil;
+    if (Number.isFinite(arrivalHoldUntil) && simTime(state) >= arrivalHoldUntil) delete ai.arrivalHoldUntil;
 
     switch (effectiveFsm) {
       case S.PATROL:
@@ -266,11 +287,11 @@ export const ai = {
         break;
       case S.ATTACK:
         this._steerHold(e, intent, target, arch, dist, dx, dz, predAng);
-        if (!telegraphHoldingFire) this._maybeFire(e, data, intent, predAng, dist, arch);
+        if (!telegraphHoldingFire && !arrivalHoldingFire) this._maybeFire(e, data, intent, predAng, dist, arch);
         break;
       case S.STRAFE:
         this._steerStrafe(e, ai, intent, arch, dist, dx, dz, predAng, state);
-        if (!telegraphHoldingFire) this._maybeFire(e, data, intent, predAng, dist, arch);
+        if (!telegraphHoldingFire && !arrivalHoldingFire) this._maybeFire(e, data, intent, predAng, dist, arch);
         break;
       case S.FLEE:
         this._steerFlee(e, intent, dx, dz);
@@ -278,7 +299,7 @@ export const ai = {
         if (target) intent.aimAngle = Math.atan2(-dz, -dx);
         intent.boost = true;
         // Trader/PD types only shoot when truly cornered (very close).
-        if (!telegraphHoldingFire && (!arch.defensiveOnly || dist < 160)) this._maybeFire(e, data, intent, predAng, dist, arch);
+        if (!telegraphHoldingFire && !arrivalHoldingFire && (!arch.defensiveOnly || dist < 160)) this._maybeFire(e, data, intent, predAng, dist, arch);
         break;
     }
   },
@@ -733,6 +754,30 @@ function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
 function simTime(state) {
   return Number.isFinite(state && state.simTime) ? state.simTime : 0;
+}
+
+function finiteSimTime(state) {
+  if (Number.isFinite(state && state.simTime)) return state.simTime;
+  if (Number.isFinite(state && state.tick)) return state.tick / 60;
+  return 0;
+}
+
+// INF-028: spawn-time ingress clearance for caller-anchored reinforcements. The call-time roll
+// stands, but if the player has flown (or boosted) inside the arrival radius since the call,
+// the point slides out along its player radial to the clearance floor. Pure geometry off live
+// positions — the same call roll and player track always clear to the same point.
+export function clearReinforcementArrival(pos, playerPos) {
+  if (!pos || !playerPos) return pos;
+  const px = Number(pos.x) || 0, pz = Number(pos.z) || 0;
+  const ox = Number(playerPos.x) || 0, oz = Number(playerPos.z) || 0;
+  const dx = px - ox, dz = pz - oz;
+  const dist = Math.hypot(dx, dz);
+  if (!(dist < REINFORCEMENT_ARRIVAL_CLEAR_WU)) return pos;
+  if (dist > 1e-6) {
+    const scale = REINFORCEMENT_ARRIVAL_CLEAR_WU / dist;
+    return { x: ox + dx * scale, z: oz + dz * scale };
+  }
+  return { x: ox + REINFORCEMENT_ARRIVAL_CLEAR_WU, z: oz };
 }
 
 function rng(state) {
