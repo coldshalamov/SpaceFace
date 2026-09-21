@@ -561,7 +561,7 @@ HULL_STATIONS = [
 ]
 
 
-def densify_stations(stations, mids=12):
+def densify_stations(stations, mids=17):
     """Mid-span stations for a smoother loft. Endpoints (envelope) stay C6."""
     out = [stations[0]]
     for a, b in zip(stations, stations[1:]):
@@ -620,24 +620,27 @@ def build_hull(mats):
     hull = loft_rings("LOD0_Hull", rings, hull_mat, 0.016)
     extras = []
     # Formed-shell language: shallow girth + longitudinal stringers on the ONE beam.
-    girth_xs = (6.20, 3.90, 1.40, -1.20, -3.60, -6.20)
+    girth_xs = (5.80, 2.20, -1.80, -5.40)
     for index, x in enumerate(girth_xs):
         st = hull_station_at(x)
         beam = st[1]
 
         def ring_frame(name=f"FrameCut_{index}", loc=(x, 0.0, 0.10), width=min(beam * 2.05, 6.4)):
-            return add_box(name, (0.14, width, 2.85), loc, hull_mat, 0.0)
+            return add_box(name, (0.10, width, 2.85), loc, hull_mat, 0.0)
 
         cut(hull, ring_frame)
     for sign, side in ((-1.0, "P"), (1.0, "S")):
-        def dorsal_seam(name=f"DorsalSeam_{side}", loc=(-0.20, 1.05 * sign, 1.18)):
-            return add_box(name, (9.0, 0.14, 0.20), loc, hull_mat, 0.0)
+        def dorsal_seam(name=f"DorsalSeam_{side}", loc=(-0.20, 0.85 * sign, 1.18)):
+            return add_box(name, (9.2, 0.12, 0.18), loc, hull_mat, 0.0)
         cut(hull, dorsal_seam)
-        def gunwale_seam(name=f"GunwaleSeam_{side}", loc=(-0.20, 2.35 * sign, 0.55)):
-            return add_box(name, (8.6, 0.12, 0.22), loc, hull_mat, 0.0)
+        def mid_seam(name=f"MidSeam_{side}", loc=(-0.20, 1.70 * sign, 1.05)):
+            return add_box(name, (8.8, 0.12, 0.18), loc, hull_mat, 0.0)
+        cut(hull, mid_seam)
+        def gunwale_seam(name=f"GunwaleSeam_{side}", loc=(-0.20, 2.45 * sign, 0.55)):
+            return add_box(name, (8.6, 0.12, 0.20), loc, hull_mat, 0.0)
         cut(hull, gunwale_seam)
         def bilge_seam(name=f"BilgeSeam_{side}", loc=(-0.40, 1.55 * sign, -0.36)):
-            return add_box(name, (8.0, 0.14, 0.22), loc, hull_mat, 0.0)
+            return add_box(name, (8.0, 0.12, 0.20), loc, hull_mat, 0.0)
         cut(hull, bilge_seam)
     paint_shell(hull, mats)
     return hull, extras
