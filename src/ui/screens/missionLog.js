@@ -166,8 +166,14 @@ export function objectiveText(m) {
       return 'Eliminate target';
     case 'patrol_clear':
       return `Clear ${prog}/${tgt} hostiles`;
-    case 'escort':
+    case 'escort': {
+      // INF-064: the dock predicate holds the contract open until the convoy docks too
+      // (_escorteeArrivedOk), so a bare `Escort to X` leaves the player waiting inside an
+      // apparently completed marker. Expose the pending convoy — but only while a live
+      // escortee gates completion (never spawned means the predicate is satisfied by default).
+      if (m._escorteeId != null && !m._escorteeArrived) return `Escort to ${dest} · convoy en route`;
       return `Escort to ${dest}`;
+    }
     case 'recon_scan':
       if (p.originSurveySample) {
         const scans = Math.max(1, p.scanTargets || 1);
