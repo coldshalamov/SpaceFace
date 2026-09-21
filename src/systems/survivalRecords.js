@@ -433,7 +433,79 @@ export function lastGhostForSeed(profile, seed) {
   return best;
 }
 
-export function ghostRaceOffer(profile, seed) {
+/**
+ * The launch-config fields that decide whether a ghost is a comparable run (INF-037).
+ * `difficulty` is deliberately NOT among them: it varies wave by wave and the door never
+ * selects it, so comparing it would reject identical configurations. Revisions, ruleset,
+ * arena, build, and assists are fixed at launch — those are what "same seed, same run"
+ * has to mean.
+ */
+export const GHOST_RULE_FIELDS = Object.freeze([
+  'mode', 'arenaId', 'balanceRevision', 'physicsRevision', 'scoringRevision',
+  'loadoutRules', 'simulationAssistProfile',
+]);
+
+const GHOST_FIELD_WORDS = Object.freeze({
+  mode: 'ruleset',
+  arenaId: 'arena',
+  balanceRevision: 'balance rules',
+  physicsRevision: 'physics rules',
+  scoringRevision: 'scoring rules',
+  loadoutRules: 'build',
+  simulationAssistProfile: 'assists',
+});
+
+/** Loadout rules compared as rules, not strings: mutator order is not a different build. */
+function loadoutRulesEqual(a, b) {
+  if (a === b) return true;
+  let parsedA = null;
+  let parsedB = null;
+  try {
+    parsedA = typeof a === 'string' ? JSON.parse(a) : a;
+    parsedB = typeof b === 'string' ? JSON.parse(b) : b;
+  } catch {
+    return false;
+  }
+  if (!parsedA || !parsedB || typeof parsedA !== 'object' || typeof parsedB !== 'object') return false;
+  if ((parsedA.ruleset ?? null) !== (parsedB.ruleset ?? null)) return false;
+  if ((parsedA.starter ?? null) !== (parsedB.starter ?? null)) return false;
+  const mutatorsA = [...(Array.isArray(parsedA.mutators) ? parsedA.mutators : [])].sort();
+  const mutatorsB = [...(Array.isArray(parsedB.mutators) ? parsedB.mutators : [])].sort();
+  return mutatorsA.length === mutatorsB.length && mutatorsA.every((entry, index) => entry === mutatorsB[index]);
+}
+
+/**
+ * Whether a ghost row may be raced under pending rules (INF-037). `compatible` only when
+ * every launch-config field is known on both sides and equal; `incompatible` with the
+ * differing fields named; `unknown` when either side carries no stamp — an old row is
+ * never rewritten and never rejected on a guess.
+ */
+export function ghostComparability(rowRules, currentRules) {
+  const row = rowRules && typeof rowRules === 'object' && !Array.isArray(rowRules) ? rowRules : null;
+  const current = currentRules && typeof currentRules === 'object' && !Array.isArray(currentRules) ? currentRules : null;
+  if (!row || !current) return { status: 'unknown', mismatches: [] };
+  if (!GHOST_RULE_FIELDS.some((field) => row[field] != null)
+    || !GHOST_RULE_FIELDS.some((field) => current[field] != null)) {
+    return { status: 'unknown', mismatches: [] };
+  }
+  const mismatches = [];
+  let unknown = false;
+  for (const field of GHOST_RULE_FIELDS) {
+    const left = row[field];
+    const right = current[field];
+    if (left == null || right == null) {
+      unknown = true;
+      continue;
+    }
+    const equal = field === 'loadoutRules' ? loadoutRulesEqual(left, right) : left === right;
+    if (!equal) mismatches.push(field);
+  }
+  if (mismatches.length) return { status: 'incompatible', mismatches };
+  if (unknown) return { status: 'unknown', mismatches: [] };
+  return { status: 'compatible', mismatches: [] };
+}
+
+export function ghostRaceOffer(profile, seed, currentRules = null) {
   const row = lastGhostForSeed(profile, seed);
   if (!row) {
     return {
@@ -441,13 +513,40 @@ export function ghostRaceOffer(profile, seed) {
       hash: null,
       label: 'Ghost',
       blurb: 'No ghost for this seed yet.',
+      comparability: 'none',
+      mismatches: [],
+    };
+  }
+  const hash = row.hash >>> 0;
+  const { status, mismatches } = ghostComparability(row.recordRules, currentRules);
+  if (status === 'incompatible') {
+    const words = mismatches.map((field) => GHOST_FIELD_WORDS[field] || field);
+    return {
+      available: false,
+      hash,
+      label: 'Ghost',
+      blurb: `Same seed, different run — the ghost differs in ${words.join(', ')}.`,
+      comparability: 'incompatible',
+      mismatches: mismatches.slice(),
+    };
+  }
+  if (status === 'unknown') {
+    return {
+      available: true,
+      hash,
+      label: 'Ghost',
+      blurb: 'Race the last recorded hull for this seed. Its rules stamp is missing — comparability unknown.',
+      comparability: 'unknown',
+      mismatches: [],
     };
   }
   return {
     available: true,
-    hash: row.hash >>> 0,
+    hash,
     label: 'Ghost',
-    blurb: 'Race the last recorded hull for this seed.',
+    blurb: 'Race the last recorded hull for this seed. Same rules, same arena, same assists.',
+    comparability: 'compatible',
+    mismatches: [],
   };
 }
 
@@ -617,6 +716,8 @@ function migrateGhostRow(_key, row) {
   });
   if (!tape.frames.length) return null;
   const hash = Number.isInteger(src.hash) ? (src.hash >>> 0) : ghostHash(tape);
+  // INF-037: the rules stamp survives migration; rows that predate it stay unstamped.
+  const stamp = asObject(src.recordRules);
   return {
     hash,
     seed: tape.seed,
@@ -624,6 +725,7 @@ function migrateGhostRow(_key, row) {
     frameCount: tape.frames.length,
     frames: tape.frames,
     recordedAt: typeof src.recordedAt === 'string' ? src.recordedAt : null,
+    recordRules: stamp ? { ...stamp } : null,
   };
 }
 
@@ -661,12 +763,20 @@ function pruneGhostsByHash(byHash, cap = CRUCIBLE_GHOST_RETAIN_CAP) {
   return next;
 }
 
-function upsertGhost(ghosts, tape, recordedAt) {
+function upsertGhost(ghosts, tape, recordedAt, recordRules = null) {
   const canonical = canonicalGhostTape(tape);
   if (!canonical.frames.length) return ghosts && ghosts.byHash ? ghosts : emptyGhosts();
   const hash = ghostHash(canonical);
   const prevBag = ghosts && asObject(ghosts) ? ghosts : emptyGhosts();
   const byHash = { ...(asObject(prevBag.byHash) ? prevBag.byHash : {}) };
+  // INF-037: the launch-config stamp travels with the tape, so a later door can say
+  // whether the same seed is the same run. Old rows keep no stamp and read as unknown.
+  let stamp = null;
+  try {
+    stamp = recordRules && typeof recordRules === 'object' ? cloneJson(recordRules) : null;
+  } catch {
+    stamp = null;
+  }
   byHash[String(hash)] = {
     hash,
     seed: canonical.seed,
@@ -674,6 +784,7 @@ function upsertGhost(ghosts, tape, recordedAt) {
     frameCount: canonical.frames.length,
     frames: canonical.frames,
     recordedAt: typeof recordedAt === 'string' ? recordedAt : nowIso(),
+    recordRules: stamp,
   };
   return { ...prevBag, byHash: pruneGhostsByHash(byHash), lastHash: hash };
 }
@@ -972,7 +1083,7 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   const tape = takeGhostTape();
   let ghosts = loaded.ghosts && loaded.ghosts.byHash ? loaded.ghosts : emptyGhosts();
   if (tape && tape.frames.length) {
-    ghosts = upsertGhost(ghosts, tape, recordedAt);
+    ghosts = upsertGhost(ghosts, tape, recordedAt, compact.recordRules);
     compact.ghostHash = ghosts.lastHash;
   }
   const next = {

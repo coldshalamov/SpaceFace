@@ -58,6 +58,7 @@ import { SURVIVAL_MUTATOR_BY_ID } from '../../data/survivalMutators.js';
 import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
+import { STUNT_RULE_REVISIONS, stuntAssistProfile } from '../../combat/stuntRunRules.js';
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
 import { comboSummary } from '../../systems/stuntCombo.js';
 import { el, settle, stamp, cue } from '../kit/index.js';
@@ -732,14 +733,46 @@ export const crucibleScreen = {
     const ghostBlurb = el('p', 'k-t-fine k-38 sf-crd-ghost-sub', GHOST_CARD.blurbOff);
     modeBody.appendChild(ghostBlurb);
 
+    // The challenge terms, computed once for the launch and the ghost offer alike, so the
+    // compatibility check races the same configuration the Enter key will stamp. INF-037.
+    function doorChallengeTerms() {
+      const shareMutators = pendingShare ? pendingShare.mutators : [];
+      const shareWeeklyId = pendingShare ? pendingShare.weeklyMutatorId : null;
+      const weeklyMutatorId = weekly ? weeklyMutatorForNow() : shareWeeklyId;
+      const challengeMutators = shareMutators.concat(
+        weeklyMutatorId && !shareMutators.includes(weeklyMutatorId) ? [weeklyMutatorId] : [],
+      );
+      const shareDailyKey = pendingShare ? pendingShare.dailyDateKey : null;
+      return { shareMutators, shareWeeklyId, weeklyMutatorId, challengeMutators, shareDailyKey };
+    }
+
+    // The pending run's launch config in record-rules shape — the same fields a settled run
+    // stamps, minus difficulty, which varies wave by wave and the door never selects. INF-037.
+    function currentGhostRules() {
+      const terms = doorChallengeTerms();
+      return {
+        mode: practiceQueued ? 'practice' : (ruleset === SWARM_RULESET ? 'swarm' : (ruleset ?? 'arc')),
+        arenaId: arenaId || null,
+        ...STUNT_RULE_REVISIONS,
+        loadoutRules: JSON.stringify({ ruleset, mutators: terms.challengeMutators, starter: starterId ?? null }),
+        simulationAssistProfile: stuntAssistProfile(ctx.state),
+      };
+    }
+
     function currentGhostOffer() {
-      return ghostRaceOffer(doorProfile, normalizeSeed(seedInput ? seedInput.value : (daily ? dailySeedForNow() : 1)));
+      return ghostRaceOffer(
+        doorProfile,
+        normalizeSeed(seedInput ? seedInput.value : (daily ? dailySeedForNow() : 1)),
+        currentGhostRules(),
+      );
     }
 
     function syncGhost() {
       const offer = currentGhostOffer();
       if (!offer.available) raceGhost = false;
-      ghostBlurb.textContent = offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff;
+      // The offer's own blurb names the compatibility — same rules, unknown stamp, or the
+      // exact fields that differ — beside the ghost record. INF-037.
+      ghostBlurb.textContent = offer.blurb || (offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff);
       syncChoice(ghostButton, !!(raceGhost && offer.available));
       ghostButton.setAttribute('aria-disabled', String(!offer.available));
     }
@@ -1039,14 +1072,10 @@ export const crucibleScreen = {
         ghostHash = pendingShare.ghostHash;
       }
       if (ghostHash != null) payload.ghostHash = ghostHash;
-      const shareMutators = pendingShare ? pendingShare.mutators : [];
-      const shareWeeklyId = pendingShare ? pendingShare.weeklyMutatorId : null;
-      const weeklyMutatorId = weekly ? weeklyMutatorForNow() : shareWeeklyId;
+      const {
+        shareMutators, weeklyMutatorId, challengeMutators, shareDailyKey,
+      } = doorChallengeTerms();
       if (weeklyMutatorId) payload.weeklyMutatorId = weeklyMutatorId;
-      const challengeMutators = shareMutators.concat(
-        weeklyMutatorId && !shareMutators.includes(weeklyMutatorId) ? [weeklyMutatorId] : [],
-      );
-      const shareDailyKey = pendingShare ? pendingShare.dailyDateKey : null;
       if (daily || weeklyMutatorId || challengeMutators.length || shareDailyKey) {
         const dateKey = daily ? utcDateKeyNow() : shareDailyKey;
         if (dateKey) payload.dailyDateKey = dateKey;
