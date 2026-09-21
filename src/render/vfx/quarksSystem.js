@@ -265,7 +265,7 @@ export class QuarksVfxSystem {
     const casingMat = createFragmentMaterial(FRAGMENT_FAMILY.METAL, this.fragmentAtlas, {
       color: 0xc9a227,
     });
-    casingMat.transparent = true;
+    // Opaque like every other authored solid: brass retires by contracting, not by fading.
     casingMat.name = 'SF_FragmentMat_casing';
     this._casingDonor = casingMat;
     this.casingEjection = new ParticleSystem({
@@ -284,7 +284,8 @@ export class QuarksVfxSystem {
       instancingGeometry: casingGeo,
       behaviors: [
         // Chamber-hot brass cooling to shadowed metal; alpha holds until the last breath.
-        new ColorOverLife(heatGradient([[1.25, 1.05, 0.55, 0], [0.75, 0.6, 0.32, 0.55], [0.3, 0.24, 0.14, 1]], [[1, 0], [1, 0.82], [0, 1]])),
+        new ColorOverLife(heatGradient([[1.25, 1.05, 0.55, 0], [0.75, 0.6, 0.32, 0.55], [0.3, 0.24, 0.14, 1]], SOLID_ALPHA)),
+        solidRetirement(),
         new SpeedOverLife(lifeCurve(1.0, 0.85, 0.65, 0.5)),
         new Rotation3DOverLife(new AxisAngleGenerator(_vForward, new IntervalValue(6, 14))),
       ],
@@ -832,7 +833,12 @@ export class QuarksVfxSystem {
     // Unsigned axis: throw the same total matter symmetrically about it.
     const ax = Number(rec.nx) || 0;
     const ay = Number(rec.ny) || 0;
-    const az = Number(rec.nz) || 1;
+    // 0, not 1. ax/ay already default to 0, and `Number(0) || 1` is 1, so an axis with a
+    // genuinely zero z -- including the record default (1,0,0) -- was being turned into (1,0,1)
+    // and normalized into a 45deg diagonal. That fabricated an axis component the impact record
+    // never carried, which is exactly what E2 forbids, and it disagreed with the gas lane reading
+    // the SAME record correctly. _poseFrom already guards a genuinely zero vector.
+    const az = Number(rec.nz) || 0;
     const half = Math.max(1, Math.round(budget * 0.5));
     let emitted = this._spawnCapped(sys, half, this._poseFrom(x, y, z, ax, ay, az));
     emitted += this._spawnCapped(sys, budget - half, this._poseFrom(x, y, z, -ax, -ay, -az));
