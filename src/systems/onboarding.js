@@ -132,6 +132,8 @@ const TRAINER_FLYBY_OFFSET_WU = 52;
 const RAID_RAIDER_HULL = 150;
 const RAID_RAIDER_OFFSET_WU = 240;   // from the player, near the rescue wall bearing
 const RAID_HAULER_OFFSET_WU = 190;   // the civilian the raider is working over (scene dressing)
+// INF-062 — consecutive genuine latch denials before the one contextual hint.
+const LATCH_DENIAL_HINT_AFTER = 3;
 const RAID_WHIP_KILL_WINDOW_S = 12;  // kill credited to the throw inside this window after a whip
 // Claimed-salvage tableau (the wanted beat). Spilled cargo from the raid is lawfully claimed; a
 // law cutter stands witness. Taking it reports the theft through the real law owner entry
@@ -498,15 +500,25 @@ export const onboarding = {
     // Massline Physics Identity (Wave M2, massline2Flag-gated so headless contract runs and
     // flag-off sessions never see them). One-shot contextual hints for the three new verbs; the
     // authored first-hour BEATS rail is untouched.
-    bus.on('tether:latched', (payload) => {
+    // INF-062 — the latch lesson is taught by failure, not by interrupting success. The
+    // old first-latch 'masslineThrow' bark lectured competent pilots mid-lesson (and doubled
+    // the staged tether beat's own cut line), so it is gone. Instead, consecutive genuine
+    // latch denials earn ONE contextual hint naming the block; any clean latch resets the
+    // streak — success suppresses the pending lesson — and player.hints keeps it once-only.
+    bus.on('tether:latchDenied', (payload) => {
       if (!massline2Flag('throw')) return;
-      const target = payload && payload.targetId != null && this.state.entities
-        ? this.state.entities.get(payload.targetId)
-        : null;
-      // The express-specific lesson owns this first latch. Leave the general throw lesson unspent
-      // for the next ordinary target so one event never queues two tutorial voices.
-      if (massline2Flag('hitchhiking') && isExpressHitchTarget(target)) return;
-      this._showHint('masslineThrow', firstUseLine('masslineThrow'), payload);
+      this._latchDenialStreak = (this._latchDenialStreak || 0) + 1;
+      if (this._latchDenialStreak < LATCH_DENIAL_HINT_AFTER) return;
+      const reason = payload && payload.reason;
+      const line = reason === 'cooldown'
+        ? 'Line resetting. Wait a breath, then latch.'
+        : reason === 'no-target'
+          ? 'Target a rock or wreck first. Then latch.'
+          : 'Latch needs a target in range.';
+      this._showHint('masslineLatchDenied', line, payload);
+    });
+    bus.on('tether:latched', () => {
+      this._latchDenialStreak = 0;
     });
     bus.on('tether:latched', (payload) => {
       if (!massline2Flag('hitchhiking') || !payload || payload.targetId == null) return;
