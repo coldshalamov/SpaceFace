@@ -22,6 +22,7 @@ import {
 } from '../../story/endings/eligibility.js';
 import { ENDING_IDS, endingDef } from '../../story/endings/endingDefs.js';
 import { escapeHtml } from '../comms.js';
+import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
 import { BINDINGS } from '../bindings.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import {
@@ -188,6 +189,50 @@ export function objectiveText(m) {
     default:
       return `${prog}/${tgt}`;
   }
+}
+
+/**
+ * INF-070: Continue restores the player's intention. A pure recap of restored state — the
+ * tracked (or first) active objective in the one shared wording, the current sector, and one
+ * unresolved risk (a blocking contract term first, then a tight clock, then a critical hull).
+ * Reads only; emits nothing, so it can never replay a reward. Null when there is no
+ * objective to resume and no risk to answer.
+ */
+export function continueRecap(state) {
+  const active = state && state.missions && Array.isArray(state.missions.active)
+    ? state.missions.active.filter((m) => m && m.status === 'active')
+    : [];
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  const mission = (trackedId && active.find((m) => m.id === trackedId)) || active[0] || null;
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const sector = sectorId && SECTOR_BY_ID.get(sectorId);
+  const location = sector && sector.name ? sector.name : null;
+  const objective = mission ? `${mission.title || 'Contract'} — ${objectiveText(mission)}` : null;
+  let risk = null;
+  if (mission) {
+    const blocked = unsatisfiedRequiredConditions(mission) || [];
+    if (blocked.length) {
+      const first = blocked[0] || {};
+      risk = `Held: ${first.pendingText || first.label || 'a contract term'} — settle it before turn-in.`;
+    } else {
+      const deadline = Number(mission.deadline_s);
+      const remaining = Number.isFinite(deadline) ? deadline - (Number(state.simTime) || 0) : null;
+      if (remaining != null && remaining < 120) {
+        risk = `Clock: ${fmtTime(Math.max(0, remaining))} left on ${mission.title || 'the contract'}.`;
+      }
+    }
+  }
+  if (!risk && state && state.entities && typeof state.entities.get === 'function') {
+    const player = state.entities.get(state.playerId);
+    const max = Number(player && player.hullMax);
+    if (max > 0 && (Number(player.hull) || 0) / max < 0.35) {
+      risk = 'Hull critical — repair before taking fire.';
+    }
+  }
+  // A bare position is not an intention — the pilot can see where they loaded. The recap
+  // speaks only when there is an objective to resume or a risk to answer.
+  if (!objective && !risk) return null;
+  return { objective, location, risk };
 }
 
 function nextStepText(m) {

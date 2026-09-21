@@ -25,6 +25,7 @@ import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE } from '../ui/hudAttention.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
+import { continueRecap } from '../ui/screens/missionLog.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -327,12 +328,13 @@ export const onboarding = {
     // On load, a returning pilot doesn't get the tutorial — but they DO get the story objective
     // tracker (P2-14), so they can always see their current beat objective. Tear down any tutorial
     // state, then bring up the story panel.
-    bus.on('save:loaded', () => {
+    bus.on('save:loaded', (p) => {
       this._teardown();
       this._dockControlInRange = false;
       this._gateControlInRange = false;
       this._lastControlMode = null;
       this._beginStoryMode();
+      this._speakContinueRecap(p);
     });
 
     // Objective completion hooks (real events verified against the systems).
@@ -648,6 +650,29 @@ export const onboarding = {
     this._storySig = '';
     this._retireTutorialPanel();
     this._refreshStory();
+  },
+
+  // INF-070: Continue restores the pilot's intention. One dismissible flight-log recap
+  // of restored state — active objective, current sector, one unresolved risk — on the
+  // existing comms surface. Reads only (never a reward), fires once per load, leaves
+  // controls untouched: no modal, no mode change.
+  _speakContinueRecap(payload) {
+    try {
+      if (payload && (payload.scenario || payload.harness)) return; // harness boots own their cast
+      const recap = continueRecap(this.state);
+      if (!recap) return;
+      const lines = [];
+      if (recap.objective) lines.push(`Objective: ${recap.objective}`);
+      if (recap.location) lines.push(`Position: ${recap.location}`);
+      if (recap.risk) lines.push(`Risk: ${recap.risk}`);
+      if (!lines.length) return;
+      this.bus.emit('comms:popup', {
+        sender: 'Flight Log',
+        text: `Welcome back. ${lines.join(' ')}`,
+        category: 'personal',
+        ttl: 10,
+      });
+    } catch (_) { /* never let onboarding break the bus */ }
   },
 
   _retireTutorialPanel() {
