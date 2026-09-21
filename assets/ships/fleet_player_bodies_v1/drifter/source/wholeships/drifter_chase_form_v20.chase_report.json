@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "asset": "ship_drifter",
+  "revision": "chase_form_v20",
+  "cycle": 20,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.84176091514613,
+  "authoredX": 16.81,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 12.4503, 5.2111],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sha256": "9a921ec288ba7a46f031f93331c5723bec4658cd4a2a46f26ccae8e8ced31ccb",
+    "triangles": 24531,
+    "hullTriangles": 17479,
+    "bytes": 3093344,
+    "size": [16.81, 6.76, 2.829]
+  },
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "hitchStills": "/tmp/hitch-c10",
+  "playChase": {
+    "shipW": 13.2,
+    "occupancy": 0.75,
+    "lightGe026": 11.8,
+    "mid": 77.6,
+    "dark": 10.6,
+    "brown": 0.5
+  },
+  "hitchPlayChase": {
+    "shipW": 10.2,
+    "occupancy": 0.52,
+    "lightGe026": 8.1,
+    "mid": 86.7,
+    "dark": 5.2,
+    "brown": 0.7
+  },
+  "gapsTargeted": {
+    "c19leftovers": "continuous panel courses across hoops; denser midship hardware; close field breakup"
+  },
+  "tubePaddleReadGoneOnPlayChase": true,
+  "tubePaddleReadGoneOnClose": true,
+  "tubePaddleReadGoneOnAbeam": true,
+  "tubePaddleReadGoneOnAbeamClay": true,
+  "tubePaddleReadGoneOnAbeamShaded": true,
+  "reviews": {
+    "play_chase": {
+      "id": "bc-f059b0dd-2fce-50ed-8f02-32f80c524675",
+      "verdict": "REVISE",
+      "note": "VALID framing. TUBE_PADDLE NO clay+shaded. WELLS HOLES. CLAY_UNIFORM YES. Hitch still wins hoop/rib cage vs formed shell."
+    },
+    "play_chase_abeam": {
+      "id": "bc-8bfd949c-4353-5523-816b-69ebb9ed0581",
+      "verdict": "REVISE",
+      "note": "VALID framing. Clay+shaded TUBE_PADDLE NO. Clay spine/flank split NO. Wells holes. Hitch still wins midship formed hardware vs even corrugation."
+    },
+    "play_chase_close": {
+      "id": "bc-136cf938-7508-5266-92b8-5b42c7b72b6e",
+      "verdict": "REVISE",
+      "note": "VALID framing. One diamond; well is a hole. TUBE_PADDLE NO. Nozzles circular. Hitch still wins continuous skin; inter-rib gaps remain at D=58."
+    }
+  },
+  "result": "REVISE",
+  "hitchPlusChase": false,
+  "notes": "C20 continuous courses on the C18 diamond. Play+close+abeam TUBE_PADDLE NO (clay and shaded). Hitch still wins D=144. No seats. No megatex. Hitch/Kestrel/Hornet frozen. Parent unproven / not G7."
+}
