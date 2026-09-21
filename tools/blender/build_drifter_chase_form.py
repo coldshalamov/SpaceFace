@@ -22,7 +22,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v13"
+REVISION = "chase_form_v14"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "drifter"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -35,8 +35,9 @@ KEEP_SEPARATE = (
 )
 
 # Distinct color blocks that read at ~15% frame width. No 512-map density trap.
-# C8–C12 wins: wells as holes, no teal beam rail, shell-cut lips, light near Hitch.
-# C13: one lofted shell with faired sideboards. Seams cut into the shell. No plate spam.
+# C8–C13 wins: wells as holes, no teal beam rail, shell-cut lips, light near Hitch.
+# C14: one hard-chine workboat beam (sideboards ARE the hull). No paddle lobes.
+# Armor is keel/bilge only — painting |y| as Armor made C13's dark paddles.
 HONEST = {
     "Material_Hull": {"color": (0.108, 0.132, 0.140), "metallic": 0.16, "roughness": 0.54, "role": "hull"},
     "Material_Armor": {"color": (0.072, 0.082, 0.088), "metallic": 0.22, "roughness": 0.56, "role": "armor"},
@@ -205,42 +206,40 @@ def loft_rings(name, rings, material, bevel=0.010, cap=True):
 
 
 def shell_ring(st):
-    """One YZ station of the formed hull, including the sideboard lobe.
+    """One YZ station of a hard-chine workboat.
 
-    When wing ≈ hw the extra points sit on the chine (bow/transom). Mid-body
-    the same topology flares into a continuous sideboard — not a parented paddle.
+    Outer Y is the hull beam on both the deck edge and the topside — no extra
+    wing lobe. C13's (hw, wing) pair is what reviewers read as capsule+paddles.
     """
-    x, hw, wing, hh, zc, keel, flat, box, wing_z, wing_t = st
+    x, beam, hh, zc, keel, flat, box, chine = st
     flat = max(0.0, min(1.0, float(flat)))
     box = max(0.0, min(1.0, float(box)))
-    wing = max(hw + 0.03, float(wing))
-    crown = zc + hh * (1.0 - 0.10 * flat)
-    deck = hw * (0.14 + 0.46 * flat)
-    shoulder_y = hw * (0.66 + 0.16 * box)
-    shoulder_z = zc + hh * (0.50 - 0.14 * box)
-    beam_z = zc - hh * (0.02 + 0.10 * box)
-    bilge_y = hw * (0.82 - 0.06 * box)
-    bilge_z = zc - hh * (0.52 + 0.08 * box)
-    keel_y = hw * (0.26 - 0.06 * box)
-    keel_z = zc - hh - keel * (1.0 - 0.22 * box)
-    deck_y = max(deck, hw * 0.16)
-    flare = wing - hw
-    w_up_y = hw + flare * 0.52
-    w_up_z = wing_z + wing_t * 0.72
-    w_tip_y = wing
-    w_tip_z = wing_z + wing_t * 0.10
-    w_lo_y = hw + flare * 0.58
-    w_lo_z = wing_z - wing_t * 0.82
+    chine = max(0.0, min(1.0, float(chine)))
+    beam = max(0.22, float(beam))
+    crown = zc + hh * (1.0 - 0.08 * flat)
+    deck_inner = beam * (0.16 + 0.10 * flat)
+    gunwale_y = beam
+    gunwale_z = crown - hh * 0.05 * flat
+    lip_z = gunwale_z + 0.06 + 0.10 * chine
+    topside_z = zc + hh * (0.18 - 0.10 * box)
+    chine_y = beam * (0.96 - 0.04 * box)
+    chine_z = zc - hh * (0.06 + 0.12 * box)
+    side_y = beam * (0.86 - 0.08 * box)
+    side_z = zc - hh * (0.32 + 0.06 * box)
+    bilge_y = beam * (0.58 - 0.08 * box)
+    bilge_z = zc - hh * (0.62 + 0.08 * box)
+    keel_y = beam * (0.16 - 0.04 * box)
+    keel_z = zc - hh - keel * (1.0 - 0.18 * box)
 
     def half(sign):
         return [
-            (x, sign * deck_y * 0.55, crown - hh * 0.03 * flat),
-            (x, sign * deck_y, crown - hh * 0.05 * flat),
-            (x, sign * shoulder_y, shoulder_z),
-            (x, sign * hw, beam_z),
-            (x, sign * w_up_y, w_up_z),
-            (x, sign * w_tip_y, w_tip_z),
-            (x, sign * w_lo_y, w_lo_z),
+            (x, sign * deck_inner, crown),
+            (x, sign * beam * (0.48 + 0.10 * flat), crown - hh * 0.02),
+            (x, sign * gunwale_y * 0.90, gunwale_z),
+            (x, sign * gunwale_y, lip_z),
+            (x, sign * gunwale_y, topside_z),
+            (x, sign * chine_y, chine_z),
+            (x, sign * side_y, side_z),
             (x, sign * bilge_y, bilge_z),
             (x, sign * keel_y, keel_z),
         ]
@@ -544,25 +543,25 @@ def delete_render_meshes():
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-# C13 formed shell. Endpoints stay C6 (envelope). Mid stations carry a sideboard
-# lobe in the same ring — one loft, not a tube with parented paddles.
-# (x, hw, wing, hh, zc, keel, flat, box, wing_z, wing_t)
+# C14 hard-chine workboat. Endpoints stay C6 (envelope).
+# One half-beam per station — no (hw, wing) pair. Gradual beam growth; no paddle LE.
+# (x, beam, hh, zc, keel, flat, box, chine)
 HULL_STATIONS = [
-    (7.95, 0.36, 0.40, 0.44, 0.10, 0.16, 0.16, 0.22, 0.08, 0.10),
-    (6.85, 0.74, 0.80, 0.70, 0.16, 0.16, 0.30, 0.28, 0.16, 0.14),
-    (5.55, 1.18, 1.26, 1.00, 0.22, 0.14, 0.48, 0.32, 0.20, 0.18),
-    (4.25, 1.48, 2.92, 1.12, 0.18, 0.12, 0.64, 0.38, 0.18, 0.46),
-    (2.40, 1.72, 3.20, 1.18, 0.16, 0.12, 0.80, 0.42, 0.16, 0.54),
-    (0.15, 1.80, 3.24, 1.20, 0.14, 0.12, 0.86, 0.44, 0.16, 0.56),
-    (-2.15, 1.76, 3.18, 1.16, 0.14, 0.10, 0.78, 0.44, 0.18, 0.52),
-    (-4.05, 1.62, 2.88, 1.08, 0.16, 0.10, 0.54, 0.42, 0.22, 0.44),
-    (-5.55, 1.50, 1.92, 0.98, 0.18, 0.08, 0.36, 0.38, 0.26, 0.28),
-    (-7.15, 1.28, 1.58, 0.86, 0.16, 0.08, 0.22, 0.32, 0.28, 0.20),
-    (-8.48, 0.78, 0.84, 0.66, 0.12, 0.06, 0.14, 0.28, 0.18, 0.12),
+    (7.95, 0.42, 0.46, 0.10, 0.16, 0.18, 0.22, 0.10),
+    (6.70, 0.98, 0.76, 0.16, 0.14, 0.34, 0.28, 0.16),
+    (5.40, 1.88, 1.04, 0.20, 0.12, 0.52, 0.32, 0.22),
+    (3.80, 2.72, 1.14, 0.16, 0.12, 0.70, 0.38, 0.30),
+    (1.60, 3.12, 1.18, 0.14, 0.12, 0.82, 0.42, 0.34),
+    (0.15, 3.20, 1.20, 0.14, 0.12, 0.86, 0.44, 0.36),
+    (-2.00, 3.14, 1.16, 0.14, 0.10, 0.78, 0.44, 0.34),
+    (-4.00, 2.68, 1.08, 0.16, 0.10, 0.52, 0.40, 0.28),
+    (-5.70, 2.08, 0.96, 0.18, 0.08, 0.32, 0.36, 0.20),
+    (-7.20, 1.42, 0.84, 0.16, 0.08, 0.20, 0.30, 0.14),
+    (-8.48, 0.82, 0.66, 0.12, 0.06, 0.14, 0.26, 0.10),
 ]
 
 
-def densify_stations(stations, mids=11):
+def densify_stations(stations, mids=17):
     """Mid-span stations for a smoother loft. Endpoints (envelope) stay C6."""
     out = [stations[0]]
     for a, b in zip(stations, stations[1:]):
@@ -590,11 +589,14 @@ def hull_station_at(x):
 
 def hull_half_at(x):
     st = hull_station_at(x)
-    return st[1], st[3], st[4]
+    return st[1], st[2], st[3]
 
 
 def paint_shell(hull, mats):
-    """Armor on the sideboard faces, deck on the dorsal crown — same mesh, not glued plates."""
+    """Deck on the crown, armor on keel/bilge, hull on the topside — same mesh.
+
+    Do not assign Armor by |y|. That is how C13's sideboards became dark paddles.
+    """
     mesh = hull.data
     mesh.materials.clear()
     mesh.materials.append(mats["Material_Hull"])
@@ -603,12 +605,10 @@ def paint_shell(hull, mats):
     for poly in mesh.polygons:
         verts = [mesh.vertices[index].co for index in poly.vertices]
         centroid = sum(verts, Vector()) / max(len(verts), 1)
-        hw, hh, zc = hull_half_at(centroid.x)
-        st = hull_station_at(centroid.x)
-        wing = st[2]
-        if abs(centroid.y) > hw + 0.22:
+        _beam, hh, zc = hull_half_at(centroid.x)
+        if centroid.z < zc - hh * 0.38:
             poly.material_index = 1
-        elif centroid.z > zc + hh * 0.38 and abs(centroid.y) > 0.90 and abs(centroid.y) < wing * 0.72:
+        elif centroid.z > zc + hh * 0.28:
             poly.material_index = 2
         else:
             poly.material_index = 0
@@ -619,21 +619,28 @@ def build_hull(mats):
     rings = [shell_ring(st) for st in densify_stations(HULL_STATIONS)]
     hull = loft_rings("LOD0_Hull", rings, hull_mat, 0.016)
     extras = []
-    # Panel language is channels cut into the shell, not parented courses.
-    girth_xs = (6.45, 4.15, 2.55, 0.15, -2.05, -3.85, -5.65, -7.15)
+    # Formed-shell language: shallow girth + longitudinal stringers on the ONE beam.
+    girth_xs = (5.80, 2.20, -1.80, -5.40)
     for index, x in enumerate(girth_xs):
-        def ring_frame(name=f"FrameCut_{index}", loc=(x, 0.0, 0.18)):
-            return add_box(name, (0.20, 3.55, 3.10), loc, hull_mat, 0.0)
+        st = hull_station_at(x)
+        beam = st[1]
+
+        def ring_frame(name=f"FrameCut_{index}", loc=(x, 0.0, 0.10), width=min(beam * 2.05, 6.4)):
+            return add_box(name, (0.10, width, 2.85), loc, hull_mat, 0.0)
+
         cut(hull, ring_frame)
     for sign, side in ((-1.0, "P"), (1.0, "S")):
-        def dorsal_seam(name=f"DorsalSeam_{side}", loc=(-0.15, 1.38 * sign, 1.22)):
-            return add_box(name, (8.8, 0.16, 0.22), loc, hull_mat, 0.0)
+        def dorsal_seam(name=f"DorsalSeam_{side}", loc=(-0.20, 0.85 * sign, 1.18)):
+            return add_box(name, (9.2, 0.12, 0.18), loc, hull_mat, 0.0)
         cut(hull, dorsal_seam)
-        def wing_root(name=f"WingRootSeam_{side}", loc=(0.15, 1.92 * sign, 0.20)):
-            return add_box(name, (9.2, 0.14, 0.32), loc, hull_mat, 0.0)
-        cut(hull, wing_root)
-        def bilge_seam(name=f"BilgeSeam_{side}", loc=(-0.40, 1.48 * sign, -0.32)):
-            return add_box(name, (8.0, 0.14, 0.24), loc, hull_mat, 0.0)
+        def mid_seam(name=f"MidSeam_{side}", loc=(-0.20, 1.70 * sign, 1.05)):
+            return add_box(name, (8.8, 0.12, 0.18), loc, hull_mat, 0.0)
+        cut(hull, mid_seam)
+        def gunwale_seam(name=f"GunwaleSeam_{side}", loc=(-0.20, 2.45 * sign, 0.55)):
+            return add_box(name, (8.6, 0.12, 0.20), loc, hull_mat, 0.0)
+        cut(hull, gunwale_seam)
+        def bilge_seam(name=f"BilgeSeam_{side}", loc=(-0.40, 1.55 * sign, -0.36)):
+            return add_box(name, (8.0, 0.12, 0.20), loc, hull_mat, 0.0)
         cut(hull, bilge_seam)
     paint_shell(hull, mats)
     return hull, extras
@@ -727,21 +734,24 @@ def build_nacelles(mats, lod):
 
 
 def build_flaps(hull, mats, lod):
-    """Trailing-edge flap as a slot in the formed sideboard, not a mid-body paddle."""
+    """Trailing-edge tab cut into the workboat beam, not a mid-body paddle."""
     hull_mat = mats["Material_Hull"]
     armor = mats["Material_Armor"]
     bits = []
     if lod != 0:
         return bits
     for sign, tag in ((1.0, "Stbd"), (-1.0, "Port")):
-        def flap_slot(name=f"FlapSlot_{tag}", loc=(-2.85, 2.58 * sign, 0.16)):
-            return add_box(name, (0.22, 0.90, 0.38), loc, hull_mat, 0.0)
+        beam = hull_station_at(-3.10)[1]
+        y = beam * 0.78 * sign
+
+        def flap_slot(name=f"FlapSlot_{tag}", loc=(-3.10, y, 0.18)):
+            return add_box(name, (0.20, 0.55, 0.32), loc, hull_mat, 0.0)
         cut(hull, flap_slot)
         bits.append(loft_rings(
             f"LOD0_Flap_{tag}",
             [
-                airfoil(-2.55, 2.32 * sign, 0.16, 0.72, 0.22),
-                airfoil(-2.95, 2.78 * sign, 0.14, 0.52, 0.16),
+                airfoil(-2.85, y * 0.92, 0.16, 0.55, 0.16),
+                airfoil(-3.25, y, 0.14, 0.40, 0.12),
             ],
             armor, 0.004, cap=True,
         ))
@@ -1220,7 +1230,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "drifter_chase_form_v13.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "drifter_chase_form_v14.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 
