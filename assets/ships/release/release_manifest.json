@@ -4261,42 +4261,42 @@
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/drifter_production_v1.glb",
       "release": "assets/ships/release/parts/wholeships/drifter_production_v1.glb",
-      "sourceSha256": "e6c4137881e4e033fd7874fc3a2a3fae5a16290037c0cc5b04b084d9169e0a78",
-      "releaseSha256": "9840589aa27bf72bf394697b0b0b9d1395756831b6a8da2381c85ad66909f6c9",
-      "sourceBytes": 2796132,
-      "releaseBytes": 573440,
+      "sourceSha256": "d931adf97155c1ea8fcead72180d8eb1bb91903b2cc2cb300fcca99439e0987f",
+      "releaseSha256": "aa3084f2093241bc845f0e27aa8256149c08432bd23efc5c2d184bb6dc294549",
+      "sourceBytes": 2955768,
+      "releaseBytes": 610212,
       "textures": 0,
       "ktx2Textures": 0,
-      "meshoptBufferViews": 55,
-      "contractNodeCount": 21
+      "meshoptBufferViews": 71,
+      "contractNodeCount": 25
     },
     {
       "id": "wholeship_drifter_production_v1_lod1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/drifter_production_v1_lod1.glb",
       "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb",
-      "sourceSha256": "c456978cf3fd79bbb350ec68d02ea43fb4580e418ed11f2bfc47a92c1c9bf834",
-      "releaseSha256": "c362365150285294867baf21bb36ed558da34e4f1031a2fd50da4960b961eebc",
-      "sourceBytes": 2612532,
-      "releaseBytes": 540716,
+      "sourceSha256": "044206f199fa1d6803d411da5682535b88c515bacb3b34cd7fdcd2395a1482fb",
+      "releaseSha256": "e87e5e715452727cfc45799a81c5c7c2eb04054048805b27003ca2a96abb6ff1",
+      "sourceBytes": 2717556,
+      "releaseBytes": 566548,
       "textures": 0,
       "ktx2Textures": 0,
-      "meshoptBufferViews": 55,
-      "contractNodeCount": 21
+      "meshoptBufferViews": 71,
+      "contractNodeCount": 25
     },
     {
       "id": "wholeship_drifter_production_v1_lod2",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/drifter_production_v1_lod2.glb",
       "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb",
-      "sourceSha256": "6817064e5b3a6f46ad72f5ef19031352f5cd7a7940384a5d56d0b1ea424bff9b",
-      "releaseSha256": "22714dc7a748b90377ae84b440d39571de7718d35bf4aa9dfeb35201cf058d2a",
-      "sourceBytes": 2498972,
-      "releaseBytes": 517160,
+      "sourceSha256": "dbf089e92c3885c3b18ba6d465aefcbf96c4a9a9045bfd67f0afb2f0d5a0f832",
+      "releaseSha256": "c9f798a403ffd02904645a01dd7bdf67a808fa617a42466ca0cd8625da42c4c8",
+      "sourceBytes": 2589848,
+      "releaseBytes": 539676,
       "textures": 0,
       "ktx2Textures": 0,
-      "meshoptBufferViews": 51,
-      "contractNodeCount": 20
+      "meshoptBufferViews": 67,
+      "contractNodeCount": 24
     }
   ]
 }
