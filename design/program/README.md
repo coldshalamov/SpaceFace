@@ -17,6 +17,7 @@ orient without ingesting the repository's history.
 | Copy-ready prompt for any thread | [`AGENT_TASK_PROMPTS.md`](./AGENT_TASK_PROMPTS.md) |
 | First exact ready unit, every ready unit, or one parent row | `node scripts/program-dispatch.mjs --next`, `--ready`, or `--id PQ-XXX` |
 | Threads editing now and exact dirty hunks to preserve | [`NOW.md`](./NOW.md) |
+| Long-horizon VM / Blender / cloud-agent lanes (not the shared local checkout) | [`VM_LANES.md`](./VM_LANES.md) |
 | Maintain stable packet IDs, dependencies, broad checks/evidence | [`roadmap/program-queue.json`](./roadmap/program-queue.json) |
 | Executable instructions for admitted packets | [`roadmap/active/README.md`](./roadmap/active/README.md) |
 | Finite implementation/review/verification protocol | [`roadmap/00_EXECUTION_PROTOCOL.md`](./roadmap/00_EXECUTION_PROTOCOL.md) |
@@ -48,6 +49,7 @@ labels the parent field accordingly and omits narrative payloads.
 ## Maintenance
 
 - `NOW.md` contains only active mutation rows, exact dirty-hunk preservation notes, brief publication windows, and an expiry marker.
+- `VM_LANES.md` is the volatile board for Cursor cloud VMs and remote Blender work; it is not a substitute for `NOW.md` on a shared checkout.
 - Queue rows stay compact over time; exact dispatch units link receipts instead of embedding incident histories and test transcripts.
 - Active packets are the implementation handoff. Retire or replace them when the live seam changes materially.
 - The finishing agent updates its packet checkboxes, receipt, exact queue row, and affected global
