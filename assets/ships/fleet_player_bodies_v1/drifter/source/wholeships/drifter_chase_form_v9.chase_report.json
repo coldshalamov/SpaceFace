@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "asset": "ship_drifter",
+  "revision": "chase_form_v9",
+  "cycle": 9,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.846153900747011,
+  "authoredX": 16.77,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 11.4462, 5.5802],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sha256": "afc7176973254d3b95884b4f9f95bc4c6cb347ddcbaaf3e0f66eb5440adb3897",
+    "triangles": 17182,
+    "hullTriangles": 9728,
+    "bytes": 2113220,
+    "size": [16.77, 6.2, 3.023]
+  },
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "hitchStills": "/tmp/hitch-c9",
+  "keptFromC8": {
+    "valueSplitLightPct": 8.2,
+    "wellsAreHoles": true
+  },
+  "gapsTargeted": {
+    "kitbashSilhouette": "densified hull loft; C6 endpoints unchanged",
+    "cardTealRails": "formed chine loft on the beam, not a 7.4 m box",
+    "copperBars": "brown 8.5%→0.8%; darker ceramic/dirt; smaller heat plates",
+    "proudGirthBelts": "inset girth bands into the cut",
+    "cardWinglets": "thicker root-to-tip section",
+    "unframedCanopy": "thicker coaming + dorsal frame"
+  },
+  "reviews": {
+    "play_chase": "VALID framing. Hitch still wins formed-shell / skin at D=144.",
+    "play_chase_abeam": "VALID framing. Hitch still denser on manufactured meso.",
+    "play_chase_close": "VALID framing. Well and greenhouse read as holes. Hitch still wins skin."
+  },
+  "result": "REVISE",
+  "hitchPlusChase": false,
+  "notes": "C9 kept C8 value/wells. Hitch still wins D=144. No seats. No megatex. Hitch/Kestrel/Hornet frozen. Parent unproven / not G7."
+}

@@ -22,7 +22,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v8"
+REVISION = "chase_form_v9"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "drifter"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -36,20 +36,20 @@ KEEP_SEPARATE = (
 )
 
 # Distinct color blocks that read at ~15% frame width. No 512-map density trap.
-# C7 play_chase vs Hitch: Drifter light>=0.28 was 26% of ship pixels vs Hitch 6%;
-# p90 luma 0.40 vs 0.25. Hull/deck sit mid-dark; teal is accent, not the body.
+# C8 kept value split (light 26%→8%) and well holes. Do not re-brighten the hull.
+# Remaining C8 vs Hitch: kitbash silhouette, card-thin teal rails, copper bars (8.5% vs 0.6%).
 HONEST = {
-    "Material_Hull": {"color": (0.14, 0.19, 0.20), "metallic": 0.12, "roughness": 0.50, "role": "hull"},
+    "Material_Hull": {"color": (0.16, 0.20, 0.21), "metallic": 0.14, "roughness": 0.48, "role": "hull"},
     "Material_Armor": {"color": (0.030, 0.040, 0.046), "metallic": 0.26, "roughness": 0.58, "role": "armor"},
     "Material_Deck": {"color": (0.09, 0.10, 0.09), "metallic": 0.10, "roughness": 0.56, "role": "deck"},
     "Material_Canopy": {"color": (0.012, 0.016, 0.022), "metallic": 0.0, "roughness": 0.06, "role": "glass"},
-    "Material_Ceramic": {"color": (0.22, 0.20, 0.18), "metallic": 0.0, "roughness": 0.62, "role": "ceramic"},
+    "Material_Ceramic": {"color": (0.07, 0.065, 0.06), "metallic": 0.08, "roughness": 0.62, "role": "ceramic"},
     "Material_Mechanical": {"color": (0.045, 0.048, 0.052), "metallic": 0.42, "roughness": 0.48, "role": "mechanical"},
-    "Material_Radiator": {"color": (0.08, 0.05, 0.04), "metallic": 0.20, "roughness": 0.50, "role": "radiator"},
+    "Material_Radiator": {"color": (0.045, 0.038, 0.036), "metallic": 0.22, "roughness": 0.52, "role": "radiator"},
     "Material_Thruster": {"color": (0.028, 0.028, 0.032), "metallic": 0.28, "roughness": 0.50, "role": "thruster"},
-    "Material_Accent": {"color": (0.05, 0.38, 0.36), "metallic": 0.04, "roughness": 0.40, "role": "accent"},
-    "Material_Warning": {"color": (0.42, 0.18, 0.05), "metallic": 0.02, "roughness": 0.42, "role": "warning"},
-    "Material_Dirt": {"color": (0.12, 0.08, 0.05), "metallic": 0.02, "roughness": 0.78, "role": "dirt"},
+    "Material_Accent": {"color": (0.04, 0.32, 0.30), "metallic": 0.06, "roughness": 0.42, "role": "accent"},
+    "Material_Warning": {"color": (0.36, 0.16, 0.05), "metallic": 0.02, "roughness": 0.44, "role": "warning"},
+    "Material_Dirt": {"color": (0.06, 0.045, 0.035), "metallic": 0.02, "roughness": 0.78, "role": "dirt"},
 }
 
 
@@ -459,6 +459,15 @@ HULL_STATIONS = [
 ]
 
 
+def densify_stations(stations):
+    """Mid-span stations for a smoother loft. Endpoints (envelope) stay C6."""
+    out = [stations[0]]
+    for a, b in zip(stations, stations[1:]):
+        out.append(tuple((a[i] + b[i]) * 0.5 for i in range(len(a))))
+        out.append(b)
+    return out
+
+
 def hull_half_at(x):
     stations = HULL_STATIONS
     if x >= stations[0][0]:
@@ -483,8 +492,11 @@ def build_hull(mats):
     armor = mats["Material_Armor"]
     # Formed workboat: pointed bow, greenhouse band, fuller cargo waist, faired transom.
     # x, hw, hh, zc, keel, flat, box — box stays low so the shell is not a brick stack.
-    rings = [chine_ring(x, hw, hh, zc, keel, 0.0, flat, box) for x, hw, hh, zc, keel, flat, box in HULL_STATIONS]
-    hull = loft_rings("LOD0_Hull", rings, hull_mat, 0.014)
+    rings = [
+        chine_ring(x, hw, hh, zc, keel, 0.0, flat, box)
+        for x, hw, hh, zc, keel, flat, box in densify_stations(HULL_STATIONS)
+    ]
+    hull = loft_rings("LOD0_Hull", rings, hull_mat, 0.018)
     extras = []
     # Chase-scale girth seams: cut the shell, then loft a dark formed band so the
     # course reads at D=144 (C7 cuts used hull material and vanished).
@@ -497,8 +509,8 @@ def build_hull(mats):
         extras.append(loft_rings(
             f"LOD0_GirthBand_{index}",
             [
-                chine_ring(x + 0.20, hw + 0.04, hh + 0.03, zc + 0.02, 0.04, 0.0, 0.70, 0.22),
-                chine_ring(x - 0.20, hw + 0.04, hh + 0.03, zc + 0.02, 0.04, 0.0, 0.70, 0.22),
+                chine_ring(x + 0.18, max(0.20, hw - 0.02), hh - 0.01, zc, 0.04, 0.0, 0.70, 0.22),
+                chine_ring(x - 0.18, max(0.20, hw - 0.02), hh - 0.01, zc, 0.04, 0.0, 0.70, 0.22),
             ],
             armor, 0.003, cap=True,
         ))
@@ -569,11 +581,15 @@ def build_hull(mats):
             ],
             armor, 0.004, cap=True,
         ))
-        extras.append(add_box(
+        extras.append(loft_rings(
             f"LOD0_AccentChine_{tag}",
-            (7.4, 0.12, 0.20),
-            (0.40, 1.95 * sign, 0.18),
-            mats["Material_Accent"], 0.0,
+            [
+                chine_ring(x, 0.16, 0.22, zc + 0.04, 0.02, hw * 0.94 * sign, 0.55, 0.18)
+                for x, hw, hh, zc in (
+                    (x, *hull_half_at(x)) for x in (5.85, 3.55, 1.15, -1.55, -4.15, -6.65)
+                )
+            ],
+            mats["Material_Accent"], 0.004, cap=True,
         ))
     return hull, extras
 
@@ -612,7 +628,7 @@ def build_nacelles(mats, lod):
             armor, 0.006, cap=True,
         ))
         bits.append(add_cylinder(
-            f"LOD0_Collar_{tag}", 0.82, 0.24, (-6.45, yc, 0.28), warning, 0.002,
+            f"LOD0_Collar_{tag}", 0.82, 0.24, (-6.45, yc, 0.28), armor, 0.002,
             rotation=(0.0, math.radians(90.0), 0.0), vertices=12,
         ))
         bits.append(add_cylinder(
@@ -664,14 +680,14 @@ def build_winglets(mats, lod):
     bits = []
     for sign, tag in ((1.0, "Stbd"), (-1.0, "Port")):
         rings = [
-            airfoil(1.88, 1.68 * sign, 0.16, 2.42, 0.86),
-            airfoil(1.48, 2.18 * sign, 0.20, 1.92, 0.54),
-            airfoil(1.02, 2.62 * sign, 0.22, 1.38, 0.30),
-            airfoil(0.52, 3.02 * sign, 0.22, 0.88, 0.16),
+            airfoil(1.88, 1.68 * sign, 0.18, 2.35, 0.92),
+            airfoil(1.42, 2.22 * sign, 0.22, 1.85, 0.64),
+            airfoil(0.92, 2.62 * sign, 0.24, 1.28, 0.40),
+            airfoil(0.48, 2.96 * sign, 0.24, 0.82, 0.22),
         ]
-        wing = loft_rings(f"LOD0_Winglet_{tag}", rings, hull_mat, 0.012)
+        wing = loft_rings(f"LOD0_Winglet_{tag}", rings, hull_mat, 0.014)
         bits.append(wing)
-        bits.append(add_box(f"LOD0_WingRoot_{tag}", (1.35, 0.38, 0.24), (1.05, 1.72 * sign, 0.26), armor, 0.002))
+        bits.append(add_box(f"LOD0_WingRoot_{tag}", (1.55, 0.52, 0.32), (1.15, 1.78 * sign, 0.26), armor, 0.002))
         bits.append(add_box(f"LOD0_WingTip_{tag}", (0.32, 0.24, 0.12), (0.52, 2.98 * sign, 0.24), warning, 0.0))
         if lod == 0:
             def flap_slot(name=f"FlapSlot_{tag}", loc=(0.52, 2.28 * sign, 0.18)):
@@ -743,11 +759,15 @@ def build_greenhouse(hull, mats, lod):
     if lod < 2:
         report["windshield"] = cut(hull, windshield)
     bits = add_open_well("LOD0_Tub", (2.48, 1.18, 0.92), (5.20, 0.0, 0.48), mech, floor=True, open_aft=False)
-    bits.append(add_box("LOD0_Coaming_Port", (2.55, 0.12, 0.14), (5.20, -0.62, 1.32), armor, 0.001))
-    bits.append(add_box("LOD0_Coaming_Stbd", (2.55, 0.12, 0.14), (5.20, 0.62, 1.32), armor, 0.001))
-    bits.append(add_box("LOD0_Coaming_Fore", (0.22, 1.18, 0.14), (6.38, 0.0, 1.34), armor, 0.001, rotation=(0.0, math.radians(-20.0), 0.0)))
-    bits.append(add_box("LOD0_Coaming_Aft", (0.22, 1.18, 0.14), (4.02, 0.0, 1.28), armor, 0.001))
-    bits.append(add_box("LOD0_Mullion_Mid", (0.10, 1.08, 0.14), (5.20, 0.0, 1.28), armor, 0.0))
+    bits.append(add_box("LOD0_Coaming_Port", (2.55, 0.18, 0.18), (5.20, -0.62, 1.34), armor, 0.001))
+    bits.append(add_box("LOD0_Coaming_Stbd", (2.55, 0.18, 0.18), (5.20, 0.62, 1.34), armor, 0.001))
+    bits.append(add_box("LOD0_Coaming_Fore", (0.22, 1.22, 0.18), (6.38, 0.0, 1.36), armor, 0.001, rotation=(0.0, math.radians(-20.0), 0.0)))
+    bits.append(add_box("LOD0_Coaming_Aft", (0.22, 1.22, 0.18), (4.02, 0.0, 1.30), armor, 0.001))
+    bits.append(add_box("LOD0_Mullion_Mid", (0.14, 1.12, 0.16), (5.20, 0.0, 1.32), armor, 0.0))
+    bits.append(add_box("LOD0_CanopyFrame_Port", (2.42, 0.14, 0.12), (5.20, -0.52, 1.40), armor, 0.0))
+    bits.append(add_box("LOD0_CanopyFrame_Stbd", (2.42, 0.14, 0.12), (5.20, 0.52, 1.40), armor, 0.0))
+    bits.append(add_box("LOD0_CanopyFrame_Fore", (0.16, 1.10, 0.12), (6.28, 0.0, 1.42), armor, 0.0))
+    bits.append(add_box("LOD0_CanopyFrame_Aft", (0.16, 1.10, 0.12), (4.12, 0.0, 1.36), armor, 0.0))
     if lod < 2:
         bits.append(add_box(
             "LOD0_Glass",
@@ -842,8 +862,6 @@ def build_hardware(hull, mats, lod):
     bits.append(add_box("LOD0_DirtGreen", (2.65, 0.38, 0.08), (5.20, -0.72, 1.36), dirt, 0.0))
     bits.append(add_box("LOD0_DirtGreen_S", (2.65, 0.38, 0.08), (5.20, 0.72, 1.36), dirt, 0.0))
     bits.append(add_box("LOD0_DirtTransom", (1.85, 0.55, 0.08), (-6.55, 0.0, 1.12), dirt, 0.0))
-    bits.append(add_box("LOD0_DirtFlank_P", (2.85, 0.32, 0.08), (3.55, -1.55, 0.62), dirt, 0.0))
-    bits.append(add_box("LOD0_DirtFlank_S", (2.85, 0.32, 0.08), (3.55, 1.55, 0.62), dirt, 0.0))
 
     # Skin fasteners: chase-scale clamp rails along panel courses, not a rivet carpet.
     for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
@@ -858,12 +876,10 @@ def build_hardware(hull, mats, lod):
     bits.append(add_box("LOD0_FrameClamp_Mach", (0.36, 1.35, 0.20), (-5.55, 0.0, 1.24), mech, 0.0))
 
     # Cluster 2 — nacelle roots: heat dirt + one hose per pod. Cowl/collar/throat live on the nacelle.
-    bits.append(add_box("LOD0_DirtNacelle_Port", (2.85, 0.48, 0.08), (-5.40, -1.80, 1.10), dirt, 0.0))
-    bits.append(add_box("LOD0_DirtNacelle_Stbd", (2.85, 0.48, 0.08), (-5.40, 1.80, 1.10), dirt, 0.0))
-    bits.append(add_box("LOD0_HeatPlate_Port", (1.85, 0.62, 0.16), (-6.45, -1.52, 0.94), mats["Material_Ceramic"], 0.001))
-    bits.append(add_box("LOD0_HeatPlate_Stbd", (1.85, 0.62, 0.16), (-6.45, 1.52, 0.94), mats["Material_Ceramic"], 0.001))
-    bits.append(add_box("LOD0_NacRootHouse_Port", (1.15, 0.48, 0.32), (-4.15, -1.55, 1.08), armor, 0.002))
-    bits.append(add_box("LOD0_NacRootHouse_Stbd", (1.15, 0.48, 0.32), (-4.15, 1.55, 1.08), armor, 0.002))
+    bits.append(add_box("LOD0_DirtNacelle_Port", (2.45, 0.36, 0.06), (-5.40, -1.80, 1.08), dirt, 0.0))
+    bits.append(add_box("LOD0_DirtNacelle_Stbd", (2.45, 0.36, 0.06), (-5.40, 1.80, 1.08), dirt, 0.0))
+    bits.append(add_box("LOD0_HeatPlate_Port", (1.15, 0.38, 0.10), (-6.45, -1.48, 0.92), mats["Material_Ceramic"], 0.001))
+    bits.append(add_box("LOD0_HeatPlate_Stbd", (1.15, 0.38, 0.10), (-6.45, 1.48, 0.92), mats["Material_Ceramic"], 0.001))
 
     # Cluster 3 — transom / identity: D2/02 as teal on dark plaques, not orange louder than wells.
     bits.append(add_box("LOD0_LetterPlaque", (1.25, 1.55, 0.05), (0.78, -2.32, 0.48), armor, 0.0))
@@ -1138,7 +1154,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "drifter_chase_form_v8.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "drifter_chase_form_v9.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 
