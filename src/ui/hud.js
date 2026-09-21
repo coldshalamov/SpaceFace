@@ -351,6 +351,28 @@ export function steadyClosingMarker(prev, rawText, nowMs) {
   return { text: rawText, holdUntil: nowMs + CLOSING_MARKER_HOLD_MS, changed: true };
 }
 
+// INF-086: compact live handling consequence, pure over a ships derived-stats object.
+// Returns null at/under design mass (full thrust — including a full-volume load of
+// feathers), else the thrust penalty the mass law applies to the flown accelerations.
+// Volume stays the only capacity; this number only bends handling, never gates loading.
+export function cargoHandlingNote(derived) {
+  const load = derived && Number.isFinite(derived.massLoadFactor) ? derived.massLoadFactor : 1;
+  if (!(load < 1)) return null;
+  const pct = Math.round((1 - load) * 100);
+  if (!(pct > 0)) return null;
+  return { text: `-${pct}% thrust`, pct };
+}
+
+// The mass half of the same readout: carried vs design, for the tooltip. Null when the
+// derived object carries no mass accounting (headless/early), never a zero-mass claim.
+export function cargoMassLine(derived) {
+  const cargo = derived && Number.isFinite(derived.cargoMass) ? derived.cargoMass : null;
+  const design = derived && Number.isFinite(derived.designMass) && derived.designMass > 0
+    ? derived.designMass : null;
+  if (cargo == null || design == null) return null;
+  return `Mass: ${Math.round(cargo)} / design ${Math.round(design)}`;
+}
+
 function mtWaypointDistance(state, wp) {
   return objectiveTravelReadout(state, wp).distanceText;
 }
@@ -1560,14 +1582,26 @@ export function createHud(ctx, alerts) {
     const handling = p.handling != null ? p.handling.toFixed(2) : '—';
     return `Throttle: ${pct}%\nMax speed: ${Math.round(maxSp)} wu/s\nMass: ${Math.round(mass)}\nHandling: ${handling}`;
   }
+  // INF-086: compact live handling consequence for the load surface. The number is the
+  // SAME load factor that scales the flown accelerations (ships derived stats, refreshed
+  // on cargo:changed) — not a second cap: volume stays the only capacity, mass only
+  // bends handling. A full hold of feathers reads full volume with full thrust.
+  function liveDerived() {
+    const p = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    return (p && p.data && p.data.derived) || null;
+  }
   function buildCargoTip() {
     const c = (state.player || {}).cargo || {};
     const items = c.items || {};
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
+    const note = cargoHandlingNote(liveDerived());
+    const massLine = cargoMassLine(liveDerived());
     const keys = Object.keys(items);
-    if (!keys.length) return `Cargo: ${used} / ${cap} u\nHold is empty`;
+    if (!keys.length) return `Cargo: ${used} / ${cap} u\nHold is empty${massLine ? '\n' + massLine : ''}`;
     const lines = [`Cargo: ${used} / ${cap} u`];
+    if (massLine) lines.push(massLine);
+    lines.push(note ? `Handling: ${note.text} (heavy)` : 'Handling: full thrust');
     for (const id of keys.slice(0, 8)) {
       const qty = items[id];
       const name = cargoDisplayName(id);
@@ -3502,6 +3536,10 @@ export function createHud(ctx, alerts) {
   ctx.bus.on('credits:changed', () => { creditsDirty = true; });
   ctx.bus.on('cargo:changed', () => { cargoDirty = true; });
   ctx.bus.on('ship:statsChanged', () => { cargoDirty = true; });
+  // INF-086: the handling suffix rides the derived refresh, which lands after the
+  // cargo event that caused it — refresh on both so collecting/jettisoning always
+  // repaint the consequence.
+  ctx.bus.on('ship:massChanged', () => { cargoDirty = true; });
   ctx.bus.on('mission:updated', () => { objDirty = true; });
   ctx.bus.on('mission:accepted', () => { objDirty = true; });
   ctx.bus.on('mission:completed', () => { objDirty = true; });
@@ -3601,7 +3639,12 @@ export function createHud(ctx, alerts) {
     const c = (state.player || {}).cargo || {};
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
-    const label = `${used} / ${cap} u`;
+    // INF-086: the chip keeps volume (the only capacity) and appends the live handling
+    // consequence when the load actually bends the ship. Collecting heavy cargo grows
+    // the suffix; jettisoning shrinks it; feathers never earn one.
+    const p = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const note = cargoHandlingNote(p && p.data && p.data.derived);
+    const label = note ? `${used} / ${cap} u · ${note.text}` : `${used} / ${cap} u`;
     if (elCargo && elCargo.textContent !== label) chipShow('cargo');   // hold changed — surface it
     setText(elCargo, label);
     setClass(elCargo, 'sf-warn', cap > 0 && used >= cap);
