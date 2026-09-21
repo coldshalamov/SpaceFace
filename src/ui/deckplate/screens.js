@@ -186,8 +186,9 @@ const FH_BRIDGE = `
    those borders changes — brown bench plates become smoked glass in a thin machined bezel, sprite
    keys become keycaps with a lamp, tabs become lit legends, rows take the one selection language.
    The fh colour tokens resolve to the deckplate ones. The station is excluded: it keeps its own
-   scoped skin (styles/station-orbital.css), re-pointed at the same palette. */
-html body #screens {
+   scoped skin (styles/station-orbital.css), re-pointed at the same palette. The title (.of-title)
+   is also excluded: POSTER Field Hardware plates live in styles/kit.css. */
+html body #screens > :not(.sx-observatory):not(.of-title) {
   --fh-legend:var(--dp-lamp); --fh-legend-now:var(--dp-lamp-hot);
   /* amber is for what is lit or acted on: a resting legend is bone, a header legend a step brighter */
   --fh-legend-rest:var(--dp-ink-mute); --fh-legend-lit:var(--dp-ink-dim);
@@ -198,34 +199,34 @@ html body #screens {
     var(--dp-tex-smudge) 0 0 / 512px repeat border-box, linear-gradient(180deg, #151a21, #090c10) border-box;
 }
 /* panels: a thin machined bezel ring on the plate's outer edge, smoked glass under it */
-html body #screens > :not(.sx-observatory) :is(.fh-plate, .fh-window) {
+html body #screens > :not(.sx-observatory):not(.of-title) :is(.fh-plate, .fh-window) {
   border-style:solid; border-color:transparent;
   border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
   background:var(--dp-glass-bb);
   box-shadow:0 12px 30px rgb(0 0 0 / .45);
   color:var(--dp-ink);
 }
-html body #screens > :not(.sx-observatory) .fh-plate { border-width:24px; }
-html body #screens > :not(.sx-observatory) .fh-window { border-width:20px; }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-plate { border-width:24px; }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-window { border-width:20px; }
 /* a sunk plate is the same pane: glass to its outer edge in the thin bezel, so its visible edge
    sits on the grid line the title sits on (an air border had pushed the glass 24px inward) */
-html body #screens > :not(.sx-observatory) .fh-plate.fh-plate--sunk {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-plate.fh-plate--sunk {
   border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch; background:var(--dp-glass-bb); box-shadow:0 12px 30px rgb(0 0 0 / .45);
 }
 /* the paper plate was a tan card: glass like every other panel, its ink bone */
-html body #screens > :not(.sx-observatory) .fh-plate.fh-plate--paper { color:var(--dp-ink); }
-html body #screens > :not(.sx-observatory) .fh-plate.fh-plate--edge {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-plate.fh-plate--paper { color:var(--dp-ink); }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-plate.fh-plate--edge {
   border-width:16px; border-image:url("${HW}bezel-thin.svg") 12 / 10px / 0 stretch;
   background:var(--dp-metal-layers), var(--dp-metal-2);
 }
-html body #screens > :not(.sx-observatory) .fh-rail {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-rail {
   border-width:16px; border-style:solid; border-color:transparent; border-image:url("${HW}bezel-thin.svg") 12 / 8px / 0 stretch;
   background:var(--dp-metal-layers), linear-gradient(90deg, #232833, #171b22);
 }
 /* keys: keycap hardware on the key's edge, brushed metal cap, the lamp set in the cap's border */
 /* the keycap art is a thin machined edge: the key's border is that edge (8/10/10), so the lit rim of a
    primary key sits on the cap face, not 18px inside it as an inner frame */
-html body #screens > :not(.sx-observatory) .fh-key {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key {
   border-style:solid; border-color:transparent; border-width:8px 10px 10px; padding:0 16px 0 30px;
   border-image:url("${HW}keycap.svg") 10 10 12 / 8px 10px 10px / 0 stretch;
   background:${KEY_LED_OFF_BB}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
@@ -233,136 +234,136 @@ html body #screens > :not(.sx-observatory) .fh-key {
   color:var(--dp-ink); text-shadow:0 -1px 0 rgb(0 0 0 / .7);
   transition:color var(--dp-d-cut) var(--dp-ease-lamp), box-shadow var(--dp-d-cut) var(--dp-ease-lamp);
 }
-html body #screens > :not(.sx-observatory) .fh-key:is(:hover, :focus-visible) {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key:is(:hover, :focus-visible) {
   border-image-source:url("${HW}keycap.svg"); color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:${KEY_LED_ON_BB}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
   box-shadow:0 8px 16px -10px var(--dp-lamp-bloom);
 }
-html body #screens > :not(.sx-observatory) .fh-key:active { border-image-source:url("${HW}keycap-pressed.svg"); }
-html body #screens > :not(.sx-observatory) :is(.fh-key:disabled, .fh-key[aria-disabled='true']) {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key:active { border-image-source:url("${HW}keycap-pressed.svg"); }
+html body #screens > :not(.sx-observatory):not(.of-title) :is(.fh-key:disabled, .fh-key[aria-disabled='true']) {
   border-image-source:url("${HW}keycap.svg"); color:var(--dp-ink-dim); text-shadow:none; box-shadow:none; filter:none; opacity:1;
   background:${KEY_LED_OFF_BB}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
 }
 /* the screen's one primary command wears the selection language permanently */
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--primary {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--primary {
   border-image-source:url("${HW}keycap.svg"); color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:${KEY_LED_ON_BB}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
   box-shadow:inset 0 -8px 16px -10px var(--dp-lamp-bloom), 0 0 18px rgb(242 185 80 / .16);
 }
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--primary:is(:hover, :focus-visible) { filter:brightness(1.1); }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--primary:is(:hover, :focus-visible) { filter:brightness(1.1); }
 /* a destructive key: bone at rest, the lamp driven red under the hand */
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--hazard { border-image-source:url("${HW}keycap.svg"); }
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--hazard:is(:hover, :focus-visible) {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--hazard { border-image-source:url("${HW}keycap.svg"); }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--hazard:is(:hover, :focus-visible) {
   color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
   background:${KEY_LED_RED_BB}, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3);
   box-shadow:0 8px 16px -10px var(--dp-danger-bloom);
 }
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--small { padding:0 10px; border-width:12px; border-image:url("${HW}keycap.svg") 10 10 12 / 6px 7px 8px / 0 stretch; }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--small { padding:0 10px; border-width:12px; border-image:url("${HW}keycap.svg") 10 10 12 / 6px 7px 8px / 0 stretch; }
 /* a key-binding cap is a legend, not a command: metal, no lamp */
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--small, html body #screens > :not(.sx-observatory) .fh-key.fh-key--small:is(:hover, :focus-visible) {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--small, html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--small:is(:hover, :focus-visible) {
   background:var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-3); color:var(--dp-ink); text-shadow:0 -1px 0 rgb(0 0 0 / .7); box-shadow:none;
 }
 /* tabs: navigation legends, not commands — the lamp in the legend's own border, the open one lit */
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--legend {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend {
   position:relative; border-width:14px; border-image:none; border-color:transparent; border-radius:2px;
   background:none; font-variation-settings:"wght" 760, "wdth" 78; letter-spacing:.16em; color:var(--dp-ink-dim); text-shadow:none; box-shadow:none;
 }
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--legend::before {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend::before {
   content:""; position:absolute; left:-10px; top:50%; width:8px; height:8px; margin-top:-4px; border-radius:50%;
   background:radial-gradient(circle at 42% 36%, #3b352c, #17140f 70%); box-shadow:inset 0 1px 1.5px rgb(0 0 0 / .85), 0 0 0 1px rgb(0 0 0 / .6);
 }
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--legend:is(:hover, :focus-visible) {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend:is(:hover, :focus-visible) {
   border-image:none; color:var(--dp-ink); background:linear-gradient(90deg, rgb(255 255 255 / .05), transparent 80%); box-shadow:none;
 }
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) {
   border-image:none; color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   background:${EDGE_LIT}, ${LIFT_LIT};
   box-shadow:none;
 }
-html body #screens > :not(.sx-observatory) .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit)::before {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit)::before {
   background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
   box-shadow:0 0 6px var(--dp-lamp-bloom), 0 0 14px var(--dp-lamp-bloom-soft);
 }
 /* choice rows (a words row that borrows the pause list: starter, difficulty): a recessed selector
    track, each choice a segment, the chosen segment itself lit (no lamp outside it) */
-html body #screens > :not(.sx-observatory) .k-words--row .fh-key.fh-key--legend::before { display:none; }
-html body #screens > :not(.sx-observatory) .k-words.k-words--row.of-pause {
+html body #screens > :not(.sx-observatory):not(.of-title) .k-words--row .fh-key.fh-key--legend::before { display:none; }
+html body #screens > :not(.sx-observatory):not(.of-title) .k-words.k-words--row.of-pause {
   display:inline-flex; flex-wrap:wrap; gap:3px; width:max-content; max-width:100%; padding:3px; border-radius:3px;
   background:linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .28)); box-shadow:inset 0 1px 3px rgb(0 0 0 / .85), 0 1px 0 rgb(255 236 204 / .07);
 }
-html body #screens > :not(.sx-observatory) .k-words.k-words--row.of-pause .fh-key.fh-key--legend {
+html body #screens > :not(.sx-observatory):not(.of-title) .k-words.k-words--row.of-pause .fh-key.fh-key--legend {
   background:linear-gradient(180deg, #232830, #191d24) padding-box; box-shadow:inset 0 1px 0 rgb(255 236 204 / .07);
 }
-html body #screens > :not(.sx-observatory) .k-words.k-words--row.of-pause .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) {
+html body #screens > :not(.sx-observatory):not(.of-title) .k-words.k-words--row.of-pause .fh-key.fh-key--legend:is([aria-selected='true'], [aria-current='true'], [aria-pressed='true'], .is-lit) {
   background:linear-gradient(var(--dp-lamp), var(--dp-lamp)) 0 0 / 2px 100% no-repeat padding-box, linear-gradient(180deg, #2c3139, #20252d) padding-box;
   box-shadow:0 8px 14px -10px var(--dp-lamp-bloom);
 }
 /* rows: etched hairlines; the selected row lights like every deckplate row (and keeps its box) */
-html body #screens > :not(.sx-observatory) .fh-row {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-row {
   background-image:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px);
   background-size:100% 2px; background-repeat:no-repeat; background-position:left top;
 }
-html body #screens > :not(.sx-observatory) .fh-row.is-selected {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-row.is-selected {
   border-width:0; border-image:none; color:var(--dp-lamp-hot);
   background:${EDGE_LIT}, ${LIFT_LIT};
   box-shadow:none;
 }
-html body #screens > :not(.sx-observatory) .fh-hairline { height:4px; border:0; background:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px) left center / 100% 2px no-repeat; }
-html body #screens > :not(.sx-observatory) .fh-legend[data-fh-lit="on"] { color:var(--dp-ink-dim); }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-hairline { height:4px; border:0; background:linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(255 236 204 / .06) 1px 2px) left center / 100% 2px no-repeat; }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-legend[data-fh-lit="on"] { color:var(--dp-ink-dim); }
 /* hero readouts in a corner plate are information: bone, not the lamp */
-html body #screens > :not(.sx-observatory) .k-corner .k-hero__n { color:var(--dp-ink); text-shadow:var(--dp-emit); }
-html body #screens > :not(.sx-observatory) .k-corner .k-hero__w { font-family:var(--dp-face-etch); color:var(--dp-ink-mute); }
+html body #screens > :not(.sx-observatory):not(.of-title) .k-corner .k-hero__n { color:var(--dp-ink); text-shadow:var(--dp-emit); }
+html body #screens > :not(.sx-observatory):not(.of-title) .k-corner .k-hero__w { font-family:var(--dp-face-etch); color:var(--dp-ink-mute); }
 /* selects: a glass readout in a thin bezel with an etched chevron */
-html body #screens > :not(.sx-observatory) select.k-select {
+html body #screens > :not(.sx-observatory):not(.of-title) select.k-select {
   -webkit-appearance:none; appearance:none; min-height:40px; padding:0 36px 0 12px; border-radius:3px;
   border:0; border-image:none;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23b7b4a6' stroke-width='1.5'/%3E%3C/svg%3E") right 13px center / 10px 6px no-repeat, var(--dp-glass-solid);
   box-shadow:var(--dp-glass-depth);
   color:var(--dp-ink); font-family:var(--dp-face-read); font-size:14px;
 }
-html body #screens > :not(.sx-observatory) select.k-select:focus-visible { outline:0 solid transparent !important; box-shadow:var(--dp-glass-depth), inset 0 0 0 1px rgb(255 217 140 / .55); }
-html body #screens > :not(.sx-observatory) select.k-select option { background:#12161c; color:var(--dp-ink); }
+html body #screens > :not(.sx-observatory):not(.of-title) select.k-select:focus-visible { outline:0 solid transparent !important; box-shadow:var(--dp-glass-depth), inset 0 0 0 1px rgb(255 217 140 / .55); }
+html body #screens > :not(.sx-observatory):not(.of-title) select.k-select option { background:#12161c; color:var(--dp-ink); }
 /* inputs: a glass readout in a thin bezel; focus lights its rim */
-html body #screens > :not(.sx-observatory) .fh-input {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-input {
   border-style:solid; border-color:transparent; border-width:12px;
   border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
   background:var(--dp-glass-bb); color:var(--dp-ink); font-family:var(--dp-face-read);
 }
-html body #screens > :not(.sx-observatory) .fh-input:focus-visible { box-shadow:inset 0 0 0 1px var(--dp-lamp), 0 0 12px var(--dp-lamp-bloom-soft); }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-input:focus-visible { box-shadow:inset 0 0 0 1px var(--dp-lamp), 0 0 12px var(--dp-lamp-bloom-soft); }
 /* tiles: keyart framed as a glass card; the chosen one lit */
-html body #screens > :not(.sx-observatory) .fh-tile {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-tile {
   border-style:solid; border-color:transparent; border-width:20px;
   border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch; background:var(--dp-glass-bb);
 }
-html body #screens > :not(.sx-observatory) .fh-tile[aria-selected='true'] {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-tile[aria-selected='true'] {
   color:var(--dp-lamp-hot); background:${EDGE_LIT}, ${LIFT_LIT}, var(--dp-glass-bb);
   box-shadow:0 10px 22px -12px var(--dp-lamp-bloom);
 }
-html body #screens > :not(.sx-observatory) .fh-tile:focus-visible { outline:0 solid transparent !important; background:${EDGE_LIT}, var(--dp-glass-bb); }
-html body #screens > :not(.sx-observatory) .fh-tile-legend { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 70; }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-tile:focus-visible { outline:0 solid transparent !important; background:${EDGE_LIT}, var(--dp-glass-bb); }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-tile-legend { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 70; }
 /* lights: the deckplate lens */
-html body #screens > :not(.sx-observatory) .fh-light {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-light {
   border-radius:50%; width:9px; height:9px;
   background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
   box-shadow:0 0 6px var(--dp-lamp-bloom), 0 0 0 1px #06080a;
 }
-html body #screens > :not(.sx-observatory) .fh-light:is([data-level='off'], [data-level='dim']) {
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-light:is([data-level='off'], [data-level='dim']) {
   background:radial-gradient(circle at 42% 36%, #3b352c, #17140f 70%); box-shadow:inset 0 1px 1.5px rgb(0 0 0 / .85), 0 0 0 1px #06080a;
 }
-html body #screens > :not(.sx-observatory) .fh-light[data-colour='wanted'] { background:radial-gradient(circle at 42% 34%, #fff1ea, var(--dp-danger-hot) 26%, var(--dp-danger) 60%, #6b1a10); box-shadow:0 0 6px var(--dp-danger-bloom), 0 0 0 1px #06080a; }
-html body #screens > :not(.sx-observatory) .fh-light:is([data-colour='good'], [data-colour='cold']) { background:radial-gradient(circle at 42% 34%, #fffaf0 0%, #d8d2c4 45%, #6b675d 100%); box-shadow:0 0 5px rgb(232 226 212 / .25), 0 0 0 1px #06080a; }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-light[data-colour='wanted'] { background:radial-gradient(circle at 42% 34%, #fff1ea, var(--dp-danger-hot) 26%, var(--dp-danger) 60%, #6b1a10); box-shadow:0 0 6px var(--dp-danger-bloom), 0 0 0 1px #06080a; }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-light:is([data-colour='good'], [data-colour='cold']) { background:radial-gradient(circle at 42% 34%, #fffaf0 0%, #d8d2c4 45%, #6b675d 100%); box-shadow:0 0 5px rgb(232 226 212 / .25), 0 0 0 1px #06080a; }
 /* type: the display face for titles, the etched condensed voice for legends */
-html body #screens > :not(.sx-observatory) .fh-title { font-family:var(--dp-face-display); font-variation-settings:"wght" 900, "wdth" 125; color:var(--dp-ink); text-shadow:0 -1px 0 rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .12); }
-html body #screens > :not(.sx-observatory) .fh-legend { font-family:var(--dp-face-etch); color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow); }
-@media (prefers-reduced-motion:reduce) { html body #screens > :not(.sx-observatory) .fh-key { transition:none; } }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-title { font-family:var(--dp-face-display); font-variation-settings:"wght" 900, "wdth" 125; color:var(--dp-ink); text-shadow:0 -1px 0 rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .12); }
+html body #screens > :not(.sx-observatory):not(.of-title) .fh-legend { font-family:var(--dp-face-etch); color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow); }
+@media (prefers-reduced-motion:reduce) { html body #screens > :not(.sx-observatory):not(.of-title) .fh-key { transition:none; } }
 @media (forced-colors:active) {
-  html body #screens > :not(.sx-observatory) :is(.fh-plate, .fh-window, .fh-rail, .fh-key, .fh-input, .fh-tile) {
+  html body #screens > :not(.sx-observatory):not(.of-title) :is(.fh-plate, .fh-window, .fh-rail, .fh-key, .fh-input, .fh-tile) {
     border-image:none; border-color:CanvasText; background:Canvas; color:CanvasText; box-shadow:none; filter:none;
   }
-  html body #screens > :not(.sx-observatory) :is(.fh-key:is(:hover, :focus-visible), .fh-key--legend:is([aria-selected='true'], [aria-pressed='true'], .is-lit), .fh-row.is-selected, .fh-tile[aria-selected='true']) {
+  html body #screens > :not(.sx-observatory):not(.of-title) :is(.fh-key:is(:hover, :focus-visible), .fh-key--legend:is([aria-selected='true'], [aria-pressed='true'], .is-lit), .fh-row.is-selected, .fh-tile[aria-selected='true']) {
     outline:2px solid Highlight; background:Canvas; color:CanvasText;
   }
-  html body #screens > :not(.sx-observatory) .fh-light, html body #screens > :not(.sx-observatory) .fh-key--legend::before { forced-color-adjust:none; background:CanvasText; box-shadow:none; }
+  html body #screens > :not(.sx-observatory):not(.of-title) .fh-light, html body #screens > :not(.sx-observatory):not(.of-title) .fh-key--legend::before { forced-color-adjust:none; background:CanvasText; box-shadow:none; }
 }
 `;
 
@@ -539,11 +540,11 @@ html body #screens .of-help .k-row__num.fh-data {
       step down to the condensed voice at about half that.
    4. Scroll regions end in a fade over a padded foot and carry a thin bone scrollbar, so no line is
       ever cut in half at a hard edge. */
-const SHELL_SCREENS = 'html body #screens > .k-screen:not(.sx-observatory):not([data-screen="mainMenu"])';
+const SHELL_SCREENS = 'html body #screens > .k-screen:not(.sx-observatory):not(.of-title):not([data-screen="mainMenu"])';
 const SHELL = `
 @property --sf-fade-a { syntax:'<number>'; inherits:false; initial-value:1; }
 @keyframes sf-scroll-foot { from { --sf-fade-a:.08; } 96% { --sf-fade-a:.9; } to { --sf-fade-a:1; } }
-html body[data-game-mode="menu"] #screens > .k-screen:not([data-k-stage]):not(.sx-observatory) {
+html body[data-game-mode="menu"] #screens > .k-screen:not([data-k-stage]):not(.sx-observatory):not(.of-title) {
   background:url("/assets/ui/backdrops/backdrop-shell.jpg") center / cover no-repeat;
 }
 /* in a run the same screens hold the world, dimmed, so the panels read first (pause and the loss
@@ -616,87 +617,10 @@ html body #screens .k-screen:has(.tt-side) .tt-side { margin-top:clamp(64px, 9vh
 }
 `;
 
-/* ── TITLE — POSTER register: the live stage, the produced logotype, a machined rail, big words. ── */
-const TITLE = `
-#screens .of-title.k-screen[data-screen]::before {
-  background-image:linear-gradient(101deg, rgb(6 8 12 / .72) 0%, rgb(6 8 12 / .55) 16%, rgb(6 8 12 / .22) 36%, rgb(6 8 12 / 0) 56%);
-}
-/* The rail the words hang off is machined gunmetal, fastened, lit by the same key light. */
-#screens .of-title .of-title-rail {
-  border:5px solid transparent; box-sizing:border-box;
-  border-image:url("${HW}bezel-thin.svg") 12 / 12px / 0 stretch;
-  background:var(--dp-metal-layers), linear-gradient(90deg, #232833, #171b22);
-  box-shadow:6px 0 18px rgb(0 0 0 / .45);
-}
-/* Type law (critic round 7): the display face is for titles; anything you act on is the
-   condensed etched caps every other menu uses. The default verb (Continue, or New Game with no
-   save) leads a size up; the rest step down, so the column has a hierarchy. */
-#screens .of-title.k-screen {
-  --fht-menu-size:clamp(15px, min(1.3vw, 2.3vh), 25px);
-  --fht-row-h:calc(var(--fht-menu-size) * 2.3);
-}
-#screens .of-title .k-t-name { width:clamp(320px, 44vw, 860px); margin-bottom:clamp(18px, 5vh, 72px); }
-#screens .of-title .k-word {
-  border-image-source:none; color:var(--dp-ink-dim);
-  font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 82; letter-spacing:.16em;
-  text-shadow:0 2px 10px rgb(0 0 0 / .6);
-  background:none; box-shadow:none;
-  /* grayscale antialiasing: a lit word on its own layer never picks up LCD colour fringes */
-  transform:translateZ(0);
-  transition:color var(--dp-d-cut) var(--dp-ease-lamp), background var(--dp-d-cut) var(--dp-ease-lamp);
-}
-#screens .of-title .k-word[aria-current='true'] { font-size:calc(var(--fht-menu-size) * 1.3); font-variation-settings:"wght" 820, "wdth" 86; }
-/* The lit word: the rail's LED lit, the legend amber, an amber inner edge where the word meets the
-   rail, a faint lift behind the legend — the same four signals as every deckplate row. */
-#screens .of-title :is(.k-word:hover, .k-word:focus-visible),
-#screens .of-title .k-words:not(:focus-within) .k-word[aria-current='true'] {
-  border-image-source:none; color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
-  background:
-    radial-gradient(circle at calc(var(--fht-rail-w) * .5) 50%, #fff6df 0, var(--dp-lamp-hot) 2px, var(--dp-lamp) 5px, rgb(242 185 80 / .35) 8px, rgb(242 185 80 / .1) 16px, transparent 22px),
-    linear-gradient(90deg, transparent calc(var(--fht-rail-w) + 4px), var(--dp-lamp) calc(var(--fht-rail-w) + 4px) calc(var(--fht-rail-w) + 6px), transparent calc(var(--fht-rail-w) + 6px)) 0 10% / 100% 80% no-repeat,
-    radial-gradient(60% 70% at calc(var(--fht-rail-w) + 30%) 50%, rgb(255 222 170 / .06), transparent 70%);
-  box-shadow:none;
-}
-/* the lit row IS the focus indicator (lamp, amber legend, amber edge); a ring around the whole
-   row box crossed the rail. Forced colours, where the row light is stripped, gets the ring back. */
-#screens .of-title .k-word:focus-visible { outline:0 solid transparent !important; }
-#screens .of-title .k-word--danger { color:var(--dp-ink-dim); }
-#screens .of-title .k-word[aria-disabled='true'] { color:color-mix(in srgb, var(--dp-ink) 48%, transparent); text-shadow:none; }
-#screens .of-title .k-word--danger:is(:hover, :focus-visible) {
-  color:var(--dp-danger-hot);
-  background:radial-gradient(circle at calc(var(--fht-rail-w) * .5) 50%, #fff1ea 0, var(--dp-danger-hot) 2px, var(--dp-danger) 5px, rgb(255 80 56 / .3) 8px, transparent 20px),
-    linear-gradient(90deg, rgb(255 80 56 / .09), transparent 70%);
-  box-shadow:inset 0 -1px 0 rgb(255 80 56 / .35);
-}
-#screens .of-title .k-word[aria-disabled='true']:hover { background:none; box-shadow:none; }
-/* The save readout under Continue, and the status strip: glass readouts with a lit LED. */
-#screens .of-title .k-word-sub { color:var(--dp-ink-mute); font-family:var(--dp-face-read); font-size:13px; }
-/* With no save, the helper line under Continue already says so: the status chip would repeat it. */
-#screens .of-title:has(.k-word[data-action='continue'][aria-disabled='true']) .of-title-line { display:none; }
-/* The build light is a bone LED lens, not a green square. */
-#screens .of-title .k-fine .fh-light {
-  width:7px; height:7px; border-radius:50%; background:radial-gradient(circle at 42% 36%, #fffaf0 0%, #d8d2c4 45%, #6b675d 100%);
-  box-shadow:0 0 5px rgb(232 226 212 / .25), 0 0 0 1px #06080a;
-}
-#screens .of-title .of-title-line {
-  border:0; border-image:none; border-radius:2px; min-height:28px; padding:0 14px 0 26px;
-  background:
-    radial-gradient(circle at 13px 50%, #fff6df 0, var(--dp-lamp-hot) 1.5px, var(--dp-lamp) 3.5px, rgb(242 185 80 / .3) 5px, transparent 9px),
-    var(--dp-glass-solid);
-  box-shadow:var(--dp-glass-depth), 0 8px 20px rgb(0 0 0 / .45);
-  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 62; letter-spacing:.2em; color:var(--dp-ink);
-}
-#screens .of-title .k-fine { color:var(--dp-ink-mute); font-family:var(--dp-face-etch); }
-#screens .of-title .k-fine .k-word { color:var(--dp-ink-dim); background:none; box-shadow:none; }
-#screens .of-title .k-fine .k-word:is(:hover, :focus-visible) { color:var(--dp-lamp-hot); background:none; box-shadow:none; }
-@media (prefers-reduced-motion:reduce) { #screens .of-title .k-word { transition:none; } }
-@media (forced-colors:active) {
-  #screens .of-title .of-title-rail { border-image:none; background:Canvas; border:1px solid CanvasText; }
-  #screens .of-title .k-word { background:none; box-shadow:none; }
-  #screens .of-title .of-title-line { background:Canvas; border:1px solid CanvasText; }
-  #screens .of-title .k-word:is(:hover, :focus-visible) { outline:2px solid Highlight !important; outline-offset:2px; }
-}
-`;
+/* TITLE (POSTER) is owned by styles/kit.css Field Hardware plates — the produced
+   logotype, legend rail, selected-row plate and status strip. Do not restyle that screen
+   here: shrinking the words and swapping plates for CSS LEDs is the "words on black"
+   failure the programme exists to reverse. FH_BRIDGE selectors exclude it. */
 
 /* ── SETTINGS — BENCH register. styles/settings.css is linked at mount (after this sheet), so
    every rule here carries `html body` for the weight to win without !important. ── */
@@ -1461,7 +1385,7 @@ ${AU} .au-outpost-detail summary { color:var(--dp-lamp-hot); }
    Chromium drew arrow buttons for the thin standard scrollbar, so the standard properties are reset
    here and the part is drawn with the scrollbar pseudo-elements). A tab or a choice in a row carries
    its lamp inside its cap, lit when chosen. */
-const NS = 'html body #screens > :not(.sx-observatory)';
+const NS = 'html body #screens > :not(.sx-observatory):not(.of-title)';
 const FINISH = `
 ${NS}, ${NS} * { scrollbar-width:auto !important; scrollbar-color:auto !important; }
 ${NS} ::-webkit-scrollbar, ${NS}::-webkit-scrollbar { width:10px; height:10px; background:transparent; }
@@ -1489,4 +1413,4 @@ ${NS} .sf-ng-body .fh-key.fh-key--small:not(.fh-key--legend) { padding:0 14px 0 
 }
 `;
 
-export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + CRUCIBLE_RESULTS + LEGACY + FINISH;
+export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + CRUCIBLE_RESULTS + LEGACY + FINISH;

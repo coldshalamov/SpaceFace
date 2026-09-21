@@ -1,8 +1,9 @@
 // First-boot motion choice (PQ-210.07). The OS reduced-motion hint is a question, never a default.
-// Same hangar still as the title; two words (Full / Reduce). ESC cannot skip it. System stays in
-// Access. This file owns no CSS.
+// Same Field Hardware title frame as the menu; two words (Full / Reduce). ESC cannot skip it.
+// System stays in Access. This file owns no CSS.
 
-import { createTitleFrame, TITLE_PLATE_SRC } from '../views/menuFrames.js';
+import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { createTitleFrame } from '../views/menuFrames.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { el, words, stamp } from '../kit/index.js';
 import {
@@ -20,22 +21,12 @@ function getManager(ctx) {
   return null;
 }
 
-function markPlateReady(rootEl) {
-  const markReady = () => { if (rootEl && rootEl.dataset) rootEl.dataset.kReady = '1'; };
-  if (typeof Image !== 'function') { markReady(); return; }
-  const plate = new Image();
-  plate.decoding = 'async';
-  plate.onload = markReady;
-  plate.onerror = markReady;
-  plate.src = TITLE_PLATE_SRC;
-  if (plate.complete && plate.naturalWidth > 0) markReady();
-}
-
 let refs = null;
 
 export const motionAskScreen = {
   id: FIRST_BOOT_MOTION_ASK_ID,
   data: { locked: true },
+  stage: { scene: 'title-field', hullDefId: NEW_GAME.shipId },
 
   mount(rootEl, ctx) {
     injectDeckplate();
@@ -66,6 +57,7 @@ export const motionAskScreen = {
       ariaLabel: 'Motion effects',
       onPick: (action) => this._pick(ctx, action),
     });
+    for (const button of list.querySelectorAll('.k-word')) button.classList.add('fh-menu-item');
     stage.appendChild(list);
 
     refs = {
@@ -73,7 +65,6 @@ export const motionAskScreen = {
       list,
       buttons: [...list.querySelectorAll('button')],
     };
-    markPlateReady(rootEl);
   },
 
   onShow() {

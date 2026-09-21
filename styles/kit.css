@@ -172,11 +172,10 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
   animation: k-plate-drift 36s var(--k-ease) alternate infinite;
 }
 /* A staged screen keeps its ground clear so the canvas below can be seen at all.
-   The attribute pair is load-bearing, not decoration: the legacy title ground
-   (`#screens .of-title.k-screen { background: #111817 }`, styles/orbital.css) is an ID rule that
-   paints an opaque fill over the whole viewport, and orbital.css loads AFTER this sheet. Two
-   attributes beat it on specificity from here, which is the only place in the write set that can
-   reach it. Without this line the stage renders perfectly and nobody can see it. */
+   The attribute pair is load-bearing, not decoration: a leftover opaque title ground
+   (historically `#screens .of-title.k-screen { background: #111817 }` in orbital.css) would
+   hide the stage. Two attributes beat that ID rule from here. Without this line the stage
+   renders perfectly and nobody can see it. */
 #screens .k-screen[data-screen][data-k-stage] { background: transparent; }
 /* ...and its darkening goes back to the kit's own scrim, so the words keep their contrast without
    a wall of flat colour between the reader and the world. A dense screen keeps its deeper scrim:
@@ -466,7 +465,8 @@ body.k-screen-top #modal-backdrop { background: none; }
  * That is the screen FIELD_HARDWARE_PROGRAM.md §1 says ten passes converged on, and §3 rule 4
  * makes it a grep failure before it is a taste failure. Everything below hands the materials to
  * `.fh-*` from assets/ui/kit/kit/fh.css and adds only composition — where hardware sits, and how
- * big it is at this frame size.
+ * big it is at this frame size. Deckplate must not restyle `.of-title`: that overlay was the
+ * 15 px etched-word column the owner sees as words on black.
  *
  * NOT aesthetic, do not "simplify" (FIELD_HARDWARE_PROGRAM.md §7): the 12 px floor; the
  * forced-colours block at the end, without which every material here vanishes and takes the

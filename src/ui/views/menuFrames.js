@@ -3,28 +3,29 @@ import { el } from '../kit/dom.js';
 
 /**
  * The title's authored backdrop plate: the approved "Field at dusk" shot
- * (design/frontend/direction/approved/DECISIONS.md, 2026-09-10), rendered from the same geometry
- * the live stage used to assemble. On the title this still IS the picture — the screen declares
- * no `stage`, so nothing fades it out and no second scene is built on the renderer to approximate
- * it. (Screens that do declare `stage` still treat their plate as the assemble-time fallback.)
+ * (design/frontend/direction/approved/DECISIONS.md, 2026-09-10). Holds the frame while
+ * `title-field` assembles on the main renderer, and is the whole picture if the stage cannot run.
  */
 export const TITLE_PLATE_SRC = new URL('../../../assets/ui/backdrops/backdrop-title.jpg', import.meta.url).href;
 export function createTitleFrame(root) {
   root.classList.add('of-title');
-  // The world behind the words is the authored still below — there is no live scene on this
-  // screen for it to hold the frame for; it is the frame.
+  root.setAttribute('data-fh-register', 'poster');
+  // Authored still while the uiStage assembles (and the whole picture if the stage cannot run).
   const backdrop = el('div', 'k-world k-world--plate');
   backdrop.setAttribute('aria-hidden', 'true');
   const title = el('header', 'k-title');
   const brand = el('div', 'of-brand-mark'); brand.setAttribute('aria-hidden', 'true');
   title.appendChild(brand); title.appendChild(el('h1', 'k-display k-t-name', 'SpaceFace'));
-  // Frame status strip — produced legend plate, not a slogan under the wordmark.
-  const status = el('p', 'of-title-line');
+  // Frame status strip — produced `plate.legend.strip`, not a slogan under the wordmark.
+  // It is a child of the screen root (not the settling `.k-title`) so `position:absolute`
+  // resolves against the POSTER frame, not a transformed header.
+  const status = el('p', 'of-title-line fh-legend');
   status.dataset.role = 'title-status';
-  title.appendChild(status);
+  status.dataset.fhLit = 'on';
+  status.textContent = 'Contract 47-A remains open';
   const stage = el('nav', 'k-stage of-title-actions');
   stage.setAttribute('aria-label', 'Main menu');
-  for (const node of [backdrop, title, stage]) root.appendChild(node);
+  for (const node of [backdrop, title, status, stage]) root.appendChild(node);
   return { backdrop, title, stage, status };
 }
 

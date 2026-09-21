@@ -1,18 +1,12 @@
-import { createTitleFrame, TITLE_PLATE_SRC } from '../views/menuFrames.js';
-import { injectDeckplate } from '../deckplate/index.js';
 // Main Menu / title screen (ARCHITECTURE §1.3 step 6, §5; design/specs/09).
-// The sheet's title line (design/frontend/direction/DIRECTION_SHEET.md, title screen): the starter
-// hull in its hangar fills the frame, the game's name enormous top-left, a column of words down the
-// left edge, the version in fine print. Built on the frontend kit (styles/kit.css, src/ui/kit/);
-// this file owns no CSS. Continue is enabled iff a save exists, shows the exact latest slot metadata,
-// and loads that displayed slot so players trust resume before committing to a load.
-// Browser, Electron dev, and packaged desktop all arrive here through the same player route.
-// The title picture is an authored still (assets/ui/backdrops/backdrop-title.jpg): the approved
-// "Field at dusk" shot, pre-rendered at cutscene quality. A photograph that never changes should
-// not own a render loop — and a still this good should not pay a live 3D scene's load and compile
-// cost to approximate itself.
-
+// Field Hardware POSTER: uiStage `title-field` (Hitch on the dusk pad) plus produced kit
+// hardware — logotype, legend rail, selected-row plate, status strip, build light.
+// This file owns no CSS. Continue is enabled iff a save exists, shows the exact latest slot
+// metadata, and loads that displayed slot so players trust resume before committing to a load.
+import { createTitleFrame } from '../views/menuFrames.js';
+import { injectDeckplate } from '../deckplate/index.js';
 import { CREDITS } from '../../data/credits.js';
+import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { requestCodexTab } from './codex.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { requestQuit } from '../quitGame.js';
@@ -20,7 +14,6 @@ import { IS_DEV } from '../../core/devMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 
 const LS_PREFIX = 'sf.save.';
-const MENU_BACKDROP_SRC = TITLE_PLATE_SRC;
 // spec2/03 §3: the still begins its slow drift after this much idle time. Input re-arms the window.
 const ATTRACT_IDLE_MS = 12_000;
 
@@ -267,18 +260,15 @@ let refs = null;
 export const mainMenuScreen = {
   id: 'mainMenu',
 
-  // The title stands on the authored "Field at dusk" still — it declares no `stage`, so the
-  // ScreenManager never writes state.ui.stageRequest and no second scene is assembled on the
-  // renderer. The live title-field stage this replaced loaded eight place GLBs plus the hull and
-  // compiled its own pipelines while the menu was already open, then faded the plate out: the
-  // menu stall and the "same scene rendered twice" pop both came from that path, and its held
-  // brown frame is what flashed during Continue's handoff. The pre-rendered still is the same
-  // approved picture at zero frame cost.
+  // P20/P22: the approved "Field at dusk" shot as a live presentation scene on the main renderer
+  // (src/render/uiStage.js). Simulation stays frozen; the plate is the assemble / no-WebGL fallback.
+  stage: { scene: 'title-field', hullDefId: NEW_GAME.shipId },
 
   mount(rootEl, ctx) {
     injectDeckplate();   // the title can mount before the HUD that otherwise injects the system
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage');
+    rootEl.dataset.screen = 'mainMenu';
     rootEl.dataset.kReady = '0';
 
     const { backdrop, title, stage, status } = createTitleFrame(rootEl);
@@ -314,6 +304,7 @@ export const mainMenuScreen = {
       ariaLabel: 'Title menu',
       onPick: (action) => this._pick(ctx, action),
     });
+    for (const button of list.querySelectorAll('.k-word')) button.classList.add('fh-menu-item');
     stage.appendChild(list);
 
     const byAction = (action) => list.querySelector('[data-action="' + action + '"]');
@@ -367,18 +358,8 @@ export const mainMenuScreen = {
       buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
-    // data-k-ready is the capture seam's "photograph me" signal. With no `stage` on this screen
-    // the authored still IS the picture the title was designed around, so this root raises it when
-    // that still has decoded — and also when it cannot load, because a missing backdrop is the
-    // final picture then, not a pending stage.
-    rootEl.dataset.kReady = '0';
-    const plate = new Image();
-    plate.decoding = 'async';
-    const markReady = () => { rootEl.dataset.kReady = '1'; };
-    plate.onload = markReady;
-    plate.onerror = markReady;
-    plate.src = MENU_BACKDROP_SRC;
-    if (plate.complete && plate.naturalWidth > 0) markReady();
+    // data-k-ready is owned by the screen manager once `stage` is declared: live, plate, or
+    // unavailable. The still is already in the tree as `.k-world--plate`.
 
     // Continue follows the save store the moment it settles, not the next periodic refresh: the
     // shared-store sync and a completed save both re-read the index.
@@ -450,7 +431,6 @@ export const mainMenuScreen = {
       setDisabled(refs.bContinue, true, 'Checking saves');
       refs.saveSummary.classList.remove('has-save');
       refs.saveSummary.textContent = 'Checking saves...';
-      if (refs.status) refs.status.textContent = 'Checking saves';
       this._syncCurrent();
       return;
     }
@@ -460,11 +440,9 @@ export const mainMenuScreen = {
       const summary = saveSummaryText(latest.slot, latest.meta);
       refs.saveSummary.textContent = coreText('continueSummary', { summary });
       setDisabled(refs.bContinue, false, 'Load ' + summary);
-      if (refs.status) refs.status.textContent = 'Save ready';
     } else {
       refs.saveSummary.textContent = coreText('noSave');
       setDisabled(refs.bContinue, true, 'No save found yet');
-      if (refs.status) refs.status.textContent = 'No save';
     }
     this._syncCurrent();
   },
@@ -485,7 +463,8 @@ export const mainMenuScreen = {
     this._render(ctx);
     this._arrived = false;
     this._ctx = ctx;
-    // The still is already on the wall, so the words arrive at once (reduced motion included).
+    // Words stamp after the hull (kit motion). The plate is already up; the live stage may
+    // still be assembling — that is the P17 "menu arrives after the hull" hold, not a blank.
     this._hold();
     this._arrive();
     if (refs) {
