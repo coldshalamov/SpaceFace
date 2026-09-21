@@ -1796,6 +1796,7 @@ export const crucibleResultsScreen = {
     const owner = resultsOwner(ctx);
     const result = owner && typeof owner.lastResult === 'function' ? owner.lastResult() : null;
     rootEl.dataset.stamp = resultStamp(result);
+    rootEl.dataset.outcome = (result && result.outcome) || 'empty';
 
     // .k-title — the identity word, and the owner's sentence, verbatim. The structured chain below
     // re-states it in fielded form; it never rewrites it, because survivalResults owns the wording.

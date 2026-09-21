@@ -57,6 +57,7 @@ const NEEDS_THE_GAME = Object.freeze({
   chart: 'needs the live sector geography',
   'crucible-door': 'needs the arena stage',
   flight: 'the HUD needs a live picture — use `npm run ui:stills -- --world --headed --only=flight`',
+  crucibleHud: 'the Crucible run HUD needs a live picture — use `npm run ui:stills -- --world --headed --only=flight`',
 });
 
 const screensEl = document.getElementById('screens');
@@ -99,6 +100,23 @@ function seededState() {
     label: 'Beacon 419 WU', pos: { x: 420, z: -180 }, sectorId: 'sector_helios', stationId: 'station_helios',
   };
   state.world.currentSectorId = 'sector_helios';
+  state.ui.docked = false;
+  // A hull the instruments can read. Empty GameState has playerId 0 and no entity, so the
+  // cluster paints "NO DATA" and the power rail stays an empty div until the first frame.
+  const hull = {
+    id: 0, type: 'ship', alive: true, team: 1, radius: 12,
+    pos: { x: 0, y: 0, z: 0 }, vel: { x: 46, y: 0, z: 18 }, angVel: 0,
+    hull: 86, hullMax: 100, shield: 64, shieldMax: 100, armorHp: 20, armorMax: 30,
+    cap: 80, capMax: 100, energy: 80, energyMax: 100, maxSpeed: 180,
+    boost: { energy: 70, max: 100, dashCost: 28, dashImpulse: 0, dashCdT: 0 },
+    data: {
+      defId: 'ship_kestrel', callsign: 'KESTREL',
+      weapons: [{ id: 'bench-cannon', _heat: 22, heatMax: 100 }],
+    },
+  };
+  state.playerId = 0;
+  state.entities.set(0, hull);
+  state.entityList = [hull];
   return state;
 }
 
@@ -131,20 +149,62 @@ const manager = {
   isOpen(id) { return stack.includes(id); },
   top() { return stack[stack.length - 1] || null; },
 };
+/** A filled flight record so --shot=crucibleResults is the plate a player sees, not the empty. */
+const BENCH_CRUCIBLE_RESULT = Object.freeze({
+  outcome: 'defeat', seed: 4242, arenaId: 'helios_core', ruleset: 'swarm',
+  wave: 6, deepestWave: 6, wavesCleared: 5, kills: 31, score: 1240, credits: 88, xp: 640, level: 4,
+  picks: [
+    { verb: 'Volume', defId: 'wpn_autocannon_m', wave: 2 },
+    { verb: 'Pierce', defId: 'wpn_railgun_m', wave: 4 },
+    { verb: 'Screen', defId: 'wpn_flak_turret_s', wave: 6 },
+  ],
+  headline: 'Reaver Corsair killed you on wave 6 from AFT with its Heavy Autocannon M, through the hull.',
+  buildName: 'Volume Pierce Screen',
+  buildCode: 'VOL · PRC · SCR',
+  death: {
+    causeText: 'Reaver Corsair killed you from astern with a Heavy Autocannon M, through the hull.',
+    telegraphName: 'cannon spool', telegraphLeadMs: 420,
+    counterplay: 'The tell was the barrel glow — break astern before the burst.',
+  },
+  moments: [
+    { text: 'Best chain 24 on round 4.' },
+    { text: 'Round 6 did the heavy lifting — 11 kills.' },
+    { text: 'Hardest hit: 18 from Heavy Autocannon M.' },
+  ],
+  defeat: {
+    attacker: 'Reaver Corsair', faction: 'Crimson Reach', weapon: 'Heavy Autocannon M',
+    direction: 'AFT', dominantLayer: 'hull', cause: 'Reaver Corsair · Crimson Reach · hull breach',
+    fatalSummary: 'Final hit from Reaver Corsair · aft hull breach.',
+    vitalsPct: { shield: 0, armor: 0, hull: 0 },
+  },
+  damageTrail: [
+    { attackerId: 9, weaponId: 'wpn_autocannon_m', amount: 18.4, type: 'kinetic' },
+    { attackerId: 11, weaponId: 'wpn_pulse_laser_m', amount: 12.2, type: 'energy' },
+    { attackerId: 9, weaponId: 'wpn_autocannon_m', amount: 18.4, type: 'kinetic' },
+    { attackerId: null, weaponId: null, amount: 7.1, type: 'collision' },
+    { attackerId: 9, weaponId: 'wpn_autocannon_m', amount: 17.9, type: 'kinetic' },
+  ],
+});
+
 const registry = {
-  get(name) { return name === 'ui' ? { screenManager: manager, manager } : null; },
+  get(name) {
+    if (name === 'ui') return { screenManager: manager, manager };
+    if (name === 'survivalResults') return { lastResult: () => BENCH_CRUCIBLE_RESULT };
+    return null;
+  },
 };
 
 let current = null;
 let currentScreen = null;
 
 async function goto(id) {
-  if (id === 'flight') {
+  if (id === 'flight' || id === 'crucibleHud') {
     screensEl.innerHTML = '';
     document.body.classList.add('k-screen-top');
     document.body.dataset.kScreen = id;
     try {
-      await mountFlightHud();
+      if (id === 'crucibleHud') await mountCrucibleHud();
+      else await mountFlightHud();
       current = id; currentScreen = null;
       stack.push(id);
       if (stack.length > 6) stack.shift();
@@ -183,35 +243,80 @@ async function goto(id) {
 /** Mount the always-on flight HUD into #hud (the bench page carries the node) over the held
  *  still. Runs the real createHud + createAlerts, ticks one frame, and proves the alert/annunc
  *  lane by raising one persistent status and one warn floor through the same events the sim uses. */
-async function mountFlightHud() {
+async function mountFlightHud(opts = {}) {
   const hudRoot = document.getElementById('hud');
   const [{ createHud }, { createAlerts }] = await Promise.all([
     import('../src/ui/hud.js'),
     import('../src/ui/alerts.js'),
   ]);
+  const ctx = {
+    state, bus,
+    screenManager: manager, registry,
+    helpers: { worldToScreen: () => ({ x: 960, y: 540, onScreen: true }) },
+    writeStorePage() {}, publishStoreStill() {},
+  };
+  // createHud wipes #hud. Alerts have to mount after that wipe or the warn floor has no host.
+  const hud = createHud(ctx, null);
   let alertsRoot = document.getElementById('alerts');
   if (!alertsRoot) {
     alertsRoot = document.createElement('div');
     alertsRoot.id = 'alerts';
     hudRoot.appendChild(alertsRoot);
   }
-  const ctx = {
-    state, bus,
-    screenManager: manager, registry,
-    helpers: { worldToScreen: () => null },
-    writeStorePage() {}, publishStoreStill() {},
-  };
   const alerts = createAlerts(ctx);
-  createHud(ctx, alerts);
-  if (typeof hudRoot._sfFrame === 'function') hudRoot._sfFrame(1 / 60);
+  hudRoot.dataset.threat = hudRoot.dataset.threat || 'contact';
+  document.body.classList.remove('sf-swarm-flight');
   // One persistent affordance + one warning through the live event path, so the annunciator is
-  // lit in the frame rather than judged empty.
-  bus.emit('dock:range', { inRange: true });
+  // lit in the frame rather than judged empty. In-run swarm is never in a berth — skip the dock cue.
+  if (opts.dockCue !== false) bus.emit('dock:range', { inRange: true });
   bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 80, kind: 'warn', text: 'TAKING FIRE', ttl: 30 });
+  try {
+    if (typeof hud.forceRefresh === 'function') hud.forceRefresh();
+    if (typeof hud.frame === 'function') {
+      for (let i = 0; i < 8; i++) hud.frame(1 / 60);
+    }
+    if (alerts && typeof alerts.tick === 'function') alerts.tick();
+  } catch (error) {
+    note(`HUD frame: ${error && error.message ? error.message : String(error)}`);
+  }
+  window.__benchHud = hud;
     // A single frame renders the "now"; the instruments' reactive writes (lamina fill, bar
     // segments, gauge fraction) settle on the driven frames the live route runs. A bench still
     // proves composition, type, material and light; ui-look proves the reactions on the live route.
     note('— flight HUD mounted (createHud) + dock status + warn floor lit');
+}
+
+/** Flight HUD plus the Crucible run readout, in the swarm state the demo plays. */
+async function mountCrucibleHud() {
+  await mountFlightHud({ dockCue: false });
+  document.body.classList.add('sf-swarm-flight');
+  const run = state.run || (state.run = {});
+  run.kind = 'survival';
+  run.phase = 'active';
+  run.ruleset = 'swarm';
+  run.arenaId = 'helios_core';
+  run.wave = 4;
+  run.score = 1860;
+  run.credits = 240;
+  run.xp = 920;
+  run.level = 3;
+  run.threatBudget = 12;
+  run.spawnedThreat = 12;
+  run.resolvedThreat = 7;
+  const { survivalHud } = await import('../src/ui/survivalHud.js');
+  survivalHud.init({ state, bus });
+  survivalHud._waveProgress = { wave: 4, remainingTicks: 32 * 60, durationTicks: 60 * 60 };
+  survivalHud._chain = 18;
+  survivalHud._chainBest = 24;
+  survivalHud._objective = 'ELITE';
+  survivalHud.update(1 / 60, state);
+  const hudRoot = document.getElementById('hud');
+  if (hudRoot) hudRoot.dataset.threat = 'near';
+  try { window.__benchHud?.frame?.(1 / 60); } catch { /* composition still; live route owns reactions */ }
+  const crun = document.querySelector('.sf-crun');
+  note('— crucible HUD mounted (flight cluster + survival readout, swarm)'
+    + ` · crun ${crun ? (crun.hidden ? 'hidden' : 'live') : 'missing'}`
+    + ` · run ${run.kind}/${run.phase}`);
 }
 
 async function back() {
@@ -238,6 +343,10 @@ function showBroken(id, why) {
   opt.value = 'flight';
   opt.textContent = 'flight — HUD';
   picker.appendChild(opt);
+  const cru = document.createElement('option');
+  cru.value = 'crucibleHud';
+  cru.textContent = 'crucibleHud — in-run HUD';
+  picker.appendChild(cru);
 }
 for (const id of Object.keys(SCREENS).sort()) {
   const option = document.createElement('option');
@@ -257,7 +366,9 @@ picker.addEventListener('change', () => { stack.length = 0; void goto(picker.val
 // A still behind the panel: any capture the agent already has, or the committed title backdrop.
 // The flight HUD judges against the WORLD, so its default still is the last flight capture.
 const still = params.get('bg')
-  || ((params.get('screen') === 'flight') ? '../.devshots/hud-baseline/flight.png' : '../assets/ui/backdrops/backdrop-title.jpg');
+  || ((params.get('screen') === 'flight' || params.get('screen') === 'crucibleHud' || params.get('screen') === 'crucibleResults')
+    ? '../assets/ui/backdrops/backdrop-crucible-door.jpg'
+    : '../assets/ui/backdrops/backdrop-title.jpg');
 bgEl.src = still;
 stillInput.value = params.get('bg') || '';
 stillInput.addEventListener('change', () => {

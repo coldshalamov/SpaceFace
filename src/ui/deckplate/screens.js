@@ -1270,6 +1270,91 @@ ${CR} .sf-cru-key:empty { display:none; }
 }
 `;
 
+/* PQ-210.05: the results plate is two glass instruments in machined bezels over the held
+   arena, a hero numeral on a gauge plate, and the three ways out as keycaps. Words-on-black
+   is the cheap web read this leaf closes. */
+const CRRES = 'html body #screens > .k-screen.sf-crucible-results';
+const CRUCIBLE_RESULTS = `
+${CRRES} {
+  background:
+    radial-gradient(90% 70% at 12% 8%, rgb(150 26 14 / .16), transparent 55%),
+    url("/assets/ui/backdrops/backdrop-crucible-door.jpg") center / cover no-repeat,
+    linear-gradient(180deg, rgb(6 8 11 / .92), rgb(4 5 8 / .96));
+}
+${CRRES}[data-outcome="victory"] {
+  background:
+    radial-gradient(90% 70% at 12% 8%, rgb(242 185 80 / .10), transparent 55%),
+    url("/assets/ui/backdrops/backdrop-crucible-door.jpg") center / cover no-repeat,
+    linear-gradient(180deg, rgb(6 8 11 / .92), rgb(4 5 8 / .96));
+}
+${CRRES} .k-title .k-t-title {
+  display:inline-block; padding-bottom:12px;
+  font-family:var(--dp-face-display); font-variation-settings:"wght" 900, "wdth" 125; text-transform:uppercase;
+  letter-spacing:.04em; color:var(--dp-ink); text-shadow:0 -1px 0 rgb(0 0 0 / .8), 0 2px 18px rgb(0 0 0 / .6);
+  background:repeating-linear-gradient(135deg, var(--dp-danger) 0 12px, #1a0806 12px 24px) left bottom / 100% 6px no-repeat;
+}
+${CRRES}[data-outcome="victory"] .k-title .k-t-title {
+  background:repeating-linear-gradient(135deg, var(--dp-lamp) 0 12px, #1a1408 12px 24px) left bottom / 100% 6px no-repeat;
+}
+${CRRES} .sf-crd-headline { color:var(--dp-ink); font-family:var(--dp-face-read); max-width:42em; }
+${CRRES} .sf-crres__stage.k-panel {
+  align-self:stretch; min-height:0; column-gap:clamp(16px, 2vw, 28px);
+}
+${CRRES} .sf-crres__story, ${CRRES} .sf-crres__ledger {
+  box-sizing:border-box; min-width:0; padding:16px 18px;
+  border:12px solid transparent; border-image:url("${HW}bezel.svg") 30 / 24px / 0 stretch;
+  background:var(--dp-glass-bb); box-shadow:var(--dp-stand-off), var(--dp-glass-depth);
+}
+${CRRES} .sf-crres__band-title {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 66; font-size:12px;
+  letter-spacing:.22em; text-transform:uppercase; color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow);
+}
+${CRRES} .sf-crres__story-line, ${CRRES} .sf-crres__lead, ${CRRES} .sf-crres__empty,
+${CRRES} .sf-crres__build-name, ${CRRES} .sf-crres__causal-lead { color:var(--dp-ink); }
+${CRRES} .k-row { min-height:36px; }
+${CRRES} .k-row__name, ${CRRES} .k-row__sub { color:var(--dp-ink-dim); }
+${CRRES} .k-row__num {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 84;
+  letter-spacing:.04em; color:var(--dp-ink); font-variant-numeric:tabular-nums;
+}
+${CRRES} .sf-crres__hero.k-corner {
+  padding:14px 18px 16px; border:12px solid transparent;
+  border-image:url("${HW}bezel.svg") 30 / 22px / 0 stretch;
+  background:var(--dp-metal-layers), var(--dp-metal-2); box-shadow:var(--dp-stand-off);
+}
+${CRRES} .sf-crres__hero .k-hero__n {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 84;
+  font-size:clamp(36px, min(4vw, 7vh), 72px); line-height:.92; letter-spacing:.02em;
+  color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
+}
+${CRRES} .sf-crres__hero .k-hero__w {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 70; font-size:12px;
+  letter-spacing:.18em; text-transform:uppercase; color:var(--dp-ink-mute);
+}
+${CRRES} .sf-crres__causal-tag {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; letter-spacing:.14em;
+  color:var(--dp-ink-dim);
+}
+${CRRES} .sf-crres__hit-track, ${CRRES} .k-bar {
+  height:8px; border-radius:1px; overflow:hidden;
+  background:var(--dp-channel-img); box-shadow:var(--dp-channel-bevel);
+}
+${CRRES} .sf-crres__hit-fill, ${CRRES} .k-bar__fill {
+  background:linear-gradient(180deg, var(--dp-danger-hot), var(--dp-danger) 55%, #a8241a);
+  box-shadow:0 0 6px var(--dp-danger-bloom);
+}
+${dpKey(`${CRRES} .k-foot .k-word`)}
+@media (max-width:1100px) {
+  ${CRRES} .sf-crres__stage.k-panel { grid-template-columns:minmax(0, 1fr); }
+}
+@media (forced-colors:active) {
+  ${CRRES} :is(.sf-crres__story, .sf-crres__ledger, .sf-crres__hero) {
+    border-image:none; border:1px solid CanvasText; background:Canvas; box-shadow:none;
+  }
+  ${CRRES} .k-title .k-t-title { background:none; border-bottom:4px solid CanvasText; }
+}
+`;
+
 /* ── THE LAST OLD PANELS — the claim registry (base) and any screen still on the old menu plate,
    and the operations board (automation). They spoke the retired blue menu vocabulary: their
    tokens now resolve to the deckplate (amber for what you act on, bone for information and good
@@ -1404,4 +1489,4 @@ ${NS} .sf-ng-body .fh-key.fh-key--small:not(.fh-key--legend) { padding:0 14px 0 
 }
 `;
 
-export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + LEGACY + FINISH;
+export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + TITLE + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + CRUCIBLE_RESULTS + LEGACY + FINISH;

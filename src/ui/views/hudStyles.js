@@ -2538,40 +2538,65 @@ export function injectHudCss() {
   html #sf-ml2 .ml2-preview { text-transform:none; letter-spacing:.06em; background:rgb(8 11 16 / .84); border-color:rgb(232 226 212 / .16); }
   html #sf-ml2 .ml2-preview.ml2-preview-ready { color:var(--dp-lamp-hot); border-color:rgb(242 185 80 / .6); }
 
-  /* ══ HUD PASS 6 — critic round 7 (2026-09-19): the flight layer is translucent smoke lit from
-     one side (no backdrop blur in flight: the smoke is darker instead), the cluster frame is glass
-     not a brushed plate, threat shows once, amber marks only what the pilot acts on, and the whole
-     layer stands off the screen edge. ══ */
-  #hud { --dp-glass-solid:var(--dp-glass-flight); --sf-hud-edge:clamp(14px, 2.3vh, 30px); }
+  /* ══ PQ-210.05 — hardware, not a web page (2026-09-20)
+     PASS 6 remapped every glass face onto translucent smoke and hid the threat lamp, so the
+     cluster read as a CSS overlay. Structure is machined metal (bezel.svg + brushed gunmetal);
+     displays are smoked-glass windows seated in it; amber marks what the pilot acts on; red is
+     threat only. No backdrop-filter in flight. ══ */
+  #hud { --sf-hud-edge:clamp(16px, 2.4vh, 32px); }
+  /* Dark well inside a fastened ring: metal-on-metal (PASS 5/6) made the screws disappear. */
   #hud .sf-cluster-chassis {
-    background:var(--dp-glass-spec) padding-box, linear-gradient(180deg, rgb(8 10 14 / .46), rgb(4 5 8 / .6)) padding-box;
-    box-shadow:0 14px 30px rgb(0 0 0 / .3);
+    --sf-cluster-ring:22px;
+    overflow:visible;
+    border:var(--sf-cluster-ring) solid transparent;
+    border-image:url("/assets/ui/deckplate/hw/bezel.svg") 30 / 30px / 0 stretch;
+    background:#07090c;
+    box-shadow:var(--dp-stand-off), inset 0 0 0 1px rgb(255 236 204 / .06);
+    padding:8px;
   }
-  #hud .sf-threat-lamp { display:none; }
-  /* free-standing readouts are glass over the world, not glass over a metal plate */
-  #hud > .sf-leftcontext, #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel { background:var(--dp-glass-flight); }
-  #hud #sf-wpnstat { background:var(--dp-glass-flight); box-shadow:var(--dp-glass-depth); }
+  #hud .sf-threat-lamp { display:flex; top:-14px; right:28px; gap:8px; z-index:2; }
+  #hud .sf-threat-lamp__lens { width:12px; height:12px; }
+  #hud .sf-cluster-chassis > .sf-bars,
+  #hud .sf-cluster-chassis .sf-kit-gauge.sf-speed,
+  #hud .sf-cluster-chassis .sf-fc-strip,
+  #hud .sf-cluster-chassis .sf-stat--chip.sf-chip-show {
+    background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
+  }
+  #hud > .sf-leftcontext, #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel {
+    background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
+  }
+  #hud #sf-wpnstat { background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth); }
   html #hud:has(.sf-cluster-chassis) > .sf-leftstack { left:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); bottom:var(--sf-hud-edge); }
   #hud > .sf-leftcontext {
     left:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); top:var(--sf-hud-edge);
     max-height:calc(100vh - var(--sf-cluster-h, 0px) - var(--sf-hud-edge) * 3);
   }
+  #hud > .sf-leftcontext:has(> .sf-crun:not([hidden])) { display:flex !important; }
   #hud .sf-rightdock { right:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); bottom:var(--sf-hud-edge); padding-bottom:0; }
   #hud .sf-prail { bottom:var(--sf-hud-edge); }
   #hud .sf-band-hud { top:var(--sf-hud-edge); right:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); }
   /* a stacked (narrow) cluster is one column: every instrument takes the column's width */
   @media (max-width:1759px) {
-    #hud .sf-cluster-chassis { width:calc(284px * clamp(.86, var(--k-s, 1), 1.15) + 26px); }
+    #hud .sf-cluster-chassis { width:calc(284px * clamp(.86, var(--k-s, 1), 1.15) + 42px); }
     #hud .sf-cluster-chassis > .sf-bars { max-width:none; width:auto; }
     #hud .sf-cluster-chassis > .sf-command-deck { width:auto; }
     #hud .sf-cluster-chassis .sf-schematic.sf-integrity { max-width:none; }
   }
   /* the contact count sits above the scope, clear of its north notch */
   #hud .sf-overview.sf-overview--count { margin-bottom:2px; }
-  /* the power rail: glass wells in a smoke frame. A ready power's mark is amber (it is the thing
-     the key fires), an armed one burns, and anything that cannot fire drops to bone and dims. */
-  #hud .sf-prail__slots { background:var(--dp-glass-flight); box-shadow:var(--dp-glass-depth), 0 12px 26px rgb(0 0 0 / .3); }
+  /* the power rail is a machined plate; the wells cut into it are the glass. A ready power's
+     mark is bone (information); amber is what is armed or chosen. */
+  #hud .sf-prail__slots {
+    border:8px solid transparent;
+    border-image:url("/assets/ui/deckplate/hw/bezel-thin.svg") 12 / 12px / 0 stretch;
+    background:var(--dp-metal-layers), var(--dp-metal-1);
+    box-shadow:var(--dp-plate-bevel-raised);
+  }
   #hud .sf-pslot { background:linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .18) 60%, rgb(255 255 255 / .03)); }
+  #hud .sf-kit-radar__bezel {
+    border:14px solid var(--dp-metal-2);
+    box-shadow:var(--dp-stand-off), inset 0 2px 0 rgb(255 236 204 / .16), inset 0 -3px 0 rgb(0 0 0 / .55);
+  }
   /* a ready power is information (bone); amber is kept for what is armed or chosen, so the rail no
      longer lights a dozen amber marks at rest (critic round 3) */
   #hud .sf-pslot[data-state="ready"] .sf-pslot__art { color:var(--dp-ink); }
@@ -2620,6 +2645,7 @@ export function injectHudCss() {
   html.sf-high-contrast #hud .sf-commtape, html.sf-high-contrast #hud .sf-prail__slots,
   html.sf-high-contrast #hud .sf-pslot, html.sf-high-contrast #hud .sf-kit-gauge,
   html.sf-high-contrast #hud #sf-wpnstat, html.sf-high-contrast #hud .sf-band-hud__button,
+  html.sf-high-contrast #hud .sf-cluster-chassis, html.sf-high-contrast #hud > .sf-leftcontext,
   html.sf-high-contrast .sf-alert, html.sf-high-contrast .sf-toast {
     background:rgb(0 0 0 / .95); background-image:none;
     border-color:rgb(255 255 255 / .85); box-shadow:none;
@@ -2629,7 +2655,8 @@ export function injectHudCss() {
   @media (forced-colors: active) {
     #hud .sf-bars, #hud .sf-overview, #hud .sf-target, #hud .sf-mission-tracker,
     #hud .sf-nav-readout, #hud #sf-sector-law, #hud .sf-cargo-panel, #hud .sf-commtape,
-    #hud .sf-objarrow__label, #hud #sf-onboarding .sf-ob-card, .sf-alert, .sf-toast {
+    #hud .sf-objarrow__label, #hud #sf-onboarding .sf-ob-card, #hud .sf-cluster-chassis,
+    #hud > .sf-leftcontext, .sf-alert, .sf-toast {
       background:Canvas; background-image:none; border:1px solid CanvasText;
       box-shadow:none; border-radius:0; forced-color-adjust:none;
     }

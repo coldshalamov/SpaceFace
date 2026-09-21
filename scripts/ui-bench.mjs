@@ -46,7 +46,7 @@ if (!args.shots.length) {
   mkdirSync(outDir, { recursive: true });
   const page = await browser.newPage({ viewport: args.viewport });
   for (const id of args.shots) {
-    const url = `${base}?screen=${encodeURIComponent(id)}${args.bg ? `&bg=${encodeURIComponent(args.bg)}` : ''}`;
+    const url = `${base}?screen=${encodeURIComponent(id)}&chrome=0${args.bg ? `&bg=${encodeURIComponent(args.bg)}` : ''}`;
     await page.goto(url, { waitUntil: 'load', timeout: 30_000 });
     await page.waitForTimeout(args.settle);
     const file = path.join(outDir, `${id}.png`);
