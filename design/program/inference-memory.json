@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-21",
+  "updated": "2026-09-22",
   "runs": [
     {
       "date": "2026-08-12",
@@ -1375,6 +1375,19 @@
       "references": [],
       "integration": "live",
       "commit": "036cf6445",
+      "verification": "focused_green"
+    },
+    {
+      "id": "wreck-cargo-residue-pools",
+      "date": "2026-09-22",
+      "wf": "WF-06",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Wreck salvage now tells the truth about what died: a manifested hull's durable wreck holds its freight residue (floor 30%/line, cap 4) + hull scrap instead of the same generic scrap/electronics for every kill",
+      "fingerprint": "verb=derive,subject=wreck salvage pool,sector=all,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "0d2606216",
       "verification": "focused_green"
     }
   ],
