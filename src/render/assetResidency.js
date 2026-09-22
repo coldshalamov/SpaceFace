@@ -755,9 +755,15 @@ export function createAssetResidencyRegistry(options = {}) {
         if (!tag) tag = typeof owner;
         return Object.freeze({
           owner: String(tag),
+          // Render-package owners carry their content hash; surfaces which package a pending
+          // decode request belongs to (the row tag alone collapses every package owner to one).
+          contentHash: owner && typeof owner === 'object' && typeof owner.contentHash === 'string'
+            ? owner.contentHash
+            : null,
           released: state.released === true,
           assets: state.assets.size,
           requests: state.requests.size,
+          requestKeys: Object.freeze([...state.requests].map((request) => String(request.key || ''))),
           roles: Object.freeze([...new Set([...state.assets]
             .flatMap((entry) => [...entry.owners.values()])
             .map((metadata) => metadata && metadata.role)

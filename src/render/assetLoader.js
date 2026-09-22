@@ -948,6 +948,13 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
     runtime.renderPackages.load(pilot.metadataUrl, {
       expectedContentHash: pilot.expectedContentHash,
       ...(pilot.flightStaticV3 === true ? { expectedRuntimeHash: pilot.expectedRuntimeHash } : {}),
+      // Let the package entry carry this consumer's owner from the commit itself; retaining only
+      // in the outer continuation leaves a strictly cache-owned window that byte-pressure
+      // eviction can reclaim mid-mount (decode→evict→retry livelock). Scopeless callers claim
+      // the shared runtime-cache session owner, matching the late-retain fallback below.
+      residencyOwner: options.residencyOwner || runtime.defaultResidencyOwner,
+      residencyRole: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
+      residencySectorId: options.sectorId || null,
     }).then((renderPackage) => assembleRenderPackageRecord(renderPackage, url, pilot.assetId, {
       flightStaticV3: pilot.flightStaticV3 === true,
     }))
