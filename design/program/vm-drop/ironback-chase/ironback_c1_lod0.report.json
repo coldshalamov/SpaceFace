@@ -1,0 +1,76 @@
+{
+  "ok": true,
+  "asset": "ship_ironback",
+  "revision": "chase_form_v1",
+  "lod": 0,
+  "source": "/workspace/spaceface/assets/ships/parts/wholeships/ironback_production_v1.glb",
+  "output": "/workspace/spaceface/design/program/vm-drop/ironback-chase/ironback_c1_lod0.glb",
+  "hopper": {
+    "kind": "hole",
+    "size": [
+      2.4,
+      1.7,
+      0.95
+    ],
+    "location": [
+      0.1,
+      0.0,
+      0.55
+    ]
+  },
+  "cabin": {
+    "kind": "tub+canopy",
+    "location": [
+      4.1,
+      0.0,
+      0.55
+    ]
+  },
+  "drive": {
+    "houses": [
+      {
+        "side": "Port",
+        "y": -1.7
+      },
+      {
+        "side": "Starboard",
+        "y": 1.7
+      }
+    ]
+  },
+  "size": [
+    16.61,
+    6.087,
+    2.926
+  ],
+  "boundsMin": [
+    -8.21,
+    -3.043,
+    -1.176
+  ],
+  "boundsMax": [
+    8.4,
+    3.043,
+    1.75
+  ],
+  "triangles": 26632,
+  "hullTriangles": 18078,
+  "objects": [
+    "COLLISION_HULL",
+    "LOD0_AftWalk",
+    "LOD0_ArmHead_Aft_P",
+    "LOD0_Bell_Port",
+    "LOD0_Bell_Starboard",
+    "LOD0_BellThroat_Port",
+    "LOD0_Canopy",
+    "LOD0_Cutter_Aft_P",
+    "LOD0_Hull",
+    "LOD0_OreCrateA"
+  ],
+  "bytes": 1058220,
+  "gates": {
+    "TUBE_PADDLE": "NO",
+    "CAGE_READ": "NO",
+    "wells": "HOLES"
+  }
+}
