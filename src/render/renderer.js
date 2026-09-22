@@ -12695,14 +12695,38 @@ export const render = {
       this._shadowOrthoExtent,
       this._keyLight.shadow?.mapSize?.x,
     );
-    px = Math.round(px / texel) * texel;
-    pz = Math.round(pz / texel) * texel;
-    const followKey = `${px}|${pz}|${ox}|${oy}|${oz}`;
+    // Snap the follow point on the shadow camera's own lattice, not world XZ: the key light is
+    // angled, so an axis-aligned world snap leaves the camera's u/v coordinates drifting under a
+    // smooth pan and depth texels crawl across hulls. All THREE camera-space coords are snapped
+    // (u, v, and the look-axis w) so the follow point is a fixed lattice cell — sub-cell player
+    // motion moves nothing at all, and a crossing steps exactly one texel in camera space.
+    const oLen = Math.hypot(ox, oy, oz) || 1;
+    const zx = ox / oLen;
+    const zy = oy / oLen;
+    const zz = oz / oLen;
+    const xLen = Math.hypot(zz, zx) || 1e-6;
+    const xx = zz / xLen;
+    const xz = -zx / xLen;
+    const yx = zy * xz;
+    const yy = zz * xx - zx * xz;
+    const yz = -zy * xx;
+    const uq = Math.round((px * xx + pz * xz) / texel);
+    const vq = Math.round((px * yx + pz * yz) / texel);
+    const wq = Math.round((px * zx + pz * zz) / texel);
+    // The key is the lattice CELL, not the reconstructed point: rebuilding F' reintroduces ~1e-14
+    // float noise between identical cells, which would read as a move and re-fire the depth pass.
+    const followKey = `${uq}|${vq}|${wq}|${ox}|${oy}|${oz}`;
+    const du = uq * texel - (px * xx + pz * xz);
+    const dv = vq * texel - (px * yx + pz * yz);
+    const dw = wq * texel - (px * zx + pz * zz);
+    const fx = px + xx * du + yx * dv + zx * dw;
+    const fy = yy * dv + zy * dw;
+    const fz = pz + xz * du + yz * dv + zz * dw;
     if (this._shadowFollowKey === followKey) return false;
     if (commit !== true) return true;
     this._shadowFollowKey = followKey;
-    this._keyLight.position.set(px + ox, oy, pz + oz);
-    this._keyLight.target.position.set(px, 0, pz);
+    this._keyLight.position.set(fx + ox, fy + oy, fz + oz);
+    this._keyLight.target.position.set(fx, fy, fz);
     return true;
   },
 
@@ -12817,6 +12841,8 @@ export const render = {
     const key = this._keyLight;
     const renderer = this.renderer;
     if (!key || !renderer || !renderer.shadowMap) return false;
+    // PCFShadowMap is the soft sampler in r184 — the soft-PCF enum is deprecated upstream and
+    // falls back here anyway (it warns on every assignment). Do not reintroduce it.
     renderer.shadowMap.type = THREE.PCFShadowMap;
     if (!key.userData.spacefaceShadowConfigured) {
       key.castShadow = false;
@@ -12826,8 +12852,10 @@ export const render = {
       camera.left = -SHADOW_ORTHO_EXTENT; camera.right = SHADOW_ORTHO_EXTENT;
       camera.top = SHADOW_ORTHO_EXTENT; camera.bottom = -SHADOW_ORTHO_EXTENT;
       camera.updateProjectionMatrix();
-      key.shadow.bias = -0.0008;
-      key.shadow.normalBias = 0.04;
+      // normalBias tracks the shadow texel (~0.59 WU at the capped extent): the old 0.04 was an
+      // order of magnitude under one texel, so depth acne crawled across hulls.
+      key.shadow.bias = -0.0004;
+      key.shadow.normalBias = 0.5;
       if (key.target && !key.target.parent && this.scene) this.scene.add(key.target);
       key.userData.spacefaceShadowConfigured = true;
       this._shadowOrthoExtent = SHADOW_ORTHO_EXTENT;

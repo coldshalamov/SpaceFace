@@ -61,6 +61,7 @@ test('live key-light shadow camera uses the neighborhood ortho, not the old 1400
   assert.match(source, /SHADOW_MAP_SIZE/);
   assert.doesNotMatch(source, /camera\.left = -700/);
   assert.doesNotMatch(source, /mapSize\.set\(1024,\s*1024\)/);
+  assert.doesNotMatch(source, /PCFSoftShadowMap/, 'PCFSoftShadowMap is deprecated in r184 — plain PCF is the soft sampler');
   const oldPxPerWu = 1024 / 1400;
   const newPxPerWu = SHADOW_MAP_SIZE / (SHADOW_ORTHO_EXTENT * 2);
   assert.ok(newPxPerWu >= oldPxPerWu, 'nearby shadow texels stay at least as dense as the old 1024/1400 map');

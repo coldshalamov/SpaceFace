@@ -9,9 +9,11 @@ const POLICY_STATE = '__spacefaceShadowCasterPolicyV1';
 export const SHADOW_CAST_RADIUS = 280;
 export const SHADOW_CAST_RADIUS_SQ = SHADOW_CAST_RADIUS * SHADOW_CAST_RADIUS;
 export const SHADOW_ORTHO_EXTENT = 300;
-// Old map was 1024 over ±700 (0.73 px/WU). 512 over ±300 is 0.85 px/WU — same or better
-// nearby density, a quarter of the depth-pass fill on the iGPU.
-export const SHADOW_MAP_SIZE = 512;
+// Old map was 1024 over ±700 (0.73 px/WU); 512 over ±300 was 0.85 px/WU. At ~1 WU/texel that
+// still read as crawling miscolored clumps on hulls (owner report 2026-09-21), so the opt-in
+// pass now runs 1024 over ±300 (1.71 px/WU) — the extra fill only spends on a deliberate
+// Settings/Quality opt-in, since the pass is off by default.
+export const SHADOW_MAP_SIZE = 1024;
 export const SHADOW_TEXEL_WORLD_SIZE = (SHADOW_ORTHO_EXTENT * 2) / SHADOW_MAP_SIZE;
 
 export function shadowTexelWorldSize(

@@ -25,7 +25,8 @@ export const QUALITY_BURST = Object.freeze({
 export const DEFAULT_VIDEO = Object.freeze({
   renderScale: 1.0,
   pixelRatioCap: 2,
-  shadows: true,
+  // Sun shadow-maps ship OFF (2026-09-21 owner ruling); the opt-in pass rides MAX_VIDEO.
+  shadows: false,
   particleQuality: 'medium',
   bloom: true,
   fov: 50,

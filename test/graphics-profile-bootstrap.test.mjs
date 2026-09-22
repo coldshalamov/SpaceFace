@@ -5,6 +5,7 @@ import { createGameState } from '../src/core/gameState.js';
 import {
   AUDIO_DEFAULT_MUTE_VERSION,
   PROFILE_SETTINGS_KEY,
+  SHADOWS_DEFAULT_VERSION,
   bootstrapProfileSettingsBeforeRegistry,
   mergeProfileSettings,
   readProfileSettings,
@@ -56,6 +57,48 @@ test('max profile reaches full runtime values with no quality cap, then current 
   });
   assert.equal(current.video.renderScale, 0.85);
   assert.equal(current.video.particleQuality, 'medium');
+});
+
+// 2026-09-21 owner report: the sun shadow-map read as crawling miscolored clumps, not depth.
+// Profiles written before this policy cannot tell a deliberate shadows:true from the old default,
+// so every unstamped profile receives one migration to off. A stamped profile keeps the player's
+// own choice — including a deliberate re-enable.
+test('pre-policy profiles are migrated to shadows off once while stamped choices survive', () => {
+  const legacyStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: { video: { shadows: true, particleQuality: 'medium' } },
+  }));
+  const migrated = createGameState(7);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(migrated, legacyStorage), true);
+  assert.equal(migrated.settings.video.shadows, false,
+    'a pre-policy shadows:true cannot tell owner choice from the retired default, so it migrates');
+  assert.equal(migrated.settings.video.shadowsDefaultVersion, SHADOWS_DEFAULT_VERSION);
+  assert.equal(legacyStorage.writes(), 0, 'boot migration must not rewrite the stored profile');
+
+  const optedInStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: {
+      video: { shadows: true, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION },
+    },
+  }));
+  const optedIn = createGameState(8);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(optedIn, optedInStorage), true);
+  assert.equal(optedIn.settings.video.shadows, true,
+    'an explicit shadows-on made under the current policy must remain a player choice');
+
+  const futureStorage = storageWith(JSON.stringify({
+    version: 1,
+    settings: { video: { shadows: true, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION + 1 } },
+  }));
+  const future = createGameState(9);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(future, futureStorage), true);
+  assert.equal(future.settings.video.shadows, true,
+    'a stamp from a newer policy version is left alone — its semantics belong to that version');
+
+  const fresh = createGameState(10);
+  assert.equal(fresh.settings.video.shadows, false, 'a fresh profile ships with shadows off');
+  assert.equal(fresh.settings.video.shadowsDefaultVersion, SHADOWS_DEFAULT_VERSION,
+    'a fresh profile carries the policy stamp');
 });
 
 test('bootstrap rejects malformed profiles and preserves locked runtime backends', () => {

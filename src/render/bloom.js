@@ -64,27 +64,57 @@ export function resolvePostToeFloorSrgb(toe = DEFAULT_CINEMATIC_TOE) {
 // be claimed when AO and bloom are neutralized. Grade and vignette are multiplicative, so black stays
 // black until the one explicit, calibrated toe operation.
 export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
-  // Wet-ink finish, fused into the existing composite. Four close taps let a dark seam
-  // pool into the painted side of an edge; a bright star/energy core remains unfiltered.
-  // This is a small asymmetric pigment deposit, not a blur of the whole frame.
+  // Edge resolve + wet-ink finish, fused into the existing composite. The scene target is
+  // single-sampled by design, so this is where post-AA lives: a Lottes-style tap resolve that
+  // blends only along detected contrast edges, leaving flat fields, authored texture interior,
+  // and pinprick stars single-sampled. The same diagonal taps then feed the pigment deposit —
+  // a dark seam pools into the painted side of an edge. The deposit reads the resolved luma and
+  // the fixed neighbourhood range, where the old fwidth(y) term re-derived gradient energy per
+  // pixel per frame and pooled/unpooled under any subpixel drift (the "congealing clumps" the
+  // owner reported 2026-09-21). Bright cores stay unfiltered.
   vec3 sampleSpaceIllustratedScene(sampler2D sceneTexture, vec2 uv) {
+    vec2 texel = 1.0 / vec2(textureSize(sceneTexture, 0));
     vec3 c = texture2D(sceneTexture, uv).rgb;
-    float y = dot(c, vec3(0.2126, 0.7152, 0.0722));
-    float ink = smoothstep(0.28, 0.85, fwidth(y) / (0.08 + y));
+    vec3 rgbNW = texture2D(sceneTexture, uv + texel * vec2(-1.0, 1.0)).rgb;
+    vec3 rgbNE = texture2D(sceneTexture, uv + texel).rgb;
+    vec3 rgbSW = texture2D(sceneTexture, uv - texel).rgb;
+    vec3 rgbSE = texture2D(sceneTexture, uv + texel * vec2(1.0, -1.0)).rgb;
+    float lumaNW = dot(rgbNW, vec3(0.2126, 0.7152, 0.0722));
+    float lumaNE = dot(rgbNE, vec3(0.2126, 0.7152, 0.0722));
+    float lumaSW = dot(rgbSW, vec3(0.2126, 0.7152, 0.0722));
+    float lumaSE = dot(rgbSE, vec3(0.2126, 0.7152, 0.0722));
+    float lumaM = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));
+    float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));
+    float contrast = lumaMax - lumaMin;
+    vec3 resolved = c;
+    // Only a real local contrast earns the extra taps; the scale-relative gate keeps dim hull
+    // edges eligible while HDR brights skip (bloom already softens them).
+    if (contrast > max(0.012, lumaMax * 0.10)) {
+      vec2 dir = vec2(
+        -((lumaNW + lumaNE) - (lumaSW + lumaSE)),
+        ((lumaNW + lumaSW) - (lumaNE + lumaSE)));
+      float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * 0.03125, 0.0078125);
+      float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
+      dir = clamp(dir * rcpDirMin, -8.0, 8.0) * texel;
+      vec3 rgbA = 0.5 * (
+        texture2D(sceneTexture, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
+        texture2D(sceneTexture, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
+      vec3 rgbB = rgbA * 0.5 + 0.25 * (
+        texture2D(sceneTexture, uv + dir * -0.5).rgb +
+        texture2D(sceneTexture, uv + dir * 0.5).rgb);
+      float lumaB = dot(rgbB, vec3(0.2126, 0.7152, 0.0722));
+      resolved = (lumaB < lumaMin || lumaB > lumaMax) ? rgbA : rgbB;
+    }
+    float y = dot(resolved, vec3(0.2126, 0.7152, 0.0722));
     float solid = smoothstep(0.008, 0.045, y) * (1.0 - smoothstep(0.8, 1.8, y));
-    if (solid < 0.002) return c;
-    vec2 texel = 1.35 / vec2(textureSize(sceneTexture, 0));
-    vec3 nw = texture2D(sceneTexture, uv + texel * vec2(-1.0, 1.0)).rgb;
-    vec3 se = texture2D(sceneTexture, uv + texel * vec2(1.0, -1.0)).rgb;
-    vec3 ne = texture2D(sceneTexture, uv + texel).rgb;
-    vec3 sw = texture2D(sceneTexture, uv - texel).rgb;
-    vec4 neighbours = vec4(dot(nw, vec3(0.2126, 0.7152, 0.0722)),
-      dot(se, vec3(0.2126, 0.7152, 0.0722)), dot(ne, vec3(0.2126, 0.7152, 0.0722)),
-      dot(sw, vec3(0.2126, 0.7152, 0.0722)));
+    if (solid < 0.002) return resolved;
+    float ink = smoothstep(0.28, 0.85, contrast / (0.08 + y));
+    vec4 neighbours = vec4(lumaNW, lumaSE, lumaNE, lumaSW);
     vec4 shadows = smoothstep(vec4(0.16), vec4(0.58), (vec4(y) - neighbours) / (0.035 + y));
     float pool = dot(shadows, vec4(0.25));
     float deposit = solid * clamp(ink * 0.18 + pool * 0.48, 0.0, 0.52);
-    return c * mix(vec3(1.0), vec3(0.40, 0.34, 0.62), deposit);
+    return resolved * mix(vec3(1.0), vec3(0.40, 0.34, 0.62), deposit);
   }
 
   vec3 spaceAcesFilmic(vec3 x) {
