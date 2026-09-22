@@ -39,6 +39,7 @@ import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
 import { BOMB_DEFS, BOMB_IDS, BOMB_RACK } from '../../../data/bombs.js';
 import { TURRET_RING_OUTPUT, WEAPONS, shoveMetricValue } from '../../../data/weapons.js';
+import { admitModuleMetric, liveDamageRate } from '../moduleCardMetrics.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
@@ -2180,15 +2181,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!def) return [];
     const rows = [];
     const add = (label, value) => {
+      if (!admitModuleMetric(label)) return;
       if (value == null || value === '' || !Number.isFinite(Number(value))) return;
       rows.push({ label, value: Number(value) });
     };
     if (def.slotType === 'weapon' || def.slotType === 'mining') {
       // PQ-176.02: the number on the row is what the gun does ON THIS MOUNT. An aimed gun on a
       // turret ring runs at the ring's output, and the screen must predict that, not the catalog.
+      // G11: the rate is damage times rate of fire. A catalog `dps` the sim never reads is not shown.
       const output = def.slotType === 'weapon' && slot ? mountOutputFactor(def, slot) : 1;
-      add(def.slotType === 'mining' ? 'ORE DPS' : 'DPS',
-        Number.isFinite(Number(def.dps)) ? Number(def.dps) * output : def.dps);
+      const rate = liveDamageRate(def);
+      add(def.slotType === 'mining' ? 'ORE DPS' : 'DPS', rate == null ? null : rate * output);
       // The mass channel is a buying decision on the weapons that have one (PQ-009): a shove you
       // can feel shows its number next to the damage it rides in on — and gives up its RANGE
       // slot for it (shove guns sit in one 240–280 wu band; MASS is the tighter constraint).
@@ -2244,7 +2247,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       });
     };
     add(candidate.slotType === 'mining' ? 'ore dps' : 'dps',
-      Number(candidate.dps) * outputOf(candidate), fitted && Number(fitted.dps) * outputOf(fitted));
+      (liveDamageRate(candidate) || 0) * outputOf(candidate),
+      fitted && (liveDamageRate(fitted) || 0) * outputOf(fitted));
     add('range', candidate.range, fitted && fitted.range);
     const candidateHeat = candidate.heatPerSec != null ? candidate.heatPerSec : candidate.heatPerShot;
     const fittedHeat = fitted && (fitted.heatPerSec != null ? fitted.heatPerSec : fitted.heatPerShot);
