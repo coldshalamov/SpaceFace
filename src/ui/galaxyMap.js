@@ -5735,7 +5735,11 @@ export const galaxyMapScreen = {
     const player = playerEntity(state);
     const sectorId = currentSectorId(state);
     const sector = sectorRecordById(state, sectorId);
-    const sec = Number.isFinite(Number(sector && sector.security)) ? Number(sector.security) : 0.5;
+    // `sector &&` short-circuits to null, Number(null) is 0, and 0 is finite — so the guard passed
+    // with no sector and the next read threw. Every station, range and chart shot on the bench was
+    // printing "Cannot read properties of null (reading 'security')" from exactly here, and the
+    // header weather stopped updating for the rest of that frame.
+    const sec = sector && Number.isFinite(Number(sector.security)) ? Number(sector.security) : 0.5;
     const local = player && player.pos ? globalToSectorLocalForSector(player.pos, sectorId) : null;
     const zone = local ? zoneAt(sectorId, local.x, local.z) : null;
     const ecology = regionalEcologyReadout(state, sectorId);

@@ -27,10 +27,10 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
 
 | # | Screen | Findings at survey | Status | Commit |
 |---|---|---|---|---|
-| 1 | `title` / `mainMenu` | EMPTY BOX 64×787 left rail | SURVEYED | |
+| 1 | `title` / `mainMenu` | EMPTY BOX 64×787 left rail | **DONE** | `ff5e1a0` |
 | 2 | `motionAsk` | EMPTY BOX 64×787 (inherits title) | SURVEYED | |
 | 3 | `new-game` | ON TOP OF ×1 | SURVEYED | |
-| 4 | `pause` | clean — cramped column, dead DEV bar, quarter-frame | SURVEYED | |
+| 4 | `pause` | clean — cramped column, dead DEV bar, quarter-frame | **DONE** | this pass |
 | 5 | `settings` | clean | SURVEYED | |
 | 6 | `save-load` | clean | SURVEYED | |
 | 7 | `station` / `station-dock` | ON TOP OF ×3, CUT OFF ×6 | SURVEYED | |
@@ -74,8 +74,10 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
 
 ## Standing repairs, not tied to one screen
 
-- [ ] `pageerror: Cannot read properties of null (reading 'security')` — thrown on `station*`,
-      `range` and `chart`. A throwing bench hides whatever runs after it.
+- [x] `pageerror: Cannot read properties of null (reading 'security')` — **fixed**. `galaxyMap.js`
+      `_weatherSnapshot` guarded with `Number.isFinite(Number(sector && sector.security))`, and
+      `Number(null)` is `0`, which is finite — so the guard passed with no sector and the next read
+      threw. Gone from `station*`, `range` and `chart`.
 - [ ] `styles/hud.css` loads twice: `<link>` at `index.html:16` and `@import` at `styles/ui.css:5`.
       Cascade order is the whole strategy.
 - [ ] `styles/AGENTS.md` forbids exactly this work: *"Do not impose universal palette, opacity,
@@ -85,3 +87,24 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
       them. Aliases during flight, deletion at the end.
 - [ ] Extend `scripts/check-ui-screen-imports.mjs` past its 18-screen list so a screen cannot grow
       its own stylesheet again.
+
+## Depth tiers
+
+Forty-two screens do not get equal effort, or the pass ends on `sandbox` with the station untouched.
+
+**Tier A — to the bar, walked, judged.** title, pause, settings, station ×7, flight, chart, ship.
+Thirteen screens: everything a player sees in the first hour, repeatedly.
+
+**Tier B — bench-clean, every value from `--dp-*`, one PNG opened.** The other twenty-nine.
+
+A Tier B screen that turns out to be on a player's main path is promoted, not skipped.
+
+## Loop notes, earned the hard way
+
+- **Run `node --check` on any file holding a CSS template literal.** A markdown backtick in a
+  comment ends the string and kills the module. It has now happened twice in this pass.
+- **The bench settles animations before the shutter** (`settleAnimations`). Before that it
+  photographed the entrance stagger and gave two different pictures of the same screen.
+- **Bench-clean is not done.** Pause read clean with MAIN MENU and QUIT below the fold of a
+  scrolling column, because a scroller is reachable by the audit's definition and unacceptable by
+  a player's. Open the PNG.

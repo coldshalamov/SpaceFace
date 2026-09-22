@@ -76,12 +76,31 @@ export const DECKPLATE_LAYOUT_CSS = `
 }
 .dp-frame__scroll::-webkit-scrollbar-thumb:hover { background:var(--dp-metal-4); }
 
+/* Inset utilities. A plate is a material and owns no padding, so the surface that mounts one says
+   how much air its contents get — from the same unit as everything else, never a typed number. */
+.dp-pad { padding:var(--dp-pad); }
+.dp-pad--wide { padding:calc(var(--dp-pad) * 1.5); }
+.dp-stack { display:flex; flex-direction:column; gap:var(--dp-gap); min-width:0; }
+/* Anything stacked inside a plate wraps INSIDE it. A column is a fixed width by design, so a long
+   contract name or an entity chip must fold rather than run out past the bevel. */
+.dp-stack > * { min-width:0; overflow-wrap:break-word; }
+.dp-stack--loose { gap:calc(var(--dp-gap) * 2); }
+.dp-bar { display:flex; align-items:center; gap:var(--dp-gap); flex-wrap:wrap; min-width:0; }
+.dp-bar--end { margin-left:auto; }
+
 /* Running copy never runs wider than it can be read. */
 .dp-copy {
   font-family:var(--dp-face-read); font-size:var(--dp-fs-body); line-height:1.5;
   color:var(--dp-ink-dim); max-width:var(--dp-measure); margin:0;
 }
 .dp-copy + .dp-copy { margin-top:calc(var(--dp-u) * 2); }
+/* A quiet sentence — a timestamp, a caveat. Etch size, but it is prose, so unlike .dp-etch it
+   wraps: .dp-etch is nowrap because a LEGEND is one line, and a sentence in a legend's clothes is
+   how the pause brief's save line ran out past the plate edge. */
+.dp-copy--fine {
+  font-size:var(--dp-fs-etch); letter-spacing:.04em; color:var(--dp-ink-mute);
+  text-shadow:var(--dp-etch-shadow);
+}
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
    2. dp-title — the milled nameplate.
@@ -198,6 +217,10 @@ export const DECKPLATE_LAYOUT_CSS = `
 .dp-menu__key { margin-left:auto; }
 .dp-menu__label { display:inline; }
 .dp-menu__item .dp-kbd { margin-left:auto; }
+/* words() keeps "(J)" in the DOM so textContent and the accessible name are exactly the label; the
+   brackets are not part of the drawn keycap. Without this the pause list printed a floating "( J )"
+   beside Mission Log. */
+.dp-kbd .k-kbd__paren { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 
 /* A run of verbs under an etched legend — a presentation row, never a focus stop. */
 .dp-menu__group {
@@ -210,6 +233,27 @@ export const DECKPLATE_LAYOUT_CSS = `
 }
 .dp-menu__group:first-child { margin-top:0; }
 .dp-menu--row { flex-direction:row; flex-wrap:wrap; align-items:stretch; }
+
+/* A BANKED menu. The verbs a player reaches for keep their own row; a run marked data-bank lays out as
+   a wrapping row of compact keys. This is how thirteen pause verbs end inside the frame without
+   shrinking Resume, and it replaces styles/pause.css's hand-tuned 46px tiles and 7px seams. */
+.dp-menu--banked { flex-direction:row; flex-wrap:wrap; align-items:flex-start; gap:calc(var(--dp-u) * 1.5); }
+.dp-menu--banked > li { flex:1 1 100%; min-width:0; }
+.dp-menu--banked > .dp-menu__group { flex:1 1 100%; }
+.dp-menu--banked > li[data-bank] { flex:0 1 auto; }
+.dp-menu--banked > li[data-bank] .dp-menu__item {
+  width:auto;
+  gap:calc(var(--dp-u) * 2);
+  padding:calc(var(--dp-u) * 1.5) calc(var(--dp-u) * 2.5);
+  font-size:var(--dp-fs-etch);
+  font-family:var(--dp-face-etch);
+  font-variation-settings:"wght" 660, "wdth" 74;
+  letter-spacing:.11em;
+  background-image:var(--dp-plate-img); background-color:var(--dp-metal-1);
+  box-shadow:var(--dp-plate-bevel);
+}
+.dp-menu--banked > li[data-bank] .dp-menu__item::before { top:14%; bottom:14%; }
+.dp-menu--banked > li[data-bank] .dp-menu__item:is(:hover, :focus-visible) { transform:translateY(-1px); }
 
 /* The three sizes below menu. A verb in a footer is the same machine, quieter. */
 .dp-menu__item--emph { font-size:var(--dp-fs-read); padding:calc(var(--dp-u) * 2) calc(var(--dp-u) * 3); }

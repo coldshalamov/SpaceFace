@@ -71,6 +71,10 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
     const li = el('li');
     // The run a verb belongs to, so a screen can set a group as a row of keys (layout only).
     if (group) li.dataset.group = String(group);
+    // `bank`: this verb shares a wrapping row with its neighbours instead of owning one. A pause
+    // list with thirteen verbs does not fit a column at reading size; the four a player reaches for
+    // stay full rows and the reference/media/exit runs bank. Layout only — same button, same name.
+    if (item.bank) li.dataset.bank = '1';
     // `keycap`: a label that ends in its key, "Mission Log (J)", draws the key as a keycap. The
     // parentheses stay in the DOM (visually hidden), so textContent and the accessible name are
     // exactly the label, and every probe that finds the verb by name still finds it.

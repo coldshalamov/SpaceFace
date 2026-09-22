@@ -5,24 +5,13 @@ import { createPauseFrame } from '../views/menuFrames.js';
 // the flight brief as one sentence beneath it; the actions as a column of words down the left edge;
 // the HUD dims to 38 % rather than disappearing. Photo mode (§1.7) is a sub-state of this screen:
 // the pause root goes invisible under body.k-photo while the stack (and the sim pause) is unchanged.
-// Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS.
-// Actions are produced fh-key sprites down the left (EDGE), not a leftover word column.
+// Built on Deckplate (src/ui/deckplate/); this file owns no CSS. styles/pause.css is gone with the
+// 2026-09-22 migration: it existed to claw back the seam spacing that kept the EXIT keys 22px under
+// the pane's lower edge, and dp-frame's scrolling column is why that cannot happen any more.
 // ScreenManager owns aggregate pause/resume events and the time-effects request. This screen owns
 // only pause-mode presentation and navigation intents.
 
 import { injectDeckplate } from '../deckplate/index.js';
-// This screen's own finish layer (styles/pause.css) — the verb stack's spacing and the footer
-// strip. A <link> appended after the deckplate sheet wins equal-specificity rules by order.
-const PAUSE_STYLE_URL = new URL('../../../styles/pause.css', import.meta.url).href;
-const PAUSE_STYLE_ID = 'sf-pause-style';
-function injectPauseCss(doc = globalThis.document) {
-  if (!doc || !doc.head || doc.getElementById(PAUSE_STYLE_ID)) return;
-  const link = doc.createElement('link');
-  link.id = PAUSE_STYLE_ID;
-  link.rel = 'stylesheet';
-  link.href = PAUSE_STYLE_URL;
-  doc.head.appendChild(link);
-}
 import { confirm } from '../confirm.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS } from '../../data/sectors.js';
@@ -657,21 +646,19 @@ export const pauseScreen = {
 
   mount(rootEl, ctx) {
     injectDeckplate();
-    injectPauseCss();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-narrow');
-    rootEl.classList.add('k-screen', 'k-screen--stage');
+    rootEl.classList.add('screen');
     rootEl.dataset.screen = 'pause';
     delete rootEl.dataset.stamp;
 
-    const { title, briefKicker, briefObjective, briefNext, briefSave } = createPauseFrame(rootEl, {
+    const { title, briefKicker, briefObjective, briefNext, briefSave, column } = createPauseFrame(rootEl, {
       titleText: coreText('paused'),
     });
     // The brief's kicker is this screen's copy and comes from the same localized core copy as the
     // title and every verb (check:pause-brief asserts this call).
     briefKicker.textContent = coreText('flightBrief');
-    const titleWord = title && title.querySelector('h1');
-    if (titleWord) titleWord.classList.add('fh-title');
+
 
     // .k-stage — the verbs as ONE column of words down the left edge over the held world, which is
     // what the sheet's pause line specifies ("the actions as a column of words down the left edge")
@@ -680,14 +667,15 @@ export const pauseScreen = {
     // verb lives in this single list: an earlier build split four "core" choices from a disclosure
     // labelled Operations, which hid Main Menu and Quit behind a second identically-labelled
     // Operations row. The list keeps the kit's native roving keyboard model either way.
-    const stage = el('section', 'k-stage');
+    const stage = el('nav', 'dp-frame__col--tight');
+    stage.setAttribute('aria-label', coreText('paused'));
     const items = [];
     const handlers = new Map();
     // Deckplate (FRONTEND_PROGRAM Wave 2): verbs are grouped under etched legends and carry a kit
     // glyph; the order and every label are unchanged, so one roving list still reaches them all.
-    const mk = (label, fn, { primary = false, danger = false, dev = false, current = false, group = null, icon = null, keycap = false, hint = null, keys = null } = {}) => {
+    const mk = (label, fn, { primary = false, danger = false, dev = false, current = false, group = null, icon = null, keycap = false, hint = null, keys = null, bank = false } = {}) => {
       const action = 'pause-' + items.length;
-      items.push({ label, action, primary, danger, current, group, icon, keycap, hint, keys });
+      items.push({ label, action, primary, danger, current, group, icon, keycap, hint, keys, bank });
       handlers.set(action, fn);
       return action;
     };
@@ -695,8 +683,8 @@ export const pauseScreen = {
     // one — Esc resumes (this screen's own onKey), F5/F9 quick save/load through the modal input
     // branch, and the flight bindings the label already names (J, M) come through `keycap`.
     const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true, current: true, icon: 'chevron-right', hint: 'Esc', keys: 'Escape' });
-    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'), { group: 'Game', icon: 'settings' });
-    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { group: 'Game', icon: 'install', hint: 'F5', keys: 'F5' });
+    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'), { group: 'Game', bank: true, icon: 'settings' });
+    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { group: 'Game', bank: true, icon: 'install', hint: 'F5', keys: 'F5' });
     // Load discards unsaved current progress after a slot is chosen — confirm with the live run context first.
     mk(coreText('load'), async () => {
       const ok = await confirm({
@@ -705,34 +693,34 @@ export const pauseScreen = {
         confirmLabel: 'Open Load', danger: true,
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
-    }, { group: 'Game', icon: 'remove', hint: 'F9', keys: 'F9' });
-    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', icon: 'missions', keycap: true });
+    }, { group: 'Game', bank: true, icon: 'remove', hint: 'F9', keys: 'F9' });
+    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', bank: true, icon: 'missions', keycap: true });
     // THE SHIP (F2 in flight; SCREENS_B §1.2 route wiring). From pause the same instrument opens
     // with its pause-menu entry; the key case lives in the flight-only key router.
-    mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', icon: 'shipworks' });
+    mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', bank: true, icon: 'shipworks' });
     // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
     // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
     // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
     // UI-polish scope this cycle; a first-class station tab would be promotion).
-    mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', icon: 'industry' });
+    mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
     const mapAction = pauseMapAction(ctx && ctx.state);
-    if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', icon: 'route', keycap: true });
-    mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'), { group: 'Reference', icon: 'help' });
-    mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', icon: 'info' });
+    if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
+    mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'), { group: 'Reference', bank: true, icon: 'help' });
+    mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', bank: true, icon: 'info' });
     // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
-    mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', icon: 'ready' });
+    mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });
     // Photo mode (Task B §1.7 / PQ-159.03): HUD gone, free camera, exposure, capture for store
     // assets; filters off by default. Esc returns here. Do not restyle this sheet.
-    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: 'Media', icon: 'scan' });
+    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: 'Media', bank: true, icon: 'scan' });
     // Replay (PQ-160.00): the deterministic last thirty seconds, played back with the photo-mode
     // presentation. Opens over this sheet; Esc or Exit returns to pause.
-    mk(REPLAY_LABEL, () => openReplay(rootEl, ctx), { group: 'Media', icon: 'clock' });
+    mk(REPLAY_LABEL, () => openReplay(rootEl, ctx), { group: 'Media', bank: true, icon: 'clock' });
     // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
     // Esc or Exit returns. This screen owns presentation only, not export encoding.
-    mk(CLIPS_LABEL, () => openClips(rootEl, ctx), { group: 'Media', icon: 'record' });
+    mk(CLIPS_LABEL, () => openClips(rootEl, ctx), { group: 'Media', bank: true, icon: 'record' });
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
-    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', icon: 'utility' });
+    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
     // Main Menu discards the current session entirely — confirm with the live run context first.
     mk(coreText('mainMenu'), async () => {
       const ok = await confirm({
@@ -741,7 +729,7 @@ export const pauseScreen = {
         confirmLabel: 'Main Menu', danger: true,
       });
       if (ok) this._toMenu(ctx);
-    }, { danger: true, group: 'Exit', icon: 'undock' });
+    }, { danger: true, group: 'Exit', bank: true, icon: 'undock' });
 
     mk(coreText('quitGame'), async () => {
       const lines = pauseStatusLines(ctx && ctx.state);
@@ -751,18 +739,24 @@ export const pauseScreen = {
         confirmLabel: coreText('quitGame'), danger: true,
       });
       if (ok) requestQuit(ctx);
-    }, { danger: true, group: 'Exit', icon: 'abandon' });
+    }, { danger: true, group: 'Exit', bank: true, icon: 'abandon' });
 
     // One list, in the sheet's order. `current` lights Resume's row while focus is outside the
     // list; the kit's roving focus then moves the same light down the column.
     const list = words(items, {
       ariaLabel: 'Pause',
+      system: 'dp',
+      // Pause carries thirteen verbs where the title carries eight. At menu size that column runs
+      // past the bezel, which is the defect styles/pause.css was written to claw back. Pause is a
+      // utility screen, not the poster: emph size fits every verb in the frame with air to spare,
+      // and RESUME still reads as the primary because its lamp is the only one already lit.
+      size: 'emph',
       onPick: (action) => {
         const run = handlers.get(action);
         if (typeof run === 'function') run();
       },
     });
-    list.classList.add('sf-pause-words');
+    list.classList.add('sf-pause-words', 'dp-menu--banked');
     for (const item of items) {
       const button = list.querySelector(`[data-action="${item.action}"]`);
       if (!button) continue;
@@ -771,22 +765,22 @@ export const pauseScreen = {
     }
 
     stage.appendChild(list);
-    rootEl.appendChild(stage);
+    column.appendChild(stage);
 
     // The column ends in a legend strip, not an air gap: the keys that are live while this modal
     // is up as machined caps, then the build mark — the two .k-fine lines the pause grid's foot
     // area is sized for.
-    const foot = el('footer', 'sf-pause-foot');
-    const keysLine = el('p', 'k-fine sf-pause-foot__keys');
+    const foot = el('footer', 'sf-pause-foot dp-frame__foot');
+    const keysLine = el('p', 'dp-bar sf-pause-foot__keys');
     const keyHint = (cap, verb) => {
-      keysLine.appendChild(el('span', 'sf-pause-key', cap));
-      keysLine.appendChild(el('span', 'sf-pause-key-verb', verb));
+      keysLine.appendChild(el('span', 'dp-kbd sf-pause-key', cap));
+      keysLine.appendChild(el('span', 'dp-etch sf-pause-key-verb', verb));
     };
     keyHint('Esc', 'Resume');
     keyHint('F5', 'Quick Save');
     keyHint('F9', 'Quick Load');
     foot.appendChild(keysLine);
-    const version = el('p', 'k-fine');
+    const version = el('p', 'dp-etch dp-bar--end');
     version.dataset.role = 'version';
     const versionText = el('span', '', leftoverVersionLabel(CREDITS));
     version.appendChild(versionText);

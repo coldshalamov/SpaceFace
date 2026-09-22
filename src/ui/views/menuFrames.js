@@ -73,20 +73,22 @@ export function createPauseFrame(root, { titleText = 'Paused' } = {}) {
   ));
   head.appendChild(title);
 
-  // The brief is a placard on the deck, not a paragraph in the header: it is a READING (what you
-  // were doing, what is next, when you last saved), so it gets the instrument treatment.
-  // `sf-pause-brief` and the polite live region are an accessibility contract check:pause-brief
-  // asserts — the class stays, the material comes from Deckplate.
-  const brief = el('section', 'sf-pause-brief dp-plate dp-placard');
+  // The brief is a plate on the deck, not a paragraph in the header: it is a READING (what you were
+  // doing, what is next, when you last saved), so it gets the instrument treatment. `sf-pause-brief`
+  // and the polite live region are an accessibility contract check:pause-brief asserts — the class
+  // stays as a hook, the material comes from Deckplate.
+  const brief = el('section', 'sf-pause-brief dp-plate dp-pad dp-stack');
   brief.setAttribute('aria-live', 'polite');
   const briefKicker = el('span', 'dp-etch sf-slot-sub');
   const briefObjective = el('p', 'dp-read sf-slot-name');
   const briefNext = el('p', 'dp-copy sf-muted');
-  const briefSave = el('p', 'dp-etch sf-slot-sub');
+  const briefSave = el('p', 'dp-copy dp-copy--fine sf-slot-sub');
   for (const node of [briefKicker, briefObjective, briefNext, briefSave]) brief.appendChild(node);
 
   const body = el('div', 'dp-frame__body');
-  const column = el('div', 'dp-frame__col');
+  // The verbs and the brief share one scrolling column, so a long pause list ends inside the frame
+  // instead of under the bezel — which is the entire reason styles/pause.css existed.
+  const column = el('div', 'dp-frame__col dp-frame__scroll');
   column.appendChild(brief);
   body.appendChild(column);
 
