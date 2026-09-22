@@ -94,7 +94,7 @@ not to invent.
 | WORLD-01 | The Choir refuel depot has a missions board | `src/data/sectors.js` (`station_depot3` services) | Docking the Vesta depot shows Missions | Invent a Choir capital or move Vesta | SHIPPED |
 | WORLD-02 | Vesta traffic includes one named hauler | `src/data/laneContacts.js`, `src/systems/traffic.js` | `sector_vesta_forge` can stamp that contact id | Add an encounter shape | SHIPPED |
 | WORLD-03 | The Choir-Tender wreck is a wreck on the Helios chart, not another derelict beacon | `src/data/sectors.js`, `src/data/uniqueWrecks.js` | Helios POIs include `type: 'wreck'` bound to `wreck_choir_tender` | Invent a new unique drop | SHIPPED 3e6ca5201 |
-| WORLD-04 | Salvaging the Choir-Tender draws the investigator the wreck data already describes | a new encounter module beside `src/data/encounters/150-unique-wreck-silver-draft-cleaner.js`, wired from `uniqueWrecks.js` | The director catalog contains that id and it offers the existing complication choice plus one hull | Invent a mission type or a second Helios unique wreck | OPEN |
+| WORLD-04 | Salvaging the Choir-Tender draws the investigator the wreck data already describes | a new encounter module beside `src/data/encounters/150-unique-wreck-silver-draft-cleaner.js`, wired from `uniqueWrecks.js` | The director catalog contains that id and it offers the existing complication choice plus one hull | Invent a mission type or a second Helios unique wreck | SHIPPED eb8f3793c |
 | WORLD-05 | A new game's Helios bar can name the Silver-Draft before you have scanned it | `src/ui/station/barContacts.js`, `src/ui/uniqueWreckRumorSurface.js` | `generateContacts('station_helios', new game)` can include rumor `bar.helios_meridian.silver_draft` | Invent a wreck class | OPEN |
 | WORLD-06 | The Helios locker reads as a cache | `src/data/sectors.js` (`poi_helios_locker`) | Its POI type is `cache` and the scanner uses the cache label | Add a pirate base or a new POI type | SHIPPED |
 | WORLD-07 | Sker Bazaar has ships on the apron | `src/data/sectors.js` (`sector_sker_haven` traffic) | Seed 4242 spawns at least two non-player ships near `station_sker` | Raise `enemyDensity`. Add an outlaw encounter | OPEN |
@@ -161,6 +161,7 @@ not to invent.
 | INST-02 | inst-02-comms-fan-power-rail | 5fb238ab7 | hub/wedges/haildeck links off `--sf-surface` + 6px web radius, onto deckplate bezel + glass tokens |
 | TOOL-02 | tool-02-hover-tab-sounds | df4d6bd90 | `sfx_ui_hover` binds Kenney tick_002, `sfx_ui_tab` binds select_002; neither is `ui_click` |
 | VERB-03 | verb-03-hitch-hint-heavy-hauler | fb1c6484a | hitch gate accepts any passive `ship_mule` freighter incl. the opening mule; express itinerary preserved |
+| WORLD-04 | world-04-choir-tender-investigator | eb8f3793c | SCN customs cutter audits a Choir-Tender claim — offers the wreck's own report/loot choice, one hull |
 
 ## CUT
 

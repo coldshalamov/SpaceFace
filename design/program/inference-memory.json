@@ -74,18 +74,6 @@
   ],
   "units": [
     {
-      "id": "seed-npc-2",
-      "date": "2026-08-08",
-      "wf": "WF-01",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "Ceres cast jobs",
-      "fingerprint": "domain=wf-01,sector=ceres,subject=npc-jobs",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
       "id": "seed-npc-3",
       "date": "2026-08-09",
       "wf": "WF-01",
@@ -1632,6 +1620,19 @@
       "references": [],
       "integration": "live",
       "commit": "fb1c6484a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "world-04-choir-tender-investigator",
+      "date": "2026-09-22",
+      "wf": "WF-04",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "claiming the Choir-Tender now draws an SCN customs cutter that offers the wreck's own report/loot audit choice",
+      "fingerprint": "verb=salvage,subject=choir-tender-investigator,sector=helios,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "eb8f3793c",
       "verification": "focused_green"
     }
   ],
