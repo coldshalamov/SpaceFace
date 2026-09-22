@@ -328,6 +328,9 @@ export function bindBombAudio(host, bus) {
   bus.on('game:new', () => stopAllBombAudioLoops(host));
   bus.on('game:newGame', () => stopAllBombAudioLoops(host));
   bus.on('save:loaded', () => stopAllBombAudioLoops(host));
+  // Pause must be quiet: kill field/status loops now; on resume the paused-state
+  // sim still wants them and the next syncBombAudioLoops pass restarts them.
+  bus.on('sim:pause', () => stopAllBombAudioLoops(host));
   bus.on('combat:statusExpired', (payload) => {
     if (!payload) return;
     stopLoop(host, bombStatusLoopKey(payload.targetId, payload.statusId));

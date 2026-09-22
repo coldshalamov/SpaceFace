@@ -5388,7 +5388,7 @@ export const audio = {
       this._updateDryFire();
     }
     if (rt._loopPositionDirty || now >= (rt._nextLoopPositionUpdate || 0)) {
-      if (typeof this._syncBombAudio === 'function') this._syncBombAudio();
+      if (!rt._paused && typeof this._syncBombAudio === 'function') this._syncBombAudio();
       this._updateLoopPositions(now);
       rt._nextLoopPositionUpdate = now + LOOP_POSITION_UPDATE_S;
       rt._loopPositionDirty = false;
