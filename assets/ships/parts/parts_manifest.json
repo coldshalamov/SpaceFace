@@ -7258,8 +7258,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_ranger",
-      "tris": 23994,
-      "bytes": 3091040,
+      "tris": 24744,
+      "bytes": 3125096,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7288,21 +7288,21 @@
       "bounds": {
         "min": [
           -8.62,
-          -3.013,
-          -0.953
+          -3.453,
+          -0.971
         ],
         "max": [
-          7.85,
-          3.013,
+          7.15,
+          3.453,
           1.88
         ],
         "dimensionsM": [
-          16.47,
-          6.026,
-          2.833
+          15.77,
+          6.906,
+          2.851
         ]
       },
-      "note": "PQ-050.03 chase_form_v3e. Cycle 3: blunt forward third + dorsal-readable planform in continuous shell (no tip paddles, no wrapping rings). Hitch/Kestrel/Hornet/Drifter untouched. Chase Hitch-plus REVISE (CAGE_READ NO; TUBE_PADDLE YES leftover on forward taper at D=144; Hitch still wins formed-shell massing)."
+      "note": "PQ-050.03 chase_form_v4a. Cycle 4: remass bow + mid-hull into a broader, shorter continuous explorer shell (no new garnish). Hitch/Kestrel/Hornet/Drifter untouched. Chase Hitch-plus REVISE (CAGE_READ NO; TUBE_PADDLE NO; Hitch still wins formed-shell massing/skin)."
     },
     {
       "id": "wholeship_repair_tender",

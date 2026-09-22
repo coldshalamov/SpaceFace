@@ -2,15 +2,16 @@
 
 Imports the live Ranger only for root, sockets, and collision. Replaces the
 render meshes with one closed explorer that reads at the live chase camera:
-C3 formed shell — blunt forward third (no needle), twin nacelle throats in the
-primary loft, wing planform grown from the continuous shell (not card fins), a
+C4 formed shell — a shorter, broad-bowed forward third, twin nacelle throats in
+the primary loft, side mass grown from the continuous shell load path, a
 formed survey pylon (not a stick or hoop), and greenhouse/survey wells as deep
 holes. Principled islands only. No seats. No megatex. Hitch/Kestrel/Hornet/
 Drifter are never loaded. Hornet interceptor and Drifter workboat silhouettes
 are not copied.
 
-C3 kills C2 leftover TUBE_PADDLE (forward needle taper at D=144). Keeps C2 win:
-CAGE_READ NO (shallow scores, not wrapping rings). Wells stay HOLES.
+C4 attacks C3's remaining TUBE_PADDLE read by remassing the bow and mid-hull,
+not by adding fins. Keeps C2 win: CAGE_READ NO (shallow scores, not wrapping
+rings). Wells stay HOLES.
 
 Does not rescale the root — live sockets already sit in the ~18 m authored
 space. Runtime display scale is applied by the chase still helper, not here.
@@ -27,7 +28,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v3e"
+REVISION = "chase_form_v4a"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "ranger"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -453,24 +454,27 @@ def delete_render_meshes():
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-# C3b formed explorer. Planform lives in the primary loft (Drifter C14 lesson:
-# sideboards ARE the hull — no paddle lobes). Blunt forward third. Slimmer than
-# Drifter (max half-beam ~2.82 vs 3.20) but not a needle-tube. Wings are short
-# tips grown from the shell edge, not card fins.
+# C4 formed explorer. Planform lives in the primary loft (Drifter C14 lesson:
+# sideboards ARE the hull — no paddle lobes). The forward third is deliberately
+# shorter and fuller than C3: a broad transom-like bow cap reaches a shoulder in
+# under a metre, then the mid-hull carries its beam through the survey load path.
+# No separate wing tips or root garnish are needed to manufacture width.
 # (x, beam, hh, zc, keel, flat, box, chine)
 HULL_STATIONS = [
-    # C3e: kill forward needle — fat blunt bow, planform reaches cabin early.
-    (7.85, 1.88, 0.68, 0.14, 0.08, 0.62, 0.32, 0.18),
-    (6.60, 2.28, 0.86, 0.18, 0.08, 0.76, 0.36, 0.22),
-    (5.10, 2.62, 0.98, 0.20, 0.10, 0.86, 0.40, 0.26),
-    (3.50, 2.86, 1.08, 0.22, 0.10, 0.92, 0.44, 0.30),
-    (1.70, 2.98, 1.00, 0.18, 0.10, 0.94, 0.48, 0.32),
-    (0.00, 3.02, 0.92, 0.14, 0.10, 0.94, 0.52, 0.32),
-    (-1.80, 2.92, 0.92, 0.14, 0.10, 0.90, 0.52, 0.30),
-    (-3.60, 2.52, 0.92, 0.16, 0.08, 0.76, 0.48, 0.26),
-    (-5.40, 2.10, 0.88, 0.16, 0.08, 0.58, 0.44, 0.22),
-    (-6.90, 1.98, 0.80, 0.16, 0.08, 0.46, 0.40, 0.18),
-    (-8.45, 1.18, 0.60, 0.12, 0.06, 0.30, 0.32, 0.14),
+    # C4a: cap is already a hull-width assembly, then a quick shoulder and slow
+    # continuous taper. This is shell mass, not a nose flanked by paddles.
+    (7.15, 2.34, 0.78, 0.16, 0.08, 0.74, 0.40, 0.22),
+    (6.45, 2.82, 0.94, 0.19, 0.09, 0.84, 0.44, 0.25),
+    (5.45, 3.12, 1.04, 0.21, 0.10, 0.90, 0.48, 0.28),
+    (4.35, 3.30, 1.10, 0.22, 0.10, 0.94, 0.52, 0.31),
+    (3.20, 3.40, 1.10, 0.22, 0.10, 0.96, 0.54, 0.33),
+    (1.60, 3.46, 1.04, 0.19, 0.10, 0.96, 0.56, 0.34),
+    (0.00, 3.44, 0.98, 0.16, 0.10, 0.95, 0.56, 0.34),
+    (-1.80, 3.36, 0.96, 0.15, 0.10, 0.92, 0.54, 0.32),
+    (-3.60, 3.16, 0.94, 0.16, 0.09, 0.82, 0.50, 0.29),
+    (-5.40, 2.76, 0.90, 0.16, 0.08, 0.66, 0.46, 0.25),
+    (-6.90, 2.30, 0.82, 0.16, 0.08, 0.50, 0.42, 0.20),
+    (-8.45, 1.34, 0.62, 0.12, 0.06, 0.32, 0.34, 0.15),
 ]
 
 
@@ -669,30 +673,8 @@ def build_nacelles(hull, mats, lod):
 
 
 def build_wings(hull, mats, lod):
-    """No separate paddle tips. Planform is the continuous shell sideboard.
-
-    C3d: prior tip-fin lofts still read as card paddles on the diamond shell.
-    Keep only a short thick root fairing sunk into the flank so the sideboard
-    edge stays one sheet — not a bolted fin.
-    """
-    hull_mat = mats["Material_Hull"]
-    mark = mats["Material_Mark"]
-    bits = []
-    if lod > 1:
-        return bits
-    beam = hull_station_at(0.10)[1]
-    for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
-        bits.append(add_box(
-            f"LOD0_WingRoot_{tag}",
-            (2.40, 0.42, 0.46),
-            (0.20, beam * 0.82 * sign, 0.18),
-            hull_mat, 0.010,
-        ))
-        bits.append(add_box(
-            f"LOD0_WingLE_{tag}", (0.14, 0.36, 0.06),
-            (1.10, beam * 0.88 * sign, 0.34), mark, 0.0,
-        ))
-    return bits
+    """C4 has no separate wing garnish; the shell itself carries side mass."""
+    return []
 
 
 def build_survey_well(hull, mats, lod):
@@ -1169,7 +1151,7 @@ def build_one(source: Path, output: Path, lod: int):
     shade_objects([obj for obj in bpy.data.objects if obj.type == "MESH" and not is_collision(obj)])
     bpy.context.view_layer.update()
     size, low, high = mesh_world_size()
-    if size.x < 16.0 or size.x > 18.8 or size.y < 4.0 or size.y > 7.0 or size.z > 4.5:
+    if size.x < 15.0 or size.x > 18.8 or size.y < 5.5 or size.y > 7.2 or size.z > 4.5:
         raise RuntimeError(f"form envelope broken: size=({size.x:.2f},{size.y:.2f},{size.z:.2f})")
     triangulate_and_uv()
     export_glb(output, root)
@@ -1239,7 +1221,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "ranger_chase_form_v3.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "ranger_chase_form_v4.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 
