@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-21",
+  "updatedAt": "2026-09-22",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -19766,7 +19766,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-210.08-REPORT.md"
       ],
-      "brief": "Play the path in DEMO_READINESS section 5 on the owner's machine: title, Crucible rounds one to five, results, then one adventure loop. No frame over 100 ms, nothing on the glass unloads, every hit answers with sound, the three demo screens read as hardware. The owner signs the five bars. Depends on .00-.05. REVIEWED 2026-09-22 (NOT SIGNED — leaf stays open): four of five bars carry green evidence; the frame-timing clauses were measured only at 46-87% host CPU — two quiet-window fires both re-saturated to ~78% inside the 171s launch cook — while every accepted number in this family was taken at 32-38%. Remaining gate is one quiet-window pass (crucible smooth-flight probe, m3 adventure leg, solid-world latency) — see the report's closing section."
+      "brief": "Play the path in DEMO_READINESS section 5 on the owner's machine: title, Crucible rounds one to five, results, then one adventure loop. No frame over 100 ms, nothing on the glass unloads, every hit answers with sound, the three demo screens read as hardware. The owner signs the five bars. Depends on .00-.05. QUIET-WINDOW SESSION 2026-09-22 (NOT SIGNED — leaf stays open). (1) Crucible smooth-flight: seven attempts recorded — structural gates green x7 (0 presents redrawing an old moment, +0 program links, +0 full uploads, wave arrival COVERED at every load), best timing 0 frames over 100 ms worst 83 ms at 48% host CPU, but no 30 s sample landed inside the 32-38% acceptance band (host re-saturated inside the ~160-175 s cook every time). (2) Input-to-photon: witness fired WITH --production-route=warm-dense-combat and read status 'unavailable' — the PQ-144.01 Crucible driver's 120 s flight wait cannot clear the .00 cook's 156-176 s launch-to-flight (sustained-swarm failed identically Sep 11); instrumented-but-unmeasured with the structural cause named. (3) solid-world: onGlassDisposals=0 both phases (gate holds); pending-latency starved (0.991 s with maxRafGap 2013 ms — starvation signature, not a clean red). (4) BLOCKER: the m3 --demo-opening adventure leg fails at the Outfitting hover preview — the Shipworks chooser no longer opens on the current tree (two route attempts plus isolated reproduction via probe-shipworks-chooser.mjs: rowCount 0, chooserHidden true after the hardpoint click); regression window 05:00->11:02 with the 09:59-11:05 station-rebuild commits (dd7659e24, cf928d98a, e99c7d6d8, b87032a09, addf5a47e, e291280a1) as suspects — fix the chooser first, then one quiet window closes the rest. (5) check:playable boot number blocked by a foreign audio lane's mid-write syntax errors (audioSystem.js / sampleLibrary.js). Standing non-bar findings unchanged: physics-kill <=60 s AT RISK seed-dependent; launch-to-flight ~170 s vs the 10-second letter (owner product call). Receipt: design/program/roadmap/receipts/PQ-210.08-REPORT.md."
     }
   ]
 }
