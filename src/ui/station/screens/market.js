@@ -7,7 +7,7 @@ import { marketFrameHtml } from '../../views/stationFrames.js';
 // words with a quantity beside them. Emits ui:buy / ui:sell {commodityId, qty}; the trade math, the
 // quotes and the route logic are untouched. Field Hardware chrome (kit plates, keys, quiet type)
 // is pinned from this module; buy/sell stay the same verbs.
-import { COMMODITIES } from '../../../data/commodities.js';
+import { COMMODITIES, commodityPresentationFor } from '../../../data/commodities.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
@@ -514,7 +514,8 @@ export function createMarketScreen(ctx) {
     const held = heldQty(state, r.id);
     return marketRowHtml({ id: r.id, name: r.def.name, category: r.def.category,
       buy, sell, stock, held, hist, demandWord: demandWord(demand),
-      driversSummary: drivers.accessibleSummary, selected, tracked: r.id === tracked_ });
+      driversSummary: drivers.accessibleSummary, selected, tracked: r.id === tracked_,
+      presentation: commodityPresentationFor(r.def) });
   }
 
   function emptyFilterLabel() {

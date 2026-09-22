@@ -104,3 +104,29 @@ for (const cmdty of COMMODITIES) {
   const tag = COMMODITY_MORAL_TAGS[cmdty.id];
   if (tag) cmdty.moralTag = tag;
 }
+
+export const COMMODITY_PRESENTATION_BY_CATEGORY = Object.freeze({
+  'raw ore': Object.freeze({ id: 'cargo-family-raw', color: '#c89a6a' }),
+  gas: Object.freeze({ id: 'cargo-family-gas', color: '#59d6c7' }),
+  crystal: Object.freeze({ id: 'cargo-family-crystal', color: '#a987ff' }),
+  exotic: Object.freeze({ id: 'cargo-family-exotic', color: '#ff70d0' }),
+  refined: Object.freeze({ id: 'cargo-family-refined', color: '#91b7c9' }),
+  component: Object.freeze({ id: 'cargo-family-component', color: '#d8a94e' }),
+  tech: Object.freeze({ id: 'cargo-family-tech', color: '#5fa8ff' }),
+  consumer: Object.freeze({ id: 'cargo-family-consumer', color: '#e3c06a' }),
+  luxury: Object.freeze({ id: 'cargo-family-luxury', color: '#f2a7d7' }),
+  food: Object.freeze({ id: 'cargo-family-food', color: '#82c96b' }),
+  med: Object.freeze({ id: 'cargo-family-med', color: '#7ad7b8' }),
+  salvage: Object.freeze({ id: 'cargo-family-salvage', color: '#9aa0a8' }),
+  contraband: Object.freeze({ id: 'cargo-family-contraband', color: '#ff7a45' }),
+  military: Object.freeze({ id: 'cargo-family-military', color: '#df6d78' }),
+});
+const DEFAULT_COMMODITY_PRESENTATION = Object.freeze({ id: 'cargo-family-general', color: '#9fd8a0' });
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
+export function commodityPresentationFor(commodityOrId) {
+  const commodity = typeof commodityOrId === 'string'
+    ? COMMODITY_BY_ID.get(commodityOrId)
+    : commodityOrId;
+  return COMMODITY_PRESENTATION_BY_CATEGORY[commodity && commodity.category]
+    || DEFAULT_COMMODITY_PRESENTATION;
+}
