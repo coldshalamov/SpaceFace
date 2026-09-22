@@ -35,7 +35,10 @@ export const DECKPLATE_TOKENS_CSS = `
   /* Etched legends and idle hardware marks. Raised 2026-09-19 from #6f7076, which measured
      2.99–3.74:1 on the deck's surfaces — under the 4.5:1 floor for 12 px text. #96948e is
      4.87:1 on the brightest raised metal (--dp-metal-3) and 6.09:1 on glass. */
-  --dp-ink-mute:#96948e;
+  --dp-ink-mute:#b0aea6;  /* the QUIET tier, not the invisible one: #96948e measured 3.3-4.2:1
+     against the composited frame on save-load, codex, achievements, help, credits and tech-tree.
+     A secondary reading should be quieter than a primary one, never unreadable -- hierarchy is
+     weight, tracking and size, which cost no contrast. Raised by measurement, not by eye. */
 
   /* ── THE LAMP — the one accent. A warm filament, three heats. ── */
   --dp-lamp-dim:#8a6b3a;   /* idle hardware: the lamp you could wake */

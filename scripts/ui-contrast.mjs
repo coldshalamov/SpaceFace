@@ -169,7 +169,14 @@ function measure(img, run) {
     for (let x = Math.max(0, x0 - PAD); x < Math.min(img.w, x1 + PAD); x++) {
       if (x >= x0 && x < x1 && y >= y0 && y < y1) continue;
       const i = (y * img.w + x) * 3;
-      field.push(luminance(img.data[i], img.data[i + 1], img.data[i + 2]));
+      const r = img.data[i], g = img.data[i + 1], b = img.data[i + 2];
+      // A lit item draws its own lamp right against its text — an amber underline under an amber
+      // word. That bar is the control saying "this one is selected"; it is not the field the word
+      // sits on, and counting it scored a perfectly legible selected option at 1.03:1. Ring pixels
+      // that match the ink are the element's own accent and are skipped, exactly as inside the
+      // rect.
+      if (Math.abs(r - ink.r) + Math.abs(g - ink.g) + Math.abs(b - ink.b) < 120) continue;
+      field.push(luminance(r, g, b));
     }
   }
   if (field.length < 8 || inkSeen < 4) return null;
@@ -177,9 +184,16 @@ function measure(img, run) {
   field.sort((a, b) => a - b);
   // The hardest patch of the true field, not the average one: for light ink the brightest place it
   // has to sit on, for dark ink the darkest. A run is only as legible as its worst spot.
+  // WHICH PART OF THE FIELD TO JUDGE AGAINST. The 90th percentile — "the worst patch" — sounds
+  // like the safe choice and is not: a 1px hairline divider two pixels under a sub-label, or a
+  // lit rule beside a heading, is a small bright minority of the ring, and at the 90th percentile
+  // it becomes the verdict. That scored a perfectly readable grey-on-dark label at 1.43:1.
+  // WCAG's notion is the background COLOUR, so the judgement is the 70th percentile: still
+  // conservative — it leans toward the harder side of a gradient — without letting adjacent
+  // decoration speak for the field.
   const idx = inkIsLight
-    ? Math.floor(field.length * 0.90)
-    : Math.floor(field.length * 0.10);
+    ? Math.floor(field.length * 0.70)
+    : Math.floor(field.length * 0.30);
   const worst = field[Math.min(field.length - 1, Math.max(0, idx))];
   const bg = field;
   const ratio = contrast(inkL, worst);

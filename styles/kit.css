@@ -34,8 +34,15 @@
   /* colour — the only colours that exist */
   --k-bone-rgb: 234 230 223;
   --k-bone: rgb(var(--k-bone-rgb));
-  --k-bone-62: rgb(var(--k-bone-rgb) / 0.62);
-  --k-bone-38: rgb(var(--k-bone-rgb) / 0.38);
+  /* THE DIM TIERS ARE LEGIBILITY FLOORS, NOT DECORATION. 0.62 and 0.38 were picked as a visual
+     ramp; measured against the composited frame (scripts/ui-contrast.mjs) they put mission-log's
+     sub-labels at 1.43:1 -- text a player simply cannot read. A secondary reading should be
+     QUIETER than a primary one, never invisible, and fading toward the background is the laziest
+     way to express hierarchy: weight, tracking and size do it without costing contrast.
+     Deckplate overrides .k-38 / .k-62 on the screens it bridges (deckplate/screens.js), so these
+     values govern the surfaces it does not reach. Raised by measurement. */
+  --k-bone-62: rgb(var(--k-bone-rgb) / 0.82);
+  --k-bone-38: rgb(var(--k-bone-rgb) / 0.66);
   --k-hair: rgb(var(--k-bone-rgb) / 0.14);
   --k-ink: #0a0b0d;
   --k-gold: #f2b950;
