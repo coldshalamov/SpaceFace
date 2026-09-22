@@ -9,8 +9,14 @@ survives a context compaction: read it, take the first row that is not DONE, kee
 surface by assembly. Adding a fifth token root is the defect this ledger exists to prevent.
 
 Survey taken 2026-09-22 with the glyph-level bench audit (commit `9f42fb4ae`). "Findings" is what
-the machine saw; a clean machine reading does **not** mean the screen passed — most rows below read
+the machine saw; a clean machine reading does **not** mean the screen passed — a screen can measure
 clean and still look cheap. The PNG decides.
+
+**Standing at the end of the 2026-09-22 pass: 33 of 42 screens measure clean**, against a bench that
+is far stricter than the one the survey started with (it now measures glyphs, not just controls).
+Nine screens keep findings; every one is named in its row. The nine are `new-game`, `ship`,
+`sandbox`, `crucible`, `comms-radial`, `station`/`station-market` (the same two rows),
+`station-shipworks` and `station-factions`.
 
 ## Status vocabulary
 
@@ -29,9 +35,9 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
 |---|---|---|---|---|
 | 1 | `title` / `mainMenu` | EMPTY BOX 64×787 left rail | **DONE** | `a51aa1241` |
 | 2 | `motionAsk` | EMPTY BOX 64×787 (inherits title) | **DONE** | this pass |
-| 3 | `new-game` | ON TOP OF ×1 | SURVEYED | |
+| 3 | `new-game` | ON TOP OF ×1 | OPEN — built entirely on `fh-*` kit primitives (`fh-shell`, `fh-plate`, `fh-input`, `paintKey`); a real migration, not a flag | |
 | 4 | `pause` | clean — cramped column, dead DEV bar, quarter-frame | **DONE** | `00b25955b` |
-| 5 | `settings` | clean | SURVEYED | |
+| 5 | `settings` | clean | measures clean; not yet judged against the bar | |
 | 6 | `save-load` | clean | SURVEYED | |
 | 7 | `station` / `station-dock` | ON TOP OF ×3, CUT OFF ×6 | **SHELL DONE** — 2 CUT OFF left | this pass |
 | 8 | `station-market` | ON TOP OF ×3, CUT OFF ×6 | **MIGRATED** — 2 CUT OFF left | this pass |
@@ -41,16 +47,16 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
 | 12 | `station-factions` | ON TOP OF ×3, CUT OFF ×2 | SHELL DONE, body open | |
 | 13 | `station-bar` | clean | **DONE** | this pass |
 | 14 | `station-ledger` | clean | **DONE** | this pass |
-| 15 | `flight` | EMPTY BOX 276×40 right bar | PARTIAL — empty box fixed | this pass |
-| 16 | `comms-radial` | BURIED ×3, EMPTY BOX 276×40 | SURVEYED | |
-| 17 | `wingman-radial` | EMPTY BOX 276×40 | SURVEYED | |
+| 15 | `flight` | EMPTY BOX 276×40 right bar | **CLEAN** — empty instruments collapse | this pass |
+| 16 | `comms-radial` | BURIED ×3, EMPTY BOX | PARTIAL — empty box fixed, 3 BURIED left | this pass |
+| 17 | `wingman-radial` | EMPTY BOX 276×40 | **CLEAN** | this pass |
 | 18 | `crucibleHud` | clean | SURVEYED | |
 | 19 | `chart` / `galaxyMap` | `SECTOR_HELIOS` title **fixed**; crumb still leaks the id; three panels stacked bottom-left | PARTIAL | this pass |
 | 20 | `chart-galaxy` | clean | SURVEYED | |
-| 21 | `ship` | CUT OFF ×2, OFF FRAME ×4, hero number bisected | SURVEYED | |
+| 21 | `ship` | CUT OFF ×1, OFF FRAME ×4 | OPEN — panels at hand-typed coordinates; needs `dp-frame` like the station shell got | |
 | 22 | `range` | clean | SURVEYED | |
 | 23 | `footprint` | clean | SURVEYED | |
-| 24 | `crucible` | ON TOP OF ×6 | SURVEYED | |
+| 24 | `crucible` | ON TOP OF ×6 | OPEN — reads well in the PNG; the six runs are not visible there, so find them before trusting either | |
 | 25 | `crucible-draft` | clean | SURVEYED | |
 | 26 | `crucible-refit` | clean | SURVEYED | |
 | 27 | `crucible-results` | clean | SURVEYED | |
@@ -66,7 +72,7 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
 | 37 | `automation` | clean | SURVEYED | |
 | 38 | `replay` | ON TOP OF ×1 (copy printed twice) | SURVEYED | |
 | 39 | `clips` | ON TOP OF ×1 (copy printed twice) | SURVEYED | |
-| 40 | `sandbox` | OFF FRAME ×6 | SURVEYED | |
+| 40 | `sandbox` | OFF FRAME ×6 | OPEN — dev-only screen, lowest priority | |
 | 41 | `localmap` | clean | SURVEYED | |
 | 42 | `starmap` | clean | SURVEYED | |
 
@@ -115,6 +121,10 @@ A Tier B screen that turns out to be on a player's main path is promoted, not sk
 - **Bench-clean is not done.** Pause read clean with MAIN MENU and QUIT below the fold of a
   scrolling column, because a scroller is reachable by the audit's definition and unacceptable by
   a player's. Open the PNG.
+- **What the audit learned this pass**, each from being wrong about a screen the eye could judge:
+  a gradient is not an opaque plate; line leading is not a collision (trim boxes toward their ink);
+  the same string twice in one place is a stroke copy, not a pile-up; screen-reader-only text is
+  drawn for nobody; an empty box names its own element; a full-frame layer is atmosphere.
 - **KNOWN AUDIT GAP.** The chart's bottom-left corner has three panels of type stacked on each
   other — plainly visible in `.devshots/ui-bench/chart.png` — and `tangledType` does not report it.
   Two excuses were removed already (the 0.85 alpha threshold, and treating any gradient as an
