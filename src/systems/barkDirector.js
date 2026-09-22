@@ -32,6 +32,7 @@ import { forEachLivingWorldActor, indexedTypeScan } from '../world/livingWorldVi
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, witnessLineOfSight } from '../combat/stuntWitnesses.js';
+import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
 
 const BARK_SET = new Set(BARK_SITUATIONS);
 const VOICE_TTL_S = 1.2;
@@ -41,6 +42,10 @@ export const AMBIENT_BASE_GAP_S = 12.0;
 export const AMBIENT_GAP_STEP_S = 12.0;
 export const AMBIENT_QUIET_STEP_S = 60.0;
 export const AMBIENT_MAX_GAP_S = 60.0;
+export const BODY_NEAR_MISS_RADIUS_WU = 70;
+export const BODY_NEAR_MISS_EXIT_WU = 90;
+export const BODY_NEAR_MISS_WINDOW_TICKS = 480;
+export const BODY_NEAR_MISS_COOLDOWN_TICKS = 120;
 
 // PQ-142.01 hull recognition. `design/VISION.md` Part II: the ship earns "a reputation by hull —
 // until it is my fucking ship." A witness who was in the room when the hull did something says the
@@ -181,6 +186,7 @@ export const barkDirector = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
+    this._bodyNearMisses = new Map();
     this._onFlee = (payload) => this._speakFromEvent(payload, 'flee', 'ai:flee');
     this._onReinforcement = (payload) => this._speakFromEvent(payload, 'reinforce', 'ai:reinforcementScheduled');
     this._onCombatOutcome = () => this._enterPostCombatSilence();
@@ -194,12 +200,19 @@ export const barkDirector = {
       const record=stuntRecognitionRecord(ensureState(this.state));
       for(const pending of record.pending)if(pending.status==='submitted')pending.status='queued';
       record.safeSince=null;this._voiceBusyUntil=0;this._stuntDangerUntil=0;
+      if (this._bodyNearMisses) this._bodyNearMisses.clear();
     };
     this._onStuntLoad();
     this._onStuntDamage = payload => { if ((payload.targetId ?? payload.victimId) === this.state?.playerId) this._stuntDangerUntil = (this.state.tick || 0) + 72; };
     this._onCargoSpilled = (payload) => this._speakCargoSpill(payload || {}, 'freight:cargoSpilled');
     this._onCargoJettisoned = (payload) => this._speakCargoSpill(payload || {}, 'cargo:jettisoned');
     this._onCargoKilled = (payload) => this._speakCargoSpill(payload || {}, 'entity:killed');
+    this._onBodyReleased = (payload) => this._trackBodyNearMiss(payload && payload.targetId, 'throw', this.state && this.state.playerId);
+    this._onBodyShoved = (payload) => {
+      if (!payload || payload.attackerId !== (this.state && this.state.playerId) || !(Number(payload.deltaV) > 0)) return;
+      this._trackBodyNearMiss(payload.victimId, 'shove', payload.attackerId);
+    };
+    this._onBodyImpact = (payload) => this._markBodyNearMissHit(payload || {});
     // Heat/pursuit/witness moments are the law layer's natural radio cadence: a dispatched
     // patrol hails, the warrant hunter taunts, and a witness to a validated crime says what
     // they saw — each from the live entity that owns the voice.
@@ -226,6 +239,9 @@ export const barkDirector = {
       this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
       this.bus.on('heat:changed', this._onHeatWantedCrossed);
+      this.bus.on('tether:released', this._onBodyReleased);
+      this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
+      this.bus.on('physics:impact', this._onBodyImpact);
     }
   },
 
@@ -238,6 +254,7 @@ export const barkDirector = {
     ensureActivityClassified(state);
     ensureState(state);
     this._advanceStuntBarks();
+    this._advanceBodyNearMisses(state);
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     const thinkOpts = {
       playerId: state.playerId,
@@ -653,6 +670,109 @@ export const barkDirector = {
     this._emit('barkDirector:stuntRecognition', receipt);
   },
 
+  _trackBodyNearMiss(bodyId, source, actorId) {
+    const state = this.state;
+    if (!state || bodyId == null || actorId !== state.playerId) return false;
+    const body = state.entities && state.entities.get && state.entities.get(bodyId);
+    if (!body || body.alive === false || !body.pos) return false;
+    if (body.type !== 'ship' && body.type !== 'drone' && body.type !== 'payload' && body.type !== 'wreck') return false;
+    const existing = this._bodyNearMisses && this._bodyNearMisses.get(bodyId);
+    const witnesses = existing ? existing.witnesses : new Map();
+    const hitWitnesses = existing ? existing.hitWitnesses : new Set();
+    this._bodyNearMisses.set(bodyId, {
+      bodyId,
+      source,
+      expiresTick: (state.tick | 0) + BODY_NEAR_MISS_WINDOW_TICKS,
+      witnesses,
+      hitWitnesses,
+    });
+    return true;
+  },
+
+  _markBodyNearMissHit(payload) {
+    const tracks = this._bodyNearMisses;
+    if (!payload || !tracks || !tracks.size) return;
+    for (const track of tracks.values()) {
+      if (payload.aId === track.bodyId && payload.bId != null) track.hitWitnesses.add(payload.bId);
+      else if (payload.bId === track.bodyId && payload.aId != null) track.hitWitnesses.add(payload.aId);
+    }
+  },
+
+  _advanceBodyNearMisses(state) {
+    const tracks = this._bodyNearMisses;
+    if (!state || !tracks || !tracks.size) return;
+    const tick = state.tick | 0;
+    for (const [bodyId, track] of tracks) {
+      const body = state.entities && state.entities.get && state.entities.get(bodyId);
+      if (!body || body.alive === false || !body.pos || tick >= track.expiresTick) {
+        tracks.delete(bodyId);
+        continue;
+      }
+      for (const witness of indexedTypeScan(state, 'shipLike')) {
+        if (!isBodyNearMissWitness(witness, state, body.id) || !witness.pos) continue;
+        const distance = Math.hypot(witness.pos.x - body.pos.x, witness.pos.z - body.pos.z);
+        const contactRadius = (Number(body.radius) || 0) + (Number(witness.radius) || 0);
+        let sample = track.witnesses.get(witness.id);
+        if (!sample) {
+          sample = { lastDistance: distance, minDistance: distance, barkedAt: -Infinity, armed: true };
+          track.witnesses.set(witness.id, sample);
+        }
+        if (distance > BODY_NEAR_MISS_EXIT_WU) {
+          if (tick - sample.barkedAt >= BODY_NEAR_MISS_COOLDOWN_TICKS) {
+            sample.armed = true;
+            sample.minDistance = Infinity;
+            track.hitWitnesses.delete(witness.id);
+          }
+          sample.lastDistance = distance;
+          continue;
+        }
+        if (distance < sample.minDistance) sample.minDistance = distance;
+        if (sample.armed
+          && distance > sample.lastDistance + 0.01
+          && sample.minDistance <= BODY_NEAR_MISS_RADIUS_WU
+          && sample.minDistance > contactRadius + 1
+          && !track.hitWitnesses.has(witness.id)) {
+          this._speakBodyNearMiss(witness, track, sample.minDistance);
+          sample.armed = false;
+          sample.barkedAt = tick;
+        }
+        sample.lastDistance = distance;
+      }
+    }
+  },
+
+  _speakBodyNearMiss(witness, track, closestWu) {
+    const state = this.state;
+    const voice = this.helpers && this.helpers.voice;
+    if (!state || !voice || typeof voice.say !== 'function') return false;
+    const factionId = factionFor(witness);
+    const text = track.source === 'throw'
+      ? 'That thrown hull nearly hit us. Clear the lane!'
+      : 'That loose hull nearly hit us. Clear the lane!';
+    const t = Number(state.simTime) || 0;
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'bodyNearMiss',
+      ttl: VOICE_TTL_S,
+      id: `bodyNearMiss:${track.bodyId}:${witness.id}:${state.tick | 0}`,
+      factionId,
+    });
+    if (!accepted) return false;
+    const receipt = {
+      entityId: witness.id,
+      bodyId: track.bodyId,
+      source: track.source,
+      closestWu,
+      text,
+      factionId,
+      t,
+    };
+    this._emit('barkDirector:voice', receipt);
+    this._emit('barkDirector:bodyNearMiss', receipt);
+    return true;
+  },
+
   /** Closest eligible NPC hull inside the live authority radius; ties break on the lower id. */
   _nearestWitness() {
     const state = this.state;
@@ -832,6 +952,9 @@ export const barkDirector = {
       if (this._onLawCheckpointPosted) this.bus.off('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
       if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
+      if (this._onBodyReleased) this.bus.off('tether:released', this._onBodyReleased);
+      if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
+      if (this._onBodyImpact) this.bus.off('physics:impact', this._onBodyImpact);
     }
     this._onFlee = null;
     this._onReinforcement = null;
@@ -846,6 +969,11 @@ export const barkDirector = {
     this._onLawCheckpointPosted = null;
     this._onLawReportReceipt = null;
     this._onHeatWantedCrossed = null;
+    this._onBodyReleased = null;
+    this._onBodyShoved = null;
+    this._onBodyImpact = null;
+    if (this._bodyNearMisses) this._bodyNearMisses.clear();
+    this._bodyNearMisses = null;
   },
 };
 
@@ -1082,6 +1210,14 @@ function isCivilianVoice(entity) {
   const role = String(data.trafficRole || data.role || ai.role || ai.archetype || '').toLowerCase();
   return entity.team === 2 || ai.spawnContext === 'convoy_civilian'
     || CIVILIAN_VOICE_ROLES.some((word) => role.includes(word));
+}
+
+function isBodyNearMissWitness(entity, state, bodyId) {
+  if (!entity || entity.alive === false || entity.id === bodyId || entity.id === state.playerId) return false;
+  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  const data = entity.data || {};
+  const ai = data.ai || {};
+  return entity.team === 2 || ai.lawful === true || data.trafficRole === 'patrol' || data.role === 'patrol';
 }
 
 // Finite by construction. `postCombatSilenceUntil: 0` is the sibling convention in this same
