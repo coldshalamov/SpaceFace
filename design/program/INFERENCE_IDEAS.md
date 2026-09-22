@@ -151,7 +151,7 @@ not to invent.
 | INST-01 | inst-01-flight-instrument-tells | bda1642323701cab37d3b6d8215ed60124ed8c4c | Field, mass-seed, and planet tells repainted with deck tokens — no more Segoe UI navy cards |
 | VERB-01 | verb-01-raid-timeout-ships-remain | 171220e26caecaab5be919cbed419344f33d6059 | raid_over releases the squad instead of despawnAll; hauler and raiders remain ordinary entities |
 | WORLD-01 | world-01-choir-depot-missions-board | 8b07f720d6adc91de572d7dd4b0b5a839085f303 | Missions service shipped (147e71c24); this unit adds the authored chart note and strengthened proof |
-| PIC-11 | WF-11 | pending | Missing place prop keeps an empty substrate or marker without published cube geometry |
+| PIC-11 | WF-11 | da2abd5f1 | Missing place prop keeps an empty substrate or marker without published cube geometry |
 
 ## CUT
 
