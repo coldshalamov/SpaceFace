@@ -49,6 +49,10 @@ export const DECKPLATE_LAYOUT_CSS = `
   font-family:var(--dp-face-read);
   font-size:var(--dp-fs-data);
 }
+/* A frame that IS the screen. #screens flex-centres its children, so a full-bleed surface has to
+   pin itself the way .k-screen used to, and isolation keeps the screen's own z-indices from
+   escaping into the HUD's stack (ARCHITECTURE §1.2). */
+.dp-frame--screen { position:fixed; inset:0; isolation:isolate; background:transparent; }
 .dp-frame__head { grid-area:head; min-width:0; }
 .dp-frame__body { grid-area:body; min-height:0; min-width:0; display:grid; gap:var(--dp-rhythm); }
 .dp-frame__foot { grid-area:foot; min-width:0; display:flex; align-items:center; gap:var(--dp-gap); flex-wrap:wrap; }
@@ -170,7 +174,13 @@ export const DECKPLATE_LAYOUT_CSS = `
   top:8%; bottom:8%; opacity:1;
   background:var(--dp-lamp); box-shadow:0 0 10px var(--dp-lamp-bloom), 0 0 3px var(--dp-lamp-bloom);
 }
-.dp-menu__item:focus-visible { box-shadow:inset 0 0 0 1px var(--dp-lamp), inset 0 1px 0 rgb(255 232 190 / .10); }
+/* Focus is the lamp at full current plus a machined edge on the plate, not a drawn rectangle
+   floating around the word. The rail going hot is the primary cue; the edge is the confirmation. */
+.dp-menu__item:focus-visible {
+  box-shadow:inset 0 1px 0 var(--dp-key-edge), inset 0 -1px 0 var(--dp-shade-edge),
+    inset 0 0 0 1px rgb(242 185 80 / .16);
+}
+.dp-menu__item:focus-visible::before { background:var(--dp-lamp-hot); box-shadow:0 0 14px var(--dp-lamp-bloom), 0 0 4px var(--dp-lamp-bloom); }
 .dp-menu__item:active { transform:translateX(calc(var(--dp-u) * 1.5)) translateY(1px); }
 .dp-menu__item[aria-disabled="true"], .dp-menu__item:disabled {
   color:var(--dp-ink-mute); cursor:default; transform:none; background-color:transparent; box-shadow:none;
@@ -186,6 +196,54 @@ export const DECKPLATE_LAYOUT_CSS = `
   margin:calc(var(--dp-u) * -0.5) 0 calc(var(--dp-u) * 1.5) calc(var(--dp-u) * 4);
 }
 .dp-menu__key { margin-left:auto; }
+.dp-menu__label { display:inline; }
+.dp-menu__item .dp-kbd { margin-left:auto; }
+
+/* A run of verbs under an etched legend — a presentation row, never a focus stop. */
+.dp-menu__group {
+  font-family:var(--dp-face-etch);
+  font-variation-settings:"wght" 620, "wdth" 66;
+  font-size:var(--dp-fs-etch);
+  letter-spacing:.2em; text-transform:uppercase;
+  color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow);
+  margin:calc(var(--dp-u) * 3) 0 calc(var(--dp-u) * 0.5) calc(var(--dp-u) * 4);
+}
+.dp-menu__group:first-child { margin-top:0; }
+.dp-menu--row { flex-direction:row; flex-wrap:wrap; align-items:stretch; }
+
+/* The three sizes below menu. A verb in a footer is the same machine, quieter. */
+.dp-menu__item--emph { font-size:var(--dp-fs-read); padding:calc(var(--dp-u) * 2) calc(var(--dp-u) * 3); }
+.dp-menu__item--body {
+  font-family:var(--dp-face-read); font-variation-settings:normal; font-weight:600;
+  font-size:var(--dp-fs-body); text-transform:none; letter-spacing:0;
+  padding:calc(var(--dp-u) * 1.5) calc(var(--dp-u) * 3);
+}
+/* A fine word sits INSIDE a line of running text (the build line, a footer), so unlike every other
+   item it must not claim the row. width:auto and inline-flex, or the footer stacks into a column —
+   which is exactly what the first migrated title did. */
+.dp-menu__item--fine {
+  display:inline-flex; width:auto;
+  font-family:var(--dp-face-etch);
+  font-variation-settings:"wght" 620, "wdth" 70;
+  font-size:var(--dp-fs-etch); letter-spacing:.14em;
+  padding:calc(var(--dp-u) * 1) calc(var(--dp-u) * 1.5);
+}
+.dp-menu__item--fine::before { display:none; }
+.dp-menu__item--fine:is(:hover, :focus-visible) {
+  transform:none; color:var(--dp-lamp); background-color:transparent;
+  box-shadow:inset 0 -1px 0 var(--dp-lamp);
+}
+
+/* PRIMARY — the one verb the screen exists for. It is the only item whose lamp is already lit, and
+   the plate under it is raised. One per screen; the kit enforced that and so does this. */
+.dp-menu__item--primary { color:var(--dp-ink); }
+.dp-menu__item--primary::before { opacity:1; background:var(--dp-lamp); box-shadow:0 0 9px var(--dp-lamp-bloom); top:8%; bottom:8%; }
+.dp-menu__item--primary:is(:hover, :focus-visible)::before { background:var(--dp-lamp-hot); box-shadow:0 0 14px var(--dp-lamp-bloom), 0 0 4px var(--dp-lamp-bloom); }
+
+/* DANGER — the same lamp driven red. No second hue enters the system for this. */
+.dp-menu__item--danger:is(:hover, :focus-visible) { color:var(--dp-danger-hot); background-color:rgb(255 80 56 / .05); }
+.dp-menu__item--danger:is(:hover, :focus-visible)::before { background:var(--dp-danger); box-shadow:0 0 10px var(--dp-danger-bloom); }
+.dp-menu__item--danger::before { background:var(--dp-danger); opacity:.35; }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
    4. dp-field — a slot cut into the plate.

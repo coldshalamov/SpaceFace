@@ -41,12 +41,19 @@ function roving(root, elements, { row = false, onMove } = {}) {
 }
 
 /** Buttons keep native Enter/Space activation. Roving focus has exactly one Tab stop. */
-export function words(items, { row = false, onPick, onMove, size = 'menu', ariaLabel = 'Actions' } = {}) {
+export function words(items, { row = false, onPick, onMove, size = 'menu', ariaLabel = 'Actions', system = 'kit' } = {}) {
   if (!['menu', 'emph', 'body', 'fine'].includes(size)) throw new RangeError('Invalid word size');
   if (items.filter(item => item.primary).length > 1) throw new Error('A words group has at most one primary action');
+  // `system:'dp'` emits Deckplate classes INSTEAD of the kit's, not alongside them. Alongside would
+  // put `#screens .of-title .k-word` (1,2,0) against `.dp-menu__item` (0,1,0) on every migrated
+  // screen and lose, and a migration that has to win a specificity fight on every rule is a
+  // migration that silently half-lands. A screen opts in once, in its mount, and from then on no
+  // retired sheet can reach it. Precedent for the dual vocabulary: test/map-hud-kit.test.mjs
+  // already accepts `dp-key--primary` where it used to demand `k-word--primary`.
+  const dp = system === 'dp';
   // A labelled list of real buttons, not an ARIA menu: the repo's checks, probes and captures reach the
   // title by getByRole('button', { name }) (Task A choice over the spec's role=menu/menuitem markup).
-  const list = el('ul', row ? 'k-words k-words--row' : 'k-words');
+  const list = el('ul', dp ? (row ? 'dp-menu dp-menu--row' : 'dp-menu') : (row ? 'k-words k-words--row' : 'k-words'));
   list.setAttribute('aria-label', ariaLabel);
   const buttons = [];
   let group = null;
@@ -56,7 +63,7 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
     // (no text node, so the verb's label and accessible name are unchanged), and `hint` is the
     // verb's key, printed by CSS from a data attribute for the same reason.
     if (item.group && item.group !== group) {
-      const head = el('li', 'k-words__group', item.group);
+      const head = el('li', dp ? 'dp-menu__group dp-etch' : 'k-words__group', item.group);
       head.setAttribute('role', 'presentation');
       list.append(head);
     }
@@ -68,12 +75,16 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
     // parentheses stay in the DOM (visually hidden), so textContent and the accessible name are
     // exactly the label, and every probe that finds the verb by name still finds it.
     const keyed = item.keycap ? /^(.*\S)\s*\(([^()]{1,12})\)$/.exec(String(item.label)) : null;
-    const button = el('button', 'k-word' + (size === 'menu' ? '' : ` k-word--${size}`)
-      + (item.primary ? ' k-word--primary' : '') + (item.danger ? ' k-word--danger' : ''), keyed ? '' : item.label);
+    const cls = dp
+      ? 'dp-menu__item' + (size === 'menu' ? '' : ` dp-menu__item--${size}`)
+        + (item.primary ? ' dp-menu__item--primary' : '') + (item.danger ? ' dp-menu__item--danger' : '')
+      : 'k-word' + (size === 'menu' ? '' : ` k-word--${size}`)
+        + (item.primary ? ' k-word--primary' : '') + (item.danger ? ' k-word--danger' : '');
+    const button = el('button', cls, keyed ? '' : item.label);
     if (keyed) {
-      const cap = el('span', 'k-kbd');
+      const cap = el('span', dp ? 'dp-kbd' : 'k-kbd');
       cap.append(el('span', 'k-kbd__paren', '('), el('span', 'k-kbd__key', keyed[2]), el('span', 'k-kbd__paren', ')'));
-      button.append(el('span', 'k-word__label', `${keyed[1]} `), cap);
+      button.append(el('span', dp ? 'dp-menu__label' : 'k-word__label', `${keyed[1]} `), cap);
       button.setAttribute('aria-keyshortcuts', keyed[2]);
     }
     button.type = 'button'; button.dataset.action = String(item.action);
@@ -90,7 +101,7 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
       cue('confirm'); onPick?.(item.action, button);
     });
     buttons.push(button); li.append(button);
-    if (item.sub) li.append(el('div', 'k-word-sub', item.sub));
+    if (item.sub) li.append(el('div', dp ? 'dp-menu__note' : 'k-word-sub', item.sub));
     list.append(li);
   }
   roving(list, () => buttons, { row, onMove: button => onMove?.(button.dataset.action, button) });

@@ -73,6 +73,9 @@ if (!args.shots.length) {
   const page = await browser.newPage({ viewport: args.viewport });
   page.on('pageerror', (error) => {
     console.error(`  pageerror: ${error && error.message ? error.message : error}`);
+    const where = error && error.stack ? String(error.stack).split(`
+`).slice(1, 4).map((l) => l.trim()).join(` <- `) : '';
+    if (where) console.error(`    at ${where}`);
   });
   page.on('console', (msg) => {
     if (msg.type() === 'error') console.error(`  console: ${msg.text()}`);
@@ -108,6 +111,7 @@ async function shoot(page, id, outDir) {
     console.error(`  ${id}  NOT MOUNTED in 45s — the bench page did not finish`);
     return false;
   }
+  await settleAnimations(page);
   const file = path.join(outDir, `${safeName(id)}.png`);
   await page.screenshot({ path: file });
   const report = await page.evaluate(() => window.BENCH.report());
@@ -123,6 +127,27 @@ async function shoot(page, id, outDir) {
   console.log('  Open this PNG and look at it.');
   if (args.walk) await walk(page, id, outDir);
   return true;
+}
+
+// Screens arrive with a staggered entrance (kit `settle`). Photographing before it lands gave two
+// different pictures of the same title screen minutes apart — eight menu items in a slow run, two
+// in a fast one — which makes every reading a lottery and every comparison worthless. Finish every
+// running animation, then let one frame paint at the settled state.
+async function settleAnimations(page) {
+  await page.evaluate(async () => {
+    for (let pass = 0; pass < 3; pass += 1) {
+      const running = document.getAnimations().filter((a) => a.playState === 'running');
+      // An infinite idle loop (a breathing lamp) never finishes; seek it to a stable phase instead.
+      for (const animation of running) {
+        const iterations = animation.effect?.getTiming?.().iterations;
+        if (iterations === Infinity) animation.pause();
+        else { try { animation.finish(); } catch { /* an unresolved effect cannot be finished */ } }
+      }
+      if (!running.length) break;
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    }
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }).catch(() => {});
 }
 
 async function walk(page, id, outDir) {

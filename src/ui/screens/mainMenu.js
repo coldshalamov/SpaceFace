@@ -12,6 +12,7 @@ import { coreText } from '../localizedCoreCopy.js';
 import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
+import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 
 const LS_PREFIX = 'sf.save.';
 // spec2/03 §3: the still begins its slow drift after this much idle time. Input re-arms the window.
@@ -106,24 +107,10 @@ function normalizeSlots(idx) {
   return out;
 }
 
-function isOccupied(meta) {
-  return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
-}
-
 function latestSave(slots) {
-  let best = null;
-  let bestScore = -Infinity;
-  for (const slot in (slots || {})) {
-    const meta = slots[slot];
-    if (!isOccupied(meta)) continue;
-    const when = meta.savedAt || meta.lastSavedAt || '';
-    const savedAtScore = Date.parse(when) || 0;
-    const playtimeS = Number(meta.playtimeS);
-    const playtimeScore = Number.isFinite(playtimeS) ? playtimeS : 0;
-    const score = savedAtScore || playtimeScore;
-    if (score >= bestScore) { bestScore = score; best = { slot, meta }; }
-  }
-  return best;
+  const slot = selectLatestOccupiedSlot(slots);
+  if (!slot || !slots || !slots[slot]) return null;
+  return { slot, meta: slots[slot] };
 }
 
 function slotLabel(id) {
@@ -267,7 +254,9 @@ export const mainMenuScreen = {
   mount(rootEl, ctx) {
     injectDeckplate();   // the title can mount before the HUD that otherwise injects the system
     rootEl.innerHTML = '';
-    rootEl.classList.add('k-screen', 'k-screen--stage');
+    // No `k-screen`: the frame IS the screen now (dp-frame--screen), and leaving the kit's grid
+    // class on the root would put `#screens .of-title.k-screen` back in the cascade against it.
+    rootEl.classList.add('screen');
     rootEl.dataset.screen = 'mainMenu';
     rootEl.dataset.kReady = '0';
 
@@ -291,20 +280,16 @@ export const mainMenuScreen = {
     if (IS_DEV) items.push({ action: 'sandbox', label: 'Sandbox' });
     items.push({ action: 'quit', label: 'Quit', danger: true });
 
-    // THE LEGEND RAIL — the one piece of hardware the POSTER register carries
-    // (approved/frames/frame-title-v2.png; approved/kit-notes.md §7). `.fh-rail` is the kit's own
-    // class and its material is the produced `plate.poster.rail` nine-slice, so this is a rendered
-    // object with thickness and a lit edge rather than a styled div. Decorative: the words in
-    // front of it carry every name and every route.
-    const rail = el('div', 'of-title-rail fh-rail');
-    rail.setAttribute('aria-hidden', 'true');
-    stage.appendChild(rail);
-
+    // The decorative legend rail is gone (2026-09-22). It was a 64x787 nine-slice plate whose only
+    // job was to stand beside the verbs; the bench measured it as painted and empty, and in the
+    // picture it read as a black bar somebody forgot to fill. Every menu item now carries its own
+    // lamp rail, which is the same piece of hardware doing the same job while also saying which
+    // verb is awake. An ornament became an instrument. design/frontend/THE_BAR.md §3.
     const list = words(items, {
       ariaLabel: 'Title menu',
+      system: 'dp',
       onPick: (action) => this._pick(ctx, action),
     });
-    for (const button of list.querySelectorAll('.k-word')) button.classList.add('fh-menu-item');
     stage.appendChild(list);
 
     const byAction = (action) => list.querySelector('[data-action="' + action + '"]');
@@ -322,30 +307,30 @@ export const mainMenuScreen = {
     if (bSandbox) bSandbox.classList.add('k-38');
     // The save summary rides Continue's sub line. `.sf-menu-save-summary` / `has-save` are inert
     // hooks the boot and title-continue checks query; kit.css styles the sub line.
-    const saveSummary = bContinue.parentElement.querySelector('.k-word-sub');
+    const saveSummary = bContinue.parentElement.querySelector('.dp-menu__note');
     saveSummary.classList.add('sf-menu-save-summary');
 
     // The fine line: "SpaceFace v0.0.0 · " then the Credits word (Task B §1.6). The version text
     // lives in its own span so _loadVersion can rewrite it without touching the word.
-    const version = el('div', 'k-fine');
+    const version = el('footer', 'dp-frame__foot dp-etch');
     version.dataset.role = 'version';
     // The build light: the produced `light.dot.good.on` render, the frame's own corner detail.
     // Decorative — the build string beside it is the information.
-    const buildLight = el('span', 'fh-light');
+    const buildLight = el('span', 'dp-led');
     buildLight.dataset.colour = 'good';
     buildLight.setAttribute('aria-hidden', 'true');
     version.appendChild(buildLight);
     const versionText = el('span', '', leftoverVersionLabel(CREDITS));
     version.appendChild(versionText);
     version.appendChild(el('span', '', ' · '));
-    const bCredits = el('button', 'k-word k-word--fine', 'Credits');
+    const bCredits = el('button', 'dp-menu__item dp-menu__item--fine', 'Credits');
     bCredits.type = 'button';
     bCredits.dataset.action = 'credits';
     bCredits.addEventListener('click', () => { cue('confirm'); this._pick(ctx, 'credits'); });
     version.appendChild(bCredits);
     // PQ-033.03: Achievements rides the same fine line as Credits — a quiet word, not a menu row.
     version.appendChild(el('span', '', ' · '));
-    const bAchievements = el('button', 'k-word k-word--fine', 'Achievements');
+    const bAchievements = el('button', 'dp-menu__item dp-menu__item--fine', 'Achievements');
     bAchievements.type = 'button';
     bAchievements.dataset.action = 'achievements';
     bAchievements.addEventListener('click', () => { cue('confirm'); this._pick(ctx, 'achievements'); });
