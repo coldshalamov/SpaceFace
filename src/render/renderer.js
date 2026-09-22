@@ -1237,11 +1237,18 @@ function isHoldExemptMeshBuild(entity, state, glassIds) {
   // glass band pays first mesh build on-glass (crucible soft-GPU: asteroid builds at
   // +11.5 s while hold still owns streaming). Approach time uses the same seconds×speed
   // constants as the ordinary runway; a parked far R1_RUNWAY row still stays deferred.
+  //
+  // Ledger rocks already enter the presentation list on TABLE_COLLECT_HORIZON_SECONDS
+  // (player-vel projection for parked static rows). Keeping hold-exempt on the tighter
+  // prefetch window left those approach rocks listed but unbuilt until hold release —
+  // the +20 s asteroid dump on soft-GPU crucible seed 4242. Match the collect horizon
+  // for ledger rows only; combat-list hulls stay on the prefetch window.
   const env = renderAdmissionEnv(state);
-  const tGlass = entityTimeToGlassSeconds(
-    entity, env, state, TABLE_RESIDENCY_PREFETCH_SECONDS,
-  );
-  return tGlass <= TABLE_RESIDENCY_PREFETCH_SECONDS;
+  const horizon = isPresentationLedgerRow(entity)
+    ? TABLE_COLLECT_HORIZON_SECONDS
+    : TABLE_RESIDENCY_PREFETCH_SECONDS;
+  const tGlass = entityTimeToGlassSeconds(entity, env, state, horizon);
+  return tGlass <= horizon;
 }
 
 /**
@@ -10730,8 +10737,9 @@ export const render = {
   /**
    * Build the hold-exempt set out of the queue while the first-flight residency hold keeps
    * every other build waiting. Hoists the exempt ids (rescue set piece, explicit focus,
-   * on-glass rows) to the head and drains exactly that many, so nothing else slips
-   * through the hold.
+   * on-glass rows, approach ledger rocks) to the head and drains up to the ordinary
+   * runtime mesh budget, so a large exempt cohort cannot dump in one frame and nothing
+   * non-exempt slips through the hold.
    */
   _drainProtectedFirstFlightBuilds() {
     const queue = this._meshBuildQueue;
@@ -10749,7 +10757,13 @@ export const render = {
       }
       moved += 1;
     }
-    return moved > 0 ? this._drainMeshBuildQueue(moved) : 0;
+    // Cap to the ordinary runtime budget. Draining `moved` unbounded turned every
+    // on-glass / approach rock cohort into a single-frame dump (+11 s / +20 s clusters
+    // on soft-GPU crucible). Exempt ids stay hoisted at the head, so the next hold
+    // frames finish the rest without letting non-exempt work slip through.
+    return moved > 0
+      ? this._drainMeshBuildQueue(Math.min(moved, RUNTIME_MESH_BUILD_BUDGET))
+      : 0;
   },
 
   _drainMeshBuildQueue(buildBudget) {

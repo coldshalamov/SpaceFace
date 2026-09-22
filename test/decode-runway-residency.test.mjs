@@ -504,3 +504,55 @@ test('first-flight hold still owes a mesh to an inbound prefetch contact', () =>
   assert.equal(isEntityMeshExpected(parkedFar, state), false,
     'a parked far runway row stays deferred — no whole-tier thrash');
 });
+
+test('first-flight hold admits static ledger rocks on player-vel collect horizon', () => {
+  // Soft-GPU crucible leftover: parked field rocks in the collect-not-prefetch band
+  // sat listed under the hold and dumped as mesh builds at +20 s release. Player-vel
+  // projection already feeds timeToEnterRadiusSeconds; ledger rows must use the same
+  // TABLE_COLLECT_HORIZON_SECONDS the presentation collect uses — not the tighter
+  // ship prefetch window.
+  const player = {
+    id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: 0, z: 0 }, vel: { x: 160, z: 0 }, maxSpeed: 160, radius: 8, data: {},
+  };
+  const approachRock = {
+    id: 201, type: 'asteroid', alive: true, fieldResident: true, liveEntityId: null,
+    pos: { x: 560, z: 0 }, vel: { x: 0, z: 0 }, radius: 20,
+    data: { typeId: 'ast_common_rock' },
+  };
+  const sideRock = {
+    id: 202, type: 'asteroid', alive: true, fieldResident: true, liveEntityId: null,
+    pos: { x: 0, z: 560 }, vel: { x: 0, z: 0 }, radius: 20,
+    data: { typeId: 'ast_common_rock' },
+  };
+  const parkedShip = {
+    id: 203, type: 'ship', alive: true,
+    pos: { x: 560, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, data: {},
+  };
+  const state = {
+    mode: 'flight',
+    playerId: 1,
+    simTime: 8,
+    player: { targetId: null },
+    entities: new Map([[1, player]]),
+    entityList: [player],
+    world: { frameOrigin: { x: 0, z: 0 } },
+    camera: { zoom: 144, tilt: 60, fov: 50, aspect: 16 / 9 },
+    settings: { video: { fov: 50 } },
+    render: {
+      firstFlightResidencyHoldUntil: 20,
+      activityFrame: {
+        complete: true,
+        renderGlassIds: new Set([1]),
+        renderRunwayIds: new Set(),
+      },
+    },
+  };
+  assert.equal(holdFirstFlightStreaming(state), true);
+  assert.equal(isEntityMeshExpected(approachRock, state), true,
+    'static rock on player approach inside collect horizon builds under the hold');
+  assert.equal(isEntityMeshExpected(sideRock, state), false,
+    'static rock off the velocity vector stays deferred — no side-disc thrash');
+  assert.equal(isEntityMeshExpected(parkedShip, state), false,
+    'non-ledger hulls keep the tighter prefetch window under the hold');
+});
