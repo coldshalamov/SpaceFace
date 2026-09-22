@@ -12,7 +12,7 @@
 .sxb-berth__world[hidden] { display: none; }
 .sxb-berth__plate { left: 0; width: 100%; pointer-events: none; }
 
-.sxb-berth__name { max-width: 14ch; }
+.sxb-berth__name { max-width: none; white-space: normal; overflow-wrap: break-word; }
 .sxb-berth__name .sxb-berth__word { display: inline-block; }
 .sxb-berth__ident { margin: 0; }
 .sxb-berth__news { margin: calc(12px * var(--k-s)) 0 0; max-width: var(--k-measure); }
@@ -171,12 +171,10 @@ button.sx-ct-row { width: 100%; background: none; border-left: 0; border-right: 
 .sx-job__track { flex: none; }
 .sx-job.is-tracked .sx-job__title { color: var(--k-text-live); }
 
-/* Job titles run 30-45 chars while the hang column only fits ~24 — a single-line ellipsis
-   clipped EVERY row (including the 15-char tracked contract), which read as a broken list.
-   Wrap to two data-size lines so the full title lands; the ellipsis still clamps line 2 as the
-   fallback for genuinely oversized names. */
+/* Wave G5 — station mission titles stay whole. Wrap on word boundaries. No mid-word ellipsis. */
 .sx-ct-row__title, .sx-job__title {
-  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  white-space: normal; display: block; overflow: visible; text-overflow: clip;
+  overflow-wrap: break-word; -webkit-line-clamp: unset;
   font-size: var(--k-fs-data); line-height: 1.25;
 }
 
@@ -186,7 +184,7 @@ button.sx-ct-row { width: 100%; background: none; border-left: 0; border-right: 
 /* The dossier headline is a contract title ("First trade: 8u Fuel Cells to Ceres"), not a hero
    marking: at the kit's title size it wrapped to four lines at 1280x800 and the fourth line fell
    below the dossier's clip. The size follows the width and stays under the kit title size. */
-.sx-dossier__title { margin: calc(8px * var(--k-s)) 0 0; font-size: clamp(26px, 2.4vw, var(--k-fs-title)); line-height: 1.02; max-width: 26ch; }
+.sx-dossier__title { margin: calc(8px * var(--k-s)) 0 0; font-size: clamp(26px, 2.4vw, var(--k-fs-title)); line-height: 1.05; max-width: none; overflow-wrap: break-word; }
 .sx-dossier__reward { margin-top: calc(24px * var(--k-s)); }
 .sx-dossier__terms { max-width: var(--k-measure); margin-top: calc(24px * var(--k-s)); }
 .sx-term__v { display: flex; flex-direction: column; align-items: flex-end; }
