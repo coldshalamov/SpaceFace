@@ -2442,8 +2442,10 @@ export const SAMPLE_BINDINGS = {
 
   // UI kit
   sfx_ui_click: { id: 'ui_click', share: 0.6 },
-  sfx_ui_hover: { id: 'ui_click', share: 0.5, rate: 1.3 },
-  sfx_ui_tab: { id: 'ui_click', share: 0.5, rate: 0.8 },
+  // TOOL-02: hover and tab are different recordings (Kenney tick_002 / select_002 promoted to
+  // assets/audio/ui/), not the same click pitch-shifted — hover is a 23ms tick, tab a 43ms blip.
+  sfx_ui_hover: { id: 'ui_hover', share: 0.5 },
+  sfx_ui_tab: { id: 'ui_tab', share: 0.5 },
   sfx_ui_switch_detent: { id: 'ui_detent', share: 0.6 },
   sfx_ui_drawer_latch: { id: 'ui_detent', share: 0.5, rate: 0.7 },
   sfx_ui_confirm: { id: 'ui_confirm', share: 0.6 },

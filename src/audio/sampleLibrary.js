@@ -67,6 +67,9 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['mine_gas', { file: 'assets/audio/mining/mine_gas.wav', tier: 1, loop: false, seconds: 1.8 }],
   ['mine_gravel', { file: 'assets/audio/mining/mine_gravel.wav', tier: 1, loop: false, seconds: 0.6 }],
   ['ui_click', { file: 'assets/audio/ui/ui_click.wav', tier: 0, loop: false, seconds: 0.14 }],
+  // Promoted reference recordings (Kenney tick_002 / select_002, CC0), not generator output.
+  ['ui_hover', { file: 'assets/audio/ui/ui_hover.wav', tier: 0, loop: false, seconds: 0.02 }],
+  ['ui_tab', { file: 'assets/audio/ui/ui_tab.wav', tier: 0, loop: false, seconds: 0.04 }],
   ['ui_confirm', { file: 'assets/audio/ui/ui_confirm.wav', tier: 0, loop: false, seconds: 0.5 }],
   ['ui_deny', { file: 'assets/audio/ui/ui_deny.wav', tier: 1, loop: false, seconds: 0.45 }],
   ['ui_open', { file: 'assets/audio/ui/ui_open.wav', tier: 1, loop: false, seconds: 0.4 }],
