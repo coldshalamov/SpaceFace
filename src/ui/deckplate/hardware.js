@@ -244,7 +244,13 @@ html.sf-high-contrast :focus-visible { outline-color:#fff !important; }
 .dp-key:active, .dp-key.is-pressed {
   border-image-source:url("${HW}keycap-pressed.svg"); transform:translateY(1px); filter:brightness(.94);
 }
-.dp-key:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:3px; color:var(--dp-ink); }
+/* Focus is not a ring (ONE_PHOTOGRAPH.md 4.3). A key is mass, so it shows focus the way a real
+   key does: the cap lifts into the light and a bone bracket runs down its leading edge. Amber is
+   reserved for a lamp that means something is ON, so focus must never borrow it. */
+.dp-key:focus-visible { outline:2px solid transparent; outline-offset:0; color:var(--dp-ink); filter:brightness(1.16); }
+.dp-key:focus-visible::after { content:""; position:absolute; right:0; top:12%; bottom:12%; width:2px;
+  background:var(--dp-ink); pointer-events:none; }
+@media (forced-colors:active) { .dp-key:focus-visible { outline:2px solid Highlight; } }
 .dp-key[aria-pressed="true"], .dp-key.is-on { color:var(--dp-ink); }
 .dp-key[aria-pressed="true"]::before, .dp-key.is-on::before, .dp-key--primary::before { background:${LED_ON}; box-shadow:${LED_ON_GLOW}; }
 /* The screen's ONE primary command wears the selection language permanently: lit LED, amber

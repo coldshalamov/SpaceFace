@@ -835,44 +835,97 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 }
 #screens .sx-berth .sx-dock__group--nav > li { width: auto; flex: 0 0 auto; }
 
+/* == THE DESTINATION RAIL =======================================================================
+   Seven destinations, on every station screen: the most-seen control in the game.
+
+   WHAT THIS REPLACED, and why it had to go. Each tile was painted with
+   `border-image-source: url(keys/key.legend.rest.png)` at `border-image-slice: 14 fill` - a
+   160x40 bitmap stretched across a ~120x40 tab. A 320x80 @2x sits beside it on disk and no
+   stylesheet ever referenced it, so on the Electron app at devicePixelRatio 2 every tab in the
+   game was a 160px image upsampled to 320px. That is the smudge, and it lived in the material
+   layer, not in a style choice. ONE_PHOTOGRAPH.md section 4.11 retires raster nine-slices as UI
+   material.
+
+   WHAT IT IS NOW. Section 4.2: "a filter or a tab is a lit legend on a rail. A key is mass only
+   when pressing it changes the world." Opening a tab does not change the world, so a destination
+   is LIGHT, not mass - no bevel, no box, no fill. One etched rail line runs under all seven and
+   each destination is a mark and a word standing on it. Everything is computed, so it resolves at
+   the device resolution on any display.
+
+   FOUR STATES, FOUR DISTINCT WEIGHTS - which is the point. Before this, the focused tab and the
+   current tab were both a solid amber fill, so the screen showed two "selected" tabs and the
+   focused one shouted louder than the one you were actually on.
+     rest     bone at mute, mark at mute
+     hover    warms to full ink; a short bone bar appears under it
+     CURRENT  full ink, mark lit amber, a 2px lamp bar welded under the word   <- the loudest
+     next     one small amber bead above the word, quieter than current (onboarding, 4.7)
+     focus    a full-width bone bar, never an amber ring (4.3) */
+#screens .sx-berth .sx-dock__group--nav {
+  position: relative;
+  gap: clamp(2px, 0.6vw, 10px);
+  align-items: stretch;
+}
+/* The rail itself: one etched line the whole group stands on. A hairline disappears at 1x, so it
+   is 2px - a dark score with a lit edge beneath, which reads as an engraved channel, not a
+   border. */
+#screens .sx-berth .sx-dock__group--nav::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: linear-gradient(180deg, rgb(0 0 0 / .55) 0 1px, rgb(226 232 240 / .07) 1px 2px);
+  pointer-events: none;
+}
 #screens .sx-berth .sx-tile.k-word,
 #screens .sx-berth .sx-tile.fh-key {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: auto;
-  gap: calc(6px * var(--k-s));
-  min-height: 40px;
-  min-width: calc(96px * var(--k-s));
-  padding: 0 calc(10px * var(--k-s));
+  gap: calc(7px * var(--k-s));
+  min-height: 42px;
+  min-width: 0;
+  padding: 0 clamp(10px, 1.1vw, 18px);
+  /* The whole raster material, gone. */
   background: none;
-  border-style: solid;
-  border-width: 14px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.rest.png");
-  border-image-slice: 14 fill;
-  border-image-repeat: stretch;
-  border-image-width: 14px;
+  border: 0;
+  border-image-source: none;
   box-shadow: none;
   font-family: var(--fh-face-display, var(--k-display));
-  font-variation-settings: "wght" 600, "wdth" 62;
+  font-variation-settings: "wght" 560, "wdth" 78;
   font-size: var(--k-fs-fine);
-  letter-spacing: var(--fh-track-legend, 0.06em);
+  letter-spacing: var(--fh-track-legend, 0.08em);
   text-transform: uppercase;
   text-align: center;
-  color: var(--k-bone-62);
+  color: var(--dp-ink-mute, var(--k-bone-62));
+  transition: color 160ms var(--dp-ease-lamp, ease),
+              font-variation-settings 160ms var(--dp-ease-lamp, ease);
 }
+@media (prefers-reduced-motion: reduce) {
+  #screens .sx-berth .sx-tile.k-word,
+  #screens .sx-berth .sx-tile.fh-key { transition-duration: 1ms; }
+}
+/* The lamp bar. ONE element carries hover, current and focus, so a tile can never show two. */
 #screens .sx-berth .sx-tile.k-word::after,
-#screens .sx-berth .sx-tile.fh-key::after { display: none; }
+#screens .sx-berth .sx-tile.fh-key::after {
+  content: "";
+  display: block;
+  position: absolute; left: 50%; translate: -50% 0; bottom: 0;
+  height: 2px; width: 0;
+  background: var(--dp-lamp-hot, #f2b950);
+  box-shadow: 0 0 10px rgb(242 185 80 / .55);
+  transition: width 200ms var(--dp-ease-lamp, ease);
+  pointer-events: none;
+}
 #screens .sx-berth .sx-tile.k-word:hover,
 #screens .sx-berth .sx-tile.fh-key:hover {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.hover.png");
-  color: var(--k-text-live);
+  color: var(--dp-ink, var(--k-text-live));
+  font-variation-settings: "wght" 640, "wdth" 86;
 }
-#screens .sx-berth .sx-tile.k-word:focus-visible,
-#screens .sx-berth .sx-tile.fh-key:focus-visible {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.focus.png");
-  color: var(--k-text-live);
+#screens .sx-berth .sx-tile.k-word:hover::after,
+#screens .sx-berth .sx-tile.fh-key:hover::after {
+  width: 34%; background: var(--dp-ink, #e2e8f0); box-shadow: none; opacity: .5;
 }
+/* CURRENT. The heaviest thing on the rail, and the only amber that spans the full word. */
 #screens .sx-berth .sx-tile.k-word[aria-selected="true"],
 #screens .sx-berth .sx-tile.k-word.is-active,
 #screens .sx-berth .sx-tile.fh-key[aria-selected="true"],
@@ -881,10 +934,65 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   background: none;
   border-color: transparent;
   box-shadow: none;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.lit.png");
-  color: var(--k-text-live);
+  border-image-source: none;
+  color: var(--dp-ink, var(--k-text-live));
+  font-variation-settings: "wght" 760, "wdth" 100;
 }
-#screens .sx-berth .sx-tile__seat { display: inline-flex; align-items: center; color: inherit; }
+#screens .sx-berth .sx-tile.k-word[aria-selected="true"]::after,
+#screens .sx-berth .sx-tile.k-word.is-active::after,
+#screens .sx-berth .sx-tile.fh-key[aria-selected="true"]::after,
+#screens .sx-berth .sx-tile.fh-key.is-active::after,
+#screens .sx-berth .sx-tile.fh-key.is-lit::after {
+  width: 100%; opacity: 1;
+  background: var(--dp-lamp-hot, #f2b950);
+  box-shadow: 0 0 12px rgb(242 185 80 / .5);
+}
+#screens .sx-berth .sx-tile[aria-selected="true"] .sx-tile__seat,
+#screens .sx-berth .sx-tile.is-active .sx-tile__seat { color: var(--dp-lamp-hot, #f2b950); }
+
+/* NEXT (onboarding, 4.7). A bead above the word. Deliberately quieter than CURRENT: it is a
+   suggestion, not where you are. It uses ::before so it can never fight the lamp bar. */
+#screens .sx-berth .sx-tile[data-dp-next]::before {
+  content: "";
+  position: absolute; left: 50%; translate: -50% 0; top: 4px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--dp-lamp-hot, #f2b950);
+  box-shadow: 0 0 9px rgb(242 185 80 / .8);
+}
+#screens .sx-berth .sx-tile[data-dp-next]:not([aria-selected="true"]) { color: var(--dp-ink, #e2e8f0); }
+
+/* FOCUS. Section 4.3 kills the ring. A full-width BONE bar says which one the keyboard holds;
+   amber stays reserved for CURRENT, so the two can never be confused again. `!important` because
+   station-orbital.css and Deckplate hardware both set an amber outline-color with it, and an
+   unflagged `outline:none` loses to them. */
+#screens .sx-berth .sx-tile.k-word:focus-visible,
+#screens .sx-berth .sx-tile.fh-key:focus-visible {
+  outline: 2px solid transparent !important;
+  outline-offset: 0 !important;
+  color: var(--dp-ink, var(--k-text-live));
+  font-variation-settings: "wght" 700, "wdth" 92;
+}
+#screens .sx-berth .sx-tile:focus-visible .sx-tile__seat { color: var(--dp-ink, #e2e8f0); }
+#screens .sx-berth .sx-tile.k-word:focus-visible::after,
+#screens .sx-berth .sx-tile.fh-key:focus-visible::after {
+  width: 100%; opacity: 1; height: 2px;
+  background: var(--dp-ink, #e2e8f0); box-shadow: none;
+}
+#screens .sx-berth .sx-tile[aria-selected="true"]:focus-visible::after {
+  background: var(--dp-lamp-hot, #f2b950); box-shadow: 0 0 12px rgb(242 185 80 / .5);
+}
+
+@media (forced-colors: active) {
+  #screens .sx-berth .sx-tile.k-word::after,
+  #screens .sx-berth .sx-tile.fh-key::after { background: Highlight; }
+  #screens .sx-berth .sx-tile.k-word:focus-visible,
+  #screens .sx-berth .sx-tile.fh-key:focus-visible { outline: 2px solid Highlight !important; }
+}
+
+#screens .sx-berth .sx-tile__seat {
+  display: inline-flex; align-items: center; color: inherit;
+  transition: color 160ms var(--dp-ease-lamp, ease);
+}
 #screens .sx-berth .sx-tile__badge { margin: 0; font-size: var(--k-fs-fine); color: var(--k-signal); }
 #screens .sx-berth .sx-tile__label { flex: 0 1 auto; }
 

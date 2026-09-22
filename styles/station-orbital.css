@@ -272,7 +272,7 @@
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero { grid-row: 1/3; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-title { font-size: 34px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-chart :is(path,line,circle) { vector-effect: non-scaling-stroke; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-tile:focus-visible { outline: 2px solid var(--so-accent); outline-offset: -4px; }
+/* Was a --so-accent focus ring (4.3, and one of the four stacked roots). The rail owns focus. */
 @media (max-width:1200px) {
   :is(#screens .sx-observatory, .sx-observatory) .so-berth-status { display: none; }:is(#screens .sx-observatory, .sx-observatory) .sx-tile { min-width: 102px; padding-inline: 12px; }
   :is(#screens .sx-observatory, .sx-observatory) .sxb-vital { flex-basis: 170px; padding-inline: 16px; }:is(#screens .sx-observatory, .sx-observatory) .sxb-vital:first-child { flex-basis: 265px; }
