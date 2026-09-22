@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "stills": [
+    {
+      "id": "wreck_ore_freighter_hopper",
+      "glb": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/wreck_ore_freighter_hopper.glb",
+      "still": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/stills/wreck_ore_freighter_hopper_play_chase.png",
+      "sizeM": [
+        29.9415,
+        36.1449,
+        49.2473
+      ],
+      "distance": 443.23,
+      "trianglesLod0": 1012
+    },
+    {
+      "id": "deb_ore_freighter_hopper_lid",
+      "glb": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/deb_ore_freighter_hopper_lid.glb",
+      "still": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/stills/deb_ore_freighter_hopper_lid_play_chase.png",
+      "sizeM": [
+        31.5566,
+        16.375,
+        22.1953
+      ],
+      "distance": 284.01,
+      "trianglesLod0": 260
+    },
+    {
+      "id": "wreck_liner_bow",
+      "glb": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/wreck_liner_bow.glb",
+      "still": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/stills/wreck_liner_bow_play_chase.png",
+      "sizeM": [
+        68.5866,
+        25.9886,
+        24.4287
+      ],
+      "distance": 617.28,
+      "trianglesLod0": 724
+    },
+    {
+      "id": "wreck_liner_boatbay",
+      "glb": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/wreck_liner_boatbay.glb",
+      "still": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/stills/wreck_liner_boatbay_play_chase.png",
+      "sizeM": [
+        53.0464,
+        22.9314,
+        15.8705
+      ],
+      "distance": 477.42,
+      "trianglesLod0": 436
+    },
+    {
+      "id": "deb_liner_hull_panel",
+      "glb": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/deb_liner_hull_panel.glb",
+      "still": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/stills/deb_liner_hull_panel_play_chase.png",
+      "sizeM": [
+        28.6995,
+        9.3981,
+        13.5207
+      ],
+      "distance": 258.3,
+      "trianglesLod0": 228
+    },
+    {
+      "id": "aft_armor_slab",
+      "glb": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/aft_armor_slab.glb",
+      "still": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/stills/aft_armor_slab_play_chase.png",
+      "sizeM": [
+        17.7788,
+        7.7627,
+        11.1247
+      ],
+      "distance": 160.01,
+      "trianglesLod0": 324
+    },
+    {
+      "id": "frag_grating_sheet",
+      "glb": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/frag_grating_sheet.glb",
+      "still": "/workspace/spaceface/design/program/vm-drop/wreck-piece-textures/stills/frag_grating_sheet_play_chase.png",
+      "sizeM": [
+        7.7659,
+        4.1709,
+        5.777
+      ],
+      "distance": 144.0,
+      "trianglesLod0": 108
+    }
+  ]
+}
