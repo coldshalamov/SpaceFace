@@ -74,18 +74,6 @@
   ],
   "units": [
     {
-      "id": "seed-juice-4",
-      "date": "2026-08-10",
-      "wf": "WF-12",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "presentation juice",
-      "fingerprint": "domain=wf-12,subject=presentation-juice",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
       "id": "seed-npc-1",
       "date": "2026-08-07",
       "wf": "WF-01",
@@ -1630,6 +1618,19 @@
       "references": [],
       "integration": "live",
       "commit": "5fb238ab7",
+      "verification": "focused_green"
+    },
+    {
+      "id": "tool-02-hover-tab-sounds",
+      "date": "2026-09-22",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "sfx_ui_hover binds promoted Kenney tick_002 (20ms light tick) and sfx_ui_tab binds select_002 (40ms fuller blip); neither is ui_click",
+      "fingerprint": "verb=hear,subject=ui-hover-tab,sector=any,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "df4d6bd90",
       "verification": "focused_green"
     }
   ],
