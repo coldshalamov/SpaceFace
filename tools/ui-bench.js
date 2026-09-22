@@ -12,6 +12,9 @@ import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCa
 
 window.__BENCH_READY = false;
 window.__BENCH_OVERLAY = '';
+// The element the bench deliberately opened over the screen, if any. Type it covers is covered on
+// purpose -- a radial menu is supposed to sit on the deck while it is open.
+window.__BENCH_OVERLAY_EL = null;
 window.__BENCH_LAST_DISABLED = false;
 
 /** Screens this bench can mount. A screen that needs a live run (docking, a Crucible run) is
@@ -274,6 +277,7 @@ async function finishShot(shot) {
 async function goto(rawId) {
   window.__BENCH_READY = false;
   window.__BENCH_OVERLAY = '';
+  window.__BENCH_OVERLAY_EL = null;
   const shot = resolveShot(rawId) || { id: rawId, screen: rawId, backdrop: 'title' };
   const id = shot.screen;
   applyBackdrop(shot);
@@ -344,6 +348,7 @@ async function openOverlay(kind) {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', bubbles: true, cancelable: true }));
     const fan = document.getElementById('sf-commsfan');
     window.__BENCH_OVERLAY = fan && !fan.hidden ? 'comms open' : 'comms did not open (no hail on this still)';
+    if (fan && !fan.hidden) window.__BENCH_OVERLAY_EL = fan;
     return;
   }
   if (kind === 'wingman') {
@@ -353,6 +358,7 @@ async function openOverlay(kind) {
     radial.open?.(2);
     const node = document.getElementById('sf-wingman-radial');
     window.__BENCH_OVERLAY = node && !node.hidden ? 'wingman open' : 'wingman did not open';
+    if (node && !node.hidden) window.__BENCH_OVERLAY_EL = node;
   }
 }
 
@@ -787,6 +793,7 @@ function buriedType(runs) {
         if (mine < 0) continue;
         let cover = null;
         const frame = window.innerWidth * window.innerHeight;
+        const opened = window.__BENCH_OVERLAY_EL;
         for (let k = 0; k < mine && !cover; k += 1) {
           const el = stack[k];
           if (el.contains(run.host)) continue;
@@ -794,6 +801,8 @@ function buriedType(runs) {
           // sf-gloc-vignette accused every line on the flight deck of being invisible.
           const box = el.getBoundingClientRect();
           if (box.width * box.height >= frame * 0.9) continue;
+          // An overlay the bench opened on purpose is meant to sit over the deck while it is open.
+          if (opened && (el === opened || opened.contains(el))) continue;
           const style = styleOf(el);
           if (style.backgroundImage !== "none" || alphaOf(style.backgroundColor) >= 0.85) cover = el;
         }

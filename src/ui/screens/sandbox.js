@@ -290,7 +290,11 @@ export const sandboxScreen = {
     if (!IS_DEV) return; // production guard — should never be reached (registration is gated too)
     injectStyle();
     rootEl.innerHTML = '';
-    rootEl.classList.add('panel', 'sf-menu', 'sf-menu-wide', 'sf-sandbox');
+    // A dev harness is still a screen. It was a bare `.panel` taller than the viewport with nothing
+    // to scroll it, so the top and bottom of the form -- including four of its six setup tiles --
+    // were simply off the frame. The frame gives it the same margin as everything else and a body
+    // that scrolls.
+    rootEl.classList.add('screen', 'sf-sandbox', 'dp-frame', 'dp-frame--screen', 'dp-frame__scroll');
     rootEl.dataset.stamp = 'SANDBOX / TEST HARNESS';
 
     const crest = el('div', 'sf-crest');

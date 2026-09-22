@@ -47,7 +47,10 @@
 <link rel="stylesheet" href="../styles/intro.css" />
 <link rel="stylesheet" href="../styles/asteroid-ops.css" />
 <link rel="stylesheet" href="../styles/accessibility.css" />
-<link rel="stylesheet" href="../styles/hud.css" />
+<!-- hud.css is NOT linked here: styles/ui.css @imports it, which is how every other page
+     in this repo gets it -- including build/web/index.html, the packaged build. Linking it
+     again loaded a second copy after menu/intro/asteroid-ops/accessibility, so the dev page
+     and the shipped page resolved HUD rules in a different order. One copy, one order. -->
 <link rel="stylesheet" href="../styles/kit.css" />
 <link rel="stylesheet" href="../styles/prompt-deck.css" />
 <link rel="stylesheet" href="../styles/crucible.css" />

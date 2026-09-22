@@ -115,6 +115,13 @@ export const DECKPLATE_LAYOUT_CSS = `
 .dp-bar { display:flex; align-items:center; gap:var(--dp-gap); flex-wrap:wrap; min-width:0; }
 .dp-bar--end { margin-left:auto; }
 
+/* A frame that is itself the scroller: its content is one long column rather than head/body/foot.
+   Used by the dev harness, whose form is taller than any viewport. */
+.dp-frame--screen.dp-frame__scroll {
+  display: block; overflow: auto; overscroll-behavior: contain;
+  background: var(--dp-metal-0);
+}
+
 /* Running copy never runs wider than it can be read. */
 .dp-copy {
   font-family:var(--dp-face-read); font-size:var(--dp-fs-body); line-height:1.5;
