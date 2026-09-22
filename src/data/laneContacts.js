@@ -74,6 +74,16 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     ship: 'ship_mule',
     sectorIds: Object.freeze(['sector_helios_prime']),
   }),
+  Object.freeze({
+    // Vesta foundry bulk freight: an industrial hauler moving heavy slag between the forge and depot.
+    id: 'lane_tann_slag_carrier',
+    name: 'Tann of the Slag Run',
+    callsign: 'SLAG-RUN',
+    role: 'hauler',
+    gimmick: 'bulk-haul',
+    ship: 'ship_mule',
+    sectorIds: Object.freeze(['sector_vesta_forge']),
+  }),
 ]);
 
 /** PQ-143.02: the one-off courier's contact id, exported for traffic.js's dedicated fixture slot. */
