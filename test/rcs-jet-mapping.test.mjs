@@ -277,7 +277,9 @@ test('assist counter-thrust fires jets with NO pilot translation input at all', 
   // A ship sliding sideways under assist is trimmed by real RCS the pilot never asked for. The
   // old renderer read input keys, so these jets were silent — the ship looked like it was being
   // dragged sideways by nothing. This is the case that proves the seam is doing real work.
-  const { firings, actuators } = firingsFor('drive_reaction_m', { throttle: 1 }, { vel: { x: 10, z: 30 } });
+  // The slip needs to be hard enough that the tuned gentle assist (stopHorizonS 4.0 × 0.32
+  // fraction) clears the jet deadband: ~4.1 WU/s² of demand, which a 70 WU/s slide supplies.
+  const { firings, actuators } = firingsFor('drive_reaction_m', { throttle: 1 }, { vel: { x: 10, z: 70 } });
   assert.equal(actuators.assist.reason, 'slip-assist', 'precondition: the kernel must be trimming slip');
   assert.equal(actuators.manual.lateral, 0, 'precondition: the pilot is NOT pressing strafe');
   assert.ok(Math.abs(actuators.lateral) > 0, 'assist must still produce lateral demand');
