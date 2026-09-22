@@ -191,6 +191,9 @@ export function createSimulationRunner(state, registry, deps = {}) {
   let inputSnapshotsCancelledOnClose = 0;
   let inputCancellationFailureCount = 0;
   let closedInputCommandSnapshotDiagnostics = null;
+  // The step throw that triggered quarantine. Every later frame can only report
+  // "SimulationRunner is closed", so the original error must be retained here.
+  let closeCauseMessage = null;
 
   function assertOpen() {
     if (closed) throw new Error('SimulationRunner is closed');
@@ -312,6 +315,9 @@ export function createSimulationRunner(state, registry, deps = {}) {
       // that uncommitted phase permanently non-retryable. The original error remains the caller's
       // diagnostic; close() retains the existing queue/cancellation diagnostics.
       if (!closed) {
+        closeCauseMessage = error && typeof error.message === 'string'
+          ? error.message.slice(0, 240)
+          : String(error).slice(0, 240);
         try {
           close();
         } catch (_) {
@@ -493,6 +499,7 @@ export function createSimulationRunner(state, registry, deps = {}) {
         closeCount,
         closeAttemptCount,
         closeFailureCount,
+        closeCauseMessage,
         completedTicksPendingAtClose,
         completedTicksDiscardedOnClose,
         inputPendingAtClose,

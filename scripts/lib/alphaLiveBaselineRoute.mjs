@@ -132,7 +132,18 @@ export async function runBrowserPublicRoute({
     phase = 'flight-input';
     const canvas = page.locator('#gl-canvas');
     await canvas.waitFor({ state: 'visible', timeout: 30_000 });
-    const canvasBox = await canvas.boundingBox();
+    // boundingBox() additionally waits for two stable rAF frames — under a first-present compile
+    // burst or a layout-thrash regression that wait never settles and the route dies without diag.
+    // getBoundingClientRect answers under layout churn; it only fails if the JS thread itself is
+    // wedged, which the race bound still reports as a timeout instead of hanging the run.
+    const canvasBox = await canvas.boundingBox({ timeout: 12_000 }).catch(() => null)
+      || await Promise.race([
+        page.evaluate(() => {
+          const r = document.getElementById('gl-canvas')?.getBoundingClientRect();
+          return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null;
+        }),
+        new Promise((resolve) => setTimeout(() => resolve(null), 8_000)),
+      ]).catch(() => null);
     assert(canvasBox && canvasBox.width > 100 && canvasBox.height > 100, 'flight canvas must have a visible pointer target');
     await page.mouse.move(
       Math.round(canvasBox.x + canvasBox.width * 0.58),

@@ -399,6 +399,16 @@ export async function runReleaseSoakProbe({
         // wedged, or the page froze.
         const diag = await captureCycleStateDiag(page).catch(() => null);
         cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)}`;
+        // The runner quarantines itself on the first registry.step throw, so every later frame
+        // reports only "SimulationRunner is closed". The original error survives only in the
+        // console issue tracker — surface its head so the fail line names the real thrower.
+        const consoleErrorHead = (pageIssueTracker?.issues || [])
+          .filter((issue) => issue.type === 'error' || issue.type === 'pageerror')
+          .slice(0, 6)
+          .map((issue) => `${issue.type}: ${String(issue.text || '').slice(0, 300)}`);
+        if (consoleErrorHead.length > 0) {
+          cycleError.message += ` | console-errors: ${JSON.stringify(consoleErrorHead)}`;
+        }
         // The position trail is the only witness that names the tick a far-field excursion
         // began; the cycle-state tail alone reads end state. Persist the whole ring plus
         // the writer-trap events, whose stacks name the exact write that moved the ship.
@@ -1134,6 +1144,11 @@ async function captureCycleStateDiag(page) {
         const recent = typeof w?.recent === 'function' ? w.recent() : [];
         const s = recent[recent.length - 1] || null;
         const v = typeof w?.verdict === 'function' ? w.verdict() : null;
+        // Once the sim quarantines, lastFrameError only repeats "SimulationRunner is closed" —
+        // closeCauseMessage retains the registry.step throw that actually tripped it.
+        const simDiag = (() => {
+          try { return window.SF?.loop?.getDiagnostics?.()?.simulation || null; } catch (_) { return null; }
+        })();
         return {
           verdict: v ? { kind: v.kind, headline: v.headline } : null,
           lifecycle: s?.lifecycle ?? null,
@@ -1143,6 +1158,8 @@ async function captureCycleStateDiag(page) {
           renderUpdates: s?.renderUpdates ?? null,
           lastFrameError: s?.lastFrameError ?? null,
           frameErrorCount: s?.frameErrorCount ?? null,
+          simClosed: simDiag?.closed ?? null,
+          closeCause: simDiag?.closeCauseMessage ?? null,
         };
       })(),
       saveStartedSnapshot: window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null,
@@ -2138,16 +2155,27 @@ async function exerciseMarketRoundtrip(page) {
     // fast into the sell-first fallback (PQ-033.02, 2026-09-22: three runs died at
     // market-opened with the cycle timeout and no diag). Landing is still proven by
     // the state verify below, never by the click.
-    if (commitQty != null) await qtyInput.fill(commitQty, { timeout: 2_000 }).catch(() => {});
-    const enabled = await tradeGo.waitFor({ state: 'visible', timeout: 1_500 }).then(() => true, () => false);
-    if (!enabled) return null;
     const before = await readTradeSnapshot(page, id);
-    // Same live-refresh hazard as the register rows: try the pointer click first,
-    // then dispatch the click on the node — the same event its handler consumes.
-    let clicked = await tradeGo.click({ timeout: 3_000 }).then(() => true, () => false);
-    if (!clicked) clicked = await tradeGo.dispatchEvent('click').then(() => true, () => false);
-    if (!clicked) return null;
-    const landed = await page.waitForFunction(verifyFn, before, { timeout: 8_000 }).then(() => true, () => false);
+    // The console re-renders on every price tick: a GO node resolved before the click can be
+    // detached by the time the event dispatches, and a transient disabled/tradeBusy instant eats
+    // the handler silently (no trade event either way). A pilot just clicks again — so does the
+    // probe: bounded click→verify attempts inside the same ~8s budget, re-arming qty each time.
+    const deadline = Date.now() + 8_000;
+    let landed = false;
+    let attempts = 0;
+    while (!landed && Date.now() < deadline && attempts < 3) {
+      attempts += 1;
+      if (commitQty != null) await qtyInput.fill(commitQty, { timeout: 1_500 }).catch(() => {});
+      const enabled = await tradeGo.waitFor({ state: 'visible', timeout: 1_500 }).then(() => true, () => false);
+      if (!enabled) continue;
+      // Same live-refresh hazard as the register rows: try the pointer click first,
+      // then dispatch the click on the node — the same event its handler consumes.
+      let clicked = await tradeGo.click({ timeout: 2_000 }).then(() => true, () => false);
+      if (!clicked) clicked = await tradeGo.dispatchEvent('click').then(() => true, () => false);
+      if (!clicked) continue;
+      const remainMs = Math.max(500, deadline - Date.now());
+      landed = await page.waitForFunction(verifyFn, before, { timeout: Math.min(3_000, remainMs) }).then(() => true, () => false);
+    }
     return landed ? { commodityId: id, before } : null;
   };
   // Walk register rows the way a pilot does: select each and try the commit until one
