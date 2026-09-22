@@ -1,0 +1,81 @@
+{
+  "schema": "spaceface.runtimeWitness.probe.v1",
+  "longTaskWitness": null,
+  "gcProbe": null,
+  "allocProfile": null,
+  "verdict": {
+    "ok": null,
+    "kind": "inconclusive",
+    "headline": "Not enough runtime samples yet.",
+    "next": "Let the game run a few seconds, then read window.__SF_WITNESS__.verdict().",
+    "facts": {
+      "sampleCount": 0
+    }
+  },
+  "sampleCount": 0,
+  "first": null,
+  "last": null,
+  "canvasFrames": [],
+  "pageErrors": [],
+  "consoleHits": [
+    "[http.404] http://127.0.0.1:44641/src/data/emergentPrimitives.js",
+    "[console.error] Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "logs": [
+    "[2026-09-22T04:43:58.448Z] launching isolated Electron",
+    "[2026-09-22T04:45:30.242Z] probe failed: TimeoutError: CSP-safe page condition timed out after 90000ms\n    at waitForPageCondition (file:///workspace/spaceface-master-witness/scripts/lib/playwrightCspPolling.mjs:58:17)\n    at async file:///workspace/spaceface-master-witness/scripts/probe-runtime-witness.mjs:3169:3"
+  ],
+  "gpu": null,
+  "route": {
+    "kind": "new-game",
+    "label": "New Game seed 47",
+    "saveDir": null,
+    "saveSlots": [],
+    "opaqueBatchDiagnostic": null,
+    "noSubmitDiagnostic": null,
+    "shadowDiagnostic": null,
+    "seed": 47,
+    "sampleMs": 20000,
+    "sampleEveryMs": 500,
+    "noSampleShots": false,
+    "simDelta": 0,
+    "executedFrameDelta": 0,
+    "instrumentation": null
+  },
+  "loadingReadiness": {
+    "events": [],
+    "samples": []
+  },
+  "openingRenderWork": null,
+  "openingFirstTouchOwner": null,
+  "openingExactOwnerTouch": null,
+  "noSubmitDiagnostic": null,
+  "sectorTransition": null,
+  "tableCensus": {
+    "available": false,
+    "sampleCount": 0
+  },
+  "hitchAttribution": {
+    "frames": 0,
+    "hitches": 0,
+    "named": 0,
+    "unknown": 0,
+    "firstHitches": 0,
+    "echoHitches": 0,
+    "longestStreak": 0,
+    "coverage": 0,
+    "counts": {}
+  },
+  "hostLoad": {
+    "available": false
+  },
+  "bloomPhases": {
+    "bloomScene": null,
+    "bloomDownsample": null,
+    "bloomComposite": null
+  },
+  "systemTiming": null,
+  "productionMatrix": null,
+  "error": "TimeoutError: CSP-safe page condition timed out after 90000ms\n    at waitForPageCondition (file:///workspace/spaceface-master-witness/scripts/lib/playwrightCspPolling.mjs:58:17)\n    at async file:///workspace/spaceface-master-witness/scripts/probe-runtime-witness.mjs:3169:3",
+  "cleanupError": null
+}
