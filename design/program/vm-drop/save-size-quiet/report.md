@@ -11,7 +11,7 @@ Measured on the idle Grok Bot VM. **Report only** — no save-system or gameplay
 | 60min | 60 min | 3600.0 s | **718 069** | 718 087 | 717 941 |
 | 120min | 120 min | 7200.0 s | **736 967** | 737 061 | 736 915 |
 
-- Wall duration of the sampler: **73343 ms (~1.2 min)**, not 2 wall-hours — headless fixed-step is accelerated.
+- Wall duration of the sampler: **73343 ms (~1.2 min)**, not 2 wall-hours — headless fixed-step is accelerated.
 - Growth start→120: **+633 369** JS chars (~7.1×). Most growth is in the first 30 sim-minutes (+583 722); 30→60 (+30 749); 60→120 (+18 898).
 
 ## How saves were sampled
