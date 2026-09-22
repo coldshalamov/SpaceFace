@@ -55,11 +55,15 @@ function parseColor(css) {
   return { r: +m[1], g: +m[2], b: +m[3], a: m[4] == null ? 1 : +m[4] };
 }
 
-// Every visible text run, with its rectangle, colour and size. Runs inside a scrolled-out region,
+// Every visible text run, with its rectangle, colour and size. The Range is taken over the TEXT
+// NODE, not the element's contents: a commodity name element contains an 18px bone-coloured icon,
+// and including it put a bright non-glyph patch inside the measured rect, which read as a pale
+// field and scored the name three tenths too low.
+// Runs inside a scrolled-out region,
 // a collapsed <details> or a screen-reader-only box are skipped for the same reasons the bench's
 // own audit skips them: they are not on screen, so their contrast is not a defect.
 // One line on purpose: the bench takes --probe= as a single argument.
-const PROBE = 'js:' + "(()=>{const out=[],seen=new Set();const walk=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const vw=innerWidth,vh=innerHeight;for(let n=walk.nextNode();n;n=walk.nextNode()){const t=(n.nodeValue||'').trim();if(!t)continue;const el=n.parentElement;if(!el||seen.has(el))continue;const s=getComputedStyle(el);if(s.visibility==='hidden'||s.display==='none'||+s.opacity<0.08)continue;if(el.closest('[hidden],[aria-hidden=\"true\"],details:not([open])'))continue;const box=el.getBoundingClientRect();if(box.width<4||box.height<4)continue;if(box.right<0||box.bottom<0||box.left>vw||box.top>vh)continue;const r=document.createRange();r.selectNodeContents(el);const rects=[...r.getClientRects()].filter(q=>q.width>3&&q.height>3);if(!rects.length)continue;seen.add(el);const q=rects[0];out.push({text:t.slice(0,40),x:Math.round(q.left),y:Math.round(q.top),w:Math.round(q.width),h:Math.round(q.height),color:s.color,size:parseFloat(s.fontSize)||0,weight:s.fontWeight,cls:(el.className||'').toString().slice(0,48)});}return out.slice(0,400);})()";
+const PROBE = 'js:' + "(()=>{const out=[],seen=new Set();const walk=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const vw=innerWidth,vh=innerHeight;for(let n=walk.nextNode();n;n=walk.nextNode()){const t=(n.nodeValue||'').trim();if(!t)continue;const el=n.parentElement;if(!el||seen.has(el))continue;const s=getComputedStyle(el);if(s.visibility==='hidden'||s.display==='none'||+s.opacity<0.08)continue;if(el.closest('[hidden],[aria-hidden=\"true\"],details:not([open])'))continue;const box=el.getBoundingClientRect();if(box.width<4||box.height<4)continue;if(box.right<0||box.bottom<0||box.left>vw||box.top>vh)continue;let clipped=false;for(let a=el.parentElement;a&&a!==document.body;a=a.parentElement){const as=getComputedStyle(a);if(as.overflow==='visible'&&as.overflowY==='visible'&&as.overflowX==='visible')continue;const ab=a.getBoundingClientRect();if(box.top<ab.top+1||box.bottom>ab.bottom-1||box.left<ab.left-1||box.right>ab.right+1){clipped=true;break;}}if(clipped)continue;const r=document.createRange();r.selectNode(n);const rects=[...r.getClientRects()].filter(q=>q.width>3&&q.height>3);if(!rects.length)continue;seen.add(el);const q=rects[0];out.push({text:t.slice(0,40),x:Math.round(q.left),y:Math.round(q.top),w:Math.round(q.width),h:Math.round(q.height),color:s.color,size:parseFloat(s.fontSize)||0,weight:s.fontWeight,cls:(el.className||'').toString().slice(0,48)});}return out.slice(0,400);})()";
 
 function shotAndProbe(id) {
   const res = spawnSync(process.execPath,

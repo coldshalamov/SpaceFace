@@ -1992,8 +1992,8 @@ export function injectHudCss() {
   #hud::before {
     content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
     background:
-      radial-gradient(64% 42% at 2% 100%, rgb(3 5 8 / .95), rgb(3 5 8 / .86) 34%, rgb(3 5 8 / .52) 62%,
-                      rgb(3 5 8 / .18) 80%, transparent 94%),
+      radial-gradient(82% 56% at 0% 100%, rgb(3 5 8 / .95), rgb(3 5 8 / .88) 30%, rgb(3 5 8 / .62) 52%,
+                      rgb(3 5 8 / .30) 72%, rgb(3 5 8 / .10) 88%, transparent 100%),
       radial-gradient(46% 30% at 100% 100%, rgb(3 5 8 / .86), rgb(3 5 8 / .46) 48%, transparent 82%),
       linear-gradient(0deg, rgb(3 5 8 / .86) 0%, rgb(3 5 8 / .70) 9%, rgb(3 5 8 / .40) 19%,
                              rgb(3 5 8 / .14) 29%, transparent 40%),

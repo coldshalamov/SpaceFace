@@ -246,7 +246,10 @@ export const DECKPLATE_TOKENS_CSS = `
   /* — the consequence cap: the only control lit from inside — */
   --dp-cap-live:
     linear-gradient(180deg, rgb(255 236 200 / .22), rgb(255 236 200 / 0) 46%),
-    linear-gradient(168deg, #c8923a 0%, #a9761f 48%, #7d5412 100%);
+    linear-gradient(168deg, #d29b41 0%, #bb862a 52%, #9c6c1d 100%);
+  /* The ramp is shallower than it looks in isolation on purpose: the old bottom stop
+     (#7d5412) put a two-line key's second line at L~0.17, a dead zone where even pure
+     black ink caps out at 4.4:1. Measured with scripts/ui-contrast.mjs, not guessed. */
   --dp-cap-live-hover:
     linear-gradient(180deg, rgb(255 240 210 / .3), rgb(255 240 210 / 0) 48%),
     linear-gradient(168deg, #dba646 0%, #bd8626 48%, #8d6015 100%);
