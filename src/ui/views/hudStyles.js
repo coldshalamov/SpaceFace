@@ -355,6 +355,13 @@ export function injectHudCss() {
     to { transform:rotate(45deg) scale(1.04); } }
   .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner { border-color:var(--hud-amber); }
   .sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner { border-color:var(--k-red); border-width:3px; animation:none; }
+  .sf-lockdiamond[data-shape="bracket-hostile"] .sf-lockdiamond__inner {
+    border-radius:0; animation:none;
+    clip-path:polygon(50% 0, 100% 100%, 0 100%); }
+  .sf-lockdiamond[data-shape="bracket-friendly"] .sf-lockdiamond__inner {
+    border-radius:0; clip-path:none; }
+  .sf-lockdiamond[data-shape="bracket-cargo"] .sf-lockdiamond__inner {
+    border-radius:50%; clip-path:none; animation:none; }
 
   /* G-LOC tunnel vision vignette */
   .sf-gloc-vignette { position:absolute; inset:0; pointer-events:none; z-index:9; opacity:0;

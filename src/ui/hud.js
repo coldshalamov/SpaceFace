@@ -48,6 +48,14 @@ import { createPowerRail, readRailModel } from './powerRail.js';
 import { createForkInstrument } from './forkInstrument.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
+import { targetBracketShape } from './targetBracket.js';
+import {
+  createObjectiveRecall,
+  rememberObjective,
+  dismissObjective,
+  recallObjective,
+  objectiveVisible,
+} from './objectiveRecall.js';
 import {
   shipConditionMarkup, updateShipCondition, hudBarMarkup,
   speedGaugeMarkup, mountRadarKit, setKitBar, setKitGauge,
@@ -1355,6 +1363,21 @@ export function createHud(ctx, alerts) {
   const mtTitle = missionTracker.querySelector('.sf-mt-title');
   const mtObj = missionTracker.querySelector('.sf-mt-obj');
   const mtTime = missionTracker.querySelector('.sf-mt-time');
+  const objectiveRecall = createObjectiveRecall();
+  if (ctx.bus) {
+    ctx.bus.on('hud:recallObjective', () => {
+      if (objectiveRecall.dismissed) {
+        const restored = recallObjective(objectiveRecall);
+        if (restored) {
+          setText(mtObj, restored);
+          setDisplay(missionTracker, true);
+        }
+      } else {
+        dismissObjective(objectiveRecall);
+        setDisplay(missionTracker, false);
+      }
+    });
+  }
 
   // ---- bottom-center (HUD 2.0, GDD §9.4): only SPD + WPN live here permanently. Cargo, credits,
   // and ship class are CONTEXTUAL CHIPS — they appear when their value changes, then fade. The old
@@ -3832,12 +3855,15 @@ export function createHud(ctx, alerts) {
         // Tint: red when missile-locked, cyan when just selected/tracking.
         const tgtLocked = isLocked && combat && combat.lockTarget === tid;
         setClass(lockDiamond, 'locked-tgt', tgtLocked);
+        const shape = targetBracketShape(tgt, isHostileToPlayer(tgt, p ? p.team : 0, state));
+        if (lockDiamond.dataset.shape !== shape) lockDiamond.dataset.shape = shape;
         const innerDiamond = lockDiamond.firstElementChild;
         if (innerDiamond) {
+          const spin = shape === 'bracket-friendly' ? ' rotate(45deg)' : '';
           if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-            setStyle(innerDiamond, 'transform', `translate3d(${(opticalGLag.x * 0.9).toFixed(2)}px,${(opticalGLag.y * 0.9).toFixed(2)}px,0) rotate(45deg)`);
+            setStyle(innerDiamond, 'transform', `translate3d(${(opticalGLag.x * 0.9).toFixed(2)}px,${(opticalGLag.y * 0.9).toFixed(2)}px,0)${spin}`);
           } else {
-            setStyle(innerDiamond, 'transform', 'rotate(45deg)');
+            setStyle(innerDiamond, 'transform', spin ? 'rotate(45deg)' : 'none');
           }
         }
       } else {
@@ -4922,10 +4948,12 @@ export function createHud(ctx, alerts) {
       const dest = flightDestinationSurface(state, command);
       setDisplay(mtTitle, false);
       setDisplay(mtTime, false);
-      if (!dest.show) {
+      if (dest.line) rememberObjective(objectiveRecall, dest.line);
+      const showObjective = objectiveVisible(objectiveRecall, dest.show);
+      if (!showObjective) {
         setDisplay(missionTracker, false);
       } else {
-        setText(mtObj, dest.line);
+        setText(mtObj, objectiveRecall.text || dest.line);
         setClass(mtTime, 'sf-mt-urgent', dest.urgent);
         setDisplay(missionTracker, true);
       }

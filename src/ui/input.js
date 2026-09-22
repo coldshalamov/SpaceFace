@@ -299,6 +299,13 @@ export function createUiInput(ctx, screenManager) {
       return;
     }
 
+    if (matchesBinding(ev, BINDINGS.recallObjective)) {
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('hud:recallObjective');
+      return;
+    }
+
     switch (key) {
       case 'Escape':
         if (state.ui && state.ui.commsBacklogOpen) {

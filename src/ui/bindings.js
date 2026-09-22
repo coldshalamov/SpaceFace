@@ -31,6 +31,9 @@ export const BINDINGS = Object.freeze({
   // lives on Z — a free key next to the movement cluster for a thumb-reachable "hands stay on the
   // stick" fleet command.
   fleetCommand: { key: 'z', code: 'KeyZ', label: 'Z' },
+  // G9: bring the flight objective back. Semicolon is free of the verb tables and does not
+  // open the mission log.
+  recallObjective: { key: ';', code: 'Semicolon', label: ';' },
 });
 
 // --- Device-aware prompt glyphs (PQ-164.01) ----------------------------------------------------
