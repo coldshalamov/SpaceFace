@@ -245,16 +245,16 @@ export const DECKPLATE_LAYOUT_CSS = `
   font-size:var(--dp-fs-menu);
   line-height:1; letter-spacing:.005em; text-transform:uppercase;
   cursor:pointer;
-  /* C4 — the LETTERFORM answers to state. Archivo carries wght 100–900 and wdth 62–125, both
-     loaded, and font-variation-settings interpolates axis for axis. A verb taking focus does not
-     just brighten: it gains weight and opens up, the way a switch label is cut deeper on the part
-     you press. Vector, so it costs nothing and is sharp at any size. */
+  /* C4 — the LETTERFORM answers to state: a verb taking focus gains weight and opens up, the way
+     a switch label is cut deeper on the part you press. It SNAPS between two instances rather than
+     interpolating: a font-variation-settings transition is layout and paint on every frame of the
+     transition, and animating wdth inside a column reflows the column
+     (design/frontend/ONE_PHOTOGRAPH.md §5). Vector either way, so it is sharp at any size. */
   transition:
     color var(--dp-d-cut) var(--dp-ease-lamp),
     transform var(--dp-d-cut) var(--dp-ease-lamp),
     background-color var(--dp-d-cut) var(--dp-ease-lamp),
-    box-shadow var(--dp-d-cut) var(--dp-ease-lamp),
-    font-variation-settings var(--dp-d-settle) var(--dp-ease-settle);
+    box-shadow var(--dp-d-cut) var(--dp-ease-lamp);
 }
 /* The lamp rail: a cold filament at rest, the live lamp when the item is awake. It is 2px of
    hardware, not a 4px coloured border — that strip is the single most reliable tell of a
@@ -324,8 +324,9 @@ export const DECKPLATE_LAYOUT_CSS = `
 .dp-menu__group:first-child { margin-top:0; }
 
 /* C4 on the legend. An etched word on a LIVE instrument is cut wider and deeper than the same word
-   on an idle one — the axis carries the state, so colour does not have to carry it alone. */
-.dp-etch { transition:font-variation-settings var(--dp-d-settle) var(--dp-ease-settle), color var(--dp-d-cut) var(--dp-ease-lamp); }
+   on an idle one — the axis carries the state, so colour does not have to carry it alone. The cut
+   snaps; only the colour transitions. */
+.dp-etch { transition:color var(--dp-d-cut) var(--dp-ease-lamp); }
 .dp-etch--live, [aria-current="true"] > .dp-etch, [aria-selected="true"] .dp-etch {
   font-variation-settings:"wght" 700, "wdth" 72;
 }
@@ -468,27 +469,10 @@ export const DECKPLATE_LAYOUT_CSS = `
 .dp-table__row[aria-selected="true"]::before { opacity:1; box-shadow:0 0 9px var(--dp-lamp-bloom); }
 .dp-table__row:focus-visible { box-shadow:inset 0 0 0 1px var(--dp-lamp); }
 
-/* ══ C5 — ROWS RESOLVE AS THEY ARRIVE ═════════════════════════════════════════════
-   A 47-row market appears fully formed, all at once. animation-timeline: view() drives each row
-   from its OWN position in the scroller — natively, on the compositor, with no scroll listener,
-   no IntersectionObserver and no JS on the scroll path at all. The row is already in the DOM and
-   already readable by a screen reader; this is presentation only.
-   ═════════════════════════════════════════════════════════════════════════════════════════ */
-@supports (animation-timeline: view()) {
-  @media not (prefers-reduced-motion: reduce) {
-    @keyframes dp-arrive {
-      from { opacity:0; transform:translateY(7px); }
-      to { opacity:1; transform:none; }
-    }
-    .dp-table__body > .dp-table__row,
-    .dp-frame__scroll > .dp-rows > li,
-    .dp-frame__scroll > .dp-menu > li {
-      animation:dp-arrive linear both;
-      animation-timeline:view();
-      animation-range:entry 0% entry 62%;
-    }
-  }
-}
+/* C5 (scroll-driven arrival) was here and is RETIRED, 2026-09-22.
+   design/frontend/ONE_PHOTOGRAPH.md §4.14: a row resolving from transparent as it enters the
+   viewport is a landing page, not an instrument. Rows are LIT as the attention lamp reaches them.
+   Left as a note rather than a silent deletion so the idea is not re-had. */
 
 /* Cells. Numbers are tabular and right-aligned so a column is a column; names truncate with an
    ellipsis rather than pushing the numerals out of line. */
