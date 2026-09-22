@@ -7,10 +7,11 @@ import { recordImpulseProvenance } from '../src/combat/impulseKernel.js';
 import { createBus } from '../src/core/eventBus.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { DEFAULT_VFX_ADMISSION_PRIORITY, deriveVfxAdmissionMetadata } from '../src/presentation/vfxAdmissionPriority.js';
-import { PhasedExplosionLifecycle } from '../src/render/combat/phasedExplosions.js';
+import { PhasedExplosionLifecycle, explosionScheduleFor } from '../src/render/combat/phasedExplosions.js';
 import { vfx } from '../src/render/vfx.js';
 import { buildKillPresentationReceipt, combat } from '../src/systems/combat.js';
 import { collisionConsequences } from '../src/systems/collisionConsequences.js';
+import { masslineThrow } from '../src/systems/masslineThrow.js';
 
 function ship(id, team, options = {}) {
   return {
@@ -296,6 +297,59 @@ test('real lethal terrain and Ram-Plate contacts survive synchronous damage rout
     ramBus.clear();
   } finally {
     COMBAT_FLAGS.weaponImpulseConsequences = previous;
+  }
+});
+
+test('a massline tangent-meeting kill publishes the real collision cause, not generic', () => {
+  // PIC-08: the thrown hull's meeting packet must carry collisionPresentation so the kill
+  // receipt — and therefore the phased-explosion schedule — follows the surface it hit.
+  const target = ship(9, 1, { hull: 1, vx: 120, vz: 0 });
+  const state = killState(target);
+  const asteroid = {
+    id: 77, type: 'asteroid', alive: true,
+    pos: { x: 40, z: 6 }, vel: { x: 0, z: 0 }, radius: 30, mass: 1e6, data: {},
+  };
+  state.entities.set(asteroid.id, asteroid);
+  state.entityList.push(asteroid);
+  const bystander = ship(78, 2, { hull: 200, vx: 0, vz: 0 });
+  state.entities.set(bystander.id, bystander);
+  state.entityList.push(bystander);
+
+  const routed = [];
+  const thrower = Object.create(masslineThrow);
+  thrower.registry = {
+    get: () => ({ kernel: { routeDamage: (args) => { routed.push(args); return { ok: true }; } } }),
+  };
+  thrower.bus = createBus();
+  const meeting = { closingSpeed: 120, vx: 0, vz: 0 };
+
+  thrower._commitTangentMeeting(state, meeting, target, asteroid, 1, 0, 40);
+  assert.equal(routed.length, 1);
+  const terrainReceipt = buildKillPresentationReceipt(state, target, state.playerId, {
+    origin: routed[0].origin,
+    packet: routed[0].packet,
+  });
+  assert.equal(terrainReceipt.cause, 'terrain_collision',
+    'a hull shoved into terrain must read as a terrain kill, not the generic schedule');
+  assert.equal(terrainReceipt.surface, 'terrain');
+  assert.equal(terrainReceipt.playerCaused, true);
+
+  thrower._commitTangentMeeting(state, { ...meeting }, target, bystander, 0, 1, 40);
+  assert.equal(routed.length, 2);
+  const craftReceipt = buildKillPresentationReceipt(state, target, state.playerId, {
+    origin: routed[1].origin,
+    packet: routed[1].packet,
+  });
+  assert.equal(craftReceipt.cause, 'ship_collision',
+    'a hull shoved into another craft must read as a ship collision, not the generic schedule');
+  assert.equal(craftReceipt.surface, 'craft');
+
+  const generic = explosionScheduleFor('ordinary', 'generic');
+  const gunKill = explosionScheduleFor('ordinary', 'kinetic');
+  for (const cause of [terrainReceipt.cause, craftReceipt.cause]) {
+    const scheduleDef = explosionScheduleFor('ordinary', cause);
+    assert.notEqual(scheduleDef, generic, `${cause} must not reuse the generic schedule`);
+    assert.notEqual(scheduleDef, gunKill, `${cause} must not read as a gun-kill schedule`);
   }
 });
 

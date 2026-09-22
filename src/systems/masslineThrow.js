@@ -24,6 +24,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { forecastCadenceWindow } from '../combat/masslineReleaseGeometry.js';
 import { resolveThrowWhoosh } from '../audio/masslineInstrument.js';
 import { assessTangentRelease } from './tetherGameplay.js';
+import { buildCollisionPresentationProvenance } from './collisionConsequences.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // forward-only queue ceiling; 5 fixed ticks at 60 Hz
@@ -722,6 +723,7 @@ export const masslineThrow = {
           kind: `collision_${receipt.surface}`,
           weaponId: 'massline',
           impulseProvenance: 'massline',
+          collisionPresentation: buildCollisionPresentationProvenance(hull, body, receipt),
         },
       });
       packet.flags = { allowAnyTarget: true };
