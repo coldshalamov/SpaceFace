@@ -245,11 +245,16 @@ export const DECKPLATE_LAYOUT_CSS = `
   font-size:var(--dp-fs-menu);
   line-height:1; letter-spacing:.005em; text-transform:uppercase;
   cursor:pointer;
+  /* C4 — the LETTERFORM answers to state. Archivo carries wght 100–900 and wdth 62–125, both
+     loaded, and font-variation-settings interpolates axis for axis. A verb taking focus does not
+     just brighten: it gains weight and opens up, the way a switch label is cut deeper on the part
+     you press. Vector, so it costs nothing and is sharp at any size. */
   transition:
     color var(--dp-d-cut) var(--dp-ease-lamp),
     transform var(--dp-d-cut) var(--dp-ease-lamp),
     background-color var(--dp-d-cut) var(--dp-ease-lamp),
-    box-shadow var(--dp-d-cut) var(--dp-ease-lamp);
+    box-shadow var(--dp-d-cut) var(--dp-ease-lamp),
+    font-variation-settings var(--dp-d-settle) var(--dp-ease-settle);
 }
 /* The lamp rail: a cold filament at rest, the live lamp when the item is awake. It is 2px of
    hardware, not a 4px coloured border — that strip is the single most reliable tell of a
@@ -263,14 +268,20 @@ export const DECKPLATE_LAYOUT_CSS = `
 }
 .dp-menu__item:is(:hover, :focus-visible) {
   color:var(--dp-ink);
+  font-variation-settings:"wght" 800, "wdth" 104;
   transform:translateX(calc(var(--dp-u) * 1.5));
   background-color:rgb(255 232 190 / .035);
   box-shadow:inset 0 1px 0 rgb(255 232 190 / .10), inset 0 -1px 0 rgb(0 0 0 / .35);
   outline:none;
 }
+/* C6 — the rail is a filament. --dp-lamp-current is typed, so one number drives the colour, the
+   halo and the cast at once, and the lamp passes through amber on its way to white. */
+.dp-menu__item::before { transition:--dp-lamp-current var(--dp-d-settle) var(--dp-ease-lamp), top var(--dp-d-cut) var(--dp-ease-lamp), bottom var(--dp-d-cut) var(--dp-ease-lamp), opacity var(--dp-d-cut) var(--dp-ease-lamp); }
 .dp-menu__item:is(:hover, :focus-visible)::before {
   top:8%; bottom:8%; opacity:1;
-  background:var(--dp-lamp); box-shadow:0 0 10px var(--dp-lamp-bloom), 0 0 3px var(--dp-lamp-bloom);
+  --dp-lamp-current:1;
+  background:var(--dp-lamp-now);
+  box-shadow:0 0 var(--dp-lamp-halo) var(--dp-lamp-bloom), 0 0 3px var(--dp-lamp-bloom);
 }
 /* Focus is the lamp at full current plus a machined edge on the plate, not a drawn rectangle
    floating around the word. The rail going hot is the primary cue; the edge is the confirmation. */
@@ -311,6 +322,13 @@ export const DECKPLATE_LAYOUT_CSS = `
   margin:calc(var(--dp-u) * 3) 0 calc(var(--dp-u) * 0.5) calc(var(--dp-u) * 4);
 }
 .dp-menu__group:first-child { margin-top:0; }
+
+/* C4 on the legend. An etched word on a LIVE instrument is cut wider and deeper than the same word
+   on an idle one — the axis carries the state, so colour does not have to carry it alone. */
+.dp-etch { transition:font-variation-settings var(--dp-d-settle) var(--dp-ease-settle), color var(--dp-d-cut) var(--dp-ease-lamp); }
+.dp-etch--live, [aria-current="true"] > .dp-etch, [aria-selected="true"] .dp-etch {
+  font-variation-settings:"wght" 700, "wdth" 72;
+}
 .dp-menu--row { flex-direction:row; flex-wrap:wrap; align-items:stretch; }
 
 /* A BANKED menu. The verbs a player reaches for keep their own row; a run marked data-bank lays out as
@@ -359,8 +377,8 @@ export const DECKPLATE_LAYOUT_CSS = `
 
 /* PRIMARY — the one verb the screen exists for. It is the only item whose lamp is already lit, and
    the plate under it is raised. One per screen; the kit enforced that and so does this. */
-.dp-menu__item--primary { color:var(--dp-ink); }
-.dp-menu__item--primary::before { opacity:1; background:var(--dp-lamp); box-shadow:0 0 9px var(--dp-lamp-bloom); top:8%; bottom:8%; }
+.dp-menu__item--primary { color:var(--dp-ink); font-variation-settings:"wght" 760, "wdth" 96; }
+.dp-menu__item--primary::before { opacity:1; --dp-lamp-current:.72; background:var(--dp-lamp-now); box-shadow:0 0 var(--dp-lamp-halo) var(--dp-lamp-bloom); top:8%; bottom:8%; }
 .dp-menu__item--primary:is(:hover, :focus-visible)::before { background:var(--dp-lamp-hot); box-shadow:0 0 14px var(--dp-lamp-bloom), 0 0 4px var(--dp-lamp-bloom); }
 
 /* DANGER — the same lamp driven red. No second hue enters the system for this. */
@@ -449,6 +467,28 @@ export const DECKPLATE_LAYOUT_CSS = `
 }
 .dp-table__row[aria-selected="true"]::before { opacity:1; box-shadow:0 0 9px var(--dp-lamp-bloom); }
 .dp-table__row:focus-visible { box-shadow:inset 0 0 0 1px var(--dp-lamp); }
+
+/* ══ C5 — ROWS RESOLVE AS THEY ARRIVE ═════════════════════════════════════════════
+   A 47-row market appears fully formed, all at once. animation-timeline: view() drives each row
+   from its OWN position in the scroller — natively, on the compositor, with no scroll listener,
+   no IntersectionObserver and no JS on the scroll path at all. The row is already in the DOM and
+   already readable by a screen reader; this is presentation only.
+   ═════════════════════════════════════════════════════════════════════════════════════════ */
+@supports (animation-timeline: view()) {
+  @media not (prefers-reduced-motion: reduce) {
+    @keyframes dp-arrive {
+      from { opacity:0; transform:translateY(7px); }
+      to { opacity:1; transform:none; }
+    }
+    .dp-table__body > .dp-table__row,
+    .dp-frame__scroll > .dp-rows > li,
+    .dp-frame__scroll > .dp-menu > li {
+      animation:dp-arrive linear both;
+      animation-timeline:view();
+      animation-range:entry 0% entry 62%;
+    }
+  }
+}
 
 /* Cells. Numbers are tabular and right-aligned so a column is a column; names truncate with an
    ellipsis rather than pushing the numerals out of line. */

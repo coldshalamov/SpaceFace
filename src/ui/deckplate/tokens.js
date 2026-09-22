@@ -44,6 +44,17 @@ export const DECKPLATE_TOKENS_CSS = `
   --dp-danger:#ff5038;     /* the same lamp driven to failure */
   --dp-danger-hot:#ff8a70;
 
+  /* ══ C6 — FILAMENT, NOT FADE ══════════════════════════════════════════════════
+     A lamp coming on is not an opacity ramp from .5 to 1. A filament warms through colour before
+     it reaches brightness, and it cools on the way out. --dp-lamp-current is a REGISTERED <number>
+     (deckplate/paint.js), so the browser interpolates it and these three expressions — colour,
+     bloom radius, and the cast the lamp throws on the plate under it — move together from one
+     value. Mixed in oklab so the ramp passes through amber instead of through grey.
+     ═══════════════════════════════════════════════════════════════════════════════════════ */
+  --dp-lamp-now:color-mix(in oklab, var(--dp-lamp-dim), var(--dp-lamp-hot) calc(var(--dp-lamp-current) * 100%));
+  --dp-lamp-halo:calc(var(--dp-lamp-current) * 14px);
+  --dp-lamp-cast:rgb(255 217 140 / calc(var(--dp-lamp-current) * .10));
+
   /* Lamp light, pre-mixed for the bloom layers (alpha baked in). */
   --dp-lamp-bloom:rgb(242 185 80 / .34);
   --dp-lamp-bloom-soft:rgb(242 185 80 / .16);
