@@ -653,14 +653,26 @@ export function contactOverflowSummary(contacts, visibleCount) {
   return `+${omitted.length} · ${parts.join(' · ')}`;
 }
 
-/** A known radar contact must never exist while its targeting roster is wholly absent. */
-export function contactRosterVisible({
-  eligibleContactCount = 0,
-  pinned = false,
-  nearbyHostile = false,
-  revealActive = false,
-} = {}) {
-  return eligibleContactCount > 0 || pinned || nearbyHostile || revealActive;
+/**
+ * Wave G7 — the contacts list stays out of the flight HUD until the player locks something.
+ * A pin, a nearby hostile, or a scan does not mount it. Half opacity is not hidden.
+ */
+export function contactRosterVisible({ locked = false } = {}) {
+  return locked === true;
+}
+
+/** Detach the roster until a lock exists, then seat it in front of the radar. */
+export function mountContactRoster(parent, roster, radar, locked) {
+  if (!parent || !roster) return false;
+  if (!contactRosterVisible({ locked })) {
+    if (roster.parentNode) roster.parentNode.removeChild(roster);
+    return false;
+  }
+  if (roster.parentNode !== parent) {
+    if (radar && radar.parentNode === parent) parent.insertBefore(roster, radar);
+    else parent.appendChild(roster);
+  }
+  return true;
 }
 
 /** One truthful reading for the manual Travel Burn stopping cue. The route executor owns braking
@@ -4232,8 +4244,9 @@ export function createHud(ctx, alerts) {
     const player = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
       : null;
+    const locked = !!(state.player && state.player.targetId != null);
     if (!player || !player.pos) {
-      setDisplay(elOverview, false);
+      mountContactRoster(rightDock, elOverview, radar.el, false);
       return;
     }
     const playerTeam = player.team;
@@ -4319,17 +4332,7 @@ export function createHud(ctx, alerts) {
     _knownContactIds = curIds;
 
     const pinned = !!(state.settings && state.settings.ui && state.settings.ui.overviewOpen);
-    const visible = contactRosterVisible({
-      eligibleContactCount: contacts.length,
-      pinned,
-      nearbyHostile,
-      revealActive: nowMs < _overviewRevealUntil,
-    });
-    if (!visible) {
-      // Rows stay retained while hidden; the next reveal reconciles them back to the truth.
-      setDisplay(elOverview, false);
-      return;
-    }
+    if (!mountContactRoster(rightDock, elOverview, radar.el, locked)) return;
 
     const targetId = state.player.targetId;
     const expanded = contactRosterExpanded({
