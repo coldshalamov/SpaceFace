@@ -112,6 +112,16 @@ const CORE_SECTORS = [
       },
       { id: 'poi_helios_ash_pin', type: 'derelict', name: 'Ash Pin — SPAN-HOLD' },
       { id: 'poi_helios_whistle', type: 'derelict', name: 'Outer Yard Whistle' },
+      {
+        // The chart names the real wreck, not a second derelict prop: the unique-wreck
+        // program owns the body (rumor -> bearing ring -> fixed position), so this row
+        // carries no pos and runtimeOwner keeps _spawnPOIs from minting a decoy beside it.
+        id: 'poi_helios_choir_tender',
+        type: 'wreck',
+        name: 'Relief-Freighter Choir-Tender',
+        uniqueWreckId: 'wreck_choir_tender',
+        runtimeOwner: 'uniqueWrecks',
+      },
     ],
   },
   {
