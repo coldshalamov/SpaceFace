@@ -30,7 +30,7 @@ import {
 } from './velocityLanguage.js';
 import { resolveMasslineFeelPunch } from './masslinePresentation.js';
 import { shouldRedrawAfterLatePresent } from './admissionSliceBudget.js';
-import { fillSpeedLineStreak, speedLineRgba } from './speedLineStrokeCache.js';
+import { fillSpeedLineStreak, speedLineStreakGradient } from './speedLineStrokeCache.js';
 
 // Weapon recoil weight lookup (built once). The player's own gun firing produces zero camera
 // response today — that inertness is the #1 "combat feels flat" tell. We scale the recoil kick by
@@ -430,6 +430,20 @@ const SL_BRIGHT_MAX = 0.95;    // × — the largest per-streak brightness `b` _
 // Extreme-speed grain field. A small repeating tile is orders of magnitude cheaper than per-pixel
 // noise and, being baked once from a fixed hash, is byte-identical on every boot.
 const SL_NO_STREAKS = Object.freeze([]);   // iterated when the streak pass is skipped entirely
+// Unit-space streak gradient stops: [offset, r, g, b, alphaMul]. Painted under a per-streak
+// rotate+uniform-scale that maps (0,0)->tail, (1,0)->lead, so the whole field shares a handful
+// of cached CanvasGradient objects instead of allocating one per streak per frame.
+const SL_STREAK_STOPS_PLAIN = Object.freeze([
+  Object.freeze([0,    160, 205, 255, 0]),
+  Object.freeze([0.55, 195, 230, 255, 0.45]),
+  Object.freeze([1,    232, 248, 255, 1]),
+]);
+const SL_STREAK_STOPS_BANDED = Object.freeze([
+  Object.freeze([0,    VL_COLOR.body.r, VL_COLOR.body.g, VL_COLOR.body.b, 0]),
+  Object.freeze([0.42, VL_COLOR.body.r, VL_COLOR.body.g, VL_COLOR.body.b, 0.42]),
+  Object.freeze([0.78, VL_COLOR.body.r, VL_COLOR.body.g, VL_COLOR.body.b, 0.82]),
+  Object.freeze([1,    VL_COLOR.head.r, VL_COLOR.head.g, VL_COLOR.head.b, 1]),
+]);
 const GRAIN_TILE = 96;             // px — tile edge; also the modulo that bounds the scroll offset
 const GRAIN_SCROLL_PX_S = 340;     // px/s — the field shears past at a fixed rate; only its OPACITY
                                    //     tracks speed, because a field that also accelerates reads
@@ -903,23 +917,22 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       const a = clampTo(this._slOpacity * s.b * edgeFade * (0.55 + 0.45 * centerBias) * centerClear, SL_ALPHA_MAX);
       if (a <= 0.012) continue;
 
-      const grad = ctx.createLinearGradient(tailX, tailY, leadX, leadY);
-      if (banded) {
-        // Saturated ion sheath into a white-hot filament head. Screen compositing preserves the
-        // colored body while allowing overlaps to read as emitted light.
-        const B = VL_COLOR.body, H = VL_COLOR.head;
-        grad.addColorStop(0, speedLineRgba(B.r, B.g, B.b, 0));
-        grad.addColorStop(0.42, speedLineRgba(B.r, B.g, B.b, a * 0.42));
-        grad.addColorStop(0.78, speedLineRgba(B.r, B.g, B.b, a * 0.82));
-        grad.addColorStop(1, speedLineRgba(H.r, H.g, H.b, a));
-      } else {
-        grad.addColorStop(0, speedLineRgba(160, 205, 255, 0));
-        grad.addColorStop(0.55, speedLineRgba(195, 230, 255, a * 0.45));
-        grad.addColorStop(1, speedLineRgba(232, 248, 255, a));
-      }
+      if (!(tailLen > 0.001)) continue;
+      // Saturated ion sheath into a white-hot filament head (banded) / pale blue wake (plain).
+      // Screen compositing preserves the colored body while allowing overlaps to read as
+      // emitted light. One cached unit gradient per (palette, alpha bucket); the transform maps
+      // it onto this streak's tail->lead segment — columns are the orthonormal basis scaled by
+      // tailLen, so the stroke stays round-capped and only lineWidth needs descaling.
+      const ddx = leadX - tailX;
+      const ddy = leadY - tailY;
+      const grad = speedLineStreakGradient(
+        ctx, banded ? 1 : 0, banded ? SL_STREAK_STOPS_BANDED : SL_STREAK_STOPS_PLAIN, a);
+      ctx.save();
+      ctx.transform(ddx, ddy, -ddy, ddx, tailX, tailY);
       ctx.strokeStyle = grad;
-      ctx.lineWidth = s.w * widthMul;
-      ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(leadX, leadY); ctx.stroke();
+      ctx.lineWidth = (s.w * widthMul) / tailLen;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(1, 0); ctx.stroke();
+      ctx.restore();
     }
     ctx.globalCompositeOperation = 'source-over';
 

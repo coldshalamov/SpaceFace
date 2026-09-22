@@ -23,6 +23,7 @@ import {
   beginScenePipelineReadinessBatch,
   createBloom,
   compileScenePipelinesForRenderTarget,
+  createUnreadyDrawableGuard,
   programWrapperDead,
   scenePipelineReadinessBatchOpen,
   warmScenePipelinesForRenderTarget,
@@ -169,6 +170,7 @@ import {
   SHADOW_MAP_SIZE,
   SHADOW_ORTHO_EXTENT,
   shadowCastAxisDistance,
+  shadowCasterBand,
   shadowTexelWorldSize,
   syncShadowCasterPolicy,
 } from './shadowCasterPolicy.js';
@@ -354,6 +356,48 @@ const _craftMicroMotionOptions = {
   tetherPhase: '',
   flashReduce: false,
 };
+// syncEntityViews per-entity option scratches. Every callee reads the fields synchronously and
+// none retains the object — same contract as _craftMicroMotionOptions. All fields a callee can
+// read are rewritten at each call site so a stale flag can never leak from the previous entity.
+const _protectedRootOptions = { isPlayer: false, forceRender: false, neverCull: false };
+// NOTE: shouldSubmitEntityMesh's call sites stay literal — entity-mesh-visibility.test.mjs
+// asserts that exact call shape. The scratches cover everything around it.
+const _viewBandOptions = {
+  isPlayer: false,
+  dx: 0,
+  dz: 0,
+  innerHalfX: 0,
+  innerHalfZ: 0,
+  forceInner: false,
+};
+const _shadowCasterPoseOptions = { visualRadius: 1, extent: 300, mapSize: 1024 };
+const _allowCastScratch = {
+  isPlayer: false,
+  lodLevel: 'lod0',
+  distanceSq: 0,
+  axisDistance: 0,
+  castRadius: 0,
+  castBand: null,
+};
+// Stand-in for syncEntityViews rows whose world record never resolved to a live entity —
+// _shadowPolicyOptions only reads .id, so one frozen-shape object replaces the old
+// per-entity `{ type: typeName }` allocation.
+const _shadowFallbackEntity = { id: undefined, type: '' };
+
+// The activity frame publishes every sim tick through one retained record instead of a fresh
+// `{...frame, complete:true}` spread — consumers only read it, and the membership sets inside
+// were already shared references under the old shallow copy.
+function publishActivityFrame(owner, frame) {
+  if (!frame) {
+    owner._activityFrame = null;
+    return null;
+  }
+  const out = owner._activityFramePublish || (owner._activityFramePublish = {});
+  Object.assign(out, frame);
+  out.complete = true;
+  owner._activityFrame = out;
+  return out;
+}
 // Empty by design for PQ-129.20: every known first-visible admission belongs behind the loading
 // boundary. Future exemptions must name a selector and a non-empty reason; the diagnostic helper
 // ignores reasonless entries so this cannot become a silent allow-list.
@@ -1012,6 +1056,15 @@ export function stableMeshKeyForEntity(entity) {
   if (data.isGate === true && data.gateTo != null) return `gate:${data.homeSectorId || data.sectorId || ''}:${data.gateTo}`;
   if (data.siteId != null) return `site:${data.siteId}`;
   if (data.poiId != null) return `poi:${data.poiId}`;
+  // Aftermath wrecks and salvage payloads rematerialize from durable markers — markerId is
+  // their restore-stable identity, and producers that nest identity under `provenance`
+  // (data.provenance.markerId) key the same way. Without this a restored wreck/payload keys
+  // null and can never reattach its kept GPU mesh.
+  if (data.markerId != null) return `mk:${data.markerId}`;
+  const provenance = data.provenance;
+  if (provenance && typeof provenance === 'object' && provenance.markerId != null) {
+    return `mk:${provenance.markerId}`;
+  }
   // Dressing-table place props carry no record id; their durable identity is the
   // authored (sectorId, placeId, position) triple, which restore re-derives
   // identically. Without it every place prop keys null and a recycled entity id
@@ -1095,6 +1148,7 @@ export function reattachResidentGpuMeshes(owner) {
     if (typeof owner._unbindPresentationMesh === 'function') owner._unbindPresentationMesh(oldId, mesh);
     owner._meshes.delete(oldId);
     owner._meshes.set(entity.id, mesh);
+    owner._meshesVersion = (owner._meshesVersion | 0) + 1;
     entity.mesh = mesh;
     if (entity.view) entity.view.root = mesh;
     else entity.view = { root: mesh };
@@ -1349,6 +1403,87 @@ function meshNeedsAuthoredDecode(owner, entity) {
   if (data.geometryPending === true) return true;
   if (isAuthoredPendingStatus(data.authoredAssetState)) return true;
   return false;
+}
+
+/**
+ * Structural camera clearance. The chase camera has no general obstacle pass — a station or
+ * giant rock can swallow it whole, and every interior face then fights the near plane while the
+ * focus damping breathes (the "camera inside the station jig + surface strobing" defect). The
+ * renderer is the only layer that knows visual bounds, so it reports a world-Y floor per camera
+ * XZ; camera.js owns the snap-up/ease-down hysteresis.
+ *
+ * Bounds come from the live mesh subtree: authored roots grow past their pending/fallback volume
+ * when the GLB commits, so the cached box is invalidated on any authored state/composition stamp
+ * change. Boxes are computed lazily for structural kinds only, and only structures large enough
+ * to contain the camera participate — a nav buoy cannot push the camera.
+ */
+const CAMERA_CLEARANCE_MARGIN_WU = 16;
+const CAMERA_CLEARANCE_MIN_SPAN_WU = 120;
+const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid']);
+const _clearanceBoxScratch = typeof THREE !== 'undefined' ? new THREE.Box3() : null;
+
+function cameraClearanceBoxForMesh(mesh) {
+  const data = mesh && mesh.userData;
+  if (!data || !CAMERA_CLEARANCE_KINDS.has(data.kind)) return null;
+  // Numeric cache stamp — a per-frame string key here meant an allocation per structural mesh
+  // per camera query. Field equality covers the same invalidation inputs.
+  const assetState = data.authoredAssetState || '';
+  const compositionId = data.authoredCompositionId || '';
+  const posX = Math.round(mesh.position.x);
+  const posZ = Math.round(mesh.position.z);
+  const cached = data.cameraClearanceBox;
+  if (cached && cached.assetState === assetState && cached.compositionId === compositionId
+      && cached.posX === posX && cached.posZ === posZ) {
+    return cached.box;
+  }
+  _clearanceBoxScratch.setFromObject(mesh);
+  let box = null;
+  if (!_clearanceBoxScratch.isEmpty()) {
+    const b = _clearanceBoxScratch;
+    const span = Math.max(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z);
+    if (span >= CAMERA_CLEARANCE_MIN_SPAN_WU) {
+      box = (cached && cached.box) || {
+        minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0,
+      };
+      box.minX = b.min.x; box.minY = b.min.y; box.minZ = b.min.z;
+      box.maxX = b.max.x; box.maxY = b.max.y; box.maxZ = b.max.z;
+    }
+  }
+  const rec = cached || (data.cameraClearanceBox = {});
+  rec.assetState = assetState;
+  rec.compositionId = compositionId;
+  rec.posX = posX;
+  rec.posZ = posZ;
+  rec.box = box;
+  return box;
+}
+
+function cameraClearanceFloorAt(owner, camX, camZ, camY) {
+  const meshes = owner && owner._meshes;
+  if (!meshes) return -Infinity;
+  // Structural-only list rebuilt on the _meshes mutation version — the per-frame query walks a
+  // handful of stations/places/rocks instead of every live mesh root.
+  let structural = owner._clearanceMeshes;
+  if (!structural || owner._clearanceMeshesVersion !== owner._meshesVersion) {
+    if (!structural) structural = owner._clearanceMeshes = [];
+    structural.length = 0;
+    for (const mesh of meshes.values()) {
+      const kind = mesh && mesh.userData && mesh.userData.kind;
+      if (CAMERA_CLEARANCE_KINDS.has(kind)) structural.push(mesh);
+    }
+    owner._clearanceMeshesVersion = owner._meshesVersion;
+  }
+  let floor = -Infinity;
+  for (let i = 0; i < structural.length; i++) {
+    const box = cameraClearanceBoxForMesh(structural[i]);
+    if (!box) continue;
+    if (camX < box.minX - CAMERA_CLEARANCE_MARGIN_WU || camX > box.maxX + CAMERA_CLEARANCE_MARGIN_WU) continue;
+    if (camZ < box.minZ - CAMERA_CLEARANCE_MARGIN_WU || camZ > box.maxZ + CAMERA_CLEARANCE_MARGIN_WU) continue;
+    const roof = box.maxY + CAMERA_CLEARANCE_MARGIN_WU;
+    if (camY >= roof) continue;
+    if (roof > floor) floor = roof;
+  }
+  return floor;
 }
 
 /**
@@ -3964,7 +4099,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._shadowReceiversDirty = false;
   owner._shadowMapDirty = false;
   owner._shadowRefreshScheduled = false;
-  owner._shadowFollowKey = null;
+  owner._shadowFollowKeyU = NaN; // NaN never equals a quantized cell — the next frame re-keys
   owner._keyLightOffset = null;
   owner._w2sCamCache = null;
   owner._gpuFrameOrigin = null;
@@ -4906,6 +5041,15 @@ export const render = {
     try { this.collisionDebug = createCollisionDebug(this); }
     catch (err) { console.warn('[render] collision debug unavailable:', err); this.collisionDebug = null; }
     this._meshes = new Map(); // entityId -> Object3D
+    // Bumped on every _meshes set/delete so cameraClearanceFloorAt can rebuild its structural
+    // sublist only when the map actually mutates instead of scanning it every frame.
+    this._meshesVersion = 0;
+    this._clearanceMeshes = null;
+    this._clearanceMeshesVersion = -1;
+    // Chase-camera structural clearance floor: camera.js calls this once per frame with its
+    // resolved XZ; the box pass reads the live mesh map so authored station bodies count once
+    // they commit. Bound once — no per-frame closure allocation.
+    this._cameraClearanceAt = (camX, camZ, camY) => cameraClearanceFloorAt(this, camX, camZ, camY);
     // Measurement-only entity-layer isolation. The probe never reaches into the
     // renderer's private mesh map; this owner-held seam snapshots each mesh's
     // exact visibility and restores it atomically after the sample window.
@@ -6527,6 +6671,7 @@ export const render = {
         this.scene.remove(mesh);
         disposeObject(mesh);
         this._meshes.delete(id);
+        this._meshesVersion += 1;
         noteShadowMeshRemoved(this, mesh);
         clearEntityMeshReference(entity, mesh);
       }
@@ -7887,6 +8032,7 @@ export const render = {
           this.scene.remove(mesh);
           disposeObject(mesh);
           this._meshes.delete(id);
+          this._meshesVersion += 1;
           noteShadowMeshRemoved(this, mesh);
           clearEntityMeshReference(entity, mesh);
         }
@@ -8348,7 +8494,7 @@ export const render = {
       const m = this._meshes.get(id);
       if (m) {
         this._unbindPresentationMesh(id, m);
-        scene.remove(m); disposeObject(m); this._meshes.delete(id);
+        scene.remove(m); disposeObject(m); this._meshes.delete(id); this._meshesVersion += 1;
         this._noteShadowMeshRemoved(m);
         this._publishAssetResidencyDiagnostics();
       }
@@ -10500,6 +10646,7 @@ export const render = {
       releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
       this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
     }
+    this._meshesVersion += 1;
     this._presentationQueries?.reset?.();
     this._markShadowReceiversDirty();
     this._meshBuildQueue.length = 0;
@@ -10597,7 +10744,8 @@ export const render = {
         if (residencyEvict) noteOnGlassResidencyEviction(state, e);
         this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
-        this.scene.remove(m); disposeObject(m); this._meshes.delete(id); noteShadowMeshRemoved(this, m);
+        this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._meshesVersion += 1;
+        noteShadowMeshRemoved(this, m);
         clearEntityMeshReference(e, m);
       }
     }
@@ -10627,8 +10775,11 @@ export const render = {
       queueOrRequestAuthoredUpgrade(this, entity, mesh, state);
     }
     // Reissued or destroyed ids leave orphaned motion-tracker records holding mesh
-    // references — sweep them now that the live set is freshly computed.
-    this._pruneMotionTrackerRecords(presentationList);
+    // references — sweep them now that the live set is freshly computed. Guarded for
+    // the same lightweight residency fixtures as reconcileMeshResidency.
+    if (typeof this._pruneMotionTrackerRecords === 'function') {
+      this._pruneMotionTrackerRecords(presentationList);
+    }
     // This call completed the requested full safety scan. Any remaining queue is a bounded build
     // drain, not a reason to repeat the four collection passes on every following display frame.
     this._meshReconcileDirty = false;
@@ -10669,6 +10820,7 @@ export const render = {
         this.scene.remove(mesh);
         disposeObject(mesh);
         this._meshes.delete(id);
+        this._meshesVersion += 1;
         noteShadowMeshRemoved(this, mesh);
         clearEntityMeshReference(entity, mesh);
         stats.evicted++;
@@ -10681,8 +10833,11 @@ export const render = {
     collectMeshPresentationEntities(state, presentationList);
     // Distance evictions above already released record mesh refs; this sweeps records
     // whose entity ids vanished entirely (destruction, save-restore reissue) between
-    // full reconciles.
-    this._pruneMotionTrackerRecords(presentationList);
+    // full reconciles. Optional on minimal contexts: residency-poll fixtures drive this
+    // method through lightweight stubs that carry no motion tracker.
+    if (typeof this._pruneMotionTrackerRecords === 'function') {
+      this._pruneMotionTrackerRecords(presentationList);
+    }
     kickDecodeRunwayAssets(this, presentationList);
     const env = renderAdmissionEnv(state);
     const urgentShips = this._meshResidencyUrgentShipCandidates
@@ -10840,6 +10995,7 @@ export const render = {
     const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now());
+    const simNow = Number(this.state && this.state.simTime) || 0;
     while (this._meshBuildQueueHead < this._meshBuildQueue.length && built < buildBudget) {
       if (!shouldContinueAdmissionSlice({
         buildBudget,
@@ -10853,8 +11009,38 @@ export const render = {
       if (!e || e.alive === false || e._noMesh || this._meshes.has(id)
           || this._sectorBoundaryPreparations?.has(id)
           || !isEntityRenderRelevant(e, this.state)) continue;
-      const m = this.vf.build(e);
-      if (!m) { e._noMesh = true; continue; }
+      // Transient-failure backoff: a null or thrown build must not latch _noMesh on the first
+      // miss — enqueueMeshBuildCandidate skips _noMesh forever, so a first-frame asset race
+      // used to permanently strand the entity. Failed candidates re-enter via the next
+      // reconcile once simTime passes; only the third strike latches, matching the declared
+      // _noMesh contract producers set themselves.
+      if (e._meshBuildRetryAtSim != null && simNow < e._meshBuildRetryAtSim) continue;
+      let m = null;
+      try {
+        m = this.vf.build(e);
+      } catch (err) {
+        e._meshBuildLastError = String((err && err.message) || err || 'build failed');
+      }
+      if (!m) {
+        const failures = (e._meshBuildFailures | 0) + 1;
+        e._meshBuildFailures = failures;
+        if (failures >= 3) {
+          e._noMesh = true;
+          if (e._meshBuildLastError) {
+            console.warn('[render] mesh build failed permanently', {
+              id: e.id,
+              type: e.type || null,
+              error: e._meshBuildLastError,
+            });
+          }
+        } else {
+          e._meshBuildRetryAtSim = simNow + 0.25 * failures;
+        }
+        continue;
+      }
+      e._meshBuildFailures = 0;
+      e._meshBuildRetryAtSim = null;
+      e._meshBuildLastError = null;
       // In-flight builds are the deferred-streaming tail: naming each one in the counter log
       // is how the smooth-flight probe attributes a mid-round link burst to a real entity.
       const tier1 = this.state.perfRuntime && this.state.perfRuntime.tier1;
@@ -10886,6 +11072,7 @@ export const render = {
       }
       e.mesh = m; e.view = { root: m };
       this._meshes.set(e.id, m);
+      this._meshesVersion += 1;
       this.scene.add(m);
       this._bindPresentationMesh(e, m);
       const holdFirstFlightBuffers = (e.type === 'asteroid' || e.type === 'payload')
@@ -10965,6 +11152,7 @@ export const render = {
       this.scene.remove(old);
       disposeObject(old);
       this._meshes.delete(id);
+      this._meshesVersion += 1;
       noteShadowMeshRemoved(this, old);
     }
     const m = this.vf.build(e);
@@ -10983,6 +11171,7 @@ export const render = {
     }
     e.mesh = m; e.view = { root: m };
     this._meshes.set(id, m);
+    this._meshesVersion += 1;
     this.scene.add(m);
     this._bindPresentationMesh(e, m);
     if (this.state.mode === 'flight'
@@ -11160,6 +11349,19 @@ export const render = {
     const world = this._presentationWorld;
     const bounds = this._entityViewCullBounds();
     this._frameShadowCastRadius = liveShadowCastRadius(this.state);
+    // Player frame-local XZ once per pass — _shadowPolicyOptions used to re-resolve and re-run
+    // toLocal for every ship/station root.
+    this._framePlayerLocalValid = false;
+    const framePlayer = this.state.playerId != null && this.state.entities
+      && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    if (framePlayer && framePlayer.pos && this._frameMembrane) {
+      const local = this._frameMembrane.toLocal(framePlayer.pos, _shadowLocalXZ);
+      this._framePlayerLocalX = local.x;
+      this._framePlayerLocalZ = local.z;
+      this._framePlayerLocalValid = true;
+    }
     const queryOptions = this._presentationQueryOptions;
     queryOptions.bounds = bounds;
     queryOptions.origin = this._frameMembrane.origin;
@@ -11201,10 +11403,15 @@ export const render = {
         || !!(entity && entity.flags && entity.flags.forceRender);
       const neverCull = !!(packedFlags & PRESENTATION_FLAGS.NEVER_CULL)
         || !!(entity && entity.flags && entity.flags.neverCull);
-      const protectedRoot = isProtectedEntityMesh({ isPlayer, forceRender, neverCull });
+      _protectedRootOptions.isPlayer = isPlayer;
+      _protectedRootOptions.forceRender = forceRender;
+      _protectedRootOptions.neverCull = neverCull;
+      const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
       // A protected root keeps its prior visibility when the latest fence has no pose for it.
       // Ordinary stale identities still fail closed and leave the submit list immediately.
       syncResolvingMarker(mesh);
+      // NB: the options literal here is pinned by entity-mesh-visibility.test.mjs's source
+      // contract — the hidden-boundary call shape must stay literal.
       const visibilityChanged = !(!posed && protectedRoot)
         && applyEntityMeshVisibility(mesh, posed && shouldSubmitEntityMesh({
           isPlayer,
@@ -11262,7 +11469,10 @@ export const render = {
         || !!(entity && entity.flags && entity.flags.forceRender);
       const neverCull = !!(packedFlags & PRESENTATION_FLAGS.NEVER_CULL)
         || !!(entity && entity.flags && entity.flags.neverCull);
-      const protectedRoot = isProtectedEntityMesh({ isPlayer, forceRender, neverCull });
+      _protectedRootOptions.isPlayer = isPlayer;
+      _protectedRootOptions.forceRender = forceRender;
+      _protectedRootOptions.neverCull = neverCull;
+      const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
       if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
         | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
         posed = this._applyPresentationPose(slot, mesh, alpha);
@@ -11278,14 +11488,13 @@ export const render = {
 
       // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
       // width with hysteresis. Newly visible roots are fully posed above before this decision.
-      const viewBand = classifyEntityViewBand({
-        isPlayer,
-        dx: mesh.position.x - bounds.x,
-        dz: mesh.position.z - bounds.z,
-        innerHalfX: innerView.halfX,
-        innerHalfZ: innerView.halfZ,
-        forceInner: forceRender || neverCull,
-      });
+      _viewBandOptions.isPlayer = isPlayer;
+      _viewBandOptions.dx = mesh.position.x - bounds.x;
+      _viewBandOptions.dz = mesh.position.z - bounds.z;
+      _viewBandOptions.innerHalfX = innerView.halfX;
+      _viewBandOptions.innerHalfZ = innerView.halfZ;
+      _viewBandOptions.forceInner = forceRender || neverCull;
+      const viewBand = classifyEntityViewBand(_viewBandOptions);
       const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot);
       let lodLevel = userData.lod ? userData.lod.level : null;
       const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
@@ -11307,7 +11516,9 @@ export const render = {
       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
       // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
       if (typeName === 'ship' || typeName === 'station') {
-        if (syncShadowCasterPolicy(mesh, lodLevel, this._shadowPolicyOptions(entity || { type: typeName }, mesh))) {
+        // entity may be null for a world-record row; the retained stand-in keeps the old
+        // `{ type: typeName }` verdict (non-player, distance-checked) without the allocation.
+        if (syncShadowCasterPolicy(mesh, lodLevel, this._shadowPolicyOptions(entity || _shadowFallbackEntity, mesh))) {
           shadowPolicyRefreshes++;
           noteShadowPolicyChanged(this._shadowReceiverTally, true);
           this._markShadowReceiversDirty();
@@ -11345,6 +11556,8 @@ export const render = {
         userData.onGlassPendingSince = null;
       }
       syncResolvingMarker(mesh);
+      // Same pinned literal contract as the hidden loop above — the submit-options object
+      // is intentionally a literal at both call sites.
       const visibilityChanged = !(!posed && protectedRoot)
         && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
           isPlayer,
@@ -11367,13 +11580,13 @@ export const render = {
           onLiveGlass,
         }));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
-      if ((typeName === 'ship' || typeName === 'station')
-          && noteRealtimeShadowCasterPose(mesh, {
-            visualRadius: lodRadius,
-            extent: this._shadowOrthoExtent,
-            mapSize: this._keyLight?.shadow?.mapSize?.x,
-          })) {
-        this._shadowMapDirty = true;
+      if (typeName === 'ship' || typeName === 'station') {
+        _shadowCasterPoseOptions.visualRadius = lodRadius;
+        _shadowCasterPoseOptions.extent = this._shadowOrthoExtent;
+        _shadowCasterPoseOptions.mapSize = this._keyLight?.shadow?.mapSize?.x;
+        if (noteRealtimeShadowCasterPose(mesh, _shadowCasterPoseOptions)) {
+          this._shadowMapDirty = true;
+        }
       }
 
       if (entity) classifyRenderEntity(this._entityFrame, entity, mesh, false);
@@ -11428,6 +11641,9 @@ export const render = {
         } else if (typeName === 'projectile') {
           globalProjectileMotion.updateProjectileMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
         } else if (typeName === 'asteroid') {
+          // instancePool lets adopted InstancedMesh leaves dirty the pool when the tumble
+          // writes their transforms — otherwise a still camera keeps serving the stale matrix.
+          _worldSiteA11y.instancePool = this._asteroidInstancePool;
           globalAsteroidMotion.updateAsteroidMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
         } else if (typeName === 'pickup') {
           const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
@@ -11758,8 +11974,14 @@ export const render = {
       this._worldFieldPoseKey = fieldKey;
       if (posedField) invalidateAsteroidInstancePool(this._asteroidInstancePool);
     }
-    if (dressing && Array.isArray(dressing.rows)) {
+    // Same gate the field rows use: dressingTable.version bumps on add/drop, frameOriginSeq on
+    // an origin shift, so a steady-state frame skips the per-row toLocal writes entirely.
+    const dressingVersion = dressing && Number.isFinite(dressing.version) ? dressing.version : 0;
+    const dressingCount = dressing && Array.isArray(dressing.rows) ? dressing.rows.length : 0;
+    const dressingKey = `${originSeq}:${dressingVersion}:${dressingCount}`;
+    if (dressing && Array.isArray(dressing.rows) && this._worldDressingPoseKey !== dressingKey) {
       for (let i = 0; i < dressing.rows.length; i++) poseRow(dressing.rows[i]);
+      this._worldDressingPoseKey = dressingKey;
     }
     return posedField;
   },
@@ -11808,8 +12030,7 @@ export const render = {
     }
 
     const activityTick = state && Number.isInteger(state.tick) ? state.tick : -1;
-    const frame = getActivityFrame(state);
-    this._activityFrame = frame ? { ...frame, complete: true } : null;
+    publishActivityFrame(this, getActivityFrame(state));
     this._activityFrameTick = activityTick;
     if (state && state.render) state.render.activityFrame = this._activityFrame;
     if (this._contextLost) return false;
@@ -11818,7 +12039,7 @@ export const render = {
     // follows the camera after entity sync because both are already settled in flight; this one
     // loading-to-flight boundary cannot use the stale loading camera to cull and then freeze a
     // different final camera picture.
-    if (this.cam && typeof this.cam.follow === 'function') this.cam.follow(0);
+    if (this.cam && typeof this.cam.follow === 'function') this.cam.follow(0, undefined, undefined, this._cameraClearanceAt);
     // This is the same pose/visibility seam as prepareFrame(), intentionally without residency
     // service, background clocks, or any simulation advance. The loading DOM remains the only
     // visible surface; drawPreparedFrame() still refuses to submit while mode=loading.
@@ -12117,8 +12338,7 @@ export const render = {
       if (this.state.render) this.state.render.activityFrame = null;
     } else if (this._activityFrameTick !== activityTick
         || (this._openingFirstPicturePrepared && this.state.mode !== 'flight')) {
-      const frame = getActivityFrame(this.state);
-      this._activityFrame = frame ? { ...frame, complete: true } : null;
+      publishActivityFrame(this, getActivityFrame(this.state));
       this._activityFrameTick = activityTick;
       if (this.state && this.state.render) this.state.render.activityFrame = this._activityFrame;
     }
@@ -12163,7 +12383,7 @@ export const render = {
           && Number.isFinite(pm.position.x) && Number.isFinite(pm.position.z)
           ? pm.position
           : null;
-        this.cam.follow(frameDt, alpha, presented);
+        this.cam.follow(frameDt, alpha, presented, this._cameraClearanceAt);
       }
     } else if (this.state && this.state.render) {
       // prepareOpeningFirstPicture already published the exact final pose, visibility, camera, and
@@ -12810,16 +13030,23 @@ export const render = {
     const wq = Math.round((px * zx + pz * zz) / texel);
     // The key is the lattice CELL, not the reconstructed point: rebuilding F' reintroduces ~1e-14
     // float noise between identical cells, which would read as a move and re-fire the depth pass.
-    const followKey = `${uq}|${vq}|${wq}|${ox}|${oy}|${oz}`;
+    // Numeric fields, not a template string — this ran once per frame and allocated every time.
     const du = uq * texel - (px * xx + pz * xz);
     const dv = vq * texel - (px * yx + pz * yz);
     const dw = wq * texel - (px * zx + pz * zz);
     const fx = px + xx * du + yx * dv + zx * dw;
     const fy = yy * dv + zy * dw;
     const fz = pz + xz * du + yz * dv + zz * dw;
-    if (this._shadowFollowKey === followKey) return false;
+    if (this._shadowFollowKeyU === uq && this._shadowFollowKeyV === vq && this._shadowFollowKeyW === wq
+        && this._shadowFollowKeyOX === ox && this._shadowFollowKeyOY === oy
+        && this._shadowFollowKeyOZ === oz) return false;
     if (commit !== true) return true;
-    this._shadowFollowKey = followKey;
+    this._shadowFollowKeyU = uq;
+    this._shadowFollowKeyV = vq;
+    this._shadowFollowKeyW = wq;
+    this._shadowFollowKeyOX = ox;
+    this._shadowFollowKeyOY = oy;
+    this._shadowFollowKeyOZ = oz;
     this._keyLight.position.set(fx + ox, fy + oy, fz + oz);
     this._keyLight.target.position.set(fx, fy, fz);
     return true;
@@ -12830,21 +13057,31 @@ export const render = {
    * globally; only casters outside the local ortho / low LOD drop out of the depth pass.
    */
   _shadowPolicyOptions(entity, mesh) {
+    // Retained scratch: syncEntityViews calls this per ship/station root per frame, and
+    // syncShadowCasterPolicy reads allowCast synchronously — nothing retains the object.
+    const out = this._shadowPolicyScratch || (this._shadowPolicyScratch = { allowCast: true });
+    out.allowCast = true;
     const lodLevel = mesh && mesh.userData && mesh.userData.lod
       ? mesh.userData.lod.level
       : 'lod0';
-    if (!entity) return { allowCast: true };
-    const isPlayer = entity.id === this.state.playerId;
-    if (isPlayer) return { allowCast: true };
+    if (!entity) return out;
+    if (entity.id === this.state.playerId) return out;
+    // Player frame-local XZ is computed once per syncEntityViews pass; the build-queue and
+    // authored-swap callers outside that pass fall back to resolving it here.
     let playerLocalX = 0;
     let playerLocalZ = 0;
-    const player = this.state.playerId
-      ? (this.state.entities && this.state.entities.get(this.state.playerId))
-      : null;
-    if (player && player.pos && this._frameMembrane) {
-      const local = this._frameMembrane.toLocal(player.pos, _shadowLocalXZ);
-      playerLocalX = local.x;
-      playerLocalZ = local.z;
+    if (this._framePlayerLocalValid === true) {
+      playerLocalX = this._framePlayerLocalX;
+      playerLocalZ = this._framePlayerLocalZ;
+    } else {
+      const player = this.state.playerId
+        ? (this.state.entities && this.state.entities.get(this.state.playerId))
+        : null;
+      if (player && player.pos && this._frameMembrane) {
+        const local = this._frameMembrane.toLocal(player.pos, _shadowLocalXZ);
+        playerLocalX = local.x;
+        playerLocalZ = local.z;
+      }
     }
     const axisDistance = shadowCastAxisDistance(
       mesh && mesh.position,
@@ -12854,14 +13091,16 @@ export const render = {
     const castRadius = Number.isFinite(this._frameShadowCastRadius)
       ? this._frameShadowCastRadius
       : liveShadowCastRadius(this.state);
-    return {
-      allowCast: allowRealtimeShadowCast({
-        isPlayer,
-        lodLevel,
-        axisDistance,
-        castRadius,
-      }),
-    };
+    _allowCastScratch.isPlayer = false;
+    _allowCastScratch.lodLevel = lodLevel;
+    _allowCastScratch.distanceSq = 0;
+    _allowCastScratch.axisDistance = axisDistance;
+    _allowCastScratch.castRadius = castRadius;
+    // The root's last applied cast band is the hysteresis input: inside the ±10 WU deadband the
+    // previous decision stands instead of re-traversing the root every boundary crossing.
+    _allowCastScratch.castBand = shadowCasterBand(mesh);
+    out.allowCast = allowRealtimeShadowCast(_allowCastScratch);
+    return out;
   },
 
   _noteShadowMeshAdded(root) {
@@ -13223,10 +13462,20 @@ export const render = {
     // shadow-map pass all reuse this result). No force flag: clean subtrees keep their
     // matrixWorldNeedsUpdate skip, matching the old per-pass call's multiply work.
     if (scene && typeof scene.updateMatrixWorld === 'function') scene.updateMatrixWorld();
+    // Still-linking drawables wait out the driver inside whichever scene pass draws them first.
+    // The bloom route brackets its own passes; the graph and native routes get the same
+    // hide→render→restore guard here so a mid-link program cannot stall either presented path.
+    const guard = this._unreadyDrawableGuard
+      || (this._unreadyDrawableGuard = createUnreadyDrawableGuard(this.renderer));
     if (route === POST_PROCESS_ROUTE.GRAPH) {
       const frame = this._postFrameOptions || (this._postFrameOptions = { time: 0 });
       frame.time = Number.isFinite(time) ? time : 0;
-      return this._renderGraph.render(scene, camera, frame);
+      guard.hide(scene);
+      try {
+        return this._renderGraph.render(scene, camera, frame);
+      } finally {
+        guard.restore();
+      }
     }
     if (route === POST_PROCESS_ROUTE.BLOOM) {
       return this.bloom.render(scene, camera);
@@ -13236,7 +13485,12 @@ export const render = {
       : (this._postNativeFallbackReason || 'post-processor-unavailable');
     if (isWebGlContextUnavailable(this._contextLost, this.renderer)) return false;
     this.renderer.setRenderTarget(null);
-    return this.renderer.render(scene, camera);
+    guard.hide(scene);
+    try {
+      return this.renderer.render(scene, camera);
+    } finally {
+      guard.restore();
+    }
   },
 
   _compilePostRoute(route, subject, camera, lightingScene, options = {}) {

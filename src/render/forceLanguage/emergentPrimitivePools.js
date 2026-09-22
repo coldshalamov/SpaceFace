@@ -54,6 +54,21 @@ export function createEmergentPrimitivePools() {
     inst.setMatrixAt(index, _m);
   }
 
+  // Retained update scratches — update() runs once per rendered frame, so the local-space
+  // mapping object, its mapper closure, and the counts record are reused rather than
+  // re-allocated per call. `map` is consumed synchronously inside the item loop.
+  const local = { x: 0, z: 0 };
+  const counts = { arcs: 0, rings: 0, gels: 0, prisms: 0 };
+  function map(x, z, toLocal) {
+    if (typeof toLocal === 'function') {
+      toLocal(x, z, local);
+      return local;
+    }
+    local.x = x;
+    local.z = z;
+    return local;
+  }
+
   return {
     group,
     arcs,
@@ -64,16 +79,6 @@ export function createEmergentPrimitivePools() {
       const world = state && state.emergent;
       const items = world && world.presentation;
       const count = world && world.presentationCount | 0;
-      const local = { x: 0, z: 0 };
-      const map = (x, z) => {
-        if (typeof toLocal === 'function') {
-          toLocal(x, z, local);
-          return local;
-        }
-        local.x = x;
-        local.z = z;
-        return local;
-      };
       let ai = 0;
       let ri = 0;
       let gi = 0;
@@ -81,11 +86,11 @@ export function createEmergentPrimitivePools() {
       for (let i = 0; i < count; i++) {
         const item = items[i];
         if (!item) continue;
-        const a = map(item.x || 0, item.z || 0);
+        const a = map(item.x || 0, item.z || 0, toLocal);
         const ax = a.x;
         const az = a.z;
         if (item.kind === 'arc' && ai < ARC_CAP) {
-          const b = map(item.x2 || item.x || 0, item.z2 || item.z || 0);
+          const b = map(item.x2 || item.x || 0, item.z2 || item.z || 0, toLocal);
           const dx = b.x - ax;
           const dz = b.z - az;
           const len = Math.hypot(dx, dz);
@@ -124,7 +129,11 @@ export function createEmergentPrimitivePools() {
       if (ri) rings.instanceMatrix.needsUpdate = true;
       if (gi) gels.instanceMatrix.needsUpdate = true;
       if (pi) prisms.instanceMatrix.needsUpdate = true;
-      return { arcs: ai, rings: ri, gels: gi, prisms: pi };
+      counts.arcs = ai;
+      counts.rings = ri;
+      counts.gels = gi;
+      counts.prisms = pi;
+      return counts;
     },
     dispose() {
       hide(arcs);

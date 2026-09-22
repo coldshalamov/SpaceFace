@@ -25,6 +25,8 @@
 
 import * as THREE from 'three';
 
+import { invalidateAsteroidInstancePool } from './asteroidInstancePool.js';
+
 function hashId(id) {
   const s = String(id || '');
   let h = 0x811c9dc5;
@@ -552,6 +554,13 @@ export function createAsteroidMotionTracker() {
 
     body.position.x = jitterX + rec.shoveX * shoveScale;
     body.position.z = jitterZ + rec.shoveZ * shoveScale;
+
+    // A body adopted into the pooled InstancedMesh only republishes leaf.matrixWorld while the
+    // pool is dirty; with a still camera and clean records the submission fast-path skips the
+    // publish and the tumble freezes mid-frame. Any write to an adopted leaf dirties the pool.
+    if (body.userData && body.userData.asteroidInstanceAdopted === true) {
+      invalidateAsteroidInstancePool(options.instancePool);
+    }
 
     // 5. Crack-axis strain swell. Materials are shared/instanced, so the fracture reads through
     //    transforms only: a ≤2.5% ellipsoid swell along the deterministic vein axis plus a slow

@@ -35,6 +35,15 @@ const RUNTIMES = new WeakMap();
 const RECENT_DAMAGE_TICKS = 120;
 const DAMAGE_PIN_S = 2;
 
+// Glass/runway membership is tested per entity per rendered frame
+// (entityMeshVisibility.shouldSubmitEntityMesh + renderer hold-exempt paths), so these must be
+// Sets — the old array publish made every visible root pay an O(n) includes scan. `includes` is
+// kept as an O(1) alias of `has` because callers written against the array publish still spell
+// the lookup that way; both paths now cost the same.
+class ActivityIdSet extends Set {
+  includes(id) { return this.has(id); }
+}
+
 function finite(n, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
@@ -181,8 +190,8 @@ function ensureRuntime(state) {
       wakeTokensById: new Map(),
       wakeEventsById: new Map(),
       wakeBoundaryTick: -1,
-      glassIds: [],
-      runwayIds: [],
+      glassIds: new ActivityIdSet(),
+      runwayIds: new ActivityIdSet(),
       counts: { s0: 0, s1: 0, s2: 0, s3: 0, s4: 0, physics: 0, r0: 0, r1: 0, r2: 0, r3: 0 },
       pinFacts: emptyPinFacts(),
       contextScratch: {},
@@ -246,8 +255,8 @@ function publishScalars(state, runtime) {
   target.r1 = counts.r1;
   target.r2 = counts.r2;
   target.r3 = counts.r3;
-  published.glassCount = runtime.glassIds.length;
-  published.runwayCount = runtime.runwayIds.length;
+  published.glassCount = runtime.glassIds.size;
+  published.runwayCount = runtime.runwayIds.size;
   published.exactCount = runtime.exactIds.length;
   published.aggregatePopulation = counts.s4;
   state.activityRuntime = published;
@@ -556,8 +565,8 @@ function pushActivityIds(runtime, entity, stamp) {
   else if (stamp.simTier === SIM_TIER.S1_NEAR) runtime.nearIds.push(id);
   else if (stamp.simTier === SIM_TIER.S2_ABSTRACT) runtime.abstractIds.push(id);
   else runtime.dormantIds.push(id);
-  if (stamp.presentationTier === PRESENTATION_TIER.R0_GLASS) runtime.glassIds.push(id);
-  else if (stamp.presentationTier === PRESENTATION_TIER.R1_RUNWAY) runtime.runwayIds.push(id);
+  if (stamp.presentationTier === PRESENTATION_TIER.R0_GLASS) runtime.glassIds.add(id);
+  else if (stamp.presentationTier === PRESENTATION_TIER.R1_RUNWAY) runtime.runwayIds.add(id);
 }
 
 /**
@@ -742,8 +751,8 @@ function classifyWorld(state, runtime) {
   runtime.wakeBoundaryTick = -1;
   runtime.changedIds.length = 0;
   runtime.currentEntityIds.clear();
-  runtime.glassIds.length = 0;
-  runtime.runwayIds.length = 0;
+  runtime.glassIds.clear();
+  runtime.runwayIds.clear();
   const counts = runtime.counts;
   counts.s0 = 0;
   counts.s1 = 0;

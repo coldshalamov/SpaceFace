@@ -856,6 +856,173 @@ const COMPOSITE_FRAG = /* glsl */`
   }
 `;
 
+// Programs already counted in renderer.info can still be linking. Three's draw path
+// never polls isReady() — gl.useProgram waits out the driver, which is the leftover
+// ~200 ms bloomScene with programs/geometries/textures unchanged. Hide those
+// drawables until the link finishes; admission still owns first-time compile.
+//
+// This guard is deliberately renderer-scoped rather than bloom-scoped: the native and
+// render-graph post routes face the same synchronous-link hazard on their scene passes,
+// so all three bracket their presented draws with the same hide→render→restore pair.
+const UNREADY_SCENE_CAP = 512;
+
+export function createUnreadyDrawableGuard(renderer) {
+  const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
+  let unreadySceneCount = 0;
+  // Pending-programs latch: the ONLY producers of hideable drawables are still-linking programs.
+  // Poll the program set instead of the scene: while a link is pending the traverse runs (and
+  // keeps running until it drains, so a mesh that binds to a mid-link program is still caught);
+  // once every program reports ready and the set stops growing, steady-state frames skip both
+  // the poll and the scene walk entirely.
+  let unreadyProgramsPending = true;
+  let unreadyProgramCount = -1;
+  let unreadyProgramTail = null;
+  let admissionScene = null;
+  let admissionPendingSubjects = null;
+  let admissionGl = null;
+
+  function hideUnreadySceneDrawables(scene) {
+    unreadySceneCount = 0;
+    // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
+    // drivers, so the program-readiness scan below can never see them — drawing one would link
+    // its variants synchronously inside this presented frame. Hide the root (subtree included)
+    // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
+    const pendingSubjects = renderer && renderer.userData
+      ? renderer.userData.spacefacePendingPipelineSubjects
+      : null;
+    if (pendingSubjects && pendingSubjects.size > 0) {
+      for (const subject of pendingSubjects) {
+        if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
+        if (subject && subject.visible === true) {
+          unreadySceneScratch[unreadySceneCount] = subject;
+          unreadySceneCount += 1;
+          subject.visible = false;
+        }
+      }
+    }
+    const props = renderer && renderer.properties;
+    if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
+      return;
+    }
+    admissionGl = renderer && typeof renderer.getContext === 'function'
+      ? renderer.getContext() : null;
+    const programs = renderer.info && renderer.info.programs;
+    if (!Array.isArray(programs)) {
+      admissionScene = scene;
+      admissionPendingSubjects = pendingSubjects;
+      scene.traverse(hideOneUnreadySceneDrawable);
+      admissionScene = null;
+      admissionPendingSubjects = null;
+      admissionGl = null;
+      return;
+    }
+    // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
+    // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
+    if (unreadyProgramsPending !== true && programs.length === unreadyProgramCount
+      && programs[programs.length - 1] === unreadyProgramTail) return;
+    unreadyProgramsPending = false;
+    unreadyProgramCount = programs.length;
+    unreadyProgramTail = programs[programs.length - 1] || null;
+    for (let i = 0; i < programs.length; i++) {
+      const program = programs[i];
+      if (!program || typeof program.isReady !== 'function') continue;
+      if (programWrapperDead(admissionGl, program)) continue;
+      let ready = true;
+      try { ready = program.isReady() === true; } catch (_) { ready = false; }
+      if (!ready) { unreadyProgramsPending = true; break; }
+    }
+    if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)) return;
+    admissionScene = scene;
+    admissionPendingSubjects = pendingSubjects;
+    scene.traverse(hideOneUnreadySceneDrawable);
+    admissionScene = null;
+    admissionPendingSubjects = null;
+    admissionGl = null;
+  }
+
+  function hideOneUnreadySceneDrawable(object) {
+    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
+    if (!object || object.visible !== true) return;
+    if (!(object.isMesh || object.isSkinnedMesh || object.isPoints
+        || object.isLine || object.isSprite || object.isInstancedMesh)) {
+      return;
+    }
+    if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
+    const props = renderer.properties;
+    const list = object.material;
+    if (Array.isArray(list)) {
+      for (let i = 0; i < list.length; i++) {
+        if (hideIfProgramUnready(object, list[i], props)) return;
+      }
+      return;
+    }
+    hideIfProgramUnready(object, list, props);
+  }
+
+  function hideIfProgramUnready(object, material, props) {
+    if (!material || unreadySceneCount >= UNREADY_SCENE_CAP) return false;
+    let program = null;
+    try {
+      const rec = props.get(material);
+      program = rec && rec.currentProgram || null;
+    } catch (_) {
+      return false;
+    }
+    if (!program) {
+      // Never compiled: drawing would link the driver program inside this
+      // presented pass. Hide the drawable and route its scene root through the
+      // pipeline admission lane; the pending latch keeps it hidden until
+      // compile + residency settle. The material stamp dedupes re-queues across
+      // sibling meshes and successive scans while one admission is in flight.
+      const materialData = material.userData || (material.userData = {});
+      const queueAdmission = renderer && renderer.userData
+        ? renderer.userData.spacefaceQueuePipelineAdmission : null;
+      if (materialData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+        materialData.__sfPipelineAdmission = true;
+        let root = object;
+        while (admissionScene && root.parent && root.parent !== admissionScene) root = root.parent;
+        // A root already latched pending has an admission in flight that will
+        // compile this subtree — queueing another would only duplicate it.
+        if (admissionPendingSubjects && admissionPendingSubjects.has(root)) {
+          materialData.__sfPipelineAdmission = false;
+        } else {
+          Promise.resolve(queueAdmission(root))
+            .catch(() => null)
+            .finally(() => { materialData.__sfPipelineAdmission = false; });
+        }
+      }
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneCount += 1;
+      object.visible = false;
+      return true;
+    }
+    if (typeof program.isReady !== 'function') return false;
+    if (programWrapperDead(admissionGl, program)) return false;
+    let ready = true;
+    try { ready = program.isReady() === true; } catch (_) { ready = false; }
+    if (ready) return false;
+    unreadySceneScratch[unreadySceneCount] = object;
+    unreadySceneCount += 1;
+    object.visible = false;
+    return true;
+  }
+
+  function restoreUnreadySceneDrawables() {
+    for (let i = 0; i < unreadySceneCount; i++) {
+      const object = unreadySceneScratch[i];
+      if (object) object.visible = true;
+      unreadySceneScratch[i] = null;
+    }
+    unreadySceneCount = 0;
+  }
+
+  return {
+    renderer,
+    hide: hideUnreadySceneDrawables,
+    restore: restoreUnreadySceneDrawables,
+  };
+}
+
 /**
  * Create a bloom post-processor.
  * @param {THREE.WebGLRenderer} renderer - the live renderer (we drive its render targets).
@@ -1043,160 +1210,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     glState.unbindTexture();
   }
 
-  // Programs already counted in renderer.info can still be linking. Three's draw path
-  // never polls isReady() — gl.useProgram waits out the driver, which is the leftover
-  // ~200 ms bloomScene with programs/geometries/textures unchanged. Hide those
-  // drawables until the link finishes; admission still owns first-time compile.
-  const UNREADY_SCENE_CAP = 512;
-  const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
-  let unreadySceneCount = 0;
-  // Pending-programs latch: the ONLY producers of hideable drawables are still-linking programs.
-  // Poll the program set instead of the scene: while a link is pending the traverse runs (and
-  // keeps running until it drains, so a mesh that binds to a mid-link program is still caught);
-  // once every program reports ready and the set stops growing, steady-state frames skip both
-  // the poll and the scene walk entirely.
-  let unreadyProgramsPending = true;
-  let unreadyProgramCount = -1;
-  let unreadyProgramTail = null;
-
-  function hideUnreadySceneDrawables(scene) {
-    unreadySceneCount = 0;
-    // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
-    // drivers, so the program-readiness scan below can never see them — drawing one would link
-    // its variants synchronously inside this presented frame. Hide the root (subtree included)
-    // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
-    const pendingSubjects = renderer && renderer.userData
-      ? renderer.userData.spacefacePendingPipelineSubjects
-      : null;
-    if (pendingSubjects && pendingSubjects.size > 0) {
-      for (const subject of pendingSubjects) {
-        if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
-        if (subject && subject.visible === true) {
-          unreadySceneScratch[unreadySceneCount] = subject;
-          unreadySceneCount += 1;
-          subject.visible = false;
-        }
-      }
-    }
-    const props = renderer && renderer.properties;
-    if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
-      return;
-    }
-    admissionGl = renderer && typeof renderer.getContext === 'function'
-      ? renderer.getContext() : null;
-    const programs = renderer.info && renderer.info.programs;
-    if (!Array.isArray(programs)) {
-      admissionScene = scene;
-      admissionPendingSubjects = pendingSubjects;
-      scene.traverse(hideOneUnreadySceneDrawable);
-      admissionScene = null;
-      admissionPendingSubjects = null;
-      admissionGl = null;
-      return;
-    }
-    // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
-    // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
-    if (unreadyProgramsPending !== true && programs.length === unreadyProgramCount
-      && programs[programs.length - 1] === unreadyProgramTail) return;
-    unreadyProgramsPending = false;
-    unreadyProgramCount = programs.length;
-    unreadyProgramTail = programs[programs.length - 1] || null;
-    for (let i = 0; i < programs.length; i++) {
-      const program = programs[i];
-      if (!program || typeof program.isReady !== 'function') continue;
-      if (programWrapperDead(admissionGl, program)) continue;
-      let ready = true;
-      try { ready = program.isReady() === true; } catch (_) { ready = false; }
-      if (!ready) { unreadyProgramsPending = true; break; }
-    }
-    if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)) return;
-    admissionScene = scene;
-    admissionPendingSubjects = pendingSubjects;
-    scene.traverse(hideOneUnreadySceneDrawable);
-    admissionScene = null;
-    admissionPendingSubjects = null;
-    admissionGl = null;
-  }
-
-  function hideOneUnreadySceneDrawable(object) {
-    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
-    if (!object || object.visible !== true) return;
-    if (!(object.isMesh || object.isSkinnedMesh || object.isPoints
-        || object.isLine || object.isSprite || object.isInstancedMesh)) {
-      return;
-    }
-    if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
-    const props = renderer.properties;
-    const list = object.material;
-    if (Array.isArray(list)) {
-      for (let i = 0; i < list.length; i++) {
-        if (hideIfProgramUnready(object, list[i], props)) return;
-      }
-      return;
-    }
-    hideIfProgramUnready(object, list, props);
-  }
-
-  let admissionScene = null;
-  let admissionPendingSubjects = null;
-  let admissionGl = null;
-
-  function hideIfProgramUnready(object, material, props) {
-    if (!material || unreadySceneCount >= UNREADY_SCENE_CAP) return false;
-    let program = null;
-    try {
-      const rec = props.get(material);
-      program = rec && rec.currentProgram || null;
-    } catch (_) {
-      return false;
-    }
-    if (!program) {
-      // Never compiled: drawing would link the driver program inside this
-      // presented pass. Hide the drawable and route its scene root through the
-      // pipeline admission lane; the pending latch keeps it hidden until
-      // compile + residency settle. The material stamp dedupes re-queues across
-      // sibling meshes and successive scans while one admission is in flight.
-      const materialData = material.userData || (material.userData = {});
-      const queueAdmission = renderer && renderer.userData
-        ? renderer.userData.spacefaceQueuePipelineAdmission : null;
-      if (materialData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
-        materialData.__sfPipelineAdmission = true;
-        let root = object;
-        while (admissionScene && root.parent && root.parent !== admissionScene) root = root.parent;
-        // A root already latched pending has an admission in flight that will
-        // compile this subtree — queueing another would only duplicate it.
-        if (admissionPendingSubjects && admissionPendingSubjects.has(root)) {
-          materialData.__sfPipelineAdmission = false;
-        } else {
-          Promise.resolve(queueAdmission(root))
-            .catch(() => null)
-            .finally(() => { materialData.__sfPipelineAdmission = false; });
-        }
-      }
-      unreadySceneScratch[unreadySceneCount] = object;
-      unreadySceneCount += 1;
-      object.visible = false;
-      return true;
-    }
-    if (typeof program.isReady !== 'function') return false;
-    if (programWrapperDead(admissionGl, program)) return false;
-    let ready = true;
-    try { ready = program.isReady() === true; } catch (_) { ready = false; }
-    if (ready) return false;
-    unreadySceneScratch[unreadySceneCount] = object;
-    unreadySceneCount += 1;
-    object.visible = false;
-    return true;
-  }
-
-  function restoreUnreadySceneDrawables() {
-    for (let i = 0; i < unreadySceneCount; i++) {
-      const object = unreadySceneScratch[i];
-      if (object) object.visible = true;
-      unreadySceneScratch[i] = null;
-    }
-    unreadySceneCount = 0;
-  }
+  const unreadyDrawables = createUnreadyDrawableGuard(renderer);
+  const hideUnreadySceneDrawables = unreadyDrawables.hide;
+  const restoreUnreadySceneDrawables = unreadyDrawables.restore;
 
   // Measurement-only: CPU pass times require perfRuntime.renderWorkEnabled (default OFF).
   // GPU begin/end only runs when the timer set is enabled (default OFF).
@@ -1311,8 +1327,14 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     return rows;
   }
 
+  // Bounded dedup stamp: at the cap the whole set is dropped and the live scene re-registers.
+  // "New geometry" reporting is diagnostic-only, so a false-positive row after a cap reset is
+  // harmless; an unbounded uuid set across sectors and generations is not.
+  const SEEN_BLOOM_GEOMETRY_CAP = 2000;
+
   function rememberBloomGeometries(scene) {
     if (!scene || typeof scene.traverse !== 'function') return;
+    if (seenBloomGeometryUuids.size >= SEEN_BLOOM_GEOMETRY_CAP) seenBloomGeometryUuids.clear();
     scene.traverse((object) => {
       const geometry = object && object.geometry;
       if (geometry && geometry.uuid) seenBloomGeometryUuids.add(geometry.uuid);
