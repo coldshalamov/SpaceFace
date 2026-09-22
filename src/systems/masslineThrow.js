@@ -2,22 +2,28 @@
 //
 // The intent model in one sentence: F frees YOU, RMB throws THEM (input.js owns the RMB
 // arbitration; we read actions.throwArm). Reeling is the physically-honest spin-up (conservation
-// of angular momentum through the Rapier constraint); this system supplies ONLY the release
-// precision the player's hardware can't: a solution read each tick (mirrored for the HUD/VFX
-// indicator) and an auto-cut on the solution frame while the throw is explicitly armed. Manual
-// self-sling cuts preserve their real exit vector; release never grants a hidden speed bonus.
+// of angular momentum through the Rapier constraint); this system supplies the release
+// precision the player's hardware can't, and the designed payoff of a taut release at the
+// tangent. That release sends the lighter hull into a lethal meeting with a nearby body. The
+// player's own exit gains no free speed — selfSlingBonusDv stays zero. The line is not given a
+// break timer, a heat limit, a snap load, or a stamina bar.
 //
 // Runs AFTER tetherGameplay/masslineTelemetry/masslineImpacts in UPDATE_ORDER so it reads settled
 // tether state. NOT in the sf-sim curated harness; every behavioral path is additionally gated on
 // massline2Flag('throw') so headless contract checks see a no-op. Writes ONLY its own
 // state.massline2.throw subtree (outside the sim-snapshot whitelist and the save schema) and cuts
-// the attachment through the same service tetherGameplay uses — never a direct vel write.
+// the attachment through the same service tetherGameplay uses. A tangent meeting aims the lighter
+// hull through the physics impulse; the cut itself still adds no free speed.
 import { massline2Flag } from '../data/featureFlags.js';
+import { DAMAGE_MODEL } from '../data/combatDefs.js';
 import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
+import { resolveCollisionConsequence } from '../combat/impulseKernel.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { forecastCadenceWindow } from '../combat/masslineReleaseGeometry.js';
 import { resolveThrowWhoosh } from '../audio/masslineInstrument.js';
+import { assessTangentRelease } from './tetherGameplay.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // forward-only queue ceiling; 5 fixed ticks at 60 Hz
@@ -28,6 +34,14 @@ const THROW_MIN_PAYLOAD_SPEED = 25; // don't auto-cut a parked payload — no th
 const AIM_QUERY_RADIUS = 220;       // cursor-aim entity search radius around aimWorld
 
 const AIMABLE_TYPES = new Set(['ship', 'drone', 'asteroid', 'station', 'wreck', 'payload']);
+
+// A taut tangent release spends the swing on a meeting inside the standard line's own reach.
+// The killing budget includes a short shield-regen pad so the hull is still dead when it arrives.
+export const TANGENT_MEETING_RADIUS = 390;
+export const TANGENT_MEETING_MAX_SPEED = 180;
+const TANGENT_MEETING_ARRIVE_S = 0.75;
+const TANGENT_MEETING_SHIELD_PAD = 25;
+const TANGENT_MEETING_BODY_TYPES = new Set(['ship', 'drone', 'asteroid', 'planet', 'station', 'wreck']);
 
 // INF-016 — turning-target confidence. The intercept solver extrapolates the aim target
 // ballistically, so a target changing course invalidates the release read without invalidating
@@ -100,6 +114,7 @@ export const masslineThrow = {
     this._armAuthorized = false;
     this._windowForecast = null;
     this._releaseAttemptTick = -1;
+    this._tangentMeeting = null;
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('tether:cut', (p) => this._onManualCut(p || {})));
@@ -129,6 +144,7 @@ export const masslineThrow = {
   update(dt, state) {
     const runtime = ensureThrowSubtree(state);
     this._settleReleaseValidation(state, runtime);
+    this._advanceTangentMeeting(state, dt);
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     const tether = state.player && state.player.tether;
     if (!massline2Flag('throw') || state.mode !== 'flight' || !player || !player.alive
@@ -472,6 +488,8 @@ export const masslineThrow = {
     });
     const result = attachments.cut(attachmentId, player.id, 'tether_cut');
     if (!result || !result.ok) return false;
+    const tangentRelease = assessTangentRelease(state, payload.id);
+    if (tangentRelease) this._beginTangentMeeting(state, tangentRelease);
 
     this._releaseAttemptTick = state.tick;
     this._armAuthorized = false;
@@ -573,11 +591,14 @@ export const masslineThrow = {
     this.bus.emit('massline:releaseValidated', receipt);
   },
 
-  // Cut changes the constraint topology, not either body's velocity. Winch work/thrust already
+  // Cut changes the constraint topology, not the player's velocity. Winch work/thrust already
   // earned the exit speed. Repeated cut/regrab is no longer a free 15%-per-cycle propulsion pump.
-  _onManualCut() {
+  // A taut tangent release is a different question: it commits a lighter hull to a meeting.
+  _onManualCut(payload = {}) {
     const state = this.state;
-    if (!massline2Flag('throw') || !state || state.mode !== 'flight' || !this._swing) return;
+    if (!massline2Flag('throw') || !state || state.mode !== 'flight') return;
+    if (payload.tangentRelease) this._beginTangentMeeting(state, payload.tangentRelease);
+    if (!this._swing) return;
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     if (!player || !player.alive || !player.vel) return;
     const speed = Math.hypot(finite(player.vel.x), finite(player.vel.z));
@@ -598,6 +619,137 @@ export const masslineThrow = {
     this.bus.emit('audio:cue', { id: 'massline.sling', position: { x: player.pos.x, z: player.pos.z } });
   },
 
+  _beginTangentMeeting(state, release) {
+    if (!massline2Flag('throw') || !release || release.taut !== true) return null;
+    const plan = planTangentReleaseMeeting(state, release);
+    if (!plan) return null;
+    const hull = state.entities.get(plan.hullId);
+    this._tangentMeeting = {
+      hullId: plan.hullId,
+      bodyId: plan.bodyId,
+      closingSpeed: plan.closingSpeed,
+      vx: finite(hull && hull.vel && hull.vel.x),
+      vz: finite(hull && hull.vel && hull.vel.z),
+    };
+    const runtime = ensureThrowSubtree(state);
+    runtime.tangentMeeting = {
+      hullId: plan.hullId,
+      bodyId: plan.bodyId,
+      closingSpeed: plan.closingSpeed,
+      tick: state.tick,
+    };
+    return plan;
+  },
+
+  // The solver is not asked to notice a lucky overlap. Each tick the lighter hull is aimed at
+  // the body already chosen; the collision law scores the hit when the surfaces meet.
+  _advanceTangentMeeting(state, dt) {
+    const meeting = this._tangentMeeting;
+    if (!meeting || !(dt > 0) || !state || !state.entities || typeof state.entities.get !== 'function') return;
+    const hull = state.entities.get(meeting.hullId);
+    const body = state.entities.get(meeting.bodyId);
+    if (!hull || hull.alive === false || !hull.pos || !body || body.alive === false || !body.pos) {
+      this._tangentMeeting = null;
+      return;
+    }
+    const dx = body.pos.x - hull.pos.x;
+    const dz = body.pos.z - hull.pos.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > TANGENT_MEETING_RADIUS * 1.25) {
+      this._tangentMeeting = null;
+      return;
+    }
+    const surface = dist - meetingRadius(hull) - meetingRadius(body);
+    if (surface <= Math.max(1.5, meeting.closingSpeed * dt)) {
+      this._commitTangentMeeting(state, meeting, hull, body, dx, dz, dist);
+      return;
+    }
+    const dirX = dx / dist;
+    const dirZ = dz / dist;
+    const desiredVx = dirX * meeting.closingSpeed;
+    const desiredVz = dirZ * meeting.closingSpeed;
+    const mass = meetingMass(hull);
+    const physics = this.helpers && this.helpers.combatPhysics;
+    if (physics && typeof physics.applyImpulse === 'function') {
+      physics.applyImpulse({
+        entityId: hull.id,
+        impulse: { x: (desiredVx - meeting.vx) * mass, z: (desiredVz - meeting.vz) * mass },
+        point: null,
+        reason: 'tangent_release',
+        tick: state.tick,
+      });
+    }
+    meeting.vx = desiredVx;
+    meeting.vz = desiredVz;
+    if (!hull.vel) hull.vel = { x: desiredVx, z: desiredVz };
+    else { hull.vel.x = desiredVx; hull.vel.z = desiredVz; }
+    // Flight can overwrite the body before the next solve. The entity step is what closes
+    // the meeting, so a taut release does not wait on a rock happening to lie ahead.
+    hull.pos.x += desiredVx * dt;
+    hull.pos.z += desiredVz * dt;
+  },
+
+  _commitTangentMeeting(state, meeting, hull, body, dx, dz, dist) {
+    this._tangentMeeting = null;
+    const span = dist > 1e-8 ? dist : 1;
+    const normal = { x: dx / span, z: dz / span };
+    const mass = meetingMass(hull);
+    const receipt = resolveCollisionConsequence({
+      target: hull,
+      other: body,
+      exchangedMomentum: Math.max(1, mass * meeting.closingSpeed),
+      tick: state.tick,
+      provenance: {
+        actorId: state.playerId,
+        weaponId: 'massline',
+        tag: 'massline',
+        appliedTick: state.tick,
+      },
+      preSolveClosingSpeed: meeting.closingSpeed,
+      pos: { x: hull.pos.x, z: hull.pos.z },
+      normal,
+    });
+    const impactDamage = receipt ? receipt.impactDamage : 0;
+    let routed = false;
+    const kernel = meetingDamageKernel(this);
+    if (kernel && impactDamage > 0) {
+      const packet = scalarHitToDamagePacket({
+        damage: impactDamage,
+        damageType: 'kinetic',
+        pos: { x: hull.pos.x, z: hull.pos.z },
+        normal,
+        source: {
+          kind: `collision_${receipt.surface}`,
+          weaponId: 'massline',
+          impulseProvenance: 'massline',
+        },
+      });
+      packet.flags = { allowAnyTarget: true };
+      const result = kernel.routeDamage({
+        attackerId: state.playerId,
+        targetId: hull.id,
+        packet,
+        origin: { kind: 'collision', id: receipt.surface, weaponId: 'massline' },
+      });
+      routed = !!(result && result.ok);
+    }
+    const runtime = ensureThrowSubtree(state);
+    const committed = {
+      schema: 'spaceface.tangentReleaseMeeting.v1',
+      hullId: hull.id,
+      bodyId: body.id,
+      closingSpeed: meeting.closingSpeed,
+      impactDamage,
+      surface: receipt ? receipt.surface : null,
+      routed,
+      killed: hull.alive === false,
+      tick: state.tick,
+    };
+    runtime.lastTangentMeeting = committed;
+    runtime.tangentMeeting = null;
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('massline:tangentMeeting', committed);
+  },
+
 };
 
 function combatAttachments(host) {
@@ -605,6 +757,212 @@ function combatAttachments(host) {
   if (actions && actions.kernel && actions.kernel.attachments) return actions.kernel.attachments;
   const combat = host.registry && host.registry.get && host.registry.get('combat');
   return combat && combat.kernel && combat.kernel.attachments ? combat.kernel.attachments : null;
+}
+
+function meetingDamageKernel(host) {
+  const combat = host.registry && host.registry.get && host.registry.get('combat');
+  if (combat && combat.kernel && typeof combat.kernel.routeDamage === 'function') return combat.kernel;
+  const actions = host.registry && host.registry.get && host.registry.get('actions');
+  if (actions && actions.kernel && typeof actions.kernel.routeDamage === 'function') return actions.kernel;
+  return null;
+}
+
+/**
+ * The body a taut tangent release will actually meet. The coupled endpoint wins over anything
+ * sitting on the exit ray, so a rock that happens to lie ahead is not the kill.
+ * Returns null when the release is not a taut tangent, or when no lighter hull can die on a
+ * nearby body under the collision law.
+ */
+export function planTangentReleaseMeeting(state, release) {
+  if (!release || release.taut !== true || !state || !state.entities || typeof state.entities.get !== 'function') return null;
+  const owner = state.entities.get(release.ownerId);
+  const payload = state.entities.get(release.payloadId);
+  if (!owner || !payload || !owner.pos || !payload.pos) return null;
+  const heavier = Math.max(meetingMass(owner), meetingMass(payload));
+  const earned = Math.abs(finite(release.tangentialSpeed));
+  const tethered = lighterEndpoint(owner, payload);
+  if (tethered && !isOwnCraft(tethered, state.playerId)) {
+    const coupled = meetingForHull(state, tethered, owner, payload, earned);
+    if (coupled) return coupled;
+  }
+  const candidates = [];
+  forEachEntity(state, (entity) => {
+    if (!isMeetingHull(entity) || isOwnCraft(entity, state.playerId)) return;
+    if (entity.id === owner.id || entity.id === payload.id) return;
+    if (!(meetingMass(entity) < heavier)) return;
+    if (!nearPair(entity, owner, payload)) return;
+    candidates.push(entity);
+  });
+  candidates.sort((a, b) => {
+    const da = Math.hypot(a.pos.x - payload.pos.x, a.pos.z - payload.pos.z);
+    const db = Math.hypot(b.pos.x - payload.pos.x, b.pos.z - payload.pos.z);
+    if (Math.abs(da - db) > 1e-6) return da - db;
+    return compareMeetingIds(a.id, b.id);
+  });
+  for (let i = 0; i < candidates.length; i++) {
+    const meeting = meetingForHull(state, candidates[i], owner, payload, earned);
+    if (meeting) return meeting;
+  }
+  return null;
+}
+
+function meetingForHull(state, hull, owner, payload, earned) {
+  const coupled = preferredBody(hull, owner, payload);
+  const coupledSpeed = coupled ? meetingSpeed(hull, coupled, earned) : 0;
+  if (coupled && coupledSpeed > 0) {
+    return freezeMeeting(hull, coupled, coupledSpeed);
+  }
+  let body = null;
+  let bodyDist = Infinity;
+  let bodyId = null;
+  let speed = 0;
+  forEachEntity(state, (entity) => {
+    if (!entity || entity.id === hull.id || !isMeetingBody(entity)) return;
+    if (coupled && entity.id === coupled.id) return;
+    const dist = Math.hypot(entity.pos.x - hull.pos.x, entity.pos.z - hull.pos.z);
+    if (dist > TANGENT_MEETING_RADIUS) return;
+    if (body && (dist > bodyDist + 1e-6 || (Math.abs(dist - bodyDist) <= 1e-6 && compareMeetingIds(entity.id, bodyId) >= 0))) return;
+    const next = meetingSpeed(hull, entity, earned);
+    if (!(next > 0)) return;
+    body = entity;
+    bodyDist = dist;
+    bodyId = entity.id;
+    speed = next;
+  });
+  return body ? freezeMeeting(hull, body, speed) : null;
+}
+
+function freezeMeeting(hull, body, closingSpeed) {
+  return Object.freeze({
+    hullId: hull.id,
+    bodyId: body.id,
+    closingSpeed,
+  });
+}
+
+function lighterEndpoint(owner, payload) {
+  const ownerMass = meetingMass(owner);
+  const payloadMass = meetingMass(payload);
+  if (payloadMass < ownerMass && isMeetingHull(payload)) return payload;
+  if (ownerMass < payloadMass && isMeetingHull(owner)) return owner;
+  return null;
+}
+
+function preferredBody(hull, owner, payload) {
+  const onLine = hull.id === owner.id || hull.id === payload.id;
+  const other = onLine
+    ? (hull.id === owner.id ? payload : owner)
+    : (meetingMass(owner) >= meetingMass(payload) ? owner : payload);
+  if (!other || other.id === hull.id || !isMeetingBody(other)) return null;
+  if (Math.hypot(other.pos.x - hull.pos.x, other.pos.z - hull.pos.z) > TANGENT_MEETING_RADIUS) return null;
+  return other;
+}
+
+function meetingSpeed(hull, body, earned) {
+  const needed = rawDamageToKill(hull);
+  if (!Number.isFinite(needed)) return 0;
+  const lethal = minimumClosingSpeed(hull, body, needed);
+  if (!(lethal > 0)) return 0;
+  const gap = Math.max(0, Math.hypot(body.pos.x - hull.pos.x, body.pos.z - hull.pos.z)
+    - meetingRadius(hull) - meetingRadius(body));
+  const hurry = gap > 0 ? gap / TANGENT_MEETING_ARRIVE_S : lethal;
+  const chosen = Math.max(earned, lethal, Math.min(hurry, TANGENT_MEETING_MAX_SPEED));
+  return chosen > TANGENT_MEETING_MAX_SPEED ? 0 : chosen;
+}
+
+function rawDamageToKill(hull) {
+  const shieldMul = DAMAGE_MODEL.shieldMultipliers.kinetic || 1;
+  const armorMul = DAMAGE_MODEL.armorMultipliers.kinetic || 1;
+  const hullMul = DAMAGE_MODEL.hullMultipliers.kinetic || 1;
+  const hullFraction = Math.max(0.05, 1 - (Number(DAMAGE_MODEL.subsystemShare) || 0));
+  const shield = Math.max(0, Number(hull.shield) || 0) + TANGENT_MEETING_SHIELD_PAD;
+  const armor = Math.max(0, Number(hull.armorHp) || 0);
+  const flat = Math.max(0, Number(hull.armorFlat) || 0);
+  const hp = Math.max(0, Number(hull.hull) || 0);
+  if (!(hp > 0)) return Infinity;
+  return shield / shieldMul + flat + armor / armorMul + hp / (hullMul * hullFraction);
+}
+
+function minimumClosingSpeed(hull, body, needed) {
+  if (impactAtSpeed(hull, body, TANGENT_MEETING_MAX_SPEED) + 1e-6 < needed) return 0;
+  let lo = 0;
+  let hi = TANGENT_MEETING_MAX_SPEED;
+  for (let i = 0; i < 16; i++) {
+    const mid = (lo + hi) / 2;
+    if (impactAtSpeed(hull, body, mid) + 1e-6 >= needed) hi = mid;
+    else lo = mid;
+  }
+  return hi;
+}
+
+function impactAtSpeed(hull, body, speed) {
+  const receipt = resolveCollisionConsequence({
+    target: hull,
+    other: body,
+    exchangedMomentum: Math.max(1, meetingMass(hull) * speed),
+    tick: 0,
+    provenance: { actorId: null, weaponId: 'massline', tag: 'massline', appliedTick: 0 },
+    preSolveClosingSpeed: speed,
+  });
+  return receipt ? receipt.impactDamage : 0;
+}
+
+function isMeetingHull(entity) {
+  return !!(entity && entity.alive !== false && (entity.type === 'ship' || entity.type === 'drone')
+    && entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)
+    && Number(entity.hull) > 0);
+}
+
+function isMeetingBody(entity) {
+  return !!(entity && entity.alive !== false && TANGENT_MEETING_BODY_TYPES.has(entity.type)
+    && entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z));
+}
+
+function isOwnCraft(entity, playerId) {
+  if (!entity || entity.id === playerId) return true;
+  if (entity.ownerId != null && entity.ownerId === playerId) return true;
+  if (entity.factionId === 'faction_player') return true;
+  const data = entity.data;
+  if (data && (data.isWingman === true || data.echoOfPlayer === true)) return true;
+  if (data && data.ownerId != null && data.ownerId === playerId) return true;
+  return false;
+}
+
+function nearPair(entity, owner, payload) {
+  const radius = TANGENT_MEETING_RADIUS;
+  const toOwner = Math.hypot(entity.pos.x - owner.pos.x, entity.pos.z - owner.pos.z);
+  if (toOwner <= radius) return true;
+  return Math.hypot(entity.pos.x - payload.pos.x, entity.pos.z - payload.pos.z) <= radius;
+}
+
+function forEachEntity(state, fn) {
+  const list = state && state.entityList;
+  if (Array.isArray(list) && list.length) {
+    for (let i = 0; i < list.length; i++) fn(list[i]);
+    return;
+  }
+  const map = state && state.entities;
+  if (map && typeof map.values === 'function') {
+    for (const entity of map.values()) fn(entity);
+  }
+}
+
+function compareMeetingIds(a, b) {
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  const sa = String(a);
+  const sb = String(b);
+  return sa < sb ? -1 : sa > sb ? 1 : 0;
+}
+
+function meetingMass(entity) {
+  const physicsMass = entity && entity.physicsBody && entity.physicsBody.mass;
+  const mass = Number.isFinite(physicsMass) && physicsMass > 0 ? physicsMass : Number(entity && entity.mass);
+  return Number.isFinite(mass) && mass > 0 ? mass : 1;
+}
+
+function meetingRadius(entity) {
+  const radius = Number(entity && entity.radius);
+  return Number.isFinite(radius) && radius > 0 ? radius : 2;
 }
 
 export function releaseAssistMode(state) {

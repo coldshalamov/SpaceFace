@@ -1691,6 +1691,8 @@ export const tetherGameplay = {
     const targetId = this._active.targetId;
     const cutPayload = this._cutPayload(state, player, targetId);
     const releaseRating = rateRelease(state, targetId);
+    const tangentRelease = assessTangentRelease(state, targetId);
+    if (tangentRelease) cutPayload.tangentRelease = tangentRelease;
     const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
     if (!result || !result.ok) {
       this._pendingCut = null;
@@ -2582,6 +2584,34 @@ export function computeTetherLoad(phase, strain) {
   const base = LOAD_BASE_BY_PHASE[normalizePhase(phase)] || 0;
   const s = Number.isFinite(strain) && strain > 0 ? strain : 0;
   return clamp(Math.max(s * LOAD_STRAIN_GAIN, base), 0, 1);
+}
+
+// A taut release at the tangent is a swing let go while the line is actually tight and the
+// relative motion is around the anchor, not a radial tow. masslineThrow spends that release
+// on a meeting; this function only names the release.
+export const TANGENT_RELEASE_MIN_TANGENCY = 0.85;
+export const TANGENT_RELEASE_MIN_SPEED = 25;
+
+export function assessTangentRelease(state, targetId) {
+  const tether = state && state.player && state.player.tether;
+  const phase = tether && tether.phase;
+  if (!TETHER_TAUT_PHASES.has(phase)) return null;
+  const owner = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  const payload = state && state.entities && state.entities.get && state.entities.get(targetId);
+  if (!owner || !payload) return null;
+  const pair = readCadencePair(owner, payload, finite(tether.restLength));
+  if (!pair.valid) return null;
+  if (pair.tangency < TANGENT_RELEASE_MIN_TANGENCY) return null;
+  if (Math.abs(pair.tangentialSpeed) < TANGENT_RELEASE_MIN_SPEED) return null;
+  return Object.freeze({
+    taut: true,
+    phase: String(phase),
+    tangency: pair.tangency,
+    tangentialSpeed: pair.tangentialSpeed,
+    radialSpeed: pair.radialSpeed,
+    ownerId: owner.id,
+    payloadId: payload.id,
+  });
 }
 
 // CADENCE release rating reads the current pair, before cut authority clears its mirror.
