@@ -46,8 +46,8 @@ Required keys:
 ## Fail the sheet if
 
 - it is prose only
-- it is a choice menu
-- it is a cutscene that takes the stick
+- it is a choice menu, including a nested reply, option, or branch list with the forbidden flags left false
+- it is a cutscene that takes the stick, including a buried `takesStick` / `takesControl` / `lockStick` / `lockPlayer`
 - it has one solution
 - it has no physical headline verb
 - a named solution is not leftover in the cited scenario (do not invent it)

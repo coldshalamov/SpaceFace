@@ -167,6 +167,58 @@ function actorIds(sheet) {
   return fromSet.map((actor) => actor && actor.id).filter(Boolean);
 }
 
+const CHOICE_LIST_KEYS = Object.freeze(['choices', 'replies', 'options', 'branches']);
+const STICK_LOCK_KEYS = Object.freeze([
+  'takesStick', 'takesControl', 'cutsceneTakesStick', 'lockStick', 'lockPlayer',
+]);
+
+function choiceListShaped(list) {
+  return Array.isArray(list) && list.some((row) => (
+    row && typeof row === 'object' && (row.label || row.next || row.reply || row.choice)
+  ));
+}
+
+function walkUndeclaredForbidden(value, path, depth, issues) {
+  if (!value || depth > 8) return;
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      walkUndeclaredForbidden(value[i], `${path}[${i}]`, depth + 1, issues);
+    }
+    return;
+  }
+  if (typeof value !== 'object') return;
+  for (const key of CHOICE_LIST_KEYS) {
+    if (!choiceListShaped(value[key])) continue;
+    const code = key === 'replies' || key === 'branches' ? 'dialogue_tree' : 'choice_menu';
+    issues.push(issue(
+      code,
+      'Choice menu or dialogue tree is forbidden even when the sheet does not declare one',
+      path ? `${path}.${key}` : key,
+    ));
+  }
+  if (Array.isArray(value.nodes) && value.nodes.some((node) => (
+    node && typeof node === 'object'
+    && (node.speaker || node.line || node.text)
+    && (node.next || node.replies || node.choices)
+  ))) {
+    issues.push(issue('dialogue_tree', 'Dialogue nodes are forbidden', path ? `${path}.nodes` : 'nodes'));
+  }
+  for (const key of STICK_LOCK_KEYS) {
+    if (value[key] === true) {
+      issues.push(issue(
+        'cutscene_takes_stick',
+        'Cutscene that takes the stick is forbidden even when the sheet does not declare one',
+        path ? `${path}.${key}` : key,
+      ));
+    }
+  }
+  for (const [key, child] of Object.entries(value)) {
+    if (!child || typeof child !== 'object') continue;
+    if (CHOICE_LIST_KEYS.includes(key)) continue;
+    walkUndeclaredForbidden(child, path ? `${path}.${key}` : key, depth + 1, issues);
+  }
+}
+
 function detectForbiddenForm(sheet) {
   const issues = [];
   if (!sheet || typeof sheet !== 'object' || Array.isArray(sheet)) {
@@ -180,19 +232,42 @@ function detectForbiddenForm(sheet) {
   if (sheet.kind === 'choice_menu' || sheet.choiceMenu === true || forbidden.choiceMenu === true) {
     issues.push(issue('choice_menu', 'Choice menu is forbidden', 'choiceMenu'));
   }
-  if (Array.isArray(sheet.choices) && sheet.choices.some((row) => row && (row.label || row.next))) {
+  if (choiceListShaped(sheet.choices)) {
     issues.push(issue('choice_menu', 'Choice menu entries are forbidden', 'choices'));
   }
   if (
     sheet.kind === 'cutscene'
-    || sheet.cutsceneTakesStick === true
-    || sheet.takesStick === true
     || forbidden.cutsceneTakesStick === true
+    || STICK_LOCK_KEYS.some((key) => sheet[key] === true)
   ) {
     issues.push(issue('cutscene_takes_stick', 'Cutscene that takes the stick is forbidden', 'cutsceneTakesStick'));
   }
   if (sheet.dialogueTree === true || forbidden.dialogueTree === true) {
     issues.push(issue('dialogue_tree', 'Dialogue tree is forbidden', 'dialogueTree'));
+  }
+  // Top-level flags above already name the declared form. A top-level reply
+  // list is the list itself, so it has to be named here; the walk only sees
+  // choice keys on objects it enters.
+  for (const [key, child] of Object.entries(sheet)) {
+    if (key === 'choices' || key === 'forbidden' || key === 'kind') continue;
+    if (!child || typeof child !== 'object') continue;
+    if (CHOICE_LIST_KEYS.includes(key) && choiceListShaped(child)) {
+      const code = key === 'replies' || key === 'branches' ? 'dialogue_tree' : 'choice_menu';
+      issues.push(issue(
+        code,
+        'Choice menu or dialogue tree is forbidden even when the sheet does not declare one',
+        key,
+      ));
+      continue;
+    }
+    if (key === 'nodes' && Array.isArray(child) && child.some((node) => (
+      node && typeof node === 'object'
+      && (node.speaker || node.line || node.text)
+      && (node.next || node.replies || node.choices)
+    ))) {
+      issues.push(issue('dialogue_tree', 'Dialogue nodes are forbidden', 'nodes'));
+    }
+    walkUndeclaredForbidden(child, key, 1, issues);
   }
   return issues;
 }

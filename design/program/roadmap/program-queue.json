@@ -10033,7 +10033,7 @@
       "priority": 199,
       "title": "The beat standard",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-152.00"
       ],
@@ -10054,8 +10054,11 @@
         "node scripts/check-codex-narrative.mjs",
         "npm run check:mission-receipts"
       ],
-      "receiptRefs": [],
-      "brief": "A written standard and a template: canon sheet, register sheet, set-piece script (place, actors, headline verb, twist, two solutions, the frame that proves it), bark rules (one line, one consequence), voice direction notes; a validator checks the template. DONE WHEN: Standard committed; the 47-A opener re-expressed in the template without loss."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-178.00-REPORT.md",
+        "design/program/roadmap/receipts/PQ-178.00-CLOSE-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: beat standard and template committed; the 47-A opener is re-expressed without collapsing to B0 mine-and-dock; the validator rejects an undeclared reply list or stick-lock."
     },
     {
       "id": "PQ-178.01",
