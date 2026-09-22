@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/design/program/vm-drop/atlas-chase/atlas_c1_lod0.glb",
+  "ship": "atlas",
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "runtimeScale": 2.3149394386858653,
+  "authoredX": 22.289999961853027,
+  "targetWU": 51.6,
+  "size": [
+    51.6,
+    16.3991,
+    8.1387
+  ],
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/atlas-chase/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/atlas-chase/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/atlas-chase/play_chase_close.png"
+  },
+  "clay": "/workspace/spaceface/design/program/vm-drop/atlas-chase/clay_play_chase.png",
+  "clayAbeam": "/workspace/spaceface/design/program/vm-drop/atlas-chase/clay_play_chase_abeam.png",
+  "clayClose": "/workspace/spaceface/design/program/vm-drop/atlas-chase/clay_play_chase_close.png"
+}
