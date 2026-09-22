@@ -2,16 +2,16 @@
 
 Imports the live Ranger only for root, sockets, and collision. Replaces the
 render meshes with one closed explorer that reads at the live chase camera:
-C4 formed shell — a shorter, broad-bowed forward third, twin nacelle throats in
-the primary loft, side mass grown from the continuous shell load path, a
-formed survey pylon (not a stick or hoop), and greenhouse/survey wells as deep
-holes. Principled islands only. No seats. No megatex. Hitch/Kestrel/Hornet/
-Drifter are never loaded. Hornet interceptor and Drifter workboat silhouettes
-are not copied.
+C5 formed shell — C4's blunt explorer body plus chase-readable assembled
+bow/midship language grown in the continuous shell (stepped armor courses,
+recesses, load-path knuckles, multi-value skin) and fore gun houses as
+integrated formed cheek volumes. Principled islands only. No seats. No
+megatex. Hitch/Kestrel/Hornet/Drifter are never loaded. Hornet interceptor
+and Drifter workboat silhouettes are not copied.
 
-C4 attacks C3's remaining TUBE_PADDLE read by remassing the bow and mid-hull,
-not by adding fins. Keeps C2 win: CAGE_READ NO (shallow scores, not wrapping
-rings). Wells stay HOLES.
+C5 attacks C4 leftovers (smooth capsule vs Hitch's chunky assembled bow;
+swallowed gun houses; thin skin at D=144) without garnish and without
+wrapping rings. Keeps C2/C4 wins: CAGE_READ NO, TUBE_PADDLE NO, wells HOLES.
 
 Does not rescale the root — live sockets already sit in the ~18 m authored
 space. Runtime display scale is applied by the chase still helper, not here.
@@ -28,7 +28,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v4a"
+REVISION = "chase_form_v5a"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "ranger"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -41,10 +41,10 @@ KEEP_SEPARATE = (
 # Sand-grey explorer. Mid-heavy like Hitch. Never Deck-on-crown. Never Armor-by-|y|.
 # C17: clay overrides every slot. Outer shell is one Hull value; Armor is keel.
 HONEST = {
-    "Material_Hull": {"color": (0.168, 0.156, 0.138), "metallic": 0.12, "roughness": 0.52, "role": "hull"},
-    "Material_Armor": {"color": (0.078, 0.074, 0.068), "metallic": 0.20, "roughness": 0.56, "role": "armor"},
-    "Material_Course": {"color": (0.122, 0.114, 0.102), "metallic": 0.16, "roughness": 0.50, "role": "hull"},
-    "Material_Mark": {"color": (0.14, 0.28, 0.26), "metallic": 0.08, "roughness": 0.46, "role": "hull"},
+    "Material_Hull": {"color": (0.198, 0.184, 0.162), "metallic": 0.12, "roughness": 0.50, "role": "hull"},
+    "Material_Armor": {"color": (0.040, 0.038, 0.036), "metallic": 0.22, "roughness": 0.58, "role": "armor"},
+    "Material_Course": {"color": (0.090, 0.084, 0.074), "metallic": 0.16, "roughness": 0.52, "role": "hull"},
+    "Material_Mark": {"color": (0.10, 0.30, 0.28), "metallic": 0.08, "roughness": 0.44, "role": "hull"},
     "Material_Canopy": {"color": (0.012, 0.016, 0.020), "metallic": 0.0, "roughness": 0.06, "role": "glass"},
     "Material_Ceramic": {"color": (0.08, 0.072, 0.062), "metallic": 0.06, "roughness": 0.64, "role": "ceramic"},
     "Material_Mechanical": {"color": (0.052, 0.054, 0.056), "metallic": 0.38, "roughness": 0.48, "role": "mechanical"},
@@ -56,8 +56,8 @@ HONEST = {
 }
 
 # C2: fewer girth stations. Shallow scores in a sheet — not wrapping rings (C1 cage).
-GIRTH_XS = (5.40, 1.60, -1.80, -5.20)  # C2b: four shallow scores, not a ring cage
-MARK_XS = (2.20, -2.40, -4.80)
+GIRTH_XS = (5.55, 1.80, -1.50, -5.20)  # C2b: four shallow scores, not a ring cage
+MARK_XS = (2.40, -2.20, -4.60)
 STRINGER_YS = (0.48, 0.86)
 STRINGER_SPANS = ((7.10, 4.20), (3.20, -0.10), (-1.90, -5.70))
 
@@ -249,6 +249,20 @@ def shell_ring(st):
                 f"vertical slab in YZ at x={a[0]:.2f} dy={abs(a[1] - b[1]):.3f} dz={abs(a[2] - b[2]):.3f}"
             )
     return [(x, 0.0, crown)] + pts + [(x, 0.0, keel_z + keel * 0.08)] + list(reversed(half(-1.0)))
+
+
+def gun_house_ring(x, sign, y_outer, zc, hw, hh):
+    """YZ section of a formed bow cheek house — grown from the shell, not a box."""
+    s = float(sign)
+    return [
+        (x, s * (y_outer - hw * 1.15), zc + hh),
+        (x, s * (y_outer - hw * 0.18), zc + hh * 0.70),
+        (x, s * y_outer, zc + hh * 0.16),
+        (x, s * (y_outer - hw * 0.08), zc - hh * 0.40),
+        (x, s * (y_outer - hw * 0.38), zc - hh),
+        (x, s * (y_outer - hw * 1.18), zc - hh * 0.26),
+        (x, s * (y_outer - hw * 1.22), zc + hh * 0.36),
+    ]
 
 
 def pylon_ring(x, y, z, hw, hh):
@@ -454,26 +468,29 @@ def delete_render_meshes():
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-# C4 formed explorer. Planform lives in the primary loft (Drifter C14 lesson:
-# sideboards ARE the hull — no paddle lobes). The forward third is deliberately
-# shorter and fuller than C3: a broad transom-like bow cap reaches a shoulder in
-# under a metre, then the mid-hull carries its beam through the survey load path.
-# No separate wing tips or root garnish are needed to manufacture width.
+# C5 formed explorer. C4 blunt shell kept (TUBE_PADDLE NO). Knuckle pairs are
+# load-path breaks / armor-course steps in the loft — not wrapping rings.
+# densify mids stay low so those knuckles survive. Planform still lives in the
+# primary loft (no paddle lobes, no new fins).
 # (x, beam, hh, zc, keel, flat, box, chine)
 HULL_STATIONS = [
-    # C4a: cap is already a hull-width assembly, then a quick shoulder and slow
-    # continuous taper. This is shell mass, not a nose flanked by paddles.
-    (7.15, 2.34, 0.78, 0.16, 0.08, 0.74, 0.40, 0.22),
-    (6.45, 2.82, 0.94, 0.19, 0.09, 0.84, 0.44, 0.25),
-    (5.45, 3.12, 1.04, 0.21, 0.10, 0.90, 0.48, 0.28),
-    (4.35, 3.30, 1.10, 0.22, 0.10, 0.94, 0.52, 0.31),
-    (3.20, 3.40, 1.10, 0.22, 0.10, 0.96, 0.54, 0.33),
-    (1.60, 3.46, 1.04, 0.19, 0.10, 0.96, 0.56, 0.34),
-    (0.00, 3.44, 0.98, 0.16, 0.10, 0.95, 0.56, 0.34),
-    (-1.80, 3.36, 0.96, 0.15, 0.10, 0.92, 0.54, 0.32),
-    (-3.60, 3.16, 0.94, 0.16, 0.09, 0.82, 0.50, 0.29),
-    (-5.40, 2.76, 0.90, 0.16, 0.08, 0.66, 0.46, 0.25),
-    (-6.90, 2.30, 0.82, 0.16, 0.08, 0.50, 0.42, 0.20),
+    # Bow cap course (lower, slightly narrower) then a knuckle up into the
+    # bow armor belt. Cheek gun houses sit on that belt, not on the cap.
+    (7.15, 2.18, 0.70, 0.12, 0.08, 0.70, 0.48, 0.24),
+    (6.72, 2.26, 0.74, 0.14, 0.08, 0.74, 0.48, 0.24),
+    # Knuckle: step up to bow course.
+    (6.50, 2.78, 0.96, 0.20, 0.10, 0.82, 0.50, 0.28),
+    (5.55, 3.10, 1.04, 0.21, 0.10, 0.88, 0.50, 0.30),
+    (4.40, 3.26, 1.08, 0.21, 0.10, 0.92, 0.52, 0.32),
+    # Knuckle: mid load-path recess (survey deck).
+    (3.55, 3.24, 1.06, 0.20, 0.10, 0.92, 0.52, 0.32),
+    (3.32, 3.10, 0.92, 0.16, 0.10, 0.86, 0.54, 0.32),
+    (1.80, 3.22, 0.96, 0.16, 0.10, 0.90, 0.54, 0.33),
+    (0.20, 3.36, 1.02, 0.18, 0.10, 0.94, 0.54, 0.34),
+    (-1.50, 3.28, 0.96, 0.16, 0.10, 0.90, 0.52, 0.32),
+    (-3.40, 3.10, 0.92, 0.16, 0.09, 0.82, 0.50, 0.28),
+    (-5.20, 2.72, 0.88, 0.16, 0.08, 0.66, 0.46, 0.24),
+    (-6.80, 2.28, 0.80, 0.16, 0.08, 0.50, 0.42, 0.20),
     (-8.45, 1.34, 0.62, 0.12, 0.06, 0.32, 0.34, 0.15),
 ]
 
@@ -519,17 +536,20 @@ def paint_shell(hull, mats):
     for poly in mesh.polygons:
         verts = [mesh.vertices[index].co for index in poly.vertices]
         centroid = sum(verts, Vector()) / max(len(verts), 1)
-        _beam, hh, zc = hull_half_at(centroid.x)
-        on_girth = any(abs(centroid.x - gx) < 0.14 for gx in GIRTH_XS)
-        on_mark = any(abs(centroid.x - mx) < 0.42 for mx in MARK_XS)
-        island = (int(abs(centroid.x) * 3.0) + int(centroid.z * 5.0)) % 10 == 0
-        if centroid.z < zc - hh * 0.38:
+        beam, hh, zc = hull_half_at(centroid.x)
+        on_girth = any(abs(centroid.x - gx) < 0.22 for gx in GIRTH_XS)
+        on_mark = any(abs(centroid.x - mx) < 0.55 for mx in MARK_XS)
+        island = (int(abs(centroid.x) * 2.4) + int(centroid.z * 4.0)) % 8 == 0
+        bow_cap = centroid.x > 6.48
+        armor_belt = abs(centroid.z - zc) < hh * 0.22 and abs(centroid.y) > beam * 0.38
+        mid_course = 2.80 < centroid.x < 4.20 and centroid.z > zc + hh * 0.18
+        if bow_cap or centroid.z < zc - hh * 0.30 or armor_belt:
             poly.material_index = 1
-        elif on_girth:
+        elif on_girth or mid_course:
             poly.material_index = 2
         elif on_mark:
             poly.material_index = 3
-        elif island and centroid.z > zc - hh * 0.08:
+        elif island and centroid.z > zc - hh * 0.04:
             poly.material_index = 4
         else:
             poly.material_index = 0
@@ -578,8 +598,8 @@ def build_hull(mats):
         mx = 0.5 * (fore + aft)
         span = max(0.42, abs(fore - aft) - 0.18)
         beam = hull_station_at(mx)[1]
-        inset = 0.040 if bay_i % 2 == 0 else 0.080
-        flank_t = 0.048 if bay_i % 2 == 0 else 0.080
+        inset = 0.100 if bay_i % 2 == 0 else 0.150
+        flank_t = 0.080 if bay_i % 2 == 0 else 0.120
         for sign, side in ((-1.0, "P"), (1.0, "S")):
             y_dorsal = min(0.62, beam * 0.55) * sign
             if not dorsal_blocked(mx, y_dorsal):
@@ -621,6 +641,39 @@ def build_hull(mats):
         def survey_lip(n=f"SurveyLipScore_{side}", loc=(0.70, 0.56 * sign, 0.92)):
             return add_box(n, (1.20, 0.050, 0.044), loc, hull_mat, 0.0)
         cut(hull, survey_lip)
+
+    # C5: one bow-course knuckle score + one mid load-path recess. Not rings.
+    def bow_step():
+        return add_box("BowCourseStep", (0.12, 4.40, 0.20), (6.50, 0.0, 0.78), hull_mat, 0.0)
+    cut(hull, bow_step)
+    def mid_break():
+        return add_box("MidLoadBreak", (0.62, 1.55, 0.16), (3.34, 0.0, 0.86), hull_mat, 0.0)
+    cut(hull, mid_break)
+    def bow_recess():
+        return add_box("BowRecess", (0.92, 1.20, 0.16), (6.00, 0.0, 0.86), hull_mat, 0.0)
+    cut(hull, bow_recess)
+
+    armor = mats["Material_Armor"]
+    course = mats["Material_Course"]
+    for sign, side in ((-1.0, "P"), (1.0, "S")):
+        extras.append(add_box(
+            f"LOD0_CourseBow_{side}",
+            (1.08, 0.52, 0.13),
+            (6.12, hull_station_at(6.12)[1] * 0.78 * sign, 0.40),
+            armor, 0.004,
+        ))
+        extras.append(add_box(
+            f"LOD0_CourseMid_{side}",
+            (1.62, 0.46, 0.12),
+            (1.35, hull_station_at(1.35)[1] * 0.74 * sign, 0.34),
+            armor, 0.004,
+        ))
+        extras.append(add_box(
+            f"LOD0_CourseShoulder_{side}",
+            (0.88, 0.38, 0.10),
+            (4.55, hull_station_at(4.55)[1] * 0.80 * sign, 0.52),
+            course, 0.003,
+        ))
     paint_shell(hull, mats)
     return hull, extras
 
@@ -856,20 +909,42 @@ def build_drives(mats, lod):
 
 
 def build_guns(mats, lod):
+    """Fore houses are formed cheek volumes on the bow course, not deck boxes.
+
+    C4 sat 0.22 m boxes at y=0.55 inside a 2.8 m half-beam bow, so they vanished
+    at D=144. C5 grows them from the chine so they break the bow silhouette.
+    """
     mech = mats["Material_Mechanical"]
     armor = mats["Material_Armor"]
     bits = []
     for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
-        gun = add_box(f"LOD0_GunFore_{tag}", (0.72, 0.14, 0.14), (6.55, 0.55 * sign, 0.22), mech, 0.002)
-        bits.append(gun)
-        bits.append(add_box(f"LOD0_GunForeHouse_{tag}", (0.32, 0.22, 0.16), (6.20, 0.55 * sign, 0.22), armor, 0.002))
+        rings = []
+        for x, y_outer, hw, hh, zc in (
+            (6.92, 2.72, 0.30, 0.20, 0.20),
+            (6.55, 3.08, 0.44, 0.31, 0.23),
+            (6.08, 3.42, 0.50, 0.34, 0.23),
+            (5.52, 3.24, 0.38, 0.25, 0.20),
+        ):
+            rings.append(gun_house_ring(x, sign, y_outer, zc, hw, hh))
+        bits.append(loft_rings(f"LOD0_GunForeHouse_{tag}", rings, armor, 0.008, cap=True))
+        barrel = loft_rings(
+            f"LOD0_GunFore_{tag}",
+            [
+                gun_house_ring(6.92, sign, 2.72, 0.20, 0.13, 0.09),
+                gun_house_ring(7.16, sign, 2.76, 0.20, 0.10, 0.07),
+                gun_house_ring(7.34, sign, 2.78, 0.20, 0.07, 0.05),
+            ],
+            mech, 0.003, cap=True,
+        )
+        bits.append(barrel)
         if lod < 2:
-            def bore(name=f"GunBoreFore_{tag}", loc=(6.85, 0.55 * sign, 0.22)):
+            y_bore = 2.78 * sign
+            def bore(name=f"GunBoreFore_{tag}", loc=(7.36, y_bore, 0.20)):
                 return add_cylinder(
-                    name, 0.032, 0.16, loc, mech, 0.0,
+                    name, 0.028, 0.12, loc, mech, 0.0,
                     rotation=(0.0, math.radians(90.0), 0.0), vertices=8,
                 )
-            cut(gun, bore)
+            cut(barrel, bore)
         bits.append(add_box(f"LOD0_GunAft_{tag}", (0.62, 0.10, 0.10), (-6.55, 0.36 * sign, 0.52), mech, 0.002))
     return bits
 
@@ -1221,7 +1296,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "ranger_chase_form_v4.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "ranger_chase_form_v5.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 

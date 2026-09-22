@@ -52,3 +52,15 @@ all-slot. Hitch/Hornet/Drifter never loaded.
 C4 RESULT: **REVISE**. CAGE_READ NO on play+close+abeam (clay+shaded).
 TUBE_PADDLE **NO** (needle leftover gone at D=144). Wells HOLES. Hitch still
 wins formed-shell massing/skin. No seats. No megatex. Freeze hashes unchanged.
+
+## C5 chase-form (2026-09-21, grok-bot-box)
+
+`chase_form_v5a`. Attacked C4 leftovers (smooth capsule; swallowed gun houses;
+thin skin at D=144) by growing stepped armor courses / load-path knuckles /
+recesses / multi-value skin into the continuous shell, and fore gun houses as
+formed cheek volumes on the bow course. No new fins/wings. Clay all-slot.
+Hitch/Hornet/Drifter never loaded.
+
+C5 RESULT: **REVISE**. CAGE_READ NO on play+close+abeam (clay+shaded).
+TUBE_PADDLE **NO**. Wells HOLES. Hitch still wins formed-shell massing/skin.
+No seats. No megatex. Freeze hashes unchanged.

@@ -7258,8 +7258,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_ranger",
-      "tris": 24744,
-      "bytes": 3125096,
+      "tris": 28435,
+      "bytes": 3664600,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7288,21 +7288,21 @@
       "bounds": {
         "min": [
           -8.62,
-          -3.453,
-          -0.971
+          -3.417,
+          -0.961
         ],
         "max": [
-          7.15,
-          3.453,
+          7.34,
+          3.417,
           1.88
         ],
         "dimensionsM": [
-          15.77,
-          6.906,
-          2.851
+          15.96,
+          6.834,
+          2.841
         ]
       },
-      "note": "PQ-050.03 chase_form_v4a. Cycle 4: remass bow + mid-hull into a broader, shorter continuous explorer shell (no new garnish). Hitch/Kestrel/Hornet/Drifter untouched. Chase Hitch-plus REVISE (CAGE_READ NO; TUBE_PADDLE NO; Hitch still wins formed-shell massing/skin)."
+      "note": "PQ-050.03 chase_form_v5a. Cycle 5: stepped armor courses + formed bow gun-house cheeks in continuous shell (no new garnish). Hitch/Kestrel/Hornet/Drifter untouched. Chase Hitch-plus REVISE (CAGE_READ NO; TUBE_PADDLE NO; Hitch still wins formed-shell massing/skin)."
     },
     {
       "id": "wholeship_repair_tender",
