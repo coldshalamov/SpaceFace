@@ -18,6 +18,7 @@ import { planWave } from '../src/systems/survivalWavePlanner.js';
 
 const ARENA = 'helios_core';
 const SEED = 7;
+const CHIP_VALUE = 10;
 
 function boot(seed = SEED) {
   const state = createGameState(seed);
@@ -105,12 +106,12 @@ test('a survival body reserves its reward: campaign paths see runOwnsReward', ()
   assert.equal(runOwnsReward(null), false);
 });
 
-test('the chip is one body\'s share of the authored wave purse', () => {
-  const wave1 = planFor(1);   // 12 credits over 6 bodies
-  assert.equal(chipValueForPlan(wave1), 2);
-  const wave10 = planFor(10); // 48 credits over 7 bodies
-  assert.equal(chipValueForPlan(wave10), Math.max(1, Math.round(48 / 7)));
-  assert.equal(chipValueForPlan(null), 0);
+test('the chip uses the finite per-threat reward on every wave', () => {
+  const wave1 = planFor(1);   // finite fodder threat reward
+  assert.equal(chipValueForPlan(wave1), CHIP_VALUE);
+  const wave10 = planFor(10); // finite fodder threat reward
+  assert.equal(chipValueForPlan(wave10), CHIP_VALUE);
+  assert.equal(chipValueForPlan(null), CHIP_VALUE);
 });
 
 test('a cohort kill drops a physical chip stamped for the run wallet, and pays nothing at death', () => {
@@ -125,7 +126,7 @@ test('a cohort kill drops a physical chip stamped for the run wallet, and pays n
   assert.equal(items.length, 1);
   assert.equal(items[0].kind, CREDIT_CHIP_KIND);
   assert.equal(items[0].wallet, RUN_WALLET);
-  assert.equal(items[0].credits, 2);
+  assert.equal(items[0].credits, CHIP_VALUE);
   // No top-level credits field: that is the grant-at-death shape, and Survival settles on scoop.
   assert.equal(drops[0].payload.credits, undefined);
   assert.equal(harness.state.run.credits, 0, 'credits are not paid until the chip is collected');
@@ -142,11 +143,11 @@ test('collecting the chip pays the run wallet, never campaign credits', () => {
 
   // The scoop receipt is what pays — survivalRewards is the sole payer of run chips.
   harness.bus.emit('pickup:collected', {
-    pickupId: chipId, collectorId: 1, kind: CREDIT_CHIP_KIND, amount: 2, credits: 2, wallet: 'run',
+    pickupId: chipId, collectorId: 1, kind: CREDIT_CHIP_KIND, amount: CHIP_VALUE, credits: CHIP_VALUE, wallet: 'run',
   });
   harness.bus.emit('entity:destroyed', { id: chipId });
 
-  assert.equal(harness.state.run.credits, 2, 'a scooped chip is paid exactly once');
+  assert.equal(harness.state.run.credits, CHIP_VALUE, 'a scooped chip is paid exactly once');
   assert.equal(harness.state.player.credits, 1000);
   assert.ok(!harness.emitted.some((e) => e.event === 'economy:grantCredits'));
 });
@@ -154,8 +155,8 @@ test('collecting the chip pays the run wallet, never campaign credits', () => {
 test('a chip the ship physically flies into pays — the payload has no wallet field', () => {
   // THE live defect: two publishers emit pickup:collected and only mining's carries `wallet`.
   // physics' contact-collect (physics.js emitPickupCollected) carries pickupId/collectorId/kind/
-  // amount/pos and nothing else. A route capture showed six kills worth twelve credits paying
-  // eight, because the two chips the hull actually touched paid nothing. Settlement is keyed on
+  // amount/pos and nothing else. A route capture showed six kills worth sixty credits paying
+  // forty, because the two chips the hull actually touched paid nothing. Settlement is keyed on
   // this owner's own ledger now, so the payload shape cannot change the outcome.
   const harness = boot();
   beginActive(harness);
@@ -166,19 +167,19 @@ test('a chip the ship physically flies into pays — the payload has no wallet f
 
   // Exactly the physics payload — no `wallet`, no `credits`.
   harness.bus.emit('pickup:collected', {
-    pickupId: ids[0], collectorId: 1, kind: CREDIT_CHIP_KIND, amount: 2, pos: { x: 0, z: 0 },
+    pickupId: ids[0], collectorId: 1, kind: CREDIT_CHIP_KIND, amount: CHIP_VALUE, pos: { x: 0, z: 0 },
   });
-  assert.equal(harness.state.run.credits, 2, 'the contact collect paid');
+  assert.equal(harness.state.run.credits, CHIP_VALUE, 'the contact collect paid');
 
   // And the magnet-scoop shape, which does carry a wallet, pays the same.
   harness.bus.emit('pickup:collected', {
-    pickupId: ids[1], collectorId: 1, kind: CREDIT_CHIP_KIND, amount: 2, credits: 2, wallet: 'run',
+    pickupId: ids[1], collectorId: 1, kind: CREDIT_CHIP_KIND, amount: CHIP_VALUE, credits: CHIP_VALUE, wallet: 'run',
   });
-  assert.equal(harness.state.run.credits, 4, 'both collection routes pay identically');
+  assert.equal(harness.state.run.credits, CHIP_VALUE * 2, 'both collection routes pay identically');
 
   // Their bodies are then destroyed; neither pays again.
   for (const id of ids) harness.bus.emit('entity:destroyed', { id });
-  assert.equal(harness.state.run.credits, 4, 'and neither pays twice');
+  assert.equal(harness.state.run.credits, CHIP_VALUE * 2, 'and neither pays twice');
   assert.equal(harness.state.player.credits, 1000);
 });
 
@@ -198,12 +199,12 @@ test('uncollected chips are cleared off the board at cleanup and settle into the
   }
   // coreSystem publishes the destroy receipt for the bodies the sweep marked; that is what pays.
   for (const id of ids) harness.bus.emit('entity:destroyed', { id });
-  assert.equal(harness.state.run.credits, 8, 'four chips at 2 each were settled');
+  assert.equal(harness.state.run.credits, CHIP_VALUE * 4, 'four finite-value chips were settled');
 });
 
 test('a chip destroyed mid-cleanup is still paid — the defect a live route capture found', () => {
-  // The first version credited uncollected chips only at the cleanup boundary. A real run showed
-  // two of six chips already gone by then, so six kills paid for four.
+  // Despawn is not collection: destroying a chip drops its ledger row, but the earned
+  // entitlement survives, so the cleanup sweep still pays for all six kills.
   const harness = boot();
   beginActive(harness);
   harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
@@ -218,11 +219,11 @@ test('a chip destroyed mid-cleanup is still paid — the defect a live route cap
     entity.alive = false;
     harness.bus.emit('entity:destroyed', { id });
   }
-  assert.equal(harness.state.run.credits, 4, 'the two lost chips paid on their way out');
+  assert.equal(harness.state.run.credits, 0, 'the two lost chips are not paid on despawn');
 
   harness.bus.emit('run:transitionRequested', { expectedPhase: 'cleanup', nextPhase: 'draft', reason: 'draft_open', tick: 2 });
   for (const id of ids.slice(2)) harness.bus.emit('entity:destroyed', { id });
-  assert.equal(harness.state.run.credits, 12, 'six kills paid for six chips');
+  assert.equal(harness.state.run.credits, CHIP_VALUE * 6, 'six kills paid for six chips');
 });
 
 test('the sweep never double-pays a chip the player already collected', () => {
@@ -238,7 +239,7 @@ test('the sweep never double-pays a chip the player already collected', () => {
   // either way, or a chip the player flew into is paid twice.
   const collected = harness.state.entities.get(ids[0]);
   harness.bus.emit('pickup:collected', {
-    pickupId: ids[0], collectorId: 1, kind: CREDIT_CHIP_KIND, amount: 2,
+    pickupId: ids[0], collectorId: 1, kind: CREDIT_CHIP_KIND, amount: CHIP_VALUE,
     pos: { x: collected.pos.x, z: collected.pos.z },   // physics shape: no `wallet`
   });
   collected.alive = false;
@@ -247,10 +248,10 @@ test('the sweep never double-pays a chip the player already collected', () => {
   harness.bus.emit('run:transitionRequested', { expectedPhase: 'active', nextPhase: 'cleanup', reason: 'wave_clear', tick: 1 });
   harness.bus.emit('run:transitionRequested', { expectedPhase: 'cleanup', nextPhase: 'draft', reason: 'draft_open', tick: 2 });
 
-  assert.equal(harness.state.run.credits, 4, 'one scooped + one swept, each paid exactly once');
+  assert.equal(harness.state.run.credits, CHIP_VALUE * 2, 'one scooped + one swept, each paid exactly once');
 });
 
-test('ending a run sweeps what is still on the board so a death does not lose the earnings', () => {
+test('ending a run discards uncollected chips — only scooped earnings survive a death', () => {
   const harness = boot();
   beginActive(harness);
   harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
@@ -259,8 +260,8 @@ test('ending a run sweeps what is still on the board so a death does not lose th
 
   harness.bus.emit('run:endRequested', { outcome: 'defeat', reason: 'player_death', tick: 9 });
   assert.equal(harness.state.run.phase, 'ended');
-  // At the end of a run the sim may never tick again, so outstanding chips settle directly.
-  assert.equal(harness.state.run.credits, 6);
+  // A death discards outstanding chips; only credits already scooped are banked.
+  assert.equal(harness.state.run.credits, 0);
 });
 
 test('the REAL mining pickup path spawns the chip and routes it to the run wallet', () => {
@@ -287,7 +288,7 @@ test('the REAL mining pickup path spawns the chip and routes it to the run walle
   const chip = chips[0];
   assert.equal(chip.data.kind, CREDIT_CHIP_KIND);
   assert.equal(chip.data.wallet, RUN_WALLET, 'the wallet stamp survived mining\'s spawn path');
-  assert.equal(chip.data.credits, 2);
+  assert.equal(chip.data.credits, CHIP_VALUE);
 
   harness.bus.emit('pickup:collected', {
     pickupId: chip.id, collectorId: harness.state.playerId, kind: CREDIT_CHIP_KIND,
@@ -295,7 +296,7 @@ test('the REAL mining pickup path spawns the chip and routes it to the run walle
     pos: { x: chip.pos.x, z: chip.pos.z },
   });
 
-  assert.equal(harness.state.run.credits, 2, 'the run wallet was paid by mining, through runSession');
+  assert.equal(harness.state.run.credits, CHIP_VALUE, 'the run wallet was paid by mining, through runSession');
   assert.equal(harness.state.player.credits, 1000);
   assert.ok(!harness.emitted.some((e) => e.event === 'economy:grantCredits'),
     'campaign economy was never asked for a grant');
