@@ -71,19 +71,24 @@ test('all 14 roster hulls and the liner are required packaged-live complete bodi
   for (const defId of REQUIRED_WHOLE_SHIP_DEF_IDS) {
     const expected = ROSTER_FILES[defId];
     assert.ok(expected, defId);
-    const entity = shipEntity({ defId });
+    // The Kestrel's whole-ship requirement is player-scoped by design — an NPC Kestrel stays on
+    // the modular authored path, so its roster assertion must build the player entity.
+    const entity = shipEntity({ defId }, defId === 'ship_kestrel' ? { isPlayer: true } : {});
     assert.equal(requiresProductionWholeShipForEntity(entity), true, defId);
     const visual = wholeShipVisualForEntity(entity);
     assert.equal(visual && visual.file, expected, defId);
     assert.equal(isPackagedLiveWholeShipFile(visual.file), true, `${defId} packed live`);
     assert.deepEqual(planFiles(entity), [expected], `${defId} must not request modular kit`);
+    // Whatever level resolves must be a packaged-live file — the selector never requests an
+    // unpackaged factory LOD on the live path. Hulls whose family ships a packaged reduced body
+    // must resolve it; hulls without one keep their packaged LOD0.
     const lod2 = wholeShipLodFileForEntity(entity, 'lod2');
-    if (defId !== 'ship_kestrel') {
-      assert.equal(lod2, expected, `${defId} must keep LOD0 instead of unpackaged factory LOD2`);
-      assert.equal(isPackagedLiveWholeShipFile(expected.replace('.glb', '_lod1.glb')), false,
-        `${defId} factory LOD1 stays off the live allowlist`);
-      assert.equal(isPackagedLiveWholeShipFile(expected.replace('.glb', '_lod2.glb')), false,
-        `${defId} factory LOD2 stays off the live allowlist`);
+    assert.equal(isPackagedLiveWholeShipFile(lod2), true, `${defId} lod2 is packaged live`);
+    const packagedLod2 = expected.replace('.glb', '_lod2.glb');
+    if (isPackagedLiveWholeShipFile(packagedLod2)) {
+      assert.equal(lod2, packagedLod2, `${defId} must resolve its packaged lod2 body`);
+    } else {
+      assert.equal(lod2, expected, `${defId} without a packaged lod2 keeps its LOD0 body`);
     }
   }
 

@@ -128,7 +128,9 @@ test('default video settings still request full picture quality', async () => {
   const source = await readFile(new URL('../src/core/gameState.js', import.meta.url), 'utf8');
   assert.match(source, /renderScale:\s*1(?:\.0)?/);
   assert.match(source, /bloom:\s*true/);
-  assert.match(source, /shadows:\s*true/);
+  // Sun shadow-maps default OFF (the realtime sun pass produced the crawling miscolored clumps);
+  // grounding still comes from the always-on contact shadows. Opt-in remains under settings.
+  assert.match(source, /shadows:\s*false/);
   assert.match(source, /pixelRatioCap:\s*2/);
   assert.match(source, /particleQuality:\s*'medium'/);
 });

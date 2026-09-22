@@ -1838,6 +1838,36 @@ export function markAuthoredBoundaryForReadmission(boundary, reason) {
 }
 
 /**
+ * Bounded retry for admission verdicts that published nothing drawable. A transient fetch or
+ * decode failure otherwise blanks its owner for the whole session: the asset task is cached
+ * resolved-null and 'unavailable'/'fallback-after-error' sit outside READMISSION_STATUSES by
+ * design. Retry is bounded (attempt cap + exponential backoff) and only applies while the
+ * boundary still shows nothing — statuses whose procedural body is on screen stay terminal so
+ * a late re-admission never pops a second identity over a readable hull.
+ */
+export const AUTHORED_ADMISSION_RETRY_MAX = 4;
+export const AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS = 2500;
+
+export function authoredAdmissionRetriableStatus(status) {
+  return status === 'unavailable' || status === 'fallback-after-error';
+}
+
+export function retryFailedAuthoredAdmission(boundary, nowMs) {
+  const data = boundary && boundary.userData;
+  if (!data || !authoredAdmissionRetriableStatus(data.authoredAssetState)) return false;
+  // A retained readable fallback is a real visual; only still-invisible roots retry.
+  if (data.authoredReadableFallbackRetained === true) return false;
+  const attempts = data.authoredAdmissionRetryCount || 0;
+  if (attempts >= AUTHORED_ADMISSION_RETRY_MAX) return false;
+  const now = Number.isFinite(nowMs) ? nowMs : 0;
+  const nextAt = data.authoredAdmissionNextRetryAt;
+  if (Number.isFinite(nextAt) && now < nextAt) return false;
+  data.authoredAdmissionRetryCount = attempts + 1;
+  data.authoredAdmissionNextRetryAt = now + AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS * (2 ** attempts);
+  return markAuthoredBoundaryForReadmission(boundary, 'transient-admission-retry');
+}
+
+/**
  * Wrap a ship admission substrate in the authored-asset boundary. Pending authored assets stay
  * invisible; the renderer requests admission as soon as the stable boundary joins the scene.
  */
@@ -1853,6 +1883,12 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   boundary.name = `${fallbackRoot.name || 'Ship'}_AuthoredAssetBoundary`;
   fallbackRoot.visible = false;
   boundary.add(fallbackRoot);
+  // A substrate carrying a resolving marker keeps exactly one drawable while admission is
+  // pending — the marker is abstract by design, so this never publishes a substitute identity.
+  // The per-frame visibility pass hides the marker again the moment the state is terminal.
+  if (fallbackRoot.userData && fallbackRoot.userData.authoredResolvingMarker === true) {
+    fallbackRoot.visible = true;
+  }
 
   // Preserve the public inspection surface used by diagnostics/checks while making lifecycle hooks
   // indirect through `active`, so the renderer never needs to know that a payload was replaced.

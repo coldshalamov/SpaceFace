@@ -124,8 +124,21 @@ export function admitAuthoredAssetTask(runtime, cacheKey, createTask) {
     const pendingTasks = runtime.pendingAssetTasks || (runtime.pendingAssetTasks = new Set());
     pendingTasks.add(task);
     task.then(
-      () => pendingTasks.delete(task),
-      () => pendingTasks.delete(task),
+      (value) => {
+        pendingTasks.delete(task);
+        // A null resolution is the loader's failure contract (loadAuthoredPart catches and
+        // resolves null). Keeping that settled task in the cache would poison the URL for the
+        // rest of the session — every later request inherits the same miss. Evict on settle so
+        // a transient fetch/decode failure retries instead of permanently blanking its owners.
+        if (value == null && runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+        // A re-admitted task that produced a record supersedes any failure the evicted attempt
+        // recorded under this key.
+        else if (value != null && runtime.failures) runtime.failures.delete(cacheKey);
+      },
+      () => {
+        pendingTasks.delete(task);
+        if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+      },
     );
   }
   return runtime.assets.get(cacheKey);

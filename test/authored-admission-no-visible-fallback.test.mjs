@@ -96,14 +96,24 @@ test('the live direct-authored route skips bespoke and procedural ship construct
   assert.equal(heroBuilds, 0, 'resident authored ships must not construct the retired hero body');
   assert.equal(proceduralBuilds, 0, 'resident authored ships must not construct a generic body');
   assert.equal(boundary.userData.authoredAdmissionSubstrate, true);
-  assert.equal(boundary.userData.authoredAdmissionTemporaryDrawables, 0,
-    'direct admission diagnostics must describe the retired substrate without polluting the authored render contract');
+  assert.equal(boundary.userData.authoredAdmissionTemporaryDrawables, 1,
+    'direct admission diagnostics describe exactly the resolving marker the substrate carries');
   assert.equal(typeof boundary.userData.requestAuthoredUpgrade, 'function');
-  let renderables = 0;
+  const renderables = [];
   boundary.traverse((object) => {
-    if (object.isMesh || object.isLine || object.isPoints) renderables++;
+    if (object.isMesh || object.isLine || object.isPoints) renderables.push(object);
   });
-  assert.equal(renderables, 0, 'nothing can draw before the exact authored body is admitted');
+  // The only thing that may draw before the exact authored body is admitted is the resolving
+  // marker — a shared-asset silhouette that cannot impersonate any ship identity. It stays
+  // abstract so the authored commit is an enhancement, not a hull swap.
+  assert.equal(renderables.length, 1, 'pending authored ships show a resolving marker, not nothing');
+  assert.equal(renderables[0].name, 'AuthoredResolvingMarker');
+  assert.equal(renderables[0].userData.authoredResolvingMarker, true);
+  assert.equal(renderables[0].userData.spacefaceSharedAsset, true,
+    'marker geometry/material are shared so teardown never disposes the singletons');
+  assert.equal(renderables[0].material.isMeshStandardMaterial, true,
+    'the marker uses the already-linked Standard family — no new program compiles inside bloomScene');
+  assert.equal(renderables[0].visible, true);
 });
 
 test('direct authored mounting also skips ordinary NPC construction', () => {

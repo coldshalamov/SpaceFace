@@ -365,7 +365,9 @@ test('a required whole-ship that does not load is a failed check, not a passing 
 
 describe('PQ-193 required roster, liner, and opening kitbash', { concurrency: 1 }, () => {
   const SLOTS = Object.freeze([
-    { label: 'ship_kestrel', data: { defId: 'ship_kestrel' }, file: 'wholeships/kestrel.glb' },
+    // The production whole-ship requirement for the Kestrel is player-scoped by design —
+    // an NPC Kestrel stays on the modular authored path, so the slot's entity must be the player.
+    { label: 'ship_kestrel', data: { defId: 'ship_kestrel' }, file: 'wholeships/kestrel.glb', player: true },
     { label: 'ship_wasp', data: { defId: 'ship_wasp' }, file: 'wholeships/wasp_production_v1.glb' },
     { label: 'ship_pelican', data: { defId: 'ship_pelican' }, file: 'wholeships/pelican_production_v1.glb' },
     { label: 'ship_mule', data: { defId: 'ship_mule' }, file: 'wholeships/mule_production_v1.glb' },
@@ -396,6 +398,7 @@ describe('PQ-193 required roster, liner, and opening kitbash', { concurrency: 1 
         team: 1,
         radius: 12,
         pos: { x: 0, z: 0 },
+        isPlayer: slot.player === true,
         data: { sectorId: 'sector_helios_prime', ...slot.data },
       };
       const loads = [];
@@ -437,6 +440,7 @@ describe('PQ-193 required roster, liner, and opening kitbash', { concurrency: 1 
       const renderer = {};
       const scene = new THREE.Scene();
       const entity = makeWasp(`missing-${slot.label}`, slot.data);
+      if (slot.player === true) entity.isPlayer = true; // Kestrel's whole-ship requirement is player-scoped
       const substrate = emptySubstrate();
       const loads = [];
       const warnings = [];

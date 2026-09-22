@@ -24,8 +24,10 @@ export function shouldSubmitEntityMesh(options = {}) {
   // Hold ordinary roots until compileObjectPipelines has actually linked them.
   if (options.pipelinesPending === true) return false;
   // Nearby opening extras that are still decoding must not enter bloomScene.
-  // Their first authored draw is the 100 ms+ Intel compile brick.
-  if (options.authoredPending === true && !protectedRoot) return false;
+  // Their first authored draw is the 100 ms+ Intel compile brick. A resolving marker is exempt:
+  // it draws from the shared, already-linked Standard family and is the only drawable in the
+  // substrate, so submitting it costs nothing extra and keeps a pending contact on screen.
+  if (options.authoredPending === true && !protectedRoot && options.resolvingMarker !== true) return false;
   // compile() does not upload vertex buffers. Hold ordinary rocks/props until the
   // 1x1 residency pass has registered those geometries.
   if (options.geometryPending === true && !protectedRoot) return false;
