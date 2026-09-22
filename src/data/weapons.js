@@ -132,7 +132,7 @@ const SHIPPED_WEAPONS = [
   },
   {
     id: 'wpn_missile_rack_m', name: 'Missile Rack M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 24000, requiresTech: 'tech_guided_ordnance',
-    sentence: 'Fire-and-forget hunters: the hit carries a shoulder, the splash shoves the rest.',
+    sentence: 'Fire-and-forget hunters: each hit carries a real shoulder, and they keep coming.',
     mount: 'launcher',
     dmg: 70, splashDmg: 35, splashRadius: 40, rof: 0.8, dps: 56, damageType: 'explosive', energyCost: 4,
     projSpeed: 320, projSpeedMin: 180, range: 280, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
@@ -140,7 +140,7 @@ const SHIPPED_WEAPONS = [
   },
   {
     id: 'unique_nestbreaker_rack', baseId: 'wpn_missile_rack_m', name: 'Nestbreaker Rack', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 0,
-    sentence: 'The missile rack tuned for volume: more hunters in the air, the same shoulder behind each hit.',
+    sentence: 'The missile rack tuned for volume: more hunters in the air and more shoulder per second, each hit a little lighter.',
     mount: 'launcher',
     dmg: 49, splashDmg: 24.5, splashRadius: 40, rof: 0.8, dps: 78.4, damageType: 'explosive', energyCost: 4,
     projSpeed: 320, projSpeedMin: 180, range: 280, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
@@ -306,7 +306,7 @@ const SHIPPED_WEAPONS = [
     // PQ-133.11 — Foundry salvage pulse. Bank Shot + Bank Relay are baked so Hitch (one utility)
     // can still fly volley+bank+chain when Twin Mount occupies the utility slot.
     id: 'unique_mirrorjaw_pulse', baseId: 'wpn_pulse_laser_s', name: 'Mirrorjaw Pulse', slotType: 'weapon', size: 'S', tier: 2, mass: 2, price: 0,
-    sentence: 'The starter bolt reborn meaner: every hit shoves like the pulse’s big brother.',
+    sentence: 'The starter bolt reborn meaner: the same push, faster and meaner on the follow-up.',
     dmg: 8, rof: 5.5, dps: 44, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 5, heatMax: 100, heatDissip: 12,

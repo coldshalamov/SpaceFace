@@ -224,6 +224,21 @@ export function serviceReadinessRecommendation(state, entity, stationServices = 
 export function serviceQuote(type, state, entity) {
   const p = state && state.player || {};
   const credits = playerCredits(state);
+  // One job per verb: the yard queues what it already holds, and a second booking of the same
+  // type can never deliver (the live job already covers the deficit). The disabled path turns
+  // the click into an honest line instead of a second charge.
+  if ((type === 'repair' || type === 'refuel') && playerYardJobs(state).some((j) => j.type === type)) {
+    const verb = type === 'refuel' ? 'refuel' : 'repair';
+    return {
+      amount: 0,
+      cost: 0,
+      detail: 'The yard is already working your ' + verb + ' job.',
+      buttonLabel: type === 'refuel' ? 'Refuel' : 'Repair',
+      disabled: true,
+      disabledReason: 'the yard is already on your ' + verb + ' job — watch it finish or undock to cancel',
+      chips: [{ text: 'yard busy', kind: 'warn' }],
+    };
+  }
   if (type === 'refuel') {
     const fuel = state && state.fuel || { current: 0, max: 0 };
     const current = Math.round(fuel.current || 0);

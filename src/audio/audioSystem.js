@@ -4201,7 +4201,11 @@ export const audio = {
     const text = typeof payload.text === 'string' ? payload.text.trim() : '';
     if (!text) return;
     const rt = this.rt, ctx = rt && rt.ctx;
-    const now = ctx ? ctx.currentTime : 0;
+    // No live context (muted since boot, webdriver): play() would gate these anyway, so do not
+    // touch the queue — a frozen currentTime would otherwise accumulate clear-at backlog and
+    // dump every line as a burst the moment the context comes up.
+    if (!ctx) return;
+    const now = ctx.currentTime;
     if (text === this._instructorLastText && now - (Number.isFinite(this._instructorLastAtS) ? this._instructorLastAtS : -Infinity) < INSTRUCTOR_REPEAT_WINDOW_S) return;
     const resolved = resolveInstructorVoice(text);
     const speechDur = resolved.speech && Number.isFinite(resolved.speech.durationS)

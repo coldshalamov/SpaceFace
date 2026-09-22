@@ -2190,10 +2190,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       add(def.slotType === 'mining' ? 'ORE DPS' : 'DPS',
         Number.isFinite(Number(def.dps)) ? Number(def.dps) * output : def.dps);
       // The mass channel is a buying decision on the weapons that have one (PQ-009): a shove you
-      // can feel shows its number next to the damage it rides in on.
+      // can feel shows its number next to the damage it rides in on — and gives up its RANGE
+      // slot for it (shove guns sit in one 240–280 wu band; MASS is the tighter constraint).
       const shove = shoveMetricValue(def);
-      if (shove != null) add('SHOVE', shove * output);
-      add('RANGE', def.range);
+      if (shove != null) {
+        add('SHOVE', shove * output);
+      } else {
+        add('RANGE', def.range);
+      }
     } else if (def.slotType === 'shield') {
       add('SHIELD', def.mods && def.mods.shieldFlat);
       add('REGEN', def.mods && def.mods.shieldRegenFlat);
