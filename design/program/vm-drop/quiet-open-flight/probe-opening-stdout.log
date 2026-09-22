@@ -1,0 +1,167 @@
+
+> spaceface@0.1.0 probe:smooth-flight
+> node scripts/probe-smooth-flight.mjs
+
+  fat event payloads:
+    bufferFullUpload@194.sourceData 33 KB
+    bufferFullUpload@194.sourceData 3 KB
+    bufferFullUpload@194.sourceData 4 KB
+    bufferFullUpload@194.sourceData 4 KB
+    bufferFullUpload@194.sourceData 6 KB
+    bufferFullUpload@194.sourceData 12 KB
+    bufferFullUpload@194.sourceData 17 KB
+    bufferFullUpload@194.sourceData 17 KB
+    bufferFullUpload@194.sourceData 23 KB
+    bufferFullUpload@194.sourceData 65 KB
+    bufferFullUpload@194.sourceData 98 KB
+    bufferFullUpload@194.sourceData 98 KB
+    bufferFullUpload@194.sourceData 131 KB
+    bufferFullUpload@194.sourceData 3 KB
+    bufferFullUpload@194.sourceData 1 KB
+    bufferFullUpload@194.sourceData 3 KB
+    bufferFullUpload@194.sourceData 4 KB
+    bufferFullUpload@194.sourceData 3 KB
+    bufferFullUpload@194.sourceData 1 KB
+    bufferFullUpload@194.sourceData 3 KB
+
+SMOOTH-FLIGHT WITNESS
+  GPU                         ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
+  whole-machine CPU busy      58 % of 8 logical cores during the sample (the game alone is ~10-15 %)
+  route                       open flight, new game; at end: 19 other ships, 7 projectiles, 91 entities, 0 draw calls, 0k triangles
+  launch to flight            11.7 s
+  sample                      after 0 s of flight: 20 s, 140 frames, 7.5 fps mean
+  frame time p50/p95/p99      100.0 / 233.3 / 816.7 ms; worst 1233 ms
+  frames over 33 / 50 / 100   140 (100.0 %) / 140 (100.0 %) / 63
+  typical frame costs (ms)    callback 20.5  sim 7.5  present 12.8  render 8.1  vfx 1.4  ui 3.2  feel 0.1  admission 0.7
+  before a LONG frame (ms)    callback 20.5  sim 7.5  present 12.8  render 8.1  vfx 1.4  ui 3.2  feel 0.1  admission 0.7
+  long frames paid in JS      122 of 139 (the rest: GPU, compositor or GC outside the game's callback)
+  worst freezes (ms): interval <- callback = sim + present(render, vfx, ui) ...
+    #  86  1233 <- callback   26  sim    7  present   19  (render 14, vfx 2, ui 4)  admission 11  — no wave event within 2s
+    #   8   817 <- callback   61  sim    7  present   54  (render 48, vfx 1, ui 4)  admission 1  — no wave event within 2s
+    #  55   733 <- callback   35  sim    6  present   29  (render 24, vfx 1, ui 4)  admission 1  — no wave event within 2s
+    #  48   667 <- callback   23  sim    6  present   17  (render 12, vfx 1, ui 4)  admission 0  — no wave event within 2s
+    #  38   633 <- callback   29  sim    6  present   23  (render 17, vfx 2, ui 4)  admission 1  — no wave event within 2s
+    #  39   300 <- callback   27  sim    7  present   20  (render 15, vfx 1, ui 4)  admission 0  — no wave event within 2s
+    #  10   233 <- callback   19  sim   10  present   10  (render 7, vfx 1, ui 2)  admission 0  — no wave event within 2s
+    #  40   233 <- callback   24  sim    6  present   18  (render 13, vfx 2, ui 3)  admission 0  — no wave event within 2s
+    #  54   233 <- callback   19  sim    6  present   13  (render 8, vfx 1, ui 4)  admission 0  — no wave event within 2s
+    #   7   217 <- callback   17  sim    6  present   11  (render 6, vfx 1, ui 4)  admission 8  — no wave event within 2s
+  wave events (s into sample)   none captured
+  wave arrival in window      NOT COVERED — no wave materialized in this window. The link/upload counts below say nothing about wave-arrival cost, and must not be compared against a run that was covered.
+  program links / buffer uploads shaderLinks +30, bufferFullUploads +977, bufferPartialUploads +13964
+  link placement                4 frame(s) paid a draw-time link; 26 link(s) landed off-frame (async compile); novelty: 6 NOVEL, 0 RELINK, 0 unkeyed
+  admissions queued at flight   pipelines 0, residency 0
+  roster prewarm at flight      no exemplar roots mounted
+  roster catalog at flight    n/a; queues pipelines 1, residency 0
+  cook ledger                 opening.rockSurfaceLibrary 28ms resolved | opening.firstPresentAdmission 0ms resolved | opening.planWait 2186ms resolved | opening.residency 5ms resolved (subjects=67,textureRefs=79,textures=79) | opening.postResources 0ms resolved (route=bloom) | opening.capturedPipelineDrain 0ms skipped (captured=0,stillPending=0) | opening.drainWait 0ms resolved | opening.receipt 1ms resolved | wait.prepareOpeningGpuResources 2221ms resolved
+    +13.8s  [NOVEL] Material_Accent  (physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,uv,uv,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,1,0,0,0,0,1,0,0,0,0,8421584,150531,srgb,spaceface-surface-breakup-v4-file-scope|spaceface-illustrated-surface-v8)  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul
+        Δ emissiveMapUv:false→uv
+        owners: Material_Accent@LOD0_Drone_Material_Accent
+    +13.9s  [NOVEL] SF_Shared_canopy_none_native  (physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,1,0,0,0,0,1,0,0,0,0,8421584,19459,srgb,)  via GLTFKit_ship_mule
+        Δ clearcoat:off→on
+        owners: SF_Shared_canopy_none_native@LOD0_Merged_Material_Glass  SF_Shared_canopy_none_native@LOD1_Merged_Material_Glass  SF_Shared_canopy_none_native@LOD2_Merged_Material_Glass
+    +14.5s  [NOVEL] SF_Shared_hull_textured_hull  (physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,1,0,0,0,0,1,0,0,0,0,8421457,150531,srgb,spaceface-surface-breakup-v4-file-scope|spaceface-illustrated-surface-v8)  via GLTFKit_ship_mule
+        Δ aoMapUv:false→uv | instancing:off→on
+        owners: SF_Shared_mechanical_dark@LOD0_Gun_Assembly  SF_Shared_hull_textured_hull@LOD0_HOOK_DRIVE_CORE  SF_Shared_mechanical_dark@LOD0_HOOK_DRIVE_FAN  SF_Shared_hull_textured_hull@LOD0_HOOK_TETHER_SPOOL
+    +20.2s  [NOVEL] ?  (77,78,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,3073,srgb,onBeforeCompile( /* shaderobject, renderer */ ) {}) (released before end)  via Asteroid_21  drew SF_RibbonTrail  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +20.9s  [NOVEL] ?  (79,80,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,3073,srgb,onBeforeCompile( /* shaderobject, renderer */ ) {}) (released before end)  via Asteroid_21  drew SF_RibbonTrail  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +21.4s  [NOVEL] ?  (81,82,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,3073,srgb,onBeforeCompile( /* shaderobject, renderer */ ) {})  via Asteroid_21  drew SF_RibbonTrail  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+        owners: ShaderMaterial@SF_RibbonTrail
+  boundary census at flight   authored×1 loading×9 awaiting-authored-admission×1
+  non-terminal at start       ship_mule(ship,loading->authored) ship_atlas(ship,loading->authored) ship_mule(ship,loading->authored) ship_wasp(ship,loading->authored) ship_wasp(ship,loading->authored) ship_mule(ship,loading->authored) ship_mule(ship,loading->authored) 80(null,loading,no-entity-mesh,never-req->authored) 81(null,loading,no-entity-mesh,never-req->compiling-pipelines) 308(payload,awaiting-authored-admission,nopromise,never-req->awaiting-authored-admission)
+  program-key drift (old -> new):
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ mapUv:uv→false | specularColorMapUv:false→ | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fa [NOT warmed — nearest Δ mapUv:uv→false | sheenRoughnessMapUv:false→fa | specularMapUv:false→∅ | specularColorMapUv:false→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,fa [NOT warmed — nearest Δ normalMapUv:false→uv | specularColorMapUv:false→fa | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ mapUv:uv→false | specularColorMapUv:false→ | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ mapUv:uv→false | specularColorMapUv:false→ | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | transmissionMapUv:false→fal | thicknessMapUv:false→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+    ship_mule
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+  mesh builds in sample:
+    +14.6s  build asteroid:ast_common_rock
+    +14.6s  build asteroid:ast_common_rock
+    +16.8s  build asteroid:ast_common_rock
+    +16.8s  build asteroid:ast_common_rock
+    +16.8s  build fx:83
+    +18.1s  build asteroid:ast_common_rock
+    +18.1s  build asteroid:ast_common_rock
+    +20.9s  build asteroid:ast_common_rock
+    +20.9s  build asteroid:ast_common_rock
+    +20.9s  build asteroid:ast_common_rock
+    +20.9s  build asteroid:ast_common_rock
+    +20.9s  build asteroid:ast_common_rock
+    +20.9s  build asteroid:ast_common_rock
+  buffer uploads in sample:
+    +13s  ×1    bufferData 34048B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Armor.tangent GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Armor_0.tange
+    +13s  ×1    bufferData 2848B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Ceramic.uv GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Ceramic_0.uv
+    +13s  ×1    bufferData 4272B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Ceramic.position GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Ceramic_0.
+    +13s  ×1    bufferData 4272B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Ceramic.normal GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Ceramic_0.no
+    +13s  ×1    bufferData 5696B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Ceramic.tangent GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Ceramic_0.t
+    +13s  ×1    bufferData 11856B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Hull.uv GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Hull_0.uv
+    +13s  ×1    bufferData 17784B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Hull.position GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Hull_0.positi
+    +13s  ×1    bufferData 17784B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Hull.normal GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Hull_0.normal
+    +13s  ×1    bufferData 23712B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Hull.tangent GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Hull_0.tangent
+    +13s  ×1    bufferData 67056B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Mechanical.uv GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Mechanical_0.
+    +13s  ×1    bufferData 100584B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Mechanical.position GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Mechani
+    +13s  ×1    bufferData 100584B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Mechanical.normal GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Mechanica
+    +13s  ×1    bufferData 134112B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Mechanical.tangent GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Mechanic
+    +13s  ×1    bufferData 2688B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Radiator.position GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Radiator_
+    +13s  ×1    bufferData 896B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Radiator.uv GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Radiator_0.uv
+    +13s  ×1    bufferData 2688B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Radiator.normal GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Radiator_0.
+    +13s  ×1    bufferData 3584B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Radiator.tangent GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Radiator_0
+    +13s  ×1    bufferData 3408B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Thruster.position GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Thruster_
+    +13s  ×1    bufferData 1136B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Thruster.uv GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Thruster_0.uv
+    +13s  ×1    bufferData 3408B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Thruster.normal GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Thruster_0.
+    +13s  ×1    bufferData 4544B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Thruster.tangent GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Thruster_0
+    +13s  ×1    bufferData 2712B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Warning.position GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Warning_0.
+    +13s  ×1    bufferData 904B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Warning.uv GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Warning_0.uv
+    +13s  ×1    bufferData 2712B  via PlaceProp_AuthoredAssetBoundary,Group:drone,GLTFKit_ship_mul  <- LOD1_Warning.normal GLTFKit_InstancePool_SF_MULE_PRODUCTION_V1_LOD1_Warning_0.no
+  SHIP LOST ITS PLACE         0 presents redrew an already-drawn moment (must be 0)
+  hitch callbacks             142 of 170 (world resumed two ticks on)
+  frames that shed sim time   111
+  game speed vs real time     24.9 % (hit-stop and hitches are the only things allowed to lower it)
+  OS says reduce motion       false
+  game motion setting         full -> effects FULL
+  rock batches                1/1  3/3  2/4  1/1  2/2
+  player speed at end         195 WU/s
+  console errors              4
+    [log] [render] GPU: %s | tier: %s | pixelRatio: %s | buffer: %dx%d ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) software 1.00 1600 900
+    [error] Failed to load resource: the server responded with a status of 404 (Not Found) (http://127.0.0.1:32907/__spaceface_player_store)
+    [warning] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+    [error] Failed to load resource: the server responded with a status of 404 (Not Found) (http://127.0.0.1:32907/__spaceface_player_store)
+
