@@ -79,7 +79,7 @@ const WHOLE_SHIP_FILES = [
   'drifter_production_v1.glb',
   'drifter_production_v1_lod1.glb',
   'drifter_production_v1_lod2.glb',
-  ...['wasp', 'hornet', 'bastion', 'mule', 'atlas', 'warden'].flatMap((name) => [
+  ...['wasp', 'hornet', 'bastion', 'mule', 'atlas', 'warden', 'ranger'].flatMap((name) => [
     `${name}_production_v1_lod1.glb`,
     `${name}_production_v1_lod2.glb`,
   ]),

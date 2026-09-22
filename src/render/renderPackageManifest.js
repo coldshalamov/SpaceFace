@@ -2244,12 +2244,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ranger-production-v1",
-    "expectedContentHash": "50bceb6fb422ca248b71b0dbd0ac0baa99468a0dc0dfb0ae79a1ffcad48bd35f",
+    "expectedContentHash": "44a0b259580e494d9223c6c127aa3f147b0a43f1a906089109e23e64ffda06e2",
     "key": "ranger-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1/render-package.json",
     "runtimeAssetId": "SF_RANGER_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "7903fbcc463aed6bd328aced51a93c18285cc6d8dd24b382eb6d788e890919c3",
+    "sourceSha256": "9630928a6a88a7422b51d69058727589beb21803c882f3cd101d32d407b0d343",
     "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1.glb"
   },
   {
