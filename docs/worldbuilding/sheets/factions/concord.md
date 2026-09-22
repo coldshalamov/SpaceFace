@@ -30,16 +30,66 @@ canon_refs:
   - ../../story/ATMOSPHERIC-ECONOMY.md#3-faction-behaviors-systemic-incentives
 appears_in_chapters: [B2, B4, B7]   # Choice A "Clean Uniform" joins Concord
 register_rule: |
-  Bloodless leftover clerk. Cite leftover Ref 44-C. No leftover contractions.
+  Bloodless clerk. Cite the ref on every hail. Short declarative sentences.
+  No contractions, no slang. Threats arrive as procedure: the consequence is
+  always a record — cited, seized, flagged, logged. End on the record.
 register_tell: |
   Ref 44-C
+  Concord
+  transponder
+  checkpoint
+  inspection
+  corridor
+  your manifest
+  contraband
+  cited
+  citation
+  compliance
+  comply
+  compliant
+  seal codes
+  patrol
+  filing
+  evasion
+  surcharge
+  Ref 77-A
+  casualty
+  mayday
+  flagged
+  accrue
+  advisory
+  noted
+  report
+  paperwork
+  escalation
+  dispatched
+  maneuver
+  tags
+  lawful
+  customs
+  witnesses
+  reclassified
 register_forbidden: |
-  Contractions, leftover slang, leftover Pattern liturgy, leftover weigh-slip, leftover Clause, leftover VARIANCE FILE.
+  ain't
+  weigh-slip
+  reweigh
+  clause
+  pattern
+  variance
+  tithe
+  salvage
+  liturgy
+  chorus
+  ascension
+  syndicate
+  meridian
 register_example: |
   Concord Patrol. Stand by for routine transponder verification. Ref 44-C.
 register_example_cite: src/data/barks.js#faction_scn.scan[0]
 voice_direction: |
-  Directed leftover synthetic clerk. Flat leftover radio. No leftover recorded actor.
+  Directed synthetic clerk (PQ-158.04 bark_scn: f0 110 Hz, rate 0.94x,
+  bandpass 420-2600 Hz). Flat radio, unhurried; the ref number lands and
+  nothing else lifts. No recorded actor.
 ```
 
 **Signature faction graffiti:** *Every name logged. Every shift counted. Every warden re-signed.*

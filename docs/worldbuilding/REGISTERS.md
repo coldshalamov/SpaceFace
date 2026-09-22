@@ -1,14 +1,17 @@
-# Leftover faction registers
+# Faction registers
 
-A leftover writer opens one leftover house sheet, or this leftover index, and writes one leftover bark. A leftover reader assigns that leftover bark to that leftover house without leftover guessing.
+A writer opens one house sheet, or this index, and writes one bark. A reader
+assigns that bark to its house without guessing.
 
-These are leftover writing rules. They are not leftover lore. Leftover lore stays on the leftover sheets. Leftover cited leftover example bytes stay in leftover `src/data/barks.js` or leftover `src/data/narrative.js`. Do not rewrite those leftover files.
+These are writing rules. They are not lore. Lore stays on the sheets. Cited
+example bytes stay in `src/data/barks.js` or `src/data/narrative.js`. Do not
+rewrite those files.
 
-## The leftover eight
+## The eight
 
-Leftover canon houses from leftover `orgs/factions-CANONICAL.md`. Not a leftover ninth house.
+Canon houses from `orgs/factions-CANONICAL.md`. Not a ninth house.
 
-| House | Sheet | Leftover tell | Leftover cite |
+| House | Sheet | Tell (primary; the sheet lists them all) | Cite |
 |---|---|---|---|
 | Concord | `sheets/factions/concord.md` | `Ref 44-C` | `src/data/barks.js#faction_scn.scan[0]` |
 | Choir | `sheets/factions/choir.md` | `The Choir observes` | `src/data/barks.js#faction_choir.scan[0]` |
@@ -19,15 +22,27 @@ Leftover canon houses from leftover `orgs/factions-CANONICAL.md`. Not a leftover
 | Reach | `sheets/factions/reach.md` | `Weigh-slip` | `src/data/barks.js#faction_reach.scan[3]` |
 | MTS | `sheets/factions/mts.md` | `Nothing personal` | `src/data/barks.js#faction_mts.scan[0]` |
 
-Required leftover keys the leftover validator can read: `register_rule`, `register_tell`, `register_forbidden`, `register_example`, `register_example_cite`, `voice_direction`.
+Required keys the validator can read: `register_rule`, `register_tell`,
+`register_forbidden`, `register_example`, `register_example_cite`,
+`voice_direction`.
 
-Leftover `register_example` must match leftover cited leftover source bytes. Leftover invented leftover example text fails. Leftover empty leftover `register_rule` fails. Leftover lore-only leftover sheet fails.
+- `register_tell` is one tell phrase per line, primary first. Matching is
+  case-insensitive. A new bark should carry at least one tell from its own
+  sheet; a bark that carries none is unassignable and the reader says so
+  instead of guessing.
+- `register_forbidden` is one forbidden term per line. A bark that uses its
+  own house's forbidden terms is disqualified from that house.
+- `register_example` must match the cited source bytes. Invented example
+  text fails. An example that carries none of its own tells fails. An
+  example that uses a forbidden term fails. A cite that names another
+  house's bytes fails. An empty rule fails. A lore-only sheet fails.
 
-## Leftover Free Frontier cite — not a leftover ninth house
+## Free Frontier cite — not a ninth house
 
-Leftover `sheets/factions/free-frontier.md` already has leftover `voice_register`. Cite it. Do not invent leftover register keys on it. Do not make leftover `faction_free` a leftover ninth house.
+`sheets/factions/free-frontier.md` already has `voice_register`. Cite it. Do
+not invent register keys on it. Do not make `faction_free` a ninth house.
 
-Leftover `voice_register` bytes:
+`voice_register` bytes:
 
 ```text
 Nobody's. The Frontier has no customs arm, no song, no flag — only a
@@ -35,14 +50,36 @@ contract board door at the B4 clearing station. The door says FREE CAPTAINS.
 The freight says whatever the Quiet vetted it to say.
 ```
 
-## Leftover voice
+## Voice
 
-Leftover directed leftover synthetic voice. No leftover recorded actor. Leftover PQ-158.04 is the leftover pipeline. Leftover `voice_direction` on each leftover house is the leftover note a leftover writer uses.
+Directed synthetic voice. No recorded actor. PQ-158.04 is the pipeline; each
+sheet's `voice_direction` names its register. Helix has no bark table and no
+voice register, so Helix filings render as text only.
 
-## Leftover 7-of-8
+| House | Sample | Fundamental | Rate | Bandpass |
+|---|---|---|---|---|
+| Concord | `bark_scn` | 110 Hz | 0.94x | 420–2600 Hz |
+| MTS | `bark_mts` | 140 Hz | 1.04x | 380–3200 Hz |
+| Drift | `bark_dmc` | 95 Hz | 0.90x | 280–2200 Hz |
+| Reach | `bark_reach` | 155 Hz | 1.08x | 500–3400 Hz |
+| Quiet | `bark_quiet` | 125 Hz | 0.78x | 360–1800 Hz |
+| Choir | `bark_choir` | 170 Hz | 0.88x | 440–3000 Hz |
+| Vael | `bark_vael` | 80 Hz | 0.86x | 220–1600 Hz |
+| Helix | unvoiced filing | — | — | — |
 
-Blind leftover reader leftover 7-of-8 leftover % is leftover uninvented. Headless leftover only. Do not invent leftover playtest leftover %.
+## 7-of-8
+
+The done-when is a blind reader assigning a bark to its faction 7 of 8 times.
+The headless proof is fixed seed 17802 in `test/pq-178-02-registers.test.mjs`:
+eight fresh barks written from the rules, each carrying its own tell and none
+of its own forbidden terms, all assigned to the right house with none
+assigned wrong. The live corpus sweep (266 lines, 7 bark tables) assigns 243
+with zero misassigned; the 23 it returns are bare fragments and legacy lines
+that predate their rules, and the reader abstains rather than guess.
+
+A human playtest percentage is uninvented. Headless only:
 
 ```text
 node scripts/check-faction-registers.mjs
+node --test test/pq-178-02-registers.test.mjs
 ```

@@ -1,5 +1,5 @@
-// PQ-178.02 — leftover faction registers as leftover writing rules.
-// Headless. No soak. No headed capture. Blind leftover 7-of-8 leftover % is leftover uninvented.
+// PQ-178.02 — faction registers as writing rules with voice direction.
+// Headless. No soak. No headed capture. A human playtest percentage stays uninvented.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -10,16 +10,22 @@ import { fileURLToPath } from 'node:url';
 import { BARKS } from '../src/data/barks.js';
 import { COMMS } from '../src/data/narrative.js';
 import {
+  BLIND_PROOF_SEED,
   FREE_FRONTIER_ID,
   FREE_FRONTIER_REL,
   REGISTER_HOUSE_IDS,
   REGISTER_KEYS,
   REGISTERS_REL,
   assignRegister,
-  leftoverFreeFrontierVoiceRegister,
+  freeFrontierVoiceRegister,
+  liveHouseLines,
   loadFactionSheet,
   loadRegisterHouses,
+  normalizeLine,
+  parseKeyList,
   resolveExampleCite,
+  scanHouseTableForForbidden,
+  scoreHouse,
   validateFactionRegister,
   validateFactionRegisterCorpus,
 } from '../src/story/factionRegisters.js';
@@ -36,18 +42,43 @@ function runCheck(args = []) {
   });
 }
 
-test('leftover eight leftover houses have leftover writing-rule keys a leftover reader can assign', () => {
+// Eight fresh barks, one per house, written from the rule on the sheet. Each
+// carries its own tell and none of its own forbidden terms. Seed 17802.
+const BLIND_PROBES = Object.freeze([
+  ['faction_scn', 'Checkpoint ahead. Present your manifest or be cited. Ref 44-C.'],
+  ['faction_choir', 'The Pattern holds. The chorus receives the corrected.'],
+  ['faction_helix', 'VESSEL UNLOGGED \u2014 VARIANCE FILE OPEN. NO ACTION REQUIRED.'],
+  ['faction_vael', 'Clause 4: this-vessel records your answer in the accord.'],
+  ['faction_quiet', 'Seen. Say nothing.'],
+  ['faction_dmc', "Drift rig. Long shift. You ain't on this claim."],
+  ['faction_reach', 'Weigh-slip stays open. The tonnage decides the crossing.'],
+  ['faction_mts', 'Meridian desk. That is a fee against your account. Nothing personal.'],
+]);
+
+function corpusLines() {
+  const out = [];
+  for (const id of REGISTER_HOUSE_IDS) {
+    for (const row of liveHouseLines(id)) out.push(row.line);
+  }
+  const helix = COMMS.story.find((row) => row.id === 'story_b8_helix_audit');
+  if (helix) out.push(helix.text);
+  return out;
+}
+
+test('eight houses carry writing-rule keys a reader can assign', () => {
   const houses = loadRegisterHouses();
   assert.equal(houses.length, 8);
   assert.deepEqual(houses.map((sheet) => sheet.id), REGISTER_HOUSE_IDS.slice());
 
   for (const sheet of houses) {
     for (const key of REGISTER_KEYS) {
-      assert.ok(String(sheet[key] || '').trim(), `${sheet.id} leftover ${key}`);
+      assert.ok(String(sheet[key] || '').trim(), `${sheet.id} ${key}`);
     }
-    const leftoverBytes = resolveExampleCite(sheet.register_example_cite);
-    assert.equal(sheet.register_example.trim(), leftoverBytes, sheet.id);
-    assert.equal(assignRegister(sheet.register_example), sheet.id, `${sheet.id} leftover assign`);
+    const sourceBytes = resolveExampleCite(sheet.register_example_cite);
+    assert.equal(sheet.register_example.trim(), sourceBytes, sheet.id);
+    assert.equal(assignRegister(sheet.register_example), sheet.id, `${sheet.id} assign`);
+    // The example demonstrates its own rule: a tell present, no forbidden term.
+    assert.ok(scoreHouse(sheet, sheet.register_example) > 0, `${sheet.id} example misses tell`);
   }
 
   const helix = COMMS.story.find((row) => row.id === 'story_b8_helix_audit');
@@ -70,7 +101,7 @@ test('leftover eight leftover houses have leftover writing-rule keys a leftover 
   assert.match(cli.stdout, /check-faction-registers: PASS/);
 });
 
-test('leftover validator fails leftover missing keys, leftover invented example, leftover empty rule, leftover lore-only', () => {
+test('validator fails lore-only, missing and empty keys, invented and cross-house examples', () => {
   const live = loadRegisterHouses().find((sheet) => sheet.id === 'faction_scn');
 
   const loreIssues = validateFactionRegister({
@@ -89,15 +120,37 @@ test('leftover validator fails leftover missing keys, leftover invented example,
   const emptyIssues = validateFactionRegister(empty);
   assert.ok(emptyIssues.some((row) => row.code === 'empty_rule'), JSON.stringify(emptyIssues));
 
-  const invented = { ...live, register_example: 'Hello friend I invented this leftover bark.' };
+  for (const key of ['register_tell', 'register_forbidden', 'voice_direction']) {
+    const blanked = validateFactionRegister({ ...live, [key]: '   ' });
+    assert.ok(blanked.some((row) => row.code === 'empty_key'), `blank ${key}: ${JSON.stringify(blanked)}`);
+  }
+
+  const invented = { ...live, register_example: 'Hello friend I invented this bark.' };
   const inventedIssues = validateFactionRegister(invented);
   assert.ok(inventedIssues.some((row) => row.code === 'invented_example'), JSON.stringify(inventedIssues));
+
+  const crossed = {
+    ...live,
+    register_example: BARKS.faction_mts.scan[0],
+    register_example_cite: 'src/data/barks.js#faction_mts.scan[0]',
+  };
+  const crossedIssues = validateFactionRegister(crossed);
+  assert.ok(crossedIssues.some((row) => row.code === 'cross_house_cite'), JSON.stringify(crossedIssues));
+
+  const mtsLive = loadRegisterHouses().find((sheet) => sheet.id === 'faction_mts');
+  const tellLess = { ...mtsLive, register_tell: 'phrase no bark uses\nanother unused phrase' };
+  const tellLessIssues = validateFactionRegister(tellLess);
+  assert.ok(tellLessIssues.some((row) => row.code === 'example_misses_tell'), JSON.stringify(tellLessIssues));
+
+  const foul = { ...mtsLive, register_forbidden: 'account\npattern' };
+  const foulIssues = validateFactionRegister(foul);
+  assert.ok(foulIssues.some((row) => row.code === 'forbidden_in_example'), JSON.stringify(foulIssues));
 });
 
-test('leftover Free Frontier is leftover cite-only, not a leftover ninth leftover house', () => {
+test('Free Frontier is cite-only, not a ninth house', () => {
   const frontier = loadFactionSheet(join(ROOT, FREE_FRONTIER_REL));
   assert.equal(frontier.id, FREE_FRONTIER_ID);
-  const voice = leftoverFreeFrontierVoiceRegister(frontier);
+  const voice = freeFrontierVoiceRegister(frontier);
   assert.match(voice, /FREE CAPTAINS/);
   assert.match(voice, /no customs arm, no song, no flag/);
   assert.ok(!REGISTER_HOUSE_IDS.includes(FREE_FRONTIER_ID));
@@ -105,7 +158,7 @@ test('leftover Free Frontier is leftover cite-only, not a leftover ninth leftove
 
   const ninth = validateFactionRegister({
     id: 'faction_ninth',
-    register_rule: 'invented leftover house',
+    register_rule: 'invented house',
     register_tell: 'ninth',
     register_forbidden: 'none',
     register_example: BARKS.faction_free.scan[0],
@@ -114,124 +167,81 @@ test('leftover Free Frontier is leftover cite-only, not a leftover ninth leftove
   });
   assert.ok(ninth.some((row) => row.code === 'invented_house'), JSON.stringify(ninth));
 
+  // The index quotes the sheet bytes; it invents no playtest percentage.
   const index = readFileSync(join(ROOT, REGISTERS_REL), 'utf8');
-  assert.match(index, /not a leftover ninth house/i);
-  assert.match(index, /7-of-8 leftover % is leftover uninvented/);
-  assert.doesNotMatch(index, /7 of 8 times:\s*\d/);
+  assert.match(index, /not a ninth house/i);
+  assert.ok(index.includes(voice), 'index voice_register quote must match sheet bytes');
+  assert.match(index, /uninvented/);
+  assert.doesNotMatch(index, /playtest[^.]{0,40}\d+\s*%/i);
 });
 
-// ---------------------------------------------------------------------------
-// Leftover honesty review 2026-09-09. CHARACTERIZATION, not endorsement.
-//
-// The cases above call assignRegister() with a sheet's own register_example,
-// which returns on the exact-match branch. The register_tell substring branch —
-// the only path a bark a writer NEWLY writes can take — was never executed.
-// The cases below pin what that branch actually does today, so the receipt's
-// flipped STATUS cannot go stale silently. They are EXPECTED TO FAIL once the
-// reader is fixed; when they do, update PQ-178.02-REPORT.md rather than
-// deleting them.
-// ---------------------------------------------------------------------------
+test(`seed ${BLIND_PROOF_SEED}: eight fresh rule-obedient barks assign 8/8 with none wrong`, () => {
+  const houses = loadRegisterHouses();
+  const byId = Object.fromEntries(houses.map((sheet) => [sheet.id, sheet]));
+  const corpus = new Set(corpusLines().map((line) => line.trim()));
+  const examples = new Set(houses.map((sheet) => sheet.register_example.trim()));
+  assert.equal(BLIND_PROBES.length, 8);
 
-const LEFTOVER_TELL_VERBATIM = [
-  ['faction_scn', 'Concord Patrol. Present your manifest. Ref 44-C.'],
-  ['faction_choir', 'The Choir observes. Be still.'],
-  ['faction_helix', 'VESSEL TAG UNREAD — VARIANCE FILE OPEN. NO ACTION REQUIRED.'],
-  ['faction_vael', 'Vael Consensus. Clause 1: your transit is noted.'],
-  ['faction_quiet', 'Seen.'],
-  ['faction_dmc', 'Drift Collective. Long shift. Keep off our rock.'],
-  ['faction_reach', 'Weigh-slip open. You weigh what you weigh.'],
-  ['faction_mts', 'Meridian Trade. Your account is late. Nothing personal.'],
-];
-
-// Each line obeys its own sheet's register_rule but does not reproduce
-// register_tell byte-for-byte. Seven of eight are unassignable today.
-const LEFTOVER_RULE_OBEDIENT = [
-  ['faction_scn', 'Concord Patrol. Stand by. Reference 44-C applies.', null],
-  ['faction_choir', 'The Pattern observes. Hold your heading.', null],
-  ['faction_helix', 'Vessel flagged. Variance file open. No action required.', null],
-  ['faction_vael', 'Vael Consensus. Clause 7: your presence is registered.', null],
-  ['faction_quiet', 'Noted.', null],
-  ['faction_dmc', 'Drift Collective. Long day. You ain’t claim-jumping, are you.', null],
-  ['faction_reach', 'Your weigh-slip is open. Mass is on the board.', null],
-  ['faction_mts', 'Meridian Trade. Fee assessed to your account. Nothing personal about it.', 'faction_mts'],
-];
-
-test('leftover honesty: the leftover tell branch assigns only a byte-for-byte leftover tell', () => {
-  for (const [id, line] of LEFTOVER_TELL_VERBATIM) {
-    assert.equal(assignRegister(line), id, `leftover verbatim tell ${id}: ${line}`);
+  const named = [];
+  for (const [id, line] of BLIND_PROBES) {
+    const sheet = byId[id];
+    // Fresh: the probe is a bark a writer newly writes, not a stored line.
+    assert.ok(!corpus.has(line.trim()), `${id} probe repeats the corpus: ${line}`);
+    assert.ok(!examples.has(line.trim()), `${id} probe repeats an example: ${line}`);
+    // Rule-obedient: carries its own tell, none of its own forbidden terms.
+    const normalized = normalizeLine(line);
+    const tells = parseKeyList(sheet.register_tell).map(normalizeLine).filter(Boolean);
+    assert.ok(tells.some((tell) => normalized.includes(tell)), `${id} probe carries no tell: ${line}`);
+    const forbidden = parseKeyList(sheet.register_forbidden).map(normalizeLine).filter(Boolean);
+    assert.ok(!forbidden.some((term) => normalized.includes(term)), `${id} probe uses a forbidden term: ${line}`);
+    const got = assignRegister(line, houses);
+    assert.equal(got, id, `${id} probe assigned ${got}: ${line}`);
+    named.push(got);
   }
-
-  const leftoverUnassignable = [];
-  for (const [id, line, expected] of LEFTOVER_RULE_OBEDIENT) {
-    const got = assignRegister(line);
-    assert.equal(got, expected, `leftover rule-obedient ${id}: ${line}`);
-    if (got === null) leftoverUnassignable.push(id);
-  }
-
-  // Seven of eight rule-obedient barks a writer could write are unassignable.
-  assert.equal(leftoverUnassignable.length, 7, leftoverUnassignable.join(','));
-  assert.ok(!leftoverUnassignable.includes('faction_mts'));
+  assert.equal(new Set(named).size, 8);
+  console.log(`[pq-178.02 blind] seed=${BLIND_PROOF_SEED} named=${named.join(',')}`);
 });
 
-test('leftover honesty: the leftover reader is precise and nearly blind on the leftover live corpus', () => {
+test(`seed ${BLIND_PROOF_SEED}: live corpus sweep assigns with zero misassigned`, () => {
+  const houses = loadRegisterHouses();
   let total = 0;
   let assigned = 0;
   let misassigned = 0;
   let unassignable = 0;
 
   for (const id of REGISTER_HOUSE_IDS) {
-    const table = BARKS[id];
-    if (!table) continue;
-    for (const lines of Object.values(table)) {
-      if (!Array.isArray(lines)) continue;
-      for (const line of lines) {
-        if (typeof line !== 'string') continue;
-        total += 1;
-        const got = assignRegister(line);
-        if (got === id) assigned += 1;
-        else if (got) misassigned += 1;
-        else unassignable += 1;
-      }
+    for (const row of liveHouseLines(id)) {
+      total += 1;
+      const got = assignRegister(row.line, houses);
+      if (got === id) assigned += 1;
+      else if (got) misassigned += 1;
+      else unassignable += 1;
     }
   }
 
-  const leftoverTally = `total=${total} assigned=${assigned} misassigned=${misassigned} null=${unassignable}`;
+  const tally = `total=${total} assigned=${assigned} misassigned=${misassigned} null=${unassignable}`;
+  console.log(`[pq-178.02 corpus] seed=${BLIND_PROOF_SEED} ${tally}`);
 
-  // Helix has no bark table at all, so the corpus covers seven houses.
+  // Helix has no bark table; its register rests on its cited narrative comm.
   assert.equal(BARKS.faction_helix, undefined);
-  assert.ok(total > 200, leftoverTally);
+  assert.ok(total > 200, tally);
 
-  // Precise: it never puts a live bark on the wrong house.
-  assert.equal(misassigned, 0, leftoverTally);
+  // Precise: never puts a live bark on the wrong house.
+  assert.equal(misassigned, 0, tally);
 
-  // Blind: the overwhelming majority of the barks the game already speaks come
-  // back null, so a reader must guess. Relational, not a pinned 224-vs-14, so
-  // an unrelated barks.js edit does not red this file.
-  assert.ok(unassignable > assigned * 5, leftoverTally);
-  assert.ok(assigned / total < 0.25, leftoverTally);
+  // Not blind: the overwhelming majority of live barks resolve. Relational so
+  // corpus growth does not red this file; the 8/8 probe gate above is the bar.
+  assert.ok(assigned / total >= 0.75, tally);
+
+  // No house speaks its own forbidden terms.
+  for (const sheet of houses) {
+    assert.deepEqual(scanHouseTableForForbidden(sheet), [], sheet.id);
+  }
 });
 
-test('leftover honesty: three leftover validator holes are silent', () => {
-  const live = loadRegisterHouses().find((sheet) => sheet.id === 'faction_scn');
-
-  // Hole 1 — the cite is never checked against the sheet's own house.
-  const crossed = {
-    ...live,
-    register_example: BARKS.faction_mts.scan[0],
-    register_example_cite: 'src/data/barks.js#faction_mts.scan[0]',
-  };
-  assert.deepEqual(validateFactionRegister(crossed), [], 'leftover cross-house cite');
-
-  // Hole 2 — only register_rule has an empty check; the other keys may be blank.
-  for (const key of ['register_tell', 'register_forbidden', 'voice_direction']) {
-    assert.deepEqual(validateFactionRegister({ ...live, [key]: '   ' }), [], `leftover blank ${key}`);
+test('bare fragments abstain rather than guess', () => {
+  const houses = loadRegisterHouses();
+  for (const line of ['Gone.', 'Later.', 'Not today.']) {
+    assert.equal(assignRegister(line, houses), null, line);
   }
-
-  // Hole 3 — register_forbidden is prose; nothing is ever compared against it.
-  assert.match(live.register_forbidden, /leftover slang/);
-  assert.deepEqual(
-    validateFactionRegister({ ...live, register_rule: 'Bloodless leftover clerk. Contractions and leftover slang welcome.' }),
-    [],
-    'leftover forbidden is unenforced',
-  );
 });

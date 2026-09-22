@@ -45,16 +45,52 @@ canon_refs:
   - ../../story/SECTOR-GRADIENT.md#s8-veil-expanse-vael-space
 appears_in_chapters: [B4, B5]
 register_rule: |
-  Leftover clause numbers. Leftover this-vessel. Leftover accord. No leftover slang.
+  Contract language. Clause numbers, this-vessel, the accord, the ledger.
+  Formal, no contractions, no slang. Every line is an instrument: it
+  registers, claims, corrects, or dissolves. The addendum is always longer
+  than the line.
 register_tell: |
   Clause 1
+  Clause
+  Vael
+  accord
+  this-vessel
+  consensus
+  ledger
+  disposition
+  quorum
+  obligation
+  custody
+  enact
+  render them to
+  void your
+  voided
+  penalty
+  carried-mass
+  contact acknowledged
+  admit
+  the many
+  bargain
+  forfeit
 register_forbidden: |
-  Leftover slang, leftover Ref 44-C, leftover Pattern, leftover weigh-slip, leftover ain't, leftover VARIANCE FILE.
+  Ref 44-C
+  ain't
+  weigh-slip
+  reweigh
+  pattern
+  variance
+  invoice
+  liturgy
+  syndicate
+  tithe
+  salvage
 register_example: |
   Vael Consensus. Clause 1: your presence is registered. Await disposition.
 register_example_cite: src/data/barks.js#faction_vael.scan[0]
 voice_direction: |
-  Directed leftover synthetic counsel. Remote leftover legal. No leftover recorded actor.
+  Directed synthetic counsel (PQ-158.04 bark_vael: f0 80 Hz, rate 0.86x,
+  bandpass 220-1600 Hz). Lowest fundamental in the set, remote; each clause
+  lands like a seal. No recorded actor.
 ```
 
 **Signature faction graffiti:** *They didn't modify the workers. They modified the terms of the workers.* / Second line (smaller): *THE ADDENDUM IS ON PAGE 9. READ PAGE 9.*

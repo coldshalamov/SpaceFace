@@ -34,16 +34,58 @@ canon_refs:
   - ../../story/VETHARI.md#what-the-galaxy-believes   # the Ascendant Choir's relics may or may not be Vethari in origin
 appears_in_chapters: [B5, B7]
 register_rule: |
-  Leftover liturgy. Short leftover cadence. The leftover Pattern, not leftover gothic stack.
+  Liturgy, not poetry. Short ritual cadence; repetition over adjectives.
+  The Pattern, the chorus, named intervals. Monotony is the menace: six
+  plain words carry more than a stack of metaphors. No slang, no invoices,
+  no bureaucratic refs.
 register_tell: |
   The Choir observes
+  Choir
+  Pattern
+  chorus
+  refrain
+  interval
+  consecrated
+  shrine
+  ascension
+  ascend
+  sing him
+  sing on
+  sing the
+  be read
+  not yours
+  burden
+  denied
+  peace
+  recorded
+  corrected
+  unmade
+  release
+  rise
+  dissonance
+  lightened
+  voices
+  faithful
+  colors
 register_forbidden: |
-  Leftover slang, leftover invoices, leftover Ref 44-C, leftover weigh-slip, leftover ain't, leftover VARIANCE FILE.
+  Ref 44-C
+  invoice
+  weigh-slip
+  reweigh
+  clause
+  variance
+  ain't
+  account
+  seal codes
+  syndicate
+  meridian
 register_example: |
   The Choir observes. Hold.
 register_example_cite: src/data/barks.js#faction_choir.scan[0]
 voice_direction: |
-  Directed leftover synthetic chant. Even leftover cadence. No leftover recorded actor.
+  Directed synthetic chant (PQ-158.04 bark_choir: f0 170 Hz, rate 0.88x,
+  bandpass 440-3000 Hz). Even cadence, narrow high resonance; repetition,
+  not emphasis. No recorded actor.
 ```
 
 **Signature faction graffiti:** *The relic reports home. The shrine is home.*

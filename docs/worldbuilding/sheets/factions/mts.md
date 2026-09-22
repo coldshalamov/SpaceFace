@@ -37,16 +37,60 @@ canon_refs:
   - ../../story/ATMOSPHERIC-ECONOMY.md#3-faction-behaviors-systemic-incentives   # MTS short position (canonical)
 appears_in_chapters: [B1, B4, B6]
 register_rule: |
-  Leftover everything is a leftover fee. Leftover account. Leftover nothing personal.
+  Everything is a transaction. Account, fee, margin, the board. Smooth and
+  politely menacing; the alternative always costs more. Never liturgical,
+  never clause-bound, never tired.
 register_tell: |
   Nothing personal
+  Meridian
+  Syndicate
+  account
+  invoice
+  a fee
+  toll
+  markup
+  acquisition
+  collections
+  price
+  margin
+  transaction
+  insurance
+  rates
+  the board
+  deal
+  compound
+  balance
+  market
+  charge
+  house
+  write off
+  percentage
+  itemized
+  investment
+  afford
+  index
+  trade lane
+  clear air
+  reimburse
 register_forbidden: |
-  Leftover Pattern, leftover claim-jumping, leftover Clause, leftover Ref 44-C hail, leftover weigh-slip, leftover Seen.
+  pattern
+  weigh-slip
+  reweigh
+  clause
+  variance
+  ain't
+  liturgy
+  accord
+  tithe
+  shrine
+  chorus
 register_example: |
   Meridian Trade. Just confirming your account is in good standing. Nothing personal.
 register_example_cite: src/data/barks.js#faction_mts.scan[0]
 voice_direction: |
-  Directed leftover synthetic desk. Smooth leftover mercantile. No leftover recorded actor.
+  Directed synthetic desk (PQ-158.04 bark_mts: f0 140 Hz, rate 1.04x,
+  bandpass 380-3200 Hz). Smooth, faint smile in the cadence; money words
+  land soft. No recorded actor.
 ```
 
 **Signature faction graffiti:** *Every man pays twice. First in flesh. Then in coin.*

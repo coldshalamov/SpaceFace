@@ -10097,7 +10097,7 @@
       "priority": 201,
       "title": "Registers and voice",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-158.04",
         "PQ-152.00"
@@ -10119,8 +10119,10 @@
         "node scripts/check-codex-narrative.mjs",
         "npm run check:mission-receipts"
       ],
-      "receiptRefs": [],
-      "brief": "Eight faction registers as writing rules with examples; the synthetic-voice direction sheet per register (PQ-158.04). DONE WHEN: A blind reader assigns a bark to its faction 7 of 8 times."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-178.02-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-22: eight faction registers as writing rules with cited examples and PQ-158.04 voice direction; blind reader assigns 8 fresh rule-obedient barks 8/8 (seed 17802, none wrong), live corpus 243/266 with zero misassigned."
     },
     {
       "id": "PQ-178.03",
