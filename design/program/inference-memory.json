@@ -1519,6 +1519,19 @@
       "integration": "live",
       "commit": "62c7346d8",
       "verification": "focused_green"
+    },
+    {
+      "id": "starter-weapon-heat",
+      "date": "2026-09-22",
+      "wf": "WF-09",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "starter weapons scar with their own heat instead of unknown-weapon default",
+      "fingerprint": "verb=scar,subject=weapon,sector=global,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "79657724b",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
