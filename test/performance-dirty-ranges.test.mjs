@@ -553,3 +553,27 @@ test('the acceptance route keeps whole-ship LOD demotion on a scoped library pla
   assert.match(callSite, /libraryScope:\s*['"]whole-ship-lod-family['"]/,
     'a custom demotion bootstrapPlan requires a non-canonical libraryScope');
 });
+
+test('every committed src import resolves to a committed file', async () => {
+  // The 2026-09-22 browser acceptance run died at the boot gate: HEAD's
+  // shipMicroMotion.js imported presentation/flightOverheadMath.js, which was
+  // intent-to-add staged but never committed — a clean candidate 404'd the module
+  // and the route starved inside waitForFunction. Pin the closure: a relative
+  // specifier in a tracked source must resolve to a tracked file.
+  const { execFileSync } = await import('node:child_process');
+  const tracked = new Set(
+    execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+      .split('\n').filter(Boolean),
+  );
+  const sources = [...tracked].filter((f) => /^src\/.*\.(js|mjs)$/.test(f));
+  const missing = [];
+  for (const file of sources) {
+    const text = await readFile(path.join(ROOT, file), 'utf8');
+    for (const m of text.matchAll(/(?:from|import)\s*['"](\.[^'"]+)['"]/g)) {
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), m[1]));
+      if (!tracked.has(resolved)) missing.push(`${file} -> ${m[1]}`);
+    }
+  }
+  assert.deepEqual(missing, [],
+    `tracked sources import untracked modules (clean checkout would 404):\n${missing.join('\n')}`);
+});
