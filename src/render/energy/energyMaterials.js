@@ -179,6 +179,9 @@ const RIBBON_FRAGMENT = /* glsl */`
   // envelope is a protected hand-tuned value (build plan §3.5 row 2).
   uniform float uStrain;   // 0..1 past-capture working read — drives the visible shiver, not the colour ramp
   uniform float uWhip;     // 0..1 snap/latch recoil envelope
+  // 0→1 progress of the latch kinetic wave: one bright band rushing the chord from the anchor
+  // (vAlong 1) back to the ship (vAlong 0) in the first beat after the hitch bites. 1 = spent.
+  uniform float uLatchWave;
 
   float hash(float n) { return fract(sin(n) * 43758.5453123); }
 
@@ -208,11 +211,19 @@ const RIBBON_FRAGMENT = /* glsl */`
     float grain = hash(floor(vAlong * 96.0 + floor(uTime * 34.0) * 7.13));
     float shiver = grain * (uStrain * uStrain * 0.9 + uOverload * 1.1);
 
+    // Latch kinetic wave: a single bright band collapsing from the anchor end (vAlong 1) toward
+    // the ship (vAlong 0) as uLatchWave sweeps 0→1, dimming as it arrives. A bounded one-shot, not
+    // a marching pattern — it is the hook's energy visibly running home to the hull.
+    float waveT = clamp(uLatchWave, 0.0, 1.0);
+    float waveBand = smoothstep(0.16, 0.015, abs(vAlong - (1.0 - waveT)))
+      * (1.0 - waveT) * step(waveT, 0.999);
+
     // Colour: the authored tension colour lives in the sheath; the filament saturates to white.
     vec3 sheathColor = mix(uColor, vec3(1.0, 0.30, 0.10), uOverload * 0.8);
     sheathColor = mix(sheathColor, vec3(0.74, 0.95, 1.0), uReel * 0.26);
     float whiteMix = (1.0 - uSheath) * clamp(
-      coreShape * (0.55 + 0.45 * t) + pulse * 0.30 + winch * uReel * 0.45 + uWhip * 0.6,
+      coreShape * (0.55 + 0.45 * t) + pulse * 0.30 + winch * uReel * 0.45 + uWhip * 0.6
+        + waveBand * 1.2,
       0.0, 1.0);
     vec3 col = mix(sheathColor, vec3(1.0), whiteMix);
 
@@ -226,12 +237,13 @@ const RIBBON_FRAGMENT = /* glsl */`
       + winch * uReel * 1.6
       + shiver * 1.7
       + uWhip * (2.2 + 3.0 * (1.0 - uSheath))
+      + waveBand * (2.4 + 3.2 * (1.0 - uSheath))
     );
 
     // Coverage is a separate, bounded quantity. Decoupling it from radiance is what stops the cable
     // pinching into a hairline the moment it gets bright.
     float alpha = uOpacity * clamp(shape * 0.92 + coreShape * (1.0 - uSheath) * 0.5, 0.0, 1.0)
-      * (0.62 + 0.38 * pulse + uReel * 0.18 + uWhip * 0.25);
+      * (0.62 + 0.38 * pulse + uReel * 0.18 + uWhip * 0.25 + waveBand * 0.3);
 
     if (alpha < 0.002) discard;
     gl_FragColor = vec4(col * radiance, alpha);
@@ -553,6 +565,7 @@ export function createMasslineRibbonMaterial(options = {}) {
       uSheath: { value: finite(options.sheath, 0) },
       uStrain: { value: 0 },
       uWhip: { value: 0 },
+      uLatchWave: { value: 1 },
     },
     vertexShader: RIBBON_VERTEX,
     fragmentShader: RIBBON_FRAGMENT,
@@ -596,6 +609,7 @@ export function updateEnergyMaterial(material, frame = {}) {
   if (u.uReel && Number.isFinite(frame.reel)) u.uReel.value = THREE.MathUtils.clamp(frame.reel, 0, 1);
   if (u.uStrain && Number.isFinite(frame.strain)) u.uStrain.value = THREE.MathUtils.clamp(frame.strain, 0, 1);
   if (u.uWhip && Number.isFinite(frame.whip)) u.uWhip.value = THREE.MathUtils.clamp(frame.whip, 0, 1);
+  if (u.uLatchWave && Number.isFinite(frame.latchWave)) u.uLatchWave.value = THREE.MathUtils.clamp(frame.latchWave, 0, 1);
   if (u.uSheath && Number.isFinite(frame.sheath)) u.uSheath.value = THREE.MathUtils.clamp(frame.sheath, 0, 1);
   if (u.uPulseSpeed && Number.isFinite(frame.pulseSpeed)) u.uPulseSpeed.value = frame.pulseSpeed;
   if (u.uColor && frame.color != null) u.uColor.value.set(frame.color);

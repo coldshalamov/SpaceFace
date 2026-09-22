@@ -374,6 +374,14 @@ export const RECIPES = [
     category: 'mining', type: 'layered',
     layers: ['sfx_mining_fracture_sub', 'sfx_mining_fracture_noise'], gainMult: 0.82,
   },
+  // Ore-body depletion: the crisp resonant POP of the last seam giving way — a hard crack up
+  // front, a low rock ring underneath, and a softened remnant of the boom for body. Reads as
+  // brittle fracture, not combustion.
+  {
+    id: 'sfx_asteroid_depleted',
+    category: 'explosion', type: 'layered',
+    layers: ['sfx_mining_fracture_break', 'sfx_explosion_small'], gainMult: 0.9,
+  },
   {
     id: 'sfx_mining_core_exposed',
     category: 'mining', type: 'oscillator', wave: 'sine',
@@ -387,6 +395,48 @@ export const RECIPES = [
     baseFreq: 73.5, freqSweep: [73.5, 294], sweepTimeS: 0.9,
     gainEnvelope: { attack: 0.025, sustain: 0.62, release: 0.28 },
     filterType: 'lowpass', filterFreq: 720, filterQ: 1.4,
+  },
+  // Cargo scoop magnet-latch: the pod thunking home into the belly (soft mechanical seat + a
+  // short servo whir) and the combo chime the audio layer pitch-steps per consecutive pickup.
+  {
+    id: 'sfx_cargo_seat',
+    category: 'mining', type: 'layered',
+    layers: ['sfx_cargo_seat_thunk', 'sfx_cargo_seat_whir'], gainMult: 0.9,
+  },
+  {
+    id: 'sfx_cargo_seat_thunk',
+    category: 'mining', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.11 },
+    filterType: 'lowpass', filterFreq: 340, filterQ: 1.1,
+    transientClick: { gain: 0.4 },
+  },
+  {
+    id: 'sfx_cargo_seat_whir',
+    category: 'mining', type: 'oscillator', wave: 'sawtooth',
+    baseFreq: 210, freqSweep: [210, 340], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.006, sustain: 0.02, release: 0.12 },
+    filterType: 'lowpass', filterFreq: 1400, filterQ: 2.4,
+  },
+  {
+    id: 'sfx_pickup_chime',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 660,
+    gainEnvelope: { attack: 0.003, sustain: 0.015, release: 0.3 },
+    filterType: 'highpass', filterFreq: 300, filterQ: 0.8,
+    reverbMix: 0.16, reverbDecay: 0.5,
+  },
+  // Salvage plate release: a hydraulic hiss (the clamps letting go) under a panel clunk.
+  {
+    id: 'sfx_salvage_plate',
+    category: 'mining', type: 'layered',
+    layers: ['sfx_salvage_hydraulic', 'sfx_cargo_seat_thunk'], gainMult: 1.0,
+  },
+  {
+    id: 'sfx_salvage_hydraulic',
+    category: 'mining', type: 'noise_filtered', noiseColor: 'white',
+    gainEnvelope: { attack: 0.004, sustain: 0.06, release: 0.4 },
+    filterType: 'bandpass', filterFreq: 2400, filterQ: 1.2,
+    reverbMix: 0.14, reverbDecay: 0.5,
   },
   {
     id: 'sfx_mining_yield',
@@ -584,6 +634,19 @@ export const RECIPES = [
     gainMult: 0.7,
     reverbMix: 0.18, reverbDecay: 0.9,
   },
+  // Discovery plate chime (feature 20): one soft glass note — the handler plays it three times at
+  // staggered offsets and rising rates for the restrained 3-note motif. Quieter than the reveal.
+  {
+    id: 'sfx_discovery_plate_note',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 523,
+    gainEnvelope: { attack: 0.008, sustain: 0.03, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 2400, filterQ: 0.6,
+    gainMult: 0.55,
+    reverbMix: 0.22, reverbDecay: 0.7,
+  },
   // Discovery resolve — a slow, glassy upward fifth. It sits below mission-complete in tempo and
   // gain so finding a place reads as wonder rather than another contract payout.
   {
@@ -697,6 +760,26 @@ export const RECIPES = [
     gainMult: 0.85,
   },
   // --- Brake bite: a short traction chirp on the brake's rising edge (U7: an onset, not a bed). ---
+  {
+    id: 'sfx_rcs_hiss',
+    category: 'engine',
+    type: 'continuous_noise',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.05, sustain: 1.0, release: 0.14 },
+    filterType: 'highpass', filterFreq: 1800, filterQ: 0.65,
+    lfoRate: 11, lfoDepth: 0.22,
+    gainMult: 0.22,
+  },
+  {
+    id: 'sfx_hull_scrape',
+    category: 'impact',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.01, decay: 0.09, sustain: 0.12, release: 0.32 },
+    filterType: 'bandpass', filterFreq: 780, filterQ: 2.4,
+    distortionAmount: 0.42, distortionCurve: 'tanh',
+    gainMult: 0.62,
+  },
   {
     id: 'sfx_brake_bite',
     category: 'engine',
@@ -1137,6 +1220,129 @@ export const RECIPES = [
     layers: ['sfx_kill_capital_sub', 'sfx_kill_capital_noise'],
     gainMult: 1.6,
   },
+  // Reactor-overload tell (feature 13): a rising whine under a stressed shudder, ~0.4 s, that
+  // resolves into the delayed boom. Same window the audio kill path already holds for capitals.
+  {
+    id: 'sfx_reactor_overload_whine',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 220,
+    freqSweep: [220, 920],
+    sweepTimeS: 0.38,
+    gainEnvelope: { attack: 0.03, sustain: 0.18, release: 0.1 },
+    filterType: 'bandpass', filterFreq: 1100, filterQ: 3.2,
+  },
+  {
+    // Low stressed body under the whine; the whine's sweep drags across its harmonics, which is
+    // where the "machinery running away" beating comes from.
+    id: 'sfx_reactor_overload_shudder',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 55,
+    freqSweep: [55, 96],
+    sweepTimeS: 0.36,
+    gainEnvelope: { attack: 0.02, sustain: 0.12, release: 0.12 },
+    filterType: 'lowpass', filterFreq: 240, filterQ: 1.1,
+  },
+  {
+    id: 'sfx_reactor_overload',
+    category: 'explosion',
+    type: 'layered',
+    layers: ['sfx_reactor_overload_whine', 'sfx_reactor_overload_shudder'],
+    gainMult: 0.8,
+  },
+  // Docking cradle capture (feature 14): the magnetic guide takes hold — a short servo seat under
+  // a soft confirm blip. Quieter than the final dock clunk; this is the approach, not the latch.
+  {
+    id: 'sfx_dock_capture',
+    category: 'ui',
+    type: 'layered',
+    layers: ['sfx_cargo_seat_whir', 'sfx_dock_capture_blip'],
+    gainMult: 0.55,
+  },
+  {
+    id: 'sfx_dock_capture_blip',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 540,
+    freqSweep: [540, 810],
+    sweepTimeS: 0.1,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.6,
+  },
+  // Hauler foghorn (feature 18): a deep two-tone industrial ship horn. Low fundamental swells
+  // slowly with a fifth above and a breathy noise edge — reads as mass passing, not a UI beep.
+  // Played positionally at the hauler when the transponder chirp lands.
+  {
+    id: 'sfx_hauler_horn_fund',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 68,
+    freqSweep: [68, 64],
+    sweepTimeS: 1.4,
+    gainEnvelope: { attack: 0.28, sustain: 0.55, release: 1.1 },
+    filterType: 'lowpass', filterFreq: 320, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_hauler_horn_fifth',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 102,
+    freqSweep: [102, 97],
+    sweepTimeS: 1.4,
+    gainEnvelope: { attack: 0.34, sustain: 0.4, release: 1.0 },
+    filterType: 'lowpass', filterFreq: 420, filterQ: 0.8,
+  },
+  {
+    id: 'sfx_hauler_horn_breath',
+    category: 'ambient',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.3, sustain: 0.3, release: 0.9 },
+    filterType: 'bandpass', filterFreq: 240, filterQ: 1.4,
+  },
+  {
+    id: 'sfx_hauler_foghorn',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_hauler_horn_fund', 'sfx_hauler_horn_fifth', 'sfx_hauler_horn_breath'],
+    gainMult: 0.9,
+  },
+  // Market ka-ching (feature 16): the vintage register — drawer clunk, bell strike, then the
+  // spring ring-out. Plays on the settled sale, never the intent click.
+  {
+    id: 'sfx_cash_register_clunk',
+    category: 'ui',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.09 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 1.2,
+    transientClick: { gain: 0.5 },
+  },
+  {
+    id: 'sfx_cash_register_bell',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1568,
+    freqSweep: [1568, 1560],
+    sweepTimeS: 0.5,
+    gainEnvelope: { attack: 0.001, sustain: 0.05, release: 0.62 },
+    filterType: 'highpass', filterFreq: 900, filterQ: 0.7,
+    reverbMix: 0.2, reverbDecay: 0.4,
+  },
+  {
+    id: 'sfx_cash_register',
+    category: 'ui',
+    type: 'layered',
+    layers: ['sfx_cash_register_clunk', 'sfx_cash_register_bell'],
+    gainMult: 0.8,
+  },
   {
     id: 'sfx.playerDamage',
     category: 'weapon',
@@ -1165,11 +1371,28 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.055 },
     filterType: 'bandpass', filterFreq: 360, filterQ: 2.8,
   },
+  // Latch kinetic wave: the resonant TWANG-hum of a heavy line going taut — a short bright saw
+  // pitch-falls into a low ring and sits under the thud/lock transient. Layered only on the
+  // Massline latch so the generic attach.lock cue keeps its leaner signature.
+  {
+    id: 'sfx_tether_latch_wave',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 156,
+    freqSweep: [156, 46],
+    sweepTimeS: 0.46,
+    gainEnvelope: { attack: 0.004, sustain: 0.08, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 1400, filterQ: 4,
+    subBass: 0.5,
+    transientClick: 0.15,
+    reverbMix: 0.22, reverbDecay: 0.9,
+  },
   {
     id: 'sfx.tetherLatch',
     category: 'weapon',
     type: 'layered',
-    layers: ['sfx_tether_latch_body', 'sfx_tether_latch_lock'],
+    layers: ['sfx_tether_latch_body', 'sfx_tether_latch_lock', 'sfx_tether_latch_wave'],
     gainMult: 1.0,
   },
   {
@@ -1217,6 +1440,36 @@ export const RECIPES = [
   },
 
   // --- Dash & Cruise SFX ---
+  // Slingshot apex release: the Doppler whoosh of the swing crest let go — air rushing past the
+  // hull plus the falling pitch of the departing arc. Distinct from the sling's launch thump.
+  {
+    id: 'sfx_massline_apex_air',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.02, sustain: 0.12, release: 0.5 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.4,
+    reverbMix: 0.2, reverbDecay: 0.7,
+  },
+  {
+    id: 'sfx_massline_apex_tone',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 780,
+    freqSweep: [780, 210],
+    sweepTimeS: 0.55,
+    gainEnvelope: { attack: 0.015, sustain: 0.05, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 2200,
+    reverbMix: 0.18, reverbDecay: 0.7,
+  },
+  {
+    id: 'sfx_massline_apex',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_massline_apex_air', 'sfx_massline_apex_tone'],
+    gainMult: 1.1,
+  },
   {
     id: 'sfx_dash_whoosh',
     category: 'engine',
@@ -1636,11 +1889,22 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.015, sustain: 0.04, release: 0.48 },
     filterType: 'lowpass', filterFreq: 720, filterQ: 1.1,
   },
+  // Arrival bass drop (feature 19): the resonant sub landing into the new sector — a 55→28 Hz
+  // sine drop under a low rumble swell. Sits under the existing arrival tone.
+  {
+    id: 'sfx_travel_bass_drop',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 55, freqSweep: [55, 28], sweepTimeS: 0.9,
+    gainEnvelope: { attack: 0.01, sustain: 0.18, release: 1.15 },
+    filterType: 'lowpass', filterFreq: 140, filterQ: 1.0,
+  },
   {
     id: 'sfx_travel_arrival',
     category: 'engine',
     type: 'layered',
-    layers: ['sfx_jump_arrive', 'sfx_travel_arrival_tone'],
+    layers: ['sfx_jump_arrive', 'sfx_travel_arrival_tone', 'sfx_travel_bass_drop'],
     gainMult: 0.75,
   },
   {

@@ -297,7 +297,7 @@ test('hero kill obtains a blade slot after the pool is full without growing capa
 });
 
 test('live kill still claims a blade when the arcade pool is saturated', () => {
-  const { system, bus } = makeVfxHarness();
+  const { system, state, bus } = makeVfxHarness();
   system._initArcadeStructural();
   const fx = system._arcadeStructural;
   const cap = ARCADE_STRUCTURAL_FX_CAPACITY.blades;
@@ -317,6 +317,10 @@ test('live kill still claims a blade when the arcade pool is saturated', () => {
     vel: { x: -2, z: 0 },
     direction: { x: 1, z: 0.2 },
   });
+  // Feature 13: the kill opens a ~0.4 s overload tell before the explosion — drain the pending
+  // window exactly as the live update() does, then the structural claim lands.
+  state.simTime += 0.5;
+  system._updatePendingDetonations();
   const after = fx.inspect().pools.blades;
   assert.ok(after.spawned > before.spawned, 'hero kill must obtain a blade slot');
   assert.equal(after.live, cap);

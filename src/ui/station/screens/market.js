@@ -503,6 +503,28 @@ export function createMarketScreen(ctx) {
     }
   }
 
+  // Feature 16 — direct profit badge. Cost basis is the FIFO trade-lot average the economy ledger
+  // keeps on the player; cargo without a purchase record (mined, salvaged) falls back to the
+  // catalog base price, so a smart route reads the same whether goods were bought or dug out.
+  function heldProfitPct(state, cmdtyId, sellUnit, def) {
+    if (!Number.isFinite(sellUnit) || sellUnit <= 0) return null;
+    let basis = 0;
+    const lots = state && state.player && state.player.tradeLots
+      && state.player.tradeLots[cmdtyId];
+    if (Array.isArray(lots) && lots.length) {
+      let qty = 0, cost = 0;
+      for (const lot of lots) {
+        const q = Math.max(0, Math.floor(Number(lot && lot.qty) || 0));
+        const u = Number(lot && lot.unit) || 0;
+        if (q > 0 && u > 0) { qty += q; cost += q * u; }
+      }
+      if (qty > 0) basis = cost / qty;
+    }
+    if (!(basis > 0)) basis = Number(def && def.basePrice) || 0;
+    if (!(basis > 0)) return null;
+    return ((sellUnit - basis) / basis) * 100;
+  }
+
   // One register row: name (◆ before it when tracked), buy + trend, sell, stock, held.
   function commodityRowHtml(r, state, tracked_, selected) {
     const hist = priceHistory(r.entry, r.def, state && state.simTime);
@@ -514,6 +536,7 @@ export function createMarketScreen(ctx) {
     const held = heldQty(state, r.id);
     return marketRowHtml({ id: r.id, name: r.def.name, category: r.def.category,
       buy, sell, stock, held, hist, demandWord: demandWord(demand),
+      profitPct: heldProfitPct(state, r.id, sell, r.def),
       driversSummary: drivers.accessibleSummary, selected, tracked: r.id === tracked_ });
   }
 
@@ -581,7 +604,10 @@ export function createMarketScreen(ctx) {
     const signature = JSON.stringify({
       marketFilter, marketQuery, cargoOnly, tracked: tracked_,
       rows: visible.map((r) => [r.id, unitBuy(r.entry, r.def), unitSell(r.entry, r.def), r.entry && r.entry.stock,
-        heldQty(state, r.id), r.entry && r.entry.demandMult, priceHistory(r.entry, r.def, state.simTime).at(-1)]),
+        heldQty(state, r.id), r.entry && r.entry.demandMult, priceHistory(r.entry, r.def, state.simTime).at(-1),
+        // The badge moves with the cost basis, not only the price — include it so a fresh buy
+        // reprices the row even when quantity is unchanged.
+        Math.round(heldProfitPct(state, r.id, unitSell(r.entry, r.def), r.def) || 0)]),
     });
     if (signature !== listRenderSignature) {
       listRenderSignature = signature;

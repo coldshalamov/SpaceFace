@@ -189,8 +189,18 @@ export function createInfrastructureMotionTracker() {
       const innerRing = mesh.userData.innerRing;
       const portal = mesh.userData.portal;
       const hubGlow = mesh.userData.hubGlow;
+      const lens = mesh.userData.lensMesh;
 
       if (innerRing) innerRing.rotation.z = rec.portalSwirl * 0.65;
+      if (lens) {
+        // Counter-rotating shimmer layer: simTime drives the shader's ring drift, the mesh's own
+        // swirl parallaxes against the portal disc beneath it.
+        lens.rotation.z = rec.portalSwirl * 1.35;
+        const lensMat = lens.material;
+        if (lensMat && lensMat.uniforms && lensMat.uniforms.uTime) {
+          lensMat.uniforms.uTime.value = simTime * (reducedMotion ? 0.25 : 1.0);
+        }
+      }
       if (portal) {
         if (rec.portalBase < 0) {
           rec.portalBase = (portal.scale && Number.isFinite(portal.scale.x)) ? portal.scale.x : 1;

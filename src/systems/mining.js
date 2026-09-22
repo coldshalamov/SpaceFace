@@ -589,6 +589,7 @@ export const mining = {
     if (!verbAcceptsType('mine', entity.type)) return false;
     if (!presentationAllowsPlayerFacingAction(entity, state)) return false;
     if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
+    if (entity.type === 'asteroid' && entity.data && entity.data.opticMaterial) return false;
     const dx = entity.pos.x - ship.pos.x, dz = entity.pos.z - ship.pos.z;
     const dist = Math.hypot(dx, dz);
     return dist <= range + (entity.radius || 0);
@@ -624,6 +625,7 @@ export const mining = {
       if (!verbAcceptsType('mine', e.type)) continue; // PQ-015: shared beam membership (asteroid|wreck)
       if (!presentationAllowsPlayerFacingAction(e, state)) continue;
       if (e.type === 'asteroid' && e.data && e.data.respawnAt != null) continue; // mined-out, awaiting respawn
+      if (e.type === 'asteroid' && e.data && e.data.opticMaterial) continue;
       const dx = e.pos.x - ship.pos.x, dz = e.pos.z - ship.pos.z;
       const dist = Math.hypot(dx, dz);
       if (dist > range + (e.radius || 0)) continue;
@@ -646,6 +648,7 @@ export const mining = {
     const state = this.state;
     const ast = state.entities.get(targetId);
     if (!ast || !ast.alive || ast.type !== 'asteroid') return 0;
+    if (ast.data && ast.data.opticMaterial) return 0;
     const d = ast.data || (ast.data = {});
     // Core-anchored site rocks are beam-locked (ASTEROID_SITES_BRIEF §2): a developed asteroid
     // moves cargo through its physical port, never back out through the mining laser. Destroying
@@ -767,7 +770,7 @@ export const mining = {
       d._oreCarry = 0;
     }
 
-    if (releaseUnits > 0) this._releaseOre(ast, def, releaseUnits, miner, d._richLotSource, d);
+    if (releaseUnits > 0) this._releaseOre(ast, def, releaseUnits, miner, d._richLotSource, d, destroyed);
 
     if (destroyed) {
       if (!d.isChunk) {
@@ -785,7 +788,9 @@ export const mining = {
 
   // Release `units` of ore: roll each unit's commodity from the asteroid's weighted table
   // (tier-gated, renormalized), then either credit cargo directly or eject magnet pickups.
-  _releaseOre(ast, def, units, miner, richLotSource = null, asteroidData = null) {
+  // `depleted` marks the rock's final burst: the shatter drops its remaining ore in a tight
+  // cluster at the corpse instead of scattering it across the sector for the player to chase.
+  _releaseOre(ast, def, units, miner, richLotSource = null, asteroidData = null, depleted = false) {
     const beam = miner ? this._beamRuntime(miner) : null;
     const direct = !!(beam && beam.directToCargo) && miner && miner.id === this.state.playerId;
     const rareOreChance = validRareOreChance(beam && beam.rareOreChance) && beam.rareOreChance > 0
@@ -814,7 +819,7 @@ export const mining = {
         if (ordinaryQty > 0) {
           const acceptedOrdinary = this._giveCargo(commodityId, ordinaryQty, miner.id);
           const rejectedOrdinary = Math.max(0, ordinaryQty - acceptedOrdinary);
-          if (rejectedOrdinary > 0) this._spawnPickup(ast, commodityId, rejectedOrdinary);
+          if (rejectedOrdinary > 0) this._spawnPickup(ast, commodityId, rejectedOrdinary, null, { tight: depleted });
         }
         let materializedRich = 0;
         if (richQty > 0) {
@@ -827,6 +832,7 @@ export const mining = {
               commodityId,
               rejectedRich,
               { ...richLotSource, richQty: rejectedRich },
+              { tight: depleted },
             );
           }
         }
@@ -834,9 +840,9 @@ export const mining = {
           asteroidData._richBonusPending = Math.max(0, asteroidData._richBonusPending - materializedRich);
         }
       } else {
-        if (qty > richQty) this._spawnPickup(ast, commodityId, qty - richQty);
+        if (qty > richQty) this._spawnPickup(ast, commodityId, qty - richQty, null, { tight: depleted });
         if (richQty > 0) {
-          const spawnedRich = this._spawnPickup(ast, commodityId, richQty, { ...richLotSource, richQty });
+          const spawnedRich = this._spawnPickup(ast, commodityId, richQty, { ...richLotSource, richQty }, { tight: depleted });
           if (asteroidData && spawnedRich > 0) asteroidData._richBonusPending -= spawnedRich;
         }
       }
@@ -866,12 +872,17 @@ export const mining = {
   },
 
   // ---- pickups: spawn + magnet pull + collection ----------------------------
-  _spawnPickup(srcEnt, commodityId, amount, lotSource = null) {
+  _spawnPickup(srcEnt, commodityId, amount, lotSource = null, opts = null) {
     if (!this.helpers || typeof this.helpers.spawnEntity !== 'function' || !(amount > 0)) return 0;
     const rng = this.state.rng;
+    const tight = !!(opts && opts.tight);
     const ang = rng() * Math.PI * 2;
-    const r = (srcEnt.radius || 6) + 2 + rng() * 4;
-    const speed = 8 + rng() * 10;
+    // A depletion burst lands in a tight cluster inside the rock's own footprint so scooping the
+    // corpse is one pass, not a chase; ordinary per-tick yields keep the wider scatter ring.
+    const r = tight
+      ? (srcEnt.radius || 6) * 0.45 + rng() * 2.5
+      : (srcEnt.radius || 6) + 2 + rng() * 4;
+    const speed = tight ? 2 + rng() * 3.5 : 8 + rng() * 10;
     this.helpers.spawnEntity({
       type: 'pickup',
       pos: { x: srcEnt.pos.x + Math.cos(ang) * r, z: srcEnt.pos.z + Math.sin(ang) * r },

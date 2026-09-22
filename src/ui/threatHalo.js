@@ -288,9 +288,11 @@ export function createThreatHalo(root, busOrOpts) {
   layer.style.display = 'none';
   root.appendChild(layer);
 
+  const missileGlyph = buildMissileGlyph();
+
   const hostileSlots = new Array(HOSTILE_LIMIT);
   for (let i = 0; i < HOSTILE_LIMIT; i++) {
-    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--arc', '');
+    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--arc', missileGlyph);
     const arc = document.createElement('div');
     arc.className = 'sf-threat-halo__arc';
     slot.appendChild(arc);
@@ -300,7 +302,6 @@ export function createThreatHalo(root, busOrOpts) {
   }
 
   const missileSlots = new Array(MISSILE_LIMIT);
-  const missileGlyph = buildMissileGlyph();
   for (let i = 0; i < MISSILE_LIMIT; i++) {
     const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--missile', missileGlyph);
     layer.appendChild(slot);
@@ -978,6 +979,9 @@ export function createThreatHalo(root, busOrOpts) {
         setForceHue(slot, slot._sfArc, null, null);
       }
       setAttr(slot, 'data-faction', hostileFaction[i] || null);
+      // An unannounced hostile burning down on the player reads as the same amber edge pulse
+      // as an incoming torpedo; announced attack runs keep their telegraph hue instead.
+      setAttr(slot, 'data-closing', !cue && hostileBucket[i] >= 2 ? 'boost' : null);
       shown++;
     }
 

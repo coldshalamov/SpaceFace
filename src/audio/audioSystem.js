@@ -157,6 +157,9 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
   [CombatDoctrineId.INTERCEPTOR_FLYBY]: Object.freeze({
     recipeId: 'sfx_doctrine_flyby', fireRate: 1.16, fireGain: 0.78, fireDetune: 7,
   }),
+  [CombatDoctrineId.PACK_PURSUIT]: Object.freeze({
+    recipeId: 'sfx_doctrine_flyby', fireRate: 1.32, fireGain: 0.66, fireDetune: 3,
+  }),
   [CombatDoctrineId.SWARM_PACK]: Object.freeze({
     // Tight pass rhythm, not a siege: the fastest, lightest flyby voice so a swarm reads as a
     // school of strikes instead of one heavier interceptor (combat-variety vertical 2026-09-18).
@@ -458,7 +461,14 @@ export const COLLISION_CUE = Object.freeze({
   SPEED_TOUCH: 8,        // WU/s — at or below a touch the mass-law rate stands untouched
   SPEED_SLAM: 150,       // WU/s — the reference slam; the bend saturates here
   RATE_FORCE_MIN: 0.45,  // ×rate at full force — ~1.15 octaves under the same bodies' kiss
+  // Matches TERRAIN_CRUMPLE_LAW.threshold: at or under this closing speed a rock or station
+  // contact has not started to crumple the hull, so it is a scrape rather than an impact.
+  SCRAPE_SPEED: 30,
 });
+
+// Cargo scoop combo ladder — consecutive pickups climb a pentatonic-ish rise so a chain of scoops
+// plays an ascending melody rather than the same note eight times.
+const SCOOP_CHIME_RATES = Object.freeze([1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.888, 2.0]);
 
 const COLLISION_TIER_RECIPES = Object.freeze({
   kiss: 'sfx_dock_clunk',
@@ -555,15 +565,21 @@ export function resolveCollisionCue(input) {
       ? 'medium'
       : 'heavy';
   const ladderId = `ladder_${material}_${weight}`;
+  const terrainGlance = (material === 'rock' || material === 'station')
+    && !(Number(src.hullDamage) > 0)
+    && Number.isFinite(src.closingSpeed)
+    && src.closingSpeed >= 0
+    && src.closingSpeed <= COLLISION_CUE.SCRAPE_SPEED;
+  const resolvedTier = terrainGlance ? 'scrape' : tier;
   return Object.freeze({
-    recipeId: COLLISION_TIER_RECIPES[tier],
+    recipeId: terrainGlance ? 'sfx_hull_scrape' : COLLISION_TIER_RECIPES[tier],
     rate,
     gain,
     acousticMass,
-    tier,
+    tier: resolvedTier,
     material,
     weight,
-    ladderId,
+    ladderId: terrainGlance ? null : ladderId,
     forceU,
   });
 }
@@ -879,6 +895,8 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'massline.throw': 'sfx_massline_throw',
   'massline.solutionLock': 'sfx_massline_solution',
   'massline.sling': 'sfx_massline_sling',
+  // Apex crest release (tetherGameplay.rateRelease releasedAtApex): the "you nailed that" whoosh.
+  'massline.slingshotApex': 'sfx_massline_apex',
   'massline.tumble': 'sfx_massline_tumble',
   'massline.bulletTimeIn': 'sfx_massline_bt_in',
   'massline.bulletTimeOut': 'sfx_massline_bt_out',
@@ -928,6 +946,7 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.mining.cargo_full': 'sfx_ui_error',
   'presentation.mining.field_settle': 'sfx_mining_field_settle',
   'presentation.mining.heat_warning': 'sfx_mining_heat_warning',
+  'world.foghorn': 'sfx_hauler_foghorn',
   'presentation.mining.vent_ready': 'sfx_vent_chime',
   'presentation.mining.yield': 'sfx_mining_yield',
   'presentation.mining.seismic_pulse': 'sfx_mining_seismic_pulse',
@@ -937,6 +956,8 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.mining.gas_hazard': 'sfx_mining_gas_hazard',
   'presentation.mining.drill_abort': 'sfx_mining_drill_abort',
   'presentation.mining.drill_retry': 'sfx_mining_drill_retry',
+  // Docking cradle: the magnetic guide takes hold inside the capture lane (feature 14).
+  'presentation.dock.capture': 'sfx_dock_capture',
   'presentation.combat.doctrine_setup': 'sfx_encounter_escalation',
   'presentation.combat.doctrine_telegraph': 'sfx_encounter_escalation',
   'presentation.combat.doctrine_commit': 'sfx_encounter_escalation',
@@ -1632,7 +1653,7 @@ export const audio = {
     bus.on('mining:start', (p) => this._onMiningStart(p));
     bus.on('mining:stop', (p) => this._onMiningStop(p));
     bus.on('mining:tick', (p) => this._onMiningTick(p));
-    bus.on('asteroid:destroyed', (p) => this.play('sfx_explosion_small', { position: p && p.pos, gain: 0.7 }));
+    bus.on('asteroid:destroyed', (p) => this.play('sfx_asteroid_depleted', { position: p && p.pos, gain: 0.7 }));
     // Ceres living-work stamps already carry the calving on lamp/text channels; audio joins for
     // the rock's two own beats only (groan before the split, the split itself). The receipt has no
     // position — the bound actor is resolved read-only from the live cast, and play() culls
@@ -1640,6 +1661,13 @@ export const audio = {
     bus.on('traffic:ceresCausalChain', (p) => this._onCeresCausalChain(p));
     bus.on(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresWorkAction(p));
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
+    // Salvage plate unlock: hydraulic release hiss + the freed panel's clunk. The spark shower is
+    // vfx-owned (salvage:cutComplete subscription there); this is its sound.
+    bus.on('salvage:cutComplete', (p) => {
+      const ent = p && p.payloadId != null && this.state && this.state.entities
+        ? this.state.entities.get(p.payloadId) : null;
+      this.play('sfx_salvage_plate', { position: ent && ent.pos ? ent.pos : (p && p.pos), gain: 0.85 });
+    });
     bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
     bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
     // Cargo jettison (HUD cargo panel "JETTISON" → cargo.js dump): previously TOTAL silence for an
@@ -1691,6 +1719,13 @@ export const audio = {
     // makes the payoff of a major purchase/upgrade land.
     bus.on('tech:researched', () => this.play('sfx_mission_complete', { gain: 0.6 }));
     bus.on('ship:purchased', () => this.play('sfx_mission_complete', { gain: 0.7 }));
+    // Feature 16 — the ka-ching. Settled sales ring the register; buys stay a quiet confirm.
+    // A profitable lot rings a shade brighter so the good deal is audible, not just green.
+    bus.on('economy:tradeCompleted', (p) => {
+      if (!p || p.side !== 'sell') return;
+      const profitable = Number(p.profit) > 0;
+      this.play('sfx_cash_register', { gain: profitable ? 0.85 : 0.6, rate: profitable ? 1.06 : 0.96 });
+    });
     bus.on('sector:enter', (p) => {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
@@ -2912,7 +2947,16 @@ export const audio = {
   _onDiscoveryUnlocked(p) {
     if (!p || !p.sectorId || !p.poiId) return;
     this._duckMusic(1.1);
-    this.play('sfx_discovery_reveal', { gain: 0.72, critical: true });
+    const ctx = this.rt && this.rt.ctx;
+    this.play('sfx_discovery_plate_note', { gain: 0.7, critical: true });
+    if (ctx) {
+      // Restrained 3-note motif (feature 20): root, major third, fifth — spaced like a clock chime.
+      this.play('sfx_discovery_plate_note', { gain: 0.62, rate: 1.26, startTime: ctx.currentTime + 0.17, critical: true });
+      this.play('sfx_discovery_plate_note', { gain: 0.55, rate: 1.5, startTime: ctx.currentTime + 0.36, critical: true });
+    } else {
+      this.play('sfx_discovery_plate_note', { gain: 0.62, rate: 1.26, critical: true });
+      this.play('sfx_discovery_plate_note', { gain: 0.55, rate: 1.5, critical: true });
+    }
   },
 
   // One voice per contact. The live rapier-dynamic backend emits `physics:impact` only; the
@@ -2970,8 +3014,14 @@ export const audio = {
       // The slam-vs-kiss pitch bend reads the pre-solve closing speed; the solver's per-tick dp
       // clamp must not flatten a 150 WU/s ram into a 40 WU/s answer.
       closingSpeed: p.preSolveClosingSpeed,
+      hullDamage: Number.isFinite(p.hullDamage) ? p.hullDamage : undefined,
     });
-    const voice = this.play(cue.recipeId, { position: p.pos, gain: cue.gain, rate: cue.rate, ladderId: cue.ladderId });
+    const voice = this.play(cue.recipeId, {
+      position: p.pos,
+      gain: cue.gain,
+      rate: cue.rate,
+      ladderId: cue.ladderId || undefined,
+    });
     const aMass = a && Number.isFinite(a.mass) ? a.mass : 16;
     const bMass = b && Number.isFinite(b.mass) ? b.mass : 16;
     // The duck follows audibility: a contact beyond hearing range is culled inside play() and
@@ -3002,7 +3052,18 @@ export const audio = {
       });
     }
     const isCapital = p.victimClass === 'capital' || p.victimClass === 'large' || p.type === 'station';
-    
+    // Feature 13 — the reactor-overload tell. Every hull death opens a ~0.4 s runaway whine while
+    // the blast waits behind it; capitals already held their boom for 400 ms, small hulls now
+    // land on the same beat so the whine always resolves INTO the explosion.
+    const overloadDelayS = 0.40;
+    if (ctx) {
+      this.play('sfx_reactor_overload', {
+        position: p.pos,
+        startTime: ctx.currentTime + 0.02,
+        gain: isCapital ? 1.0 : 0.62,
+        critical: killedByPlayer,
+      });
+    }
     if (isCapital && ctx) {
       this._duckMusic();
       // Breathless beat: the world goes quiet under the delayed explosion so its roar returns
@@ -3030,6 +3091,9 @@ export const audio = {
     } else {
       this.play(killedByPlayer ? signature.recipeId : 'sfx.killSmall', {
         position: p.pos,
+        // Delayed onto the detonation beat so the whine resolves into the boom, matching the VFX
+        // overload window. Without an audio clock there is no delay to schedule — play through.
+        startTime: ctx ? ctx.currentTime + overloadDelayS : undefined,
         gain: killedByPlayer ? 0.9 : 0.72,
         // The presentation priority receipt arrives before this raw physical handler. Marking the
         // reward voice critical prevents the cue's own squelch window from suppressing it.
@@ -3281,9 +3345,29 @@ export const audio = {
     if (readiness.clack) this.play('sfx_wpn_dry_fire', { gain: DRY_FIRE.gain });
   },
 
+  // Cargo scoop magnet-latch: every collected pickup seats with a thunk-whir, and pickups caught
+  // in a row climb a stepped chime ladder (bloop… bleep… ting). The ladder lives on rt so tab
+  // switches cannot wedge a stale high note; it resets after a short quiet, not on a wall clock.
   _onPickupCollected(p) {
     if (successfulPickupAmount(p) <= 0) return;
-    this.play('sfx_mining_impact', { position: p && p.pos, gain: 0.8 });
+    const isPlayer = !p || p.collectorId == null
+      || (this.state && p.collectorId === this.state.playerId);
+    const nowS = this.rt && this.rt.ctx
+      ? this.rt.ctx.currentTime
+      : Math.max(0, Number(this.state && this.state.simTime) || 0);
+    const combo = this.rt && (this.rt._scoopCombo || (this.rt._scoopCombo = { count: 0, lastAt: -Infinity }));
+    if (combo && nowS - combo.lastAt <= 2.4) combo.count += 1;
+    else if (combo) combo.count = 0;
+    if (combo) combo.lastAt = nowS;
+    this.play('sfx_cargo_seat', { position: p && p.pos, gain: 0.8 });
+    if (isPlayer && combo) {
+      const step = Math.min(combo.count, SCOOP_CHIME_RATES.length - 1);
+      this.play('sfx_pickup_chime', {
+        position: p && p.pos,
+        gain: 0.55,
+        rate: SCOOP_CHIME_RATES[step],
+      });
+    }
   },
 
   // Cargo jettison (HUD cargo panel → cargo.dumpCargo): an audible world act that was total
@@ -5107,6 +5191,7 @@ export const audio = {
     // Update continuous procedural sources
     this._updateEngineHum();
     this._updateBrakeHiss(dt);
+    this._updateSlipstreamHiss();
     this._updateTetherHum();
     this._updateDrillGrind();
     // Outside the `if (!rt._paused)` block below on purpose: the mine screen pauses the world sim,
@@ -5520,6 +5605,36 @@ export const audio = {
 
     rt.brakeGain = gain;
     rt.brakeNoise = noise;
+  },
+
+  _updateSlipstreamHiss() {
+    const rt = this.rt;
+    if (!rt || !rt.loops) return;
+    const slip = this.state && this.state.render && this.state.render.slipstream;
+    const active = !!(slip && slip.active) && !rt._paused;
+    if (!active) {
+      const current = rt.loops.slipstream;
+      if (current) {
+        this._endLoopVoice(current);
+        delete rt.loops.slipstream;
+      }
+      return;
+    }
+    const ctx = rt.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    let voice = rt.loops.slipstream;
+    if (!voice) {
+      voice = this._startLoopVoice('sfx_rcs_hiss', null, 0.12);
+      if (!voice) return;
+      voice.role = 'engineLoop';
+      voice.busName = 'engine';
+      rt.loops.slipstream = voice;
+    }
+    const intensity = Math.max(0, Math.min(1, Number(slip.intensity) || 0));
+    const targetGain = 0.03 + 0.1 * intensity;
+    if (voice.gain && voice.gain.gain && typeof voice.gain.gain.setTargetAtTime === 'function') {
+      try { voice.gain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.06); } catch (_) {}
+    }
   },
 
   _updateBrakeHiss(dt) {

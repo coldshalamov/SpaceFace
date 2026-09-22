@@ -2373,6 +2373,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
     if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
     selectedSlot = slotIndex;
+    // Exploded-view focus (feature 15): the selected bay lifts its plate and glows cyan on the
+    // 3D preview. spatialAnchors carries the same authored local point the DOM pin projects from.
+    if (mount && typeof mount.setExplodedFocus === 'function') {
+      mount.setExplodedFocus(spatialAnchors.get(slotIndex) || null);
+    }
     chooserAnchor = anchorEl || slotfieldEl.querySelector(`[data-spatial-slot="${slotIndex}"]`);
     slotfieldEl.classList.add('is-focusing');
     slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => {
@@ -2414,6 +2419,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     restoreCurrentPreview();
     selectedSlot = -1;
     payloadSocket = -1;
+    if (mount && typeof mount.setExplodedFocus === 'function') mount.setExplodedFocus(null);
     chooserAnchor = null;
     slotfieldEl.classList.remove('is-focusing');
     slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => node.classList.remove('is-selected'));
@@ -2438,6 +2444,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     emitUiCue(UI_SWITCH_DETENT_CUE);
     payloadSocket = socketIndex;
     selectedSlot = -1;
+    if (mount && typeof mount.setExplodedFocus === 'function') mount.setExplodedFocus(null);
     chooserAnchor = anchorEl || sideEl.querySelector(`[data-rack-socket="${socketIndex}"]`);
     renderPayloadChooser();
     chooserEl.hidden = false;

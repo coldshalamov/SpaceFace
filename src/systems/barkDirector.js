@@ -24,6 +24,7 @@ import {
 import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { hash32 } from '../core/rng.js';
 import { isHostileToPlayer } from './scanner.js';
+import { getOccupationalSilhouetteRule } from '../data/occupationalSilhouettes.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { ensureActivityClassified } from '../world/activityRuntime.js';
@@ -159,6 +160,13 @@ export function stuntRecognitionBarkFor(factionId, rng, tokens = {}) {
   return line.replace(/\{title\}/g, String(tokens.title || 'Stunt'));
 }
 
+// Feature 18: neutral haulers/mining barges hail the player on a close pass. The bark budget
+// (once per entity per situation + ambient sector decay + post-combat silence) is the spam gate;
+// the foghorn only sounds when the chirp actually lands on the comms ribbon.
+const PASS_HAIL_ROLES = new Set(['heavy', 'miner']);
+const PASS_HAIL_RANGE_WU = 300;
+const PASS_HAIL_RANGE_SQ = PASS_HAIL_RANGE_WU * PASS_HAIL_RANGE_WU;
+
 const FLEE_FSMS = new Set(['flee', 'retreat', 'withdraw']);
 const ATTACK_FSMS = new Set(['attack', 'strafe', 'engage', 'fight']);
 const SCAN_FSMS = new Set(['scan', 'inspect', 'intercept', 'pursue', 'approach', 'patrol']);
@@ -243,8 +251,11 @@ export const barkDirector = {
       if (!shouldOwnerThink(state.tick, entity, thinkOpts)) return;
       this._queueKnownStunt(entity);
       const situation = classifyBarkSituation(entity, state);
-      if (!situation) return;
-      this._speak(entity, situation, 'state');
+      if (situation) {
+        this._speak(entity, situation, 'state');
+        return;
+      }
+      this._hailPassingTraffic(entity, state, player);
     });
   },
 
@@ -682,6 +693,27 @@ export const barkDirector = {
     return true;
   },
 
+  // A neutral hauler/mining barge drifting inside pass range earns one friendly transponder
+  // chirp plus its deep foghorn. Once per contact — the shared bark record is the gate.
+  _hailPassingTraffic(entity, state, player) {
+    if (!entity || !player || !player.pos || !entity.pos || entity === player) return false;
+    if (!eligibleShip(entity, state)) return false;
+    if (!PASS_HAIL_ROLES.has(occupationalRoleOf(entity))) return false;
+    if (isHostileToPlayer(entity, PLAYER_TEAM, state)) return false;
+    const dx = entity.pos.x - player.pos.x;
+    const dz = entity.pos.z - player.pos.z;
+    if (dx * dx + dz * dz > PASS_HAIL_RANGE_SQ) return false;
+    const accepted = this._speak(entity, 'patrol-greeting', 'pass-by');
+    if (accepted && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('audio:cue', {
+        id: 'world.foghorn',
+        position: { x: entity.pos.x, z: entity.pos.z },
+        gain: 0.8,
+      });
+    }
+    return !!accepted;
+  },
+
   _isSuppressed(entity, situation, rec) {
     const state = this.state;
     const own = ensureState(state);
@@ -1106,6 +1138,23 @@ function freshEntityRecord(entity) {
     said: {},
     history: [],
   };
+}
+
+function occupationalRoleOf(entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  const candidates = [
+    entity.occupationalRole, data.occupationalRole, entity.role, data.role,
+    data.trafficRole, data.jobRole, data.craftId, entity.ship, data.ship,
+  ];
+  for (let i = 0; i < candidates.length; i++) {
+    const c = candidates[i];
+    if (c && typeof c === 'string') {
+      const rule = getOccupationalSilhouetteRule(c);
+      if (rule) return rule.role;
+    }
+  }
+  return null;
 }
 
 function eligibleShip(entity, state) {

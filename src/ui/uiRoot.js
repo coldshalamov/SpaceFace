@@ -63,6 +63,7 @@ import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
 import { createPromptDeck } from './promptDeck.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
+import { createDiscoveryPlate } from './discoveryPlate.js';
 import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
 import { createAlerts } from './alerts.js';
 import { createComms } from './comms.js';
@@ -425,6 +426,8 @@ export const ui = {
 
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
+    // Feature 20: first-discovery glass plate (POI / unique wreck / flagship ace receipts).
+    this.discoveryPlate = createDiscoveryPlate(ctx);
     replaceMarketNewsOwner(this, ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
     this.alerts = createAlerts(ctx);
     wireSaveFeedback(this.bus);
@@ -1351,6 +1354,7 @@ export const ui = {
       }
       if (this.promptDeck && typeof this.promptDeck.tick === 'function') this.promptDeck.tick();
       if (this.toasts && this.toasts.tick) this.toasts.tick();
+      if (this.discoveryPlate && this.discoveryPlate.tick) this.discoveryPlate.tick();
       // Comms fade is a flight overlay. Toasts/prompts stay alive on menus.
       if (hudVisible && this.comms && this.comms.tick) this.comms.tick();
       // refresh the active modal screen at a low cadence (event-driven screens also self-update)

@@ -2438,6 +2438,68 @@ function structureVisualRadius(e, fallback = 40) {
   return fallback;
 }
 
+// Aperture lensing (feature 19): a shader disc laid a hair ahead of the event-horizon gradient.
+// Concentric interference bands shear into a slow spiral — the "gravitational lensing" read —
+// without spending a framebuffer refraction pass. infrastructureMotion feeds it simTime and a
+// counter-rotation against the portal so the two layers parallax.
+const GATE_LENS_VERTEX = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const GATE_LENS_FRAGMENT = `
+  precision highp float;
+  varying vec2 vUv;
+  uniform float uTime;
+  uniform vec3 uColorA;      // bright lensing tone
+  uniform vec3 uColorB;      // deep throat tone
+  uniform float uIntensity;
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    float r = length(p);
+    if (r > 1.0) discard;
+    float theta = atan(p.y, p.x);
+    // Spiral shear tightens toward the rim so the bands bend like a lensed accretion face.
+    float warp = theta + (1.0 - r) * 2.6 + uTime * 0.45;
+    float rings = sin(r * 34.0 - uTime * 2.4 + sin(warp * 3.0) * 0.8);
+    float band = smoothstep(0.55, 1.0, rings);
+    float counter = smoothstep(0.7, 1.0, sin(r * 17.0 + uTime * 1.3 - warp));
+    // A photon ring near r=0.7 anchors the read; the throat stays dark and the rim feathers out.
+    float photon = exp(-pow((r - 0.72) * 6.0, 2.0));
+    float rimFade = smoothstep(1.0, 0.86, r);
+    float coreDark = smoothstep(0.10, 0.42, r);
+    float a = (band * 0.5 + counter * 0.3 + photon * 0.45) * rimFade * coreDark;
+    vec3 col = mix(uColorB, uColorA, band) + uColorA * photon * 0.6;
+    gl_FragColor = vec4(col * uIntensity, a * uIntensity * 0.42);
+  }
+`;
+
+function gateLensMaterial(isWormhole) {
+  return getMaterial(isWormhole ? 'gate:lens:wh' : 'gate:lens', () => {
+    const material = new THREE.ShaderMaterial({
+      name: isWormhole ? 'GateLensWormhole' : 'GateLens',
+      uniforms: {
+        uTime: { value: 0 },
+        uColorA: { value: new THREE.Color(isWormhole ? '#c070ff' : '#39d0ff') },
+        uColorB: { value: new THREE.Color(isWormhole ? '#4a1a6a' : '#0e3a66') },
+        uIntensity: { value: 1 },
+      },
+      vertexShader: GATE_LENS_VERTEX,
+      fragmentShader: GATE_LENS_FRAGMENT,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    configurePlanarAdditiveMaterial(material);
+    return material;
+  });
+}
+
 // Vertical jump gate: a chunky portal you fly THROUGH. The ring plane contains the
 // world Y axis + the radial-in direction (toward sector center), so a ship approaching
 // from the sector center passes cleanly through the opening. Built from primitives +
@@ -2508,6 +2570,16 @@ function buildGate(e, pal) {
   portal.scale.setScalar(R);
   orient.add(portal);
 
+  // LENSING disc — shimmering interference bands a hair ahead of the event horizon. The mesh
+  // counter-rotates against the portal in infrastructureMotion so the layers parallax.
+  const lens = new THREE.Mesh(
+    getGeometry('gate:lens', () => new THREE.CircleGeometry(0.72, 40)),
+    gateLensMaterial(isWormhole),
+  );
+  lens.scale.setScalar(R);
+  lens.position.z = R * 0.02;
+  orient.add(lens);
+
   // FOUR CARDINAL PYLONS — strut boxes anchoring the ring, "chunked-on" structure.
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4; // diagonals look heavier than cardinals
@@ -2563,6 +2635,7 @@ function buildGate(e, pal) {
   g.userData.innerRing = innerRing;
   g.userData.portal = portal;
   g.userData.hubGlow = hubGlow;
+  g.userData.lensMesh = lens;
   return g;
 }
 

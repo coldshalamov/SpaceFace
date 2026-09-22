@@ -452,7 +452,8 @@ export function injectHudCss() {
     width:18px; height:54px; border-left:none;
   }
   .sf-threat-halo__slot--missile .sf-threat-halo__chev {
-    width:22px; height:22px; display:block; color:var(--k-red);
+    width:22px; height:22px; display:block; color:var(--k-signal, #e6b478);
+    filter:drop-shadow(0 0 6px color-mix(in srgb, var(--k-signal, #e6b478) 80%, transparent));
   }
   .sf-threat-halo__slot--missile .sf-threat-halo__chev path {
     fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;
@@ -460,6 +461,31 @@ export function injectHudCss() {
   .sf-threat-halo__slot--missile[data-edge="right"] .sf-threat-halo__chev { transform:rotate(90deg); }
   .sf-threat-halo__slot--missile[data-edge="bottom"] .sf-threat-halo__chev { transform:rotate(180deg); }
   .sf-threat-halo__slot--missile[data-edge="left"] .sf-threat-halo__chev { transform:rotate(-90deg); }
+  .sf-threat-halo__slot--missile {
+    animation: sf-threat-halo-telegraph 0.5s steps(2, end) infinite;
+  }
+  /* Off-screen hostile boosting straight at the player: amber edge pulse + inward chevron,
+     same language as the torpedo glyph so the read is "something incoming from this edge". */
+  .sf-threat-halo__slot--arc .sf-threat-halo__chev {
+    display:none; position:absolute; left:50%; top:50%;
+    width:18px; height:18px; margin:-9px 0 0 -9px;
+    color:var(--k-signal, #e6b478);
+  }
+  .sf-threat-halo__slot--arc .sf-threat-halo__chev path {
+    fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;
+  }
+  .sf-threat-halo__slot--arc[data-closing="boost"] {
+    animation: sf-threat-halo-telegraph 0.5s steps(2, end) infinite;
+  }
+  .sf-threat-halo__slot--arc[data-closing="boost"] .sf-threat-halo__arc {
+    border-color: var(--k-signal, #e6b478);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--k-signal, #e6b478) 70%, transparent);
+  }
+  .sf-threat-halo__slot--arc[data-closing="boost"] .sf-threat-halo__chev { display:block; }
+  .sf-threat-halo__slot--arc[data-edge="top"] .sf-threat-halo__chev { transform:translateY(13px); }
+  .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__chev { transform:rotate(90deg) translateY(13px); }
+  .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__chev { transform:rotate(180deg) translateY(13px); }
+  .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__chev { transform:rotate(-90deg) translateY(13px); }
   .sf-threat-halo__slot--telegraph .sf-threat-halo__arc {
     border-color: var(--k-gold, #e6b478);
     box-shadow: 0 0 10px color-mix(in srgb, var(--k-gold, #e6b478) 70%, transparent);
@@ -483,13 +509,51 @@ export function injectHudCss() {
   @media (prefers-reduced-motion: reduce) {
     .sf-threat-halo__slot--telegraph { animation: none; filter: brightness(1.35); }
   }
+  html.sf-reduce-flash .sf-threat-halo__slot--missile,
+  html.sf-reduce-flash .sf-threat-halo__slot--arc[data-closing="boost"],
+  html.sf-reduce-flash .sf-threat-halo__slot--telegraph { animation:none; }
+
+  /* Feature 20: first-discovery glass plate — slides out of the right HUD edge, holds 3 s,
+     then tucks back. A moment surface, not a receipt line; the codex record is already durable. */
+  .sf-discovery-plate {
+    position:absolute; right:0; top:20%; z-index:14; pointer-events:none;
+    min-width:230px; max-width:320px;
+    transform:translateX(104%); opacity:0;
+    transition:transform .45s cubic-bezier(.2,.9,.25,1), opacity .3s ease;
+  }
+  .sf-discovery-plate--in { transform:translateX(-14px); opacity:1; }
+  .sf-discovery-plate--out { transform:translateX(104%); opacity:0; }
+  .sf-discovery-plate__frame {
+    padding:9px 16px 10px 14px;
+    background:linear-gradient(180deg, rgba(10,18,28,.86), rgba(6,10,16,.9));
+    border:1px solid var(--k-hair, rgba(160,210,255,.28)); border-right:none;
+    border-left:3px solid var(--hud-cyan);
+    box-shadow:0 4px 18px rgba(0,0,0,.5), inset 0 0 24px rgba(57,208,255,.06);
+  }
+  .sf-discovery-plate__kicker {
+    font-family:var(--hud-data); font-size:var(--k-fs-data);
+    letter-spacing:.14em; color:var(--hud-cyan);
+  }
+  .sf-discovery-plate__title {
+    font-family:var(--hud-data); font-size:var(--k-fs-emph, 15px); font-weight:700;
+    color:var(--hud-paper); margin-top:2px;
+  }
+  .sf-discovery-plate__meta {
+    font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-muted);
+    margin-top:2px; letter-spacing:.04em;
+  }
+  @media (forced-colors: active) {
+    .sf-discovery-plate__frame { border-color:CanvasText; border-left-color:CanvasText; }
+    .sf-discovery-plate__kicker { color:CanvasText; }
+  }
   @media (forced-colors: active) {
     .sf-leadpip__svg { filter:none; }
     .sf-leadpip__full, .sf-leadpip__arc, .sf-leadpip__tick { stroke:CanvasText; }
     .sf-threat-halo__slot--arc .sf-threat-halo__arc {
       border-color:CanvasText; forced-color-adjust:none;
     }
-    .sf-threat-halo__slot--missile .sf-threat-halo__chev path {
+    .sf-threat-halo__slot--missile .sf-threat-halo__chev path,
+    .sf-threat-halo__slot--arc .sf-threat-halo__chev path {
       stroke:CanvasText; forced-color-adjust:none;
     }
   }
@@ -2564,6 +2628,24 @@ export function injectHudCss() {
   }
   #hud > .sf-leftcontext, #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel {
     background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
+  }
+  /* Side readouts were still the thin bezel that reads as a CSS card next to the cluster.
+     They take the same fastened ring as the instrument chassis. The contact count stays
+     engraved on the scope and does not grow a second plate. */
+  #hud > .sf-leftcontext,
+  #hud #sf-sector-law,
+  #hud .sf-target,
+  #hud .sf-cargo-panel,
+  #hud .sf-overview:not(.sf-overview--count) {
+    border:12px solid transparent;
+    border-image:url("/assets/ui/deckplate/hw/bezel.svg") 30 / 18px / 0 stretch;
+    border-radius:0;
+    background:#07090c;
+    box-shadow:var(--dp-stand-off), inset 0 0 0 1px rgb(255 236 204 / .06);
+  }
+  #hud > .sf-leftcontext > :first-child {
+    border-top:0 !important;
+    box-shadow:none !important;
   }
   #hud #sf-wpnstat { background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth); }
   html #hud:has(.sf-cluster-chassis) > .sf-leftstack { left:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); bottom:var(--sf-hud-edge); }

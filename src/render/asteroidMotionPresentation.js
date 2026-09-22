@@ -17,7 +17,13 @@
 //      the rock — the skin visibly breaches — and richCoreChargeStart builds an escalating tremor
 //      until the charge resolves or fizzles.
 //
+//   7. Fracture Veins: as oreHP depletes, deterministic glowing fissures open across the rock —
+//      jagged ember strips sphere-projected onto the body, brightening as each vein opens, so the
+//      laser reads as physically cutting the rock apart before the final pop.
+//
 // PURE RENDER-ONLY PRESENTATION: Never alters physics positions/radii, zero per-frame garbage.
+
+import * as THREE from 'three';
 
 function hashId(id) {
   const s = String(id || '');
@@ -104,6 +110,129 @@ export function resolveYieldSplitPattern(parentId, chunkId) {
   };
 }
 
+// --- Fracture vein rig -------------------------------------------------------
+// One lazily-built THREE.Group per worked rock, childed to the entity root (NOT to the body:
+// the pooled instance leaf renders via InstancedMesh and its visible flag is off, which would
+// hide children). The rig copies the body's transform each frame so cracks tumble with the rock.
+// Each vein is a jagged ribbon sphere-projected at ~0.92R — embedded, so the skin occludes edges
+// and the glow reads as light escaping through the fissure, never a sticker on top.
+
+const VEIN_STATIONS = 7;
+const VEIN_EMBER = 0xff9a3c;
+
+function buildVeinStrip(seed, radius) {
+  const R = Math.max(2, Number.isFinite(radius) ? radius : 6);
+  const dirAngle = ((seed & 0xffff) / 0xffff) * Math.PI * 2;
+  const tilt = (((seed >>> 16) & 0xff) / 255 - 0.5) * 1.7;
+  const axis = new THREE.Vector3(-Math.sin(dirAngle), 0, Math.cos(dirAngle));
+  const dir = new THREE.Vector3(Math.cos(dirAngle), 0, Math.sin(dirAngle)).applyAxisAngle(axis, tilt);
+  const nrm = new THREE.Vector3(0, 1, 0).applyAxisAngle(axis, tilt);
+  const pdir = new THREE.Vector3().crossVectors(nrm, dir).normalize();
+  const span = R * (0.62 + (((seed >>> 24) & 0xff) / 255) * 0.45);
+  const lift = ((((seed >>> 8) & 0xff) / 255) - 0.5) * R * 0.55;
+  const halfW = Math.max(0.22, R * 0.055);
+
+  const centers = [];
+  for (let i = 0; i < VEIN_STATIONS; i++) {
+    const s = -1 + (2 * i) / (VEIN_STATIONS - 1);
+    const jitter = (((Math.imul(seed >>> 8, i + 11) >>> 0) & 0xff) / 255 - 0.5) * span * 0.3;
+    const c = new THREE.Vector3()
+      .addScaledVector(dir, s * span)
+      .addScaledVector(pdir, jitter)
+      .addScaledVector(nrm, lift);
+    c.normalize().multiplyScalar(R * 0.92); // sphere-project: the crack lives IN the surface
+    centers.push(c);
+  }
+  const positions = new Float32Array(VEIN_STATIONS * 2 * 3);
+  const indices = new Uint16Array((VEIN_STATIONS - 1) * 6);
+  const t = new THREE.Vector3();
+  const p = new THREE.Vector3();
+  for (let i = 0; i < VEIN_STATIONS; i++) {
+    const prev = centers[Math.max(0, i - 1)];
+    const next = centers[Math.min(VEIN_STATIONS - 1, i + 1)];
+    t.subVectors(next, prev).normalize();
+    const n = centers[i].clone().normalize();
+    p.crossVectors(n, t).normalize();
+    // Taper to points at both ends — a crack dies into the rock, it does not stop mid-face.
+    const taper = Math.sin(Math.PI * (i + 0.5) / VEIN_STATIONS);
+    const w = halfW * (0.25 + 0.75 * taper);
+    const c = centers[i];
+    const o = i * 6;
+    positions[o] = c.x - p.x * w; positions[o + 1] = c.y - p.y * w; positions[o + 2] = c.z - p.z * w;
+    positions[o + 3] = c.x + p.x * w; positions[o + 4] = c.y + p.y * w; positions[o + 5] = c.z + p.z * w;
+    if (i < VEIN_STATIONS - 1) {
+      const v = i * 2, e = i * 6;
+      indices[e] = v; indices[e + 1] = v + 1; indices[e + 2] = v + 2;
+      indices[e + 3] = v + 1; indices[e + 4] = v + 3; indices[e + 5] = v + 2;
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setIndex(new THREE.BufferAttribute(indices, 1));
+  return geo;
+}
+
+function ensureVeinRig(rec, mesh, entity) {
+  if (rec.veinRig && rec.veinRig.parent === mesh) return rec.veinRig;
+  const radius = Math.max(2, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
+  const rig = new THREE.Group();
+  rig.name = 'sf-fracture-veins';
+  const base = hashId(entity && entity.id);
+  for (let i = 0; i < FRACTURE_VEIN_COUNT; i++) {
+    const geo = buildVeinStrip((base ^ Math.imul(i + 1, 0x85ebca6b)) >>> 0, radius);
+    const mat = new THREE.MeshBasicMaterial({
+      color: VEIN_EMBER,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const strip = new THREE.Mesh(geo, mat);
+    strip.visible = false;
+    strip.frustumCulled = false;
+    rig.add(strip);
+  }
+  mesh.add(rig);
+  rec.veinRig = rig;
+  return rig;
+}
+
+function syncVeinRig(rec, mesh, body, entity, simTime) {
+  const rig = rec.veinRig;
+  if (!rig) return;
+  const open = rec.fracture;
+  if (open <= 0.01) {
+    if (rig.visible) rig.visible = false;
+    return;
+  }
+  rig.visible = true;
+  // The rig shadows the body's own tumble/jitter/swell so cracks stay welded to the skin.
+  if (body.rotation) rig.rotation.set(body.rotation.x, body.rotation.y, body.rotation.z);
+  if (body.position) rig.position.set(body.position.x, body.position.y || 0, body.position.z);
+  if (body.scale) rig.scale.copy(body.scale);
+  const pattern = resolveVeinFracturePattern(entity.id, open, veinScratchForRig);
+  const veins = rig.children;
+  for (let i = 0; i < veins.length; i++) {
+    const strip = veins[i];
+    const o = pattern.veins[i] ? pattern.veins[i].open : 0;
+    if (o <= 0.01) { strip.visible = false; continue; }
+    strip.visible = true;
+    // Heat shimmer: a worked crack pulses faintly while the beam is on it, steady otherwise.
+    const shimmer = 0.82 + 0.18 * Math.sin(simTime * 11 + i * 2.1) * rec.miningAgitation;
+    strip.material.opacity = Math.min(0.92, o * 0.85) * shimmer;
+  }
+}
+
+const veinScratchForRig = {
+  axisAngle: 0,
+  swell: 0,
+  veins: Array.from({ length: FRACTURE_VEIN_COUNT }, () => ({ angle: 0, open: 0 })),
+};
+
 export function createAsteroidMotionTracker() {
   const asteroidStates = new Map();
   let busSubscribers = [];
@@ -155,6 +284,7 @@ export function createAsteroidMotionTracker() {
         baseScaleX: 1,
         baseScaleY: 1,
         baseScaleZ: 1,
+        veinRig: null,
         lastTime: 0,
       };
       asteroidStates.set(asteroidId, rec);
@@ -451,6 +581,15 @@ export function createAsteroidMotionTracker() {
         );
       } else {
         body.scale.set(rec.baseScaleX * scaleMul, rec.baseScaleY * scaleMul, rec.baseScaleZ * scaleMul);
+      }
+    }
+
+    // 6. Fracture veins — glowing fissures that open with ore depletion. Lazily attached once the
+    //    rock is actually worked; plain-object test doubles (no .add) and pristine rocks skip it.
+    if (typeof mesh.add === 'function' && entity && entity.id != null) {
+      if (rec.fracture > 0.02 || rec.veinRig) {
+        ensureVeinRig(rec, mesh, entity);
+        syncVeinRig(rec, mesh, body, entity, simTime);
       }
     }
   }

@@ -99,6 +99,22 @@
    the svg fell back to inline 100% width (~53 px) and ate the whole name cell. A row icon is
    text-sized: 18 px inline with the name, sightline -4 px onto the baseline. */
 .sx-mkt-row__name .of-commodity-icon { display: inline-block; width: 18px; height: 18px; margin-right: 7px; vertical-align: -4px; color: var(--k-bone-62); }
+/* Feature 16 — direct profit badge: held cargo beating its cost basis gets the green mark on the
+   row itself, so route math never leaves the register. */
+.sx-mkt-row__profit {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px 0;
+  font-size: 0.68em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  vertical-align: 2px;
+  color: var(--k-good);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  opacity: 0.92;
+  white-space: nowrap;
+}
 .sx-mkt__quote > * + *, .sx-mkt__console > * + *, .sx-trade > * + * { margin-top: calc(16px * var(--k-s)); }
 .sx-mkt__quote { padding-right: calc(420px * var(--k-s)); }
 .sx-mkt__hero { margin-top: calc(8px * var(--k-s)); }
@@ -377,7 +393,9 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
   background: linear-gradient(to right, rgb(6 8 12 / 84%), rgb(6 8 12 / 42%) 70%, transparent);
 }
 .sx-sw__stage.is-acquiring .sx-sw__nameplate,
-.sx-sw__stage.is-acquiring .sx-sw__slotfield { visibility: hidden; }
+.sx-sw__stage.is-acquiring .sx-sw__slotfield,
+.sx-sw__stage.is-acquiring .sx-sw__camera,
+.sx-sw__stage.is-acquiring .sx-sw__dragcue { visibility: hidden; }
 
 /* The stage: the title block above, the foot below; the stage's absolute children hang off it. */
 .sx-sw__main { display: flex; flex-direction: column; min-height: 0; }

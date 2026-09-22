@@ -1114,7 +1114,9 @@ export const tetherGameplay = {
     this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
     if (reason === 'tether_cut') {
       this.bus.emit('tether:released', { targetId });
-      this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
+      // A cut that lands through reconcile (e.g. the self-sling manual cut) is still the
+      // player's deliberate release — the apex read applies to it.
+      this.bus.emit('tether:releaseRated', rateRelease(state, targetId, { deliberate: true }));
     } else {
       this.bus.emit('tether:broke', { targetId });
       this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
@@ -1690,7 +1692,7 @@ export const tetherGameplay = {
     if (!this._active) return false;
     const targetId = this._active.targetId;
     const cutPayload = this._cutPayload(state, player, targetId);
-    const releaseRating = rateRelease(state, targetId);
+    const releaseRating = rateRelease(state, targetId, { deliberate: true });
     const tangentRelease = assessTangentRelease(state, targetId);
     if (tangentRelease) cutPayload.tangentRelease = tangentRelease;
     const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
@@ -2627,7 +2629,15 @@ export function assessTangentRelease(state, targetId) {
 // caption for every clean release were silently dropped at every distance. That is the bug
 // scripts/check-massline-release-feedback.mjs caught: the "no double-toast" assertion was counting
 // ZERO. Grammar rule 2: if the player cannot see it, it does not exist.
-export function rateRelease(state, targetId) {
+// SLINGSHOT APEX (the "you nailed that" read): a deliberate cut let go at the crest of the swing.
+// The gate is deliberately strict — a clean-class release AND current omega still within reach of
+// the best the swing ever produced, on a swing that was real to begin with. A break, a target
+// loss, or a casual release never qualifies: emitters mark deliberate releases only.
+export const APEX_RELEASE_MIN_SCORE = 0.65;        // 'clean' or better technique
+export const APEX_RELEASE_MIN_OMEGA = 0.45;        // rad/s — the swing itself has to be a swing
+export const APEX_RELEASE_OMEGA_RATIO = 0.88;      // release inside 12% of the observed crest
+
+export function rateRelease(state, targetId, opts) {
   const telemetry = state && state.player && state.player.masslineTelemetry;
   const tether = state && state.player && state.player.tether;
   const owner = state && state.entities && state.entities.get && state.entities.get(state.playerId);
@@ -2635,6 +2645,8 @@ export function rateRelease(state, targetId) {
   const restLength = finite(tether && tether.restLength, finite(telemetry && telemetry.restLength));
   const pair = readCadencePair(owner, payload, restLength);
   const rating = rateCadenceTechnique(pair, { phase: tether && tether.phase });
+  const apexOmega = finite(telemetry && telemetry.maxAngularSpeedSinceLatch);
+  const omegaNow = Math.abs(finite(pair.omega));
   return {
     targetId, sourceId: state && state.playerId != null ? state.playerId : null,
     ...rating, scoringVersion: 'cadence.v1', observedTick: state && state.tick,
@@ -2644,7 +2656,14 @@ export function rateRelease(state, targetId) {
     playerSpeed: Math.hypot(finite(owner && owner.vel && owner.vel.x), finite(owner && owner.vel && owner.vel.z)),
     maxStrainSinceLatch: finite(telemetry && telemetry.maxStrainSinceLatch),
     maxTangentialSpeedSinceLatch: finite(telemetry && telemetry.maxTangentialSpeedSinceLatch),
-    maxAngularSpeedSinceLatch: finite(telemetry && telemetry.maxAngularSpeedSinceLatch),
+    maxAngularSpeedSinceLatch: apexOmega,
+    // True only on a deliberate cut released at the crest of a real swing. Breaks and target
+    // loss emit this rating too; they are never an apex.
+    releasedAtApex: !!(opts && opts.deliberate === true)
+      && pair.valid === true
+      && rating.releaseScore >= APEX_RELEASE_MIN_SCORE
+      && apexOmega >= APEX_RELEASE_MIN_OMEGA
+      && omegaNow >= apexOmega * APEX_RELEASE_OMEGA_RATIO,
   };
 }
 
