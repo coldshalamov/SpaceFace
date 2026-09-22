@@ -41,3 +41,14 @@ never loaded.
 C3 RESULT: **REVISE**. CAGE_READ NO on play+close+abeam (clay+shaded). TUBE_PADDLE
 still YES (forward needle taper at D=144). Wells HOLES. Hitch still wins
 formed-shell massing. No seats. No megatex. Freeze hashes unchanged.
+
+## C4 chase-form (2026-09-21, grok-bot-box)
+
+`chase_form_v4a`. Attacked C3 leftover TUBE_PADDLE by remassing the forward
+third and mid-hull: shorter, broader, blunter bow; fuller shoulder; slower
+taper; side mass grown from the continuous shell. No new fins/wings. Clay
+all-slot. Hitch/Hornet/Drifter never loaded.
+
+C4 RESULT: **REVISE**. CAGE_READ NO on play+close+abeam (clay+shaded).
+TUBE_PADDLE **NO** (needle leftover gone at D=144). Wells HOLES. Hitch still
+wins formed-shell massing/skin. No seats. No megatex. Freeze hashes unchanged.
