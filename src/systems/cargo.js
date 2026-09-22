@@ -4,6 +4,7 @@
 // All cargo mutation funnels through addCargo/removeCargo so the usedVolume/usedMass caches never desync.
 import { COMMODITIES } from '../data/commodities.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
+import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import {
   finiteWholePickupAmount,
   PICKUP_ACCEPTANCE_RETRY_S,
@@ -19,6 +20,8 @@ const JETTISON_POD_RADIUS = 3;
 const JETTISON_EJECT_SPEED = 60;
 const JETTISON_CLEARANCE = 4;
 const JETTISON_PICKUP_EMBARGO_S = 2;
+export const HOT_DOCK_CRUISE_FRACTION = 0.2;
+export const HOT_DOCK_MAX_PODS = 2;
 
 function volumePerUnit(def) {
   return def.persistent ? 0 : (def.vol > 0 ? def.vol : 1);
@@ -286,6 +289,7 @@ export const cargo = {
     this._unsubs = binding.unsubs;
     this._dirty = false;
     this._massDirty = false;
+    this._lastHotDockSpillTick = -1;
 
     const state = this.state;
     // Collapse any number of synchronous cargo mutations into one settled mass receipt during
@@ -337,6 +341,8 @@ export const cargo = {
       }
       // kind 'credits' is economy's concern (§4.4) — ignore here.
     });
+
+    subscribe(binding, 'dock:docked', (payload) => this._spillHotArrival(payload || {}));
 
     // Active-ship cargo capacity changes (fit swap / stats recompute) → adopt the new derived cap.
     const setCap = (shipId, cargoCap) => {
@@ -414,6 +420,47 @@ export const cargo = {
     return removeCargo(this.state, commodityId, qty);
   },
 
+  _spillHotArrival(payload = {}) {
+    const state = this.state;
+    const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!state || !player || !player.pos || !player.vel) return null;
+    const tick = state.tick | 0;
+    if (this._lastHotDockSpillTick === tick) return null;
+    const cruiseSpeed = resolveGovernedCombatSpeed(player, state, 0);
+    if (!(cruiseSpeed > 0)) return null;
+    const threshold = cruiseSpeed * HOT_DOCK_CRUISE_FRACTION;
+    const entrySpeed = Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0);
+    if (!(entrySpeed > threshold)) return null;
+    const desiredPods = entrySpeed >= threshold * 1.25 ? HOT_DOCK_MAX_PODS : 1;
+    const items = state.player && state.player.cargo && state.player.cargo.items || {};
+    const commodityIds = Object.keys(items).filter((id) => Number(items[id]) > 0 && !isUnsellableCargo(state, id)).sort();
+    const spilled = Object.create(null);
+    let pods = 0;
+    for (const commodityId of commodityIds) {
+      while (pods < desiredPods && Number(items[commodityId]) > 0) {
+        const amount = this.jettison(commodityId, 1);
+        if (!(amount > 0)) break;
+        spilled[commodityId] = (spilled[commodityId] || 0) + amount;
+        pods += 1;
+      }
+      if (pods >= desiredPods) break;
+    }
+    if (pods === 0) return null;
+    this._lastHotDockSpillTick = tick;
+    const receipt = {
+      stationId: payload.stationId || null,
+      entrySpeed,
+      cruiseSpeed,
+      threshold,
+      fraction: HOT_DOCK_CRUISE_FRACTION,
+      pods,
+      spilled,
+      tick,
+    };
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('cargo:hotDockSpill', receipt);
+    return receipt;
+  },
+
   destroy() {
     const owned = ownerBindings.get(this);
     if (owned) {
@@ -426,6 +473,7 @@ export const cargo = {
     this.helpers = null;
     this._dirty = false;
     this._massDirty = false;
+    this._lastHotDockSpillTick = -1;
   },
 
   /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount dumped. */
