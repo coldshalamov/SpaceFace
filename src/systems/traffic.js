@@ -21,7 +21,8 @@
 //     never touches player state. Economy impact is via the event bus.
 
 import { isRunSealed } from '../core/runSeal.js';
-import { shouldAmbientHaulerPlan, shouldRunOnTick, takeNearWorkSlice } from '../core/activityScheduler.js';
+import { shouldRunOnTick, takeNearWorkSlice, ownerAiRecord, ownerTeamId, isActiveOwner, hashOwnerKey } from '../core/activityScheduler.js';
+import { SIM_TIER } from '../world/activityClassification.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import {
   ensureActivityClassified,
@@ -421,6 +422,13 @@ const CERES_PRIMARY_ACTION_BY_JOB_KIND = Object.freeze({
 const CERES_ORE_BARGE_UNLOAD_ACTION = Object.freeze({
   action: 'unload', phase: NPC_JOB_PHASE.UNLOAD, intentField: 'destination',
 });
+
+// Ambient-plan gate periods, locked to shouldAmbientHaulerPlan's defaults: trafficPlanOpts never
+// passes activePeriodTicks/sleepPeriodTicks/nearPeriodTicks, so the scheduler's own fallbacks
+// (max(2,…)=2 / max(8,…)=8 / max(2,…)=2) are the constants the call site always produces.
+const AMBIENT_ACTIVE_PERIOD = 2;
+const AMBIENT_SLEEP_PERIOD = 8;
+const AMBIENT_NEAR_PERIOD = 2;
 
 // ── PQ-045.causal-chain ──────────────────────────────────────────────────────────────────────────
 // Nine catalog microevents form ONE authored causal story in the Ceres reference sector (the
@@ -1233,6 +1241,9 @@ export const traffic = {
     this._pendingJobActionIds = new Set();
     this._pendingMinerWorkIds = new Set();
     this._pendingArrivalIds = new Set();
+    // owner -> cached {near,sleep,active} FNV phases for the ambient-plan gate. Entity objects are
+    // stable across ticks; a rebuilt entity (load/restore) re-keys naturally through the WeakMap.
+    this._ambientPhaseCache = new WeakMap();
     this._pendingJobActionTokens = new Map();
     this._pendingMinerWorkTokens = new Map();
     this._pendingArrivalTokens = new Map();
@@ -3872,6 +3883,65 @@ export const traffic = {
     this._active = aliveIds;
   },
 
+  // Allocation-free mirror of shouldAmbientHaulerPlan -> shouldOwnerThink from
+  // core/activityScheduler.js, which is outside this task's edit scope. Same reads, same branch
+  // order, same result; the only differences are that the {…options} spread and the
+  // `${tag}:${id}` key string are replaced by cached per-owner FNV phases. trafficPlanOpts never
+  // sets ownerKey/activePeriodTicks/sleepPeriodTicks/nearPeriodTicks, so the scheduler's own
+  // defaults (anon / 2 / 8 / 2) are the constants mirrored above.
+  _ambientPlanGate(tick, owner, options) {
+    const ai = ownerAiRecord(owner);
+    const team = ownerTeamId(owner);
+    const combat = ai && ai.combatant === true;
+    const hostile = !!(team != null && options.playerTeam != null
+      && team !== options.playerTeam
+      && ai && ai.passive !== true);
+    if (combat || hostile) return true;
+    const activity = owner && owner.activity;
+    const tier = activity && activity.simTier;
+    if (tier === SIM_TIER.S2_ABSTRACT || tier === SIM_TIER.S3_DORMANT || tier === SIM_TIER.S4_AGGREGATE) {
+      if (!(activity && activity.pinnedExact)) return false;
+    }
+    if (tier === SIM_TIER.S1_NEAR && !(activity && activity.pinnedExact)) {
+      return this._ambientPhaseRun(tick, owner, 'near');
+    }
+    if (!isActiveOwner(owner, options)) {
+      return this._ambientPhaseRun(tick, owner, 'sleep');
+    }
+    return this._ambientPhaseRun(tick, owner, 'active');
+  },
+
+  _ambientPhaseRun(tick, owner, tag) {
+    const period = tag === 'sleep' ? AMBIENT_SLEEP_PERIOD
+      : tag === 'near' ? AMBIENT_NEAR_PERIOD
+      : AMBIENT_ACTIVE_PERIOD;
+    // Identical to shouldRunOnTick: ((t % period) + period) % period === ownerPhase(key, period).
+    const t = Number.isInteger(tick) ? tick : Math.floor(Number(tick) || 0);
+    return ((t % period) + period) % period === this._ambientPhase(owner, tag);
+  },
+
+  _ambientPhase(owner, tag) {
+    const period = tag === 'sleep' ? AMBIENT_SLEEP_PERIOD
+      : tag === 'near' ? AMBIENT_NEAR_PERIOD
+      : AMBIENT_ACTIVE_PERIOD;
+    if (!owner || typeof owner !== 'object') {
+      // Original key is `owner && (...)`: a falsy owner IS the key (null -> ''), not 'anon'.
+      return hashOwnerKey(owner) % period;
+    }
+    let rec = this._ambientPhaseCache.get(owner);
+    if (!rec || rec.id !== owner.id) {
+      const suffix = owner.id != null ? owner.id : 'anon';
+      rec = {
+        id: owner.id,
+        near: hashOwnerKey(`near:${suffix}`) % AMBIENT_NEAR_PERIOD,
+        sleep: hashOwnerKey(`sleep:${suffix}`) % AMBIENT_SLEEP_PERIOD,
+        active: hashOwnerKey(`active:${suffix}`) % AMBIENT_ACTIVE_PERIOD,
+      };
+      this._ambientPhaseCache.set(owner, rec);
+    }
+    return rec[tag];
+  },
+
   update(dt, state) {
     if (state.mode !== 'flight') return;
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
@@ -3954,12 +4024,15 @@ export const traffic = {
     const worldRecordIndex = anyWorldSiteRoute
       ? buildWorldRecordIndex(state, this._worldRecordIndexScratch || (this._worldRecordIndexScratch = new Map()))
       : null;
-    const trafficPlanOpts = {
-      playerId: state.playerId,
-      playerTeam: player && player.team,
-      authorityRadius: tableSimAuthorityWuFromState(state),
-      origin: player && player.pos,
-    };
+    // Retained per-tick options record: _ambientPlanGate reads playerId/playerTeam/
+    // authorityRadius/origin synchronously, so the same object is rewritten each update.
+    const trafficPlanOpts = this._trafficPlanOpts || (this._trafficPlanOpts = {
+      playerId: null, playerTeam: null, authorityRadius: 0, origin: null,
+    });
+    trafficPlanOpts.playerId = state.playerId;
+    trafficPlanOpts.playerTeam = player && player.team;
+    trafficPlanOpts.authorityRadius = tableSimAuthorityWuFromState(state);
+    trafficPlanOpts.origin = player && player.pos;
     const inCeres = state.world && state.world.currentSectorId === CERES_ACTIVITY_SECTOR_ID;
     const trafficUrgent = this._trafficTokenUrgent || (this._trafficTokenUrgent = []);
     const trafficRest = this._trafficTokenRest || (this._trafficTokenRest = []);
@@ -4039,7 +4112,8 @@ export const traffic = {
       if (role.flees) { this._stepFlee(e, rec, stations, state); this._syncTrafficRecordToData(e, rec); continue; }       // pirate/raider
       if (role.loiters || rec.role === 'tourist') { this._stepTourist(e, rec, stations, state, dt); this._syncTrafficRecordToData(e, rec); continue; } // tourist
       // Miners/escorts/haulers keep last intent on skipped ticks. Hostiles still plan every tick.
-      if (!shouldAmbientHaulerPlan(state.tick, e, trafficPlanOpts)) continue;
+      // _ambientPlanGate is the allocation-free mirror of shouldAmbientHaulerPlan (above).
+      if (!this._ambientPlanGate(state.tick, e, trafficPlanOpts)) continue;
       if (role.seeks === 'asteroid') { this._stepMiner(e, rec, stations, state); this._syncTrafficRecordToData(e, rec); continue; } // miner
       if (role.escorts) { this._stepEscort(e, rec, list, state); this._syncTrafficRecordToData(e, rec); continue; }       // convoy escort
       if (rec.role === 'tug') { if (this._stepTug(e, rec, stations, state, dt)) { this._syncTrafficRecordToData(e, rec); continue; } } // tug assisting disabled ship

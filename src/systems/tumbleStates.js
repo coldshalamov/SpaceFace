@@ -426,6 +426,15 @@ function clearRecovery(entity) {
   if (entity && entity.data && entity.data.recoveringUntil != null) delete entity.data.recoveringUntil;
 }
 
+// Retained control literal: writePhysicsControl copies every field into its own retained command
+// record before returning, so callers never observe this object.
+const RECOVERY_CONTROL_SCRATCH = {
+  mode: 'tumbling',
+  force: { x: 0, y: 0, z: 0 },
+  torque: { x: 0, y: 0, z: 0 },
+  source: 'hitstun',
+};
+
 function recoveryControl(entity, dt, kind) {
   const profile = resolveFlightProfile(entity);
   const propulsion = resolvePropulsionProfile(entity);
@@ -436,12 +445,9 @@ function recoveryControl(entity, dt, kind) {
   const maxAlpha = positive(propulsion && propulsion.yawBrake, finite(profile.angularBrake, 8)) * Math.max(0.05, yaw);
   const error = -finite(entity.angVel, 0);
   const alpha = clamp(error / Math.max(dt, 1 / 120), -maxAlpha, maxAlpha);
-  return {
-    mode: 'tumbling',
-    force: { x: 0, y: 0, z: 0 },
-    torque: { x: 0, y: 0 + alpha * inertia, z: 0 },
-    source: kind === MASSLINE_TUMBLE_KIND ? 'massline_tumble' : 'hitstun',
-  };
+  RECOVERY_CONTROL_SCRATCH.torque.y = alpha * inertia;
+  RECOVERY_CONTROL_SCRATCH.source = kind === MASSLINE_TUMBLE_KIND ? 'massline_tumble' : 'hitstun';
+  return RECOVERY_CONTROL_SCRATCH;
 }
 
 function combatKernel(host) {

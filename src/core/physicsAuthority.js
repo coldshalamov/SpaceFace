@@ -14,6 +14,13 @@ const TELEMETRY = new WeakMap();
 const AUTHORITY_CACHE = new WeakMap();
 const NORMALIZED_BODY_CACHE = new WeakMap();
 const RESOLVED_BODY_CACHE = new WeakMap();
+// Retained-command bookkeeping lives in side-channel maps so the consumed command object keeps
+// exactly its published shape ({schemaVersion, control, impulses, torqueImpulses, bodyResponse})
+// for consumers and for key-enumerating diagnostics.
+const CONSUMED_COMMANDS = new WeakSet();
+const CONTROL_RECORDS = new WeakMap();       // entity -> reusable control record
+const BODY_RESPONSE_RECORDS = new WeakMap(); // entity -> reusable {massScale,inertiaScale}
+const VECTOR_POOL = [];
 
 const DEFAULT_THRUSTERS = Object.freeze([
   Object.freeze({ id: 'drive-port', forward: 1, reverse: 0.8, strafe: 0.45, yaw: 0.8 }),
@@ -26,46 +33,62 @@ const DEFAULT_THRUSTERS = Object.freeze([
 export function writePhysicsControl(entity, control = {}) {
   if (!entity || typeof entity !== 'object') return null;
   const command = commandFor(entity);
-  command.control = {
-    schemaVersion: PHYSICS_COMMAND_SCHEMA_VERSION,
-    mode: String(control.mode || 'uncontrolled'),
-    force: vector3(control.force),
-    torque: vector3(control.torque),
-    authority: normalizeAuthority(control.authority),
-    source: String(control.source || 'unknown'),
-    maxSpeed: positive(control.maxSpeed, Infinity),
-  };
-  return command.control;
+  let value = CONTROL_RECORDS.get(entity);
+  if (!value) {
+    value = {
+      schemaVersion: PHYSICS_COMMAND_SCHEMA_VERSION,
+      mode: 'uncontrolled',
+      force: { x: 0, y: 0, z: 0 },
+      torque: { x: 0, y: 0, z: 0 },
+      authority: { forward: 1, reverse: 1, strafe: 1, yaw: 1 },
+      source: 'unknown',
+      maxSpeed: Infinity,
+    };
+    CONTROL_RECORDS.set(entity, value);
+  }
+  value.mode = String(control.mode || 'uncontrolled');
+  vector3Into(value.force, control.force);
+  vector3Into(value.torque, control.torque);
+  normalizeAuthorityInto(value.authority, control.authority);
+  value.source = String(control.source || 'unknown');
+  value.maxSpeed = positive(control.maxSpeed, Infinity);
+  command.control = value;
+  return value;
 }
 
 /** Queue a world-space linear impulse. The physics owner applies it on its next tick. */
 export function queuePhysicsImpulse(entity, impulse, evidence = null) {
   if (!entity || typeof entity !== 'object') return false;
-  const value = vector3(impulse);
-  if (evidence) { value.provenance = evidence.provenance; value.tick = evidence.tick; value.kind = evidence.kind; }
-  commandFor(entity).impulses.push(value);
+  const command = commandFor(entity);
+  command.impulses.push(pooledVector3(impulse, evidence));
   return true;
 }
 
 /** Queue a world-space angular impulse. SpaceFace only uses the Y component physically. */
 export function queuePhysicsTorqueImpulse(entity, impulse, evidence = null) {
   if (!entity || typeof entity !== 'object') return false;
-  const value=vector3(impulse);
-  if(evidence){value.provenance=evidence.provenance;value.tick=evidence.tick;value.kind=evidence.kind;}
-  commandFor(entity).torqueImpulses.push(value);
+  const command = commandFor(entity);
+  command.torqueImpulses.push(pooledVector3(impulse, evidence));
   return true;
 }
 
-/** Physics-only: atomically consume all commands written before this system's turn. */
+/**
+ * Physics-only: atomically consume all commands written before this system's turn. The record
+ * is retained (marked consumed, not deleted) so next tick's writes reuse the same command
+ * object and arrays; consumers must read the returned contents before the next write cycle.
+ */
 export function consumePhysicsCommand(entity) {
   const command = COMMANDS.get(entity) || null;
-  if (command) COMMANDS.delete(entity);
+  if (!command || CONSUMED_COMMANDS.has(command)) return null;
+  CONSUMED_COMMANDS.add(command);
   return command;
 }
 
 export function clearPhysicsAuthority(entity) {
   if (!entity || typeof entity !== 'object') return;
   COMMANDS.delete(entity);
+  CONTROL_RECORDS.delete(entity);
+  BODY_RESPONSE_RECORDS.delete(entity);
   TELEMETRY.delete(entity);
   AUTHORITY_CACHE.delete(entity);
   NORMALIZED_BODY_CACHE.delete(entity);
@@ -246,16 +269,27 @@ export function resolvePhysicsBodySpec(entity) {
 export function writePhysicsBodyResponse(entity, response = {}) {
   if (!entity || typeof entity !== 'object') return null;
   const command = commandFor(entity);
-  command.bodyResponse = normalizePhysicsBodyResponse(response);
-  return command.bodyResponse;
+  let value = BODY_RESPONSE_RECORDS.get(entity);
+  if (!value) {
+    value = { massScale: 1, inertiaScale: 1 };
+    BODY_RESPONSE_RECORDS.set(entity, value);
+  }
+  command.bodyResponse = normalizePhysicsBodyResponseInto(value, response);
+  return value;
 }
 
 export function normalizePhysicsBodyResponse(response = {}) {
+  return normalizePhysicsBodyResponseInto({ massScale: 1, inertiaScale: 1 }, response);
+}
+
+function normalizePhysicsBodyResponseInto(out, response = {}) {
   const min = PHYSICS_BODY_RESPONSE_LIMITS.minScale;
   const max = PHYSICS_BODY_RESPONSE_LIMITS.maxScale;
   const massScale = clamp(positive(response.massScale, 1), min, max);
   const inertiaScale = clamp(positive(response.inertiaScale, massScale), min, max);
-  return { massScale, inertiaScale };
+  out.massScale = massScale;
+  out.inertiaScale = inertiaScale;
+  return out;
 }
 
 function commandFor(entity) {
@@ -269,8 +303,47 @@ function commandFor(entity) {
       bodyResponse: null,
     };
     COMMANDS.set(entity, command);
+    return command;
+  }
+  if (CONSUMED_COMMANDS.has(command)) {
+    // The physics owner finished reading the previous cycle's contents. Re-arm the retained
+    // record in place: arrays are emptied by length truncation and the queued vector objects
+    // return to the pool, so a held stale reference cannot shadow fresh writes.
+    CONSUMED_COMMANDS.delete(command);
+    for (let i = 0; i < command.impulses.length; i++) VECTOR_POOL.push(command.impulses[i]);
+    command.impulses.length = 0;
+    for (let i = 0; i < command.torqueImpulses.length; i++) VECTOR_POOL.push(command.torqueImpulses[i]);
+    command.torqueImpulses.length = 0;
+    command.control = null;
+    command.bodyResponse = null;
   }
   return command;
+}
+
+function pooledVector3(source, evidence) {
+  const value = VECTOR_POOL.pop() || { x: 0, y: 0, z: 0 };
+  value.x = finite(source && source.x);
+  value.y = finite(source && source.y);
+  value.z = finite(source && source.z);
+  if (evidence) {
+    value.provenance = evidence.provenance;
+    value.tick = evidence.tick;
+    value.kind = evidence.kind;
+  } else if ('provenance' in value || 'tick' in value || 'kind' in value) {
+    // A pooled object keeps the exact fresh-object shape: evidence fields exist only when
+    // evidence was supplied, never as stale leftovers from a previous queueing.
+    delete value.provenance;
+    delete value.tick;
+    delete value.kind;
+  }
+  return value;
+}
+
+function vector3Into(out, source) {
+  out.x = finite(source && source.x);
+  out.y = finite(source && source.y);
+  out.z = finite(source && source.z);
+  return out;
 }
 
 function authoredPhysicsBody(entity) {
@@ -286,12 +359,17 @@ function vector3(source) {
 }
 
 function normalizeAuthority(authority = {}) {
-  return {
-    forward: clamp(finite(authority.forward, 1), 0, 1),
-    reverse: clamp(finite(authority.reverse, 1), 0, 1),
-    strafe: clamp(finite(authority.strafe, 1), 0, 1),
-    yaw: clamp(finite(authority.yaw, 1), 0, 1),
-  };
+  return normalizeAuthorityInto({
+    forward: 1, reverse: 1, strafe: 1, yaw: 1,
+  }, authority);
+}
+
+function normalizeAuthorityInto(out, authority = {}) {
+  out.forward = clamp(finite(authority.forward, 1), 0, 1);
+  out.reverse = clamp(finite(authority.reverse, 1), 0, 1);
+  out.strafe = clamp(finite(authority.strafe, 1), 0, 1);
+  out.yaw = clamp(finite(authority.yaw, 1), 0, 1);
+  return out;
 }
 
 function normalizeThruster(source, index = 0) {

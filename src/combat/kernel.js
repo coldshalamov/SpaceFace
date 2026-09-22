@@ -55,6 +55,10 @@ export function createCombatKernel(ctx, options = {}) {
   let sortedCacheLength = -1;
   let sortedCache = null;
   const momentumSinkImpulse = { x: 0, y: 0, z: 0 };
+  // Retained source scratch: sortedEntitiesFromSource always copies (slice or sorted spread), so
+  // the kernel-owned fill array never escapes to callers. Saves a fresh array per tick per pass.
+  const sourceScratch = [];
+  const pushSourceEntity = (entity) => { sourceScratch.push(entity); };
 
   for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
   if (bus && typeof bus.on === 'function') {
@@ -233,7 +237,9 @@ export function createCombatKernel(ctx, options = {}) {
   }
 
   function sortedEntitiesForTick() {
-    const source = combatTickEntitySource(state);
+    sourceScratch.length = 0;
+    forEachLivingWorldActor(state, pushSourceEntity);
+    const source = sourceScratch;
     const length = source.length;
     const indexVersion = combatTickIndexVersion(state);
     if (

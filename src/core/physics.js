@@ -71,6 +71,24 @@ export const physics = {
     this._nearMissEmitted = new WeakSet();
     this._pairMaterialScratch = createPairMaterialRecord();
     this._impactOptionsScratch = { backend: 'custom', tick: 0, normal: { x: 0, z: 0 }, causalActorId: null, preSolveClosingSpeed: 0 };
+    // Dedicated scratch for the SG-02 receipt emit path. emitPhysicsImpact copies every field into
+    // a fresh payload synchronously, so a reused record is safe as long as every option field is
+    // rewritten per receipt — including writing undefined over a prior receipt's measured fields.
+    // Kept separate from _impactOptionsScratch so the custom-backend path never inherits stale
+    // player-receipt fields if the backend flips on load.
+    this._sg02ImpactOptionsScratch = {
+      backend: 'rapier-dynamic',
+      tick: 0,
+      normal: { x: 0, z: 0 },
+      causalActorId: null,
+      preSolveClosingSpeed: 0,
+      appliedPlayerDeltaV: undefined,
+      solverPlayerHeadingRad: undefined,
+      solverPlayerYawRateKick: undefined,
+      solverPlayerCourseRad: undefined,
+      appliedPlayerHeadingRad: undefined,
+      appliedPlayerCourseRad: undefined,
+    };
     this._pairMarks = new Map(); // low id -> Map<high id, stamp>; avoids per-frame string pair keys
     this._pairStamp = 1;
     this._dockStationId = null;
@@ -410,29 +428,31 @@ export const physics = {
     const receipts = this._sg02.drainContactImpacts();
     if (!Array.isArray(receipts) || !receipts.length) return 0;
     let emitted = 0;
+    const options = this._sg02ImpactOptionsScratch;
     for (const receipt of receipts) {
       const a = state.entities && state.entities.get ? state.entities.get(receipt.aId) : null;
       const b = state.entities && state.entities.get ? state.entities.get(receipt.bId) : null;
       if (!a || !b || a.alive === false || b.alive === false) continue;
       const material = pairMaterialInto(this._pairMaterialScratch, a, b);
-      const dp = emitPhysicsImpact(this.bus, state, a, b, receipt.impulse, material, receipt.pos, {
-        backend: 'rapier-dynamic',
-        // Owner tick is lifetime-local and restarts whenever SG-02 is rebuilt. Consequence
-        // provenance/status expiry belongs to the canonical simulation tick.
-        tick: state.tick,
-        normal: receipt.normal,
-        causalActorId: receipt.causalActorId,
-        preSolveClosingSpeed: receipt.preSolveClosingSpeed,
-        appliedPlayerDeltaV: receipt.appliedPlayerDeltaV,
-        // PQ-137.11: what the solver tried to do to the player's nose and course, beside what the
-        // structural-give rule let through. Per-tick angles — every receipt of a tick carries the
-        // whole tick's value, so a reader sums per unique tick, never across receipts.
-        solverPlayerHeadingRad: receipt.solverPlayerHeadingRad,
-        solverPlayerYawRateKick: receipt.solverPlayerYawRateKick,
-        solverPlayerCourseRad: receipt.solverPlayerCourseRad,
-        appliedPlayerHeadingRad: receipt.appliedPlayerHeadingRad,
-        appliedPlayerCourseRad: receipt.appliedPlayerCourseRad,
-      });
+      // Every option field is rewritten per receipt; receipt fields absent on non-player
+      // receipts come through as undefined, matching the old literal's Number.isFinite checks.
+      options.backend = 'rapier-dynamic';
+      // Owner tick is lifetime-local and restarts whenever SG-02 is rebuilt. Consequence
+      // provenance/status expiry belongs to the canonical simulation tick.
+      options.tick = state.tick;
+      options.normal = receipt.normal;
+      options.causalActorId = receipt.causalActorId;
+      options.preSolveClosingSpeed = receipt.preSolveClosingSpeed;
+      options.appliedPlayerDeltaV = receipt.appliedPlayerDeltaV;
+      // PQ-137.11: what the solver tried to do to the player's nose and course, beside what the
+      // structural-give rule let through. Per-tick angles — every receipt of a tick carries the
+      // whole tick's value, so a reader sums per unique tick, never across receipts.
+      options.solverPlayerHeadingRad = receipt.solverPlayerHeadingRad;
+      options.solverPlayerYawRateKick = receipt.solverPlayerYawRateKick;
+      options.solverPlayerCourseRad = receipt.solverPlayerCourseRad;
+      options.appliedPlayerHeadingRad = receipt.appliedPlayerHeadingRad;
+      options.appliedPlayerCourseRad = receipt.appliedPlayerCourseRad;
+      const dp = emitPhysicsImpact(this.bus, state, a, b, receipt.impulse, material, receipt.pos, options);
       if (dp > 0) emitted++;
     }
     return emitted;
