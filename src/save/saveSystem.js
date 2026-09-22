@@ -1269,7 +1269,7 @@ export const save = {
           endgameChoice: meta && meta.endingChoice,
           endgameResolved: true,
         }))
-        .sort((a, b) => slotMetaScore(b) - slotMetaScore(a));
+        .sort(compareOccupiedSlotNewestFirst);
     for (const meta of candidates) {
       const prepared = this._prepareNewGamePlusSlot(meta && meta.slot);
       if (!prepared) continue;
@@ -1313,13 +1313,7 @@ export const save = {
   /** Resolve a 'latest' request to the newest slot in the index (used by Continue / mainMenu). */
   _latestSlot() {
     const idx = this._slotIndexWithFallback();
-    let best = null, bestT = -1;
-    for (const slot in idx) {
-      if (!isOccupiedSlotMeta(idx[slot])) continue;
-      const t = slotMetaScore(idx[slot]);
-      if (t >= bestT) { bestT = t; best = slot; }
-    }
-    return best;
+    return selectLatestOccupiedSlot(idx);
   },
 
   // INF-091: when Continue resolves past a NEWER raw-indexed slot, say so explicitly instead of
@@ -1333,12 +1327,7 @@ export const save = {
       if (typeof localStorage === 'undefined') return null;
       raw = normalizeSlotIndex(this._readIndex());
     } catch (err) { return null; }
-    let best = null, bestT = -1;
-    for (const slot in raw) {
-      if (!isOccupiedSlotMeta(raw[slot])) continue;
-      const t = slotMetaScore(raw[slot]);
-      if (t >= bestT) { bestT = t; best = slot; }
-    }
+    const best = selectLatestOccupiedSlot(raw);
     if (!best) return null;
     if (this._latestSlot() === best) return null; // newest is playable — no skip
     let primaryRaw = null, backupRaw = null;
@@ -4460,6 +4449,66 @@ function slotMetaScore(meta) {
   if (t) return t;
   const playtimeS = Number(meta && meta.playtimeS);
   return Number.isFinite(playtimeS) ? playtimeS : 0;
+}
+
+function slotPlaytimeScore(meta) {
+  const playtimeS = Number(meta && meta.playtimeS);
+  return Number.isFinite(playtimeS) ? playtimeS : 0;
+}
+
+/**
+ * Latest-slot authority for Continue, load('latest'), and New Run+.
+ * Higher saved-at time wins. When those times match, higher playtime wins.
+ * When both match, the greater slot id in UTF-16 code-unit order wins.
+ * Object insertion order and integer-index enumeration are not inputs.
+ * Returns the winning key, or null when no occupied slot is present.
+ */
+export function selectLatestOccupiedSlot(slots) {
+  if (!slots || typeof slots !== 'object') return null;
+  let bestKey = null;
+  let bestMeta = null;
+  for (const key of Object.keys(slots)) {
+    if (!key || key === 'index' || isUnsafePlainKey(key)) continue;
+    const meta = slots[key];
+    if (!isOccupiedSlotMeta(meta)) continue;
+    const candidate = {
+      slot: key,
+      savedAt: meta.savedAt,
+      lastSavedAt: meta.lastSavedAt,
+      playtimeS: meta.playtimeS,
+    };
+    if (bestMeta == null || slotMetaBeats(candidate, bestMeta)) {
+      bestKey = key;
+      bestMeta = candidate;
+    }
+  }
+  return bestKey;
+}
+
+function slotMetaBeats(candidate, incumbent) {
+  const scoreDelta = slotMetaScore(candidate) - slotMetaScore(incumbent);
+  if (scoreDelta !== 0) return scoreDelta > 0;
+  const playDelta = slotPlaytimeScore(candidate) - slotPlaytimeScore(incumbent);
+  if (playDelta !== 0) return playDelta > 0;
+  return String(candidate.slot) > String(incumbent.slot);
+}
+
+function compareOccupiedSlotNewestFirst(a, b) {
+  const left = {
+    slot: String((a && a.slot) || ''),
+    savedAt: a && a.savedAt,
+    lastSavedAt: a && a.lastSavedAt,
+    playtimeS: a && a.playtimeS,
+  };
+  const right = {
+    slot: String((b && b.slot) || ''),
+    savedAt: b && b.savedAt,
+    lastSavedAt: b && b.lastSavedAt,
+    playtimeS: b && b.playtimeS,
+  };
+  if (slotMetaBeats(left, right)) return -1;
+  if (slotMetaBeats(right, left)) return 1;
+  return 0;
 }
 
 function slotMetaFromEnvelope(slot, env) {
