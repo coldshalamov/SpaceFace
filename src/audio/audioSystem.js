@@ -18,6 +18,7 @@
 
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { CUE_GAIN } from '../presentation/throttleAnswer.js';
+import { combatVerbRecipe } from './combatVerbCues.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import { bindBombAudio, isBombFieldLoopCue, isBombStatusLoopCue, startBombFieldLoop } from './bombAudio.js';
 import { resolveMasslineInstrument } from './masslineInstrument.js';
@@ -1688,6 +1689,10 @@ export const audio = {
     bus.on('mission:expired', () => this._onCue('deny'));
     bus.on('discovery:plateUnlocked', (p) => this._onDiscoveryUnlocked(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
+    bus.on('combat:shove', (p) => {
+      const id = combatVerbRecipe('shove');
+      if (id) this.play(id, { position: p && p.pos, gain: 0.8 });
+    });
     bus.on('dock:undocked', () => this._onUndocked());
     // Existing encounter/doctrine seams drive presentation pressure only; audio never writes AI.
     bus.on('ai:telegraph', (p) => this._onDoctrineTelegraphAudio(p));
