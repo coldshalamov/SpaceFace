@@ -1,6 +1,6 @@
 // Verifies browser-facing UI screen modules import cleanly and expose valid screen definitions.
 // This catches broken relative imports before the dynamic browser registry silently skips a screen.
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { BINDINGS } from '../src/ui/bindings.js';
 import { controlPrompt } from '../src/ui/controlPrompts.js';
 
@@ -146,12 +146,14 @@ const saveLoadSrc = readFileSync(new URL('../src/ui/screens/saveLoad.js', import
 const baseSrc = readFileSync(new URL('../src/ui/screens/base.js', import.meta.url), 'utf8');
 const localizedCoreCopySrc = readFileSync(new URL('../src/ui/localizedCoreCopy.js', import.meta.url), 'utf8');
 
-// Frontend Tasks A–D moved these screens onto the kit (styles/kit.css). A migrated screen owns no
-// CSS: no STYLE_ID, no injectStyle(), no injected <style>. The list is explicit — not derived from a
-// kit import — so the old mechanism cannot come back on a screen that later drops the import.
-// Not listed: range.js (still injects Task C's live stage sheet), and the unmigrated base.js,
-// sandbox.js (dev only), drill.js (Asteroid Works keeps its own law), automationPanel.js,
-// localmap.js and starmap.js.
+// A migrated screen owns no CSS: no STYLE_ID, no injectStyle(), no injected <style>. Material comes
+// from Deckplate (src/ui/deckplate/); a screen assembles it. The list is explicit — not derived from
+// an import — so the old mechanism cannot come back on a screen that later drops the import.
+//
+// This list only grows. The screens that still own a sheet are named in STILL_OWNS_CSS below with
+// the reason, and that list only shrinks: adding an eighth fails. That ratchet is the point. This
+// tree grew four complete token roots because each programme added one and retired none
+// (design/frontend/THE_BAR.md §1); the same thing happens one stylesheet at a time.
 const MIGRATED_SCREENS = Object.freeze([
   ['mainMenu', '../src/ui/screens/mainMenu.js'],
   ['motionAsk', '../src/ui/screens/motionAsk.js'],
@@ -172,7 +174,30 @@ const MIGRATED_SCREENS = Object.freeze([
   ['crucibleLabControls', '../src/ui/screens/crucibleLabControls.js'],
   ['crucibleLabTelemetry', '../src/ui/screens/crucibleLabTelemetry.js'],
   ['confirm', '../src/ui/confirm.js'],
+  // Added 2026-09-22 with the Deckplate unification.
+  ['ship', '../src/ui/ship/shipScreen.js'],
+  ['station', '../src/ui/station/stationScreen.js'],
+  ['asteroid', '../src/ui/asteroid/asteroidScreen.js'],
+  ['replay', '../src/ui/screens/replay.js'],
+  ['clips', '../src/ui/screens/clips.js'],
+  ['clipExport', '../src/ui/screens/clipExport.js'],
+  ['shareCode', '../src/ui/screens/shareCode.js'],
 ]);
+
+// The surfaces that still inject a sheet of their own, each with the reason it has not moved yet.
+// A screen leaves this list when it migrates; nothing may join it. Progress:
+// design/frontend/UNIFICATION_LEDGER.md.
+const STILL_OWNS_CSS = Object.freeze({
+  range: 'Task C live stage sheet',
+  base: 'unmigrated',
+  sandbox: 'dev-only harness',
+  automationPanel: 'unmigrated',
+  localmap: 'unmigrated',
+  starmap: 'unmigrated',
+  drill: 'Asteroid Works keeps its own design law',
+  asteroidRenderer3d: 'Asteroid Works keeps its own design law',
+  galaxyMap: 'the chart builds its sheet from the deckplate tokens at runtime',
+});
 const migratedInjectingStyle = MIGRATED_SCREENS
   .filter(([, rel]) => {
     const source = readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -180,10 +205,38 @@ const migratedInjectingStyle = MIGRATED_SCREENS
   })
   .map(([name]) => name);
 if (migratedInjectingStyle.length) {
-  console.log('FAIL menu screens - migrated kit screens must not declare STYLE_ID or inject a <style>: ' + migratedInjectingStyle.join(', '));
+  console.log('FAIL menu screens - migrated screens must not declare STYLE_ID or inject a <style>: ' + migratedInjectingStyle.join(', '));
   fail++;
 } else {
   console.log('ok   menu screens - the ' + MIGRATED_SCREENS.length + ' migrated screens own no CSS');
+  ok++;
+}
+
+// The ratchet: every OTHER screen module that injects a sheet must already be named, with a reason.
+const screenDirs = ['../src/ui/screens/', '../src/ui/ship/', '../src/ui/station/', '../src/ui/asteroid/'];
+const migratedPaths = new Set(MIGRATED_SCREENS.map(([, rel]) => rel));
+const unexpectedOwners = [];
+for (const dir of screenDirs) {
+  const base = new URL(dir, import.meta.url);
+  let entries = [];
+  try { entries = readdirSync(base); } catch { continue; }
+  for (const entry of entries) {
+    if (!entry.endsWith('.js')) continue;
+    const rel = dir + entry;
+    if (migratedPaths.has(rel)) continue;
+    const name = entry.slice(0, -3);
+    const source = readFileSync(new URL(rel, import.meta.url), 'utf8');
+    const owns = /STYLE_ID/.test(source) || /createElement\('style'\)/.test(source) || /injectStyle\s*\(/.test(source);
+    if (owns && !Object.hasOwn(STILL_OWNS_CSS, name)) unexpectedOwners.push(name);
+  }
+}
+if (unexpectedOwners.length) {
+  console.log('FAIL menu screens - a screen grew its own stylesheet: ' + unexpectedOwners.join(', ')
+    + '. Material belongs in src/ui/deckplate/; placement belongs in deckplate/screens.js.');
+  fail++;
+} else {
+  console.log('ok   menu screens - no screen outside the ' + Object.keys(STILL_OWNS_CSS).length
+    + ' named holdouts owns a stylesheet');
   ok++;
 }
 // Help is a kit screen (Frontend Task D): its title is the kit's `h1.k-display.k-t-title`, not the

@@ -54,7 +54,12 @@ test('station controller loads kit last and stamps docked Field Hardware tempera
 
 test('station chrome uses produced kit plates and keys, not CSS boxes', () => {
   const css = read('styles/station.css');
-  assert.match(css, /plate\.legend\.strip-lit\.png/);
+  // `plate.legend.strip-lit.png` is gone from the ident badge as of 2026-09-22. That plate was a
+  // nine-slice box built for one line, and the badge holds three facts ("Trade hub · Class L ·
+  // Solar Concord Navy"): it wrapped inside a box sized for one line and printed over its own
+  // border on all seven tabs. The ident is the nameplate's etched eyebrow now. The unlit strip
+  // below is still in use, and the intent this test guards -- produced plates and keys, not CSS
+  // boxes -- is unchanged everywhere else.
   assert.match(css, /plate\.legend\.strip\.png/);
   assert.match(css, /plate\.backdrop\.berth-bay\.png/);
   assert.match(css, /plate\.bench\.sunk\.png/);

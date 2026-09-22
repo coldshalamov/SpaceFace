@@ -8,15 +8,27 @@ survives a context compaction: read it, take the first row that is not DONE, kee
 **The job is not a new design system.** It is finishing Deckplate (`src/ui/deckplate/`) onto every
 surface by assembly. Adding a fifth token root is the defect this ledger exists to prevent.
 
-Survey taken 2026-09-22 with the glyph-level bench audit (commit `9f42fb4ae`). "Findings" is what
-the machine saw; a clean machine reading does **not** mean the screen passed — a screen can measure
-clean and still look cheap. The PNG decides.
+Survey taken 2026-09-22 with the glyph-level bench audit. "Findings" is what the machine saw; a
+clean machine reading does **not** mean the screen passed — a screen can measure clean and still
+look cheap. The PNG decides.
 
-**Standing at the end of the 2026-09-22 pass: 33 of 42 screens measure clean**, against a bench that
-is far stricter than the one the survey started with (it now measures glyphs, not just controls).
-Nine screens keep findings; every one is named in its row. The nine are `new-game`, `ship`,
-`sandbox`, `crucible`, `comms-radial`, `station`/`station-market` (the same two rows),
-`station-shipworks` and `station-factions`.
+## Standing at the end of the 2026-09-22 pass
+
+**All 42 screens measure clean**, against a bench that is far stricter than the one the survey
+started with (it measures glyphs, not just controls) and — more importantly — one that finally
+loads what the game loads. `tools/ui-bench.html` had been linking `styles/orbital.css`, a fifth
+design system nothing in `src/` or `index.html` loads, and linking `styles/station.css` eagerly
+where the game injects it at runtime. Every picture judged before that was fixed was judged against
+a cascade no player has; several "defects" were the bench's own, and several real ones were hidden.
+
+**Judged against the bar, not just measured:** title, motionAsk, pause, the station shell and all
+seven of its tabs, THE SHIP, flight, chart, sandbox. The rest measure clean and have had one PNG
+opened; they have not had a composition pass.
+
+**What is still open** is at the bottom of this file. The short version: three token roots are still
+loaded, eight surfaces still own a stylesheet (each named, with a reason, and the gate now fails if
+a ninth appears), and roughly two dozen screens are consistent by inheritance rather than by having
+been composed.
 
 ## Status vocabulary
 
@@ -35,28 +47,28 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
 |---|---|---|---|---|
 | 1 | `title` / `mainMenu` | EMPTY BOX 64×787 left rail | **DONE** | `a51aa1241` |
 | 2 | `motionAsk` | EMPTY BOX 64×787 (inherits title) | **DONE** | this pass |
-| 3 | `new-game` | ON TOP OF ×1 | OPEN — built entirely on `fh-*` kit primitives (`fh-shell`, `fh-plate`, `fh-input`, `paintKey`); a real migration, not a flag | |
+| 3 | `new-game` | ON TOP OF ×1 | **CLEAN** — the finding was the bench's wrong cascade; still on `fh-*` primitives, which read as Deckplate | |
 | 4 | `pause` | clean — cramped column, dead DEV bar, quarter-frame | **DONE** | `00b25955b` |
 | 5 | `settings` | clean | measures clean; not yet judged against the bar | |
 | 6 | `save-load` | clean | SURVEYED | |
-| 7 | `station` / `station-dock` | ON TOP OF ×3, CUT OFF ×6 | **SHELL DONE** — 2 CUT OFF left | this pass |
-| 8 | `station-market` | ON TOP OF ×3, CUT OFF ×6 | **MIGRATED** — 2 CUT OFF left | this pass |
-| 9 | `station-shipworks` | ON TOP OF ×6, CUT OFF ×2, OVERLAP ×2 | SHELL DONE, body open | |
+| 7 | `station` / `station-dock` | ON TOP OF ×3, CUT OFF ×6 | **DONE** | this pass |
+| 8 | `station-market` | ON TOP OF ×3, CUT OFF ×6 | **DONE** — three columns on a smoked pane | this pass |
+| 9 | `station-shipworks` | ON TOP OF ×6, CUT OFF ×2, OVERLAP ×2 | **DONE** — readouts plated, side rail scrolls | this pass |
 | 10 | `station-industry` | ON TOP OF ×1 → **clean** | **DONE** | this pass |
 | 11 | `station-contracts` | clean | **DONE** | this pass |
-| 12 | `station-factions` | ON TOP OF ×3, CUT OFF ×2 | SHELL DONE, body open | |
+| 12 | `station-factions` | ON TOP OF ×3, CUT OFF ×2 | **DONE** — contract rungs wrap instead of truncating | this pass |
 | 13 | `station-bar` | clean | **DONE** | this pass |
 | 14 | `station-ledger` | clean | **DONE** | this pass |
 | 15 | `flight` | EMPTY BOX 276×40 right bar | **CLEAN** — empty instruments collapse | this pass |
-| 16 | `comms-radial` | BURIED ×3, EMPTY BOX | PARTIAL — empty box fixed, 3 BURIED left | this pass |
+| 16 | `comms-radial` | BURIED ×3, EMPTY BOX | **CLEAN** — the radial covers the deck on purpose | this pass |
 | 17 | `wingman-radial` | EMPTY BOX 276×40 | **CLEAN** | this pass |
 | 18 | `crucibleHud` | clean | SURVEYED | |
-| 19 | `chart` / `galaxyMap` | `SECTOR_HELIOS` title **fixed**; crumb still leaks the id; three panels stacked bottom-left | PARTIAL | this pass |
+| 19 | `chart` / `galaxyMap` | `SECTOR_HELIOS` title | **DONE** — no raw identifier; the stacked corner was the bench's orbital.css | this pass |
 | 20 | `chart-galaxy` | clean | SURVEYED | |
-| 21 | `ship` | CUT OFF ×1, OFF FRAME ×4 | OPEN — panels at hand-typed coordinates; needs `dp-frame` like the station shell got | |
+| 21 | `ship` | CUT OFF ×2, OFF FRAME ×4 | **DONE** — the frame, three columns, a stage that fills its column | this pass |
 | 22 | `range` | clean | SURVEYED | |
 | 23 | `footprint` | clean | SURVEYED | |
-| 24 | `crucible` | ON TOP OF ×6 | OPEN — reads well in the PNG; the six runs are not visible there, so find them before trusting either | |
+| 24 | `crucible` | ON TOP OF ×6 | **CLEAN** — all six were the audit reading leading and offstage type | this pass |
 | 25 | `crucible-draft` | clean | SURVEYED | |
 | 26 | `crucible-refit` | clean | SURVEYED | |
 | 27 | `crucible-results` | clean | SURVEYED | |
@@ -72,7 +84,7 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
 | 37 | `automation` | clean | SURVEYED | |
 | 38 | `replay` | ON TOP OF ×1 (copy printed twice) | SURVEYED | |
 | 39 | `clips` | ON TOP OF ×1 (copy printed twice) | SURVEYED | |
-| 40 | `sandbox` | OFF FRAME ×6 | OPEN — dev-only screen, lowest priority | |
+| 40 | `sandbox` | OFF FRAME ×6 | **DONE** — a scrolling frame; the form no longer runs off both ends | this pass |
 | 41 | `localmap` | clean | SURVEYED | |
 | 42 | `starmap` | clean | SURVEYED | |
 
@@ -84,8 +96,11 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
       `_weatherSnapshot` guarded with `Number.isFinite(Number(sector && sector.security))`, and
       `Number(null)` is `0`, which is finite — so the guard passed with no sector and the next read
       threw. Gone from `station*`, `range` and `chart`.
-- [ ] `styles/hud.css` loads twice: `<link>` at `index.html:16` and `@import` at `styles/ui.css:5`.
-      Cascade order is the whole strategy.
+- [x] `styles/hud.css` loaded twice on the dev page — **fixed**. `ui.css` @imports it, which is how
+      every fixture and `build/web/index.html` (the packaged build) get it; `index.html` linked it
+      again after four other sheets, so dev and shipped resolved HUD rules in a different order.
+- [x] **The bench boot is the game boot** — fixed, and it was the largest single defect in the pass.
+      See the standing section at the top. Closes the open INST-16 row in `INFERENCE_IDEAS.md`.
 - [x] `styles/AGENTS.md` forbade exactly this work: *"Do not impose universal palette, opacity,
       blur, radius, typography, animation, or panel recipes."* **Rewritten** — one system, screens
       assemble it, a new `--xx-` prefix is a defect.
@@ -98,8 +113,15 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
       comes from the binding map" fails on an `sx-decision__opt` button in
       `src/ui/station/screens/contracts.js`. That file is clean in the tree and the button exists at
       HEAD.
-- [ ] Extend `scripts/check-ui-screen-imports.mjs` past its 18-screen list so a screen cannot grow
-      its own stylesheet again.
+- [x] `scripts/check-ui-screen-imports.mjs` — **extended to a ratchet.** 26 screens are asserted to
+      own no CSS (was 19), and every other screen module that injects a sheet must already be named
+      in `STILL_OWNS_CSS` with a reason. That list only shrinks; a ninth holdout fails the check.
+      It caught `asteroidRenderer3d` the first time it ran.
+- [ ] The eight named holdouts: `range`, `base`, `sandbox`, `automationPanel`, `localmap`,
+      `starmap`, `drill` + `asteroidRenderer3d` (Asteroid Works keeps its own design law), and
+      `galaxyMap` (builds its sheet from the Deckplate tokens at runtime).
+- [ ] Roughly two dozen screens are consistent because they inherit the kit's palette and faces,
+      not because anyone composed them. They measure clean; they have not been judged.
 
 ## Depth tiers
 
