@@ -8,6 +8,9 @@ import { zonesForSector } from '../src/data/sectorZones.js';
 import { authorizeAIEngagement, isHostileForAI } from '../src/ai/engagementAuthority.js';
 import { ActivityKind } from '../src/ai/doctrine.js';
 import { pirateDoctrineById } from '../src/data/pirateDoctrines.js';
+import { FIELD_DEFS } from '../src/data/fields.js';
+
+const STARTER_WELL_DIAMETER_WU = FIELD_DEFS.well.radius * 2;
 
 function makeHarness(opts = {}) {
   const sectorId = opts.sectorId || 'sector_helios_prime';
@@ -176,6 +179,20 @@ test('Opening raid lands within three minutes inside ~two screen-depths on seeds
       .filter((e) => e && e.data?.ai?.encounterRole === 'raider');
     assert.ok(haulerEnt, `seed ${seed}: a hauler must be spawned`);
     assert.ok(raiderEnts.length >= 1, `seed ${seed}: raiders must be spawned`);
+
+    for (let i = 0; i < raiderEnts.length; i += 1) {
+      for (let j = i + 1; j < raiderEnts.length; j += 1) {
+        const a = raiderEnts[i];
+        const b = raiderEnts[j];
+        const separation = Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z);
+        const hullLength = Math.max(Number(a.radius) || 0, Number(b.radius) || 0) * 2;
+        assert.ok(separation > hullLength,
+          `seed ${seed}: opening raiders must not stack inside one hull length (got ${separation.toFixed(1)} WU)`);
+        assert.ok(separation < STARTER_WELL_DIAMETER_WU,
+          `seed ${seed}: opening raiders must fit inside one starter-well diameter (${separation.toFixed(1)} >= ${STARTER_WELL_DIAMETER_WU} WU)`);
+        console.log(`seed ${seed}: raider pair separation ${separation.toFixed(1)} WU (hull ${hullLength.toFixed(1)} WU, well diameter ${STARTER_WELL_DIAMETER_WU} WU)`);
+      }
+    }
 
     const haulerDist = Math.hypot(haulerEnt.pos.x - playerPos.x, haulerEnt.pos.z - playerPos.z);
     assert.ok(haulerDist <= 2 * SCREEN_DEPTH_WU + 30,
