@@ -229,6 +229,7 @@ export function installDiagnostics(renderer, opts = {}) {
     reset: resetFrameStats,
     setOverlay,
     toggleOverlay,
+    scenePoolDump: () => (typeof opts.scenePoolDump === 'function' ? opts.scenePoolDump() : null),
     get overlay() { return overlayOn; },
     dispose,
     // expose the raw mirrors for ad-hoc console poking (read-only intent)

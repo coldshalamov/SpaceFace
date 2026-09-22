@@ -41,6 +41,7 @@ import {
   disposePreparedAuthoredBoundary,
   endAuthoredInstanceMeshDisposeRegistrationProbe,
   getAuthoredInstancePoolDiagnostics,
+  dumpAuthoredInstancePoolState,
   asteroidFirstFlightCookKey,
   authoredReadmissionStatus,
   collectFirstFlightCookEntities,
@@ -52,6 +53,7 @@ import {
   preloadAuthoredAssetsForEntity,
   preloadAuthoredPartLibrary,
   pumpAuthoredUpgradeQueue,
+  releaseOwnerInstances,
   prepareFirstQueuedAuthoredBoundaryForOpening,
   prepareAuthoredInstancePoolsForContextLoss,
   publishPreparedAuthoredBoundary,
@@ -61,6 +63,7 @@ import {
   waitForAuthoredUpgradeQueueIdle,
   waitForOpeningCompositionSettled,
   retryAuthoredPartLibrary,
+  retryFailedAuthoredAdmission,
   syncAuthoredInstancePools,
   warmRenderPackageShipPool,
   poolWitnessPalettesForState,
@@ -349,6 +352,7 @@ const _craftMicroMotionOptions = {
   tetherTargetId: null,
   tetherLoad: 0,
   tetherPhase: '',
+  flashReduce: false,
 };
 // Empty by design for PQ-129.20: every known first-visible admission belongs behind the loading
 // boundary. Future exemptions must name a selector and a non-empty reason; the diagnostic helper
@@ -1279,6 +1283,12 @@ function liveFlyDefersOnGlassAuthoredUpgrade(state) {
 
 function queueOrRequestAuthoredUpgrade(owner, entity, mesh, state) {
   if (!canRequestAuthoredUpgrade(entity, state, owner && owner._authoredSectorPrewarmPendingId)) return;
+  // A terminal verdict that published nothing drawable is retryable while the entity stays
+  // relevant — a transient fetch/decode miss must not blank the owner for the session. The
+  // residency poll cadence plus the policy's own backoff bound the queue churn this adds.
+  retryFailedAuthoredAdmission(mesh, typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now());
   if (liveFlyDefersOnGlassAuthoredUpgrade(state) && entityIsOnReadableGlass(entity, state)) {
     const subject = mesh;
     void yieldAfterPresent().then(() => {
@@ -1339,6 +1349,19 @@ function meshNeedsAuthoredDecode(owner, entity) {
   if (data.geometryPending === true) return true;
   if (isAuthoredPendingStatus(data.authoredAssetState)) return true;
   return false;
+}
+
+/**
+ * The resolving marker inside a pending admission substrate draws only while the boundary is
+ * still awaiting its authored body. Driving it off the authored state each frame is what keeps
+ * every transition safe with no transition-specific bookkeeping: pending → marker on,
+ * commit/terminal/readmission flows → the marker is either removed with the substrate or shut
+ * off the same frame the state stops being pending.
+ */
+function syncResolvingMarker(mesh) {
+  const marker = mesh && mesh.userData && mesh.userData.resolvingMarker;
+  if (!marker) return;
+  marker.visible = isAuthoredPendingStatus(mesh.userData.authoredAssetState);
 }
 
 function kickDecodeRunwayAssets(owner, entities) {
@@ -5147,6 +5170,7 @@ export const render = {
         perf: () => state.perfRuntime && state.perfRuntime.getReport ? state.perfRuntime.getReport() : {},
         settings: () => ({ video: { ...((state.settings && state.settings.video) || {}) } }),
         scenePools: () => getAuthoredInstancePoolDiagnostics(scene),
+        scenePoolDump: () => dumpAuthoredInstancePoolState(scene),
         post: () => this._getPostDiagnostics(),
         vfx: () => {
           const sys = ctx.registry && ctx.registry.get('vfx');
@@ -10384,12 +10408,58 @@ export const render = {
       if (mesh) this._livingHullPresentation.detach(mesh);
       else if (entityId === this.state.playerId) this._livingHullPresentation.detach();
     }
+    // The motion trackers keep per-entity records that cache Object3D references scanned
+    // from the mesh (mount pivots, vein rigs, sensor dishes). An entity routinely outlives
+    // its boundary — distance eviction, authored upgrade, recycled save-restore id — so the
+    // record must release those references here or every unbound tree stays pinned by a
+    // still-live record even after disposeObject ran.
+    if (entityId != null) {
+      globalShipMicroMotion.releaseEntityMesh(entityId);
+      globalAsteroidMotion.releaseEntityMesh(entityId);
+      globalInfrastructureMotion.releaseEntityMesh(entityId);
+    }
+    // A save restore reissues ids, so the record pinning this exact mesh can live under a
+    // recycled key the entity-id release above cannot reach — release by identity too.
+    if (mesh) {
+      globalShipMicroMotion.releaseMesh(mesh);
+      globalAsteroidMotion.releaseMesh(mesh);
+      globalInfrastructureMotion.releaseMesh(mesh);
+    }
     const world = this._presentationWorld;
     if (!world) return false;
     const handle = world.handleForEntityId(entityId, this._presentationHandleScratch);
     if (!handle) return false;
     this._persistentSubmitLanes.release(entityId);
     return world.unbindMesh(handle, mesh);
+  },
+
+  // Dead-id sweep for the global motion trackers. Records are keyed by entity id and
+  // nothing removes them when an entity is destroyed or when a save restore reissues
+  // ids, so without this their cached mesh references pin retired boundary trees for the
+  // whole session. The active set unions every presentation source (entity map, bound
+  // meshes, journal/ledger rows, player) so live records — including event-created
+  // records for not-yet-meshed entities — are never dropped.
+  _pruneMotionTrackerRecords(presentationList) {
+    const state = this.state;
+    const active = this._motionPruneIds || (this._motionPruneIds = new Set());
+    active.clear();
+    const entities = state && state.entities;
+    if (entities && typeof entities.keys === 'function') {
+      for (const id of entities.keys()) active.add(id);
+    }
+    for (const id of this._meshes.keys()) active.add(id);
+    if (presentationList) {
+      for (let i = 0; i < presentationList.length; i++) {
+        const e = presentationList[i];
+        if (e && e.id != null) active.add(e.id);
+      }
+    }
+    if (state && state.playerId != null) active.add(state.playerId);
+    globalShipMicroMotion.prune(active);
+    globalAsteroidMotion.prune(active);
+    globalPickupMotion.prune(active);
+    globalOrdnanceMotion.prune(active);
+    globalInfrastructureMotion.prune(active);
   },
 
   _rebindPresentationMeshes() {
@@ -10548,6 +10618,9 @@ export const render = {
       this._bindPresentationMesh(entity, mesh);
       queueOrRequestAuthoredUpgrade(this, entity, mesh, state);
     }
+    // Reissued or destroyed ids leave orphaned motion-tracker records holding mesh
+    // references — sweep them now that the live set is freshly computed.
+    this._pruneMotionTrackerRecords(presentationList);
     // This call completed the requested full safety scan. Any remaining queue is a bounded build
     // drain, not a reason to repeat the four collection passes on every following display frame.
     this._meshReconcileDirty = false;
@@ -10598,6 +10671,10 @@ export const render = {
 
     const presentationList = this._presentationMeshScratch || (this._presentationMeshScratch = []);
     collectMeshPresentationEntities(state, presentationList);
+    // Distance evictions above already released record mesh refs; this sweeps records
+    // whose entity ids vanished entirely (destruction, save-restore reissue) between
+    // full reconciles.
+    this._pruneMotionTrackerRecords(presentationList);
     kickDecodeRunwayAssets(this, presentationList);
     const env = renderAdmissionEnv(state);
     const urgentShips = this._meshResidencyUrgentShipCandidates
@@ -11119,6 +11196,7 @@ export const render = {
       const protectedRoot = isProtectedEntityMesh({ isPlayer, forceRender, neverCull });
       // A protected root keeps its prior visibility when the latest fence has no pose for it.
       // Ordinary stale identities still fail closed and leave the submit list immediately.
+      syncResolvingMarker(mesh);
       const visibilityChanged = !(!posed && protectedRoot)
         && applyEntityMeshVisibility(mesh, posed && shouldSubmitEntityMesh({
           isPlayer,
@@ -11128,6 +11206,7 @@ export const render = {
           snapshotMissing: !posed,
           pipelinesPending: !!(mesh.userData && mesh.userData.pipelinesPending),
           authoredPending: isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState),
+          resolvingMarker: !!(mesh.userData && mesh.userData.authoredResolvingMarker),
           geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
           activityFrame: this._activityFrame,
           entityId,
@@ -11257,6 +11336,7 @@ export const render = {
       } else if (userData.onGlassPendingSince != null) {
         userData.onGlassPendingSince = null;
       }
+      syncResolvingMarker(mesh);
       const visibilityChanged = !(!posed && protectedRoot)
         && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
           isPlayer,
@@ -11270,6 +11350,7 @@ export const render = {
           snapshotMissing: !posed,
           pipelinesPending: !!(mesh.userData && mesh.userData.pipelinesPending),
           authoredPending: isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState),
+          resolvingMarker: !!(mesh.userData && mesh.userData.authoredResolvingMarker),
           geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
           activityFrame: this._activityFrame,
           entityId,
@@ -11334,6 +11415,7 @@ export const render = {
           _craftMicroMotionOptions.tetherTargetId = tetherView ? tetherView.targetId : null;
           _craftMicroMotionOptions.tetherLoad = tetherView && Number.isFinite(tetherView.load) ? tetherView.load : 0;
           _craftMicroMotionOptions.tetherPhase = tetherView && tetherView.phase ? tetherView.phase : '';
+          _craftMicroMotionOptions.flashReduce = _worldSiteA11y.reducedFlash;
           globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
         } else if (typeName === 'projectile') {
           globalProjectileMotion.updateProjectileMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
@@ -12413,11 +12495,16 @@ export const render = {
           };
         this.state.render.openingSubmissionPreSubmitValidation = preSubmitValidation;
         if (!preSubmitValidation.ok) {
+          // Only program identities can be missing-and-needed: a required program key absent
+          // from the renderer recompiles synchronously at first use — a real first-draw hitch.
+          // Geometry/texture/shadow "missing" rows are structurally stale: `currentResources`
+          // is re-collected from live plan leaves at validation time, so a required id absent
+          // from it has no live owner and can never be submitted by the first picture. A
+          // churned row held this gate for the full 15s failsafe once already (854 refused
+          // frames over one orphaned texture uuid). They stay reported for evidence but must
+          // not park the opening frame.
           const missingCount = (preSubmitValidation.missingProgramKeys || []).length
-            + (preSubmitValidation.missingProgramBindings || []).length
-            + (preSubmitValidation.missingGeometryBufferIds || []).length
-            + (preSubmitValidation.missingTextureIds || []).length
-            + (preSubmitValidation.missingShadowResourceIds || []).length;
+            + (preSubmitValidation.missingProgramBindings || []).length;
           // Loading admission may compile extra programs/textures after the frozen census.
           // Those extras are already resident, so they are not a first-draw hitch. Only a
           // missing required identity can refuse the first presented frame.
@@ -13605,6 +13692,10 @@ function disposeObject(obj) {
     if (typeof disposePresentation === 'function') disposePresentation();
     const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
     if (typeof releaseResidency === 'function') releaseResidency('render-boundary-disposed');
+    // Instance-pool slots hold `slot.owner -> c`; THREE's `removed` event only reaches the
+    // outermost detached root, so owner nodes nested under this tree never drain their pool
+    // slots from the listener. Draining here releases the slot and lets the chunk retire.
+    releaseOwnerInstances(c);
     if ((c.isBatchedMesh || c.isInstancedMesh) && typeof c.dispose === 'function'
         && !isBorrowedAsteroidInstanceResource(c)) c.dispose();
     const shared = !!(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo

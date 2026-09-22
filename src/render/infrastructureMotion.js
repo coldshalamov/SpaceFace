@@ -352,6 +352,36 @@ export function createInfrastructureMotionTracker() {
     }
   }
 
+  function nodeInsideTree(node, root) {
+    for (let cur = node; cur; cur = cur.parent) {
+      if (cur === root) return true;
+    }
+    return false;
+  }
+
+  // Same teardown contract as the other motion trackers: the entity outlives its mesh, so
+  // the record drops Object3D references (scanned dish nodes) while keeping motion state.
+  function releaseEntityMesh(entityId) {
+    const rec = infrastructureStates.get(entityId);
+    if (!rec) return;
+    rec.dishNodes = null;
+    rec.dishScanned = false;
+  }
+
+  // Ids recycle across save restore; a record keyed by a reused id can keep dish node
+  // references into a retired station mesh — release by mesh identity too.
+  function releaseMesh(mesh) {
+    if (!mesh) return;
+    for (const rec of infrastructureStates.values()) {
+      if (!rec.dishNodes) continue;
+      const hit = rec.dishNodes.some((entry) => entry && entry.node && nodeInsideTree(entry.node, mesh));
+      if (hit) {
+        rec.dishNodes = null;
+        rec.dishScanned = false;
+      }
+    }
+  }
+
   function prune(activeEntityIds) {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of infrastructureStates.keys()) {
@@ -368,6 +398,8 @@ export function createInfrastructureMotionTracker() {
     updateStationMotion,
     updateWreckMotion,
     prune,
+    releaseEntityMesh,
+    releaseMesh,
   };
 }
 

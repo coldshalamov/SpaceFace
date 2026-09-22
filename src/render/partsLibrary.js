@@ -683,6 +683,42 @@ export function getAuthoredInstancePoolDiagnostics(scene) {
   return { ...state.stats };
 }
 
+/** Forensic dump: per-pool chunk/slot state and which owners still hold slots. */
+export function dumpAuthoredInstancePoolState(scene) {
+  const state = scene && sceneStates.get(scene);
+  if (!state) return null;
+  const ownerLabel = (owner) => {
+    const ud = owner && owner.userData || {};
+    return owner && (ud.sfStableEntityKey || ud.entityId || owner.name || owner.type) || 'null';
+  };
+  const pools = [];
+  for (const [key, pool] of state.pools) {
+    pools.push({
+      key,
+      retirementPending: !!pool.retirementPending,
+      chunks: [...pool.chunks].map((chunk) => ({
+        name: chunk.mesh && chunk.mesh.name,
+        ordinal: chunk.ordinal,
+        retired: !!chunk.retired,
+        settling: !!chunk.retirementSettling,
+        inScene: !!(chunk.mesh && chunk.mesh.parent),
+        count: chunk.mesh ? chunk.mesh.count : -1,
+        slots: chunk.slots.size,
+        slotOwners: [...chunk.slots.values()].map((slot) => ownerLabel(slot.owner)),
+      })),
+    });
+  }
+  const retiring = [...state.retiringChunks].map((chunk) => ({
+    name: chunk.mesh && chunk.mesh.name,
+    retired: !!chunk.retired,
+    settling: !!chunk.retirementSettling,
+    slots: chunk.slots.size,
+    inScene: !!(chunk.mesh && chunk.mesh.parent),
+  }));
+  const owners = [...state.ownerSlots.keys()].map(ownerLabel);
+  return { pools, retiring, owners };
+}
+
 export const PART_LIBRARY_CONTRACT = Object.freeze({
   version: 1,
   root: PART_ROOT,
@@ -4129,6 +4165,7 @@ function cancelQueuedJob(state, job) {
   cleanupQueuedJob(state, job);
   const residency = job && job.renderer && getAssetResidency(job.renderer);
   if (residency && job.boundary) residency.releaseOwner(job.boundary, 'upgrade-job-cancelled');
+  if (job.boundary) releaseOwnerInstances(job.boundary);
   if (job.boundary && job.boundary.userData) {
     job.boundary.userData.authoredAssetState = 'cancelled-before-load';
   }
@@ -5847,6 +5884,11 @@ function handoffBootstrapIfCovered(renderer, residency = null) {
 
 export function releaseBoundaryResidency(renderer, boundary, reason) {
   const residency = renderer && getAssetResidency(renderer);
+  // The boundary owns its composed parts' instance-pool slots. THREE's `removed` event only
+  // reaches the outermost detached root, so a boundary nested under an entity mesh never gets
+  // the listener drain — the slot keeps `owner -> boundary` alive and the chunk can never
+  // retire. Every residency release doubles as the owner-instance drain.
+  if (boundary) releaseOwnerInstances(boundary);
   return residency && boundary ? residency.releaseOwner(boundary, reason) : 0;
 }
 
@@ -9735,9 +9777,9 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
       chunk.meshDisposed = true;
     });
   }
-  if (cleanupErrors.length) {
-    throw new AggregateError(cleanupErrors, `Instance chunk ${chunk.mesh?.name || chunk.ordinal} cleanup failed`);
-  }
+  // Registry removal is unconditional: a failed GPU-side cleanup must still retire the
+  // chunk. Otherwise the half-finalized chunk stays pinned in retiringChunks/pool.chunks
+  // forever — detached from the scene but holding its slots, mesh, and pool alive.
   chunk.retired = true;
   if (chunk.packageAdmission === admission) chunk.packageAdmission = null;
   state.affectedChunks.delete(chunk);
@@ -9747,6 +9789,9 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
   chunk.free.length = 0;
   const index = pool.chunks.indexOf(chunk);
   if (index >= 0) pool.chunks.splice(index, 1);
+  if (cleanupErrors.length) {
+    throw new AggregateError(cleanupErrors, `Instance chunk ${chunk.mesh?.name || chunk.ordinal} cleanup failed`);
+  }
   return chunk;
 }
 
@@ -10270,8 +10315,10 @@ function registerOwnerRelease(owner, release) {
   if (!state) {
     state = { releases: new Set(), pending: new Set(), errors: [] };
     state.listener = () => {
-      const errors = drainOwnerReleaseCallbacks(state);
-      if (errors.length) throw new AggregateError(errors, 'Authored instance owner release failed');
+      // Never throw through Object3D's event dispatch: scene.remove() callers would see a
+      // GPU cleanup failure abort their whole eviction sweep. Errors stay recorded and are
+      // surfaced by releaseOwnerInstances; failed releases re-queue for that drain.
+      drainOwnerReleaseCallbacks(state);
     };
     owner.addEventListener('removed', state.listener);
     ownerReleaseState.set(owner, state);
@@ -10279,7 +10326,7 @@ function registerOwnerRelease(owner, release) {
   state.releases.add(release);
 }
 
-function releaseOwnerInstances(owner) {
+export function releaseOwnerInstances(owner) {
   const state = ownerReleaseState.get(owner);
   if (!state) return Promise.resolve(true);
   drainOwnerReleaseCallbacks(state);

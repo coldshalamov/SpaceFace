@@ -56,9 +56,19 @@
 //      stretches along it. Letting go collapses that pose and thumps the body back.
 //
 // PURE RENDER-ONLY PRESENTATION: Never mutates sim state, determinism-safe, zero per-frame garbage.
-// Transform-only mesh edits (position/rotation/scale); shared materials are never touched.
+// Transform edits stay on position/rotation/scale. Engine-bell cooldown clones a material onto
+// that bell once and writes only the clone, so a shared hull material is never tinted.
+//  29. Nozzle thermal decay: sustained burn charges the bells white-hot; releasing them cools
+//      through cherry to gunmetal over two seconds.
+//  30. Drift slipstream demand: cutting forward thrust while sliding or yawing publishes a
+//      cold-gas ribbon request the overhead presentation draws along the slide.
 
 import { resolveRcsFirings, resolveActuatorScale } from './rcsJets.js';
+import {
+  integrateBellHeat,
+  resolveSlipstreamInto,
+  sampleBellThermal,
+} from '../presentation/flightOverheadMath.js';
 
 function wrapAngle(a) {
   let res = (a + Math.PI) % (Math.PI * 2);
@@ -423,6 +433,9 @@ export function createShipMicroMotionTracker() {
         rcsLat: 0,
         rcsYaw: 0,
         rcsMain: 0,
+        bellHeat: 0,
+        bellCool: true,
+        slipstream: null,
 
         // Engine bell gimbal + boost ignition
         prevBoosting: false,
@@ -922,6 +935,62 @@ export function createShipMicroMotionTracker() {
 
   // Iterative mount scan, duck-typed for THREE groups and plain mock graphs. Runs once per
   // mesh identity (rebuilds rescan); never on the steady-state path. Transform targets only.
+  function captureBellHeatSkin(entry) {
+    if (!entry || !entry.heatSkin || entry.heatMats) return;
+    const node = entry.node;
+    if (!node) return;
+    const src = node.material;
+    const list = Array.isArray(src) ? src : (src ? [src] : []);
+    const clones = new Array(list.length);
+    const base = new Array(list.length);
+    let any = false;
+    for (let i = 0; i < list.length; i++) {
+      const mat = list[i];
+      if (!mat || !mat.emissive || typeof mat.clone !== 'function' || typeof mat.emissive.setRGB !== 'function') {
+        clones[i] = null;
+        base[i] = null;
+        continue;
+      }
+      const cloned = mat.clone();
+      clones[i] = cloned;
+      base[i] = {
+        r: cloned.emissive.r,
+        g: cloned.emissive.g,
+        b: cloned.emissive.b,
+        intensity: Number.isFinite(cloned.emissiveIntensity) ? cloned.emissiveIntensity : 0,
+      };
+      any = true;
+    }
+    if (!any) return;
+    node.material = Array.isArray(src) ? clones.map((cloned, i) => cloned || list[i]) : clones[0];
+    entry.heatMats = clones;
+    entry.heatBase = base;
+  }
+
+  function applyBellThermal(rec, heat, flashReduce) {
+    const sample = sampleBellThermal(heat);
+    const flash = flashReduce ? 0.28 : 1;
+    for (let i = 0; i < rec.bellCount; i++) {
+      const bell = rec.bells[i];
+      if (!bell || !bell.heatSkin) continue;
+      if (!bell.heatMats) captureBellHeatSkin(bell);
+      const mats = bell.heatMats;
+      if (!mats) continue;
+      for (let m = 0; m < mats.length; m++) {
+        const mat = mats[m];
+        const base = bell.heatBase[m];
+        if (!mat || !base) continue;
+        if (sample.intensity <= 0.001) {
+          mat.emissive.setRGB(base.r, base.g, base.b);
+          mat.emissiveIntensity = base.intensity;
+        } else {
+          mat.emissive.setRGB(sample.r, sample.g, sample.b);
+          mat.emissiveIntensity = sample.intensity * flash;
+        }
+      }
+    }
+  }
+
   function scanMountPivots(rec, mesh, hull) {
     rec.mountMesh = mesh;
     rec.bellCount = 0;
@@ -981,6 +1050,12 @@ export function createShipMicroMotionTracker() {
             } else {
               entry.baseSX = 1; entry.baseSY = 1; entry.baseSZ = 1;
             }
+            entry.heatSkin = !entry.isPlume && !isSocket && (
+              lower.indexOf('nozzle') >= 0 || lower.indexOf('bell') >= 0
+              || lower.indexOf('exhaust') >= 0 || lower.indexOf('engine') >= 0
+            );
+            entry.heatMats = null;
+            entry.heatBase = null;
             rec.bellCount++;
           }
         }
@@ -1300,6 +1375,21 @@ export function createShipMicroMotionTracker() {
     // Engine bells steer with stern-local demand (translation minus yaw couple): the drive
     // visibly aims the push. Pitch nods with main-drive power.
     if (rec.mountMesh !== mesh) scanMountPivots(rec, mesh, hull);
+    const driveHeat = isBoosting ? 1 : mainN;
+    rec.bellHeat = integrateBellHeat(rec.bellHeat || 0, driveHeat, dt);
+    if (!((rec.bellHeat || 0) < 0.004 && rec.bellCool)) {
+      applyBellThermal(rec, rec.bellHeat, !!(options && options.flashReduce));
+      rec.bellCool = rec.bellHeat < 0.004;
+    }
+    if (!rec.slipstream) rec.slipstream = { active: false, intensity: 0, side: 0, yawCouple: 0 };
+    resolveSlipstreamInto({
+      throttle: mainN,
+      boosting: isBoosting,
+      lateralSpeed: latV,
+      yawRate,
+      lateralDemand: latN,
+      yawDemand: yawN,
+    }, rec.slipstream);
     const gimbalScale = reducedMotion ? 0.5 : 1.0;
     const targetGimbalYaw = (yawN - latN) * GIMBAL_YAW_MAX * gimbalScale;
     const targetGimbalPitch = -mainN * GIMBAL_PITCH_MAX * gimbalScale;
@@ -1735,6 +1825,36 @@ export function createShipMicroMotionTracker() {
     return true;
   }
 
+  function peekRecord(entityId) {
+    return craftMotion.get(entityId) || null;
+  }
+
+  function clearRecordMeshRefs(rec) {
+    if (!rec) return;
+    rec.mountMesh = null;
+    rec.bellCount = 0;
+    rec.rcsNozzleCount = 0;
+    if (rec.bells) rec.bells.length = 0;
+    if (rec.rcsNozzles) rec.rcsNozzles.length = 0;
+  }
+
+  // Mesh teardown path: the entity may stay alive while its visual boundary is evicted,
+  // rebound, or disposed under a recycled id. The record keeps its motion state but must
+  // drop every Object3D reference or the old boundary tree stays anchored forever.
+  function releaseEntityMesh(entityId) {
+    clearRecordMeshRefs(craftMotion.get(entityId));
+  }
+
+  // Save-restore reissues ids, so a dead boundary can be pinned by a record whose key was
+  // recycled onto a different entity type (that entity's updates never rewrite mountMesh).
+  // Releasing by mesh identity covers every record regardless of key churn.
+  function releaseMesh(mesh) {
+    if (!mesh) return;
+    for (const rec of craftMotion.values()) {
+      if (rec.mountMesh === mesh) clearRecordMeshRefs(rec);
+    }
+  }
+
   function prune(activeEntityIds) {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of craftMotion.keys()) {
@@ -1779,7 +1899,10 @@ export function createShipMicroMotionTracker() {
     onKilled,
     onSpawned,
     prune,
+    releaseEntityMesh,
+    releaseMesh,
     getRecord,
+    peekRecord,
   };
 }
 

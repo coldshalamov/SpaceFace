@@ -594,6 +594,36 @@ export function createAsteroidMotionTracker() {
     }
   }
 
+  function nodeInsideTree(node, root) {
+    for (let cur = node; cur; cur = cur.parent) {
+      if (cur === root) return true;
+    }
+    return false;
+  }
+
+  // The asteroid survives its boundary: keep the tumble/motion state but release the
+  // Object3D references (body + vein rig) so an evicted or disposed mesh tree can retire.
+  function releaseEntityMesh(asteroidId) {
+    const rec = asteroidStates.get(asteroidId);
+    if (!rec) return;
+    rec.veinRig = null;
+    rec.scaleBodyRef = null;
+  }
+
+  // Recycled ids can leave a record keyed by a live-but-different entity while its body /
+  // rig references still point into a dead mesh tree — release by mesh identity as well.
+  function releaseMesh(mesh) {
+    if (!mesh) return;
+    for (const rec of asteroidStates.values()) {
+      const rigHit = rec.veinRig && nodeInsideTree(rec.veinRig, mesh);
+      const bodyHit = rec.scaleBodyRef && nodeInsideTree(rec.scaleBodyRef, mesh);
+      if (rigHit || bodyHit) {
+        rec.veinRig = null;
+        rec.scaleBodyRef = null;
+      }
+    }
+  }
+
   function prune(activeEntityIds) {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of asteroidStates.keys()) {
@@ -616,6 +646,8 @@ export function createAsteroidMotionTracker() {
     onImpact,
     getFracture,
     prune,
+    releaseEntityMesh,
+    releaseMesh,
   };
 }
 
