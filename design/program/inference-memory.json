@@ -74,18 +74,6 @@
   ],
   "units": [
     {
-      "id": "seed-npc-1",
-      "date": "2026-08-07",
-      "wf": "WF-01",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "Ceres cast jobs",
-      "fingerprint": "domain=wf-01,sector=ceres,subject=npc-jobs",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
       "id": "seed-npc-2",
       "date": "2026-08-08",
       "wf": "WF-01",
@@ -1631,6 +1619,19 @@
       "references": [],
       "integration": "live",
       "commit": "df4d6bd90",
+      "verification": "focused_green"
+    },
+    {
+      "id": "verb-03-hitch-hint-heavy-hauler",
+      "date": "2026-09-22",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "hitch hint gate accepts any passive civilian ship_mule freighter (opening mule included), not only express-liner itineraries",
+      "fingerprint": "verb=ride,subject=hitch-hint,sector=helios,domain=verb",
+      "references": [],
+      "integration": "live",
+      "commit": "fb1c6484a",
       "verification": "focused_green"
     }
   ],

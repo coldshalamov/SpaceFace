@@ -75,7 +75,7 @@ not to invent.
 |---|---|---|---|---|---|
 | VERB-01 | When the opening raid times out, the ships are still there | `src/data/encounters/015-opening-hauler-raid.js` | `raid_over` does not `despawnAll`; hauler and raiders remain ordinary entities | Add a fence route (§22 F11). Add encounter 016 | SHIPPED |
 | VERB-02 | The opening raid is already happening; it does not wait for accept | `src/data/encounters/015-opening-hauler-raid.js` | No offer choice and no pass-on-timeout; the fight is in the sky | Rewrite spawn range or timing (§22 A1) | SHIPPED 0c4293e4d |
-| VERB-03 | The hitch hint can fire on a heavy hauler, not only an express liner | `src/systems/onboarding.js` | Locking the opening mule can show the existing hitch hint once | Add a tow force (§22 F14). Flip the 47-A pin | OPEN |
+| VERB-03 | The hitch hint can fire on a heavy hauler, not only an express liner | `src/systems/onboarding.js` | Locking the opening mule can show the existing hitch hint once | Add a tow force (§22 F14). Flip the 47-A pin | SHIPPED fb1c6484a |
 | VERB-04 | The first Well you drop tells you, once, that you dropped it | `src/systems/onboarding.js` | The first player `fields:deployed` emits one hint and does not repeat that session | Change well force or radius | OPEN |
 | VERB-05 | A detected stunt says its name once, as a receipt | `src/systems/stuntGrammar.js`, `src/ui/hudAttention.js` | `stunt:trickDetected` admits one receipt with the trick name | Add a combo meter. Toast a shove, hit, or dock sentence (§22 G3) | OPEN |
 | VERB-06 | The opening hauler's cargo can cook when it slams | `src/data/encounters/015-opening-hauler-raid.js` | Its commodity is one `lootShards.js` already treats as a volatile slam | Add an explosive system. Retint pods (§22 F4) | SHIPPED f6ca40d5b |
@@ -160,6 +160,7 @@ not to invent.
 | TOOL-03 | tool-03-starter-shot-audition | this mark commit | Kept authored `wpn_pulse.wav`; Kenney `laserSmall_000.ogg` measures lighter (-5.4 dB mean, less low-band, brighter top) — not the heavier shot |
 | INST-02 | inst-02-comms-fan-power-rail | 5fb238ab7 | hub/wedges/haildeck links off `--sf-surface` + 6px web radius, onto deckplate bezel + glass tokens |
 | TOOL-02 | tool-02-hover-tab-sounds | df4d6bd90 | `sfx_ui_hover` binds Kenney tick_002, `sfx_ui_tab` binds select_002; neither is `ui_click` |
+| VERB-03 | verb-03-hitch-hint-heavy-hauler | fb1c6484a | hitch gate accepts any passive `ship_mule` freighter incl. the opening mule; express itinerary preserved |
 
 ## CUT
 
