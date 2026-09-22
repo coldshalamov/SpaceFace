@@ -1402,6 +1402,19 @@
       "integration": "live",
       "commit": "034894a3e",
       "verification": "focused_green"
+    },
+    {
+      "id": "starved-chain-station-news",
+      "date": "2026-09-22",
+      "wf": "WF-09",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Killing a miner now leaves evidence: the hauler's empty run publishes a shortfall line at its destination station instead of the chain failing invisibly",
+      "fingerprint": "verb=announce,subject=station news,sector=all,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "da6a34565",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
