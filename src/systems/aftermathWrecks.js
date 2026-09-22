@@ -8,6 +8,7 @@
 // salvage, or sectorSim edits.
 
 import { hash32 } from '../core/rng.js';
+import { salvagePoolFromManifest } from './lootShards.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
@@ -305,7 +306,37 @@ function classForVictim(victimClass) {
   return 'battlefield';
 }
 
+// Destruction residue law: a hull's freight neither vanishes with the hull nor survives intact.
+// The manifest spill (lootShards D2 pod) already carries the whole shipment; the durable wreck
+// keeps only the scoured remainder — floor(30%) per manifest line, capped — plus one unit of hull
+// scrap. Pure and deterministic: no rng, the same manifest always yields the same residue. Hulls
+// that never carried a manifest keep the generic residue below, so fighter kills read exactly as
+// they always did.
+const WRECK_CARGO_RESIDUE_RATE = 0.3;
+const WRECK_CARGO_RESIDUE_CAP = 4;
+
+function wreckCargoResidueFor(cargoManifest) {
+  const carried = salvagePoolFromManifest(cargoManifest);
+  const residue = {};
+  let total = 0;
+  for (const id of Object.keys(carried).sort((a, b) => a.localeCompare(b))) {
+    if (total >= WRECK_CARGO_RESIDUE_CAP) break;
+    const take = Math.min(
+      Math.floor((Number(carried[id]) || 0) * WRECK_CARGO_RESIDUE_RATE),
+      WRECK_CARGO_RESIDUE_CAP - total,
+    );
+    if (take <= 0) continue;
+    residue[id] = take;
+    total += take;
+  }
+  return total > 0 ? residue : null;
+}
+
 function initialPoolForMarker(marker) {
+  const residue = marker && marker.manifestResidue;
+  if (residue && Object.keys(residue).length) {
+    return { cmdty_scrap_metal: 1, ...residue };
+  }
   const cls = marker && marker.victimClass || '';
   if (String(cls).toLowerCase().includes('drone')) return { cmdty_scrap_metal: 2, cmdty_ore_iron: 1 };
   if (marker && marker.wreckClass === 'military') {
@@ -473,6 +504,7 @@ function makeMarker(state, payload, entity) {
     headline: null,
     structurePatch: null,
   };
+  marker.manifestResidue = wreckCargoResidueFor(data.cargoManifest);
   marker.salvagePool = initialPoolForMarker(marker);
   return marker;
 }
@@ -672,6 +704,9 @@ function normalizeMarker(input) {
     headline: boundedIdentityText(input.headline),
     structurePatch: normalizeStructurePatch(input.structurePatch),
   };
+  // Restore the residue BEFORE the salvage pool fallback: a marker saved without an explicit
+  // pool rebuilds its pool from its own residue, not from the generic class default.
+  marker.manifestResidue = normalizeSalvagePool(input.manifestResidue);
   if (input.pinWreck === true) marker.pinWreck = true;
   if (input.playerWreck === true || input.kind === PLAYER_WRECK_KIND) {
     marker.playerWreck = true;
