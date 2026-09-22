@@ -1,0 +1,102 @@
+{
+  "schema": "spaceface.vmDrop.sectorSkies.v1",
+  "generator": "design/program/vm-drop/sector-skies/build_sector_skies.py",
+  "width": 2048,
+  "height": 1024,
+  "galaxy_allowed_image": "sky_galactic_spur.png",
+  "galaxy_allowed_mood": "Galactic spur",
+  "galaxy_allowed_id": "galactic_spur",
+  "note": "Action must read brighter than these skies; PNGs only; single galaxy allowance is galactic_spur.",
+  "moods": [
+    {
+      "id": "helios_orbital_void",
+      "mood": "Helios orbital void",
+      "file": "sky_helios_orbital_void.png",
+      "allow_galaxy": false,
+      "width": 2048,
+      "height": 1024,
+      "sha256": "a23209ad8608b2ea37add0789abe1453e60774155068b9c45355db653ff64d92",
+      "stats": {
+        "mean": 0.0149,
+        "median": 0.0138,
+        "p95": 0.0212
+      },
+      "bytes": 81396
+    },
+    {
+      "id": "core_trade_constellation",
+      "mood": "Core trade constellation",
+      "file": "sky_core_trade_constellation.png",
+      "allow_galaxy": false,
+      "width": 2048,
+      "height": 1024,
+      "sha256": "f358767e1569446debad96cce5c2361e17681991e653b5070f4e7918e462aa1e",
+      "stats": {
+        "mean": 0.017,
+        "median": 0.0164,
+        "p95": 0.0265
+      },
+      "bytes": 112350
+    },
+    {
+      "id": "belt_broken_dust_lane",
+      "mood": "Belt broken dust lane",
+      "file": "sky_belt_broken_dust_lane.png",
+      "allow_galaxy": false,
+      "width": 2048,
+      "height": 1024,
+      "sha256": "880358f9de086447090c0b69bac220ead8c93b6354cbdb9bbf5164a82644adff",
+      "stats": {
+        "mean": 0.0127,
+        "median": 0.0115,
+        "p95": 0.0193
+      },
+      "bytes": 86960
+    },
+    {
+      "id": "fringe_tidal_filament",
+      "mood": "Fringe tidal filament",
+      "file": "sky_fringe_tidal_filament.png",
+      "allow_galaxy": false,
+      "width": 2048,
+      "height": 1024,
+      "sha256": "34a5771ab230c59b84bd315b80b52377c92c277a2cbb8e7c53740501b5a7ccc0",
+      "stats": {
+        "mean": 0.0157,
+        "median": 0.0144,
+        "p95": 0.0256
+      },
+      "bytes": 108583
+    },
+    {
+      "id": "anomaly_electromagnetic_scar",
+      "mood": "Anomaly electromagnetic scar",
+      "file": "sky_anomaly_electromagnetic_scar.png",
+      "allow_galaxy": false,
+      "width": 2048,
+      "height": 1024,
+      "sha256": "5c493d45214977b1e1ef534648dc65a6de0dacf6ea4314ec8dc319165668a8a6",
+      "stats": {
+        "mean": 0.0137,
+        "median": 0.0119,
+        "p95": 0.0248
+      },
+      "bytes": 94535
+    },
+    {
+      "id": "galactic_spur",
+      "mood": "Galactic spur",
+      "file": "sky_galactic_spur.png",
+      "allow_galaxy": true,
+      "width": 2048,
+      "height": 1024,
+      "sha256": "4a0da05e51a23ac5b6db29185ed2ae9948210dea23605663dbdac80edfb2a8ab",
+      "stats": {
+        "mean": 0.0156,
+        "median": 0.0133,
+        "p95": 0.0364
+      },
+      "bytes": 118158
+    }
+  ]
+}
