@@ -10,12 +10,10 @@ The standard you are judging it against: [`../design/frontend/THE_BAR.md`](../de
 layout. Every colour, size, radius, duration, face and panel recipe on a player surface comes from
 `--dp-*` and the `.dp-*` classes. A screen assembles them; it does not restyle them.
 
-This file used to say the opposite — *"Do not impose universal palette, opacity, blur, radius,
-typography, animation, or panel recipes"* — and that sentence is the written cause of what the
-tree looks like today: four complete token roots stacked on each other (`--k-` 926 declarations,
-`--sf-` 501, `--fh-` 420, `--dp-` 112), plus ~700 more in one-screen roots, 274 custom properties
-and four type faces, with no two screens agreeing on anything. Owner direction on 2026-09-22
-replaced it. Consistency is now the requirement, not the hazard.
+Superseded 2026-09-22 by owner direction: the rule that each screen chose its own palette, radius,
+typography and panel recipe is what produced four stacked token roots. Consistency is the
+requirement now, not the hazard. The count and the evidence are in
+[`../design/frontend/THE_BAR.md`](../design/frontend/THE_BAR.md) §1.
 
 - **Never add a token root.** No new `--xx-` prefix. If Deckplate lacks something, add it to
   Deckplate once, in `src/ui/deckplate/`, and every screen gets it.
