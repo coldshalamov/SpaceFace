@@ -77,6 +77,7 @@ import {
   ActivityKind,
   RulesOfEngagement,
   activityForEncounterSpawn,
+  normalizeActivity,
   roeForActivity,
   setEntityDoctrine,
 } from '../ai/doctrine.js';
@@ -94,6 +95,11 @@ import {
   filterNewFreightIntents,
 } from '../economy/freightCausality.js';
 import { publishEscalationSeeds, publishSessionRhythmPhase } from '../ai/director.js';
+import {
+  pirateDoctrineForEntity,
+  reachCultureDoctrineById,
+} from '../data/pirateDoctrines.js';
+import { isHostileForAI } from '../ai/engagementAuthority.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
@@ -101,6 +107,11 @@ const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
     .filter((module) => module && module.trigger && module.runtime)
     .map((module) => [module.trigger.id, module.runtime]),
 );
+
+// ── hostile pursuit resolution (the touchable anti-pest valve) ──────────────────────────────────
+const PURSUIT_RESOLVE_S = 60;        // a hostile sitting on a non-fighting player resolves
+const PURSUIT_RADIUS = 1600;         // radar/engagement distance to track
+const PURSUIT_RADIUS_SQ = PURSUIT_RADIUS * PURSUIT_RADIUS;
 
 // ── schedule budget (per sector-day) ─────────────────────────────────────────────────────────────
 const MAX_MAJOR_PER_DAY = 1;
@@ -283,10 +294,13 @@ export const encounterDirector = {
     this._accrue(dir, state, step);
     this._tickSessionRhythm(dir, state, now);
     this._tickEscalationSeeds(dir, state, now);
-    if (!isDocked(state) && !isTutorialActive(state)) this._pump(dir, state, now);
+    // The onboarding rail suppresses ordinary pacing, not the authored opening beats:
+    // earlyWindowGuaranteeDay items are themselves the first-minute content the rail teaches.
+    if (!isDocked(state)) this._pump(dir, state, now);
     this._tickLive(dir, state, now);
     this._tickStaleEncounters(dir, state, now);
     this._tickHarassMercy(dir, state, now);
+    this._tickHostilePursuitResolution(dir, state, now);
     this._springCeresActivityAmbushOnPrey();
   },
 
@@ -499,12 +513,20 @@ export const encounterDirector = {
     if (dir.plannedKey === key) return;
     dir.plannedKey = key;
     // Ordinary sector-day rows are transient and replan from the new day seed. The one authored
-    // Ceres crossing is durable once queued, so carry that exact item across the replan rather than
-    // silently erasing the player's physical trigger. Collapse any malformed duplicate fail-closed.
+    // Ceres crossing is durable once queued, and an unfired teach-day guarantee keeps its promise
+    // past the day boundary (the rail can outlive day 0 — the opening raid must still land), so
+    // carry both across the replan rather than silently erasing them. Sector hops still drop them.
+    // Collapse any malformed duplicate fail-closed.
     const queuedCeresActivityAmbush = sectorId === CERES_ACTIVITY_SECTOR_ID
       ? dir.pending.find((item) => isCeresActivityAmbushItem(item))
       : null;
-    dir.pending = queuedCeresActivityAmbush ? [queuedCeresActivityAmbush] : [];
+    const carriedGuarantees = dir.pending.filter((item) => item
+      && item !== queuedCeresActivityAmbush
+      && item.sectorId === sectorId
+      && isAuthoredGuaranteeItem(item));
+    dir.pending = queuedCeresActivityAmbush
+      ? [queuedCeresActivityAmbush, ...carriedGuarantees]
+      : carriedGuarantees;
 
     const zones = zonesForSector(sectorId);
     if (!zones.length) return;                         // no zones → schedule nothing (additive)
@@ -559,9 +581,11 @@ export const encounterDirector = {
 
     let dueIdx = -1;
     let dueBest = Infinity;
+    const tutorialActive = isTutorialActive(state);
     for (let i = 0; i < dir.pending.length; i++) {
       const it = dir.pending[i];
       if (it.dueAt <= now) {
+        if (tutorialActive && !isAuthoredGuaranteeItem(it)) continue;
         const rank = tensionCandidateRank(state, it, ENCOUNTERS[it.shapeId], now);
         if (rank < dueBest) { dueBest = rank; dueIdx = i; }
       }
@@ -580,13 +604,20 @@ export const encounterDirector = {
 
     const ceresActivityAmbush = isCeresActivityAmbushItem(item);
     const preyInReach = ceresActivityAmbush && this._ceresAmbushPreyInReach();
+    // Authored teach-day items carry a timed promise (A1: under attack inside three minutes):
+    // the tutorial rail and the nominal spacing gap are exactly what would push them past it.
+    const authoredGuarantee = isAuthoredGuaranteeItem(item);
     const pacingReason = encounterPacingBlockReason(dir, state, shape, now);
     // The authored Throughline crossing is still a normal paced ambush when only the player is in
     // the killbox. When the loaded pocket hauler is already inside the snare, the sector-entry
     // breath and pressure cost are what used to hold the cohort on hold-fire until the prey had
     // already left the lane.
-    if (pacingReason && !(preyInReach && (pacingReason === 'pacing_gap' || pacingReason === 'pressure'))) {
-      return defer();
+    if (pacingReason
+      && !(authoredGuarantee && (pacingReason === 'tutorial' || pacingReason === 'pacing_gap'))
+      && !(preyInReach && (pacingReason === 'pacing_gap' || pacingReason === 'pressure'))) {
+      // A guarantee item deferring on pacing must still be bounded — plain defer() would let it
+      // ride dir.pending across replans forever with no fizzle and no receipt.
+      return authoredGuarantee ? gateDefer() : defer();
     }
 
     // The R5 Ceres squad is a normal paced ambush_snare in a tier-1 authored pocket. Its authored
@@ -707,6 +738,34 @@ export const encounterDirector = {
     if (!Number.isFinite(item.zoneRadius) || item.zoneRadius < 80) item.zoneRadius = 400;
     item.relocated = true;   // telemetry only; zoneId/zoneName keep the authored fiction
     return true;
+  },
+
+  /** Authored "in view" reach: slide the formation so its victim anchor (the hauler when one is
+   * planned, else the first ship) lands exactly `reachWu` from the player, along the existing
+   * player→anchor bearing. Deterministic — pure function of the plan positions and the player
+   * pose; consumes no rng. zoneCenter shifts with the squad so the telegraph marker stays honest;
+   * zoneId/zoneName keep the authored fiction. No-op when the anchor is already within reach. */
+  _anchorItemWithinPlayerReach(item, reachWu) {
+    const p = this.player();
+    if (!p || !p.pos || !Array.isArray(item.ships) || !item.ships.length) return;
+    const anchorShip = item.ships.find((s) => s && s.role === 'hauler' && s.pos && Number.isFinite(s.pos.x))
+      || item.ships.find((s) => s && s.pos && Number.isFinite(s.pos.x));
+    if (!anchorShip) return;
+    const dx0 = anchorShip.pos.x - p.pos.x;
+    const dz0 = anchorShip.pos.z - p.pos.z;
+    const d = Math.hypot(dx0, dz0);
+    if (!(d > reachWu)) return;
+    const k = reachWu / d;
+    const dx = (p.pos.x - anchorShip.pos.x) * (1 - k);
+    const dz = (p.pos.z - anchorShip.pos.z) * (1 - k);
+    for (const sh of item.ships) {
+      if (sh && sh.pos && Number.isFinite(sh.pos.x)) { sh.pos.x += dx; sh.pos.z += dz; }
+    }
+    if (item.zoneCenter && Number.isFinite(item.zoneCenter.x)) {
+      item.zoneCenter.x += dx;
+      item.zoneCenter.z += dz;
+    }
+    item.relocated = true;
   },
 
   _spawnAdmissionAvailable(item, shape) {
@@ -866,6 +925,11 @@ export const encounterDirector = {
     if (shape.tier === 'ambient') dir.lastAmbientAt = now;
     else dir.lastMeaningfulAt = now;
     if (shape.tier === 'major') dir.lastMajorAt = now;
+
+    // A shape may author fireWithinWu (A1's "inside about two screen-depths"): when the gated
+    // fight comes due with its victim anchor still beyond that reach, the whole formation —
+    // zoneCenter included — slides toward the player until the anchor sits at the reach.
+    if (Number.isFinite(shape.fireWithinWu)) this._anchorItemWithinPlayerReach(item, shape.fireWithinWu);
 
     const live = makeEncounterLiveRecord(state, item, shape, now);
     dir.live[live.id] = live;
@@ -1049,11 +1113,17 @@ export const encounterDirector = {
         ai.doctrine = sh.doctrine || ai.doctrine;
         if (sh.combatDoctrineId) ai.combatDoctrineId = sh.combatDoctrineId;
         if (sh.formation) ai.formation = sh.formation;
-        if (sh.factionPresenceDoctrine) {
+        const docDef = sh.doctrine ? pirateDoctrineForEntity(sh.doctrine) : null;
+        const cultureDef = sh.cultureId ? reachCultureDoctrineById(sh.cultureId) : null;
+        const resolvedDoctrine = sh.factionPresenceDoctrine
+          || (docDef && docDef.factionPresenceDoctrine)
+          || (cultureDef && cultureDef.factionPresenceDoctrine)
+          || null;
+        if (resolvedDoctrine) {
           ai.factionPresenceDoctrine = {
-            ...sh.factionPresenceDoctrine,
-            firstFireAgainst: Array.isArray(sh.factionPresenceDoctrine.firstFireAgainst)
-              ? sh.factionPresenceDoctrine.firstFireAgainst.slice()
+            ...resolvedDoctrine,
+            firstFireAgainst: Array.isArray(resolvedDoctrine.firstFireAgainst)
+              ? resolvedDoctrine.firstFireAgainst.slice()
               : [],
           };
         }
@@ -1615,6 +1685,10 @@ export const encounterDirector = {
     const id = p && p.id;
     if (id == null) return;
     const dir = ensureDirectorState(this.state);
+    // Entity ids recycle through freeIds — a stale pursuit row would leak onto the next hull.
+    if (dir.pursuitWatch) delete dir.pursuitWatch[id];
+    if (dir.patrolIntervened) delete dir.patrolIntervened[id];
+    if (dir.playerDealtDamageAt) delete dir.playerDealtDamageAt[id];
     for (const squadId of Object.keys(dir.active)) {
       const rec = dir.active[squadId];
       const idx = rec.ids.indexOf(id);
@@ -1650,6 +1724,11 @@ export const encounterDirector = {
   _onEntityKilled(p) {
     if (!p || p.id == null) return;
     const dir = ensureDirectorState(this.state);
+    // Killed hulls may linger as wreck entities — drop pursuit bookkeeping at death, not at
+    // removal, so a recycled id never inherits a resolved row.
+    if (dir.pursuitWatch) delete dir.pursuitWatch[p.id];
+    if (dir.patrolIntervened) delete dir.patrolIntervened[p.id];
+    if (dir.playerDealtDamageAt) delete dir.playerDealtDamageAt[p.id];
     const byPlayer = p.killerId != null && p.killerId === this.state.playerId;
     const externalCaptainId = dir.externalNamed && dir.externalNamed[p.id];
     if (externalCaptainId) {
@@ -1699,6 +1778,9 @@ export const encounterDirector = {
     const dir = ensureDirectorState(this.state);
     const now = this.now();
     if (p.attackerId === this.state.playerId) {
+      const playerDealtDamageAt = dir.playerDealtDamageAt || (dir.playerDealtDamageAt = {});
+      if (p.targetId != null) playerDealtDamageAt[p.targetId] = now;
+      dir.lastPlayerDealtDamageAt = now;
       for (const lid of Object.keys(dir.live)) {
         const live = dir.live[lid];
         if (p.targetId != null && live.ids.includes(p.targetId)) {
@@ -1849,6 +1931,196 @@ export const encounterDirector = {
       strikes: ai.mercyStrikes, sectorId: this._currentSectorId(), t: now,
     });
     this.emit('toast', { text: 'The harasser breaks off — the chase is going nowhere.', kind: 'info', ttl: 4 });
+  },
+
+  // ── Hostile pursuit resolution: anti-pest valve for non-fighting player ─────────────────────────
+  // A hostile that sits on a player who is not fighting must eventually come into grabbing range,
+  // or a patrol must arrive in view. The pest does NOT vanish and does NOT get weaker.
+  _tickHostilePursuitResolution(dir, state, now) {
+    if (isDocked(state)) return;
+    const player = this.player();
+    if (!player || player.alive === false) return;
+    const watch = dir.pursuitWatch || (dir.pursuitWatch = {});
+    const ppos = player.pos || { x: 0, z: 0 };
+    const entities = state.entities;
+    if (!entities) return;
+
+    for (const ent of entities.values()) {
+      if (!ent || ent.alive === false || ent.id === state.playerId) continue;
+      if (ent.type !== 'ship' && ent.type !== 'drone') continue;
+      if (ent.team === 0 || ent.team === 2) continue;
+
+      const ai = ent.data && ent.data.ai;
+      const combat = ent.data && ent.data.combat;
+      const isTargetingPlayer = (combat && combat.targetId === state.playerId)
+        || (ai && ai.targetId === state.playerId);
+      const isHostile = isTargetingPlayer || isHostileForAI(state, ent, player);
+      if (!isHostile) continue;
+
+      const pos = ent.pos || { x: 0, z: 0 };
+      const dx = pos.x - ppos.x;
+      const dz = pos.z - ppos.z;
+      const d2 = dx * dx + dz * dz;
+
+      if (d2 > PURSUIT_RADIUS_SQ) {
+        if (watch[ent.id]) delete watch[ent.id];
+        continue;
+      }
+
+      // Check if player dealt damage to this hostile recently
+      const lastPlayerDmg = dir.playerDealtDamageAt && dir.playerDealtDamageAt[ent.id];
+      if (lastPlayerDmg != null && now - lastPlayerDmg < 45) {
+        if (watch[ent.id]) watch[ent.id].firstAt = now;
+        continue;
+      }
+
+      let row = watch[ent.id];
+      if (!row) {
+        row = watch[ent.id] = {
+          hostileId: ent.id,
+          firstAt: now,
+          lastAt: now,
+          resolved: false,
+        };
+      } else {
+        row.lastAt = now;
+      }
+
+      if (now - row.firstAt >= PURSUIT_RESOLVE_S && !row.resolved) {
+        this._resolveHostilePursuit(dir, state, ent, row, now);
+      }
+    }
+
+    // Prune stale tracking rows
+    for (const id of Object.keys(watch)) {
+      const row = watch[id];
+      const ent = entities.get(row.hostileId);
+      if (!ent || ent.alive === false || now - row.lastAt > 30) {
+        delete watch[id];
+      }
+    }
+  },
+
+  _resolveHostilePursuit(dir, state, attacker, row, now) {
+    const sec = this.sectorSecurity();
+    const patrolIntervened = dir.patrolIntervened && dir.patrolIntervened[attacker.id];
+    if (sec >= 0.25 && !patrolIntervened) {
+      const spawned = this._spawnPatrolIntervention(dir, state, attacker, now);
+      if (spawned) {
+        dir.patrolIntervened = dir.patrolIntervened || {};
+        dir.patrolIntervened[attacker.id] = now;
+        row.resolved = true;
+        row.mode = 'patrol';
+        return;
+      }
+    }
+
+    this._commitHostileToGrabbingRange(attacker, now);
+    row.resolved = true;
+    row.mode = 'grabbing_range';
+  },
+
+  _spawnPatrolIntervention(dir, state, attacker, now) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function') return false;
+    const player = this.player();
+    if (!player) return false;
+
+    const ppos = player.pos || { x: 0, z: 0 };
+    const apos = attacker.pos || { x: ppos.x + 400, z: ppos.z };
+    const dx = apos.x - ppos.x;
+    const dz = apos.z - ppos.z;
+    const dist = Math.hypot(dx, dz);
+    // A pest parked exactly on the player still needs a deterministic bearing.
+    const bx = dist > 1 ? dx / dist : Math.SQRT1_2;
+    const bz = dist > 1 ? dz / dist : Math.SQRT1_2;
+    const spawnX = ppos.x + bx * 420;
+    const spawnZ = ppos.z + bz * 420;
+
+    const spec = makeEnemySpawnSpec('patrol_lawman', 4, { x: spawnX, z: spawnZ }, {
+      factionId: 'faction_scn',
+      startedTick: state.tick,
+      motive: 'jurisdiction_enforcement',
+      engagementTrigger: 'security_response',
+      zoneId: 'jurisdiction:pursuit_intervention',
+      approachTelegraph: 'patrol_challenge',
+      noFireResponseWindowS: 1,
+    });
+    spec.data = spec.data || {};
+    spec.data.ai = spec.data.ai || {};
+    const ai = spec.data.ai;
+    // A dispatched responder, not an ambient patrol: the canonical lawSecurity stamp keeps it
+    // firing inside the starter-protection bubble and exempt from the first-session cap.
+    ai.lawful = true;
+    ai.passive = false;
+    ai.moraleImmune = true;
+    ai.witnessRole = 'chase';
+    ai.securityTargetId = attacker.id;
+    ai.securityTargetPos = attacker.pos
+      ? { x: Number(attacker.pos.x) || 0, z: Number(attacker.pos.z) || 0 }
+      : undefined;
+    ai.targetId = attacker.id;
+    ai.roe = RulesOfEngagement.WEAPONS_FREE;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: 'security_response:pursuit_intervention',
+      anchor: attacker.pos ? { x: attacker.pos.x, z: attacker.pos.z } : { x: spawnX, z: spawnZ },
+      leashRadius: 2200,
+      startedTick: state.tick | 0,
+      targetId: attacker.id,
+    });
+    spec.data.combat = spec.data.combat || {};
+    spec.data.combat.targetId = attacker.id;
+    const spawned = spawnEntity(spec);
+    if (!spawned) return false;
+
+    this.emit('comms:log', {
+      from: 'CONCORD PATROL',
+      text: 'Patrol Interceptor on scene. Hostile vessel, break off pursuit immediately!',
+      kind: 'encounter',
+    });
+    this.emit('encounter:patrolIntervened', {
+      patrolId: spawned.id,
+      attackerId: attacker.id,
+      t: now,
+    });
+    return true;
+  },
+
+  _commitHostileToGrabbingRange(attacker, now) {
+    const ai = attacker.data && attacker.data.ai;
+    if (!ai) return;
+    ai.preferredRange = 60;
+    ai.grabbingRange = true;
+    ai.combatDoctrineId = 'brawler_commit';
+    if (ai.factionPresenceDoctrine) {
+      ai.factionPresenceDoctrine = {
+        ...ai.factionPresenceDoctrine,
+        preferredRange: 60,
+        pursuitCommitment: 1.0,
+        combatDoctrineId: 'brawler_commit',
+      };
+    }
+    // The commitment is a normalized doctrine activity, not a bare kind string — a raw string
+    // fails normalizeActivity and silently revokes the pest's fire authority mid-charge.
+    const state = this.state;
+    setEntityDoctrine(attacker, {
+      activity: {
+        kind: ActivityKind.ATTACK_RUN,
+        reason: 'pursuit_resolve:grabbing_range',
+        targetId: state && state.playerId,
+        anchor: attacker.pos,
+        preferredRange: 60,
+        startedTick: Math.round((state && state.tick) || (now || 0) * 60),
+      },
+      roe: RulesOfEngagement.WEAPONS_FREE,
+    });
+    this.emit('encounter:hostileCommitted', {
+      attackerId: attacker.id,
+      grabbingRange: true,
+      preferredRange: 60,
+      t: now,
+    });
   },
 
   _routeToScript(scriptName, eventName, payload) {
@@ -2481,6 +2753,12 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
     }
   };
 
+  // Authored teach-day guarantee: a shape may pin earlyWindowGuaranteeDay so the
+  // counter-first law's teaching encounter is SCHEDULED deterministically inside the
+  // sector's first days instead of left to weighted sampling (rare-gated specialist
+  // shapes can starve for dozens of days — the exact drift that broke PQ-030.02).
+  // Same eligibility filters as the tier decks; the runtime fire-time gates still
+  // decide whether it actually happens.
   scheduleTier('major', MAX_MAJOR_PER_DAY, 90, 360);
   scheduleTier('minor', MAX_MINOR_PER_DAY, 45, 480);
   scheduleTier('ambient', MAX_AMBIENT_PER_DAY, 30, 500);
@@ -2504,21 +2782,53 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
     if (Number.isFinite(g.minSecurity) && sectorSecurity < g.minSecurity) return false;
     return true;
   });
+
   for (const enc of guaranteed) {
+    // An organic pick of the same shape already holds the beat — a second copy would fire two
+    // copies of the same authored opening inside the rail (combat_busy is bypassed there). But
+    // its sampled tier delay (up to ~480 s) can exceed the authored early window, so the
+    // guarantee's promise must clamp it down rather than ride the late delay.
+    const organic = out.find((x) => x.shapeId === enc.id);
+    if (organic) {
+      const win = Array.isArray(enc.earlyDelayS) && enc.earlyDelayS.length === 2 ? enc.earlyDelayS : null;
+      if (win && organic.delay > win[1]) organic.delay = win[1];
+      continue;
+    }
     const zone = pickZoneFor(enc, zonesByType, rng, sectorId);
     if (!zone) continue;
     const item = resolveEncounter(enc, zone, sectorId, dayIndex, seq++, rng);
     if (!item) continue;
     item.regionalWeight = ecologyState ? regionalEncounterWeight(ecologyState, sectorId, enc) : (enc.weight || 1);
-    // Teaching beats land 1–6 minutes into their day (authored, not tier-derived).
-    item.delay = 60 + rng() * 300;
+    // Teaching beats land inside their authored window (default 1–6 minutes into their day;
+    // a shape may pin earlyDelayS [lo, hi] — the opening raid must land within three minutes).
+    const win = Array.isArray(enc.earlyDelayS) && enc.earlyDelayS.length === 2 ? enc.earlyDelayS : null;
+    item.delay = win ? win[0] + rng() * Math.max(0, win[1] - win[0]) : 60 + rng() * 300;
+
+    // Guaranteed teaching encounters take precedence over budgeted tier slots.
+    // If the tier cap has already been reached by random items, drop the last random item of that tier.
+    const maxForTier = item.tier === 'major' ? MAX_MAJOR_PER_DAY : item.tier === 'minor' ? MAX_MINOR_PER_DAY : MAX_AMBIENT_PER_DAY;
+    const currentTierItems = out.filter((x) => x.tier === item.tier);
+    if (currentTierItems.length >= maxForTier) {
+      for (let i = out.length - 1; i >= 0; i--) {
+        if (out[i].tier === item.tier) {
+          out.splice(i, 1);
+          break;
+        }
+      }
+    }
     out.push(item);
   }
 
   // Nominal spacing: keep planned onsets ≥45 s apart (the runtime gate enforces the real law).
+  // An authored earlyDelayS window is a hard promise — the bump may never push it past its hi.
   out.sort((a, b) => a.delay - b.delay || a.encounterId.localeCompare(b.encounterId));
   for (let i = 1; i < out.length; i++) {
-    if (out[i].delay - out[i - 1].delay < 45) out[i].delay = out[i - 1].delay + 45;
+    if (out[i].delay - out[i - 1].delay < 45) {
+      const enc = (encounterCatalog || ENCOUNTERS)[out[i].shapeId];
+      const win = enc && Array.isArray(enc.earlyDelayS) && enc.earlyDelayS.length === 2 ? enc.earlyDelayS : null;
+      const bumped = out[i - 1].delay + 45;
+      out[i].delay = win ? Math.min(bumped, win[1]) : bumped;
+    }
   }
   return out;
 }
@@ -2565,8 +2875,8 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
   } else if (enc.script === 'namedHunter') {
     // Composition is resolved at fire time from the live named-captain roster (grudges evolve).
   } else {
-    const authoredPredation = enc.script === 'convoy'
-      && enc.predation && enc.predation.enabled === true && enc.civilian;
+    const authoredPredation = (enc.civilian && enc.squad)
+      || (enc.script === 'convoy' && enc.predation && enc.predation.enabled === true && enc.civilian);
     if (authoredPredation) {
       // Carrier first means the three-slot admission floor always yields the physical premise:
       // one manifest-bearing civilian, one readable PD curtain, and one offensive raider. Ordinary
@@ -2579,7 +2889,7 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
         globalZone,
         levelBand,
         rng,
-        enc.predation.carrierRole || 'hauler',
+        enc.predation?.carrierRole || 'hauler',
       );
       addSquad(
         ships,
@@ -2589,7 +2899,7 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
         globalZone,
         levelBand,
         rng,
-        enc.predation.raiderRole || 'raider',
+        enc.predation?.raiderRole || 'raider',
       );
     } else {
       const mainRole = (enc.script === 'convoy' || enc.script === 'traderRun') ? 'hauler' : 'squad';
@@ -2657,6 +2967,8 @@ function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) 
       passive: squad.passive == null ? undefined : squad.passive === true,
       roe: squad.roe,
       role: role || 'squad',
+      factionPresenceDoctrine: squad.factionPresenceDoctrine,
+      cultureId: squad.cultureId,
     });
   }
 }
@@ -3112,6 +3424,9 @@ function freshState() {
     harassWatch: {},
     harassPool: [],
     mercyRearm: [],
+    pursuitWatch: {},
+    patrolIntervened: {},
+    playerDealtDamageAt: {},
     proxStarve: {},
     _accum: 0,
   };
@@ -3492,6 +3807,15 @@ function encounterEngagesPlayer(live, state, now) {
 function isTutorialActive(state) {
   const ob = state.onboarding;
   return !!(ob && ob.active && !ob.finished);
+}
+
+/** Items whose shape pins earlyWindowGuaranteeDay are the authored opening beats themselves:
+ * they may pump while the onboarding rail is active, keep their authored delay under the
+ * nominal spacing pass, and survive an unfired sector-day replan until they fire or fizzle
+ * on the ordinary gates. */
+function isAuthoredGuaranteeItem(item) {
+  const shape = item && ENCOUNTERS[item.shapeId];
+  return !!(shape && Number.isFinite(Number(shape.earlyWindowGuaranteeDay)));
 }
 
 function isWanted(state) {
