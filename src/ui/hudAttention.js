@@ -36,6 +36,18 @@ export function formatDestinationLine({
   return bits.join(' · ');
 }
 
+const FIGHT_CAPTION = /^(taking fire|hull hit|shield hit|shoved\b|you shoved|you docked|docked at)\b/i;
+
+/** Wave G3 — a shield hit, a hull hit, a shove, and a dock are not sentences. */
+export function isFightCaptionSentence(text) {
+  return FIGHT_CAPTION.test(String(text || '').trim());
+}
+
+export function toastTextForFightEvent(eventName) {
+  if (eventName === 'combat:damage' || eventName === 'combat:shove' || eventName === 'dock:docked') return null;
+  return undefined;
+}
+
 export function admitReceipt({
   text = '',
   kind = 'info',
@@ -45,6 +57,7 @@ export function admitReceipt({
 } = {}) {
   const line = String(text || '').trim();
   if (!line) return { admit: false, reason: 'empty' };
+  if (isFightCaptionSentence(line)) return { admit: false, reason: 'fight-caption' };
   if (_fromVoice) return { admit: false, reason: 'voice-mirror' };
   if (channel === 'bark' || channel === 'chatter' || channel === 'news') {
     return { admit: false, reason: 'chatter' };
