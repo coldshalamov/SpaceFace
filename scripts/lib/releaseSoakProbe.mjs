@@ -1116,6 +1116,35 @@ async function captureCycleStateDiag(page) {
       frameOrigin: state?.world?.frameOrigin ? { x: state.world.frameOrigin.x, z: state.world.frameOrigin.z, seq: state.world.frameOriginSeq } : null,
       dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
       visibility: typeof document !== 'undefined' ? document.visibilityState : null,
+      // Freeze forensics: a dead tick is either a held timeEffects request (timeScale 0)
+      // or a suspended/destroyed presentation runner. Capture both so the failure dump
+      // names the mechanism instead of just the symptom.
+      timeScale: Number.isFinite(state?.timeScale) ? state.timeScale : null,
+      accumulator: Number.isFinite(state?.accumulator) ? state.accumulator : null,
+      tick: Number.isFinite(state?.tick) ? state.tick : null,
+      // ui:pausing-screen is the most common sim-freeze owner: a leftover stack entry or a
+      // docked flag that never cleared holds timeScale at 0 while mode reads 'flight'.
+      screenStack: Array.isArray(state?.ui?.screenStack) ? [...state.ui.screenStack] : null,
+      // Which timeEffects source still holds a request — names the freeze owner directly
+      // (ui:pausing-screen, save:restore:<seq>, feel:hit-stop, runtime:loading, ...).
+      timeRequests: typeof window.SF?.timeEffects?.describeRequests === 'function'
+        ? window.SF.timeEffects.describeRequests() : null,
+      runner: (() => {
+        const w = window.__SF_WITNESS__;
+        const recent = typeof w?.recent === 'function' ? w.recent() : [];
+        const s = recent[recent.length - 1] || null;
+        const v = typeof w?.verdict === 'function' ? w.verdict() : null;
+        return {
+          verdict: v ? { kind: v.kind, headline: v.headline } : null,
+          lifecycle: s?.lifecycle ?? null,
+          suspended: s?.suspended ?? null,
+          documentHidden: s?.documentHidden ?? null,
+          executedFrames: s?.executedFrames ?? null,
+          renderUpdates: s?.renderUpdates ?? null,
+          lastFrameError: s?.lastFrameError ?? null,
+          frameErrorCount: s?.frameErrorCount ?? null,
+        };
+      })(),
       saveStartedSnapshot: window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null,
       trailTail: trail.slice(-60),
       posTrapEvents: (window.__M6_POS_TRAP_EVENTS__ || []).slice(-32),

@@ -2,6 +2,7 @@
 // rematerialize when the player approaches. They are not GameState combat entities
 // while shelved.
 
+import { clearEntityRuntime } from '../core/entity.js';
 import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
 import { SIM_TIER, NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { ensureActivityClassified, physicsReachWuFromState } from './activityRuntime.js';
@@ -42,6 +43,10 @@ export function ensureFarActorTable(state) {
 }
 
 export function resetFarActors(state) {
+  const table = state && state.world && state.world.farActors;
+  if (table && Array.isArray(table.rows)) {
+    for (let i = 0; i < table.rows.length; i++) clearEntityRuntime(table.rows[i]);
+  }
   if (state && state.world) state.world.farActors = null;
 }
 
@@ -95,9 +100,10 @@ export function restoreFarActorTable(state, data) {
   if (!state || typeof state !== 'object') return null;
   const world = state.world || (state.world = {});
   if (!data || data.schema !== FAR_ACTOR_SCHEMA || !Array.isArray(data.rows) || !data.rows.length) {
-    world.farActors = null;
+    resetFarActors(state);
     return null;
   }
+  resetFarActors(state);
   world.farActors = {
     schema: FAR_ACTOR_SCHEMA,
     version: Number.isSafeInteger(data.version) ? data.version : 0,
@@ -307,6 +313,7 @@ export function insertFarActor(state, entity, simTime = 0) {
     const idx = table.rows.indexOf(existing);
     if (idx >= 0) table.rows.splice(idx, 1);
     gridRemove(table, existing);
+    clearEntityRuntime(existing);
   }
   table.rows.push(rec);
   table.byId.set(rec.id, rec);
@@ -359,6 +366,7 @@ function removeFarRecord(table, rec) {
   gridRemove(table, rec);
   table.version++;
   rec.alive = false;
+  clearEntityRuntime(rec);
   return true;
 }
 

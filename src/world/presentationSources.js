@@ -2,6 +2,7 @@
 // Field rocks, dressing rows, and far-actor rows keep reserved ids and may draw, but they are not
 // GameState.entityList members until promote (mine / ram / tether / decode-runway traffic).
 
+import { clearEntityRuntime } from '../core/entity.js';
 import { getAsteroidFieldRock, queryAsteroidField } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
 import { getFarActor, promoteFarActor, queryFarActors } from './farActorTable.js';
@@ -302,6 +303,20 @@ export function requestDecodeRunwayPromote(state, helpers) {
 
 export function resetWorldPresentationTables(state) {
   if (!state || !state.world) return;
+  // Rows are presentation entities: dropping the table without clearing their render
+  // attachments leaves every mesh tree reachable through any stale row retainer.
+  const dressing = state.world.dressing;
+  if (dressing && Array.isArray(dressing.rows)) {
+    for (let i = 0; i < dressing.rows.length; i++) clearEntityRuntime(dressing.rows[i]);
+  }
+  const field = state.world.asteroidField;
+  if (field && Array.isArray(field.rocks)) {
+    for (let i = 0; i < field.rocks.length; i++) clearEntityRuntime(field.rocks[i]);
+  }
+  const far = state.world.farActors;
+  if (far && Array.isArray(far.rows)) {
+    for (let i = 0; i < far.rows.length; i++) clearEntityRuntime(far.rows[i]);
+  }
   state.world.asteroidField = null;
   state.world.dressing = null;
 }

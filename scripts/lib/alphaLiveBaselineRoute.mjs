@@ -248,31 +248,44 @@ export async function runBrowserPublicRoute({
     // The Helios waypoint arm is a reusable public-map flow: the approach below re-arms
     // through the same UI when a corridor-brake pulse strands the ship outside assist reach.
     const armHeliosWaypoint = async (markName) => {
-      if (!(await page.locator('#sf-galaxymap').isVisible().catch(() => false))) {
-        await page.keyboard.press('KeyN');
+      // A click that misses the button lands on the chart canvas, which clears the map
+      // selection — the inspector then hides Set Waypoint for the rest of the attempt.
+      // A player whose click missed re-selects the station; bound the same recovery here.
+      let lastError = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          if (!(await page.locator('#sf-galaxymap').isVisible().catch(() => false))) {
+            await page.keyboard.press('KeyN');
+          }
+          await waitForVisible(page, '#sf-galaxymap', 20_000, 'galaxy map');
+          const searchInput = page.locator('.gm-search-input');
+          await page.keyboard.press('/');
+          const shortcutFocused = await page.waitForFunction(
+            () => document.activeElement?.matches('.gm-search-input') === true,
+            null,
+            { timeout: 1_000 },
+          ).then(() => true, () => false);
+          if (!shortcutFocused) await searchInput.click({ timeout: 10_000 });
+          await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
+          await searchInput.fill('');
+          await page.keyboard.type('Helios Station');
+          await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first().waitFor({ state: 'visible', timeout: 10_000 });
+          await page.keyboard.press('Enter');
+          const setWaypointButton = page.getByRole('button', { name: 'Set Waypoint', exact: true });
+          await setWaypointButton.waitFor({ state: 'visible', timeout: 10_000 });
+          const inspectorText = await page.locator('.gm-inspector-content').innerText();
+          assert.match(inspectorText, /Helios Station/i, 'map inspector must visibly identify Helios Station');
+          await clickWaypointWithPointer(page, setWaypointButton);
+          const navSnapshot = await readNavigationSnapshot(page);
+          mark(markName, navSnapshot);
+          recordCanonicalUrl(markName);
+          return navSnapshot;
+        } catch (error) {
+          lastError = error;
+          mark('helios-waypoint-retry', { attempt, error: String(error && (error.message || error)).slice(0, 240) });
+        }
       }
-      await waitForVisible(page, '#sf-galaxymap', 20_000, 'galaxy map');
-      const searchInput = page.locator('.gm-search-input');
-      await page.keyboard.press('/');
-      const shortcutFocused = await page.waitForFunction(
-        () => document.activeElement?.matches('.gm-search-input') === true,
-        null,
-        { timeout: 1_000 },
-      ).then(() => true, () => false);
-      if (!shortcutFocused) await searchInput.click({ timeout: 10_000 });
-      await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
-      await page.keyboard.type('Helios Station');
-      await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first().waitFor({ state: 'visible', timeout: 10_000 });
-      await page.keyboard.press('Enter');
-      const setWaypointButton = page.getByRole('button', { name: 'Set Waypoint', exact: true });
-      await setWaypointButton.waitFor({ state: 'visible', timeout: 10_000 });
-      const inspectorText = await page.locator('.gm-inspector-content').innerText();
-      assert.match(inspectorText, /Helios Station/i, 'map inspector must visibly identify Helios Station');
-      await clickWaypointWithPointer(page, setWaypointButton);
-      const navSnapshot = await readNavigationSnapshot(page);
-      mark(markName, navSnapshot);
-      recordCanonicalUrl(markName);
-      return navSnapshot;
+      throw lastError;
     };
     const navSnapshot = await armHeliosWaypoint('helios-waypoint-armed');
 
@@ -1153,16 +1166,51 @@ async function clickWaypointWithPointer(page, locator) {
     await locator.scrollIntoViewIfNeeded().catch(() => {});
     lastBox = await locator.boundingBox().catch(() => null);
     if (lastBox && lastBox.width > 2 && lastBox.height > 2) {
-      const x = Math.round(lastBox.x + lastBox.width / 2);
-      const y = Math.round(lastBox.y + lastBox.height / 2);
-      await page.mouse.move(x, y);
-      await page.mouse.down({ button: 'left' });
-      await page.mouse.up({ button: 'left' });
+      // The action band is a scrollable clip: the button's laid-out rect can straddle
+      // the clip edge and a center click lands on a sibling control or the chart.
+      // Focus first so the browser keeps the button painted, then click a point that
+      // hit-tests to it — where a player would click. (Same guard as the soak probe's
+      // clickWaypointWithPointer.)
+      const point = await page.evaluate(() => {
+        const btn = document.querySelector('#gm-set-course-btn');
+        if (!btn || btn.hidden || btn.disabled) return null;
+        try { btn.focus(); } catch (_) { /* focus is best-effort */ }
+        btn.scrollIntoView({ block: 'center', inline: 'nearest' });
+        const r = btn.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) return null;
+        for (const fy of [0.5, 0.3, 0.7, 0.15, 0.85]) {
+          for (const fx of [0.5, 0.3, 0.7]) {
+            const x = r.x + r.width * fx;
+            const y = r.y + r.height * fy;
+            const el = document.elementFromPoint(x, y);
+            if (el === btn || btn.contains(el)) return { x: Math.round(x), y: Math.round(y) };
+          }
+        }
+        return null;
+      }).catch(() => null);
+      if (point) {
+        await page.mouse.move(point.x, point.y);
+        await page.mouse.down({ button: 'left' });
+        await page.mouse.up({ button: 'left' });
+      } else {
+        // No painted point resolved inside the clip band — activate the focused
+        // button with Enter, the public keyboard path for the same control.
+        const focused = await page.evaluate(() => document.activeElement?.id === 'gm-set-course-btn').catch(() => false);
+        if (focused) await page.keyboard.press('Enter');
+      }
       const armed = await page.waitForFunction(() => {
         const nav = window.SF?.state?.nav;
         return nav?.autopilot?.active === true && /Helios Station/i.test(String(nav.autopilot.label || ''));
       }, null, { timeout: 750 }).then(() => true, () => false);
       if (armed) return;
+      // A click that landed on the chart canvas instead of the button clears the
+      // map's _selectedTarget — every later click is an inert no-op. Bail so the
+      // caller can re-run the search selection instead of burning the budget.
+      const selectionLost = await page.evaluate(() => {
+        const def = window.SF?.ctx?.screenManager?.getActiveScreenDef?.();
+        return def != null && def._selectedTarget == null;
+      }).catch(() => false);
+      if (selectionLost) throw new Error('Set Waypoint click cleared the map selection (canvas hit)');
     }
     await page.waitForTimeout(50);
   }

@@ -23,6 +23,7 @@ import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
+import { clearEntityRuntime } from '../core/entity.js';
 import {
   buildNewGamePlusCandidate,
   buildNewGamePlusOverlay,
@@ -3410,6 +3411,9 @@ export const save = {
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
       e.alive = false;
+      // Restore reissues entity objects under the same ids; anything still holding this corpse
+      // (module scratches, deferred closures) would otherwise pin its mesh tree forever.
+      clearEntityRuntime(e);
       try {
         this.bus.emit('entity:destroyed', {
           id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId,

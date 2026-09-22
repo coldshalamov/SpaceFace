@@ -1,7 +1,7 @@
 // Compact asteroid field. Dormant rocks are not GameState combat entities.
 // Promote into entityList only for mine / ram / tether (and NPC mining picks).
 
-import { allocateEntityId, makeEntity } from '../core/entity.js';
+import { allocateEntityId, makeEntity, clearEntityRuntime } from '../core/entity.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
 import { advanceResourceBody } from './worldCatchup.js';
@@ -169,6 +169,7 @@ function removeFieldRecord(field, rec) {
   gridRemove(field, rec);
   field.version++;
   rec.alive = false;
+  clearEntityRuntime(rec);
   return true;
 }
 

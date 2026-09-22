@@ -118,7 +118,15 @@ const ENTITY_PROTO = Object.create(Object.prototype, {
 
 /** Remove all render-runtime references associated with an entity. */
 export function clearEntityRuntime(entity) {
-  if (entity && typeof entity === 'object') RENDER_ATTACHMENTS.delete(entity);
+  if (!entity || typeof entity !== 'object') return;
+  // Delete the WeakMap record first: proto entities read mesh/view through it, so after the
+  // delete their getters already return null. Ledger rows (dressing/far/field) are plain
+  // objects whose mesh/view are own enumerable fields — the guards below clear those.
+  // Stale module scratches and deferred closures retain torn-down rows across save/load;
+  // without this, one retained row pins its entire disposed boundary tree.
+  RENDER_ATTACHMENTS.delete(entity);
+  if (entity.mesh) entity.mesh = null;
+  if (entity.view) entity.view = null;
 }
 
 // Far actor, dressing and field rows keep their id while they exist; the allocator must never

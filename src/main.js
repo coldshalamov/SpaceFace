@@ -3,6 +3,7 @@
 // save system is implemented it owns newGame() and this delegates to it.
 import * as THREE from 'three';
 import { createGameState } from './core/gameState.js';
+import { clearEntityRuntime } from './core/entity.js';
 import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
 import { createBus } from './core/eventBus.js';
 import { createRegistry } from './core/registry.js';
@@ -444,6 +445,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     token: transitionToken,
     async prepareRun() {
       for (const e of [...state.entityList]) {
+        clearEntityRuntime(e);
         bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId });
         if (!runTransitionGuard.isCurrent(transitionToken)) return;
       }
@@ -636,6 +638,7 @@ function resolveNewGamePlusOverlay(registry, opts = {}) {
 function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken) {
   if (!runTransitionGuard.isCurrent(transitionToken)) return false;
   for (const entity of [...state.entityList]) {
+    clearEntityRuntime(entity);
     bus.emit('entity:destroyed', {
       id: entity.id,
       type: entity.type,

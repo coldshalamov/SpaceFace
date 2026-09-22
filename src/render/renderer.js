@@ -4318,6 +4318,14 @@ export const render = {
           entities: state.entityList,
         });
         contextRoots.push(...preparedPoolResources.roots);
+        // Residency-tracked resources can live entirely outside the scene (decoded package
+        // caches, warm-sector holds). They keep the same pre-loss dispose listeners, so they
+        // need the same detach pass before a post-restore eviction runs them.
+        const residencyResources = this._assetResidency
+          && typeof this._assetResidency.contextLossResources === 'function'
+          ? this._assetResidency.contextLossResources()
+          : null;
+        if (Array.isArray(residencyResources)) contextRoots.push(...residencyResources);
         const detachReceipt = detachStaleWebGlDisposeListeners(
           contextRoots,
           preparedPoolResources.provenance,
@@ -13688,6 +13696,12 @@ function disposeObject(obj) {
   if (!obj || typeof obj.traverse !== 'function') return;
   obj.traverse((c) => {
     if (!c) return;
+    // A boundary torn down while its publication-deferred authored payload is still parked
+    // owns the preparedAuthoredRoots registration for that detached tree. Firing the installed
+    // disposer here unregisters those roots; skipping it leaves every context root — composed
+    // root, planNodes, renderPackageInstances — pinned by the scene for the session.
+    const disposePrepared = c.userData && c.userData.__disposePreparedAuthoredBoundary;
+    if (typeof disposePrepared === 'function') disposePrepared();
     const disposePresentation = c.userData && c.userData.disposeWorldSitePresentation;
     if (typeof disposePresentation === 'function') disposePresentation();
     const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
