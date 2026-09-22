@@ -172,7 +172,11 @@ def apply_clay(meshes):
         bsdf.inputs["Roughness"].default_value = 0.58
         material.node_tree.links.new(bsdf.outputs["BSDF"], output.inputs["Surface"])
         if obj.material_slots:
-            obj.material_slots[0].material = material
+            # Every slot. Slot-0-only left Deck/Armor (or any later island) at
+            # authored albedo, so a multi-mat hull read as a dark spine + light
+            # flanks in clay even when geometry was one loft.
+            for slot in obj.material_slots:
+                slot.material = material
         else:
             obj.data.materials.append(material)
     return backups

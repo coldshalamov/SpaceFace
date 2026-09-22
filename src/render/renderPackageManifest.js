@@ -2104,32 +2104,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.drifter-production-v1",
-    "expectedContentHash": "45dea9f47c627c988972855ddeb9b62352072e92673044f37020df2b10f2b9cb",
+    "expectedContentHash": "9b4c25318cbb966ce39d66577dcccb13873817e73aea2b28fb4412bac8794746",
     "key": "drifter-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1/render-package.json",
     "runtimeAssetId": "SF_DRIFTER_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "a29d33d4cd7d06fb556c6edf197ec001a780154fa505442e67d4047c050325d4",
+    "sourceSha256": "1e80307dd1843761b459519778d1dff64a03309f2f4b712ffbd95db47881ab04",
     "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1.glb"
   },
   {
     "assetId": "sf.render.drifter-production-v1-lod1",
-    "expectedContentHash": "b9446a575d3b98cdd0cabf5895260b7e5a6b5a95417783b0af4f6d283f94876a",
+    "expectedContentHash": "ea879e76145c8e8626ba2e9efc30a9221c24cc5507b01439e68d7c33de2cc2cb",
     "key": "drifter-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_DRIFTER_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "0b20dcebd214cb4a449101ce4ad0d4f0d597f8da50983f42427941a5cfdff2e7",
+    "sourceSha256": "dcc3465d55c396de5c6f3f27df71e19ecc263d2e27717cb9c0005b69d916cf5f",
     "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.drifter-production-v1-lod2",
-    "expectedContentHash": "b4f6cce8a6c1ef50e039e49e777714a1eba323b0f58683490022930635ad8996",
+    "expectedContentHash": "fa1602e304046ee107272801c4daaac76d2f7a316e282470ef9b081ff606e325",
     "key": "drifter-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_DRIFTER_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "044a5839c304cd0cd346476c2d3c1a1547870e2bf00c9e1c46349abd498d9dcb",
+    "sourceSha256": "614c987c56c645acaa6b805ba210196567202f62f2cbba83dc10c4ec8e314004",
     "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb"
   },
   {
@@ -2204,12 +2204,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hornet-production-v1",
-    "expectedContentHash": "6666927d39606d834dd17133c76ef817dcb5b0116d97580280dcf8bfcf1ca0e3",
+    "expectedContentHash": "bdda6caaf8dda5147f9cf58db458d51703636015ca621986a382797d1f13e6ac",
     "key": "hornet-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1/render-package.json",
     "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "7eb57e23a78d7d896058c29d89a4c88590dd775f14b8ff2a5118f9c07cf24e68",
+    "sourceSha256": "716fe554cb3a31ecc651694ff8c0d1a6ac241ac95a97af6acaeb29c2c4534a56",
     "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1.glb"
   },
   {
@@ -2404,22 +2404,22 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.hornet-production-v1-lod1",
-    "expectedContentHash": "5325ab2fb52e35ea6e90f62b649d1238baa27c4982f047e6e9ccc45db9afadc0",
+    "expectedContentHash": "9452fab92a2fb271dd3771033d4bb220e4b981f742aad2d4958560c6269ed0c4",
     "key": "hornet-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "b3aa462f7295c7aa107ca795a2d254affdaf15b9bcac1f354a586bfa1e448850",
+    "sourceSha256": "3e40ae16141b40181116471cd0a927c4d8e85efd3c1c2b661a1a2c1fe65f3325",
     "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.hornet-production-v1-lod2",
-    "expectedContentHash": "633e01f1dee448eea0503b1d0aa3f70b9a37c0bc8104f5f32b0dc415c931450f",
+    "expectedContentHash": "4a98e0a0f872c0d26103d135a2f7d655c2e6e3844a37feba1a9e3d82a2e25bb8",
     "key": "hornet-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "a4ff02d6b064581ff5d2641d57069de062d56811d514e4d4cdd315cbca45a916",
+    "sourceSha256": "27ec72bc755142f08334cd409d718e507524129620fd965e9ddbaa853bee8343",
     "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb"
   },
   {

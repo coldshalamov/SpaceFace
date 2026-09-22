@@ -1,0 +1,69 @@
+{
+  "ok": true,
+  "asset": "ship_drifter",
+  "revision": "chase_form_v22",
+  "cycle": 22,
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "cameras": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "runtimeScale": 1.84176091514613,
+  "authoredX": 16.81,
+  "targetWU": 30.96,
+  "displaySize": [30.96, 12.4503, 5.2131],
+  "lod0": {
+    "path": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+    "sha256": "3278b8ed1763d8dfbccf900a55b4a9cbbf63404fb8222a965bb5db89fc19bc7e",
+    "triangles": 28660,
+    "hullTriangles": 19436,
+    "bytes": 3712532,
+    "size": [16.81, 6.76, 2.83]
+  },
+  "hitchFreezeLod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+  "hornetFreezeLod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+  "hitchStills": "/tmp/hitch-c10",
+  "playChase": {
+    "shipW": 13.2,
+    "occupancy": 0.77,
+    "lightGe026": 16.6,
+    "mid": 76.2,
+    "dark": 7.2,
+    "brown": 0.5
+  },
+  "hitchPlayChase": {
+    "shipW": 10.2,
+    "occupancy": 0.52,
+    "lightGe026": 8.1,
+    "mid": 86.7,
+    "dark": 5.2,
+    "brown": 0.7
+  },
+  "gapsTargeted": {
+    "c21leftovers": "formed-shell relief (overlapping courses / stepped recesses); chase-readable midship hardware; well-lip breakup outboard of mouths"
+  },
+  "tubePaddleReadGoneOnPlayChase": true,
+  "tubePaddleReadGoneOnClose": true,
+  "tubePaddleReadGoneOnAbeam": true,
+  "tubePaddleReadGoneOnAbeamClay": true,
+  "tubePaddleReadGoneOnAbeamShaded": true,
+  "cageReadGone": true,
+  "reviews": {
+    "play_chase": {
+      "id": "bc-0d961a7d-3f12-565e-9c1f-c90fa5911018",
+      "verdict": "KEEP",
+      "note": "VALID framing. TUBE_PADDLE NO clay+shaded. WELLS HOLES. CAGE_READ NO. HITCH_WINS NO."
+    },
+    "play_chase_abeam": {
+      "id": "bc-26757621-5efa-525a-a494-f6d40580dd27",
+      "verdict": "KEEP",
+      "note": "VALID framing. TUBE_PADDLE NO clay+shaded. Clay spine/flank split NO. Wells holes. CAGE_READ NO. HITCH_WINS NO."
+    },
+    "play_chase_close": {
+      "id": "bc-39da5f4a-50a2-5a19-b2f0-fb76cabe596b",
+      "verdict": "KEEP",
+      "note": "VALID framing. TUBE_PADDLE NO. Wells holes. Nozzles circular. CAGE_READ NO. HITCH_WINS NO."
+    }
+  },
+  "result": "PASS",
+  "hitchPlusChase": true,
+  "notes": "C22 formed-shell relief on the C21 plated diamond. Cage stay gone. Play+close+abeam TUBE_PADDLE NO. Three reviews KEEP / HITCH_WINS NO. No seats. No megatex. Hitch/Kestrel/Hornet frozen. Parent unproven / not G7."
+}
