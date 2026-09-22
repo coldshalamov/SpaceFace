@@ -20,6 +20,7 @@
 import * as THREE from 'three';
 import { canvasIsProtectedDuringFreeze } from '../core/presentationFreeze.js';
 import { loadAuthoredPart } from './assetLoader.js';
+import { getAssetResidency } from './assetResidency.js';
 import { wholeShipVisualForEntity } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
@@ -313,6 +314,15 @@ export function releaseUiStage(reason = 'release') {
   resident = false;
   idleFrames = 0;
   dying.disposed = true;
+  // Release the stage's residency owner first: mounted props/hull were pinned under it, so this
+  // is the moment they drop to soft-cache leases the byte budgets can reclaim. Without it the
+  // decoded stage set would stay session-pinned forever.
+  if (dying.residencyOwner) {
+    const residency = getAssetResidency(dying.renderer);
+    if (residency && typeof residency.releaseOwner === 'function') {
+      residency.releaseOwner(dying.residencyOwner, `ui-stage-${reason || 'release'}`);
+    }
+  }
   try {
     dying.scene.traverse((node) => {
       // Only what this module created: the sky shell, the star field and the arena floor. Authored
@@ -466,6 +476,11 @@ function buildStage(id, renderer, request, hullFile) {
     propsRequested: spec.props.length,
     prepared: false,
     generation: (buildStage.generation = (buildStage.generation || 0) + 1),
+    renderer,
+    // Mounted stage content is a live presentation owner, not a session pin: the authored props
+    // and hull stay accounted as live while the stage is up, and releaseUiStage drops the owner so
+    // a torn-down stage stops counting as live residency (and can be evicted under byte pressure).
+    residencyOwner: Object.freeze({ type: 'ui-stage', id }),
   };
 
   applyCamera(built, 0);
@@ -489,7 +504,7 @@ async function loadSceneContent(built, renderer, request) {
   const hullFile = built.hullFile;
 
   const propGroups = await Promise.all(spec.props.map(async (placement, index) => {
-    const record = await loadPart(`places/${placement.id}.glb`, renderer, 'place');
+    const record = await loadPart(`places/${placement.id}.glb`, renderer, 'place', built);
     if (!record) return null;
     const group = groupFromBlueprint(record, `${placement.id}_${index}`);
     placeByBounds(group, placement);
@@ -498,7 +513,7 @@ async function loadSceneContent(built, renderer, request) {
 
   built.marks.props = stageNow() - built.marks.start;
   built.phase = 'loading-hull';
-  const hullRecord = await loadPart(hullFile, renderer, 'hull');
+  const hullRecord = await loadPart(hullFile, renderer, 'hull', built);
   built.marks.hull = stageNow() - built.marks.start;
   let hullGroup = null;
   if (hullRecord) {
@@ -529,13 +544,22 @@ async function loadSceneContent(built, renderer, request) {
   }
 }
 
-async function loadPart(file, renderer, slot) {
+async function loadPart(file, renderer, slot, built = null) {
   const urls = isReleaseAssetMode()
     ? [`${PART_RELEASE_ROOT}${file}`, `${PART_ROOT}${file}`]
     : [`${PART_ROOT}${file}`];
+  const residencyOwner = built && built.residencyOwner;
   for (const url of urls) {
     try {
-      const record = await loadAuthoredPart(url, { renderer, slot, optional: true });
+      const record = await loadAuthoredPart(url, {
+        renderer,
+        slot,
+        optional: true,
+        residencyOwner,
+        isResidencyOwnerActive: residencyOwner
+          ? () => built.disposed !== true
+          : undefined,
+      });
       if (record) return record;
     } catch (error) {
       lastError = `${url}: ${error && error.message ? error.message : error}`;

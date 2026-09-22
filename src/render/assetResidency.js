@@ -17,6 +17,12 @@ const registriesByRenderer = new WeakMap();
 const renderTargetAttachmentIdentities = new WeakMap();
 const DEFAULT_EVENT_HISTORY = 256;
 const MAX_EVENT_HISTORY = 512;
+// Hard cap on entries whose only owner is the decoded-package cache lease. The 30 s idle gate and
+// the 10 s sweep cadence leave room for a busy sector to release many hull packages inside one
+// window; this bound reclaims the oldest-idle at the moment an entry becomes cache-only, so the
+// soft working set can never ride unbounded between sweeps. Matches the 64 MiB residual budget in
+// test/asset-residency-refcounts.test.mjs.
+const DEFAULT_PACKAGE_CACHE_ONLY_MAX_BYTES = 64 * 1024 * 1024;
 
 export function protectSharedGpuResource(resource) {
   if (!resource || typeof resource !== 'object') return resource;
@@ -66,6 +72,22 @@ export function createAssetResidencyRegistry(options = {}) {
   let disposedResources = 0;
   let abandonedResources = 0;
   let evictedAssets = 0;
+  let cacheSweepCount = 0;
+  // `null` disables each inline soft cap (decode adapters/tests that want explicit sweep control
+  // can pass `maxPackageCacheOnlyBytes: null` / `maxSoftResidentBytes: null`).
+  const packageCacheOnlyMaxBytes = options.maxPackageCacheOnlyBytes === null
+    ? null
+    : (Number.isFinite(Number(options.maxPackageCacheOnlyBytes))
+      ? Math.max(0, Number(options.maxPackageCacheOnlyBytes))
+      : DEFAULT_PACKAGE_CACHE_ONLY_MAX_BYTES);
+  const softResidentMaxBytes = options.maxSoftResidentBytes === null
+    ? null
+    : (Number.isFinite(Number(options.maxSoftResidentBytes))
+      ? Math.max(0, Number(options.maxSoftResidentBytes))
+      : DEFAULT_PACKAGE_CACHE_ONLY_MAX_BYTES);
+  // >0 while a sweep/budget pass is already walking the registry; release paths inside it must not
+  // re-enter the inline cap or every per-owner release would rescan the whole asset table.
+  let packageCacheBudgetDepth = 0;
   const governor = createResourceGovernor({
     maxCpuBytes: options.maxCpuBytes,
     maxGpuBytes: options.maxGpuBytes,
@@ -222,6 +244,10 @@ export function createAssetResidencyRegistry(options = {}) {
     // only when every warmed asset has a replacement live owner, so no decode generation is
     // evicted/reloaded between F9 teardown and visual rehydration.
     handoffWarmOwnerWhenCovered(owner);
+    // Soft-lease admissions (package cache, decode cache, runtime-cache session pins) grow the
+    // bounded soft set — a cache-warming decode that never takes a live owner is exactly how
+    // soft residency grows without any release. Bound it at admission, not just at departure.
+    if (isSoftResidencyOwner(ownerMetadata)) enforceSoftResidencyBudgets();
     return true;
   }
 
@@ -309,6 +335,7 @@ export function createAssetResidencyRegistry(options = {}) {
       evictIfUnowned(entry, reason);
     }
     cleanupOwnerState(state);
+    if (released > 0) enforceSoftResidencyBudgets();
     return released;
   }
 
@@ -336,6 +363,7 @@ export function createAssetResidencyRegistry(options = {}) {
     });
     evictIfUnowned(entry, reason);
     cleanupOwnerState(state);
+    enforceSoftResidencyBudgets();
     return true;
   }
 
@@ -361,6 +389,95 @@ export function createAssetResidencyRegistry(options = {}) {
     return role === 'render-package-cache' || role === 'decode-cache';
   }
 
+  // `runtime-cache` is the session fallback owner for decodes with no boundary scope (stage props,
+  // previews, preloads). It is still a soft lease: it stays out of the idle pass so a disposed
+  // stage keeps its decode warm across an undock-to-redock gap, but under byte pressure its
+  // oldest-idle entries release like any cache owner — the loader re-decodes on next touch.
+  function isSoftResidencyOwner(metadata) {
+    return isRenderPackageCacheOwner(metadata)
+      || String(metadata && metadata.role || '').trim().toLowerCase() === 'runtime-cache';
+  }
+
+  // Strict package-cache-only: every owner is the loader's decoded-package cache lease. This is
+  // exactly the residual the traversal budget measures; decode-cache/runtime-cache mixes are the
+  // second soft tier below.
+  function isPackageCacheOnlyEntry(entry) {
+    if (!entry || entry.state !== 'resident' || entry.owners.size === 0) return false;
+    for (const metadata of entry.owners.values()) {
+      if (String(metadata && metadata.role || '').trim().toLowerCase() !== 'render-package-cache') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Fully soft: every owner is a cache-lease role (package cache, decode cache, or the scopeless
+  // runtime-cache session pin). A live presentation owner of any kind disqualifies the entry.
+  function isSoftOnlyEntry(entry) {
+    if (!entry || entry.state !== 'resident' || entry.owners.size === 0) return false;
+    for (const metadata of entry.owners.values()) {
+      if (!isSoftResidencyOwner(metadata)) return false;
+    }
+    return true;
+  }
+
+  // Inline byte caps on soft residency, enforced at release and soft-retain time: the idle sweep
+  // only reclaims entries older than its minAge gate, so a burst of departures or scopeless
+  // decodes inside one sweep window would otherwise stack unbounded. Tier A caps strict
+  // render-package-cache residency; tier B caps the remaining soft set (runtime-cache session
+  // pins, decode-cache leftovers, cache-role mixes). Oldest-idle releases first so hot entries
+  // stay warm under the cap; live presentation owners are never candidates.
+  function enforceSoftResidencyBudgets() {
+    if (packageCacheBudgetDepth > 0) return 0;
+    let strictBytes = 0;
+    let softBytes = 0;
+    const strictCandidates = [];
+    const softCandidates = [];
+    for (const entry of assets.values()) {
+      if (entry.state !== 'resident' || entry.owners.size === 0 || hasActiveRequestForEntry(entry)) {
+        continue;
+      }
+      if (isPackageCacheOnlyEntry(entry)) {
+        strictBytes += assetResidentBytes(entry);
+        strictCandidates.push(entry);
+      } else if (isSoftOnlyEntry(entry)) {
+        softBytes += assetResidentBytes(entry);
+        softCandidates.push(entry);
+      }
+    }
+    const strictOver = packageCacheOnlyMaxBytes != null && strictBytes > packageCacheOnlyMaxBytes;
+    const softOver = softResidentMaxBytes != null && softBytes > softResidentMaxBytes;
+    if (!strictOver && !softOver) return 0;
+    packageCacheBudgetDepth++;
+    try {
+      return evictOldestSoftEntries(strictCandidates, packageCacheOnlyMaxBytes, strictBytes,
+        isPackageCacheOnlyEntry)
+        + evictOldestSoftEntries(softCandidates, softResidentMaxBytes, softBytes,
+          (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry));
+    } finally {
+      packageCacheBudgetDepth--;
+    }
+  }
+
+  function evictOldestSoftEntries(candidates, maxBytes, totalBytes, matches) {
+    if (maxBytes == null) return 0;
+    candidates.sort((a, b) => a.lastReleaseAtMs - b.lastReleaseAtMs);
+    let evicted = 0;
+    for (const entry of candidates) {
+      if (totalBytes <= maxBytes) break;
+      if (!assets.has(entry.key) || !matches(entry) || hasActiveRequestForEntry(entry)) continue;
+      const entryBytes = assetResidentBytes(entry);
+      for (const owner of [...entry.owners.keys()]) {
+        release(entry.key, owner, 'soft-residency-budget');
+      }
+      if (!assets.has(entry.key)) {
+        evicted++;
+        totalBytes -= entryBytes;
+      }
+    }
+    return evicted;
+  }
+
   /**
    * Release decoded cache owners (render packages and source-route blueprint leases) that no
    * longer have a presentation owner.
@@ -376,9 +493,30 @@ export function createAssetResidencyRegistry(options = {}) {
    * idle at least that long (idle = since registration or its last owner release), so a boundary
    * that pops back inside the residency radius still reuses the warm decode while a package whose
    * content departed for good is reclaimed instead of accumulating for the whole sector.
+   *
+   * `options.maxCacheOnlyBytes` bounds the soft-held working set: a busy station re-retains hull
+   * packages faster than the idle gate can age them out, so without a byte cap every archetype the
+   * traffic director ever spawned stays resident for the sector's whole session. When the
+   * soft-held total exceeds the budget, the oldest-idle soft-held entries release regardless of
+   * idle age — LRU by lastReleaseAtMs keeps hot hulls warm while the cold tail is reclaimed.
+   * `runtime-cache` counts as soft for this pass only; mixed live-boundary entries are never
+   * candidates.
    */
   function releaseUnreferencedCacheOwners(reason = 'cache-only-residency-cleanup', options = {}) {
+    cacheSweepCount++;
+    packageCacheBudgetDepth++;
+    try {
+      return releaseUnreferencedCacheOwnersPass(reason, options);
+    } finally {
+      packageCacheBudgetDepth--;
+    }
+  }
+
+  function releaseUnreferencedCacheOwnersPass(reason, options) {
     const minAgeMs = Number.isFinite(Number(options.minAgeMs)) ? Math.max(0, Number(options.minAgeMs)) : 0;
+    const maxCacheOnlyBytes = Number.isFinite(Number(options.maxCacheOnlyBytes))
+      ? Math.max(0, Number(options.maxCacheOnlyBytes))
+      : null;
     const nowMs = now();
     // Only the GPU byte totals are needed. Building two full diagnostics() tables here (a frozen,
     // sorted row per asset with owner-role sets) was a 445 ms freeze on every jump's sector exit
@@ -386,18 +524,51 @@ export function createAssetResidencyRegistry(options = {}) {
     const bytesBefore = totalGpuResidentBytes();
     const evicted = [];
     let releasedOwners = 0;
+    const budgetCandidates = [];
 
     for (const entry of [...assets.values()]) {
       if (entry.state !== 'resident' || hasActiveRequestForEntry(entry)) continue;
-      if (minAgeMs > 0 && nowMs - entry.lastReleaseAtMs < minAgeMs) continue;
       const ownerRecords = [...entry.owners.entries()];
       const cacheOwners = ownerRecords.filter(([, metadata]) => isRenderPackageCacheOwner(metadata));
-      if (cacheOwners.length === 0 || cacheOwners.length !== ownerRecords.length) continue;
+      if (cacheOwners.length === 0 || cacheOwners.length !== ownerRecords.length) {
+        if (maxCacheOnlyBytes != null && ownerRecords.length > 0
+            && ownerRecords.every(([, metadata]) => isSoftResidencyOwner(metadata))) {
+          budgetCandidates.push(entry);
+        }
+        continue;
+      }
+      if (minAgeMs > 0 && nowMs - entry.lastReleaseAtMs < minAgeMs) {
+        if (maxCacheOnlyBytes != null) budgetCandidates.push(entry);
+        continue;
+      }
 
       for (const [owner] of cacheOwners) {
         if (release(entry.key, owner, reason)) releasedOwners++;
       }
       if (!assets.has(entry.key)) evicted.push(entry.key);
+    }
+
+    if (maxCacheOnlyBytes != null && budgetCandidates.length > 0) {
+      let softBytes = 0;
+      for (const entry of budgetCandidates) softBytes += assetResidentBytes(entry);
+      if (softBytes > maxCacheOnlyBytes) {
+        budgetCandidates.sort((a, b) => a.lastReleaseAtMs - b.lastReleaseAtMs);
+        for (const entry of budgetCandidates) {
+          if (softBytes <= maxCacheOnlyBytes) break;
+          if (entry.state !== 'resident' || !assets.has(entry.key)) continue;
+          const ownerRecords = [...entry.owners.entries()];
+          if (ownerRecords.length === 0
+              || !ownerRecords.every(([, metadata]) => isSoftResidencyOwner(metadata))) continue;
+          const entryBytes = assetResidentBytes(entry);
+          for (const [owner] of ownerRecords) {
+            if (release(entry.key, owner, reason)) releasedOwners++;
+          }
+          if (!assets.has(entry.key)) {
+            evicted.push(entry.key);
+            softBytes -= entryBytes;
+          }
+        }
+      }
     }
 
     const bytesAfter = totalGpuResidentBytes();
@@ -559,15 +730,42 @@ export function createAssetResidencyRegistry(options = {}) {
   function disposeAll(reason = 'registry-disposed', disposeResources = true) {
     const wasContextLost = contextLost;
     if (!disposeResources) contextLost = true;
-    for (const request of [...pendingRequests]) request.cancel(reason);
-    for (const owner of [...owners.keys()]) releaseOwner(owner, reason);
-    for (const entry of [...assets.values()]) evictIfUnowned(entry, reason);
+    packageCacheBudgetDepth++;
+    try {
+      for (const request of [...pendingRequests]) request.cancel(reason);
+      for (const owner of [...owners.keys()]) releaseOwner(owner, reason);
+      for (const entry of [...assets.values()]) evictIfUnowned(entry, reason);
+    } finally {
+      packageCacheBudgetDepth--;
+    }
     contextLost = wasContextLost;
   }
 
   function diagnostics(diagnosticOptions = {}) {
     const canonical = diagnosticOptions.canonical === true;
     const includeEvents = diagnosticOptions.includeEvents !== false && !canonical;
+    const ownerRows = diagnosticOptions.includeOwners === true
+      ? [...owners.entries()].map(([owner, state]) => {
+        let tag = null;
+        if (owner && typeof owner === 'object') {
+          tag = owner.type || owner.name || null;
+          if (!tag && owner.userData && owner.userData.kind) tag = `boundary:${owner.userData.kind}`;
+          if (!tag && owner.constructor && owner.constructor.name) tag = owner.constructor.name;
+        }
+        if (!tag) tag = typeof owner;
+        return Object.freeze({
+          owner: String(tag),
+          released: state.released === true,
+          assets: state.assets.size,
+          requests: state.requests.size,
+          roles: Object.freeze([...new Set([...state.assets]
+            .flatMap((entry) => [...entry.owners.values()])
+            .map((metadata) => metadata && metadata.role)
+            .filter(Boolean))].sort()),
+          bytes: [...state.assets].reduce((sum, entry) => sum + assetResidentBytes(entry), 0),
+        });
+      }).sort((a, b) => b.bytes - a.bytes || a.owner.localeCompare(b.owner))
+      : null;
     const assetRows = [...assets.values()].map((entry) => {
       const gpuResidentBytes = assetResidentBytes(entry);
       const unaccountedResources = assetUnaccountedResources(entry);
@@ -597,6 +795,12 @@ export function createAssetResidencyRegistry(options = {}) {
     for (const entry of assets.values()) cpuPackageBytes += entry.cpuPackageBytes;
     let unaccountedResources = 0;
     for (const entry of resources.values()) if (entry.unaccounted) unaccountedResources++;
+    let packageCacheOnlyBytes = 0;
+    let softResidentBytes = 0;
+    for (const entry of assets.values()) {
+      if (isPackageCacheOnlyEntry(entry)) packageCacheOnlyBytes += assetResidentBytes(entry);
+      else if (isSoftOnlyEntry(entry)) softResidentBytes += assetResidentBytes(entry);
+    }
     return Object.freeze({
       schema: 'spaceface.assetResidency.v2',
       residentAssets: assets.size,
@@ -611,10 +815,16 @@ export function createAssetResidencyRegistry(options = {}) {
       unaccountedBytes: unaccountedResources > 0 ? null : 0,
       gpuAccountingAuthoritative: unaccountedResources === 0,
       ownerCount: owners.size,
+      ...(ownerRows ? { owners: Object.freeze(ownerRows) } : {}),
       pendingRequests: pendingRequests.size,
       disposedResources,
       abandonedResources,
       evictedAssets,
+      cacheSweepCount,
+      packageCacheOnlyBytes,
+      packageCacheOnlyMaxBytes,
+      softResidentBytes,
+      softResidentMaxBytes,
       currentSectorId,
       warmSectorId,
       contextLost,

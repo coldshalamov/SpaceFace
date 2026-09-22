@@ -176,6 +176,8 @@ import {
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { globalShipMicroMotion } from './shipMicroMotion.js';
+import { createFlightOverheadPresentation } from './flightOverheadPresentation.js';
+import { writeSlipstreamState } from '../presentation/flightOverheadMath.js';
 import { globalAsteroidMotion } from './asteroidMotionPresentation.js';
 import { globalPickupMotion } from './pickupMotionPresentation.js';
 import { globalInfrastructureMotion } from './infrastructureMotion.js';
@@ -379,6 +381,7 @@ const _allowCastScratch = {
   castRadius: 0,
   castBand: null,
 };
+const _overheadCuesOptions = { reducedMotion: false, reducedFlash: false, simTime: 0 };
 // Stand-in for syncEntityViews rows whose world record never resolved to a live entity —
 // _shadowPolicyOptions only reads .id, so one frozen-shape object replaces the old
 // per-entity `{ type: typeName }` allocation.
@@ -503,6 +506,13 @@ const HOLD_EXEMPT_COLLECT_SECONDS = 0.1;
 // warm while bounding dead packages to ~seconds instead of the whole session.
 const CACHE_LEASE_SWEEP_SECONDS = 10;
 const CACHE_LEASE_MAX_IDLE_MS = 30_000;
+// Idle age alone cannot bound the decoded-package warm set: station traffic re-retains popular
+// hulls faster than the 30 s gate ever sees them idle, so in-sector residency grew with content
+// variety (~35 MB/cycle in the PQ-033.02 soak). Byte pressure evicts the oldest-idle soft-held
+// packages past this budget — roughly a stage set plus a few hulls stay warm, the cold tail
+// re-decodes on next admission. Sized to the established residual contract: 64 MiB package-cache
+// + 64 MiB runtime-cache decodes (asset-residency-refcounts traversal budget).
+const CACHE_LEASE_MAX_BYTES = 128 * 1024 * 1024;
 // The opening first-picture hold is a startup latch measured in frames, not seconds. If the paint
 // latch has not ended it after this long, the paint callback is never coming; resume streaming.
 const OPENING_PICTURE_HOLD_FAILSAFE_MS = 15000;
@@ -1240,7 +1250,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     owner._cacheLeaseSweepS = CACHE_LEASE_SWEEP_SECONDS;
     try {
       owner._assetResidency?.releaseUnreferencedCacheOwners?.(
-        'in-sector-cache-decay', { minAgeMs: CACHE_LEASE_MAX_IDLE_MS },
+        'in-sector-cache-decay',
+        { minAgeMs: CACHE_LEASE_MAX_IDLE_MS, maxCacheOnlyBytes: CACHE_LEASE_MAX_BYTES },
       );
     } catch (_) { /* cache decay is best-effort */ }
   }
@@ -4694,6 +4705,11 @@ export const render = {
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.spaceBg = spaceBg; this.vf = vf;
     if (this._crucibleGhostPresentation) this._crucibleGhostPresentation.attach(scene);
+    // The nozzle-cooldown PointLight is part of the scene's visible light COUNT, which three bakes
+    // into every material's program key. Mounting it lazily on first slipstream activity raised the
+    // count 8→9 mid-flight and relinked every lit material inside bloomScene (~10.7 s brick).
+    // Mount now — before the opening compile — so every program is keyed on the settled count.
+    if (!this._overheadCues) this._overheadCues = createFlightOverheadPresentation(this.scene);
     this._assetResidency = getAssetResidency(renderer);
     if (this._assetResidency) {
       const initialSectorId = state.world && state.world.currentSectorId;
@@ -11400,6 +11416,7 @@ export const render = {
     const query = this._presentationQueries.query(queryOptions);
     let transformed = 0;
     let fullSynced = 0;
+    let slipstreamSeen = false;
     let lodChecked = 0;
     let hlodDetailedVisible = 0;
     let hlodProxyVisible = 0;
@@ -11669,6 +11686,14 @@ export const render = {
           _craftMicroMotionOptions.tetherPhase = tetherView && tetherView.phase ? tetherView.phase : '';
           _craftMicroMotionOptions.flashReduce = _worldSiteA11y.reducedFlash;
           globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+          if (isPlayer && this.scene) {
+            slipstreamSeen = true;
+            if (!this._overheadCues) this._overheadCues = createFlightOverheadPresentation(this.scene);
+            _overheadCuesOptions.reducedMotion = _worldSiteA11y.reducedMotion;
+            _overheadCuesOptions.reducedFlash = _worldSiteA11y.reducedFlash;
+            _overheadCuesOptions.simTime = simTime;
+            this._overheadCues.sync(entity, mesh, frameDt, this.state, _overheadCuesOptions);
+          }
         } else if (typeName === 'projectile') {
           globalProjectileMotion.updateProjectileMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
         } else if (typeName === 'asteroid') {
@@ -11762,6 +11787,8 @@ export const render = {
       }
       world.clearDirty(slot);
     }
+
+    if (!slipstreamSeen) writeSlipstreamState(this.state, false, 0);
 
     endRenderEntityFrame(this._entityFrame);
     const diagnostics = this._entityViewDiagnostics;
