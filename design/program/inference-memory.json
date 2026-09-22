@@ -74,42 +74,6 @@
   ],
   "units": [
     {
-      "id": "seed-craft-1",
-      "date": "2026-08-08",
-      "wf": "WF-11",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "hull material craft",
-      "fingerprint": "domain=wf-11,subject=hull-materials",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
-      "id": "seed-craft-2",
-      "date": "2026-08-10",
-      "wf": "WF-11",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "hull material craft",
-      "fingerprint": "domain=wf-11,subject=hull-materials",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
-      "id": "seed-station-1",
-      "date": "2026-08-06",
-      "wf": "WF-04",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "station identity",
-      "fingerprint": "domain=wf-04,subject=station-identity",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
       "id": "fitted-tractor-magnet-range",
       "date": "2026-08-12",
       "wf": "WF-05",
@@ -1634,6 +1598,45 @@
       "references": [],
       "integration": "live",
       "commit": "dc6d7d696",
+      "verification": "focused_green"
+    },
+    {
+      "id": "world-11-io-named-courier",
+      "date": "2026-09-22",
+      "wf": "WF-01",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Io Reach traffic can include one named courier (lane_maro_keelwright, REACH-MAIL)",
+      "fingerprint": "verb=meet,subject=courier,sector=io-reach,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "0444daa66",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inst-13-station-hum-loop",
+      "date": "2026-09-22",
+      "wf": "WF-13",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Docking starts the authored station_hum room tone; undocking stops it",
+      "fingerprint": "verb=dock,subject=station,sector=helios,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "1eaf2de75",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pic-10-lab-halo-geometry",
+      "date": "2026-09-22",
+      "wf": "WF-11",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Graphics lab ship/bolt glow demos restaged to additive geometry; prose names the banned camera-facing card",
+      "fingerprint": "verb=look,subject=graphics-lab,sector=none,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "49bbd51ca",
       "verification": "focused_green"
     }
   ],

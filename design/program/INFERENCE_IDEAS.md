@@ -65,7 +65,7 @@ not to invent.
 | PIC-07 | A large wreck does not swallow the chase camera | `src/render/renderer.js` | `'wreck'` is in the camera-clearance kinds when the span is already large enough for stations | Write a general occluder pass | OPEN |
 | PIC-08 | A shove-kill and a gun-kill do not share the generic explosion schedule | `src/render/combat/phasedExplosions.js`, `src/presentation/causalVfxGrammar.js` | The schedule id follows the real cause already in the grammar | Grow the explosion solver | SHIPPED 26732571a |
 | PIC-09 | Starter weapons scar with their own heat, not the unknown-weapon default | `src/render/weapons/contactMarks.js` | `heatForWeaponVariant` maps the starter ids in `vfxProfiles.js` to a named heat, not the unknown default | Redesign the scar atlas | SHIPPED |
-| PIC-10 | The graphics lab does not teach a camera-facing halo as the method | `src/render/graphicsLab.js` | The lab-only halo demo is relabeled or restaged off the banned card | Change production VFX | OPEN |
+| PIC-10 | The graphics lab does not teach a camera-facing halo as the method | `src/render/graphicsLab.js` | The lab-only halo demo is relabeled or restaged off the banned card | Change production VFX | SHIPPED 49bbd51ca |
 | PIC-11 | A missing place does not appear as a published cube | `src/render/partsLibrary.js` | `buildFallbackPlaceProp` keeps an empty substrate or marker | Add fallback geometry | SHIPPED |
 | PIC-12 | Hull tallies and patches read at the default chase | `src/render/livingHullPresentation.js` | The mark is sharper than the current 256×64 smear at chase distance | Add a second decal system | SHIPPED |
 
@@ -101,7 +101,7 @@ not to invent.
 | WORLD-08 | A Collective hull hails in yard language, not Concord boilerplate | `src/data/factionContactGrammar.js`, `src/data/barks.js` | `FACTION_CONTACT_GRAMMAR.faction_dmc` exists and a Ceres trader or patrol line uses it | Change heat math. Add a faction | OPEN |
 | WORLD-09 | A Meridian hull hails in invoice language | `src/data/factionContactGrammar.js`, `src/data/barks.js` | A Tethys trader line uses an MTS-specific sentence | Retune prices | OPEN |
 | WORLD-10 | Helios outer rocks are not the same type as the starter field | `src/data/sectors.js` Helios fields | `f_helios_outer` uses a second existing asteroid type | Change beam rate, hold size, tax, or next-field distance (§22 A3) | SHIPPED |
-| WORLD-11 | Io Reach traffic can include one named courier | `src/data/laneContacts.js` | `pickNamedLaneContact` can return an Io-only id | Add a station | OPEN |
+| WORLD-11 | Io Reach traffic can include one named courier | `src/data/laneContacts.js` | `pickNamedLaneContact` can return an Io-only id | Add a station | SHIPPED 0444daa66 |
 | WORLD-12 | Charon traffic can include one named miner | `src/data/laneContacts.js` | The Expanse sector ids include that contact | Add a claimable | OPEN |
 | WORLD-13 | Tethys has one always-there dressing piece made from a place that already exists | `src/data/worldOneOffs.js`, `src/systems/world.js` | Activating Tethys spawns that `placeId` near the customs gate or the hub | Add a GLB or a mission | OPEN |
 | WORLD-14 | The Veil research station can run a research side event | `src/data/stationSideEvents.js` | `planStationSideEvents` for `research` can pick a research-specific kind | Spawn a combat ship | OPEN |
@@ -128,7 +128,7 @@ not to invent.
 | INST-10 | Hover and tab are not the click sample at another pitch | `src/data/audioRecipes.js` | `sfx_ui_hover` and `sfx_ui_tab` bind distinct samples, or synth-only, not `ui_click` | Replace the combat mix | OPEN |
 | INST-11 | A capital's pre-detonation ticks are not menu hovers | `src/audio/audioSystem.js` | Those ticks use a combat recipe, not `sfx_ui_hover` | Retune the explosion | OPEN |
 | INST-12 | Station primary buttons are the same keys as the rest of the kit | `styles/station-orbital.css` | Primary station verbs are `fh-key` or `data-sf-role="primary"`; `button:not(.fh-key)` does not paint a second control language | Redesign the station (that is §23 CV-KIT) | OPEN |
-| INST-13 | Docked, the station has the room tone that already exists | `src/audio/audioSystem.js` | Dock starts `station_hum_loop`; undock stops it | Author a new loop | OPEN |
+| INST-13 | Docked, the station has the room tone that already exists | `src/audio/audioSystem.js` | Dock starts `station_hum_loop`; undock stops it | Author a new loop | SHIPPED 1eaf2de75 |
 | INST-14 | "SHIELD DOWN" does not float over the fight | `src/ui/floatingText.js` | `combat:damage` does not spawn that floater | Delete the objective line (§22 G3) | SHIPPED |
 | INST-15 | The local map frame uses the kit, not a one-off plate | `src/ui/screens/localmap.js` | Frame and labels use kit or deckplate tokens | Rebuild the map (that is §22 C2 if it is the chart) | OPEN |
 | INST-16 | The UI bench boot is the game boot | `tools/ui-bench.html` | The bench does not load the green `styles/orbital.css` boot overlay on top of `styles/intro.css` | Change the production intro palette | OPEN |
@@ -163,6 +163,9 @@ not to invent.
 | VERB-03 | verb-03-hitch-hint-heavy-hauler | fb1c6484a | hitch gate accepts any passive `ship_mule` freighter incl. the opening mule; express itinerary preserved |
 | WORLD-04 | world-04-choir-tender-investigator | eb8f3793c | SCN customs cutter audits a Choir-Tender claim — offers the wreck's own report/loot choice, one hull |
 | INST-04 | inst-04-prompt-deck-flight-cluster | dc6d7d696 | decisions/keys/chips on deckplate bezel + glass + lamp tokens; no 10px consumer card |
+| WORLD-11 | WF-01 | 0444daa66 | Io Reach lanes can stamp named courier `lane_maro_keelwright` (REACH-MAIL, Io-only) |
+| INST-13 | INST-13 | 1eaf2de75 | Docking starts the authored `station_hum_loop` room tone on the ambient bus; undocking stops it |
+| PIC-10 | PIC-10 | 49bbd51ca | Graphics-lab ship/bolt glow demos are additive geometry coaxial with the drive/bolt; prose names the banned camera-facing card |
 
 ## CUT
 
