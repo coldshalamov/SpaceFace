@@ -27,6 +27,18 @@ export const trigger = deepFreeze({
   },
 });
 
+// The raid dissolving must not take its cast with it. Detach the squad from the live record
+// (the same ids/roles bookkeeping the director's entity-gone handler maintains) so resolve()'s
+// straggler sweep finds nothing to stamp with a despawn timer. Spawn budget stays with the ships
+// through dir.active until each one actually leaves play — the ordinary population contract.
+function releaseSquadToWorld(live) {
+  if (!live) return;
+  if (Array.isArray(live.ids)) live.ids.length = 0;
+  if (live.roles && typeof live.roles === 'object') {
+    for (const id of Object.keys(live.roles)) delete live.roles[id];
+  }
+}
+
 export const runtime = Object.freeze({
   fire(d, live, state) {
     // Deadline lands before spawnShips so the spawned activities bake the real deadlineTick.
@@ -67,7 +79,10 @@ export const runtime = Object.freeze({
     if (now >= live.deadlineAt) {
       // The raiders gave up and the hauler survived — 'hauler_destroyed' would misreport the
       // outcome into stats, receipts, and resolved fingerprints.
-      d.despawnAll(live, 8);
+      // The scripted beat closes; the cast does not delete itself. Released from the live
+      // record, the hauler keeps flying and the raiders keep being pirates as ordinary world
+      // entities the player can still fight, save, or rob after the encounter has ended.
+      releaseSquadToWorld(live);
       return d.resolve(live, 'raid_over', { speak: false });
     }
   },
