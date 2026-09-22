@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/design/program/vm-drop/bastion-chase/bastion_c1_lod0.glb",
+  "ship": "bastion",
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "runtimeScale": 2.0688901081969324,
+  "authoredX": 18.289999961853027,
+  "targetWU": 37.839999999999996,
+  "size": [
+    37.84,
+    9.3284,
+    8.2886
+  ],
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/bastion-chase/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/bastion-chase/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/bastion-chase/play_chase_close.png"
+  },
+  "clay": "/workspace/spaceface/design/program/vm-drop/bastion-chase/clay_play_chase.png",
+  "clayAbeam": "/workspace/spaceface/design/program/vm-drop/bastion-chase/clay_play_chase_abeam.png",
+  "clayClose": "/workspace/spaceface/design/program/vm-drop/bastion-chase/clay_play_chase_close.png"
+}
