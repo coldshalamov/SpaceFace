@@ -577,3 +577,49 @@ test('every committed src import resolves to a committed file', async () => {
   assert.deepEqual(missing, [],
     `tracked sources import untracked modules (clean checkout would 404):\n${missing.join('\n')}`);
 });
+
+test('every committed src named import resolves to a committed export', async () => {
+  // Same failure class, one layer deeper: a51aa1241's title screen imported
+  // selectLatestOccupiedSlot while the helper sat uncommitted — the module
+  // rejected at eval, mainMenu/pause screens never registered, and the
+  // 2026-09-22 acceptance died waiting for a menu that could not mount.
+  // export * chains are skipped rather than resolved transitively.
+  const { execFileSync } = await import('node:child_process');
+  const tracked = new Set(
+    execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+      .split('\n').filter(Boolean),
+  );
+  const exportRe = /export\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)|export\s*\{([^}]*)\}/g;
+  const exportsOf = new Map();
+  const starReexport = new Set();
+  for (const file of tracked) {
+    if (!/\.(js|mjs)$/.test(file)) continue;
+    const text = await readFile(path.join(ROOT, file), 'utf8');
+    const names = new Set();
+    for (const m of text.matchAll(exportRe)) {
+      if (m[1]) names.add(m[1]);
+      if (m[2]) for (const part of m[2].split(',')) {
+        const name = part.trim().split(/\s+as\s+/).pop().trim();
+        if (name) names.add(name);
+      }
+    }
+    if (/export\s*\*/.test(text)) starReexport.add(file);
+    exportsOf.set(file, names);
+  }
+  const missing = [];
+  for (const file of tracked) {
+    if (!/^src\/.*\.(js|mjs)$/.test(file)) continue;
+    const text = await readFile(path.join(ROOT, file), 'utf8');
+    for (const m of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"](\.[^'"]+)['"]/g)) {
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), m[2]));
+      if (!tracked.has(resolved) || starReexport.has(resolved)) continue;
+      const names = exportsOf.get(resolved) || new Set();
+      for (const part of m[1].split(',')) {
+        const name = part.trim().split(/\s+as\s+/)[0].trim();
+        if (name && !names.has(name)) missing.push(`${file} imports ${name} from ${resolved}`);
+      }
+    }
+  }
+  assert.deepEqual(missing, [],
+    `tracked sources import names that tracked modules do not export (module eval rejects):\n${missing.join('\n')}`);
+});
