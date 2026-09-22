@@ -529,26 +529,53 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       handoffSignature = '';
       return;
     }
-    // The three steps as fine words in a row under the news line; a done step reads at 38 %.
-    const html =
-      `<span class="k-caps sxb-handoff__k">Getting started</span>` +
-      steps.map((st, i) => {
-        // A step whose target is a verb (`services` → undock) carries the verb. It previously fell
-        // through `TARGET_MAP[tab] || 'market'`, so "Launch · safe to undock" opened the Market.
-        const target = resolveTarget(st.targetTab);
-        const cls = st.done ? 'is-done k-38' : (st.kind === 'bad' ? 'is-bad k-bad' : (st.kind === 'warn' ? 'is-warn' : 'is-ok'));
-        const mode = st.tradeMode === 'sell' || st.tradeMode === 'buy' ? st.tradeMode : '';
-        const attr = target.destination
-          ? ` data-handoff="${escapeHtml(target.destination)}"`
-          : (target.action ? ` data-handoff-act="${escapeHtml(target.action)}"` : '');
-        if (!attr) return '';
-        return `<button type="button" ${stationControlAttrs('handoff-step')} class="k-word k-word--fine fh-key fh-key--small sxb-hstep ${cls}"${attr}` +
-          (mode ? ` data-handoff-mode="${mode}"` : '') +
-          ` data-why="${escapeHtml(st.text)}" aria-label="${escapeHtml(st.title + '. ' + st.text)}">` +
-          `<span class="sxb-hstep__n">${i + 1}</span> ` +
-          `<span class="sxb-hstep__t">${escapeHtml(st.title)}</span></button>`;
-      }).join('') +
-      `<button type="button" ${stationControlAttrs('dismiss-handoff')} class="k-word k-word--fine k-38 sxb-handoff__x" data-handoff-dismiss aria-label="${stationControlLabel('dismiss-handoff')} getting started guidance">${stationControlLabel('dismiss-handoff')}</button>`;
+    // ONBOARDING IS A LAMP ON THE NEXT THING TO DO.
+    //
+    // This was a row of three bevelled chips under a "Getting started" caps label plus a Dismiss —
+    // four controls carrying the same visual weight as UNDOCK, for guidance the player reads once.
+    // design/frontend/ONE_PHOTOGRAPH.md §4.7 kills the strip and names the replacement: light the
+    // destination that holds the next step, and say the one thing, once, in the reading voice.
+    //
+    // So: find the first step that is not done, put a travelling lamp on its tile in the dock, and
+    // print its sentence as a line of phosphor with a lamp bead. Two objects, not five, and the
+    // player's eye goes to the tab they actually have to press.
+    const next = steps.find((st) => !st.done) || null;
+    const doneCount = steps.filter((st) => st.done).length;
+    const target = next ? resolveTarget(next.targetTab) : null;
+    const attr = target
+      ? (target.destination
+        ? ` data-handoff="${escapeHtml(target.destination)}"`
+        : (target.action ? ` data-handoff-act="${escapeHtml(target.action)}"` : ''))
+      : '';
+
+    // The lamp on the rail. Cleared every pass so a completed step does not leave a lit tab behind.
+    const dockEl = app.querySelector('.sxb-ops__dock');
+    if (dockEl) {
+      for (const lit of dockEl.querySelectorAll('[data-dp-next]')) lit.removeAttribute('data-dp-next');
+      if (target && target.destination) {
+        const tile = dockEl.querySelector(`[data-nav="${CSS.escape(target.destination)}"]`);
+        if (tile) tile.setAttribute('data-dp-next', '');
+      }
+    }
+
+    const html = !next || !attr
+      ? ''
+      : `<button type="button" ${stationControlAttrs('handoff-step')} class="sxb-next"${attr}` +
+          (next.tradeMode === 'sell' || next.tradeMode === 'buy' ? ` data-handoff-mode="${next.tradeMode}"` : '') +
+          ` data-why="${escapeHtml(next.text)}" aria-label="${escapeHtml(next.title + '. ' + next.text)}">` +
+          `<span class="sxb-next__bead" aria-hidden="true"></span>` +
+          `<span class="sxb-next__t">${escapeHtml(next.title)}</span>` +
+          `<span class="sxb-next__w">${escapeHtml(next.text)}</span>` +
+          (steps.length > 1 ? `<span class="sxb-next__n" aria-hidden="true">${doneCount}/${steps.length}</span>` : '') +
+        `</button>` +
+        `<button type="button" ${stationControlAttrs('dismiss-handoff')} class="sxb-next__x" data-handoff-dismiss` +
+          ` aria-label="${stationControlLabel('dismiss-handoff')} getting started guidance">${stationControlLabel('dismiss-handoff')}</button>`;
+    if (!html) {
+      if (!handoffEl.hidden) handoffEl.hidden = true;
+      if (handoffSignature) handoffEl.replaceChildren();
+      handoffSignature = '';
+      return;
+    }
     if (handoffEl.hidden) handoffEl.hidden = false;
     if (html !== handoffSignature) {
       handoffEl.innerHTML = html;

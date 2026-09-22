@@ -24,6 +24,7 @@ import {
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { icon, factionIcon } from '../icons.js';
+import { dpMark, factionCrestName } from '../../deckplate/index.js';
 import { stationControlAttrs } from '../stationBindingMap.js';
 
 const STATION_FACTION = new Map();
@@ -34,8 +35,17 @@ for (const sector of SECTORS) {
 const REP_MIN = -1000;
 const REP_MAX = 1000;
 
-/** The power's own heraldry as a kit crest (a generic mark for an id the icon set does not know). */
+/** The power's own heraldry.
+ *
+ *  Fourteen crests were drawn for the fourteen factions -- 240px hex shields, two-tone, one per
+ *  power -- and this screen was rendering a generic line glyph from the icon set instead, at 24px,
+ *  greyed, tucked behind the title. ONE_PHOTOGRAPH.md section 4.12: a glyph where a mark exists is
+ *  a defect. dpMark casts the real thing as relief under the shared key; the icon-set fallback
+ *  stays for a power with no crest on disk, which today is none of them.
+ */
 function crest(id, variant) {
+  const name = factionCrestName(id);
+  if (name) return dpMark(name, { size: variant === 'hero' ? 'hero' : 'badge', lit: variant === 'hero' });
   const px = variant === 'hero' ? 240 : 24;
   const svg = factionIcon(id, px) || icon('factions', px);
   return svg.replace(/class="sx-ico[^"]*"/, `class="k-crest k-crest--${variant} sx-ico"`);
@@ -130,6 +140,9 @@ export function createFactionsScreen(ctx) {
           `<li><button type="button" ${stationControlAttrs('faction')} class="sx-fac-row k-row${selected ? ' is-active' : ''}" data-fac="${escapeHtml(f.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
             ` aria-label="${escapeHtml(f.name)}, ${escapeHtml(tier.name)} ${signed(rep)}${authority ? ', current station authority' : ''}">` +
             `<span class="sx-fac-row__body">` +
+              // The crest rides the row. Fifteen names at identical weight was a spreadsheet;
+              // a power is recognisable by its mark before its name is read.
+              `<span class="sx-fac-row__crest" aria-hidden="true">${crest(f.id, 'badge')}</span>` +
               `<span class="k-row__name sx-fac-row__name">${authority ? '<span class="k-62">Authority · </span>' : ''}${escapeHtml(f.name)}</span>` +
               `<span class="k-bar sx-fac-row__bar" aria-hidden="true"><span class="k-bar__fill sx-fac-row__fill" style="width:${(frac * 100).toFixed(1)}%"></span><span class="sx-fac-row__zero"></span></span>` +
             `</span>` +

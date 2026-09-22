@@ -21,12 +21,14 @@ export function hasDpMark(name) {
 /** A faction id maps to its crest. Unknown factions get nothing rather than a wrong crest. */
 export function factionCrestName(factionId) {
   if (!factionId) return '';
-  const slug = String(factionId).replace(/^faction[_-]/, '').replace(/_/g, '-');
-  const direct = `crest-${slug}`;
-  if (hasDpMark(direct)) return direct;
-  // The crest files use short codes (scn, mts, dmc) where the faction ids are words.
-  const short = `crest-${slug.split('-').map((w) => w[0]).join('')}`;
-  return hasDpMark(short) ? short : '';
+  const bare = String(factionId).replace(/^faction[_-]/, '');
+  // The 14 faction ids map 1:1 to the 14 crest files, but the two spellings disagree on the
+  // separator for the one id that has one: faction_verge_layers / crest-verge_layers. Try the id
+  // as written first, then the hyphenated form, rather than guessing which convention won.
+  for (const slug of [bare, bare.replace(/_/g, '-')]) {
+    if (hasDpMark(`crest-${slug}`)) return `crest-${slug}`;
+  }
+  return '';
 }
 
 /**

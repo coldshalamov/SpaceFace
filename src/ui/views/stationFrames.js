@@ -21,6 +21,12 @@ export function stationFrameHtml() {
   return `${stationSymbolsHtml()}
     <div class="k-world k-world--plate sxb-berth__plate" aria-hidden="true"></div>
     <canvas class="k-world sxb-berth__world" aria-hidden="true"></canvas>
+    <!-- THE BERTH'S VEIL. The bay is lit ochre and the station's readings sit on top of it; until
+         2026-09-22 a translucent rectangle carried that, which is a panel and is dead. This is the
+         grade: a full-frame gradient with no inner edge, darkest where the standing column is and
+         opening out toward the bay, so the hangar is still the picture and the type is still
+         legible. design/frontend/ONE_PHOTOGRAPH.md section 4.1. -->
+    <div class="dp-veil dp-veil--full sxb-veil" aria-hidden="true"></div>
     <header class="sxb-berth dp-frame__head">
       <span class="sxb-berth__lamp" aria-hidden="true"></span>
       <div class="so-station-mark">${stationSealHtml()}</div>

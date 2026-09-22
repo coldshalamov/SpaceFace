@@ -380,7 +380,7 @@
 :is(#screens .sx-observatory, .sx-observatory) .sf-state__head { font: 500 24px/1.2 var(--so-display); text-transform: none; letter-spacing: -.02em; color: var(--so-ink); margin: 8px 0 10px; }
 :is(#screens .sx-observatory, .sx-observatory) .sf-state__fills { font-size: 13px; line-height: 1.6; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-fac-overview { padding-right: 0; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-fac-crest { right: 0; top: 0; width: 128px; opacity: .45; pointer-events: none; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-crest { pointer-events: none; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-fac-crest svg { max-width: 100%; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-fac-ident { padding-right: 135px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-fac-ident__name { max-width: 22ch; }
@@ -448,4 +448,116 @@
 :is(#screens .sx-observatory, .sx-observatory) .sx-ladder__step:has(.sx-ladder__name--wrap) { align-items: start; min-height: 0; padding-block: 6px; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-ladder__name--wrap {
   min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.35;
+}
+
+/* The crest rides each power's row in the rail, and the dossier's crest is the produced hex shield
+   at the size it was drawn for rather than a 24px line glyph tucked behind the title
+   (design/frontend/ONE_PHOTOGRAPH.md section 5 P7). */
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-row { column-gap: 10px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-row__crest { display: flex; align-items: center; flex: 0 0 auto; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-row.is-active .dp-mark { color: var(--dp-ink); --dp-lamp-current: 1; }
+
+/* The berth's veil sits above the bay and below everything the frame holds. Its falloff is keyed
+   to the standing column, not centred: the work is on the left, the picture is on the right. */
+:is(#screens .sx-observatory, .sx-observatory) .sxb-veil {
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    linear-gradient(92deg, rgb(6 7 10 / .90) 0%, rgb(6 7 10 / .82) 34%, rgb(6 7 10 / .54) 62%, rgb(6 7 10 / .30) 84%, rgb(6 7 10 / .22) 100%),
+    radial-gradient(150% 120% at 74% 46%, transparent 0%, rgb(6 7 10 / .38) 62%, rgb(6 7 10 / .62) 100%);
+}
+:is(#screens .sx-observatory, .sx-observatory) > :not(.sxb-veil):not(.k-world) { position: relative; z-index: 1; }
+
+/* ── The crest wall's dossier head ────────────────────────────────────────────────────────────
+   The crest was absolutely positioned at 45 % behind the faction's name: the highest-detail art
+   in the game used as wallpaper, with the heading running over it. A crest is a CAST OBJECT
+   (ONE_PHOTOGRAPH.md §5 P7). It gets its own column, full presence, and the identity sits beside
+   it the way heraldry has always been laid out. */
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-overview {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: clamp(18px, 2.2vw, 34px);
+  row-gap: clamp(10px, 1.2vw, 18px);
+  align-items: start;
+}
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-overview > * + * { margin-top: 0; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-crest {
+  position: relative; inset: auto; width: auto; opacity: 1;
+  grid-column: 1; grid-row: 1 / span 3; align-self: start;
+  /* Optical: a shield's top edge sits a touch below a cap-height eyebrow, not level with it. */
+  margin-top: 2px;
+}
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-crest .dp-mark {
+  --dp-mark-size: clamp(104px, 10.5vw, 172px);
+}
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-overview > .k-caps,
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-overview > .sx-fac-ident__name,
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-overview > .sx-fac-ident__flag {
+  grid-column: 2; align-self: end;
+}
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-overview > .sx-fac-ident__name { align-self: center; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-fac-overview
+  > :not(.sx-fac-crest):not(.k-caps):not(.sx-fac-ident__name):not(.sx-fac-ident__flag) {
+  grid-column: 1 / -1;
+}
+
+/* ── Onboarding as a lamp ─────────────────────────────────────────────────────────────────────
+   One line of phosphor with a lamp bead, and the dock tile that holds the step lit from within.
+   No chips, no caps label, no numbered boxes. §4.7. */
+:is(#screens .sx-observatory, .sx-observatory) .sxb-handoff {
+  display: flex; align-items: baseline; column-gap: 14px;
+}
+:is(#screens .sx-observatory, .sx-observatory) .sxb-next {
+  display: flex; align-items: baseline; column-gap: 10px;
+  background: none; border: 0; padding: 2px 0; margin: 0; cursor: pointer;
+  text-align: left; font: inherit; color: var(--dp-phos-dim);
+  --dp-lamp-current: .72;
+}
+:is(#screens .sx-observatory, .sx-observatory) .sxb-next__bead {
+  flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--dp-lamp-now);
+  box-shadow: 0 0 var(--dp-lamp-halo) var(--dp-lamp-now);
+  transform: translateY(-1px);
+}
+:is(#screens .sx-observatory, .sx-observatory) .sxb-next__t {
+  color: var(--dp-phos); text-shadow: 0 0 10px var(--dp-phos-halo);
+  font-variation-settings: "wght" 660, "wdth" 92;
+  letter-spacing: .06em; text-transform: uppercase;
+}
+/* The step's SENTENCE is read, not shouted. The berth's ancestors uppercase everything in this
+   strip, which turned a full sentence of guidance into a wall of caps — unreadable at 11px and
+   the loudest thing on a screen whose job is a faction dossier. */
+:is(#screens .sx-observatory, .sx-observatory) .sxb-next__w {
+  text-transform: none; letter-spacing: 0; font-size: var(--dp-fs-etch);
+}
+:is(#screens .sx-observatory, .sx-observatory) .sxb-next__n {
+  color: var(--dp-ink-mute); font-variant-numeric: tabular-nums; letter-spacing: .06em;
+}
+:is(#screens .sx-observatory, .sx-observatory) .sxb-next:is(:hover, :focus-visible) { --dp-lamp-current: 1; }
+:is(#screens .sx-observatory, .sx-observatory) .sxb-next:is(:hover, :focus-visible) .sxb-next__w { color: var(--dp-phos); }
+:is(#screens .sx-observatory, .sx-observatory) .sxb-next__x {
+  background: none; border: 0; padding: 2px 0; margin: 0; cursor: pointer;
+  font: inherit; color: var(--dp-ink-mute); letter-spacing: .06em; text-transform: uppercase;
+  font-size: var(--dp-fs-etch);
+}
+:is(#screens .sx-observatory, .sx-observatory) .sxb-next__x:is(:hover, :focus-visible) { color: var(--dp-ink); }
+:is(#screens .sx-observatory, .sx-observatory) .sxb-next__w { color: var(--dp-phos-dim); }
+
+/* The lit destination. The tile is already mass; this makes it the one that is switched on. */
+:is(#screens .sx-observatory, .sx-observatory) .sx-tile[data-dp-next] {
+  --dp-lamp-current: 1;
+  color: var(--dp-ink);
+  position: relative;
+}
+:is(#screens .sx-observatory, .sx-observatory) .sx-tile[data-dp-next] .sx-tile__seat {
+  color: var(--dp-lamp-now);
+  filter: drop-shadow(0 0 var(--dp-lamp-halo) var(--dp-lamp-cast));
+}
+:is(#screens .sx-observatory, .sx-observatory) .sx-tile[data-dp-next]::after {
+  content: ""; display: block; position: absolute; left: 50%; translate: -50% 0; bottom: 3px;
+  width: 22px; height: 2px; background: var(--dp-lamp-now);
+  box-shadow: 0 0 var(--dp-lamp-halo) var(--dp-lamp-now);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :is(#screens .sx-observatory, .sx-observatory) .sx-tile[data-dp-next],
+  :is(#screens .sx-observatory, .sx-observatory) .sxb-next { transition: --dp-lamp-current 220ms var(--dp-ease-lamp); }
 }
