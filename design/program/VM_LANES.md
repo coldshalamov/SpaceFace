@@ -43,7 +43,7 @@ Take the first row whose folder does not exist. Finish it. Take the next. When t
 | `quiet-crucible` | Run `npm run probe:smooth-flight:crucible` on an otherwise idle machine. Write `report.md` with fps, frames over 33 / 50 / 100 ms, worst frame, and whether a wave was in the window. Seed 4242. | A busy owner machine cannot measure this. You change no code. |
 | `quiet-open-flight` | Run `npm run probe:smooth-flight` the same way. Separate the first 20 seconds from settled flight in `report.md`. | Same. Report only. |
 | `quiet-solid-world` | Run `npm run probe:solid-world`. Write whether anything on screen was discarded, and the worst wait before an on-screen mesh appeared. | Same. Report only. |
-| `ranger-chase` | A chase-camera Ranger candidate: GLB, three stills, a one-paragraph note of what still looks like a kit. Copy any builder you need into this folder. | Do not replace `assets/ships/parts/wholeships/ranger_production_v1.glb` or the release copy. The live hull stays until a person imports yours. |
+| `ranger-chase` | Continue from the live hull already on master (chase cycles C2–C4, last result REVISE: the cage and the tube paddle are gone, Hitch still wins on mass and skin). Put the next candidate GLB and three stills in this folder. Copy any builder you need into this folder. | Do not replace `assets/ships/parts/wholeships/ranger_production_v1.glb` or the release copy. Do not open another Ranger pull request. |
 | `ironback-chase` | Same delivery for the player barge. | Same rule. Your folder only. |
 | `bastion-chase` | Same delivery for the player corvette. | Same rule. |
 | `atlas-chase` | Same delivery for the player bulk hauler. | Same rule. |
@@ -72,7 +72,7 @@ Hitch and Kestrel stay frozen.
 
 ## If you were mid-Ranger on the live files
 
-Stop writing the live Ranger package. Put whatever you have into `design/program/vm-drop/ranger-chase/` and continue that job under the fence. Do not resume by editing `assets/ships/**/ranger*`.
+Cycles C2, C3, and C4 are already on master. Stop writing the live Ranger package and stop opening Ranger pull requests. Put the next attempt in `design/program/vm-drop/ranger-chase/` and continue that job under the fence.
 
 ## Pointers
 
