@@ -364,11 +364,41 @@ killing the market's `#sx-panel` still waits on it.
    **(b)** a performance recording of one focus change on the 47-row board shows the attention
    lamp's settle as a bounded main-thread cost, or its falloff is cut to the focused row and its two
    neighbours.
-3. **The flight layer as light** (P5) — the owner's most specific complaint, twice stated.
+3. **The flight layer as light** (P5) — **DOM half DONE 2026-09-22.** The cluster plate (§4.9) is
+   gone — it was declared three separate times in `hudStyles.js` and the last one silently won —
+   along with nine card paints. Readings are phosphor; occlusion is a veil with no inner boundary;
+   the hull dial and the power rail (the one permitted mass) are untouched. The register comment
+   that had voided the owner's 09-14 words is corrected in the file. **Still open:** P5's canvas
+   half. Flight owns no canvas today, so adding one is a new render surface and `ARCHITECTURE.md`
+   §1.2 governs it. And nothing here is verified MOVING — the bench cannot play flight.
 4. **Factions** (P7) — a day's work, the largest visible jump per hour in the game.
 5. **Undock** (§6), once 2 and 3 exist.
-6. **Pause** (the chip grid becomes one rail of light), then the grade per family (P8), then the
-   rest by weight.
+6. **Pause** — **DONE 2026-09-22.** Seventeen chips in six groups became a rail of light with
+   etched group heads and one lamp on RESUME; the light primitive gained the group head and the
+   BANK (a verb sharing a wrapping line) to make seventeen verbs fit without a grid. The brief
+   stopped being two panes of glass. Then the grade per family (P8), then the rest by weight.
+
+---
+
+### Where this stands, 2026-09-22
+
+**Done:** the material (step 0), the title (1), factions' crests (4, partial), the flight DOM (3),
+pause (6), and the contrast instrument that gate (a) was waiting on. Kill list: §4.2 the chip,
+§4.3 the ring, §4.7 the getting-started strip, §4.9 the HUD plate, §4.11 raster nine-slices,
+§4.15 developer strings. All 42 screens shoot clean, and every reading on every one of them clears
+its WCAG floor measured against the composited frame.
+
+**Open, in the order they are worth doing:**
+1. **Market as the bench proof** (step 2). Gate (a)'s instrument now exists
+   (`scripts/ui-contrast.mjs`) and the berth has its veil, so the panel kill is unblocked. Gate (b)
+   — a performance recording of the attention lamp's settle on the 47-row board — is not measured.
+2. **§4.6 the essay** — the seven-line commodity paragraph is still on the market.
+3. **§4.5 the fake instrument** — the demand box lost its bezel and its smudge, but "Stable demand"
+   is still a phrase where a reading should be.
+4. **Undock** (step 5) and the grade per family (P8).
+5. **§4.8 hue leaks** — the green rule under the pause brief's contract link is one.
+6. The seven screens that pin material inline do so because `fh.css` is injected at first dock, so
+   they render differently before and after one. That wants its own pass.
 
 ---
 
