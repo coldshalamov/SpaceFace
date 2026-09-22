@@ -17,6 +17,7 @@
 // loop/alarm state and (re)started once audio resumes.
 
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
+import { CUE_GAIN } from '../presentation/throttleAnswer.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import { bindBombAudio, isBombFieldLoopCue, isBombStatusLoopCue, startBombFieldLoop } from './bombAudio.js';
 import { resolveMasslineInstrument } from './masslineInstrument.js';
@@ -5550,10 +5551,13 @@ export const audio = {
     const duck = rt._priorityDuckEngine == null ? 1 : rt._priorityDuckEngine;
     humG *= duck;
 
-    // Portamento ~300 ms (setTarget timeConstant ≈ 0.1).
+    // Pitch still glides. Cue gain follows the G10 windows: loud inside 120 ms, silent inside 250 ms.
     const tc = 0.1;
     const t = ctx.currentTime;
     const slowPitch = rt._bulletTimePitch || 1;
+    const rising = humG > (rt._engineHumCmd || 0);
+    const gainTc = rising ? CUE_GAIN.riseTau : CUE_GAIN.fallTau;
+    rt._engineHumCmd = humG;
     try {
       rt.engineOsc1.type = familyVoice.osc1;
       rt.engineOsc2.type = familyVoice.osc2;
@@ -5564,7 +5568,7 @@ export const audio = {
       if (rt.engineSubGain) rt.engineSubGain.gain.setTargetAtTime(subG, t, 0.12);
       rt.engineNoiseGain.gain.setTargetAtTime(noiseG * duck, t, 0.15);
       if (rt.engineNoiseFilter) rt.engineNoiseFilter.frequency.setTargetAtTime(noiseHz, t, 0.12);
-      if (rt.engineHumGain) rt.engineHumGain.gain.setTargetAtTime(Math.max(0, humG), t, 0.08);
+      if (rt.engineHumGain) rt.engineHumGain.gain.setTargetAtTime(Math.max(0, humG), t, gainTc);
     } catch (_) {}
 
     // Mutate a stable telemetry object for harness/evidence traces (no per-frame allocation).

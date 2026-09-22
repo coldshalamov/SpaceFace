@@ -32,15 +32,14 @@ export const EMIT_FLOOR = IDLE_FLOOR * 1.35;
 export const SPEED_SHARE = 0.25;
 
 /**
- * Time constants, in seconds. A first-order lag reaches ~95% of its target in 3 tau, so the spool
- * rise below lands full thrust at about 0.66 s — inside the half-to-three-quarter-second window the
- * owner specified.
+ * Time constants, in seconds. Wave G10: full throttle grows the plume inside 120 ms, and zero
+ * throttle is dark inside a quarter second. Release stays slower than attack, so the drive still
+ * cools instead of clipping off in one frame. Boost remains the faster blast.
  */
 export const RATES = Object.freeze({
-  spoolRiseTau: 0.22,
-  spoolFallTau: 0.34,
-  // Boost is a blast, so its attack is roughly four times faster than the base spool.
-  boostRiseTau: 0.055,
+  spoolRiseTau: 0.04,
+  spoolFallTau: 0.06,
+  boostRiseTau: 0.018,
   boostFallTau: 0.26,
 });
 
@@ -83,9 +82,8 @@ export function sampleDashFlare(age) {
 /**
  * Resolve the drive target from pilot input, before smoothing.
  *
- * Speed contributes SPEED_SHARE of the target, but only counts in full once some thrust is actually
- * commanded — otherwise coasting at speed would light a drive that is not firing. Coasting still
- * keeps a fraction of it as residual thermal glow.
+ * Speed contributes SPEED_SHARE of the target only while the throttle is open. Zero throttle is
+ * dark, including a coast: the hand off the throttle puts the engine out.
  *
  * @param {number} throttle 0..1 commanded forward authority
  * @param {number} speedNorm 0..1 airspeed as a fraction of the ship's top speed
@@ -93,6 +91,8 @@ export function sampleDashFlare(age) {
 export function resolveDriveTarget(throttle, speedNorm) {
   const cmd = Math.max(0, Math.min(1, throttle || 0));
   const spd = Math.max(0, Math.min(1, speedNorm || 0));
+  // Zero throttle is a dark engine. Coasting does not keep the plume lit.
+  if (cmd <= 0.001) return 0;
   // smoothstep(0.05, 0.35, cmd)
   const t = Math.max(0, Math.min(1, (cmd - 0.05) / 0.30));
   const gate = 0.35 + 0.65 * (t * t * (3 - 2 * t));
@@ -154,6 +154,23 @@ export function resolvePlumeShape(state, base, out) {
   const spool = state.spool;
   const boost = state.boost;
   const dash = state.dash;
+
+  // Zero command has already settled: no stub, no glow. Opacity stays a material only while the
+  // drive is actually lit; a dark engine is dark.
+  if (!(spool > 0.02)) {
+    out.jetLength = 0;
+    out.throatRadius = base.throatRadius;
+    out.spread = base.spread;
+    out.radiance = 0;
+    out.opacity = 0;
+    out.drive = 0;
+    out.spool = spool;
+    out.boost = boost;
+    out.dash = dash;
+    out.emitting = false;
+    out.emitFloor = (EMIT_FLOOR - IDLE_FLOOR) / (1 - IDLE_FLOOR);
+    return out;
+  }
 
   const drive = Math.max(0, Math.min(1, (spool - IDLE_FLOOR) / (1 - IDLE_FLOOR)));
 
