@@ -1532,6 +1532,19 @@
       "integration": "live",
       "commit": "79657724b",
       "verification": "focused_green"
+    },
+    {
+      "id": "helios-outer-rocks",
+      "date": "2026-09-22",
+      "wf": "WF-04",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "f_helios_outer uses ast_metallic instead of repeating starter ast_common_rock",
+      "fingerprint": "verb=mine,subject=asteroid,sector=helios,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "bd59636a7",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
