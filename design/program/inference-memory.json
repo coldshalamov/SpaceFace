@@ -74,54 +74,6 @@
   ],
   "units": [
     {
-      "id": "seed-feel-1",
-      "date": "2026-08-08",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "feel/combat constants tuning",
-      "fingerprint": "domain=wf-15,subject=combat-constants",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
-      "id": "seed-feel-2",
-      "date": "2026-08-09",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "feel/combat constants tuning",
-      "fingerprint": "domain=wf-15,subject=combat-constants",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
-      "id": "seed-feel-3",
-      "date": "2026-08-09",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "feel/combat constants tuning",
-      "fingerprint": "domain=wf-15,subject=combat-constants",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
-      "id": "seed-feel-4",
-      "date": "2026-08-10",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "feel/combat constants tuning",
-      "fingerprint": "domain=wf-15,subject=combat-constants",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
       "id": "seed-feel-5",
       "date": "2026-08-10",
       "wf": "WF-15",
@@ -1622,6 +1574,58 @@
       "references": [],
       "integration": "live",
       "commit": "244bb1d40",
+      "verification": "focused_green"
+    },
+    {
+      "id": "tool-01-denied-latch-tick",
+      "date": "2026-09-22",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "denied Massline latch plays a promoted Kenney tick instead of the menu error voice",
+      "fingerprint": "verb=hear,subject=massline-deny,sector=any,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "6ac65cd74",
+      "verification": "focused_green"
+    },
+    {
+      "id": "tool-03-starter-shot-audition",
+      "date": "2026-09-22",
+      "wf": "WF-13",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "auditioned Kenney laserSmall_000 vs authored wpn_pulse; kept authored pulse (Kenney lighter: -5.4dB mean, less low-band)",
+      "fingerprint": "verb=hear,subject=starter-shot,sector=helios,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "50f39d8aa",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pic-02-rock-variant-surfaces",
+      "date": "2026-09-22",
+      "wf": "WF-11",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "five common-rock variants now differ in tint and ORM response instead of sharing one material",
+      "fingerprint": "verb=see,subject=common-rock,sector=any,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "c4592b62f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "PIC-08",
+      "date": "2026-09-22",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "massline tangent-meeting kills now carry collisionPresentation; terrain meetings read terrain_collision, craft meetings ship_collision, selecting the authored causal schedule instead of generic",
+      "fingerprint": "verb=see,subject=shove-kill,sector=any,domain=picture",
+      "references": [],
+      "integration": "live",
+      "commit": "26732571a",
       "verification": "focused_green"
     }
   ],

@@ -57,13 +57,13 @@ not to invent.
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
 | PIC-01 | An NPC Kestrel is the same complete body as the player Kestrel, not a kit of parts | `src/render/partsLibrary.js` | A spawned NPC kestrel resolves through the packaged whole-ship allowlist | Unhide the procedural kit. Author a new GLB | SHIPPED |
-| PIC-02 | Common rocks are not one texture painted five times | `src/render/rockSurfaceLibrary.js` | At least two instance variants differ in tint or ORM at chase scale | Change the instance pool or the rock mesh | OPEN |
+| PIC-02 | Common rocks are not one texture painted five times | `src/render/rockSurfaceLibrary.js` | At least two instance variants differ in tint or ORM at chase scale | Change the instance pool or the rock mesh | SHIPPED |
 | PIC-03 | Kit and hero decals stay up at the distance the code comment says they still read | `src/render/ships/shipKit.js`, `src/render/ships/kestrelHero.js` | Decals are not hidden at the current LOD1 cut while the comment still claims they read much farther | Author new LOD meshes | SHIPPED |
 | PIC-04 | The hero fan stops when the sim pauses | `src/render/ships/kestrelHero.js` | The fan advances on sim time, not `performance.now()` | Rewrite the hero GLB | SHIPPED |
 | PIC-05 | Pickup spiral motes do not draw far off the glass | `src/render/pickupMotionPresentation.js` | Spiral VFX uses the live table draw radius | Retune the sim magnet range | SHIPPED |
 | PIC-06 | A wreck you just made, on screen, is not hidden for the opening pipeline hold | `src/render/pipelineAutoFlushPolicy.js`, `src/render/renderer.js` | An on-glass fresh wreck submits during the hold the same way on-glass rocks do | Remove the hold | OPEN |
 | PIC-07 | A large wreck does not swallow the chase camera | `src/render/renderer.js` | `'wreck'` is in the camera-clearance kinds when the span is already large enough for stations | Write a general occluder pass | OPEN |
-| PIC-08 | A shove-kill and a gun-kill do not share the generic explosion schedule | `src/render/combat/phasedExplosions.js`, `src/presentation/causalVfxGrammar.js` | The schedule id follows the real cause already in the grammar | Grow the explosion solver | OPEN |
+| PIC-08 | A shove-kill and a gun-kill do not share the generic explosion schedule | `src/render/combat/phasedExplosions.js`, `src/presentation/causalVfxGrammar.js` | The schedule id follows the real cause already in the grammar | Grow the explosion solver | SHIPPED 26732571a |
 | PIC-09 | Starter weapons scar with their own heat, not the unknown-weapon default | `src/render/weapons/contactMarks.js` | `heatForWeaponVariant` maps the starter ids in `vfxProfiles.js` to a named heat, not the unknown default | Redesign the scar atlas | SHIPPED |
 | PIC-10 | The graphics lab does not teach a camera-facing halo as the method | `src/render/graphicsLab.js` | The lab-only halo demo is relabeled or restaged off the banned card | Change production VFX | OPEN |
 | PIC-11 | A missing place does not appear as a published cube | `src/render/partsLibrary.js` | `buildFallbackPlaceProp` keeps an empty substrate or marker | Add fallback geometry | SHIPPED |
@@ -139,12 +139,14 @@ not to invent.
 |---|---|---|---|
 
 | PIC-02 | 2026-09-22 | devin-inference-10 | `src/render/rockSurfaceLibrary.js` |
+| VERB-02 | 2026-09-22 | devin-inference-10 | `src/data/encounters/015-opening-hauler-raid.js` |
 
 ## SHIPPED
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
 | TOOL-01 | tool-01-denied-latch-tick | 6ac65cd74 | `sfx_massline_deny` binds promoted Kenney tick; latch keeps `tether_latch` |
+| PIC-02 | pic-02-rock-variant-surfaces | c4592b62f | five common-rock variants get distinct tint/ORM material specs via `rockSurfaceVariantSpec` |
 | WORLD-01 | WF-04 | 147e71c24 | Choir refuel depot (station_depot3) adds missions service so docking shows Missions board |
 | PIC-01 | WF-11 | 62c7346d8 | NPC Kestrel resolves through packaged whole-ship allowlist as complete body |
 | PIC-09 | WF-09 | 79657724b | Starter weapons scar with their own heat; heatForWeaponVariant resolves weapon IDs via vfxProfiles |

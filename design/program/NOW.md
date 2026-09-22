@@ -43,6 +43,10 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| INFERENCE catalog VERB-02 (opening raid already happening) | devin-inference-10 | EDITING | `src/data/encounters/015-opening-hauler-raid.js` | commit unit, mark SHIPPED |
+| INFERENCE catalog PIC-08 (shove-kill schedule cause) | devin-catalog-grunt | DONE 26732571a | `src/systems/masslineThrow.js`, `src/systems/collisionConsequences.js`, `test/entity-killed-presentation-receipt.test.mjs` | recorded, released |
+| Ten seam-polish fixes (user-requested cracks sweep) | devin-polish-ten | EDITING | `src/ui/input.js`, `src/ui/promptDeck.js`, `src/ui/screens/sandbox.js`, `src/ui/uiPrimitives.js`, `src/ui/hud.js`, `src/ui/commandBar.js`, `src/ui/galaxyMap.js`, `src/ui/screens/settings.js`, `src/ui/listControls.js`, `src/ui/bandHud.js` | implement fixes, focused tests, commit pathspec |
+
 
 
 
