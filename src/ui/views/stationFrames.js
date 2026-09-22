@@ -102,9 +102,9 @@ export function shipworksFrameHtml() {
         `</ul>` +
         `<span class="sx-sw__dragcue k-t-fine k-38" aria-hidden="true">Drag to orbit · pinch to zoom</span>` +
       `</div>` +
-      `<div class="sx-sw__stats"></div>` +
+      `<div class="sx-sw__stats dp-plate dp-pad"></div>` +
     `</section>` +
-    `<aside class="sx-sw__side" aria-label="Shipworks operation controls"></aside>` +
+    `<aside class="sx-sw__side dp-plate dp-pad dp-frame__scroll" aria-label="Shipworks operation controls"></aside>` +
     `<div class="dp-work__index dp-frame__scroll sx-sw__chooser" hidden></div>`;
 }
 

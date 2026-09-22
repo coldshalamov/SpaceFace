@@ -77,10 +77,14 @@ export const DECKPLATE_LAYOUT_CSS = `
 .sxb-berth.dp-frame__head > .dp-title { grid-column:2; }
 .sxb-berth.dp-frame__head > .so-command-trigger { grid-column:3; justify-self:end; align-self:start; }
 .sxb-berth.dp-frame__head > .sxb-tape, .sxb-berth.dp-frame__head > .sxb-handoff { grid-column:1 / -1; }
-.dp-frame__body--station > #sx-panel { display:grid; grid-template-columns:var(--dp-frame-col) minmax(0, 1fr); gap:var(--dp-rhythm); min-width:0; min-height:0; }
-.dp-frame__body--station > #sx-panel > * { min-width:0; min-height:0; }
-/* A tab that mounts a single stage (no index column) spans the pair. */
-.dp-frame__body--station > #sx-panel > .dp-work__stage:only-child { grid-column:1 / -1; }
+/* The workspace is a container, not a grid: each tab mounts its own wrapper (.sx-mkt, .sx-sw, ...)
+   and that wrapper owns the columns. Putting a two-column grid here squeezed shipworks' three-column
+   layout into 420px and pushed its verbs down through the foot rail. */
+.dp-frame__body--station > #sx-panel { display:grid; grid-template-columns:minmax(0, 1fr); min-width:0; min-height:0; }
+/* The tab wrapper is exactly the height of the workspace. Without this it grows to its content and
+   its columns run out through the bottom of the frame: shipworks' side panel put "Save current fit"
+   and "Third socket" on top of the destination rail, clipped and unreachable. Bounded, they scroll. */
+.dp-frame__body--station > #sx-panel > * { min-width:0; min-height:0; height:100%; }
 
 .dp-frame--hang {
   grid-template-columns:var(--dp-frame-col) minmax(0, 1fr);

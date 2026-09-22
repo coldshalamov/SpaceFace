@@ -627,6 +627,19 @@ function intersectArea(a, b) {
   return (w > 2 && h > 2) ? w * h : 0;
 }
 
+// A line box is taller than its ink: half the leading sits above the caps and half below the
+// baseline. A 56px number stacked over its 10px legend therefore "overlaps" it by a few pixels of
+// empty space, which accused every hero-and-label pair on shipworks. Shrink each box toward its
+// ink before asking whether two runs collide.
+function inkBox(rect) {
+  const trim = Math.min(rect.height * 0.18, 6);
+  return {
+    left: rect.left, right: rect.right,
+    top: rect.top + trim, bottom: rect.bottom - trim,
+    width: rect.width, height: Math.max(1, rect.height - trim * 2),
+  };
+}
+
 function commonAncestor(a, b) {
   for (let node = a; node; node = node.parentElement) if (node.contains(b)) return node;
   return document.body;
@@ -695,8 +708,10 @@ function tangledType(runs) {
       if (plateBetween(a.host, shared) || plateBetween(b.host, shared)) continue;
       let worst = 0;
       let smallest = Infinity;
-      for (const ra of a.rects) {
-        for (const rb of b.rects) {
+      for (const raw of a.rects) {
+        const ra = inkBox(raw);
+        for (const rawB of b.rects) {
+          const rb = inkBox(rawB);
           const area = intersectArea(ra, rb);
           if (area <= worst) continue;
           worst = area;
