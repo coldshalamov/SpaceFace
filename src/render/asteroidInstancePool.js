@@ -531,10 +531,14 @@ function disposeOwnedInstanceMesh(mesh, dynamicBufferOwner, scene) {
   if (mesh.instanceMatrix && typeof mesh.instanceMatrix.dispose === 'function' && dynamicBufferOwner) {
     mesh.instanceMatrix.dispose();
   }
+  // InstancedMesh.dispose() only dispatches the dispose event — borrowed source
+  // geometry/material stay source-owned — but three's onInstancedMeshDispose reads
+  // mesh.instanceMatrix unconditionally (WebGLAttributes.remove dereferences the
+  // attribute before checking its cache entry). Dispose while attached, then clear.
+  if (typeof mesh.dispose === 'function') mesh.dispose();
   mesh.instanceMatrix = null;
   mesh.geometry = null;
   mesh.material = null;
-  if (typeof mesh.dispose === 'function') mesh.dispose();
   if (mesh.userData) mesh.userData = {};
 }
 

@@ -33,9 +33,22 @@ export function mountNemesisComms({ root, bus, state, claimInput } = {}) {
   const live = panel.querySelector('.nm-live'), button = panel.querySelector('button');
   let encounterId = '', disposed = false;
   const offs = [];
-  const releaseInput = claimInput(panel);
-  if (typeof releaseInput !== 'function') throw new TypeError('claimInput(panel) must return its cleanup function');
+  // The production claimInput is a structural gate: it verifies the panel sits inside
+  // #ui-root (panel.closest), which can only resolve once the panel is attached.
+  // Append first — the panel starts hidden, so no input can reach it before the claim —
+  // and detach again if the claim fails, so a failed mount leaves nothing behind.
   root.appendChild(panel);
+  let releaseInput;
+  try {
+    releaseInput = claimInput(panel);
+  } catch (error) {
+    panel.remove();
+    throw error;
+  }
+  if (typeof releaseInput !== 'function') {
+    panel.remove();
+    throw new TypeError('claimInput(panel) must return its cleanup function');
+  }
   const showKit = (kitId, secondaryId = null) => { const kit = NEMESIS_KITS[kitId] || NEMESIS_KITS.open;
     fit.textContent = kit.tell; opening.textContent = `Opening: ${kit.opening}`;
     // INF-075: the wing refit reads alongside the primary — its tell and its counter stay visible.

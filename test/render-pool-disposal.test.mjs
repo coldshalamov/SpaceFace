@@ -130,6 +130,31 @@ test('asteroid pool disposes only pool-created resources and recreates without s
   fixture.root.remove(fixture.leaf);
 });
 
+test('asteroid pool disposes the instance mesh while its matrix is still attached', () => {
+  // PQ-033.02: three's onInstancedMeshDispose reads mesh.instanceMatrix unconditionally
+  // (WebGLAttributes.remove dereferences the attribute before checking its cache entry),
+  // so nulling it before mesh.dispose() throws inside three and fails teardown.
+  const scene = new THREE.Scene();
+  const pool = createAsteroidInstancePool(scene);
+  const fixture = createAsteroidFixture(scene);
+  assert.equal(registerAsteroidBaseLeaf(pool, fixture.entity, fixture.root), true);
+  const mesh = pool.variants[0].mesh;
+  let observedMatrix = 'unobserved';
+  mesh.addEventListener('dispose', () => {
+    observedMatrix = mesh.instanceMatrix;
+    // Mimic three's unconditional dereference: this line throws when the matrix is null.
+    assert.equal(mesh.instanceMatrix.isInstancedBufferAttribute, true);
+  });
+
+  assert.equal(disposeAsteroidInstancePool(pool), true);
+  assert.ok(observedMatrix && observedMatrix.isInstancedBufferAttribute);
+  assert.equal(mesh.instanceMatrix, null, 'fields still clear after the dispose event');
+
+  fixture.geometry.dispose();
+  fixture.material.dispose();
+  fixture.root.remove(fixture.leaf);
+});
+
 test('asteroid pool does not detach a mesh after ownership moves to another parent', () => {
   const scene = new THREE.Scene();
   const pool = createAsteroidInstancePool(scene);

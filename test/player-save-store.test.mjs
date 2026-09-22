@@ -9,8 +9,11 @@ import { fileURLToPath } from 'node:url';
 import {
   applySharedStoreKeys,
   envelopeTime,
+  fetchSharedPlayerStore,
   isSharedPlayerStoreKey,
   mergeSharedStoreKeys,
+  pushSharedPlayerStore,
+  resetSharedPlayerStoreMemoForTests,
   sharedPlayerStoreAvailable,
 } from '../src/save/sharedPlayerStore.js';
 
@@ -121,6 +124,54 @@ test('applying merged keys writes only allowed slots', () => {
 
 test('the shared store client stays inert without a page origin', () => {
   assert.equal(sharedPlayerStoreAvailable(), false);
+});
+
+test('a 404 store route is memoized for the session; other failures retry', async (t) => {
+  // PQ-033.02: every save/load on a store-less server paid a doomed round trip (and a
+  // console error) per call — ~4 per soak cycle. A 404 is definitive; anything else
+  // (500, network drop) must keep retrying.
+  const realFetch = globalThis.fetch;
+  const hadLocation = Object.hasOwn(globalThis, 'location');
+  const realLocation = globalThis.location;
+  globalThis.location = { protocol: 'http:' };
+  t.after(() => {
+    globalThis.fetch = realFetch;
+    if (hadLocation) globalThis.location = realLocation;
+    else delete globalThis.location;
+    resetSharedPlayerStoreMemoForTests();
+  });
+  resetSharedPlayerStoreMemoForTests();
+
+  let calls = 0;
+  let status = 404;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return { ok: status >= 200 && status < 300, status, json: async () => ({ keys: {} }) };
+  };
+  assert.equal(await fetchSharedPlayerStore(), null);
+  assert.equal(await fetchSharedPlayerStore(), null);
+  assert.equal(await pushSharedPlayerStore({ 'sf.save.auto': 'x' }), false);
+  assert.equal(calls, 1, 'one 404 memoizes the absent route for fetch and push');
+
+  resetSharedPlayerStoreMemoForTests();
+  calls = 0;
+  assert.equal(await pushSharedPlayerStore({ 'sf.save.auto': 'x' }), false);
+  assert.equal(await fetchSharedPlayerStore(), null);
+  assert.equal(calls, 1, 'a push-side 404 memoizes the route for fetch too');
+
+  resetSharedPlayerStoreMemoForTests();
+  status = 500;
+  calls = 0;
+  assert.equal(await fetchSharedPlayerStore(), null);
+  assert.equal(await fetchSharedPlayerStore(), null);
+  assert.equal(calls, 2, 'a 500 is transient: every call retries');
+
+  resetSharedPlayerStoreMemoForTests();
+  calls = 0;
+  globalThis.fetch = async () => { calls += 1; throw new Error('offline'); };
+  assert.equal(await fetchSharedPlayerStore(), null);
+  assert.equal(await fetchSharedPlayerStore(), null);
+  assert.equal(calls, 2, 'a network failure is transient: every call retries');
 });
 
 test('two game servers sharing a store directory see the same slots', async (t) => {

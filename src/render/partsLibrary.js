@@ -5402,7 +5402,12 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
         roots[requested] = composed.root;
         if (shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) swapTo(requested);
       } catch (error) {
-        console.warn('[partsLibrary] whole-ship LOD demotion failed; keeping active level', error);
+        // AggregateError reasons do not survive console text capture, which leaves the
+        // demotion failure undiagnosable in soak evidence. Name the causes inline.
+        const causes = Array.isArray(error && error.errors)
+          ? error.errors.map((cause) => String((cause && (cause.message || cause)) || '?')).slice(0, 6)
+          : [];
+        console.warn('[partsLibrary] whole-ship LOD demotion failed; keeping active level', error, { causes });
       } finally {
         if (pendingLevel === requested) pendingLevel = null;
       }

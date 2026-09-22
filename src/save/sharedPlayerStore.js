@@ -11,6 +11,16 @@ const KEEPALIVE_BODY_BUDGET_BYTES = 60000;
 
 const KEY_RE = /^(sf\.save\.[A-Za-z0-9._-]+|sf\.recovery\.[A-Za-z0-9._-]+|sf\.settings\.profile\.v1)$/;
 
+// A 404 from the store route is definitive: this server mounts no player store, and a
+// server never gains routes mid-session. Remember it so every save/load on a store-less
+// server stops paying a doomed round trip (and logging a console error) per call.
+// Network failures and other statuses stay retryable — only 404 is memoized.
+let storeRouteAbsent = false;
+
+export function resetSharedPlayerStoreMemoForTests() {
+  storeRouteAbsent = false;
+}
+
 export function isSharedPlayerStoreKey(key) {
   return typeof key === 'string' && KEY_RE.test(key);
 }
@@ -119,11 +129,13 @@ export function applySharedStoreKeys(keys, storage = globalThis.localStorage) {
 
 export async function fetchSharedPlayerStore() {
   if (!sharedPlayerStoreAvailable() || typeof fetch !== 'function') return null;
+  if (storeRouteAbsent) return null;
   try {
     // No timeout here means isSharedStoreSyncPending() can stay true forever, which pins the main
     // menu's Continue button at "Checking saves..." with no way out. This module's own header says
     // an absent store must never break anything — a stalled one must not either.
     const response = await fetch(SHARED_PLAYER_STORE_PATH, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+    if (response.status === 404) storeRouteAbsent = true;
     if (!response.ok) return null;
     const body = await response.json();
     if (!body || typeof body.keys !== 'object' || body.keys == null) return null;
@@ -147,6 +159,7 @@ export async function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
     count += 1;
   }
   if (count === 0) return true;
+  if (storeRouteAbsent) return false;
   try {
     const body = JSON.stringify({ keys: patch });
     const response = await fetch(SHARED_PLAYER_STORE_PATH, {
@@ -155,6 +168,7 @@ export async function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
       body,
       keepalive: keepalive && body.length <= KEEPALIVE_BODY_BUDGET_BYTES,
     });
+    if (response.status === 404) storeRouteAbsent = true;
     return response.ok;
   } catch {
     return false;
