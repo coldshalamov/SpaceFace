@@ -759,6 +759,17 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 900,
     gainMult: 0.85,
   },
+  // G2: Massline refusal. A short dull tick, not the menu fall and not the cable snap.
+  {
+    id: 'sfx_massline_deny',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 186, freqSweep: [186, 124], sweepTimeS: 0.045,
+    gainEnvelope: { attack: 0.002, sustain: 0, release: 0.05 },
+    filterType: 'lowpass', filterFreq: 640,
+    gainMult: 0.62,
+  },
   // --- Brake bite: a short traction chirp on the brake's rising edge (U7: an onset, not a bed). ---
   {
     id: 'sfx_rcs_hiss',

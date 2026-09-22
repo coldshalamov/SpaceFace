@@ -117,14 +117,14 @@ export const MINIMAL_ACTION_AUDIO = Object.freeze([
     when: (payload) => payload && payload.phase === 'end',
   }),
   Object.freeze({
-    // M3: every denied latch gets a sound — one short error blip, rate-limited so a held key
-    // does not machine-gun the cue.
+    // G2: a denied latch has its own dull tick. It is not the menu error, the taut creak,
+    // or the release snap, and the cooldown keeps a held button from repeating it.
     id: 'latchDenied',
     sourceEvent: 'tether:latchDenied',
-    recipeId: 'sfx_ui_error',
+    recipeId: 'sfx_massline_deny',
     importance: 0.72,
     cooldownTicks: 10,
-    bind: false,
+    bind: true,
   }),
   Object.freeze({
     id: 'engineMode',
