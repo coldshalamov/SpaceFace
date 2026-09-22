@@ -1,5 +1,7 @@
 import { navigationFrameHtml } from './views/navigationFrame.js';
 import { CSS } from './views/navigationStyles.js';
+import { bindMapMarkup, MAP_CONTROLS, mapControlAttrs, mapControlLabel } from './map/mapControlMap.js';
+import { MAP_WORKBENCH_CSS } from './map/mapWorkbenchCss.js';
 // src/ui/galaxyMap.js — ONE zoomable navigation map (GDD pillar 2).
 //
 // This screen unifies the two legacy maps (localmap.js = live near-field system, starmap.js =
@@ -2200,7 +2202,7 @@ export function resolveRouteEngageAction(state) {
   const nav = state && state.nav;
   const executor = nav && nav.executor;
   const status = executor && executor.status;
-  const hidden = { visible: false, enabled: false, label: 'Engage Route', reason: '', event: null };
+  const hidden = { visible: false, enabled: false, label: mapControlLabel('engage'), reason: '', event: null };
   if (!nav) return hidden;
 
   // Already flying it: the control becomes the way out, so a pilot is never trapped in a route.
@@ -2212,19 +2214,19 @@ export function resolveRouteEngageAction(state) {
       const why = executor && executor.interruptReason
         ? ` — ${String(executor.interruptReason).replace(/[-_]+/g, ' ')}`
         : '';
-      return { visible: true, enabled: true, label: 'Resume Route', reason: `Interrupted${where}${why} — itinerary kept`, event: 'nav:engageRoute' };
+      return { visible: true, enabled: true, label: mapControlLabel('resume'), reason: `Interrupted${where}${why} — itinerary kept`, event: 'nav:engageRoute' };
     }
-    return { visible: true, enabled: true, label: 'Disengage', reason: `${titleCasePhase(status)}${where}`, event: 'nav:abortRoute' };
+    return { visible: true, enabled: true, label: mapControlLabel('disengage'), reason: `${titleCasePhase(status)}${where}`, event: 'nav:abortRoute' };
   }
 
   if (!nav.route) {
-    return { visible: true, enabled: false, label: 'Engage Route', reason: 'No route plotted — set a course to a sector first', event: null };
+    return { visible: true, enabled: false, label: mapControlLabel('engage'), reason: 'No route plotted — set a course to a sector first', event: null };
   }
   const legs = routeLegCount(nav.route);
   return {
     visible: true,
     enabled: true,
-    label: 'Engage Route',
+    label: mapControlLabel('engage'),
     reason: legs ? `${legs} leg${legs === 1 ? '' : 's'} plotted — ready to fly` : 'Route plotted — ready to fly',
     event: 'nav:engageRoute',
   };
@@ -2243,6 +2245,18 @@ function executorLegCount(executor) {
 function titleCasePhase(phase) {
   const s = String(phase || '');
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+/**
+ * Keyboard (`g`) and pad (`accept`) both reach route engage. Unavailable routes do not emit.
+ * @returns {boolean}
+ */
+export function applyMapEngage({ key, pad, state, bus } = {}) {
+  const spec = MAP_CONTROLS.engage;
+  const keyHit = key && String(key).toLowerCase() === spec.key;
+  const padHit = pad === spec.pad;
+  if (!keyHit && !padHit) return false;
+  return emitRouteEngageAction(bus, resolveRouteEngageAction(state));
 }
 
 /** Emit the resolved engage/disengage intent. Returns false when the action is unavailable. */
@@ -2296,7 +2310,7 @@ function injectStyle() {
   if (!HAS_DOC || _styleInjected || document.getElementById(STYLE_ID)) { _styleInjected = true; return; }
   const el = document.createElement('style');
   el.id = STYLE_ID;
-  el.textContent = CSS + '\n' + CHART_HARDWARE;
+  el.textContent = CSS + '\n' + CHART_HARDWARE + '\n' + MAP_WORKBENCH_CSS;
   if (document.head && typeof document.head.appendChild === 'function') document.head.appendChild(el);
   _styleInjected = true;
 }
@@ -3583,7 +3597,7 @@ export const galaxyMapScreen = {
       rootEl.style.setProperty('--gm-apron-h', 'clamp(168px, 26vh, 232px)');
     }
     const layerButtonById = new Map(LAYER_DEFS.map((layer) => [layer.id, `
-            <button class="gm-layer-btn k-word k-word--body fh-key fh-key--legend${this._layers[layer.id] ? ' active is-lit' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
+            <button ${mapControlAttrs('layer')} class="gm-layer-btn k-word k-word--body fh-key fh-key--legend${this._layers[layer.id] ? ' active is-lit' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
               <span class="gm-layer-ico" aria-hidden="true">${dpIcon(LAYER_KIT_ICON[layer.id] || 'scan', 18)}</span>
               <span class="gm-layer-name">${layer.name}</span>
               <span class="gm-layer-state" aria-hidden="true"></span>
@@ -3605,7 +3619,7 @@ export const galaxyMapScreen = {
             </div>`).join('');
     const hintRowsHtml = HINT_ROWS.map(([label, keys]) => `
           <div class="gm-hint-row k-row k-row--static"><span>${label}</span><kbd>${keys}</kbd></div>`).join('');
-    rootEl.innerHTML = navigationFrameHtml({ hintRowsHtml, layerButtonsHtml, legendHtml, markLegendHtml });
+    rootEl.innerHTML = bindMapMarkup(navigationFrameHtml({ hintRowsHtml, layerButtonsHtml, legendHtml, markLegendHtml }));
 
     this._body = rootEl.querySelector('.gm-viewport');
     this._canvas = rootEl.querySelector('canvas');
@@ -4511,6 +4525,12 @@ export const galaxyMapScreen = {
     // map-close key; Enter/Space/letters/slash keep their native text-entry behavior.
     if (textEntry && key !== 'escape') return false;
 
+    if (applyMapEngage({ key, state: (ctx || this._ctx) && (ctx || this._ctx).state, bus: (ctx || this._ctx) && (ctx || this._ctx).bus })) {
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      this._updateEngageControl();
+      return true;
+    }
+
     // Keyboard primary action mirrors the inspector button for owned bases. Text-entry controls
     // keep native Enter/Space behavior; the global UI input router normally filters them before
     // this handler, and this local guard keeps direct/synthetic dispatch safe too.
@@ -5246,7 +5266,7 @@ export const galaxyMapScreen = {
           ? ` · MODEL ${(lane.modelDeltaPct >= 0 ? '+' : '')}${Math.round(lane.modelDeltaPct)}%`
           : '';
         return `
-        <button class="gm-tl-row" type="button" data-gm-lane="${escapeMapHtml(lane.destinationId)}">
+        <button ${mapControlAttrs('lane')} class="gm-tl-row" type="button" data-gm-lane="${escapeMapHtml(lane.destinationId)}">
           <span class="gm-tl-head"><span>${sourceGlyph} ${escapeMapHtml(lane.commodityName)}</span><span class="gm-tl-profit" style="color:${relColor}">${modelish ? '~' : ''}+${profit} cr</span></span>
           <span class="gm-tl-sub">${escapeMapHtml(lanePath)} · ${Math.max(0, Math.floor(lane.units))}u · ${perMin}/min · risk ${riskPct}%${ageLabel}${modelDelta}</span>
         </button>`;
@@ -5433,7 +5453,7 @@ export const galaxyMapScreen = {
     const pallasCards = pallasHiddenCacheMapReadouts(state, sectorId);
     const pct = confidence && Number.isFinite(confidence.value) ? Math.round(confidence.value * 100) : null;
     const siteButtons = worldSiteMapMarkers(state, sectorId).map((marker) => `
-      <button class="gm-site-row" type="button" data-world-site-id="${escapeMapHtml(marker.id)}"
+      <button ${mapControlAttrs('world-site')} class="gm-site-row" type="button" data-world-site-id="${escapeMapHtml(marker.id)}"
         data-world-site-sector="${escapeMapHtml(marker.sectorId)}"
         aria-label="Inspect World Site ${escapeMapHtml(marker.name)}"
         aria-pressed="${!!(t && t.id === marker.id)}">
@@ -5441,7 +5461,7 @@ export const galaxyMapScreen = {
         <span class="gm-ins-row-val">${escapeMapHtml(marker.stageLabel)}</span>
       </button>`).join('');
     const rumorRows = rumorCards.map((rumor) => `
-      <button class="gm-site-row" type="button" data-frontier-rumor-id="${escapeMapHtml(rumor.rumorId)}"
+      <button ${mapControlAttrs('frontier-rumor')} class="gm-site-row" type="button" data-frontier-rumor-id="${escapeMapHtml(rumor.rumorId)}"
         data-frontier-rumor-sector="${escapeMapHtml(rumor.sectorId)}"
         aria-label="Inspect ${escapeMapHtml(rumor.name)} search area"
         aria-pressed="${!!(t && t.id === rumor.rumorId)}">
@@ -5451,7 +5471,7 @@ export const galaxyMapScreen = {
         <span class="gm-ins-note">${escapeMapHtml(rumor.objective)}</span>
       </button>`).join('');
     const vestaRows = vestaCards.map((cache) => `
-      <button class="gm-site-row" type="button" data-vesta-cache-id="${escapeMapHtml(cache.cacheRecordId)}"
+      <button ${mapControlAttrs('vesta-cache')} class="gm-site-row" type="button" data-vesta-cache-id="${escapeMapHtml(cache.cacheRecordId)}"
         data-vesta-cache-sector="${escapeMapHtml(cache.sectorId)}"
         aria-label="Inspect ${escapeMapHtml(cache.name)}. ${escapeMapHtml(cache.objective)}"
         aria-pressed="${!!(t && t.id === cache.cacheRecordId)}">
@@ -5461,7 +5481,7 @@ export const galaxyMapScreen = {
         <span class="gm-ins-note">${escapeMapHtml(cache.objective)}</span>
       </button>`).join('');
     const pallasRows = pallasCards.map((cache) => `
-      <button class="gm-site-row" type="button" data-pallas-cache-id="${escapeMapHtml(cache.cacheRecordId)}"
+      <button ${mapControlAttrs('pallas-cache')} class="gm-site-row" type="button" data-pallas-cache-id="${escapeMapHtml(cache.cacheRecordId)}"
         data-pallas-cache-sector="${escapeMapHtml(cache.sectorId)}"
         aria-label="Inspect ${escapeMapHtml(cache.name)}. ${escapeMapHtml(cache.objective)}"
         aria-pressed="${!!(t && t.id === cache.cacheRecordId)}">
@@ -5541,7 +5561,7 @@ export const galaxyMapScreen = {
       const plot = resolveGalaxyMapPlotAction(state, t);
       acts.unshift({ id: 'plot', label: 'Plot course', available: plot.available, reason: plot.reason });
     }
-    const html = acts.map((a) => `<button class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
+    const html = acts.map((a) => `<button ${mapControlAttrs(a.id)} class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
       ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}" data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`).join('');
     if (this._lastPlaceActionsHtml !== html) {
       host.innerHTML = html;
@@ -5609,7 +5629,7 @@ export const galaxyMapScreen = {
 
     if (!this._tabButtons.length) {
       host.innerHTML = MAP_INSPECTOR_TABS.map((tab) => `
-        <button class="gm-tab k-word k-word--fine fh-key fh-key--legend" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
+        <button ${mapControlAttrs('tab')} class="gm-tab k-word k-word--fine fh-key fh-key--legend" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
                 aria-controls="gm-tabpanel" aria-selected="false" tabindex="-1">${tab.label}</button>`).join('');
       this._tabButtons = Array.from(host.querySelectorAll('.gm-tab'));
       for (const btn of this._tabButtons) {
@@ -5857,7 +5877,7 @@ export const galaxyMapScreen = {
         ? ` · MODEL ${(route.modelDeltaPct >= 0 ? '+' : '')}${Math.round(route.modelDeltaPct)}%`
         : '';
       return `
-        <button class="gm-deck-row k-row" type="button" data-deck-route="${index}" role="listitem"
+        <button ${mapControlAttrs('deck-route')} class="gm-deck-row k-row" type="button" data-deck-route="${index}" role="listitem"
                 aria-label="Plot ${escapeMapHtml(route.commodityName)} from ${escapeMapHtml(route.originName)} to ${escapeMapHtml(route.destinationName)}">
           <span class="gm-deck-commodity">${sourceGlyph} ${escapeMapHtml(route.commodityName)}</span>
           <span class="gm-deck-lane">${escapeMapHtml(laneText)}</span>
@@ -5989,7 +6009,7 @@ export const galaxyMapScreen = {
         actionsEl.innerHTML = RIBBON_ACTION_IDS.map((id) => {
           const a = ribbon.actions[id];
           if (!a) return '';
-          return `<button class="gm-ribbon-btn k-word k-word--body fh-key fh-key--small" type="button" data-ribbon-action="${a.id}"
+          return `<button ${mapControlAttrs(a.id)} class="gm-ribbon-btn k-word k-word--body fh-key fh-key--small" type="button" data-ribbon-action="${a.id}"
             ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}"
             data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`;
         }).join('');
@@ -6062,7 +6082,7 @@ export const galaxyMapScreen = {
           const tracked = m.id === trackedId;
           const dest = m.destSectorId || (m.params && m.params.sectorId) || null;
           const destName = dest ? escapeMapHtml(sectorNameOf(state, dest)) : 'No fixed destination';
-          return `<button class="gm-rail-item k-row${tracked ? ' is-tracked' : ''}" type="button" data-rail-mission="${escapeMapHtml(m.id)}"${tracked ? ' aria-current="true" aria-selected="true"' : ''}>
+          return `<button ${mapControlAttrs('rail-mission')} class="gm-rail-item k-row${tracked ? ' is-tracked' : ''}" type="button" data-rail-mission="${escapeMapHtml(m.id)}"${tracked ? ' aria-current="true" aria-selected="true"' : ''}>
             <span class="gm-rail-item-t k-row__name">${tracked ? '<span class="gm-rail-track-g" aria-hidden="true">◆</span>' : ''}${escapeMapHtml(missionSummary(m))}</span>
             <span class="gm-rail-item-s k-row__sub">${destName}${tracked ? ' · tracked' : ''}</span>
           </button>`;
@@ -6074,12 +6094,12 @@ export const galaxyMapScreen = {
     const bmHost = openOf('bookmarks') && this._root.querySelector('#gm-rail-bookmarks');
     if (bmHost) {
       const html = `${this._bookmarks.length
-        ? this._bookmarks.map((b, i) => `<button class="gm-rail-item k-row" type="button" data-rail-bookmark="${i}">
+        ? this._bookmarks.map((b, i) => `<button ${mapControlAttrs('rail-bookmark')} class="gm-rail-item k-row" type="button" data-rail-bookmark="${i}">
             <span class="gm-rail-item-t k-row__name">${escapeMapHtml(b.label)}</span>
             <span class="gm-rail-item-s k-row__sub">${Math.round(b.focusGlobal.x)}, ${Math.round(b.focusGlobal.z)} · ${escapeMapHtml(formatDistanceWU(b.spanWU))} span</span>
           </button>`).join('')
         : '<div class="gm-ins-note">No bookmarks. Bookmark the current view to come back to it.</div>'}
-        <button class="gm-ins-btn gm-rail-add k-word k-word--body" type="button" data-rail-bookmark-add>Bookmark this view</button>`;
+        <button ${mapControlAttrs('bookmark-add')} class="gm-ins-btn gm-rail-add k-word k-word--body" type="button" data-rail-bookmark-add>${mapControlLabel('bookmark-add')}</button>`;
       if (bmHost.innerHTML !== html) bmHost.innerHTML = html;
     }
 
@@ -6125,7 +6145,7 @@ export const galaxyMapScreen = {
       // `data-route-option` is the SEMANTIC hook: "this element is one weighable way of getting
       // there". `data-rail-alt` stays as the activation key. Each option states its own cost in
       // words — hops, fuel and worst-leg interdiction — so the comparison never rests on colour.
-      rows.push(`<button class="gm-rail-item k-row${same ? ' is-current' : ''}" type="button"
+      rows.push(`<button ${mapControlAttrs('route-option')} class="gm-rail-item k-row${same ? ' is-current' : ''}" type="button"
         data-rail-alt="${mode}" data-route-option="${mode}"${same ? ' aria-selected="true"' : ''}
         data-route-hops="${alt.legs.length}" data-route-fuel="${Math.round(alt.totalFuel || 0)}">
         <span class="gm-rail-item-t k-row__name">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
