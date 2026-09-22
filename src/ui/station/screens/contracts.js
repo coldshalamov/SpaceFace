@@ -33,6 +33,7 @@ import { mountDataState } from '../../uiPrimitives.js';
 import { factionIcon, icon } from '../icons.js';
 import { missionBoardReadiness } from '../stationHubModel.js';
 import { recommendMissionBoardOffer } from '../stationMissionModel.js';
+import { chooseAdventureDecision, presentSurfaceDecisions } from '../../adventureDecisions.js';
 import { objectiveText } from '../../screens/missionLog.js';
 import {
   dressState,
@@ -479,7 +480,8 @@ export function createContractsScreen(ctx) {
       return;
     }
     const recommended = boardRecommendedOfferId(list, state);
-    boardEl.innerHTML =
+    const decisionHtml = contractDecisionHtml(state, stationId);
+    boardEl.innerHTML = decisionHtml +
       `<ul class="k-rows sx-ct__rows">` +
       list.map((m) => {
         const id = String(mid(m));
@@ -614,7 +616,33 @@ export function createContractsScreen(ctx) {
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   }
 
+  function contractDecisionHtml(state, stationId) {
+    const shown = presentSurfaceDecisions(state, stationId, 'contracts');
+    if (!shown.length) return '';
+    return shown.map((decision) => (
+      `<section class="sx-decision">` +
+        `<p class="k-sentence">${escapeHtml(decision.situation)}</p>` +
+        decision.options.map((option) => (
+          `<button type="button" class="k-row sx-ct-row sx-decision__opt" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}">` +
+            `<span class="k-row__name">${escapeHtml(option.label)}</span>` +
+            `<span class="k-row__sub">${escapeHtml(option.tradeoff)}</span>` +
+          `</button>`
+        )).join('') +
+      `</section>`
+    )).join('');
+  }
+
   boardEl.addEventListener('click', (ev) => {
+    const adventure = ev.target.closest('[data-adventure-option]');
+    if (adventure) {
+      const state = ctx.state || {};
+      const chosen = chooseAdventureDecision(state, adventure.getAttribute('data-adventure-id'), adventure.getAttribute('data-adventure-option'), {
+        bus: ctx.bus,
+      });
+      renderAll(state);
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+      return;
+    }
     const btn = ev.target.closest('[data-mid]');
     if (!btn) return;
     select(btn.getAttribute('data-mid'), false);
@@ -639,8 +667,22 @@ export function createContractsScreen(ctx) {
     const acc = ev.target.closest('[data-accept]');
     if (acc && !acc.disabled) {
       acc.disabled = true;
-      if (ctx.bus) { ctx.bus.emit('ui:acceptMission', { missionId: acc.getAttribute('data-accept') }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); }
-      setTimeout(() => renderAll(ctx.state || {}), 60);
+      const missionId = acc.getAttribute('data-accept');
+      const state = ctx.state || {};
+      const stationId = state.ui && state.ui.dockedStationId;
+      const shown = presentSurfaceDecisions(state, stationId, 'contracts');
+      const match = shown.find((decision) => decision.options.some((option) => (
+        option.effect && option.effect.missionId === missionId
+      )));
+      if (match && ctx.bus) {
+        const option = match.options.find((row) => row.effect && row.effect.missionId === missionId);
+        const chosen = chooseAdventureDecision(state, match.id, option.id, { bus: ctx.bus });
+        ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+      } else if (ctx.bus) {
+        ctx.bus.emit('ui:acceptMission', { missionId });
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      }
+      setTimeout(() => renderAll(state), 60);
       return;
     }
     const trk = ev.target.closest('[data-track]');

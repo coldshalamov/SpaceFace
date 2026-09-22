@@ -22,12 +22,6 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 
 import { deriveFunMetrics, FUN_THRESHOLDS, KNOCK_BUDGET_LIMITS } from './lib/bench/funMetrics.mjs';
-import {
-  runCrucibleBench,
-  CRUCIBLE_ARENAS,
-  CRUCIBLE_LOADOUTS,
-  CRUCIBLE_DEFAULT_SEEDS,
-} from './lib/bench/crucibleBench.mjs';
 import { runFlightBench } from './lib/bench/flightBench.mjs';
 import { runVerbBench } from './lib/bench/verbBench.mjs';
 import { measureVisibleJitter } from './lib/bench/frameStripCapture.mjs';
@@ -249,6 +243,7 @@ Options:
   --crucible            Measure only the Crucible feel bench
   --flight              Measure only the Flight bench
   --verbs               Measure only the Verb benches
+  --adventure           Measure interesting decisions per hour on the adventure reference route
   --seeds=4242,8008     Fixed seeds (default: bench defaults — crucible 4242,8008,13502; flight 13502; verbs 4242)
   --scenarios=a,b       Run only these verb scenario ids (comma-separated). The bench discovers
                         drop-in modules under scripts/lib/bench/scenarios/, several of which boot
@@ -276,7 +271,7 @@ function parseArgs(list) {
   const args = { bench: null, seeds: null, quick: false, json: false, out: null, diff: null, scenarioIds: null, knockStrips: [] };
   for (let i = 0; i < list.length; i++) {
     const a = list[i];
-    if (a === '--crucible' || a === '--flight' || a === '--verbs') {
+    if (a === '--crucible' || a === '--flight' || a === '--verbs' || a === '--adventure') {
       args.bench = a.slice(2);
     } else if (a.startsWith('--seeds=')) {
       args.seeds = parseSeedList(a.slice('--seeds='.length));
@@ -354,6 +349,10 @@ async function main() {
 // ── measure mode ─────────────────────────────────────────────────────────────────
 
 async function runMeasureMode(args, outDir, isoDate) {
+  if (args.bench === 'adventure') {
+    await runAdventureMeasure(args, outDir, isoDate);
+    return;
+  }
   const { evaluateBars, fedByOf } = await loadFeelBarsModule();
   const startedAt = Date.now();
 
@@ -366,11 +365,13 @@ async function runMeasureMode(args, outDir, isoDate) {
 
   const benchRuns = [];
   if (!args.bench || args.bench === 'crucible') {
-    const arenas = args.quick ? [CRUCIBLE_ARENAS[0].id] : CRUCIBLE_ARENAS.map((a) => a.id);
-    const loadouts = args.quick ? [CRUCIBLE_LOADOUTS[0].id] : CRUCIBLE_LOADOUTS.map((l) => l.id);
-    const seeds = pickSeeds(args, CRUCIBLE_DEFAULT_SEEDS);
+    // Crucible bench pulls three.js. Adventure measurement must not load it.
+    const crucible = await import('./lib/bench/crucibleBench.mjs');
+    const arenas = args.quick ? [crucible.CRUCIBLE_ARENAS[0].id] : crucible.CRUCIBLE_ARENAS.map((a) => a.id);
+    const loadouts = args.quick ? [crucible.CRUCIBLE_LOADOUTS[0].id] : crucible.CRUCIBLE_LOADOUTS.map((l) => l.id);
+    const seeds = pickSeeds(args, crucible.CRUCIBLE_DEFAULT_SEEDS);
     if (!args.json) console.log(`► Crucible Feel Bench (${arenas.length} arena x ${loadouts.length} loadout x ${seeds.length} seed x ${CRUCIBLE_WAVE_COUNT} waves)...`);
-    const result = await runCrucibleBench({ arenas, loadouts, seeds, waveCount: CRUCIBLE_WAVE_COUNT });
+    const result = await crucible.runCrucibleBench({ arenas, loadouts, seeds, waveCount: CRUCIBLE_WAVE_COUNT });
     attachStripJitter(result.runs, args.knockStrips, (m) => { if (!args.json) console.log(m); });
     benchRuns.push({ name: 'crucible', runs: result.runs });
   }
@@ -442,6 +443,13 @@ async function runMeasureMode(args, outDir, isoDate) {
   };
   if (unknownScenarioIds.length) rollup.unknownScenarioIds = unknownScenarioIds;
 
+  // PQ-177.05: the adventure decisions-per-hour bar is an economy packet metric, not a
+  // FEEL_CONTRACT §B bar — it rides every full sweep as its own block and never enters
+  // the pooled bar evaluation.
+  if (!args.bench) {
+    rollup.adventure = await measureAdventureBlock(args);
+  }
+
   // ── write receipts ───────────────────────────────────────────────────────────
   mkdirSync(outDir, { recursive: true });
   const written = [];
@@ -471,6 +479,128 @@ async function runMeasureMode(args, outDir, isoDate) {
 function pickSeeds(args, defaults) {
   const base = args.seeds ? args.seeds : defaults;
   return args.quick ? [base[0]] : base;
+}
+
+// ── adventure decision route (PQ-177.05) ───────────────────────────────────────
+// One sim hour on the fixed reference corridor per seed. A decision counts only when the
+// player sees >= 2 viable options and each names a different tradeoff; the bar is 6/hour.
+// The route module is imported lazily so --diff and the pure helpers never boot the sim.
+
+async function loadAdventureRoute() {
+  const route = await import('./lib/bench/adventureDecisionRoute.mjs');
+  const decisions = await import('../src/ui/adventureDecisions.js');
+  return { route, decisions };
+}
+
+async function measureAdventureBlock(args) {
+  const { route, decisions } = await loadAdventureRoute();
+  const seeds = pickSeeds(args, [decisions.REFERENCE_ADVENTURE_SEED]);
+  const results = seeds.map((seed) => route.runReferenceAdventureHour(seed));
+  return {
+    bar: decisions.ADVENTURE_DECISION_BAR_PER_HOUR,
+    pass: results.every((r) => r.interestingDecisionsPerHour >= r.bar),
+    results,
+  };
+}
+
+async function runAdventureMeasure(args, outDir, isoDate) {
+  const startedAt = Date.now();
+  const { route, decisions } = await loadAdventureRoute();
+  const seeds = pickSeeds(args, [decisions.REFERENCE_ADVENTURE_SEED]);
+  if (!args.json) {
+    console.log('======================================================================');
+    console.log('SpaceFace Fun Convergence Loop Measurer (PQ-173.01) — adventure route (PQ-177.05)');
+    console.log(`Receipts directory: ${outDir}`);
+    console.log('======================================================================\n');
+    console.log(`► Adventure decision route (${seeds.length} seed x 1 sim hour)...`);
+  }
+  const results = seeds.map((seed) => route.runReferenceAdventureHour(seed));
+  const payload = {
+    schema: 'spaceface.funMeasure.adventure.v1',
+    bench: 'adventure',
+    timestamp: new Date().toISOString(),
+    date: isoDate,
+    quick: args.quick === true,
+    harnessDigest: computeFunLoopHarnessDigest(),
+    sourceIdentity: computeProductionSourceIdentity(),
+    seeds,
+    bar: decisions.ADVENTURE_DECISION_BAR_PER_HOUR,
+    pass: results.every((r) => r.interestingDecisionsPerHour >= r.bar),
+    results,
+    wallMs: Date.now() - startedAt,
+  };
+
+  mkdirSync(outDir, { recursive: true });
+  const written = [];
+  for (const result of results) {
+    const base = join(outDir, `${isoDate}-adventure-s${result.seed}`);
+    writeFileSync(`${base}.json`, JSON.stringify(result, null, 2), 'utf8');
+    writeFileSync(`${base}.md`, renderAdventureReceiptMarkdown(result, payload.timestamp), 'utf8');
+    written.push(`${base}.json`, `${base}.md`);
+  }
+  const summaryBase = join(outDir, `${isoDate}-adventure-summary`);
+  writeFileSync(`${summaryBase}.json`, JSON.stringify(payload, null, 2), 'utf8');
+  const summaryMd = renderAdventureSummaryMarkdown(payload);
+  writeFileSync(`${summaryBase}.md`, summaryMd, 'utf8');
+  written.push(`${summaryBase}.json`, `${summaryBase}.md`);
+
+  if (args.json) {
+    console.log(JSON.stringify(payload, null, 2));
+  } else {
+    for (const result of results) {
+      console.log(`\n${route.formatAdventureDecisionReport(result)}`);
+    }
+    console.log(`\n${summaryMd}`);
+    console.log('\nReceipts written:');
+    for (const path of written) console.log(`  ${path}`);
+  }
+}
+
+function renderAdventureSummaryMarkdown(payload) {
+  const lines = [];
+  lines.push(`# Adventure decisions — measure summary — ${payload.date}`);
+  lines.push('');
+  lines.push('The reference corridor (Helios → Belt Outpost → Tethys → Ceres) played for one sim hour per seed. A decision counts only when the player sees at least two viable options and each names a different tradeoff.');
+  lines.push('');
+  lines.push('| seed | decisions | per hour | by kind | verdict |');
+  lines.push('|---|---|---|---|---|');
+  for (const r of payload.results) {
+    const kinds = Object.entries(r.byKind || {}).map(([k, v]) => `${k} ${v}`).join(', ') || '—';
+    const met = r.interestingDecisionsPerHour >= r.bar ? 'met' : 'BELOW BAR';
+    lines.push(`| ${r.seed} | ${r.count} | ${r.interestingDecisionsPerHour} | ${kinds} | ${met} |`);
+  }
+  return lines.join('\n');
+}
+
+function renderAdventureReceiptMarkdown(result, timestamp) {
+  const lines = [];
+  lines.push(`# Adventure decision route — seed ${result.seed} — ${timestamp.slice(0, 10)}`);
+  lines.push('');
+  lines.push('```');
+  lines.push(formatAdventureDecisionReportText(result));
+  lines.push('```');
+  lines.push('');
+  lines.push('## Decisions taken — every option names its tradeoff');
+  lines.push('');
+  for (const d of result.decisions || []) {
+    lines.push(`- **${d.kind}** — ${d.situation}`);
+    for (const o of d.options || []) {
+      const mark = o.id === d.chosen ? '→ ' : '  ';
+      lines.push(`  ${mark}\`${o.id}\`: ${o.tradeoff}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+// Local text block so the receipt renderer does not depend on the route module's import chain.
+function formatAdventureDecisionReportText(result) {
+  return [
+    `Adventure reference route  seed ${result.seed}  ${result.route}`,
+    `interestingDecisionsPerHour ${result.interestingDecisionsPerHour}`,
+    `bar ${result.bar}`,
+    `count ${result.count}  simTimeS ${result.simTimeS}`,
+    `byKind ${JSON.stringify(result.byKind)}`,
+  ].join('\n');
 }
 
 function buildRunRef(run) {
@@ -783,6 +913,11 @@ function renderMeasureSummaryMarkdown(rollup) {
       .map((seed) => `${rollup.date || rollup.timestamp.slice(0, 10)}-${benchName}-${seed}.md`)
       .join(', ');
     lines.push(`| ${benchName} | ${bench.runs.length} | ${seeds} |`);
+  }
+  if (rollup.adventure && Array.isArray(rollup.adventure.results) && rollup.adventure.results.length) {
+    lines.push('');
+    const parts = rollup.adventure.results.map((r) => `seed ${r.seed}: ${r.interestingDecisionsPerHour}/h`);
+    lines.push(`**Adventure decisions (PQ-177.05):** ${parts.join(' | ')} — bar >= ${rollup.adventure.bar}/h — ${rollup.adventure.pass ? 'met' : 'NOT MET'}`);
   }
   lines.push('');
   lines.push('Each per-seed receipt pools the §B bars once for its whole measurement set (with a fed-by column naming the producing run), then lists per-run fed bars, fun metrics and gaps.');

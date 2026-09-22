@@ -42,6 +42,7 @@ import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
 import { objectiveText } from './screens/missionLog.js';
+import { adventureDecisionHudLine } from './adventureDecisions.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
 import { createForkInstrument } from './forkInstrument.js';
@@ -1755,6 +1756,18 @@ export function createHud(ctx, alerts) {
   const elNavLabel = elNavReadout.querySelector('.sf-nav-label');
   const elNavDist = elNavReadout.querySelector('.sf-nav-dist');
   const elNavEta = elNavReadout.querySelector('.sf-nav-eta');
+  const elDecision = document.createElement('div');
+  elDecision.className = 'sf-nav-label';
+  elDecision.style.display = 'none';
+  leftContext.appendChild(elDecision);
+  let decisionText = '';
+  function updateAdventureDecisionLine() {
+    const next = state.ui && state.ui.docked ? adventureDecisionHudLine(state) : '';
+    if (next === decisionText) return;
+    decisionText = next;
+    elDecision.style.display = next ? '' : 'none';
+    if (elDecision.textContent !== next) elDecision.textContent = next;
+  }
 
 
   const arrow = document.createElement('div');
@@ -4965,6 +4978,7 @@ export function createHud(ctx, alerts) {
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
     if (overlayTick || slow) updateFirstUseHint(p);
     if (slow) placeReceiptLane();
+    if (slow) updateAdventureDecisionLine();
 
     // --- toasts/alerts expiry sweep ---
     if (alerts && alerts.tick) alerts.tick();

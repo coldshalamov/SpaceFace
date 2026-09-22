@@ -21,6 +21,7 @@ import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPr
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
 import { computeBestTrades, applyTradeNavigation, formatRouteCard } from '../../market/tradeLogic.js';
+import { chooseAdventureDecision, presentSurfaceDecisions } from '../../adventureDecisions.js';
 import {
   dressState,
   ensureInteriorStyle,
@@ -259,6 +260,23 @@ function liveRegimeWord(state, sid, commodityId) {
 // remote intel. This readout does not pretend the counter has a memory age.
 export function quoteAgeWord(_state, _sid, _commodityId) {
   return '';
+}
+
+function marketDecisionHtml(state, stationId) {
+  if (!stationId) return '';
+  const shown = presentSurfaceDecisions(state, stationId, 'market');
+  if (!shown.length) return '';
+  return shown.map((decision) => (
+    `<section class="sx-decision">` +
+      `<p class="k-sentence">${escapeHtml(decision.situation)}</p>` +
+      decision.options.map((option) => (
+        `<button type="button" class="k-row sx-decision__opt" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}">` +
+          `<span class="k-row__name">${escapeHtml(option.label)}</span>` +
+          `<span class="k-row__sub">${escapeHtml(option.tradeoff)}</span>` +
+        `</button>`
+      )).join('') +
+    `</section>`
+  )).join('');
 }
 
 export function createMarketScreen(ctx) {
@@ -651,7 +669,7 @@ export function createMarketScreen(ctx) {
       producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
       quoteAge: quoteAgeWord(state, sid, r.id), saleQty: qty,
-      saleQuote: contemplatedSaleQuote(sid, r.id, qty) });
+      saleQuote: contemplatedSaleQuote(sid, r.id, qty) }) + marketDecisionHtml(state, sid);
     dressStage();
     renderLaunderLedger(state);
   }
@@ -832,6 +850,19 @@ export function createMarketScreen(ctx) {
   // Delegation rides the screen root, not consoleEl: the route table and trade leads live in
   // .sx-mkt__stage outside the console, and their Set Course buttons must reach this handler.
   el.addEventListener('click', (ev) => {
+    const adventure = ev.target.closest('[data-adventure-option]');
+    if (adventure) {
+      const decisionId = adventure.getAttribute('data-adventure-id');
+      const optionId = adventure.getAttribute('data-adventure-option');
+      const chosen = chooseAdventureDecision(ctx.state || {}, decisionId, optionId, {
+        bus: ctx.bus,
+        economy: null,
+      });
+      renderStage(ctx.state || {});
+      renderConsole(ctx.state || {});
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+      return;
+    }
     const course = ev.target.closest('[data-course]');
     if (course) {
       const cmdtyId = course.getAttribute('data-course');

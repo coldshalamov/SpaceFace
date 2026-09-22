@@ -9934,7 +9934,7 @@
       "priority": 196,
       "title": "Interesting decisions per hour",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-173.01",
         "PQ-138.00",
@@ -9960,8 +9960,11 @@
         "npm run check:economy:regional-supply",
         "npm run check:price-memory"
       ],
-      "receiptRefs": [],
-      "brief": "Telemetry counts decisions with ≥ 2 viable options and a visible tradeoff; the bar is ≥ 6 per hour in adventure. DONE WHEN: Metric printed by the fun-loop measurer; ≥ 6 on the reference route."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/fun-loop/PQ-177-05-REPORT.md",
+        "design/program/roadmap/receipts/fun-loop/2026-09-22-adventure-summary.md"
+      ],
+      "brief": "DONE 2026-09-22: station contract and market surfaces present decision records (>=2 viable options, each naming its tradeoff) resolved through the economy/mission owners; HUD echoes the open decision. measure-fun-loop --adventure plays the fixed reference corridor (seed 4242) and prints interestingDecisionsPerHour 9.0 against the >=6/hour bar; check:adventure-decisions pins it."
     },
     {
       "id": "PQ-177.06",
