@@ -14,6 +14,7 @@ import {
 import { SHIPS } from '../../data/ships.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { fittingsFromDefaultModules } from '../../systems/ships.js';
+import { starterAirCard } from '../starterAirCard.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createStageHull } from './stageHull.js';
@@ -711,7 +712,7 @@ export const newGameScreen = {
       // reached by the Up/Down arrow bridges (or pointer) instead.
       b.tabIndex = -1;
     }
-    refs.starterDesc.textContent = starter.line;
+    refs.starterDesc.textContent = starterAirCard(starter).sentence;
     const ship = shipDefFor(refs.ctx, starter.shipId);
     refs.hullName.textContent = (ship && ship.name) || starter.name;
     refs.hullBlurb.textContent = starter.blurb;

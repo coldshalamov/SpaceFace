@@ -88,6 +88,9 @@ import {
   statusAttachedAccessibility,
 } from './statusAttachedVfx.js';
 import { addShieldContact } from './weapons/shieldContacts.js';
+import { impactAxisAngle, impactRead } from './combat/impactRead.js';
+import { readWantedSearchVolume } from '../presentation/wantedSearchVolume.js';
+import { routeRibbon, ROUTE_RIBBON_BRIGHTNESS } from '../presentation/routeRibbon.js';
 import {
   createStationSideEventVfxFrameScratch,
   resolveStationSideEventVfxProfile,
@@ -4020,6 +4023,8 @@ export const vfx = {
     nx /= normalLength;
     nz /= normalLength;
     const normalAngle = Math.atan2(nz, nx);
+    const hitRead = impactRead(p);
+    const impulseAngle = impactAxisAngle(hitRead);
     if (impactProfile.family === 'beam') {
       if (this._combatBeams) this._combatBeams.retarget(p, this._t);
       const cueKey = `${String(p.attackerId)}:${String(p.targetId)}:${String(p.weaponId)}`;
@@ -4125,7 +4130,7 @@ export const vfx = {
         'hull', Math.max(1.2, ((tgt && tgt.radius) || 6) * 0.3), _impactOpts,
       );
       if (!breached) {
-        this._impactParticleCone(pos.x, pos.z, normalAngle, 0.95, 9, 24,
+        this._impactParticleCone(pos.x, pos.z, hitRead.shapeId === 'hull-cone' ? impulseAngle : normalAngle, 0.95, 9, 24,
           Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
           '#ffb36a', '#3a1710', 1.2);
       }
@@ -8246,6 +8251,110 @@ export const vfx = {
     arc.mesh.visible = true;
   },
 
+  _ensureWorldSegment(slot, color) {
+    if (this[slot]) return this[slot];
+    if (!this._scene) return null;
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(12);
+    const attr = new THREE.BufferAttribute(pos, 3);
+    attr.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', attr);
+    const mat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    mesh.renderOrder = 12;
+    this._scene.add(mesh);
+    this[slot] = { mesh, pos };
+    return this[slot];
+  },
+
+  _writeWorldSegment(slot, color, x0, z0, x1, z1, opacity) {
+    const seg = this._ensureWorldSegment(slot, color);
+    if (!seg) return;
+    const ux = x1 - x0;
+    const uz = z1 - z0;
+    const len = Math.hypot(ux, uz) || 1;
+    const px = (-uz / len) * 0.35;
+    const pz = (ux / len) * 0.35;
+    const a = this._toLocalXZ(x0, z0, this._spawnLocalXZ);
+    const b = this._toLocalXZ(x1, z1, this._spawnLocalXZ);
+    const p = seg.pos;
+    p[0] = a.x + px; p[1] = 1.2; p[2] = a.z + pz;
+    p[3] = a.x - px; p[4] = 1.2; p[5] = a.z - pz;
+    p[6] = b.x + px; p[7] = 1.2; p[8] = b.z + pz;
+    p[9] = b.x - px; p[10] = 1.2; p[11] = b.z - pz;
+    seg.mesh.geometry.attributes.position.needsUpdate = true;
+    seg.mesh.material.opacity = opacity;
+    seg.mesh.visible = opacity > 0.01;
+  },
+
+  _updatePayloadReleaseGhost() {
+    const ghost = this.state && this.state.player && this.state.player.masslineTelemetry
+      && this.state.player.masslineTelemetry.payloadReleaseGhost;
+    if (!ghost || ghost.active !== true) {
+      if (this._payloadGhost) this._payloadGhost.mesh.visible = false;
+      return;
+    }
+    this._writeWorldSegment('_payloadGhost', 0x9fd8ff, ghost.x0, ghost.z0, ghost.x1, ghost.z1, 0.55);
+  },
+
+  _updateWantedSearchRing() {
+    const volume = readWantedSearchVolume(this.state);
+    if (!this._wantedRing && this._scene) {
+      const geo = new THREE.RingGeometry(0.985, 1, 64);
+      geo.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xff5c5c,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.frustumCulled = false;
+      mesh.visible = false;
+      mesh.renderOrder = 4;
+      this._scene.add(mesh);
+      this._wantedRing = mesh;
+    }
+    const mesh = this._wantedRing;
+    if (!mesh) return;
+    if (!volume) {
+      mesh.visible = false;
+      return;
+    }
+    const local = this._toLocalXZ(volume.x, volume.z, this._spawnLocalXZ);
+    mesh.position.set(local.x, 0.6, local.z);
+    mesh.scale.set(volume.radius, 1, volume.radius);
+    mesh.material.opacity = volume.opacity;
+    mesh.visible = true;
+  },
+
+  _updateRouteRibbon() {
+    const ribbon = routeRibbon(this.state);
+    if (!ribbon || ribbon.active !== true) {
+      if (this._routeRibbon) this._routeRibbon.mesh.visible = false;
+      return;
+    }
+    const start = ribbon.points[0];
+    const end = ribbon.points[1];
+    this._writeWorldSegment(
+      '_routeRibbon',
+      0xc8a15a,
+      start.x,
+      start.z,
+      end.x,
+      end.z,
+      (ROUTE_RIBBON_BRIGHTNESS / 6.5) * 0.4,
+    );
+  },
+
   _arcPreviewActive() {
     const arc = this._arcPreview;
     if (!arc) return false;
@@ -11232,6 +11341,9 @@ export const vfx = {
     } else {
       sub.arcPreview = 0;
     }
+    this._updatePayloadReleaseGhost();
+    this._updateWantedSearchRing();
+    this._updateRouteRibbon();
     if (this._masslineReleaseArcActive()) {
       sub.masslineReleaseArc = this._updateMasslineReleaseArc(dt) ? 1 : 0;
     } else {
