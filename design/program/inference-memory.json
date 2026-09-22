@@ -1545,6 +1545,45 @@
       "integration": "live",
       "commit": "bd59636a7",
       "verification": "focused_green"
+    },
+    {
+      "id": "inst-01-flight-instrument-tells",
+      "date": "2026-09-22",
+      "wf": "WF-14",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Field, mass-seed, and planet tells are the flight instrument, not three cyan pills",
+      "fingerprint": "verb=restyle,subject=flight-hud-tells,sector=flight,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "bda1642323701cab37d3b6d8215ed60124ed8c4c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "verb-01-raid-timeout-ships-remain",
+      "date": "2026-09-22",
+      "wf": "WF-15",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "When the opening raid times out, the ships are still there",
+      "fingerprint": "verb=release,subject=opening-hauler-raid-squad,sector=sector_helios_prime,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "171220e26caecaab5be919cbed419344f33d6059",
+      "verification": "focused_green"
+    },
+    {
+      "id": "world-01-choir-depot-missions-board",
+      "date": "2026-09-22",
+      "wf": "WF-04",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The Choir refuel depot has a missions board",
+      "fingerprint": "verb=advertise,subject=station_depot3-missions,sector=sector_vesta_forge,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "8b07f720d6adc91de572d7dd4b0b5a839085f303",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [

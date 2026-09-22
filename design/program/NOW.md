@@ -43,8 +43,8 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| VERB-01 claim — opening raid timeout leaves hauler and raiders in the world | inference-workflow-batch | queued | `src/data/encounters/015-opening-hauler-raid.js` | SHIPPED row in INFERENCE_IDEAS.md, pathspec commit |
-| INST-01 claim — field, mass-seed, and planet tells are the flight instrument | inference-workflow-batch | todo: implement, prove, ship the line | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` | SHIPPED row in INFERENCE_IDEAS.md, pathspec commit |
+| PIC-11 claim — missing place does not appear as a published cube | inference-batch | editing | `src/render/partsLibrary.js` | SHIPPED row in INFERENCE_IDEAS.md, pathspec commit |
+| Wave G4, G10, G12, G13, G15 — offscreen shooter, throttle answer, readout boxes, hull captions, verb prompts | cursor-wave-g5 | implementing | `src/ui/threatHalo.js`, `src/presentation/throttleAnswer.js`, `src/render/thruster/ribbon/driveEnvelope.js`, `src/audio/audioSystem.js`, `src/ui/hudAttention.js`, `src/ui/hud.js`, `src/ui/controlPrompts.js`, `test/wave-g4-offscreen-threat.test.mjs`, `test/wave-g10-throttle-answer.test.mjs`, `test/wave-g12-readout-boxes.test.mjs`, `test/wave-g13-hull-captions.test.mjs`, `test/wave-g15-verb-prompts.test.mjs`, `test/plasma-stream-thruster.test.mjs`, `test/pq007-control-prompts.test.mjs` | pathspec commits, then release this row |
 
 
 

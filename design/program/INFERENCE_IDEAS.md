@@ -66,14 +66,14 @@ not to invent.
 | PIC-08 | A shove-kill and a gun-kill do not share the generic explosion schedule | `src/render/combat/phasedExplosions.js`, `src/presentation/causalVfxGrammar.js` | The schedule id follows the real cause already in the grammar | Grow the explosion solver | OPEN |
 | PIC-09 | Starter weapons scar with their own heat, not the unknown-weapon default | `src/render/weapons/contactMarks.js` | `heatForWeaponVariant` maps the starter ids in `vfxProfiles.js` to a named heat, not the unknown default | Redesign the scar atlas | SHIPPED |
 | PIC-10 | The graphics lab does not teach a camera-facing halo as the method | `src/render/graphicsLab.js` | The lab-only halo demo is relabeled or restaged off the banned card | Change production VFX | OPEN |
-| PIC-11 | A missing place does not appear as a published cube | `src/render/partsLibrary.js` | `buildFallbackPlaceProp` keeps an empty substrate or marker | Add fallback geometry | OPEN |
+| PIC-11 | A missing place does not appear as a published cube | `src/render/partsLibrary.js` | `buildFallbackPlaceProp` keeps an empty substrate or marker | Add fallback geometry | CLAIMED |
 | PIC-12 | Hull tallies and patches read at the default chase | `src/render/livingHullPresentation.js` | The mark is sharper than the current 256×64 smear at chase distance | Add a second decal system | OPEN |
 
 ## VERB
 
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
-| VERB-01 | When the opening raid times out, the ships are still there | `src/data/encounters/015-opening-hauler-raid.js` | `raid_over` does not `despawnAll`; hauler and raiders remain ordinary entities | Add a fence route (§22 F11). Add encounter 016 | CLAIMED |
+| VERB-01 | When the opening raid times out, the ships are still there | `src/data/encounters/015-opening-hauler-raid.js` | `raid_over` does not `despawnAll`; hauler and raiders remain ordinary entities | Add a fence route (§22 F11). Add encounter 016 | SHIPPED |
 | VERB-02 | The opening raid is already happening; it does not wait for accept | `src/data/encounters/015-opening-hauler-raid.js` | No offer choice and no pass-on-timeout; the fight is in the sky | Rewrite spawn range or timing (§22 A1) | OPEN |
 | VERB-03 | The hitch hint can fire on a heavy hauler, not only an express liner | `src/systems/onboarding.js` | Locking the opening mule can show the existing hitch hint once | Add a tow force (§22 F14). Flip the 47-A pin | OPEN |
 | VERB-04 | The first Well you drop tells you, once, that you dropped it | `src/systems/onboarding.js` | The first player `fields:deployed` emits one hint and does not repeat that session | Change well force or radius | OPEN |
@@ -116,7 +116,7 @@ not to invent.
 
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
-| INST-01 | Field, mass-seed, and planet tells are the flight instrument, not three cyan pills | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` | Those three inject no Segoe UI / `rgba(10, 18, 28` cards; they use tokens already on `#hud` | Invent a new HUD product | CLAIMED |
+| INST-01 | Field, mass-seed, and planet tells are the flight instrument, not three cyan pills | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` | Those three inject no Segoe UI / `rgba(10, 18, 28` cards; they use tokens already on `#hud` | Invent a new HUD product | SHIPPED |
 | INST-02 | The comms fan matches the power rail | `styles/commsradial.css` | `#sf-commsfan` has no `--sf-surface` fill and no 6px web radius; it uses the flight bezel or glass tokens | Restyle the whole HUD | OPEN |
 | INST-03 | The Crucible armory is not a cyan storefront | `styles/crucible.css` | `.sf-cru-card` uses the kit or deckplate face; `#8ee8ff` is not the fill or outline | Redesign the Crucible door | OPEN |
 | INST-04 | The prompt deck matches the flight cluster | `styles/prompt-deck.css` | No 10px consumer card; the deck uses the same glass or bezel language as the flight cluster | Add a new prompt system | OPEN |
@@ -138,8 +138,7 @@ not to invent.
 | Id | Date | Thread | Paths |
 |---|---|---|---|
 | — | — | — | — |
-| VERB-01 | 2026-09-22 | inference-workflow-batch | `src/data/encounters/015-opening-hauler-raid.js` |
-| INST-01 | 2026-09-22 | inference-workflow-batch | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` |
+| PIC-11 | 2026-09-22 | inference-batch | `src/render/partsLibrary.js` |
 
 ## SHIPPED
 
@@ -150,6 +149,9 @@ not to invent.
 | PIC-01 | WF-11 | 62c7346d8 | NPC Kestrel resolves through packaged whole-ship allowlist as complete body |
 | PIC-09 | WF-09 | 79657724b | Starter weapons scar with their own heat; heatForWeaponVariant resolves weapon IDs via vfxProfiles |
 | WORLD-10 | WF-04 | bd59636a7 | Helios outer rocks (f_helios_outer) use ast_metallic instead of repeating starter ast_common_rock |
+| INST-01 | inst-01-flight-instrument-tells | bda1642323701cab37d3b6d8215ed60124ed8c4c | Field, mass-seed, and planet tells repainted with deck tokens — no more Segoe UI navy cards |
+| VERB-01 | verb-01-raid-timeout-ships-remain | 171220e26caecaab5be919cbed419344f33d6059 | raid_over releases the squad instead of despawnAll; hauler and raiders remain ordinary entities |
+| WORLD-01 | world-01-choir-depot-missions-board | 8b07f720d6adc91de572d7dd4b0b5a839085f303 | Missions service shipped (147e71c24); this unit adds the authored chart note and strengthened proof |
 
 ## CUT
 
