@@ -41,7 +41,7 @@ const GLOSSARY = [
   ['Metalness', '0 = painted/dielectric hull, 1 = bare metal. SpaceFace hulls stay ~0.16; exposed hardware ~0.78.'],
   ['Emissive', 'Surfaces that glow (engines, windows, weapon ports). Bloom picks these up — never paint the whole hull emissive.'],
   ['Bloom', 'Post-pass that makes bright emissive/additive pixels radiate. Without emissive highlights, bloom has nothing to work on.'],
-  ['Additive blending', 'Projectiles, halos, particles add light on top (depthWrite:false). They glow without scene lights.'],
+  ['Additive blending', 'Additive geometry and particles add light on top (depthWrite:false) and glow without scene lights. A camera-facing sprite card is not the method — see the Ship, Projectile and Thruster sections.'],
   ['Environment map (PMREM)', 'Reflections of the nebula/sky on metal trim and glass. Needs metalness + low roughness to read.'],
   ['Greeble / panel breakup', 'Small procedural detail (vents, rivets, seams) on canvas textures — not random floating boxes.'],
   ['Material roles', 'Named presets (bodyPrimary, trim, glass, hazard…) so every asset shares one visual language.'],
@@ -200,7 +200,7 @@ Requirements:
 - Hull: pbrHullMaterial or materialLibrary role bodyPrimary (metalness ~0.16, roughness ~0.62) with procedural albedo + normal + roughness maps from canvasTextures.js
 - Exposed hardware: machineryMaterial (metalness ~0.78) for engines, gun housings, keel
 - Trim edges: materialLibrary role trim (high metalness, low roughness) on rails/bevels
-- Engines: emissiveSignal strips + additive Sprite halo (makeStarTexture) parented at nozzle sockets
+- Engines: emissiveSignal strips + additive geometry glow shell parented at nozzle sockets (never a camera-facing sprite card)
 - Faction palette from palettes.js: hull=[HULL HEX], accent=[ACCENT HEX]
 - Compare against graphics-lab.html "Bad vs Good" section before claiming done`,
     controls: [],
@@ -234,7 +234,7 @@ Verify in graphics-lab.html PBR section — sphere must show panel seams and spe
 - Normal: makeHullNormalMap({ size:1024, seed:seed+1, panelCount:12, bevel:0.55 })
 - Roughness: makeNoiseTexture({ size:1024, seed:99, octaves:4, contrast:1.1 })
 - Greeble overlay: makeGreebleTexture on a slightly larger shell mesh (transparent, depthWrite:false)
-- Halo sprite: makeStarTexture for engine glow / projectile bloom
+- Engine/bolt glow: additive geometry shell coaxial with the drive or bolt (a camera-facing sprite card is banned)
 Do NOT ship a hull with only material.color set — match graphics-lab.html Texture section swatches`,
     controls: [
       { id: 'swatch', label: 'Swatch', type: 'select', options: ['albedo', 'normal', 'roughness', 'greeble', 'star', 'gradient'], value: 'albedo' },
@@ -269,7 +269,7 @@ Show all roles in graphics-lab.html Roles grid for review`,
 3. Engine housings: machineryMaterial
 4. Edge rails: trim material
 5. Cockpit band: emissiveSignal or glass
-6. Nozzle glow: emissiveMaterial + child Sprite (makeStarTexture, additive)
+6. Nozzle glow: additive geometry shell coaxial with the nozzle (never a camera-facing sprite card)
 7. Optional: decalMaterial greeble shell slightly above hull (transparent overlay)
 8. Thrust animation: scale engine glow with throttle; emit trail particles on thrust
 Reference: graphics-lab.html Ship section + src/render/ships/kestrelHero.js gold standard`,
@@ -278,7 +278,7 @@ Reference: graphics-lab.html Ship section + src/render/ships/kestrelHero.js gold
       { id: 'layerMachinery', label: 'Machinery contrast', type: 'toggle', value: true },
       { id: 'layerTrim', label: 'Trim metal', type: 'toggle', value: true },
       { id: 'layerEmissive', label: 'Engine emissive', type: 'toggle', value: true },
-      { id: 'layerHalo', label: 'Sprite halo', type: 'toggle', value: true },
+      { id: 'layerHalo', label: 'Nozzle glow (geometry)', type: 'toggle', value: true },
       { id: 'layerDecal', label: 'Greeble decal', type: 'toggle', value: true },
       { id: 'spin', label: 'Turntable', type: 'toggle', value: true },
     ],
@@ -287,13 +287,13 @@ Reference: graphics-lab.html Ship section + src/render/ships/kestrelHero.js gold
     id: 'thruster',
     title: 'Engine / Thruster',
     badge: 'Thruster',
-    desc: '<strong>Thruster ≠ gray cylinder.</strong> Stack: dark nozzle (machinery) → hot emissive core → additive sprite plume → particle trail. Color from <code>pal.thruster</code>. Bloom makes it read as heat.',
+    desc: '<strong>Thruster ≠ gray cylinder.</strong> Stack: dark nozzle (machinery) → hot emissive core → additive plume → particle trail. Color from <code>pal.thruster</code>. Bloom makes it read as heat. The lab plume is a stage stand-in; production exhaust is authored sheets (VFX standard), never a camera-facing card.',
     prompt: `Build engine/thruster VFX for [SHIP]:
 - Nozzle mesh: machineryMaterial dark metal
 - Inner core: emissiveSignal with pal.thruster color, emissiveIntensity 1.2–2.0
-- Plume: THREE.Sprite with makeStarTexture or makeGradientTexture, AdditiveBlending, depthWrite:false
+- Plume: authored/additive geometry sheets along the exhaust axis (AdditiveBlending, depthWrite:false) — a camera-facing sprite card is not the method
 - Trail: pooled particles emitted from nozzle each frame (vel = -forward * 20–40, life 0.35s, additive)
-- Throttle drives sprite scale/opacity and particle rate
+- Throttle drives plume reach/heat and particle rate
 - Color: FACTION_PALETTES[faction].thruster
 Match graphics-lab.html Thruster section — must glow with bloom on`,
     controls: [
@@ -305,19 +305,19 @@ Match graphics-lab.html Thruster section — must glow with bloom on`,
     id: 'projectile',
     title: 'Projectile / Bolt',
     badge: 'Bolt',
-    desc: 'Combat bolts use <strong>additive</strong> materials (no lighting needed) plus a billboard halo sprite. Stretched cylinder aligned to velocity. This is why bullets read as energy, not gray pills.',
+    desc: 'Combat bolts use <strong>additive</strong> materials (no lighting needed) plus an additive geometry glow sleeve. Stretched cylinder aligned to velocity. This is why bullets read as energy, not gray pills — and why a camera-facing halo card is never the method.',
     prompt: `Implement [WEAPON] projectile visual:
 - Core: CylinderGeometry stretched along fire direction, MeshBasicMaterial or emissive Standard
 - blending: THREE.AdditiveBlending, transparent:true, depthWrite:false
-- Halo: child Sprite with makeStarTexture, scale 3× bolt length, same color
-- Muzzle flash on fire: Sprite 0.08s life, scale punch 1→1.6, white core + weapon color
+- Glow: additive geometry sleeve coaxial with the bolt, same color (never a camera-facing halo card)
+- Muzzle flash on fire: short-lived additive geometry or particles, 0.08s life, scale punch 1→1.6, white core + weapon color
 - Trail (optional): ribbon or particle streak for railgun/missile
 - Color from weapon def or pal.accent — NOT default 0x888888
 Verify in graphics-lab.html Projectile section`,
     controls: [
       { id: 'boltColor', label: 'Bolt hue', min: 0, max: 360, step: 1, value: 195 },
       { id: 'boltSpeed', label: 'Pulse speed', min: 0, max: 3, step: 0.1, value: 1.2 },
-      { id: 'haloScale', label: 'Halo scale', min: 1, max: 5, step: 0.1, value: 2.5 },
+      { id: 'haloScale', label: 'Glow radius', min: 1, max: 5, step: 0.1, value: 2.5 },
     ],
   },
   {
@@ -1032,11 +1032,18 @@ function rebuildDemoShip(state, pal) {
   const decalShell = new THREE.Mesh(new THREE.BoxGeometry(4.05, 0.85, 1.65), decalMaterial({ hull: mp.hull, accent: mp.accent, seed, kind: 'greeble' }));
   decalShell.name = 'layerDecal';
 
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: makeStarTexture({ size: 64, color: pal.thruster || mp.accent }),
-    blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9,
-  }));
-  halo.name = 'layerHalo'; halo.scale.set(2.2, 2.2, 1); halo.position.set(-2.3, 0, 0);
+  // Nozzle glow as additive GEOMETRY coaxial with the drive, matching the live ship kit's
+  // axis-facing plume. A camera-facing sprite card is not the method (VFX_TECHNIQUE_STANDARD).
+  const halo = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.5, 1.0, 12, 1, true),
+    new THREE.MeshBasicMaterial({
+      map: makeGradientTexture({ size: 64, type: 'radial', stops: [[0, '#ffffff'], [0.45, pal.thruster || mp.accent], [1, '#000000']] }),
+      color: pal.thruster || mp.accent,
+      blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.55,
+      side: THREE.DoubleSide, toneMapped: false,
+    }),
+  );
+  halo.name = 'layerHalo'; halo.rotation.z = Math.PI / 2; halo.position.set(-2.55, 0.05, 0);
 
   ship.add(fuselage, nose, engHousing, trimRail, emissive, decalShell, halo);
 }
@@ -1106,12 +1113,18 @@ function buildProjectileSection(group, state) {
   );
   bolt.rotation.z = Math.PI / 2;
   bolt.name = 'bolt';
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: makeStarTexture({ size: 64, color: '#a0f0ff' }),
-    blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9,
-  }));
+  // Additive geometry sleeve coaxial with the bolt, not a camera-facing halo card.
+  const halo = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.17, 0.17, 1.5, 10, 1, true),
+    new THREE.MeshBasicMaterial({
+      map: makeGradientTexture({ size: 64, type: 'radial', stops: [[0, '#ffffff'], [0.4, '#a0f0ff'], [1, '#000000']] }),
+      color: '#a0f0ff',
+      blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.5,
+      side: THREE.DoubleSide, toneMapped: false,
+    }),
+  );
   halo.name = 'boltHalo';
-  halo.scale.set(2.5, 2.5, 1);
+  halo.rotation.z = Math.PI / 2;
   state.meshes.projectile.add(bolt, halo);
 }
 
@@ -1126,8 +1139,8 @@ function updateProjectile(state, controls, t) {
   if (bolt) bolt.material.color.copy(color);
   if (halo) {
     halo.material.color.copy(color);
-    const hs = (controls.haloScale ?? 2.5) * pulse;
-    halo.scale.set(hs, hs, 1);
+    const rs = ((controls.haloScale ?? 2.5) / 2.5) * pulse;
+    halo.scale.set(rs, 1, rs);
   }
   g.position.x = Math.sin(t * 2) * 1.5;
   g.rotation.y = t * 1.5;

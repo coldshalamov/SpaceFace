@@ -92,8 +92,8 @@
       "classificationRole": "lab-examples; class assignment is no production permission",
       "status": "lab-only",
       "playerSees": "Lab demos, not the game",
-      "technique": "Sprite plumes and halos used as teaching examples",
-      "whyListed": "The lab still teaches the banned cheat as if it were the production method.",
+      "technique": "Live demos of the correct additive geometry glow (ship nozzle and bolt sleeve); a stage-only sprite plume remains, plus camera-facing text-label sprites for legibility",
+      "whyListed": "Halo demos were restaged off the camera-facing card on 2026-09-22 (PIC-10): the ship and projectile glows are additive meshes coaxial with the drive/bolt, matching the live ship kit. The remaining sprite is the thruster stage plume, labeled a stand-in whose production form is authored sheets; text labels stay camera-facing for legibility.",
       "files": ["src/render/graphicsLab.js"]
     },
     {
