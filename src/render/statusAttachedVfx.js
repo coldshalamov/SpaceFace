@@ -56,11 +56,21 @@ function _nextRankedRecord() {
     rec = {
       entityId: 0, statusId: '', kind: '', stacks: 1, remainingS: 0,
       expiresTick: 0, radius: 0, x: 0, z: 0, dist2: 0,
+      key: 0, entityNum: 0,
     };
     _rankedPool[_rankedUsed] = rec;
   }
   _rankedUsed++;
   return rec;
+}
+
+// Per-victim cadence key for the caller's cooldown map: numeric when the id is numeric (the
+// common case — no string alloc per frame), string-composite fallback for exotic ids.
+function _victimKey(entityId, statusId) {
+  if (typeof entityId === 'number') {
+    return entityId * 2 + (statusId === STATUS_ATTACHED_GOO_ID ? 1 : 0);
+  }
+  return String(entityId) + ':' + statusId;
 }
 
 export function collectStatusAttachedVictims(state, out = []) {
@@ -90,6 +100,8 @@ export function collectStatusAttachedVictims(state, out = []) {
       const rec = _nextRankedRecord();
       rec.entityId = entity.id;
       rec.statusId = statusId;
+      rec.key = _victimKey(entity.id, statusId);
+      rec.entityNum = typeof entity.id === 'number' ? entity.id : 0;
       rec.kind = STATUS_ROWS[statusId].kind;
       rec.stacks = Math.max(1, Math.min(3, Number(active.stacks) || 1));
       rec.remainingS = remainingS;
@@ -102,7 +114,9 @@ export function collectStatusAttachedVictims(state, out = []) {
   }
   _rankedView.length = _rankedUsed;
   for (let i = 0; i < _rankedUsed; i++) _rankedView[i] = _rankedPool[i];
-  _rankedView.sort((a, b) => a.dist2 - b.dist2 || String(a.entityId).localeCompare(String(b.entityId)));
+  // Numeric tie-break first so the localeCompare strings only allocate on exotic id shapes.
+  _rankedView.sort((a, b) => a.dist2 - b.dist2 || (a.entityNum - b.entityNum)
+    || String(a.entityId).localeCompare(String(b.entityId)));
   const cap = Math.min(STATUS_ATTACHED_CAP, _rankedUsed);
   for (let i = 0; i < cap; i++) out.push(_rankedView[i]);
   return out;

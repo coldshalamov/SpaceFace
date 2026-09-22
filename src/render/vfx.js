@@ -13445,7 +13445,7 @@ export const vfx = {
     this._spawnFlashAccessibilityBypass = true;
     for (let i = 0; i < victims.length; i++) {
       const victim = victims[i];
-      const key = String(victim.entityId) + ':' + victim.statusId;
+      const key = victim.key;
       live.add(key);
       const plan = planStatusAttachedEmit(victim, cd.get(key) || 0, acc, frameDt);
       cd.set(key, plan.nextCadenceAgeS);
