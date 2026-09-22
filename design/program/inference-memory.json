@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "brawler-commit-doctrine",
-      "date": "2026-08-12",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "bruiser sticky orbit commit fight",
-      "fingerprint": "verb=fight,subject=bruiser,sector=any,layer=foreground,tempo=burst,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "evidence": "design/program/receipts/inference-5x-2026-08-11/EVIDENCE.md",
-      "review": "design/inference-workflows/records/inference-5x-2026-08-11/U2_REVIEW.md"
-    },
-    {
       "id": "causal-work-hail",
       "date": "2026-08-12",
       "wf": "WF-01",
@@ -1637,6 +1624,19 @@
       "references": [],
       "integration": "live",
       "commit": "40a2f2c4c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "world-14-research-sensor-sweep",
+      "date": "2026-09-22",
+      "wf": "WF-12",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Research stations schedule a research-only sensor_sweep side event; the dish-sweep VFX renders it",
+      "fingerprint": "verb=scan,subject=sensor-sweep,sector=veil,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "8190dd475",
       "verification": "focused_green"
     }
   ],

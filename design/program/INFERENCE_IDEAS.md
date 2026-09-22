@@ -104,7 +104,7 @@ not to invent.
 | WORLD-11 | Io Reach traffic can include one named courier | `src/data/laneContacts.js` | `pickNamedLaneContact` can return an Io-only id | Add a station | SHIPPED 0444daa66 |
 | WORLD-12 | Charon traffic can include one named miner | `src/data/laneContacts.js` | The Expanse sector ids include that contact | Add a claimable | OPEN |
 | WORLD-13 | Tethys has one always-there dressing piece made from a place that already exists | `src/data/worldOneOffs.js`, `src/systems/world.js` | Activating Tethys spawns that `placeId` near the customs gate or the hub | Add a GLB or a mission | OPEN |
-| WORLD-14 | The Veil research station can run a research side event | `src/data/stationSideEvents.js` | `planStationSideEvents` for `research` can pick a research-specific kind | Spawn a combat ship | OPEN |
+| WORLD-14 | The Veil research station can run a research side event | `src/data/stationSideEvents.js` | `planStationSideEvents` for `research` can pick a research-specific kind | Spawn a combat ship | SHIPPED 8190dd475 |
 | WORLD-15 | The Sker Throne scan agrees with whether it can be claimed | `src/data/sectors.js` (`poi_sker_throne`), `src/data/claimableBodies.js` | The claimable flag and the scan sentence match | Add a teleporter | OPEN |
 | WORLD-16 | The Helios liner has a name when you lock it | `src/data/laneContacts.js`, `src/systems/traffic.js`, `src/systems/barkDirector.js` | The lock title is the liner's name, not "Cargo Hauler" | Sell tickets or change the economy | OPEN |
 | WORLD-17 | Coalition HQ offers the ace duel that already exists | `src/data/missions.js`, `src/systems/setPieceMissionOffers.js` | `station_coalition` board can list `ace_duel` | Spawn the ace in Helios ambient. `enemyDensity` 0 stays | OPEN |
@@ -167,6 +167,7 @@ not to invent.
 | INST-13 | INST-13 | 1eaf2de75 | Docking starts the authored `station_hum_loop` room tone on the ambient bus; undocking stops it |
 | PIC-10 | PIC-10 | 49bbd51ca | Graphics-lab ship/bolt glow demos are additive geometry coaxial with the drive/bolt; prose names the banned camera-facing card |
 | VERB-09 | verb-09-helios-impulse-charge | 40a2f2c4c | Capital's `military` secondary role authors `cmdty_impulse_charge` as a produced line; the starter station keeps a full reference lot buyable |
+| WORLD-14 | world-14-research-sensor-sweep | 8190dd475 | Research stations schedule a research-only `sensor_sweep` side event; the dish-sweep VFX renders it |
 
 ## CUT
 
