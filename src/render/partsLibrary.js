@@ -1028,9 +1028,6 @@ export function requiresProductionWholeShipForEntity(entity) {
   if (!entity || entity.type !== 'ship' || !entity.data) return false;
   const data = entity.data;
   if (REQUIRED_WHOLE_SHIP_DEF_ID_SET.has(data.defId)) {
-    // The Kestrel production body is authored for the player hero ship (see isPlayerKestrel):
-    // an NPC Kestrel must stay on the modular authored path even when the V4 record is loaded.
-    if (data.defId === 'ship_kestrel') return entity.isPlayer === true;
     return true;
   }
   if (REQUIRED_WHOLE_SHIP_TRAFFIC_ROLES.has(String(data.trafficRole || ''))) return true;
