@@ -90,7 +90,7 @@ async function main() {
 
     await page.waitForSelector('#gl-canvas', { timeout: 15_000 });
     console.log('[perf:renderer-info] Waiting for SpaceFace boot...');
-    await page.waitForFunction(() => window.SF && window.SF.state, { timeout: 20_000 });
+    await page.waitForFunction(() => window.SF && window.SF.state, null, { timeout: 20_000 });
 
     console.log('[perf:renderer-info] Starting flight...');
     await page.evaluate(() => {
@@ -100,8 +100,11 @@ async function main() {
     });
 
     // Authored-visual readiness can take well over a minute on software/integrated WebGL.
+    // Playwright's signature is waitForFunction(pageFunction, arg, options) — passing the
+    // options object as `arg` silently drops the timeout and falls back to the 30 s default.
     await page.waitForFunction(
       () => window.SF.state && (window.SF.state.mode === 'flight' || window.SF.state.mode === 'gameover'),
+      null,
       { timeout: 180_000, polling: 500 },
     );
     const mode = await page.evaluate(() => window.SF.state.mode);

@@ -7721,10 +7721,16 @@ export const render = {
       // and was the launch regression in the receipt.
       let crucibleWarm = null;
       let crucibleWarmRoot = null;
-      if (warmFirstFlightFx && survivalCook && !cookOverBudget()) {
+      if (warmFirstFlightFx && !cookOverBudget()) {
         try {
           crucibleWarm = this._beginCrucibleBoundedRosterWarm({
             yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser,
+            // Survival warms the wave roster (enemy hull exemplars + the player hull that only
+            // spawns at the flight transition). The ordinary opening runs the scripted-intro
+            // species manifest instead — the rescue cast's drone/wreck/payload/beacon and the
+            // lane freighters mint after the composition snapshot, so their packaged bodies and
+            // material families compile behind the shell rather than inside the first bloom.
+            profile: survivalCook ? 'crucible' : 'opening',
           });
         } catch (error) {
           console.warn('[render] crucible bounded roster warm begin failed', error);
@@ -9859,6 +9865,13 @@ export const render = {
    * ship fallback a hostile draws while its package composes) come from real vf.build
    * exemplars.
    *
+   * Two profiles share the machinery: 'crucible' (survival arena cook) adds the wave roster's
+   * enemy hull exemplars and the player hull that only spawns at the flight transition;
+   * 'opening' (ordinary New Game / Continue) covers the scripted-intro species manifest —
+   * the rescue cast's drone/wreck/payload/beacon plus lane freighters — without the roster
+   * ship compose jobs the 20 s shell could not settle before flight (jobs that drain late
+   * would link inside measured frames, recreating the very defect this pass removes).
+   *
    * Two phases because decodes settle late: begin() mounts exemplars and starts the explicit
    * decodes before the buffer census; finish() runs just before the cook snapshots compile
    * roots so records decoded DURING the cook (the upgrade queue still held pending jobs when
@@ -9872,17 +9885,20 @@ export const render = {
   _beginCrucibleBoundedRosterWarm(options = {}) {
     const { renderer, scene, state } = this;
     if (!renderer || !scene || !this.vf) return null;
+    const profile = options.profile === 'opening' ? 'opening' : 'crucible';
+    const specPrefix = profile === 'opening' ? 'opening-warm:' : 'crucible-warm:';
     const warm = {
       root: new THREE.Group(),
       decodes: [],
       pendingAttachments: [],
       boundaryKicks: [],
       building: true,
+      profile,
     };
     const root = warm.root;
-    root.name = 'SF_CrucibleBoundedWarm';
+    root.name = profile === 'opening' ? 'SF_OpeningSpeciesWarm' : 'SF_CrucibleBoundedWarm';
     root.visible = false;
-    root.userData.rosterPrewarm = 'bounded-cook';
+    root.userData.rosterPrewarm = profile === 'opening' ? 'opening-species-warm' : 'bounded-cook';
     // Mount immediately: queue-lane boundary requests refuse detached roots
     // (boundaryBelongsToScene), and the ship kicks below run through that check. The caller
     // re-adds the root after begin() returns — re-adding to the same parent is a no-op.
@@ -9904,8 +9920,8 @@ export const render = {
     // vector mines — the same exemplar spec table the dormant roster path used. Wreck
     // exemplars ride along too: every kill mints a wreck entity and its procedural shell
     // draws until (or instead of) the authored body attaches.
-    for (const spec of combatSpawnableExemplarSpecs('crucible-warm:spawnable:')
-      .concat(wreckVisualExemplarSpecs('crucible-warm:wreck:'))) {
+    for (const spec of combatSpawnableExemplarSpecs(`${specPrefix}spawnable:`)
+      .concat(wreckVisualExemplarSpecs(`${specPrefix}wreck:`))) {
       try {
         const mesh = this.vf.build(spec);
         if (!mesh) continue;
@@ -9928,14 +9944,21 @@ export const render = {
     // linked inside the fight when a wave spawn presented before its boundary resolved. One
     // exemplar per swarm-roster enemy carries that enemy's (defId, silhouette, factionId) so
     // the built fallback is the same program family the live spawn draws — a generic kestrel
-    // misses the drone_swarm/bruiser_armor/dreadnought families entirely.
-    const shipSpecs = swarmRosterShipExemplarSpecs('crucible-warm:ship:');
+    // misses the drone_swarm/bruiser_armor/dreadnought families entirely. Opening profile
+    // skips this block: the scripted intro spawns no roster ships, and sixteen whole-ship
+    // compose jobs queued behind the live entities' upgrades could not settle inside the
+    // 20 s shell — their late drain would link inside measured frames instead.
+    const shipSpecs = profile === 'crucible' ? swarmRosterShipExemplarSpecs(`${specPrefix}ship:`) : [];
     // The player hull joins the set: its live entity only spawns at the flight transition,
     // so without an exemplar its authored compose (the GLTFKit_ship_wasp cluster) runs inside
     // the round. The enemy roster never reaches the defId-resolved wasp file — hostiles map
     // to ashline_dart/ashline_lode via lootTableId — so the player record needs its own row.
-    const playerShipSpec = cruciblePlayerShipExemplarSpec(state);
-    if (playerShipSpec) shipSpecs.push(playerShipSpec);
+    // (Opening profile skips it too: the ordinary route's player entity already exists at the
+    // cook and its own boundary runs the same compose through the _meshes kick below.)
+    if (profile === 'crucible') {
+      const playerShipSpec = cruciblePlayerShipExemplarSpec(state);
+      if (playerShipSpec) shipSpecs.push(playerShipSpec);
+    }
     for (const spec of shipSpecs) {
       try {
         const ship = this.vf.build(spec);
@@ -9953,7 +9976,7 @@ export const render = {
           const kick = track(requestAuthoredUpgrade(ship, renderer, scene, {
             residencyRole: 'crucible-roster-warm',
             sectorId,
-            upgradeJobKey: `crucible-warm:job:${spec.id}`,
+            upgradeJobKey: `${specPrefix}job:${spec.id}`,
           }));
           kick.then((result) => { entry.result = result; });
           warm.pendingAttachments.push(kick);
@@ -10015,7 +10038,7 @@ export const render = {
       if (!weapon || !weapon.id) continue;
       try {
         const mesh = this.vf.build({
-          id: `crucible-warm:projectile:${weapon.id}`, type: 'projectile', team: 0,
+          id: `${specPrefix}projectile:${weapon.id}`, type: 'projectile', team: 0,
           radius: weapon.size === 'L' ? 1.1 : weapon.size === 'M' ? 0.85 : 0.65,
           pos: { x: 0, y: 0, z: 0 }, prevPos: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 },
           rot: 0, flags: {},
@@ -10041,6 +10064,13 @@ export const render = {
     const explicitFiles = [
       ...PQ_193_05_WRECK_PACKAGED_FILES.map((file) => ({ file, slot: 'place' })),
       { file: PQ_193_05_DRONE_PACKAGED_FILE, slot: 'place' },
+      // The scripted rescue intro's packaged bodies — packagedPropSpec maps a
+      // distressBeacon/rescuePriority payload to the capsule and a rescueExit beacon to the
+      // lane buoy. Custody drops mint the same capsule under survival, so both profiles
+      // decode it. Decoding ahead of the boundary kicks lets finish() instantiate the
+      // records into the warm root in the same cook.
+      { file: 'places/place_47a_rescue_capsule.glb', slot: 'place' },
+      { file: 'places/place_lane_beacon.glb', slot: 'place' },
       { file: PQ_193_05_GATE_PACKAGED_FILE, slot: 'place' },
       // authoredPayloadSlotForEntity: 'pod' for the custody capsule, 'place' for the spindle.
       { file: 'pods/pod_cargo_container.glb', slot: 'pod' },
@@ -10246,12 +10276,13 @@ export const render = {
         const status = entry.result && typeof entry.result === 'object'
           ? (entry.result.status || JSON.stringify(entry.result))
           : (entry.result === undefined ? 'pending' : String(entry.result));
-        return `${String(entry.id || '').replace(/^crucible-warm:ship:/, '')}`
+        return `${String(entry.id || '').replace(/^[^:]+:ship:/, '')}`
           + `=${data.authoredAssetState || 'none'}`
           + `/${data.authoredVisualRoot || '-'}`
           + `/${status}`;
       });
       state.render.crucibleWarmProgress = {
+        profile: warm.profile || 'crucible',
         records: records.length,
         instantiated,
         packageInstances: packageInstances.length,

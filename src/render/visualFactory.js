@@ -3212,6 +3212,18 @@ export function combatSpawnableExemplarSpecs(idPrefix = 'survival-roster-prewarm
     // program family is novel the first time a beacon mounts inside a live round.
     { ...base(), id: `${prefix}beacon`, type: 'beacon', radius: 10, data: {} },
     { ...base(), id: `${prefix}beacon:dead`, type: 'beacon', radius: 10, data: { laneBeaconDead: true } },
+    // Scripted-intro species the entity-driven cook never sees: the rescue cast's scout is a
+    // drone, the grab pod a payload, the run beacon a rescueExit beacon — each mounts the same
+    // procedural + packaged-body families a live spawn draws. The data flags are exactly the
+    // ones packagedPropSpec reads, so these exemplars carry the live requestAuthoredUpgrade
+    // hook and admit their authored body through the production lane.
+    { ...base(), id: `${prefix}beacon:rescue`, type: 'beacon', radius: 60,
+      data: { rescueExit: true } },
+    { ...base(), id: `${prefix}drone`, type: 'drone', radius: 8, team: 1,
+      factionId: 'faction_scn', data: {} },
+    { ...base(), id: `${prefix}payload`, type: 'payload', radius: 8, data: {} },
+    { ...base(), id: `${prefix}payload:rescue`, type: 'payload', radius: 8,
+      data: { tetherPayload: true, distressBeacon: true, rescuePriority: true } },
     // Lane traffic haulers bypass the authored path entirely (`case 'freighter'` builds the
     // procedural mule directly — cockpit-glass clearcoat, tinted hull, glow trims). A hauler
     // that mounts on the residency-hold release otherwise links that whole family in-flight.
