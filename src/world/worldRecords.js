@@ -54,6 +54,14 @@ export const MAX_RETENTION_RECEIPTS = 64;
 /** Explicit capture sentinel for intentionally clearing a scheduled wake. */
 export const CLEAR_NEXT_EVENT_AT_T = Symbol('spaceface.clearNextEventAtT');
 
+/**
+ * Marks a record object that normalizeRecord produced. Symbol-keyed, so JSON/structuredClone
+ * serialization drops it (a restored bag re-normalizes once) while in-memory pokes of raw
+ * records stay unmarked and still force a full normalize. Lets ensureWorldRecords skip the
+ * per-tick whole-bag deep copy without weakening the repair-corrupt-bag contract.
+ */
+const RECORD_NORMALIZED = Symbol('spaceface.worldRecord.normalized');
+
 /** Return capture options that intentionally clear the durable wake and its event ids. */
 export function clearScheduledWake(options = {}) {
   return {
@@ -203,7 +211,10 @@ export function normalizeRecordsBag(input) {
   if (!src) return bag;
   const ids = Object.keys(src).sort();
   for (const id of ids) {
-    const rec = normalizeRecord(src[id], id);
+    const raw = src[id];
+    const rec = raw && raw[RECORD_NORMALIZED] === true && raw.recordId === id
+      ? raw
+      : normalizeRecord(raw, id);
     if (rec) bag.byId[rec.recordId] = rec;
   }
   const sectors = new Set();
@@ -327,6 +338,7 @@ export function normalizeRecord(raw, fallbackId) {
     },
     extra: preserveUnknownFields(raw),
   };
+  rec[RECORD_NORMALIZED] = true;
   return rec;
 }
 
@@ -1091,14 +1103,42 @@ export function bindEntityToRecord(entity, record) {
 }
 
 /**
+ * Cheap shape check: every own record marked normalized and keyed by its own recordId.
+ * A raw poke into bag.byId (tests, restores) leaves an unmarked or mis-keyed record and the
+ * caller falls back to a full normalize, preserving the repair-corrupt-bag contract.
+ */
+function recordsBagIsNormalized(bag) {
+  const byId = bag.byId;
+  for (const id in byId) {
+    const rec = byId[id];
+    if (!rec || rec[RECORD_NORMALIZED] !== true || rec.recordId !== id) return false;
+  }
+  if (bag.retentionReport !== undefined
+    && (typeof bag.retentionReport !== 'object' || bag.retentionReport === null
+      || Array.isArray(bag.retentionReport))) return false;
+  if (bag.retentionReceipts !== undefined && !Array.isArray(bag.retentionReceipts)) return false;
+  return true;
+}
+
+/**
  * Ensure bag exists on state.world (mutates world root).
+ * Fast path: a bag already produced by create/normalize/deserialize (every record marked) is
+ * returned as-is instead of re-normalizing the whole bag — the old per-tick deep copy.
  */
 export function ensureWorldRecords(world) {
   if (!world || typeof world !== 'object') return createEmptyRecordsBag();
-  if (!world.records || typeof world.records !== 'object' || Array.isArray(world.records)) {
+  const existing = world.records;
+  if (existing && typeof existing === 'object' && !Array.isArray(existing)
+    && existing.schemaId === WORLD_RECORDS_SCHEMA_ID
+    && existing.schemaVersion === WORLD_RECORDS_SCHEMA_VERSION
+    && existing.byId && typeof existing.byId === 'object' && !Array.isArray(existing.byId)
+    && recordsBagIsNormalized(existing)) {
+    return existing;
+  }
+  if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
     world.records = createEmptyRecordsBag();
   } else {
-    world.records = normalizeRecordsBag(world.records);
+    world.records = normalizeRecordsBag(existing);
   }
   return world.records;
 }

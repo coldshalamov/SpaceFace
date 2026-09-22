@@ -190,16 +190,6 @@ function drawTrail(g, entity, playerX, playerZ, scale, center, colour) {
   g.restore();
 }
 
-function drawAsteroidBlip(g, x, y) {
-  g.beginPath();
-  g.moveTo(x, y - 1.7);
-  g.lineTo(x + 1.7, y);
-  g.lineTo(x, y + 1.7);
-  g.lineTo(x - 1.7, y);
-  g.closePath();
-  g.fill();
-}
-
 // Plain-loop ping census (10 Hz draw path): the old `contacts.some` allocated a closure per draw.
 function contactsHaveLivePing(contacts, simTime) {
   const until = Number.isFinite(simTime) ? simTime : 0;
@@ -904,7 +894,17 @@ export function createRadar(ctx) {
     g.save();
     g.globalAlpha = 0.55;
     g.fillStyle = TACTICAL_MAP_PALETTE.asteroid;
-    for (let i = 0; i < nearRockCount; i++) drawAsteroidBlip(g, nearRockSlots[i].x, nearRockSlots[i].y);
+    // One path, one fill: identical pixels to per-blip fills (same colour, non-overlapping diamonds).
+    g.beginPath();
+    for (let i = 0; i < nearRockCount; i++) {
+      const slot = nearRockSlots[i];
+      g.moveTo(slot.x, slot.y - 1.7);
+      g.lineTo(slot.x + 1.7, slot.y);
+      g.lineTo(slot.x, slot.y + 1.7);
+      g.lineTo(slot.x - 1.7, slot.y);
+      g.closePath();
+    }
+    if (nearRockCount) g.fill();
     g.restore();
     if (targetAsteroid) drawTargetRing(g, targetAsteroid.x, targetAsteroid.y, center);
 

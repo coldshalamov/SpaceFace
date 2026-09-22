@@ -57,6 +57,27 @@ export function resolveToken(name, fallback) {
   return (v && v.trim()) || fb;
 }
 
+// One MediaQueryList per matchMedia function: creating a fresh MQL every call (gaugeSettle.step,
+// every radar draw) costs ~82 ms per 21 s of opening flight. A real query's .matches stays live;
+// tests that swap window.matchMedia get a fresh query on the next call.
+let _motionQueryFor = null;
+let _motionQuery = null;
+
+function motionMediaQuery() {
+  const fn = (typeof window !== 'undefined' && typeof window.matchMedia === 'function')
+    ? window.matchMedia
+    : null;
+  if (fn !== _motionQueryFor) {
+    _motionQueryFor = fn;
+    _motionQuery = null;
+    if (fn) {
+      try { _motionQuery = fn.call(window, '(prefers-reduced-motion: reduce)'); }
+      catch (_) { _motionQuery = null; }
+    }
+  }
+  return _motionQuery;
+}
+
 /**
  * True when vestibular motion should be suppressed. Order of truth:
  *   1. explicit opts.motionReduce (a caller passing state.settings.video.motionReduce)
@@ -70,9 +91,8 @@ export function prefersReducedMotion(opts) {
       && document.documentElement.classList.contains('sf-reduce-motion')) {
     return true;
   }
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    try { return !!window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { /* ignore */ }
-  }
+  const query = motionMediaQuery();
+  if (query) return !!query.matches;
   return false;
 }
 
