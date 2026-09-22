@@ -57,6 +57,7 @@ import {
   SALVAGE_RIGHTS_KIND,
 } from '../data/killRewards.js';
 import { consumePendingSlam, peekPendingSlam, spawnFracturePieces } from './hullFracture.js';
+import { JETTISONED_CARGO_PAYLOAD_TYPE } from './lootShards.js';
 
 export const MAGNET_RANGE = 800; // wu pull radius for Super-Wide Vacuum Cargo Attractor
 export const MAGNET_ACCEL = 2400; // wu/s² snappy authority toward the seek velocity
@@ -231,6 +232,12 @@ export const mining = {
   _runPlayerBeam(player, beam, dt, state) {
     const target = this._acquireTarget(player, beam.range, state);
     if (!target) { this._stopBeam(); return; }
+
+    // F12: the same beam, aimed at a jettisoned cargo pod, cracks it open — it never reaches the
+    // verb resolver (pods are not mined), never consumes ammo, and never gains a lockout.
+    if (isBeamSplittableCargoPod(target)) {
+      return this._runCargoPodBeam(player, target, beam, dt, state);
+    }
 
     const desc = describeEntity(state, target);
     if (target.data && target.data.worldSiteId && target.data.worldSiteComponentId) {
@@ -586,7 +593,9 @@ export const mining = {
     if (!entity || !entity.alive) return false;
     // PQ-015: beam type-membership from the shared catalog (identical to the former asteroid|wreck
     // literal). The mined-out and range layers below are UNCHANGED.
-    if (!verbAcceptsType('mine', entity.type)) return false;
+    // F12: a jettisoned cargo pod is not `mine` membership — it is split, not mined — but the same
+    // beam acquires it, so pod eligibility joins the gate here instead of the catalog table.
+    if (!verbAcceptsType('mine', entity.type) && !isBeamSplittableCargoPod(entity)) return false;
     if (!presentationAllowsPlayerFacingAction(entity, state)) return false;
     if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
     if (entity.type === 'asteroid' && entity.data && entity.data.opticMaterial) return false;
@@ -622,7 +631,7 @@ export const mining = {
     this._diag.targetCandidates = mineables.length;
     for (const e of mineables) {
       if (!e.alive) continue;
-      if (!verbAcceptsType('mine', e.type)) continue; // PQ-015: shared beam membership (asteroid|wreck)
+      if (!verbAcceptsType('mine', e.type) && !isBeamSplittableCargoPod(e)) continue; // PQ-015: shared beam membership (asteroid|wreck); F12: cargo pods split, not mine
       if (!presentationAllowsPlayerFacingAction(e, state)) continue;
       if (e.type === 'asteroid' && e.data && e.data.respawnAt != null) continue; // mined-out, awaiting respawn
       if (e.type === 'asteroid' && e.data && e.data.opticMaterial) continue;
@@ -1146,6 +1155,72 @@ export const mining = {
     const pool = { cmdty_scrap_metal: 2 + Math.floor(rng() * 3) };
     if (rng() < 0.5) pool.cmdty_salvage_electronics = 1;
     return pool;
+  },
+
+  // F12: held on a jettisoned cargo pod, the same starter beam accumulates split progress against
+  // the pod's hull rating; reaching it spills the pod's commodity as loose pickup bodies and
+  // consumes the pod exactly once. No ammo, no heat lock — the gauge law is unchanged.
+  _runCargoPodBeam(player, pod, beam, dt, state) {
+    if (!this._beaming || this._lockTargetId !== pod.id || this._activeVerb !== 'split') {
+      this._setLockTargetId(pod.id);
+      this._activeVerb = 'split';
+      this.bus.emit('mining:start', {
+        minerId: player.id,
+        targetId: pod.id,
+        verb: 'split',
+        position: { x: pod.pos.x, z: pod.pos.z }
+      });
+    }
+    this._beaming = true;
+
+    this._activeBeamLine = beamLineFor(player, pod);
+    if (this._activeBeamLine) this._activeBeamLine.verb = 'split';
+
+    const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1);
+    const data = pod.data || (pod.data = {});
+    const work = Math.max(1, pod.hullMax || pod.hull || 100);
+    const prev = Number.isFinite(data.beamSplitProgress) ? data.beamSplitProgress : 0;
+    data.beamSplitProgress = prev + dps * dt;
+    if (data.beamSplitProgress >= work) this._splitCargoPod(player, pod);
+  },
+
+  _splitCargoPod(player, pod) {
+    if (!pod || !pod.alive) return;
+    const data = pod.data || {};
+    const spills = [];
+    const pool = data.salvagePool && typeof data.salvagePool === 'object' ? data.salvagePool : null;
+    if (pool) {
+      for (const [commodityId, qty] of Object.entries(pool)) {
+        const whole = Math.floor(Number(qty));
+        if (commodityId && whole > 0) spills.push([commodityId, whole]);
+      }
+    }
+    if (!spills.length && typeof data.commodityId === 'string' && data.commodityId) {
+      const whole = Math.floor(Number(data.amount));
+      if (whole > 0) spills.push([data.commodityId, whole]);
+    }
+    // Consume the pod before spawning so no observer can see the split source alive twice.
+    pod.alive = false;
+    data.salvagePool = {};
+    data.amount = 0;
+    for (const [commodityId, qty] of spills) {
+      let remaining = qty;
+      const bodies = Math.min(3, remaining);
+      for (let i = 0; i < bodies; i++) {
+        const share = i === bodies - 1 ? remaining : Math.ceil(remaining / (bodies - i));
+        if (!(share > 0)) continue;
+        this._spawnPickup(pod, commodityId, share, null, { tight: true });
+        remaining -= share;
+      }
+      this.bus.emit('mining:podSplit', {
+        minerId: player ? player.id : null,
+        podId: pod.id,
+        commodityId,
+        qty,
+        position: { x: pod.pos.x, z: pod.pos.z },
+      });
+    }
+    this._stopBeam();
   },
 
   _drainWreck(player, wreck, dps, dt) {
@@ -1861,7 +1936,16 @@ function mineablesNearShip(state, ship, radius, out) {
     COMBAT_TABLE_FLAGS.WRECK,
   );
   const fieldHits = queryAsteroidField(state, ship.pos, radius, miningFieldScratch);
-  if (!wreckHits.length && !fieldHits.length) return nearby;
+  // F12: jettisoned cargo pods live on the payloads index, not `mineables` — the beam acquires
+  // them to split them, so they ride the same spatial gather without joining that index.
+  const podHits = queryNearbyEntities(
+    state,
+    ship.pos,
+    radius,
+    miningPodScratch,
+    (state.entityIndex && state.entityIndex.payloads) || state.entityList || [],
+  );
+  if (!wreckHits.length && !fieldHits.length && !podHits.length) return nearby;
   const merged = nearby === out ? nearby : nearby.slice();
   const seen = miningMineableSeen;
   seen.clear();
@@ -1881,11 +1965,26 @@ function mineablesNearShip(state, ship, radius, out) {
     seen.add(e.id);
     merged.push(e);
   }
+  for (let i = 0; i < podHits.length; i++) {
+    const e = podHits[i];
+    if (!e || seen.has(e.id)) continue;
+    seen.add(e.id);
+    merged.push(e);
+  }
   return merged;
 }
 
 const miningCombatScratch = [];
+const miningPodScratch = [];
 const miningMineableSeen = new Set();
+
+// F12: only jettisoned cargo pods split under the beam — cut panels, custody capsules, and other
+// payload types keep their own verbs. Kept out of `mine` catalog membership on purpose: a pod is
+// cracked open, never mined.
+function isBeamSplittableCargoPod(entity) {
+  return !!(entity && entity.type === 'payload' && entity.data
+    && entity.data.payloadType === JETTISONED_CARGO_PAYLOAD_TYPE);
+}
 
 function activeMineableTetherTarget(state, ship, range) {
   if (!state || !ship) return undefined;
@@ -1903,7 +2002,10 @@ function activeMineableTetherTarget(state, ship, range) {
   for (const id of ids) {
     const tableDist = combatTableRowDistance(table, id, ship.pos.x, ship.pos.z);
     const target = state.entities && state.entities.get && state.entities.get(id);
-    if (!target || !target.alive || (target.type !== 'asteroid' && target.type !== 'wreck')) continue;
+    if (!target || !target.alive
+      || (target.type !== 'asteroid' && target.type !== 'wreck' && !isBeamSplittableCargoPod(target))) continue;
+    // Optic lattices are not ore — same guard as _isValidMineableTarget / _acquireTarget.
+    if (target.type === 'asteroid' && target.data && target.data.opticMaterial) continue;
     const dist = tableDist != null ? tableDist : Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z);
     const allowed = Math.max(0, Number(range) || 0) + (target.radius || 0) + (ship.radius || 0);
     return dist <= allowed ? target : null;
