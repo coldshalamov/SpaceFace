@@ -74,18 +74,6 @@
   ],
   "units": [
     {
-      "id": "seed-npc-3",
-      "date": "2026-08-09",
-      "wf": "WF-01",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "Ceres cast jobs",
-      "fingerprint": "domain=wf-01,sector=ceres,subject=npc-jobs",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
       "id": "seed-craft-1",
       "date": "2026-08-08",
       "wf": "WF-11",
@@ -1633,6 +1621,19 @@
       "references": [],
       "integration": "live",
       "commit": "eb8f3793c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inst-04-prompt-deck-flight-cluster",
+      "date": "2026-09-22",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "prompt deck decisions/keys/chips now wear deckplate bezel + glass + lamp tokens, no 10px consumer card remains",
+      "fingerprint": "verb=read,subject=prompt-deck,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "dc6d7d696",
       "verification": "focused_green"
     }
   ],

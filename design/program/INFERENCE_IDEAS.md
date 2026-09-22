@@ -119,7 +119,7 @@ not to invent.
 | INST-01 | Field, mass-seed, and planet tells are the flight instrument, not three cyan pills | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` | Those three inject no Segoe UI / `rgba(10, 18, 28` cards; they use tokens already on `#hud` | Invent a new HUD product | SHIPPED |
 | INST-02 | The comms fan matches the power rail | `styles/commsradial.css` | `#sf-commsfan` has no `--sf-surface` fill and no 6px web radius; it uses the flight bezel or glass tokens | Restyle the whole HUD | SHIPPED 5fb238ab7 |
 | INST-03 | The Crucible armory is not a cyan storefront | `styles/crucible.css` | `.sf-cru-card` uses the kit or deckplate face; `#8ee8ff` is not the fill or outline | Redesign the Crucible door | OPEN |
-| INST-04 | The prompt deck matches the flight cluster | `styles/prompt-deck.css` | No 10px consumer card; the deck uses the same glass or bezel language as the flight cluster | Add a new prompt system | OPEN |
+| INST-04 | The prompt deck matches the flight cluster | `styles/prompt-deck.css` | No 10px consumer card; the deck uses the same glass or bezel language as the flight cluster | Add a new prompt system | SHIPPED dc6d7d696 |
 | INST-05 | Resting flight does not wear the aerospace G-LOC sheet | `index.html`, `styles/hud.css` | G-LOC and EMP rules apply only while that effect is on | Delete the effects. Repaint station | OPEN |
 | INST-06 | The boot screen does not write to instruments that are not in the page | `src/ui/loadingTerminalArt.js` | No queries for `data-loading-diag-stream`, `-hex`, `-subsystems`, or `-segments` | Invent a second boot story | OPEN |
 | INST-07 | The boot picture is not a 640×380 buffer stretched over the window | `index.html` | `#boot-terminal-canvas` is not a tiny buffer scaled to the viewport | Replace the loader with a new product | OPEN |
@@ -162,6 +162,7 @@ not to invent.
 | TOOL-02 | tool-02-hover-tab-sounds | df4d6bd90 | `sfx_ui_hover` binds Kenney tick_002, `sfx_ui_tab` binds select_002; neither is `ui_click` |
 | VERB-03 | verb-03-hitch-hint-heavy-hauler | fb1c6484a | hitch gate accepts any passive `ship_mule` freighter incl. the opening mule; express itinerary preserved |
 | WORLD-04 | world-04-choir-tender-investigator | eb8f3793c | SCN customs cutter audits a Choir-Tender claim — offers the wreck's own report/loot choice, one hull |
+| INST-04 | inst-04-prompt-deck-flight-cluster | dc6d7d696 | decisions/keys/chips on deckplate bezel + glass + lamp tokens; no 10px consumer card |
 
 ## CUT
 
