@@ -5,6 +5,7 @@
 //   node scripts/ui-bench.mjs --shot=pause
 //   node scripts/ui-bench.mjs --shot=pause,settings
 //   node scripts/ui-bench.mjs --shot=station-market --walk
+//   node scripts/ui-bench.mjs --shot=ship --probe=".sx-sw__stage"   # where is it, and what decided that
 //   node scripts/ui-bench.mjs                          # serve; prints URLs
 //
 // Output: .devshots/ui-bench/<id>.png
@@ -125,6 +126,7 @@ async function shoot(page, id, outDir) {
   if (report.overlay) console.log(`  overlay: ${report.overlay}`);
   printFindings(report);
   console.log('  Open this PNG and look at it.');
+  if (args.probe) await probe(page, args.probe);
   if (args.walk) await walk(page, id, outDir);
   return true;
 }
@@ -148,6 +150,41 @@ async function settleAnimations(page) {
     }
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   }).catch(() => {});
+}
+
+// `--probe=<css selector>` prints where the matching elements actually are and what decided it.
+// A layout question ("why is this panel 245px tall when I set a 340px floor?") is answered by
+// measuring, and measuring belongs in the instrument rather than in a throwaway script beside it.
+async function probe(page, selector) {
+  const rows = await page.evaluate((sel) => {
+    const out = [];
+    let nodes;
+    try { nodes = document.querySelectorAll(sel); } catch { return [{ error: 'bad selector' }]; }
+    for (const el of [...nodes].slice(0, 12)) {
+      const r = el.getBoundingClientRect();
+      const s = getComputedStyle(el);
+      out.push({
+        tag: el.tagName.toLowerCase(),
+        cls: (typeof el.className === 'string' ? el.className : '').slice(0, 70),
+        box: `${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`,
+        display: s.display, position: s.position, overflow: s.overflow,
+        flex: s.flex, minHeight: s.minHeight, height: s.height,
+        gridArea: s.gridArea === 'auto / auto / auto / auto' ? '' : s.gridArea,
+        parent: el.parentElement
+          ? `${el.parentElement.tagName.toLowerCase()}.${String(el.parentElement.className || '').split(/[ 	]+/)[0]} ${getComputedStyle(el.parentElement).display} ${Math.round(el.parentElement.getBoundingClientRect().height)}h`
+          : '',
+      });
+    }
+    return out;
+  }, selector).catch((error) => [{ error: error.message }]);
+  console.log(`  probe ${selector}: ${rows.length} match${rows.length === 1 ? '' : 'es'}`);
+  for (const row of rows) {
+    if (row.error) { console.log(`    ${row.error}`); continue; }
+    console.log(`    ${row.tag}.${row.cls}`);
+    console.log(`      box ${row.box}  display:${row.display} position:${row.position} overflow:${row.overflow}`);
+    console.log(`      flex:${row.flex} min-height:${row.minHeight} height:${row.height}${row.gridArea ? ` grid-area:${row.gridArea}` : ''}`);
+    console.log(`      in ${row.parent}`);
+  }
 }
 
 async function walk(page, id, outDir) {
@@ -248,6 +285,7 @@ function parseArgs(argv) {
     headed: false,
     list: false,
     walk: false,
+    probe: null,
     max: 24,
     viewport: { width: 1920, height: 1080 },
   };
@@ -257,6 +295,7 @@ function parseArgs(argv) {
     if (arg === '--headed') parsed.headed = true;
     if (arg.startsWith('--shot=')) parsed.shots.push(...splitIds(arg.slice('--shot='.length)));
     if (arg.startsWith('--bg=')) parsed.bg = arg.slice('--bg='.length);
+    if (arg.startsWith('--probe=')) parsed.probe = arg.slice('--probe='.length);
     if (arg.startsWith('--out=')) parsed.out = arg.slice('--out='.length);
     if (arg.startsWith('--max=')) parsed.max = Number(arg.slice('--max='.length)) || parsed.max;
     if (arg.startsWith('--viewport=')) {

@@ -2,6 +2,7 @@
 <html lang="en" data-k-temp="flight">
 <head>
 <meta charset="utf-8" />
+<base href="/" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>SpaceFace — UI bench</title>
 <!-- The same import map index.html carries: screen modules pull `three` and friends as bare
@@ -21,16 +22,35 @@
 }
 }
 </script>
+<!-- The bench boot IS the game boot. This list must stay identical to index.html's, in the same
+     order, or every picture taken here is judged against a cascade the player never has.
+
+     It was not, until 2026-09-22 (the open INST-16 row). Two of these links were wrong:
+
+     styles/orbital.css was here and is NOT in index.html. It is a whole fifth design system --
+     --of-* tokens, its own two faces, and a palette of greens (#1b241e, #202b22, #233021) that
+     belongs to none of the four roots -- and it reassigns the kit's tokens to its own. It also
+     wins cascade fights the game never has, with #screens selectors: it is why the station's
+     panels photographed green, why .sx-sw__main was a grid instead of a column, and why the ship
+     stage was pinned to 240px against a 340px floor set three sheets later.
+
+     styles/station.css was linked eagerly. The game injects it at runtime (stationApp's
+     ensureStylesheet), which puts it AFTER the Deckplate <style> in the head; a <link> here put it
+     BEFORE, inverting the cascade between the bench and the game on every station surface. The
+     station and ship screens both call ensureStylesheet on mount, so dropping the link is what
+     makes the bench match.
+
+     hud.css and prompt-deck.css were missing and are in index.html. -->
 <link rel="stylesheet" href="../styles/ui.css" />
 <link rel="stylesheet" href="../styles/fonts.css" />
 <link rel="stylesheet" href="../styles/menu.css" />
 <link rel="stylesheet" href="../styles/intro.css" />
 <link rel="stylesheet" href="../styles/asteroid-ops.css" />
 <link rel="stylesheet" href="../styles/accessibility.css" />
+<link rel="stylesheet" href="../styles/hud.css" />
 <link rel="stylesheet" href="../styles/kit.css" />
+<link rel="stylesheet" href="../styles/prompt-deck.css" />
 <link rel="stylesheet" href="../styles/crucible.css" />
-<link rel="stylesheet" href="../styles/orbital.css" />
-<link rel="stylesheet" href="../styles/station.css" />
 <style>
   html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0d10; }
   #bench-bg { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
@@ -56,16 +76,19 @@
     color: #b9c4bd; border: 1px dashed #4a5650; padding: 22px; background: rgb(8 10 12 / 0.85);
   }
   #bench-broken strong { display: block; color: #e6ece5; font-size: 17px; margin-bottom: 8px; }
+  /* Overlay host for the comms fan and wingman radial. Above the HUD, under screens. */
+  #ui-root { z-index: 30; }
 </style>
 </head>
 <body>
   <img id="bench-bg" alt="" />
   <div id="hud"></div>
+  <div id="ui-root"></div>
   <main id="screens"></main>
   <header id="bench-bar">
     <label>screen <select id="bench-picker"></select></label>
     <label>still <input id="bench-still" size="34" placeholder=".devshots/ui-stills/flight.png" /></label>
-    <span id="bench-note">UI BENCH · synthetic state, frozen still — the live route is `ui-look` / `ui:stills`</span>
+    <span id="bench-note">UI BENCH · real screen, frozen still. Look: node scripts/ui-bench.mjs --shot=</span>
   </header>
   <output id="bench-intent" aria-live="polite"></output>
   <script type="module">
@@ -75,6 +98,6 @@
       document.getElementById('bench-intent').style.display = 'none';
     }
   </script>
-  <script type="module" src="./ui-bench.js"></script>
+  <script type="module" src="/tools/ui-bench.js"></script>
 </body>
 </html>

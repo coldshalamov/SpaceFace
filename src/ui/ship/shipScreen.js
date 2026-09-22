@@ -33,9 +33,12 @@ export const shipScreen = {
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-ship';
-    // The kit screen with the stage variant: the shared stage's canvas is the world behind the
-    // words; the `.sx-sw--flight` panel fills the screen's middle band (Frontend Task C §1.9).
-    rootEl.classList.add('sf-ship', 'k-screen', 'k-screen--stage');
+    // The frame IS the screen (design/frontend/THE_BAR.md). It used to be `k-screen k-screen--stage`
+    // over a two-column `.sx-sw`, while the shared stage's markup has FOUR children -- rail, stage,
+    // side, chooser. Two of them wrapped to a second row and landed on top of the first, which is
+    // why a hero number was cut in half by a button cluster and the systems rail floated in a void.
+    rootEl.classList.add('sf-ship', 'screen', 'dp-frame', 'dp-frame--screen');
+    rootEl.dataset.dp = '1';
     ensureStageStyles();
     this._stage = getSharedShipStage(ctx);
     rootEl.appendChild(this._stage.el);

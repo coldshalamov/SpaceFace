@@ -390,8 +390,17 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
   display: flex; align-items: center; padding: 0 calc(20px * var(--k-s));
   background: linear-gradient(to right, rgb(6 8 12 / 84%), rgb(6 8 12 / 42%) 70%, transparent);
 }
+/* Everything that describes a preview that is not on screen yet yields while the optics resolve.
+   The gauges and the power ring were missing from this list, so on THE SHIP the acquiring card sat
+   on top of a live "439 / +12/s" plate and a verb cluster, all three legible at once and none of
+   them readable. `visibility`, not `display`: the layout must not move when the hull lands. */
 .sx-sw__stage.is-acquiring .sx-sw__nameplate,
 .sx-sw__stage.is-acquiring .sx-sw__slotfield,
+.sx-sw__stage.is-acquiring .sx-sw__scarfield,
+.sx-sw__stage.is-acquiring .sx-sw__gauges,
+.sx-sw__stage.is-acquiring .sx-sw__power,
+.sx-sw__stage.is-acquiring .sx-sw__baylines,
+.sx-sw__stage.is-acquiring .sx-sw__focusline,
 .sx-sw__stage.is-acquiring .sx-sw__camera,
 .sx-sw__stage.is-acquiring .sx-sw__dragcue { visibility: hidden; }
 
@@ -506,8 +515,24 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
 .sx-buybar, .sx-sw-circuit__acts { gap: calc(24px * var(--k-s)); }
 
 /* THE SHIP in flight: the same panel filling the kit stage screen; no station bay behind. */
-.sf-ship.k-screen > .sx-sw { grid-row: 1 / -1; grid-column: 1 / -1; grid-template-columns: var(--k-hang) minmax(0, 1fr); }
-.sf-ship.k-screen::before { background: rgb(26 20 16 / 0.35); }
+/* THE SHIP is the shared shipworks stage in its flight host. It gets the station's three-column
+   shape -- fleet rail, stage, systems -- because the markup has three regions plus a hidden
+   chooser; two columns wrapped the last two onto a second row on top of the first. */
+.sf-ship.dp-frame > .sx-sw {
+  grid-row: 1 / -1; grid-column: 1 / -1;
+  grid-template-columns: 230px minmax(0, 1fr) 285px;
+  grid-template-areas: 'hang stage side';
+  min-height: 0;
+}
+.sf-ship.dp-frame > .sx-sw > .sx-sw__chooser { grid-area: hang; }
+/* The preview canvas is absolutely positioned, so the stage has no intrinsic height and collapsed
+   to its overlay content -- which clipped the acquiring card's own button. The station host got a
+   300px floor from station-orbital.css; the flight host never did. It fills its column here. */
+.sf-ship.dp-frame .sx-sw__main { display: flex; flex-direction: column; min-height: 0; gap: var(--dp-gap); }
+.sf-ship.dp-frame .sx-sw__stage { flex: 1 1 auto; min-height: calc(340px * var(--dp-s, 1)); }
+.sf-ship.dp-frame .sx-sw__stats { flex: 0 0 auto; }
+/* A long systems list scrolls inside its rail rather than running out of the frame. */
+.sf-ship.dp-frame .sx-sw__side { overflow: auto; overscroll-behavior: contain; min-height: 0; scrollbar-width: thin; }
 
 /* ───────────── Field Hardware chrome over the live berth ─────────────
    orbital.css still carries a leftover website-wall station block. These rules apply to the
