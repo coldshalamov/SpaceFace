@@ -138,11 +138,20 @@ export function runReferenceAdventureHour(seed = REFERENCE_ADVENTURE_SEED) {
     resolveSurface(sim, stationId, 'contracts', notes);
     resolveSurface(sim, stationId, 'market', notes);
     undock(sim);
-    const nextId = REFERENCE_ADVENTURE_STATIONS[(cursor + 1) % REFERENCE_ADVENTURE_STATIONS.length];
+    const haulDest = state.nav && state.nav.waypoint && state.nav.waypoint.kind === 'trade'
+      ? state.nav.waypoint.stationId
+      : null;
+    const followingHaul = !!(haulDest && haulDest !== stationId && stationSectorId(haulDest));
+    if (followingHaul) state.nav.waypoint = null;
+    const nextId = followingHaul
+      ? haulDest
+      : REFERENCE_ADVENTURE_STATIONS[(cursor + 1) % REFERENCE_ADVENTURE_STATIONS.length];
     const depart = Number(state.simTime) || 0;
     const arrive = depart + travelSeconds(stationId, nextId);
     const nextEpoch = (Math.floor(depart / refreshS) + 1) * refreshS + 1;
-    const landed = Math.max(arrive, nextEpoch);
+    // A taken haul is flown now. Any other leg waits out the board epoch so the
+    // same posted pair cannot be counted again on the way.
+    const landed = followingHaul ? arrive : Math.max(arrive, nextEpoch);
     if (landed >= REFERENCE_ADVENTURE_HOUR_S) {
       state.simTime = REFERENCE_ADVENTURE_HOUR_S;
       break;

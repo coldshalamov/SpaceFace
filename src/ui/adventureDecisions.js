@@ -245,6 +245,8 @@ function listHaulDecision(state, stationId) {
     if (!(buy > 0) || units < 1 || profit < MIN_CREDIT_GAP) continue;
     if (margin / buy < MIN_PRICE_MOVE) continue;
     if (trade.intelSource === 'market') continue;
+    const live = quote(stationId, trade.cmdtyId, 'buy', units);
+    if (!live || !live.ok) continue;
     if (!best || profit > best.profit) best = { trade, units, profit, buy };
   }
   if (!best) return null;
