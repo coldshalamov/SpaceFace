@@ -92,7 +92,7 @@ not to invent.
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
 | WORLD-01 | The Choir refuel depot has a missions board | `src/data/sectors.js` (`station_depot3` services) | Docking the Vesta depot shows Missions | Invent a Choir capital or move Vesta | SHIPPED |
-| WORLD-02 | Vesta traffic includes one named hauler | `src/data/laneContacts.js`, `src/systems/traffic.js` | `sector_vesta_forge` can stamp that contact id | Add an encounter shape | OPEN |
+| WORLD-02 | Vesta traffic includes one named hauler | `src/data/laneContacts.js`, `src/systems/traffic.js` | `sector_vesta_forge` can stamp that contact id | Add an encounter shape | SHIPPED |
 | WORLD-03 | The Choir-Tender wreck is a wreck on the Helios chart, not another derelict beacon | `src/data/sectors.js`, `src/data/uniqueWrecks.js` | Helios POIs include `type: 'wreck'` bound to `wreck_choir_tender` | Invent a new unique drop | OPEN |
 | WORLD-04 | Salvaging the Choir-Tender draws the investigator the wreck data already describes | a new encounter module beside `src/data/encounters/150-unique-wreck-silver-draft-cleaner.js`, wired from `uniqueWrecks.js` | The director catalog contains that id and it offers the existing complication choice plus one hull | Invent a mission type or a second Helios unique wreck | OPEN |
 | WORLD-05 | A new game's Helios bar can name the Silver-Draft before you have scanned it | `src/ui/station/barContacts.js`, `src/ui/uniqueWreckRumorSurface.js` | `generateContacts('station_helios', new game)` can include rumor `bar.helios_meridian.silver_draft` | Invent a wreck class | OPEN |
@@ -152,6 +152,7 @@ not to invent.
 | VERB-01 | verb-01-raid-timeout-ships-remain | 171220e26caecaab5be919cbed419344f33d6059 | raid_over releases the squad instead of despawnAll; hauler and raiders remain ordinary entities |
 | WORLD-01 | world-01-choir-depot-missions-board | 8b07f720d6adc91de572d7dd4b0b5a839085f303 | Missions service shipped (147e71c24); this unit adds the authored chart note and strengthened proof |
 | PIC-11 | WF-11 | da2abd5f1 | Missing place prop keeps an empty substrate or marker without published cube geometry |
+| WORLD-02 | WF-01 | 80086277e | Vesta traffic includes named hauler Tann of the Slag Run (lane_tann_slag_carrier) |
 
 ## CUT
 

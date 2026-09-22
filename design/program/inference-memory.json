@@ -1597,6 +1597,19 @@
       "integration": "live",
       "commit": "da2abd5f1",
       "verification": "focused_green"
+    },
+    {
+      "id": "vesta-named-hauler-contact",
+      "date": "2026-09-22",
+      "wf": "WF-01",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Vesta traffic includes named hauler Tann of the Slag Run (lane_tann_slag_carrier)",
+      "fingerprint": "verb=traffic,subject=hauler,sector=vesta,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "80086277e",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
