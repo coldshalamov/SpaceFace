@@ -137,3 +137,17 @@ test('orbital overlay does not dim the live berth or flatten the kit grid', () =
   assert.doesNotMatch(skin, /\.fh-key[^{]*\{[^}]*background:\s*none[^}]*\}/,
     'the orbital skin must not blank a key -- retire the raster INTO computed material');
 });
+
+test('systems-board chip field stays inside its stage so the berth header cannot eat clicks', () => {
+  const css = read('styles/station.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  const board = css.match(/\.sx-sw__slotfield\.is-board\s*\{([^}]*)\}/);
+  assert.ok(board, 'the is-board slotfield rule must exist');
+  const decl = board[1];
+  // Regression: the bottom-anchored wrap could grow taller than its containing block and the
+  // first chip row slid up under the opaque berth header — DOM-visible but unreachable by a
+  // real click (the demo-opening route timed out on exactly this). The cap keeps every chip
+  // inside the block; `safe` keeps the bottom anchor until it would clip, then top-packs.
+  assert.match(decl, /max-height:\s*100%/, 'board field must be capped at its containing block');
+  assert.match(decl, /overflow-y:\s*auto/, 'board field must scroll rather than overflow the block');
+  assert.match(decl, /align-content:\s*safe flex-end/, 'board packing must be safe flex-end');
+});
