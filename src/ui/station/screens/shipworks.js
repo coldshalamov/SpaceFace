@@ -38,7 +38,7 @@ import { describeHullRole } from '../../../data/shipRoleLattice.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
 import { BOMB_DEFS, BOMB_IDS, BOMB_RACK } from '../../../data/bombs.js';
-import { TURRET_RING_OUTPUT, WEAPONS } from '../../../data/weapons.js';
+import { TURRET_RING_OUTPUT, WEAPONS, shoveMetricValue } from '../../../data/weapons.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
@@ -2189,6 +2189,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const output = def.slotType === 'weapon' && slot ? mountOutputFactor(def, slot) : 1;
       add(def.slotType === 'mining' ? 'ORE DPS' : 'DPS',
         Number.isFinite(Number(def.dps)) ? Number(def.dps) * output : def.dps);
+      // The mass channel is a buying decision on the weapons that have one (PQ-009): a shove you
+      // can feel shows its number next to the damage it rides in on.
+      const shove = shoveMetricValue(def);
+      if (shove != null) add('SHOVE', shove * output);
       add('RANGE', def.range);
     } else if (def.slotType === 'shield') {
       add('SHIELD', def.mods && def.mods.shieldFlat);
@@ -2342,7 +2346,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
-            `<span class="k-row__sub sx-modrow__meta">${chips}${riskChips}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${d.sentence ? escapeHtml(d.sentence) + ' ' : ''}${chips}${riskChips}</span>` +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetail)}</span></span>` +
           `<span class="k-row__num sx-modrow__act">${btn}</span>` +
         `</li>`
@@ -2356,6 +2360,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d)}</span>` +
+            `${d.sentence ? `<span class="k-row__sub sx-modrow__meta">${escapeHtml(d.sentence)}</span>` : ''}` +
             `<span class="k-row__sub k-38 sx-modrow__role" data-refusal>${escapeHtml(sentence)}</span></span>` +
           `<span class="k-row__num sx-modrow__act"><span class="k-t-fine k-38 sx-modrow__lock">Won’t mount</span></span>` +
         `</li>`
