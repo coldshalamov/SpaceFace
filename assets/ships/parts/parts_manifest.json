@@ -7258,8 +7258,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_ranger",
-      "tris": 37670,
-      "bytes": 1968608,
+      "tris": 24638,
+      "bytes": 3263712,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7287,22 +7287,22 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -9.885,
-          -1.282,
-          -3.318
+          -8.62,
+          -2.66,
+          -0.794
         ],
         "max": [
-          9,
-          13.03,
-          2.18
+          8.55,
+          2.66,
+          1.88
         ],
         "dimensionsM": [
-          18.885,
-          14.312,
-          5.498
+          17.17,
+          5.32,
+          2.674
         ]
       },
-      "note": "Fleet remaster production Ranger. Live player explorer. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
+      "note": "PQ-050.03 chase_form_v2b. Cycle 2: formed explorer loft (mid≠bow), thick-root wings, shallow crown/flank scores (no wrapping-ring cage), deeper wells, formed survey pylon. Hitch/Kestrel/Hornet/Drifter untouched. Chase Hitch-plus REVISE (CAGE_READ NO; TUBE_PADDLE YES leftover; Hitch still wins D=144)."
     },
     {
       "id": "wholeship_repair_tender",
