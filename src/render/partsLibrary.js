@@ -5458,8 +5458,17 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
         // demotion failure undiagnosable in soak evidence. Name the causes inline.
         const causes = Array.isArray(error && error.errors)
           ? error.errors.map((cause) => String((cause && (cause.message || cause)) || '?')).slice(0, 6)
-          : [];
-        console.warn('[partsLibrary] whole-ship LOD demotion failed; keeping active level', error, { causes });
+          : [String((error && (error.message || error)) || '?')];
+        // Owner-inactive aborts are the expected race: the entity evicted, died, or the context
+        // reset while the demoted level's pipelines were compiling. The active level stays put
+        // and a later LOD request retries — teardown noise, not a defect worth a soak warning.
+        const ownerGone = causes.length > 0
+          && causes.every((cause) => /became inactive|owner.*inactive/i.test(cause));
+        if (ownerGone) {
+          console.info('[partsLibrary] whole-ship LOD demotion aborted; owner inactive', { causes });
+        } else {
+          console.warn('[partsLibrary] whole-ship LOD demotion failed; keeping active level', error, { causes });
+        }
       } finally {
         if (pendingLevel === requested) pendingLevel = null;
       }

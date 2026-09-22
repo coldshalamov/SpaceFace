@@ -93,8 +93,10 @@ export async function runBrowserPublicRoute({
       `intro dismissal must not activate New Game; title landing=${JSON.stringify(titleLanding)}`);
     await waitForVisible(page, '[data-screen="mainMenu"]', 30_000, 'Main Menu');
     await waitForBootOverlayGone(page);
-    await screenshot(page, outputDir, SCREENSHOTS.mainMenu);
+    // The boot floor measures player-visible launch -> menu wall time; the
+    // screenshot below is measurement apparatus and must not sit inside it.
     mark('main-menu-visible');
+    await screenshot(page, outputDir, SCREENSHOTS.mainMenu);
     recordCanonicalUrl('main-menu');
 
     phase = 'new-game';
@@ -285,6 +287,10 @@ export async function runBrowserPublicRoute({
     let corridorBrakePulsed = false;
     let reArms = 0;
     let strandIterations = 0;
+    let stallBrakes = 0;
+    let stallNudges = 0;
+    let bestDistToBerth = Infinity;
+    let progressAt = Date.now();
     while (Date.now() < dockDeadline) {
       approachSnapshot = await readApproachSnapshot(page);
       if (approachSnapshot.playerAlive !== true) {
@@ -326,6 +332,45 @@ export async function runBrowserPublicRoute({
         reArms += 1;
         strandIterations = 0;
         await armHeliosWaypoint('helios-waypoint-rearmed');
+      }
+      // Capture-stall watchdog: an autopilot cruising inside the capture volume under the
+      // speed gate can hold a tangential limit cycle — close, slow, never berthing — while
+      // neither the fast-brake (>26 wu/s) nor the stranded re-arm (AP off, >90 WU, approach
+      // phase) applies. A pilot watching the range freeze brakes to hand the hull to the
+      // capture assist; if the ship then parks short with nothing driving, a straight W nudge
+      // covers the last WU. Bounded: one brake pulse + two nudges per approach.
+      const distNow = Number(approachSnapshot.corridor?.distToBerth);
+      if (Number.isFinite(distNow)) {
+        if (distNow < bestDistToBerth - 1.5) {
+          bestDistToBerth = distNow;
+          progressAt = Date.now();
+        } else if (Date.now() - progressAt > 15_000) {
+          const nearBerth = approachSnapshot.corridor?.inCapture === true
+            || approachSnapshot.corridor?.inCorridor === true
+            || distNow <= 60;
+          if (approachSnapshot.autopilot?.active === true && nearBerth && stallBrakes < 1) {
+            stallBrakes += 1;
+            mark('dock-corridor-stall-brake', approachSnapshot);
+            try {
+              await page.keyboard.down('Digit0');
+              await page.waitForTimeout(900);
+            } finally {
+              await page.keyboard.up('Digit0').catch(() => {});
+            }
+            progressAt = Date.now();
+          } else if (approachSnapshot.autopilot?.active !== true && nearBerth
+              && stallNudges < 3 && Number(approachSnapshot.speed) < 12) {
+            stallNudges += 1;
+            mark('dock-corridor-stall-nudge', approachSnapshot);
+            try {
+              await page.keyboard.down('KeyW');
+              await page.waitForTimeout(700);
+            } finally {
+              await page.keyboard.up('KeyW').catch(() => {});
+            }
+            progressAt = Date.now();
+          }
+        }
       }
       await page.waitForTimeout(250);
     }

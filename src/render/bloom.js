@@ -1358,7 +1358,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             if (variants && typeof variants.values === 'function') {
               for (const variant of variants.values()) {
                 const skey = String(variant && (variant.cacheKey || variant.name) || '');
-                if (skey && skey !== key) siblings.push(skey.slice(0, 160));
+                if (skey && skey !== key) siblings.push(skey.slice(0, 512));
                 if (siblings.length >= 6) break;
               }
             }
@@ -1366,7 +1366,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
               object: String(object.name || object.type || 'unnamed').slice(0, 48),
               material: String(material.name || material.type || 'unnamed').slice(0, 32),
               root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed').slice(0, 48),
-              key: key.slice(0, 160),
+              key: key.slice(0, 512),
               siblingKeys: siblings,
               visible: object.visible === true,
             });
@@ -1438,7 +1438,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
             // previous-brick set reported every program acquired since the last brick — dozens of
             // legitimately warm ones — which made the payload unusable for naming a producer.
-            newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 160)),
+            newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 512)),
           })}`);
         }
         if (brick || grewGeometries) rememberBloomGeometries(scene);

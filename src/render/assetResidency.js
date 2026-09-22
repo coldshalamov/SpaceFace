@@ -780,6 +780,11 @@ export function createAssetResidencyRegistry(options = {}) {
     prepareSectorExit,
     handleContextLost,
     handleContextRestored,
+    // Cache-held entries (decoded package templates, warm-sector holds) are not reachable from
+    // the live scene, so the context-loss detach pass cannot find them there. Hand the registry's
+    // tracked resources to that pass directly: without it, a post-restore eviction dispatches the
+    // stale pre-loss dispose listener and deletes dead handles through the new context.
+    contextLossResources() { return [...resources.keys()]; },
     disposeAll,
     has,
     enforceBudget,
