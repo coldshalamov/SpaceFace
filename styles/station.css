@@ -347,8 +347,11 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 /* The systems board: the same hardpoint buttons laid out as chips when there is no hull preview to
    pin them to (secondaryPreviewWebGlBlocked on Intel/ANGLE — a second hangar compile TDRs the
    flight context there). Without this the pins piled on one point above the name and no system
-   could be chosen on the owner's own laptop. */
-.sx-sw__slotfield.is-board { inset: auto 0 0 0; top: auto; display: flex; flex-wrap: wrap; align-content: flex-end; gap: calc(6px * var(--k-s)) calc(8px * var(--k-s)); padding-right: calc(400px * var(--k-s) + var(--k-gap)); }
+   could be chosen on the owner's own laptop. The field is capped at its containing block: a wrap
+   taller than the stage used to overflow upward, and the first chip row slid under the opaque berth
+   header where no click could reach it. `safe` keeps the bottom anchor when the board fits and
+   falls back to top-packing — scrollable, never clipped — when it does not. */
+.sx-sw__slotfield.is-board { inset: auto 0 0 0; top: auto; max-height: 100%; overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-end; align-content: safe flex-end; gap: calc(6px * var(--k-s)) calc(8px * var(--k-s)); padding-right: calc(400px * var(--k-s) + var(--k-gap)); }
 .sx-sw__slotfield.is-board .sx-hardpoint { position: static; width: auto; height: auto; display: inline-flex; align-items: center; gap: calc(8px * var(--k-s)); padding: calc(5px * var(--k-s)) calc(10px * var(--k-s)); border: 1px solid var(--k-hair); background: rgb(8 10 14 / 78%); }
 .sx-sw__slotfield.is-board .sx-hardpoint__leader { display: none; }
 .sx-sw__slotfield.is-board .sx-hardpoint__reticle { position: static; flex: 0 0 auto; }
