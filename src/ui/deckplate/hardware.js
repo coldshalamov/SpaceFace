@@ -87,9 +87,50 @@ export const DECKPLATE_HARDWARE_CSS = `
      faint internal glow so the glass has depth rather than a flat fill. */
   --dp-glass-depth:inset 0 0 0 1px rgb(2 3 5 / .92), inset 1px 1px 0 1px rgb(255 244 222 / .10), inset -1px -1px 0 1px rgb(0 0 0 / .42), inset 0 14px 22px -16px rgb(0 0 0 / .75), inset 0 0 30px rgb(120 150 190 / .035);
   --dp-stand-off:0 14px 34px rgb(0 0 0 / .5), 0 2px 6px rgb(0 0 0 / .55);
+  /* ══ THE COMPUTED FACE — where the raster tiles go ════════════════════════════════
+     Everything above is the FALLBACK. The grain, brush, scratch and smudge layers are 256–1024px
+     photographs tiled across a panel: a visible repeat at 1x, a blur at 4x, and identical on every
+     surface in the game. Owner direction 2026-09-22: nothing low-resolution, no smudges, no pixels.
+
+     Redefining the tokens here rather than the rules is the whole point — two composite bundles and
+     five tile names are referenced by 211 declarations across the system, and none of them has to
+     change. A consumer that still writes var(--dp-tex-brushed) with a size and repeat resolves to
+     an empty layer, which is valid, and the computed face is already underneath it.
+
+     paint(dp-plate) runs at the DEVICE's resolution on invalidation, seeded per element. Zoom in
+     and the machining gets finer. See paint/plate-worklet.js. ═════════════════════════════ */
   /* Emission: data on glass glows faintly cool; lamp readings glow warm. */
   --dp-emit:0 0 10px rgb(205 222 255 / .16), 0 0 1px rgb(0 0 0 / .6);
   --dp-emit-lamp:0 0 12px var(--dp-lamp-bloom), 0 0 2px rgb(255 217 140 / .45);
+}
+
+/* The computed face. Chromium 136 on both routes has the paint worklet; anything that does not
+   keeps the gradient-and-tile recipe above and still reads as the same object. */
+@supports (background-image: paint(dp-plate)) {
+  :root {
+    --dp-tex-brushed:none;
+    --dp-tex-scratch:none;
+    --dp-tex-grain:none;
+    --dp-tex-smudge:none;
+    --dp-tex-scan:none;
+    /* The plate's own face, and the two bundles every panel in the game is assembled from. The
+       directional light stays a gradient: it belongs to the VIEWPORT (fixed) so one key crosses
+       every panel, and a per-element worklet cannot know where the screen's light is. */
+    --dp-plate-img:paint(dp-plate);
+    --dp-metal-layers:
+      var(--dp-key-pool) border-box,
+      var(--dp-metal-sheen) border-box,
+      paint(dp-plate) border-box;
+    --dp-glass-layers:
+      var(--dp-key-sweep) padding-box,
+      var(--dp-glass-spec) padding-box,
+      var(--dp-glass-fall) padding-box,
+      paint(dp-plate) padding-box;
+    --dp-channel-img:paint(dp-channel);
+  }
+  /* Glass is a smoked pane over a dark seat, so its computed face is quieter than a plate's and
+     its grain runs the other way — a window is not machined stock. */
+  .dp-glass, .dp-mfd { --dp-grain:.34; --dp-plate-seed:41; }
 }
 /* One accent, focus included. styles/ui.css forces every ring to the retired blue --accent with
    *:focus-visible {… !important}; only the COLOUR is restated here (one step more specific), so

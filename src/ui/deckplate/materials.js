@@ -26,6 +26,55 @@ export const DECKPLATE_MATERIALS_CSS = `
 /* A plate that stands prouder of the deck (instruments, the target plate). */
 .dp-plate--raised { box-shadow:var(--dp-plate-bevel-raised); }
 
+/* ── THE COMPUTED FACE — the plate's grain, drawn at the device's resolution ───────────────
+   The gradient recipe above is the FALLBACK. Where the engine has a paint worklet (Chromium 136 on
+   both routes), the face is computed instead: anisotropic brush, a key that matches --dp-key-angle,
+   and a micro-tooth that only resolves when the display can show it. No raster, so no repeat at 1x
+   and no blur at 4x. See paint/plate-worklet.js.
+   ───────────────────────────────────────────────────────────────────────────────────── */
+@supports (background-image: paint(dp-plate)) {
+  .dp-plate { background-image: paint(dp-plate); }
+  .dp-channel { background-image: paint(dp-channel); }
+  /* A plate on a raised land is machined from the same stock, lit a little harder. */
+  .dp-plate--raised { --dp-key-power: 1.18; --dp-plate-seed: 23; }
+  .dp-glass, .dp-mfd { --dp-plate-seed: 41; }
+}
+
+/* ── THE SPECULAR SWEEP — one warm key you can move ───────────────────────────────────
+   --dp-sweep is a REGISTERED <number> (deckplate/paint.js), which is the whole trick: an untyped
+   custom property is a string and a string cannot be interpolated, so every gradient in this
+   system was frozen. Typed, the browser interpolates it on the compositor, and the highlight
+   built on it travels. Light that never moves is a picture of light.
+   ───────────────────────────────────────────────────────────────────────────────────── */
+.dp-sweep { position: relative; isolation: isolate; }
+.dp-sweep::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  border-radius: inherit;
+  background: linear-gradient(
+    calc(var(--dp-key-angle) + 90deg),
+    transparent calc((var(--dp-sweep) * 100%) - 18%),
+    rgb(255 236 206 / .10) calc(var(--dp-sweep) * 100%),
+    transparent calc((var(--dp-sweep) * 100%) + 18%));
+  opacity: 0;
+  transition: opacity var(--dp-d-cut) var(--dp-ease-lamp);
+}
+/* Taking focus rakes the light across the surface, once. Hover lifts it without travelling, so a
+   pointer moving over a list does not set six plates sweeping at the same time. */
+.dp-sweep:hover::after { opacity: .55; }
+.dp-sweep:is(:focus-visible, [aria-selected="true"], [aria-current="true"])::after {
+  opacity: 1;
+  animation: dp-rake var(--dp-d-settle) var(--dp-ease-settle) 1 both;
+}
+@keyframes dp-rake { from { --dp-sweep: -0.25; } to { --dp-sweep: 1.25; } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The light lands rather than travels: the state is still legible, nothing moves. */
+  .dp-sweep:is(:focus-visible, [aria-selected="true"], [aria-current="true"])::after {
+    animation: none; --dp-sweep: 0.5;
+  }
+}
+@media (forced-colors: active) { .dp-sweep::after { display: none; } }
+
 /* ── dp-etch — engraved legend ─────────────────────────────────────────────────────────────── */
 .dp-etch {
   font-family:var(--dp-face-etch);

@@ -159,6 +159,16 @@ async function probe(page, selector) {
   const rows = await page.evaluate((sel) => {
     const out = [];
     let nodes;
+    // `js:<expression>` evaluates in the page and prints the result. For the questions a selector
+    // cannot answer: is this platform feature present, did that module register, what does the
+    // engine think it supports.
+    if (sel.startsWith('js:')) {
+      try {
+        // eslint-disable-next-line no-eval
+        const value = eval(sel.slice(3));
+        return [{ note: typeof value === 'string' ? value : JSON.stringify(value) }];
+      } catch (error) { return [{ error: error.message }]; }
+    }
     // `text:<substring>` finds the element that directly prints that text. A finding names the
     // words, not the class, so this is how you get from a finding to the element that made it.
     if (sel.startsWith('text:')) {
@@ -176,6 +186,7 @@ async function probe(page, selector) {
         cls: (typeof el.className === 'string' ? el.className : '').slice(0, 70),
         box: `${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`,
         display: s.display, position: s.position, overflow: s.overflow,
+        bg: (s.backgroundImage || '').slice(0, 64),
         flex: s.flex, minHeight: s.minHeight, height: s.height,
         gridArea: s.gridArea === 'auto / auto / auto / auto' ? '' : s.gridArea,
         parent: el.parentElement
@@ -188,8 +199,10 @@ async function probe(page, selector) {
   console.log(`  probe ${selector}: ${rows.length} match${rows.length === 1 ? '' : 'es'}`);
   for (const row of rows) {
     if (row.error) { console.log(`    ${row.error}`); continue; }
+    if (row.note !== undefined) { console.log(`    ${row.note}`); continue; }
     console.log(`    ${row.tag}.${row.cls}`);
     console.log(`      box ${row.box}  display:${row.display} position:${row.position} overflow:${row.overflow}`);
+    if (row.bg && row.bg !== 'none') console.log(`      background-image ${row.bg}`);
     console.log(`      flex:${row.flex} min-height:${row.minHeight} height:${row.height}${row.gridArea ? ` grid-area:${row.gridArea}` : ''}`);
     console.log(`      in ${row.parent}`);
   }
