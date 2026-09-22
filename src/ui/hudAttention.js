@@ -66,6 +66,41 @@ export function admitReceipt({
   return { admit: true, reason: 'receipt' };
 }
 
+// ── Opening one-instruction rule ─────────────────────────────────────────────
+// The first two minutes of a new game allow exactly one instruction on screen at a time — the
+// current objective. Physical events are not sentences: while an objective is pending, the
+// event caption, the comms log line, and the sector-law paragraph retire until the player has
+// done the thing. Presenters consult openingInstructionSolo; the objective itself never asks,
+// and danger keeps its own floor (an alarm is not an instruction).
+export const OPENING_INSTRUCTION_WINDOW_S = 120;
+
+// True while the sim clock sits inside the first OPENING_INSTRUCTION_WINDOW_S seconds of a new
+// game. onboarding.startedAt anchors the clock when present (a Continue mid-window keeps the
+// remainder); a fresh boot without it counts from simTime 0. A clock behind the anchor — a
+// rewound save — never opens the window.
+export function openingWindowActive(state) {
+  const now = Number(state && state.simTime);
+  if (!Number.isFinite(now)) return false;
+  const startedAt = Number(state && state.onboarding && state.onboarding.startedAt);
+  const elapsed = now - (Number.isFinite(startedAt) ? startedAt : 0);
+  return elapsed >= 0 && elapsed < OPENING_INSTRUCTION_WINDOW_S;
+}
+
+// An instruction is pending while the staged rail is running or while a nav waypoint carries
+// the current objective (story hook, tracked delivery, player-set course).
+export function openingObjectivePending(state) {
+  const ob = state && state.onboarding;
+  if (ob && ob.active && !ob.finished) return true;
+  const wp = state && state.nav && state.nav.waypoint;
+  return !!(wp && String(wp.reason || wp.label || '').trim());
+}
+
+// True while the opening permits exactly one on-screen instruction: inside the window AND an
+// objective pending. Secondary text surfaces retire for as long as this holds.
+export function openingInstructionSolo(state) {
+  return openingWindowActive(state) && openingObjectivePending(state);
+}
+
 export function hudJobFromState(state = {}, tether = null) {
   const player = state.entities && state.playerId != null
     ? state.entities.get && state.entities.get(state.playerId)

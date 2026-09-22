@@ -6,6 +6,7 @@ import { FACTION_META } from '../data/factions.js';
 import { SECTORS } from '../data/sectors.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { INK_SHADOW } from './hudBrackets.js';
+import { openingInstructionSolo } from './hudAttention.js';
 
 const STYLE_ID = 'sf-sector-law-style';
 const ENTRY_TTL_S = 5;
@@ -151,6 +152,10 @@ export function createSectorLawPresenter(ctx) {
   function showSector(sectorId) {
     const id = sectorId || state.world && state.world.currentSectorId;
     if (!id || state.mode !== 'flight' || state.ui && state.ui.docked) return false;
+    // Opening one-instruction rule (hudAttention): the jurisdiction paragraph is flavor beside
+    // the first objective — the entry card retires while it owns the screen. Live incidents and
+    // authority receipts still surface; danger is not an instruction.
+    if (openingInstructionSolo(state)) return false;
     const profile = sectorLawProfile(state, id);
     active = { mode: 'entry', hideAt: Number(state.simTime || 0) + ENTRY_TTL_S, profile };
     root.className = `sf-law--entry sf-law--${profile.levelKey}`;

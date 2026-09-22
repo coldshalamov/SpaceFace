@@ -82,6 +82,7 @@ import {
   hudJobFromState,
   masslineInstrumentReadout,
   masslineInstrumentVisible,
+  openingInstructionSolo,
   receiptLaneRect,
 } from './hudAttention.js';
 
@@ -2203,16 +2204,24 @@ export function createHud(ctx, alerts) {
     if (!p || !p.text) return;
     clearTimeout(captionHideTimer);
     clearTimeout(captionFadeTimer);
-    caption.textContent = p.text;
-    caption.hidden = false;
-    caption.classList.toggle('assertive', !!p.assertive);
-    caption.classList.remove('show'); void caption.offsetWidth; // restart fade-in
-    caption.classList.add('show');
     // Route to the appropriate live region so screen readers get the right politeness without
     // mutating aria-live on a single element (which confuses some ATs).
     const live = p.assertive ? liveAssertive : livePolite;
     live.textContent = '';
     live.textContent = p.text;
+    // Opening one-instruction rule (hudAttention): physical events are not sentences — while the
+    // objective owns the first two minutes the visible caption retires. The live-region line
+    // above still lands for assistive tech, which is not on screen.
+    if (openingInstructionSolo(state)) {
+      caption.classList.remove('show');
+      caption.hidden = true;
+      return;
+    }
+    caption.textContent = p.text;
+    caption.hidden = false;
+    caption.classList.toggle('assertive', !!p.assertive);
+    caption.classList.remove('show'); void caption.offsetWidth; // restart fade-in
+    caption.classList.add('show');
     const ttl = p.assertive ? 3200 : 2400;
     captionHideTimer = setTimeout(() => {
       caption.classList.remove('show');
