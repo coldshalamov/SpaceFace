@@ -70,6 +70,89 @@ export function denialNextAction(status, reason) {
   return DENIAL_NEXT_ACTION[previewStatusCopy(status, reason)] ?? 'REPOSITION AND RETRY';
 }
 
+// Wave G1 — the bracket says one state. A three-word reason rides with DENIED.
+// Sentences and next-action tutorials stay off this mark.
+const BRACKET_DENIAL_REASON = Object.freeze({
+  'LINE BLOCKED': 'LINE IS BLOCKED',
+  'PROTECTED': 'BODY IS PROTECTED',
+  'COOLDOWN': 'LINE ON COOLDOWN',
+  'ENDPOINT LOST': 'ENDPOINT WAS LOST',
+  'REACQUIRE': 'AIM AND REACQUIRE',
+  'ONE HEAVY ENDPOINT MAX': 'PAIR TOO HEAVY',
+  'WOULD FORM LOOP': 'WOULD FORM LOOP',
+  'CUT ACTIVE LINE': 'CUT ACTIVE LINE',
+  'NO TARGET': 'NO BODY AIMED',
+  'LINE FAILED': 'LINE DID NOT',
+  'UNAVAILABLE': 'LATCH NOT READY',
+});
+
+export function resolveMasslineBracketRead(status, reason) {
+  const copy = previewStatusCopy(status, reason);
+  if (status === 'ready' || copy === 'READY') {
+    return { state: 'CAN', text: 'CAN', reason: '' };
+  }
+  if (copy === 'OUT OF RANGE' || copy === 'PAIR OUT OF RANGE') {
+    return { state: 'OUT OF RANGE', text: 'OUT OF RANGE', reason: '' };
+  }
+  const words = BRACKET_DENIAL_REASON[copy] || 'LATCH NOT READY';
+  return { state: 'DENIED', text: 'DENIED', reason: words };
+}
+
+export function bracketReadText(read) {
+  if (!read) return '';
+  return read.reason ? `${read.text} · ${read.reason}` : read.text;
+}
+
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+// Words sit on the bracket. If that box would cover the player hull, push them off it.
+export function placeBracketWords(mark, hull, label, viewport) {
+  const w = Math.max(1, Number(label && label.w) || 1);
+  const h = Math.max(1, Number(label && label.h) || 1);
+  const gap = 16;
+  const vw = viewport && viewport.w > 0 ? viewport.w : 1440;
+  const vh = viewport && viewport.h > 0 ? viewport.h : 900;
+  const clamp = (rect) => ({
+    x: Math.max(8, Math.min(rect.x, Math.max(8, vw - w - 8))),
+    y: Math.max(8, Math.min(rect.y, Math.max(8, vh - h - 8))),
+    w,
+    h,
+  });
+  const candidates = [
+    { x: mark.x - w / 2, y: mark.y - h - gap },
+    { x: mark.x - w / 2, y: mark.y + gap },
+    { x: mark.x + gap, y: mark.y - h / 2 },
+    { x: mark.x - w - gap, y: mark.y - h / 2 },
+  ];
+  for (const candidate of candidates) {
+    const rect = clamp(candidate);
+    if (!hull || !rectsOverlap(rect, hull)) return rect;
+  }
+  const hx = hull.x + hull.w / 2;
+  const hy = hull.y + hull.h / 2;
+  const dx = mark.x - hx;
+  const dy = mark.y - hy;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) {
+    return clamp({ x: hx - w / 2, y: hull.y - h - gap });
+  }
+  const push = Math.max(hull.w, hull.h) + gap + Math.max(w, h);
+  return clamp({
+    x: hx + (dx / len) * push - w / 2,
+    y: hy + (dy / len) * push - h / 2,
+  });
+}
+
+function playerHullScreenRect(player, w2s) {
+  if (!player || !player.pos || typeof w2s !== 'function') return null;
+  const screen = w2s({ x: player.pos.x, y: 0, z: player.pos.z });
+  if (!screen || !Number.isFinite(screen.x) || !Number.isFinite(screen.y)) return null;
+  const size = 64;
+  return { x: screen.x - size / 2, y: screen.y - size / 2, w: size, h: size };
+}
+
 // INF-013 — compact relative-mass interpretation for the acquisition readout: which body is
 // going to move, read from the same effective masses the live physics path couples
 // (entity.physicsBody.mass ?? entity.mass, the masses stepMassline receives as owner/target).
@@ -617,34 +700,17 @@ export const masslineHud = {
     const cueX = pinned ? pinned.x : targetScreen.x;
     const cueY = pinned ? pinned.y : targetScreen.y;
     const ready = selected.status === 'ready';
-    // M4: print the body's mass, not the disambiguation confidence — "640 t" reads as the load
-    // the line will couple into the helm; the old floored percent never meant that.
-    const targetMass = Math.round(finite(target.physicsBody && target.physicsBody.mass)
-      || finite(target.mass));
-    const massText = targetMass > 0 ? `${targetMass} t` : '— t';
-    // INF-013: compact relative-mass read from the same effective masses the solver couples.
-    const playerMass = Math.round(finite(player.physicsBody && player.physicsBody.mass)
-      || finite(player.mass));
-    const massRead = resolveMassInterpretation(playerMass, targetMass);
-    const massTag = massRead ? ` · ${massRead.short}` : '';
-    const status = previewStatusCopy(selected.status, selected.reason);
-    const intent = String(selected.intentLabel || selected.context || 'PICK').toUpperCase();
-    const label = String(selected.targetLabel || selected.targetType || 'Target');
-    const text = `${label} · ${intent} · ${massText}${massTag} · ${status}`;
-
-    // Keep the caption beside the mark and inside the frame. The estimate only decides which SIDE
-    // of the mark it sits on; a wrong guess shifts the caption, it never hides information.
+    const read = resolveMasslineBracketRead(selected.status, selected.reason);
+    const text = bracketReadText(read);
     const captionWidth = estimateCaptionWidth(text);
-    // The ship sits at screen centre: the caption goes on the side of the mark AWAY from it (so it
-    // never lies across the hull), unless that side has no room.
-    const preferLeft = cueX < viewportWidth / 2
-      ? (cueX - 20 - captionWidth >= 8 || cueX + 20 + captionWidth > viewportWidth - 12)
-      : cueX + 20 + captionWidth > viewportWidth - 12;
-    const labelX = preferLeft
-      ? Math.max(8 + captionWidth, cueX - 20)
-      : clampRange(cueX + 20, 8, Math.max(8, viewportWidth - 12 - captionWidth));
-    const labelShift = preferLeft ? ' translateX(-100%)' : '';
-    const labelY = clampRange(cueY - 14, 8, viewportHeight - 40);
+    const placed = placeBracketWords(
+      { x: cueX, y: cueY },
+      playerHullScreenRect(player, w2s),
+      { w: captionWidth, h: 18 },
+      { w: viewportWidth, h: viewportHeight },
+    );
+    const labelX = placed.x;
+    const labelY = placed.y;
 
     setStyle(dom.previewMark, 'display', 'block');
     setStyle(dom.previewSourceMark, 'display', 'none');
@@ -659,9 +725,10 @@ export const masslineHud = {
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
     setClass(dom.previewSvg, 'ml2-bridle-preview', false);
     setStyle(dom.previewSvg, 'display', 'none');
-    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)${labelShift}`);
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
-    setAttr(dom.previewEl, 'aria-label', `Massline ${intent} ${label}, ${targetMass > 0 ? `${targetMass} tonnes` : 'unknown mass'}${massRead ? `, ${massRead.title.toLowerCase()}` : ''}, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
+    setAttr(dom.previewEl, 'data-bracket-state', read.state);
+    setAttr(dom.previewEl, 'aria-label', offscreen ? `${text}, offscreen` : text);
     setAttr(dom.previewEl, 'data-receipt-id', String(receipt.id || ''));
     setAttr(dom.previewEl, 'data-target-id', String(selected.targetId));
     setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
@@ -687,20 +754,17 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : screen.x;
     const cueY = pinned ? pinned.y : screen.y;
-    const status = previewStatusCopy('invalid', denial.reason);
-    const action = denialNextAction('invalid', denial.reason);
-    const text = `MASSLINE · ${status} — ${action}`;
+    const read = resolveMasslineBracketRead('invalid', denial.reason);
+    const text = bracketReadText(read);
     const captionWidth = estimateCaptionWidth(text);
-    // The ship sits at screen centre: the caption goes on the side of the mark AWAY from it (so it
-    // never lies across the hull), unless that side has no room.
-    const preferLeft = cueX < viewportWidth / 2
-      ? (cueX - 20 - captionWidth >= 8 || cueX + 20 + captionWidth > viewportWidth - 12)
-      : cueX + 20 + captionWidth > viewportWidth - 12;
-    const labelX = preferLeft
-      ? Math.max(8 + captionWidth, cueX - 20)
-      : clampRange(cueX + 20, 8, Math.max(8, viewportWidth - 12 - captionWidth));
-    const labelShift = preferLeft ? ' translateX(-100%)' : '';
-    const labelY = clampRange(cueY - 14, 8, viewportHeight - 40);
+    const placed = placeBracketWords(
+      { x: cueX, y: cueY },
+      playerHullScreenRect(player, w2s),
+      { w: captionWidth, h: 18 },
+      { w: viewportWidth, h: viewportHeight },
+    );
+    const labelX = placed.x;
+    const labelY = placed.y;
     setStyle(dom.previewMark, 'display', denied ? 'block' : 'none');
     if (denied) {
       setStyle(dom.previewMark, 'transform', `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`);
@@ -713,9 +777,10 @@ export const masslineHud = {
     setStyle(dom.previewSvg, 'display', 'none');
     setStyle(dom.previewEl, 'display', 'block');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
-    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)${labelShift}`);
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
-    setAttr(dom.previewEl, 'aria-label', `Massline denied, ${status.toLowerCase()}, ${action.toLowerCase()}`);
+    setAttr(dom.previewEl, 'data-bracket-state', read.state);
+    setAttr(dom.previewEl, 'aria-label', text);
     setAttr(dom.previewEl, 'data-receipt-id', '');
     setAttr(dom.previewEl, 'data-target-id', String(denial.targetId ?? ''));
     setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);

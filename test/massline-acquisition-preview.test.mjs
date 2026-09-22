@@ -362,9 +362,10 @@ test('the acquisition preview marks the candidate itself and never draws a cable
     assert.equal(mark.style.display, 'block',
       'the mark must be drawn ON the candidate the Massline will grab');
     assert.equal(preview.style.display, 'block',
-      'the caption naming the candidate must be visible before the press');
-    assert.match(preview.textContent, /Heavy Anchor/,
-      'the caption must name the candidate the receipt selected');
+      'the bracket state must be visible before the press');
+    assert.equal(preview.textContent, 'CAN',
+      'a valid target says CAN, not a sentence on the bracket');
+    assert.equal(preview.attributes['data-bracket-state'], 'CAN');
 
     assert.equal(line.parentNode.style.display, 'none',
       'only the real rendered Massline cable may connect the player to an object');
