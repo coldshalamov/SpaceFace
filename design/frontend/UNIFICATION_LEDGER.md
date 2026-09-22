@@ -1,0 +1,87 @@
+<!-- LIFETIME: UNTIL THE LAST ROW IS DONE -->
+# Deckplate unification — the ledger
+
+One row per shootable surface. The bar is [`THE_BAR.md`](THE_BAR.md); the loop is
+[`../../docs/UI_VISUAL_ITERATION.md`](../../docs/UI_VISUAL_ITERATION.md). This file is how the pass
+survives a context compaction: read it, take the first row that is not DONE, keep going.
+
+**The job is not a new design system.** It is finishing Deckplate (`src/ui/deckplate/`) onto every
+surface by assembly. Adding a fifth token root is the defect this ledger exists to prevent.
+
+Survey taken 2026-09-22 with the glyph-level bench audit (commit `9f42fb4ae`). "Findings" is what
+the machine saw; a clean machine reading does **not** mean the screen passed — most rows below read
+clean and still look cheap. The PNG decides.
+
+## Status vocabulary
+
+- `SURVEYED` — photographed, defects recorded, not yet touched.
+- `MIGRATED` — assembled from `--dp-` primitives, bench clean, PNG opened and judged, `--walk` run.
+- `DONE` — MIGRATED and committed.
+
+---
+
+## Order of work
+
+Player path first, because that is the order a reviewer forms an opinion in: title → pause →
+settings → station (7 tabs) → flight → chart → ship → crucible → the rest.
+
+| # | Screen | Findings at survey | Status | Commit |
+|---|---|---|---|---|
+| 1 | `title` / `mainMenu` | EMPTY BOX 64×787 left rail | SURVEYED | |
+| 2 | `motionAsk` | EMPTY BOX 64×787 (inherits title) | SURVEYED | |
+| 3 | `new-game` | ON TOP OF ×1 | SURVEYED | |
+| 4 | `pause` | clean — cramped column, dead DEV bar, quarter-frame | SURVEYED | |
+| 5 | `settings` | clean | SURVEYED | |
+| 6 | `save-load` | clean | SURVEYED | |
+| 7 | `station` / `station-dock` | ON TOP OF ×3, CUT OFF ×6 | SURVEYED | |
+| 8 | `station-market` | ON TOP OF ×3, CUT OFF ×6 | SURVEYED | |
+| 9 | `station-shipworks` | ON TOP OF ×5, CUT OFF ×2, OFF FRAME ×3 | SURVEYED | |
+| 10 | `station-industry` | ON TOP OF ×1 | SURVEYED | |
+| 11 | `station-contracts` | clean | SURVEYED | |
+| 12 | `station-factions` | ON TOP OF ×2, CUT OFF ×2, OFF FRAME ×2 | SURVEYED | |
+| 13 | `station-bar` | clean | SURVEYED | |
+| 14 | `station-ledger` | clean | SURVEYED | |
+| 15 | `flight` | EMPTY BOX 276×40 right bar | SURVEYED | |
+| 16 | `comms-radial` | BURIED ×3, EMPTY BOX 276×40 | SURVEYED | |
+| 17 | `wingman-radial` | EMPTY BOX 276×40 | SURVEYED | |
+| 18 | `crucibleHud` | clean | SURVEYED | |
+| 19 | `chart` / `galaxyMap` | clean — `SECTOR_HELIOS` debug title, 11-pill wall | SURVEYED | |
+| 20 | `chart-galaxy` | clean | SURVEYED | |
+| 21 | `ship` | CUT OFF ×2, OFF FRAME ×4, hero number bisected | SURVEYED | |
+| 22 | `range` | clean | SURVEYED | |
+| 23 | `footprint` | clean | SURVEYED | |
+| 24 | `crucible` | ON TOP OF ×6 | SURVEYED | |
+| 25 | `crucible-draft` | clean | SURVEYED | |
+| 26 | `crucible-refit` | clean | SURVEYED | |
+| 27 | `crucible-results` | clean | SURVEYED | |
+| 28 | `mission-log` | clean | SURVEYED | |
+| 29 | `codex` | clean | SURVEYED | |
+| 30 | `help` | clean | SURVEYED | |
+| 31 | `achievements` | clean | SURVEYED | |
+| 32 | `credits` | clean | SURVEYED | |
+| 33 | `game-over` | clean | SURVEYED | |
+| 34 | `tech-tree` | clean | SURVEYED | |
+| 35 | `asteroid-works` / `drill` | clean | SURVEYED | |
+| 36 | `base` | clean | SURVEYED | |
+| 37 | `automation` | clean | SURVEYED | |
+| 38 | `replay` | ON TOP OF ×1 (copy printed twice) | SURVEYED | |
+| 39 | `clips` | ON TOP OF ×1 (copy printed twice) | SURVEYED | |
+| 40 | `sandbox` | OFF FRAME ×6 | SURVEYED | |
+| 41 | `localmap` | clean | SURVEYED | |
+| 42 | `starmap` | clean | SURVEYED | |
+
+---
+
+## Standing repairs, not tied to one screen
+
+- [ ] `pageerror: Cannot read properties of null (reading 'security')` — thrown on `station*`,
+      `range` and `chart`. A throwing bench hides whatever runs after it.
+- [ ] `styles/hud.css` loads twice: `<link>` at `index.html:16` and `@import` at `styles/ui.css:5`.
+      Cascade order is the whole strategy.
+- [ ] `styles/AGENTS.md` forbids exactly this work: *"Do not impose universal palette, opacity,
+      blur, radius, typography, animation, or panel recipes."* That clause is the written cause of
+      the four-system pile. User direction outranks it (root `AGENTS.md` §4) — rewrite it.
+- [ ] Retire `--k-`, `--sf-`, `--fh-`, `--of-`, `--so-`, `--mf-`, `--visor-` once no screen reads
+      them. Aliases during flight, deletion at the end.
+- [ ] Extend `scripts/check-ui-screen-imports.mjs` past its 18-screen list so a screen cannot grow
+      its own stylesheet again.
