@@ -26,6 +26,7 @@ import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
   uniqueWreckCassandraHardliners,
+  uniqueWreckChoirTenderInvestigator,
   uniqueWreckHeldMass,
   uniqueWreckNestbreakerAdmirers,
   uniqueWreckPingElite,
@@ -3006,4 +3007,5 @@ export const ENCOUNTER_SCRIPTS = Object.freeze({
   uniqueWreckSilverDraftCleaner: withShapeMeter(uniqueWreckSilverDraftCleaner),
   uniqueWreckCassandraHardliners: withShapeMeter(uniqueWreckCassandraHardliners),
   uniqueWreckNestbreakerAdmirers: withShapeMeter(uniqueWreckNestbreakerAdmirers),
+  uniqueWreckChoirTenderInvestigator: withShapeMeter(uniqueWreckChoirTenderInvestigator),
 });
