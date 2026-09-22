@@ -24,6 +24,7 @@ import {
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { icon, factionIcon } from '../icons.js';
+import { stationControlAttrs } from '../stationBindingMap.js';
 
 const STATION_FACTION = new Map();
 for (const sector of SECTORS) {
@@ -126,7 +127,7 @@ export function createFactionsScreen(ctx) {
         const selected = f.id === selectedId;
         const authority = f.id === authorityId;
         return (
-          `<li><button type="button" class="sx-fac-row k-row${selected ? ' is-active' : ''}" data-fac="${escapeHtml(f.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
+          `<li><button type="button" ${stationControlAttrs('faction')} class="sx-fac-row k-row${selected ? ' is-active' : ''}" data-fac="${escapeHtml(f.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
             ` aria-label="${escapeHtml(f.name)}, ${escapeHtml(tier.name)} ${signed(rep)}${authority ? ', current station authority' : ''}">` +
             `<span class="sx-fac-row__body">` +
               `<span class="k-row__name sx-fac-row__name">${authority ? '<span class="k-62">Authority · </span>' : ''}${escapeHtml(f.name)}</span>` +
@@ -177,7 +178,7 @@ export function createFactionsScreen(ctx) {
       const name = related ? related.name : relation.id;
       const kind = relation.weight > 0 ? 'Align' : 'Rival';
       return (
-        `<li><button type="button" class="sx-fac-node k-row" data-fac="${escapeHtml(relation.id)}"` +
+        `<li><button type="button" ${stationControlAttrs('faction-relation')} class="sx-fac-node k-row" data-fac="${escapeHtml(relation.id)}"` +
           ` aria-label="Inspect ${escapeHtml(name)}, ${relation.weight > 0 ? 'aligned' : 'rival'} relation ${Math.abs(relation.weight).toFixed(2)}">` +
           `<span class="k-row__name">${escapeHtml(name)}</span>` +
           `<span class="${relation.weight > 0 ? 'k-good' : 'k-bad'} sx-fac-node__kind">${kind}</span>` +

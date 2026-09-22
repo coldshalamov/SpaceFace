@@ -43,6 +43,7 @@ import {
   firstDockHandoffVisible,
   firstDockHandoffSteps,
 } from './stationDepartureModel.js';
+import { bindStationMarkup, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
 import { missionDockAttention } from './missionDockAttention.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 
@@ -79,6 +80,7 @@ const STATION_STYLES = [
   { id: 'sx-fh-css', href: '/assets/ui/kit/kit/fh.css' },
   { id: 'sx-station-orbital-css', href: '/styles/station-orbital.css' },
   { id: 'sx-station-css', href: '/styles/station.css' },
+  { id: 'sx-station-workbench-css', href: '/styles/station-workbench.css' },
 ];
 // Also called by the in-flight THE SHIP screen (src/ui/ship/shipScreen.js): the shared shipworks
 // stage wears .sx-sw* classes styled only by this sheet, so opening F2 before the first dock must
@@ -142,14 +144,14 @@ function createBerth(canvas, ctx) {
 }
 
 const DESTINATIONS = [
-  { id: 'market', label: 'Market', icon: 'market', create: createMarketScreen },
-  { id: 'shipworks', label: 'Shipworks', icon: 'shipworks', create: createShipworksScreen },
-  { id: 'industry', label: 'Industry', icon: 'industry', create: createIndustryScreen },
+  { id: 'market', label: stationControlLabel('market'), icon: 'market', create: createMarketScreen },
+  { id: 'shipworks', label: stationControlLabel('shipworks'), icon: 'shipworks', create: createShipworksScreen },
+  { id: 'industry', label: stationControlLabel('industry'), icon: 'industry', create: createIndustryScreen },
   // Player-facing label is Missions (contracts is the stable internal rail id + TARGET_MAP alias).
-  { id: 'contracts', label: 'Missions', icon: 'contracts', create: createContractsScreen },
-  { id: 'factions', label: 'Factions', icon: 'factions', create: createFactionsScreen },
-  { id: 'bar', label: 'Bar', icon: 'bar', create: createBarScreen },
-  { id: 'ledger', label: 'Ledger', icon: 'ledger', create: createLedgerScreen },
+  { id: 'contracts', label: stationControlLabel('contracts'), icon: 'contracts', create: createContractsScreen },
+  { id: 'factions', label: stationControlLabel('factions'), icon: 'factions', create: createFactionsScreen },
+  { id: 'bar', label: stationControlLabel('bar'), icon: 'bar', create: createBarScreen },
+  { id: 'ledger', label: stationControlLabel('ledger'), icon: 'ledger', create: createLedgerScreen },
 ];
 
 // The service verbs used to be dock tiles declared here. They now live on the vital they change
@@ -227,7 +229,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
   const app = document.createElement('div');
   app.className = 'sx-app';
-  app.innerHTML = stationFrameHtml();
+  app.innerHTML = bindStationMarkup(stationFrameHtml());
   rootEl.appendChild(app);
 
   const berthCanvas = app.querySelector('.sxb-berth__world');
@@ -429,14 +431,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       const attr = c.targetScreen ? ` data-pop-screen="${escapeHtml(c.targetScreen)}"`
         : (dest ? ` data-pop-nav="${escapeHtml(dest)}"` : '');
       const aria = escapeHtml((c.actionLabel || (c.label + ' ' + c.text)));
-      return `<li><button type="button" class="k-row sx-depchip ${cls}"${attr} aria-label="${aria}">` +
+      return `<li><button type="button" ${stationControlAttrs('departure-chip')} class="k-row sx-depchip ${cls}"${attr} aria-label="${aria}">` +
         `<b class="k-row__name">${escapeHtml(c.label)}</b><span class="k-row__num">${escapeHtml(c.text)}</span></button></li>`;
     }).join('');
     const stateCls = dep.state === 'ready' ? 'k-good' : (dep.state === 'check' ? 'k-signal' : 'k-bad');
     openPop(
       `<div class="sx-pop__head k-t-emph">Departure check · <em class="is-${dep.state} ${stateCls}">${escapeHtml(dep.status)}</em></div>` +
       `<ul class="k-rows sx-pop__chips">${rows}</ul>` +
-      `<button type="button" class="k-word k-word--emph k-word--primary fh-key fh-key--primary sx-btn-primary" data-pop-launch>${dep.state === 'ready' ? 'Undock' : 'Launch anyway'}</button>`,
+      `<button type="button" ${stationControlAttrs(dep.state === 'ready' ? 'undock' : 'launch-anyway')} class="k-word k-word--emph k-word--primary fh-key fh-key--primary sx-btn-primary" data-pop-launch>${dep.state === 'ready' ? stationControlLabel('undock') : stationControlLabel('launch-anyway')}</button>`,
       anchor, 'sx-pop--dep');
   }
 
@@ -456,7 +458,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       try { unit = holdUnitSellPrice(s, sid, id); } catch (_) { unit = null; }
       const legality = titleCaseWords(def.legality || 'legal');
       // One row per commodity: name · category, quantity, the station's quote, and Sell as a word.
-      return `<li><button type="button" class="k-row sx-holdrow" data-hold-item="${escapeHtml(id)}" data-hold-volume="${volume.toFixed(2)}" aria-label="Sell ${escapeHtml(CMDTY_NAME.get(id) || id)}. ${fmtCr(qty)} units, ${fmtCr(volume)} hold units, ${unit != null ? fmtCr(unit * qty) + ' credits' : 'no quote'}.">` +
+      return `<li><button type="button" ${stationControlAttrs('hold-row')} class="k-row sx-holdrow" data-hold-item="${escapeHtml(id)}" data-hold-volume="${volume.toFixed(2)}" aria-label="Sell ${escapeHtml(CMDTY_NAME.get(id) || id)}. ${fmtCr(qty)} units, ${fmtCr(volume)} hold units, ${unit != null ? fmtCr(unit * qty) + ' credits' : 'no quote'}.">` +
         `<span class="sx-holdrow__body"><span class="k-row__name">${escapeHtml(CMDTY_NAME.get(id) || id)}</span><span class="k-row__sub">${escapeHtml(titleCaseWords(def.category || 'cargo'))} · ${escapeHtml(legality)} · ${fmtCr(volume)} u · ${fmtCr(mass)} t</span></span>` +
         `<span class="k-row__num sx-holdrow__load">${fmtCr(qty)}<span class="k-t-data k-38"> u</span></span>` +
         `<span class="k-row__num sx-holdrow__quote">${unit != null ? fmtCr(unit * qty) : '—'}<span class="k-t-data k-38">${unit != null ? ' cr · ' + fmtCr(unit) + ' / u' : ' no local quote'}</span></span>` +
@@ -535,13 +537,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
           ? ` data-handoff="${escapeHtml(target.destination)}"`
           : (target.action ? ` data-handoff-act="${escapeHtml(target.action)}"` : '');
         if (!attr) return '';
-        return `<button type="button" class="k-word k-word--fine fh-key fh-key--small sxb-hstep ${cls}"${attr}` +
+        return `<button type="button" ${stationControlAttrs('handoff-step')} class="k-word k-word--fine fh-key fh-key--small sxb-hstep ${cls}"${attr}` +
           (mode ? ` data-handoff-mode="${mode}"` : '') +
           ` data-why="${escapeHtml(st.text)}" aria-label="${escapeHtml(st.title + '. ' + st.text)}">` +
           `<span class="sxb-hstep__n">${i + 1}</span> ` +
           `<span class="sxb-hstep__t">${escapeHtml(st.title)}</span></button>`;
       }).join('') +
-      `<button type="button" class="k-word k-word--fine k-38 sxb-handoff__x" data-handoff-dismiss aria-label="Dismiss getting started guidance">Dismiss</button>`;
+      `<button type="button" ${stationControlAttrs('dismiss-handoff')} class="k-word k-word--fine k-38 sxb-handoff__x" data-handoff-dismiss aria-label="${stationControlLabel('dismiss-handoff')} getting started guidance">${stationControlLabel('dismiss-handoff')}</button>`;
     if (handoffEl.hidden) handoffEl.hidden = false;
     if (html !== handoffSignature) {
       handoffEl.innerHTML = html;
@@ -920,7 +922,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const cls = 'k-word k-word--fine fh-key fh-key--small sxb-vital__act' + (ghost ? ' sxb-vital__act--ghost' : '');
     const why = cost.title ? ` data-why="${escapeHtml(cost.title)}"` : '';
     const copy = ghost ? label : `${label} · ${text}`;
-    return `<button type="button" class="${cls}" data-vital-act="${id}"${why}` +
+    return `<button type="button" ${stationControlAttrs(id)} class="${cls}" data-vital-act="${id}"${why}` +
       ` aria-label="${escapeHtml(cost.title || (label + ' ' + text))}">${escapeHtml(copy)}</button>`;
   }
 
@@ -935,7 +937,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         `<span class="k-bar__fill sxb-vital__fill" style="width:${pct}%"></span></span>`;
     const label = `${stationIcon(v.k)}<span class="sxb-vital__label k-t-body k-62">${escapeHtml(v.label)}</span>${track}`;
     const headEl = v.openHold
-      ? `<button type="button" class="k-word k-word--body sxb-vital__head" data-hold data-pop-owner` +
+      ? `<button type="button" ${stationControlAttrs('hold-manifest')} class="k-word k-word--body sxb-vital__head" data-hold data-pop-owner` +
           ` aria-label="${escapeHtml(v.aria)}. Open the cargo manifest.">${label}</button>`
       : `<span class="sxb-vital__head">${label}</span>`;
     const value = `<span class="sxb-vital__value k-t-emph${toneCls}">${escapeHtml(v.value)}</span>`;
@@ -977,7 +979,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         value: `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} u`,
         aria: `Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units`,
         acts: [carrying
-          ? `<button type="button" class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="sell"` +
+          ? `<button type="button" ${stationControlAttrs('sell')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="sell"` +
             ` aria-label="Sell cargo at this station">Sell</button>`
           : ''],
       },

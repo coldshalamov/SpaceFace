@@ -50,6 +50,7 @@ import {
   pinKeyrack,
   syncKeys,
 } from './fhChrome.js';
+import { markStationControl, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 
 const STYLE_ID = 'sf-station-bar-fh';
 function ensureBarStyle() {
@@ -99,7 +100,7 @@ export function openTethysRumorGuidanceMap(ctx, stationId) {
 
 /** An offer's one verb as a primary word (the `sx-btn-primary` of old, in kit clothes). */
 function offerWord(attrs, label) {
-  return `<ul class="k-words k-words--row sx-bar-offer__foot"><li><button type="button" class="k-word k-word--emph k-word--primary sx-bar-offer__verb" ${attrs}>${label}</button></li></ul>`;
+  return `<ul class="k-words k-words--row sx-bar-offer__foot"><li><button type="button" ${stationControlAttrs('offer')} class="k-word k-word--emph k-word--primary sx-bar-offer__verb" ${attrs}>${label}</button></li></ul>`;
 }
 
 export function createBarScreen(ctx) {
@@ -279,8 +280,9 @@ export function createBarScreen(ctx) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'k-word k-word--emph k-word--primary sx-bar-offer__verb';
+    markStationControl(button, 'open-wreck-map');
     button.setAttribute('data-open-vonn-freight-loss-map', '');
-    button.textContent = 'Open Sker-Run wreck map';
+    button.textContent = stationControlLabel('open-wreck-map');
     button.setAttribute('aria-label', 'Open the system map at the verified Sker-Run freight wreck.');
     item.append(button);
     foot.append(item);
@@ -303,7 +305,7 @@ export function createBarScreen(ctx) {
       list.map((c) => {
         const on = c.id === selectedId;
         return (
-          `<li><button type="button" class="k-word k-word--emph sx-bar-row${on ? ' is-active' : ''}" data-contact="${escapeHtml(c.id)}" role="tab" aria-selected="${on}"${on ? ' aria-current="true"' : ''} tabindex="${on ? 0 : -1}">` +
+          `<li><button type="button" ${stationControlAttrs('contact')} class="k-word k-word--emph sx-bar-row${on ? ' is-active' : ''}" data-contact="${escapeHtml(c.id)}" role="tab" aria-selected="${on}"${on ? ' aria-current="true"' : ''} tabindex="${on ? 0 : -1}">` +
             `${escapeHtml(c.name || 'Contact')}` +
             `<span class="k-word-sub sx-bar-row__role">${escapeHtml(roleLabel(c.role))}</span>` +
           `</button></li>`
@@ -341,7 +343,7 @@ export function createBarScreen(ctx) {
         `</p>` +
         `<ul class="k-words sx-talk__choices" aria-label="What you can ask">` +
           (choices.length
-            ? choices.map((ch) => `<li><button type="button" class="k-word k-word--emph sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button></li>`).join('')
+            ? choices.map((ch) => `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--emph sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button></li>`).join('')
             : `<li class="k-sentence sx-muted">They have nothing to say.</li>`) +
         `</ul>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
       `</div>`;
@@ -374,14 +376,14 @@ export function createBarScreen(ctx) {
       ? `<li class="k-row k-row--static sx-lead sx-lead--survey">` +
           `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${entitySpanHtml('sector:' + survey.sectorId, escapeHtml(survey.sectorName))}</span>` +
             `<span class="k-row__sub sx-lead__s">${escapeHtml(surveyOfferLabel ? (surveyOfferLabel(survey) || 'Nav data') : 'Nav data')}</span></span>` +
-          `<button type="button" class="k-word k-word--fine sx-lead__go" data-survey="${escapeHtml(survey.sectorId)}"${credits >= survey.price ? '' : ' disabled'}>Buy · ${fmt(survey.price)} cr</button>` +
+          `<button type="button" ${stationControlAttrs('buy-survey')} class="k-word k-word--fine sx-lead__go" data-survey="${escapeHtml(survey.sectorId)}"${credits >= survey.price ? '' : ' disabled'}>${stationControlLabel('buy-survey')} · ${fmt(survey.price)} cr</button>` +
         `</li>`
       : '';
 
     const leadRows = leads.map((m) => `<li class="k-row k-row--static sx-lead">` +
         `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${mid(m) ? entitySpanHtml('contract:' + mid(m), escapeHtml(m.title || 'Contract')) : escapeHtml(m.title || 'Contract')}</span>` +
           `<span class="k-row__sub sx-lead__s">${fmt(rewardOf(m))} cr</span></span>` +
-        `<button type="button" class="k-word k-word--fine sx-lead__go" data-inspect="${escapeHtml(String(mid(m)))}">Inspect</button>` +
+        `<button type="button" ${stationControlAttrs('inspect-lead')} class="k-word k-word--fine sx-lead__go" data-inspect="${escapeHtml(String(mid(m)))}">${stationControlLabel('inspect-lead')}</button>` +
       `</li>`).join('');
 
     leadsEl.innerHTML =
@@ -389,7 +391,7 @@ export function createBarScreen(ctx) {
       (surveyRow || leadRows
         ? `<ul class="k-rows sx-lead__rows">${surveyRow}${leadRows}</ul>`
         : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
-      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" class="k-word k-word--fine sx-bar__log" data-log>Open the board</button></li></ul>` +
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}</button></li></ul>` +
       `<p class="k-caps sx-intel__head">Intel</p>` +
       intelHtml;
     dressLeads();

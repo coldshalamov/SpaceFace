@@ -1,5 +1,6 @@
 import { escapeMarkup } from '../views/identity.js';
 import { stationIcon } from './stationArt.js';
+import { stationControlAttrs } from './stationBindingMap.js';
 // Station destinations: an explicit facility rail, horizontal on narrow screens.
 // A real ARIA tablist of kit words: role=tab, roving tabindex, arrow keys, aria-current on the live
 // one. The pointer/keyboard distance field still writes --dock-scale / --dock-lift / --dock-near on
@@ -14,7 +15,7 @@ function tileHtml(item, kind) {
     : `data-act="${item.id}"`;
   const extra = isNav ? '' : ' sx-tile--act';
   return (
-    `<li><button type="button" class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
+    `<li><button type="button" ${stationControlAttrs(item.id)} class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
       `<span class="sx-tile__seat" aria-hidden="true">${stationIcon(item.id)}</span>` +
       `<span class="sx-tile__badge k-t-fine k-signal" data-badge="${item.id}" hidden></span>` +
       `<span class="sx-tile__label">${escapeMarkup(item.label)}</span>` +

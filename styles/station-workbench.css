@@ -1,0 +1,32 @@
+/* Station workbench — the flight HUD structural kit.
+   One accent (the lamp). Machined bezels. The primary control is a key, not a browser button. */
+
+#screens .sx-berth,
+.sx-observatory.sx-berth {
+  --sf-station-accent: var(--dp-lamp);
+  --sf-accent: var(--sf-station-accent);
+  --sf-accent-rgb: 242 185 80;
+  --so-accent: var(--sf-station-accent);
+  --so-accent-rgb: 242 185 80;
+  --k-signal: var(--sf-station-accent);
+}
+
+#screens .sx-berth :is(.sxb-crown, .sx-pop, .sx-comms__history, .so-command-palette) {
+  border: 14px solid transparent;
+  border-image: url("/assets/ui/deckplate/hw/bezel.svg") 30 / 30px / 0 stretch;
+  border-radius: 0;
+  background-color: var(--dp-metal-2);
+  box-shadow: none;
+}
+
+#screens .sx-berth button[data-sf-role="primary"] {
+  -webkit-appearance: none;
+  appearance: none;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 10px 10px 12px;
+  border-image: url("/assets/ui/deckplate/hw/keycap.svg") 10 10 12 / 10px 10px 12px / 0 stretch;
+  border-radius: 0;
+  background-color: var(--dp-metal-3);
+  color: var(--sf-station-accent);
+}

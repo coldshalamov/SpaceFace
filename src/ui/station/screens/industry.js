@@ -15,6 +15,7 @@ import { SHIPS } from '../../../data/ships.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
+import { stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 
 const NAME = new Map();
 for (const c of COMMODITIES) NAME.set('commodity:' + c.id, c.name);
@@ -101,7 +102,7 @@ export function createIndustryScreen(ctx) {
               const r = industryReadiness(bp, state, stn);
               const selected = bp.id === selectedId;
               const output = `${niceName(bp.outputs.id, bp.outputs.kind)}${bp.outputs.qty > 1 ? ' × ' + bp.outputs.qty : ''}`;
-              return `<li><button type="button" class="sx-ind-row k-row${selected ? ' is-active' : ''}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
+              return `<li><button type="button" ${stationControlAttrs('blueprint')} class="sx-ind-row k-row${selected ? ' is-active' : ''}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
                 ` aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
                 `<span class="sx-ind-row__body">` +
                   `<span class="k-row__name sx-ind-row__name ${toneClass(r)}">${escapeHtml(output)}</span>` +
@@ -132,7 +133,7 @@ export function createIndustryScreen(ctx) {
       return (
         `<li class="k-row k-row--static sx-fab-in${ok ? ' is-ok' : ' is-missing'}">` +
           `<span class="${ok ? 'k-row__name' : 'k-bad'} sx-fab-in__name">${entitySpanHtml('commodity:' + id, escapeHtml(matName(id)))}</span>` +
-          (ok ? '' : `<button type="button" class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market">Source in market</button>`) +
+          (ok ? '' : `<button type="button" ${stationControlAttrs('source-market')} class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market">${stationControlLabel('source-market')}</button>`) +
           `<span class="k-row__num sx-fab-in__q${ok ? '' : ' k-bad'}">${have} <span class="k-62">/ ${need}</span></span>` +
         `</li>`
       );
@@ -167,7 +168,7 @@ export function createIndustryScreen(ctx) {
         (notes.length ? `<ul class="k-words k-words--row sx-fab-notes">${notes.map((n) => `<li class="k-t-fine ${n.ok ? 'k-62' : 'k-bad'} sx-fab-note">${escapeHtml(n.text)}</li>`).join('')}</ul>` : '') +
         `<p class="k-sentence ${statusClass} sx-fab-status">${status}</p>` +
         `<ul class="k-words k-words--row sx-fab-foot"><li>` +
-          `<button type="button" class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? '' : ' disabled aria-disabled="true"'}>` +
+          `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? '' : ' disabled aria-disabled="true"'}>` +
             `${queue ? 'Line occupied' : (r.state === 'ready' ? 'Fabricate' : escapeHtml(shortBlockLabel(bp, r)))}` +
           `</button>` +
         `</li></ul>` +

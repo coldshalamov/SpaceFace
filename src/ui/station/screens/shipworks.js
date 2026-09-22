@@ -85,6 +85,7 @@ import {
   pinKeyrack,
   syncKeys,
 } from './fhChrome.js';
+import { bindStationMarkup, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const STATION_ARCHETYPE_BY_ID = new Map();
@@ -403,7 +404,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // whole panel behind both (positioned like .k-world); the corner rows, the pinned labels, the
   // four bands along the foot and the verbs all sit on top. The chooser is a third child that
   // takes the hang column's cell while a slot is being chosen (`is-choosing` on the panel).
-  el.innerHTML = shipworksFrameHtml();
+  el.innerHTML = bindStationMarkup(shipworksFrameHtml());
 
   const railListEl = el.querySelector('.sx-sw__list');
   const railPrevEl = el.querySelector('[data-rail-step="prev"]');
@@ -1282,7 +1283,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const chipHtml = chips.map((chip) => {
       const tone = chip.tone || 'calm';
       return (
-        `<li><button type="button" class="k-word k-word--body sx-sw-chip sx-sw-chip--${escapeHtml(tone)}" data-cap-chip="${escapeHtml(chip.id)}"${whyAttr(chip.why)}>` +
+        `<li><button type="button" ${stationControlAttrs('cap-chip')} class="k-word k-word--body sx-sw-chip sx-sw-chip--${escapeHtml(tone)}" data-cap-chip="${escapeHtml(chip.id)}"${whyAttr(chip.why)}>` +
           `<span class="sx-sw-chip__verb">${escapeHtml(chip.verb)}</span>` +
           (chip.sub ? `<span class="k-word-sub sx-sw-chip__sub">${escapeHtml(chip.sub)}</span>` : '') +
         `</button></li>`
@@ -1290,7 +1291,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }).join('');
     const nextHtml = next
       ? (
-        `<li><button type="button" class="k-word k-word--body k-38 sx-sw-chip sx-sw-chip--goal sx-sw-chip--next" data-cap-chip="${escapeHtml(next.id)}"${whyAttr(next.why)}>` +
+        `<li><button type="button" ${stationControlAttrs('cap-next')} class="k-word k-word--body k-38 sx-sw-chip sx-sw-chip--goal sx-sw-chip--next" data-cap-chip="${escapeHtml(next.id)}"${whyAttr(next.why)}>` +
           `<span class="sx-sw-chip__verb">${escapeHtml(next.verb)}</span>` +
           `<span class="k-word-sub sx-sw-chip__sub">Next</span>` +
         `</button></li>`
@@ -1317,7 +1318,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           : (preset.applyState && preset.applyState.text) || 'Cannot apply right now'
       }`;
       return (
-        `<li><button type="button" class="${classes}" data-loadout-preset-id="${escapeHtml(preset.id)}" aria-pressed="${preset.selected ? 'true' : 'false'}"${whyAttr(why)} aria-label="${escapeHtml(aria)}">` +
+        `<li><button type="button" ${stationControlAttrs('loadout-preset')} class="${classes}" data-loadout-preset-id="${escapeHtml(preset.id)}" aria-pressed="${preset.selected ? 'true' : 'false'}"${whyAttr(why)} aria-label="${escapeHtml(aria)}">` +
           `<span class="sx-sw-preset__label">${escapeHtml(preset.label || 'Build')}</span>` +
           `<span class="k-word-sub sx-sw-preset__sub">${escapeHtml(preset.subtitle || 'Preset')}</span>` +
         `</button></li>`
@@ -1328,7 +1329,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const saveLabel = saveSlot ? `Save current fit as ${saveSlot.label}` : 'Save current fit';
     const countText = saveSlot ? `${saveSlot.count}/${saveSlot.cap}` : '';
     const saveButton = (
-      `<li><button type="button" class="k-word k-word--fine sx-sw-preset sx-sw-preset--save${saveDisabled ? ' is-dim' : ''}" data-loadout-preset-save="1"${saveSlot ? ` data-loadout-preset-id="${escapeHtml(saveSlot.presetId)}" data-loadout-label-key="${escapeHtml(saveSlot.labelKey)}" data-loadout-created-at="${saveSlot.createdAt}"` : ''}${saveDisabled ? ' disabled' : ''}${whyAttr(saveWhy)} aria-label="${escapeHtml(saveLabel)}">` +
+      `<li><button type="button" ${stationControlAttrs('save-build')} class="k-word k-word--fine sx-sw-preset sx-sw-preset--save${saveDisabled ? ' is-dim' : ''}" data-loadout-preset-save="1"${saveSlot ? ` data-loadout-preset-id="${escapeHtml(saveSlot.presetId)}" data-loadout-label-key="${escapeHtml(saveSlot.labelKey)}" data-loadout-created-at="${saveSlot.createdAt}"` : ''}${saveDisabled ? ' disabled' : ''}${whyAttr(saveWhy)} aria-label="${escapeHtml(saveLabel)}">` +
         `<span class="sx-sw-preset__label">Save fit</span>` +
         (countText ? `<span class="k-word-sub sx-sw-preset__sub">${escapeHtml(countText)}</span>` : '') +
       `</button></li>`
@@ -1361,7 +1362,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<li class="k-row k-row--static sx-sw-presetdrawer__row sx-sw-presetdrawer__verbs"><span class="k-row__name k-62">Capability</span><span class="k-row__num k-t-body">${verbsHtml}</span></li>` +
         `</ul>` +
         `<ul class="k-words k-words--row sx-sw-presetdrawer__actions">` +
-          `<li><button type="button" class="k-word k-word--fine k-bad sx-sw-verb sx-sw-verb--danger" data-loadout-preset-delete="${escapeHtml(selectedPreset.id)}">Delete build</button></li>` +
+          `<li><button type="button" ${stationControlAttrs('delete-build')} class="k-word k-word--fine k-bad sx-sw-verb sx-sw-verb--danger" data-loadout-preset-delete="${escapeHtml(selectedPreset.id)}">${stationControlLabel('delete-build')}</button></li>` +
         `</ul>` +
       `</section>`
     );
@@ -1370,7 +1371,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   function heroHtml(band, n, w, { tone = '', selected = false, why = '' } = {}) {
     const cls = ['k-hero', 'sx-sw-hero', tone, selected ? 'is-selected' : ''].filter(Boolean).join(' ');
     return (
-      `<button type="button" class="${cls}" data-band="${band}" aria-pressed="${selected ? 'true' : 'false'}"${whyAttr(why)}>` +
+      `<button type="button" ${stationControlAttrs('band')} class="${cls}" data-band="${band}" aria-pressed="${selected ? 'true' : 'false'}"${whyAttr(why)}>` +
         `<span class="k-hero__n">${escapeHtml(String(n))}</span>` +
         `<span class="k-hero__w">${escapeHtml(w)}</span>` +
       `</button>`
@@ -1502,11 +1503,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           },
         ) +
         `<ul class="k-words k-words--row sx-sw-verbs">` +
-          `<li><button type="button" class="k-word k-word--body sx-sw-verb" data-verb="range">Take it to the range</button></li>` +
-          `<li><button type="button" class="k-word k-word--body sx-sw-verb${recordOpen ? ' is-active' : ''}" data-verb="record" aria-pressed="${recordOpen ? 'true' : 'false'}">Record</button></li>` +
-          `<li><button type="button" class="k-word k-word--body sx-sw-verb" data-verb="fit" data-fit-action="${escapeHtml(fitAction)}"${selectedPreset ? ` data-loadout-preset-id="${escapeHtml(selectedPreset.id)}"` : ''}${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitBlockedText)}"`}>${escapeHtml(fitLabel)}</button></li>` +
+          `<li><button type="button" ${stationControlAttrs('range')} class="k-word k-word--body sx-sw-verb" data-verb="range">${stationControlLabel('range')}</button></li>` +
+          `<li><button type="button" ${stationControlAttrs('record')} class="k-word k-word--body sx-sw-verb${recordOpen ? ' is-active' : ''}" data-verb="record" aria-pressed="${recordOpen ? 'true' : 'false'}">${stationControlLabel('record')}</button></li>` +
+          `<li><button type="button" ${stationControlAttrs('fit')} class="k-word k-word--body sx-sw-verb" data-verb="fit" data-fit-action="${escapeHtml(fitAction)}"${selectedPreset ? ` data-loadout-preset-id="${escapeHtml(selectedPreset.id)}"` : ''}${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitBlockedText)}"`}>${escapeHtml(fitLabel)}</button></li>` +
           (makeActiveVisible
-            ? `<li><button type="button" class="k-word k-word--body sx-sw-verb" data-verb="activate"${makeActiveEnabled ? '' : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button></li>`
+            ? `<li><button type="button" ${stationControlAttrs('activate')} class="k-word k-word--body sx-sw-verb" data-verb="activate"${makeActiveEnabled ? '' : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button></li>`
             : '') +
         `</ul>` +
       `</div>` +
@@ -1618,7 +1619,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const kind = scar.kind === 'approx' ? 'approx' : 'authored';
       const sub = scar.sub || (kind === 'approx' ? 'APPROX' : 'AUTHORED');
       return (
-        `<button type="button" class="sf-anchor sf-scar sx-sw-scar" data-scar-id="${escapeHtml(scar.id)}" data-anchor-kind="${kind}" tabindex="0"${whyAttr(scar.why)} aria-label="${escapeHtml(`${scar.label}. ${sub}`)}">` +
+        `<button type="button" ${stationControlAttrs('scar')} class="sf-anchor sf-scar sx-sw-scar" data-scar-id="${escapeHtml(scar.id)}" data-anchor-kind="${kind}" tabindex="0"${whyAttr(scar.why)} aria-label="${escapeHtml(`${scar.label}. ${sub}`)}">` +
           `<span class="sx-sw-scar__dot" aria-hidden="true"></span>` +
           `<span class="sx-sw-scar__copy"><b>${escapeHtml(scar.label)}</b><em>${escapeHtml(sub)}</em></span>` +
         `</button>`
@@ -1652,7 +1653,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const aria = fitted
         ? `${slotName} ${i + 1}: ${label}. Open compatible modules.`
         : `${slotName} ${i + 1}: open slot. Open compatible modules.`;
-      return `<button type="button" class="sx-hardpoint sx-hardpoint--${escapeHtml(slot.type)}${selected}${fitted ? '' : ' is-empty'}" data-spatial-slot="${i}" data-anchor-kind="${kind.toLowerCase()}" aria-label="${escapeHtml(aria)}">` +
+      return `<button type="button" ${stationControlAttrs('hardpoint')} class="sx-hardpoint sx-hardpoint--${escapeHtml(slot.type)}${selected}${fitted ? '' : ' is-empty'}" data-spatial-slot="${i}" data-anchor-kind="${kind.toLowerCase()}" aria-label="${escapeHtml(aria)}">` +
         `<svg class="sx-hardpoint__leader" aria-hidden="true"><path></path></svg>` +
         `<span class="sx-hardpoint__reticle" aria-hidden="true"><i></i></span>` +
         `<span class="sx-hardpoint__copy"><b>${escapeHtml(label)}</b><em>${escapeHtml(sub)}</em></span>` +
@@ -1941,7 +1942,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
         return (
-          `<button type="button" class="k-row sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(def.name || s.defId)}" aria-label="Inspect ${escapeHtml(def.name || s.defId)}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
+          `<button type="button" ${stationControlAttrs('inspect-hull')} class="k-row sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(def.name || s.defId)}" aria-label="Inspect ${escapeHtml(def.name || s.defId)}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
             `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(def.name || s.defId)}</span>` +
               `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(roleLabel)} · T${def.tier != null ? def.tier : '?'}</span></span>` +
             `<span class="k-row__num k-t-fine sx-sw-row__flag">${isActive ? 'Active' : ''}</span>` +
@@ -1953,7 +1954,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const on = s.id === buyId ? ' is-active' : '';
         const roleLabel = describeHullRole(s.id)?.roleLabel || s.role || 'ship';
         return (
-          `<button type="button" class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(roleLabel)}, ${s.price > 0 ? fmt(s.price) + ' credits' : 'owned'}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
+          `<button type="button" ${stationControlAttrs('preview-hull')} class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(roleLabel)}, ${s.price > 0 ? fmt(s.price) + ' credits' : 'owned'}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
             `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(s.name)}</span>` +
               `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(roleLabel)} · T${s.tier}</span></span>` +
             `<span class="k-row__num sx-sw-row__price">${s.price > 0 ? fmt(s.price) : 'Owned'}</span>` +
@@ -2033,7 +2034,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<ul class="k-words k-words--row sx-buybar">` +
           (isOwned
             ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
-            : `<li><button type="button" class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(buyLabel)}">${escapeHtml(buyLabel)}</button></li>`) +
+            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(buyLabel)}">${escapeHtml(buyLabel)}</button></li>`) +
         `</ul>`;
       dressSide();
       return;
@@ -2081,7 +2082,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : restockable ? `Restock · ${fmt(BOMB_RACK.restockFeeCr)} cr` : 'Nothing to restock';
       const restockHint = !availability.outfitEnabled ? availability.outfitLabel
         : restockable ? 'Top up every fitted magazine from hangar stock' : 'Rack is full or the hangar has no matching ordnance';
-      rackVerbs.push(`<li><button type="button" class="k-word k-word--fine" data-rack-restock ${availability.outfitEnabled && restockable ? '' : `disabled aria-label="${escapeHtml(restockHint)}"`}>${escapeHtml(restockLabel)}</button></li>`);
+      rackVerbs.push(`<li><button type="button" ${stationControlAttrs('restock')} class="k-word k-word--fine" data-rack-restock ${availability.outfitEnabled && restockable ? '' : `disabled aria-label="${escapeHtml(restockHint)}"`}>${escapeHtml(restockLabel)}</button></li>`);
     }
     if (rack.sockets < BOMB_RACK.socketsMax) {
       const afford = rack.credits >= BOMB_RACK.socketUpgradeCr;
@@ -2089,7 +2090,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : afford ? `Third socket · ${fmt(BOMB_RACK.socketUpgradeCr)} cr` : `Third socket · need ${fmt(BOMB_RACK.socketUpgradeCr)} cr`;
       const upgradeHint = !availability.outfitEnabled ? availability.outfitLabel
         : afford ? 'Weld a third bomb-rack socket into the bay' : 'Not enough credits';
-      rackVerbs.push(`<li><button type="button" class="k-word k-word--fine" data-rack-upgrade ${availability.outfitEnabled && afford ? '' : `disabled aria-label="${escapeHtml(upgradeHint)}"`}>${escapeHtml(upgradeLabel)}</button></li>`);
+      rackVerbs.push(`<li><button type="button" ${stationControlAttrs('upgrade-rack')} class="k-word k-word--fine" data-rack-upgrade ${availability.outfitEnabled && afford ? '' : `disabled aria-label="${escapeHtml(upgradeHint)}"`}>${escapeHtml(upgradeLabel)}</button></li>`);
     }
     const rackBlock =
       `<div class="sx-sw-rack">` +
@@ -2100,7 +2101,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // MAKE ACTIVE is a berth verb — it never renders on the flight host (SCREENS_B §1.2). While
     // docked it stays gated by hull service availability with the reason printed on the verb.
     const activeControl = host === 'flight' ? '' : inspectedIndex !== activeIndex
-      ? `<li><button type="button" class="k-word k-word--emph sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active ship' : availability.hullLabel)}">${availability.hullEnabled ? 'Make active' : escapeHtml(availability.hullLabel)}</button></li>`
+      ? `<li><button type="button" ${stationControlAttrs('make-active')} class="k-word k-word--emph sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active ship' : availability.hullLabel)}">${availability.hullEnabled ? 'Make active' : escapeHtml(availability.hullLabel)}</button></li>`
       : `<li><span class="k-word k-word--emph k-38 sx-sw-circuit__active">Active flight hull</span></li>`;
     // The stage-right column: the build's identity, the core as a hero number, each system's
     // draw as a row, and one sentence telling the player where to click.
@@ -2335,7 +2336,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           ? `<span class="k-t-fine k-38 sx-modrow__lock">${escapeHtml(purchase.label)}</span>`
           : purchase.state === 'funding'
             ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`
-            : `<button type="button" class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(purchase.price)} cr</small></button>`;
+            : `<button type="button" ${stationControlAttrs('buy-fit', selectedFit ? { primary: true } : undefined)} class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(purchase.price)} cr</small></button>`;
       return (
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
@@ -2375,7 +2376,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     chooserEl.innerHTML =
       `<div class="sx-chooser__panel" role="region" aria-label="Compatible ${escapeHtml(SLOT_LABEL[slot.type] || slot.type)} modules">` +
         `<header class="sx-chooser__head">` +
-          `<ul class="k-words k-words--row"><li><button type="button" class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">Back</button></li></ul>` +
+          `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">${stationControlLabel('back')}</button></li></ul>` +
           `<p class="k-caps sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type} slot · size ${escapeHtml(slot.size || '')}${hardpoint === 'ring' ? ' · turret ring' : (slot.facing ? ' · ' + escapeHtml(slot.facing) + ' hardpoint' : '')}</p>` +
           `<h3 class="k-t-sub">Compatible modules${compat.length ? ` <span class="k-38">${compat.length}</span>` : ''}</h3>` +
         `</header>` +
@@ -2383,7 +2384,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           ? `<p class="k-sentence sx-muted" data-ring-law>The ring aims for you. An aimed gun keeps ${ringPct} % of its output here; launchers and spinal guns need a fixed hardpoint.</p>`
           : '') +
         (availability.outfitEnabled ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
-        (fittedId ? `<ul class="k-words k-words--row"><li><button type="button" class="k-word k-word--emph sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Remove ${escapeHtml(fittedName)}` : 'Dock to remove'}</button></li></ul>` : '') +
+        (fittedId ? `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('remove-module')} class="k-word k-word--emph sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Remove ${escapeHtml(fittedName)}` : 'Dock to remove'}</button></li></ul>` : '') +
         `<ul class="k-rows sx-chooser__list">${(list + refusedList) || '<li class="k-sentence sx-muted">No compatible modules.</li>'}</ul>` +
       `</div>`;
     dressChooser();
@@ -2461,14 +2462,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const move = inSocket ? Math.min(d.magazine - inSocket, stock) : Math.min(d.magazine, stock);
         if (move > 0) {
           const word = inSocket ? 'Top up' : elsewhereIndex >= 0 ? 'Move here' : 'Load';
-          verbs.push(`<button type="button" class="k-word k-word--fine k-word--primary sx-modrow__buy" data-payload-fit="${escapeHtml(d.id)}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${word} <small class="k-38">${move} u</small></button>`);
+          verbs.push(`<button type="button" ${stationControlAttrs('payload-fit')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-payload-fit="${escapeHtml(d.id)}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${word} <small class="k-38">${move} u</small></button>`);
         }
       }
       const buyLabel = !outfit ? 'Dock to buy' : afford ? 'Buy' : `Need ${fmt(d.price)} cr`;
       const buyHint = !outfit ? availability.outfitLabel : afford ? `Buy one ${d.name} into hangar stock` : 'Not enough credits';
-      verbs.push(`<button type="button" class="k-word k-word--fine sx-modrow__buy" data-payload-buy="${escapeHtml(d.id)}" ${outfit && afford ? '' : `disabled aria-label="${escapeHtml(buyHint)}"`}>${escapeHtml(buyLabel)} <small class="k-38">${fmt(d.price)} cr</small></button>`);
+      verbs.push(`<button type="button" ${stationControlAttrs('payload-buy')} class="k-word k-word--fine sx-modrow__buy" data-payload-buy="${escapeHtml(d.id)}" ${outfit && afford ? '' : `disabled aria-label="${escapeHtml(buyHint)}"`}>${escapeHtml(buyLabel)} <small class="k-38">${fmt(d.price)} cr</small></button>`);
       if (stock > 0) {
-        verbs.push(`<button type="button" class="k-word k-word--fine sx-modrow__buy" data-payload-sell="${escapeHtml(d.id)}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>Sell <small class="k-38">${fmt(sellValue)} cr</small></button>`);
+        verbs.push(`<button type="button" ${stationControlAttrs('payload-sell')} class="k-word k-word--fine sx-modrow__buy" data-payload-sell="${escapeHtml(d.id)}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${stationControlLabel('payload-sell')} <small class="k-38">${fmt(sellValue)} cr</small></button>`);
       }
       const seat = inSocket ? `Socket ${i + 1} holds ${inSocket}/${d.magazine}`
         : elsewhereIndex >= 0 ? `Fitted in socket ${elsewhereIndex + 1}`
@@ -2484,12 +2485,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       );
     }).join('');
     const unfitRow = cellDef
-      ? `<ul class="k-words k-words--row"><li><button type="button" class="k-word k-word--emph sx-chooser__unfit" data-payload-unfit="${i}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${outfit ? `Unload ${escapeHtml(cellDef.name)}` : 'Dock to unload'}</button></li></ul>`
+      ? `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('unload')} class="k-word k-word--emph sx-chooser__unfit" data-payload-unfit="${i}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${outfit ? `Unload ${escapeHtml(cellDef.name)}` : 'Dock to unload'}</button></li></ul>`
       : '';
     chooserEl.innerHTML =
       `<div class="sx-chooser__panel" role="region" aria-label="Rack socket ${i + 1} ordnance">` +
         `<header class="sx-chooser__head">` +
-          `<ul class="k-words k-words--row"><li><button type="button" class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">Back</button></li></ul>` +
+          `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">${stationControlLabel('back')}</button></li></ul>` +
           `<p class="k-caps sx-chooser__kicker">Bomb rack · socket ${i + 1} of ${rack.sockets}</p>` +
           `<h3 class="k-t-sub">Ordnance <span class="k-38">${catalogue.length}</span></h3>` +
         `</header>` +

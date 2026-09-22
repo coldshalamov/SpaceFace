@@ -36,6 +36,7 @@ import {
   pinKeyrack,
   syncKeys,
 } from './fhChrome.js';
+import { bindStationMarkup, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME = new Map();
@@ -50,7 +51,7 @@ for (const sec of SECTORS) {
 
 // Meaning roles kept for the instrument-hierarchy tests and the help screen's shared vocabulary.
 export function chartTrendRole(up) { return up ? 'you' : 'foe'; }
-export function chartTrendColor(up) { return up ? 'var(--sf-you)' : 'var(--sf-foe)'; }
+export function chartTrendColor(up) { return up ? 'var(--dp-lamp)' : 'var(--dp-danger)'; }
 export function maxAffordableQuantity({ limit, credits, quote }) {
   const ceiling = Number(limit);
   const budget = Number(credits);
@@ -505,7 +506,7 @@ export function createMarketScreen(ctx) {
   // The register chrome (exchange line, family filters, search, table) is built once and then
   // updated in place, so typing in the search and arrowing through the rows survive price ticks.
   function buildBrowserChrome() {
-    listEl.innerHTML = marketBrowserHtml();
+    listEl.innerHTML = bindStationMarkup(marketBrowserHtml());
     modeEl = listEl.querySelector('.sx-mkt-browser__mode');
     searchEl = listEl.querySelector('[data-market-search]');
     tbodyEl = listEl.querySelector('tbody');
@@ -662,8 +663,8 @@ export function createMarketScreen(ctx) {
       tradeEl.innerHTML =
         `<div class="sx-trade sx-trade--empty">` +
           `<ul class="k-words k-words--row sx-seg" role="tablist">` +
-            `<li><button type="button" class="k-word k-word--emph sx-seg__btn${mode === 'buy' ? ' is-on' : ''}" data-mode="buy" aria-pressed="${mode === 'buy'}">Buy</button></li>` +
-            `<li><button type="button" class="k-word k-word--emph sx-seg__btn${mode === 'sell' ? ' is-on' : ''}" data-mode="sell" aria-pressed="${mode === 'sell'}">Sell</button></li>` +
+            `<li><button type="button" ${stationControlAttrs('buy')} class="k-word k-word--emph sx-seg__btn${mode === 'buy' ? ' is-on' : ''}" data-mode="buy" aria-pressed="${mode === 'buy'}">${stationControlLabel('buy')}</button></li>` +
+            `<li><button type="button" ${stationControlAttrs('sell')} class="k-word k-word--emph sx-seg__btn${mode === 'sell' ? ' is-on' : ''}" data-mode="sell" aria-pressed="${mode === 'sell'}">${stationControlLabel('sell')}</button></li>` +
           `</ul>` +
           `<p class="k-empty sx-trade-empty">Nothing in the hold. Switch to Buy to load cargo.</p>` +
         `</div>`;
@@ -724,7 +725,7 @@ export function createMarketScreen(ctx) {
     }
 
     // Preserve the native event contract: the live side commits, the other side switches mode.
-    tradeEl.innerHTML = marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Total gain', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note });
+    tradeEl.innerHTML = bindStationMarkup(marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Total gain', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note }));
     dressConsole();
   }
 
@@ -742,7 +743,7 @@ export function createMarketScreen(ctx) {
           `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))} → ${entitySpanHtml('station:' + t.destStation, escapeHtml(dest))}</span>` +
             `<span class="k-row__sub">${escapeHtml(card.sub)}</span></span>` +
           `<span class="k-row__num sx-route-row__s${t.loadProfit > 0 ? ' k-good' : ''}">${escapeHtml(card.profitText)}</span>` +
-          `<button type="button" class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">Set course</button>` +
+          `<button type="button" ${stationControlAttrs('set-course')} class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">${stationControlLabel('set-course')}</button>` +
         `</li>`
       );
     }).join('');

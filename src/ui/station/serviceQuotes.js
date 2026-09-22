@@ -4,6 +4,7 @@
 import { COMMODITIES } from '../../data/commodities.js';
 import { SERVICE_PRICES } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
+import { stationControlAttrs } from './stationBindingMap.js';
 
 export function factionPresenceServiceRows(state, stationId) {
   const own = state && state.factionPresence;
@@ -145,7 +146,7 @@ function escWhyAttr(s) {
 // focus, and the click path toasts the same phrase instead of failing silently.
 export function disabledVitalActHtml(id, label, text, why) {
   const copy = `${label} · ${text}`;
-  return `<button type="button" class="k-word k-word--fine fh-key fh-key--small sxb-vital__act k-38"` +
+  return `<button type="button" ${stationControlAttrs(id)} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act k-38"` +
     ` data-vital-act="${escWhyAttr(id)}" data-why="${escWhyAttr(why)}" aria-disabled="true"` +
     ` aria-label="${escWhyAttr(label + '. ' + why)}">${escWhyAttr(copy)}</button>`;
 }

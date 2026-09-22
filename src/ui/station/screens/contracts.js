@@ -47,6 +47,7 @@ import {
   pinKeyrack,
   syncKeys,
 } from './fhChrome.js';
+import { bindStationMarkup, stationControlAttrs } from '../stationBindingMap.js';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FAC = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -286,7 +287,7 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
   const title = cleanText(mission && mission.title) || `FINAL DISPOSITION — CHOICE ${filing.choiceId}`;
   const summary = missionDossierSummary(mission) || filing.confirmHint;
   const readiness = ready ? 'Eligibility verified · separate confirmation required' : blocked;
-  return (
+  return bindStationMarkup(
     `<div class="sx-dossier sx-dossier--filing${focus ? ' is-attention' : ''}">` +
       `<p class="k-caps">Final disposition</p>` +
       `<h2 class="k-display k-t-title sx-dossier__title">${escapeHtml(title)}</h2>` +
@@ -356,7 +357,7 @@ export function missionDossierHtml(m, state, options = {}) {
   // INF-065: one mission (escort) briefed as a physical situation from its live target,
   // route, and known hazards, paired with a concrete approach — not another flavor paragraph.
   const briefing = missionBriefingDiagram(m, state, origin);
-  return contractDossierView({
+  return bindStationMarkup(contractDossierView({
     typeName: typeLabel(m.type),
     titleHtml: entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title)),
     clientHtml: clientEntityHtml(m),
@@ -377,7 +378,7 @@ export function missionDossierHtml(m, state, options = {}) {
     focusAccept,
     action: { id: mid(m), ready, focus: focusAccept && ready,
       readyLabel: 'Accept', blockedLabel: 'Resolve Readiness', aria: acceptAria, reason: readiness.detail },
-  });
+  }));
 }
 
 function cleanText(value) {
@@ -499,7 +500,7 @@ export function createContractsScreen(ctx) {
           ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
           : `${badgePrefix}${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
         return (
-          `<li><button type="button" class="sx-ct-row${rowClasses}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
+          `<li><button type="button" ${stationControlAttrs('mission-row')} class="sx-ct-row${rowClasses}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
             ` aria-label="${escapeHtml(rowAria)}${needs ? ', needs attention' : ''}">` +
             `<span class="sx-ct-row__crest" aria-hidden="true">${crestHtml(m.factionId)}</span>` +
             `<span class="k-row__name sx-ct-row__title">` +
@@ -572,7 +573,7 @@ export function createContractsScreen(ctx) {
             `<li class="k-row k-row--static sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
               `<span class="k-row__name sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
               `<span class="k-row__sub sx-job__meta${needs ? ' k-signal' : ''}">${escapeHtml(sub)}</span>` +
-              `<button type="button" class="k-word k-word--fine sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">${tracked ? 'Tracked' : 'Track'}</button>` +
+              `<button type="button" ${stationControlAttrs('track')} class="k-word k-word--fine sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">${tracked ? 'Tracked' : 'Track'}</button>` +
             `</li>`
           );
         }).join('') + `</ul>`
