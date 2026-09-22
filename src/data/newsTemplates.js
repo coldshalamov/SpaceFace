@@ -78,6 +78,14 @@ export const HEADLINE_TEMPLATES = Object.freeze({
     'Hauler docked at {station}; {name} hits the floor',
     '{station}: freight arrival softens {noun} prices',
   ],
+  // INF: a contracted feeder died before its handoff and the delivery run came back empty. The
+  // shortfall is world evidence, never a player accusation — the miner may have died to anything.
+  freight_short: [
+    '{station} intake runs short — a contracted feeder never reported',
+    'Short tonnage at {station}: the belt run came back empty',
+    '{station} flags a thin delivery — its feeders are behind plan',
+    'Ore intake below plan at {station}; the shift run delivered nothing',
+  ],
   // generic fallback for unknown event types
   event: [
     '{station}: {name} market unsettled',
