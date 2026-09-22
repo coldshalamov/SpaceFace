@@ -1584,6 +1584,19 @@
       "integration": "live",
       "commit": "8b07f720d6adc91de572d7dd4b0b5a839085f303",
       "verification": "focused_green"
+    },
+    {
+      "id": "missing-place-fallback-prop",
+      "date": "2026-09-22",
+      "wf": "WF-11",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "buildFallbackPlaceProp keeps an empty substrate or marker without published cube geometry",
+      "fingerprint": "verb=render,subject=place_prop,sector=global,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "da2abd5f1",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
