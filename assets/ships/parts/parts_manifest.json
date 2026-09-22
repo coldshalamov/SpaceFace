@@ -7258,8 +7258,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_ranger",
-      "tris": 23178,
-      "bytes": 3094036,
+      "tris": 24638,
+      "bytes": 3263712,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7288,21 +7288,21 @@
       "bounds": {
         "min": [
           -8.62,
-          -0.92,
-          -2.543636
+          -2.66,
+          -0.794
         ],
         "max": [
-          8.7,
-          2.39,
-          2.543636
+          8.55,
+          2.66,
+          1.88
         ],
         "dimensionsM": [
-          17.32,
-          3.31,
-          5.087273
+          17.17,
+          5.32,
+          2.674
         ]
       },
-      "note": "PQ-050.03 chase_form_v1. Cycle 1: needle explorer, wells as holes, twin nacelle throats, swept wings, survey mast. Hitch/Kestrel/Hornet/Drifter untouched. Chase Hitch-plus REVISE (tube/paddle + cage read; Hitch still wins)."
+      "note": "PQ-050.03 chase_form_v2b. Cycle 2: formed explorer loft (mid≠bow), thick-root wings, shallow crown/flank scores (no wrapping-ring cage), deeper wells, formed survey pylon. Hitch/Kestrel/Hornet/Drifter untouched. Chase Hitch-plus REVISE (CAGE_READ NO; TUBE_PADDLE YES leftover; Hitch still wins D=144)."
     },
     {
       "id": "wholeship_repair_tender",

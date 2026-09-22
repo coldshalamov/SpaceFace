@@ -20,9 +20,13 @@ wins formed-shell at chase cameras. Wells boolean-true; play-size well read is
 shallow. No seats. No megatex. Hitch/Kestrel/Hornet/Drifter freeze hashes
 unchanged.
 
-## C2 chase-form (2026-09-21)
+## C2 chase-form (2026-09-21, grok-bot-box)
 
-`chase_form_v2`. Kill tube/paddle + cage first: formed explorer loft (mid ≠
-bow), thick-root wings grown from the shell, shallow crown/flank scores (no
-wrapping rings), deeper greenhouse/survey holes, formed survey pylon. Clay
-all-slot. Hitch/Hornet/Drifter never loaded. Parent unproven / not G7.
+`chase_form_v2b`. Attempted kill of C1 tube/paddle + cage: formed explorer loft
+(mid ≠ bow), thick-root wings, shallow crown/flank scores (no wrapping rings),
+deeper greenhouse/survey holes, formed survey pylon. Clay all-slot. Hitch/Hornet/Drifter
+never loaded.
+
+C2 RESULT: **REVISE**. CAGE_READ NO on play+close+abeam (clay+shaded). TUBE_PADDLE
+still YES (needle taper at D=144). Wells HOLES. Hitch still wins formed-shell
+massing. No seats. No megatex. Freeze hashes unchanged.

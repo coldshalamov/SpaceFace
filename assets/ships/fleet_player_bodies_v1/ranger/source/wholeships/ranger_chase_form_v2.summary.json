@@ -1,0 +1,58 @@
+{
+  "ok": true,
+  "revision": "chase_form_v2b",
+  "cycle": 2,
+  "result": "REVISE",
+  "gates": {
+    "play_chase": {
+      "TUBE_PADDLE": "YES",
+      "CAGE_READ": "NO",
+      "wells": "HOLES",
+      "valid": true,
+      "shipW": 13.1
+    },
+    "play_chase_abeam": {
+      "TUBE_PADDLE": "YES",
+      "CAGE_READ": "NO",
+      "wells": "HOLES",
+      "valid": true,
+      "shipW": 4.1,
+      "shipH": 20.3
+    },
+    "play_chase_close": {
+      "TUBE_PADDLE": "YES",
+      "CAGE_READ": "NO",
+      "wells": "HOLES",
+      "valid": true,
+      "shipW": 32.4
+    }
+  },
+  "freeze": {
+    "hitch_kestrel_lod0": "e8317c66d9785463f398d535c4f358d2aba448354170178b1864531119b8099f",
+    "hornet_lod0": "0f81dce83e735c911412e1a815c918a349270e69e8de75ba5022f4a5211d5240",
+    "drifter_lod0": "3278b8ed1763d8dfbccf900a55b4a9cbbf63404fb8222a965bb5db89fc19bc7e"
+  },
+  "live": {
+    "lod0": {
+      "bytes": 3263712,
+      "sha256": "865c80271ede9e47ea007dabc518127b29292267cfe5b0c45473edbf989af33b"
+    },
+    "lod1": {
+      "bytes": 3050856,
+      "sha256": "f067b0cb2979ce006b8c85091a365c58d4f695e604704755b9a02f2bbbe4dc60"
+    },
+    "lod2": {
+      "bytes": 2854796,
+      "sha256": "6a6cd2a16e008063e8e7b8f6e95b74bdeb4fa01a29696fc12415a4c4a14c0246"
+    }
+  },
+  "size": [
+    17.17,
+    5.32,
+    2.674
+  ],
+  "triangles": 24638,
+  "hullTriangles": 19132,
+  "hitchWins": true,
+  "parent": "unproven / not G7"
+}

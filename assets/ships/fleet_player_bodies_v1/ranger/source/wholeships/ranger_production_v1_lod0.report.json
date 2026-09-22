@@ -1,10 +1,10 @@
 {
   "ok": true,
   "asset": "ship_ranger",
-  "revision": "chase_form_v1",
+  "revision": "chase_form_v2b",
   "lod": 0,
-  "source": "/workspace/assets/ships/parts/wholeships/ranger_production_v1.glb",
-  "output": "/workspace/assets/ships/fleet_player_bodies_v1/ranger/source/wholeships/ranger_production_v1_lod0.glb",
+  "source": "/workspace/spaceface/assets/ships/parts/wholeships/ranger_production_v1.glb",
+  "output": "/workspace/spaceface/assets/ships/fleet_player_bodies_v1/ranger/source/wholeships/ranger_production_v1_lod0.glb",
   "greenhouse": {
     "tub": true,
     "windshield": true
@@ -24,21 +24,21 @@
   },
   "size": [
     17.17,
-    5.087,
-    2.966
+    5.32,
+    2.674
   ],
   "boundsMin": [
     -8.62,
-    -2.544,
-    -0.576
+    -2.66,
+    -0.794
   ],
   "boundsMax": [
     8.55,
-    2.544,
-    2.39
+    2.66,
+    1.88
   ],
-  "triangles": 23178,
-  "hullTriangles": 17152,
+  "triangles": 24638,
+  "hullTriangles": 19132,
   "objects": [
     "COLLISION_HULL",
     "LOD0_Beacon_Aft",
@@ -57,5 +57,5 @@
     "LOD0_Hull",
     "LOD0_WingLE_Port"
   ],
-  "bytes": 3094036
+  "bytes": 3263712
 }

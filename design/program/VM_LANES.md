@@ -40,7 +40,7 @@ Freeze for later leaves: Hitch/Kestrel always; Hornet + Drifter live LODs once c
 
 | Task | Thread | Host | Branch / PR | State | Exact focus | Next |
 |---|---|---|---|---|---|---|
-| `PQ-050.03` Ranger chase C2 | code-work-coordinator | `grok-bot-box` | `leaf/pq050-03-ranger-chase-c2-box` / [PR 151](https://github.com/coldshalamov/SpaceFace/pull/151) | **WORKING** | chase_form_v2: kill TUBE_PADDLE + CAGE_READ; continuous lofted shell + plated skin; wells as holes; Hitch/Hornet/Drifter frozen | Build + chase stills + honest RESULT; supersede stale PR 150 |
+| `PQ-050.03` Ranger chase C2 | code-work-coordinator | `grok-bot-box` | `leaf/pq050-03-ranger-chase-c2-box` / [PR 151](https://github.com/coldshalamov/SpaceFace/pull/151) | **RESULT: REVISE** (CAGE_READ NO; TUBE_PADDLE YES leftover; Hitch still wins D=144; parent unproven) | chase_form_v2b: formed loft, thick-root wings, shallow scores, deep wells, formed pylon; Hitch/Hornet/Drifter frozen | C3: kill remaining needle taper / Hitch massing gap — not garnish |
 
 ## Pointers
 

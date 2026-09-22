@@ -26,7 +26,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v2"
+REVISION = "chase_form_v2b"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "ranger"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -54,7 +54,7 @@ HONEST = {
 }
 
 # C2: fewer girth stations. Shallow scores in a sheet — not wrapping rings (C1 cage).
-GIRTH_XS = (6.20, 3.50, 1.20, -1.20, -3.70, -6.10)
+GIRTH_XS = (5.40, 1.60, -1.80, -5.20)  # C2b: four shallow scores, not a ring cage
 MARK_XS = (2.20, -2.40, -4.80)
 STRINGER_YS = (0.48, 0.86)
 STRINGER_SPANS = ((7.10, 4.20), (3.20, -0.10), (-1.90, -5.70))
@@ -454,17 +454,18 @@ def delete_render_meshes():
 # flare live in the primary loft. Slimmer than Drifter (max hull beam 1.92 vs
 # 3.20) but not C1's needle (1.28). (x, beam, hh, zc, keel, flat, box, chine)
 HULL_STATIONS = [
-    (8.55, 0.22, 0.22, 0.10, 0.08, 0.10, 0.12, 0.06),
-    (7.20, 0.50, 0.40, 0.14, 0.08, 0.22, 0.16, 0.10),
-    (5.70, 0.96, 0.70, 0.20, 0.10, 0.44, 0.22, 0.14),
-    (4.00, 1.32, 0.88, 0.24, 0.10, 0.62, 0.28, 0.18),
-    (2.20, 1.62, 0.76, 0.18, 0.10, 0.48, 0.32, 0.18),
-    (0.40, 1.80, 0.70, 0.16, 0.10, 0.36, 0.38, 0.16),
-    (-1.40, 1.92, 0.72, 0.14, 0.10, 0.30, 0.42, 0.16),
-    (-3.40, 1.70, 0.74, 0.16, 0.08, 0.28, 0.40, 0.14),
-    (-5.40, 1.50, 0.72, 0.16, 0.08, 0.22, 0.36, 0.12),
-    (-6.90, 1.64, 0.66, 0.16, 0.08, 0.18, 0.32, 0.10),
-    (-8.45, 0.84, 0.50, 0.12, 0.06, 0.12, 0.26, 0.08),
+    # C2b: kill needle read — fat shoulder early, mid bulk, soft bow (not a spike).
+    (8.55, 0.42, 0.34, 0.12, 0.08, 0.18, 0.16, 0.08),
+    (7.20, 0.78, 0.56, 0.16, 0.08, 0.34, 0.20, 0.12),
+    (5.70, 1.18, 0.82, 0.22, 0.10, 0.52, 0.26, 0.16),
+    (4.00, 1.48, 0.96, 0.26, 0.10, 0.68, 0.32, 0.20),
+    (2.20, 1.72, 0.84, 0.20, 0.10, 0.54, 0.36, 0.20),
+    (0.40, 1.92, 0.78, 0.18, 0.10, 0.40, 0.42, 0.18),
+    (-1.40, 2.05, 0.80, 0.16, 0.10, 0.34, 0.46, 0.18),
+    (-3.40, 1.82, 0.82, 0.18, 0.08, 0.30, 0.44, 0.16),
+    (-5.40, 1.58, 0.78, 0.18, 0.08, 0.24, 0.38, 0.14),
+    (-6.90, 1.70, 0.70, 0.18, 0.08, 0.20, 0.34, 0.12),
+    (-8.45, 0.96, 0.54, 0.14, 0.06, 0.14, 0.28, 0.10),
 ]
 
 
@@ -547,13 +548,13 @@ def build_hull(mats):
         zc = st[3]
         crown_z = zc + hh * 0.90
 
-        def crown_seam(name=f"SeamCrown_{index}", loc=(x, 0.0, crown_z), width=min(beam * 1.55, 3.1)):
-            return add_box(name, (0.040, width, 0.10), loc, hull_mat, 0.0)
+        def crown_seam(name=f"SeamCrown_{index}", loc=(x, 0.0, crown_z), width=min(beam * 1.35, 2.6)):
+            return add_box(name, (0.028, width, 0.055), loc, hull_mat, 0.0)
 
         cut(hull, crown_seam)
         for sign, side in ((-1.0, "P"), (1.0, "S")):
-            def flank_seam(name=f"SeamFlank_{index}_{side}", loc=(x, beam * 0.84 * sign, zc)):
-                return add_box(name, (0.040, 0.10, hh * 1.20), loc, hull_mat, 0.0)
+            def flank_seam(name=f"SeamFlank_{index}_{side}", loc=(x, beam * 0.86 * sign, zc)):
+                return add_box(name, (0.028, 0.07, hh * 0.85), loc, hull_mat, 0.0)
 
             cut(hull, flank_seam)
     for sign, side in ((-1.0, "P"), (1.0, "S")):
@@ -672,24 +673,25 @@ def build_wings(hull, mats, lod):
         return bits
     beam = hull_station_at(-1.40)[1]
     for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
-        root_y = beam * 0.40 * sign
-        mid_y = (beam + 0.36) * sign
-        out_y = (beam + 0.60) * sign
-        tip_y = (beam + 0.76) * sign
+        # C2b: stubby thick-root planform — not a card paddle tip.
+        root_y = beam * 0.55 * sign
+        mid_y = (beam + 0.22) * sign
+        out_y = (beam + 0.38) * sign
+        tip_y = (beam + 0.48) * sign
         bits.append(loft_rings(
             f"LOD0_Wing_{tag}",
             [
-                airfoil(0.22, root_y, 0.12, 2.38, 0.46),
-                airfoil(-0.32, mid_y, 0.14, 1.98, 0.32),
-                airfoil(-1.02, out_y, 0.16, 1.48, 0.20),
-                airfoil(-1.82, tip_y, 0.20, 1.00, 0.14),
+                airfoil(0.10, root_y, 0.10, 2.10, 0.58),
+                airfoil(-0.40, mid_y, 0.14, 1.70, 0.42),
+                airfoil(-0.95, out_y, 0.16, 1.20, 0.28),
+                airfoil(-1.45, tip_y, 0.18, 0.82, 0.18),
             ],
             hull_mat, 0.008, cap=True,
         ))
         bits.append(add_box(
             f"LOD0_WingRoot_{tag}",
-            (1.42, 0.42, 0.30),
-            (-0.50, beam * 0.76 * sign, 0.14),
+            (1.55, 0.55, 0.38),
+            (-0.45, beam * 0.72 * sign, 0.14),
             hull_mat, 0.008,
         ))
         bits.append(add_box(
@@ -822,22 +824,23 @@ def build_mast(mats, lod):
     bits = [
         add_box("LOD0_MastFairing", (0.92, 0.68, 0.24), (0.70, 0.0, 0.90), hull_mat, 0.004),
     ]
+    # C2b: formed pylon with real section — not a stick.
     bits.append(loft_rings(
         "LOD0_MastPylon",
         [
-            pylon_ring(0.70, 0.0, 0.86, 0.30, 0.24),
-            pylon_ring(0.70, 0.0, 1.18, 0.22, 0.17),
-            pylon_ring(0.70, 0.0, 1.50, 0.16, 0.13),
-            pylon_ring(0.70, 0.0, 1.82, 0.12, 0.10),
+            pylon_ring(0.70, 0.0, 0.86, 0.42, 0.34),
+            pylon_ring(0.70, 0.0, 1.22, 0.32, 0.26),
+            pylon_ring(0.70, 0.0, 1.56, 0.24, 0.20),
+            pylon_ring(0.70, 0.0, 1.88, 0.18, 0.16),
         ],
         hull_mat, 0.006, cap=True,
     ))
     bits.append(loft_rings(
         "LOD0_MastYard",
         [
-            pylon_ring(0.70, -0.40, 1.66, 0.08, 0.10),
-            pylon_ring(0.70, 0.0, 1.70, 0.10, 0.12),
-            pylon_ring(0.70, 0.40, 1.66, 0.08, 0.10),
+            pylon_ring(0.70, -0.48, 1.70, 0.12, 0.14),
+            pylon_ring(0.70, 0.0, 1.76, 0.16, 0.18),
+            pylon_ring(0.70, 0.48, 1.70, 0.12, 0.14),
         ],
         armor, 0.004, cap=True,
     ))
