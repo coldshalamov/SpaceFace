@@ -23,6 +23,11 @@ test('WORLD-01: Choir refuel depot (station_depot3) advertises and serves missio
   const status = stationTabServiceStatus('missions', depot);
   assert.equal(status.offered, true);
   assert.equal(status.state, 'available');
+
+  // The chart advertises the board: the depot's authored note names it, like every sibling
+  // station's note names its business (the map card renders this line verbatim).
+  assert.ok(depot.chartNote && /\bboard\b/i.test(depot.chartNote),
+    'station_depot3 chartNote names the posted board');
 });
 
 test('WORLD-01: Docking at Choir refuel depot on seed 4242 populates mission board slots', () => {
@@ -51,4 +56,11 @@ test('WORLD-01: Docking at Choir refuel depot on seed 4242 populates mission boa
   const board = state.missions.boards['station_depot3'];
   assert.ok(board, 'station_depot3 missions board must exist');
   assert.ok(board.slots && board.slots.length > 0, 'board must contain missions');
+
+  // The spawned live station carries the services list, so the inspect line and the chart's
+  // station card read "refuel · missions" on the same hull the player docks at.
+  const depotEnt = state.entityList.find((e) => e?.alive !== false && e?.data?.stationId === 'station_depot3');
+  assert.ok(depotEnt, 'station_depot3 spawns on the live route');
+  assert.ok(Array.isArray(depotEnt.data.services) && depotEnt.data.services.includes('missions'),
+    'live station entity advertises missions');
 });
