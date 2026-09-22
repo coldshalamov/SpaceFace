@@ -454,7 +454,13 @@ function desiredForIntent(intent, self, target, contactIndex, seed, entityId, co
         : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.7);
     case ManeuverKind.ORBIT: {
       const orbitRadius = Math.max(1, Number.isFinite(intent.preferredRange) ? intent.preferredRange : config.orbitRadius);
-      return target ? orbit(self, target, orbitRadius, seed, entityId, intent.lateralSign) : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.7);
+      if (target) return orbit(self, target, orbitRadius, seed, entityId, intent.lateralSign);
+      // An orbit that names a world point (the witness holder's live-tracked body anchor, when
+      // the body itself is not a perception contact) holds that point instead of the squad slot.
+      const orbitCenter = intent.orbitCenter && Number.isFinite(intent.orbitCenter.x) && Number.isFinite(intent.orbitCenter.z)
+        ? intent.orbitCenter
+        : intent.formationSlot;
+      return trackPoint(self, orbitCenter, intent.formationVelocity, 0.7);
     }
     case ManeuverKind.SCREEN:
       return screen(self, target, intent.formationSlot, intent.formationVelocity, intent.formationBound);

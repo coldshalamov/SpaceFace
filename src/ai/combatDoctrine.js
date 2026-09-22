@@ -140,7 +140,12 @@ export function selectDoctrineTarget(doctrineId, perception) {
   let bestScore = -Infinity;
   for (const contact of perception.contacts) {
     if (!contact || contact.kind !== ContactKind.SHIP || contact.hostile !== true) continue;
-    if (contact.alive !== true || contact.valid !== true || contact.visible !== true) continue;
+    // A CONTROL/ambush-dispatched assignment arrives as a reported track — the responder is
+    // ordered onto the offender on the jurisdiction's word, beyond its own sensor reach, so the
+    // doctrine may close on the unseen contact. Ordinary remembered contacts stay excluded; a
+    // stale memory cannot advance a telegraph into attack.
+    if (contact.alive !== true || contact.valid !== true
+      || (contact.visible !== true && contact.dispatchedTarget !== true)) continue;
     if (finite(contact.confidence, 0) < 0.55) continue;
     const score = targetScore(doctrine, contact, ward);
     if (score > bestScore || (score === bestScore && stableId(contact.id) < stableId(best && best.id))) {
@@ -811,8 +816,15 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       maneuverKind = ManeuverKind.INTERCEPT;
       maneuverTargetId = null;
     } else if (phase === 'reform') {
-      maneuverKind = ManeuverKind.FORMATION;
-      maneuverTargetId = null;
+      // A CONTROL dispatch has no squad slot to rejoin: its reform beat is a re-commit on the
+      // named offender. Formation-steering it home between passes is the measured stand-off —
+      // pursuers sat 645-724 WU out cycling reform while the offender sat untouched.
+      if (assignedTargetBreak) {
+        maneuverKind = ManeuverKind.INTERCEPT;
+      } else {
+        maneuverKind = ManeuverKind.FORMATION;
+        maneuverTargetId = null;
+      }
     } else if (brawler && phase === 'commit') {
       // Commit is a sticky knife-fight, not a flyby intercept pass. Keep the nose on the target
       // and orbit inside gun range until the authored hold expires.

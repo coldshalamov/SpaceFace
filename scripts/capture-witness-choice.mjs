@@ -43,11 +43,16 @@ const WINDOW_S = 24;
 const FRAME_EVERY_S = 1.5;
 // Wide enough that a responder arriving from the station's protection volume is in frame before it
 // gets to the wreck. The mouse wheel emits this exact event (src/ui/input.js:657).
-const CAPTURE_ZOOM_WU = 320;
-const PLAYER_STANDOFF_WU = 95;
-// How far from the witnessing patrol the hauler is killed. Close enough that both the wreck and the
-// patrol that saw it are in the same chase frame.
-const VICTIM_OFFSET_WU = 120;
+// Wide enough to hold the whole choice: the holder parked on the wreck beside the player AND the
+// chasers burning in from the port's dock ring (~500-650 WU out). At 320 the pursuit spent the
+// whole window off-frame; the picture of the split needs the inbound legs in shot.
+const CAPTURE_ZOOM_WU = 640;
+const PLAYER_STANDOFF_WU = 140;
+// How far from the witnessing patrol the hauler is killed, along the bearing AWAY from the
+// station. The beat holds the patrol inside the port's own footprint (Helios's panel field spans
+// ~400 WU — every early staging was photographed from inside the mesh), so the kill is pushed far
+// enough out that the camera looks at open space and the holder's run crosses the frame.
+const VICTIM_OFFSET_WU = 300;
 
 const browserPath = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -139,8 +144,20 @@ try {
     const witness = lawful[0] || null;
     const anchor = witness ? witness.pos : { x: station.pos.x + 200, z: station.pos.z + 90 };
 
+    // The patrol's beat holds it inside the station's own footprint; a player staged beside it
+    // ends up buried in the station mesh and a camera that has to ease across the sector misses
+    // the whole window. The kill goes on the side of the witness AWAY from the station and the
+    // player beyond that, so the shot is open space with the port in the far background.
+    const sdx = anchor.x - station.pos.x;
+    const sdz = anchor.z - station.pos.z;
+    const sd = Math.hypot(sdx, sdz) || 1;
+    const outDir = { x: sdx / sd, z: sdz / sd };
+
     const victim = SF.helpers.spawnEntity(makeShipEntitySpec('ship_mule', {
-      pos: { x: anchor.x + input.victimOffset, z: anchor.z },
+      pos: {
+        x: anchor.x + outDir.x * input.victimOffset,
+        z: anchor.z + outDir.z * input.victimOffset,
+      },
       team: 2,
       factionId: 'faction_scn',
       fittings: [],
@@ -151,13 +168,27 @@ try {
     victim.vel.z = 120;
 
     world.relocatePlayerInSector(
-      { x: (anchor.x + victim.pos.x) / 2, z: victim.pos.z + input.standoff },
+      {
+        x: victim.pos.x + outDir.x * input.standoff,
+        z: victim.pos.z + outDir.z * input.standoff,
+      },
       { reason: 'capture:witness_choice' },
     );
     const player = state.entities.get(state.playerId);
     player.vel.x = 0;
     player.vel.z = 0;
     SF.bus.emit('camera:zoom', { level: input.zoom });
+    // The chase camera eases toward its focus at a fixed rate — a relocation across the sector
+    // leaves it a thousand WU behind for the whole bar window. Pin the focus where the driver
+    // stood the player; the follow logic then keeps it there on its own.
+    if (state.camera && state.camera.focus) {
+      if (typeof state.camera.focus.set === 'function') {
+        state.camera.focus.set(player.pos.x, 0, player.pos.z);
+      } else {
+        state.camera.focus.x = player.pos.x;
+        state.camera.focus.z = player.pos.z;
+      }
+    }
 
     window.__witness = {
       victimId: victim.id,
@@ -167,6 +198,7 @@ try {
       killed: false,
       wreckId: null,
       deathSimTime: null,
+      deathPos: null,
     };
     for (const name of ['law:incidentOpened', 'law:dispatchStarted', 'law:witnessChoice',
       'aftermathWreck:spawned', 'aftermathWreck:recorded', 'survivorPod:ejected']) {
@@ -187,6 +219,21 @@ try {
 
   console.log(`[witness] staged at ${staging.stationId}: victim ${staging.victimId} at `
     + `${staging.victimPos.x},${staging.victimPos.z}; player ${staging.playerPos.x},${staging.playerPos.z}`);
+
+  // The camera focus is snapped at staging; once hostiles register, the chase composition
+  // legitimately pulls the focus toward them (camFocusOff ~300 is the composed midpoint, not a
+  // miss). Only a still-travelling camera is a failed shot — check it moved at all.
+  {
+    const off = await page.evaluate(() => {
+      const state = window.SF.state;
+      const player = state.entities.get(state.playerId);
+      const focus = state.camera && state.camera.focus;
+      return player && focus
+        ? Math.round(Math.hypot(focus.x - player.pos.x, (focus.z ?? 0) - player.pos.z))
+        : null;
+    });
+    console.log(`[witness] camera focus ${off == null ? 'unknown' : `${off} WU off player`} at staging`);
+  }
 
   // Let the victim be admitted and seen. A hull that is not drawn cannot be photographed dying.
   await page.waitForFunction(() => {
@@ -239,6 +286,7 @@ try {
     victim.alive = false;
     window.__witness.killed = true;
     window.__witness.deathSimTime = state.simTime;
+    window.__witness.deathPos = { x: victim.pos.x, z: victim.pos.z };
     SF.bus.emit('entity:killed', {
       id: victim.id, killerId: state.playerId, type: victim.type,
       pos: { x: victim.pos.x, z: victim.pos.z }, factionId: victim.factionId,
@@ -255,28 +303,71 @@ try {
     const target = death.simTime + i * FRAME_EVERY_S;
     await page.waitForFunction((t) => window.SF.state.simTime >= t, target, { timeout: 120_000 });
     const shot = await page.screenshot({ type: 'png' });
-    const probe = await page.evaluate((deathPos) => {
+    const probe = await page.evaluate(({ deathPos, zoom }) => {
       const state = window.SF.state;
       const w = window.__witness;
       const dispatch = w.events.filter((e) => e.name === 'law:dispatchStarted').pop();
       const ids = (dispatch && dispatch.responderIds) || [];
-      const wreck = (state.entityList || []).find((e) => e && e.alive !== false
-        && e.type === 'wreck' && e.data && e.data.markerId);
+      // Other wrecks exist in a live sector (a second aftermath spawn landed 284k WU out in one
+      // run); the incident's wreck is the marker nearest the recorded kill point, not the first
+      // in entity order.
+      let wreck = null;
+      let wreckD2 = Infinity;
+      const dp = w.deathPos || deathPos;
+      for (const e of state.entityList || []) {
+        if (!e || e.alive === false || e.type !== 'wreck' || !e.data || !e.data.markerId) continue;
+        const d2 = (e.pos.x - dp.x) ** 2 + (e.pos.z - dp.z) ** 2;
+        if (d2 < wreckD2) { wreckD2 = d2; wreck = e; }
+      }
       const anchor = wreck ? wreck.pos : deathPos;
+      const incidentAnchor = (() => {
+        const law = state.lawSecurity || state.law || {};
+        const incidents = law.incidents || {};
+        for (const key of Object.keys(incidents)) {
+          const va = incidents[key] && incidents[key].victimAnchor;
+          if (va) return { incidentId: incidents[key].id, x: Math.round(va.x || 0), z: Math.round(va.z || 0), wreckEntityId: va.wreckEntityId ?? null, podEntityId: va.podEntityId ?? null };
+        }
+        return null;
+      })();
+      const wrecks = (state.entityList || []).filter((e) => e && e.type === 'wreck')
+        .map((e) => ({ id: e.id, alive: e.alive !== false, x: Math.round(e.pos.x), z: Math.round(e.pos.z), marker: !!e.data?.markerId }));
       const player = state.entities.get(state.playerId);
+      // The stack's last decision shows what each responder was actually ORDERED to fly — the
+      // activity kind alone cannot distinguish a wreck-ward intercept from a combat-doctrine
+      // flyby leg that overwrote it (measured: a holder's activity read scan_approach while a
+      // doctrine egress flightPoint dragged it 600+ WU off the body).
+      const decisions = (() => {
+        try {
+          const aiSys = window.SF.registry && window.SF.registry.get && window.SF.registry.get('aiSlot');
+          const stack = aiSys && aiSys.stack;
+          const list = stack && stack.lastResult && stack.lastResult.decisions;
+          return Array.isArray(list) ? list : [];
+        } catch { return []; }
+      })();
       const responders = ids.map((id) => {
         const e = state.entities.get(id);
         if (!e || e.alive === false) return { id, gone: true };
         const ai = (e.data && e.data.ai) || {};
         const act = ai.activity || {};
+        const decision = decisions.find((d) => d && d.entityId === id) || null;
+        const mv = decision && decision.maneuver || {};
+        const doc = decision && decision.combatDoctrine || null;
         return {
           id,
           role: ai.witnessRole || null,
           kind: act.kind || null,
+          actTarget: act.targetId ?? null,
+          mvKind: mv.kind || null,
+          // The planner request does not carry a target; the doctrine snapshot's
+          // maneuverTargetId is the field that proves what the ship was ordered toward.
+          mvTarget: (doc && doc.maneuverTargetId) ?? mv.targetId ?? null,
+          mvReason: mv.reason || null,
+          flightPoint: mv.flightPoint ? { x: Math.round(mv.flightPoint.x), z: Math.round(mv.flightPoint.z) } : null,
+          docPhase: doc ? `${doc.doctrineId}:${doc.phase}` : null,
           toWreck: Math.round(Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z)),
           toPlayer: Math.round(Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z)),
           speed: Number(Math.hypot(e.vel?.x || 0, e.vel?.z || 0).toFixed(1)),
-          onScreen: Math.round(Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z)) < 220,
+          onScreen: Math.round(Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z)) < zoom,
         };
       });
       // WHERE THE CAMERA ACTUALLY IS. A frame with nothing in it has two very different causes —
@@ -292,6 +383,8 @@ try {
         cameraPos: cam ? { x: Math.round(cam.x), y: Math.round(cam.y), z: Math.round(cam.z) } : null,
         wreckOnScreenWU: null,
         wreckId: wreck ? wreck.id : null,
+        incidentAnchor,
+        wrecks,
         wreckToPlayer: wreck ? Math.round(Math.hypot(wreck.pos.x - player.pos.x, wreck.pos.z - player.pos.z)) : null,
         wreckAdmitted: wreck ? wreck.presentationAdmission : null,
         wreckSpeed: wreck ? Number(Math.hypot(wreck.vel?.x || 0, wreck.vel?.z || 0).toFixed(1)) : null,
@@ -300,12 +393,12 @@ try {
         dispatchStarted: w.events.some((e) => e.name === 'law:dispatchStarted'),
         responders,
       };
-    }, death.pos);
+    }, { deathPos: death.pos, zoom: CAPTURE_ZOOM_WU });
     const name = `w${String(i).padStart(2, '0')}_t${probe.sinceDeath.toFixed(2)}.png`;
     await writeFile(path.join(OUT, name), shot);
     frames.push({ name, ...probe });
     console.log(`  ${name} +${probe.sinceDeath}s wreck ${probe.wreckId}@${probe.wreckToPlayer}WU `
-      + `(${probe.wreckAdmitted}) camFocusOff=${probe.cameraFocusOffWU} choice=${probe.witnessChoiceEvents} `
+      + `(${probe.wreckSpeed}wu/s) camFocusOff=${probe.cameraFocusOffWU} choice=${probe.witnessChoiceEvents} `
       + `responders ${JSON.stringify(probe.responders)}`);
   }
 

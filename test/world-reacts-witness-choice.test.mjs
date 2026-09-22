@@ -228,6 +228,78 @@ test('three-way split: 2+ responders and valid wreck anchor choose 1 nearest hol
   assert.deepEqual(choices[0].payload.anchor, { x: 150, z: 0 });
 });
 
+test('cruise-momentum wreck: hold goes to the nearest responder that can still reach the body', () => {
+  const h = bootHarness({
+    responderPositions: [
+      { x: 160, z: 0 }, // 10 from the body — nearest, but a Bastion envelope (~41) cannot catch 50
+      { x: 220, z: 0 }, // 70 — a Hornet envelope (72) can
+      { x: 300, z: 0 }, // 150 — Bastion again
+    ],
+  });
+  h.responders[0].data.defId = 'ship_bastion';
+  h.responders[1].data.defId = 'ship_hornet';
+  h.responders[2].data.defId = 'ship_bastion';
+
+  h.bus.emit('combat:damage', {
+    attackerId: h.player.id,
+    targetId: h.victim.id,
+    applied: 20,
+    amount: 20,
+    pos: { x: h.victim.pos.x, z: h.victim.pos.z },
+  });
+
+  const incident = Object.values(h.state.lawSecurity.incidents)[0];
+  assert.ok(incident, 'incident must open');
+  h.state.simTime = incident.dispatchAt;
+  h.law.update(SIM_DT, h.state);
+  assert.equal(incident.responderIds.length, 3);
+
+  h.victim.alive = false;
+  h.victim.hull = 0;
+  const wreck = h.sim.spawn({
+    type: 'wreck',
+    pos: { x: 150, z: 0 },
+    vel: { x: 0, z: 50 }, // the body keeps the victim's cruise momentum — nobody out-brakes physics
+    mass: 55,
+    hull: 1,
+    data: {
+      markerId: 'aft_fast_1',
+      aftermath: {
+        victimId: h.victim.id,
+        killerId: h.player.id,
+        markerId: 'aft_fast_1',
+        salvagePool: { cmdty_scrap_metal: 4 },
+      },
+    },
+  });
+
+  h.bus.emit('aftermathWreck:spawned', {
+    markerId: 'aft_fast_1',
+    entityId: wreck.id,
+    sectorId: 'sector_helios_prime',
+  });
+  h.law.update(SIM_DT, h.state);
+
+  const holder = h.responders[1]; // the Hornet, not the nearer Bastion that could never arrive
+  assert.equal(holder.data.ai.witnessRole, 'hold');
+  assert.equal(holder.data.ai.witnessIncidentId, incident.id);
+  assert.equal(holder.data.ai.activity.kind, ActivityKind.SCAN_APPROACH,
+    'a body still outrunning a parked HOLD keeps the holder on the intercept');
+  assert.equal(holder.data.ai.activity.targetId, wreck.id);
+
+  for (const chaser of [h.responders[0], h.responders[2]]) {
+    assert.equal(chaser.data.ai.witnessRole, 'chase');
+    assert.equal(chaser.data.ai.securityTargetId, h.player.id);
+    assert.equal(chaser.data.ai.activity.kind, ActivityKind.ATTACK_RUN);
+  }
+
+  const choices = h.events.filter((e) => e.name === 'law:witnessChoice');
+  assert.equal(choices.length, 1, 'exactly one witness choice event emitted');
+  assert.equal(choices[0].payload.decision, 'split');
+  assert.equal(choices[0].payload.holderId, holder.id);
+  assert.deepEqual(choices[0].payload.chaserIds, [h.responders[0].id, h.responders[2].id]);
+});
+
 test('lone-responder chase: fewer than two responders never split and keep chasing', () => {
   const h = bootHarness({
     responderPositions: [{ x: 180, z: 0 }],

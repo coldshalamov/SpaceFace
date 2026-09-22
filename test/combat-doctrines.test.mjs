@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { ContactKind, ManeuverKind, ObjectiveKind } from '../src/ai/contracts.js';
-import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
+import { ActivityKind, RulesOfEngagement, normalizeActivity, perceptionForWingOrderCombatDoctrine } from '../src/ai/doctrine.js';
 import { ManeuverPlanner } from '../src/ai/maneuver.js';
 import { PerceptionMemory } from '../src/ai/perception.js';
 import { createSG03ActionPort } from '../src/ai/sg03ActionPort.js';
@@ -201,6 +201,42 @@ for (const [label, values] of [
   assert.equal(result.targetId, null, 'a remembered contact cannot advance a telegraph into attack');
   assert.equal(result.phase, 'ingress');
   assert.equal(result.fireWindow, false);
+}
+
+{
+  // PQ-138.00: a CONTROL-dispatched offender beyond the responder's sensor reach arrives as a
+  // reported (visible:false) track. perceptionForWingOrderCombatDoctrine tags the named target
+  // so the doctrine can maneuver on the assignment; untagged remembered contacts stay excluded.
+  const dispatchPerception = perception([
+    shipContact(1, { x: 5000, z: 0, visible: false, confidence: 0.6 }),
+    shipContact(3, { x: 40, z: 0 }),
+  ]);
+  dispatchPerception.self.activity = {
+    ...dispatchPerception.self.activity,
+    reason: 'security_response:law:test',
+    targetId: 1,
+  };
+  const filtered = perceptionForWingOrderCombatDoctrine(dispatchPerception, baseDirective());
+  const tagged = filtered.contacts.find((c) => c.id === 1);
+  assert.equal(tagged.dispatchedTarget, true, 'the dispatched offender contact is tagged for doctrine maneuvering');
+  assert.equal(tagged.visible, false, 'the reported track keeps its honest unseen flag');
+  assert.equal(filtered.contacts.some((c) => c.kind === ContactKind.SHIP && c.id !== 1), false,
+    'unrelated ship contacts stay out of the doctrine view');
+  assert.equal(
+    selectDoctrineTarget(CombatDoctrineId.INTERCEPTOR_FLYBY, filtered)?.id, 1,
+    'a dispatched reported track is a legal doctrine maneuver target');
+  assert.equal(
+    selectDoctrineTarget(CombatDoctrineId.INTERCEPTOR_FLYBY, perception([
+      shipContact(1, { visible: false, confidence: 0.6 }),
+    ])), null,
+    'an untagged reported contact still cannot drive doctrine target selection');
+  const runtime = new CombatDoctrineRuntime({ seed: 5 });
+  const decision = runtime.update({
+    tick: 0, entityId: 'responder', doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: filtered, directive: baseDirective(),
+  });
+  assert.equal(decision.maneuverTargetId, 1, 'the doctrine commits its maneuver onto the reported track');
+  assert.equal(decision.maneuverKind, ManeuverKind.INTERCEPT);
 }
 
 const directive = baseDirective();

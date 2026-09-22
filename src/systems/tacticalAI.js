@@ -579,6 +579,13 @@ export function applyEngagementPosture(entity, doctrine, state) {
   }
   // Survival orders (morale flee / fsm flee) and already-postured activity outrank the break.
   if (!current || current.kind === 'flee' || current.kind === 'disengage') return;
+  // A CONTROL-dispatched enforcement run does not break off on doctrine cadence: the incident's
+  // own stand-down ends the response, so the egress/lull rewrite must not park a pursuer in a
+  // stand-off orbit while the offender is still the live assignment (measured on the witness
+  // route: reserves held 645-724 WU under reform/reposition for the whole capture window instead
+  // of closing to hail range).
+  if (current.kind === 'attack_run' && current.targetId != null
+    && String(current.reason || '').startsWith('security_response:')) return;
   if (String(current.reason || '').startsWith(POSTURE_REASON_PREFIX)) return;
   // A break is already in flight but another writer replaced the activity with a non-posture
   // reason: do not stash the interloper — re-commit must hand back the ORIGINAL authored

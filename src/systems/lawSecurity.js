@@ -17,6 +17,8 @@ import {
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+import { MANEUVER_SPEED_CAPS } from '../ai/maneuver.js';
+import { deriveEnemyMotionScale, hullIdFromEntity } from '../data/flightFeelEnvelopes.js';
 import {
   is47aScavengerCounterplayAuthorized,
   protectedStationAt,
@@ -1512,6 +1514,12 @@ export const lawSecurity = {
       }
     }
 
+    const holdTargetId = anchor.wreckEntityId != null ? anchor.wreckEntityId : anchor.podEntityId;
+    const holdTarget = holdTargetId != null ? entityById(state, holdTargetId) : null;
+    const holdTargetSpeed = holdTarget && holdTarget.vel
+      ? Math.hypot(Number(holdTarget.vel.x) || 0, Number(holdTarget.vel.z) || 0)
+      : 0;
+
     const lastChoice = incident._lastWitnessChoice;
     const prevHolderId = lastChoice?.decision === 'split' ? lastChoice.holderId : null;
     const prevChaserIds = lastChoice?.decision === 'split' ? lastChoice.chaserIds : null;
@@ -1540,7 +1548,18 @@ export const lawSecurity = {
         return a.id - b.id;
       });
       holder = sorted[0];
-      chasers = sorted.slice(1);
+      // The hold has to go to a unit that can still reach the body: a hulk keeps the victim's
+      // cruise momentum forever (boundedDriftVel is a cap, not drag), and a heavy patrol's
+      // intercept envelope can sit below that drift — nearest-first would pin the job on a unit
+      // that can never arrive (measured on the live route: a Bastion holder capped at ~41 WU/s
+      // falling 330 → 1180 WU behind a 42 WU/s wreck). When nobody can catch it, the nearest
+      // still peels off — the visible split is the point.
+      const canReachBody = (r) => responderReachSpeed(r) >= holdTargetSpeed + 4;
+      if (holdTarget && holdTarget.alive !== false && !canReachBody(holder)) {
+        const capable = sorted.find(canReachBody);
+        if (capable) holder = capable;
+      }
+      chasers = sorted.filter((r) => r !== holder);
     }
 
     const holderId = holder.id;
@@ -1561,11 +1580,20 @@ export const lawSecurity = {
     // 450 WU away 22 s later). Until it is within the standoff it TRANSITs to the wreck itself (a
     // concrete target, so the formation seek closes on the drifting body); once there it loiters.
     const WITNESS_HOLD_STANDOFF_WU = 90;
-    const holdTargetId = anchor.wreckEntityId != null ? anchor.wreckEntityId : anchor.podEntityId;
-    const holdTarget = holdTargetId != null ? entityById(state, holdTargetId) : null;
     const holderDistance = Math.hypot(holder.pos.x - anchorPos.x, holder.pos.z - anchorPos.z);
-    const holderApproaches = holderDistance > WITNESS_HOLD_STANDOFF_WU
-      && !!holdTarget && holdTarget.alive !== false;
+    // HOLD tracks its anchor at ~12 WU/s, so a body still carrying the victim's cruise momentum
+    // outruns a parked loiter (measured on the live route: wreck receding 683 → 986 WU over 20 s
+    // while the holder circled a stale point). Keep intercepting until the body is both inside the
+    // standoff AND slow enough to actually hold station on.
+    const WITNESS_HOLD_TRACK_SPEED_WU_S = 14;
+    // The hold orbits the body at ~70 WU; an ordinary orbit's radial swing can carry it a little
+    // past the standoff without ever leaving the scene. Re-approach only when it is genuinely
+    // flung off (measured: orbit at 70 ranged 52-98 WU around an 8 WU/s wreck, so a single 90-WU
+    // edge flapped approach<->hold every few seconds).
+    const holderInHold = holderAi.activity && holderAi.activity.kind === ActivityKind.LOITER;
+    const reapproachDistance = holderInHold ? WITNESS_HOLD_STANDOFF_WU * 1.5 : WITNESS_HOLD_STANDOFF_WU;
+    const holderApproaches = !!holdTarget && holdTarget.alive !== false
+      && (holderDistance > reapproachDistance || holdTargetSpeed > WITNESS_HOLD_TRACK_SPEED_WU_S);
     // SCAN_APPROACH is the lawful approach maneuver (an INTERCEPT that closes to preferredRange at
     // speed); TRANSIT would be a formation crawl that a wreck still carrying its victim's momentum
     // outruns (measured: holder at 7–47 WU/s while the wreck receded 683 → 986 WU over 20 s).
@@ -1587,7 +1615,15 @@ export const lawSecurity = {
         anchor: { x: anchorPos.x, z: anchorPos.z },
         leashRadius: 400,
         startedTick,
-        targetId: null,
+        // The hold target is also the loiter target: LOITER-with-targetId maps to an ORBIT on
+        // the body (or its live-tracked anchor when the body is not a perception contact, e.g.
+        // a pod). HOLD alone cannot do this — it tracks the squad's formationSlot and drags the
+        // holder home (measured on the live route: loitering holder vetoed by
+        // formation_bound_exceeded, receding 519 -> 2085 WU from the scene).
+        targetId: holdTargetId,
+        // Circle inside the approach standoff so normal orbit error never flips the activity
+        // back to SCAN_APPROACH.
+        preferredRange: WITNESS_HOLD_STANDOFF_WU - 20,
         encounterId: incident.id,
       });
 
@@ -3743,6 +3779,13 @@ function overlapsWantedNet(entity, net) {
   if (!entity || !entity.pos || !net || !net.pos) return false;
   const reach = (Number(entity.radius) || 8) + (Number(net.radius) || WANTED_NET_RADIUS);
   return distance2(entity.pos, net.pos) <= reach * reach;
+}
+
+// The fastest intercept the responder's authored hull-motion envelope allows — the same scale the
+// maneuver planner applies, so "can it reach the body" is answered with the planner's own numbers.
+function responderReachSpeed(responder) {
+  const scale = deriveEnemyMotionScale(hullIdFromEntity(responder));
+  return MANEUVER_SPEED_CAPS.interceptSpeed * (scale && Number.isFinite(scale.speed) && scale.speed > 0 ? scale.speed : 1);
 }
 
 function entitySpeed(entity) {
