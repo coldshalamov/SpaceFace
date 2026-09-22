@@ -1,0 +1,142 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/drifter_production_v1.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/drifter_production_v1",
+  "focus": [
+    -0.455,
+    0.0,
+    0.2448
+  ],
+  "boundsMin": [
+    -8.86,
+    -3.38,
+    -1.1705
+  ],
+  "boundsMax": [
+    7.95,
+    3.38,
+    1.66
+  ],
+  "size": [
+    16.81,
+    6.76,
+    2.8305
+  ],
+  "lightScale": 1.5565,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Beacon_Aft",
+      "triangles": 216,
+      "materials": [
+        "Material_Warning"
+      ]
+    },
+    {
+      "name": "LOD0_Beacon_Fore",
+      "triangles": 112,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Bore_Port",
+      "triangles": 52,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Bore_Stbd",
+      "triangles": 52,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Nozzle_Port",
+      "triangles": 60,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Nozzle_Stbd",
+      "triangles": 60,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Port",
+      "triangles": 84,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Stbd",
+      "triangles": 84,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Bracket_ForeP",
+      "triangles": 5824,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Collar_Port",
+      "triangles": 1568,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_CoolFin_Port_0",
+      "triangles": 240,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_Glass",
+      "triangles": 382,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_HeatBand_Port",
+      "triangles": 480,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 19436,
+      "materials": [
+        "Material_Hull",
+        "Material_Armor",
+        "Material_Course",
+        "Material_Mark",
+        "Material_Dirt"
+      ]
+    }
+  ],
+  "triangles": 28650,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/drifter_production_v1/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/drifter_production_v1/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/drifter_production_v1/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

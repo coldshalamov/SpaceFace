@@ -1,0 +1,117 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/atlas_production_v1.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/atlas_production_v1",
+  "focus": [
+    -0.566,
+    0.0,
+    0.785
+  ],
+  "boundsMin": [
+    -12.132,
+    -3.57,
+    -1.6
+  ],
+  "boundsMax": [
+    11.0,
+    3.57,
+    3.17
+  ],
+  "size": [
+    23.132,
+    7.14,
+    4.77
+  ],
+  "lightScale": 2.1419,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "triangles": 1832,
+      "materials": [
+        "Material_BrushedMetal_RemasterNickel"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Hull_RemasterSeaEnamel",
+      "triangles": 536,
+      "materials": [
+        "Material_Hull_RemasterSeaEnamel"
+      ]
+    },
+    {
+      "name": "LOD0_Accent",
+      "triangles": 216,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Armor",
+      "triangles": 12472,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Canopy",
+      "triangles": 268,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_Ceramic",
+      "triangles": 840,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 1812,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Mechanical",
+      "triangles": 40092,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Radiator",
+      "triangles": 3668,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_Thruster",
+      "triangles": 1976,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Warning",
+      "triangles": 1404,
+      "materials": [
+        "Material_Warning"
+      ]
+    }
+  ],
+  "triangles": 65116,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/atlas_production_v1/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/atlas_production_v1/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/atlas_production_v1/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}
