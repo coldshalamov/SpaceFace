@@ -3875,6 +3875,9 @@ export const npcJobsRuntime = {
     // then save:loaded will re-link only jobs that actually exist in the incoming envelope.
     this._resetCeresEscortAuthority();
     this._resetCeresRealTargetAuthority();
+    // Session-transient, same law as aftermathWrecks.lastAmbientNewsAt: a rewind to an earlier
+    // save must not inherit a future timestamp that would suppress freight_short news for hours.
+    this._shortRunNewsAt = {};
     forEachLivingWorldActor(this.state, (entity) => {
       if (entity.data && typeof entity.data.jobId === 'string'
         && entity.data.jobId.startsWith('job:')) {

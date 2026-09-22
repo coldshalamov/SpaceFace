@@ -114,3 +114,43 @@ test('newGame forgets the throttle so a fresh run speaks again', () => {
     sim.destroy?.();
   }
 });
+
+test('a save-load rewind forgets the throttle too', () => {
+  const sim = boot();
+  const seen = { news: [] };
+  sim.bus.on('news:publish', (p) => seen.news.push(p));
+  try {
+    const jobs = sim.registry.get('npcJobsRuntime');
+    sim.helpers.npcJobs.assign(hull(sim, 'rec-rewind-hauler'), haulerSpec());
+    stepSeconds(sim, 6);
+    assert.equal(seen.news.length, 1, 'the first starved run speaks');
+
+    // Rewind: a stale future timestamp would suppress the line until simTime caught up.
+    jobs.deserialize(jobs.serialize());
+    assert.deepEqual(jobs._shortRunNewsAt, {}, 'the throttle dies with the outgoing timeline');
+
+    sim.helpers.npcJobs.assign(hull(sim, 'rec-rewind-hauler-2'), haulerSpec());
+    stepSeconds(sim, 6);
+    assert.equal(seen.news.length, 2, 'the rewound world speaks again inside the old window');
+  } finally {
+    sim.destroy?.();
+  }
+});
+
+test('the wording is deterministic: same seed and job id, same line, no ambient rng', () => {
+  const lines = [];
+  for (let i = 0; i < 2; i++) {
+    const sim = boot();
+    const seen = { news: [] };
+    sim.bus.on('news:publish', (p) => seen.news.push(p));
+    try {
+      sim.helpers.npcJobs.assign(hull(sim, 'rec-deterministic'), haulerSpec());
+      stepSeconds(sim, 6);
+      lines.push(seen.news[0].text);
+    } finally {
+      sim.destroy?.();
+    }
+  }
+  assert.equal(lines[0], lines[1], 'two runs of the same seed read the same headline');
+  assert.match(lines[0], /Ceres Refinery/);
+});
