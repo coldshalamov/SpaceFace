@@ -188,11 +188,14 @@ test('a slow frame rate keeps real time; only a hitch sheds catch-up', () => {
   // OWNER, 2026-09-20: "sometimes it hitches while I'm playing ... it's overall just not a smooth
   // and playable experience." The old policy capped any frame over 33 ms to two steps and any
   // frame after a slow draw to one, so a 25 fps machine ran the whole game at 40-80 % speed.
+  // Lane D (2026-09-22): soft-GPU sustained ~12 fps (~83 ms) must stay on the slow path too —
+  // classifying those callbacks as hitches resumed only two ticks and ran the game at ~40 %.
   assert.equal(MAX_CATCHUP_STEPS, 4, 'flight catch-up ceiling must stay four 60 Hz steps');
   assert.equal(HITCH_CATCHUP_STEPS, 2);
+  assert.equal(HITCH_FRAME_TICKS, 6.5);
   assert.ok(HITCH_FRAME_TICKS > MAX_CATCHUP_STEPS,
     'every frame the catch-up ceiling can fully serve is a slow frame, never a hitch');
-  for (const fps of [60, 45, 30, 25, 20, 15]) {
+  for (const fps of [60, 45, 30, 25, 20, 15, 12, 10]) {
     assert.equal(isHitchFrame(1 / fps), false, fps + ' fps is a frame rate, not a hitch');
     assert.equal(frameSimStepCap({ frameDt: 1 / fps }), MAX_CATCHUP_STEPS);
   }
