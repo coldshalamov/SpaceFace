@@ -2,7 +2,7 @@
 // Automated MemLab runner for SpaceFace.
 // Detects detached DOM elements, retained Three.js objects, dangling event listeners, and memory leaks.
 
-import { createServer } from 'node:http';
+import { createServer, get as httpRequestGet } from 'node:http';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +27,7 @@ async function isServerRunning(port) {
 }
 
 function httpGet(url, cb) {
-  import('node:http').then(({ get }) => get(url, cb));
+  return httpRequestGet(url, cb);
 }
 
 async function ensureLocalServer() {
