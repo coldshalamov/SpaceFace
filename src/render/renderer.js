@@ -306,6 +306,7 @@ import {
   TABLE_BUILD_URGENT_SECONDS,
   TABLE_COLLECT_HORIZON_SECONDS,
   TABLE_PROMOTE_HORIZON_SECONDS,
+  TABLE_RESIDENCY_PREFETCH_SECONDS,
   TABLE_SUBMIT_APPROACH_SECONDS,
   tableLookAtDelta,
   tableShadowCasterRadius,
@@ -1166,6 +1167,10 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     if (owner._holdExemptCollectS <= 0) {
       owner._holdExemptCollectS = HOLD_EXEMPT_COLLECT_SECONDS;
       enqueueHoldExemptMeshBuilds(owner);
+      // Lane C: authored decode must cook on the approach runway even while the
+      // hold blocks ordinary residency thrash. preloadAuthoredAssetsForEntity is
+      // bounded (2 starts) and never invents a dummy prewarm key.
+      kickDecodeRunwayAssets(owner, owner._presentationMeshScratch);
     }
     if (typeof owner._drainProtectedFirstFlightBuilds === 'function') owner._drainProtectedFirstFlightBuilds();
     return 'held-first-flight';
@@ -1228,7 +1233,15 @@ function isHoldExemptMeshBuild(entity, state, glassIds) {
   // player cannot see; a row on the live glass is work the player is looking at the absence of.
   // Builds stay inside the ordinary per-poll budget and time slice.
   if (entityIsOnReadableGlass(entity, state)) return true;
-  return false;
+  // Lane C — residency prefetch window under the hold. Waiting until a row crosses the
+  // glass band pays first mesh build on-glass (crucible soft-GPU: asteroid builds at
+  // +11.5 s while hold still owns streaming). Approach time uses the same seconds×speed
+  // constants as the ordinary runway; a parked far R1_RUNWAY row still stays deferred.
+  const env = renderAdmissionEnv(state);
+  const tGlass = entityTimeToGlassSeconds(
+    entity, env, state, TABLE_RESIDENCY_PREFETCH_SECONDS,
+  );
+  return tGlass <= TABLE_RESIDENCY_PREFETCH_SECONDS;
 }
 
 /**
