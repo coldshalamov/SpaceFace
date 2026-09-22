@@ -81,7 +81,7 @@ not to invent.
 | VERB-06 | The opening hauler's cargo can cook when it slams | `src/data/encounters/015-opening-hauler-raid.js` | Its commodity is one `lootShards.js` already treats as a volatile slam | Add an explosive system. Retint pods (§22 F4) | SHIPPED f6ca40d5b |
 | VERB-07 | Rocks dropped for the opening fight are not wiped at 45 seconds | `src/systems/terrainAnchors.js` | Those anchors survive until the player leaves the neighbourhood | Build a machine (§22 F13) | OPEN |
 | VERB-08 | The throw diamond hides when you are the body that will move | `src/ui/masslineHud.js` | A heavy anchor or self-sling does not draw the meeting diamond | Draw a path ghost (§22 F1). Change release impulse | OPEN |
-| VERB-09 | Helios sells one stack of impulse charges | Helios market or station stock data consumed by `src/systems/economy.js` | A new game can buy `cmdty_impulse_charge` at Helios Station | Change the charge solver or the ten-verb curve (§22 B8) | OPEN |
+| VERB-09 | Helios sells one stack of impulse charges | Helios market or station stock data consumed by `src/systems/economy.js` | A new game can buy `cmdty_impulse_charge` at Helios Station | Change the charge solver or the ten-verb curve (§22 B8) | SHIPPED 40a2f2c4c |
 | VERB-10 | A pod or chip on your rope is not vacuumed into the hold | `src/systems/mining.js` | `_updatePickups` skips a Massline-latched pickup | Change credit amounts (§22 F6) | OPEN |
 | VERB-11 | Spilled freight stays in the world long enough to rope | `src/systems/traffic.js` and the pickup TTL it uses | On seed 4242 a Helios spill still exists when a cruise-speed ship reaches latch range | Add a scavenger behaviour | OPEN |
 | VERB-12 | A wreck made in this swarm round can be roped before the shop | `src/systems/tetherGameplay.js` | A survival-cohort wreck is a legal Massline target in the round that spawned it | Persist it across the shop (§22 B3) | OPEN |
@@ -166,6 +166,7 @@ not to invent.
 | WORLD-11 | WF-01 | 0444daa66 | Io Reach lanes can stamp named courier `lane_maro_keelwright` (REACH-MAIL, Io-only) |
 | INST-13 | INST-13 | 1eaf2de75 | Docking starts the authored `station_hum_loop` room tone on the ambient bus; undocking stops it |
 | PIC-10 | PIC-10 | 49bbd51ca | Graphics-lab ship/bolt glow demos are additive geometry coaxial with the drive/bolt; prose names the banned camera-facing card |
+| VERB-09 | verb-09-helios-impulse-charge | 40a2f2c4c | Capital's `military` secondary role authors `cmdty_impulse_charge` as a produced line; the starter station keeps a full reference lot buyable |
 
 ## CUT
 

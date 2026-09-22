@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "fitted-tractor-magnet-range",
-      "date": "2026-08-12",
-      "wf": "WF-05",
-      "mode": "integration",
-      "verdict": "accepted",
-      "reason": "fitted tractor scoop magnet is real",
-      "fingerprint": "verb=scoop,subject=ore,sector=any,layer=foreground,tempo=ambient,domain=wf-05",
-      "references": [],
-      "integration": "live",
-      "evidence": "design/program/receipts/inference-5x-2026-08-11/EVIDENCE.md",
-      "review": "design/inference-workflows/records/inference-5x-2026-08-11/U1_REVIEW.md"
-    },
-    {
       "id": "brawler-commit-doctrine",
       "date": "2026-08-12",
       "wf": "WF-02",
@@ -1637,6 +1624,19 @@
       "references": [],
       "integration": "live",
       "commit": "49bbd51ca",
+      "verification": "focused_green"
+    },
+    {
+      "id": "verb-09-helios-impulse-charge",
+      "date": "2026-09-22",
+      "wf": "WF-06",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Helios Station authors cmdty_impulse_charge as a produced line, so the starter station deepens local stock for the combat verb instead of the neutral listing",
+      "fingerprint": "verb=buy,subject=impulse-charge,sector=helios,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "40a2f2c4c",
       "verification": "focused_green"
     }
   ],
