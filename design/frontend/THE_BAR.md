@@ -74,27 +74,34 @@ opens, and a disabled one looks disabled. `--walk` proves this; "no visible chan
 
 ## 3. The tells — what marks an interface as vibe-coded
 
-Every one of these is currently in the game. The screenshot that proves it is named.
+Every one of these was in the game on 2026-09-22. The screenshot that proved it is named, and
+**✓ marks the ones that pass now** — kept rather than deleted, because the list is a checklist to
+run against the next screen, not a record of one pass.
 
-1. **A debug identifier as a hero title.** `SECTOR_HELIOS`, underscore and all, at 96 px. *(chart)*
-2. **A painted box with nothing in it.** A 64×787 black rail down the title screen; a 276×40 black
+1. ✓ **A debug identifier as a hero title.** `SECTOR_HELIOS`, underscore and all, at 96 px. *(chart)*
+2. ✓ **A painted box with nothing in it.** A 64×787 black rail down the title screen; a 276×40 black
    bar on the flight deck; an empty plate where a price chart should be. *(title, flight, market)*
-3. **Type printed on type.** "you pay · per unit" over the body paragraph; three panels of text
+3. ✓ **Type printed on type.** "you pay · per unit" over the body paragraph; three panels of text
    mashed into the bottom-left corner. *(market, chart)*
-4. **A hero number cut in half by a button cluster** that was positioned independently of it. *(ship)*
-5. **Panels floating in a void** with no shared edge, no grid, no margin. *(ship)*
-6. **Five panel treatments on one screen** — bevelled grey, green tint, flat card, double border,
+4. ✓ **A hero number cut in half by a button cluster** that was positioned independently of it. *(ship)*
+5. ✓ **Panels floating in a void** with no shared edge, no grid, no margin. *(ship)*
+6. ✓ **Five panel treatments on one screen** — bevelled grey, green tint, flat card, double border,
    circle. *(market, flight)*
 7. **Generic rounded-rect buttons** in a row: Fewer / More / Max / Buy / Sell. Grey fill, 6 px
    radius, no material, no state. *(market)*
 8. **A wall of identical pills** standing in for information design — eleven of them. *(chart)*
-9. **Contradictory simultaneous copy.** "TAKING FIRE" while the panel reads "THREAT Clear". *(flight)*
+9. ✓ **Contradictory simultaneous copy.** "TAKING FIRE" while the panel reads "THREAT Clear". *(flight)*
 10. **Build metadata shown to players.** `v0.1.0 · 24bb3d0c37e8`. *(title, pause)*
-11. **Naked text as a menu.** No affordance, no hit target, no state. *(title)*
-12. **One accent used arbitrarily** — a peach block for Resume against dark green for everything
+11. ✓ **Naked text as a menu.** No affordance, no hit target, no state. *(title)*
+12. ✓ **One accent used arbitrarily** — a peach block for Resume against dark green for everything
     else, with no rule behind it. *(pause)*
-13. **A section header over nothing** — "DEV" with an empty bar under it. *(pause)*
-14. **The screen occupying a quarter of the frame** with the rest left to the backdrop. *(pause)*
+13. ✓ **A section header over nothing** — "DEV" with an empty bar under it. *(pause)*
+14. ✓ **The screen occupying a quarter of the frame** with the rest left to the backdrop. *(pause)*
+
+Still open: **7** (the market's stepper row is machined now, but generic rounded rects survive on
+screens nobody has composed), **8** (the chart's eleven-pill rail), and **10** (the build hash,
+which stays — PQ-033.01 puts it there so a crash report can name its build, and it sits quiet at
+etch size in a footer).
 
 Generic web tells to stay clear of on top of those: purple→blue gradients, Inter/Roboto/system-ui,
 a 1px grey border on every card, a coloured 3–4 px left rail as the only state cue, `shadow-lg`
@@ -123,6 +130,31 @@ node scripts/ui-bench.mjs --shot=<id> --walk   # then OPEN every png it adds
 
 The bench finding list is necessary and not sufficient. **The picture can be clean and still be
 cheap.** You are the reviewer; the PNG is the evidence.
+
+### The instrument must load what the game loads
+
+The single largest defect found in the 2026-09-22 pass was not on a screen. `tools/ui-bench.html`
+was linking `styles/orbital.css` — a fifth design system that nothing in `src/` or `index.html`
+loads — and linking `styles/station.css` eagerly where the game injects it at runtime, putting it on
+the wrong side of the Deckplate sheet. Two stylesheets the game does not have, two it does not load
+in that order, and two missing entirely.
+
+Every judgement made before that was fixed was made against a cascade no player has. THE SHIP went
+from four findings to zero in one shot once the boot matched; the station's panels stopped being
+green; three rounds of CSS guessing had been chasing a sheet the game never loads.
+
+**Before trusting a picture, diff the instrument's boot against `index.html`'s.** And when a layout
+answer is not obvious, measure it — `--probe=<selector>` prints where an element actually is and
+what decided that, and `--probe=text:<words>` goes from a finding's words to the element that
+printed them. Three rounds of guessing cost more than one measurement.
+
+### What the audit will not tell you
+
+Six rules were added because the tool was wrong about a screen the eye could judge, and each one is
+a thing that is *not* a defect: a gradient is not an opaque plate; line leading is not a collision;
+the same string twice in one place is a stroke copy; screen-reader-only text is drawn for nobody;
+type scrolled out of its panel or inside a collapsed `<details>` is not on screen; an ellipsis is a
+content decision that announces itself. A tool that cries wolf trains its reader to ignore it.
 
 ---
 
