@@ -9,8 +9,52 @@ import { INK_SHADOW } from './hudBrackets.js';
 import { openingInstructionSolo } from './hudAttention.js';
 
 const STYLE_ID = 'sf-sector-law-style';
-const ENTRY_TTL_S = 5;
 const RECEIPT_TTL_S = 4;
+// G8: a law change is one line, then the badge. The paragraph stays off the flight card.
+export const LAW_LINE_TTL_S = 4;
+
+export function lawChangeLine(profile) {
+  const name = String(profile && profile.sectorName || 'SECTOR').toUpperCase();
+  const level = String(profile && profile.level || 'LAW');
+  return `${name} · ${level}`;
+}
+
+export function visibleLawNodes(mode) {
+  if (mode === 'line') return ['line'];
+  if (mode === 'badge') return ['badge'];
+  return [];
+}
+
+export function stepLawHud(active, input, now) {
+  const t = Number(now) || 0;
+  if (!input) {
+    if (active && active.mode === 'line' && t >= active.hideAt) {
+      return {
+        mode: 'badge',
+        profile: active.profile,
+        badge: active.profile && active.profile.level || '',
+        line: '',
+      };
+    }
+    return active;
+  }
+  if (input.type === 'change') {
+    return {
+      mode: 'line',
+      profile: input.profile,
+      hideAt: t + LAW_LINE_TTL_S,
+      badge: '',
+      line: lawChangeLine(input.profile),
+    };
+  }
+  return {
+    mode: 'badge',
+    profile: input.profile,
+    hideAt: Infinity,
+    badge: input.profile && input.profile.level || '',
+    line: '',
+  };
+}
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 
 function entityById(state, id) {
@@ -149,6 +193,28 @@ export function createSectorLawPresenter(ctx) {
     lastEtaText = '';
   }
 
+  function paintLaw(view) {
+    if (!view || !view.profile) return;
+    const profile = view.profile;
+    active = view;
+    const nodes = visibleLawNodes(view.mode);
+    root.className = `sf-law--${view.mode} sf-law--${profile.levelKey || 'high'}`;
+    root.dataset.lawMode = view.mode;
+    root.dataset.lawNodes = String(nodes.length);
+    text(els.flag, view.mode === 'badge' ? (view.badge || profile.level) : '');
+    text(els.status, '');
+    text(els.headline, view.mode === 'line' ? view.line : '');
+    text(els.meta, '');
+    text(els.detail, '');
+    if (els.meta) els.meta.hidden = true;
+    if (els.detail) els.detail.hidden = true;
+    if (els.status) els.status.hidden = true;
+    if (els.headline) els.headline.hidden = view.mode !== 'line';
+    if (els.flag) els.flag.hidden = view.mode !== 'badge';
+    root.setAttribute('aria-label', view.mode === 'line' ? view.line : (view.badge || profile.level));
+    root.hidden = false;
+  }
+
   function showSector(sectorId) {
     const id = sectorId || state.world && state.world.currentSectorId;
     if (!id || state.mode !== 'flight' || state.ui && state.ui.docked) return false;
@@ -157,15 +223,12 @@ export function createSectorLawPresenter(ctx) {
     // authority receipts still surface; danger is not an instruction.
     if (openingInstructionSolo(state)) return false;
     const profile = sectorLawProfile(state, id);
-    active = { mode: 'entry', hideAt: Number(state.simTime || 0) + ENTRY_TTL_S, profile };
-    root.className = `sf-law--entry sf-law--${profile.levelKey}`;
-    text(els.flag, 'SECTOR LAW');
-    text(els.status, profile.level);
-    text(els.headline, profile.sectorName.toUpperCase());
-    text(els.meta, `JURISDICTION · ${profile.authority.toUpperCase()}`);
-    text(els.detail, `${profile.illegal} ${profile.response}`);
-    root.setAttribute('aria-label', `${profile.sectorName}. ${profile.level}. Jurisdiction: ${profile.authority}. ${profile.illegal} ${profile.response}`);
-    root.hidden = false;
+    const previous = active && active.profile;
+    const changed = !previous || previous.levelKey !== profile.levelKey || previous.sectorId !== id;
+    const stamped = { ...profile, sectorId: id };
+    const view = stepLawHud(null, { type: changed ? 'change' : 'steady', profile: stamped }, state.simTime);
+    view.profile = stamped;
+    paintLaw(view);
     return true;
   }
 
@@ -212,7 +275,11 @@ export function createSectorLawPresenter(ctx) {
     if (destroyed || !active) return;
     if (state.mode !== 'flight' || state.ui && state.ui.docked || drillUiOpen()) { hide(); return; }
     const now = Number(state.simTime || 0);
-    if (active.hideAt <= now) { hide(); return; }
+    if (active.mode === 'line' && active.hideAt <= now) {
+      paintLaw(stepLawHud(active, null, now));
+      return;
+    }
+    if (active.mode !== 'badge' && active.hideAt <= now) { hide(); return; }
     if (active.mode === 'incident' && active.incident && active.incident.status === 'distress') {
       const view = authorityIncidentReadout(active.incident, state, now);
       if (view && view.statusText !== lastEtaText) {
@@ -272,6 +339,13 @@ function injectStyle() {
     font-family:var(--hud-body,"IBM Plex Sans","Segoe UI",sans-serif); transition:opacity .16s ease-out, transform .16s ease-out; }
   #ui-root > #sf-sector-law { position:absolute; top:112px; right:20px; width:min(340px, calc(100vw - 40px)); }
   #sf-sector-law[hidden] { display:none !important; }
+  #sf-sector-law.sf-law--badge { width:max-content; max-width:100%; padding:4px 10px; }
+  #sf-sector-law.sf-law--badge .sf-law__headline,
+  #sf-sector-law.sf-law--badge .sf-law__meta,
+  #sf-sector-law.sf-law--badge .sf-law__detail { display:none; }
+  #sf-sector-law.sf-law--line .sf-law__head,
+  #sf-sector-law.sf-law--line .sf-law__meta,
+  #sf-sector-law.sf-law--line .sf-law__detail { display:none; }
   .sf-law__head { display:flex; justify-content:space-between; gap:12px;
     font:700 12px var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.06em;
     color:var(--accent,#4f8fdd); }
