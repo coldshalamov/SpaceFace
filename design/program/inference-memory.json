@@ -74,18 +74,6 @@
   ],
   "units": [
     {
-      "id": "seed-juice-3",
-      "date": "2026-08-09",
-      "wf": "WF-12",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "presentation juice",
-      "fingerprint": "domain=wf-12,subject=presentation-juice",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
       "id": "seed-juice-4",
       "date": "2026-08-10",
       "wf": "WF-12",
@@ -1629,6 +1617,19 @@
       "references": [],
       "integration": "live",
       "commit": "f6ca40d5b",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inst-02-comms-fan-power-rail",
+      "date": "2026-09-22",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "comms fan hub/wedges/haildeck links off --sf-surface fill and 6px web radius, onto deckplate bezel + glass tokens matching the power rail",
+      "fingerprint": "verb=read,subject=comms-fan,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "5fb238ab7",
       "verification": "focused_green"
     }
   ],

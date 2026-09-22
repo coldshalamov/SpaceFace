@@ -117,7 +117,7 @@ not to invent.
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
 | INST-01 | Field, mass-seed, and planet tells are the flight instrument, not three cyan pills | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` | Those three inject no Segoe UI / `rgba(10, 18, 28` cards; they use tokens already on `#hud` | Invent a new HUD product | SHIPPED |
-| INST-02 | The comms fan matches the power rail | `styles/commsradial.css` | `#sf-commsfan` has no `--sf-surface` fill and no 6px web radius; it uses the flight bezel or glass tokens | Restyle the whole HUD | CLAIMED devin-inference-10 |
+| INST-02 | The comms fan matches the power rail | `styles/commsradial.css` | `#sf-commsfan` has no `--sf-surface` fill and no 6px web radius; it uses the flight bezel or glass tokens | Restyle the whole HUD | SHIPPED 5fb238ab7 |
 | INST-03 | The Crucible armory is not a cyan storefront | `styles/crucible.css` | `.sf-cru-card` uses the kit or deckplate face; `#8ee8ff` is not the fill or outline | Redesign the Crucible door | OPEN |
 | INST-04 | The prompt deck matches the flight cluster | `styles/prompt-deck.css` | No 10px consumer card; the deck uses the same glass or bezel language as the flight cluster | Add a new prompt system | OPEN |
 | INST-05 | Resting flight does not wear the aerospace G-LOC sheet | `index.html`, `styles/hud.css` | G-LOC and EMP rules apply only while that effect is on | Delete the effects. Repaint station | OPEN |
@@ -140,7 +140,6 @@ not to invent.
 
 | PIC-02 | 2026-09-22 | devin-inference-10 | `src/render/rockSurfaceLibrary.js` |
 | VERB-02 | 2026-09-22 | devin-inference-10 | `src/data/encounters/015-opening-hauler-raid.js` |
-| INST-02 | 2026-09-22 | devin-inference-10 | `styles/commsradial.css` |
 
 ## SHIPPED
 
@@ -159,6 +158,7 @@ not to invent.
 | WORLD-02 | WF-01 | 80086277e | Vesta traffic includes named hauler Tann of the Slag Run (lane_tann_slag_carrier) |
 | INST-14 | WF-13 | 244bb1d40 | "SHIELD DOWN" does not float over the fight; combat:damage does not spawn that floater |
 | TOOL-03 | tool-03-starter-shot-audition | this mark commit | Kept authored `wpn_pulse.wav`; Kenney `laserSmall_000.ogg` measures lighter (-5.4 dB mean, less low-band, brighter top) — not the heavier shot |
+| INST-02 | inst-02-comms-fan-power-rail | 5fb238ab7 | hub/wedges/haildeck links off `--sf-surface` + 6px web radius, onto deckplate bezel + glass tokens |
 
 ## CUT
 
