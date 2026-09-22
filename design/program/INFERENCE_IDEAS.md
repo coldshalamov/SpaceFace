@@ -116,7 +116,7 @@ not to invent.
 
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
-| INST-01 | Field, mass-seed, and planet tells are the flight instrument, not three cyan pills | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` | Those three inject no Segoe UI / `rgba(10, 18, 28` cards; they use tokens already on `#hud` | Invent a new HUD product | OPEN |
+| INST-01 | Field, mass-seed, and planet tells are the flight instrument, not three cyan pills | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` | Those three inject no Segoe UI / `rgba(10, 18, 28` cards; they use tokens already on `#hud` | Invent a new HUD product | CLAIMED |
 | INST-02 | The comms fan matches the power rail | `styles/commsradial.css` | `#sf-commsfan` has no `--sf-surface` fill and no 6px web radius; it uses the flight bezel or glass tokens | Restyle the whole HUD | OPEN |
 | INST-03 | The Crucible armory is not a cyan storefront | `styles/crucible.css` | `.sf-cru-card` uses the kit or deckplate face; `#8ee8ff` is not the fill or outline | Redesign the Crucible door | OPEN |
 | INST-04 | The prompt deck matches the flight cluster | `styles/prompt-deck.css` | No 10px consumer card; the deck uses the same glass or bezel language as the flight cluster | Add a new prompt system | OPEN |
@@ -139,6 +139,7 @@ not to invent.
 |---|---|---|---|
 | — | — | — | — |
 | VERB-01 | 2026-09-22 | inference-workflow-batch | `src/data/encounters/015-opening-hauler-raid.js` |
+| INST-01 | 2026-09-22 | inference-workflow-batch | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` |
 
 ## SHIPPED
 
