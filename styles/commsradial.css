@@ -41,14 +41,11 @@
   column-gap: 10px;
   row-gap: 3px;
   border: 1px solid var(--sf-edge);
-  background: color-mix(in srgb, var(--sf-surface) 97%, transparent);
   color: var(--sf-paper);
   padding: 10px 12px 10px 10px;
   pointer-events: auto;
   cursor: pointer;
   text-align: left;
-  border-radius: var(--r-md, 6px);
-  box-shadow: var(--sh-2);
 }
 
 .sf-commsfan__hub:hover {
@@ -122,19 +119,15 @@
   gap: 10px;
   padding: 8px 10px;
   border: 1px solid var(--sf-edge);
-  background: color-mix(in srgb, var(--sf-surface) 96%, transparent);
   color: var(--sf-paper);
   pointer-events: auto;
   cursor: pointer;
   text-align: left;
-  border-radius: var(--r-md, 6px);
-  box-shadow: var(--sh-1);
   transition: border-color var(--sf-t-latch) var(--sf-ease), background var(--sf-t-latch) var(--sf-ease);
 }
 
 .sf-commsfan__wedge:hover {
   border-color: var(--sf-goal);
-  background: color-mix(in srgb, var(--sf-surface) 98%, transparent);
 }
 
 .sf-commsfan__wedge:hover:not(.is-dim) .sf-commsfan__glyph {
@@ -273,9 +266,10 @@
 }
 
 .sf-haildeck__link {
-  border: 1px solid var(--sf-edge);
-  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
-  color: var(--sf-paper);
+  border: 0;
+  background: var(--dp-glass-solid);
+  box-shadow: var(--dp-glass-depth);
+  color: var(--dp-ink);
   font-family: var(--sf-body-face);
   font-size: 13px;
   text-align: left;
@@ -283,11 +277,11 @@
 }
 
 .sf-haildeck__link:hover {
-  border-color: var(--sf-goal);
+  filter: brightness(1.08);
 }
 
 .sf-haildeck__link:focus-visible {
-  outline: 2px solid var(--sf-goal);
+  outline: 2px solid var(--dp-lamp);
   outline-offset: 1px;
 }
 
