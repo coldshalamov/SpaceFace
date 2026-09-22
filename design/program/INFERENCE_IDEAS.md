@@ -149,7 +149,7 @@ not to invent.
 | WORLD-01 | WF-04 | 147e71c24 | Choir refuel depot (station_depot3) adds missions service so docking shows Missions board |
 | PIC-01 | WF-11 | 62c7346d8 | NPC Kestrel resolves through packaged whole-ship allowlist as complete body |
 | PIC-09 | WF-09 | 79657724b | Starter weapons scar with their own heat; heatForWeaponVariant resolves weapon IDs via vfxProfiles |
-| WORLD-10 | WF-04 | pending | Helios outer rocks (f_helios_outer) use ast_metallic instead of repeating starter ast_common_rock |
+| WORLD-10 | WF-04 | bd59636a7 | Helios outer rocks (f_helios_outer) use ast_metallic instead of repeating starter ast_common_rock |
 
 ## CUT
 
