@@ -23,6 +23,8 @@ import {
   techTreeNodeHeight,
 } from '../../localization/layout.js';
 import { injectDeckplate } from '../deckplate/index.js';
+import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+  from '../kit/computedMaterial.js';
 
 // Branch -> column index. Colour is by MEANING (researched / available / locked), never by branch.
 const BRANCHES = [
@@ -132,13 +134,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
     });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': spec.width,
-    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
-    'border-image-slice': spec.slice,
-    'border-image-repeat': 'stretch',
-    'border-image-width': spec.width,
-    background: 'transparent',
+    ...platePins(variant, spec.width),
     'box-sizing': 'border-box',
     padding: '10px 14px',
     ...extra,
@@ -153,13 +149,7 @@ function paintInput(input) {
       return;
     }
     pin(input, {
-      'border-style': 'solid',
-      'border-width': '12px',
-      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
-      'border-image-slice': '12 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '12px',
-      background: 'transparent',
+      ...channelPins(state, '12px'),
       color: 'var(--fh-text)',
       'min-height': '40px',
       padding: '0 8px',
@@ -204,12 +194,7 @@ function paintKey(button, kind = 'legend') {
       'box-sizing': 'border-box',
       background: 'transparent',
       color: 'var(--fh-text)',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {

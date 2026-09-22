@@ -19,6 +19,8 @@ import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createStageHull } from './stageHull.js';
 import { injectDeckplate } from '../deckplate/index.js';
+import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+  from '../kit/computedMaterial.js';
 
 // PQ-156.00: the catalog owns the three starter hulls; Hitch stays the default pick so a
 // Launch with no interaction emits the exact legacy ship_kestrel payload.
@@ -119,13 +121,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
     });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': spec.width,
-    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
-    'border-image-slice': spec.slice,
-    'border-image-repeat': 'stretch',
-    'border-image-width': spec.width,
-    background: 'transparent',
+    ...platePins(variant, spec.width),
     'box-sizing': 'border-box',
     padding: '8px 12px',
     ...extra,
@@ -140,13 +136,7 @@ function paintInput(input) {
       return;
     }
     pin(input, {
-      'border-style': 'solid',
-      'border-width': '12px',
-      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
-      'border-image-slice': '12 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '12px',
-      background: 'transparent',
+      ...channelPins(state, '12px'),
       color: 'var(--fh-text)',
       'min-height': '40px',
       padding: '0 8px',
@@ -188,12 +178,7 @@ function paintKey(button, kind = 'legend') {
       'justify-content': 'center',
       'align-items': 'center',
       'box-sizing': 'border-box',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {

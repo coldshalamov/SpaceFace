@@ -24,6 +24,8 @@ import { missingThreeRangeRungId } from '../../onboarding/missingThree.js';
 import { canvasFont } from '../canvasFonts.js';
 import { el, words, rows, hero, settle, cue } from '../kit/index.js';
 import { drawTeachingOverlay, planTeachingOverlay, TEACHING_OVERLAY_SURFACES } from '../teachingOverlay.js';
+import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+  from '../kit/computedMaterial.js';
 
 // THE RANGE (F4). Field Hardware EDGE: the drill box on the sky; the teaching voice as one
 // sentence; the rung's name as a hull marking; the score as a quiet number; verbs and rungs as
@@ -174,13 +176,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
     });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': spec.width,
-    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
-    'border-image-slice': spec.slice,
-    'border-image-repeat': 'stretch',
-    'border-image-width': spec.width,
-    background: 'transparent',
+    ...platePins(variant, spec.width),
     'box-sizing': 'border-box',
     padding: '10px 14px',
     ...extra,
@@ -212,12 +208,7 @@ function paintKey(button, kind = 'legend') {
       'justify-content': 'center',
       'align-items': 'center',
       'box-sizing': 'border-box',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {

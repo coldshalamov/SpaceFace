@@ -36,7 +36,8 @@ import {
 } from '../../data/swarmMode.js';
 import { survivalArenaById } from '../../data/survivalArenas.js';
 import { SURVIVAL_RUN_WAVE_COUNT } from '../../systems/survivalRun.js';
-import { decorateEntityNode } from '../entityResolver.js';
+import { decorateEntityNode, entityLabel, entitySpanHtml } from '../entityResolver.js';
+import { dpIcon } from '../deckplate/icons.js';
 import {
   dailySeedForNow,
   ghostRaceOffer,
@@ -64,12 +65,20 @@ import {
 } from '../sandbox/sandboxSetup.js';
 import { SURVIVAL_MUTATOR_BY_ID } from '../../data/survivalMutators.js';
 import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
-import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
+import {
+  availableOptions,
+  isModeAvailable,
+  isStarterAvailable,
+  meetsUnlockCondition,
+  starterUnlockEntry,
+} from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
 import { STUNT_RULE_REVISIONS, stuntAssistProfile } from '../../combat/stuntRunRules.js';
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
 import { comboSummary } from '../../systems/stuntCombo.js';
 import { el, settle, stamp, cue } from '../kit/index.js';
+import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+  from '../kit/computedMaterial.js';
 
 const FH_KEY = {
   primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
@@ -139,15 +148,9 @@ function paintWindow(node) {
     return pin(node, { 'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid', background: 'transparent' });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': '20px',
-    'border-image-source': 'url("' + fhUrl('windows/window.glass.deep.png') + '")',
-    'border-image-slice': '20 fill',
-    'border-image-repeat': 'stretch',
-    'border-image-width': '20px',
+    ...panePins('deep', '20px'),
     'box-sizing': 'border-box',
     padding: '12px 16px',
-    background: 'transparent',
   });
 }
 function paintInput(input) {
@@ -159,13 +162,7 @@ function paintInput(input) {
       return;
     }
     pin(input, {
-      'border-style': 'solid',
-      'border-width': '12px',
-      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
-      'border-image-slice': '12 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '12px',
-      background: 'transparent',
+      ...channelPins(state, '12px'),
       color: 'var(--fh-text)',
       'min-height': '40px',
       padding: '0 8px',
@@ -211,12 +208,7 @@ function paintKey(button, kind = 'legend') {
       'justify-content': 'center',
       'align-items': 'center',
       'box-sizing': 'border-box',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {
@@ -245,7 +237,6 @@ function paintKey(button, kind = 'legend') {
 function paintTile(button, selected) {
   if (!button) return button;
   if (button.classList && typeof button.classList.add === 'function') button.classList.add('fh-tile');
-  const src = selected ? fhUrl('windows/window.viewport.png') : fhUrl('windows/window.glass.png');
   if (forcedColorsActive()) {
     return pin(button, {
       'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
@@ -256,35 +247,44 @@ function paintTile(button, selected) {
   // Fixed 132x116 tiles made the three tile rows of the door (approved/frames/frame-crucible-door.png)
   // taller than the stage at every default viewport below 1080p, so the hull row scrolled out of
   // sight: the player saw the mode row and never learned there was a hull to pick.
+  // Hull tiles set data-tile-fit="fill" so eight kits stay one row. A second row pushed Bolt
+  // and Hinge under the window edge, where they read as cut-off squares.
+  const fill = button.dataset && button.dataset.tileFit === 'fill';
   return pin(button, {
     display: 'grid',
     'grid-template-rows': '1fr auto',
-    width: 'calc(132px * var(--k-s, 1))',
-    'min-width': 'calc(132px * var(--k-s, 1))',
-    'min-height': 'calc(116px * var(--k-s, 1))',
+    width: fill ? '100%' : 'calc(132px * var(--k-s, 1))',
+    'min-width': fill ? '0' : 'calc(132px * var(--k-s, 1))',
+    'max-width': fill ? '100%' : 'none',
+    'min-height': fill ? 'calc(96px * var(--k-s, 1))' : 'calc(116px * var(--k-s, 1))',
     padding: '0',
     cursor: 'pointer',
     'box-sizing': 'border-box',
-    background: 'transparent',
     color: selected ? 'var(--fh-text)' : 'var(--fh-text-resting)',
-    'border-style': 'solid',
-    'border-width': '20px',
-    'border-image-source': 'url("' + src + '")',
-    'border-image-slice': '20 fill',
-    'border-image-repeat': 'stretch',
-    'border-image-width': '20px',
+    ...panePins(selected ? 'viewport' : 'glass', '20px'),
   });
 }
-function choiceTile(label, className, artSrc) {
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function choiceTile(label, className, artSrc, iconName) {
   const button = el('button', 'fh-tile ' + className);
   button.type = 'button';
   const art = el('span', 'fh-tile-art');
-  const img = el('img');
-  img.src = artSrc;
-  img.alt = '';
-  if (typeof img.setAttribute === 'function') img.setAttribute('aria-hidden', 'true');
-  pin(img, { width: 'calc(48px * var(--k-s, 1))', height: 'calc(48px * var(--k-s, 1))', 'object-fit': 'contain' });
-  art.appendChild(img);
+  if (iconName) {
+    // Inline, not <img>: kit SVGs are currentColor, and an external image paints black
+    // on the glass — a blank square. Forced colours keeps inline SVG.
+    const markup = dpIcon(iconName, 48, { className: 'sf-crd-glyph' });
+    if (markup && typeof art.insertAdjacentHTML === 'function') art.insertAdjacentHTML('beforeend', markup);
+  } else if (artSrc) {
+    const img = el('img');
+    img.src = artSrc;
+    img.alt = '';
+    if (typeof img.setAttribute === 'function') img.setAttribute('aria-hidden', 'true');
+    pin(img, { width: 'calc(48px * var(--k-s, 1))', height: 'calc(48px * var(--k-s, 1))', 'object-fit': 'contain' });
+    art.appendChild(img);
+  }
   button.appendChild(art);
   button.appendChild(el('span', 'fh-tile-legend', label));
   paintTile(button, false);
@@ -303,12 +303,14 @@ const MODE_TILE = Object.freeze({
   scored: 'assets/tiles/tile.mode.gauntlet.png',
 });
 const HULL_ICON = Object.freeze({
-  web_weaver: 'icons/48/icon-line.svg',
-  ricochet_runner: 'icons/48/icon-boost.svg',
-  energy_baseline: 'icons/48/icon-energy.svg',
-  kinetic_baseline: 'icons/48/icon-weapon.svg',
-  physics_toolkit: 'icons/48/icon-well.svg',
-  massline_rig: 'icons/48/icon-tow.svg',
+  web_weaver: 'line',
+  ricochet_runner: 'boost',
+  energy_baseline: 'energy',
+  kinetic_baseline: 'weapon',
+  physics_toolkit: 'well',
+  massline_rig: 'tow',
+  hornet_fast_clumsy: 'drive',
+  hornet_nimble_slow: 'brake',
 });
 const ARENA_TILE = Object.freeze({
   helios_core: 'assets/tiles/tile.arena.ricochet-foundry.png',
@@ -619,6 +621,11 @@ export const crucibleScreen = {
     let freeSeed = previous && !previous.dailyDateKey ? String(previous.seed) : null;
     let doorProfile = null;
     try { doorProfile = loadCrucibleMeta(); } catch { doorProfile = null; }
+    if (!isStarterAvailable(doorProfile, starterId)) starterId = 'ricochet_runner';
+    if (ruleset === 'boss_circuit' && !isModeAvailable(doorProfile, 'boss_circuit')) {
+      ruleset = CRUCIBLE_DEFAULT_RULESET;
+    }
+    const selectedModifiers = new Set();
     let raceGhost = !!(previous && previous.ghostHash);
     // PQ-160.02: a pasted run code's challenge terms ride to launch through here.
     let pendingShare = null;
@@ -695,6 +702,25 @@ export const crucibleScreen = {
       modeButtons.push(card);
       addWord(modes, card);
     }
+    if (isModeAvailable(doorProfile, 'boss_circuit')) {
+      const card = choiceTile('Boss Circuit', 'sf-crd-mode', kitUrl(MODE_TILE.scored));
+      card.dataset.ruleset = 'boss_circuit';
+      syncChoice(card, ruleset === 'boss_circuit');
+      card.addEventListener('click', () => {
+        if (daily) {
+          daily = false;
+          if (freeSeed) seedInput.value = freeSeed;
+        }
+        practiceQueued = false;
+        ruleset = 'boss_circuit';
+        for (const other of modeButtons) syncChoice(other, other.dataset.ruleset === ruleset);
+        if (dailyButton) syncChoice(dailyButton, false);
+        cue('confirm');
+        syncMode();
+      });
+      modeButtons.push(card);
+      addWord(modes, card);
+    }
     dailyButton = choiceTile(DAILY_CARD.label, 'sf-crd-daily', kitUrl('assets/tiles/tile.mode.daily.png'));
     syncChoice(dailyButton, daily);
     dailyButton.addEventListener('click', () => {
@@ -750,6 +776,9 @@ export const crucibleScreen = {
       const challengeMutators = shareMutators.concat(
         weeklyMutatorId && !shareMutators.includes(weeklyMutatorId) ? [weeklyMutatorId] : [],
       );
+      for (const id of selectedModifiers) {
+        if (id && !challengeMutators.includes(id)) challengeMutators.push(id);
+      }
       const shareDailyKey = pendingShare ? pendingShare.dailyDateKey : null;
       return { shareMutators, shareWeeklyId, weeklyMutatorId, challengeMutators, shareDailyKey };
     }
@@ -828,7 +857,13 @@ export const crucibleScreen = {
         syncGhost();
         return;
       }
-      const entry = CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0];
+      const entry = ruleset === 'boss_circuit'
+        ? {
+          blurb: 'Five champions. Refit between them. No drafts.',
+          sub: 'The authored wave-ten bosses, one after another, in the room you picked.',
+          verb: 'Enter the circuit',
+        }
+        : (CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0]);
       sub.textContent = entry.blurb;
       modeSentence.textContent = weekly ? week.sub : entry.sub;
       if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : entry.verb;
@@ -852,7 +887,7 @@ export const crucibleScreen = {
     function syncHull() {
       const starter = COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || COMBAT_LAB_STARTER_PACKAGES[0];
       if (starter && starter.hullId) {
-        const name = starter.hullId.replace(/^ship_/, '');
+        const name = entityLabel('hull:' + starter.hullId) || starter.hullId.replace(/^ship_/, '');
         const blurb = hullBlurb(starter);
         hullSentence.innerHTML = blurb.startsWith(name)
           ? `${entitySpanHtml('hull:' + starter.hullId, escapeHtml(name))}${escapeHtml(blurb.slice(name.length))}`
@@ -863,10 +898,36 @@ export const crucibleScreen = {
       for (const other of buttons) syncChoice(other, other.dataset.starterId === starterId);
     }
     for (const starter of COMBAT_LAB_STARTER_PACKAGES) {
-      const card = choiceTile(starter.label, 'sf-crd-hull', kitUrl(HULL_ICON[starter.id] || 'icons/48/icon-hull.svg'));
+      const open = isStarterAvailable(doorProfile, starter.id);
+      const face = starter.id === 'hornet_fast_clumsy' ? 'Bolt'
+        : starter.id === 'hornet_nimble_slow' ? 'Hinge'
+          : starter.label;
+      const card = choiceTile(face, 'sf-crd-hull', '', HULL_ICON[starter.id] || 'hull');
+      card.dataset.tileFit = 'fill';
       card.dataset.starterId = starter.id;
+      if (!open) {
+        const row = starterUnlockEntry(starter.id);
+        const earn = row ? unlockConditionText(row) : 'Closed.';
+        card.dataset.locked = '1';
+        card.dataset.earn = earn;
+        card.title = earn;
+        card.setAttribute('aria-label', `${starter.label}. ${earn}`);
+        const badge = el('span', 'sf-crd-lock');
+        const mark = dpIcon('lock', 18, { className: 'sf-crd-lock-glyph' });
+        if (mark && typeof badge.insertAdjacentHTML === 'function') badge.insertAdjacentHTML('beforeend', mark);
+        badge.setAttribute('aria-hidden', 'true');
+        card.appendChild(badge);
+      }
       syncChoice(card, starter.id === starterId);
       card.addEventListener('click', () => {
+        if (!isStarterAvailable(doorProfile, starter.id)) {
+          const row = starterUnlockEntry(starter.id);
+          hullSentence.dataset.kind = 'earn';
+          hullSentence.textContent = row ? unlockConditionText(row) : 'Closed.';
+          cue('deny');
+          return;
+        }
+        delete hullSentence.dataset.kind;
         starterId = starter.id;
         cue('confirm');
         syncHull();
@@ -876,6 +937,36 @@ export const crucibleScreen = {
     }
     hullBody.appendChild(hulls);
     hullBody.appendChild(hullSentence);
+
+    const earnedDoor = availableOptions(doorProfile);
+    const modifierChoices = [];
+    for (const id of earnedDoor.mutators) {
+      const def = SURVIVAL_MUTATOR_BY_ID[id];
+      modifierChoices.push({ id, label: def && def.label ? def.label : id });
+    }
+    if (earnedDoor.trials.includes('trial_one_hull')) modifierChoices.push({ id: 'one_hull', label: 'One hull' });
+    if (earnedDoor.trials.includes('trial_one_weapon')) modifierChoices.push({ id: 'one_weapon', label: 'One weapon' });
+    if (modifierChoices.length) {
+      const modBody = settingRow('Modifiers', 'sf-crd-row--modifiers');
+      const modList = el('ul', 'k-words k-words--row sf-crd-modifiers');
+      modList.setAttribute('aria-label', 'Earned modifiers');
+      for (const choice of modifierChoices) {
+        const button = word(choice.label, 'k-word--fine sf-crd-modifier');
+        button.dataset.modifierId = choice.id;
+        button.addEventListener('click', () => {
+          if (selectedModifiers.has(choice.id)) selectedModifiers.delete(choice.id);
+          else selectedModifiers.add(choice.id);
+          const on = selectedModifiers.has(choice.id);
+          button.setAttribute('aria-pressed', String(on));
+          if (button.classList && typeof button.classList.toggle === 'function') {
+            button.classList.toggle('is-on', on);
+          }
+          cue('confirm');
+        });
+        addWord(modList, button);
+      }
+      modBody.appendChild(modList);
+    }
 
     const arenaBody = settingRow('Arena', 'sf-crd-row--arena');
     const arenas = el('ul', 'k-words k-words--row sf-crd-arenas fh-cluster');
@@ -910,12 +1001,7 @@ export const crucibleScreen = {
     const seedRow = el('div', 'k-words k-words--row sf-crd-seed');
     const seedWell = el('div', 'fh-stepper-well');
     pin(seedWell, {
-      'border-style': 'solid',
-      'border-width': '14px',
-      'border-image-source': 'url("' + fhUrl('controls/stepper.well.png') + '")',
-      'border-image-slice': '14 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '14px',
+      ...wellPins('14px'),
       'min-height': '56px',
       padding: '0 16px',
       display: 'inline-flex',
@@ -1129,6 +1215,10 @@ export const crucibleScreen = {
     footWords.setAttribute('aria-label', 'Crucible');
     // The one launch path, shared by Enter and Quick play. INF-038.
     function launchCurrent() {
+      if (!isStarterAvailable(doorProfile, starterId)) {
+        cue('deny');
+        return;
+      }
       const setup = crucibleSetupFor({
         starterId,
         seed: normalizeSeed(seedInput.value),
@@ -1567,7 +1657,7 @@ export function storySentences(result) {
  */
 export function stuntComboFor(ctx) {
   const state = ctx && ctx.state;
-  const combo = state && state.stunts && state.stunts.combo;
+  const combo = (state && state.stunts && state.stunts.combo) || (ctx && ctx.result && ctx.result.combo);
   if (!combo || typeof combo !== 'object') return null;
   try {
     return comboSummary(combo);
@@ -1661,6 +1751,22 @@ export function featDiagram(result) {
       kind: 'stunt',
       text: `Best stunt: ${line.acts.map((a) => a.name).join(' → ')} · ${line.points} banked`,
     };
+  }
+  const stuntKills = Array.isArray(result && result.stuntKills)
+    ? result.stuntKills
+    : (Array.isArray(result && result.stunts) ? result.stunts : []);
+  if (stuntKills.length > 0) {
+    const names = stuntKills.map((s) => (typeof s === 'string' ? s : s?.name || s?.trickId)).filter(Boolean);
+    if (names.length > 0) {
+      const distinct = [...new Set(names)];
+      const pts = stuntKills.reduce((sum, s) => sum + (Number(s?.points) || 0), 0);
+      return {
+        kind: 'stunt',
+        text: pts > 0
+          ? `Best stunt: ${distinct.join(' → ')} · ${pts} banked`
+          : `Best stunt: ${distinct.join(' → ')}`,
+      };
+    }
   }
   const n = (v) => (Number.isInteger(v) && v > 0 ? v : 0);
   const bestChain = n(result && result.bestChain);

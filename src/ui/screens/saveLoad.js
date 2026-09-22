@@ -9,13 +9,15 @@ import { createSaveStage } from '../views/saveFrame.js';
 import { livingHullScars } from '../../core/livingHull.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
-import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength } from '../../save/saveSystem.js';
+import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
 import { confirm } from '../confirm.js';
 import { el, rows, words, hero, settle, cue } from '../kit/index.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { createStageHull, STAGE_HULL_RELEASE_MS } from './stageHull.js';
 import { injectDeckplate } from '../deckplate/index.js';
+import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+  from '../kit/computedMaterial.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
@@ -96,13 +98,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
     });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': spec.width,
-    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
-    'border-image-slice': spec.slice,
-    'border-image-repeat': 'stretch',
-    'border-image-width': spec.width,
-    background: 'transparent',
+    ...platePins(variant, spec.width),
     'box-sizing': 'border-box',
     padding: '8px 12px',
     ...extra,
@@ -138,12 +134,7 @@ function paintKey(button, kind = 'legend') {
       'box-sizing': 'border-box',
       background: 'transparent',
       color: 'var(--fh-text)',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {
@@ -179,14 +170,8 @@ function paintSlotRow(row, selected) {
   row.classList.toggle('is-selected', !!selected);
   if (selected && !forcedColorsActive()) {
     return pin(row, {
-      'border-style': 'solid',
-      'border-width': '8px 16px',
-      'border-image-source': 'url("' + fhUrl('plates/plate.row.selected.png') + '")',
-      'border-image-slice': '8 16 8 16 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '8px 16px',
+      ...rowPins('8px 16px'),
       'box-shadow': 'none',
-      background: 'transparent',
       color: 'var(--fh-text)',
     });
   }
@@ -380,23 +365,8 @@ function isOccupied(meta) {
   return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
 }
 
-function slotMetaScore(meta) {
-  const savedAtScore = Date.parse((meta && (meta.savedAt || meta.lastSavedAt)) || '') || 0;
-  if (savedAtScore) return savedAtScore;
-  const playtimeS = Number(meta && meta.playtimeS);
-  return Number.isFinite(playtimeS) ? playtimeS : 0;
-}
-
 export function latestOccupiedSlot(slots) {
-  let best = null;
-  let bestT = -1;
-  Object.keys(slots || {}).forEach((slot) => {
-    const meta = slots[slot];
-    if (!isOccupied(meta)) return;
-    const t = slotMetaScore(meta);
-    if (t >= bestT) { bestT = t; best = slot; }
-  });
-  return best;
+  return selectLatestOccupiedSlot(slots);
 }
 
 function exportSlotChoice(ctx, slots) {

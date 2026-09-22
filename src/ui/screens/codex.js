@@ -19,6 +19,8 @@ import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from '../shipLedgerPanel.js';
 import { el, words, rows, hero, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
+import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+  from '../kit/computedMaterial.js';
 
 const FH_KEY = {
   primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
@@ -90,12 +92,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
     });
   }
   return pin(node, {
-    'border-style': 'solid',
-    'border-width': width,
-    'border-image-source': 'url("' + fhUrl('plates/' + file) + '")',
-    'border-image-slice': (variant === 'edge' ? '16' : '24') + ' fill',
-    'border-image-repeat': 'stretch',
-    'border-image-width': width,
+    ...platePins('raised', width),
     background: 'transparent',
     'box-sizing': 'border-box',
     padding: '10px 14px',
@@ -113,13 +110,7 @@ function paintInput(input) {
       return;
     }
     pin(input, {
-      'border-style': 'solid',
-      'border-width': '12px',
-      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
-      'border-image-slice': '12 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '12px',
-      background: 'transparent',
+      ...channelPins(state, '12px'),
       color: 'var(--fh-text)',
       'min-height': '40px',
       padding: '0 8px',
@@ -166,12 +157,7 @@ function paintKey(button, kind = 'legend') {
       'box-sizing': 'border-box',
       background: 'transparent',
       color: 'var(--fh-text)',
-      'border-style': 'solid',
-      'border-width': spec.width,
-      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-      'border-image-slice': parseInt(spec.width, 10) + ' fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': spec.width,
+      ...capPins(kind, state, spec.width),
     });
   };
   const sync = () => {
@@ -215,14 +201,8 @@ function paintRow(row, selected) {
   }
   if (selected && !forcedColorsActive()) {
     return pin(row, {
-      'border-style': 'solid',
-      'border-width': '8px 16px',
-      'border-image-source': 'url("' + fhUrl('plates/plate.row.selected.png') + '")',
-      'border-image-slice': '8 16 8 16 fill',
-      'border-image-repeat': 'stretch',
-      'border-image-width': '8px 16px',
+      ...rowPins('8px 16px'),
       'box-shadow': 'none',
-      background: 'transparent',
       color: 'var(--fh-text)',
     });
   }
@@ -239,9 +219,6 @@ function paintRow(row, selected) {
 function paintTile(button, selected) {
   if (!button) return button;
   if (button.classList && typeof button.classList.add === 'function') button.classList.add('fh-tile');
-  const src = selected
-    ? fhUrl('windows/window.viewport.png')
-    : fhUrl('windows/window.glass.png');
   if (forcedColorsActive()) {
     return pin(button, {
       'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
@@ -256,14 +233,8 @@ function paintTile(button, selected) {
     padding: '0',
     cursor: 'pointer',
     'box-sizing': 'border-box',
-    background: 'transparent',
     color: selected ? 'var(--fh-text)' : 'var(--fh-text-resting)',
-    'border-style': 'solid',
-    'border-width': '20px',
-    'border-image-source': 'url("' + src + '")',
-    'border-image-slice': '20 fill',
-    'border-image-repeat': 'stretch',
-    'border-image-width': '20px',
+    ...panePins(selected ? 'viewport' : 'glass', '20px'),
   });
 }
 

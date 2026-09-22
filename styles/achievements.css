@@ -63,13 +63,7 @@
   justify-content: center;
   min-height: 40px;
   min-width: 96px;
-  border-style: solid;
-  border-width: 14px;
   border-color: transparent;
-  border-image-source: url('../assets/ui/kit/assets/keys/key.legend.rest.png');
-  border-image-slice: 14 fill;
-  border-image-repeat: stretch;
-  border-image-width: 14px;
   padding: 0 14px;
   font-family: var(--fh-face-display);
   font-variation-settings: 'wght' 600, 'wdth' 62;
@@ -77,6 +71,9 @@
   text-transform: uppercase;
   font-size: var(--fh-size-fine);
   color: var(--fh-text-resting);
+  border: 14px solid transparent;
+  background: none;
+  box-shadow: none;
 }
 
 #screens .of-achievements > .k-hang .k-word::after { display: none; }
@@ -84,12 +81,14 @@
 #screens .of-achievements > .k-hang .k-word:hover,
 #screens .of-achievements > .k-hang .k-word:focus-visible {
   color: var(--fh-text);
-  border-image-source: url('../assets/ui/kit/assets/keys/key.legend.hover.png');
+  background: none;
+  box-shadow: inset 0 -2px 0 0 rgb(226 232 240 / .45);
 }
 
 #screens .of-achievements > .k-hang .k-word[aria-current='true'] {
   color: var(--fh-text);
-  border-image-source: url('../assets/ui/kit/assets/keys/key.legend.lit.png');
+  background: none;
+  box-shadow: inset 0 -2px 0 0 var(--dp-lamp-hot, #f2b950);
 }
 
 #screens .of-achievements > .k-stage {
@@ -178,13 +177,7 @@
   align-items: center;
   min-height: 56px;
   min-width: 120px;
-  border-style: solid;
-  border-width: 18px;
   border-color: transparent;
-  border-image-source: url('../assets/ui/kit/assets/keys/key.primary.rest.png');
-  border-image-slice: 18 fill;
-  border-image-repeat: stretch;
-  border-image-width: 18px;
   padding: 0 24px;
   font-family: var(--fh-face-display);
   font-variation-settings: 'wght' 600, 'wdth' 62;
@@ -192,17 +185,21 @@
   text-transform: uppercase;
   font-size: var(--fh-size-emphasis);
   color: var(--fh-text);
+  border: 18px solid transparent;
+  background: var(--dp-cap-live) border-box;
+  box-shadow: var(--dp-cap-live-lift);
 }
 
 #screens .of-achievements .k-foot .k-word::after { display: none; }
 
 #screens .of-achievements .k-foot .k-word:hover,
 #screens .of-achievements .k-foot .k-word:focus-visible {
-  border-image-source: url('../assets/ui/kit/assets/keys/key.primary.hover.png');
+  background: var(--dp-cap-live-hover) border-box;
 }
 
 #screens .of-achievements .k-foot .k-word:active {
-  border-image-source: url('../assets/ui/kit/assets/keys/key.primary.pressed.png');
+  background: var(--dp-cap-press) border-box;
+  box-shadow: var(--dp-cap-sink);
 }
 
 @media (max-width: 720px) {

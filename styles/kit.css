@@ -541,13 +541,13 @@ body.k-screen-top #modal-backdrop { background: none; }
 #screens .of-title .of-title-line {
   position: absolute; left: clamp(52px, 10.6vw, 204px); bottom: clamp(48px, 8vh, 87px);
   margin: 0; width: fit-content; max-width: 46ch;
-  border-style: solid; border-width: 12px 16px;
-  border-image-source: url('../assets/ui/kit/assets/plates/plate.legend.strip.png');
-  border-image-slice: 12 16 12 16 fill; border-image-repeat: stretch; border-image-width: 12px 16px;
   display: inline-flex; align-items: center; min-height: 20px; padding: 0 clamp(10px, 1vw, 20px);
   font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
   text-transform: uppercase; letter-spacing: 0.09em; font-size: var(--fh-size-fine);
   color: var(--fh-legend-now, var(--fh-legend));
+  border: 12px 16px solid transparent;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 /* Before the first render the readout has no text, and an empty lit plate floating over the world
    is a broken instrument, not a quiet one. */
@@ -613,7 +613,8 @@ body.k-screen-top #modal-backdrop { background: none; }
 #screens .of-title :is(.k-word:hover, .k-word:focus-visible),
 #screens .of-title .k-words:not(:focus-within) .k-word[aria-current='true'] {
   color: var(--fh-text);
-  border-image-source: url('../assets/ui/kit/assets/plates/plate.row.selected.png');
+  background: linear-gradient(90deg, rgb(242 185 80 / .14), rgb(242 185 80 / 0) 62%) border-box;
+  box-shadow: inset 2px 0 0 0 var(--dp-lamp-hot, #f2b950);
 }
 #screens .of-title .k-word[aria-disabled='true']:hover {
   border-image-source: none; color: color-mix(in srgb, var(--fh-bone) 48%, transparent);
@@ -663,9 +664,6 @@ body.k-screen-top #modal-backdrop { background: none; }
   /* The right edge is the produced `plate.edge.small` nine-slice with NO `fill`, so only the
      plate's real relieved edge is drawn — a centre slice stretched across 700x1080 would wash its
      grain out. The face under it is the ground with the produced grain tile at the kit's own 6 %. */
-  border-style: solid; border-width: 0 16px 0 0;
-  border-image-source: url('../assets/ui/kit/assets/plates/plate.edge.small.png');
-  border-image-slice: 16; border-image-repeat: stretch; border-image-width: 16px;
   /* Opaque, and measured: at 0.95 the flight HUD that stays visible behind pause at 38 %
      (the kit's own `body.k-screen-top[data-k-screen="pause"] #hud` rule) showed through the
      bulkhead as unreadable ghost text across the brief and the lower half of the verb column.
@@ -683,6 +681,9 @@ body.k-screen-top #modal-backdrop { background: none; }
   --ofp-menu-size: clamp(15px, min(1.35vw, 2.05vh), 24px);
   --ofp-row-h: clamp(28px, min(3vw, 3.35vh), 38px);
   --ofp-indent: clamp(22px, 1.9vw, 34px);
+  border: 0 16px 0 0 solid transparent;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 #screens .of-pause.k-screen::before {
   z-index: -1; background-color: transparent;
@@ -701,10 +702,10 @@ body.k-screen-top #modal-backdrop { background: none; }
    and the brief read as a quote. Slice the rim at its own thickness so the recess keeps its light. */
 #screens .of-pause .sf-pause-brief {
   margin-top: clamp(12px, 1.7vh, 20px); box-sizing: border-box;
-  border-style: solid; border-width: 4px 6px;
-  border-image-source: url('../assets/ui/kit/assets/plates/plate.bench.sunk.png');
-  border-image-slice: 4 6 4 6 fill; border-image-repeat: stretch; border-image-width: 4px 6px;
-  background: none; padding: var(--fh-space-s) var(--fh-space-m);
+padding: var(--fh-space-s) var(--fh-space-m);
+  border: 4px 6px solid transparent;
+  background: var(--dp-well-face) border-box;
+  box-shadow: var(--dp-well-sink);
 }
 #screens .of-pause .sf-pause-brief .sf-slot-sub:first-child {
   font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
@@ -777,7 +778,8 @@ body.k-screen-top #modal-backdrop { background: none; }
 #screens .of-pause .k-word:is(:hover, :focus-visible),
 #screens .of-pause .k-words:not(:focus-within) .k-word[aria-current='true'] {
   color: var(--fh-text);
-  border-image-source: url('../assets/ui/kit/assets/plates/plate.row.selected.png');
+  background: linear-gradient(90deg, rgb(242 185 80 / .14), rgb(242 185 80 / 0) 62%) border-box;
+  box-shadow: inset 2px 0 0 0 var(--dp-lamp-hot, #f2b950);
 }
 /* Resume is the one primary verb (Task B §1.4): full-strength type at rest, and the same lit plate
    on focus as every other row — two selection signals on one row read as a mistake. */

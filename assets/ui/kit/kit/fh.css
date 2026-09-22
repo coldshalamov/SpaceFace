@@ -75,26 +75,30 @@ body.fh-root {
  */
 
 .fh-plate {
-  border-style: solid;
-  border-width: 24px;
-  border-image-source: url('../assets/plates/plate.bench.primary.png');
-  border-image-slice: 24 fill;
-  border-image-repeat: stretch;
-  border-image-width: 24px;
   padding: var(--fh-space-l);
   box-sizing: border-box;
   color: var(--fh-text);
+  border: 24px solid transparent;
+  background: var(--dp-cap-rest) border-box;
+  box-shadow: var(--dp-cap-lift);
 }
-.fh-plate--raised { border-image-source: url('../assets/plates/plate.bench.raised.png'); }
-.fh-plate--sunk   { border-image-source: url('../assets/plates/plate.bench.sunk.png'); }
-.fh-plate--paper  { border-image-source: url('../assets/plates/plate.bench.paper.png');
-                    color: #22201C; }
+.fh-plate--raised 
+  background: var(--dp-cap-rest) border-box;
+  box-shadow: var(--dp-cap-lift);
+}
+.fh-plate--sunk   
+  background: var(--dp-well-face) border-box;
+  box-shadow: var(--dp-well-sink);
+}
+.fh-plate--paper  {                    color: #22201C;
+  background: linear-gradient(176deg, #e8e2d4, #d6cfbe) border-box;
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / .6), inset 0 -1px 0 0 rgb(0 0 0 / .25);
+}
 .fh-plate--edge {
-  border-width: 16px;
-  border-image-source: url('../assets/plates/plate.edge.small.png');
-  border-image-slice: 16 fill;
-  border-image-width: 16px;
   padding: var(--fh-space-m);
+  border: 16px solid transparent;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 
 /* The smoked window: a darkening pane with a lit rim, so the scene reads THROUGH it and stays
@@ -143,13 +147,10 @@ body.fh-root {
 
 /* The POSTER legend rail: the single piece of hardware a title-register screen carries. */
 .fh-rail {
-  border-style: solid;
-  border-width: 16px;
-  border-image-source: url('../assets/plates/plate.poster.rail.png');
-  border-image-slice: 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 16px;
   box-sizing: border-box;
+  border: 16px solid transparent;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 
 /* An engraved row. Selected rows carry the amber left-edge light and its spill. */
@@ -166,12 +167,9 @@ body.fh-root {
 }
 .fh-row.is-selected {
   color: var(--fh-text);
-  border-style: solid;
-  border-width: 8px 16px;
-  border-image-source: url('../assets/plates/plate.row.selected.png');
-  border-image-slice: 8 16 8 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 8px 16px;
+  border: 8px 16px solid transparent;
+  background: linear-gradient(90deg, rgb(242 185 80 / .14), rgb(242 185 80 / 0) 62%) border-box;
+  box-shadow: inset 2px 0 0 0 var(--dp-lamp-hot, #f2b950);
 }
 
 /* Tileables: grain, hazard stripe, etched hairline. */
@@ -467,13 +465,11 @@ body.fh-root {
 .fh-socket[data-state='empty']   { background-image: url('../assets/sockets/socket.empty.png');
                                    color: var(--fh-text-tertiary); }
 .fh-socket-group {
-  border-style: solid;
-  border-width: 18px;
-  border-image-source: url('../assets/sockets/socket.bracket.png');
-  border-image-slice: 18 fill;
-  border-image-width: 18px;
   display: flex; gap: var(--fh-space-s);
   padding: var(--fh-space-s) var(--fh-space-m) var(--fh-space-l);
+  border: 18px solid transparent;
+  background: var(--dp-well-face) border-box;
+  box-shadow: var(--dp-well-sink);
 }
 
 .fh-toggle {
@@ -493,9 +489,9 @@ body.fh-root {
 .fh-slider { position: relative; height: 24px; display: flex; align-items: center; }
 .fh-slider-track {
   flex: 1; height: 12px;
-  border-style: solid; border-width: 4px 8px;
-  border-image-source: url('../assets/controls/slider.track.png');
-  border-image-slice: 4 8 4 8 fill; border-image-width: 4px 8px;
+  border: 4px 8px solid transparent;
+  background: var(--dp-chan-rest) border-box;
+  box-shadow: none;
 }
 .fh-slider-fill {
   position: absolute; left: 0; height: 12px;
@@ -510,12 +506,12 @@ body.fh-root {
 
 .fh-stepper { display: inline-flex; align-items: center; gap: var(--fh-space-xs); }
 .fh-stepper-well {
-  border-style: solid; border-width: 14px;
-  border-image-source: url('../assets/controls/stepper.well.png');
-  border-image-slice: 14 fill; border-image-width: 14px;
   min-width: 160px; min-height: 44px;
   display: grid; place-items: center;
   font-family: var(--fh-face-text); font-variant-numeric: tabular-nums;
+  border: 14px solid transparent;
+  background: var(--dp-well-face) border-box;
+  box-shadow: var(--dp-well-sink);
 }
 .fh-stepper-minus, .fh-stepper-plus {
   width: 44px; height: 44px; border: 0; padding: 0; cursor: pointer;
@@ -527,22 +523,28 @@ body.fh-root {
 .fh-stepper-plus:hover  { background-image: url('../assets/controls/stepper.plus.hover.png'); }
 
 .fh-input {
-  border-style: solid; border-width: 12px;
-  border-image-source: url('../assets/controls/input.underline.rest.png');
-  border-image-slice: 12 fill; border-image-width: 12px;
   background: transparent; color: var(--fh-text);
   font-family: var(--fh-face-text); font-size: var(--fh-size-body);
   min-height: 40px; padding: 0 var(--fh-space-m); box-sizing: border-box;
+  border: 12px solid transparent;
+  background: var(--dp-chan-rest) border-box;
+  box-shadow: none;
 }
-.fh-input:focus-visible { border-image-source: url('../assets/controls/input.underline.focus.png'); }
-.fh-input[aria-invalid='true'] { border-image-source: url('../assets/controls/input.underline.error.png'); }
+.fh-input:focus-visible 
+  background: var(--dp-chan-live) border-box;
+  box-shadow: none;
+}
+.fh-input[aria-invalid='true'] 
+  background: linear-gradient(180deg, rgb(0 0 0 / .5) 0 1px, #d65a46 1px 2px) border-box;
+  box-shadow: none;
+}
 
 .fh-scroll-track { width: 8px; background: url('../assets/controls/scroll.track.png') repeat-y; }
 .fh-scroll-thumb {
   width: 8px;
-  border-style: solid; border-width: 6px 2px;
-  border-image-source: url('../assets/controls/scroll.thumb.rest.png');
-  border-image-slice: 6 2 6 2 fill; border-image-width: 6px 2px;
+  border: 6px 2px solid transparent;
+  background: var(--dp-cap-rest) border-box;
+  box-shadow: var(--dp-cap-lift);
 }
 
 /* ---------------------------------------------------------------- indicators */
@@ -560,10 +562,10 @@ body.fh-root {
                  background-image: url('../assets/lights/light.bar.legend.on.png'); }
 
 .fh-bar {
-  border-style: solid; border-width: 8px 10px;
-  border-image-source: url('../assets/gauges/bar.seg.bezel.png');
-  border-image-slice: 8 10 8 10 fill; border-image-width: 8px 10px;
   display: flex; gap: 0; align-items: center; min-height: 28px; padding: 0 2px;
+  border: 8px 10px solid transparent;
+  background: var(--dp-well-face) border-box;
+  box-shadow: var(--dp-well-sink);
 }
 .fh-bar-seg { width: 12px; height: 16px;
               background: url('../assets/gauges/bar.seg.off.png') center / 12px 16px no-repeat; }
@@ -602,26 +604,26 @@ body.fh-root {
 .fh-tape.is-lit .fh-tape-mid { background-image: url('../assets/tapes/tape.mid-lit.png'); }
 
 .fh-strip {
-  border-style: solid; border-width: 6px 10px;
-  border-image-source: url('../assets/strips/strip.status.bezel.png');
-  border-image-slice: 6 10 6 10 fill; border-image-width: 6px 10px;
   display: flex; gap: 6px; align-items: center; height: 20px; padding: 0 4px;
+  border: 6px 10px solid transparent;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 
 .fh-tag {
-  border-style: solid; border-width: 8px 10px;
-  border-image-source: url('../assets/tapes/tag.world.png');
-  border-image-slice: 8 10 8 10 fill; border-image-width: 8px 10px;
   font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
   letter-spacing: var(--fh-track-legend); font-size: var(--fh-size-fine);
   min-height: 24px; display: inline-flex; align-items: center; padding: 0 var(--fh-space-s);
+  border: 8px 10px solid transparent;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 
 .fh-objective {
-  border-style: solid; border-width: 16px;
-  border-image-source: url('../assets/plates/plate.objective.png');
-  border-image-slice: 16 fill; border-image-width: 16px;
   padding: var(--fh-space-s) var(--fh-space-m);
+  border: 16px solid transparent;
+  background: var(--dp-stock-face) border-box;
+  box-shadow: var(--dp-stock-edge);
 }
 
 /* ---------------------------------------------------------------- content */

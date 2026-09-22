@@ -200,6 +200,127 @@ export const DECKPLATE_TOKENS_CSS = `
   --dp-etch-shadow:0 -1px 0 rgb(0 0 0 / .55), 0 1px 0 rgb(255 232 190 / .10);
 }
 
+/* ══ COMPUTED MATERIAL ═════════════════════════════════════════════════════════════════════════
+   The recipes that replaced the kit's raster nine-slices, published as tokens so a surface applies
+   one and never re-mixes its own.
+
+   WHY THESE EXIST. Until 2026-09-22 a key, plate, window or tape was a nine-sliced PNG:
+   keys/key.legend.rest.png is 160x40, stretched across controls three times that width, and the
+   320x80 @2x beside it on disk was referenced by nothing. On any HiDPI display — which is the
+   Electron app at devicePixelRatio 2 — every control in the game was a bitmap upsampled 2x. That
+   is the smudge. ONE_PHOTOGRAPH.md section 4.11 retires raster nine-slices as UI material and
+   keeps the Cycles renders as the calibration reference these are judged against: if a computed
+   cap does not look as good as key.primary.rest.png, the recipe is wrong, not the rule.
+
+   WHAT MAKES A CAP READ AS A CAP. Not the radius and not the fill — the EDGES. A 1px lit top rule,
+   a 1px dark sill, and a seat shadow under it. Those three hairlines are the whole illusion, they
+   are the first thing a careless pass drops, and unlike a stretched slice they are exactly one
+   device pixel at every scale. Keep them.
+
+   HOW TO USE. A raised control:
+     background: var(--dp-cap-rest) padding-box;  box-shadow: var(--dp-cap-lift);
+   and its states swap --dp-cap-hover / --dp-cap-press with --dp-cap-sink. A recess uses
+   --dp-well-face / --dp-well-sink. Everything is padding-box so a surface keeps its own border. */
+:root {
+  /* — the raised cap — */
+  --dp-cap-rest:
+    linear-gradient(180deg, rgb(255 255 255 / .055), rgb(255 255 255 / 0) 42%),
+    linear-gradient(168deg, #2b3038 0%, #23272e 46%, #191c22 100%);
+  --dp-cap-hover:
+    linear-gradient(180deg, rgb(255 255 255 / .085), rgb(255 255 255 / 0) 44%),
+    linear-gradient(168deg, #343a44 0%, #2a2f37 46%, #1e222a 100%);
+  --dp-cap-press: linear-gradient(168deg, #16191e 0%, #1c2026 54%, #23272e 100%);
+  --dp-cap-off:   linear-gradient(168deg, #23262b 0%, #1e2126 100%);
+  --dp-cap-lift:
+    inset 0 1px 0 0 rgb(226 232 240 / .14),
+    inset 0 0 0 1px rgb(226 232 240 / .055),
+    inset 0 -1px 0 0 rgb(0 0 0 / .62),
+    0 1px 0 0 rgb(0 0 0 / .5),
+    0 2px 5px -2px rgb(0 0 0 / .55);
+  --dp-cap-sink:
+    inset 0 2px 4px 0 rgb(0 0 0 / .7),
+    inset 0 0 0 1px rgb(0 0 0 / .5),
+    inset 0 -1px 0 0 rgb(226 232 240 / .09);
+  --dp-cap-off-edge: inset 0 0 0 1px rgb(226 232 240 / .04), inset 0 -1px 0 0 rgb(0 0 0 / .4);
+
+  /* — the consequence cap: the only control lit from inside — */
+  --dp-cap-live:
+    linear-gradient(180deg, rgb(255 236 200 / .22), rgb(255 236 200 / 0) 46%),
+    linear-gradient(168deg, #c8923a 0%, #a9761f 48%, #7d5412 100%);
+  --dp-cap-live-hover:
+    linear-gradient(180deg, rgb(255 240 210 / .3), rgb(255 240 210 / 0) 48%),
+    linear-gradient(168deg, #dba646 0%, #bd8626 48%, #8d6015 100%);
+  --dp-cap-live-lift:
+    inset 0 1px 0 0 rgb(255 238 205 / .45),
+    inset 0 0 0 1px rgb(255 214 140 / .22),
+    inset 0 -1px 0 0 rgb(0 0 0 / .5),
+    0 1px 0 0 rgb(0 0 0 / .5),
+    0 3px 12px -3px rgb(242 185 80 / .35);
+
+  /* — the destructive cap — */
+  --dp-cap-risk:
+    linear-gradient(180deg, rgb(255 210 195 / .2), rgb(255 210 195 / 0) 46%),
+    linear-gradient(168deg, #b8452f 0%, #93301f 48%, #6a2014 100%);
+  --dp-cap-risk-lift:
+    inset 0 1px 0 0 rgb(255 200 180 / .4),
+    inset 0 0 0 1px rgb(255 150 120 / .24),
+    inset 0 -1px 0 0 rgb(0 0 0 / .5),
+    0 1px 0 0 rgb(0 0 0 / .5),
+    0 4px 16px -4px rgb(214 90 70 / .42);
+
+  /* — the recess. Light comes from above, so a well is dark at the top lip and catches light at
+       the bottom: the exact inverse of a cap, which is what sells it as sunk. — */
+  --dp-well-face: linear-gradient(180deg, #0e1116 0%, #121519 100%);
+  --dp-well-sink:
+    inset 0 2px 6px -1px rgb(0 0 0 / .72),
+    inset 0 0 0 1px rgb(0 0 0 / .5),
+    inset 0 -1px 0 0 rgb(226 232 240 / .07);
+
+  /* — the flat plate: a panel of stock, no lift, just an edge — */
+  --dp-stock-face: linear-gradient(176deg, #1b1f25 0%, #14171c 100%);
+  --dp-stock-edge:
+    inset 0 1px 0 0 rgb(226 232 240 / .10),
+    inset 0 0 0 1px rgb(226 232 240 / .05),
+    inset 0 -1px 0 0 rgb(0 0 0 / .55);
+
+  /* — smoked glass. The specular is PLACED as a fraction of the box, never stretched: that is
+       precisely what border-image-slice: fill got wrong on the market chart. — */
+  --dp-pane-face:
+    linear-gradient(180deg, rgb(226 232 240 / .13), rgb(226 232 240 / 0) 1px),
+    linear-gradient(104deg, transparent 12%, rgb(214 230 246 / .045) 26%,
+                    rgb(214 230 246 / .085) 33%, rgb(214 230 246 / .03) 41%, transparent 56%),
+    linear-gradient(176deg, rgb(9 12 17 / .80), rgb(6 8 12 / .92));
+  --dp-pane-edge:
+    inset 0 0 0 1px rgb(226 232 240 / .07),
+    inset 0 1px 0 0 rgb(226 232 240 / .10),
+    inset 0 -1px 0 0 rgb(0 0 0 / .55);
+  --dp-pane-live-face:
+    linear-gradient(180deg, rgb(242 185 80 / .16), rgb(242 185 80 / 0) 1px),
+    linear-gradient(104deg, transparent 14%, rgb(255 226 176 / .05) 30%,
+                    rgb(255 226 176 / .09) 36%, transparent 54%),
+    linear-gradient(176deg, rgb(14 12 9 / .82), rgb(8 7 5 / .93));
+  --dp-pane-live-edge:
+    inset 0 0 0 1px rgb(242 185 80 / .22),
+    inset 0 1px 0 0 rgb(242 185 80 / .16),
+    inset 0 -1px 0 0 rgb(0 0 0 / .6),
+    0 0 18px -6px rgb(242 185 80 / .35);
+
+  /* — an input's underline: a machined channel, not a border — */
+  --dp-chan-rest: linear-gradient(180deg, rgb(0 0 0 / .5) 0 1px, rgb(226 232 240 / .08) 1px 2px);
+  --dp-chan-live: linear-gradient(180deg, rgb(0 0 0 / .5) 0 1px, var(--dp-lamp-hot) 1px 2px);
+}
+
+@supports (background-image: paint(dp-plate)) {
+  /* The worklet grains the cap at the device's resolution. This is the layer the Cycles render was
+     standing in for, and it is the one thing a gradient alone cannot do. */
+  :root {
+    --dp-cap-rest:
+      linear-gradient(180deg, rgb(255 255 255 / .055), rgb(255 255 255 / 0) 42%),
+      paint(dp-plate),
+      linear-gradient(168deg, #2b3038 0%, #23272e 46%, #191c22 100%);
+  }
+}
+
 /* High contrast remaps the tokens, not the components: the whole system re-themes from here. */
 html.sf-high-contrast {
   --dp-metal-0:#000; --dp-metal-1:#000; --dp-metal-2:#0a0a0a; --dp-metal-3:#111;
