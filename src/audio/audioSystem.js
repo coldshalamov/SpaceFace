@@ -450,6 +450,14 @@ export const COLLISION_CUE = Object.freeze({
   TIER_KISS_DP: 400,
   TIER_SLAM_DP: 4000,
   TIER_HEAVY_MASS: 200,
+  // Build-map §22 B5: how HARD it was also bends the pitch. The solver caps the receipt's dp near
+  // mass·40 WU/s, so the force axis reads the pre-solve closing speed the receipt carries — the
+  // same 8→150 WU/s ramp the feel hit-stop reads (`resolveCollisionFeel`) — and falls back to the
+  // dp tier axis when a receipt does not carry one. The bend only ever darkens: a kiss keeps the
+  // mass-law rate exactly, a slam lands more than an octave under it.
+  SPEED_TOUCH: 8,        // WU/s — at or below a touch the mass-law rate stands untouched
+  SPEED_SLAM: 150,       // WU/s — the reference slam; the bend saturates here
+  RATE_FORCE_MIN: 0.45,  // ×rate at full force — ~1.15 octaves under the same bodies' kiss
 });
 
 const COLLISION_TIER_RECIPES = Object.freeze({
@@ -458,6 +466,13 @@ const COLLISION_TIER_RECIPES = Object.freeze({
   slam: 'sfx_explosion_small',
   broadside: 'sfx_explosion_large',
 });
+
+// Contact-cue admission (see _admitCollisionCue): ~100 ms between the same pair's voices —
+// the VFX contact-spark cadence — with an escalation escape so a real slam inside the window
+// still plays over the grind it interrupted.
+export const COLLISION_CUE_COOLDOWN_TICKS = 6;
+export const COLLISION_CUE_UPGRADE_RATIO = 1.5;
+const COLLISION_CUE_PAIR_CAP = 128;
 
 function collisionAcousticMass(mass, type) {
   if (type === 'station') return COLLISION_CUE.ACOUSTIC_MASS_STATION;
@@ -477,16 +492,36 @@ export function resolveCollisionCue(input) {
     0,
     1,
   );
+  const dp = Number.isFinite(src.dp) ? src.dp : Number.isFinite(src.impulse) ? src.impulse : 0;
+  // Force axis for the pitch bend. Pre-solve closing speed is the receipt's true "how hard" —
+  // dp is capped by the per-tick solver clamp, so a 150 WU/s ram can otherwise read as a 40 WU/s
+  // nudge. Receipts without a speed field (the legacy 'collision' event) fall back to the dp
+  // tier axis. sqrt shaping matches the feel ramp so a scrape is a tick and a slam is a beat.
+  const forceU = Number.isFinite(src.closingSpeed) && src.closingSpeed > 0
+    ? Math.sqrt(clamp(
+      (src.closingSpeed - COLLISION_CUE.SPEED_TOUCH)
+        / (COLLISION_CUE.SPEED_SLAM - COLLISION_CUE.SPEED_TOUCH),
+      0,
+      1,
+    ))
+    : dp > COLLISION_CUE.TIER_KISS_DP
+      ? Math.sqrt(clamp(
+        Math.log(dp / COLLISION_CUE.TIER_KISS_DP)
+          / Math.log(COLLISION_CUE.TIER_SLAM_DP / COLLISION_CUE.TIER_KISS_DP),
+        0,
+        1,
+      ))
+      : 0;
   const rate = clamp(
     COLLISION_CUE.RATE_LIGHT
       * Math.pow(
         COLLISION_CUE.RATE_HEAVY / COLLISION_CUE.RATE_LIGHT,
         Math.pow(massNorm, COLLISION_CUE.RATE_CURVE),
-      ),
+      )
+      * Math.pow(COLLISION_CUE.RATE_FORCE_MIN, forceU),
     COLLISION_CUE.RATE_MIN,
     COLLISION_CUE.RATE_MAX,
   );
-  const dp = Number.isFinite(src.dp) ? src.dp : Number.isFinite(src.impulse) ? src.impulse : 0;
   const loudNorm = Math.sqrt(clamp(dp / COLLISION_CUE.DP_FULL, 0, 1));
   const gain = clamp(
     COLLISION_CUE.GAIN_MIN + (COLLISION_CUE.GAIN_MAX - COLLISION_CUE.GAIN_MIN) * loudNorm,
@@ -529,6 +564,7 @@ export function resolveCollisionCue(input) {
     material,
     weight,
     ladderId,
+    forceU,
   });
 }
 
@@ -1502,7 +1538,12 @@ export const audio = {
     // dedupes per projectile; audio owns the supersonic crack that makes "inches" felt.
     bus.on('projectile:nearMiss', (p) => this._onNearMissAudio(p));
     bus.on('combat:damage', (p) => this._onDamage(p));
+    // Contact sound rides whichever receipt the physics authority publishes: the live
+    // rapier-dynamic backend emits only `physics:impact`, while the custom path emits
+    // `physics:impact` AND legacy `collision` for the same contact in the same tick.
+    // `_admitCollisionCue`'s pair+tick window collapses that double-emit into one voice.
     bus.on('collision', (p) => this._onCollision(p));
+    bus.on('physics:impact', (p) => this._onCollision(p));
     bus.on('shieldDown', (p) => {
       // Shield break: a sharp energy crackle at the target's position.
       const pos = p && p.pos;
@@ -2808,8 +2849,43 @@ export const audio = {
     this.play('sfx_discovery_reveal', { gain: 0.72, critical: true });
   },
 
+  // One voice per contact. The live rapier-dynamic backend emits `physics:impact` only; the
+  // custom path emits `physics:impact` and legacy `collision` for the same pair in the same
+  // tick — the pair+tick window collapses that double-emit. A sustained grind re-arms only
+  // after the cooldown, unless the new contact is meaningfully harder (the same escalation
+  // law the feel hit-stop uses).
+  _admitCollisionCue(p) {
+    if (!this._collisionCueContacts) this._collisionCueContacts = new Map();
+    const tick = Number.isFinite(p && p.tick)
+      ? Math.max(0, Math.trunc(p.tick))
+      : Math.max(0, Math.trunc(this.state && this.state.tick || 0));
+    if (Number.isFinite(this._collisionCueTick) && tick < this._collisionCueTick) {
+      // A load or sim restart moved the tick backwards: old pair entries belong to the old epoch.
+      this._collisionCueContacts.clear();
+    }
+    this._collisionCueTick = tick;
+    if (p.aId == null || p.bId == null) return true;  // unidentifiable contacts stay audible
+    const a = String(p.aId);
+    const b = String(p.bId);
+    if (a === b) return true;
+    const key = a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
+    const dp = Number.isFinite(p.dp) ? p.dp : Number.isFinite(p.impulse) ? p.impulse : 0;
+    const prev = this._collisionCueContacts.get(key);
+    if (prev && tick - prev.tick < COLLISION_CUE_COOLDOWN_TICKS
+      && !(dp > prev.dp * COLLISION_CUE_UPGRADE_RATIO)) {
+      return false;
+    }
+    if (!this._collisionCueContacts.has(key) && this._collisionCueContacts.size >= COLLISION_CUE_PAIR_CAP) {
+      const oldest = this._collisionCueContacts.keys().next();
+      if (!oldest.done) this._collisionCueContacts.delete(oldest.value);
+    }
+    this._collisionCueContacts.set(key, { tick, dp });
+    return true;
+  },
+
   _onCollision(p) {
     if (!p) return;
+    if (!this._admitCollisionCue(p)) return;
     const entities = this.state && this.state.entities;
     const pick = (id) => {
       if (!entities) return null;
@@ -2825,15 +2901,22 @@ export const audio = {
       massB: b && Number.isFinite(b.mass) ? b.mass : null,
       typeA: a ? a.type : undefined,
       typeB: b ? b.type : undefined,
+      // The slam-vs-kiss pitch bend reads the pre-solve closing speed; the solver's per-tick dp
+      // clamp must not flatten a 150 WU/s ram into a 40 WU/s answer.
+      closingSpeed: p.preSolveClosingSpeed,
     });
-    this.play(cue.recipeId, { position: p.pos, gain: cue.gain, rate: cue.rate, ladderId: cue.ladderId });
+    const voice = this.play(cue.recipeId, { position: p.pos, gain: cue.gain, rate: cue.rate, ladderId: cue.ladderId });
     const aMass = a && Number.isFinite(a.mass) ? a.mass : 16;
     const bMass = b && Number.isFinite(b.mass) ? b.mass : 16;
-    this._applyWeightDuck({
-      mass: Math.max(aMass, bMass),
-      dp: Number.isFinite(p.dp) ? p.dp : p.impulse,
-      importance: cue.tier === 'broadside' ? 0.9 : cue.tier === 'slam' ? 0.7 : 0.35,
-    });
+    // The duck follows audibility: a contact beyond hearing range is culled inside play() and
+    // must not bow the player's music for a sound nobody heard.
+    if (voice) {
+      this._applyWeightDuck({
+        mass: Math.max(aMass, bMass),
+        dp: Number.isFinite(p.dp) ? p.dp : p.impulse,
+        importance: cue.tier === 'broadside' ? 0.9 : cue.tier === 'slam' ? 0.7 : 0.35,
+      });
+    }
   },
 
   _onKilled(p) {
