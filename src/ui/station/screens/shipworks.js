@@ -31,6 +31,7 @@ import {
   outfitBudgetBlocker,
   shipworksStationAccess,
   sizeFits,
+  stationShopOffer,
 } from '../../../systems/ships.js';
 import { SHIPS } from '../../../data/ships.js';
 import { describeHullRole } from '../../../data/shipRoleLattice.js';
@@ -2170,6 +2171,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (def.mods && def.mods.radarRangePct) return 'Long-range sensor system';
     if (def.mods && def.mods.countermeasure) return 'Defensive countermeasure';
     if (def.mods && (def.mods.tetherSpoolMult || def.mods.tetherReelRateMult)) return 'Massline handling system';
+    if (def.mods && def.mods.swingDrive) return 'Dash swings around a taut line';
     return 'Utility support system';
   }
 
@@ -2285,6 +2287,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const fittings = s.fittings || [];
     const fittedId = fittings[slotIndex];
     const availability = shipworksActionAvailability(ctx.state);
+    const shopStationId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
     const byTierThenPrice = (a, b) => (a.tier - b.tier) || (a.price - b.price);
     const sameType = FITTABLE.filter((d) => d.slotType === slot.type && d.purchasable !== false);
     const compat = sameType.filter((d) => fits(slot, d)).sort(byTierThenPrice);
@@ -2308,7 +2311,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       });
       const fittedDef = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
       const chips = shopDeltaChipsHtml(shopDelta, d, fittedDef, slot);
-      const purchase = describeOutfittingPurchase(d, ctx.state.player || {}, slots, fittings, def);
+      const purchase = describeOutfittingPurchase(d, ctx.state.player || {}, slots, fittings, def, { stationId: shopStationId });
       const selectedFittings = fittings.slice();
       selectedFittings[slotIndex] = d.id;
       const selectedBudgetBlocker = outfitBudgetBlocker(def, selectedFittings);
@@ -2331,8 +2334,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : purchase.state === 'locked'
           ? `<span class="k-t-fine k-38 sx-modrow__lock">${escapeHtml(purchase.label)}</span>`
           : purchase.state === 'funding'
-            ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding">${fmt(d.price)} cr · ${escapeHtml(purchase.label)}</span>`
-            : `<button type="button" class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(d.price || 0)} cr</small></button>`;
+            ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`
+            : `<button type="button" class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(purchase.price)} cr</small></button>`;
       return (
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
@@ -2998,7 +3001,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const def = FITTABLE_BY_ID.get(defId);
       if (!def) return;
       const credits = Math.max(0, Number(ctx.state.player && ctx.state.player.credits) || 0);
-      const confirmOpts = describeOutfittingSpendConfirm(def, credits, { fitSlotIndex });
+      const shopStationId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
+      const offer = stationShopOffer(def, shopStationId);
+      const confirmOpts = describeOutfittingSpendConfirm(def, credits, {
+        fitSlotIndex,
+        price: offer ? offer.price : def.price,
+      });
       if (confirmOpts) {
         try { bf.focus({ preventScroll: true }); } catch (_) {
           try { bf.focus(); } catch (__) {}

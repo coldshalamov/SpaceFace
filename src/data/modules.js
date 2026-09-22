@@ -280,7 +280,10 @@ const SHIPPED_MODULES = [
     // is latched, flightV3 redirects the whole impulse along the line's tangent (and uprates it),
     // so the dash swings you AROUND the anchor instead of off it. Without the module the same press
     // is the ordinary straight dash. Consumed via derived.swingDrive (systems/ships.js).
+    // Helios keeps one on the rack at first-haul price: docked there it sells with no Drive Tuning
+    // stop. The catalog price and the research gate stand at every other berth.
     id: 'mod_swing_drive_m', name: 'Swing Drive M', slotType: 'utility', size: 'M', tier: 2, mass: 5, price: 19000, requiresTech: 'tech_drive_tuning',
+    shopOffers: { station_helios: { price: 12000 } },
     energyDraw: 3, mods: { swingDrive: true },
   },
   {

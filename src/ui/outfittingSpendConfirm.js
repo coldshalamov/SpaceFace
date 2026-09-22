@@ -21,7 +21,8 @@ export function isOutfittingSpendDanger(price, credits) {
 /** Build shared confirm() options for a paid module purchase. Zero-cost actions skip the dialog. */
 export function describeOutfittingSpendConfirm(def, credits, opts = {}) {
   if (!def) return null;
-  const price = Math.max(0, Number(def.price) || 0);
+  // opts.price lets a station listing quote its own shelf price instead of the catalog price.
+  const price = Math.max(0, Number(opts.price != null ? opts.price : def.price) || 0);
   if (price <= 0) return null;
   const avail = Math.max(0, Number(credits) || 0);
   const remaining = Math.max(0, avail - price);

@@ -269,6 +269,28 @@ assert.equal(guidance.hasSlot, false);
 assert.equal(guidance.label, 'Buy to Inventory');
 assert.match(guidance.title, /No compatible cargo M slot/);
 
+// Swing Drive M rides the first station's rack: Helios stocks it at first-haul price with no
+// Drive Tuning stop; the catalog price and the research gate stand everywhere else.
+const swingDrive = moduleById('mod_swing_drive_m');
+assert.equal(swingDrive.price, 19000, 'the catalog keeps the Swing Drive price');
+assert.equal(swingDrive.requiresTech, 'tech_drive_tuning', 'the Swing Drive stays on its tech node');
+assert.match(statSnippet(swingDrive), /dash swings around a taut line/i,
+  'the shop describes the Swing Drive pendulum verb before purchase');
+assert.doesNotMatch(statSnippet(swingDrive), /%/, 'the shop sentence carries no percentage');
+guidance = describeOutfittingPurchase(swingDrive, {
+  credits: 12000,
+  researchedNodes: [],
+}, slots, [], shipDef, { stationId: 'station_helios' });
+assert.equal(guidance.unlocked, true, 'the first-station listing waives the research stop');
+assert.equal(guidance.price, 12000, 'one starter-field haul pays the listing price');
+assert.equal(guidance.disabled, false, 'the first station sells it to an unresearched pilot');
+guidance = describeOutfittingPurchase(swingDrive, {
+  credits: 12000,
+  researchedNodes: [],
+}, slots, [], shipDef, { stationId: 'station_tethys' });
+assert.equal(guidance.state, 'locked', 'off the first station the research gate still stands');
+assert.equal(guidance.price, 19000, 'off the first station the catalog price stands');
+
 const bus = createBus();
 const state = {
   tick: 17,

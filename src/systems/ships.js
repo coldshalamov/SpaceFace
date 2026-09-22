@@ -67,6 +67,20 @@ for (const sector of SECTORS) {
 // any fittable def (weapon OR module) by id
 function defById(id) { return MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id) || null; }
 
+/** A station's shop listing on a fittable def: docked there, the shop stocks it at the listed
+ *  price and the catalog research gate does not apply at the counter. Returns null elsewhere. */
+export function stationShopOffer(def, stationId) {
+  const offers = def && def.shopOffers;
+  const offer = offers && stationId ? offers[stationId] : null;
+  const price = offer && Number(offer.price);
+  return Number.isFinite(price) ? { price: Math.max(0, price) } : null;
+}
+
+function dockedShopStationId(state) {
+  const ui = state && state.ui;
+  return ui && ui.docked === true ? ui.dockedStationId : null;
+}
+
 /** Resolve the two distinct station capabilities exposed by Shipworks. Hull acquisition/switching
  * requires a shipyard; module purchase/fitting also works at a module fabricator. */
 export function shipworksAccessForServices(services) {
@@ -1782,11 +1796,13 @@ export const ships = {
     }
   },
 
-  /** A ship/module def is buyable iff it has no requiresTech, or that tech is researched. */
+  /** A ship/module def is buyable iff it has no requiresTech, that tech is researched, or the
+   *  docked station stocks it on the shop rack. */
   isUnlocked(def) {
     if (!def) return false;
     if (!def.requiresTech) return true;
-    return this.state.player.researchedNodes.includes(def.requiresTech);
+    if (this.state.player.researchedNodes.includes(def.requiresTech)) return true;
+    return !!stationShopOffer(def, dockedShopStationId(this.state));
   },
 
   // ---- module shop: buy a module/weapon into inventory -----------------------------------
@@ -1801,7 +1817,8 @@ export const ships = {
       this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(def.requiresTech), kind: 'error', ttl: 3 });
       return false;
     }
-    const price = def.price || 0;
+    const offer = stationShopOffer(def, dockedShopStationId(this.state));
+    const price = offer ? offer.price : (def.price || 0);
     if (price > 0 && p.credits < price) {
       this.bus.emit('toast', { text: purchaseFundingText(def, price, p.credits), kind: 'error', ttl: 3 });
       return false;
