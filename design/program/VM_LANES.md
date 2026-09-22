@@ -40,7 +40,7 @@ Freeze for later leaves: Hitch/Kestrel always; Hornet + Drifter live LODs once c
 
 | Task | Thread | Host | Branch / PR | State | Exact focus | Next |
 |---|---|---|---|---|---|---|
-| `PQ-050.03` Ranger chase C5 | grok-bot-box | `grok-bot-box` | `leaf/pq050-03-ranger-chase-c5-box` | **RESULT: REVISE** (CAGE_READ NO; TUBE_PADDLE NO; courses/cheeks landed; Hitch still wins D=144 massing/skin; parent unproven) | chase_form_v5a: stepped courses + formed cheek gun houses; Hitch/Hornet/Drifter frozen | C6: Hitch formed-shell / skin still wins — not garnish |
+| `PQ-050.03` Ranger chase C5 | grok-bot-box | `grok-bot-box` | `leaf/pq050-03-ranger-chase-c5-box` / [PR 155](https://github.com/coldshalamov/SpaceFace/pull/155) | **RESULT: REVISE** (CAGE_READ NO; TUBE_PADDLE NO; courses/cheeks landed; Hitch still wins D=144 massing/skin; parent unproven) | chase_form_v5a: stepped courses + formed cheek gun houses; Hitch/Hornet/Drifter frozen | C6: Hitch formed-shell / skin still wins — not garnish |
 
 ## Pointers
 
