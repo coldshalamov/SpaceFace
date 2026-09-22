@@ -7,6 +7,28 @@ export const ROCK_SURFACE_ASSETS = Object.freeze({
 });
 export const ROCK_SURFACE_TEXTURE_REPEAT = 1.65;
 
+/**
+ * Per-variant surface response for the five common-rock instance variants. The displacement
+ * variants already re-seat the same maps via COMMON_ROCK_UV_TRANSFORMS; without a per-variant
+ * material answer every pooled rock still reads as one texture painted five times. `tint`
+ * multiplies the material color (ast_common_rock is white, so it is a straight modulation of
+ * the shared baseColor map); `roughness`, `aoIntensity`, and `normalScale` retune how each
+ * variant answers the shared packed ORM + normal maps — ferric warmth, dusty matte, fresh
+ * fracture sheen — without cloning textures or touching the pool or the mesh.
+ */
+export const ROCK_SURFACE_VARIANTS = Object.freeze([
+  Object.freeze({ tint: [1.0, 1.0, 1.0], roughness: 1.0, aoIntensity: 0.78, normalScale: 0.72 }),
+  Object.freeze({ tint: [0.9, 0.94, 1.04], roughness: 1.06, aoIntensity: 0.86, normalScale: 0.62 }),
+  Object.freeze({ tint: [1.06, 0.97, 0.88], roughness: 0.92, aoIntensity: 0.74, normalScale: 0.78 }),
+  Object.freeze({ tint: [1.02, 1.02, 0.98], roughness: 0.85, aoIntensity: 0.7, normalScale: 0.82 }),
+  Object.freeze({ tint: [0.84, 0.86, 0.88], roughness: 1.12, aoIntensity: 0.92, normalScale: 0.58 }),
+]);
+
+export function rockSurfaceVariantSpec(variantIdx) {
+  const idx = Math.abs(Math.trunc(Number(variantIdx) || 0)) % ROCK_SURFACE_VARIANTS.length;
+  return ROCK_SURFACE_VARIANTS[idx];
+}
+
 const TEXTURE_ROLES = Object.freeze({
   baseColor: 'micro-base-color',
   normal: 'micro-regolith-normal',

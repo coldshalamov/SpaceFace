@@ -17,7 +17,7 @@
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
-import { getReadyRockSurfaceTextures } from './rockSurfaceLibrary.js';
+import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
   COMMON_ROCK_UV_TRANSFORMS,
@@ -2190,14 +2190,20 @@ function configureCommonRockPbr(material) {
  * The bare material is keyed apart and tagged, and `upgradeBareRockMaterials` re-skins every live
  * rock the moment the library publishes.
  */
-function astMaterial(typeId, def, tint) {
+function astMaterial(typeId, def, tint, variantIdx = 0) {
   const wantsCommonSurface = typeId === 'ast_common_rock' && tint == null;
   const commonSurfaceReady = wantsCommonSurface ? getReadyRockSurfaceTextures() : null;
   const bare = wantsCommonSurface && !commonSurfaceReady;
-  const key = `astmat:${typeId}:${tint || 'def'}${bare ? ':bare' : ''}`;
+  // PIC-02: each displacement variant answers the shared maps with its own tint/ORM response so
+  // the five pooled chunks are not one texture painted five times. The library spec owns the
+  // numbers; this key keeps one cached material per variant.
+  const variantSpec = commonSurfaceReady ? rockSurfaceVariantSpec(variantIdx) : null;
+  const variantKey = variantSpec ? `:v${ROCK_SURFACE_VARIANTS.indexOf(variantSpec)}` : '';
+  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}`;
   return getMaterial(key, () => {
     const commonSurface = commonSurfaceReady;
     const color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
+    if (variantSpec) color.multiply(new THREE.Color(...variantSpec.tint));
     const skipRoughNoise = !!commonSurface || def.variant === 'crystal' || def.variant === 'ice';
     const rough = skipRoughNoise
       ? null
@@ -2236,10 +2242,12 @@ function astMaterial(typeId, def, tint) {
       color,
       map: commonSurface && commonSurface.baseColor || null,
       normalMap: commonSurface && commonSurface.normal || null,
-      normalScale: commonSurface ? new THREE.Vector2(0.72, 0.72) : new THREE.Vector2(1, 1),
+      normalScale: commonSurface
+        ? new THREE.Vector2(variantSpec.normalScale, variantSpec.normalScale)
+        : new THREE.Vector2(1, 1),
       aoMap: commonSurface && commonSurface.orm || null,
-      aoMapIntensity: commonSurface ? 0.78 : 1,
-      roughness: commonSurface ? 1 : def.rough,
+      aoMapIntensity: commonSurface ? variantSpec.aoIntensity : 1,
+      roughness: commonSurface ? variantSpec.roughness : def.rough,
       metalness: commonSurface ? 1 : def.metal,
       roughnessMap: commonSurface && commonSurface.orm
         || (def.variant === 'crystal' ? null : rough),
@@ -2249,7 +2257,10 @@ function astMaterial(typeId, def, tint) {
       flatShading: def.flat,
     });
     if (bare) {
-      material.userData = { ...(material.userData || {}), spacefaceBareRock: { typeId, tint: tint == null ? null : tint } };
+      material.userData = {
+        ...(material.userData || {}),
+        spacefaceBareRock: { typeId, tint: tint == null ? null : tint, variant: variantIdx | 0 },
+      };
     }
     return commonSurface
       ? configureCommonRockPbr(material)
@@ -2270,7 +2281,7 @@ export function upgradeBareRockMaterials(root) {
     if (!tag) return;
     const typeId = canonicalAstTypeId(tag.typeId);
     const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
-    const next = astMaterial(typeId, def, tag.tint == null ? undefined : tag.tint);
+    const next = astMaterial(typeId, def, tag.tint == null ? undefined : tag.tint, tag.variant);
     if (next && next !== node.material) {
       node.material = next;
       count += 1;
@@ -2286,7 +2297,7 @@ function buildAsteroid(e) {
   const tint = e.data && e.data.tint; // optional sector tint override
   const variantIdx = hashId(e.id) % 5; // 5 displacement variants per type
   const geo = astDisplacedGeometry(typeId, def, variantIdx);
-  const mesh = new THREE.Mesh(geo, astMaterial(typeId, def, tint));
+  const mesh = new THREE.Mesh(geo, astMaterial(typeId, def, tint, variantIdx));
   mesh.scale.setScalar(R);
   // GR-2: large asteroids are shadow receivers (and casters). A ship mining an asteroid should see
   // its shadow drape across the rock's sunlit side, and the asteroid's own shadow should fall on the
@@ -3123,7 +3134,7 @@ export function asteroidLeafResources(typeId, variantIdx) {
     typeId: canonical,
     variant,
     geometry: astDisplacedGeometry(canonical, def, variant),
-    material: astMaterial(canonical, def, null),
+    material: astMaterial(canonical, def, null, variant),
   };
 }
 
