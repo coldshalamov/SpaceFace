@@ -1991,10 +1991,12 @@ export function injectHudCss() {
   #hud::before {
     content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
     background:
-      radial-gradient(74% 46% at 0% 100%, rgb(4 6 9 / .90), rgb(4 6 9 / .55) 42%, transparent 76%),
-      radial-gradient(52% 34% at 100% 100%, rgb(4 6 9 / .78), rgb(4 6 9 / .38) 46%, transparent 78%),
-      linear-gradient(0deg, rgb(4 6 9 / .62) 0%, rgb(4 6 9 / .22) 12%, transparent 26%),
-      linear-gradient(180deg, rgb(4 6 9 / .55) 0%, rgb(4 6 9 / .18) 9%, transparent 20%);
+      radial-gradient(64% 42% at 2% 100%, rgb(3 5 8 / .95), rgb(3 5 8 / .86) 34%, rgb(3 5 8 / .52) 62%,
+                      rgb(3 5 8 / .18) 80%, transparent 94%),
+      radial-gradient(46% 30% at 100% 100%, rgb(3 5 8 / .86), rgb(3 5 8 / .46) 48%, transparent 82%),
+      linear-gradient(0deg, rgb(3 5 8 / .86) 0%, rgb(3 5 8 / .70) 9%, rgb(3 5 8 / .40) 19%,
+                             rgb(3 5 8 / .14) 29%, transparent 40%),
+      linear-gradient(180deg, rgb(3 5 8 / .72) 0%, rgb(3 5 8 / .30) 7%, transparent 17%);
   }
   @media (forced-colors:active) { #hud::before { display:none; } }
 
@@ -2007,14 +2009,56 @@ export function injectHudCss() {
     --hud-paper:var(--dp-phos);
     --hud-muted:var(--dp-phos-dim);
   }
-  #hud .sf-cluster-chassis :is(.sf-stat__v, .sf-speed__digits, .sf-bar__v, .sf-schematic__pct) {
+  /* The class names here were verified against the live DOM with scripts/ui-contrast.mjs, not
+     guessed: an earlier pass wrote .sf-bar__v and .sf-bar__k, which match nothing, so the readings
+     silently kept their old dim ink and measured 2.6-3.4:1 on the composited frame. */
+  #hud .sf-cluster-chassis :is(.sf-stat__v, .sf-speed__digits, .sf-barrow__num, .sf-fc-v,
+                               .sf-schematic__pct, .sf-schematic__state) {
     color:var(--dp-phos);
     text-shadow:0 0 12px var(--dp-phos-halo), 0 1px 0 rgb(0 0 0 / .8);
   }
-  #hud .sf-cluster-chassis :is(.sf-stat__k, .sf-bar__k, .sf-legend, .k-caps) {
-    color:var(--dp-phos-dim);
+  /* The label tier is quieter but still has to CLEAR 4.5:1 -- a legend nobody can read is not
+     restraint, it is a defect. --dp-phos-dim measured 3.2:1 over the veil, so the flight labels sit
+     one step up from it. The hierarchy is carried by weight and tracking, not by making the small
+     text too dark to see. */
+  #hud .sf-cluster-chassis :is(.sf-stat__k, .sf-barrow__label, .sf-fc-k, .sf-legend, .k-caps),
+  #hud .sf-prail__label,
+  #hud .sf-pslot__name {
+    color:#dfe9f4;
     text-shadow:0 1px 0 rgb(0 0 0 / .75);
   }
+  /* Hierarchy between a label and its value is carried by WEIGHT and TRACKING, not by making the
+     label too dark to read. Measured: #c4d4e2 sat at 3.1-4.3:1 over the veil and over the power
+     rail's plate; one step up clears 4.5:1 and the tiers still read apart. */
+  #hud .sf-cluster-chassis :is(.sf-stat__k, .sf-barrow__label, .sf-fc-k),
+  #hud .sf-prail__label {
+    font-variation-settings:"wght" 560, "wdth" 78;
+    letter-spacing:.09em;
+  }
+  #hud .sf-mt-obj { color:var(--dp-phos); text-shadow:0 0 10px var(--dp-phos-halo), 0 1px 0 rgb(0 0 0 / .8); }
+  /* "No lock" / "Idle" / "Clear" are the VALUE side of fire control, not its labels; they were
+     mis-tiered into the label group and measured 3.3-3.7:1 on the frame. */
+  #hud .sf-fc-v { color:var(--dp-phos); text-shadow:0 0 10px var(--dp-phos-halo), 0 1px 0 rgb(0 0 0 / .8); }
+
+  /* ── THE LEGIBILITY FLOOR ON ABSENT STATES ────────────────────────────────────────────────
+     "No lock", "Idle", an empty power slot: these are deliberately quiet, and they should be --
+     an absent reading must not shout. But --dp-ink-mute measured 3.37:1 against the composited
+     frame (scripts/ui-contrast.mjs), and quiet is not the same as unreadable. WCAG exempts a
+     DISABLED control; a live readout saying there is no target is not disabled, it is information
+     with a negative value.
+
+     These selectors carry [data-state] and so outrank the tier rules above at (1,2,0); that is why
+     the floor has to be restated here rather than fixed upstream. The tier gap survives: the
+     absent state is still a step below its live value, just above the floor instead of under it. */
+  #hud .sf-fc-row[data-state="none"] .sf-fc-v,
+  #hud .sf-fc-row[data-state="idle"] .sf-fc-v,
+  #hud .sf-fc-row[data-state="clear"] .sf-fc-v { color:#c2cfdb; text-shadow:0 1px 0 rgb(0 0 0 / .75); }
+  #hud .sf-pslot[data-state="empty"] .sf-pslot__name,
+  #hud .sf-pslot[data-state="locked"] .sf-pslot__name,
+  #hud .sf-pslot[data-state="cooling"] .sf-pslot__name,
+  #hud .sf-pslot[data-state="unaffordable"] .sf-pslot__name { color:#c2cfdb; }
+  #hud .sf-prail .sf-prail__label,
+  #hud .sf-prail[data-claimed] .sf-prail__label { color:#cfdbe6; opacity:1; }
 
   :root {
     --glass-fill:rgb(18 21 26 / .92);
@@ -2511,8 +2555,11 @@ export function injectHudCss() {
     font-family:var(--dp-face-read); font-size:13px; font-weight:650; color:var(--dp-ink); text-shadow:var(--dp-emit);
   }
   #hud .sf-fc-r { font-family:var(--dp-face-read); font-variant-numeric:tabular-nums; font-size:12px; color:var(--dp-ink-dim); }
+  /* An absent reading is QUIET, not invisible: --dp-ink-mute measured 3.37:1 against the
+     composited frame. Floor raised, tier gap kept (scripts/ui-contrast.mjs). */
   #hud .sf-fc-row[data-state="none"] .sf-fc-v, #hud .sf-fc-row[data-state="idle"] .sf-fc-v,
-  #hud .sf-fc-row[data-state="blocked"] .sf-fc-v { color:var(--dp-ink-mute); font-weight:500; text-shadow:none; }
+  #hud .sf-fc-row[data-state="clear"] .sf-fc-v,
+  #hud .sf-fc-row[data-state="blocked"] .sf-fc-v { color:#c2cfdb; font-weight:500; text-shadow:0 1px 0 rgb(0 0 0 / .75); }
   #hud .sf-fc-row:is([data-state="locked"], [data-state="ready"], [data-state="latched"]) .sf-fc-led {
     background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
     box-shadow:0 0 6px var(--dp-lamp-bloom), 0 0 14px var(--dp-lamp-bloom-soft);
@@ -2740,6 +2787,7 @@ export function injectHudCss() {
   /* a ready power is information (bone); amber is kept for what is armed or chosen, so the rail no
      longer lights a dozen amber marks at rest (critic round 3) */
   #hud .sf-pslot[data-state="ready"] .sf-pslot__art { color:var(--dp-ink); }
+  #hud .sf-pslot[data-state="ready"] .sf-pslot__name { color:#cfdbe6; }
   #hud .sf-pslot__name { letter-spacing:.06em; }
   /* the radar's north mark is a small machined pointer on the rim, not a grey sprite pill */
   #hud .sf-kit-radar__n {
