@@ -162,13 +162,16 @@ export function createFactionsScreen(ctx) {
 
     const standingLadder = FACTION_TIERS.map((t, i) => (
       `<li class="k-row k-row--static sx-ladder__step${i <= curIdx ? ' is-reached' : ''}${i === curIdx ? ' is-current' : ''}"${i === curIdx ? ' aria-current="true"' : ''}>` +
-        `<span class="${i === curIdx ? 'k-row__name' : 'k-62'} sx-ladder__name">${escapeHtml(t.name)}${i === curIdx ? ' <span class="k-t-fine k-signal">now</span>' : ''}</span>` +
+        `<span class="k-row__name${i === curIdx ? '' : ' k-62'} sx-ladder__name">${escapeHtml(t.name)}${i === curIdx ? ' <span class="k-t-fine k-signal">now</span>' : ''}</span>` +
         `<span class="k-row__num sx-ladder__min">${t.min > 0 ? '+' : ''}${t.min}</span>` +
       `</li>`
     )).join('');
     const contractLadder = factionContractLadderRows(rep).map((row) => (
       `<li class="k-row k-row--static sx-ladder__step${row.unlocked ? ' is-reached' : ''}">` +
-        `<span class="${row.unlocked ? 'k-row__name' : 'k-62'} sx-ladder__name">${escapeHtml(row.name)} · ${escapeHtml(row.unlocks)}` +
+        // A contract rung is a sentence -- "Recovery Work · R0-R1 local hauling · unlocked" -- so it
+        // WRAPS. Truncating it with an ellipsis hides the part that says what the rung buys you.
+        // The standing ladder above is one short tier name per row and keeps `k-row__name`.
+        `<span class="sx-ladder__name sx-ladder__name--wrap${row.unlocked ? '' : ' k-62'}">${escapeHtml(row.name)} · ${escapeHtml(row.unlocks)}` +
           `<span class="k-row__sub"> · ${row.aspirational ? 'future work' : row.unlocked ? 'unlocked' : 'locked'}</span></span>` +
         `<span class="k-row__num sx-ladder__min">${row.minRep > 0 ? '+' : ''}${row.minRep}</span>` +
       `</li>`

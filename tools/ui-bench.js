@@ -591,6 +591,10 @@ function fadedOut(el) {
     if (style.display === 'none' || style.visibility === 'hidden') return true;
     if (Number(style.opacity) < 0.06) return true;
     if (screenReaderOnly(style)) return true;
+    // A closed <details> still gives its content client rects in Chromium, so a collapsed "Quote
+    // breakdown" read as six rows of type cut off by the panel below it. The reader sees a summary.
+    if (node.parentElement && node.parentElement.tagName === 'DETAILS'
+      && !node.parentElement.open && node.tagName !== 'SUMMARY') return true;
   }
   return false;
 }
@@ -624,10 +628,27 @@ function textRuns() {
         if (rect.width >= 4 && rect.height >= 4) rects.push(rect);
       }
       if (!rects.length) continue;
-      runs.push({ host, text, rects, box: unionRect(rects) });
+      const box = unionRect(rects);
+      // A run scrolled out of the panel that holds it is not on screen, so it cannot collide with
+      // anything that is. Its rect still exists, which is how an adventure prompt 250px below the
+      // market's scroll viewport read as five collisions with the trade console drawn over it.
+      // severedType still sees these -- being unreachable is its own finding.
+      runs.push({ host, text, rects, box, offstage: scrolledOutOfView(host, box) });
     }
   }
   return runs;
+}
+
+// True when the run sits outside the visible rect of the nearest ancestor that scrolls or clips.
+function scrolledOutOfView(host, box) {
+  for (let node = host.parentElement; node && node !== document.body; node = node.parentElement) {
+    const style = styleOf(node);
+    if (!/auto|scroll|hidden|clip/.test(`${style.overflow} ${style.overflowX} ${style.overflowY}`)) continue;
+    const view = node.getBoundingClientRect();
+    if (box.top >= view.bottom - 2 || box.bottom <= view.top + 2) return true;
+    if (box.left >= view.right - 2 || box.right <= view.left + 2) return true;
+  }
+  return false;
 }
 
 function intersectArea(a, b) {
@@ -641,7 +662,10 @@ function intersectArea(a, b) {
 // empty space, which accused every hero-and-label pair on shipworks. Shrink each box toward its
 // ink before asking whether two runs collide.
 function inkBox(rect) {
-  const trim = Math.min(rect.height * 0.18, 6);
+  // Proportional, with no ceiling. A 6px cap is right for body copy and useless for a 120px screen
+  // title, whose leading alone is 20px -- the Crucible door's name "collided" with the blurb under
+  // it on nothing but empty space.
+  const trim = rect.height * 0.18;
   return {
     left: rect.left, right: rect.right,
     top: rect.top + trim, bottom: rect.bottom - trim,
@@ -711,6 +735,7 @@ function tangledType(runs) {
     {
       const a = runs[i];
       const b = runs[j];
+      if (a.offstage || b.offstage) continue;
       if (a.host === b.host || a.host.contains(b.host) || b.host.contains(a.host)) continue;
       // The same string twice in the same place is a drawing technique -- a stroke copy behind the
       // face for legibility over a bright scene, which is how alerts.js prints TAKING FIRE. You can
@@ -746,6 +771,7 @@ function buriedType(runs) {
   const found = [];
   for (const run of runs) {
     if (found.length >= AUDIT_CAP) break;
+    if (run.offstage) continue;
     let samples = 0;
     let buried = 0;
     let culprit = null;
@@ -790,6 +816,9 @@ function severedType(runs) {
   const found = [];
   for (const run of runs) {
     if (found.length >= AUDIT_CAP) break;
+    // Text truncated with an ellipsis is deliberately shortened and SAYS so; the reader can see
+    // there is more. That is a content decision, not a panel eating its own copy.
+    if (/ellipsis/.test(styleOf(run.host).textOverflow || '')) continue;
     const held = scrollHold(run.host);
     if (!held || held.kind !== "clipped") continue;
     found.push(String.fromCharCode(34) + shortText(run.text) + String.fromCharCode(34) + " is cut off by its own panel");
@@ -904,14 +933,11 @@ function layoutAudit() {
     }
     if (offscreen.length < 6) offscreen.push(`"${row.label}" is outside the frame`);
   }
-  for (const labels of scrolledGroups.values()) {
-    if (offscreen.length >= 6) break;
-    if (labels.length > 4) continue;
-    for (const label of labels) {
-      if (offscreen.length >= 6) break;
-      offscreen.push(`"${label}" is outside the frame`);
-    }
-  }
+  // A control below the fold of a list that genuinely scrolls is reachable, so it is not offscreen.
+  // This used to report any scrolled group of four or fewer, which accused the factions dossier's
+  // relations rail of losing its rows when they were one flick away. Text that is clipped with no
+  // way to reach it is a different finding, and severedType makes it.
+  scrolledGroups.clear();
   return { overlaps, clipped, offscreen, ...pictureAudit() };
 }
 

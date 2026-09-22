@@ -41,7 +41,7 @@
 :is(#screens .sx-observatory, .sx-observatory) .sxb-berth {
   grid-area: head;
 }
-:is(#screens .sx-observatory, .sx-observatory) .sxb-crown { grid-area: auto; }
+:is(#screens .sx-observatory, .sx-observatory) .sxb-crown { grid-area: auto; min-width: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .so-credit-delta { position: absolute; right: 0; bottom: -16px; color: var(--so-accent); font-size: 12px; opacity: 0; pointer-events: none; }
 /* Leftover interior buttons that are not kit keys keep a quiet face; kit keys keep their nine-slice. */
 :is(#screens .sx-observatory, .sx-observatory) button:not(.fh-key):not(.sx-tile):not(.sxb-launch):not(.sxb-vital__act):not(.sxb-vital__head):not(.sx-comms__toggle):not(.sxb-help):not(.so-command-trigger) {
@@ -63,7 +63,10 @@
 :is(#screens .sx-observatory, .sx-observatory) .so-berth-status { color: var(--so-accent); display: flex; align-items: center; gap: 9px; padding: 0 10px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
 :is(#screens .sx-observatory, .sx-observatory) .so-berth-status svg { width: 15px; }
 /* Vitals ride the crown plate (station.css). Do not stretch them into a dashboard strip. */
-:is(#screens .sx-observatory, .sx-observatory) .sxb-crown { position: absolute; inset: auto; padding: 0; }
+/* 2026-09-22: the vitals rail is a REGION of the frame's body, beside the workspace, not a panel
+   floating over the 400px hole the old shell reserved for it. `absolute` here put it back over the
+   market's quote and its credits figure. */
+:is(#screens .sx-observatory, .sx-observatory) .sxb-crown { position: relative; inset: auto; align-self: start; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-vitals { display: flex; flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 0; padding: 0; margin: 0; list-style: none; border: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-vital { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; row-gap: 6px; padding: 8px 0; min-height: 0; min-width: 0; border: 0; color: var(--so-muted); margin: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-vital__head { display: grid; grid-template-columns: 20px minmax(0,1fr); grid-template-rows: auto 4px; align-items: center; justify-content: normal; gap: 5px 8px; padding: 0; border: 0; background: none; box-shadow: none; min-height: 0; text-align: left; min-width: 80px; margin: 0; }
@@ -82,13 +85,17 @@
 :is(#screens .sx-observatory, .sx-observatory) .sxb-tape { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-berth__news { margin: 0; max-width: none; }
 /* Shared workbench. The only structural border encloses the operation, not every paragraph. */
+/* The workspace is the body's first column; the frame places it, so `grid-area: stage` here put it
+   into an implicit area of a grid whose areas are head/body/foot and auto-placed it off to the
+   right. `display: grid` so its single tab wrapper fills it. */
 :is(#screens .sx-observatory, .sx-observatory) .sx-screen__body {
-  grid-area: stage; display: block; position: relative; inset: auto; min-height: 0; min-width: 0; width: 100%;
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  position: relative; inset: auto; min-height: 0; min-width: 0; width: 100%;
   padding: 0; margin: 0; overflow: hidden; isolation: isolate;
 }
 :is(#screens .sx-observatory, .sx-observatory) [data-so-light]::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: inherit; opacity: 0; background: radial-gradient(300px circle at var(--so-pointer-x,50%) var(--so-pointer-y,0%), rgb(var(--so-accent-rgb) / .05), transparent 80%); transition: opacity 280ms; }
 :is(#screens .sx-observatory, .sx-observatory) [data-so-lit]::after { opacity: 1; }
-:is(#screens .sx-observatory, .sx-observatory) .sx-screen__body>.k-panel { display: grid; grid-template-columns: minmax(265px,34%) minmax(0,1fr); grid-template-rows: minmax(0,1fr); grid-template-areas: 'hang stage'; height: 100%; min-height: 0; gap: 0; padding: 0; margin: 0; width: 100%; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-screen__body>.k-panel { display: grid; grid-template-columns: var(--dp-col, minmax(265px,34%)) minmax(0,1fr); grid-template-rows: minmax(0,1fr); grid-template-areas: 'hang stage'; height: 100%; min-height: 0; gap: 0; padding: 0; margin: 0; width: 100%; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-screen__body :is(.k-hang,.k-stage) { position: relative; min-height: 0; min-width: 0; padding: 24px; overflow: auto; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-screen__body .k-hang { background: rgb(13 15 17 / .28); border-right: 1px solid rgb(44 49 57 / .55); }
 :is(#screens .sx-observatory, .sx-observatory) .k-display { font-family: var(--so-display); font-variation-settings: normal; letter-spacing: -.03em; line-height: 1.08; text-transform: none; }
@@ -430,4 +437,15 @@
 :is(#screens .sx-observatory, .sx-observatory) .sx-qty,
 :is(#screens .sx-observatory, .sx-observatory) .sx-trade__words {
   grid-row: auto; grid-column: 1; min-width: 0; flex-wrap: wrap;
+}
+
+/* A price chart with no history to draw is a hole in the pane. The same rule the flight deck's
+   instruments got: an instrument with nothing to say leaves the deck. */
+:is(#screens .sx-observatory, .sx-observatory) .sx-mkt-chart:empty { display: none; }
+
+/* A contract rung is a sentence; it wraps inside its row rather than running into the number or
+   losing its tail to an ellipsis. The row grows to fit. */
+:is(#screens .sx-observatory, .sx-observatory) .sx-ladder__step:has(.sx-ladder__name--wrap) { align-items: start; min-height: 0; padding-block: 6px; }
+:is(#screens .sx-observatory, .sx-observatory) .sx-ladder__name--wrap {
+  min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.35;
 }

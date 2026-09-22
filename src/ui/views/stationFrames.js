@@ -36,7 +36,7 @@ export function stationFrameHtml() {
       <div class="sxb-handoff" hidden></div>
     </header>
     <div class="dp-frame__body dp-frame__body--station">
-      <div class="sx-screen__body" id="sx-panel" role="tabpanel" tabindex="0"></div>
+      <div class="sx-screen__body dp-glass" id="sx-panel" role="tabpanel" tabindex="0"></div>
       <aside class="sxb-crown dp-plate dp-pad dp-stack" aria-label="Ship vitals and services"><div class="sxb-purse dp-stack" aria-label="Available credits"><div class="sxb-purse__label dp-etch">Credits</div><div class="sxb-purse__value dp-read">0</div><span class="so-credit-delta" aria-hidden="true"></span></div><ul class="sxb-vitals dp-stack"></ul></aside>
     </div>
     <footer class="sxb-ops dp-frame__foot">

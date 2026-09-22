@@ -159,7 +159,15 @@ async function probe(page, selector) {
   const rows = await page.evaluate((sel) => {
     const out = [];
     let nodes;
-    try { nodes = document.querySelectorAll(sel); } catch { return [{ error: 'bad selector' }]; }
+    // `text:<substring>` finds the element that directly prints that text. A finding names the
+    // words, not the class, so this is how you get from a finding to the element that made it.
+    if (sel.startsWith('text:')) {
+      const needle = sel.slice(5).toLowerCase();
+      nodes = [...document.querySelectorAll('body *')].filter((el) => [...el.childNodes]
+        .some((n) => n.nodeType === 3 && n.nodeValue && n.nodeValue.toLowerCase().includes(needle)));
+    } else {
+      try { nodes = document.querySelectorAll(sel); } catch { return [{ error: 'bad selector' }]; }
+    }
     for (const el of [...nodes].slice(0, 12)) {
       const r = el.getBoundingClientRect();
       const s = getComputedStyle(el);
