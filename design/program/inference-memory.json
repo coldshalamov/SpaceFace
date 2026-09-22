@@ -1428,6 +1428,71 @@
       "integration": "live",
       "commit": "f919edca2",
       "verification": "focused_green"
+    },
+    {
+      "id": "yard-readout",
+      "date": "2026-09-22",
+      "wf": "WF-04",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Dock vitals show the paid yard job live; undock warns and speaks what it cancelled",
+      "fingerprint": "verb=reveal,subject=station-yard,sector=helios,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "7295ac745",
+      "verification": "focused_green"
+    },
+    {
+      "id": "weapon-shove-identity",
+      "date": "2026-09-22",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Pulse M shove fixed (1.2 to 126) and momentum weapons now sell with a sentence and a SHOVE metric",
+      "fingerprint": "verb=repair,subject=weapon-catalog,sector=helios,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "01cf5d26d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "unique-wreck-discovery-plates",
+      "date": "2026-09-22",
+      "wf": "WF-10",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Fixed and salvaged unique wrecks now generate rich discovery plates in the exploration journal and Codex, and count toward galaxy trophies",
+      "fingerprint": "verb=discover,subject=unique-wrecks,sector=all,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "0ff1c9ba7",
+      "verification": "focused_green"
+    },
+    {
+      "id": "ceres-work-audio-family",
+      "date": "2026-09-22",
+      "wf": "WF-13",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Five Ceres mining and cargo job completions now speak through four positional, sample-backed work voices with deterministic variation",
+      "fingerprint": "verb=hear-work,subject=ceres-occupations,sector=ceres,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "f3bf397b2",
+      "verification": "focused_green"
+    },
+    {
+      "id": "cruise-chip-denial",
+      "date": "2026-09-22",
+      "wf": "WF-15",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "a weak scout plinking shields every 0.6s permanently denied the cruise travel tier and held the yaw stumble armed; now only meaningful hits drop it (penetration, shield break, authored heavy packet, control verbs, non-weapon origins, sustained window pressure)",
+      "fingerprint": "verb=escape,subject=cruise_tier,sector=any,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "1930ca3f1",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
