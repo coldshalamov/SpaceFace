@@ -112,11 +112,13 @@ test('a manifested hauler wreck holds its freight residue plus hull scrap, live 
     assert.deepEqual(marker.manifestResidue, { cmdty_ore_iron: 3 }, 'floor(10 * 0.3) survives');
     assert.deepEqual(marker.salvagePool, { cmdty_scrap_metal: 1, cmdty_ore_iron: 3 });
 
-    // The materialized wreck drains the same derived pool, not the generic residue.
+    // The materialized wreck drains the same derived pool, not the generic residue — and the
+    // scanner names the hulk as freight-laced before the player spends the beam.
     const wreck = h.state.entityList.find((e) => e.type === 'wreck' && e.alive !== false
       && e.data && e.data.markerId === marker.markerId);
     assert.ok(wreck, 'wreck materialized in-sector');
     assert.deepEqual(wreck.data.salvagePool, { cmdty_scrap_metal: 1, cmdty_ore_iron: 3 });
+    assert.equal(wreck.data.scanLabel, 'Freight-Laced Hulk');
   } finally {
     aftermathWrecks.destroy();
   }
@@ -171,6 +173,15 @@ test('manifest-less and military kills keep their class pools', () => {
 
     const patrol = killAt(h, 47, 'patrol_cutter', { defId: 'ship_patrol', shipClass: 'patrol', name: 'Stern Watch' });
     assert.deepEqual(patrol.salvagePool, { cmdty_scrap_metal: 2, cmdty_salvage_electronics: 2 });
+
+    // A manifest that itself carried scrap must not swallow the +1 hull scrap — it is additive.
+    const scrapCarrier = killAt(h, 48, 'hauler_freighter', {
+      defId: 'ship_hauler',
+      shipClass: 'hauler',
+      name: 'Junkline',
+      cargoManifest: manifest([{ commodityId: 'cmdty_scrap_metal', qty: 10 }]),
+    });
+    assert.deepEqual(scrapCarrier.salvagePool, { cmdty_scrap_metal: 4 }, 'floor(3) residue + 1 hull scrap');
   } finally {
     aftermathWrecks.destroy();
   }

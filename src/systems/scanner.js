@@ -1585,6 +1585,11 @@ export function contactStateWord(e, playerTeam, state) {
     return isHostileToPlayer(e, playerTeam, state) ? 'HOSTILE' : 'RAIDER';
   }
 
+  // Wreck-field scavengers ride passive AI with deliberately NO trafficRole (traffic's adoption
+  // path would hijack the hull), so the passive fallthrough below used to label a looter
+  // beelining to your kill site as TRADER. The ecology role stamp is their identity.
+  if (data.wreckEcologyRole === 'scavenger') return 'SCAVENGER';
+
   if (ai) {
     if (ai.lawful) return 'PATROL';
     const ctx = String(ai.spawnContext || ai.context || '');

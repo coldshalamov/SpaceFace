@@ -15,6 +15,7 @@ import {
 } from '../src/systems/aftermathWrecks.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { contactStateWord } from '../src/systems/scanner.js';
 
 const SECTOR_ID = 'sector_helios_prime';
 
@@ -206,6 +207,79 @@ test('the dispatched contest is durable: it survives a save round trip and re-en
     const field = Object.values(h.state.aftermathWrecks.ecology)[0];
     assert.equal(field.roster.length, 1, 'roster shape survives the round trip');
     assert.equal(aftermathForSector(h.state, SECTOR_ID)[0].markerId, marker.markerId);
+  } finally {
+    aftermathWrecks.destroy();
+  }
+});
+
+test('a killed fresh scavenger is never replaced — the budget was spent once', () => {
+  const h = boot();
+  try {
+    killAt(h, 47, 'hauler_freighter', HAULER_DATA('Bait'));
+    h.state.simTime = 1 + WRECK_FRESH_SCAV_RESPONSE_S;
+    aftermathWrecks.update(1 / 60, h.state);
+    const scav = listWreckFieldInhabitants(h.state)[0];
+    assert.equal(scav.data.wreckEcologyRole, 'scavenger');
+
+    // Kill the contest before the wreck-day: the slot stays gone.
+    scav.alive = false;
+    h.bus.emit('entity:destroyed', { id: scav.id });
+    h.state.simTime = 40;
+    aftermathWrecks.update(1 / 60, h.state);
+    assert.deepEqual(rolesOf(h), [], 'no instant respawn');
+
+    // The day role still joins on cadence — and it is the only thing that ever does. The spent
+    // scavenger slot is never re-minted: one live day-role, zero live scavengers, forever.
+    h.state.simTime = 601;
+    aftermathWrecks.update(1 / 60, h.state);
+    const roles = rolesOf(h);
+    assert.equal(roles.length, 1, 'only the day-role lives');
+    assert.ok(['squatter', 'trap'].includes(roles[0]), `the day role joined (got ${roles[0]})`);
+    h.state.simTime = 900;
+    aftermathWrecks.update(1 / 60, h.state);
+    assert.equal(listWreckFieldInhabitants(h.state).length, 1, 'never a second scavenger');
+  } finally {
+    aftermathWrecks.destroy();
+  }
+});
+
+test('a scavenger whose field was already stripped departs instead of idling', () => {
+  const h = boot();
+  try {
+    const marker = killAt(h, 48, 'hauler_freighter', HAULER_DATA('Latecomer'));
+    h.state.simTime = 1 + WRECK_FRESH_SCAV_RESPONSE_S;
+    aftermathWrecks.update(1 / 60, h.state);
+    const scav = listWreckFieldInhabitants(h.state)[0];
+    assert.equal(scav.data.scavengerWork.state, 'approach');
+
+    // The player drained the wreck while the scavenger was inbound.
+    const wreck = h.state.entityList.find((e) => e.type === 'wreck' && e.alive !== false
+      && e.data && e.data.markerId === marker.markerId);
+    wreck.data.salvagePool = {};
+    h.state.simTime += 1;
+    aftermathWrecks.update(1 / 60, h.state);
+    assert.equal(scav.data.scavengerWork.state, 'depart', 'nothing to take: the worker leaves');
+
+    // Out of the field's range, the departure finalizes and the body despawns.
+    scav.pos.x += 2600;
+    aftermathWrecks.update(1 / 60, h.state);
+    assert.equal(scav.alive, false, 'departed empty-hold scavenger despawns');
+  } finally {
+    aftermathWrecks.destroy();
+  }
+});
+
+test('the scanner names the contest: a wreck-field scavenger reads SCAVENGER, not TRADER', () => {
+  const h = boot();
+  try {
+    killAt(h, 49, 'hauler_freighter', HAULER_DATA('Labeled'));
+    h.state.simTime = 1 + WRECK_FRESH_SCAV_RESPONSE_S;
+    aftermathWrecks.update(1 / 60, h.state);
+    const scav = listWreckFieldInhabitants(h.state)[0];
+    assert.equal(scav.data.wreckEcologyRole, 'scavenger');
+    assert.equal(scav.data.trafficRole, undefined, 'no traffic role: adoption must not hijack the hull');
+    assert.equal(contactStateWord(scav, 0, h.state), 'SCAVENGER',
+      'the reticle word names the looter, not a fictional trader');
   } finally {
     aftermathWrecks.destroy();
   }

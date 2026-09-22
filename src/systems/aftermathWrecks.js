@@ -339,7 +339,10 @@ function wreckCargoResidueFor(cargoManifest) {
 function initialPoolForMarker(marker) {
   const residue = marker && marker.manifestResidue;
   if (residue && Object.keys(residue).length) {
-    return { cmdty_scrap_metal: 1, ...residue };
+    // The +1 hull scrap is additive: a manifest that itself carried scrap must not swallow it.
+    const pool = { ...residue };
+    pool.cmdty_scrap_metal = (Math.floor(Number(pool.cmdty_scrap_metal) || 0)) + 1;
+    return pool;
   }
   const cls = marker && marker.victimClass || '';
   if (String(cls).toLowerCase().includes('drone')) return { cmdty_scrap_metal: 2, cmdty_ore_iron: 1 };
@@ -843,8 +846,9 @@ export const aftermathWrecks = {
 
     const wreck = this._nearestFieldWreck(field, entity.pos);
     if (!wreck) {
-      if (work.holdQty > 0) this._startScavengerDepart(state, field, entity, work);
-      else this._scavengerIntent(entity, null);
+      // Nothing left to take — with the hold or without it, the worker leaves. An empty-hold
+      // idler parked on a stripped field reads as stuck AI, not as a rival.
+      this._startScavengerDepart(state, field, entity, work);
       return;
     }
 
@@ -1038,6 +1042,13 @@ export const aftermathWrecks = {
     });
     if (remembered) {
       this._stampNearbyStructurePatch(remembered, payload);
+      // A manifested kill re-arms the field's contested stamp (memoized in _populateField) so a
+      // freight hauler dying inside a young generic field still draws the fresh contest.
+      if (remembered.manifestResidue && Object.keys(remembered.manifestResidue).length) {
+        const own = ensureAftermathState(this.state);
+        const field = own.ecology[aftermathFieldId(remembered.sectorId, remembered.zoneId)];
+        if (field) field.contested = true;
+      }
       const current = this.state && this.state.world && this.state.world.currentSectorId;
       if (remembered.sectorId && remembered.sectorId === current) {
         this._spawnForSector(remembered.sectorId);
@@ -1435,7 +1446,13 @@ export const aftermathWrecks = {
         loot: [],
         salvagePool: poolForMarker(marker),
         salvageTimeLeft: WRECK_SALVAGE_TIME,
-        scanLabel: isPlayerWreckMarker(marker) ? 'Your Hull' : (cls ? cls.scanLabel : 'Battle-scarred Hulk'),
+        // A freight-laced hulk names itself: the scanner is where the player decides whether the
+        // beam is worth the stop, so the residue is a visible fact, not a hidden yield delta.
+        scanLabel: isPlayerWreckMarker(marker)
+          ? 'Your Hull'
+          : (marker.manifestResidue && Object.keys(marker.manifestResidue).length
+            ? 'Freight-Laced Hulk'
+            : (cls ? cls.scanLabel : 'Battle-scarred Hulk')),
         wreckClass: marker.wreckClass || 'battlefield',
         wreckClassLabel: isPlayerWreckMarker(marker)
           ? (marker.wreckClassLabel || 'Your Hull')
@@ -1692,9 +1709,11 @@ export const aftermathWrecks = {
     }
     // Fresh-kill contest (see WRECK_FRESH_SCAV_RESPONSE_S): the scavenger slot only, so the
     // day-old-field roles (squatter/trap) still belong to fields that have had time to settle.
-    if (age >= WRECK_FRESH_SCAV_RESPONSE_S && field.budget > 0 && !field.roster.length
-      && this._fieldIsContested(field)) {
-      this._seedRoster(field, now, true);
+    // Contested is memoized once per field per session — this runs at 60 Hz — and a manifested
+    // kill landing in a young field re-arms the stamp directly (_recordKill).
+    if (age >= WRECK_FRESH_SCAV_RESPONSE_S && field.budget > 0 && !field.roster.length) {
+      if (field.contested === undefined) field.contested = this._fieldIsContested(field);
+      if (field.contested) this._seedRoster(field, now, true);
     }
     return this._materializeRoster(field);
   },
