@@ -19763,8 +19763,10 @@
         "design/program/DEMO_READINESS_2026-09-20.md"
       ],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "Play the path in DEMO_READINESS section 5 on the owner's machine: title, Crucible rounds one to five, results, then one adventure loop. No frame over 100 ms, nothing on the glass unloads, every hit answers with sound, the three demo screens read as hardware. The owner signs the five bars. Depends on .00-.05."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-210.08-REPORT.md"
+      ],
+      "brief": "Play the path in DEMO_READINESS section 5 on the owner's machine: title, Crucible rounds one to five, results, then one adventure loop. No frame over 100 ms, nothing on the glass unloads, every hit answers with sound, the three demo screens read as hardware. The owner signs the five bars. Depends on .00-.05. REVIEWED 2026-09-22 (NOT SIGNED — leaf stays open): four of five bars carry green evidence; the frame-timing clauses were measured only at 46-87% host CPU while every accepted number in this family was taken at 32-38%. Remaining gate is one quiet-window pass (crucible smooth-flight probe, m3 adventure leg, solid-world latency) — see the report's closing section."
     }
   ]
 }
