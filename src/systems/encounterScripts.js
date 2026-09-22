@@ -836,6 +836,11 @@ function initializeConvoyPredation(d, live, state) {
       manifestId: data.cargoManifest && data.cargoManifest.manifestId || null,
     };
   }
+  // A hot start is for encounters whose fight is already committed when custody opens (the
+  // opening hauler raid fires already happening). Nobody stands down: the squad keeps its
+  // attack doctrine and the designated thief goes straight to the active approach instead of
+  // the hold-fire telegraph. The custody identity stamps are unchanged either way.
+  const hotStart = config.hotStart === true;
   for (let i = 0; i < raiders.length; i++) {
     const raider = raiders[i];
     const data = raider.data || (raider.data = {});
@@ -843,8 +848,10 @@ function initializeConvoyPredation(d, live, state) {
     data.predationEncounterId = live.id;
     data.predationRole = 'raider';
     data.predationIdentityKey = `${live.id}:raider:${i}`;
-    ai.predationStatus = 'standby';
-    ai.passive = true;
+    if (!hotStart) {
+      ai.predationStatus = 'standby';
+      ai.passive = true;
+    }
     delete ai.predationTargetId;
     delete ai.predationTargetIdentityKey;
   }
@@ -883,7 +890,7 @@ function initializeConvoyPredation(d, live, state) {
   }
   ai.approachTelegraph = String(config.approachTelegraph || 'pirate_approach');
   ai.noFireResponseWindowS = responseWindowS;
-  ai.predationStatus = 'telegraph';
+  ai.predationStatus = hotStart ? 'active' : 'telegraph';
   ai.predationTargetId = target.id;
   ai.predationTargetIdentityKey = target.data.predationIdentityKey;
   ai.predationLeashRadius = leashRadius;
@@ -899,7 +906,20 @@ function initializeConvoyPredation(d, live, state) {
     deadlineTick,
     leashRadius,
   };
-  setEntityDoctrine(raider, {
+  setEntityDoctrine(raider, hotStart ? {
+    activity: {
+      kind: ActivityKind.ATTACK_RUN,
+      reason: `${live.shapeId}:manifest_predation`,
+      anchor: live.anchor,
+      leashRadius,
+      startedTick,
+      deadlineTick,
+      targetId: target.id,
+      routeId: live.zoneId,
+      encounterId: live.id,
+    },
+    roe: RulesOfEngagement.WEAPONS_FREE,
+  } : {
     activity: {
       kind: ActivityKind.HAIL_HOLD,
       reason: `${live.shapeId}:predation_telegraph`,
@@ -914,7 +934,7 @@ function initializeConvoyPredation(d, live, state) {
     roe: RulesOfEngagement.HOLD_FIRE,
   });
 
-  live.data.predationStatus = 'telegraph';
+  live.data.predationStatus = hotStart ? 'active' : 'telegraph';
   live.data.predationRaiderId = raider.id;
   live.data.predationRaiderIdentityKey = raider.data.predationIdentityKey;
   live.data.predationTargetId = target.id;
@@ -948,6 +968,17 @@ function initializeConvoyPredation(d, live, state) {
     durationTicks: Math.max(30, Math.ceil(responseWindowS * 60)),
     tick: startedTick,
   });
+  if (hotStart) {
+    // Same engagement event the telegraph branch emits after the window — a hot start is the
+    // transition with zero wait, not a skipped contract.
+    d.emit('encounter:predationEngaged', {
+      encounterId: live.id,
+      raiderId: raider.id,
+      targetId: target.id,
+      manifestId: target.data.cargoManifest.manifestId,
+      t: d.now(),
+    });
+  }
   return true;
 }
 
@@ -2217,6 +2248,14 @@ const convoy = {
   fire(d, live, state) { convoyFire(d, live, state, true); },
   tick(d, live, state, now) { convoyTick(d, live, state, now, true); },
   choose(d, live, state, choiceId) { convoyChoose(d, live, state, choiceId); },
+  // Predation is plan-level (plan.predation), not script-owned: a self-registered runtime whose
+  // live.script label still reads 'convoy' gets the manifest-theft surface through these entries
+  // rather than duplicating the custody stack inside its own runtime.
+  initPredation(d, live, state) { return initializeConvoyPredation(d, live, state); },
+  tickPredation(d, live, state, now) {
+    tickConvoyPredation(d, live, state, now);
+    tickFreightCargoCustody(d, live, state, now);
+  },
   event(d, live, state, name, p) {
     if (name === 'subsystemDisabled') {
       if (!p || p.subsystemId !== 'subsystem_drive') return;

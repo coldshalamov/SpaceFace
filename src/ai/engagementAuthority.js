@@ -54,6 +54,7 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   // wake_mines telegraph always precedes it); the shield-breaker fires only its telegraphed
   // lance; the two staged boss choreographies fire on their broadside_fire acts.
   swarm_pack: new Set(['strike']),
+  pack_pursuit: new Set(['press']),
   mine_layer_wake: new Set(['mine_drop']),
   shield_breaker: new Set(['lance']),
   capital_broadside_tollman: new Set(['broadside_fire']),
@@ -241,7 +242,8 @@ export function isAuthorizedCeresAmbushPreyRelation(state, self, other) {
 }
 
 /**
- * Target-specific authority for the authored curtain-convoy crime.
+ * Target-specific authority for authored manifest-predation encounters (curtain convoy,
+ * opening hauler raid).
  *
  * Team 2 remains neutral everywhere else. The relation is live only while the director owns the
  * exact encounter, exact raider entity, and exact manifest-carrier identity. Runtime Map identity,
@@ -273,7 +275,10 @@ export function isAuthorizedPredationRelation(state, self, target) {
 
   const live = state.encounterDirector && state.encounterDirector.live
     && state.encounterDirector.live[encounterId];
-  if (!live || live.phase === 'done' || live.id !== encounterId || live.shapeId !== 'curtain_convoy') return false;
+  // The authorized shapes are the encounters that wire a designated raider through the
+  // freight-custody stack: the cold-open curtain convoy and the hot opening hauler raid.
+  if (!live || live.phase === 'done' || live.id !== encounterId
+    || (live.shapeId !== 'curtain_convoy' && live.shapeId !== 'opening_hauler_raid')) return false;
   if (live.data?.predationStatus !== 'active'
     || live.data.predationRaiderId !== self.id
     || live.data.predationTargetId !== target.id

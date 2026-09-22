@@ -10,7 +10,10 @@ export const trigger = deepFreeze({
   deck: 'combat',
   weight: 2.0,
   zoneTypes: ['trade_lane', 'civilian_core'],
-  script: 'selfRegistered',
+  // F11: the live record's script label is the custody family it belongs to. The module's
+  // self-registered runtime still wins fire/tick dispatch by shapeId, while 'convoy' lets the
+  // freight events (pickup:collected, subsystemDisabled, lifecycle, entityGone) route here.
+  script: 'convoy',
   fallbackScript: 'convoy',
   pressureCost: 20,
   cooldownS: 600,
@@ -72,6 +75,26 @@ export const runtime = Object.freeze({
       const hdata = hauler.data || (hauler.data = {});
       hdata.jobKind = 'hauler';
       hdata.cargo = { cmdty_fuel_cells: qty };
+      // F11: the same hold is the authored manifest the freight-custody stack tracks, so a
+      // raider who wins the fight physically carries the cargo out — it does not vanish with
+      // the hull. The generic bounty/loot roll is suppressed; custody owns the physical spill.
+      live.data.freightManifest = {
+        manifestId: `fm_encounter_${live.id}`,
+        freighterKey: `encounter:${live.id}`,
+        role: 'hauler',
+        lines: [{ commodityId: 'cmdty_fuel_cells', qty }],
+        totalQty: qty,
+      };
+      hdata.bountyCr = 0;
+      hdata.loot = null;
+      hdata.freightRewardOwner = 'manifest_custody';
+      hdata.cargoManifest = {
+        manifestId: live.data.freightManifest.manifestId,
+        freighterKey: live.data.freightManifest.freighterKey,
+        role: 'hauler',
+        lines: [{ commodityId: 'cmdty_fuel_cells', qty }],
+        totalQty: qty,
+      };
     }
     live.phase = 'conflict';
     d.say(live, 'alert', 'curtain_convoy_alert', null, { primary: true });
@@ -79,15 +102,26 @@ export const runtime = Object.freeze({
 
   tick(d, live, state, now) {
     if (live.phase === 'done') return;
+    // Cargo in play outranks the raid's own resolution: while the custody ledger is open the
+    // winner is still flying, and nobody despawns with the pod.
+    const custody = live.data.freightCargoCustody;
+    const custodyOpen = !!(custody && custody.terminal !== true);
     const haulerAlive = d.aliveCount(live, 'hauler') > 0;
     const raidersAlive = d.aliveCount(live, 'raider') > 0;
 
     if (!haulerAlive) {
+      if (custodyOpen) return;
       d.despawnAll(live, 12);
-      return d.resolve(live, 'hauler_destroyed', { speak: false });
+      return d.resolve(live, custody && custody.raiderEscaped ? 'robbed' : 'hauler_destroyed', { speak: false });
     }
 
     if (!raidersAlive) {
+      if (custodyOpen) return;
+      if (custody && custody.raiderEscaped) {
+        // The winner already left reach with the pod — there is no rescue left to pay for.
+        d.despawnAll(live, 15, 'hauler');
+        return d.resolve(live, 'robbed', { speak: false });
+      }
       d.grant(250, 'convoy:guard');
       d.rep('faction_mts', 5, 'hauler_rescued');
       d.emit('comms:log', {
@@ -100,6 +134,7 @@ export const runtime = Object.freeze({
     }
 
     if (now >= live.deadlineAt) {
+      if (custodyOpen) return;
       // The raiders gave up and the hauler survived — 'hauler_destroyed' would misreport the
       // outcome into stats, receipts, and resolved fingerprints.
       // The scripted beat closes; the cast does not delete itself. Released from the live
@@ -139,6 +174,23 @@ export default defineEncounter(trigger, {
     context: 'civilian',
     team: 2,
     passive: true,
+  },
+  // F11: one raider is the designated thief under the shared freight-custody stack — hotStart
+  // because the fight is already committed when custody opens: nobody stands down, the thief
+  // opens on the active approach (its 3s no-fire window still gates real weapons release), and
+  // once the carrier spills it picks the pods up physically and runs a finite in-sector
+  // escape point.
+  predation: {
+    enabled: true,
+    hotStart: true,
+    raiderRole: 'raider',
+    carrierRole: 'hauler',
+    motive: 'cargo_raid',
+    engagementTrigger: 'manifest_predation',
+    responseWindowS: 3,
+    objectiveS: 60,
+    leashRadius: 2600,
+    escapeHoldS: 3,
   },
   bark: 'curtain_convoy_alert',
   transitS: 60,

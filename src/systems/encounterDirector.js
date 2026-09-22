@@ -952,6 +952,18 @@ export const encounterDirector = {
       if (typeof console !== 'undefined' && console.warn) console.warn('[encounterDirector] fire failed', live.shapeId, err);
       return;
     }
+    // Predation is a plan-level feature: a self-registered runtime (whose live.script label still
+    // reads 'convoy') gets the same carrier→raider custody wiring the convoy script installs in its
+    // own fire. A failed composition degrades to the unfurnished fight; the spawned cast stays live.
+    if (live.phase !== 'done' && live.data.predationStatus == null
+        && live.plan && live.plan.predation && live.plan.predation.enabled === true
+        && script !== ENCOUNTER_SCRIPTS.convoy && script !== ENCOUNTER_SCRIPTS.traderRun) {
+      try {
+        ENCOUNTER_SCRIPTS.convoy.initPredation(this, live, state);
+      } catch (err) {
+        if (typeof console !== 'undefined' && console.warn) console.warn('[encounterDirector] predation init failed', live.shapeId, err);
+      }
+    }
     if (dir.live[live.id] && live.ids.length) {
       this.emit('encounter:spawned', {
         encounterId: live.id, kind: live.shapeId, squadId: live.squadId,
@@ -968,6 +980,16 @@ export const encounterDirector = {
       const live = dir.live[id];
       if (!live || live.phase === 'done') continue;
       const script = encounterScriptFor(live);
+      // Same plan-level fan-out as the post-fire hook: custody bookkeeping runs before the
+      // shape's own resolve checks so a custody terminal state is visible the same tick.
+      if (live.plan && live.plan.predation && live.plan.predation.enabled === true
+          && script !== ENCOUNTER_SCRIPTS.convoy && script !== ENCOUNTER_SCRIPTS.traderRun) {
+        try {
+          ENCOUNTER_SCRIPTS.convoy.tickPredation(this, live, state, now);
+        } catch (err) {
+          if (typeof console !== 'undefined' && console.warn) console.warn('[encounterDirector] predation tick failed', live.shapeId, err);
+        }
+      }
       if (!script || typeof script.tick !== 'function') continue;
       try {
         script.tick(this, live, state, now);
@@ -2155,6 +2177,20 @@ export const encounterDirector = {
   _scriptEvent(live, name, payload) {
     if (!live || live.phase === 'done') return;
     const script = encounterScriptFor(live);
+    // Plan-level predation: the convoy script owns the custody event surface. When a
+    // self-registered runtime shadows this live record's 'convoy' script label, the custody
+    // handler still receives the kill/disable/pickup/lifecycle events its ledger needs.
+    const convoyScript = ENCOUNTER_SCRIPTS.convoy;
+    if (live.plan && live.plan.predation && live.plan.predation.enabled === true
+        && convoyScript && script !== convoyScript && script !== ENCOUNTER_SCRIPTS.traderRun) {
+      try {
+        convoyScript.event(this, live, this.state, name, payload);
+      } catch (err) {
+        this.abort(live, 'script_error');
+        if (typeof console !== 'undefined' && console.warn) console.warn('[encounterDirector] custody event failed', live.shapeId, name, err);
+        return;
+      }
+    }
     if (!script || typeof script.event !== 'function') return;
     try {
       script.event(this, live, this.state, name, payload);
@@ -2537,7 +2573,10 @@ function makeEncounterLiveRecord(state, item, shape, now) {
     plan: item,
     tier: shape.tier,
     deck: shape.deck,
-    sectorId: item.sectorId,
+    // Every production pending source stamps sectorId (_planSector, authored request, Ceres
+    // seed). A hand-injected item that lacks it still physically fires in the player's sector —
+    // backfill so downstream bindings (ai.sectorId, predation authority, receipts) hold.
+    sectorId: item.sectorId || (state && state.world && state.world.currentSectorId) || null,
     zoneId: item.zoneId,
     zoneName: item.zoneName,
     factionId: item.factionId || shape.factionId || null,
