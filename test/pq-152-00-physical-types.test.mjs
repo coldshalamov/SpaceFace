@@ -196,6 +196,26 @@ test('PQ-152.00 tow_recovery completes by tow_in and sling_in', () => {
   }
 });
 
+test('PQ-152.00 sling_in requires the core inside the destination berth', () => {
+  const h = boot(SEED);
+  const mission = forceOffer(h, 'tow_recovery', 'station_ceres');
+  const core = targetsByRole(h, mission, 'slag_core')[0];
+  assert.ok(core, 'tow mission must spawn the slag core');
+  destStation(h, mission);
+
+  core.pos = { x: 5000, z: 5000 };
+  h.sim.bus.emit('massline:throw', { payloadId: core.id, aimTargetId: null });
+  assert.equal(h.state.missions.active.some((row) => row.id === mission.id), true,
+    'a throw elsewhere in the destination sector must not complete the tow');
+
+  core.pos = { x: 80, z: 40 };
+  h.sim.bus.emit('massline:throw', { payloadId: core.id, aimTargetId: null });
+  const receipt = h.completed.find((row) => row.missionId === mission.id);
+  assert.ok(receipt, 'a throw into the berth must complete the tow');
+  assert.equal(receipt.completionMethod, 'sling_in');
+  h.sim.dispose();
+});
+
 test('PQ-152.00 demolition completes by wrecking_ball and cut_down', () => {
   for (const method of METHODS.demolition) {
     const h = boot(SEED);
