@@ -50,7 +50,8 @@ import {
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { resolveFractureProgress, resolveVeinFracturePattern } from './asteroidMotionPresentation.js';
-import { resolveFunnelMoteStream, TRACTOR_VORTEX_RANGE_WU } from './pickupMotionPresentation.js';
+import { resolveFunnelMoteStream, spiralMoteWithinDraw } from './pickupMotionPresentation.js';
+import { notePresentationFrame } from './presentationSimClock.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
@@ -580,6 +581,7 @@ const VFX_LOOT_MAGNET_HZ = 24;
 // real and dim. The tractor cap is player-centered; the glass cull uses the live look-at.
 const LOOT_MAGNET_DRAW_RANGE = TABLE_LOOT_MAGNET_CAP_WU;
 const _lootMagnetFocusScratch = { x: 0, z: 0 };
+const _lootMagnetMotePosScratch = { x: 0, z: 0 };
 const _tableLookAtScratch = { x: 0, z: 0 };
 // Wreck cryo-coolant wisps: dead hulks slowly vent split coolant lines. A cadence-gated scan of
 // the indexed wrecks bucket; per-wreck vent slots are deterministic (id-hashed phase against sim
@@ -11116,6 +11118,7 @@ export const vfx = {
 
   update(frameDt) {
     if (this._destroyed === true) return;
+    notePresentationFrame(this.state);
     // Refresh the Tier-1 sink once per frame: spawn paths then pay a single null check.
     const tier1Perf = this.state && this.state.perfRuntime;
     const tier1Counter = tier1Perf && tier1Perf.tier1;
@@ -11488,17 +11491,19 @@ export const vfx = {
           0.22 + Math.random() * 0.16, 0.9 + rush * 0.7, 0.0,
           this._c0, this._c1, 2.4, 1.1, 0, roll, 0.7 + rush * 0.5,
         );
-        // Gravimetric funnel mote — inside the vortex range the tractor field itself reads as a
-        // spiral stream converging on the scoop, not just the drop flying home. Deterministic
-        // phase from the drop id + sim time (resolveFunnelMoteStream); velocity aims at the bay.
-        const moteDistSq = pdx * pdx + pdz * pdz;
-        if (moteDistSq < TRACTOR_VORTEX_RANGE_WU * TRACTOR_VORTEX_RANGE_WU) {
-          const mote = resolveFunnelMoteStream(e.id, this._t || 0, _funnelMoteScratch);
-          const t = mote.cycle;
-          const spiralR = (1 - t) * 3.5;
-          const mx = e.pos.x - pdx * t + Math.cos(mote.angle) * spiralR;
-          const mz = e.pos.z - pdz * t + Math.sin(mote.angle) * spiralR;
-          const dl = Math.sqrt(moteDistSq) || 1;
+        // Gravimetric funnel mote. The spiral sits on the live table disc, not a fixed
+        // 200 WU ring that stays up after the glass has shrunk. Phase is still the drop id
+        // plus sim time (resolveFunnelMoteStream); velocity aims at the bay.
+        const mote = resolveFunnelMoteStream(e.id, this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0, _funnelMoteScratch);
+        const t = mote.cycle;
+        const spiralR = (1 - t) * 3.5;
+        const mx = e.pos.x - pdx * t + Math.cos(mote.angle) * spiralR;
+        const mz = e.pos.z - pdz * t + Math.sin(mote.angle) * spiralR;
+        _lootMagnetMotePosScratch.x = mx;
+        _lootMagnetMotePosScratch.z = mz;
+        const moteFocus = lootMagnetFocusDelta(state, player.pos, _lootMagnetMotePosScratch, _lootMagnetFocusScratch);
+        if (spiralMoteWithinDraw(moteFocus.x, moteFocus.z, tableWu)) {
+          const dl = Math.hypot(pdx, pdz) || 1;
           this._spawnSprite(SPR_FLASH, mx, 1.0, mz,
             0.22, 0.55, 0.18, 0.5, 0.0, col,
             (-pdx / dl) * 36, (-pdz / dl) * 36,

@@ -102,7 +102,8 @@ const CORE_SECTORS = [
       { id: 'poi_helios_claim_mark', type: 'beacon', name: 'Starter Seam Claim' },
       {
         id: 'poi_helios_locker',
-        type: 'derelict',
+        type: 'cache',
+        scannerSignalKind: 'cache',
         name: 'Bonded Cold Locker',
         discoveryPlate: {
           title: 'Bonded Cold Locker',

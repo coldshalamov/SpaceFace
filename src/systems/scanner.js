@@ -465,6 +465,7 @@ export function signalClassLabel(kind, stage = 1) {
   const s = Math.max(1, Math.min(3, stage | 0));
   if (kind === 'archive') return s >= 3 ? 'ARCHIVE TELEMETRY' : s >= 2 ? 'ARCHIVE SIGNAL' : 'RECORDED CARRIER';
   if (kind === 'distress') return s >= 3 ? 'DISTRESS COMMUNICATOR' : s >= 2 ? 'DISTRESS SIGNAL' : 'MODULATED SIGNAL';
+  if (kind === 'cache') return s >= 3 ? 'CACHE' : s >= 2 ? 'SEALED CACHE' : 'CACHE RETURN';
   if (kind === 'salvage') return s >= 3 ? 'DERELICT SALVAGE' : s >= 2 ? 'SALVAGE SIGNATURE' : 'METALLIC RETURN';
   if (kind === 'anomaly') return s >= 3 ? 'ANOMALOUS PHENOMENON' : s >= 2 ? 'ANOMALY SIGNATURE' : 'ENERGY RETURN';
   if (kind === 'ore') return s >= 3 ? 'ORE CONCENTRATION' : s >= 2 ? 'ORE SIGNATURE' : 'MINERAL RETURN';
@@ -516,6 +517,7 @@ const SIGNAL_KIND_PRIORITY = Object.freeze({
   anomaly: 90,
   archive: 85,
   salvage: 80,
+  cache: 78,
   ambush: 70,
   ship: 60,
   ore: 40,
@@ -537,7 +539,7 @@ function signalKindForEntity(entity) {
   return null;
 }
 
-function signalKindForPoi(poi, entityData = null) {
+export function signalKindForPoi(poi, entityData = null) {
   const explicitKind = String((poi && poi.scannerSignalKind)
     || (entityData && entityData.scannerSignalKind) || '').trim().toLowerCase();
   if (Object.hasOwn(SIGNAL_KIND_PRIORITY, explicitKind)) return explicitKind;
@@ -545,7 +547,8 @@ function signalKindForPoi(poi, entityData = null) {
   const label = String(poi && (poi.name || poi.label || poi.poiId) || '').toLowerCase();
   if (type.includes('anomal')) return 'anomaly';
   if (type.includes('distress') || type.includes('beacon') || label.includes('distress')) return 'distress';
-  if (type.includes('wreck') || type.includes('derelict') || type.includes('cache') || type.includes('salvage')) return 'salvage';
+  if (type.includes('cache')) return 'cache';
+  if (type.includes('wreck') || type.includes('derelict') || type.includes('salvage')) return 'salvage';
   return null;
 }
 
@@ -1557,11 +1560,12 @@ export function isHostileToPlayer(e, playerTeam, state) {
 // with a plain team fallback so a contact never renders blank (respects the "one word" contract).
 // Intent is the operational role (who they are / what they're doing), not a prose wall.
 export function contactStateWord(e, playerTeam, state) {
+  const data = (e && e.data) || {};
+  if (data.poiType === 'cache' || data.kind === 'cache') return 'CACHE';
   if (isWreckLike(e)) return 'DERELICT';
   if (e && e.data && e.data.echoOfPlayer === true) return 'ECHO';
   const playerId = state && state.playerId;
   if (e.team === 0 && e.id !== playerId) return (e.data && e.data.isWingman) ? 'WINGMAN' : 'ALLY';
-  const data = e.data || {};
   const ai = data.ai;
   const combat = data.combat;
   const targetsPlayer = !!(combat && playerId != null && combat.targetId === playerId);

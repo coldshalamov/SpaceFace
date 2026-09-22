@@ -58,16 +58,16 @@ not to invent.
 |---|---|---|---|---|---|
 | PIC-01 | An NPC Kestrel is the same complete body as the player Kestrel, not a kit of parts | `src/render/partsLibrary.js` | A spawned NPC kestrel resolves through the packaged whole-ship allowlist | Unhide the procedural kit. Author a new GLB | SHIPPED |
 | PIC-02 | Common rocks are not one texture painted five times | `src/render/rockSurfaceLibrary.js` | At least two instance variants differ in tint or ORM at chase scale | Change the instance pool or the rock mesh | OPEN |
-| PIC-03 | Kit and hero decals stay up at the distance the code comment says they still read | `src/render/ships/shipKit.js`, `src/render/ships/kestrelHero.js` | Decals are not hidden at the current LOD1 cut while the comment still claims they read much farther | Author new LOD meshes | OPEN |
-| PIC-04 | The hero fan stops when the sim pauses | `src/render/ships/kestrelHero.js` | The fan advances on sim time, not `performance.now()` | Rewrite the hero GLB | OPEN |
-| PIC-05 | Pickup spiral motes do not draw far off the glass | `src/render/pickupMotionPresentation.js` | Spiral VFX uses the live table draw radius | Retune the sim magnet range | OPEN |
+| PIC-03 | Kit and hero decals stay up at the distance the code comment says they still read | `src/render/ships/shipKit.js`, `src/render/ships/kestrelHero.js` | Decals are not hidden at the current LOD1 cut while the comment still claims they read much farther | Author new LOD meshes | SHIPPED |
+| PIC-04 | The hero fan stops when the sim pauses | `src/render/ships/kestrelHero.js` | The fan advances on sim time, not `performance.now()` | Rewrite the hero GLB | SHIPPED |
+| PIC-05 | Pickup spiral motes do not draw far off the glass | `src/render/pickupMotionPresentation.js` | Spiral VFX uses the live table draw radius | Retune the sim magnet range | SHIPPED |
 | PIC-06 | A wreck you just made, on screen, is not hidden for the opening pipeline hold | `src/render/pipelineAutoFlushPolicy.js`, `src/render/renderer.js` | An on-glass fresh wreck submits during the hold the same way on-glass rocks do | Remove the hold | OPEN |
 | PIC-07 | A large wreck does not swallow the chase camera | `src/render/renderer.js` | `'wreck'` is in the camera-clearance kinds when the span is already large enough for stations | Write a general occluder pass | OPEN |
 | PIC-08 | A shove-kill and a gun-kill do not share the generic explosion schedule | `src/render/combat/phasedExplosions.js`, `src/presentation/causalVfxGrammar.js` | The schedule id follows the real cause already in the grammar | Grow the explosion solver | OPEN |
 | PIC-09 | Starter weapons scar with their own heat, not the unknown-weapon default | `src/render/weapons/contactMarks.js` | `heatForWeaponVariant` maps the starter ids in `vfxProfiles.js` to a named heat, not the unknown default | Redesign the scar atlas | SHIPPED |
 | PIC-10 | The graphics lab does not teach a camera-facing halo as the method | `src/render/graphicsLab.js` | The lab-only halo demo is relabeled or restaged off the banned card | Change production VFX | OPEN |
 | PIC-11 | A missing place does not appear as a published cube | `src/render/partsLibrary.js` | `buildFallbackPlaceProp` keeps an empty substrate or marker | Add fallback geometry | SHIPPED |
-| PIC-12 | Hull tallies and patches read at the default chase | `src/render/livingHullPresentation.js` | The mark is sharper than the current 256×64 smear at chase distance | Add a second decal system | OPEN |
+| PIC-12 | Hull tallies and patches read at the default chase | `src/render/livingHullPresentation.js` | The mark is sharper than the current 256×64 smear at chase distance | Add a second decal system | SHIPPED |
 
 ## VERB
 
@@ -96,7 +96,7 @@ not to invent.
 | WORLD-03 | The Choir-Tender wreck is a wreck on the Helios chart, not another derelict beacon | `src/data/sectors.js`, `src/data/uniqueWrecks.js` | Helios POIs include `type: 'wreck'` bound to `wreck_choir_tender` | Invent a new unique drop | OPEN |
 | WORLD-04 | Salvaging the Choir-Tender draws the investigator the wreck data already describes | a new encounter module beside `src/data/encounters/150-unique-wreck-silver-draft-cleaner.js`, wired from `uniqueWrecks.js` | The director catalog contains that id and it offers the existing complication choice plus one hull | Invent a mission type or a second Helios unique wreck | OPEN |
 | WORLD-05 | A new game's Helios bar can name the Silver-Draft before you have scanned it | `src/ui/station/barContacts.js`, `src/ui/uniqueWreckRumorSurface.js` | `generateContacts('station_helios', new game)` can include rumor `bar.helios_meridian.silver_draft` | Invent a wreck class | OPEN |
-| WORLD-06 | The Helios locker reads as a cache | `src/data/sectors.js` (`poi_helios_locker`) | Its POI type is `cache` and the scanner uses the cache label | Add a pirate base or a new POI type | OPEN |
+| WORLD-06 | The Helios locker reads as a cache | `src/data/sectors.js` (`poi_helios_locker`) | Its POI type is `cache` and the scanner uses the cache label | Add a pirate base or a new POI type | SHIPPED |
 | WORLD-07 | Sker Bazaar has ships on the apron | `src/data/sectors.js` (`sector_sker_haven` traffic) | Seed 4242 spawns at least two non-player ships near `station_sker` | Raise `enemyDensity`. Add an outlaw encounter | OPEN |
 | WORLD-08 | A Collective hull hails in yard language, not Concord boilerplate | `src/data/factionContactGrammar.js`, `src/data/barks.js` | `FACTION_CONTACT_GRAMMAR.faction_dmc` exists and a Ceres trader or patrol line uses it | Change heat math. Add a faction | OPEN |
 | WORLD-09 | A Meridian hull hails in invoice language | `src/data/factionContactGrammar.js`, `src/data/barks.js` | A Tethys trader line uses an MTS-specific sentence | Retune prices | OPEN |

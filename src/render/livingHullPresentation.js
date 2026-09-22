@@ -14,8 +14,10 @@ import { shouldUseTransparentSinglePass } from './transparentSinglePassPolicy.js
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 import { installIllustratedSurface } from './illustratedSurface.js';
 
-const GRAFFITI_WIDTH = 256;
-const GRAFFITI_HEIGHT = 64;
+// Chase-camera mark. The old 256×64 atlas smeared into a bar at the default camera.
+export const LIVING_HULL_MARK_TEXTURE = Object.freeze({ width: 1024, height: 256 });
+const GRAFFITI_WIDTH = LIVING_HULL_MARK_TEXTURE.width;
+const GRAFFITI_HEIGHT = LIVING_HULL_MARK_TEXTURE.height;
 const EMPTY_LINE = '';
 
 function clampInteger(value, max) {
@@ -80,14 +82,22 @@ function createGraffitiSurface() {
   if (canvas && context) {
     texture = new THREE.CanvasTexture(canvas);
   } else {
-    texture = new THREE.DataTexture(new Uint8Array(4 * 4 * 4), 4, 4, THREE.RGBAFormat);
+    texture = new THREE.DataTexture(
+      new Uint8Array(GRAFFITI_WIDTH * GRAFFITI_HEIGHT * 4),
+      GRAFFITI_WIDTH,
+      GRAFFITI_HEIGHT,
+      THREE.RGBAFormat,
+    );
   }
   texture.name = 'LivingHull_GraffitiAtlas';
   texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearFilter;
-  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.anisotropy = 8;
   texture.needsUpdate = true;
   if ('colorSpace' in texture) texture.colorSpace = THREE.SRGBColorSpace;
+  texture.userData.markWidth = GRAFFITI_WIDTH;
+  texture.userData.markHeight = GRAFFITI_HEIGHT;
 
   let updates = 0;
   function draw(line) {
@@ -96,19 +106,20 @@ function createGraffitiSurface() {
     if (!context) return;
     context.clearRect(0, 0, GRAFFITI_WIDTH, GRAFFITI_HEIGHT);
     if (line) {
-      let size = 24;
+      let size = Math.round(GRAFFITI_HEIGHT * 0.42);
+      const pad = Math.round(GRAFFITI_WIDTH * 0.04);
       context.textAlign = 'center';
       context.textBaseline = 'middle';
       do {
         context.font = `800 ${size}px "Arial Narrow", "DIN Condensed", sans-serif`;
-        if (context.measureText(line).width <= GRAFFITI_WIDTH - 20) break;
-        size -= 1;
-      } while (size > 10);
+        if (context.measureText(line).width <= GRAFFITI_WIDTH - pad) break;
+        size -= 2;
+      } while (size > 18);
       context.save();
       context.translate(GRAFFITI_WIDTH * 0.5, GRAFFITI_HEIGHT * 0.52);
       context.rotate(-0.025);
       context.lineJoin = 'round';
-      context.lineWidth = 4;
+      context.lineWidth = Math.max(2, Math.round(GRAFFITI_HEIGHT / 48));
       context.strokeStyle = 'rgba(28, 16, 12, 0.92)';
       context.fillStyle = 'rgba(230, 203, 151, 0.96)';
       context.strokeText(line, 0, 0);
@@ -119,6 +130,40 @@ function createGraffitiSurface() {
   }
 
   return { texture, draw, updates: () => updates };
+}
+
+function createTallyMarkTexture() {
+  const width = GRAFFITI_WIDTH;
+  const height = GRAFFITI_HEIGHT;
+  const data = new Uint8Array(width * height * 4);
+  const stroke = Math.max(3, Math.round(height / 22));
+  const cuts = [0.28, 0.5, 0.72];
+  for (const cut of cuts) {
+    const x0 = Math.round(width * cut);
+    for (let y = Math.round(height * 0.22); y < Math.round(height * 0.78); y++) {
+      const x = x0 + Math.round((y / height) * width * 0.015);
+      for (let dx = 0; dx < stroke; dx++) {
+        const px = x + dx;
+        if (px < 0 || px >= width) continue;
+        const i = (y * width + px) * 4;
+        data[i] = 255;
+        data[i + 1] = 255;
+        data[i + 2] = 255;
+        data[i + 3] = 255;
+      }
+    }
+  }
+  const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat);
+  texture.name = 'LivingHull_TallyMarks';
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  if ('colorSpace' in texture) texture.colorSpace = THREE.SRGBColorSpace;
+  texture.userData.markWidth = width;
+  texture.userData.markHeight = height;
+  return texture;
 }
 
 function composeInstance(mesh, index, position, rotation, scale, scratch) {
@@ -218,10 +263,13 @@ export function createLivingHullPresentation(options = {}) {
   const grimeTexture = createGrimeTexture();
   const graffitiSurface = createGraffitiSurface();
 
+  const tallyMark = createTallyMarkTexture();
   const tallyMaterial = configureDecalMaterial(stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0xd8c79e,
     roughness: 0.92,
     metalness: 0,
+    map: tallyMark,
+    alphaTest: tallyMark ? 0.45 : 0,
     side: THREE.DoubleSide,
   }), SHARED_MATERIAL_ROLE.HULL));
   const patchMaterial = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
@@ -452,6 +500,8 @@ export function createLivingHullPresentation(options = {}) {
       graffitiVisible: graffiti.visible,
       graffitiLine: last.line || EMPTY_LINE,
       graffitiTextureUpdates: graffitiSurface.updates(),
+      markWidth: (graffitiSurface.texture.image && graffitiSurface.texture.image.width) || 0,
+      markHeight: (graffitiSurface.texture.image && graffitiSurface.texture.image.height) || 0,
       instanceMatrixVersions: {
         tallies: tallies.instanceMatrix.version,
         patches: patches.instanceMatrix.version,
@@ -471,6 +521,7 @@ export function createLivingHullPresentation(options = {}) {
         graffitiMaterial: graffitiMaterial.uuid,
         grimeTexture: grimeTexture.uuid,
         graffitiTexture: graffitiSurface.texture.uuid,
+        tallyMark: tallyMark ? tallyMark.uuid : null,
       },
     };
   }
@@ -489,6 +540,7 @@ export function createLivingHullPresentation(options = {}) {
     graffitiMaterial.dispose();
     grimeTexture.dispose();
     graffitiSurface.texture.dispose();
+    if (tallyMark) tallyMark.dispose();
     root.clear();
   }
 
