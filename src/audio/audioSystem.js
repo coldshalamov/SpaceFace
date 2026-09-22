@@ -4082,7 +4082,9 @@ export const audio = {
     if (!recipe) return null;
     const entity = options.entity || null;
     const follow = options.follow === true || options.trackId != null;
-    const busName = getBusForRecipe(recipe, recipeId);
+    // A sustained loop normally belongs to its recipe's bus. A caller may override when the same
+    // recipe is used in a different room (INST-13: the station bed is ambient, not the flight engine).
+    const busName = options.busName || getBusForRecipe(recipe, recipeId);
     // UI/combat voices are intentionally not hidden by residency: a player-facing warning or a
     // nearby combat receipt must remain audible. Continuous remote engine/ambient loops, however,
     // must not keep scheduling AudioParam work once their owner leaves the active audio set.
@@ -4314,77 +4316,25 @@ export const audio = {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || ctx.state !== 'running' || !rt.loops) return;
     if (rt.loops.stationHum) return;
-    // Place identity: Helios / SCN trade hubs sit slightly brighter; others cooler/darker.
+    // INST-13: the authored room tone (`station_hum_loop`, bound to `sfx_station_hum`) is the body
+    // of the docked bed. `_startLoopVoice` plays that resident sample plus the recipe's live synth
+    // layer, routes the pair onto the ambient bus, and releases both together — no bespoke build.
+    // Place identity: Helios / SCN trade hubs sit a touch fuller; others thinner.
     // Read-only station/sector ids — never mutates gameplay state.
     const stationId = (p && p.stationId) || rt._dockStationId || '';
     const sectorId = (this.state.world && this.state.world.currentSectorId) || '';
     const isHelios = String(stationId).includes('helios') || String(sectorId).includes('helios');
-    const baseFreq = isHelios ? 66 : 58;
-    const ventCenter = isHelios ? 340 : 280;
-    const humPeak = isHelios ? 0.045 : 0.038;
-    // Build a layered station hum: low drone + ventilation noise
-    const humOsc = ctx.createOscillator();
-    humOsc.type = 'triangle';
-    humOsc.frequency.value = baseFreq;
-    const humOsc2 = ctx.createOscillator();
-    humOsc2.type = 'sine';
-    humOsc2.frequency.value = baseFreq * 2 + (isHelios ? 0.4 : 0.2); // slight detune for chorus
-    const humGain = ctx.createGain();
-    humGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    humGain.gain.linearRampToValueAtTime(humPeak, ctx.currentTime + 2.0); // slow fade in
-    const humFilter = ctx.createBiquadFilter();
-    humFilter.type = 'lowpass';
-    humFilter.frequency.value = isHelios ? 230 : 190;
-    humFilter.Q.value = 1.0;
-    // Ventilation layer: filtered noise
-    const ventBuf = getNoiseBuffer(ctx, rt._caches);
-    const ventSrc = ctx.createBufferSource();
-    ventSrc.buffer = ventBuf;
-    ventSrc.loop = true;
-    const ventGain = ctx.createGain();
-    ventGain.gain.value = isHelios ? 0.012 : 0.015;
-    const ventFilter = ctx.createBiquadFilter();
-    ventFilter.type = 'bandpass';
-    ventFilter.frequency.value = ventCenter;
-    ventFilter.Q.value = 0.5;
-    humOsc.connect(humFilter);
-    humOsc2.connect(humFilter);
-    humFilter.connect(humGain);
-    ventSrc.connect(ventFilter);
-    ventFilter.connect(ventGain);
-    ventGain.connect(humGain);
-    humGain.connect(rt.ambientBus);
-    try { humOsc.start(ctx.currentTime); humOsc2.start(ctx.currentTime); ventSrc.start(ctx.currentTime); } catch (_) {}
-    rt.loops.stationHum = {
-      nodes: [humOsc, humOsc2, ventSrc, humGain, humFilter, ventFilter, ventGain],
-      gain: humGain, sources: [humOsc, humOsc2, ventSrc], extra: [],
-      startedAt: ctx.currentTime, loop: true, stopAt: Infinity, _stopped: false,
-      releaseDur: 1.5, callGain: humPeak, id: rt._nextVoiceId++,
-      role: 'ambient', busName: 'ambient',
-    };
+    const voice = this._startLoopVoice('sfx_station_hum', null, isHelios ? 1.0 : 0.9, { busName: 'ambient' });
+    if (!voice) return;
+    rt.loops.stationHum = voice;
   },
 
   _stopStationHum() {
-    const rt = this.rt, ctx = rt.ctx;
+    const rt = this.rt;
     if (!rt.loops || !rt.loops.stationHum) return;
-    const hum = rt.loops.stationHum;
-    if (ctx) {
-      // Fade out over 1.5s
-      try {
-        const t = ctx.currentTime;
-        hum.gain.gain.cancelScheduledValues(t);
-        hum.gain.gain.setValueAtTime(Math.max(0.0001, hum.gain.gain.value), t);
-        hum.gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.5);
-      } catch (_) {}
-      // Source stops ride the audio clock, not a wall-clock timer: a session boundary that
-      // clears _defer() callbacks can never leave the oscillators running under silence.
-      const stopAt = ctx.currentTime + 1.6;
-      for (const n of hum.nodes) { try { n.stop(stopAt); } catch (_) {} }
-      // Node disconnects are pure cleanup — deferred and tracked so destroy() can drop them.
-      this._defer(() => {
-        for (const n of hum.nodes) { try { n.disconnect(); } catch (_) {} }
-      }, 2000);
-    }
+    // Release the sample body and its synth layer on the audio clock; _frame() GCs the nodes after
+    // the recipe's 1.5 s release tail. No wall-clock timer can strand a running source.
+    this._endLoopVoice(rt.loops.stationHum);
     delete rt.loops.stationHum;
   },
 
