@@ -637,7 +637,11 @@ function commonAncestor(a, b) {
 function plateBetween(host, stopAt) {
   for (let node = host; node && node !== stopAt; node = node.parentElement) {
     const style = styleOf(node);
-    if (style.backgroundImage !== 'none') return true;
+    // A rendered plate (a nine-slice PNG) hides what is behind it. A GRADIENT does not: almost
+    // every panel in this tree paints a gradient, so treating background-image as a shield excused
+    // every collision on the chart, where three semi-transparent panels sit on each other in the
+    // bottom-left corner and the type smears together.
+    if (/url\(/.test(style.backgroundImage)) return true;
     // 0.97, not 0.85: panels in this tree sit around 0.9, and type underneath a 0.9 plate still
     // shows through as a smear. That smear is the defect, not the exception to it.
     if (alphaOf(style.backgroundColor) >= 0.97) return true;
@@ -785,8 +789,8 @@ function deadBoxes() {
       const painted = alphaOf(style.backgroundColor) >= 0.2
         || (parseFloat(style.borderTopWidth) > 0 && alphaOf(style.borderTopColor) >= 0.2);
       if (!painted) continue;
-      found.push(Math.round(rect.width) + '×' + Math.round(rect.height) + 'px box at '
-        + Math.round(rect.left) + ',' + Math.round(rect.top) + ' is painted and empty');
+      found.push(nameOf(el) + ' — a ' + Math.round(rect.width) + '×' + Math.round(rect.height)
+        + 'px box at ' + Math.round(rect.left) + ',' + Math.round(rect.top) + ' is painted and empty');
     }
   }
   return found;

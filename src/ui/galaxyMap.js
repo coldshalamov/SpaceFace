@@ -1009,12 +1009,25 @@ function sectorRecordById(state, id) {
  * countable at glyph scale and just read as texture.
  */
 /** Display name for a sector id, preferring live world state over the authored catalog. */
+// A raw identifier is never a name a player may read. The last resort used to return the id
+// verbatim, so a sector with no live record and no authored entry printed `sector_helios` — and the
+// chart's title rule uppercases, so the screen's hero element read SECTOR_HELIOS, underscore and
+// all (design/frontend/THE_BAR.md §3, tell 1). Turn the id into words instead.
+function humanizeId(id) {
+  const words = String(id)
+    .replace(/^(sector|system|zone|place)[_-]/i, '')
+    .split(/[_\-\s]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1));
+  return words.join(' ') || String(id);
+}
+
 function sectorNameOf(state, sectorId) {
   if (!sectorId) return '';
   const live = state && state.world && state.world.sectors && state.world.sectors[sectorId];
   if (live && live.name) return String(live.name);
   const authored = SECTOR_BY_ID.get(sectorId);
-  return authored && authored.name ? String(authored.name) : String(sectorId);
+  return authored && authored.name ? String(authored.name) : humanizeId(sectorId);
 }
 
 function sectorBerthCount(state, sectorId) {

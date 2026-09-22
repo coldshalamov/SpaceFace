@@ -27,10 +27,10 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
 
 | # | Screen | Findings at survey | Status | Commit |
 |---|---|---|---|---|
-| 1 | `title` / `mainMenu` | EMPTY BOX 64×787 left rail | **DONE** | `ff5e1a0` |
-| 2 | `motionAsk` | EMPTY BOX 64×787 (inherits title) | SURVEYED | |
+| 1 | `title` / `mainMenu` | EMPTY BOX 64×787 left rail | **DONE** | `a51aa1241` |
+| 2 | `motionAsk` | EMPTY BOX 64×787 (inherits title) | **DONE** | this pass |
 | 3 | `new-game` | ON TOP OF ×1 | SURVEYED | |
-| 4 | `pause` | clean — cramped column, dead DEV bar, quarter-frame | **DONE** | this pass |
+| 4 | `pause` | clean — cramped column, dead DEV bar, quarter-frame | **DONE** | `00b25955b` |
 | 5 | `settings` | clean | SURVEYED | |
 | 6 | `save-load` | clean | SURVEYED | |
 | 7 | `station` / `station-dock` | ON TOP OF ×3, CUT OFF ×6 | SURVEYED | |
@@ -41,11 +41,11 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
 | 12 | `station-factions` | ON TOP OF ×2, CUT OFF ×2, OFF FRAME ×2 | SURVEYED | |
 | 13 | `station-bar` | clean | SURVEYED | |
 | 14 | `station-ledger` | clean | SURVEYED | |
-| 15 | `flight` | EMPTY BOX 276×40 right bar | SURVEYED | |
+| 15 | `flight` | EMPTY BOX 276×40 right bar | PARTIAL — empty box fixed | this pass |
 | 16 | `comms-radial` | BURIED ×3, EMPTY BOX 276×40 | SURVEYED | |
 | 17 | `wingman-radial` | EMPTY BOX 276×40 | SURVEYED | |
 | 18 | `crucibleHud` | clean | SURVEYED | |
-| 19 | `chart` / `galaxyMap` | clean — `SECTOR_HELIOS` debug title, 11-pill wall | SURVEYED | |
+| 19 | `chart` / `galaxyMap` | `SECTOR_HELIOS` title **fixed**; crumb still leaks the id; three panels stacked bottom-left | PARTIAL | this pass |
 | 20 | `chart-galaxy` | clean | SURVEYED | |
 | 21 | `ship` | CUT OFF ×2, OFF FRAME ×4, hero number bisected | SURVEYED | |
 | 22 | `range` | clean | SURVEYED | |
@@ -80,9 +80,9 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
       threw. Gone from `station*`, `range` and `chart`.
 - [ ] `styles/hud.css` loads twice: `<link>` at `index.html:16` and `@import` at `styles/ui.css:5`.
       Cascade order is the whole strategy.
-- [ ] `styles/AGENTS.md` forbids exactly this work: *"Do not impose universal palette, opacity,
-      blur, radius, typography, animation, or panel recipes."* That clause is the written cause of
-      the four-system pile. User direction outranks it (root `AGENTS.md` §4) — rewrite it.
+- [x] `styles/AGENTS.md` forbade exactly this work: *"Do not impose universal palette, opacity,
+      blur, radius, typography, animation, or panel recipes."* **Rewritten** — one system, screens
+      assemble it, a new `--xx-` prefix is a defect.
 - [ ] Retire `--k-`, `--sf-`, `--fh-`, `--of-`, `--so-`, `--mf-`, `--visor-` once no screen reads
       them. Aliases during flight, deletion at the end.
 - [ ] Extend `scripts/check-ui-screen-imports.mjs` past its 18-screen list so a screen cannot grow
@@ -108,3 +108,9 @@ A Tier B screen that turns out to be on a player's main path is promoted, not sk
 - **Bench-clean is not done.** Pause read clean with MAIN MENU and QUIT below the fold of a
   scrolling column, because a scroller is reachable by the audit's definition and unacceptable by
   a player's. Open the PNG.
+- **KNOWN AUDIT GAP.** The chart's bottom-left corner has three panels of type stacked on each
+  other — plainly visible in `.devshots/ui-bench/chart.png` — and `tangledType` does not report it.
+  Two excuses were removed already (the 0.85 alpha threshold, and treating any gradient as an
+  opaque plate) and it still passes, so the cause is something else: most likely the runs share a
+  host, or an ancestor/descendant skip is swallowing them. Worth one focused hour; until then the
+  chart's corner is a defect the machine cannot see and the eye can.

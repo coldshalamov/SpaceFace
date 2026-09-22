@@ -31,7 +31,7 @@ export const motionAskScreen = {
   mount(rootEl, ctx) {
     injectDeckplate();
     rootEl.innerHTML = '';
-    rootEl.classList.add('k-screen', 'k-screen--stage');
+    rootEl.classList.add('screen');
     rootEl.dataset.screen = FIRST_BOOT_MOTION_ASK_ID;
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
@@ -46,18 +46,16 @@ export const motionAskScreen = {
     status.textContent = 'Motion effects';
     stage.setAttribute('aria-label', 'Motion effects');
 
-    const rail = el('div', 'of-title-rail fh-rail');
-    rail.setAttribute('aria-hidden', 'true');
-    stage.appendChild(rail);
-
+    // No decorative rail: this screen borrows the title's frame, and the title's rail was a painted
+    // empty box (design/frontend/THE_BAR.md §3). Each choice carries its own lamp instead.
     const list = words([
       { action: 'full', label: 'Full', sub: 'Keep combat feel', primary: true, current: true },
       { action: 'reduce', label: 'Reduce', sub: 'Calm shake, punch and hit-stop' },
     ], {
       ariaLabel: 'Motion effects',
+      system: 'dp',
       onPick: (action) => this._pick(ctx, action),
     });
-    for (const button of list.querySelectorAll('.k-word')) button.classList.add('fh-menu-item');
     stage.appendChild(list);
 
     refs = {

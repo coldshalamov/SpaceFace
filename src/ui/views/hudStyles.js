@@ -2491,6 +2491,11 @@ export function injectHudCss() {
     box-shadow:0 10px 24px rgb(0 0 0 / .45), var(--dp-glass-depth);
     border-radius:0;
   }
+  /* An instrument with no reading is not a hole in the deck. These four wear a bezel and a glass
+     face, and the bezel drew whether or not anything was behind it — so with no contacts the
+     overview strip sat on the flight deck as a 276x40 empty black bar, which the bench reports as
+     EMPTY BOX and a player reads as something broken. An empty instrument leaves the deck. */
+  #hud :is(#sf-sector-law, .sf-overview, .sf-target, .sf-cargo-panel):empty { display:none; }
   #hud .sf-overview--count { padding:6px 10px; }
 
   /* option B: information reads in bone; the lamp stays on what the pilot acts on */
