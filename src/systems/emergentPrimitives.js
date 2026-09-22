@@ -194,7 +194,7 @@ function hurt(sys, state, target, amount, damageType, attackerId) {
   packet.flags = { allowAnyTarget: true, ignoreFriendlyFire: true };
   const route = sys && sys.helpers && sys.helpers.routeCombatDamage;
   if (typeof route === 'function') {
-    route({ attackerId, targetId: target.id, packet, origin: { x: pos.x, z: pos.z } });
+    route({ attackerId, targetId: target.id, packet, origin: { kind: 'emergent', x: pos.x, z: pos.z } });
     return;
   }
   target.hull = num(target.hull, 0) - amount;
