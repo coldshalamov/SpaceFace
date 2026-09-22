@@ -84,6 +84,19 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     ship: 'ship_mule',
     sectorIds: Object.freeze(['sector_vesta_forge']),
   }),
+  Object.freeze({
+    // Io Reach frontier mail: the contested floor changes hands by the week, so the one identity
+    // that keeps running Reach Station's sealed packets on schedule is a fast courier who does not
+    // care which flag flies over the dock. She is the only authored Io contact, so the generic
+    // seed-hash pick (traffic._ensureNamedLaneContact) always returns her for that sector.
+    id: 'lane_maro_keelwright',
+    name: 'Maro Keelwright',
+    callsign: 'REACH-MAIL',
+    role: 'courier',
+    gimmick: 'frontier-mail',
+    ship: 'ship_kestrel',
+    sectorIds: Object.freeze(['sector_io_reach']),
+  }),
 ]);
 
 /** PQ-143.02: the one-off courier's contact id, exported for traffic.js's dedicated fixture slot. */
@@ -215,4 +228,7 @@ export const LANE_GIMMICK_LABELS = Object.freeze({
   // PQ-143.02 one-off courier (target-panel fallback label).
   'liner-sprint-courier': 'LINER SPRINT',
   liner_sprint_courier: 'LINER SPRINT',
+  // WORLD-11 Io Reach frontier courier.
+  'frontier-mail': 'FRONTIER MAIL',
+  frontier_mail: 'FRONTIER MAIL',
 });
