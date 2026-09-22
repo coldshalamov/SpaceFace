@@ -10322,7 +10322,7 @@
       "priority": 208,
       "title": "Ten authored set pieces",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -10346,8 +10346,11 @@
         "npm run check:mission-receipts",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "Authored once each with actors, a place, a twist clause and two solutions; the 47-A craft level. DONE WHEN: Ten playable on the route; owner verdict per piece."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-152.01-REPORT.md",
+        "design/program/roadmap/receipts/PQ-152-171-INTEGRATION-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: eleven authored physical-verb set pieces post on route boards (INF-082 added the Frame Coupler heavy_tow as a legitimate 11th), each with actors, a place, a twist clause and two reachable methods; seed 15210 proves boards + both-method completions (3/3). heist stays last. Integration repaired a dead mining:overheated clause and a brief-truncation path that could hide clause text."
     },
     {
       "id": "PQ-152.02",
@@ -10355,7 +10358,7 @@
       "priority": 209,
       "title": "The capital boss",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -10379,8 +10382,11 @@
         "npm run check:mission-receipts",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "A heavy with sub-systems (thrusters, bays, turrets) vulnerable to thrown mass; no immunity theatre. DONE WHEN: Killable by physics alone in a scenario; the tumble law applies to its sub-systems."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-152.02-REPORT.md",
+        "design/program/roadmap/receipts/PQ-152-171-INTEGRATION-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: capital_boss is its own type and encounter (three authored capitals); Coalition posts 'Throw the capital down' — seed 15220 proves a physics-only kill, subsystems (thrusters/turrets/bays) disabled by thrown mass, tumble applies, guns slower, no immunity phases (3/3)."
     },
     {
       "id": "PQ-152.03",
@@ -10388,7 +10394,7 @@
       "priority": 210,
       "title": "Clauses that twist",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -10412,8 +10418,11 @@
         "npm run check:mission-receipts",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "Contract terms that fire mid-mission (the escort turns, the cargo is volatile, the buyer is the law). DONE WHEN: ≥ 5 twist clauses live; each mutates rather than fails (PQ-138.04)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-152.03-REPORT.md",
+        "design/program/roadmap/receipts/PQ-152-171-INTEGRATION-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: five twist clauses (escort_turns, cargo_volatile, buyer_is_the_law, wreck_wakes, pods_are_bait) stamp from their own seed stream and each mutates into a live successor on the PQ-138.04 seam — no Mission FAILED toast; seed 15230 boards carry all five, Helios none (8/8)."
     },
     {
       "id": "PQ-034.native-closure",
@@ -12806,7 +12815,7 @@
       "priority": 288,
       "title": "The repetition meter",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -12825,8 +12834,11 @@
         "npm run check:baseline",
         "npm run check:sim:long"
       ],
-      "receiptRefs": [],
-      "brief": "Telemetry counts shapes per hour; a check fails when any shape exceeds its budget over a 10-hour sim. DONE WHEN: `check:content:repetition` green."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-171.01-REPORT.md",
+        "design/program/roadmap/receipts/PQ-152-171-INTEGRATION-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: encounter-shape meter records grammar keys (situation×place×twist×actor) on state.encounterShapeMeter at script fire, no per-tick allocation; check:content:repetition walks 10h of the Ceres planner on seed 17101 and fails over 4/h — green (170 beats, 16 shapes, hottest 3.40/h; 5/5 test)."
     },
     {
       "id": "PQ-162.00",

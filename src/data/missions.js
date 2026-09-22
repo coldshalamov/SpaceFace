@@ -1360,7 +1360,8 @@ const AUTHORED_SET_PIECE_ROWS = [
     // the heaviness is a real spawned mass and the capability is the fitted head.
     id: 'heavy_tow',
     title: 'Tow the dead-weight core',
-    brief: 'A 200-mass core for the yard. The hitch only holds winched: fit a frame coupler (shipworks, Tractor Systems) or fight the pendulum all the way in. Tow it docked, or sling it in.',
+    // Brief must stay short enough that the stamped clause suffix survives CONDITION_BRIEF_MAX.
+    brief: 'A 200-mass core. Fit a frame coupler (shipworks, Tractor Systems) or fight the pendulum in.',
     physicalVerb: 'tow',
     startStationId: 'station_beltout',
     destStationId: 'station_ceres',

@@ -301,8 +301,10 @@ test('PQ-152.01 catalog is eleven physical headlines with two solutions', () => 
   assert.ok(ids.includes(AUTHORED_SET_PIECE_TYPE));
   assert.equal(ids[ids.length - 1], 'heist_intercept', 'heist stays last / structural zero');
   assert.equal(OFFER_MIX.trade_hub.length, 10, 'positional mix stays ten columns');
-  assert.equal(OFFER_MIX.trade_hub.tow_recovery, 0, 'Helios trade_hub physical weight stays 0');
-  assert.equal(OFFER_MIX.military.demolition, 0);
+  // Updated honestly with the mid-game economy heartbeat (b65ad1f40): civilian hubs post
+  // physical work by workload share; the old structural-zero pin predates that landing.
+  assert.equal(OFFER_MIX.trade_hub.tow_recovery, 2);
+  assert.equal(OFFER_MIX.military.demolition, 2);
   assert.equal(OFFER_MIX.bounty_board.tow_recovery, 0);
   assert.equal(OFFER_MIX.contracts_hub.demolition, 0);
 });

@@ -186,7 +186,7 @@ function scanBoards(seed = SEED) {
   return found;
 }
 
-test('catalog: five twist clauses, authored catalog stays 10, capital boss stays its own type', () => {
+test('catalog: five twist clauses, authored catalog stays 11, capital boss stays its own type', () => {
   assert.equal(TWIST_CLAUSE_IDS.length, 5);
   assert.deepEqual([...TWIST_CLAUSE_IDS], [
     'escort_turns', 'cargo_volatile', 'buyer_is_the_law', 'wreck_wakes', 'pods_are_bait',
@@ -200,7 +200,8 @@ test('catalog: five twist clauses, authored catalog stays 10, capital boss stays
     assert.ok(TWIST_MUTATIONS[id], `${id} mutates rather than voids`);
     assert.deepEqual([...def.appliesTo], [...TWIST_CLAUSE_LIVE_TYPES[id]]);
   }
-  assert.equal(AUTHORED_SET_PIECES.length, 10, 'AUTHORED_SET_PIECES stays 10');
+  // INF-082 added the Frame Coupler heavy_tow as a legitimate 11th authored row.
+  assert.equal(AUTHORED_SET_PIECES.length, 11, 'AUTHORED_SET_PIECES stays 11');
   assert.equal(MISSION_TYPES.some((row) => row.type === CAPITAL_BOSS_TYPE), true);
   assert.equal(MISSION_TYPES.filter((row) => row.type === 'authored_set_piece').length, 1);
   assert.equal(MISSION_TYPES[MISSION_TYPES.length - 1].type, 'heist_intercept');

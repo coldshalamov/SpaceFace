@@ -157,12 +157,14 @@ function gunCapital(h, capital) {
   });
 }
 
-test('PQ-152.02 catalog stays ten authored pieces and adds its own capital type', () => {
+test('PQ-152.02 catalog stays eleven authored pieces and adds its own capital type', () => {
   const authored = validateAuthoredSetPieceCatalog();
   const capital = validateCapitalBossCatalog();
   assert.equal(authored.ok, true, authored.errors.join('; '));
   assert.equal(capital.ok, true, capital.errors.join('; '));
-  assert.equal(AUTHORED_SET_PIECES.length, 10, 'AUTHORED_SET_PIECES must stay exactly 10');
+  // INF-082 added the Frame Coupler heavy_tow as a legitimate 11th authored row; the capital
+  // boss must still be its own type, never an authored row.
+  assert.equal(AUTHORED_SET_PIECES.length, 11, 'AUTHORED_SET_PIECES must stay exactly 11');
   assert.equal(SET_PIECE_MISSIONS.length, 5, 'SP1 chains stay five');
   const ids = MISSION_TYPES.map((row) => row.type);
   assert.ok(ids.includes(CAPITAL_BOSS_TYPE));

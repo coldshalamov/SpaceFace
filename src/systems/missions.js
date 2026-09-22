@@ -304,10 +304,7 @@ function stampAuthoredTwist(offer) {
   const condition = missionConditionById(twistId);
   const next = { ...offer, clauses: [...existing, row] };
   if (condition && condition.brief) {
-    const base = String(next.brief || '').trim();
-    const line = base ? `${base} ${condition.brief}` : condition.brief;
-    next.brief = line.length <= CONDITION_BRIEF_MAX ? line
-      : `${line.slice(0, CONDITION_BRIEF_MAX - 3).trimEnd()}...`;
+    next.brief = withClauseBriefSuffix(String(next.brief || '').trim(), condition.brief);
   }
   return next;
 }
@@ -324,10 +321,7 @@ function stampCapitalBossTwist(offer) {
   const condition = missionConditionById(twistId);
   const next = { ...offer, clauses: [...existing, row] };
   if (condition && condition.brief) {
-    const base = String(next.brief || '').trim();
-    const line = base ? `${base} ${condition.brief}` : condition.brief;
-    next.brief = line.length <= CONDITION_BRIEF_MAX ? line
-      : `${line.slice(0, CONDITION_BRIEF_MAX - 3).trimEnd()}...`;
+    next.brief = withClauseBriefSuffix(String(next.brief || '').trim(), condition.brief);
   }
   return next;
 }
@@ -367,6 +361,17 @@ const MISSION_WRECK_COLLISION_MASK = Masks.SHIP | Masks.ASTEROID | Masks.PROJECT
 // nag: crossing the speed ceiling repeatedly in a dogfight must not bury the rest of the alert lane.
 const CONDITION_WARN_COOLDOWN_S = 8;
 const CONDITION_BRIEF_MAX = 150;
+
+// A clause the player cannot read before accepting is a hidden condition. When the combined
+// line overflows the cap, the base brief yields — the term text is never the part that gets cut.
+function withClauseBriefSuffix(base, suffix) {
+  const line = base ? `${base} ${suffix}` : suffix;
+  if (line.length <= CONDITION_BRIEF_MAX) return line;
+  const room = CONDITION_BRIEF_MAX - suffix.length - 4; // "... " separator
+  if (room > 0) return `${base.slice(0, room).trimEnd()}... ${suffix}`;
+  return suffix.length <= CONDITION_BRIEF_MAX ? suffix
+    : `${suffix.slice(0, CONDITION_BRIEF_MAX - 3).trimEnd()}...`;
+}
 const TICK_CONDITION_ID_SET = new Set(TICK_CONDITION_IDS);
 const MISSION_HOSTILE_SPAWN_MIN_WU = 1700;
 const MISSION_HOSTILE_SPAWN_MAX_WU = 2600;
@@ -2343,12 +2348,9 @@ export const missions = {
     if (!terms.length) return stamped;
     const suffix = terms.map((c) => c.brief).filter(Boolean).join(' ');
     if (suffix) {
-      const base = String(stamped.brief || '').trim();
-      const line = base ? `${base} ${suffix}` : suffix;
       // The chart inspector prints this as leg prose; the shipped generator clamps its half to 90,
       // so the combined line stays inside two short lines rather than reflowing the panel.
-      stamped.brief = line.length <= CONDITION_BRIEF_MAX ? line
-        : `${line.slice(0, CONDITION_BRIEF_MAX - 3).trimEnd()}...`;
+      stamped.brief = withClauseBriefSuffix(String(stamped.brief || '').trim(), suffix);
     }
     return stamped;
   },
