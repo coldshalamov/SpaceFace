@@ -525,7 +525,7 @@ export const onboarding = {
     bus.on('tether:latched', (payload) => {
       if (!massline2Flag('hitchhiking') || !payload || payload.targetId == null) return;
       const target = this.state.entities && this.state.entities.get(payload.targetId);
-      if (!isExpressHitchTarget(target)) return;
+      if (!isHitchHintTarget(target)) return;
       this._showHint('masslineHitchhiking', firstUseLine('masslineHitchhiking'), payload);
     });
     bus.on('massline:selfSling', (p) => {
@@ -2883,12 +2883,18 @@ function masslineThrowHint(state) {
   return 'Hold RIGHT MOUSE; release waits for the white diamond.';
 }
 
-function isExpressHitchTarget(entity) {
+// The hitch hint teaches riding a latched hull. It gated on the express liner's
+// itinerary flag, so the only ship that could teach it was the rarest one — the
+// opening mule and every other ship_mule freight frame could never qualify. Any
+// passive civilian on the mule hull (hauler, arclight, tanker, shuttle, express)
+// is a real ride; the itinerary flag stays as the contract for future
+// non-mule hitchable services.
+function isHitchHintTarget(entity) {
   const data = entity && entity.data;
   const ai = data && data.ai;
   return !!(entity && entity.alive !== false
     && entity.team === 2
-    && data && data.trafficRole === 'express'
-    && data.itinerary && data.itinerary.hitchable === true
+    && data && (data.defId === 'ship_mule'
+      || (data.itinerary && data.itinerary.hitchable === true))
     && ai && ai.passive === true);
 }
