@@ -4666,7 +4666,11 @@ export function createHud(ctx, alerts) {
     if (!p || isMotionReduced) {
       stepHudGLagSpring(opticalGLag, 0, 0, frameDt, true);
       gLocSustainedTime = 0;
-      if (glocVignette) setOpacity(glocVignette, '0');
+      if (glocVignette) {
+        setOpacity(glocVignette, '0');
+        // Same as the zero-fraction branch below: an invisible vignette leaves the compositor.
+        setStyle(glocVignette, 'display', 'none');
+      }
     } else {
       const isBoosting = !!(p.boost && p.boost.energy > 0 && state.input && state.input.actions && state.input.actions.boost);
       const target = calculateHudGLagTarget(p, frameDt, lastPlayerVel, isBoosting);
@@ -4703,6 +4707,9 @@ export function createHud(ctx, alerts) {
           setOpacity(glocVignette, (gLocFraction * 0.55).toFixed(3));
         } else {
           setOpacity(glocVignette, '0');
+          // Mirror the show path: without display:none the fullscreen will-change layer stayed
+          // in the compositor forever after the first fade to zero.
+          setStyle(glocVignette, 'display', 'none');
         }
       }
     }

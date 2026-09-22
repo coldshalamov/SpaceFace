@@ -649,7 +649,13 @@ export const codexScreen = {
     rootEl.dataset.kReady = '1';
   },
 
-  refresh(ctx) { this._ctx = ctx; if (this._body) this._render(ctx); },
+  refresh(ctx, options) {
+    this._ctx = ctx;
+    // Live updates arrive on the bus listeners (story:beatAdvanced, comms:popup, graffiti:show,
+    // discovery:plateUnlocked); the shell's ~3 Hz periodic pass only reset the reader's scroll.
+    if (options && options.periodic) return;
+    if (this._body) this._render(ctx);
+  },
   onShow(ctx) {
     this._ctx = ctx;
     this._visible = true;

@@ -354,11 +354,17 @@ function paint(hex, a) {
   return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
 }
 
+// matchMedia() allocates a new MediaQueryList per call and the RAF loop asks every frame; one
+// cached list keeps answering `.matches` live for free.
+let _reduceMotionMql;
 function prefersReducedMotion() {
   if (typeof document !== 'undefined' && document.documentElement
     && document.documentElement.classList.contains('sf-reduce-motion')) return true;
-  try { return !!(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches); }
-  catch { return false; }
+  try {
+    if (typeof matchMedia !== 'function') return false;
+    if (_reduceMotionMql === undefined) _reduceMotionMql = matchMedia('(prefers-reduced-motion: reduce)');
+    return !!(_reduceMotionMql && _reduceMotionMql.matches);
+  } catch { return false; }
 }
 
 // One LocalSpaceIntel per session (survives open/close). Confidence + contact age persists, so a
@@ -542,6 +548,18 @@ export const localmapScreen = {
     }
     this._visible = false;
     cancelAnimationFrame(this._animFrame);
+  },
+
+  // releaseScreen()/manager.destroy() call dispose(): the ResizeObserver would keep observing a
+  // detached body and the RAF loop could outlive the released element without it.
+  dispose() {
+    this._visible = false;
+    if (this._ro) {
+      try { this._ro.disconnect(); } catch (_) { /* observer teardown is best-effort */ }
+      this._ro = null;
+    }
+    cancelAnimationFrame(this._animFrame);
+    this._animFrame = null;
   },
 
   onKey(event, ctx) {

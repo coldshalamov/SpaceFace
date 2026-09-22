@@ -428,6 +428,12 @@ export const crucibleDraftScreen = {
   },
 
   refresh(ctx) {
+    // uiRoot repaints the open screen ~3x/sec as refresh(ctx, { periodic: true }); the draft
+    // rebuilds its cards on every real change itself (pick, re-roll, filter, mount/onShow), so a
+    // periodic pass only churns focus. Deliberate no-op. The signature stays `refresh(ctx)` —
+    // test/crucible-draft pins that shape — so the options bag is read off `arguments`.
+    const options = arguments[1];
+    if (options && options.periodic) return;
     const context = ctx || this._ctx;
     const rootEl = this._root;
     const cards = this._cards;
@@ -686,6 +692,12 @@ export const crucibleRefitScreen = {
   },
 
   refresh(ctx) {
+    // Same guard as the draft: the shell's ~3 Hz periodic refresh(ctx, { periodic: true }) would
+    // rebuild the hardpoint rows and collapse an open spare <select> mid-choice; fit/strip and
+    // mount already call refresh() directly. (`refresh(ctx)` is pinned by
+    // test/crucible-refit-focus — options arrive through `arguments`.)
+    const options = arguments[1];
+    if (options && options.periodic) return;
     const rows = this._rows;
     const context = ctx || this._ctx;
     if (!rows || !context) return;

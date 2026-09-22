@@ -39,6 +39,10 @@ export function drawCapitalWarning(ctx,warning,clock,project,{reducedMotion=fals
 export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight,reducedMotion=false}) {
  if(!canvas?.getContext||!bus?.on||typeof worldToScreen!=='function'||typeof clockForFight!=='function')throw new TypeError('Capital overlay ports missing');
  const ctx=canvas.getContext('2d'),warnings=new Map(),off=[];
+ // The overlay is empty through nearly all of flight; a fullscreen clearRect every frame is pure
+ // cost, so once the canvas is known-blank an empty draw() is a no-op. A canvas resize clears to
+ // blank anyway, so the flag stays honest.
+ let blank=false;
  const listen=(name,fn)=>{const remove=bus.on(name,fn);if(typeof remove==='function')off.push(remove);else if(bus.off)off.push(()=>bus.off(name,fn));};
  const remember=c=>{
   if(!warnings.has(c.castId)&&warnings.size>=3)throw new Error('Capital overlay exceeds three live fights');
@@ -47,7 +51,11 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
  listen('capitalBoss:telegraph',remember);listen('capitalBoss:attack',remember);
  listen('capitalBoss:telegraphEnd',c=>warnings.delete(c.castId));
  return {
-  draw(){ctx.clearRect(0,0,canvas.width,canvas.height);for(const c of warnings.values())drawCapitalWarning(ctx,c,clockForFight(c.fightId),worldToScreen,{reducedMotion});},
+  draw(){
+  if(warnings.size===0){if(!blank){ctx.clearRect(0,0,canvas.width,canvas.height);blank=true;}return;}
+  ctx.clearRect(0,0,canvas.width,canvas.height);blank=false;
+  for(const c of warnings.values())drawCapitalWarning(ctx,c,clockForFight(c.fightId),worldToScreen,{reducedMotion});
+ },
   restore(fights){warnings.clear();for(const r of Object.values(fights))if(r.cast&&!r.suspended&&!r.terminal){
    const b=requireCapitalBossEncounter(r.encounterId).score.beats.find(b=>b.id===r.cast.beatId);
    remember({fightId:r.fightId,castId:r.cast.id,shapes:r.cast.shapes,locked:r.cast.locked,startedAt:r.cast.startedAt,

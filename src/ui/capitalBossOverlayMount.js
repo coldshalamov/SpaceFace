@@ -24,7 +24,23 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   root.appendChild(canvas);
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  // Reading clientWidth inside the draw loop is a forced layout every frame; the box only moves
+  // with a real resize, so a ResizeObserver (window resize as fallback) re-arms one re-measure
+  // instead. Where neither API exists the flag stays set and every draw measures, as before.
+  let sizeDirty = true;
+  const markSizeDirty = () => { sizeDirty = true; };
+  let sizeObserver = null;
+  let windowResizeBound = false;
+  if (typeof ResizeObserver === 'function') {
+    sizeObserver = new ResizeObserver(markSizeDirty);
+    sizeObserver.observe(root);
+  } else if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('resize', markSizeDirty);
+    windowResizeBound = true;
+  }
+  const observingSize = !!(sizeObserver || windowResizeBound);
   function syncSize() {
+    sizeDirty = !observingSize;
     const width = root.clientWidth || window.innerWidth || 0;
     const height = root.clientHeight || window.innerHeight || 0;
     const pixelWidth = Math.max(1, Math.round(width * dpr));
@@ -87,7 +103,7 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
         });
       }
       if (st && st.mode === 'flight') {
-        syncSize();
+        if (sizeDirty) syncSize();
         overlay.draw();
         clearedWhileAway = false;
       } else if (!clearedWhileAway) {
@@ -99,6 +115,8 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
       }
     },
     destroy() {
+      if (sizeObserver) sizeObserver.disconnect();
+      if (windowResizeBound) window.removeEventListener('resize', markSizeDirty);
       if (typeof offRestore === 'function') offRestore();
       else if (bus.off) bus.off('save:loaded', onSaveLoaded);
       overlay.destroy();

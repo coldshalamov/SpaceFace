@@ -4,8 +4,10 @@
    multi-stage missile lock convergence, and G-LOC tunnel vision.
    ========================================================================== */
 
-/* --- Hardware Acceleration & Compositor Layers --- */
-#hud,
+/* --- Hardware Acceleration & Compositor Layers ---
+   #hud only transforms during the 180ms .sf-hud--glitch jitter, so the fullscreen layer carries
+   will-change only while that class is on; the small combat marks keep it permanently. */
+#hud.sf-hud--glitch,
 #aim-reticle,
 .sf-lockdiamond,
 .sf-target-arcs,
@@ -80,6 +82,8 @@
 
 /* --- G-LOC Tunnel Vision Vignette --- */
 .sf-gloc-vignette {
+  /* Sleeps out of the compositor tree until the first fade-in; hud.js drives display block/none. */
+  display: none;
   position: absolute;
   inset: 0;
   pointer-events: none;

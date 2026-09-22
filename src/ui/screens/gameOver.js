@@ -179,6 +179,7 @@ export const gameOverScreen = {
   id: 'gameOver',
   data: { locked: true },
   _summaryEls: null,
+  _summarySig: null,
   _defaultButton: null,
   _titleEl: null,
   _subEl: null,
@@ -246,6 +247,9 @@ export const gameOverScreen = {
     const recapRows = el('dl', 'sf-go-recap__rows');
     recap.appendChild(recapRows);
     this._recapRows = recapRows;
+    // A remount rebuilds the DOM from scratch — the signature cache must not tell the first
+    // _refreshSummary the fresh tree is already right.
+    this._summarySig = null;
     rootEl.appendChild(recap);
     // Cause, sortie and damage read in the title; they are kept as summary keys for the refresh.
     this._summaryEls.cause = h;
@@ -374,16 +378,39 @@ export const gameOverScreen = {
   },
 
   _refreshSummary(ctx) {
-    this._refreshRecap(ctx);
     const els = this._summaryEls;
     if (!els) return;
     const state = ctx && ctx.state || {};
     const receipt = currentDefeat(ctx);
     const recovery = receipt && receipt.recovery || {};
     const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+    const death = lastDeathSummary(ctx);
+    const stats = state.player && state.player.stats || {};
+    const vitals = receipt && receipt.vitalsPct || {};
+    // The shell repaints the open screen ~3x/sec as refresh(ctx, { periodic: true }), and the
+    // screen-import check pins refresh() to a bare `this._refreshSummary(ctx)` call, so the
+    // periodic skip lives here as a content signature — the same gate footprint/mainMenu use.
+    // Everything on this surface is static after death; the one live update
+    // (player:recoveryFailed) lands in the receipt fields the signature covers. An unchanged
+    // signature means the DOM already says it: no 14-node recap rebuild, no recovery innerHTML
+    // re-parse.
+    const sig = [
+      difficulty, death.cause, death.lifespan, state.meta && state.meta.playtimeS,
+      stats.missionsDone, stats.kills, stats.tradesCount,
+      stats.lifetimeProfit, stats.biggestSingleProfit,
+      receipt ? 1 : 0,
+      receipt && receipt.fatalSummary, receipt && receipt.cause, receipt && receipt.direction,
+      receipt && receipt.dominantLayer, receipt && receipt.subsystemId,
+      vitals.shield, vitals.armor, vitals.hull,
+      recovery.stationName, recovery.stationId, recovery.costCr, recovery.quotedCostCr,
+      recovery.hardshipCoveredCr, recovery.cargoLostQty, recovery.persistentCargoProtected,
+      recovery.insuranceStatus,
+    ].join('|');
+    if (sig === this._summarySig) return;
+    this._summarySig = sig;
+    this._refreshRecap(ctx);
     const ironman = difficulty === 'ironman';
     const recoverable = !ironman && !!receipt;
-    const death = lastDeathSummary(ctx);
     const cargoLost = Math.max(0, Number(recovery.cargoLostQty) || 0);
     const protectedQty = Math.max(0, Number(recovery.persistentCargoProtected) || 0);
     const cargoText = cargoLost > 0
