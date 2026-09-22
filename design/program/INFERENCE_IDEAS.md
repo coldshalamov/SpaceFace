@@ -37,9 +37,9 @@ Reference root: `assets/reference/cc0/`. Not runtime until a line promotes one f
 
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
-| TOOL-01 | A denied latch ticks instead of clicking like a menu | `assets/reference/cc0/kenney/interface/Audio/tick_001.ogg` or `error_001.ogg`, plus the deny cue in `src/audio/` | The deny cue id plays one of those files, and a successful latch still plays a different id | Use `confirmation_001.ogg`. Play it every frame while the button is held | OPEN |
+| TOOL-01 | A denied latch ticks instead of clicking like a menu | `assets/reference/cc0/kenney/interface/Audio/tick_001.ogg` or `error_001.ogg`, plus the deny cue in `src/audio/` | The deny cue id plays one of those files, and a successful latch still plays a different id | Use `confirmation_001.ogg`. Play it every frame while the button is held | SHIPPED |
 | TOOL-02 | Hover and tab are two different interface sounds | `assets/reference/cc0/kenney/interface/Audio/`, `src/data/audioRecipes.js` | `sfx_ui_hover` and `sfx_ui_tab` bind two different Kenney files, neither of them `ui_click` | Retune the combat mix | OPEN |
-| TOOL-03 | The authored starter shot stays the starter shot | `assets/audio/wpn/wpn_pulse.wav`, `assets/reference/cc0/kenney/sci-fi/Audio/laserSmall_000.ogg` | Listen to both. Keep `wpn_pulse.wav` unless the Kenney file is clearly the heavier, more mechanical shot, and say which you kept | Replace the pulse because a free file exists | OPEN |
+| TOOL-03 | The authored starter shot stays the starter shot | `assets/audio/wpn/wpn_pulse.wav`, `assets/reference/cc0/kenney/sci-fi/Audio/laserSmall_000.ogg` | Listen to both. Keep `wpn_pulse.wav` unless the Kenney file is clearly the heavier, more mechanical shot, and say which you kept | Replace the pulse because a free file exists | SHIPPED |
 | TOOL-04 | A light metal kiss and a heavy metal slam are different recordings if the live cues are still one sample | `assets/reference/cc0/kenney/impact/Audio/impactMetal_light_000.ogg`, `impactMetal_heavy_000.ogg`, the impact recipes | The light cue and the heavy cue resolve to two files. If the authored `impact_kiss` / `impact_hull` already differ, leave them and mark this SHIPPED already true | Layer both files on one hit | OPEN |
 | TOOL-05 | The seal reads drier or oilier in the direction Rubber004 actually is | `assets/reference/cc0/ambientcg/Rubber004/Rubber004_1K-JPG_Roughness.jpg`, `matte_seal` in `src/render/industrialMaterialFamilies.js` | The family's roughness moves toward the scan, and the color of the seal stays the painted family color | Paste the rubber color photo onto a hull | OPEN |
 | TOOL-06 | Ceramic stays matte next to painted metal | `assets/reference/cc0/ambientcg/Tiles132C/Tiles132C_1K-JPG_Roughness.jpg`, `thermal_ceramic` in the same families file | Ceramic roughness stays higher than `painted_shell`, using the tile scan as the check | Assign the tile color as a station albedo | OPEN |
@@ -137,13 +137,14 @@ not to invent.
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
-| — | — | — | — |
+
+| PIC-02 | 2026-09-22 | devin-inference-10 | `src/render/rockSurfaceLibrary.js` |
 
 ## SHIPPED
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
-| — | — | — | — |
+| TOOL-01 | tool-01-denied-latch-tick | 6ac65cd74 | `sfx_massline_deny` binds promoted Kenney tick; latch keeps `tether_latch` |
 | WORLD-01 | WF-04 | 147e71c24 | Choir refuel depot (station_depot3) adds missions service so docking shows Missions board |
 | PIC-01 | WF-11 | 62c7346d8 | NPC Kestrel resolves through packaged whole-ship allowlist as complete body |
 | PIC-09 | WF-09 | 79657724b | Starter weapons scar with their own heat; heatForWeaponVariant resolves weapon IDs via vfxProfiles |
@@ -154,6 +155,7 @@ not to invent.
 | PIC-11 | WF-11 | da2abd5f1 | Missing place prop keeps an empty substrate or marker without published cube geometry |
 | WORLD-02 | WF-01 | 80086277e | Vesta traffic includes named hauler Tann of the Slag Run (lane_tann_slag_carrier) |
 | INST-14 | WF-13 | 244bb1d40 | "SHIELD DOWN" does not float over the fight; combat:damage does not spawn that floater |
+| TOOL-03 | tool-03-starter-shot-audition | this mark commit | Kept authored `wpn_pulse.wav`; Kenney `laserSmall_000.ogg` measures lighter (-5.4 dB mean, less low-band, brighter top) — not the heavier shot |
 
 ## CUT
 
