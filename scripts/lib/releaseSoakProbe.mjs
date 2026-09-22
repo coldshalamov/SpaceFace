@@ -1406,13 +1406,24 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
         if (Number.isFinite(distToBerth) && distToBerth <= 60) {
           // Already inside the dock envelope: re-plotting a waypoint to the station the ship is
           // parked next to resolves RETURN TO SHIP, not a course — the Set Waypoint click has no
-          // emit to witness (same hazard the insideDockEnvelope guard above avoids). The player
-          // action here is a throttle nudge toward the berth; once residual speed drops under
-          // the dock gate the capture assist owns the pull-in.
-          mark('redock-nudge', idleDiag);
+          // emit to witness (same hazard the insideDockEnvelope guard above avoids). A ship
+          // carrying residual speed into the envelope can wedge on the proxy wall short of the
+          // dock radius: the capture assist only re-engages once speed is under the gate, and a
+          // W nudge just drives the hull deeper into the wedge. The player recovery is to brake
+          // first so the assist's proportional pull can slide the ship to the berth, then nudge.
+          const wedged = idleDiag?.speed > 4;
+          mark(wedged ? 'redock-brake' : 'redock-nudge', idleDiag);
+          if (wedged) {
+            try {
+              await page.keyboard.down('Digit0');
+              await page.waitForTimeout(900);
+            } finally {
+              await page.keyboard.up('Digit0').catch(() => {});
+            }
+          }
           try {
             await page.keyboard.down('KeyW');
-            await page.waitForTimeout(900);
+            await page.waitForTimeout(wedged ? 400 : 900);
           } finally {
             await page.keyboard.up('KeyW').catch(() => {});
           }
@@ -1998,20 +2009,50 @@ async function exerciseMarketRoundtrip(page) {
   const holdEmptyVerb = page.locator('.sf-state[data-sf-state="empty"] .sf-state__verb', { hasText: /switch to buy/i }).first();
   if (await holdEmptyVerb.isVisible().catch(() => false)) await holdEmptyVerb.click();
   const activeTradeShell = page.locator('.sx-trade:visible').first();
+  // Live station chrome refreshes under the pointer; when a pointer-path click loses the
+  // hit test, dispatch the click on the node itself — the same event the delegated
+  // handler consumes. Nothing is committed without a state verify downstream.
+  const clickWithFallback = async (locator, timeout = 5_000) => {
+    const ok = await locator.click({ timeout }).then(() => true, () => false);
+    if (ok) return true;
+    return locator.dispatchEvent('click').then(() => true, () => false);
+  };
+  const modeIsOn = (locator) => locator.getAttribute('class')
+    .then((value) => String(value || '').includes('is-on')).catch(() => false);
+  // A mode click that never lands would trade in the wrong direction — retry the public
+  // control until the console itself reports the mode active.
+  const ensureMode = async (locator) => {
+    for (let attempt = 0; attempt < 3 && !(await modeIsOn(locator)); attempt++) {
+      await clickWithFallback(locator);
+    }
+    return modeIsOn(locator);
+  };
   // Reset the public trade-mode control explicitly so cycle 2+ cannot time out looking for
   // a hidden Buy action.
   const buyMode = activeTradeShell.locator('button[data-mode="buy"]').first();
   await buyMode.waitFor({ state: 'visible', timeout: 20_000 });
-  const ensureBuyMode = async () => {
-    if (await buyMode.getAttribute('class').then((value) => !String(value || '').includes('is-on')).catch(() => true)) {
-      await buyMode.click({ timeout: 5_000 });
-    }
-  };
+  const ensureBuyMode = () => ensureMode(buyMode);
   await ensureBuyMode();
   const sellMode = activeTradeShell.locator('button[data-mode="sell"]').first();
   const tradeGo = activeTradeShell.locator('.sx-trade__go[data-go]:not([disabled])').first();
   const qtyInput = activeTradeShell.locator('input.sx-qty__in').first();
   const rows = page.locator('[data-cmdty][role="tab"]');
+  // Observer tap: a row that refuses to commit is only diagnosable if the bus says why.
+  // tradeFailed carries the rejection reason (price_changed, cargo_full, no_stock, …) and
+  // tradeCompleted distinguishes "rejected" from "landed where the verify could not see it".
+  await page.evaluate(() => {
+    const w = window;
+    if (w.__SOAK_TRADE_TAP__ || !w.SF?.bus?.on) return;
+    w.__SOAK_TRADE_TAP__ = true;
+    w.__SOAK_TRADE_EVENTS__ = [];
+    const push = (kind) => (p) => {
+      const log = w.__SOAK_TRADE_EVENTS__;
+      log.push({ kind, at: Date.now(), ...(p && typeof p === 'object' ? p : { p }) });
+      if (log.length > 40) log.splice(0, log.length - 40);
+    };
+    w.SF.bus.on('economy:tradeFailed', push('failed'));
+    w.SF.bus.on('economy:tradeCompleted', push('completed'));
+  }).catch(() => {});
   const tradeConsoleDiag = () => page.evaluate(() => {
     const shell = document.querySelector('.sx-trade');
     const liveMode = shell?.querySelector('.sx-trade__go.is-on')?.getAttribute('data-mode') || null;
@@ -2023,6 +2064,7 @@ async function exerciseMarketRoundtrip(page) {
       goDisabled: shell?.querySelector('[data-go]')?.disabled ?? null,
       selectedCommodity: document.querySelector('.sx-mkt-row.is-active')?.getAttribute('data-cmdty')
         || document.querySelector('[data-cmdty][aria-selected="true"]')?.getAttribute('data-cmdty') || null,
+      tradeEvents: (window.__SOAK_TRADE_EVENTS__ || []).slice(-6),
     };
   }).catch(() => null);
   // market.js execute() emits ui:buy/ui:sell directly — there is no .sf-confirm
@@ -2036,12 +2078,27 @@ async function exerciseMarketRoundtrip(page) {
   // commitQty null skips the fill and takes the console default (the whole held
   // stack in Sell mode) — the hold-drain path only.
   const attemptRowCommit = async (row, id, verifyFn, { commitQty = '1' } = {}) => {
+    let clickErr = null;
     if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') {
-      await row.click({ timeout: 1_500 }).catch(() => {});
-      // The register rebuilds its row nodes on every price tick, so a click that
-      // spans a rebuild lands nowhere. Never trade blind: only proceed when this
-      // row actually became selected.
-      if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') return null;
+      // The register rebuilds its row nodes on every price tick and the list lives in a
+      // short scroll rail: Playwright's pointer-path click can lose the hit test to
+      // sibling chrome while a real pilot's click reaches the row's delegated handler.
+      // Try the real click first; fall back to dispatching click on the row itself —
+      // the same event the screen's delegated listener consumes. Selection is still
+      // verified below before any commit is attempted — never trade blind.
+      clickErr = await row.click({ timeout: 1_500 }).then(() => null, (e) => String(e && e.message || e).split('\n').slice(0, 4).join(' | '));
+      if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') {
+        await row.dispatchEvent('click').catch((e) => { clickErr = `${clickErr} | dispatch:${String(e && e.message || e).split('\n')[0]}`; });
+      }
+      if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') {
+        const box = await row.boundingBox().catch(() => null);
+        const hitStack = box ? await page.evaluate(({ x, y }) => {
+          return (document.elementsFromPoint(x, y) || []).slice(0, 4)
+            .map((el) => `${el.tagName}.${String(el.className || '').split(' ').slice(0, 2).join('.')}`);
+        }, { x: box.x + box.width / 2, y: box.y + box.height / 2 }).catch(() => null) : null;
+        console.log(`[trade-walk] row ${id} never selected clickErr=${clickErr} box=${JSON.stringify(box)} hit=${JSON.stringify(hitStack)}`);
+        return null;
+      }
     }
     // Bound every trade to exactly one unit: the hold can carry freight of the same
     // commodity, and Sell mode defaults qty to the whole held stack — selling the
@@ -2056,7 +2113,10 @@ async function exerciseMarketRoundtrip(page) {
     const enabled = await tradeGo.waitFor({ state: 'visible', timeout: 1_500 }).then(() => true, () => false);
     if (!enabled) return null;
     const before = await readTradeSnapshot(page, id);
-    const clicked = await tradeGo.click({ timeout: 3_000 }).then(() => true, () => false);
+    // Same live-refresh hazard as the register rows: try the pointer click first,
+    // then dispatch the click on the node — the same event its handler consumes.
+    let clicked = await tradeGo.click({ timeout: 3_000 }).then(() => true, () => false);
+    if (!clicked) clicked = await tradeGo.dispatchEvent('click').then(() => true, () => false);
     if (!clicked) return null;
     const landed = await page.waitForFunction(verifyFn, before, { timeout: 8_000 }).then(() => true, () => false);
     return landed ? { commodityId: id, before } : null;
@@ -2102,7 +2162,7 @@ async function exerciseMarketRoundtrip(page) {
   let sell = null;
   if (buy) {
     await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
-    await sellMode.click({ timeout: 5_000 });
+    await ensureMode(sellMode);
     // Prefer selling back exactly the bought unit so cargo stays neutral; when the
     // register won't buy that commodity here, any held unit still lands the leg.
     const sameRow = page.locator(`[data-cmdty="${buy.commodityId}"]`).first();
@@ -2113,7 +2173,7 @@ async function exerciseMarketRoundtrip(page) {
   } else {
     direction = 'sell-first';
     await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
-    await sellMode.click({ timeout: 5_000 });
+    await ensureMode(sellMode);
     sell = await walkRowsForCommit(SELL_VERIFY);
     assert(sell, `market register must offer a sellable held row: ${JSON.stringify(await tradeConsoleDiag())}`);
     // One sold unit does not free a 60-deep overfill. Drain whole sellable stacks —
@@ -2139,7 +2199,18 @@ async function exerciseMarketRoundtrip(page) {
 async function ensureMarketOpen(page) {
   const marketTab = page.locator('[role="tab"]', { hasText: /market/i }).first();
   await marketTab.waitFor({ state: 'visible', timeout: 20_000 });
-  if (await marketTab.getAttribute('aria-selected') !== 'true') await marketTab.click();
+  // The pointer-path click can lose the hit test to adjacent chrome on a live-refreshing
+  // station shell; verify the tab actually selected and fall back to dispatching the
+  // click on the tab node — the same event its handler consumes.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (await marketTab.getAttribute('aria-selected').catch(() => null) === 'true') break;
+    await marketTab.click({ timeout: 4_000 }).catch(() => {});
+    if (await marketTab.getAttribute('aria-selected').catch(() => null) === 'true') break;
+    await marketTab.dispatchEvent('click').catch(() => {});
+    if (await marketTab.getAttribute('aria-selected').catch(() => null) === 'true') break;
+  }
+  // The trade console is hidden while the register is empty (HOLD_EMPTY/EXCHANGE_DARK);
+  // give the live market-open tick room to populate before calling it absent.
   await page.locator('.sx-trade:visible .sx-trade__go').first().waitFor({ state: 'visible', timeout: 20_000 });
 }
 
