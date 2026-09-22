@@ -61,6 +61,18 @@ export const runtime = Object.freeze({
       if (data.ai) data.ai.targetId = hauler.id;
       (data.combat || (data.combat = {})).targetId = hauler.id;
     }
+    // VERB-06: the opener hauls a volatile lot — fuel cells are the explosive class lootShards
+    // already cooks off on a hard slam. Ordinary civilian role + cargo fields let the existing
+    // violence-spill path shed the pods; no encounter-specific plumbing.
+    if (hauler) {
+      const band = live.shape.unitsPerHauler || [6, 10];
+      const qty = Math.max(1, Math.round(
+        band[0] + d.stream(live, 'cargo')() * Math.max(0, band[1] - band[0]),
+      ));
+      const hdata = hauler.data || (hauler.data = {});
+      hdata.jobKind = 'hauler';
+      hdata.cargo = { cmdty_fuel_cells: qty };
+    }
     live.phase = 'conflict';
     d.say(live, 'alert', 'curtain_convoy_alert', null, { primary: true });
   },

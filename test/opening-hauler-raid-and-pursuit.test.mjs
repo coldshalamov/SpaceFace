@@ -9,6 +9,7 @@ import { authorizeAIEngagement, isHostileForAI } from '../src/ai/engagementAutho
 import { ActivityKind } from '../src/ai/doctrine.js';
 import { pirateDoctrineById } from '../src/data/pirateDoctrines.js';
 import { FIELD_DEFS } from '../src/data/fields.js';
+import { volatileClassOf } from '../src/data/commodityVolatileClasses.js';
 
 const STARTER_WELL_DIAMETER_WU = FIELD_DEFS.well.radius * 2;
 
@@ -178,6 +179,35 @@ test('VERB-02: the opening raid fires already happening — no choice offer, no 
     assert.equal(isHostileForAI(state, r, haulerEnt), true,
       'raiders attack the hauler without waiting for player consent');
   }
+});
+
+test('VERB-06: the opening hauler carries a volatile cargo lot that can cook on a slam', () => {
+  const { sim, state } = makeHarness();
+  const zones = zonesForSector('sector_helios_prime');
+  const plan = planEncounters(42, 'sector_helios_prime', 0, zones);
+  const raidPlan = plan.find((it) => it.shapeId === 'opening_hauler_raid');
+  assert.ok(raidPlan);
+
+  const dir = state.encounterDirector;
+  dir.pending = [{ ...raidPlan, dueAt: 0, defers: 0 }];
+  dir.pressure.combat = 30;
+  sim.runTicks(120);
+
+  const live = Object.values(dir.live).find((l) => l.shapeId === 'opening_hauler_raid');
+  assert.ok(live, 'the raid must fire');
+  const haulerEnt = live.ids.map((id) => state.entities.get(id))
+    .find((e) => e && e.data?.ai?.encounterRole === 'hauler');
+  assert.ok(haulerEnt, 'a hauler must be spawned');
+
+  const cargo = haulerEnt.data.cargo || {};
+  const commodityIds = Object.keys(cargo).filter((id) => cargo[id] > 0);
+  assert.equal(commodityIds.length, 1, 'the opener hauls one readable lot');
+  const klass = volatileClassOf(commodityIds[0]);
+  assert.ok(klass, `${commodityIds[0]} must be a volatile class in lootShards`);
+  assert.equal(klass.slam, 'radial_impulse',
+    'the lot must be the class that cooks a radial shove when it slams');
+  // The ordinary violence-spill gate must see the hull as a civilian hauler.
+  assert.equal(haulerEnt.data.jobKind, 'hauler');
 });
 
 test('Opening raid lands within three minutes inside ~two screen-depths on seeds 4242 and 8008', () => {
