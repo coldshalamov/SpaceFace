@@ -26,6 +26,7 @@ import {
 } from '../combat/tumbleStatus.js';
 import {
   HITSTUN_IMPULSE_EVENT,
+  isShoveClassHitstunSource,
   readRecentImpulseProvenance,
   resolveHitstunLaw,
   signedHitSide,
@@ -254,12 +255,16 @@ export const tumbleStates = {
     if (!input.requireMassline && !combatFlag('weaponImpulseConsequences')) return;
 
     const cruise = resolveGovernedCombatSpeed(victim, state, 0);
+    // Shove-class hits (the delivered-impulse weapon family) extend the helm loss to the coast
+    // that carries a light victim about one screen off its line (SHOVE_BEAT_LAW); every other
+    // source keeps the base law alone.
     const law = resolveHitstunLaw({
       deltaV: input.deltaV,
       victimCruise: cruise,
       attackerMass: input.attackerMass,
       victimMass: massOf(victim),
       worldBody: input.worldBody === true,
+      shove: isShoveClassHitstunSource(input.source),
     });
     if (!(law.durationS > 0)) return;
 
@@ -280,6 +285,7 @@ export const tumbleStates = {
       u: law.u,
       k: law.k,
       mF: law.mF,
+      shoveBeatS: law.shoveBeatS,
     });
     if (!scheduled) return;
     // A fresh forced tumble cancels any stabilization already in progress: the helm is
@@ -313,6 +319,7 @@ export const tumbleStates = {
         mF: law.mF,
         u: law.u,
         spin: law.entrySpin,
+        shoveBeatS: law.shoveBeatS,
         durationS: until - startedAt,
         startedAt,
         until,
@@ -405,6 +412,7 @@ function freezeTumbleAnnouncement(payload) {
     mF: finite(payload.mF),
     u: finite(payload.u),
     spin: finite(payload.spin),
+    shoveBeatS: finite(payload.shoveBeatS),
     durationS: finite(payload.durationS),
     startedAt: finite(payload.startedAt),
     until: finite(payload.until),

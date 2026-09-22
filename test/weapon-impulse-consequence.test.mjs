@@ -326,8 +326,9 @@ test('tumbleStates owns retrigger, inclusive expiry, player immunity, and first-
   t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previousFlag; });
 
   const { tumbleStates } = await import('../src/systems/tumbleStates.js');
-  const { HITSTUN_IMPULSE_EVENT, resolveHitstunLaw } = await import('../src/combat/impulseKernel.js');
+  const { HITSTUN_IMPULSE_EVENT, resolveHitstunLaw, isShoveClassHitstunSource } = await import('../src/combat/impulseKernel.js');
   const { TUMBLE_STATUS_ID, readTumbleStatus } = await import('../src/combat/tumbleStatus.js');
+  const { resolveGovernedCombatSpeed } = await import('../src/core/flight/propulsionCatalog.js');
 
   const player = combatShip(1, 0, 0);
   player.mass = 18;
@@ -356,12 +357,18 @@ test('tumbleStates owns retrigger, inclusive expiry, player immunity, and first-
     registry: { get: (name) => (name === 'combat' ? { kernel } : null) },
   });
 
+  // The law reads the victim's resolved governed cruise, never a hardcoded reference — the
+  // standard-ship profile governs this fixture at 210 WU/s, and the k=0.30 reference deltaV
+  // follows from whatever the profile says.
+  const cruise = resolveGovernedCombatSpeed(victim, state, 0);
   const law = resolveHitstunLaw({
-    deltaV: 40,
-    victimCruise: 105,
+    deltaV: 0.30 * cruise,
+    victimCruise: cruise,
     attackerMass: 18,
     victimMass: 16,
+    shove: isShoveClassHitstunSource('gun'),
   });
+  assert.ok(cruise > 0, `fixture must resolve a governed cruise, got ${cruise}`);
   assert.ok(law.durationS > 1, `reference hit must stun (${law.durationS}s)`);
 
   const emitGun = (targetId, extra = {}) => {
@@ -371,7 +378,7 @@ test('tumbleStates owns retrigger, inclusive expiry, player immunity, and first-
       attackerId: player.id,
       attackerMass: 18,
       victimMass: targetId === victim.id ? 16 : 18,
-      deltaV: 40,
+      deltaV: 0.30 * cruise,
       dirX: 1,
       dirZ: 0,
       hitSide: 1,
@@ -432,10 +439,121 @@ test('tumbleStates owns retrigger, inclusive expiry, player immunity, and first-
   state.simTime = until2;
   system.update(1 / 60, state);
   assert.equal(readTumbleStatus(state, victim), null, 'inclusive expiry clears when now >= until');
+  // INF-027: expiry opens the stabilization window, so the expiry tick answers the recovery
+  // writer with silent guns — full AI control returns only after the window closes.
+  const stabilizing = consumePhysicsCommand(victim);
+  assert.ok(stabilizing && stabilizing.control);
+  assert.equal(stabilizing.control.source, 'hitstun', 'expiry opens the stabilization window, not full tactics');
+  assert.equal(victim.data.intent.fire, false, 'guns stay silent through stabilization');
+  state.simTime = until2 + 0.95;
+  system.update(1 / 60, state);
+  assert.equal(victim.data.recoveringUntil, undefined, 'the stabilization marker clears when the window closes');
+  victim.data.intent = { fire: true, moveX: 1, moveZ: 0.5, boost: false, brake: false };
+  writePhysicsControl(victim, {
+    mode: 'ai_attack_run',
+    force: { x: 12, y: 0, z: 4 },
+    torque: { x: 0, y: 3, z: 0 },
+    source: 'aiPorts',
+  });
+  system.update(1 / 60, state);
   const after = consumePhysicsCommand(victim);
   assert.ok(after && after.control);
-  assert.equal(after.control.source, 'aiPorts', 'the first tick after expiry preserves AI control');
-  assert.equal(victim.data.intent.fire, true, 'expiry does not keep zeroing AI fire');
+  assert.equal(after.control.source, 'aiPorts', 'after the stabilization window AI control passes through');
+  assert.equal(victim.data.intent.fire, true, 'guns decide for themselves again after the beat');
+});
+
+test('a shove-class gun hit schedules the screen coast and holds fire; other sources keep the base law', async (t) => {
+  const previousFlag = COMBAT_FLAGS.weaponImpulseConsequences;
+  COMBAT_FLAGS.weaponImpulseConsequences = true;
+  t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previousFlag; });
+
+  const { tumbleStates } = await import('../src/systems/tumbleStates.js');
+  const { HITSTUN_IMPULSE_EVENT, resolveHitstunLaw, SHOVE_BEAT_LAW } = await import('../src/combat/impulseKernel.js');
+  const { readTumbleStatus } = await import('../src/combat/tumbleStatus.js');
+  const { resolveGovernedCombatSpeed } = await import('../src/core/flight/propulsionCatalog.js');
+
+  const player = combatShip(1, 0, 0);
+  player.mass = 18;
+  const victim = combatShip(2, 1, 40);
+  victim.mass = 16;
+  victim.data.intent = { fire: true, moveX: 1, moveZ: 0 };
+
+  const bus = createBus();
+  const helpers = { combatPhysics: { applyImpulse: () => true } };
+  const state = {
+    tick: 300,
+    simTime: 30,
+    mode: 'flight',
+    playerId: 1,
+    entities: new Map([[player.id, player], [victim.id, victim]]),
+    entityList: [player, victim],
+    combat: { beams: [], threatTables: new Map() },
+    meta: { seed: 47 },
+  };
+  const kernel = createCombatKernel({ state, bus, helpers, registry: { get: () => null } });
+  const system = Object.create(tumbleStates);
+  system.init({
+    state,
+    bus,
+    helpers,
+    registry: { get: (name) => (name === 'combat' ? { kernel } : null) },
+  });
+
+  const cruise = resolveGovernedCombatSpeed(victim, state, 0);
+  const shoveInputs = { deltaV: 0.30 * cruise, victimCruise: cruise, attackerMass: 18, victimMass: 16 };
+  const beaten = resolveHitstunLaw({ ...shoveInputs, shove: true });
+  const plain = resolveHitstunLaw(shoveInputs);
+  assert.ok(cruise > 0, `fixture must resolve a governed cruise, got ${cruise}`);
+  assert.ok(beaten.durationS > plain.durationS, 'fixture sanity: the reference shove earns a beat over the base law');
+
+  const emit = (source) => {
+    bus.emit(HITSTUN_IMPULSE_EVENT, {
+      source,
+      victimId: victim.id,
+      attackerId: player.id,
+      attackerMass: 18,
+      victimMass: 16,
+      deltaV: shoveInputs.deltaV,
+      dirX: 1,
+      dirZ: 0,
+      hitSide: 1,
+      tick: state.tick,
+    });
+    state.tick += 1;
+    kernel.prePhysics(1 / 60);
+  };
+
+  emit('gun');
+  const gunStatus = readTumbleStatus(state, victim);
+  assert.ok(gunStatus, 'the gun shove schedules a tumble');
+  assert.ok(
+    Math.abs(gunStatus.data.until - (30 + beaten.durationS)) < 1e-6,
+    `a shove-class hit schedules the coast that carries the hull one screen off its line `
+      + `(${gunStatus.data.until} vs ${30 + beaten.durationS})`,
+  );
+  assert.ok(
+    Math.abs(gunStatus.data.shoveBeatS - SHOVE_BEAT_LAW.screenWu / shoveInputs.deltaV) < 1e-6,
+    'the scheduled data names its beat',
+  );
+
+  // The whole beat is silent: guns stay zeroed while the victim coasts off the line.
+  victim.data.intent = { fire: true, moveX: 1, moveZ: 0 };
+  system.update(1 / 60, state);
+  assert.equal(victim.data.intent.fire, false, 'no fire during the beat');
+  assert.equal(victim.data.intent.moveX, 0, 'no thrust during the beat');
+
+  system._clearTumbleStatus(victim, 'test_reset');
+
+  emit('collision');
+  const collisionStatus = readTumbleStatus(state, victim);
+  assert.ok(collisionStatus, 'a collision stun still schedules by the base law');
+  assert.ok(
+    Math.abs(collisionStatus.data.until - (state.simTime + plain.durationS)) < 1e-6,
+    'a non-shove source must not gain the beat',
+  );
+  assert.equal(collisionStatus.data.shoveBeatS, 0, 'the base law reports no beat');
+
+  system.destroy();
 });
 
 test('combat:tumbled is the frozen four-source receipt and heavy hits emit nothing', async (t) => {
