@@ -45,6 +45,7 @@ import {
 } from './stationDepartureModel.js';
 import { bindStationMarkup, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
 import { missionDockAttention } from './missionDockAttention.js';
+import { yardJobReadout } from './serviceQuotes.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 
 const STATION_REC = new Map();
@@ -940,7 +941,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       ? `<button type="button" ${stationControlAttrs('hold-manifest')} class="k-word k-word--body sxb-vital__head" data-hold data-pop-owner` +
           ` aria-label="${escapeHtml(v.aria)}. Open the cargo manifest.">${label}</button>`
       : `<span class="sxb-vital__head">${label}</span>`;
-    const value = `<span class="sxb-vital__value k-t-emph${toneCls}">${escapeHtml(v.value)}</span>`;
+    const value = `<span class="sxb-vital__value k-t-emph${toneCls}"${v.detail ? ` title="${escapeHtml(v.detail)}"` : ''}>${escapeHtml(v.value)}</span>`;
     const acts = v.acts.filter(Boolean);
     const actsEl = `<span class="sxb-vital__acts">${acts.join('')}</span>`;
     return `<li class="k-row k-row--static sxb-vital sxb-vital--${v.k}" data-tone="${v.tone}">${headEl}${value}${actsEl}</li>`;
@@ -1001,6 +1002,18 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         k: 'rights', label: 'Salvage Rights', frac: 0, tone: 'ok', track: false,
         value: `${rightsHeld}`, aria: `${rightsHeld} salvage rights held`,
         acts: [vitalActHtml('rights', costs.rights, 'Redeem')],
+      });
+    }
+    // A paid yard job is work the player is owed visibility on: the meter is the job itself.
+    // The periodic re-render keeps progress, queue and holding live while the row exists.
+    const yard = yardJobReadout(s);
+    if (yard) {
+      vitals.push({
+        k: 'industry', label: yard.label, frac: yard.frac, tone: yard.tone, track: true,
+        value: `${yard.status} · ${yard.value}`,
+        aria: yard.aria,
+        detail: yard.detail,
+        acts: [],
       });
     }
 

@@ -6,6 +6,7 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { prettyType } from './stationHubFormatters.js';
 import { stationTabLabel } from './stationHubModel.js';
 import { activeMissionCount } from './stationMissionModel.js';
+import { playerYardJobs } from './serviceQuotes.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
@@ -177,14 +178,37 @@ function departureHullChip(state) {
   };
 }
 
-/** One chip per launch surface: tracked work, cargo hold, fuel, hull. Reads live state only. */
+// A paid yard job is the one launch surface that actively loses value on undock: the station
+// charged up front, and undocking aborts the job with no refund. The chip warns before the
+// player commits; it never hard-blocks (warnings never do, here).
+function departureYardChip(state) {
+  const jobs = playerYardJobs(state);
+  if (!jobs.length) return null;
+  const head = jobs[0];
+  const label = head.type === 'refuel' ? 'Refuel' : 'Repair';
+  const started = head.status === 'active' && head.applied > 0;
+  const pct = head.total > 0 ? Math.round(clamp01(head.applied / head.total, 0) * 100) : 0;
+  const text = started
+    ? `${label} ${pct}% — undock cancels the paid job`
+    : `${label} paid, not started — undock cancels it`;
+  return {
+    kind: 'warn',
+    label: 'Yard',
+    text,
+    targetTab: 'services',
+    actionLabel: 'Open Services to watch the yard finish the job',
+  };
+}
+
+/** One chip per launch surface: tracked work, cargo hold, fuel, hull, yard job. */
 export function departureReadinessChips(state) {
   return [
     departureMissionChip(state),
     departureCargoChip(state),
     departureFuelChip(state),
     departureHullChip(state),
-  ];
+    departureYardChip(state),
+  ].filter(Boolean);
 }
 
 /** Undock-tile summary from the chips: worst chip wins; warnings never hard-block undock. */

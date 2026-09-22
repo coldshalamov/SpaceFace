@@ -426,3 +426,61 @@ export function serviceQuote(type, state, entity) {
   }
   return { amount: 0, cost: 0, detail: '', buttonLabel: '', disabled: true, chips: [] };
 }
+
+// ── The yard, made visible ──────────────────────────────────────────────────────────────────
+// stationServices simulates pads, crews and a job queue (and emits service:* events), but no
+// dock surface ever read the slice — a paid job ran invisible, and undocking cancelled it in
+// silence. These pure helpers turn the live state into what the player is owed: where the job
+// stands, and what undocking would do to it.
+
+export function playerYardJobs(state) {
+  const s = state && state.stationServices;
+  const jobs = s && s.player && Array.isArray(s.player.jobs) ? s.player.jobs : [];
+  return jobs.filter(Boolean);
+}
+
+export function yardJobReadout(state) {
+  const jobs = playerYardJobs(state);
+  if (!jobs.length) return null;
+  const s = state.stationServices;
+  const player = s.player;
+  const yardView = (s.stations && s.stations[player.stationId]) || null;
+  const head = jobs[0];
+  const label = head.type === 'refuel' ? 'Refuel' : 'Repair';
+  const frac = head.total > 0 ? Math.max(0, Math.min(1, head.applied / head.total)) : 0;
+  const pct = Math.round(frac * 100) + '%';
+  let status;
+  let value;
+  let detail;
+  let tone;
+  if (player.padIdx < 0) {
+    status = 'Holding';
+    value = 'yard full';
+    const waiting = yardView ? yardView.waitingClients : 0;
+    detail = `No free pad — ${waiting} client${waiting === 1 ? '' : 's'} ahead of you`;
+    tone = 'warn';
+  } else if (head.status === 'active') {
+    status = `${label} underway`;
+    value = pct;
+    const crewsBusy = yardView ? yardView.busyCrews : null;
+    detail = `Pad ${player.padIdx + 1}` +
+      (crewsBusy != null ? ` · ${crewsBusy} crew${crewsBusy === 1 ? '' : 's'} on the floor` : '');
+    tone = 'ok';
+  } else {
+    status = `${label} queued`;
+    value = '0%';
+    detail = 'On the pad — waiting on a free crew';
+    tone = 'warn';
+  }
+  const extra = jobs.length - 1;
+  if (extra > 0) detail += ` · +${extra} more job${extra === 1 ? '' : 's'} queued`;
+  return {
+    label: 'Yard',
+    status,
+    value,
+    detail,
+    tone,
+    frac,
+    aria: `Yard: ${status}, ${value}. ${detail}`,
+  };
+}

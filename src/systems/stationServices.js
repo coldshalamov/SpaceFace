@@ -243,12 +243,28 @@ export const stationServices = {
 
   _abortJobs(player, reason) {
     if (!player || !Array.isArray(player.jobs)) return;
+    const count = player.jobs.length;
     for (const job of player.jobs) {
       if (this.bus) {
         this.bus.emit('service:aborted', {
           jobId: job.id, type: job.type, stationId: job.stationId,
           applied: job.applied, total: job.total, reason,
         });
+        // The completion toast's mirror: the service was paid up front, so an abort destroyed
+        // paid work. Without this line the credits were gone and the hull half-done with no
+        // word from the yard.
+        if (job === player.jobs[0]) {
+          const label = job.type === 'refuel' ? 'refuel' : 'repair';
+          const pct = job.total > 0 && job.applied > 0
+            ? Math.round(Math.max(0, Math.min(1, job.applied / job.total)) * 100)
+            : 0;
+          const head = reason === 'undock' ? 'Undocked' : 'The yard released the job';
+          const text = pct > 0
+            ? `${head} — ${label} stopped at ${pct}%. The rest of the paid job was cancelled.`
+            : `${head} — the paid ${label} job was cancelled before the yard started it.`;
+          const more = count > 1 ? ` ${count - 1} more queued job${count > 2 ? 's' : ''} cancelled with it.` : '';
+          this.bus.emit('toast', { text: text + (more ? ' ' + more : ''), kind: 'warn', ttl: 5 });
+        }
       }
     }
     player.jobs = [];
