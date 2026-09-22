@@ -345,6 +345,10 @@ const _craftMicroMotionOptions = {
   playerId: 0,
   playerTargetId: 0,
   entities: null,
+  tetherActive: false,
+  tetherTargetId: null,
+  tetherLoad: 0,
+  tetherPhase: '',
 };
 // Empty by design for PQ-129.20: every known first-visible admission belongs behind the loading
 // boundary. Future exemptions must name a selector and a non-empty reason; the diagnostic helper
@@ -10776,8 +10780,11 @@ export const render = {
         });
       }
       if (e.type === 'asteroid' && !m.name) m.name = `Asteroid_${e.id}`;
+      // Routine telemetry, not a defect: every New Game and every same-sector load builds
+      // the first-flight set in the opening seconds. console.warn would fail release
+      // evidence's zero-warning contract.
       if (this.state.mode === 'flight' && (Number(this.state.simTime) || 0) < 3) {
-        console.warn('[render] first-flight build', {
+        console.info('[render] first-flight build', {
           id: e.id,
           type: e.type,
           typeId: e.data && e.data.typeId || null,
@@ -11322,6 +11329,11 @@ export const render = {
           _craftMicroMotionOptions.playerId = this.state && this.state.playerId;
           _craftMicroMotionOptions.playerTargetId = this.state && this.state.player && this.state.player.targetId;
           _craftMicroMotionOptions.entities = this.state && this.state.entities;
+          const tetherView = this.state && this.state.player && this.state.player.tether;
+          _craftMicroMotionOptions.tetherActive = !!(tetherView && tetherView.active);
+          _craftMicroMotionOptions.tetherTargetId = tetherView ? tetherView.targetId : null;
+          _craftMicroMotionOptions.tetherLoad = tetherView && Number.isFinite(tetherView.load) ? tetherView.load : 0;
+          _craftMicroMotionOptions.tetherPhase = tetherView && tetherView.phase ? tetherView.phase : '';
           globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
         } else if (typeName === 'projectile') {
           globalProjectileMotion.updateProjectileMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);

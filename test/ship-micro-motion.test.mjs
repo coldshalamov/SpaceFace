@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createShipMicroMotionTracker } from '../src/render/shipMicroMotion.js';
+import {
+  contactYieldImpulse,
+  createShipMicroMotionTracker,
+  hullYieldPose,
+  lineHaulPose,
+} from '../src/render/shipMicroMotion.js';
 
 function createMockMesh() {
   const hull = {
@@ -101,6 +106,238 @@ test('ship micro-motion: mining drill bit rotates during active extraction', () 
 
   tracker.updateCraftMicroMotion(miner, mesh, 10.0, 0.016, { playerMiningActive: true, playerId: 7 });
   assert.ok(mesh.userData.drill.userData.drillBit.rotation.x > 0.4, 'drill bit spun during mining');
+});
+
+function createScaledHullMesh() {
+  const scale = {
+    x: 1,
+    y: 1,
+    z: 1,
+    set(x, y, z) { this.x = x; this.y = y; this.z = z; },
+  };
+  return {
+    userData: {
+      hull: {
+        position: { x: 0, y: 0, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scale,
+      },
+    },
+  };
+}
+
+function ship(id, mass, x, z, rot = 0) {
+  return {
+    id,
+    mass,
+    pos: { x, z },
+    rot,
+    radius: 12,
+    vel: { x: 0, z: 0 },
+    flags: {},
+  };
+}
+
+test('contact yield: the same momentum crumples a light hull and leaves a hauler square', () => {
+  const dp = 280 * 48;
+  assert.ok(contactYieldImpulse(48, 280) > 1, 'a fighter past the full-crumple speed yields hard');
+  assert.equal(contactYieldImpulse(dp / 2200, 2200), 0, 'that same momentum is a scrape on a hauler');
+
+  const pose = hullYieldPose(0.1, -1, 0);
+  assert.ok(pose.x < 0.92, 'shortens along the push');
+  assert.ok(pose.z > 1.03, 'bulges across the push');
+  assert.ok(pose.shiftX < 0, 'the struck nose stays and the body yields aft');
+
+  function shortest(mass) {
+    const tracker = createShipMicroMotionTracker();
+    const mesh = createScaledHullMesh();
+    const entity = ship(5, mass, 0, 0);
+    tracker.updateCraftMicroMotion(entity, mesh, 1, 0.016);
+    tracker.onImpact({
+      aId: 5,
+      bId: 8,
+      dp,
+      normal: { x: 1, z: 0 },
+      pos: { x: 12, z: 0 },
+    });
+    let minX = 1;
+    for (let i = 0; i < 14; i++) {
+      tracker.updateCraftMicroMotion(entity, mesh, 1.016 + i * 0.016, 0.016);
+      minX = Math.min(minX, mesh.userData.hull.scale.x);
+    }
+    return minX;
+  }
+
+  const light = shortest(280);
+  const heavy = shortest(2200);
+  assert.ok(light < 0.92, `light hull compresses: ${light}`);
+  assert.ok(heavy > 0.99, `hauler stays square: ${heavy}`);
+});
+
+test('contact yield: a hard hit compresses, then rebounds instead of staying dented', () => {
+  const tracker = createShipMicroMotionTracker();
+  const mesh = createScaledHullMesh();
+  const entity = ship(6, 280, 0, 0);
+  tracker.updateCraftMicroMotion(entity, mesh, 1, 0.016);
+  tracker.onImpact({
+    aId: 6,
+    bId: 8,
+    dp: 280 * 40,
+    normal: { x: 1, z: 0 },
+    pos: { x: 12, z: 0 },
+  });
+  let minX = 1;
+  for (let i = 0; i < 80; i++) {
+    tracker.updateCraftMicroMotion(entity, mesh, 1.016 + i * 0.016, 0.016);
+    minX = Math.min(minX, mesh.userData.hull.scale.x);
+  }
+  const settled = mesh.userData.hull.scale.x;
+  assert.ok(minX < 0.93, `peak compression: ${minX}`);
+  assert.ok(settled > minX + 0.04, `rebounds toward shape: ${settled} from ${minX}`);
+});
+
+test('contact yield: a weapon hit dents along the shot, a collision damage packet does not dent twice', () => {
+  function dent(normal) {
+    const tracker = createShipMicroMotionTracker();
+    const mesh = createScaledHullMesh();
+    const entity = ship(3, 280, 0, 0);
+    tracker.updateCraftMicroMotion(entity, mesh, 1, 0.016);
+    tracker.onDamage({
+      targetId: 3,
+      damage: 55,
+      hullHit: true,
+      hitNormal: normal,
+    });
+    tracker.updateCraftMicroMotion(entity, mesh, 1.016, 0.016);
+    return mesh.userData.hull.position.x;
+  }
+  assert.ok(dent({ x: 1, z: 0 }) > 0, 'a hit from ahead shoves the hull forward');
+  assert.ok(dent({ x: -1, z: 0 }) < 0, 'a hit from behind shoves the hull back');
+
+  const quiet = createShipMicroMotionTracker();
+  const meshA = createScaledHullMesh();
+  const meshB = createScaledHullMesh();
+  const entityA = ship(4, 280, 0, 0);
+  const echoed = createShipMicroMotionTracker();
+  const entityB = ship(4, 280, 0, 0);
+  quiet.updateCraftMicroMotion(entityA, meshA, 1, 0.016);
+  echoed.updateCraftMicroMotion(entityB, meshB, 1, 0.016);
+  const impact = {
+    aId: 4,
+    bId: 9,
+    dp: 280 * 36,
+    normal: { x: 1, z: 0 },
+    pos: { x: 12, z: 0 },
+  };
+  quiet.onImpact(impact);
+  echoed.onImpact(impact);
+  echoed.onDamage({
+    targetId: 4,
+    damage: 90,
+    hullHit: true,
+    hitNormal: { x: -1, z: 0 },
+    origin: { kind: 'collision' },
+  });
+  quiet.updateCraftMicroMotion(entityA, meshA, 1.016, 0.016);
+  echoed.updateCraftMicroMotion(entityB, meshB, 1.016, 0.016);
+  assert.equal(echoed.getRecord(4).yieldAmt, quiet.getRecord(4).yieldAmt,
+    'collision damage must not add a second crumple on top of the contact');
+});
+
+test('line haul: a taut tether stretches both hulls toward the line, and letting go snaps them back', () => {
+  const ahead = lineHaulPose(1, 1, 1, 0);
+  assert.ok(ahead.x > 1.1, 'full haul elongates along the line');
+  assert.ok(ahead.y < 1, 'the cross-section pinches');
+  const aside = lineHaulPose(0, 1, 0, 1);
+  assert.ok(aside.bank > 0.05, 'a line off the bow banks the hull');
+  assert.ok(aside.yaw > 0.02, 'the nose yaws toward the line');
+
+  const tracker = createShipMicroMotionTracker();
+  const playerMesh = createScaledHullMesh();
+  const targetMesh = createScaledHullMesh();
+  const player = ship(1, 280, 0, 0, 0);
+  const target = ship(2, 260, 80, 0, Math.PI);
+  const entities = new Map([[1, player], [2, target]]);
+  const options = {
+    playerId: 1,
+    tetherActive: true,
+    tetherTargetId: 2,
+    tetherLoad: 0.9,
+    tetherPhase: 'loaded',
+    entities,
+  };
+  let playerPeak = 1;
+  let targetPeak = 1;
+  for (let i = 0; i < 28; i++) {
+    const t = 2 + i * 0.016;
+    tracker.updateCraftMicroMotion(player, playerMesh, t, 0.016, options);
+    tracker.updateCraftMicroMotion(target, targetMesh, t, 0.016, options);
+    playerPeak = Math.max(playerPeak, playerMesh.userData.hull.scale.x);
+    targetPeak = Math.max(targetPeak, targetMesh.userData.hull.scale.x);
+  }
+  assert.ok(playerPeak > 1.07, `player hull hauls: ${playerPeak}`);
+  assert.ok(targetPeak > 1.07, `towed hull hauls back: ${targetPeak}`);
+
+  const sideMesh = createScaledHullMesh();
+  const sideTracker = createShipMicroMotionTracker();
+  const sidePlayer = ship(11, 400, 0, 0, 0);
+  const sideTarget = ship(12, 400, 0, 90, 0);
+  const sideOptions = {
+    playerId: 11,
+    tetherActive: true,
+    tetherTargetId: 12,
+    tetherLoad: 0.85,
+    tetherPhase: 'loaded',
+    entities: new Map([[11, sidePlayer], [12, sideTarget]]),
+  };
+  for (let i = 0; i < 28; i++) {
+    sideTracker.updateCraftMicroMotion(sidePlayer, sideMesh, 3 + i * 0.016, 0.016, sideOptions);
+  }
+  assert.ok(sideMesh.userData.hull.rotation.x > 0.015, 'a line to starboard banks the hull that way');
+
+  options.tetherActive = false;
+  options.tetherLoad = 0;
+  options.tetherPhase = 'slack';
+  tracker.onTetherLetGo({ targetId: 2 });
+  for (let i = 0; i < 10; i++) {
+    const t = 4 + i * 0.016;
+    tracker.updateCraftMicroMotion(player, playerMesh, t, 0.016, options);
+    tracker.updateCraftMicroMotion(target, targetMesh, t, 0.016, options);
+  }
+  assert.ok(playerMesh.userData.hull.scale.x < playerPeak - 0.04,
+    `release collapses the haul: ${playerMesh.userData.hull.scale.x} from ${playerPeak}`);
+  assert.ok(tracker.getRecord(1).yieldAmt > 0.02, 'the body thumps as the line lets go');
+  assert.ok(tracker.getRecord(2).yieldAmt > 0.02, 'the other end thumps too');
+});
+
+test('contact yield: reduced motion keeps a smaller dent and drops the scrape', () => {
+  const tracker = createShipMicroMotionTracker();
+  const mesh = createScaledHullMesh();
+  const entity = ship(7, 280, 0, 0);
+  tracker.updateCraftMicroMotion(entity, mesh, 1, 0.016, { motionReduce: true });
+  tracker.onImpact({
+    aId: 7,
+    bId: 8,
+    dp: 280 * 6,
+    normal: { x: 1, z: 0 },
+    pos: { x: 12, z: 0 },
+  });
+  tracker.updateCraftMicroMotion(entity, mesh, 1.016, 0.016, { motionReduce: true });
+  assert.equal(mesh.userData.hull.scale.x, 1, 'a scrape does not flex the hull');
+
+  tracker.onImpact({
+    aId: 7,
+    bId: 8,
+    dp: 280 * 48,
+    normal: { x: 1, z: 0 },
+    pos: { x: 12, z: 0 },
+  });
+  let minX = 1;
+  for (let i = 0; i < 14; i++) {
+    tracker.updateCraftMicroMotion(entity, mesh, 1.032 + i * 0.016, 0.016, { motionReduce: true });
+    minX = Math.min(minX, mesh.userData.hull.scale.x);
+  }
+  assert.ok(minX < 0.97 && minX > 0.9, `reduced motion keeps a readable smaller dent: ${minX}`);
 });
 
 test('ship micro-motion: reduced motion suppresses high-frequency shudder', () => {
