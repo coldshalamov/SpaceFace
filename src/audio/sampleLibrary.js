@@ -103,6 +103,8 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['massline_reel', { file: 'assets/audio/massline/massline_reel.wav', tier: 1, loop: false, seconds: 0.55 }],
   ['massline_release', { file: 'assets/audio/massline/massline_release.wav', tier: 1, loop: false, seconds: 0.35 }],
   ['massline_bridle', { file: 'assets/audio/massline/massline_bridle.wav', tier: 1, loop: false, seconds: 0.55 }],
+  // Promoted reference recording (Kenney tick_001, CC0), not generator output.
+  ['massline_deny', { file: 'assets/audio/massline/massline_deny.wav', tier: 1, loop: false, seconds: 0.045 }],
   ['bark_scn', { file: 'assets/audio/voice/bark_scn.wav', tier: 2, loop: false, seconds: 1.05 }],
   ['bark_mts', { file: 'assets/audio/voice/bark_mts.wav', tier: 2, loop: false, seconds: 1.05 }],
   ['bark_dmc', { file: 'assets/audio/voice/bark_dmc.wav', tier: 2, loop: false, seconds: 1.05 }],

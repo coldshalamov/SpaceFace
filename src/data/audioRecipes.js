@@ -2448,6 +2448,10 @@ export const SAMPLE_BINDINGS = {
   sfx_ui_drawer_latch: { id: 'ui_detent', share: 0.5, rate: 0.7 },
   sfx_ui_confirm: { id: 'ui_confirm', share: 0.6 },
   sfx_ui_error: { id: 'ui_deny', share: 0.6 },
+  // TOOL-01: a denied latch is a short mechanical tick (Kenney tick_001 promoted to
+  // assets/audio/massline/massline_deny.wav), not the menu error — the successful latch keeps
+  // its own tether_latch body.
+  sfx_massline_deny: { id: 'massline_deny', share: 0.62 },
   sfx_ui_open: { id: 'ui_open', share: 0.6 },
   sfx_ui_back: { id: 'ui_open', share: 0.6, rate: 0.8 },
   sfx_ui_alert: { id: 'ui_alert', share: 0.55 },
