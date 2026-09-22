@@ -1465,6 +1465,9 @@ export const audio = {
     rt.threat = 0;
     rt.alarms = { lowShield: false, lowHull: false };
     rt._caches = {};              // noise buffer + distortion curves
+    // A re-init replaces the sample runtime wholesale; dispose the old one first so in-flight
+    // fetch/decode work from the previous generation cannot populate a dead store.
+    if (rt._samples && typeof rt._samples.dispose === 'function') rt._samples.dispose();
     rt._samples = createSampleRuntime(); // PQ-158.00 sample library (promise-driven, never per-frame)
     rt._nextVoiceId = 1;
     rt._lastDamageT = -1e9;       // sim-time of last player damage (for inCombatRecent)
@@ -1487,6 +1490,13 @@ export const audio = {
     rt._wantBeam = {};            // owners desiring a beam loop (started on resume)
     rt._wantMining = null;        // { minerId, targetId } desired mining loop
     rt._wantDrillGrind = false;   // state-derived deep-drill bed (survives AudioContext resume)
+    rt._docked = false;           // station-interior latch (set by dock:docked; reconciled at boundaries)
+    rt._dockStationId = null;
+    // Wall-clock cue offsets (dock/respawn/vent chimes, hum teardown) ride _defer() so a session
+    // boundary or destroy() can cancel a delay that would otherwise fire into the wrong run.
+    rt._timers = new Set();       // outstanding _defer() timeout ids
+    rt._timerGen = (rt._timerGen || 0) + 1; // bumped at every boundary — stale deferrals no-op
+    rt._destroyed = false;        // hard stop for late deferrals; set by destroy(), cleared by init
     rt._drillGrindMix = { active: false, gain: 0, rate: 1, filterHz: 560 };
     // --- the mine's voice (PQ-130.08) — desired state survives an AudioContext resume ---
     rt._mineIntent = resolveMineAudioIntent({ screenStack: null, paused: false, muted: true });
@@ -1735,6 +1745,7 @@ export const audio = {
     bus.on('sector:enter', (p) => {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
+      this._sessionBoundaryReset();
       this._applyThemeMatrix(p && p.sectorId);
       this._markMusicDirty();
     });
@@ -1880,13 +1891,25 @@ export const audio = {
     bus.on('ui:confirm', () => this._onCue('confirm'));
     bus.on('ui:deny', () => this._onCue('deny'));
 
-    // Rebuild graph on load (transient runtime is wiped on load).
+    // Rebuild graph on load (transient runtime is wiped on load). The save restore clears the
+    // dock flags itself without a dock:undocked emit, so the docked latch and desired loops
+    // must be reconciled from the restored state or the station hum follows the player into
+    // open space for the rest of the session.
     bus.on('save:loaded', () => {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
+      this._sessionBoundaryReset();
       this._applySettings();
       this._markMusicDirty();
     });
+    // A fresh run can never begin docked; these fire while the previous session's (possibly
+    // docked) state is still live, so force the latch open rather than reconcile from state.
+    bus.on('game:new', () => this._sessionBoundaryReset({ forceUndock: true }));
+    bus.on('game:newGame', () => this._sessionBoundaryReset({ forceUndock: true }));
+    // Quit-to-menu leaves state.ui.docked stale (nothing emits dock:undocked and nothing clears
+    // it until the next run) — force the latch open so the station hum cannot follow the player
+    // onto the main menu.
+    bus.on('game:exitToMenu', () => this._sessionBoundaryReset({ forceUndock: true }));
     bus.on('game:started', () => { /* context already (or soon) created on gesture */ });
     bindMinimalActionAudio(this, bus);
     bindBombAudio(this, bus);
@@ -1908,6 +1931,9 @@ export const audio = {
     const rt = this.rt;
     if (!rt) return;
     rt._lifecycleSuspended = true;
+    // Hard-stop generation: queued _defer() cues die here and nothing defers into a dead runtime.
+    rt._destroyed = true;
+    this._clearDeferred();
     this._stopFrameLoop();
     this._stopMusicSchedulers();
     this._unbindContextState();
@@ -1921,6 +1947,9 @@ export const audio = {
     rt.bandBed = null;
     if (rt._environmentMix && typeof rt._environmentMix.destroy === 'function') rt._environmentMix.destroy();
     rt._environmentMix = null;
+    // Decoded buffers + in-flight fetch/decode work must not survive the runtime — dispose()
+    // drops the resident store and makes late decode completions no-op on the dead generation.
+    if (rt._samples && typeof rt._samples.dispose === 'function') rt._samples.dispose();
     if (rt.ctx && rt.ctx.state !== 'closed' && typeof rt.ctx.close === 'function') {
       try {
         const closing = rt.ctx.close();
@@ -2457,6 +2486,12 @@ export const audio = {
   _onPause(paused) {
     const rt = this.rt;
     rt._paused = !!paused;
+    if (paused) {
+      // Sustained combat/work loops ride buses the pause path does not duck — end them and drop
+      // the desire flags so _frame cannot resurrect them under the menu. A beam still firing
+      // re-arms through combat:fire on the first resumed tick; drillGrind re-derives from state.
+      this._endDesiredLoops();
+    }
     if (rt.bandBed) {
       rt.bandBed.setIntent(paused ? { active: false, reason: 'pause' } : rt._bandBedIntent);
     }
@@ -2851,10 +2886,19 @@ export const audio = {
     if (ownerId == null) return;
     rt._wantBeam[ownerId] = true;
     const ctx = rt.ctx;
-    if (!ctx || ctx.state !== 'running') return;
+    // Never start the drone under a pause/menu veil — the want flag survives and _frame
+    // resurrects it on resume if the beam is genuinely still firing.
+    if (!ctx || ctx.state !== 'running' || rt._paused) return;
     if (rt.loops['beam_' + ownerId]) return;
     const entity = owner || (this.state.entities && typeof this.state.entities.get === 'function'
       ? this.state.entities.get(ownerId) : null);
+    // Ghost owner (entity despawned across a load/sector/menu boundary): with no positional
+    // anchor the loop would drone at full gain outside live flight. Drop the stale desire —
+    // a beam that is still firing re-arms through the next combat:fire tick.
+    if (!entity && (!this.state || this.state.mode !== 'flight')) {
+      delete rt._wantBeam[ownerId];
+      return;
+    }
     const position = pos || (entity && entity.pos) || null;
     const v = this._startLoopVoice('sfx_wpn_beam_laser', position, 0.85, { entity });
     if (v) {
@@ -3438,11 +3482,12 @@ export const audio = {
 
   _onPlayerRespawn(p) {
     // Ascending respawn chime — bright, hopeful, tells the player they're back in the fight.
-    // Slight delay so the respawn visual has a beat before the audio lands.
-    setTimeout(() => {
+    // Slight delay so the respawn visual has a beat before the audio lands. Both offsets ride
+    // _defer so a session boundary mid-sequence cancels the tail instead of echoing into it.
+    this._defer(() => {
       this.play('sfx_respawn_chime', { gain: 0.7 });
       // Second chime a perfect fifth up for a triumphant feel
-      setTimeout(() => this.play('sfx_respawn_chime', { gain: 0.5, rate: 1.5 }), 180);
+      this._defer(() => this.play('sfx_respawn_chime', { gain: 0.5, rate: 1.5 }), 180);
     }, 250);
   },
 
@@ -3958,7 +4003,8 @@ export const audio = {
     if (!p) return;
     rt._wantMining = { minerId: p.minerId, targetId: p.targetId };
     const ctx = rt.ctx;
-    if (!ctx || ctx.state !== 'running') return;
+    // Paused sessions keep the desire but never start the drone — _frame resurrects on resume.
+    if (!ctx || ctx.state !== 'running' || rt._paused) return;
     if (rt.loops.mining) return;
     const entity = p.targetId != null && this.state.entities && typeof this.state.entities.get === 'function'
       ? this.state.entities.get(p.targetId) : null;
@@ -3992,6 +4038,8 @@ export const audio = {
     // single-recipe loop stands down there so the two can never stack. It stays the grind for any
     // future non-mine deep-drill session.
     if (mix.active && typeof this._mineOwnsEar === 'function' && this._mineOwnsEar()) mix.active = false;
+    // The pause menu must be quiet — the bed stands down while paused and re-derives on resume.
+    if (rt._paused) mix.active = false;
     rt._wantDrillGrind = mix.active;
 
     if (!mix.active) {
@@ -4027,7 +4075,9 @@ export const audio = {
 
   _startLoopVoice(recipeId, position, gain, options = {}) {
     const rt = this.rt, ctx = rt.ctx;
-    if (rt._lifecycleSuspended || !ctx || ctx.state !== 'running') return null;
+    // rt._paused: no sustained world loop may start under a pause/menu veil — every caller's
+    // desire flag survives and the sim owner re-arms the loop on resume.
+    if (rt._lifecycleSuspended || rt._paused || !ctx || ctx.state !== 'running') return null;
     const recipe = AUDIO_RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
     const entity = options.entity || null;
@@ -4101,11 +4151,108 @@ export const audio = {
     // GC happens in _frame() once stopAt passes; mark panner for cleanup there
   },
 
+  // ---- session-boundary hygiene -----------------------------------------------------------
+  // The docked latch and the desired-loop flags are written by transient events (dock:docked,
+  // combat:fire, mining:start) whose matching stop signal cannot always arrive: save restore
+  // clears the dock flags without a dock:undocked emit, weapons.update early-returns outside
+  // mode 'flight', and a sector/new-game teardown drops the owning entities wholesale. The
+  // boundary therefore reconciles them from live state instead of trusting the latch.
+
+  /**
+   * Wall-clock delay that dies with the session. Tracked in rt._timers and stamped with the
+   * boundary generation so a cue queued just before save:loaded / game:new / sector:enter /
+   * destroy() can never fire into the next run or a dead runtime.
+   */
+  _defer(fn, ms) {
+    const rt = this.rt;
+    if (!rt || rt._destroyed || rt._lifecycleSuspended) return 0;
+    const gen = rt._timerGen || 0;
+    const timers = rt._timers || (rt._timers = new Set());
+    const id = setTimeout(() => {
+      timers.delete(id);
+      if (this.rt !== rt || rt._destroyed || (rt._timerGen || 0) !== gen) return;
+      try { fn(); } catch (_) {}
+    }, ms);
+    timers.add(id);
+    return id;
+  },
+
+  /** Cancel every pending _defer() and stamp a new generation so stragglers also no-op. */
+  _clearDeferred() {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._timerGen = (rt._timerGen || 0) + 1;
+    const timers = rt._timers;
+    if (!timers) return;
+    for (const id of timers) { try { clearTimeout(id); } catch (_) {} }
+    timers.clear();
+  },
+
+  /**
+   * End every desired sustained loop (beam_, mining, drillGrind keys) and drop the want flags
+   * so _frame cannot resurrect them. Live beams re-arm through combat:fire on the next flight
+   * tick; drillGrind re-derives from state.drill in _updateDrillGrind.
+   */
+  _endDesiredLoops() {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._wantBeam = {};
+    rt._wantMining = null;
+    rt._wantDrillGrind = false;
+    const loops = rt.loops;
+    if (!loops) return;
+    for (const key of Object.keys(loops)) {
+      if (key === 'mining' || key === 'drillGrind' || key.startsWith('beam_')) {
+        this._endLoopVoice(loops[key]);
+        delete loops[key];
+      }
+    }
+  },
+
+  /**
+   * State-derived docked reconcile for boundaries where no dock:undocked event can arrive.
+   * `forceUndock` covers game:new/newGame, which fire while the previous session's (possibly
+   * docked) state is still live — a fresh run can never begin docked.
+   */
+  _reconcileDockedState(forceUndock = false) {
+    const rt = this.rt, state = this.state;
+    if (!rt) return;
+    const entities = state && state.entities;
+    const player = entities && typeof entities.get === 'function' && state.playerId != null
+      ? entities.get(state.playerId) : null;
+    const docked = forceUndock === true ? false : !!(
+      (state && state.ui && state.ui.docked)
+      || (player && player.flags && player.flags.docked));
+    const changed = docked !== !!rt._docked;
+    rt._docked = docked;
+    rt._dockStationId = docked
+      ? ((state && state.ui && state.ui.dockedStationId) || rt._dockStationId || null)
+      : null;
+    // The hum follows the reconciled latch, not the event edge: a docked restore ensures it
+    // (no-op while running), an undocked restore releases it. No clunk/chime one-shots — the
+    // dock itself was heard in its own session.
+    if (docked) this._startStationHum({ stationId: rt._dockStationId });
+    else this._stopStationHum();
+    if (changed) {
+      this._syncEnvironmentMix(docked);
+      this._markMusicDirty();
+    }
+  },
+
+  _sessionBoundaryReset({ forceUndock = false } = {}) {
+    const rt = this.rt;
+    if (!rt) return;
+    this._clearDeferred();
+    this._endDesiredLoops();
+    this._reconcileDockedState(forceUndock);
+  },
+
   _onDocked(p) {
     // Docking sequence: metallic clunk impact + confirmation chime + place mood
     this.play('sfx_dock_clunk', { gain: 0.9 });
-    // Slight delay on the confirmation chime so it feels like clunk-then-lock
-    setTimeout(() => this.play('sfx_ui_confirm', { gain: 0.6, rate: 0.7 }), 180);
+    // Slight delay on the confirmation chime so it feels like clunk-then-lock — deferred through
+    // the tracked helper so a boundary between clunk and chime cancels the chime.
+    this._defer(() => this.play('sfx_ui_confirm', { gain: 0.6, rate: 0.7 }), 180);
     this.rt._docked = true;
     this.rt._dockStationId = p && p.stationId ? p.stationId : null;
     this._syncEnvironmentMix(true);
@@ -4165,7 +4312,7 @@ export const audio = {
 
   _startStationHum(p) {
     const rt = this.rt, ctx = rt.ctx;
-    if (!ctx || ctx.state !== 'running') return;
+    if (!ctx || ctx.state !== 'running' || !rt.loops) return;
     if (rt.loops.stationHum) return;
     // Place identity: Helios / SCN trade hubs sit slightly brighter; others cooler/darker.
     // Read-only station/sector ids — never mutates gameplay state.
@@ -4219,7 +4366,7 @@ export const audio = {
 
   _stopStationHum() {
     const rt = this.rt, ctx = rt.ctx;
-    if (!rt.loops.stationHum) return;
+    if (!rt.loops || !rt.loops.stationHum) return;
     const hum = rt.loops.stationHum;
     if (ctx) {
       // Fade out over 1.5s
@@ -4229,9 +4376,13 @@ export const audio = {
         hum.gain.gain.setValueAtTime(Math.max(0.0001, hum.gain.gain.value), t);
         hum.gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.5);
       } catch (_) {}
-      // Schedule stop
-      setTimeout(() => {
-        for (const n of hum.nodes) { try { n.stop(); } catch (_) {} try { n.disconnect(); } catch (_) {} }
+      // Source stops ride the audio clock, not a wall-clock timer: a session boundary that
+      // clears _defer() callbacks can never leave the oscillators running under silence.
+      const stopAt = ctx.currentTime + 1.6;
+      for (const n of hum.nodes) { try { n.stop(stopAt); } catch (_) {} }
+      // Node disconnects are pure cleanup — deferred and tracked so destroy() can drop them.
+      this._defer(() => {
+        for (const n of hum.nodes) { try { n.disconnect(); } catch (_) {} }
       }, 2000);
     }
     delete rt.loops.stationHum;
@@ -5163,8 +5314,9 @@ export const audio = {
     const dt = rt._lastWallTime !== undefined ? (nowWall - rt._lastWallTime) : 0.016;
     rt._lastWallTime = nowWall;
 
-    // (re)start any desired loop voices that were requested while suspended
-    if (ctx.state === 'running') {
+    // (re)start any desired loop voices that were requested while suspended — never while
+    // paused: _onPause ended them deliberately and a resurrected loop would drone over the menu.
+    if (!rt._paused) {
       for (const ownerId in rt._wantBeam) {
         if (!rt.loops['beam_' + ownerId]) this._startBeam(Number(ownerId));
       }
@@ -5253,7 +5405,19 @@ export const audio = {
     const apply = (v) => {
       if (!v || v.trackId == null) return;
       const e = entities.get(v.trackId);
-      if (!e || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) return;
+      if (!e || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) {
+        // The tracked entity is gone (destroyed or despawned across a boundary): a positional
+        // loop that can never be re-anchored would drone at its frozen gain forever. Release it,
+        // drop the map entry, and clear any stale desire flag so _frame cannot resurrect it.
+        for (const k in rt.loops) {
+          if (rt.loops[k] !== v) continue;
+          if (k.startsWith('beam_') && rt._wantBeam) delete rt._wantBeam[k.slice(5)];
+          else if (k === 'mining') rt._wantMining = null;
+          this._endLoopVoice(v);
+          delete rt.loops[k];
+        }
+        return;
+      }
       const d = Math.hypot(e.pos.x - pp.x, e.pos.z - pp.z);
       const exact = entityNeedsExactAudio(e, { playerId: this.state && this.state.playerId });
       const preserveRemote = v.busName === 'ui' || v.busName === 'combat';
@@ -5314,7 +5478,7 @@ export const audio = {
 
   _onVentBonus(p) {
     this.play('sfx_vent_chime', { gain: 0.7, rate: 1.0 });
-    setTimeout(() => {
+    this._defer(() => {
       this.play('sfx_vent_chime', { gain: 0.65, rate: 1.25 });
     }, 90);
   },

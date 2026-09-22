@@ -219,6 +219,13 @@ export function createSampleRuntime(options = {}) {
   let inFlight = 0;
   let disposed = false;
   const queue = [];
+  const queued = new Set();   // queue membership — prefetchTier/acquire must not double-enqueue
+
+  function enqueue(id) {
+    if (resident.has(id) || pending.has(id) || queued.has(id)) return;
+    queued.add(id);
+    queue.push(id);
+  }
   const stats = {
     requests: 0, hits: 0, misses: 0, fetches: 0, decodes: 0,
     decodeFailures: 0, evictions: 0, workOps: 0,
@@ -253,6 +260,7 @@ export function createSampleRuntime(options = {}) {
     if (disposed) return;
     while (inFlight < maxInFlight && queue.length) {
       const id = queue.shift();
+      queued.delete(id);
       if (resident.has(id) || pending.has(id)) continue;
       const entry = SAMPLE_MANIFEST.get(id);
       if (!entry || !fetchImpl || !ctxRef.ctx) continue;
@@ -294,7 +302,7 @@ export function createSampleRuntime(options = {}) {
     prefetchTier(tier) {
       if (disposed || !ctxRef.ctx) return;
       for (const [id, entry] of SAMPLE_MANIFEST) {
-        if (entry.tier === tier && !resident.has(id)) queue.push(id);
+        if (entry.tier === tier) enqueue(id);
       }
       pump();
     },
@@ -311,8 +319,8 @@ export function createSampleRuntime(options = {}) {
         return buf;
       }
       stats.misses++;
-      if (SAMPLE_MANIFEST.has(id) && !pending.has(id)) {
-        queue.push(id);
+      if (SAMPLE_MANIFEST.has(id)) {
+        enqueue(id);
         pump();
       }
       return null;
@@ -321,6 +329,7 @@ export function createSampleRuntime(options = {}) {
       if (disposed) return;
       disposed = true;
       queue.length = 0;
+      queued.clear();
       pending.clear();
       resident.clear();
       pinned.clear();
