@@ -1377,6 +1377,51 @@ export function mineOreTickRate(qty, commodityId) {
   return clamp(1 + tier * 0.16 + Math.min(6, q - 1) * 0.045, 0.85, 1.9);
 }
 
+const CERES_JOB_ACTION_RECEIPT_EVENT = 'traffic:jobActionReceipt';
+const CERES_JOB_ACTION_RECEIPT_SCHEMA = 'spaceface.trafficJobActionReceipt.v1';
+const CERES_JOB_ACTION_SECTOR_ID = 'sector_ceres_belt';
+const CERES_WORK_AUDIO_PROFILES = Object.freeze({
+  ceres_refinery_hauler: Object.freeze({ jobKind: 'hauler', action: 'unload', recipeId: 'sfx_mining_cargo_settle', gain: 0.6, rates: Object.freeze([0.94, 1, 1.06]), preferTarget: true }),
+  ceres_seam_miner: Object.freeze({ jobKind: 'miner', action: 'work', recipeId: 'sfx_mining_drill_contact', gain: 0.58, rates: Object.freeze([0.92, 1, 1.08]), preferTarget: true }),
+  ceres_seam_surveyor: Object.freeze({ jobKind: 'surveyor', action: 'work', recipeId: 'sfx_mining_scan_return', gain: 0.46, rates: Object.freeze([0.96, 1, 1.04]), preferTarget: false }),
+  ceres_ambush_loaded_hauler: Object.freeze({ jobKind: 'hauler', action: 'unload', recipeId: 'sfx_mining_cargo_settle', gain: 0.52, rates: Object.freeze([0.94, 1, 1.06]), preferTarget: false }),
+  ceres_cathedral_salvor: Object.freeze({ jobKind: 'salvor', action: 'work', recipeId: 'sfx_mining_drill_break', gain: 0.54, rates: Object.freeze([0.9, 0.98, 1.06]), preferTarget: true }),
+});
+
+export function resolveCeresWorkAudioCue(receipt, state) {
+  if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) return null;
+  if (receipt.schema !== CERES_JOB_ACTION_RECEIPT_SCHEMA
+    || receipt.sectorId !== CERES_JOB_ACTION_SECTOR_ID) return null;
+  if (typeof receipt.actorSlotId !== 'string'
+    || !Object.hasOwn(CERES_WORK_AUDIO_PROFILES, receipt.actorSlotId)) return null;
+  const profile = CERES_WORK_AUDIO_PROFILES[receipt.actorSlotId];
+  if (receipt.jobKind !== profile.jobKind || receipt.action !== profile.action) return null;
+  const entities = state && state.entities;
+  if (!entities || typeof entities.get !== 'function') return null;
+  const actor = entities.get(receipt.actorId);
+  const actorPos = actor && actor.pos;
+  if (!actor || actor.alive === false || !actorPos
+    || !Number.isFinite(actorPos.x) || !Number.isFinite(actorPos.z)
+    || !actor.data || actor.data.activityActorSlotId !== receipt.actorSlotId) return null;
+  let position = actorPos;
+  if (profile.preferTarget && receipt.targetId != null) {
+    const target = entities.get(receipt.targetId);
+    const targetPos = target && target.pos;
+    if (target && target.alive !== false && targetPos
+      && Number.isFinite(targetPos.x) && Number.isFinite(targetPos.z)) {
+      position = targetPos;
+    }
+  }
+  const sequence = Number.isSafeInteger(receipt.sequence) ? receipt.sequence : 0;
+  const index = ((sequence % profile.rates.length) + profile.rates.length) % profile.rates.length;
+  return {
+    recipeId: profile.recipeId,
+    position: { x: position.x, z: position.z },
+    gain: profile.gain,
+    rate: profile.rates[index],
+  };
+}
+
 export const audio = {
   name: 'audio',
 
@@ -1593,6 +1638,7 @@ export const audio = {
     // position — the bound actor is resolved read-only from the live cast, and play() culls
     // anything past world-hearing range, so a pocket the player left stays silent.
     bus.on('traffic:ceresCausalChain', (p) => this._onCeresCausalChain(p));
+    bus.on(CERES_JOB_ACTION_RECEIPT_EVENT, (p) => this._onCeresWorkAction(p));
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
     bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
@@ -3283,6 +3329,12 @@ export const audio = {
       }
     }
     return null;
+  },
+
+  _onCeresWorkAction(p) {
+    const cue = resolveCeresWorkAudioCue(p, this.state);
+    if (!cue) return;
+    this.play(cue.recipeId, { position: cue.position, gain: cue.gain, rate: cue.rate });
   },
 
   _onPlayerDeath(p) {
