@@ -1389,6 +1389,19 @@
       "integration": "live",
       "commit": "0d2606216",
       "verification": "focused_green"
+    },
+    {
+      "id": "fresh-kill-scavenger-contest",
+      "date": "2026-09-22",
+      "wf": "WF-01",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Killing a manifested hull now draws a scavenger to the wreck within ~50 sim-seconds instead of never - the robbery has a contest, and the contest spills",
+      "fingerprint": "verb=dispatch,subject=scavenger ecology,sector=all,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "034894a3e",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
