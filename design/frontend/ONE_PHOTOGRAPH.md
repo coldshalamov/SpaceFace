@@ -329,6 +329,30 @@ second because it is on every screen.
 
 ## 7. Order of work
 
+**0. The material, done 2026-09-22.** Not on the original list because it was mistaken for a
+styling preference. It was the floor under every other item: 142 raster nine-slice declarations
+across eight stylesheets and seven screen files, now zero.
+
+`keys/key.legend.rest.png` is 160x40 and was stretched across every station tab, every market
+filter and every legend in the game. A 320x80 `@2x` sat beside it on disk and nothing referenced
+it, so on the Electron app at devicePixelRatio 2 every key, plate, window and tile was a bitmap
+upsampled 2x. That is the owner's "textures as smudges", and it was not a choice any screen made —
+it was mandated by `assets/ui/kit/kit/fh.css`, whose header required produced bitmaps and forbade
+gradients, shadows and borders as materials outright. The header is rewritten, the coverage test
+that enforced it is inverted, and the recipes live in Deckplate tokens (`--dp-cap-*`,
+`--dp-well-*`, `--dp-stock-*`, `--dp-pane-*`, `--dp-chan-*`) so a stylesheet class and a JS pin
+resolve to the same material.
+
+Two things worth keeping in mind for everything below. **Triage, not a swap**: replacing raster
+bevels with computed bevels would have kept the chip at better resolution, so §4.2 decided per
+class — legend became light, primary became mass. And **geometry is sacred**: a nine-slice paints
+INTO the border box, so every site keeps its border at the original width and makes it transparent.
+That is the only reason a change across 149 sites moved nothing.
+
+Item 2's gate (a) is *not* closed by this. The pixel-sampling contrast audit is still unbuilt, and
+killing the market's `#sx-panel` still waits on it.
+
+
 1. **Title** — the shared key, forward and reverse (P1); the light-variant menu with the attention
    lamp (P2); the outline focus deleted. One screen, and the thesis is visible in the game's first
    frame.

@@ -4,7 +4,7 @@
 
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { createTitleFrame } from '../views/menuFrames.js';
-import { injectDeckplate } from '../deckplate/index.js';
+import { injectDeckplate, attachAttentionLamp } from '../deckplate/index.js';
 import { el, words, stamp } from '../kit/index.js';
 import {
   FIRST_BOOT_MOTION_ASK_ID,
@@ -22,6 +22,7 @@ function getManager(ctx) {
 }
 
 let refs = null;
+let detachLamp = null;
 
 export const motionAskScreen = {
   id: FIRST_BOOT_MOTION_ASK_ID,
@@ -53,10 +54,17 @@ export const motionAskScreen = {
       { action: 'reduce', label: 'Reduce', sub: 'Calm shake, punch and hit-stop' },
     ], {
       ariaLabel: 'Motion effects',
-      system: 'dp',
+      // LIGHT, like the title whose frame this borrows. It was left on 'dp' when the title moved,
+      // so its primary choice still drew a plate -- a filled rectangle 60px tall whose bottom edge
+      // landed exactly on its own caption, which is what the bench reported as cut-off type. A
+      // choice on this screen changes nothing in the world until you pick it, so it is a word that
+      // lights, not a slab (ONE_PHOTOGRAPH.md sections 4.1 and 4.2).
+      system: 'light',
       onPick: (action) => this._pick(ctx, action),
     });
     stage.appendChild(list);
+    stage.classList.add('dp-attend');
+    detachLamp = attachAttentionLamp(stage);
 
     refs = {
       root: rootEl,
@@ -72,7 +80,10 @@ export const motionAskScreen = {
     try { stamp(refs.buttons, { state: 'motionAsk:arrive' }); } catch (_) {}
   },
 
-  onHide() { refs = null; },
+  onHide() {
+    if (detachLamp) { detachLamp(); detachLamp = null; }
+    refs = null;
+  },
 
   dispose() { refs = null; },
 
