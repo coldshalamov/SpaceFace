@@ -143,7 +143,7 @@ html.sf-high-contrast :focus-visible { outline-color:#fff !important; }
 }
 .dp-placard__title {
   margin:0; font-family:var(--dp-face-display); font-variation-settings:"wght" 800, "wdth" 125;
-  font-size:clamp(22px, calc(30px * var(--k-s, 1)), 40px); line-height:1; letter-spacing:.06em;
+  font-size:clamp(22px, calc(30px * var(--dp-s, 1)), 40px); line-height:1; letter-spacing:.06em;
   text-transform:uppercase; color:var(--dp-ink);
   text-shadow:0 -1px 0 rgb(0 0 0 / .75), 0 1px 0 rgb(255 236 204 / .14);
 }

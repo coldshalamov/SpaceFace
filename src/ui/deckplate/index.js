@@ -11,12 +11,14 @@ import { DECKPLATE_TOKENS_CSS } from './tokens.js';
 import { DECKPLATE_MATERIALS_CSS } from './materials.js';
 import { DECKPLATE_COMPONENTS_CSS, DECKPLATE_COMPONENTS_FORCED_CSS } from './components.js';
 import { DECKPLATE_HARDWARE_CSS } from './hardware.js';
+import { DECKPLATE_LAYOUT_CSS } from './layout.js';
 import { DECKPLATE_SCREENS_CSS } from './screens.js';
 
 export { DECKPLATE_TOKENS_CSS } from './tokens.js';
 export { DECKPLATE_MATERIALS_CSS } from './materials.js';
 export { DECKPLATE_COMPONENTS_CSS, DECKPLATE_COMPONENTS_FORCED_CSS } from './components.js';
 export { DECKPLATE_HARDWARE_CSS } from './hardware.js';
+export { DECKPLATE_LAYOUT_CSS } from './layout.js';
 export { DP_MOTION, replayDpAnimation, dpReducedMotion } from './motion.js';
 export { dpIcon, hasDpIcon, DP_ICON_NAMES } from './icons.js';
 
@@ -28,6 +30,7 @@ export const DECKPLATE_CSS =
   DECKPLATE_MATERIALS_CSS + '\n' +
   DECKPLATE_COMPONENTS_CSS + '\n' +
   DECKPLATE_HARDWARE_CSS + '\n' +
+  DECKPLATE_LAYOUT_CSS + '\n' +
   DECKPLATE_SCREENS_CSS + '\n' +
   DECKPLATE_COMPONENTS_FORCED_CSS;
 

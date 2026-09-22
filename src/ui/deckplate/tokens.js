@@ -56,21 +56,46 @@ export const DECKPLATE_TOKENS_CSS = `
   --dp-shade:rgb(2 3 5 / .55);            /* ambient occlusion under a land */
   --dp-shade-edge:rgb(0 0 0 / .68);       /* the dark bevel line */
 
-  /* ── Type. Aliases onto the kit scale so the 12 px floor and the viewport factor hold.
-        Two voices only: the etched legend (condensed, tracked, uppercase) and the reading
-        (tabular, warm bone). The reading face at numeral sizes is the display moment. ── */
-  --dp-face-etch:"Archivo", var(--k-display, "Bricolage Grotesque"), var(--k-text, "Instrument Sans"), system-ui, sans-serif;
-  --dp-face-display:"Archivo", var(--k-display, "Bricolage Grotesque"), system-ui, sans-serif;
-  --dp-face-read:var(--k-text, "Instrument Sans"), system-ui, -apple-system, "Segoe UI", sans-serif;
-  --dp-fs-etch:max(12px, var(--k-fs-fine, 12px));
-  --dp-fs-data:max(12px, var(--k-fs-data, 14px));
-  --dp-fs-read:var(--k-fs-emph, 20px);
-  --dp-fs-num:var(--k-fs-sub, 28px);
+  /* ── The viewport factor. 1 at a 1920-wide frame, 0.75 at 1280, 1.25 at 2560, and capped by
+        height as well as width so 2560×1080 keeps the 1080-tall column geometry. Owned HERE as of
+        2026-09-22: it used to read --k-s out of styles/kit.css, which made the whole system
+        depend on a stylesheet that is being retired. Nothing in Deckplate reads a foreign token
+        any more — that is what lets --k-, --sf- and --fh- go. ── */
+  --dp-s:1;                                      /* fallback where trig functions are unsupported */
+  --dp-s:clamp(0.75, min(tan(atan2(100vw, 1920px)), tan(atan2(100vh, 1080px))), 1.25);
+
+  /* ── Type. Two voices only: the etched legend (condensed, tracked, uppercase) and the reading
+        (tabular, warm bone). The reading face at numeral sizes is the display moment. Archivo is
+        the width-axis family the etched legends are drawn for — wdth 62 is a real instance in the
+        vendored file, and no fallback family has a width floor below 75. ── */
+  --dp-face-etch:"Archivo", "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+  --dp-face-display:"Archivo", "Bricolage Grotesque", system-ui, sans-serif;
+  --dp-face-read:"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* The scale, px at 1920. The 12 px floor is an accessibility floor (check-type-floor), not a
+     style choice, so every step below body clamps to it. */
+  --dp-fs-etch:max(12px, calc(12px * var(--dp-s)));   /* etched legend */
+  --dp-fs-data:max(12px, calc(14px * var(--dp-s)));   /* dense readings */
+  --dp-fs-body:max(12px, calc(16px * var(--dp-s)));   /* running copy */
+  --dp-fs-read:calc(20px * var(--dp-s));              /* an emphasised reading */
+  --dp-fs-num:calc(28px * var(--dp-s));               /* an instrument's number */
+  --dp-fs-menu:calc(40px * var(--dp-s));              /* a menu item — a target, not a label */
+  --dp-fs-hero:calc(56px * var(--dp-s));              /* the one hero number on a screen */
+  --dp-fs-title:calc(80px * var(--dp-s));             /* the one screen title */
+  --dp-fs-name:calc(132px * var(--dp-s));             /* the game's name, title screen only */
 
   /* ── Spacing: one unit, machined fits. ── */
-  --dp-u:calc(4px * var(--k-s, 1));
-  --dp-pad:calc(12px * var(--k-s, 1));
-  --dp-gap:calc(8px * var(--k-s, 1));
+  --dp-u:calc(4px * var(--dp-s));
+  --dp-pad:calc(12px * var(--dp-s));
+  --dp-gap:calc(8px * var(--dp-s));
+
+  /* ── The frame. Every screen hangs off the same margin and the same column, or the game reads
+        as a pile of unrelated windows — which is exactly how it reads today. ── */
+  --dp-margin:calc(64px * var(--dp-s));          /* the screen's outer gutter */
+  --dp-col:calc(420px * var(--dp-s));            /* the standing left column */
+  --dp-rhythm:calc(24px * var(--dp-s));          /* the vertical beat between blocks */
+  --dp-measure:68ch;                             /* the longest a line of copy may run */
+  --dp-row:calc(34px * var(--dp-s));             /* one row in a dense register */
 
   /* ── Geometry: machined, not rounded. 2 px is the plate break; 3 px the instrument. ── */
   --dp-r-plate:2px;

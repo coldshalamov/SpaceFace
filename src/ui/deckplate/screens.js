@@ -26,7 +26,7 @@ const KEY_LED_RED_BB = LED_RED.replace('12px 50%', '11px 50%') + ' border-box';
 const WORDS = `
 #screens :is(.of-pause) .k-words__group {
   display:flex; align-items:center; gap:10px; list-style:none;
-  margin:calc(12px * var(--k-s, 1)) 0 4px; padding:0 2px;
+  margin:calc(12px * var(--dp-s, 1)) 0 4px; padding:0 2px;
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 62; font-size:12px;
   letter-spacing:.24em; text-transform:uppercase; color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow);
 }
@@ -1075,7 +1075,7 @@ ${SEL} > .k-foot .sf-ng-launch { min-height:48px; padding-left:36px; padding-rig
 /* the research tree's pane is its content's width, so its scrollbar is the tree's edge */
 ${SEL} .tt-scroll { width:fit-content; max-width:100%; justify-self:start; }
 /* one header grid */
-${SEL}:is(.of-settings, .of-credits, .of-achievements) { padding:var(--k-margin); }
+${SEL}:is(.of-settings, .of-credits, .of-achievements) { padding:var(--dp-margin); }
 ${SEL} > .k-title .k-t-emph.k-62 {
   margin:12px 0 0; max-width:64ch; font-family:var(--dp-face-read); font-variation-settings:normal; font-weight:400;
   font-size:clamp(15px, min(1vw, 1.8vh), 18px); line-height:1.4; letter-spacing:.005em; text-transform:none;
