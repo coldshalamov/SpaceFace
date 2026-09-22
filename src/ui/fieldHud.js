@@ -8,6 +8,11 @@
 // Reads only: state.fields (active / cooldowns / lastDenial), state.simTime. Writes only its own
 // DOM subtree. No sim state. Fully guarded headless. Never touches hud.js/targetPanel/styles/*
 // (PQ-015 lease) — it self-injects its own scoped CSS like massSeedHud.
+//
+// INST-01: the tell is an instrument on the deck, not a cyan web pill. The injected sheet paints
+// only with the tokens that already live on #hud / :root (deckplate register, src/ui/deckplate/):
+// the flight glass face, the etched legend voice, and the warm lamp as the one accent (danger is
+// the lamp driven red; good news reads in bone). No hand-mixed card survives here.
 
 import {
   CINDER_SLUICE_SECTOR_ID,
@@ -16,21 +21,33 @@ import {
   pointInsideCinderSluice,
 } from '../data/environmentalMachinery.js';
 
-const FIELD_HUD_CSS = `
+export const FIELD_HUD_CSS = `
 .sf-field-pill {
   position: absolute; left: 50%; bottom: 146px; transform: translateX(-50%);
-  display: none; align-items: center; gap: 8px; padding: 4px 12px;
-  font: 600 12px/1.2 "Segoe UI", system-ui, sans-serif; letter-spacing: .06em;
-  color: #cfe8ff; background: rgba(10, 18, 28, 0.72); border: 1px solid rgba(120, 190, 235, 0.4);
-  border-radius: 3px; pointer-events: none; white-space: nowrap;
+  display: none; align-items: center; gap: var(--dp-gap, 8px); padding: 5px 14px 6px;
+  font-family: var(--dp-face-etch, var(--hud-data, system-ui));
+  font-size: var(--dp-fs-etch, 12px); font-weight: 700; line-height: 1.2;
+  font-variation-settings: "wght" 720, "wdth" 68; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--hud-paper, var(--dp-ink, #e8e2d4));
+  background: var(--dp-glass-flight, rgb(18 23 29 / .82));
+  border: 1px solid var(--hud-line, var(--dp-metal-4, #2f3542));
+  border-left: 2px solid var(--dp-lamp, #f2b950);
+  border-radius: var(--dp-r-instrument, 3px);
+  box-shadow: var(--dp-glass-depth, inset 0 0 0 1px rgb(2 3 5 / .9)), var(--dp-stand-off, 0 10px 22px rgb(0 0 0 / .32));
+  text-shadow: var(--dp-emit, none);
+  pointer-events: none; white-space: nowrap;
 }
-.sf-field-pill .field-tag { font-weight: 700; }
-.sf-field-pill.field-repulsor { color: #ffe0b0; border-color: rgba(240, 180, 90, 0.5); }
-.sf-field-pill.field-denied { color: #ffb0a0; border-color: rgba(240, 110, 90, 0.6); }
-.sf-field-pill.field-cooldown { color: #9fb4c8; border-color: rgba(120, 140, 160, 0.35); }
-.sf-field-pill.field-current-warning { color: #ffe0a3; border-color: rgba(255, 194, 74, 0.62); }
-.sf-field-pill.field-current-surge { color: #ffb0a0; border-color: rgba(255, 105, 82, 0.72); }
-.sf-field-pill.field-current-calm { color: #b9ffe4; border-color: rgba(88, 224, 176, 0.58); }
+/* the lamp in the left edge is the state channel; the etched legend never changes voice */
+.sf-field-pill.field-repulsor { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
+.sf-field-pill.field-denied { color: var(--dp-danger-hot, #ff8a70); border-left-color: var(--dp-danger, #ff5038); text-shadow: 0 0 10px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
+.sf-field-pill.field-cooldown { color: var(--dp-ink-mute, #96948e); border-left-color: var(--dp-lamp-dim, #8a6b3a); text-shadow: var(--dp-etch-shadow, none); }
+.sf-field-pill.field-current-warning { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
+.sf-field-pill.field-current-surge { color: var(--dp-danger-hot, #ff8a70); border-left-color: var(--dp-danger, #ff5038); text-shadow: 0 0 10px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
+/* calm current is information: bone ink, no lamp lit */
+.sf-field-pill.field-current-calm { border-left-color: var(--hud-line, var(--dp-metal-4, #2f3542)); }
+@media (forced-colors: active) {
+  .sf-field-pill { background: Canvas; color: CanvasText; border: 1px solid CanvasText; box-shadow: none; text-shadow: none; forced-color-adjust: none; }
+}
 `;
 
 const KIND_LABEL = { well: 'WELL', repulsor: 'REPULSOR', cone: 'CONE' };
