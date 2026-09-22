@@ -299,6 +299,38 @@ test('an undeclared reply list or stick-lock fails with the forbidden flags left
       `${key} at the top of the sheet must fail: ${JSON.stringify(lockedIssues)}`,
     );
   }
+
+  const nestedOptions = structuredClone(opener);
+  nestedOptions.forbidden = { dialogueTree: false, choiceMenu: false, cutsceneTakesStick: false };
+  nestedOptions.presentation = {
+    options: [
+      { label: 'Open the spindle', next: 'opened' },
+      { label: 'Leave it sealed', next: 'sealed' },
+    ],
+  };
+  const optionIssues = validateBeatSheet(nestedOptions);
+  assert.ok(optionIssues.some((row) => row.code === 'choice_menu'), JSON.stringify(optionIssues));
+  assert.equal(nestedOptions.nodes, undefined);
+
+  const decoy = structuredClone(opener);
+  decoy.forbidden = { dialogueTree: false, choiceMenu: false, cutsceneTakesStick: false };
+  decoy.presentation = {
+    replies: [
+      { meta: 'not a choice', nested: { choices: [{ label: 'Open it', next: 'opened' }] } },
+    ],
+  };
+  const decoyIssues = validateBeatSheet(decoy);
+  assert.ok(decoyIssues.some((row) => row.code === 'choice_menu'), JSON.stringify(decoyIssues));
+
+  const buried = structuredClone(opener);
+  buried.forbidden = {
+    dialogueTree: false,
+    choiceMenu: false,
+    cutsceneTakesStick: false,
+    hidden: { replies: [{ label: 'Open it', next: 'opened' }] },
+  };
+  const buriedIssues = validateBeatSheet(buried);
+  assert.ok(buriedIssues.some((row) => row.code === 'dialogue_tree'), JSON.stringify(buriedIssues));
 });
 
 test.after(() => {

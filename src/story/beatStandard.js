@@ -214,7 +214,9 @@ function walkUndeclaredForbidden(value, path, depth, issues) {
   }
   for (const [key, child] of Object.entries(value)) {
     if (!child || typeof child !== 'object') continue;
-    if (CHOICE_LIST_KEYS.includes(key)) continue;
+    // A shaped menu is already flagged. A decoy list under the same key can
+    // still hide a menu one level down, so only skip the list we already caught.
+    if (CHOICE_LIST_KEYS.includes(key) && choiceListShaped(child)) continue;
     walkUndeclaredForbidden(child, path ? `${path}.${key}` : key, depth + 1, issues);
   }
 }
@@ -249,7 +251,7 @@ function detectForbiddenForm(sheet) {
   // list is the list itself, so it has to be named here; the walk only sees
   // choice keys on objects it enters.
   for (const [key, child] of Object.entries(sheet)) {
-    if (key === 'choices' || key === 'forbidden' || key === 'kind') continue;
+    if (key === 'choices' || key === 'kind') continue;
     if (!child || typeof child !== 'object') continue;
     if (CHOICE_LIST_KEYS.includes(key) && choiceListShaped(child)) {
       const code = key === 'replies' || key === 'branches' ? 'dialogue_tree' : 'choice_menu';
