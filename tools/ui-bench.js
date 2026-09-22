@@ -577,11 +577,20 @@ function alphaOf(color) {
   return Number(parts[3]);
 }
 
+// Text that is present for a screen reader and drawn for nobody. It still has a client rect, so
+// without this an accessible name listing every tile on the Crucible door reads as five collisions.
+function screenReaderOnly(style) {
+  if (/inset\(\s*50%/.test(style.clipPath || '')) return true;
+  if (/rect\(0(px)?[,\s]/.test(style.clip || '')) return true;
+  return false;
+}
+
 function fadedOut(el) {
   for (let node = el; node && node !== document.body; node = node.parentElement) {
     const style = styleOf(node);
     if (style.display === 'none' || style.visibility === 'hidden') return true;
     if (Number(style.opacity) < 0.06) return true;
+    if (screenReaderOnly(style)) return true;
   }
   return false;
 }
@@ -703,6 +712,10 @@ function tangledType(runs) {
       const a = runs[i];
       const b = runs[j];
       if (a.host === b.host || a.host.contains(b.host) || b.host.contains(a.host)) continue;
+      // The same string twice in the same place is a drawing technique -- a stroke copy behind the
+      // face for legibility over a bright scene, which is how alerts.js prints TAKING FIRE. You can
+      // still read it, so it is not a collision.
+      if (a.text === b.text) continue;
       if (!intersectArea(a.box, b.box)) continue;
       const shared = commonAncestor(a.host, b.host);
       if (plateBetween(a.host, shared) || plateBetween(b.host, shared)) continue;
