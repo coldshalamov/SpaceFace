@@ -44,6 +44,46 @@ export const DECKPLATE_TOKENS_CSS = `
   --dp-danger:#ff5038;     /* the same lamp driven to failure */
   --dp-danger-hot:#ff8a70;
 
+  /* ══ THE PHOSPHOR — the ink of an emitted reading ════════════════════════════════════
+     The owner, 2026-09-14, looking at the live flight HUD: "a strange wood look that's not visible
+     against the backdrop ... it would have to be more sleek and glass ... maybe some slight neon
+     look", and the speed dial "should at least resemble an instrument in an advanced spaceship".
+     An agent retired that directive on 09-18 and installed the praise for the WORLD ART as the law
+     for the interface. Root AGENTS.md section 4: user direction outranks an agent.
+
+     So there are two temperatures, and they mean different things:
+       the LAMP (warm)      — what you can ACT on. A control, a selection, an armed key.
+       the PHOSPHOR (cool)  — what you READ. A numeral, an instrument, a price, a trace.
+       etched ink (bone)    — paint printed ON metal, lit by the warm key. Unchanged.
+
+     A white core with a cool halo is how a real tube reads, and it is the "slight neon" without a
+     neon HUE. FENCES, so this cannot become the cyan wireframe that was rightly rejected in 2026-08:
+     phosphor is an INK, never a stroke colour for a shape; nothing is drawn in it under 2px; no
+     grid, no scanline, no visor, no corner brackets framing the screen.
+     design/frontend/ONE_PHOTOGRAPH.md section 1. ══════════════════════════════════════ */
+  --dp-phos:#dfeeff;                       /* the core of a reading */
+  --dp-phos-dim:#9fb4c8;                   /* a reading at rest */
+  --dp-phos-halo:rgb(150 210 255 / .22);   /* the bloom; a halo property, never a fill */
+  --dp-phos-emit:0 0 10px var(--dp-phos-halo), 0 0 2px rgb(150 210 255 / .3);
+  --dp-phos-emit-soft:0 0 6px rgb(150 210 255 / .14);
+
+  /* ══ THE VIGNETTE — the only permitted occlusion ═══════════════════════════════════
+     A panel is a rectangle of darkening with a visible inner edge. Ask of any screenshot: can you
+     point to where the dark starts? If yes it is a panel, and panels are dead (section 4.1). What
+     replaces them is a gradient that reaches the frame edge and has no inner boundary, so the world
+     is darkened FOR the words without a box being drawn around them.
+     ═══════════════════════════════════════════════════════════════════════════════════════ */
+  --dp-veil-ink:8 9 12;
+  --dp-veil-lead:linear-gradient(90deg,
+    rgb(var(--dp-veil-ink) / .90) 0%, rgb(var(--dp-veil-ink) / .82) 22%,
+    rgb(var(--dp-veil-ink) / .52) 48%, rgb(var(--dp-veil-ink) / .12) 74%, transparent 92%);
+  --dp-veil-foot:linear-gradient(0deg,
+    rgb(var(--dp-veil-ink) / .86) 0%, rgb(var(--dp-veil-ink) / .46) 42%, transparent 88%);
+  --dp-veil-head:linear-gradient(180deg,
+    rgb(var(--dp-veil-ink) / .78) 0%, rgb(var(--dp-veil-ink) / .34) 46%, transparent 86%);
+  --dp-veil-full:radial-gradient(130% 110% at 28% 34%,
+    rgb(var(--dp-veil-ink) / .40) 0%, rgb(var(--dp-veil-ink) / .74) 58%, rgb(var(--dp-veil-ink) / .93) 100%);
+
   /* ══ C6 — FILAMENT, NOT FADE ══════════════════════════════════════════════════
      A lamp coming on is not an opacity ramp from .5 to 1. A filament warms through colour before
      it reaches brightness, and it cools on the way out. --dp-lamp-current is a REGISTERED <number>

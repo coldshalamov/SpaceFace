@@ -36,6 +36,12 @@ const TYPED = Object.freeze([
   { name: '--dp-grain', syntax: '<number>', initialValue: '1', inherits: true },
   // The specular band's position across a plate, -1..2. Rest is off the left edge.
   { name: '--dp-sweep', syntax: '<number>', initialValue: '-1', inherits: false },
+  // THE ATTENTION LAMP. Where the reader is looking, in the focused container's own coordinates.
+  // Typed as lengths so the lamp TRAVELS to the next item instead of teleporting, and inherited so
+  // every child can compute its own distance from it and light accordingly.
+  { name: '--dp-focus-x', syntax: '<length>', initialValue: '-9999px', inherits: true },
+  { name: '--dp-focus-y', syntax: '<length>', initialValue: '-9999px', inherits: true },
+  { name: '--dp-focus-power', syntax: '<number>', initialValue: '0', inherits: true },
 ]);
 
 /**

@@ -12,6 +12,8 @@ import { DECKPLATE_MATERIALS_CSS } from './materials.js';
 import { DECKPLATE_COMPONENTS_CSS, DECKPLATE_COMPONENTS_FORCED_CSS } from './components.js';
 import { DECKPLATE_HARDWARE_CSS } from './hardware.js';
 import { DECKPLATE_LAYOUT_CSS } from './layout.js';
+import { DECKPLATE_LIGHT_CSS } from './light.js';
+import { DECKPLATE_TRANSITION_CSS } from './transition.js';
 import { injectDeckplatePaint } from './paint.js';
 import { DECKPLATE_SCREENS_CSS } from './screens.js';
 
@@ -20,6 +22,10 @@ export { DECKPLATE_MATERIALS_CSS } from './materials.js';
 export { DECKPLATE_COMPONENTS_CSS, DECKPLATE_COMPONENTS_FORCED_CSS } from './components.js';
 export { DECKPLATE_HARDWARE_CSS } from './hardware.js';
 export { DECKPLATE_LAYOUT_CSS } from './layout.js';
+export { DECKPLATE_LIGHT_CSS } from './light.js';
+export { DECKPLATE_TRANSITION_CSS, withScreenTransition } from './transition.js';
+export { dpMark, setDpMark, hasDpMark, factionCrestName, DP_MARK_NAMES } from './marks.js';
+export { attachAttentionLamp } from './attend.js';
 export { injectDeckplatePaint, DECKPLATE_TYPED_PROPERTIES } from './paint.js';
 export { DP_MOTION, replayDpAnimation, dpReducedMotion } from './motion.js';
 export { dpIcon, hasDpIcon, DP_ICON_NAMES } from './icons.js';
@@ -33,6 +39,10 @@ export const DECKPLATE_CSS =
   DECKPLATE_COMPONENTS_CSS + '\n' +
   DECKPLATE_HARDWARE_CSS + '\n' +
   DECKPLATE_LAYOUT_CSS + '\n' +
+  // The second substance. It comes after the machine so a veil can sit over a plate, and before
+  // the placement layer so a screen can still position what the light layer defines.
+  DECKPLATE_LIGHT_CSS + '\n' +
+  DECKPLATE_TRANSITION_CSS + '\n' +
   DECKPLATE_SCREENS_CSS + '\n' +
   DECKPLATE_COMPONENTS_FORCED_CSS;
 
