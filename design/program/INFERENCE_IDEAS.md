@@ -26,7 +26,15 @@ Never claim a line whose paths collide with a live hunk — take the next line.
 
 | # | Date | Idea (owner words) | Status |
 |---|---|---|---|
-| 001 | 2026-09-17 | Example (delete me): pirates should ransom, not just shoot | OPEN |
+| 001 | 2026-09-21 | WRITING: read every line the game says to the player — deepen barks, band radio, mission text, and UI copy in the faction voices; repeat lines within an hour are the floor problem | OPEN |
+| 002 | 2026-09-21 | MIX: play a crowded fight with ears — fix what drowns, what vanishes, and the missing silence before a spike; the chain you just made should be audible | OPEN |
+| 003 | 2026-09-21 | FRICTION: play badly on purpose — get stuck, get lost, get WANTED, can't find the dock — and fix every frustration you actually hit | OPEN |
+| 004 | 2026-09-21 | TRICKS: the game detects stunts but never teaches them — the player should discover that throwing a pirate into his wingman is a thing that exists | OPEN |
+| 005 | 2026-09-21 | DEFEAT: die on purpose — your wreck, your cargo, and your killer should still be out there; make death mutate the world, not just cost money | OPEN |
+| 006 | 2026-09-21 | DOWNTIME: the three minutes flying between jobs should have something in them — roadside oddities, radio that pays off, reasons to detour | OPEN |
+| 007 | 2026-09-21 | INTENT: when an NPC changes its mind the player should see it coming — the hauler spooling to flee, the pirate deciding you're not worth it, the patrol clearing you | OPEN |
+| 008 | 2026-09-21 | SETPIECES: events bigger than the player that stay physical — a fleet skirmish already in progress, a station emergency, a capital ship dying as terrain | OPEN |
+| 009 | 2026-09-21 | RECORDS: the game keeps receipts about you — furthest throw, biggest chain, most-wanted survived — surfaced somewhere that pulls you back in | OPEN |
 
 ## CLAIMED
 
