@@ -1493,6 +1493,32 @@
       "integration": "live",
       "commit": "1930ca3f1",
       "verification": "focused_green"
+    },
+    {
+      "id": "WORLD-01",
+      "date": "2026-09-22",
+      "wf": "WF-04",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The Choir refuel depot (station_depot3) in Vesta Forge now advertises missions service so docking shows the Missions board.",
+      "fingerprint": "verb=dock,subject=station_depot3,sector=sector_vesta_forge,domain=world",
+      "references": [],
+      "integration": "live",
+      "commit": "147e71c24",
+      "verification": "focused_green"
+    },
+    {
+      "id": "PIC-01",
+      "date": "2026-09-22",
+      "wf": "WF-11",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "An NPC Kestrel now resolves through the packaged whole-ship allowlist as a complete body (wholeships/kestrel.glb) rather than being forced onto modular kit assembly.",
+      "fingerprint": "verb=render,subject=ship_kestrel,sector=global_fleet,domain=picture",
+      "references": [],
+      "integration": "live",
+      "commit": "62c7346d8",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [

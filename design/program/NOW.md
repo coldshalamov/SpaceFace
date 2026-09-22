@@ -43,9 +43,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PIC-01 claim — NPC Kestrel resolves as the packaged whole-ship body | inference-workflow-batch | todo: implement, prove, ship the line | `src/render/partsLibrary.js` | SHIPPED row in INFERENCE_IDEAS.md, pathspec commit |
-| VERB-01 claim — opening raid timeout leaves hauler and raiders in the world | inference-workflow-batch | todo: implement, prove, ship the line | `src/data/encounters/015-opening-hauler-raid.js` | SHIPPED row in INFERENCE_IDEAS.md, pathspec commit |
-| WORLD-01 claim — Choir refuel depot has a missions board | inference-workflow-batch | todo: implement, prove, ship the line | `src/data/sectors.js` | SHIPPED row in INFERENCE_IDEAS.md, pathspec commit |
+| VERB-01 claim — opening raid timeout leaves hauler and raiders in the world | inference-workflow-batch | queued | `src/data/encounters/015-opening-hauler-raid.js` | SHIPPED row in INFERENCE_IDEAS.md, pathspec commit |
 
 
 

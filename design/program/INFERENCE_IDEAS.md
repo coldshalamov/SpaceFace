@@ -56,7 +56,7 @@ not to invent.
 
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
-| PIC-01 | An NPC Kestrel is the same complete body as the player Kestrel, not a kit of parts | `src/render/partsLibrary.js` | A spawned NPC kestrel resolves through the packaged whole-ship allowlist | Unhide the procedural kit. Author a new GLB | CLAIMED |
+| PIC-01 | An NPC Kestrel is the same complete body as the player Kestrel, not a kit of parts | `src/render/partsLibrary.js` | A spawned NPC kestrel resolves through the packaged whole-ship allowlist | Unhide the procedural kit. Author a new GLB | SHIPPED |
 | PIC-02 | Common rocks are not one texture painted five times | `src/render/rockSurfaceLibrary.js` | At least two instance variants differ in tint or ORM at chase scale | Change the instance pool or the rock mesh | OPEN |
 | PIC-03 | Kit and hero decals stay up at the distance the code comment says they still read | `src/render/ships/shipKit.js`, `src/render/ships/kestrelHero.js` | Decals are not hidden at the current LOD1 cut while the comment still claims they read much farther | Author new LOD meshes | OPEN |
 | PIC-04 | The hero fan stops when the sim pauses | `src/render/ships/kestrelHero.js` | The fan advances on sim time, not `performance.now()` | Rewrite the hero GLB | OPEN |
@@ -91,7 +91,7 @@ not to invent.
 
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
-| WORLD-01 | The Choir refuel depot has a missions board | `src/data/sectors.js` (`station_depot3` services) | Docking the Vesta depot shows Missions | Invent a Choir capital or move Vesta | CLAIMED |
+| WORLD-01 | The Choir refuel depot has a missions board | `src/data/sectors.js` (`station_depot3` services) | Docking the Vesta depot shows Missions | Invent a Choir capital or move Vesta | SHIPPED |
 | WORLD-02 | Vesta traffic includes one named hauler | `src/data/laneContacts.js`, `src/systems/traffic.js` | `sector_vesta_forge` can stamp that contact id | Add an encounter shape | OPEN |
 | WORLD-03 | The Choir-Tender wreck is a wreck on the Helios chart, not another derelict beacon | `src/data/sectors.js`, `src/data/uniqueWrecks.js` | Helios POIs include `type: 'wreck'` bound to `wreck_choir_tender` | Invent a new unique drop | OPEN |
 | WORLD-04 | Salvaging the Choir-Tender draws the investigator the wreck data already describes | a new encounter module beside `src/data/encounters/150-unique-wreck-silver-draft-cleaner.js`, wired from `uniqueWrecks.js` | The director catalog contains that id and it offers the existing complication choice plus one hull | Invent a mission type or a second Helios unique wreck | OPEN |
@@ -138,15 +138,15 @@ not to invent.
 | Id | Date | Thread | Paths |
 |---|---|---|---|
 | — | — | — | — |
-| PIC-01 | 2026-09-22 | inference-workflow-batch | `src/render/partsLibrary.js` |
 | VERB-01 | 2026-09-22 | inference-workflow-batch | `src/data/encounters/015-opening-hauler-raid.js` |
-| WORLD-01 | 2026-09-22 | inference-workflow-batch | `src/data/sectors.js` |
 
 ## SHIPPED
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
 | — | — | — | — |
+| WORLD-01 | WF-04 | 147e71c24 | Choir refuel depot (station_depot3) adds missions service so docking shows Missions board |
+| PIC-01 | WF-11 | 62c7346d8 | NPC Kestrel resolves through packaged whole-ship allowlist as complete body |
 
 ## CUT
 
