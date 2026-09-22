@@ -12,6 +12,8 @@ export const STATUS_ATTACHED_KIND = Object.freeze({
   GOO: 'goo',
 });
 
+const NO_EMIT_SPRITES = Object.freeze([]);
+
 const STATUS_ROWS = Object.freeze({
   [STATUS_ATTACHED_BURN_ID]: Object.freeze({
     kind: STATUS_ATTACHED_KIND.BURN,
@@ -41,6 +43,26 @@ export function statusRemainingSeconds(active, tick, hz = STATUS_ATTACHED_TICK_H
   return Math.max(0, (active.expiresTick - t) / hz);
 }
 
+// Ranked records are pooled and `ranked`/`out` are caller-supplied scratch: this collector runs
+// every presented frame in flight, so nothing here may allocate per call. Results are consumed
+// synchronously — a returned record is only valid until the next collect call.
+const _rankedPool = [];
+const _rankedView = [];
+let _rankedUsed = 0;
+
+function _nextRankedRecord() {
+  let rec = _rankedPool[_rankedUsed];
+  if (!rec) {
+    rec = {
+      entityId: 0, statusId: '', kind: '', stacks: 1, remainingS: 0,
+      expiresTick: 0, radius: 0, x: 0, z: 0, dist2: 0,
+    };
+    _rankedPool[_rankedUsed] = rec;
+  }
+  _rankedUsed++;
+  return rec;
+}
+
 export function collectStatusAttachedVictims(state, out = []) {
   out.length = 0;
   const table = state && state.combat && state.combat.entities;
@@ -52,7 +74,7 @@ export function collectStatusAttachedVictims(state, out = []) {
   const player = state.playerId != null ? entities.get(state.playerId) : null;
   const px = player && player.pos ? Number(player.pos.x) || 0 : 0;
   const pz = player && player.pos ? Number(player.pos.z) || 0 : 0;
-  const ranked = [];
+  _rankedUsed = 0;
   for (const key of Object.keys(table)) {
     const runtime = table[key];
     const statuses = runtime && runtime.statuses;
@@ -65,23 +87,24 @@ export function collectStatusAttachedVictims(state, out = []) {
       if (!(remainingS > 0)) continue;
       const dx = (Number(entity.pos.x) || 0) - px;
       const dz = (Number(entity.pos.z) || 0) - pz;
-      ranked.push({
-        entityId: entity.id,
-        statusId,
-        kind: STATUS_ROWS[statusId].kind,
-        stacks: Math.max(1, Math.min(3, Number(active.stacks) || 1)),
-        remainingS,
-        expiresTick: active.expiresTick,
-        radius: Math.max(2, Number(entity.radius) || 6),
-        x: Number(entity.pos.x) || 0,
-        z: Number(entity.pos.z) || 0,
-        dist2: dx * dx + dz * dz,
-      });
+      const rec = _nextRankedRecord();
+      rec.entityId = entity.id;
+      rec.statusId = statusId;
+      rec.kind = STATUS_ROWS[statusId].kind;
+      rec.stacks = Math.max(1, Math.min(3, Number(active.stacks) || 1));
+      rec.remainingS = remainingS;
+      rec.expiresTick = active.expiresTick;
+      rec.radius = Math.max(2, Number(entity.radius) || 6);
+      rec.x = Number(entity.pos.x) || 0;
+      rec.z = Number(entity.pos.z) || 0;
+      rec.dist2 = dx * dx + dz * dz;
     }
   }
-  ranked.sort((a, b) => a.dist2 - b.dist2 || String(a.entityId).localeCompare(String(b.entityId)));
-  const cap = Math.min(STATUS_ATTACHED_CAP, ranked.length);
-  for (let i = 0; i < cap; i++) out.push(ranked[i]);
+  _rankedView.length = _rankedUsed;
+  for (let i = 0; i < _rankedUsed; i++) _rankedView[i] = _rankedPool[i];
+  _rankedView.sort((a, b) => a.dist2 - b.dist2 || String(a.entityId).localeCompare(String(b.entityId)));
+  const cap = Math.min(STATUS_ATTACHED_CAP, _rankedUsed);
+  for (let i = 0; i < cap; i++) out.push(_rankedView[i]);
   return out;
 }
 
@@ -106,12 +129,12 @@ export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, 
     age %= period;
   }
   if (!emit) {
-    return { emit: false, nextCadenceAgeS: age, sprites: [] };
+    return { emit: false, nextCadenceAgeS: age, sprites: NO_EMIT_SPRITES };
   }
   const stacks = clamp(victim.stacks, 1, 3);
   const life = Math.min(row.authoredLife, victim.remainingS);
   if (!(life > 0.04)) {
-    return { emit: false, nextCadenceAgeS: age, sprites: [] };
+    return { emit: false, nextCadenceAgeS: age, sprites: NO_EMIT_SPRITES };
   }
   const flashScale = flashReduce ? 0.32 : 1;
   const sizeScale = flashReduce ? 0.72 : 1;
@@ -156,11 +179,15 @@ export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, 
   return { emit: true, nextCadenceAgeS: age, sprites, remainingS: victim.remainingS, stacks };
 }
 
+const _ACC_NONE = Object.freeze({ motionReduce: false, flashReduce: false });
+const _ACC_MOTION = Object.freeze({ motionReduce: true, flashReduce: false });
+const _ACC_FLASH = Object.freeze({ motionReduce: false, flashReduce: true });
+const _ACC_BOTH = Object.freeze({ motionReduce: true, flashReduce: true });
+
 export function statusAttachedAccessibility(settings) {
   const video = (settings && settings.video) || {};
   const accessibility = (settings && settings.accessibility) || {};
-  return {
-    motionReduce: !!video.motionReduce,
-    flashReduce: !!(video.flashReduce || accessibility.flashReduce || accessibility.reducedFlash),
-  };
+  const motionReduce = !!video.motionReduce;
+  const flashReduce = !!(video.flashReduce || accessibility.flashReduce || accessibility.reducedFlash);
+  return motionReduce ? (flashReduce ? _ACC_BOTH : _ACC_MOTION) : (flashReduce ? _ACC_FLASH : _ACC_NONE);
 }
