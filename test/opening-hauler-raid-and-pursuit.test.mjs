@@ -145,6 +145,41 @@ test('Opening hauler raid runtime lifecycle: choices, defense, and payout', () =
     'MTS reputation awarded for protecting hauler');
 });
 
+test('VERB-02: the opening raid fires already happening — no choice offer, no pass-on-timeout', () => {
+  const { sim, state, bus } = makeHarness();
+  const offers = [];
+  bus.on('encounter:choiceOffered', (p) => offers.push(p));
+
+  const zones = zonesForSector('sector_helios_prime');
+  const plan = planEncounters(42, 'sector_helios_prime', 0, zones);
+  const raidPlan = plan.find((it) => it.shapeId === 'opening_hauler_raid');
+  assert.ok(raidPlan);
+
+  const dir = state.encounterDirector;
+  dir.pending = [{ ...raidPlan, dueAt: 0, defers: 0 }];
+  dir.pressure.combat = 30;
+  sim.runTicks(120);
+
+  const live = Object.values(dir.live).find((l) => l.shapeId === 'opening_hauler_raid');
+  assert.ok(live, 'the raid must fire');
+  assert.equal(live.phase, 'conflict');
+  assert.equal(offers.length, 0, 'no consent dialog: the fight is already in the sky');
+  assert.equal(live.shape.timeoutChoice ?? null, null, 'no pass-on-timeout survives on the shape');
+  assert.equal((live.shape.choices || []).length, 0, 'no offer choices remain on the shape');
+
+  // The physical verbs stay meaningful: the raiders are committed to the hauler on their own
+  // doctrine, so shooting raiders still defends and shooting the hauler still raids.
+  const haulerEnt = live.ids.map((id) => state.entities.get(id))
+    .find((e) => e && e.data?.ai?.encounterRole === 'hauler');
+  const raiderEnts = live.ids.map((id) => state.entities.get(id))
+    .filter((e) => e && e.data?.ai?.encounterRole === 'raider');
+  assert.ok(haulerEnt && raiderEnts.length >= 1, 'the fight is in the sky');
+  for (const r of raiderEnts) {
+    assert.equal(isHostileForAI(state, r, haulerEnt), true,
+      'raiders attack the hauler without waiting for player consent');
+  }
+});
+
 test('Opening raid lands within three minutes inside ~two screen-depths on seeds 4242 and 8008', () => {
   // §22 A1 closing rule: one fixture on the canonical seeds asserts spawn range, time, and the
   // commitment event. The player sits at the new-game spawn (sector origin) while the day-0 plan

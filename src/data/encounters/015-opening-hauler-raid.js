@@ -49,9 +49,20 @@ export const runtime = Object.freeze({
     if (!ids.length || d.aliveCount(live, 'hauler') < 1 || d.aliveCount(live, 'raider') < 1) {
       return d.abort(live, 'no_budget');
     }
+    // VERB-02: the raid is already happening — no consent dialog, no pass-on-timeout. Every
+    // raider opens committed onto the hauler through the combat focus track the squad frame
+    // reads, under the thief doctrine's sanctioned first-fire on MTS hulls. The stamp is a
+    // focus track, not an activity pin: a raider the player shoots stays free to turn and
+    // answer. The player declares a side with guns (kill raiders = defend, kill the hauler
+    // = raid) or just flies on.
+    const hauler = d.entsOf(live, 'hauler')[0];
+    for (const raider of d.entsOf(live, 'raider')) {
+      const data = raider.data || (raider.data = {});
+      if (data.ai) data.ai.targetId = hauler.id;
+      (data.combat || (data.combat = {})).targetId = hauler.id;
+    }
     live.phase = 'conflict';
     d.say(live, 'alert', 'curtain_convoy_alert', null, { primary: true });
-    d.offerChoices(live, ['defend', 'raid', 'pass'], 'pass', live.deadlineAt);
   },
 
   tick(d, live, state, now) {
@@ -87,29 +98,6 @@ export const runtime = Object.freeze({
     }
   },
 
-  choose(d, live, state, choiceId) {
-    if (choiceId === 'defend') {
-      d.emit('comms:log', {
-        from: 'FLIGHT COMPUTER',
-        text: 'Target lock assigned: defending civilian hauler.',
-        kind: 'info',
-      });
-    } else if (choiceId === 'raid') {
-      d.rep('faction_mts', -4, 'hauler_raided');
-      d.rep('faction_reach', 2, 'pirate_complicity');
-      d.emit('comms:log', {
-        from: 'FLIGHT COMPUTER',
-        text: 'IFF reclassified: joining cargo raid.',
-        kind: 'info',
-      });
-    } else if (choiceId === 'pass') {
-      d.emit('comms:log', {
-        from: 'FLIGHT COMPUTER',
-        text: 'Holding neutral flight lane.',
-        kind: 'info',
-      });
-    }
-  },
 });
 
 export default defineEncounter(trigger, {
@@ -120,7 +108,7 @@ export default defineEncounter(trigger, {
     actor: 'faction_reach',
   },
   motive: 'cargo_raid',
-  engagementTrigger: 'player_in_range',
+  engagementTrigger: 'authorized_hostile_spawn',
   factionId: 'faction_reach',
   context: 'encounter',
   title: 'HAULER UNDER ATTACK',
@@ -143,10 +131,4 @@ export default defineEncounter(trigger, {
   bark: 'curtain_convoy_alert',
   transitS: 60,
   unitsPerHauler: [6, 10],
-  choices: [
-    { id: 'defend', label: 'Protect the hauler' },
-    { id: 'raid', label: 'Take the cargo' },
-    { id: 'pass', label: 'Keep clear' },
-  ],
-  timeoutChoice: 'pass',
 });
