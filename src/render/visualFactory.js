@@ -41,7 +41,7 @@ import { paletteWithShipAppearance } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
-import { COMMODITIES } from '../data/commodities.js';
+import { commodityPresentationFor } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
@@ -59,7 +59,6 @@ import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const WPN_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const MOD_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
-const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_PERSONALITY = new Map(FACTION_META.map((f) => [f.id, f.personality]));
 
 // Player cyan / hostile red; otherwise the faction palette (else a neutral fallback).
@@ -2803,19 +2802,8 @@ function applyStructureProfile(g, pal, R, seed) {
 function commodityColor(e) {
   const d = e.data || {};
   if (d.kind === 'credits' || d.kind === 'credit_chip') return '#ffcc44';
+  if (d.commodityId) return commodityPresentationFor(d.commodityId).color;
   if (d.kind === 'module' || d.kind === 'cargo') return '#9b6cff';
-  const cm = d.commodityId && CMDTY_BY_ID.get(d.commodityId);
-  if (cm) {
-    switch (cm.category) {
-      case 'raw ore': return '#c89a6a';
-      case 'gas': return '#7fe0c0';
-      case 'crystal': return '#b878ff';
-      case 'exotic': return '#ff70d0';
-      case 'refined': return '#bcd0e0';
-      case 'salvage': return '#9aa0a8';
-      default: return '#9fd8a0';
-    }
-  }
   return '#7af7d0';
 }
 
@@ -4451,11 +4439,18 @@ function laneTrafficVisualEntity(e) {
 function buildPayload(e) {
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
-  const shell = getMaterial('payload:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: 0x46515a, roughness: 0.64, metalness: 0.58,
+  const presentation = e && e.data && e.data.commodityId
+    ? commodityPresentationFor(e.data.commodityId)
+    : null;
+  const shellKey = presentation ? `payload:shell:${presentation.id}` : 'payload:shell';
+  const bandKey = presentation ? `payload:band:${presentation.id}` : 'payload:band';
+  const shell = getMaterial(shellKey, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: presentation ? new THREE.Color(presentation.color).multiplyScalar(0.45) : 0x46515a,
+    roughness: 0.64, metalness: 0.58,
   }), SHARED_MATERIAL_ROLE.HULL));
-  const band = getMaterial('payload:band', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: 0xd7862c, roughness: 0.5, metalness: 0.34,
+  const band = getMaterial(bandKey, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: presentation ? presentation.color : 0xd7862c,
+    roughness: 0.5, metalness: 0.34,
   }), SHARED_MATERIAL_ROLE.HULL));
   const body = new THREE.Mesh(
     getGeometry('payload:body', () => new THREE.CylinderGeometry(0.42, 0.48, 1.25, 10).rotateZ(Math.PI / 2)),
@@ -4483,6 +4478,10 @@ function buildPayload(e) {
   g.userData.interactionKind = 'payload';
   g.userData.visualLanguage = 'sealed-cargo-canister';
   g.userData.animated = true;
+  if (presentation) {
+    g.userData.commodityPresentationId = presentation.id;
+    g.userData.commodityPresentationColor = presentation.color;
+  }
   return g;
 }
 

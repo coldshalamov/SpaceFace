@@ -131,15 +131,21 @@ export function buildChart(history, average, gradientId, label, extras = {}) {
     ${coneMarkup}
     <circle cx="${endX}" cy="${endY}" r="3"/></svg>`;
 }
-export function marketRowHtml({ id, name, category = '', buy, sell, stock, held = 0, hist = [], demandWord = 'normal', driversSummary = '', selected = false, tracked = false, profitPct = null }) {
+export function marketRowHtml({ id, name, category = '', buy, sell, stock, held = 0, hist = [], demandWord = 'normal', driversSummary = '', selected = false, tracked = false, profitPct = null, presentation = null }) {
   const family = marketFamily(category);
   const glyph = family === 'raw' ? 'ore' : family === 'industry' ? 'industry' : family === 'military' ? 'warning' : 'cargo';
+  const presentationId = presentation && typeof presentation.id === 'string' ? presentation.id.trim() : '';
+  const presentationColor = presentation && typeof presentation.color === 'string'
+    && /^#[0-9a-f]{6}$/i.test(presentation.color) ? presentation.color : '';
+  const icon = presentationId && presentationColor
+    ? `<span class="sx-mkt-row__commodity" data-commodity-presentation="${escapeHtml(presentationId)}" style="color:${escapeHtml(presentationColor)}">${iconHtml(glyph, 'of-commodity-icon')}</span>`
+    : iconHtml(glyph, 'of-commodity-icon');
   const profitBadge = Number.isFinite(profitPct) && profitPct >= 15 && held > 0
     ? `<span class="sx-mkt-row__profit" title="Local sell price beats your cost basis by ${Math.round(profitPct)}%">+${Math.round(profitPct)}% PROFIT</span>`
     : '';
   return `<tr id="sx-market-tab-${escapeHtml(id)}" class="sx-mkt-row${selected ? ' is-active' : ''}${tracked ? ' is-tracked' : ''}" data-cmdty="${escapeHtml(id)}" role="tab" aria-selected="${!!selected}" tabindex="${selected ? '0' : '-1'}" aria-controls="sx-market-instrument" data-family="${family}"
     aria-label="${escapeHtml(name)}, ${fmt(buy)} credits, ${escapeHtml(demandWord)} demand${held ? `, ${fmt(held)} units held` : ''}${profitBadge ? `, ${Math.round(profitPct)} percent over your cost basis` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(driversSummary)}">
-    <td class="k-name sx-mkt-row__name">${iconHtml(glyph, 'of-commodity-icon')}${tracked ? '<span class="sx-mkt-row__flag k-t-fine k-signal" aria-hidden="true">◆ </span>' : ''}${escapeHtml(name)}${profitBadge}</td>
+    <td class="k-name sx-mkt-row__name">${icon}${tracked ? '<span class="sx-mkt-row__flag k-t-fine k-signal" aria-hidden="true">◆ </span>' : ''}${escapeHtml(name)}${profitBadge}</td>
     <td class="k-num sx-mkt-row__price">${fmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${fmt(sell)}</td><td class="k-num sx-mkt-row__stock">${fmt(stock)}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' u' : '—'}</td></tr>`;
 }
 export function statRow(k, v, sub) {
