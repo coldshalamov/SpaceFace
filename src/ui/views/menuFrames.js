@@ -44,7 +44,9 @@ export function createTitleFrame(root) {
   status.dataset.role = 'title-status';
   status.dataset.live = '1';
   status.textContent = 'Contract 47-A remains open';
-  const name = el('h1', 'dp-title__name dp-title__name--hero', 'SpaceFace');
+  // The game's name is the DRAWN mark, not the nameplate face. The h1 keeps its text for the
+  // accessibility tree and for forced colours; the mask paints over it.
+  const name = el('h1', 'dp-logotype', 'SpaceFace');
   const rule = el('div', 'dp-title__rule');
   rule.setAttribute('aria-hidden', 'true');
   title.append(status, name, rule);

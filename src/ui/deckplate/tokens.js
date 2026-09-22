@@ -135,6 +135,17 @@ export const DECKPLATE_TOKENS_CSS = `
   --dp-channel-bevel:
     inset 0 1px 2px rgb(0 0 0 / .7),
     inset 0 -1px 0 rgb(255 232 190 / .07);
+  /* THE MARK FACE. A drawn mark is not text and must not be lit like text: it is a milled plate
+     catching the same warm key as every other surface, bright along the top edge and falling to
+     the shadowed bottom. Built from the system's own ink and lamp rather than a hand-mixed ramp,
+     so re-theming the lamp re-themes the wordmark with it. */
+  --dp-mark-face:linear-gradient(177deg,
+    color-mix(in srgb, var(--dp-ink) 78%, #ffffff) 0%,
+    var(--dp-ink) 30%,
+    color-mix(in srgb, var(--dp-ink) 52%, var(--dp-lamp)) 70%,
+    color-mix(in srgb, var(--dp-lamp-dim) 82%, var(--dp-ink)) 100%);
+  --dp-mark-shadow:drop-shadow(0 2px 0 rgb(0 0 0 / .45)) drop-shadow(0 6px 22px rgb(0 0 0 / .5));
+
   --dp-etch-shadow:0 -1px 0 rgb(0 0 0 / .55), 0 1px 0 rgb(255 232 190 / .10);
 }
 

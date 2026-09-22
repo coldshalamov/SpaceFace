@@ -179,6 +179,51 @@ export const DECKPLATE_LAYOUT_CSS = `
 .dp-title__aside { margin-left:auto; display:flex; align-items:center; gap:var(--dp-gap); }
 .dp-title__row { display:flex; align-items:flex-end; gap:calc(var(--dp-u) * 4); min-width:0; }
 
+/* ── dp-logotype — the game's own mark ────────────────────────────────────────────────────────
+   The name of a game is DRAWN once and then placed. Re-setting it in a UI typeface is what makes
+   a title screen look like a website with a big heading, and it is what this screen regressed to
+   during the frame migration: the produced logotype had been mask-painted onto the kit's
+   the kit's .k-t-name, and replacing that element with a nameplate silently dropped the mark.
+
+   Vector, masked, painted with the system's own metal ramp — so it is resolution-independent and
+   re-themes with the lamp. The h1's text never leaves the DOM or the accessibility tree.
+   ──────────────────────────────────────────────────────────────────────────────────────────── */
+.dp-logotype {
+  --dp-mark-src:url("/assets/ui/kit/marks/logotype/spaceface-logotype.svg");
+  --dp-mark-ratio:684.7 / 60;
+  display:block; margin:0;
+  width:clamp(340px, 58vw, 1120px); aspect-ratio:var(--dp-mark-ratio);
+  font-size:0; line-height:0; color:transparent; letter-spacing:0;
+  background:var(--dp-mark-face);
+  -webkit-mask:var(--dp-mark-src) left top / 100% 100% no-repeat;
+  mask:var(--dp-mark-src) left top / 100% 100% no-repeat;
+  filter:var(--dp-mark-shadow);
+}
+.dp-logotype--stacked {
+  --dp-mark-src:url("/assets/ui/kit/marks/logotype/spaceface-logotype-stacked.svg");
+  --dp-mark-ratio:378.2 / 126;
+  width:clamp(240px, 32vw, 620px);
+}
+/* The mark at badge size, for a corner or a footer. */
+.dp-monogram {
+  --dp-mark-src:url("/assets/ui/kit/marks/logotype/spaceface-monogram.svg");
+  display:inline-block; flex:0 0 auto;
+  width:calc(22px * var(--dp-s)); height:calc(22px * var(--dp-s));
+  background:var(--dp-mark-face);
+  -webkit-mask:var(--dp-mark-src) center / contain no-repeat;
+  mask:var(--dp-mark-src) center / contain no-repeat;
+  opacity:.72;
+}
+@media (forced-colors:active) {
+  .dp-logotype, .dp-monogram {
+    background:none; filter:none; -webkit-mask:none; mask:none;
+    width:auto; height:auto; aspect-ratio:auto;
+    font-size:var(--dp-fs-title); line-height:1; color:CanvasText;
+    font-family:var(--dp-face-display); text-transform:uppercase;
+  }
+  .dp-monogram { font-size:var(--dp-fs-etch); }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
    3. dp-menu — a menu item is a machined target, not a line of text.
 
