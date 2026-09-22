@@ -66,7 +66,7 @@ not to invent.
 | PIC-08 | A shove-kill and a gun-kill do not share the generic explosion schedule | `src/render/combat/phasedExplosions.js`, `src/presentation/causalVfxGrammar.js` | The schedule id follows the real cause already in the grammar | Grow the explosion solver | OPEN |
 | PIC-09 | Starter weapons scar with their own heat, not the unknown-weapon default | `src/render/weapons/contactMarks.js` | `heatForWeaponVariant` maps the starter ids in `vfxProfiles.js` to a named heat, not the unknown default | Redesign the scar atlas | SHIPPED |
 | PIC-10 | The graphics lab does not teach a camera-facing halo as the method | `src/render/graphicsLab.js` | The lab-only halo demo is relabeled or restaged off the banned card | Change production VFX | OPEN |
-| PIC-11 | A missing place does not appear as a published cube | `src/render/partsLibrary.js` | `buildFallbackPlaceProp` keeps an empty substrate or marker | Add fallback geometry | CLAIMED |
+| PIC-11 | A missing place does not appear as a published cube | `src/render/partsLibrary.js` | `buildFallbackPlaceProp` keeps an empty substrate or marker | Add fallback geometry | SHIPPED |
 | PIC-12 | Hull tallies and patches read at the default chase | `src/render/livingHullPresentation.js` | The mark is sharper than the current 256×64 smear at chase distance | Add a second decal system | OPEN |
 
 ## VERB
@@ -138,7 +138,6 @@ not to invent.
 | Id | Date | Thread | Paths |
 |---|---|---|---|
 | — | — | — | — |
-| PIC-11 | 2026-09-22 | inference-batch | `src/render/partsLibrary.js` |
 
 ## SHIPPED
 
@@ -152,6 +151,7 @@ not to invent.
 | INST-01 | inst-01-flight-instrument-tells | bda1642323701cab37d3b6d8215ed60124ed8c4c | Field, mass-seed, and planet tells repainted with deck tokens — no more Segoe UI navy cards |
 | VERB-01 | verb-01-raid-timeout-ships-remain | 171220e26caecaab5be919cbed419344f33d6059 | raid_over releases the squad instead of despawnAll; hauler and raiders remain ordinary entities |
 | WORLD-01 | world-01-choir-depot-missions-board | 8b07f720d6adc91de572d7dd4b0b5a839085f303 | Missions service shipped (147e71c24); this unit adds the authored chart note and strengthened proof |
+| PIC-11 | WF-11 | pending | Missing place prop keeps an empty substrate or marker without published cube geometry |
 
 ## CUT
 

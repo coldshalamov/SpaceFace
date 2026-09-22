@@ -3588,10 +3588,9 @@ function normalizePlacePropBindings(bindings) {
   }
 }
 
-function buildFallbackPlaceProp(entity, placeFile) {
+export function buildFallbackPlaceProp(entity, placeFile = '') {
   const data = entity && entity.data || {};
-  const placeId = data.placeId || placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
-  const radius = Math.max(3, Number(entity && entity.radius) || 8);
+  const placeId = data.placeId || String(placeFile || '').replace(/^places\//, '').replace(/\.glb$/, '');
   const group = new THREE.Group();
   group.name = `SF_PlaceFallback_${placeId}`;
   group.userData.kind = 'place';
@@ -3600,23 +3599,6 @@ function buildFallbackPlaceProp(entity, placeFile) {
     assetBoundary: 'GLTFKit v1 — authored world-place prop fallback',
     gracefulFallback: true,
   };
-
-  const color = fallbackPlaceColor(placeId, data.paletteClass);
-  const material = new THREE.MeshStandardMaterial({
-    color,
-    roughness: 0.68,
-    metalness: 0.22,
-    emissive: new THREE.Color(color).multiplyScalar(0.28),
-    emissiveIntensity: 0.25,
-  });
-  // Authored world-place fallback: same reasoning as the station fallback above.
-  installIllustratedSurface(material);
-  const mesh = new THREE.Mesh(getFallbackPlaceGeometry(), material);
-  mesh.name = `SF_PlaceFallback_${placeId}_Hull`;
-  mesh.scale.set(radius * 0.28, radius * 0.20, radius * 0.28);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  group.add(mesh);
   return group;
 }
 
