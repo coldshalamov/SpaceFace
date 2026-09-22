@@ -78,7 +78,7 @@ not to invent.
 | VERB-03 | The hitch hint can fire on a heavy hauler, not only an express liner | `src/systems/onboarding.js` | Locking the opening mule can show the existing hitch hint once | Add a tow force (§22 F14). Flip the 47-A pin | OPEN |
 | VERB-04 | The first Well you drop tells you, once, that you dropped it | `src/systems/onboarding.js` | The first player `fields:deployed` emits one hint and does not repeat that session | Change well force or radius | OPEN |
 | VERB-05 | A detected stunt says its name once, as a receipt | `src/systems/stuntGrammar.js`, `src/ui/hudAttention.js` | `stunt:trickDetected` admits one receipt with the trick name | Add a combo meter. Toast a shove, hit, or dock sentence (§22 G3) | OPEN |
-| VERB-06 | The opening hauler's cargo can cook when it slams | `src/data/encounters/015-opening-hauler-raid.js` | Its commodity is one `lootShards.js` already treats as a volatile slam | Add an explosive system. Retint pods (§22 F4) | OPEN |
+| VERB-06 | The opening hauler's cargo can cook when it slams | `src/data/encounters/015-opening-hauler-raid.js` | Its commodity is one `lootShards.js` already treats as a volatile slam | Add an explosive system. Retint pods (§22 F4) | SHIPPED f6ca40d5b |
 | VERB-07 | Rocks dropped for the opening fight are not wiped at 45 seconds | `src/systems/terrainAnchors.js` | Those anchors survive until the player leaves the neighbourhood | Build a machine (§22 F13) | OPEN |
 | VERB-08 | The throw diamond hides when you are the body that will move | `src/ui/masslineHud.js` | A heavy anchor or self-sling does not draw the meeting diamond | Draw a path ghost (§22 F1). Change release impulse | OPEN |
 | VERB-09 | Helios sells one stack of impulse charges | Helios market or station stock data consumed by `src/systems/economy.js` | A new game can buy `cmdty_impulse_charge` at Helios Station | Change the charge solver or the ten-verb curve (§22 B8) | OPEN |
@@ -93,7 +93,7 @@ not to invent.
 |---|---|---|---|---|---|
 | WORLD-01 | The Choir refuel depot has a missions board | `src/data/sectors.js` (`station_depot3` services) | Docking the Vesta depot shows Missions | Invent a Choir capital or move Vesta | SHIPPED |
 | WORLD-02 | Vesta traffic includes one named hauler | `src/data/laneContacts.js`, `src/systems/traffic.js` | `sector_vesta_forge` can stamp that contact id | Add an encounter shape | SHIPPED |
-| WORLD-03 | The Choir-Tender wreck is a wreck on the Helios chart, not another derelict beacon | `src/data/sectors.js`, `src/data/uniqueWrecks.js` | Helios POIs include `type: 'wreck'` bound to `wreck_choir_tender` | Invent a new unique drop | OPEN |
+| WORLD-03 | The Choir-Tender wreck is a wreck on the Helios chart, not another derelict beacon | `src/data/sectors.js`, `src/data/uniqueWrecks.js` | Helios POIs include `type: 'wreck'` bound to `wreck_choir_tender` | Invent a new unique drop | SHIPPED 3e6ca5201 |
 | WORLD-04 | Salvaging the Choir-Tender draws the investigator the wreck data already describes | a new encounter module beside `src/data/encounters/150-unique-wreck-silver-draft-cleaner.js`, wired from `uniqueWrecks.js` | The director catalog contains that id and it offers the existing complication choice plus one hull | Invent a mission type or a second Helios unique wreck | OPEN |
 | WORLD-05 | A new game's Helios bar can name the Silver-Draft before you have scanned it | `src/ui/station/barContacts.js`, `src/ui/uniqueWreckRumorSurface.js` | `generateContacts('station_helios', new game)` can include rumor `bar.helios_meridian.silver_draft` | Invent a wreck class | OPEN |
 | WORLD-06 | The Helios locker reads as a cache | `src/data/sectors.js` (`poi_helios_locker`) | Its POI type is `cache` and the scanner uses the cache label | Add a pirate base or a new POI type | SHIPPED |
@@ -117,7 +117,7 @@ not to invent.
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
 | INST-01 | Field, mass-seed, and planet tells are the flight instrument, not three cyan pills | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` | Those three inject no Segoe UI / `rgba(10, 18, 28` cards; they use tokens already on `#hud` | Invent a new HUD product | SHIPPED |
-| INST-02 | The comms fan matches the power rail | `styles/commsradial.css` | `#sf-commsfan` has no `--sf-surface` fill and no 6px web radius; it uses the flight bezel or glass tokens | Restyle the whole HUD | OPEN |
+| INST-02 | The comms fan matches the power rail | `styles/commsradial.css` | `#sf-commsfan` has no `--sf-surface` fill and no 6px web radius; it uses the flight bezel or glass tokens | Restyle the whole HUD | CLAIMED devin-inference-10 |
 | INST-03 | The Crucible armory is not a cyan storefront | `styles/crucible.css` | `.sf-cru-card` uses the kit or deckplate face; `#8ee8ff` is not the fill or outline | Redesign the Crucible door | OPEN |
 | INST-04 | The prompt deck matches the flight cluster | `styles/prompt-deck.css` | No 10px consumer card; the deck uses the same glass or bezel language as the flight cluster | Add a new prompt system | OPEN |
 | INST-05 | Resting flight does not wear the aerospace G-LOC sheet | `index.html`, `styles/hud.css` | G-LOC and EMP rules apply only while that effect is on | Delete the effects. Repaint station | OPEN |
@@ -140,6 +140,7 @@ not to invent.
 
 | PIC-02 | 2026-09-22 | devin-inference-10 | `src/render/rockSurfaceLibrary.js` |
 | VERB-02 | 2026-09-22 | devin-inference-10 | `src/data/encounters/015-opening-hauler-raid.js` |
+| INST-02 | 2026-09-22 | devin-inference-10 | `styles/commsradial.css` |
 
 ## SHIPPED
 

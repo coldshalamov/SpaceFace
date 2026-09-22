@@ -74,30 +74,6 @@
   ],
   "units": [
     {
-      "id": "seed-juice-1",
-      "date": "2026-08-08",
-      "wf": "WF-12",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "presentation juice",
-      "fingerprint": "domain=wf-12,subject=presentation-juice",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
-      "id": "seed-juice-2",
-      "date": "2026-08-09",
-      "wf": "WF-12",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "presentation juice",
-      "fingerprint": "domain=wf-12,subject=presentation-juice",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
       "id": "seed-juice-3",
       "date": "2026-08-09",
       "wf": "WF-12",
@@ -1627,6 +1603,32 @@
       "references": [],
       "integration": "live",
       "commit": "0c4293e4d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "world-03-choir-tender-chart",
+      "date": "2026-09-22",
+      "wf": "WF-04",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Helios chart lists the real Choir-Tender as a wreck POI bound to wreck_choir_tender; runtimeOwner keeps the unique-wreck program as the only body",
+      "fingerprint": "verb=chart,subject=poi,sector=helios,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "3e6ca5201",
+      "verification": "focused_green"
+    },
+    {
+      "id": "VERB-06",
+      "date": "2026-09-22",
+      "wf": "WF-02",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "opening hauler now loads cmdty_fuel_cells (explosive volatile class) with civilian jobKind so violence-spill sheds slam-cooking pods",
+      "fingerprint": "verb=cook,subject=opening-hauler-cargo,sector=helios,domain=verb",
+      "references": [],
+      "integration": "live",
+      "commit": "f6ca40d5b",
       "verification": "focused_green"
     }
   ],
