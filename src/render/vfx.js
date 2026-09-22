@@ -6127,7 +6127,8 @@ export const vfx = {
     }
     // Orbit/crawl paths require their station center. Refuse a phantom local loop if the station
     // vanished on a sector boundary before the renderer saw the event.
-    if ((profile.trajectory === 'hull-crawl' || profile.trajectory === 'docking-orbit')
+    if ((profile.trajectory === 'hull-crawl' || profile.trajectory === 'docking-orbit'
+      || profile.trajectory === 'dish-sweep')
       && (!station || !station.pos)) return false;
 
     let slot = null;
@@ -6229,7 +6230,8 @@ export const vfx = {
         slot.centerX = station.pos.x;
         slot.centerZ = station.pos.z;
       } else if (slot.profile.trajectory === 'hull-crawl'
-        || slot.profile.trajectory === 'docking-orbit') {
+        || slot.profile.trajectory === 'docking-orbit'
+        || slot.profile.trajectory === 'dish-sweep') {
         this._retireStationSideEvent(slot);
         continue;
       }
@@ -6371,6 +6373,30 @@ export const vfx = {
         reducedMotion ? 0.56 : 0.34, 0.25, 1.35, 0.48, '#ffb35c', 0, 0, dx, dz);
       emitted += this._spawnStationSideEventStreak(x - dx * (podGap * 0.5), 0.4, z - dz * (podGap * 0.5),
         reducedMotion ? 0.56 : 0.34, 0.055, podGap - 0.75, 0.36, '#d7e6ff', 0, 0, dx, dz);
+    } else if (slot.kind === 'sensor_sweep') {
+      // The research array swings a slim calibration beam along the radial normal and reads a dotted
+      // telemetry return behind the boom. No ejecta, no hull: a listening instrument, not a mover —
+      // and explicitly never a launched combat ship.
+      const beamLength = reducedMotion ? 3.2 : 4.6;
+      emitted += this._spawnStationSideEventStreak(x, 0.5, z,
+        reducedMotion ? 0.72 : 0.46, 0.055, beamLength, 0.42, '#7fd6ff', 0, 0, nx, nz);
+      const rowOffset = (frame.accentSlot - 3) * 0.30;
+      emitted += this._spawnStationSideEventStreak(x + dx * rowOffset, 0.34, z + dz * rowOffset,
+        1.6, 0.06, 0.42, 0.46, '#9fb6c4', 0, 0, dx, dz);
+      if (frame.accentSlot % 3 === 0 && this._spawnSprite(
+        SPR_FLASH,
+        x,
+        0.46,
+        z,
+        0.1,
+        0.26,
+        0.38,
+        0.44,
+        0,
+        '#bfe9ff',
+        0,
+        0,
+      )) emitted++;
     }
     return emitted;
   },

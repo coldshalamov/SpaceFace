@@ -54,6 +54,8 @@ function pathRadius(path, bubbles) {
       return Number.isFinite(noFire) ? noFire * 1.05 : 0;
     case 'docking-orbit':
       return Number.isFinite(docking) ? docking : 0;
+    case 'dish-arc':
+      return Number.isFinite(noFire) ? noFire * 1.08 : 0;
     default:
       return Number.isFinite(traffic) ? traffic : 0;
   }
@@ -344,6 +346,7 @@ export function pathPoints(station, item) {
     case 'outbound-past-traffic': return { from: at(b.docking.radius),       to: at(b.traffic.radius * 1.2) };
     case 'hull-crawl':            return { from: at(b.noFire.radius),        to: at(b.noFire.radius * 1.05) };
     case 'docking-orbit':         return { from: at(b.docking.radius),       to: at(b.docking.radius) };
+    case 'dish-arc':              return { from: at(b.noFire.radius * 1.02), to: at(b.noFire.radius * 1.08) };
     default:                      return { from: at(b.docking.radius),       to: at(b.traffic.radius) };
   }
 }

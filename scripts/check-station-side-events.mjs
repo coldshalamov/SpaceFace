@@ -138,9 +138,23 @@ function testAffinity() {
       const aff = SIDE_EVENTS[k].affinity;
       assert.ok(aff == null || aff.includes('military'), `${k} may appear at a military station`);
     }
-    // research is in no affinity list → only the universal repair_drone.
-    const res = new Set(planStationSideEvents(7, 'sec_a', 1, 'st_r', 'research').map((i) => i.kind));
-    assert.deepStrictEqual([...res], ['repair_drone'], 'typeless station gets only the universal drone');
+    // research now owns a research-specific kind alongside the universal repair_drone; every kind
+    // that can appear must be research-affine.
+    let researchKindSeen = false;
+    for (let seed = 0; seed < 40; seed++) {
+      for (const it of planStationSideEvents(seed, 'sec_a', 1, 'st_r', 'research')) {
+        const aff = SIDE_EVENTS[it.kind].affinity;
+        assert.ok(aff == null || aff.includes('research'), `${it.kind} may appear at a research station`);
+        if (it.kind === 'sensor_sweep') researchKindSeen = true;
+      }
+    }
+    assert.ok(researchKindSeen, 'research station must be able to pick its research-specific side-event kind');
+    // The research-only kind never leaks to a station type whose affinity excludes it.
+    for (let seed = 0; seed < 40; seed++) {
+      for (const it of planStationSideEvents(seed, 'sec_a', 2, 'st_t', 'trade_hub')) {
+        assert.notEqual(it.kind, 'sensor_sweep', 'trade_hub must not schedule a research-only side event');
+      }
+    }
     // trade_hub never yields a kind whose affinity excludes it.
     for (const it of planStationSideEvents(7, 'sec_a', 2, 'st_t', 'trade_hub')) {
       const aff = SIDE_EVENTS[it.kind].affinity;
