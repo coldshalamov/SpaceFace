@@ -93,6 +93,41 @@ export function masslineHumHz(strain) {
   return MASSLINE_HUM_BASE_HZ + clamp(strain, 0, 1.25) * MASSLINE_HUM_STRAIN_HZ;
 }
 
+// F2 — the rope sings: ONE continuous voice while the line is taut, pitch and loudness following
+// the published tether.load (which already folds strain into the phase floors, so a taut capture
+// reads as working even before strain climbs). Slack reads quiet and low; release silences within
+// a tick. The tone ducks under weapons and quiets under reduced motion — it is information, so
+// reduced motion never silences it. NPC tethers never enter: the caller passes only the player's.
+export const TETHER_TONE_SILENCE = 0.0001;
+export const TETHER_TONE_GAIN_BASE = 0.006;
+export const TETHER_TONE_GAIN_SPAN = 0.13;
+export const TETHER_TONE_MOTION_REDUCE = 0.55; // quieter under reduced motion — never silent
+export const TETHER_TONE_ATTACK_S = 0.05;      // the bed's existing clickless engage ramp
+export const TETHER_TONE_RELEASE_S = 1 / 60;   // silence returns within a tick of release
+export const TETHER_TONE_TAUT_PHASES = Object.freeze(['capture', 'loaded', 'overload']);
+
+export function resolveTetherTone(input = {}) {
+  const tether = input.tether || null;
+  const phase = String((tether && tether.phase) || '');
+  const playing = !!(tether && (tether.active === true || TETHER_TONE_TAUT_PHASES.includes(phase)));
+  const raw = playing
+    ? (Number.isFinite(tether.load) ? tether.load : Number(tether.strain) || 0)
+    : 0;
+  const load = clamp(raw, 0, 1.25);
+  const motionScale = input.motionReduce ? TETHER_TONE_MOTION_REDUCE : 1;
+  const duck = Number.isFinite(input.duck) ? clamp(input.duck, 0, 1) : 1;
+  return Object.freeze({
+    schema: 'spaceface.tetherTone.v1',
+    playing,
+    hz: Math.round((MASSLINE_HUM_BASE_HZ + load * MASSLINE_HUM_STRAIN_HZ) * 100) / 100,
+    gain: playing
+      ? Math.round((TETHER_TONE_GAIN_BASE + Math.pow(Math.min(load, 1), 1.25) * TETHER_TONE_GAIN_SPAN)
+        * motionScale * duck * 1e6) / 1e6
+      : TETHER_TONE_SILENCE,
+    rampS: playing ? TETHER_TONE_ATTACK_S : TETHER_TONE_RELEASE_S,
+  });
+}
+
 function reelDelta(input) {
   const payload = input && input.payload;
   const before = Number((input && input.before) != null ? input.before : payload && payload.before);

@@ -21,7 +21,7 @@ import { CUE_GAIN } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe } from './combatVerbCues.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import { bindBombAudio, isBombFieldLoopCue, isBombStatusLoopCue, startBombFieldLoop } from './bombAudio.js';
-import { resolveMasslineInstrument } from './masslineInstrument.js';
+import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
 import {
   resolveThemeMatrix,
   TRAVEL_MOTIF,
@@ -5748,24 +5748,19 @@ export const audio = {
     if (!rt.tetherOsc) return;
 
     const tether = this.state.player && this.state.player.tether;
-    const active = !!(tether && (tether.active || tether.phase === 'loaded' || tether.phase === 'overload'));
-    const strain = active ? clamp(Number(tether.strain) || 0, 0, 1.25) : 0;
     const taut = !!(tether && (tether.phase === 'capture' || tether.phase === 'loaded' || tether.phase === 'overload'));
     if (taut && !rt._tetherWasTaut) this._playAccessibilityCue('taut');
     rt._tetherWasTaut = taut;
-    const instrument = resolveMasslineInstrument({
-      event: 'strain',
-      strain,
-      tension: tether && Number(tether.load),
-    });
-
-    let targetFreq = 90;
-    let targetGain = 0.0001;
-
-    if (active) {
-      targetFreq = instrument && Number.isFinite(instrument.humHz) ? instrument.humHz : (90 + strain * 220);
-      targetGain = 0.006 + Math.pow(strain, 1.25) * 0.13;
-    }
+    // F2: pitch and loudness follow the published tether.load (phase floors included) through one
+    // voice. The sidechain duck factor rides along so the tone ducks under weapons with the world;
+    // reduced motion quiets the tone, never silences it — it is information, not ornament.
+    const strain = clamp(Number(tether && tether.strain) || 0, 0, 1.25);
+    const motionReduce = !!(this.state.settings && this.state.settings.video
+      && this.state.settings.video.motionReduce);
+    const tone = resolveTetherTone({ tether, motionReduce, duck: rt.sidechainDuck });
+    const targetFreq = tone.hz;
+    const targetGain = tone.gain;
+    const rampS = tone.rampS;
 
     const slowPitch = rt._bulletTimePitch || 1;
     const now = ctx.currentTime;
@@ -5779,10 +5774,12 @@ export const audio = {
       cache.tetherFreq = humFreq;
       rt.tetherOsc.frequency.setTargetAtTime(humFreq, now, 0.05);
     }
-    if (cache.tetherHumNode !== rt.tetherHum || cache.tetherGain !== targetGain) {
+    if (cache.tetherHumNode !== rt.tetherHum || cache.tetherGain !== targetGain
+      || cache.tetherGainRamp !== rampS) {
       cache.tetherHumNode = rt.tetherHum;
       cache.tetherGain = targetGain;
-      rt.tetherHum.gain.setTargetAtTime(targetGain, now, 0.05);
+      cache.tetherGainRamp = rampS;
+      rt.tetherHum.gain.setTargetAtTime(targetGain, now, rampS);
     }
     rt.tetherHum.gainValue = targetGain;
     if (rt.tetherOverloadOsc && rt.tetherOverloadGain) {
@@ -5804,8 +5801,8 @@ export const audio = {
     // Spool strand: real winch state — lineLengthRate signs direction, reelStrength is the
     // physics mirror's smoothed effort. Silences the frame the line stops moving.
     if (rt._tetherSpoolOsc && rt._tetherSpoolGain) {
-      const reelRate = active && tether.lineControl ? Math.abs(Number(tether.lineLengthRate) || 0) : 0;
-      const reelStrength = active ? clamp(Number(tether.reelStrength) || 0, 0, 1) : 0;
+      const reelRate = tone.playing && tether.lineControl ? Math.abs(Number(tether.lineLengthRate) || 0) : 0;
+      const reelStrength = tone.playing ? clamp(Number(tether.reelStrength) || 0, 0, 1) : 0;
       const spooling = reelRate > 0.02 && !!(tether.reeling || tether.payingOut);
       const spoolGain = spooling ? clamp(0.006 + reelStrength * 0.05 + reelRate * 0.012, 0.006, 0.075) : 0.0001;
       const spoolFreq = (260 + reelRate * 220 + reelStrength * 170) * slowPitch;
