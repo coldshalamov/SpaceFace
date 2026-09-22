@@ -57,7 +57,7 @@
   padding: 0;
   cursor: pointer;
 }
-.ast-screen button:focus-visible { outline: 2px solid var(--aw-gold); outline-offset: 2px; border-radius: 8px; }
+.ast-screen button:focus-visible { outline: 2px solid var(--k-bone, #eae6df); outline-offset: 2px; border-radius: 8px; }
 .ast-screen button:disabled { cursor: default; opacity: 0.45; }
 
 /* ============================================================================

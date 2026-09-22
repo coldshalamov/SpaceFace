@@ -135,7 +135,7 @@ export const DECKPLATE_HARDWARE_CSS = `
 /* One accent, focus included. styles/ui.css forces every ring to the retired blue --accent with
    *:focus-visible {… !important}; only the COLOUR is restated here (one step more specific), so
    width and offset stay theirs. The game's own high-contrast mode keeps a white ring. */
-:root :focus-visible { outline-color:var(--dp-lamp) !important; }
+:root :focus-visible { outline-color:var(--dp-ink) !important; }
 html.sf-high-contrast :focus-visible { outline-color:#fff !important; }
 
 /* ══ dp-mfd / dp-glass — an instrument: ONE bezel design (fastened, machined) around a pane of
@@ -311,7 +311,7 @@ html.sf-high-contrast :focus-visible { outline-color:#fff !important; }
 }
 .dp-selector__tab::before { content:""; width:6px; height:6px; border-radius:50%; flex:0 0 auto; background:${LED_OFF}; box-shadow:${LED_RIM}; }
 .dp-selector__tab:hover { color:var(--dp-ink-dim); background:rgb(255 255 255 / .03); }
-.dp-selector__tab:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:-2px; }
+.dp-selector__tab:focus-visible { outline:2px solid var(--dp-ink); outline-offset:-2px; }
 .dp-selector__tab[aria-selected="true"], .dp-selector__tab[aria-current="page"] {
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   box-shadow:inset 0 -2px 0 var(--dp-lamp), 0 8px 16px -10px var(--dp-lamp-bloom);
@@ -337,7 +337,7 @@ button.dp-row, a.dp-row, .dp-row[tabindex] { cursor:pointer; width:100%; text-al
 }
 .dp-row:hover { background:linear-gradient(90deg, rgb(255 255 255 / .04), transparent 70%); color:var(--dp-ink); }
 .dp-row:hover::before { background:radial-gradient(circle at 42% 36%, #8a6b3a, #3d2f19 75%); }
-.dp-row:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:-2px; color:var(--dp-ink); }
+.dp-row:focus-visible { outline:2px solid var(--dp-ink); outline-offset:-2px; color:var(--dp-ink); }
 .dp-row[aria-selected="true"], .dp-row.is-selected, .dp-row[aria-current="true"] {
   color:var(--dp-ink);
   background:linear-gradient(90deg, rgb(255 255 255 / .05), rgb(255 255 255 / .014) 60%, transparent);

@@ -306,7 +306,7 @@
   color:var(--dp-ink);
 }
 #sf-commsfan .sf-commsfan__hub:hover { filter:brightness(1.08); }
-#sf-commsfan .sf-commsfan__hub:focus-visible { outline:2px solid var(--dp-lamp); }
+#sf-commsfan .sf-commsfan__hub:focus-visible { outline:2px solid var(--dp-ink, #e8e2d4); }
 #sf-commsfan .sf-commsfan__crest { color:var(--dp-ink-dim); }
 #sf-commsfan .sf-commsfan__pilot {
   font-family:var(--dp-face-display); font-variation-settings:"wght" 760, "wdth" 105;
@@ -353,7 +353,7 @@
   background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
   box-shadow:0 0 7px var(--dp-lamp-bloom), 0 0 16px var(--dp-lamp-bloom-soft), 0 0 0 1.5px var(--bg);
 }
-#sf-commsfan .sf-commsfan__wedge:focus, #sf-commsfan .sf-commsfan__wedge:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:3px; }
+#sf-commsfan .sf-commsfan__wedge:focus, #sf-commsfan .sf-commsfan__wedge:focus-visible { outline:2px solid var(--dp-ink, #e8e2d4); outline-offset:3px; }
 #sf-commsfan .sf-commsfan__wedge:active:not(.is-dim) { translate:0 1px; }
 #sf-commsfan .sf-commsfan__wedge.is-dim { color:var(--dp-ink-mute); opacity:1; filter:none; }
 #sf-commsfan .sf-commsfan__wedge.is-dim .sf-commsfan__verb { text-decoration:line-through; text-decoration-color:rgb(150 148 142 / .5); text-decoration-thickness:1px; }

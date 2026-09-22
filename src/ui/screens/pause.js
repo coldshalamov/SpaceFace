@@ -22,7 +22,7 @@ import { escapeHtml } from '../comms.js';
 import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
-import { leftoverVersionLabel, paintLeftoverVersion } from './mainMenu.js';
+import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
@@ -782,7 +782,8 @@ export const pauseScreen = {
     foot.appendChild(keysLine);
     const version = el('p', 'dp-etch dp-bar--end');
     version.dataset.role = 'version';
-    const versionText = el('span', '', leftoverVersionLabel(CREDITS));
+    const versionText = el('span', '', leftoverVersionDisplay(CREDITS));
+    versionText.title = leftoverVersionLabel(CREDITS);
     version.appendChild(versionText);
     foot.appendChild(version);
     rootEl.appendChild(foot);

@@ -182,6 +182,10 @@ export function leftoverBuildToken(payload) {
   return payload.build.trim();
 }
 
+/**
+ * The DIAGNOSTIC identity: version plus build hash. This is what a crash receipt and the shell
+ * bridge want, and pq-033-01 guards its composition.
+ */
 export function leftoverVersionLabel(payload) {
   const version = leftoverVersionToken(payload);
   if (!version) return 'SpaceFace';
@@ -189,12 +193,30 @@ export function leftoverVersionLabel(payload) {
   return 'SpaceFace v' + version + (build ? ' · ' + build : '');
 }
 
+/**
+ * The PLAYER-FACING line: version only.
+ *
+ * ONE_PHOTOGRAPH.md section 4.15 kills developer strings on player screens, and named this one:
+ * the commit hash in the title foot and the pause foot. A version number is legitimate -- a player
+ * quoting "v0.1.0" in a bug report helps them and us. A twelve-character git SHA does not: it
+ * means nothing to the reader and it read as debris on the two calmest screens in the game.
+ *
+ * The hash is not lost, only moved off the wall: leftoverVersionLabel still composes it for
+ * diagnostics, and the title foot carries it as a title attribute so it is one hover away for
+ * anyone filing a report.
+ */
+export function leftoverVersionDisplay(payload) {
+  const version = leftoverVersionToken(payload);
+  return version ? 'SpaceFace v' + version : 'SpaceFace';
+}
+
 export function applyLeftoverVersionText(target, payload) {
   if (!target) return '';
   const version = leftoverVersionToken(payload);
   if (!version) return target.textContent || '';
-  const label = leftoverVersionLabel(payload);
+  const label = leftoverVersionDisplay(payload);
   target.textContent = label;
+  target.title = leftoverVersionLabel(payload);
   return label;
 }
 
@@ -350,7 +372,9 @@ export const mainMenuScreen = {
     buildLight.dataset.colour = 'good';
     buildLight.setAttribute('aria-hidden', 'true');
     version.appendChild(buildLight);
-    const versionText = el('span', '', leftoverVersionLabel(CREDITS));
+    const versionText = el('span', '', leftoverVersionDisplay(CREDITS));
+    // The full identity stays one hover away for a bug report, off the wall (section 4.15).
+    versionText.title = leftoverVersionLabel(CREDITS);
     version.appendChild(versionText);
     version.appendChild(el('span', '', ' · '));
     const bCredits = el('button', 'dp-menu__item dp-menu__item--fine', 'Credits');

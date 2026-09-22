@@ -281,7 +281,7 @@
   border-image-source:url("/assets/ui/deckplate/hw/keycap.svg");
   color:var(--dp-lamp-hot);
 }
-#sf-prompt-deck .sf-prompt__choice:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:2px; }
+#sf-prompt-deck .sf-prompt__choice:focus-visible { outline:2px solid var(--dp-ink, #e8e2d4); outline-offset:2px; }
 #sf-prompt-deck .sf-prompt__choice:active { border-image-source:none; }
 #sf-prompt-deck .sf-prompt__choice:disabled {
   opacity:1; color:var(--dp-ink-mute); cursor:not-allowed; outline:none;
