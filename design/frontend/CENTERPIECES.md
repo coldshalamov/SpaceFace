@@ -17,6 +17,9 @@ native platform, no new dependency. Intake §0 forbids a motion library on sim-t
 
 ---
 
+> **This file is now two things: the BAR below, which still binds, and the two multi-session plans
+> C9 and C10, which still stand. Everything between them is superseded.**
+
 ## The bar for a centerpiece
 
 1. **Resolution-independent.** It is computed or vector. It is as sharp on a 4K panel as on a
@@ -29,7 +32,15 @@ native platform, no new dependency. Intake §0 forbids a motion library on sim-t
 
 ---
 
-## The ten
+## The ten  —  **SUPERSEDED 2026-09-22 by [`ONE_PHOTOGRAPH.md`](ONE_PHOTOGRAPH.md) §5**
+
+Two independent director reviews replaced this list. C5 (scroll-driven arrival) and C8 (pointer
+parallax) were **killed** — a row resolving from transparent is a landing page, not an instrument,
+and parallax is a gimmick where world-anchored light is free. C4 became a snap between two font
+instances rather than a transition, because a width transition is layout and paint every frame and
+it reflows a column. C1, C2, C3, C6, C7 survive with corrections. The table below is kept only so
+those corrections have something to point at.
+
 
 | # | Centerpiece | Technique | Status |
 |---|---|---|---|
