@@ -69,9 +69,15 @@ import {
   FIELD_REGROWTH_BATCH_MAX,
   FIELD_REGROWTH_BATCH_MIN,
   FIELD_REGROWTH_YIELD_SCALE,
+  FIELD_USED_UP_DEPLETION,
+  NEXT_FIELD_MAX_WU,
   fieldMemoryBand,
   fieldRegrowthDue,
+  nextFieldOpportunityRecord,
+  planUsedUpFieldOpportunity,
   recordFieldRegrowth,
+  recordNextFieldOpportunity,
+  releaseNextFieldOpportunity,
 } from './fieldDepletion.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -1002,6 +1008,10 @@ export const world = {
     this._spawnGates(sector, active, rng);
     this._spawnPOIs(sector, active, disc, rng, tier);
     this._spawnHazards(sector, active);
+    // A used-up field's onward seam is a durable promise: the nextFields record outlives the
+    // sector bag, so re-materialize re-derives the same plan and re-places its rocks before
+    // ambient re-roll. Rocks the player already mined stay mined via resourceBodies.
+    this._rematerializeUsedUpFieldOpportunity(sectorId, sector, active);
     // Durable records rematerialize before ambient re-roll so identity/outcomes never reroll.
     const rematerialized = this._rematerializeSectorRecords(sectorId, active, tier, opts);
     if (tier === RESIDENCY_TIER.FULL) {
@@ -3155,6 +3165,7 @@ export const world = {
     this._tickWorldOneOffSpin(dt, state);
     this._tickAsteroidFieldInteractions(state);
     this._tickFieldRegrowth(state);
+    this._tickUsedUpFieldOpportunity(state);
     tickFarActors(state, this.helpers, this.bus);
     // 180 s expiry window: a 1 Hz sweep is exact enough and removes a per-tick Object.keys +
     // full-bag scan. Tick-modulo gating keeps the sweep deterministic across replays and catch-up.
@@ -3312,16 +3323,246 @@ export const world = {
     return grown;
   },
 
+  /**
+   * A used-up field with nothing minable within a few minutes gets one onward cluster
+   * and rocks on the way. Not a slower beam, a smaller hold, or a tax — placed rocks.
+   * The economy work budget does not gate this: that refusal is what left the cleared
+   * belt empty while the next authored field sat ~14,000 WU off.
+   */
+  _tickUsedUpFieldOpportunity(state) {
+    if ((state.tick | 0) % FIELD_REGROWTH_SCAN_TICKS !== 0) return 0;
+    const sectorId = state.world && state.world.currentSectorId;
+    const active = state.world && state.world.activeSector;
+    if (!sectorId || !active || !Array.isArray(active.fields) || !active.fields.length) return 0;
+    if (nextFieldOpportunityRecord(state, sectorId)) return 0;
+    const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    if (!sector) return 0;
+    const usedUp = [];
+    for (const field of active.fields) {
+      if (!field || !field.id || !field.center) continue;
+      const rec = state.fieldDepletion && state.fieldDepletion.fields
+        ? state.fieldDepletion.fields[field.id]
+        : null;
+      if (!rec || rec.depletion < FIELD_USED_UP_DEPLETION) continue;
+      if (this._liveFieldRockCount(state, field.id) > 0) continue;
+      usedUp.push(field);
+    }
+    if (!usedUp.length) return 0;
+    usedUp.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const source = usedUp[0];
+    if (this._liveRockWithin(state, source.center, NEXT_FIELD_MAX_WU, source.id)) return 0;
+    const toward = this._nearestGatePos(active, source.center);
+    // Station and gate halos are placement keepouts — the seam must not land inside a structure.
+    const keepouts = [];
+    for (const st of active.stations || []) {
+      if (st && st.pos) keepouts.push({ x: st.pos.x, z: st.pos.z, r: 320 });
+    }
+    for (const gate of active.gates || []) {
+      if (gate && gate.pos) keepouts.push({ x: gate.pos.x, z: gate.pos.z, r: 240 });
+    }
+    // active.fields records carry no clusterRadius — read the authored field def for the
+    // footprint the trail must start outside of.
+    const fdef = (sector.fields || []).find((f) => f && f.id === source.id) || null;
+    const plan = planUsedUpFieldOpportunity({
+      from: source.center,
+      fromRadius: (fdef && (fdef.clusterRadius || fdef.radius)) || source.clusterRadius || 240,
+      toward,
+      keepouts,
+      sectorOrigin: this._sectorOrigin(sectorId),
+      sectorRadius: sector.worldRadius || 3500,
+      seed: Number(state.meta && state.meta.seed) || 1,
+      fieldId: source.id,
+      sectorId,
+    });
+    if (!plan || !plan.rocks.length) return 0;
+    const placed = this._spawnOpportunityRocks(state, sector, plan);
+    // Every spot suppressed by a durable dead body still counts as placed: the seam was
+    // already consumed, and skipping the record would re-plan the same seam every scan.
+    if (!placed.placed) return 0;
+    recordNextFieldOpportunity(state, {
+      sectorId,
+      fieldId: plan.fieldId,
+      sourceFieldId: plan.sourceFieldId,
+      center: plan.center,
+      distanceWU: plan.distanceWU,
+      rocks: placed.placed,
+      rockSpots: plan.rocks,
+      simTime: state.simTime,
+    });
+    if (placed.grown > 0) {
+      this.bus.emit('field:opportunity', {
+        sectorId,
+        sourceFieldId: source.id,
+        fieldId: plan.fieldId,
+        rocks: placed.grown,
+        distanceWU: plan.distanceWU,
+        center: { x: plan.center.x, z: plan.center.z },
+        reason: 'used_up_field',
+      });
+    }
+    return placed.grown;
+  },
+
+  _nearestGatePos(active, from) {
+    let best = null;
+    let bestD = Infinity;
+    for (const gate of (active && active.gates) || []) {
+      if (!gate || !gate.pos) continue;
+      const dx = gate.pos.x - from.x;
+      const dz = gate.pos.z - from.z;
+      const d = dx * dx + dz * dz;
+      if (d < bestD) {
+        bestD = d;
+        best = gate.pos;
+      }
+    }
+    return best;
+  },
+
+  _liveRockWithin(state, center, radius, ignoreFieldId) {
+    if (!center) return false;
+    const r2 = radius * radius;
+    const within = (pos, data) => {
+      if (!pos) return false;
+      if (ignoreFieldId && data && data.fieldId === ignoreFieldId) return false;
+      const dx = pos.x - center.x;
+      const dz = pos.z - center.z;
+      return dx * dx + dz * dz <= r2 && !!(data && data.yieldU > 0);
+    };
+    // Authored field rocks idle as dormant records, not entities — a stocked field must still
+    // count here or the "nothing minable nearby" check reads a full belt as empty. The bag is
+    // cross-sector and positions are sector-local, so only the current sector's records count.
+    const sectorId = state.world && state.world.currentSectorId;
+    const bag = state.world && state.world.asteroidField;
+    if (bag && Array.isArray(bag.rocks)) {
+      for (const rec of bag.rocks) {
+        if (!rec || rec.alive === false || rec.liveEntityId != null) continue;
+        const home = rec.homeSectorId || (rec.data && rec.data.homeSectorId);
+        if (sectorId && home !== sectorId) continue;
+        if (within(rec.pos, rec.data)) return true;
+      }
+    }
+    const idx = state.entityIndex || {};
+    const lists = [idx.asteroids, idx.mineables, state.entityList];
+    for (const list of lists) {
+      if (!Array.isArray(list)) continue;
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
+        if (within(entity.pos, entity.data)) return true;
+      }
+    }
+    return false;
+  },
+
+  _spawnOpportunityRocks(state, sector, plan) {
+    const helpers = this.helpers;
+    if (!helpers || typeof helpers.spawnEntity !== 'function') return { grown: 0, placed: 0 };
+    const def = AST_BY_ID.get('ast_common_rock');
+    // A seam rock that survived sector demotion (mission-pinned, persistent) still owns its
+    // slot — re-spawning it would duplicate the asteroidSlotId.
+    const liveSlots = new Set();
+    for (const e of state.entityList || []) {
+      if (e && e.alive !== false && e.data && e.data.fieldId === plan.fieldId
+        && e.data.asteroidSlotId != null) liveSlots.add(e.data.asteroidSlotId);
+    }
+    let grown = 0;
+    let placed = 0;
+    for (let i = 0; i < plan.rocks.length; i++) {
+      const rock = plan.rocks[i];
+      const slotId = `next:${rock.role}:${i}`;
+      if (liveSlots.has(slotId)) {
+        placed += 1;
+        grown += 1;
+        continue;
+      }
+      const size = 8;
+      const oreHP = 200;
+      const ent = helpers.spawnEntity({
+        type: 'asteroid',
+        pos: { x: rock.x, z: rock.z },
+        radius: size,
+        mass: 200 + size * 40,
+        hull: oreHP,
+        hullMax: oreHP,
+        collides: true,
+        data: {
+          typeId: def ? def.id : 'ast_common_rock',
+          tier: 0,
+          tierCap: 0,
+          oreHP,
+          oreHPMax: oreHP,
+          yieldU: 12,
+          size,
+          pctEjected: 0,
+          fieldId: plan.fieldId,
+          asteroidSlotId: slotId,
+          opportunity: true,
+          opportunityRole: rock.role,
+        },
+      });
+      if (!ent) continue;
+      placed += 1;
+      this._stampHomeSector(ent, sector.id);
+      // On rematerialize a rock the player already mined comes back suppressed by its
+      // durable resource body (depleted oreHP, or dead outright) instead of rerolled.
+      this._restoreResourceBody(ent);
+      if (ent.alive !== false) grown += 1;
+    }
+    return { grown, placed };
+  },
+
+  /**
+   * The nextFields record outlives the sector bag: on re-materialize the seam re-places its
+   * rocks from the positions frozen into the record — the live fields/gates re-roll under a
+   * different rng offset once a field is used up, so re-deriving the plan would relocate the
+   * seam (and a null plan would strand the suppressing record). No field:opportunity emit —
+   * that event fired once when the record was written.
+   */
+  _rematerializeUsedUpFieldOpportunity(sectorId, sector, active) {
+    const state = this.state;
+    const rec = nextFieldOpportunityRecord(state, sectorId);
+    if (!rec || !sector || !active) return 0;
+    if (!Array.isArray(rec.rockSpots) || !rec.rockSpots.length) {
+      // A record without placement truth (pre-rockSpots saves) can never re-place — release it
+      // so the used-up scan can promise a fresh seam instead of suppressing it forever.
+      releaseNextFieldOpportunity(state, sectorId);
+      return 0;
+    }
+    const res = this._spawnOpportunityRocks(state, sector, {
+      fieldId: rec.fieldId,
+      rocks: rec.rockSpots,
+    });
+    return res.grown;
+  },
+
   _liveFieldRockCount(state, fieldId) {
-    const list = (state.entityIndex && state.entityIndex.asteroids)
-      || (state.entityIndex && state.entityIndex.mineables)
-      || state.entityList
-      || [];
     let live = 0;
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e || e.alive === false || e.type !== 'asteroid') continue;
-      if (e.data && e.data.fieldId === fieldId) live++;
+    // Authored field rocks idle as dormant records, not entities — count them or a stocked
+    // field reads as empty and the used-up trigger degenerates to depletion alone. Promoted
+    // records (liveEntityId set) are counted through the live lists instead. The bag is
+    // cross-sector; positions are sector-local, so only the current sector's records count.
+    const sectorId = state.world && state.world.currentSectorId;
+    const bag = state.world && state.world.asteroidField;
+    if (bag && Array.isArray(bag.rocks)) {
+      for (const rec of bag.rocks) {
+        if (!rec || rec.alive === false || rec.liveEntityId != null) continue;
+        const home = rec.homeSectorId || (rec.data && rec.data.homeSectorId);
+        if (sectorId && home !== sectorId) continue;
+        if (rec.data && rec.data.fieldId === fieldId) live++;
+      }
+    }
+    const idx = state.entityIndex || {};
+    const lists = [idx.asteroids, idx.mineables, state.entityList];
+    const seen = new Set();
+    for (const list of lists) {
+      if (!Array.isArray(list)) continue;
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e || e.alive === false || e.type !== 'asteroid' || seen.has(e)) continue;
+        seen.add(e);
+        if (e.data && e.data.fieldId === fieldId) live++;
+      }
     }
     return live;
   },

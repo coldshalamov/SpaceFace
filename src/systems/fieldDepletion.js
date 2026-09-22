@@ -1,3 +1,5 @@
+import { hash32 } from '../core/rng.js';
+
 // fieldDepletion.js - BP-02 FIELD-MEMORY backend ledger.
 //
 // Event-sourced mining memory: asteroid destruction in a field raises a durable depletion scalar,
@@ -21,12 +23,23 @@ export const FIELD_REGROWTH_MAX_BATCHES = 120;
 export const FIELD_REGROWTH_BATCH_MIN = 3;
 export const FIELD_REGROWTH_BATCH_MAX = 6;
 export const FIELD_REGROWTH_YIELD_SCALE = 0.9;
+// After a field is used up, the next minable cluster has to sit inside a few minutes of cruise
+// and not at the measured ~14,000 WU empty haul. Cruise matches MISSION_TUNING.cruiseSpeedRef.
+export const NEXT_FIELD_CRUISE_WU_S = 140;
+export const NEXT_FIELD_FLIGHT_S = 180;
+export const NEXT_FIELD_MAX_WU = NEXT_FIELD_CRUISE_WU_S * NEXT_FIELD_FLIGHT_S;
+export const NEXT_FIELD_PLACE_WU = 1800;
+export const NEXT_FIELD_HOP_WU = 1100;
+export const FIELD_USED_UP_DEPLETION = 0.85;
+const NEXT_FIELD_CLUSTER = 5;
+const NEXT_FIELD_SECTOR_MARGIN = 280;
+
 export const RICH_SEAM_OPPORTUNITY_SCHEMA = 'spaceface.richSeamOpportunity.v1';
 export const RICH_SEAM_OPPORTUNITY_WINDOW_S = 180;
 export const RICH_SEAM_BONUS_U = 8;
 
 function freshState() {
-  return { schemaVersion: STATE_VERSION, fields: {}, opportunities: {}, receipts: [] };
+  return { schemaVersion: STATE_VERSION, fields: {}, opportunities: {}, nextFields: {}, receipts: [] };
 }
 
 function clamp01(value) {
@@ -63,6 +76,9 @@ export function ensureFieldDepletionState(state) {
   if (!own.fields || typeof own.fields !== 'object' || Array.isArray(own.fields)) own.fields = {};
   if (!own.opportunities || typeof own.opportunities !== 'object' || Array.isArray(own.opportunities)) {
     own.opportunities = {};
+  }
+  if (!own.nextFields || typeof own.nextFields !== 'object' || Array.isArray(own.nextFields)) {
+    own.nextFields = {};
   }
   if (!Array.isArray(own.receipts)) own.receipts = [];
   return own;
@@ -468,6 +484,163 @@ export function fieldRegrowthDue(state, fieldId, simTime = state && state.simTim
   };
 }
 
+/**
+ * Where to put the next minable cluster after a field is used up.
+ * The cluster stays inside a few minutes of cruise and short of the 14,000 WU empty haul.
+ * Trail rocks sit on the way so the flight is not a dead gap.
+ * Pure: the world owns the spawn.
+ */
+export function planUsedUpFieldOpportunity(spec = {}) {
+  const from = spec.from;
+  if (!from || !Number.isFinite(from.x) || !Number.isFinite(from.z)) return null;
+  const origin = spec.sectorOrigin || { x: 0, z: 0 };
+  const radius = Number(spec.sectorRadius) > 0 ? Number(spec.sectorRadius) : 3500;
+  const fromRadius = Math.max(0, Number(spec.fromRadius) || 0);
+  const toward = spec.toward;
+  // The gate-ward line is preferred; the hash direction is the deterministic fallback when the
+  // gate-ward candidates are all blocked (near gate inside its own keepout, rim, margin).
+  const hashAng = ((hash32(spec.seed || 1, spec.sectorId || '', spec.fieldId || '', 'next-field') % 3600) / 3600) * Math.PI * 2;
+  const dirs = [{ x: Math.cos(hashAng), z: Math.sin(hashAng), cap: Infinity }];
+  if (toward && Number.isFinite(toward.x) && Number.isFinite(toward.z)) {
+    const tdx = toward.x - from.x;
+    const tdz = toward.z - from.z;
+    const len = Math.hypot(tdx, tdz);
+    if (len > 1) {
+      dirs.unshift({ x: tdx / len, z: tdz / len, cap: Math.max(NEXT_FIELD_HOP_WU, len - 700) });
+    }
+  }
+  let dx = dirs[0].x;
+  let dz = dirs[0].z;
+  const limit = Math.max(400, radius - NEXT_FIELD_SECTOR_MARGIN);
+  // Station/gate halos the seam must clear; the arranger enforces the same class of keepout
+  // for authored content. A candidate is rejected if its center lands inside one.
+  const keepouts = Array.isArray(spec.keepouts) ? spec.keepouts : [];
+  const clearOfKeepouts = (x, z, margin) => {
+    for (const keep of keepouts) {
+      if (!keep || !Number.isFinite(keep.x) || !Number.isFinite(keep.z)) continue;
+      const rr = (Number(keep.r) > 0 ? Number(keep.r) : 0) + (margin || 0);
+      const ddx = x - keep.x;
+      const ddz = z - keep.z;
+      if (rr > 0 && ddx * ddx + ddz * ddz < rr * rr) return false;
+    }
+    return true;
+  };
+  let place = null;
+  for (const dir of dirs) {
+    let candidate = Math.min(NEXT_FIELD_PLACE_WU, NEXT_FIELD_MAX_WU, 14000 - 1, dir.cap);
+    // The floor candidate (NEXT_FIELD_HOP_WU, the common near-gate case) gets the same bounds
+    // and keepout check as every other step — clamped steps land on it exactly.
+    for (;;) {
+      const px = from.x + dir.x * candidate;
+      const pz = from.z + dir.z * candidate;
+      const odx = px - origin.x;
+      const odz = pz - origin.z;
+      if (odx * odx + odz * odz <= limit * limit && clearOfKeepouts(px, pz, 160)) {
+        place = candidate;
+        dx = dir.x;
+        dz = dir.z;
+        break;
+      }
+      if (candidate <= NEXT_FIELD_HOP_WU) break;
+      candidate = Math.max(NEXT_FIELD_HOP_WU, candidate - 200);
+    }
+    if (place != null) break;
+  }
+  if (place == null) return null;
+  const center = {
+    x: from.x + dx * place,
+    z: from.z + dz * place,
+  };
+  const rocks = [];
+  for (let d = fromRadius + NEXT_FIELD_HOP_WU; d < place - 160; d += NEXT_FIELD_HOP_WU) {
+    const rx = from.x + dx * d;
+    const rz = from.z + dz * d;
+    if (clearOfKeepouts(rx, rz, 30)) rocks.push({ x: rx, z: rz, role: 'trail' });
+  }
+  if (!rocks.length) {
+    const d = Math.max(fromRadius + 400, place * 0.45);
+    const rx = from.x + dx * d;
+    const rz = from.z + dz * d;
+    if (clearOfKeepouts(rx, rz, 30)) rocks.push({ x: rx, z: rz, role: 'trail' });
+  }
+  const scatter = 140;
+  for (let i = 0; i < NEXT_FIELD_CLUSTER; i++) {
+    const ang = (hash32(spec.seed || 1, spec.fieldId || '', 'cluster', i) % 6283) / 1000;
+    const r = ((hash32(spec.seed || 1, spec.fieldId || '', 'cluster-r', i) % 1000) / 1000) * scatter;
+    rocks.push({
+      x: center.x + Math.cos(ang) * r,
+      z: center.z + Math.sin(ang) * r,
+      role: 'cluster',
+    });
+  }
+  return {
+    sourceFieldId: spec.fieldId || null,
+    fieldId: `next:${spec.fieldId || 'field'}`,
+    sectorId: spec.sectorId || null,
+    center,
+    distanceWU: place,
+    hopWU: NEXT_FIELD_HOP_WU,
+    rocks,
+  };
+}
+
+// A seam never carries more than trail + cluster rocks; the bound also keeps a corrupt save
+// from mass-spawning through the record.
+const NEXT_FIELD_ROCK_CAP = 64;
+
+function normalizeRockSpots(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const rock of list) {
+    if (out.length >= NEXT_FIELD_ROCK_CAP) break;
+    const x = Number(rock && rock.x);
+    const z = Number(rock && rock.z);
+    if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
+    out.push({ x, z, role: rock && rock.role === 'cluster' ? 'cluster' : 'trail' });
+  }
+  return out;
+}
+
+export function nextFieldOpportunityRecord(state, sectorId) {
+  const own = ensureFieldDepletionState(state);
+  if (!sectorId || !own.nextFields) return null;
+  const rec = own.nextFields[sectorId];
+  // Clone-on-read like the rest of this module: callers must not mutate the stored record.
+  return rec ? clonePlain(rec) : null;
+}
+
+export function releaseNextFieldOpportunity(state, sectorId) {
+  const own = ensureFieldDepletionState(state);
+  const id = fieldIdOf(sectorId);
+  if (!id || !own.nextFields || own.nextFields[id] == null) return false;
+  delete own.nextFields[id];
+  return true;
+}
+
+export function recordNextFieldOpportunity(state, payload = {}) {
+  const own = ensureFieldDepletionState(state);
+  const sectorId = fieldIdOf(payload.sectorId);
+  if (!sectorId || !payload.fieldId || !payload.center) return null;
+  // The seam's rock positions are frozen into the record: the live bag's fields/gates re-roll
+  // under a different rng offset once the field is used up, so re-deriving the plan at
+  // rematerialize would relocate the seam. The record is the placement truth.
+  const rockSpots = normalizeRockSpots(payload.rockSpots);
+  const rec = {
+    fieldId: String(payload.fieldId),
+    sourceFieldId: payload.sourceFieldId ? String(payload.sourceFieldId) : null,
+    center: {
+      x: Number(payload.center.x) || 0,
+      z: Number(payload.center.z) || 0,
+    },
+    distanceWU: Math.max(0, Number(payload.distanceWU) || 0),
+    rocks: Math.max(0, Math.floor(Number(payload.rocks) || 0)),
+    rockSpots,
+    placedAtT: round6(payload.simTime != null ? payload.simTime : state && state.simTime),
+  };
+  own.nextFields[sectorId] = rec;
+  return { ...rec, center: { ...rec.center }, rockSpots: clonePlain(rockSpots) };
+}
+
 /** Advance the durable regrowth clock after the world has spawned the seam's rocks. */
 export function recordFieldRegrowth(state, payload = {}) {
   const own = ensureFieldDepletionState(state);
@@ -624,12 +797,14 @@ export const fieldDepletion = {
       const rec = normalizeFieldRecord(own.fields[fieldId], fieldId);
       if (rec.depletion > 0 || rec.extractedU > 0 || rec.destroyedCount > 0) fields[fieldId] = rec;
     }
-    return {
+    const data = {
       schemaVersion: STATE_VERSION,
       fields,
       opportunities: clonePlain(own.opportunities),
       receipts: clonePlain(own.receipts.slice(-FIELD_DEPLETION_MAX_RECEIPTS)),
     };
+    if (own.nextFields && Object.keys(own.nextFields).length) data.nextFields = clonePlain(own.nextFields);
+    return data;
   },
 
   deserialize(data) {
@@ -650,6 +825,23 @@ export const fieldDepletion = {
     own.receipts = Array.isArray(data && data.receipts)
       ? clonePlain(data.receipts).slice(-FIELD_DEPLETION_MAX_RECEIPTS)
       : [];
+    own.nextFields = {};
+    const nextFields = data && data.nextFields && typeof data.nextFields === 'object' ? data.nextFields : {};
+    for (const sectorId of Object.keys(nextFields)) {
+      const rec = nextFields[sectorId];
+      if (!rec || !rec.fieldId || !rec.center) continue;
+      own.nextFields[sectorId] = {
+        fieldId: String(rec.fieldId),
+        sourceFieldId: rec.sourceFieldId ? String(rec.sourceFieldId) : null,
+        center: { x: Number(rec.center.x) || 0, z: Number(rec.center.z) || 0 },
+        distanceWU: Math.max(0, Number(rec.distanceWU) || 0),
+        rocks: Math.max(0, Math.floor(Number(rec.rocks) || 0)),
+        // Records written before rockSpots existed cannot be re-placed — they load with an
+        // empty list and the materialize step lets the planner promise a fresh seam.
+        rockSpots: normalizeRockSpots(rec.rockSpots),
+        placedAtT: round6(rec.placedAtT),
+      };
+    }
     own.schemaVersion = STATE_VERSION;
     this._recoveryAccum = 0;
   },
