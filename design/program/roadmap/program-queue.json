@@ -10279,7 +10279,7 @@
       "priority": 207,
       "title": "Three physical procedural types",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -10303,8 +10303,11 @@
         "npm run check:mission-receipts",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "tow_recovery, demolition, rescue_under_fire join the OFFER_MIX with station-type weights. DONE WHEN: Each appears on boards on the route; each completes in a scenario by two methods."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-152.00-REPORT.md",
+        "design/program/roadmap/receipts/PQ-152.00-RECLOSE-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: tow_recovery, demolition, rescue_under_fire in the catalog and OFFER_MIX with station-type weights; seed 15200 posts all three on route boards; each completes by two physical methods (5/5). Heartbeat civilian-hub weights stand; two stale zero-pins updated with reason."
     },
     {
       "id": "PQ-152.01",

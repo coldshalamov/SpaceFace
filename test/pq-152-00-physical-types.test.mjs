@@ -156,8 +156,8 @@ test('PQ-152.00 physical types join the catalog and OFFER_MIX named weights', ()
   assert.ok(OFFER_MIX.mining.tow_recovery > 0);
   assert.ok(OFFER_MIX.fab.demolition > 0);
   assert.ok(OFFER_MIX.research.rescue_under_fire > 0);
-  assert.equal(OFFER_MIX.trade_hub.tow_recovery, 0);
-  assert.equal(OFFER_MIX.military.demolition, 0);
+  assert.equal(OFFER_MIX.trade_hub.tow_recovery, 2); // b65ad1f40: civilian hubs post physical work
+  assert.equal(OFFER_MIX.military.demolition, 2); // b65ad1f40: civilian hubs post physical work
   assert.equal(OFFER_MIX.bounty_board.tow_recovery, 0);
   assert.equal(OFFER_MIX.contracts_hub.demolition, 0);
 });
