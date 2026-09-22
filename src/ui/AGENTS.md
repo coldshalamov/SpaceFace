@@ -18,7 +18,8 @@ texture budget — retire the `--fh-` tokens, not the assets. Historical directi
 ## Standing rules
 
 - **Clean NON-diegetic HUD.** No visor/cockpit/helmet framing, screen-edge arcs, or pilot portraits.
-- Choose panel treatment per screen; measure compositor cost. No universal opaque-panel recipe.
+- Panel treatment comes from the system (`dp-plate`, `dp-glass`, `dp-mfd`): pick the material that
+  fits the job, never mix a new one. Measure compositor cost; no `backdrop-filter` in flight.
 - Match the surface to the decision (HUD, card, modal, full screen). Avoid duplicate simultaneous copy.
 - **Flight transient routing (HUD_FLIGHT_ATTENTION):** a timed decision with verbs → the prompt
   deck; a fact/result → a receipt line (`toasts.js` / `admitReceipt`); continuous state → a HUD
