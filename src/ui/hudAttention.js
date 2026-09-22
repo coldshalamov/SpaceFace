@@ -307,3 +307,66 @@ export function receiptOverlapsReserved(layout) {
   const reserved = [layout.objective, layout.vitals, layout.rightDock].filter(Boolean);
   return reserved.some((anchor) => rectsOverlap(lane, anchor));
 }
+
+/**
+ * Wave G12 — dock prompt, speed readout, and weapon name each own a box.
+ * The three boxes are disjoint at the 1280×720 floor and at 1920×1080.
+ */
+export function flightInstrumentRects(width, height) {
+  const w = Math.max(320, Number(width) || 1280);
+  const h = Math.max(240, Number(height) || 720);
+  const speedW = Math.min(220, Math.floor(w * 0.18));
+  const weaponW = Math.min(180, Math.floor(w * 0.16));
+  const gap = 24;
+  const pair = speedW + gap + weaponW;
+  const left = Math.round((w - pair) / 2);
+  const bandY = h - 96;
+  return {
+    speedReadout: { x: left, y: bandY, width: speedW, height: 52 },
+    weaponName: { x: left + speedW + gap, y: bandY + 10, width: weaponW, height: 28 },
+    dockPrompt: { x: Math.round(w / 2 - 140), y: 18, width: 280, height: 32 },
+  };
+}
+
+export function flightReadoutsDisjoint(width, height) {
+  const boxes = flightInstrumentRects(width, height);
+  return !rectsOverlap(boxes.speedReadout, boxes.weaponName)
+    && !rectsOverlap(boxes.speedReadout, boxes.dockPrompt)
+    && !rectsOverlap(boxes.weaponName, boxes.dockPrompt);
+}
+
+/**
+ * Wave G13 — a HUD string is not a caption on the player's hull.
+ * The Massline bracket is the one exempt mark. A string parented to the player
+ * billboard, or sitting inside one hull-length of the player screen point, is pushed clear.
+ */
+export function placeHudString(point, playerPoint, hullLengthPx, { exempt = false } = {}) {
+  const x = Number(point && point.x) || 0;
+  const y = Number(point && point.y) || 0;
+  if (exempt) return { x, y };
+  const px = Number(playerPoint && playerPoint.x) || 0;
+  const py = Number(playerPoint && playerPoint.y) || 0;
+  const min = Math.max(8, Number(hullLengthPx) || 0);
+  const dx = x - px;
+  const dy = y - py;
+  const dist = Math.hypot(dx, dy);
+  if (dist >= min) return { x, y };
+  if (dist < 0.001) return { x: px, y: py - min };
+  const scale = min / dist;
+  return { x: px + dx * scale, y: py + dy * scale };
+}
+
+export function hudStringCoversHull({
+  parentBillboard = '',
+  x = 0,
+  y = 0,
+  playerX = 0,
+  playerY = 0,
+  hullLengthPx = 0,
+  exempt = false,
+} = {}) {
+  if (exempt) return false;
+  if (parentBillboard === 'player') return true;
+  const min = Math.max(8, Number(hullLengthPx) || 0);
+  return Math.hypot(x - playerX, y - playerY) < min;
+}

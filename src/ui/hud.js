@@ -89,10 +89,13 @@ import {
   formatDestinationLine,
   formatRosterCount,
   hudJobFromState,
+  flightInstrumentRects,
   masslineInstrumentReadout,
   masslineInstrumentVisible,
   openingInstructionSolo,
+  placeHudString,
   receiptLaneRect,
+  shipGlyphBox,
 } from './hudAttention.js';
 
 // ---- Aerospace Optical G-Lag & G-LOC simulation helpers (Blueprint Category D) ----
@@ -5191,6 +5194,28 @@ export function createHud(ctx, alerts) {
     setStyle(laneRoot, 'bottom', `${Math.round(lane.bottomInset)}px`);
     setStyle(laneRoot, 'right', 'auto');
     setStyle(laneRoot, 'transform', 'none');
+    placeFlightReadouts(w, h);
+  }
+
+  function placeFlightBox(el, rect) {
+    if (!el || !rect || !el.style) return;
+    setStyle(el, 'position', 'fixed');
+    setStyle(el, 'left', `${Math.round(rect.x)}px`);
+    setStyle(el, 'top', `${Math.round(rect.y)}px`);
+    setStyle(el, 'width', `${Math.round(rect.width)}px`);
+    setStyle(el, 'height', `${Math.round(rect.height)}px`);
+    setStyle(el, 'margin', '0');
+    setStyle(el, 'right', 'auto');
+    setStyle(el, 'bottom', 'auto');
+    setStyle(el, 'transform', 'none');
+  }
+
+  function placeFlightReadouts(w, h) {
+    const boxes = flightInstrumentRects(w, h);
+    placeFlightBox(speedGaugeEl, boxes.speedReadout);
+    placeFlightBox(document.getElementById('sf-wpnstat'), boxes.weaponName);
+    const dock = document.querySelector('#alerts .sf-alert--dock');
+    if (dock) placeFlightBox(dock, boxes.dockPrompt);
   }
 
   function updateFirstUseHint(player) {
@@ -5223,9 +5248,18 @@ export function createHud(ctx, alerts) {
       setHidden(firstUse, firstUseHint.kind !== 'player');
       return;
     }
-    const x = proj.onScreen ? proj.x : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1280) - 24, proj.x));
-    const y = proj.onScreen ? proj.y - 28 : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerHeight : 720) - 24, proj.y));
-    setHudScreenTransform(firstUse, x, y);
+    const rawX = proj.onScreen ? proj.x : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1280) - 24, proj.x));
+    const rawY = proj.onScreen ? proj.y - 28 : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerHeight : 720) - 24, proj.y));
+    const onPlayer = !firstUseHint.entityId || firstUseHint.entityId === state.playerId;
+    const hull = shipGlyphBox();
+    const cleared = onPlayer
+      ? placeHudString(
+        { x: rawX, y: rawY },
+        { x: proj.x, y: proj.y },
+        Math.max(hull.width, hull.height),
+      )
+      : { x: rawX, y: rawY };
+    setHudScreenTransform(firstUse, cleared.x, cleared.y);
   }
 
   function setVisible(v) {
