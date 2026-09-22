@@ -186,7 +186,7 @@ const CORE_SECTORS = [
     stations: [
       { id: 'station_forge',  name: 'Forge Foundry', type: 'fab',    factionId: 'faction_dmc',   size: 'M', services: ['trade','shipyard','repair','refine','module_craft'],
         chartNote: 'Plate and fittings out the door. Bring alloy, leave with modules.' },
-      { id: 'station_depot3', name: 'Refuel Depot',  type: 'mining', factionId: 'faction_choir', size: 'S', services: ['refuel'] },
+      { id: 'station_depot3', name: 'Refuel Depot',  type: 'mining', factionId: 'faction_choir', size: 'S', services: ['refuel', 'missions'] },
     ],
     fields: [
       { id: 'f_vesta_1', type: 'ast_metallic',    countWeight: 1.0 },
