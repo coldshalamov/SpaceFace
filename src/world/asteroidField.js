@@ -40,8 +40,17 @@ export function shouldKeepLiveAsteroid(options = {}) {
   return false;
 }
 
+// Numeric grid keys. queryAsteroidField walks every overlapped cell per call, so a `${cx}:${cz}`
+// string per cell per query was pure GC churn. Both components are Math.floor'd integers; the
+// offset/stride pair keeps the encoding bijective for |cell| < 1,048,576 — about ±230M WU,
+// orders of magnitude past the authored map edge (~±45k WU) and past where single-precision
+// positions have already broken down.
+const CELL_KEY_OFFSET = 1048576;
+const CELL_KEY_STRIDE = 2097152; // 2 * CELL_KEY_OFFSET
+
 function cellKey(x, z) {
-  return `${Math.floor(x / ASTEROID_FIELD_CELL)}:${Math.floor(z / ASTEROID_FIELD_CELL)}`;
+  return (Math.floor(x / ASTEROID_FIELD_CELL) + CELL_KEY_OFFSET) * CELL_KEY_STRIDE
+    + (Math.floor(z / ASTEROID_FIELD_CELL) + CELL_KEY_OFFSET);
 }
 
 function gridAdd(field, rec) {
@@ -57,7 +66,9 @@ function gridAdd(field, rec) {
 
 function gridRemove(field, rec) {
   const key = rec && rec._cell;
-  if (!key || !field.grid) return;
+  // Numeric keys: cell (-CELL_KEY_OFFSET, -CELL_KEY_OFFSET) encodes to 0, which is falsy —
+  // test for absence, not truthiness.
+  if (key == null || !field.grid) return;
   const bucket = field.grid.get(key);
   if (!bucket) return;
   const idx = bucket.indexOf(rec);
@@ -145,8 +156,10 @@ export function queryAsteroidField(state, pos, radius, out = []) {
   const minR = Math.floor((z - r) / ASTEROID_FIELD_CELL);
   const maxR = Math.floor((z + r) / ASTEROID_FIELD_CELL);
   for (let cx = minC; cx <= maxC; cx++) {
+    // Numeric key, same encoding as cellKey(): (cx + OFFSET) * STRIDE + (cz + OFFSET).
+    const rowBase = (cx + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + CELL_KEY_OFFSET;
     for (let cz = minR; cz <= maxR; cz++) {
-      const bucket = field.grid && field.grid.get(`${cx}:${cz}`);
+      const bucket = field.grid && field.grid.get(rowBase + cz);
       if (!bucket) continue;
       for (let i = 0; i < bucket.length; i++) {
         const rec = bucket[i];
