@@ -75,7 +75,7 @@ Leftover sheet ids (seeded on `TEMPLATE.beat.json`):
 |---|---|---|---|
 | 1 `honest_work` | `beats/47a-honest-work.beat.json` | knock | `wrecking_ball` (whip contact) / `cut_down` |
 | 2 `first_blood` | `beats/47a-first-blood.beat.json` | pull | `stage_tow` (dest-dock) / `corridor_pull` (reel) |
-| 3 `bigger_boat` | `beats/47a-bigger-boat.beat.json` | tow | `tow_in` (dest-dock) / `sling_in` (700 WU leftover) |
+| 3 `bigger_boat` | `beats/47a-bigger-boat.beat.json` | tow | `tow_in` (dest-dock) / `sling_in` (dest-dock) |
 
 Chapter sheets B1–B3 are prose. They are not the playable leftover. Live settle remains
 `PQ-032.00` (whip contact + dest-dock pay). This leaf writes sheets. It does not recut

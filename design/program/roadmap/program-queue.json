@@ -10066,7 +10066,7 @@
       "priority": 200,
       "title": "Beats 1–3 re-cut in the standard",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-152.01",
         "PQ-152.00"
@@ -10088,8 +10088,11 @@
         "node scripts/check-codex-narrative.mjs",
         "npm run check:mission-receipts"
       ],
-      "receiptRefs": [],
-      "brief": "The wrecking-ball contract, pod rescue under fire, the long tow — written, staged, seeded, captured (PQ-152). DONE WHEN: Three beats at 47-A density; owner verdict per beat."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-178.01-REPORT.md",
+        "design/program/roadmap/receipts/PQ-178.01-CLOSE-2026-09-22.md"
+      ],
+      "brief": "DONE 2026-09-22: beats 1-3 re-cut as beatStandard v1 sheets (knock/pull/tow, two live leftover solutions each, seed 3200); the 2026-09-09 honesty review's one red — sling_in sold as the stale 700 WU berth — was corrected to the dest-dock gate in 201fa3fbb and the BEAT-STANDARD table fixed here. Validator 5/5, test 4/4, narrative/receipts checks green. Live settle stays PQ-032.00; headed capture peeled per the standard."
     },
     {
       "id": "PQ-178.02",
