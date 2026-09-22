@@ -2,6 +2,7 @@
 // World remains the sole writer of state.world.discovery; Codex and the map only project it.
 
 import { SECTORS } from '../data/sectors.js';
+import { UNIQUE_WRECKS } from '../data/uniqueWrecks.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 
@@ -74,6 +75,37 @@ function plateBody(sector, poi, record) {
   return `${verb} by close approach in ${sector.name}. Classification: ${poi.type || 'unknown'}.`;
 }
 
+function uniqueWreckPlateBody(def, sector, record) {
+  const choice = (def.decision && def.decision.choices || []).find(
+    (c) => c.id === record.choiceId || c.outcome === record.outcome,
+  );
+  const actionDetail = choice && (choice.receiptDetail || choice.consequence) || '';
+  const prov = def.provenance
+    ? `Loss record: ${def.provenance.lossId} (${def.provenance.incidentId}).`
+    : '';
+  if (actionDetail) {
+    return `${actionDetail} ${prov}`.trim();
+  }
+  if (record.phase === 'fixed' || record.phase === 'decision') {
+    const loc = (def.hazardContext && def.hazardContext.label) || (sector && sector.name) || 'deep space';
+    return `Survey lock established at ${loc}. ${def.scanLabel || ''}. ${def.decision && def.decision.prompt || ''}`.trim();
+  }
+  return `Historical loss tracked in ${(sector && sector.name) || def.sectorId}. ${def.scanLabel || ''} ${prov}`.trim();
+}
+
+function uniqueWreckPlateNote(def, record) {
+  if (def.followup && typeof def.followup.text === 'string') {
+    return def.followup.text;
+  }
+  if (record.outcome === 'claimed') {
+    return 'Salvaged hardware claimed into player manifest.';
+  }
+  if (record.outcome === 'handed_over') {
+    return 'Authority custody transfer filed and settled.';
+  }
+  return 'Awaiting physical salvage decision at the wreck site.';
+}
+
 export function explorationDiscoveryPlates(state) {
   const plates = [];
   for (const sector of SECTORS) {
@@ -108,6 +140,40 @@ export function explorationDiscoveryPlates(state) {
       });
     }
   }
+
+  const uniqueWreckBearings = state && state.player && state.player.uniqueWrecks
+    && state.player.uniqueWrecks.bearings;
+  if (uniqueWreckBearings && typeof uniqueWreckBearings === 'object') {
+    for (const def of UNIQUE_WRECKS) {
+      const record = uniqueWreckBearings[def.id];
+      if (!record) continue;
+      const hasFixOrSalvage = record.phase === 'fixed' || record.phase === 'decision' || record.phase === 'salvaged'
+        || Number.isFinite(record.fixedAtS) || Number.isFinite(record.salvagedAtS);
+      if (!hasFixOrSalvage) continue;
+      const sector = sectorOf(def.sectorId);
+      const completedAt = finiteTime(
+        record.salvagedAtS,
+        record.resolvedAtS,
+        record.fixedAtS,
+        record.heardAtS,
+      );
+      const isSalvaged = record.phase === 'salvaged' || !!record.outcome;
+      const status = isSalvaged
+        ? (record.outcome === 'claimed' ? 'HISTORIC WRECK CLAIMED' : 'HISTORIC RECOVERY FILED')
+        : (record.phase === 'decision' ? 'SALVAGE DECISION PENDING' : 'PHYSICALLY LOCATED');
+      plates.push({
+        id: `unique_wreck:${def.id}`,
+        sectorId: def.sectorId,
+        poiId: def.id,
+        title: def.name,
+        meta: `${sector ? sector.name : def.sectorId} · ${status}`,
+        body: uniqueWreckPlateBody(def, sector, record),
+        note: uniqueWreckPlateNote(def, record),
+        completedAt,
+      });
+    }
+  }
+
   plates.sort((a, b) => (b.completedAt - a.completedAt) || a.id.localeCompare(b.id));
   return plates;
 }
@@ -136,6 +202,16 @@ export function galaxyExplorationSummary(state) {
     const byId = (disc && disc.pois) || {};
     for (const key of Object.keys(byId)) {
       if (byId[key]?.landmarkArtifact?.id) trophies++;
+    }
+  }
+
+  const uniqueWreckBearings = state && state.player && state.player.uniqueWrecks
+    && state.player.uniqueWrecks.bearings;
+  if (uniqueWreckBearings && typeof uniqueWreckBearings === 'object') {
+    for (const row of Object.values(uniqueWreckBearings)) {
+      if (row && (row.phase === 'salvaged' || row.outcome)) {
+        trophies++;
+      }
     }
   }
 

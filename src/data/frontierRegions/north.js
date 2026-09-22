@@ -184,7 +184,15 @@ export const NORTH_SECTORS = Object.freeze([
       }),
     ]),
     pois: Object.freeze([
-      Object.freeze({ id: 'poi_haumea_fissure', type: 'anomaly', name: 'Ice Fissure Signal' }),
+      Object.freeze({
+        id: 'poi_haumea_fissure',
+        type: 'anomaly',
+        name: 'Ice Fissure Signal',
+        discoveryPlate: Object.freeze({
+          title: 'Haumea Ice Fissure Signal',
+          body: 'A deep thermal rift splitting the Haumea ice sheet. Sub-surface radio scatter echoes through the crevasse, carrying the acoustic signature of trapped high-mass debris.',
+        }),
+      }),
       Object.freeze({ id: 'poi_haumea_buoy', type: 'beacon', name: 'Rift Range Buoy' }),
       Object.freeze({ id: 'poi_haumea_probe', type: 'derelict', name: 'Rift Probe Shell' }),
     ]),
