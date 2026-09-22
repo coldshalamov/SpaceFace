@@ -112,6 +112,7 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['bark_free', { file: 'assets/audio/voice/bark_free.wav', tier: 2, loop: false, seconds: 1.05 }],
   ['bark_vael', { file: 'assets/audio/voice/bark_vael.wav', tier: 2, loop: false, seconds: 1.05 }],
   ['bark_mechanic', { file: 'assets/audio/voice/bark_mechanic.wav', tier: 2, loop: false, seconds: 1.05 }],
+  ['bark_instructor', { file: 'assets/audio/voice/bark_instructor.wav', tier: 2, loop: false, seconds: 1.05 }],
   ['kill_confirm_chime', { file: 'assets/audio/combat/kill_confirm_chime.wav', tier: 1, loop: false, seconds: 0.5 }],
   ['subsystem_pop', { file: 'assets/audio/combat/subsystem_pop.wav', tier: 1, loop: false, seconds: 0.5 }],
   ['cm_chaff', { file: 'assets/audio/combat/cm_chaff.wav', tier: 1, loop: false, seconds: 0.5 }],

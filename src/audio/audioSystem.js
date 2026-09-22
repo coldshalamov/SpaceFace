@@ -30,7 +30,7 @@ import {
   sectorBedToBandIntent,
 } from './themeMatrix.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
-import { resolveBarkVoice, resolveBarkSampleBinding, MECHANIC_LINES } from './barkVoice.js';
+import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding, MECHANIC_LINES } from './barkVoice.js';
 import { leftoverMechanicLines } from '../story/mechanicVoice.js';
 import { resolveAccessibilityCue } from '../ui/captions.js';
 import {
@@ -830,6 +830,9 @@ export const BARK_PUNCT = Object.freeze({
   tailGain: 0.42,
   popupTailDelayS: 0.12,
 });
+
+/** Same instructor line inside this window keys the mic once (a retried beat re-emits the text). */
+export const INSTRUCTOR_REPEAT_WINDOW_S = 8;
 
 // Weapon-id / kind -> SFX recipe id. Player & NPC weapon defIds are 'wpn_*'; the combat:fire
 // payload carries weaponId. We classify by substring so any catalog id resolves.
@@ -1706,6 +1709,20 @@ export const audio = {
     });
     bus.on('tether:nearBreak', (p) => this._onMasslineInstrument('strain', p));
     bus.on('barkDirector:voice', (p) => this._onBarkVoice(p));
+    // The first-hour instructor speaks every tutorial line through the same radio treatment the
+    // barks get — key click, one distinct register, squelch tail — on a single mic, so a beat
+    // that emits two lines in one tick is heard in order. Text surfaces keep their own contracts;
+    // this is the audible delivery, including for lines whose visual floor is suppressed.
+    bus.on('tutorial:say', (p) => this._onInstructorVoice(p));
+    // The route's proof moments (first attach, the swing payoff, the momentum kill, the wanted
+    // beat, its resolution) get the authored moment stinger — the payoff is heard, not just read.
+    bus.on('firsthour:milestone', () => {
+      this._onCue({ id: 'moment.stinger', importance: 0.9, duck: true });
+    });
+    // The curtain-raiser opens the first hour audibly: one low swell under the mood line.
+    bus.on('ui:firstRunSplash:active', () => {
+      this.play('sfx_firsthour_coldopen', { gain: 0.7, critical: true });
+    });
     bus.on('fields:deployed', (p) => {
       if (p && p.kind && p.kind !== 'well') return;
       this._playAccessibilityCue('well', { position: p && p.center });
@@ -1798,6 +1815,9 @@ export const audio = {
   update(dt, state) { /* no-op: driven by _frame() */ },
 
   destroy() {
+    this._instructorLastText = '';
+    this._instructorLastAtS = -Infinity;
+    this._instructorClearAt = -Infinity;
     const rt = this.rt;
     if (!rt) return;
     rt._lifecycleSuspended = true;
@@ -4167,6 +4187,48 @@ export const audio = {
       });
       this._applyFactionSting(theme.sting);
     }
+  },
+
+  // The first-hour instructor (tutorial:say). Same industrial punctuation as the barks — key
+  // click, register body, squelch tail — on its own calm register, under bark gain, with no
+  // faction theme sting and no caption (the text surfaces already own the words; for the
+  // visual-suppressed contract lines this voice IS the delivery). Repeats inside the window
+  // collapse so a retried beat never double-keys the mic. A second different line that arrives
+  // while the mic is still open (the thrust premise, the burst weapon hint) waits until the
+  // squelch has decayed, then keys. One voice, in the order the beat emitted them.
+  _onInstructorVoice(payload) {
+    if (!payload) return;
+    const text = typeof payload.text === 'string' ? payload.text.trim() : '';
+    if (!text) return;
+    const rt = this.rt, ctx = rt && rt.ctx;
+    const now = ctx ? ctx.currentTime : 0;
+    if (text === this._instructorLastText && now - (Number.isFinite(this._instructorLastAtS) ? this._instructorLastAtS : -Infinity) < INSTRUCTOR_REPEAT_WINDOW_S) return;
+    const resolved = resolveInstructorVoice(text);
+    const speechDur = resolved.speech && Number.isFinite(resolved.speech.durationS)
+      ? resolved.speech.durationS : 0.9;
+    // Tail recipe release is 0.07s; a short breath keeps the next key click off that decay.
+    const SQUELCH_RELEASE_S = 0.07;
+    const BREATH_S = 0.12;
+    const span = BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS + SQUELCH_RELEASE_S + BREATH_S;
+    const t0 = Number.isFinite(this._instructorClearAt) && this._instructorClearAt > now
+      ? this._instructorClearAt
+      : now;
+    this._instructorLastText = text;
+    this._instructorLastAtS = now;
+    this._instructorClearAt = t0 + span;
+    this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain * 0.8, startTime: t0 });
+    this.play(resolved.recipeId, {
+      gain: resolved.gain,
+      rate: resolved.speech.rate,
+      barkSampleId: resolved.sampleId,
+      critical: true,
+      duckSeconds: span + COMMS_DUCK.releasePadS,
+      startTime: t0 + BARK_PUNCT.keyLeadS,
+    });
+    this.play('sfx_comms_squelch_tail', {
+      gain: BARK_PUNCT.tailGain * 0.8,
+      startTime: t0 + BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS,
+    });
   },
 
   _onVisualEventAudio(payload) {

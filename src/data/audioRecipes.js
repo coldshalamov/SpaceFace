@@ -625,6 +625,21 @@ export const RECIPES = [
     gainMult: 0.6,
   },
 
+  // First-hour curtain-raiser — the splash is no longer 2.5 s of silent black. One low pressure
+  // swell that rises a fourth and breathes out under the mood line, then hands the ear to the
+  // instructor. Owns its shape: never reused for UI or combat.
+  {
+    id: 'sfx_firsthour_coldopen',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 42, freqSweep: [42, 56], sweepTimeS: 1.7,
+    gainEnvelope: { attack: 0.5, sustain: 0.35, release: 2.2 },
+    filterType: 'lowpass', filterFreq: 240, filterQ: 0.9,
+    gainMult: 0.8,
+    reverbMix: 0.45, reverbDecay: 2.4,
+  },
+
   // --- UI hover (soft tick, higher than click) ---
   {
     id: 'sfx_ui_hover',
