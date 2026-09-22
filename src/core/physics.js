@@ -728,7 +728,17 @@ export const physics = {
       distance: closest.distance,
       speed: Math.hypot(pvx - plvx, pvz - plvz),
       pos: { x: closest.x, z: closest.z },
-      direction: segmentDirection(start, end),
+      // A freshly spawned or stationary round sweeps a zero-length segment; its velocity is the
+      // truthful cue direction, and a dead stop reports none rather than a zero vector the schema
+      // rejects.
+      direction: (() => {
+        const seg = segmentDirection(start, end);
+        if (seg.x !== 0 || seg.z !== 0) return seg;
+        const vx = Number(proj.vel && proj.vel.x) || 0;
+        const vz = Number(proj.vel && proj.vel.z) || 0;
+        const vl = Math.hypot(vx, vz);
+        return vl > 1e-9 ? { x: vx / vl, z: vz / vl } : null;
+      })(),
       tick: Number.isFinite(state.tick) ? state.tick | 0 : 0,
     });
     this._diag.nearMissReceipts++;

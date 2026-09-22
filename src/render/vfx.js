@@ -12830,7 +12830,9 @@ export const vfx = {
     if (!rcsSystem) return;
     energy.rcsSystem = rcsSystem;
     energy.rcsCooldown = Math.max(0, energy.rcsCooldown - dt);
-    if (actuators && energy.rcsCooldown <= 0) {
+    // player can be absent between death and respawn while the family system still reports
+    // actuators for it (_actuatorsFor treats a null entity as the player) — no pose, no firing.
+    if (actuators && player && energy.rcsCooldown <= 0) {
       const pose = this._rcsPoseScratch;
       pose.x = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
       pose.z = player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;

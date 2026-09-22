@@ -714,7 +714,7 @@ export const survivalHud = {
     text-shadow:0 0 10px var(--dp-danger-bloom, transparent); }
   .sf-crun__chainbest { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
-  .sf-crun__chaincause { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-weight:700; font-size:11px;
+  .sf-crun__chaincause { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-weight:700; font-size:12px;
     letter-spacing:.12em; text-transform:uppercase; font-variant-numeric:tabular-nums;
     color:var(--dp-lamp-hot, var(--sf-goal, #e3a13d)); }
   .sf-crun__earn { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:12px;
