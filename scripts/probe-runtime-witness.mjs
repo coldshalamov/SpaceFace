@@ -2532,11 +2532,14 @@ async function launchProductionCrucible(targetPage, route) {
   await swarm.click();
   await targetPage.locator('#screens .sf-crd-seed input').fill(String(FIXED_SEED));
   await targetPage.locator('#screens .sf-crd-foot button.k-word--primary:visible').click();
+  // The launch gate must outlive the roster cook: since the PQ-033.00-family prewarm moved the
+  // roster's GLB/GPU cost into the launch shell, launch-to-flight reads ~156–176 s on the owner's
+  // host — a 120 s cap timed out every warm-dense-combat attempt before the scene existed.
   await targetPage.waitForFunction(() => {
     const state = window.SF?.state;
     return state?.mode === 'flight' && state?.run?.kind === 'survival' && state?.run?.ruleset === 'swarm'
       && state?.run?.phase === 'active' && (state.entityList || []).some((entity) => entity?.alive !== false && entity?.data?.runCohort === 'survival');
-  }, null, { timeout: 120_000 });
+  }, null, { timeout: 300_000 });
   if (route?.id === 'warm-dense-combat') await targetPage.waitForTimeout(2_500);
   return targetPage.evaluate(readWitnessInPage);
 }
