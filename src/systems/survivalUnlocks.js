@@ -150,6 +150,7 @@ function collectGrants(profile, catalog = SURVIVAL_UNLOCK_CATALOG) {
   const trials = new Set();
   const cosmetics = new Set();
   const lore = new Set();
+  const modes = new Set();
   for (const entry of catalog) {
     const available = entry.defaultUnlocked === true || Object.prototype.hasOwnProperty.call(earned, entry.id);
     if (!available) continue;
@@ -159,8 +160,9 @@ function collectGrants(profile, catalog = SURVIVAL_UNLOCK_CATALOG) {
     for (const id of grants.trials || []) trials.add(id);
     for (const id of grants.cosmetics || []) cosmetics.add(id);
     for (const id of grants.lore || []) lore.add(id);
+    for (const id of grants.modes || []) modes.add(id);
   }
-  return { starters, mutators, trials, cosmetics, lore };
+  return { starters, mutators, trials, cosmetics, lore, modes };
 }
 
 export function availableOptions(profile, catalog = SURVIVAL_UNLOCK_CATALOG) {
@@ -171,8 +173,9 @@ export function availableOptions(profile, catalog = SURVIVAL_UNLOCK_CATALOG) {
     trials: [...grants.trials].sort(),
     cosmetics: [...grants.cosmetics].sort(),
     lore: [...grants.lore].sort(),
+    modes: [...grants.modes].sort(),
     size: grants.starters.size + grants.mutators.size + grants.trials.size
-      + grants.cosmetics.size + grants.lore.size,
+      + grants.cosmetics.size + grants.lore.size + grants.modes.size,
   };
 }
 
@@ -185,6 +188,19 @@ export function isUnlockAvailable(profile, unlockId) {
 
 export function isStarterAvailable(profile, starterId) {
   return availableOptions(profile).starters.includes(starterId);
+}
+
+export function isModeAvailable(profile, modeId) {
+  return availableOptions(profile).modes.includes(modeId);
+}
+
+/** Catalog row that grants a door kit, if any. */
+export function starterUnlockEntry(starterId, catalog = SURVIVAL_UNLOCK_CATALOG) {
+  for (const entry of catalog) {
+    const starters = entry.grants && entry.grants.starters;
+    if (Array.isArray(starters) && starters.includes(starterId)) return entry;
+  }
+  return null;
 }
 
 export function starterDef(starterId) {
