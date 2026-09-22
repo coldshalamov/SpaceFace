@@ -281,7 +281,9 @@
   background-position: left center;
   background-size: var(--sf-range-fill, 0%) 12px;
   border-color: transparent;
-  border: 4px 8px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 4px 8px;
   background: var(--dp-chan-rest) border-box;
   box-shadow: none;
 }

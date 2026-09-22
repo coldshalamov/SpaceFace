@@ -167,7 +167,9 @@ body.fh-root {
 }
 .fh-row.is-selected {
   color: var(--fh-text);
-  border: 8px 16px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 8px 16px;
   background: linear-gradient(90deg, rgb(242 185 80 / .14), rgb(242 185 80 / 0) 62%) border-box;
   box-shadow: inset 2px 0 0 0 var(--dp-lamp-hot, #f2b950);
 }
@@ -489,7 +491,9 @@ body.fh-root {
 .fh-slider { position: relative; height: 24px; display: flex; align-items: center; }
 .fh-slider-track {
   flex: 1; height: 12px;
-  border: 4px 8px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 4px 8px;
   background: var(--dp-chan-rest) border-box;
   box-shadow: none;
 }
@@ -542,7 +546,9 @@ body.fh-root {
 .fh-scroll-track { width: 8px; background: url('../assets/controls/scroll.track.png') repeat-y; }
 .fh-scroll-thumb {
   width: 8px;
-  border: 6px 2px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 6px 2px;
   background: var(--dp-cap-rest) border-box;
   box-shadow: var(--dp-cap-lift);
 }
@@ -563,7 +569,9 @@ body.fh-root {
 
 .fh-bar {
   display: flex; gap: 0; align-items: center; min-height: 28px; padding: 0 2px;
-  border: 8px 10px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 8px 10px;
   background: var(--dp-well-face) border-box;
   box-shadow: var(--dp-well-sink);
 }
@@ -605,7 +613,9 @@ body.fh-root {
 
 .fh-strip {
   display: flex; gap: 6px; align-items: center; height: 20px; padding: 0 4px;
-  border: 6px 10px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 6px 10px;
   background: var(--dp-stock-face) border-box;
   box-shadow: var(--dp-stock-edge);
 }
@@ -614,7 +624,9 @@ body.fh-root {
   font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
   letter-spacing: var(--fh-track-legend); font-size: var(--fh-size-fine);
   min-height: 24px; display: inline-flex; align-items: center; padding: 0 var(--fh-space-s);
-  border: 8px 10px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 8px 10px;
   background: var(--dp-stock-face) border-box;
   box-shadow: var(--dp-stock-edge);
 }

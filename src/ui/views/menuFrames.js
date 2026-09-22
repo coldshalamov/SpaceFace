@@ -86,7 +86,10 @@ export function createPauseFrame(root, { titleText = 'Paused' } = {}) {
   // doing, what is next, when you last saved), so it gets the instrument treatment. `sf-pause-brief`
   // and the polite live region are an accessibility contract check:pause-brief asserts — the class
   // stays as a hook, the material comes from Deckplate.
-  const brief = el('section', 'sf-pause-brief dp-plate dp-pad dp-stack');
+  // NOT a dp-plate: section 4.1 kills the panel, and a translucent rectangle with a hard inner
+  // edge sitting over the world is exactly that. The brief is the one thing on this screen the
+  // player is meant to read, so it is phosphor standing on the veil.
+  const brief = el('section', 'sf-pause-brief dp-stack');
   brief.setAttribute('aria-live', 'polite');
   const briefKicker = el('span', 'dp-etch sf-slot-sub');
   const briefObjective = el('p', 'dp-read sf-slot-name');

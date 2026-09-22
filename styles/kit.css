@@ -552,7 +552,9 @@ body.k-screen-top #modal-backdrop { background: none; }
   font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
   text-transform: uppercase; letter-spacing: 0.09em; font-size: var(--fh-size-fine);
   color: var(--fh-legend-now, var(--fh-legend));
-  border: 12px 16px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 12px 16px;
   background: var(--dp-stock-face) border-box;
   box-shadow: var(--dp-stock-edge);
 }
@@ -707,12 +709,15 @@ body.k-screen-top #modal-backdrop { background: none; }
    sliced it at 24 with `stretch`, which scaled the top light line (source lum 41 against a field
    of 5) over 24 px until it washed into a hairline — the well rendered as a thin-outlined web card
    and the brief read as a quote. Slice the rim at its own thickness so the recess keeps its light. */
+/* The brief is a READING on the veil, not a recess. It was a sunk well -- a rectangle with a hard
+   inner edge over the world, which section 4.1 kills -- and the etched rule under its head does
+   the separating a box was doing. */
 #screens .of-pause .sf-pause-brief {
   margin-top: clamp(12px, 1.7vh, 20px); box-sizing: border-box;
-padding: var(--fh-space-s) var(--fh-space-m);
-  border: 4px 6px solid transparent;
-  background: var(--dp-well-face) border-box;
-  box-shadow: var(--dp-well-sink);
+  padding: 0 0 4px;
+  border: 0;
+  background: none;
+  box-shadow: none;
 }
 #screens .of-pause .sf-pause-brief .sf-slot-sub:first-child {
   font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;

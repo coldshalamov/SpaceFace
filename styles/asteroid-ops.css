@@ -116,7 +116,9 @@
   letter-spacing: var(--fh-track-legend);
   color: var(--aw-ink-2);
   white-space: nowrap;
-  border: 8px 14px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 8px 14px;
   background: var(--dp-stock-face) border-box;
   box-shadow: var(--dp-stock-edge);
 }
@@ -183,7 +185,9 @@
   box-sizing: border-box;
   background: transparent;
   overflow: hidden;
-  border: 8px 10px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 8px 10px;
   background: var(--dp-well-face) border-box;
   box-shadow: var(--dp-well-sink);
 }
@@ -621,7 +625,9 @@
   font: 500 var(--fh-size-fine)/1 var(--aw-font);
   color: var(--aw-ink-2);
   white-space: nowrap;
-  border: 5px 8px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 5px 8px;
   background: var(--dp-stock-face) border-box;
   box-shadow: var(--dp-stock-edge);
 }
@@ -890,7 +896,9 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   opacity: 0;
   transition: transform 200ms var(--k-ease), opacity 200ms var(--k-ease);
   overflow: hidden;
-  border: 14px 14px 16px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 14px 14px 16px;
   background: var(--dp-cap-rest) border-box;
   box-shadow: var(--dp-cap-lift);
 }
@@ -1124,7 +1132,9 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   font: 500 var(--fh-size-fine)/1.3 var(--aw-mono);
   font-variant-numeric: tabular-nums;
   color: var(--aw-mint);
-  border: 7px 12px solid transparent;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 7px 12px;
   background: var(--dp-stock-face) border-box;
   box-shadow: var(--dp-stock-edge);
 }

@@ -115,7 +115,35 @@ export const DECKPLATE_LIGHT_CSS = `
    a poster. On a title or a pause screen there is no hardware in front of you, so a verb is a word
    of light: no plate, no rail, no bevel. It is lit by the attention lamp and marked by the bracket.
    ══════════════════════════════════════════════════════════════════════════════════════════════ */
-.dp-lit { display:flex; flex-direction:column; gap:calc(var(--dp-u) * 1.5); margin:0; padding:0; list-style:none; }
+.dp-lit { display:flex; flex-flow:row wrap; align-items:baseline; margin:0; padding:0; list-style:none;
+  column-gap:clamp(14px, 1.6vw, 26px); row-gap:calc(var(--dp-u) * 1.5); }
+/* A run of verbs under a quiet etched head, and the BANK: a verb marked data-bank shares a
+   wrapping row with its neighbours instead of owning one. Pause carries seventeen verbs; as
+   seventeen full rows they run past the frame, and as seventeen bevelled chips they were the grid
+   ONE_PHOTOGRAPH.md section 4.2 kills. Banked light is the third option: full rows for the verbs
+   that matter, a wrapping line of words for the rest. Layout only -- same item, same states. */
+.dp-lit > li { flex:0 0 100%; min-width:0; }
+.dp-lit > li[data-bank="1"] { flex:0 0 auto; }
+.dp-lit__group {
+  flex:0 0 100%;
+  margin:clamp(12px, 1.4vh, 20px) 0 2px;
+  color:var(--dp-ink-mute);
+  font-size:var(--dp-fs-etch);
+  letter-spacing:.18em;
+  text-transform:uppercase;
+}
+.dp-lit__group:first-child { margin-top:0; }
+/* A banked verb is a word on a line, so it needs less air around it than a full row. */
+.dp-lit > li[data-bank="1"] .dp-lit__item {
+  padding-block:2px;
+  font-size:calc(var(--dp-fs-menu) * .62);
+  font-variation-settings:"wght" 600, "wdth" 82;
+  letter-spacing:.05em;
+}
+.dp-lit > li[data-bank="1"] .dp-lit__item:is(:hover, :focus-visible, [aria-current="true"]) {
+  font-variation-settings:"wght" 740, "wdth" 96;
+}
+
 .dp-lit__item {
   position:relative; display:flex; align-items:center; gap:calc(var(--dp-u) * 4);
   box-sizing:border-box; width:100%; border:0; background:none;

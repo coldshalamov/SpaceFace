@@ -64,6 +64,28 @@ const PAUSE = `
    Critic round 7: the two-pane bulkhead was 47% of a 1920 frame with ~440x650 px dead; now the
    console is only as wide as its words, the brief sits on top of the verbs, and the less-used
    verbs (reference, media, exits) are rows of keys instead of full-width rows. */
+/* PAUSE IS A RAIL OF LIGHT (ONE_PHOTOGRAPH.md section 6 of the order of work). It was seventeen
+   bevelled chips in six groups -- the grid section 4.2 kills -- on the screen a player opens most
+   often. Every verb here opens something; none of them changes the world; so all of them are light
+   and only RESUME carries a lamp.
+
+   The column is wider than the title's because it holds seventeen verbs to the title's five. At
+   the title's width the last two groups fell off the bottom of the frame, which is how a chip grid
+   gets argued for in the first place. */
+#screens .of-pause { --dp-frame-col: clamp(420px, 42vw, 760px); }
+#screens .of-pause .dp-lit { row-gap:2px; }
+#screens .of-pause .dp-lit__group { margin-top:clamp(9px, 1.1vh, 15px); }
+/* The brief: a reading on the veil, with one etched rule under its head. No box. */
+#screens .of-pause .sf-pause-brief {
+  background:none; box-shadow:none; border:0; padding:0;
+  max-width:52ch;
+}
+#screens .of-pause .sf-pause-brief > :first-child {
+  padding-bottom:6px;
+  border-bottom:1px solid rgb(226 232 240 / .12);
+}
+#screens .of-pause .sf-pause-brief .sf-slot-sub { color:var(--dp-ink-mute); }
+
 #screens .of-pause.k-screen {
   width:clamp(340px, 23vw, 440px); max-width:96vw; box-sizing:border-box;
   grid-template-columns:minmax(0, 1fr);
@@ -86,13 +108,15 @@ const PAUSE = `
   font-size:clamp(28px, min(2.3vw, 4.2vh), 44px); line-height:1; color:var(--dp-ink); letter-spacing:.05em;
   text-shadow:0 -1px 0 rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .12);
 }
-/* The brief and the verbs: two panes of glass seated in the console. */
+/* Was "two panes of glass seated in the console" -- two translucent rectangles with hard inner
+   edges laid over the world, which is the panel section 4.1 kills. Pause holds a reading and a
+   list of words; neither is an object. Both stand on the veil now. */
 #screens .of-pause .k-stage, #screens .of-pause .sf-pause-brief {
-  border:0; border-image:none; border-radius:2px;
-  background:var(--dp-glass-solid);
-  box-shadow:var(--dp-glass-depth);
+  border:0; border-image:none; border-radius:0;
+  background:none;
+  box-shadow:none;
 }
-#screens .of-pause .sf-pause-brief { grid-area:brief; align-self:start; margin:0; padding:12px 14px; }
+#screens .of-pause .sf-pause-brief { grid-area:brief; align-self:start; margin:0; padding:0 0 4px; }
 #screens .of-pause .k-stage { grid-area:stage; padding:8px 6px; min-height:0; overflow:hidden auto; scrollbar-width:thin; }
 #screens .of-pause .sf-pause-brief .sf-slot-sub:first-child {
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 62; font-size:12px; letter-spacing:.22em;

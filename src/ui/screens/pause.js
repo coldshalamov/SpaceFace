@@ -745,11 +745,12 @@ export const pauseScreen = {
     // list; the kit's roving focus then moves the same light down the column.
     const list = words(items, {
       ariaLabel: 'Pause',
-      system: 'dp',
-      // Pause carries thirteen verbs where the title carries eight. At menu size that column runs
-      // past the bezel, which is the defect styles/pause.css was written to claw back. Pause is a
-      // utility screen, not the poster: emph size fits every verb in the frame with air to spare,
-      // and RESUME still reads as the primary because its lamp is the only one already lit.
+      // LIGHT, like the title and motion-ask. Pause was seventeen bevelled chips in six groups --
+      // the grid ONE_PHOTOGRAPH.md section 4.2 kills, and on the screen a player opens most often
+      // after flight. Nothing here changes the world; every verb opens something. So every verb is
+      // a word that lights, the groups keep their etched heads, and the runs that were chips bank
+      // into wrapping lines. RESUME stays the one primary because it is the only lit lamp.
+      system: 'light',
       size: 'emph',
       onPick: (action) => {
         const run = handlers.get(action);
