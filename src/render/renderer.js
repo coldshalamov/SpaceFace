@@ -175,6 +175,7 @@ import { globalAsteroidMotion } from './asteroidMotionPresentation.js';
 import { globalPickupMotion } from './pickupMotionPresentation.js';
 import { globalInfrastructureMotion } from './infrastructureMotion.js';
 import { globalProjectileMotion } from './projectileMotionPresentation.js';
+import { globalOrdnanceMotion } from './ordnanceMotionPresentation.js';
 import { createLivingHullPresentation } from './livingHullPresentation.js';
 import { createCrucibleGhostPresentation } from './crucibleGhost.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
@@ -8369,6 +8370,8 @@ export const render = {
     globalShipMicroMotion.bindEvents(bus);
     globalAsteroidMotion.bindEvents(bus);
     globalPickupMotion.bindEvents(bus);
+    globalOrdnanceMotion.bindEvents(bus);
+    globalInfrastructureMotion.bindEvents(bus);
     // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
     // quality in the settings screen did nothing (only the initial value was used) — a "slider that
     // doesn't work" sore thumb. We forward the values to the systems that own them.
@@ -9259,6 +9262,8 @@ export const render = {
     globalShipMicroMotion.unbindEvents();
     globalAsteroidMotion.unbindEvents();
     globalPickupMotion.unbindEvents();
+    globalOrdnanceMotion.unbindEvents();
+    globalInfrastructureMotion.unbindEvents();
     this._resizeHandler = null;
     this._videoSettingsOff = null;
     return destroyed;
@@ -11311,7 +11316,7 @@ export const render = {
       if (entity && !farSpeck) {
         const frameDt = this._lastFrameDt || 0.016667;
         const simTime = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : now;
-        if (typeName === 'ship' || typeName === 'drone') {
+        if (typeName === 'ship' || typeName === 'drone' || typeName === 'freighter') {
           _craftMicroMotionOptions.motionReduce = _worldSiteA11y.reducedMotion;
           _craftMicroMotionOptions.playerMiningActive = !!(this.state && this.state.player && this.state.player.miningBeam && this.state.player.miningBeam.active);
           _craftMicroMotionOptions.playerId = this.state && this.state.playerId;
@@ -11325,6 +11330,10 @@ export const render = {
         } else if (typeName === 'pickup') {
           const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
           globalPickupMotion.updatePickupMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
+        } else if (typeName === 'bomb' || typeName === 'mine' || typeName === 'vectormine'
+            || typeName === 'charge' || typeName === 'payload' || typeName === 'beacon') {
+          const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+          globalOrdnanceMotion.updateOrdnanceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
         } else if (typeName === 'station') {
           const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
           if (isGate) {

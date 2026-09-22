@@ -7,6 +7,9 @@
 //      sensor dishes, and docking bay sequential chase lights.
 //   3. Derelict Wrecks: Eerie zero-G dead-drift tumbling, venting decompression micro-puffs, and
 //      intermittent electrical short-circuit arc discharges.
+//   4. Dock Pulse: berthing is two-sided — the centrifuge eases while the berth seats (and surges
+//      on release) with a sub-percent contact thump, matched to the docked station by stationId.
+//      Ring rates are size-scaled (ω = √(a/r)) so big stations turn slower for the same gravity.
 //
 // PURE RENDER-ONLY PRESENTATION: Determinism-safe, zero per-frame allocation.
 
@@ -19,8 +22,110 @@ function hashId(id) {
   return h;
 }
 
+function clamp(v, lo, hi) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return lo;
+  return n < lo ? lo : n > hi ? hi : n;
+}
+
+// --- Dock pulse: the station answers the berthing -------------------------------------------
+// Berthing is a two-sided event — the ship clunks (shipMicroMotion) and the station breathes.
+// On dock the centrifuge eases to quarter speed for ~1.2 s: traffic control holds the ring while
+// the berth seats, the way a port holds cranes while a ship makes fast. On undock the ring surges
+// briefly as the clamps let go. A sub-percent scale thump/dip carries the mechanical contact
+// (transform-only — station materials are shared, so the pulse never touches emissive).
+export const DOCK_PULSE_RING_S = 1.2;
+
+/**
+ * Ring rate under a dock pulse. Outside the window (or for unknown kinds) the base rate passes
+ * through untouched. Pure.
+ */
+export function resolveDockRingRate(baseRate, kind, ageS) {
+  const base = Number(baseRate);
+  if (!Number.isFinite(base)) return 0;
+  const age = Number(ageS);
+  if (!Number.isFinite(age) || age < 0) return base;
+  if (kind === 'docked') {
+    if (age >= DOCK_PULSE_RING_S) return base;
+    // Ease down over 0.25 s, hold, recover by 1.2 s.
+    const down = Math.min(1, age / 0.25);
+    const up = clamp((age - 0.55) / (DOCK_PULSE_RING_S - 0.55), 0, 1);
+    const ease = down * down * (3 - 2 * down);
+    const recover = up * up * (3 - 2 * up);
+    return base * (1 - 0.75 * ease * (1 - recover));
+  }
+  if (kind === 'undocked') {
+    if (age >= 0.8) return base;
+    return base * (1 + 0.6 * Math.exp(-age * 4));
+  }
+  return base;
+}
+
+/**
+ * Dock contact thump: +0.8% swell seating on dock, −0.6% dip releasing on undock. Pure.
+ */
+export function resolveDockScalePing(kind, ageS) {
+  const age = Number(ageS);
+  if (!Number.isFinite(age) || age < 0) return 1;
+  if (kind === 'docked') {
+    if (age >= 0.5) return 1;
+    return 1 + 0.008 * Math.sin((age / 0.5) * Math.PI);
+  }
+  if (kind === 'undocked') {
+    if (age >= 0.4) return 1;
+    return 1 - 0.006 * Math.sin((age / 0.4) * Math.PI);
+  }
+  return 1;
+}
+
+/**
+ * Centrifuge size scaling: ω = √(a/r) — a ring twice the radius spins ~0.7x for the same
+ * perceived gravity. Clamped so extremes stay readable. NaN-safe.
+ */
+export function resolveRingSizeFactor(radius) {
+  const r = Number(radius);
+  if (!Number.isFinite(r) || r <= 0) return 1;
+  return clamp(Math.sqrt(60 / r), 0.4, 1.6);
+}
+
 export function createInfrastructureMotionTracker() {
   const infrastructureStates = new Map();
+  let busSubscribers = [];
+  let lastSimTime = 0;
+  // Latest berthing pulse. dock:docked carries { stationId }; dock:undocked carries {} so the
+  // undock pulse reuses the last docked station — berths always release where they seated.
+  const dockPulse = { stationId: null, kind: null, t0: -1 };
+
+  function onDocked(payload) {
+    const stationId = payload && (payload.stationId != null ? payload.stationId : payload.id);
+    dockPulse.stationId = stationId != null ? String(stationId) : null;
+    dockPulse.kind = 'docked';
+    dockPulse.t0 = lastSimTime;
+  }
+
+  function onUndocked(payload) {
+    const stationId = payload && (payload.stationId != null ? payload.stationId : payload.id);
+    if (stationId != null) dockPulse.stationId = String(stationId);
+    dockPulse.kind = 'undocked';
+    dockPulse.t0 = lastSimTime;
+  }
+
+  function bindEvents(bus) {
+    if (!bus || typeof bus.on !== 'function') return;
+    busSubscribers.push(bus.on('dock:docked', onDocked));
+    busSubscribers.push(bus.on('dock:undocked', onUndocked));
+  }
+
+  function unbindEvents() {
+    for (const unsub of busSubscribers) {
+      if (typeof unsub === 'function') unsub();
+    }
+    busSubscribers = [];
+    infrastructureStates.clear();
+    dockPulse.stationId = null;
+    dockPulse.kind = null;
+    dockPulse.t0 = -1;
+  }
 
   function getState(entityId) {
     let rec = infrastructureStates.get(entityId);
@@ -58,6 +163,7 @@ export function createInfrastructureMotionTracker() {
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
     const reducedMotion = options.motionReduce === true;
+    lastSimTime = simTime;
 
     // Detect player distance for gate activation spin-up
     let approachFactor = 0;
@@ -110,9 +216,23 @@ export function createInfrastructureMotionTracker() {
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
     const reducedMotion = options.motionReduce === true;
+    lastSimTime = simTime;
 
-    // Continuous rotation of habitation rings — per-station rate variety from the id hash.
-    const ringRate = 0.03 + rec.dishSweepSpeed * 0.04;
+    // Continuous rotation of habitation rings — per-station rate variety from the id hash,
+    // size-scaled so big rings turn slower for the same perceived gravity.
+    let ringRate = (0.03 + rec.dishSweepSpeed * 0.04)
+      * resolveRingSizeFactor(entity.radius);
+    // Berthing pulse for the station being docked at (matched by stationId or entity id).
+    let scalePing = 1;
+    if (dockPulse.t0 >= 0 && dockPulse.stationId != null && !reducedMotion) {
+      const data = entity.data || {};
+      const sid = data.stationId != null ? String(data.stationId) : null;
+      if (sid === dockPulse.stationId || String(entity.id) === dockPulse.stationId) {
+        const age = simTime - dockPulse.t0;
+        ringRate = resolveDockRingRate(ringRate, dockPulse.kind, age);
+        scalePing = resolveDockScalePing(dockPulse.kind, age);
+      }
+    }
     if (!reducedMotion) {
       const ring1 = mesh.userData && mesh.userData.ring1;
       // gapLocked rings carry a real corridor arc aligned to the collision proxy's navigable
@@ -152,11 +272,29 @@ export function createInfrastructureMotionTracker() {
       }
     }
     if (rec.dishNodes) {
+      // Dishes keep sweeping through a berthing — they are tracking the arrival, not holding
+      // with the ring. Traffic control watches closest exactly when the ring stands down.
       const sweep = reducedMotion ? 0 : Math.sin(simTime * rec.dishSweepSpeed + rec.phase) * 1.2;
       for (let i = 0; i < rec.dishNodes.length; i++) {
         const d = rec.dishNodes[i];
         d.node.rotation.y = d.baseY + sweep;
       }
+    }
+
+    // Dock contact thump on the root scale (multiplicative off the captured base — the fence
+    // never writes scale, so this cannot drift against pose updates).
+    if (mesh.scale && (scalePing !== 1 || rec.stationScaleDirty)) {
+      if (!Number.isFinite(rec.stationBaseX)) {
+        rec.stationBaseX = Number.isFinite(mesh.scale.x) ? mesh.scale.x : 1;
+        rec.stationBaseY = Number.isFinite(mesh.scale.y) ? mesh.scale.y : 1;
+        rec.stationBaseZ = Number.isFinite(mesh.scale.z) ? mesh.scale.z : 1;
+      }
+      if (typeof mesh.scale.set === 'function') {
+        mesh.scale.set(rec.stationBaseX * scalePing, rec.stationBaseY * scalePing, rec.stationBaseZ * scalePing);
+      } else if (typeof mesh.scale.setScalar === 'function') {
+        mesh.scale.setScalar(rec.stationBaseX * scalePing);
+      }
+      rec.stationScaleDirty = scalePing !== 1;
     }
   }
 
@@ -165,6 +303,7 @@ export function createInfrastructureMotionTracker() {
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
     const reducedMotion = options.motionReduce === true;
+    lastSimTime = simTime;
 
     // Slow zero-G dead drift: a bounded wobble riding the entity's real yaw. Wrecks now carry an
     // elongated capsule collider aligned with the spine, so the visual may only oscillate around
@@ -213,6 +352,8 @@ export function createInfrastructureMotionTracker() {
   }
 
   return {
+    bindEvents,
+    unbindEvents,
     updateGateMotion,
     updateStationMotion,
     updateWreckMotion,

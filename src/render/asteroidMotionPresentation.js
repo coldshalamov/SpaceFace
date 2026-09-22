@@ -2,7 +2,8 @@
 //
 // In an A-list space title, asteroids are living celestial bodies, not frozen plastic props:
 //   1. Multi-axis Zero-G Tumble: Every asteroid in the sector rotates with realistic 3-axis
-//      angular momentum determined deterministically from its unique entity ID.
+//      angular momentum determined deterministically from its unique entity ID, size-scaled so
+//      large rocks turn slower than pebbles (angular momentum, clamped for readability).
 //   2. Mining Laser Thermal Reaction: When struck by an industrial mining laser or cutting beam,
 //      the rock experiences high-frequency thermal micro-jitter and vein luminance agitation.
 //   3. Impact Wobble: Projectile strikes and kinetic collisions impart rotational recoil wobble
@@ -35,6 +36,18 @@ function clamp01(v) {
 const FRACTURE_SWELL_MAX = 0.025;
 const FRACTURE_VEIN_COUNT = 3;
 const EMPTY_DATA = {};
+
+/**
+ * Size-scaled tumble factor. Angular momentum: a rock twice the reference radius turns at half
+ * the rate for the same spin energy, so mountainous rocks drift stately while pebbles skitter.
+ * Clamped so extremes stay readable; NaN- and sign-safe.
+ */
+export function resolveAsteroidSizeFactor(radius) {
+  const r = Number(radius);
+  if (!Number.isFinite(r) || r <= 0) return 1;
+  const f = 16 / r;
+  return f < 0.35 ? 0.35 : f > 1.6 ? 1.6 : f;
+}
 
 /**
  * Pure ore-body fracture progress: 0 at full HP, 1 at depletion. NaN- and sign-safe.
@@ -302,11 +315,12 @@ export function createAsteroidMotionTracker() {
     rec.mass = Number.isFinite(entity.mass) && entity.mass > 0 ? entity.mass : 0;
     if (Number.isFinite(entity.radius) && entity.radius > 0) rec.radius = entity.radius;
 
-    // 1. Advance 3-axis tumble
+    // 1. Advance 3-axis tumble, size-scaled: big rocks carry their spin slowly.
     if (!reducedMotion) {
-      rec.rotX += rec.spinX * dt;
-      rec.rotY += rec.spinY * dt;
-      rec.rotZ += rec.spinZ * dt;
+      const sizeFactor = resolveAsteroidSizeFactor(rec.radius);
+      rec.rotX += rec.spinX * sizeFactor * dt;
+      rec.rotY += rec.spinY * sizeFactor * dt;
+      rec.rotZ += rec.spinZ * sizeFactor * dt;
     }
 
     // 2. Impact wobble spring decay
