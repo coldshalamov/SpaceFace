@@ -363,8 +363,9 @@ export function injectHudCss() {
   .sf-lockdiamond[data-shape="bracket-cargo"] .sf-lockdiamond__inner {
     border-radius:50%; clip-path:none; animation:none; }
 
-  /* G-LOC tunnel vision vignette */
-  .sf-gloc-vignette { position:absolute; inset:0; pointer-events:none; z-index:9; opacity:0;
+  /* G-LOC tunnel vision vignette — sleeps out of the compositor tree until the first
+     fade-in; hud.js drives display block/none so opacity:0 never holds a live layer. */
+  .sf-gloc-vignette { display:none; position:absolute; inset:0; pointer-events:none; z-index:9; opacity:0;
     background:radial-gradient(ellipse at center, transparent 45%, rgba(0,5,12,.4) 72%, rgba(0,2,8,.85) 92%, rgba(0,0,0,.98) 100%);
     transition:opacity .12s linear; will-change:opacity; }
 
