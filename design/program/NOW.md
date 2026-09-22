@@ -43,11 +43,15 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-_None. Board swept 2026-09-21: every prior row was RESULT: DONE/released or a stale MUTATING claim
-whose files were already committed and clean — the capital-bosses packet 09 integration landed in
-`a91f6ed7b` + `16c9d8904`, and the tree held zero uncommitted content (the sole dirty path,
-`src/data/mining.js`, was stat-noise byte-identical to HEAD). Stale `.codex` reservation checkpoints
-were pruned the same pass. Git and receipts own the history._
+
+
+
+## Remaster machine
+
+The other computer does not share this checkout. It only adds finished files under
+[`vm-drop/`](./vm-drop/README.md), on branch `vm-drop`, and the job list is
+[`VM_LANES.md`](./VM_LANES.md). Local threads do not write in that folder. An empty table above
+does not invite the other machine into `src/`.
 
 ## Start another task
 

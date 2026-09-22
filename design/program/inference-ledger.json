@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceLedger.v1",
-  "updated": "2026-09-17",
+  "updated": "2026-09-22",
   "domains": {
     "WF-01": {
       "grade": "U",
@@ -133,11 +133,23 @@
       "next": ""
     },
     "WF-13": {
-      "grade": "U",
-      "updated": "2026-09-17",
-      "inspections": [],
+      "grade": "C",
+      "updated": "2026-09-22",
+      "inspections": [
+        {
+          "date": "2026-09-22",
+          "atCommit": "f919edca2bd427203aaf08a5aee387eafc3c2ca3",
+          "paths": [
+            "src/audio/audioSystem.js",
+            "src/audio/barkVoice.js",
+            "src/data/audioRecipes.js",
+            "src/systems/onboarding.js"
+          ],
+          "finding": "First-hour tutorial lines were silent text. They now ride one instructor radio (key, register, squelch) in emit order, including lines the screen hides. Cold open and proof milestones are audible. The rest of the soundscape was not listened to."
+        }
+      ],
       "gaps": [],
-      "next": ""
+      "next": "Listen to a different family (mining or impact), not another tutorial voice."
     },
     "WF-14": {
       "grade": "B",

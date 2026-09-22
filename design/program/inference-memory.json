@@ -1415,6 +1415,19 @@
       "integration": "live",
       "commit": "da6a34565",
       "verification": "focused_green"
+    },
+    {
+      "id": "first-hour-instructor-radio",
+      "date": "2026-09-22",
+      "wf": "WF-13",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The first hour speaks on one instructor radio, including tutorial lines the screen hides, and two lines in one beat are heard in order.",
+      "fingerprint": "verb=hear,subject=instructor,sector=first-hour,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "f919edca2",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
