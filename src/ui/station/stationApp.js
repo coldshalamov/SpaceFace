@@ -224,7 +224,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   // regions below sit directly on the kit grid. `app.className` is seeded exactly once (the hub-
   // classes check reads that) and never wiped.
   if (rootEl && rootEl.classList) {
-    rootEl.classList.add('k-screen', 'sx-berth', 'sx-observatory');
+    // No `k-screen`: dropping it takes `#screens .sx-berth.k-screen` out of the cascade in one
+    // move, and with it the `padding: 22px 400px 14px 32px` that reserved a hole for a floating
+    // vitals panel. The frame owns the regions now (design/frontend/THE_BAR.md).
+    rootEl.classList.add('screen', 'sx-berth', 'sx-observatory', 'dp-frame', 'dp-frame--screen');
+    rootEl.dataset.dp = '1';
     rootEl.setAttribute('data-fh-temp', 'docked');
     rootEl.setAttribute('data-fh-register', 'bench');
   }

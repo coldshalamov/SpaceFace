@@ -2,7 +2,7 @@
  * Shell materials live in station.css + the produced kit. This sheet must not paint a website
  * wall over the 3D berth, strip nine-slice keys, or replace kit plates with CSS boxes.
  */
-:is(#screens .sx-observatory, .sx-observatory).k-screen {
+:is(#screens .sx-observatory, .sx-observatory) {
   /* Deckplate (FRONTEND_PROGRAM Wave 3, 2026-09-19): the station speaks the game's one palette —
      amber for what you act on and what is selected, bone for information, red for threat and
      loss, a neutral smoked glass instead of teal. Profit and surplus read in bone with their arrow;
@@ -29,7 +29,7 @@
   font-variant-numeric: tabular-nums; text-align: left;
   background: transparent;
 }
-:is(#screens .sx-observatory, .sx-observatory).k-screen::before { display: none; }
+:is(#screens .sx-observatory, .sx-observatory)::before { display: none; }
 :is(#screens .sx-observatory, .sx-observatory) * { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #48505c transparent; }
 :is(#screens .sx-observatory, .sx-observatory) [hidden] { display: none !important; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-app {
@@ -39,7 +39,7 @@
 :is(#screens .sx-observatory, .sx-observatory) .so-icon { width: 20px; height: 20px; flex: 0 0 20px; vertical-align: middle; overflow: visible; }
 :is(#screens .sx-observatory, .sx-observatory) .k-world { z-index: -2; left: 0; width: 100%; pointer-events: none; opacity: 1; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-berth {
-  grid-area: title;
+  grid-area: head;
 }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-crown { grid-area: auto; }
 :is(#screens .sx-observatory, .sx-observatory) .so-credit-delta { position: absolute; right: 0; bottom: -16px; color: var(--so-accent); font-size: 12px; opacity: 0; pointer-events: none; }
@@ -346,14 +346,14 @@
 :is(#screens .sx-observatory, .sx-observatory) .sx-trade__rows { max-width: none; }
 
 /* Game-level readability preferences remain effective inside the scoped material boundary. */
-.sf-high-contrast :is(#screens .sx-observatory, .sx-observatory).k-screen {
+.sf-high-contrast :is(#screens .sx-observatory, .sx-observatory) {
   --so-ink: #ffffff; --so-muted: #dae6e9; --so-dim: #bacbd2;
   --so-line: #77919f; --so-line-soft: #526d7b; --so-panel: #061018;
 }
 .sf-high-contrast :is(#screens .sx-observatory, .sx-observatory) :is(.sx-mkt__analysis,.sx-mkt__console,.sx-pop,.so-command-palette) {
   background-color: #061018;
 }
-.sf-dyslexia :is(#screens .sx-observatory, .sx-observatory).k-screen {
+.sf-dyslexia :is(#screens .sx-observatory, .sx-observatory) {
   --so-face: Arial, Verdana, sans-serif; --so-display: Arial, Verdana, sans-serif;
 }
 
@@ -411,3 +411,23 @@
 
 /* Destination keys, Undock, and service verbs are produced kit keys (station.css + fh.css).
    Do not restyle them as CSS LED keycaps. */
+
+/* ── 2026-09-22, the Deckplate frame pass. Two collisions the bench measured on station-market
+   once the vitals rail became a real column of the frame instead of a panel floating over a
+   400px hole punched in the grid. Both were already latent; the narrower stage exposed them.
+   These belong in the placement layer with the rest of the station's geometry when this sheet is
+   retired (design/frontend/UNIFICATION_LEDGER.md). ── */
+
+/* The price hero occupied column 2, rows 1-4, while the driver summary spanned 1/-1 — so the
+   paragraph ran underneath the number and "you pay · per unit" printed on top of the copy. The
+   hero keeps the top two rows; the summary starts below it. */
+:is(#screens .sx-observatory, .sx-observatory) .sx-mkt__hero { grid-row: 1 / 4; align-self: start; }
+:is(#screens .sx-observatory, .sx-observatory) #sx-market-driver-summary { grid-row: 4; }
+
+/* FEWER / MORE / MAX / BUY / SELL want about 500px in one row and the trade panel is about 390px,
+   so BUY was printed over MORE and MAX. A control row that does not fit wraps; it never stacks. */
+:is(#screens .sx-observatory, .sx-observatory) .sx-trade { grid-template-columns: minmax(0, 1fr); }
+:is(#screens .sx-observatory, .sx-observatory) .sx-qty,
+:is(#screens .sx-observatory, .sx-observatory) .sx-trade__words {
+  grid-row: auto; grid-column: 1; min-width: 0; flex-wrap: wrap;
+}

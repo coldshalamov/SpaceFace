@@ -14,21 +14,29 @@ test('docked station stands on the Field Hardware berth stage, not a word list o
   assert.equal(stationScreen.stage.scene, 'berth');
 });
 
-test('berth frame pins kit hardware: stencil name, legend tape, vitals plate, smoked window, launch key', () => {
+// The berth's hardware. The kit's names became Deckplate's on 2026-09-22 (the eyebrow, the
+// nameplate, the vitals plate); the CONTRACT each one guards is unchanged, and two new ones are
+// added, because this test is also where the old shape would come back: the berth is the frame's
+// own head/body/foot, not a floating panel over a 400px hole in the grid.
+test('berth frame pins its hardware: nameplate, legend tape, vitals plate, workspace, launch key', () => {
   const html = stationFrameHtml();
-  assert.match(html, /sxb-berth__ident fh-legend/);
-  assert.match(html, /sxb-berth__name fh-hero/);
+  assert.match(html, /sxb-berth__ident dp-title__eyebrow/);
+  assert.match(html, /sxb-berth__name dp-title__name/);
   assert.match(html, /class="sxb-tape"/);
   assert.match(html, /sxb-berth__news/);
   assert.doesNotMatch(html, /so-bulletin/);
   assert.doesNotMatch(html, /<details[\s\S]*sxb-berth__news/);
-  assert.match(html, /sxb-crown fh-plate fh-plate--edge/);
-  assert.match(html, /sx-screen__body fh-window/);
+  assert.match(html, /sxb-crown dp-plate/);
+  assert.match(html, /sx-screen__body/);
   assert.match(html, /sxb-ops[\s\S]*of-facility-rail[\s\S]*sxb-launch/);
   assert.match(html, /sxb-launch fh-key fh-key--primary/);
   assert.match(html, /sxb-launch__light/);
   assert.match(html, /k-world--plate sxb-berth__plate/);
   assert.match(html, /k-world sxb-berth__world/);
+  // The regions are the frame's, and the vitals rail is INSIDE the body beside the workspace.
+  assert.match(html, /sxb-berth dp-frame__head/);
+  assert.match(html, /dp-frame__body--station[\s\S]*sx-panel[\s\S]*sxb-crown/);
+  assert.match(html, /sxb-ops dp-frame__foot/);
 });
 
 test('station controller loads kit last and stamps docked Field Hardware temperature', () => {

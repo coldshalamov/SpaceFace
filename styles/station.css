@@ -6,7 +6,7 @@
 
 /* ───────────── the shell ───────────── */
 
-.k-screen > .sx-app { display: contents; }
+.k-screen > .sx-app, .dp-frame > .sx-app { display: contents; }
 
 .sxb-berth__world { left: 0; width: 100%; }
 .sxb-berth__world[hidden] { display: none; }
@@ -514,7 +514,7 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
    live `.sx-berth` (including `.sx-observatory`) and beat that sheet by specificity plus load
    order (station.css injects last). Materials are nine-sliced kit PNGs. */
 
-#screens .sx-berth.k-screen,
+#screens .sx-berth.dp-frame,
 #screens .sx-berth.sx-observatory.k-screen {
   display: grid;
   inset: 0;
@@ -524,13 +524,13 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
   box-shadow: none;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas: "title" "stage" "foot";
+  grid-template-areas: "head" "body" "foot";
   gap: 0;
   column-gap: 0;
   row-gap: 0;
 }
-#screens .sx-berth.k-screen::before { background: var(--k-scrim); }
-#screens .sx-berth.k-screen.k-screen--dense::before { background: rgb(26 20 16 / 0.38); }
+#screens .sx-berth.dp-frame::before { background: var(--k-scrim); }
+#screens .sx-berth.dp-frame.k-screen--dense::before { background: rgb(26 20 16 / 0.38); }
 
 /* The 3D berth is the picture. orbital.css used to park it at 16% opacity behind a website wall. */
 #screens .sx-berth .sxb-berth__world { opacity: 1; z-index: -2; }
@@ -540,7 +540,6 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
 
 #screens .sx-berth .sxb-berth {
   position: relative;
-  grid-area: title;
   min-height: 0;
   padding: 0 0 calc(12px * var(--k-s)) 0;
   border: 0;
@@ -581,20 +580,16 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 }
 #screens .sx-berth .sxb-berth__ident:empty { display: none; }
 
+/* 2026-09-22: the berth's name used to be `max-width: 14ch` at --fh-size-hero (140px), so HELIOS
+   STATION wrapped to two lines and the head ate two fifths of the frame before the market got a
+   pixel. A station is not the game's name: it is a screen title, and Deckplate's nameplate
+   (.dp-title__name, on this element) sizes it. Only the placement stays here. */
 #screens .sx-berth .sxb-berth__name,
 #screens .sx-berth .sxb-berth__name.k-t-hero,
 #screens .sx-berth .sxb-berth__name.fh-hero {
-  max-width: 14ch;
-  margin: 0 0 0 calc(20px * var(--k-s));
-  font-family: var(--fh-face-display, var(--k-display));
-  font-weight: 900;
-  font-stretch: 125%;
-  font-variation-settings: "wght" 900, "wdth" 125;
-  font-size: var(--fh-size-hero, var(--k-fs-hero));
-  letter-spacing: var(--fh-track-display, 0.02em);
-  line-height: 0.9;
-  text-transform: uppercase;
-  color: var(--k-text-live);
+  max-width: none;
+  margin: 0;
+  white-space: nowrap;
 }
 #screens .sx-berth .sxb-berth__name.k-t-title,
 #screens .sx-berth .sxb-berth__name.fh-title {
@@ -701,17 +696,16 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 }
 
 /* Vitals: one machined plate, not a website header strip. */
+/* 2026-09-22: was `position:absolute; top:18px; right:24px`, floating over the 400px hole the
+   shell's padding reserved for it. It is the body's second column now — same information, inside
+   the frame, aligned with everything else. */
 #screens .sx-berth .sxb-crown {
-  position: absolute;
-  grid-area: title;
-  top: calc(18px * var(--k-s));
-  right: calc(24px * var(--k-s));
-  width: calc(320px * var(--k-s));
+  position: relative;
+  align-self: start;
+  width: auto;
   z-index: 1;
-  display: block;
   align-items: stretch;
-  gap: 0;
-  text-align: right;
+  text-align: left;
 }
 #screens .sx-berth .sxb-purse { order: 0; flex: none; }
 #screens .sx-berth .sxb-purse__value,
@@ -763,8 +757,7 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 
 /* Workspace sits on the berth — smoked window, not an opaque website stage. */
 #screens .sx-berth #sx-panel {
-  grid-area: stage;
-  padding: calc(8px * var(--k-s));
+  padding: 0;
   margin: 0;
   min-height: 0;
   overflow: hidden;
@@ -787,7 +780,6 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 
 /* Destination keys along the bottom edge — not a Facilities website rail. */
 #screens .sx-berth .sxb-ops {
-  grid-area: foot;
   min-height: 0;
   padding: calc(8px * var(--k-s)) 0 0;
   margin: 0;
@@ -978,11 +970,11 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   #screens .sx-berth #sx-panel { padding: calc(6px * var(--k-s)) 0; }
 }
 @media (min-width: 2200px) {
-  #screens .sx-berth.k-screen { grid-template-columns: minmax(0, 1fr); }
+  #screens .sx-berth.dp-frame { grid-template-columns: minmax(0, 1fr); }
   #screens .sx-berth #sx-panel { padding-inline: 0; }
 }
 @media (max-width: 1100px) {
-  #screens .sx-berth.k-screen {
+  #screens .sx-berth.dp-frame {
     grid-template-columns: minmax(0, 1fr);
     padding-right: calc(292px * var(--k-s));
   }
@@ -994,10 +986,10 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   #screens .sx-berth #sx-panel { padding: calc(8px * var(--k-s)) 0; }
 }
 @media (max-width: 899px) {
-  #screens .sx-berth.k-screen {
+  #screens .sx-berth.dp-frame {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto;
-    grid-template-areas: "title" "stage" "foot";
+    grid-template-areas: "head" "body" "foot";
     padding-right: calc(228px * var(--k-s));
   }
   #screens .sx-berth .of-facility-rail { padding: 0; border: 0; overflow: visible; }
@@ -1019,10 +1011,10 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   #screens .sx-berth .sxb-ops { padding: 8px 0 0; min-height: 0; }
 }
 @media (max-width: 650px) {
-  #screens .sx-berth.k-screen {
+  #screens .sx-berth.dp-frame {
     overflow: hidden;
     padding: calc(12px * var(--k-s));
-    grid-template-areas: "title" "stage" "foot";
+    grid-template-areas: "head" "body" "foot";
     grid-template-rows: auto minmax(0, 1fr) auto;
     grid-template-columns: minmax(0, 1fr);
   }

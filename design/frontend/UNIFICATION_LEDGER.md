@@ -33,14 +33,14 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
 | 4 | `pause` | clean — cramped column, dead DEV bar, quarter-frame | **DONE** | `00b25955b` |
 | 5 | `settings` | clean | SURVEYED | |
 | 6 | `save-load` | clean | SURVEYED | |
-| 7 | `station` / `station-dock` | ON TOP OF ×3, CUT OFF ×6 | SURVEYED | |
-| 8 | `station-market` | ON TOP OF ×3, CUT OFF ×6 | SURVEYED | |
-| 9 | `station-shipworks` | ON TOP OF ×5, CUT OFF ×2, OFF FRAME ×3 | SURVEYED | |
-| 10 | `station-industry` | ON TOP OF ×1 | SURVEYED | |
-| 11 | `station-contracts` | clean | SURVEYED | |
-| 12 | `station-factions` | ON TOP OF ×2, CUT OFF ×2, OFF FRAME ×2 | SURVEYED | |
-| 13 | `station-bar` | clean | SURVEYED | |
-| 14 | `station-ledger` | clean | SURVEYED | |
+| 7 | `station` / `station-dock` | ON TOP OF ×3, CUT OFF ×6 | **SHELL DONE** — 2 CUT OFF left | this pass |
+| 8 | `station-market` | ON TOP OF ×3, CUT OFF ×6 | **MIGRATED** — 2 CUT OFF left | this pass |
+| 9 | `station-shipworks` | ON TOP OF ×6, CUT OFF ×2, OVERLAP ×2 | SHELL DONE, body open | |
+| 10 | `station-industry` | ON TOP OF ×1 → **clean** | **DONE** | this pass |
+| 11 | `station-contracts` | clean | **DONE** | this pass |
+| 12 | `station-factions` | ON TOP OF ×3, CUT OFF ×2 | SHELL DONE, body open | |
+| 13 | `station-bar` | clean | **DONE** | this pass |
+| 14 | `station-ledger` | clean | **DONE** | this pass |
 | 15 | `flight` | EMPTY BOX 276×40 right bar | PARTIAL — empty box fixed | this pass |
 | 16 | `comms-radial` | BURIED ×3, EMPTY BOX 276×40 | SURVEYED | |
 | 17 | `wingman-radial` | EMPTY BOX 276×40 | SURVEYED | |
@@ -85,6 +85,13 @@ settings → station (7 tabs) → flight → chart → ship → crucible → the
       assemble it, a new `--xx-` prefix is a defect.
 - [ ] Retire `--k-`, `--sf-`, `--fh-`, `--of-`, `--so-`, `--mf-`, `--visor-` once no screen reads
       them. Aliases during flight, deletion at the end.
+- [ ] `styles/station-orbital.css` and `styles/station.css` still hold the station's placement.
+      Two collision repairs were made in place on 2026-09-22 and marked; the geometry belongs in
+      `deckplate/screens.js` when those sheets are retired.
+- [ ] PRE-EXISTING, not this pass: `test/station-hud-kit.test.mjs` "every station control label
+      comes from the binding map" fails on an `sx-decision__opt` button in
+      `src/ui/station/screens/contracts.js`. That file is clean in the tree and the button exists at
+      HEAD.
 - [ ] Extend `scripts/check-ui-screen-imports.mjs` past its 18-screen list so a screen cannot grow
       its own stylesheet again.
 

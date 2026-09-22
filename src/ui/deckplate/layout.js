@@ -59,6 +59,29 @@ export const DECKPLATE_LAYOUT_CSS = `
 
 .dp-frame--split > .dp-frame__body { grid-template-columns:var(--dp-frame-col) minmax(0, 1fr); }
 .dp-frame--rail  > .dp-frame__body { grid-template-columns:minmax(0, 1fr) var(--dp-frame-col); }
+/* A workspace inside the body: a standing index column and the stage it drives. Seven station tabs
+   were each doing this by hand with the kit's k-hang/k-stage pair; they share one recipe now, which
+   is why all seven start their content in the same place. */
+.dp-work { display:grid; grid-template-columns:var(--dp-frame-col) minmax(0, 1fr); gap:var(--dp-rhythm); min-height:0; min-width:0; }
+.dp-work--wide { grid-template-columns:calc(var(--dp-frame-col) * 1.2) minmax(0, 1fr); }
+.dp-work--solo { grid-template-columns:minmax(0, 1fr); }
+.dp-work > * { min-width:0; min-height:0; }
+.dp-work__index, .dp-work__stage { min-width:0; min-height:0; }
+
+/* The station body: the workspace, then the vitals column. Both are REGIONS of the frame, which is
+   what replaced a 400px hole in the grid and a panel floating over it. */
+.dp-frame__body--station { grid-template-columns:minmax(0, 1fr) var(--dp-frame-col); align-items:stretch; }
+/* The berth head is one row: the mark, the nameplate, and the service key pushed to the end. It
+   used to be a free-standing block that grew to whatever the title needed. */
+.dp-frame__head > .sxb-berth, .sxb-berth.dp-frame__head { display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; column-gap:var(--dp-gap); }
+.sxb-berth.dp-frame__head > .dp-title { grid-column:2; }
+.sxb-berth.dp-frame__head > .so-command-trigger { grid-column:3; justify-self:end; align-self:start; }
+.sxb-berth.dp-frame__head > .sxb-tape, .sxb-berth.dp-frame__head > .sxb-handoff { grid-column:1 / -1; }
+.dp-frame__body--station > #sx-panel { display:grid; grid-template-columns:var(--dp-frame-col) minmax(0, 1fr); gap:var(--dp-rhythm); min-width:0; min-height:0; }
+.dp-frame__body--station > #sx-panel > * { min-width:0; min-height:0; }
+/* A tab that mounts a single stage (no index column) spans the pair. */
+.dp-frame__body--station > #sx-panel > .dp-work__stage:only-child { grid-column:1 / -1; }
+
 .dp-frame--hang {
   grid-template-columns:var(--dp-frame-col) minmax(0, 1fr);
   grid-template-areas:"head head" "body body" "foot foot";
