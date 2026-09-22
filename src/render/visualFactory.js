@@ -49,6 +49,18 @@ import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
+import {
+  admissionOwnerInactive,
+  authoredAdmissionRetriableStatus,
+  AUTHORED_ADMISSION_RETRY_MAX,
+  authoredReadmissionStatus,
+  boundaryLiveEntity,
+  markAuthoredBoundaryForReadmission,
+  prepareAuthoredVisualPipelines,
+  releaseBoundaryResidency,
+  residencyOptionsForBoundary,
+  waitForOpeningGraphPublicationRelease,
+} from './partsLibrary.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
@@ -3256,10 +3268,45 @@ function fitPackagedGroup(group, targetRadius) {
 
 function hideProceduralChildren(root) {
   for (const child of root.children) {
+    // An earlier admitted packaged body stays mounted across re-admissions — only the
+    // procedural substrate layers toggle.
+    if (child.userData && child.userData.packagedAuthoredBody === true) continue;
     child.visible = false;
     child.userData = child.userData || {};
     child.userData.authoredReadableFallbackLayer = true;
   }
+}
+
+/**
+ * Terminal failure of an OPTIONAL packaged body (wreck / drone — never a required-authored hull):
+ * bring the hidden procedural children back as the same-semantic fallback instead of leaving the
+ * entity permanently invisible. Verdicts still inside the bounded retry budget stay 'unavailable'
+ * so the renderer's retryFailedAuthoredAdmission poll can re-arm the admission — the flag that
+ * poll reads (`authoredReadableFallbackRetained`) is only set once the fallback is truly on
+ * screen, which is also what keeps a late retry from popping a second identity over it.
+ */
+function restorePackagedBodyFallback(root, reason) {
+  const data = root.userData;
+  const attempts = data.authoredAdmissionRetryCount || 0;
+  if (authoredAdmissionRetriableStatus(data.authoredAssetState)
+      && attempts < AUTHORED_ADMISSION_RETRY_MAX) {
+    return false;
+  }
+  for (const child of root.children) {
+    if (child.userData && child.userData.authoredReadableFallbackLayer === true) {
+      child.visible = true;
+    }
+  }
+  data.authoredReadableFallbackRetained = true;
+  data.authoredAssetState = 'same-semantic-fallback';
+  data.authoredVisualRoot = 'procedural-packaged-body-fallback';
+  data.authoredFallbackReason = reason;
+  data.renderContract = {
+    ...(data.renderContract || {}),
+    assetBoundary: 'same-semantic packaged-body fallback',
+    gracefulFallback: true,
+  };
+  return true;
 }
 
 function attachPackagedBody(root, relativeFile, entity) {
@@ -3275,41 +3322,104 @@ function attachPackagedBody(root, relativeFile, entity) {
     gracefulFallback: false,
   };
   const start = (renderer, scene, requestOptions = {}) => {
+    const state = root.userData.authoredAssetState;
     const existing = root.userData.authoredUpgradePromise;
     // An orphaned admission settles its promise while the kept boundary stays mounted —
     // honouring it would suppress the restored owner's re-admission forever.
-    if (existing && root.userData.authoredAssetState !== 'orphaned-before-swap') return existing;
+    if (existing && !authoredReadmissionStatus(state)) return existing;
     if (existing) delete root.userData.authoredUpgradePromise;
     if (!renderer) return null;
-    if (root.userData.authoredAssetState === 'authored') return Promise.resolve(true);
+    if (state === 'authored') return Promise.resolve(true);
     root.userData.authoredAssetState = 'loading';
-    const completion = loadAuthoredPart(url, {
+    const liveEntity = boundaryLiveEntity(root, entity);
+    const loadPart = typeof requestOptions.loadAuthoredPart === 'function'
+      ? requestOptions.loadAuthoredPart
+      : loadAuthoredPart;
+    const admissionOptions = () => ({
+      ...residencyOptionsForBoundary(liveEntity, root, renderer),
+      ...requestOptions,
+    });
+    // Same admission barrier as the scenario-prop packaged path (visualOverrides.js): the group
+    // is compiled and its buffers uploaded while still detached, and publication waits on the
+    // opening-graph release. Attaching straight to the live root linked the packaged materials
+    // inside the first bloomScene draw — a hitch at the exact kill moment — and left the
+    // pending wreck drawing nothing while 'awaiting-authored-admission'.
+    const completion = loadPart(url, {
       renderer,
       slot: 'place',
       optional: true,
       ...requestOptions,
-    }).then((record) => {
+    }).then(async (record) => {
       if (!record || !root.parent) {
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
+        if (!record) restorePackagedBodyFallback(root, 'packaged-body-load-missed');
         return false;
       }
       const packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
+      packaged.userData.packagedAuthoredBody = true;
       instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
         root.userData.authoredAssetState = 'unavailable';
+        restorePackagedBodyFallback(root, 'packaged-body-empty');
         return false;
       }
       fitPackagedGroup(packaged, entity && entity.radius);
       freezeStaticChildMatrices(packaged);
+      root.userData.authoredAssetState = 'compiling-pipelines';
+      try {
+        await prepareAuthoredVisualPipelines(packaged, admissionOptions());
+      } catch (error) {
+        releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed');
+        // Same lifecycle abort partsLibrary classifies: an owner that dies mid-admission has no
+        // visual to publish — a breadcrumb, not a composition defect.
+        const causes = error && Array.isArray(error.errors) && error.errors.length
+          ? error.errors
+          : [error];
+        const ownerInactive = admissionOwnerInactive(admissionOptions(), liveEntity, error)
+          || causes.every((cause) => cause && /owner became inactive/i.test(String(cause && (cause.message || cause))));
+        if (ownerInactive) {
+          if (root.parent) {
+            markAuthoredBoundaryForReadmission(root, 'packaged-body-owner-inactive');
+          } else {
+            root.userData.authoredAssetState = 'unavailable';
+          }
+        } else {
+          root.userData.authoredAssetState = 'unavailable';
+          restorePackagedBodyFallback(root, 'packaged-body-pipeline-failed');
+          console.warn('[visualFactory] packaged body pipeline admission failed', error);
+        }
+        return false;
+      }
+      if (!root.parent) {
+        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-after-compile');
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        return false;
+      }
+      const publicationWait = waitForOpeningGraphPublicationRelease();
+      if (publicationWait) await publicationWait;
+      if (!root.parent) {
+        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication');
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        return false;
+      }
+      // Re-hide in case a retained fallback (or a retry already in flight) re-showed the
+      // procedural children while this admission was mid-flight.
+      hideProceduralChildren(root);
       root.add(packaged);
       canonicalizeObjectSurfaceProgramKeys(packaged);
       root.userData.hull = packaged;
+      root.userData.authoredReadableFallbackRetained = false;
       root.userData.authoredAssetState = 'authored';
       root.userData.authoredVisualRoot = record.assetId || url;
       return true;
-    }).catch(() => {
-      root.userData.authoredAssetState = 'unavailable';
+    }).catch((error) => {
+      if (root.parent && admissionOwnerInactive(null, entity, error)) {
+        markAuthoredBoundaryForReadmission(root, 'packaged-body-owner-inactive');
+      } else {
+        root.userData.authoredAssetState = 'unavailable';
+        restorePackagedBodyFallback(root, 'packaged-body-load-error');
+      }
       return false;
     });
     root.userData.authoredUpgradePromise = completion;

@@ -1296,6 +1296,10 @@ export const mining = {
         wreckId: wreck.id,
         markerId: d.markerId || d.provenance && d.provenance.markerId || null,
         loot: got,
+        // Presentation needs the last pose: the mesh is removed the same tick alive flips, so the
+        // collapse burst below masks the disappearance instead of a pop while the player watches.
+        pos: { x: wreck.pos.x, z: wreck.pos.z },
+        radius: Number.isFinite(wreck.radius) ? wreck.radius : 8,
       });
       // Mark recovered so the intervention loop reports recovered=true (it reads e.data._salvaged).
       // _drainWreck only runs while the player's salvage beam is on the wreck, so reaching completion

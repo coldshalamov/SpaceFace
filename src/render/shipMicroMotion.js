@@ -84,6 +84,27 @@ function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
+/**
+ * Is the wreck mesh actually presenting a drawable layer? The renderer unsubmits the whole root
+ * while a packaged-body admission is pending (authoredPending) — and attachPackagedBody also
+ * hides every procedural child until the authored group lands or the fallback is restored. The
+ * death spiral and materialize clocks must never elapse against a hulk that draws nothing.
+ */
+function wreckMeshPresenting(mesh) {
+  if (!mesh || mesh.visible === false) return false;
+  const state = mesh.userData && mesh.userData.authoredAssetState;
+  if (state == null
+      || state === 'authored'
+      || state === 'authored-with-cleanup-error'
+      || state === 'same-semantic-fallback'
+      || state === 'procedural-settled'
+      || state === 'fallback-after-error') {
+    return true;
+  }
+  const children = mesh.children;
+  return Array.isArray(children) && children.some((child) => !!(child && child.visible === true));
+}
+
 // --- Aerospace locomotion tuning (presentation judgment, not sim values) ---
 const RCS_PULSE_MIN_INTENSITY = 0.22;   // below this a firing is trim, not worth a puff
 const RCS_PULSE_COOLDOWN_S = 0.12;      // per-craft puff cadence while maneuvering
@@ -464,6 +485,14 @@ export function createShipMicroMotionTracker() {
         hullScaleX: 1,
         hullScaleY: 1,
         hullScaleZ: 1,
+        // Wreck arrival ramp: first frame a drawable layer actually presents (authored install,
+        // restored procedural fallback, or a plain procedural wreck) starts the same scale-in
+        // ships/drones get on spawn. Hidden roots never start it — a cold GLB decode can't burn
+        // the ramp (or the death spiral) off-screen.
+        wreckPresented: false,
+        wreckScaleBaseX: 1,
+        wreckScaleBaseY: 1,
+        wreckScaleBaseZ: 1,
 
         // Player-intent queue (dock/cloak/respawn events carry no entity id)
         pendingPlayer: null, // lazy array of kind strings
@@ -1729,6 +1758,44 @@ export function createShipMicroMotionTracker() {
     lastSimTime = simTime;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getRecord(entity.id);
+    const presenting = wreckMeshPresenting(mesh);
+
+    // Wreck materialize/scale-in on the first frame a drawable layer actually presents — the same
+    // MATERIALIZE_S ramp ships and drones get on spawn, driven here because updateCraftMicroMotion
+    // never runs for wrecks. Root scale is set-once-at-build, so this channel owns it
+    // multiplicatively off the captured base.
+    if (presenting && rec.wreckPresented !== true) {
+      rec.wreckPresented = true;
+      if (rec.materializeT0 < 0) rec.materializeT0 = simTime;
+      const base = mesh.scale;
+      rec.wreckScaleBaseX = base && Number.isFinite(base.x) ? base.x : 1;
+      rec.wreckScaleBaseY = base && Number.isFinite(base.y) ? base.y : 1;
+      rec.wreckScaleBaseZ = base && Number.isFinite(base.z) ? base.z : 1;
+    }
+    if (rec.materializeT0 >= 0 && mesh.scale) {
+      const k = (simTime - rec.materializeT0) / MATERIALIZE_S;
+      if (k >= 1) {
+        rec.materializeT0 = -1;
+        if (typeof mesh.scale.set === 'function') {
+          mesh.scale.set(rec.wreckScaleBaseX, rec.wreckScaleBaseY, rec.wreckScaleBaseZ);
+        } else {
+          mesh.scale.x = rec.wreckScaleBaseX;
+          mesh.scale.y = rec.wreckScaleBaseY;
+          mesh.scale.z = rec.wreckScaleBaseZ;
+        }
+      } else {
+        const e = 1 - Math.pow(1 - k, 3);
+        const f = (0.55 + 0.45 * e) * (1 + Math.sin(k * Math.PI) * MATERIALIZE_OVERSHOOT);
+        if (typeof mesh.scale.set === 'function') {
+          mesh.scale.set(rec.wreckScaleBaseX * f, rec.wreckScaleBaseY * f, rec.wreckScaleBaseZ * f);
+        } else {
+          mesh.scale.x = rec.wreckScaleBaseX * f;
+          mesh.scale.y = rec.wreckScaleBaseY * f;
+          mesh.scale.z = rec.wreckScaleBaseZ * f;
+        }
+      }
+    }
+
     if (rec.spiralState === 2) {
       if (rec.spiralY !== 0 && mesh.rotation) mesh.rotation.y += rec.spiralY;
       return true;
@@ -1738,6 +1805,10 @@ export function createShipMicroMotionTracker() {
       const data = entity.data || null;
       if (!data || data.parentType !== 'ship') return false;
       if (!entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
+      // The spiral is a witnessed-kill read; igniting it while the packaged-body admission still
+      // draws nothing lets the whole spin (and its detonation flash) elapse behind an invisible
+      // root — the wreck then pops in mid/post-spiral on a cold GLB decode.
+      if (!presenting) return false;
       if (!matchFreshKill(entity.pos.x, entity.pos.z, simTime)) return false;
       spiralDone.set(entity.id, 1);
       rec.spiralState = 1;
@@ -1749,6 +1820,12 @@ export function createShipMicroMotionTracker() {
       rec.spiralPopCd = 0.12;
       rec.spiralRcsCd = 0;
       rec.spiralRcsSide = 1;
+    }
+    if (!presenting) {
+      // Hidden mid-spiral (kept-GPU recook, late re-admission): freeze the clock so the spin
+      // cannot finish off-screen — the flash still lands while the wreck is actually visible.
+      rec.spiralT0 += dt;
+      return true;
     }
     const reduced = !!(a11y && a11y.reducedMotion === true);
     const age = simTime - rec.spiralT0;

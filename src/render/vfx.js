@@ -2185,6 +2185,7 @@ export const vfx = {
     add('mining:stop', () => this._onMiningStop());
     add('mining:tick', (p) => this._onMiningTick(p));
     add('salvage:cutComplete', (p) => this._onSalvageCutComplete(p));
+    add('salvage:completed', (p) => this._onSalvageCompleted(p));
     add('mining:yield', (p) => this._onMiningYield(p));
     add('asteroid:destroyed', (p) => this._onAsteroidShatter(p, false));
     add('asteroid:chunked', (p) => this._onAsteroidShatter(p, true));
@@ -10795,6 +10796,48 @@ export const vfx = {
         k % 2 ? '#fffaf0' : '#ffc35c', Math.cos(a) * sp, Math.sin(a) * sp, Math.cos(a), Math.sin(a));
     }
     this._emitJuiceCue('presentation.salvage.plate_release', { pos }, 1);
+  },
+
+  // Salvage completion collapse: the drained hulk leaves the sim the same tick this event fires
+  // (alive=false in mining._drainWreck), so the removal needs a mask — one buckle flash, a heavy
+  // dust body, and a few shard streaks at the wreck's last pose instead of a pop while the
+  // player's beam is still on it. No juice cue: cue-count contracts stay frozen.
+  _onSalvageCompleted(p) {
+    if (!this._scene || !p) return;
+    const pos = this._posFrom(p, p.wreckId != null ? p.wreckId : null);
+    if (!pos) return;
+    const wreck = p.wreckId != null ? this._ent(p.wreckId) : null;
+    const r = Math.max(4, Number.isFinite(p.radius) ? p.radius : ((wreck && wreck.radius) || 8));
+    this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, 0.4, r * 0.5, r * 1.1, 0.9, 0.0, '#ffd9a0', 0, 0);
+    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, r * 0.7, r * 1.6, 0.5, 0.0, '#8f8578', 0, 0);
+    const n = this._isReduced() ? 4 : 10;
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 8 + Math.random() * 14;
+      this._spawnProjectileTrailStreak(pos.x, 0.5, pos.z, 0.35, 0.07, 0.55, 0.8,
+        k % 2 ? '#d8d2c4' : '#ff9a4d', Math.cos(a) * sp, Math.sin(a) * sp, Math.cos(a), Math.sin(a));
+    }
+    if (this._gas) {
+      this._gas.emitFractureDust({
+        x: pos.x,
+        y: 0.3,
+        z: pos.z,
+        heading: 0,
+        severity: 0.85,
+        scale: r * 1.5,
+        seed: ((((Number(p.wreckId) | 0) || 7) * 2654435761) >>> 16 & 0xffff) / 0xffff,
+        occluderX: pos.x,
+        occluderY: 0,
+        occluderZ: pos.z,
+        occluderRadius: r * 0.7,
+      });
+    }
+    this._flashLight({ x: pos.x, z: pos.z }, '#ffb066', 5.0, 4.0, 160);
+    this.bus.emit('audio:cue', {
+      id: 'sfx_salvage_plate',
+      position: { x: pos.x, z: pos.z },
+      gain: 0.7,
+    });
   },
 
   _onWeaponVent(payload) {
