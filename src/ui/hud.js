@@ -1654,7 +1654,7 @@ export function createHud(ctx, alerts) {
     const player = state.player || {};
     const cr = Math.round(player.credits || 0);
     const st = player.stats || {};
-    return `Credits: ${cr.toLocaleString()} CR\nLifetime profit: ${Math.round(st.lifetimeProfit || 0).toLocaleString()}\nTrades: ${st.tradesCount || 0}\nBest single trade: ${Math.round(st.biggestSingleProfit || 0).toLocaleString()}`;
+    return `Credits: ${cr.toLocaleString('en-US')} CR\nLifetime profit: ${Math.round(st.lifetimeProfit || 0).toLocaleString('en-US')}\nTrades: ${st.tradesCount || 0}\nBest single trade: ${Math.round(st.biggestSingleProfit || 0).toLocaleString('en-US')}`;
   }
   function buildWeaponsTip(p) {
     if (!p || !p.data || !p.data.weapons || !p.data.weapons.length) return 'No weapons fitted';
@@ -3218,7 +3218,7 @@ export function createHud(ctx, alerts) {
       const age = cargoMemoryAgeLabel(state, best.seenAt);
       const jumps = best.jumps == null ? '?' : best.jumps;
       const jumpText = jumps === 1 ? '1 jump' : `${jumps} jumps`;
-      buyerText.innerHTML = `Best Buyer: <b>${escapeHtml(best.stationName)}</b><br>Price: <span class="mono" style="color:var(--accent-2);">${best.sell.toLocaleString()} CR</span> (${escapeHtml(age)}, ${escapeHtml(jumpText)})`;
+      buyerText.innerHTML = `Best Buyer: <b>${escapeHtml(best.stationName)}</b><br>Price: <span class="mono" style="color:var(--accent-2);">${best.sell.toLocaleString('en-US')} CR</span> (${escapeHtml(age)}, ${escapeHtml(jumpText)})`;
       routeBtn.disabled = false;
       routeBtn.onclick = () => {
         applyTradeNavigation(ctx, best.stationId, commodityId);
@@ -3346,7 +3346,7 @@ export function createHud(ctx, alerts) {
           const qty = Math.max(0, Math.floor(Number(entry.qty) || 0));
           const total = Math.max(0, Math.round(Number(entry.total) || 0));
           const profit = Math.round(Number(entry.profit) || 0);
-          const profitHtml = profit > 0 ? `<span class="sf-ledger-profit">+${profit.toLocaleString()} CR</span>` : '';
+          const profitHtml = profit > 0 ? `<span class="sf-ledger-profit">+${profit.toLocaleString('en-US')} CR</span>` : '';
           rowsHtml += `
             <div class="sf-ledger-row">
               <div class="sf-ledger-left">
@@ -3354,7 +3354,7 @@ export function createHud(ctx, alerts) {
                 <span class="sf-ledger-station">${stn} (${age})</span>
               </div>
               <div class="sf-ledger-right">
-                <span class="sf-ledger-val">${total.toLocaleString()} CR</span>
+                <span class="sf-ledger-val">${total.toLocaleString('en-US')} CR</span>
                 ${profitHtml}
               </div>
             </div>
@@ -3691,7 +3691,7 @@ export function createHud(ctx, alerts) {
     _credTo = target;
     _credT = 0;
     creditsDirty = false;
-    setText(elCredits, Math.round(_credFrom).toLocaleString());
+    setText(elCredits, Math.round(_credFrom).toLocaleString('en-US'));
     if (_credTo !== _credFrom) {
       chipShow('credits');   // money moved — surface the chip
       // Directional pulse on the readout: income reads mint, spend reads amber. Removing + reflow
@@ -3708,7 +3708,7 @@ export function createHud(ctx, alerts) {
   function tickCreditsTween(dt) {
     if (_credT >= 1) return;
     _credT = Math.min(1, _credT + (dt || 0.016) / CRED_TWEEN);
-    setText(elCredits, Math.round(_credCurrent()).toLocaleString());
+    setText(elCredits, Math.round(_credCurrent()).toLocaleString('en-US'));
   }
   function refreshCargo() {
     cargoDirty = false;

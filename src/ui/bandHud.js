@@ -3,6 +3,7 @@
 import { BAND_CHANNEL_BY_ID } from '../data/bandRadio.js';
 import QUIESSENCE_PACK from '../data/flavor/060-quiessence.js';
 import { createHudDragController } from './hudLayout.js';
+import { BINDINGS } from './bindings.js';
 
 const QUIESSENCE_INDEXES = new Set(QUIESSENCE_PACK.entries.map((entry) => entry.shipIndex));
 
@@ -131,8 +132,10 @@ export function createBandHud(ctx, options = {}) {
     button.setAttribute('data-off', dataOff);
     button.setAttribute('data-silence', dataSilence);
     button.setAttribute('aria-label', ariaLabel);
-    button.setAttribute('aria-keyshortcuts', 'Shift+O');
-    button.setAttribute('title', '[ Shift+O ] Cycle Band channel');
+    // Key label comes from the binding table, not a hardcode — a rebind makes "Shift+O" a lie.
+    const bandLabel = (BINDINGS.band && BINDINGS.band.label) || 'Shift+O';
+    button.setAttribute('aria-keyshortcuts', bandLabel);
+    button.setAttribute('title', `[ ${bandLabel} ] Cycle Band channel`);
     button.setAttribute('data-effective-channel', effectiveChannel);
   }
 

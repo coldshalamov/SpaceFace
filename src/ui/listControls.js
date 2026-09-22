@@ -100,10 +100,14 @@ export function createListControls(opts) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'sf-lc__chip' + (c.active ? ' active' : '');
+      // Toggle chip: .active alone is style-only — without aria-pressed the on/off state is
+      // invisible to assistive tech (the sort header beside it already declares its state).
+      b.setAttribute('aria-pressed', c.active ? 'true' : 'false');
       b.textContent = c.label;
       b.addEventListener('click', () => {
         c.active = !c.active;
         b.classList.toggle('active', c.active);
+        b.setAttribute('aria-pressed', c.active ? 'true' : 'false');
         onChip(c.key, c.active);
       });
       chipWrap.appendChild(b);

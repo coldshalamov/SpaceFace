@@ -729,10 +729,12 @@ export const settingsScreen = {
         done(true);
         return;
       }
-      // Conflict check: don't let the same code be the PRIMARY (index 0) of two rebindable actions.
+      // Conflict check: the same code must not appear ANYWHERE in another action's binding —
+      // checking only index 0 let a rebind collide with a secondary (e.g. binding an action to
+      // ArrowUp while movement still keeps ArrowUp as its secondary), so one key fired two verbs.
       for (const other of REBINDABLE) {
         if (other === action) continue;
-        if ((live[other] || [])[0] === ev.code) {
+        if ((live[other] || []).includes(ev.code)) {
           btn.textContent = 'In use: ' + (REBIND_LABELS[other] || other);
           cue('deny');
           setTimeout(() => done(false), 900);

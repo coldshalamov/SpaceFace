@@ -5325,7 +5325,7 @@ export const galaxyMapScreen = {
         compact: true,
       });
 
-    const credits = state.player && state.player.credits ? Math.round(state.player.credits).toLocaleString() : '0';
+    const credits = state.player && state.player.credits ? Math.round(state.player.credits).toLocaleString('en-US') : '0';
     const cargo = state.player && state.player.cargo ? (state.player.cargo.volume || 0) : 0;
     const cargoCap = state.player && state.player.cargo ? (state.player.cargo.capVolume || 1) : 1;
 

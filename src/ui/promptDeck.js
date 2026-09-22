@@ -107,6 +107,31 @@ export function digitIndex(key) {
   return m ? Number(m[1]) - 1 : -1;
 }
 
+/** The power-rail claim payload for the current display line: which digit slots the deck owns and
+ *  what answer each borrowed socket should show, in the same order routeDigit() walks them —
+ *  visible choices of the full frames first, then collapsed chips as raises. Returns null when no
+ *  digit routes anywhere, so the caller releases rather than claims nothing. */
+export function planSlotClaim(entries, raisedId) {
+  const order = planLadder(entries);
+  if (!order.length) return null;
+  const raised = order.includes(raisedId) ? raisedId : order[0];
+  const line = [raised, ...order.filter((id) => id !== raised)];
+  const answers = [];
+  for (const id of line.slice(0, FULL_SLOTS)) {
+    const e = entries.find((x) => x.id === id);
+    for (const c of (e && e.choices || [])) {
+      if (!c.disabled) answers.push(c.label || c.id);
+    }
+  }
+  for (const id of line.slice(FULL_SLOTS)) {
+    const e = entries.find((x) => x.id === id);
+    answers.push('RAISE ' + ((e && e.headline) || id));
+  }
+  if (!answers.length) return null;
+  const slots = answers.slice(0, 9).map((_, i) => i + 1);
+  return { slots, answers: answers.slice(0, 9) };
+}
+
 function finiteOr(v, fallback) {
   if (v == null || v === '') return fallback;
   const n = Number(v);
@@ -150,6 +175,9 @@ export function createPromptDeck(ctx = {}) {
   let raisedId = null;
   let raisedExplicit = false;
   let lastLiveText = '';
+  // Power-rail claim signature ('' = released). While the deck owns Digit1-N for answers/raises,
+  // the rail is told so its sockets show the answers instead of powers that will not fire.
+  let claimSig = '';
 
   function fenced() {
     return !!(state && state.ui && state.ui.fulfillmentBlackoutActive === true);
@@ -160,6 +188,48 @@ export function createPromptDeck(ctx = {}) {
   function simNow() { return Number(state && state.simTime) || 0; }
   function inFlight() { return state && state.mode === 'flight' && !(state.ui && state.ui.docked); }
 
+  // Tell the power rail which digit sockets the deck is borrowing, in the same order routeDigit()
+  // walks them: visible choices of the full frames first, then collapsed chips as raises. The
+  // claim releases whenever the deck cannot capture keys (hidden, fenced, modal, docked, dead), so
+  // a prompt that vanishes without resolving can never leave the rail showing dead answers.
+  function syncClaim() {
+    if (!bus || typeof bus.emit !== 'function') return;
+    const active = !destroyed && entries.size && !root.hidden && !fenced() && !modalOpen() && inFlight();
+    let payload = null;
+    let sig = '';
+    if (active) {
+      const plan = planSlotClaim(
+        [...entries.values()].map((e) => ({
+          id: e.spec.id, deadlineAt: e.spec.deadlineAt, ttlAt: e.spec.ttlAt, seq: e.seq,
+          choices: e.spec.choices, headline: e.spec.headline,
+        })),
+        raisedId,
+      );
+      if (plan) {
+        // Wall-clock expiry for the rail's stale-claim drop: the soonest producer deadline plus
+        // display grace, converted from sim seconds. Undeadlined offers hold until release.
+        const nowS = simNow();
+        let soonest = Infinity;
+        for (const e of entries.values()) {
+          const d = finiteOr(e.spec.deadlineAt, finiteOr(e.spec.ttlAt, Infinity));
+          if (d < soonest) soonest = d;
+        }
+        payload = {
+          claimId: 'prompt-deck', mode: 'PARTIAL',
+          slots: plan.slots, answers: plan.answers,
+          expiresAt: Number.isFinite(soonest)
+            ? Date.now() + Math.max(0, soonest - nowS + EXPIRY_GRACE_S) * 1000
+            : undefined,
+        };
+        sig = plan.slots.join(',') + '|' + plan.answers.join('|');
+      }
+    }
+    if (sig === claimSig) return;
+    claimSig = sig;
+    if (payload) bus.emit('hud:slotClaim', payload);
+    else bus.emit('hud:slotRelease', { claimId: 'prompt-deck' });
+  }
+
   // ── DOM builders ───────────────────────────────────────────────────────────────────────────
   function buildFrame(entry) {
     const spec = entry.spec;
@@ -168,15 +238,20 @@ export function createPromptDeck(ctx = {}) {
     frame.dataset.deckId = spec.id;
     frame.setAttribute('role', 'dialog');
     frame.setAttribute('aria-modal', 'false');
+    const senderId = 'sf-prompt-sender-' + cssId(spec.id);
     const titleId = 'sf-prompt-title-' + cssId(spec.id);
     const detailId = 'sf-prompt-detail-' + cssId(spec.id);
-    frame.setAttribute('aria-labelledby', titleId);
+    // labelledby wins over aria-label in the accessible-name computation — an aria-label set
+    // beside it is dead markup that reads authoritative but never reaches the user. The name is
+    // sender + headline; the detail element stays the live description (countdown text included).
+    frame.setAttribute('aria-labelledby', senderId + ' ' + titleId);
     frame.setAttribute('aria-describedby', detailId);
 
     const head = doc.createElement('header');
     head.className = 'sf-prompt__head';
     entry.senderEl = doc.createElement('span');
     entry.senderEl.className = 'sf-prompt__sender';
+    entry.senderEl.id = senderId;
     entry.flagEl = doc.createElement('span');
     entry.flagEl.className = 'sf-prompt__flag';
     head.append(entry.senderEl, entry.flagEl);
@@ -215,7 +290,6 @@ export function createPromptDeck(ctx = {}) {
     renderCountdown(entry);
     entry.contentEl.replaceChildren(...(spec.content ? [spec.content] : []));
     renderChoices(entry);
-    frameAria(entry);
   }
 
   function renderChoices(entry) {
@@ -270,13 +344,6 @@ export function createPromptDeck(ctx = {}) {
     }
   }
 
-  function frameAria(entry) {
-    const spec = entry.spec;
-    const choiceText = (spec.choices || []).map((c, i) => `${i + 1} ${c.label}`).join(', ');
-    entry.frameEl.setAttribute('aria-label',
-      `${spec.sender ? spec.sender + '. ' : ''}${spec.headline || ''}. ${spec.detail || ''}. ${choiceText ? 'Choices: ' + choiceText + '.' : ''}`);
-  }
-
   function buildChip(entry) {
     const chip = doc.createElement('button');
     chip.type = 'button';
@@ -308,6 +375,7 @@ export function createPromptDeck(ctx = {}) {
       raisedExplicit = false;
       root.replaceChildren();
       root.hidden = true;
+      syncClaim();
       return;
     }
     // Deadline urgency owns the order unless the PLAYER explicitly raised an entry (chip click or
@@ -339,6 +407,10 @@ export function createPromptDeck(ctx = {}) {
       if (!entry.chipEl) entry.chipEl = buildChip(entry);
       setText(entry.chipKeyEl, String(digitSlot + 1));
       setText(entry.chipLabelEl, entry.spec.headline || entry.spec.id);
+      // The chip's children concatenate into a name with no separators ("5PIRATE DEMAND12s") —
+      // give the button an explicit name that names the verb, the card, and the key.
+      entry.chipEl.setAttribute('aria-label',
+        `Raise ${entry.spec.headline || entry.spec.id} — key ${digitSlot + 1}`);
       root.appendChild(entry.chipEl);
       digitSlot += 1;
     }
@@ -354,6 +426,7 @@ export function createPromptDeck(ctx = {}) {
       }
     }
     syncChoiceHighlight();
+    syncClaim();
   }
 
   function syncChoiceHighlight() {
@@ -369,7 +442,8 @@ export function createPromptDeck(ctx = {}) {
 
   // ── countdown / expiry / status tick ───────────────────────────────────────────────────────
   function tick() {
-    if (destroyed || !entries.size) return;
+    if (destroyed) { syncClaim(); return; }
+    if (!entries.size) { syncClaim(); return; }
     const now = simNow();
     for (const [id, entry] of [...entries]) {
       const spec = entry.spec;
@@ -398,13 +472,15 @@ export function createPromptDeck(ctx = {}) {
     if (fenced() || !inFlight()) {
       // Suppressed, not cancelled: producers keep their deadlines and re-assert or resolve.
       root.hidden = true;
+      syncClaim();
       return;
     }
     if (entries.size && root.hidden) {
-      if (modalOpen()) return;
+      if (modalOpen()) { syncClaim(); return; }
       layout();
       root.hidden = false;
     }
+    syncClaim();
   }
 
   // ── input ──────────────────────────────────────────────────────────────────────────────────
@@ -599,7 +675,11 @@ export function createPromptDeck(ctx = {}) {
   function announce(entry) {
     const spec = entry.spec;
     const choiceText = (spec.choices || []).map((c, i) => `${i + 1} ${c.label}`).join(', ');
-    const text = `${spec.sender ? spec.sender + '. ' : ''}${spec.headline}. ${spec.detail || ''}. ${choiceText ? 'Choices: ' + choiceText + '.' : ''}`;
+    // Skip empty fields rather than punctuating them — a sender-less offer used to announce
+    // ". HEADLINE. ..." with a leading dot.
+    const text = [spec.sender, spec.headline, spec.detail].filter(Boolean).join('. ')
+      + (spec.sender || spec.headline || spec.detail ? '. ' : '')
+      + (choiceText ? 'Choices: ' + choiceText + '.' : '');
     if (text === lastLiveText) return;
     lastLiveText = text;
     live.textContent = text;
@@ -608,6 +688,7 @@ export function createPromptDeck(ctx = {}) {
   function destroy() {
     if (destroyed) return;
     destroyed = true;
+    syncClaim(); // release the rail claim — layout() no-ops once destroyed, so it cannot reach it
     doc.removeEventListener('keydown', onKeyDown, true);
     clearAll();
     root.remove();
