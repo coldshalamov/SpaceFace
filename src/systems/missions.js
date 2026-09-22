@@ -211,6 +211,28 @@ for (const sec of SECTORS) {
 }
 const ALL_STATIONS = [...STATION_INFO.values()];
 
+/** STATION_INFO first, then a runtime content.sectors registry when one is mounted. */
+function stationInfoFor(state, stationId) {
+  const reg = state && state.content && state.content.sectors;
+  if (reg) {
+    const list = Array.isArray(reg) ? reg : Object.values(reg);
+    for (const sec of list) {
+      for (const st of sec.stations || []) {
+        if (st.id === stationId) {
+          return {
+            id: st.id, name: st.name, type: st.type, size: st.size || 'M',
+            missionProfile: st.missionProfile || st.type,
+            boardAnchorType: st.boardAnchorType || null,
+            factionId: st.factionId || sec.factionId, sectorId: sec.id,
+            sectorTier: sec.tier, security: sec.security,
+          };
+        }
+      }
+    }
+  }
+  return STATION_INFO.get(stationId) || null;
+}
+
 // Commodities a player can plausibly haul for delivery / be asked to mine / smuggle.
 const LEGAL_TRADE_CMDTYS = COMMODITIES.filter((c) => c.legality === 'legal').map((c) => c.id);
 const MINEABLE_CMDTYS = COMMODITIES.filter((c) => (c.producedBy || []).includes('mining')).map((c) => c.id);
@@ -799,7 +821,10 @@ function setPieceCauseOf(value) {
 function isFingerprintBoardSource(source) {
   return source === 'poiBehavior'
     || source === SET_PIECE_MISSION_SOURCE
-    || source === LANDMARK_QUEST_SOURCE;
+    || source === LANDMARK_QUEST_SOURCE
+    // Each cargo-kill chain mints its own salvage offer — dedupe per chain, not per source, so
+    // a second completed chain at the same station still boards its contract.
+    || source === 'cargoKillChain';
 }
 
 function isZeroPayLandmarkMission(mission, rewardCr) {
@@ -1021,6 +1046,8 @@ export const missions = {
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
     // bulk_trade quota: sell qty of the target commodity (trade.sold alias → economy:tradeCompleted).
     bus.on('economy:tradeCompleted', (p) => this._onTrade(p));
+    // A sold cargo-ship salvage becomes one board opportunity. Not a fine, a lock, or a failed job.
+    bus.on('economy:cargoKillOpportunity', (p) => this._onCargoKillOpportunity(p));
     // mining_quota: aggregate mined units of the target commodity.
     bus.on('mining:yield', (p) => this._onMiningYield(p));
     // The Investigation Chain's black-box stage consumes the native mining-owned wreck salvage
@@ -1371,7 +1398,7 @@ export const missions = {
    *  so accepted/expired offers don't reappear mid-visit. */
   ensureBoard(stationId) {
     const state = this.state;
-    const info = STATION_INFO.get(stationId);
+    const info = stationInfoFor(state, stationId);
     if (!info) return null; // gates / unknown stations have no board
     const epoch = this._epoch();
     let board = state.missions.boards[stationId];
@@ -1416,6 +1443,12 @@ export const missions = {
     // not swallow it (the ledger never re-fires a lane, so a dropped row kills the arc for the save).
     const retainedGhostConvoyOffers = previousSlots.filter((offer) => (
       offer && offer.source === 'ghostConvoyRumor'
+    )).slice(0, 1);
+    // One salvage contract minted from a completed cargo-kill sale. The news line names this
+    // station, so a board refresh must not drop the row before the player can take it.
+    const retainedCargoKillOffers = previousSlots.filter((offer) => (
+      offer && offer.source === 'cargoKillChain'
+      && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
     )).slice(0, 1);
     // B5's three authored choices are tutorial progress, not disposable procedural rows. Keep them
     // together through an epoch refresh until the player accepts one; acceptMission withdraws the
@@ -1465,6 +1498,7 @@ export const missions = {
         ...retainedMegaHeists,
         ...retainedCapitalBoss,
         ...retainedGhostConvoyOffers,
+        ...retainedCargoKillOffers,
       ],
     };
     state.missions.boards[stationId] = board;
@@ -1925,6 +1959,67 @@ export const missions = {
   },
 
   /**
+   * One salvage contract after a cargo-ship kill is salvaged and sold. The economy already moved
+   * the destination price; this is the board opportunity, not a fine or a failed contract.
+   */
+  _onCargoKillOpportunity(fact) {
+    if (!fact || fact.kind !== 'price_move' || !fact.chainId || !fact.saleStationId) return false;
+    const info = stationInfoFor(this.state, fact.saleStationId);
+    if (!info) return false;
+    const commodity = CMDTY_BY_ID.get('cmdty_scrap_metal');
+    const qty = 4;
+    const unit = commodity ? commodity.basePrice : 10;
+    const epoch = this._epoch();
+    const offer = {
+      id: `cksalv_${fact.chainId}`,
+      source: 'cargoKillChain',
+      type: 'salvage_retrieval',
+      stationId: info.id,
+      factionId: info.factionId,
+      reward_cr: 640,
+      time_limit_s: 900,
+      duration_s: 900,
+      collateral_cr: 0,
+      riskTier: 1,
+      preloadedCargo: false,
+      destStationId: info.id,
+      destSectorId: info.sectorId,
+      distance: 600,
+      params: {
+        cmdtyId: 'cmdty_scrap_metal',
+        qty,
+        cargoValue: unit * qty,
+        fValue: 1.2,
+        taskTime: 30,
+        wreckPos: fact.pos ? { x: fact.pos.x, z: fact.pos.z } : null,
+        sectorId: fact.sectorId || info.sectorId,
+      },
+      title: `Recover ${qty}u ${commodity ? commodity.name : 'Scrap Metal'} for ${info.name}`,
+      brief: `A witness marked the hull. ${info.name} pays for the scrap that is still out there.`,
+      summary: fact.moved
+        ? `Witness at the kill. ${fact.commodityId} moved at the destination.`
+        : 'Witness at the kill. The wreck is still recoverable.',
+      cause: {
+        tag: 'salvage',
+        chainId: fact.chainId,
+        fingerprint: fact.chainId,
+        witness: true,
+        priceStationId: fact.stationId || null,
+      },
+      expiresAtEpoch: epoch + 2,
+      storyTag: null,
+    };
+    const boarded = this._onExternalBoardOffer(offer);
+    if (!boarded) return false;
+    const text = `A witness kept the bearing. Salvage contract live: ${offer.title}.`;
+    const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
+      ? this.helpers.voice.say({ channel: 'news', text, kind: 'salvage' })
+      : false;
+    if (!said) this.bus.emit('toast', { text, kind: 'info', ttl: 4, source: 'cargoKillChain' });
+    return true;
+  },
+
+  /**
    * Adopt an emit-only field contract into the normal board without accepting it.
    * Idempotent by stable offer id and capped at one economyContract row per station epoch.
    */
@@ -1941,6 +2036,7 @@ export const missions = {
       // lossLedger's ghost-convoy lane bounty: a complete, priced offer built from real lane
       // losses — the rumor's news line points here, so the board must be allowed to carry it.
       || rawOffer.source === 'ghostConvoyRumor'
+      || rawOffer.source === 'cargoKillChain'
       || rawOffer.source === SET_PIECE_MISSION_SOURCE
     );
     if (!allowedSource) return false;
@@ -1948,7 +2044,7 @@ export const missions = {
     if (rawOffer.source === LANDMARK_QUEST_SOURCE && !validateLandmarkQuestOffer(rawOffer)) return false;
     if (rawOffer.source === SET_PIECE_MISSION_SOURCE && !setPieceCauseOf(rawOffer)) return false;
     if (!rawOffer.id || !rawOffer.type || !rawOffer.stationId || !rawOffer.params) return false;
-    const info = STATION_INFO.get(rawOffer.stationId);
+    const info = stationInfoFor(this.state, rawOffer.stationId);
     if (!info || !TYPE_BY_ID.has(rawOffer.type)) return false;
     const epoch = this._epoch();
     if (Number.isFinite(rawOffer.expiresAtEpoch) && rawOffer.expiresAtEpoch <= epoch) return false;
@@ -5274,7 +5370,7 @@ export const missions = {
           if (this._entityAtStoryDestDock(core, m)) this._completePhysical(m, i, 'sling_in');
           continue;
         }
-        if (this._entityNearDestBerth(core, m) || this.state.world.currentSectorId === m.destSectorId) {
+        if (this._entityNearDestBerth(core, m)) {
           this._completePhysical(m, i, 'sling_in');
         }
         continue;

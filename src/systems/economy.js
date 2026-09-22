@@ -46,6 +46,7 @@ import {
   verbIdsOf,
 } from '../data/techVerbLadder.js';
 import { drawSeeded, hash32, mulberry32 } from '../core/rng.js';
+import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { addCargo, isUnsellableCargo, removeCargo } from './cargo.js';
 import { ensureCommittedIntents } from './cargoCustody.js';
 import {
@@ -686,6 +687,67 @@ function npcSalvageIntakeFrom(payload) {
   return { intakeId, yardId, manifestId, lotId, scrapQty, lines, ignoredCommodityIds };
 }
 
+const CARGO_KILL_CHAIN_CAP = 4;
+
+function cargoManifestLines(manifest) {
+  if (!manifest || !Array.isArray(manifest.lines)) return [];
+  const lines = [];
+  for (const line of manifest.lines) {
+    const commodityId = line && typeof line.commodityId === 'string' ? line.commodityId : null;
+    const qty = Math.max(0, Math.floor(Number(line && line.qty) || 0));
+    if (commodityId && qty > 0) lines.push({ commodityId, qty });
+  }
+  return lines;
+}
+
+function ensureCargoKillChains(econ) {
+  if (!econ.cargoKillChains || !Array.isArray(econ.cargoKillChains)) econ.cargoKillChains = [];
+  return econ.cargoKillChains;
+}
+
+function normalizeCargoKillChain(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const lines = cargoManifestLines({ lines: raw.lines });
+  const commodityId = typeof raw.commodityId === 'string' ? raw.commodityId : (lines[0] && lines[0].commodityId);
+  if (!raw.id || raw.victimId == null || !commodityId) return null;
+  const salvaged = {};
+  const source = raw.salvaged && typeof raw.salvaged === 'object' ? raw.salvaged : {};
+  for (const id of Object.keys(source)) {
+    const qty = Math.max(0, Math.floor(Number(source[id]) || 0));
+    if (qty > 0) salvaged[id] = qty;
+  }
+  return {
+    id: String(raw.id),
+    victimId: raw.victimId,
+    manifestId: typeof raw.manifestId === 'string' ? raw.manifestId : null,
+    sectorId: typeof raw.sectorId === 'string' ? raw.sectorId : null,
+    pos: {
+      x: Number(raw.pos && raw.pos.x) || 0,
+      z: Number(raw.pos && raw.pos.z) || 0,
+    },
+    commodityId,
+    qty: Math.max(0, Math.floor(Number(raw.qty) || 0)),
+    lines,
+    destStationId: typeof raw.destStationId === 'string' ? raw.destStationId : null,
+    originStationId: typeof raw.originStationId === 'string' ? raw.originStationId : null,
+    salvaged,
+    closed: raw.closed === true,
+    saleStationId: typeof raw.saleStationId === 'string' ? raw.saleStationId : null,
+  };
+}
+
+function priceStationForCargoKill(saleStationId, chain) {
+  const dest = chain && chain.destStationId;
+  if (dest && dest !== saleStationId && stationInfo(null, dest)) return dest;
+  const sale = stationInfo(null, saleStationId);
+  const sector = sale && SECTORS.find((row) => row.id === sale.sectorId);
+  const others = ((sector && sector.stations) || [])
+    .map((station) => station && station.id)
+    .filter((id) => id && id !== saleStationId)
+    .sort();
+  return others[0] || null;
+}
+
 function nextTradeSequence(player, ledger) {
   const persisted = Number.isSafeInteger(player.tradeReceiptSeq) && player.tradeReceiptSeq > 0
     ? player.tradeReceiptSeq
@@ -800,6 +862,10 @@ export const economy = {
       if (!p) return; const side = (p.vol || 0) >= 0 ? 'sell' : 'buy';
       this.applyStockPressure(p.stationId, p.good || p.commodityId, side, Math.abs(p.vol || 0));
     });
+    // Player cargo-ship kill → salvage → sale. Economy remembers the hull and, once those goods
+    // are sold, moves the destination price. Missions owns the board opportunity that follows.
+    bus.on('entity:killed', (p) => this._openCargoKillChain(p));
+    bus.on('pickup:collected', (p) => this._noteCargoKillSalvage(p));
     // Traffic only delivers a stable manifest receipt. Economy validates the source station and
     // writes the one eligible salvage listing, returning a synchronous acknowledgement so traffic
     // can retain a rejected hold instead of silently deleting it.
@@ -1632,7 +1698,148 @@ export const economy = {
       tradeSequence: receipt && receipt.tradeSequence,
       seenAt: receipt && receipt.seenAt,
     });
+    if (side === 'sell') this._closeCargoKillChain(stationId, commodityId, qty);
     return receipt;
+  },
+
+  /**
+   * Open one chain when a laden cargo ship dies. The manifest is read off the live hull. No
+   * fine, lock, or mission failure is written here.
+   */
+  _openCargoKillChain(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.id == null || payload.id === state.playerId) return null;
+    const victim = state.entities && state.entities.get ? state.entities.get(payload.id) : null;
+    if (!victim || !victim.data) return null;
+    const manifest = victim.data.cargoManifest;
+    const lines = cargoManifestLines(manifest);
+    if (!lines.length) return null;
+    // A chain must open exactly when this hull spilled a body the player can collect.
+    // lootShards inits before economy, so for ordinary traffic the manifestPayloadDropped stamp
+    // it sets inside this same emit is already visible — it is the exact "a collectible body
+    // exists" truth (civilian, valid manifest, finite pos, feature flag, one-per-hull), and
+    // re-deriving those gates here would drift. Authored convoy carriers spill freight custody
+    // pods through encounterScripts instead, flag-free. Mission-owned and run-owned hulls spill
+    // neither, so a chain recorded for one could never close.
+    const vdata = victim.data;
+    const custody = vdata.freightCustody;
+    const custodyOwned = vdata.freightRewardOwner === 'manifest_custody'
+      || !!(custody && (custody.status === 'carrier' || custody.status === 'spilled' || custody.custodyId != null));
+    if (missionOwnsReward(victim) || runOwnsReward(victim)) return null;
+    if (!custodyOwned && vdata.manifestPayloadDropped !== true) return null;
+    const econ = state.economy;
+    if (!econ) return null;
+    const chains = ensureCargoKillChains(econ);
+    // One chain per hull, open or closed: a duplicate kill observation after close must not
+    // re-mint the same deterministic chain and re-fire its price move.
+    if (chains.some((row) => row && row.victimId === victim.id)) return null;
+    const primary = lines.slice().sort((a, b) => b.qty - a.qty || a.commodityId.localeCompare(b.commodityId))[0];
+    const pos = victim.pos || payload.pos || { x: 0, z: 0 };
+    const chain = normalizeCargoKillChain({
+      id: `ck_${hash32((state.meta && state.meta.seed) || 1, victim.id, primary.commodityId, 'cargo-kill').toString(36)}`,
+      victimId: victim.id,
+      manifestId: typeof manifest.manifestId === 'string' ? manifest.manifestId : null,
+      sectorId: payload.sectorId || (state.world && state.world.currentSectorId) || null,
+      pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 },
+      commodityId: primary.commodityId,
+      qty: primary.qty,
+      lines,
+      destStationId: manifest.destStationId || manifest.destinationId || null,
+      originStationId: manifest.originStationId || manifest.originId || null,
+      salvaged: {},
+      closed: false,
+    });
+    if (!chain) return null;
+    chains.push(chain);
+    while (chains.length > CARGO_KILL_CHAIN_CAP) {
+      const closedAt = chains.findIndex((row) => row && row.closed);
+      chains.splice(closedAt >= 0 ? closedAt : 0, 1);
+    }
+    return chain;
+  },
+
+  /** Credit salvage only when the collected body is the killed hull's own manifest payload. */
+  _noteCargoKillSalvage(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.collectorId !== state.playerId) return null;
+    const chains = state.economy && state.economy.cargoKillChains;
+    if (!Array.isArray(chains) || !payload.commodityId) return null;
+    const accepted = payload.acceptedAmount != null
+      ? Math.floor(Number(payload.acceptedAmount) || 0)
+      : Math.floor(Number(payload.amount) || 0);
+    if (accepted <= 0) return null;
+    const pickup = payload.pickupId != null && state.entities && state.entities.get
+      ? state.entities.get(payload.pickupId)
+      : null;
+    const data = pickup && pickup.data || {};
+    // Prefer the exact victim match — two live chains sharing a manifestId must not cross-credit.
+    const chain = chains.find((row) => row && !row.closed
+        && data.sourceVictimId != null && row.victimId === data.sourceVictimId)
+      || chains.find((row) => row && !row.closed && (
+        (data.manifestId && row.manifestId && row.manifestId === data.manifestId)
+        // Authored convoy carriers spill freight custody pods, not manifest payloads — the pod
+        // carries the same manifestId under its custody annotation.
+        || (data.freightCustodyPod && data.freightCustodyPod.manifestId && row.manifestId
+          && row.manifestId === data.freightCustodyPod.manifestId)
+      ));
+    if (!chain) return null;
+    if (!(chain.lines || []).some((line) => line.commodityId === payload.commodityId)) return null;
+    chain.salvaged[payload.commodityId] = (chain.salvaged[payload.commodityId] || 0) + accepted;
+    return chain;
+  },
+
+  /**
+   * After the salvaged goods are sold, raise the destination price. The shipment never arrived,
+   * so that station's book tightens. One chain, one move.
+   */
+  _closeCargoKillChain(saleStationId, commodityId, qty) {
+    const state = this.state;
+    const chains = state && state.economy && state.economy.cargoKillChains;
+    if (!Array.isArray(chains) || !commodityId) return null;
+    const chain = chains.find((row) => row && !row.closed
+      && row.salvaged && (row.salvaged[commodityId] || 0) > 0);
+    if (!chain) return null;
+    chain.closed = true;
+    chain.saleStationId = saleStationId;
+    const priceStationId = priceStationForCargoKill(saleStationId, chain);
+    let midBefore = null;
+    let midAfter = null;
+    if (priceStationId) {
+      const market = this.ensureMarket(priceStationId);
+      const entry = market && market[commodityId];
+      const def = commodityDef(state, commodityId);
+      if (entry && def && entry.stock > 1) {
+        midBefore = entry.lastMid;
+        let guard = 0;
+        while (entry.lastMid <= midBefore && guard < 4 && entry.stock > 2) {
+          const prevMid = entry.lastMid;
+          const step = Math.max(1, Math.ceil((entry.baseEq || 1) * 0.08));
+          this.applyStockPressure(priceStationId, commodityId, 'buy', Math.min(step, entry.stock - 1));
+          guard += 1;
+          // Pinned at the price band — further pressure burns stock without moving the mid.
+          if (entry.lastMid === prevMid) break;
+        }
+        midAfter = entry.lastMid;
+      }
+    }
+    const fact = {
+      kind: 'price_move',
+      opportunity: 'price_move',
+      chainId: chain.id,
+      victimId: chain.victimId,
+      manifestId: chain.manifestId,
+      commodityId,
+      qty: Math.max(0, Math.floor(Number(qty) || 0)),
+      saleStationId,
+      stationId: priceStationId,
+      sectorId: chain.sectorId,
+      pos: { x: chain.pos.x, z: chain.pos.z },
+      midBefore,
+      midAfter,
+      moved: midBefore != null && midAfter != null && midAfter > midBefore,
+    };
+    this.bus.emit('economy:cargoKillOpportunity', fact);
+    return fact;
   },
 
   recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def) {
@@ -2486,6 +2693,7 @@ export const economy = {
     state.player.sessionSinks = [];
     state.player.sessionSinkSeq = 0;
     delete state.economy.committedIntents;
+    delete state.economy.cargoKillChains;
     this.resetRng();
     this._nextEventId = 1;
     this._eventAccumulator = 0;
@@ -2550,6 +2758,10 @@ export const economy = {
     if (salvageIntakeState.blockedIds.length) {
       data.blockedSalvageIntakeIds = salvageIntakeState.blockedIds.slice();
     }
+    const cargoKillChains = Array.isArray(econ.cargoKillChains)
+      ? econ.cargoKillChains.map((row) => normalizeCargoKillChain(row)).filter(Boolean)
+      : [];
+    if (cargoKillChains.length) data.cargoKillChains = cargoKillChains;
     return data;
   },
 
@@ -2557,6 +2769,11 @@ export const economy = {
     if (!data) return;
     const econ = this.state.economy;
     econ.resourceWork = restoreResourceWork(data.resourceWork, SECTORS.map((s) => s.id));
+    const restoredChains = Array.isArray(data.cargoKillChains)
+      ? data.cargoKillChains.map((row) => normalizeCargoKillChain(row)).filter(Boolean).slice(-CARGO_KILL_CHAIN_CAP)
+      : [];
+    if (restoredChains.length) econ.cargoKillChains = restoredChains;
+    else delete econ.cargoKillChains;
     econ.pulse = restoreEconomyPulse(data.pulse, this.state.simTime);
     econ.balanceVersion = BALANCE.version;
     this._syntheticHistoryKeys = new Set();
