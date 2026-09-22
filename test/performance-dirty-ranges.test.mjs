@@ -590,8 +590,9 @@ test('every committed src named import resolves to a committed export', async ()
       .split('\n').filter(Boolean),
   );
   const exportRe = /export\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)|export\s*\{([^}]*)\}/g;
-  const exportsOf = new Map();
-  const starReexport = new Set();
+  const starRe = /export\s*\*\s*(?:as\s+[A-Za-z_$][\w$]*\s*)?from\s*['"](\.[^'"]+)['"]/g;
+  const ownExports = new Map();
+  const starTargets = new Map();
   for (const file of tracked) {
     if (!/\.(js|mjs)$/.test(file)) continue;
     const text = await readFile(path.join(ROOT, file), 'utf8');
@@ -603,17 +604,35 @@ test('every committed src named import resolves to a committed export', async ()
         if (name) names.add(name);
       }
     }
-    if (/export\s*\*/.test(text)) starReexport.add(file);
-    exportsOf.set(file, names);
+    ownExports.set(file, names);
+    const stars = [];
+    for (const m of text.matchAll(starRe)) {
+      stars.push(path.posix.normalize(path.posix.join(path.posix.dirname(file), m[1])));
+    }
+    starTargets.set(file, stars);
   }
+  // `export * from` chains re-export the target's names transitively — resolve them so a missing
+  // name cannot hide behind a barrel module (the isModeAvailable skew surfaced through one).
+  const exportsOf = new Map();
+  const resolveExports = (file, seen = new Set()) => {
+    if (exportsOf.has(file)) return exportsOf.get(file);
+    if (seen.has(file)) return new Set();
+    seen.add(file);
+    const names = new Set(ownExports.get(file));
+    for (const target of starTargets.get(file) || []) {
+      for (const n of resolveExports(target, seen)) names.add(n);
+    }
+    exportsOf.set(file, names);
+    return names;
+  };
   const missing = [];
   for (const file of tracked) {
     if (!/^src\/.*\.(js|mjs)$/.test(file)) continue;
     const text = await readFile(path.join(ROOT, file), 'utf8');
     for (const m of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"](\.[^'"]+)['"]/g)) {
       const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), m[2]));
-      if (!tracked.has(resolved) || starReexport.has(resolved)) continue;
-      const names = exportsOf.get(resolved) || new Set();
+      if (!tracked.has(resolved)) continue;
+      const names = resolveExports(resolved);
       for (const part of m[1].split(',')) {
         const name = part.trim().split(/\s+as\s+/)[0].trim();
         if (name && !names.has(name)) missing.push(`${file} imports ${name} from ${resolved}`);
