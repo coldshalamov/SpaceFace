@@ -129,7 +129,7 @@ not to invent.
 | INST-11 | A capital's pre-detonation ticks are not menu hovers | `src/audio/audioSystem.js` | Those ticks use a combat recipe, not `sfx_ui_hover` | Retune the explosion | OPEN |
 | INST-12 | Station primary buttons are the same keys as the rest of the kit | `styles/station-orbital.css` | Primary station verbs are `fh-key` or `data-sf-role="primary"`; `button:not(.fh-key)` does not paint a second control language | Redesign the station (that is §23 CV-KIT) | OPEN |
 | INST-13 | Docked, the station has the room tone that already exists | `src/audio/audioSystem.js` | Dock starts `station_hum_loop`; undock stops it | Author a new loop | OPEN |
-| INST-14 | "SHIELD DOWN" does not float over the fight | `src/ui/floatingText.js` | `combat:damage` does not spawn that floater | Delete the objective line (§22 G3) | OPEN |
+| INST-14 | "SHIELD DOWN" does not float over the fight | `src/ui/floatingText.js` | `combat:damage` does not spawn that floater | Delete the objective line (§22 G3) | SHIPPED |
 | INST-15 | The local map frame uses the kit, not a one-off plate | `src/ui/screens/localmap.js` | Frame and labels use kit or deckplate tokens | Rebuild the map (that is §22 C2 if it is the chart) | OPEN |
 | INST-16 | The UI bench boot is the game boot | `tools/ui-bench.html` | The bench does not load the green `styles/orbital.css` boot overlay on top of `styles/intro.css` | Change the production intro palette | OPEN |
 
@@ -153,6 +153,7 @@ not to invent.
 | WORLD-01 | world-01-choir-depot-missions-board | 8b07f720d6adc91de572d7dd4b0b5a839085f303 | Missions service shipped (147e71c24); this unit adds the authored chart note and strengthened proof |
 | PIC-11 | WF-11 | da2abd5f1 | Missing place prop keeps an empty substrate or marker without published cube geometry |
 | WORLD-02 | WF-01 | 80086277e | Vesta traffic includes named hauler Tann of the Slag Run (lane_tann_slag_carrier) |
+| INST-14 | WF-13 | 244bb1d40 | "SHIELD DOWN" does not float over the fight; combat:damage does not spawn that floater |
 
 ## CUT
 

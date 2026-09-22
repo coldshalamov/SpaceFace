@@ -1610,6 +1610,19 @@
       "integration": "live",
       "commit": "80086277e",
       "verification": "focused_green"
+    },
+    {
+      "id": "shield-down-floater-removed",
+      "date": "2026-09-22",
+      "wf": "WF-13",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "combat:damage does not spawn SHIELD DOWN floater over combatants",
+      "fingerprint": "verb=combat,subject=floating-text,telemetry=shield,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "244bb1d40",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
