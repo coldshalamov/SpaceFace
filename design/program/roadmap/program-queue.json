@@ -10130,7 +10130,7 @@
       "priority": 202,
       "title": "The story ledger",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-152.00"
       ],
@@ -10151,8 +10151,10 @@
         "node scripts/check-codex-narrative.mjs",
         "npm run check:mission-receipts"
       ],
-      "receiptRefs": [],
-      "brief": "The session and the campaign read back as 'I was doing X, then Y, so I Z', from receipts, with the mechanic's voice at the berth. DONE WHEN: Blind reader retells the campaign so far from the ledger alone."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-178.03-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-22: berth mechanic retells campaign receipts in order. Seed 17803, 7/7 clauses, 0 dropped. Empty berth stays silent."
     },
     {
       "id": "PQ-032.00",
