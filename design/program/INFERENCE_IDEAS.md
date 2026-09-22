@@ -74,7 +74,7 @@ not to invent.
 | Id | Player-visible change | Paths | Done | Do not | Status |
 |---|---|---|---|---|---|
 | VERB-01 | When the opening raid times out, the ships are still there | `src/data/encounters/015-opening-hauler-raid.js` | `raid_over` does not `despawnAll`; hauler and raiders remain ordinary entities | Add a fence route (§22 F11). Add encounter 016 | SHIPPED |
-| VERB-02 | The opening raid is already happening; it does not wait for accept | `src/data/encounters/015-opening-hauler-raid.js` | No offer choice and no pass-on-timeout; the fight is in the sky | Rewrite spawn range or timing (§22 A1) | OPEN |
+| VERB-02 | The opening raid is already happening; it does not wait for accept | `src/data/encounters/015-opening-hauler-raid.js` | No offer choice and no pass-on-timeout; the fight is in the sky | Rewrite spawn range or timing (§22 A1) | SHIPPED 0c4293e4d |
 | VERB-03 | The hitch hint can fire on a heavy hauler, not only an express liner | `src/systems/onboarding.js` | Locking the opening mule can show the existing hitch hint once | Add a tow force (§22 F14). Flip the 47-A pin | OPEN |
 | VERB-04 | The first Well you drop tells you, once, that you dropped it | `src/systems/onboarding.js` | The first player `fields:deployed` emits one hint and does not repeat that session | Change well force or radius | OPEN |
 | VERB-05 | A detected stunt says its name once, as a receipt | `src/systems/stuntGrammar.js`, `src/ui/hudAttention.js` | `stunt:trickDetected` admits one receipt with the trick name | Add a combo meter. Toast a shove, hit, or dock sentence (§22 G3) | OPEN |

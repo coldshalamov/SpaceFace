@@ -74,18 +74,6 @@
   ],
   "units": [
     {
-      "id": "seed-feel-5",
-      "date": "2026-08-10",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "accepted",
-      "reason": "feel/combat constants tuning",
-      "fingerprint": "domain=wf-15,subject=combat-constants",
-      "references": [],
-      "integration": "live",
-      "provenance": "seeded-from-ledger-v1"
-    },
-    {
       "id": "seed-juice-1",
       "date": "2026-08-08",
       "wf": "WF-12",
@@ -1626,6 +1614,19 @@
       "references": [],
       "integration": "live",
       "commit": "26732571a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "VERB-02",
+      "date": "2026-09-22",
+      "wf": "WF-02",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "opening hauler raid fires with no choice offer or pass-on-timeout; thief raiders already attack the MTS hauler and side-picking is by fire",
+      "fingerprint": "verb=fight,subject=opening-raid,sector=helios,domain=verb",
+      "references": [],
+      "integration": "live",
+      "commit": "0c4293e4d",
       "verification": "focused_green"
     }
   ],
