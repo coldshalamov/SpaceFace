@@ -121,11 +121,11 @@ const BEAM_COOL_RATE = 55;
 export const BEAM_VENT_BAND_LO = 0.62;
 // Fraction of the pulse's own ore paid as the vent bonus at the very top of the band.
 export const BEAM_VENT_BONUS_MAX = 0.75;
-// Pegging the gauge locks the beam until heat falls back to this fraction, and the radiators dump
-// slower once saturated — that multiplier is the whole cost of overheating, on top of forfeiting
-// the pulse's stored vent bonus.
-export const BEAM_OVERHEAT_RESET = 0.15;
-export const BEAM_OVERHEAT_COOL_MULT = 0.6;
+// The gauge is a rhythm instrument, not a circuit breaker (owner ruling 2026-09-21: the old
+// peg-lockout — beam dead until heat fell to a reset fraction, radiators dumping at a penalized
+// rate, the pulse's stored bonus forfeited — shut the tool off and punished the player for
+// mining, so it is gone). Heat only ever sizes the release bonus: a pegged gauge clamps at full
+// and the beam keeps extracting at full rate, and cooling always runs at the tier's coolRate.
 // Heat telemetry is a continuous signal on a 50 Hz bus; quantize it so HUD/audio consumers get a
 // readable stream instead of one event per tick.
 const BEAM_HEAT_EMIT_STEP = 0.02;
@@ -190,10 +190,10 @@ export const mining = {
     let beam = null;
     if (player) {
       beam = this._beamRuntime(player);
-      // An overheated beam is locked out until the radiators catch up. Routing through _stopBeam
-      // (rather than a silent skip) means the release edge fires: the beam visibly cuts out, the
-      // target lock drops, and the vent evaluation runs and reports the forfeited bonus.
-      if (firing && beam && !beam.overheated) this._runPlayerBeam(player, beam, dt, state);
+      // Heat never gates the beam: a pegged gauge keeps extracting at full rate for as long as the
+      // player holds the tool on the rock. The old peg-lockout read heat as a circuit breaker and
+      // cut the beam off mid-hold, punishing exactly the sustained mining the tool exists for.
+      if (firing && beam) this._runPlayerBeam(player, beam, dt, state);
       else this._stopBeam();
     }
     // Heat runs after the beam so the vent evaluated on a release edge reads the heat the player
@@ -225,7 +225,6 @@ export const mining = {
       if (!(beam.coolRate > 0)) beam.coolRate = tier.coolRate || BEAM_COOL_RATE;
     }
     if (!Number.isFinite(beam.heat)) beam.heat = 0;
-    if (typeof beam.overheated !== 'boolean') beam.overheated = false;
     return beam;
   },
 
@@ -478,15 +477,14 @@ export const mining = {
   // ---- heat / vent rhythm ---------------------------------------------------
   // The pulse-timing half of mining (grammar §9.5.1/§9.5.2). Heat climbs while the beam works, the
   // amber band opens near the top, and letting go inside it cashes part of the pulse as bonus ore.
-  // Hold past the peg and the beam locks out, the radiators dump slowly, and the bonus is gone.
-  // Perfect pulsing beats the old hold-forever rate; pegging the gauge every cycle is well below it.
+  // The gauge never gates the tool: holding through the peg keeps extracting at full rate, and
+  // cooling always runs at the tier's coolRate once the beam is off — heat only sizes the bonus.
   _updateBeamHeat(beam, working, dt, state) {
     if (!beam) return;
     const heatMax = beam.heatMax > 0 ? beam.heatMax : BEAM_HEAT_MAX;
     const prev = Number.isFinite(beam.heat) ? beam.heat : 0;
-    const wasOverheated = !!beam.overheated;
     let heat;
-    if (working && !wasOverheated) {
+    if (working) {
       const target = this._lockTargetId != null && state.entities && state.entities.get
         ? state.entities.get(this._lockTargetId)
         : null;
@@ -497,15 +495,14 @@ export const mining = {
         prev + (beam.heatRate > 0 ? beam.heatRate : BEAM_HEAT_RATE) * heatMult * dt,
       );
     } else {
-      const cool = (beam.coolRate > 0 ? beam.coolRate : BEAM_COOL_RATE)
-        * (wasOverheated ? BEAM_OVERHEAT_COOL_MULT : 1);
+      const cool = beam.coolRate > 0 ? beam.coolRate : BEAM_COOL_RATE;
       heat = Math.max(0, prev - cool * dt);
     }
     beam.heat = heat;
     const pct = heatMax > 0 ? heat / heatMax : 0;
     const prevPct = heatMax > 0 ? prev / heatMax : 0;
 
-    if (!wasOverheated && prevPct < BEAM_VENT_BAND_LO && pct >= BEAM_VENT_BAND_LO) {
+    if (prevPct < BEAM_VENT_BAND_LO && pct >= BEAM_VENT_BAND_LO) {
       this.bus.emit('mining:ventReady', {
         minerId: state.playerId, heat, heatMax, pct, bandLo: BEAM_VENT_BAND_LO,
       });
@@ -522,21 +519,6 @@ export const mining = {
       }
     }
 
-    if (!wasOverheated && heat >= heatMax) {
-      beam.overheated = true;
-      const forfeited = this._pulseOre;
-      this._pulseOre = 0; // pegging the gauge forfeits the stored bonus — that IS the mistake
-      this.bus.emit('mining:overheated', { minerId: state.playerId, heatMax, forfeitedOreU: forfeited });
-      // Same as the vent chime above: the warning sample now arrives through the orchestrator's
-      // mining.heat.overheated subscription (-> presentation.mining.heat_warning ->
-      // sfx_mining_heat_warning). Lane 5's handoff only named the vent chime, but this emit is the
-      // identical defect and was measured doubling the same way once the cue was wired.
-      this.bus.emit('alert', { key: 'mining-heat', sev: 'warn', text: 'BEAM OVERHEATED — VENTING', ttl: 2.4 });
-    } else if (wasOverheated && pct <= BEAM_OVERHEAT_RESET) {
-      beam.overheated = false;
-      this.bus.emit('mining:beamCooled', { minerId: state.playerId, heat, heatMax, pct });
-    }
-
     const quantized = Math.round(pct / BEAM_HEAT_EMIT_STEP) * BEAM_HEAT_EMIT_STEP;
     if (quantized !== this._heatEmitPct) {
       this._heatEmitPct = quantized;
@@ -545,8 +527,7 @@ export const mining = {
         heat,
         heatMax,
         pct,
-        band: beam.overheated ? 'overheated' : pct >= BEAM_VENT_BAND_LO ? 'vent' : pct > 0 ? 'warm' : 'cold',
-        overheated: !!beam.overheated,
+        band: pct >= BEAM_VENT_BAND_LO ? 'vent' : pct > 0 ? 'warm' : 'cold',
       });
     }
   },
@@ -563,7 +544,7 @@ export const mining = {
     this._pulseCommodityId = null;
     const player = this.state.entities.get(this.state.playerId);
     const beam = player ? this._beamRuntime(player) : null;
-    if (!beam || beam.overheated) return null;
+    if (!beam) return null;
     const heatMax = beam.heatMax > 0 ? beam.heatMax : BEAM_HEAT_MAX;
     const pct = heatMax > 0 ? (Number.isFinite(beam.heat) ? beam.heat : 0) / heatMax : 0;
     if (pct < BEAM_VENT_BAND_LO) return null;
@@ -599,7 +580,6 @@ export const mining = {
     this._heatEmitPct = -1;
     if (!beam) return;
     beam.heat = 0;
-    beam.overheated = false;
   },
 
   _isValidMineableTarget(entity, ship, range, state = this.state) {

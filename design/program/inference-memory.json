@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-21",
+  "updated": "2026-09-22",
   "runs": [
     {
       "date": "2026-08-12",
@@ -1375,6 +1375,45 @@
       "references": [],
       "integration": "live",
       "commit": "036cf6445",
+      "verification": "focused_green"
+    },
+    {
+      "id": "wreck-cargo-residue-pools",
+      "date": "2026-09-22",
+      "wf": "WF-06",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Wreck salvage now tells the truth about what died: a manifested hull's durable wreck holds its freight residue (floor 30%/line, cap 4) + hull scrap instead of the same generic scrap/electronics for every kill",
+      "fingerprint": "verb=derive,subject=wreck salvage pool,sector=all,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "0d2606216",
+      "verification": "focused_green"
+    },
+    {
+      "id": "fresh-kill-scavenger-contest",
+      "date": "2026-09-22",
+      "wf": "WF-01",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Killing a manifested hull now draws a scavenger to the wreck within ~50 sim-seconds instead of never - the robbery has a contest, and the contest spills",
+      "fingerprint": "verb=dispatch,subject=scavenger ecology,sector=all,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "034894a3e",
+      "verification": "focused_green"
+    },
+    {
+      "id": "starved-chain-station-news",
+      "date": "2026-09-22",
+      "wf": "WF-09",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Killing a miner now leaves evidence: the hauler's empty run publishes a shortfall line at its destination station instead of the chain failing invisibly",
+      "fingerprint": "verb=announce,subject=station news,sector=all,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "da6a34565",
       "verification": "focused_green"
     }
   ],

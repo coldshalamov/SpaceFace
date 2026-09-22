@@ -8,6 +8,7 @@
 // salvage, or sectorSim edits.
 
 import { hash32 } from '../core/rng.js';
+import { salvagePoolFromManifest } from './lootShards.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
@@ -31,6 +32,10 @@ const WRECK_RADIUS = 9;
 export const WRECK_ECOLOGY_DAY_S = 600;
 export const WRECK_ECOLOGY_BUDGET = 2;
 export const WRECK_ECOLOGY_DECAY_S = WRECK_ECOLOGY_DAY_S * 4;
+// Fresh-kill contest: a wreck field born from a manifested hull (real freight on the ground)
+// draws its scavenger while the player is still working the site, not a full wreck-day later.
+// Generic-residue fields keep the day cadence — nothing there is worth racing anyone for.
+export const WRECK_FRESH_SCAV_RESPONSE_S = 50;
 export const PLAYER_WRECK_KIND = 'player_wreck';
 export const PLAYER_WRECK_ENCOUNTER_ID = 'scavengers_fresh_wreck';
 const ECOLOGY_SCAVENGER_ARCHETYPES = Object.freeze(['wasp_swarmer', 'reaver_pirate']);
@@ -305,7 +310,37 @@ function classForVictim(victimClass) {
   return 'battlefield';
 }
 
+// Destruction residue law: a hull's freight neither vanishes with the hull nor survives intact.
+// The manifest spill (lootShards D2 pod) already carries the whole shipment; the durable wreck
+// keeps only the scoured remainder — floor(30%) per manifest line, capped — plus one unit of hull
+// scrap. Pure and deterministic: no rng, the same manifest always yields the same residue. Hulls
+// that never carried a manifest keep the generic residue below, so fighter kills read exactly as
+// they always did.
+const WRECK_CARGO_RESIDUE_RATE = 0.3;
+const WRECK_CARGO_RESIDUE_CAP = 4;
+
+function wreckCargoResidueFor(cargoManifest) {
+  const carried = salvagePoolFromManifest(cargoManifest);
+  const residue = {};
+  let total = 0;
+  for (const id of Object.keys(carried).sort((a, b) => a.localeCompare(b))) {
+    if (total >= WRECK_CARGO_RESIDUE_CAP) break;
+    const take = Math.min(
+      Math.floor((Number(carried[id]) || 0) * WRECK_CARGO_RESIDUE_RATE),
+      WRECK_CARGO_RESIDUE_CAP - total,
+    );
+    if (take <= 0) continue;
+    residue[id] = take;
+    total += take;
+  }
+  return total > 0 ? residue : null;
+}
+
 function initialPoolForMarker(marker) {
+  const residue = marker && marker.manifestResidue;
+  if (residue && Object.keys(residue).length) {
+    return { cmdty_scrap_metal: 1, ...residue };
+  }
   const cls = marker && marker.victimClass || '';
   if (String(cls).toLowerCase().includes('drone')) return { cmdty_scrap_metal: 2, cmdty_ore_iron: 1 };
   if (marker && marker.wreckClass === 'military') {
@@ -473,6 +508,7 @@ function makeMarker(state, payload, entity) {
     headline: null,
     structurePatch: null,
   };
+  marker.manifestResidue = wreckCargoResidueFor(data.cargoManifest);
   marker.salvagePool = initialPoolForMarker(marker);
   return marker;
 }
@@ -672,6 +708,9 @@ function normalizeMarker(input) {
     headline: boundedIdentityText(input.headline),
     structurePatch: normalizeStructurePatch(input.structurePatch),
   };
+  // Restore the residue BEFORE the salvage pool fallback: a marker saved without an explicit
+  // pool rebuilds its pool from its own residue, not from the generic class default.
+  marker.manifestResidue = normalizeSalvagePool(input.manifestResidue);
   if (input.pinWreck === true) marker.pinWreck = true;
   if (input.playerWreck === true || input.kind === PLAYER_WRECK_KIND) {
     marker.playerWreck = true;
@@ -1645,24 +1684,54 @@ export const aftermathWrecks = {
       this._decayField(field);
       return 0;
     }
-    if (age < WRECK_ECOLOGY_DAY_S) return 0;
-    if (!field.roster.length && field.spent === 0 && field.budget > 0 && !field.decayed) {
-      this._seedRoster(field, now);
+    if (age >= WRECK_ECOLOGY_DAY_S) {
+      if (field.budget > 0 && field.roster.length < WRECK_ECOLOGY_BUDGET) {
+        this._seedRoster(field, now, false);
+      }
+      return this._materializeRoster(field);
+    }
+    // Fresh-kill contest (see WRECK_FRESH_SCAV_RESPONSE_S): the scavenger slot only, so the
+    // day-old-field roles (squatter/trap) still belong to fields that have had time to settle.
+    if (age >= WRECK_FRESH_SCAV_RESPONSE_S && field.budget > 0 && !field.roster.length
+      && this._fieldIsContested(field)) {
+      this._seedRoster(field, now, true);
     }
     return this._materializeRoster(field);
   },
 
-  _seedRoster(field, now) {
+  // Contested = at least one marker in this field died carrying real freight (non-empty
+  // manifestResidue). Fields of generic residue — fighter kills — stay on the day cadence.
+  _fieldIsContested(field) {
+    const markers = aftermathForSector(this.state, field.sectorId);
+    for (const marker of markers) {
+      if (!marker || isProtectedMarker(marker)) continue;
+      if (aftermathFieldId(marker.sectorId, marker.zoneId) !== field.fieldId) continue;
+      if (marker.manifestResidue && Object.keys(marker.manifestResidue).length) return true;
+    }
+    return false;
+  },
+
+  // Appends the not-yet-present roles the field's remaining budget can still carry, scavenger
+  // first. `fresh` marks the early contest dispatch in the seeded event; slot ids keep the
+  // whole-roster index scheme so normalizeEcologySlot round-trips them unchanged.
+  _seedRoster(field, now, fresh) {
     const seed = seedOf(this.state);
-    const roles = ['scavenger', secondEcologyRole(seed, field.fieldId)];
-    field.roster = roles.slice(0, field.budget).map((role, index) => ({
-      id: `${role}:${index}`,
+    const have = new Set((field.roster || []).map((slot) => slot.role));
+    // A fresh contest dispatch is eligible for the scavenger slot only; the full roster
+    // (scavenger + squatter/trap) belongs to the day-cadence seed.
+    const eligible = fresh === true
+      ? ['scavenger']
+      : ['scavenger', secondEcologyRole(seed, field.fieldId)];
+    const roles = eligible.filter((role) => !have.has(role)).slice(0, field.budget);
+    if (!roles.length) return false;
+    field.roster = (field.roster || []).concat(roles.map((role, index) => ({
+      id: `${role}:${field.roster.length + index}`,
       role,
       status: 'live',
       spawnedAt: now,
-    }));
+    })));
     field.spent = field.roster.length;
-    field.budget = 0;
+    field.budget = Math.max(0, WRECK_ECOLOGY_BUDGET - field.roster.length);
     field.inhabitedAt = now;
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('wreckEcology:seeded', {
@@ -1672,8 +1741,10 @@ export const aftermathWrecks = {
         roles: field.roster.map((slot) => slot.role),
         bornAt: field.bornAt,
         inhabitedAt: field.inhabitedAt,
+        fresh: fresh === true,
       });
     }
+    return true;
   },
 
   _materializeRoster(field) {

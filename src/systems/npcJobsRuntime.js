@@ -80,6 +80,29 @@ import {
   PRIORITY_COURIER_SERVICE,
   isPriorityCourierItinerary,
 } from '../data/laneContacts.js';
+import { SECTORS } from '../data/sectors.js';
+import { HEADLINE_TEMPLATES, fillTemplate } from '../data/newsTemplates.js';
+
+// INF: a hauler that loads against an empty shelf is the visible end of a broken feeder chain —
+// its miner died before posting a lot, and nothing in the world said so. The berth the run was
+// feeding now reports the shortfall in the station's own voice. Throttled per sector on a
+// session-transient map (a rewind must not inherit it), read-only over the job record: no
+// economy, credit, or reputation writes here.
+const SHORT_RUN_NEWS_WINDOW_S = 240;
+const STATION_NAME_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    if (station && station.id && station.name) STATION_NAME_BY_ID.set(station.id, station.name);
+  }
+}
+
+function shortRunNewsText(seed, haulerJobId, stationId) {
+  const variants = HEADLINE_TEMPLATES.freight_short;
+  const station = STATION_NAME_BY_ID.get(stationId)
+    || String(stationId).replace(/^station_/, '').replace(/_/g, ' ');
+  const tpl = variants[hash32(seed >>> 0, 'freightShort', String(haulerJobId)) % variants.length];
+  return fillTemplate(tpl, { station });
+}
 
 // A hostile ship within this range interrupts a civilian job into flee; beyond it (with hysteresis)
 // the job resumes. Civilian traffic today flees the player at 500wu (traffic.js _stepFlee) — matched.
@@ -807,10 +830,40 @@ export const npcJobsRuntime = {
             sourceJobId: standing.postedBy, simTime: now,
           });
         }
-      } else if (this.bus && typeof this.bus.emit === 'function') {
-        this.bus.emit('npcjobs:loadEmpty', { haulerJobId: intent.jobId, sectorId, simTime: now });
+      } else {
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('npcjobs:loadEmpty', { haulerJobId: intent.jobId, sectorId, simTime: now });
+        }
+        this._publishShortRunNews(intent, entry, sectorId, now);
       }
     }
+  },
+
+  // INF: the destination berth of an empty run says the chain broke. The job's dest waypoint
+  // carries the durable station identity ('dest:<stationId>' — traffic's job-spec language), the
+  // line is picked deterministically from the freight_short family, and the throttle keeps a
+  // starved field to one headline per window instead of one per hauler loop.
+  _publishShortRunNews(intent, entry, sectorId, now) {
+    if (!entry || !entry.job || !Array.isArray(entry.job.route)) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const dest = entry.job.route.find((wp) => wp && typeof wp.id === 'string' && wp.id.startsWith('dest:'));
+    if (!dest) return;
+    const stationId = dest.id.slice('dest:'.length);
+    if (!stationId) return;
+    this._shortRunNewsAt = this._shortRunNewsAt || {};
+    const last = this._shortRunNewsAt[sectorId];
+    if (Number.isFinite(last) && now - last < SHORT_RUN_NEWS_WINDOW_S) return;
+    this._shortRunNewsAt[sectorId] = now;
+    const seed = (this.state && this.state.meta && this.state.meta.seed) || 1;
+    const id = `npcjobs:short:${intent.jobId}:${Math.floor(now)}`;
+    this.bus.emit('news:publish', {
+      id,
+      text: shortRunNewsText(seed, intent.jobId, stationId),
+      kind: 'freight_short',
+      stationId,
+      sectorId,
+      sourceRef: id,
+    });
   },
 
   // ── transient exact-Ceres formation authority ───────────────────────────────────────────────
@@ -1612,6 +1665,7 @@ export const npcJobsRuntime = {
     this._pendingMinerFieldRetargets = new Map();
     this._heaveToLease = null;
     this._fieldRetargetScanAccum = 0;
+    this._shortRunNewsAt = {};
     this._resetCeresEscortAuthority();
     this._resetCeresRealTargetAuthority();
     this._threatQueries?.reset();

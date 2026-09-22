@@ -45,6 +45,9 @@
 //      collapse — a slow single-beat scale swell keyed off the live shield edge.
 //  25. Critical-Hull List: a ship under ~28% hull carries a seeded off-axis list, periodic strain
 //      coughs, and a sputtering gimbal — a dying craft reads dying before the kill lands.
+//  26. Contact Kicks (Newton's third law): jettison, beacon drops, countermeasure puffs, and scan
+//      discharges nudge the throwing hull forward with mass-scaled shudder; a seating clamp plate
+//      (charge:stuck) jolts the host away from the attach point with a lever-arm yaw twist.
 //
 // PURE RENDER-ONLY PRESENTATION: Never mutates sim state, determinism-safe, zero per-frame garbage.
 // Transform-only mesh edits (position/rotation/scale); shared materials are never touched.
@@ -131,6 +134,43 @@ function resolveRecoilClass(weaponId) {
     return RECOIL_DEFS.medium;
   }
   return RECOIL_DEFS.light;
+}
+
+// --- Contact kicks: Newton's third law for ship-initiated world interactions -----------------
+// Every throw has a thrower. Ejecting a pod aft, dropping a buoy, puffing chaff, discharging the
+// sensor array, or catching a magnetic clamp plate all push the hull — small, directional, and
+// mass-scaled (a hauler barely notices what a fighter feels). `push` is an axial recoil-velocity
+// impulse (+ = forward surge, the ejecta went aft); `yaw`/`pitch` are angular tickles; `shudder`
+// is the decaying strike rattle. Applied through the same recoil/flinch springs as gunfire, so
+// contact kicks compose with combat instead of fighting it.
+const CONTACT_KICK_DEFS = Object.freeze({
+  jettison: Object.freeze({ push: 0.55, shudder: 0.14, yaw: 0, pitch: 0 }),
+  beaconDrop: Object.freeze({ push: 0.32, shudder: 0.12, yaw: 0, pitch: 0 }),
+  scanPulse: Object.freeze({ push: 0, shudder: 0.05, yaw: 0, pitch: 0.25 }),
+  countermeasure: Object.freeze({ push: 0.18, shudder: 0.08, yaw: 0.3, pitch: 0 }),
+  chargeStuck: Object.freeze({ push: 0, shudder: 0.3, yaw: 1.1, pitch: 0 }),
+});
+
+const CONTACT_KICK_REF_MASS_T = 400; // a fighter reads the full kick; heavier hulls less
+
+/**
+ * Mass-scaled contact kick for a ship-initiated interaction. Pure and frozen.
+ * `amountScale` (jettison load) further scales the push, capped so a full-hold dump reads as one
+ * firm shove, not a launch. Unknown kinds and masses degrade to a soft neutral tickle.
+ */
+export function resolveContactKick(kind, massT, amountScale = 1) {
+  const def = CONTACT_KICK_DEFS[String(kind || '')] || CONTACT_KICK_DEFS.beaconDrop;
+  const mass = Number(massT);
+  const intensity = clamp(CONTACT_KICK_REF_MASS_T / (Number.isFinite(mass) && mass > 0 ? mass : CONTACT_KICK_REF_MASS_T), 0.2, 1.3);
+  const load = clamp(Number(amountScale), 0.35, 1.6);
+  return Object.freeze({
+    kind: String(kind || 'unknown'),
+    intensity,
+    push: def.push * intensity * (kind === 'jettison' ? load : 1),
+    shudder: Math.min(0.35, def.shudder * intensity * load),
+    yaw: def.yaw * intensity,
+    pitch: def.pitch * intensity,
+  });
 }
 
 export function createShipMicroMotionTracker() {
@@ -471,6 +511,11 @@ export function createShipMicroMotionTracker() {
     else { pendingPlayerYawKicks.shift(); pendingPlayerYawKicks.push(kick); }
   }
 
+  // Jettison load scale for the next queued 'jettison' action (cargo:jettisoned carries the
+  // dumped amount but no ship id, so the scale rides alongside the player queue and is consumed
+  // when the action applies). Max-wins: a burst of dumps reads as one firm shove.
+  let pendingJettisonLoad = 1;
+
   function applyPlayerAction(rec, kind, simTime) {
     if (kind === 'docked') {
       rec.recoilVelX -= 1.4; // heavy mechanical clamp rebound
@@ -485,6 +530,19 @@ export function createShipMicroMotionTracker() {
       rec.materializeT0 = simTime;
     } else if (kind === 'cloakOn' || kind === 'cloakOff') {
       rec.cloakWaveT0 = simTime;
+    } else if (kind === 'jettison') {
+      const kick = resolveContactKick('jettison', rec.mass, pendingJettisonLoad);
+      pendingJettisonLoad = 1;
+      rec.recoilVelX += kick.push; // pod went aft — the hull breathes forward
+      rec.flinchShudder = Math.max(rec.flinchShudder, kick.shudder);
+    } else if (kind === 'beaconDrop') {
+      const kick = resolveContactKick('beaconDrop', rec.mass);
+      rec.recoilVelX += kick.push; // buoy dropped aft — a soft mass-settle forward
+      rec.flinchShudder = Math.max(rec.flinchShudder, kick.shudder);
+    } else if (kind === 'scanPulse') {
+      const kick = resolveContactKick('scanPulse', rec.mass);
+      rec.flinchVelPitch += kick.pitch; // the array discharges — a sensor-mast rock
+      rec.flinchShudder = Math.max(rec.flinchShudder, kick.shudder);
     }
   }
 
@@ -521,6 +579,66 @@ export function createShipMicroMotionTracker() {
     if (targetId == null) return;
     getRecord(targetId).rebootT0 = lastSimTime;
   }
+
+  // A magnetic clamp plate seats on a hull: a sharp local jolt away from the attach point plus a
+  // yaw swing off the lever arm — the same directional grammar as collision flinch, at clamp
+  // magnitude (fixed intensity: a seating clamp reads the same on any hull, mass only softens it).
+  function onChargeStuck(payload) {
+    const hostId = payload && payload.hostId;
+    if (hostId == null) return;
+    const rec = getRecord(hostId);
+    const kick = resolveContactKick('chargeStuck', rec.mass);
+    const hasPoint = payload.pos && Number.isFinite(payload.pos.x) && Number.isFinite(payload.pos.z);
+    const rot = Number.isFinite(rec.rot) ? rec.rot : 0;
+    const cf = Math.cos(rot);
+    const sf = Math.sin(rot);
+    let pushFwd = 0;
+    let pushLat = 0;
+    if (hasPoint) {
+      const invR = 1 / (Number.isFinite(rec.radius) && rec.radius > 0 ? rec.radius : 12);
+      const rx = clamp((payload.pos.x - rec.px) * invR, -1.4, 1.4);
+      const rz = clamp((payload.pos.z - rec.pz) * invR, -1.4, 1.4);
+      // The plate struck the attach side — the hull rocks away from it.
+      pushFwd = -(rx * cf + rz * sf);
+      pushLat = -(rx * -sf + rz * cf);
+    }
+    // Lever yaw off the attach offset: an off-center clamp visibly twists the hull.
+    const yawKick = hasPoint
+      ? clamp(((payload.pos.x - rec.px) * -sf + (payload.pos.z - rec.pz) * cf)
+        / (Number.isFinite(rec.radius) && rec.radius > 0 ? rec.radius : 12), -1.4, 1.4)
+      : 0;
+    rec.flinchVelPitch += -pushFwd * 2.2 * kick.intensity;
+    rec.flinchVelRoll += -pushLat * 2.4 * kick.intensity;
+    rec.impactVelYaw += yawKick * kick.yaw;
+    rec.flinchX += pushFwd * 0.22 * kick.intensity;
+    rec.flinchZ += pushLat * 0.22 * kick.intensity;
+    rec.flinchShudder = Math.max(rec.flinchShudder, kick.shudder);
+  }
+
+  // Cargo pods leave aft at 60 wu/s — player inventory only, so this resolves via the queue.
+  function onJettison(payload) {
+    const amount = Number(payload && payload.amount);
+    if (Number.isFinite(amount) && amount > 0) {
+      pendingJettisonLoad = Math.max(pendingJettisonLoad, clamp(0.35 + amount / 60, 0.35, 1.6));
+    }
+    queuePlayerAction('jettison');
+  }
+
+  // Countermeasure puff: chaff/decoy blooms aft, the hull breathes forward with a whisper of yaw.
+  function onCountermeasure(payload) {
+    const shipId = payload && payload.shipId;
+    if (shipId == null) return;
+    const rec = getRecord(shipId);
+    const kick = resolveContactKick('countermeasure', rec.mass);
+    rec.recoilVelX += kick.push;
+    // Deterministic whisper direction from the hull's idle phase — no per-event RNG.
+    rec.impactVelYaw += Math.sin(rec.idlePhase * 3.7) * kick.yaw;
+    rec.flinchShudder = Math.max(rec.flinchShudder, kick.shudder);
+  }
+
+  function onBeaconDeployed() { queuePlayerAction('beaconDrop'); }
+
+  function onScanPulse() { queuePlayerAction('scanPulse'); }
 
   function onKilled(payload) {
     if (!payload) return;
@@ -692,6 +810,11 @@ export function createShipMicroMotionTracker() {
     busSubscribers.push(bus.on('cloak:dropped', onCloakDropped));
     busSubscribers.push(bus.on('ship:swingDash', onSwingDash));
     busSubscribers.push(bus.on('combat:subsystemEnabled', onSubsystemEnabled));
+    busSubscribers.push(bus.on('charge:stuck', onChargeStuck));
+    busSubscribers.push(bus.on('cargo:jettisoned', onJettison));
+    busSubscribers.push(bus.on('countermeasure:deployed', onCountermeasure));
+    busSubscribers.push(bus.on('beacon:deployed', onBeaconDeployed));
+    busSubscribers.push(bus.on('scan:pulse', onScanPulse));
   }
 
   function unbindEvents() {
@@ -1376,6 +1499,11 @@ export function createShipMicroMotionTracker() {
     onCloakDropped,
     onSwingDash,
     onSubsystemEnabled,
+    onChargeStuck,
+    onJettison,
+    onCountermeasure,
+    onBeaconDeployed,
+    onScanPulse,
     onKilled,
     onSpawned,
     prune,
