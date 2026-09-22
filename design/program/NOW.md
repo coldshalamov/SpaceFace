@@ -43,7 +43,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Wave G: G1 bracket, G2 deny cue, G8 law badge, G14 shapes, G9 recall | cursor-wave-g | implementing five build-map rows | `src/ui/masslineHud.js`, `src/audio/minimalActionAudio.js`, `src/data/audioRecipes.js`, `src/ui/sectorLawPresenter.js`, `src/ui/targetBracket.js`, `src/ui/objectiveRecall.js`, `src/ui/bindings.js`, `src/ui/input.js`, `src/ui/hud.js`, `src/ui/views/hudStyles.js` | pathspec commits, then drop this row |
 | VERB-01 claim — opening raid timeout leaves hauler and raiders in the world | inference-workflow-batch | queued | `src/data/encounters/015-opening-hauler-raid.js` | SHIPPED row in INFERENCE_IDEAS.md, pathspec commit |
 | INST-01 claim — field, mass-seed, and planet tells are the flight instrument | inference-workflow-batch | todo: implement, prove, ship the line | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` | SHIPPED row in INFERENCE_IDEAS.md, pathspec commit |
 

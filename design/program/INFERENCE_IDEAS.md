@@ -64,7 +64,7 @@ not to invent.
 | PIC-06 | A wreck you just made, on screen, is not hidden for the opening pipeline hold | `src/render/pipelineAutoFlushPolicy.js`, `src/render/renderer.js` | An on-glass fresh wreck submits during the hold the same way on-glass rocks do | Remove the hold | OPEN |
 | PIC-07 | A large wreck does not swallow the chase camera | `src/render/renderer.js` | `'wreck'` is in the camera-clearance kinds when the span is already large enough for stations | Write a general occluder pass | OPEN |
 | PIC-08 | A shove-kill and a gun-kill do not share the generic explosion schedule | `src/render/combat/phasedExplosions.js`, `src/presentation/causalVfxGrammar.js` | The schedule id follows the real cause already in the grammar | Grow the explosion solver | OPEN |
-| PIC-09 | Starter weapons scar with their own heat, not the unknown-weapon default | `src/render/weapons/contactMarks.js` | `heatForWeaponVariant` maps the starter ids in `vfxProfiles.js` to a named heat, not the unknown default | Redesign the scar atlas | OPEN |
+| PIC-09 | Starter weapons scar with their own heat, not the unknown-weapon default | `src/render/weapons/contactMarks.js` | `heatForWeaponVariant` maps the starter ids in `vfxProfiles.js` to a named heat, not the unknown default | Redesign the scar atlas | SHIPPED |
 | PIC-10 | The graphics lab does not teach a camera-facing halo as the method | `src/render/graphicsLab.js` | The lab-only halo demo is relabeled or restaged off the banned card | Change production VFX | OPEN |
 | PIC-11 | A missing place does not appear as a published cube | `src/render/partsLibrary.js` | `buildFallbackPlaceProp` keeps an empty substrate or marker | Add fallback geometry | OPEN |
 | PIC-12 | Hull tallies and patches read at the default chase | `src/render/livingHullPresentation.js` | The mark is sharper than the current 256×64 smear at chase distance | Add a second decal system | OPEN |
@@ -148,6 +148,7 @@ not to invent.
 | — | — | — | — |
 | WORLD-01 | WF-04 | 147e71c24 | Choir refuel depot (station_depot3) adds missions service so docking shows Missions board |
 | PIC-01 | WF-11 | 62c7346d8 | NPC Kestrel resolves through packaged whole-ship allowlist as complete body |
+| PIC-09 | WF-09 | pending | Starter weapons scar with their own heat; heatForWeaponVariant resolves weapon IDs via vfxProfiles |
 
 ## CUT
 
