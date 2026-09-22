@@ -94,9 +94,14 @@ export function buildChart(history, average, gradientId, label, extras = {}) {
   const avg = Number.isFinite(Number(average)) ? Number(average) : hist[0];
   const min = Math.min(...hist, avg, ...(forecast.length ? forecast : [hist[0]]));
   const max = Math.max(...hist, avg, ...(forecast.length ? forecast : [hist[0]]));
-  const span = max - min || 1;
+  // A FLAT SERIES MUST NOT DRAW AT THE FLOOR. `max - min || 1` turns an unchanging price into a
+  // span of 1, and every sample then maps to (1 - 0/1) = the bottom of the box: the chart claimed
+  // the price was pinned at its minimum when in fact it had not moved at all, and left the whole
+  // instrument empty above it. A commodity at rest sits on the mid-line.
+  const flat = max - min < 1e-9;
+  const span = flat ? 1 : max - min;
   const mapper = chartXMapper(histPts, forecastPts, extras && extras.now, pad, W - 2 * pad);
-  const y = (v) => pad + (1 - (v - min) / span) * (H - 2 * pad);
+  const y = flat ? () => H / 2 : (v) => pad + (1 - (v - min) / span) * (H - 2 * pad);
   const histCoords = histPts.map((p, i) => ({
     x: mapper.at(p.t, i),
     y: y(p.mid),

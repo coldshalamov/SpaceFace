@@ -1,14 +1,29 @@
 /* ============================================================================================
  * fh.css — the Field Hardware component layer.
  *
- * EVERY material here is a produced asset. Plates, keys, windows, gauges and sockets are
- * nine-sliced transparent PNGs rendered in Cycles from real modelled geometry
- * (assets/ui/kit/tools/bl_kit.py); tiles are seamless renders; icons and marks are inline SVG.
- * There is no `linear-gradient`, no `box-shadow` and no `border:` standing in for a material
- * anywhere in this file — the programme's asset-coverage grep is the point, and a screen built
- * from CSS borders is rejected before it is looked at.
+ * MATERIAL DOCTRINE, REVISED 2026-09-22. This file used to require that every material be a
+ * produced bitmap, and to forbid gradients, shadows and borders outright as ways of making one.
+ * That rule is why the game looked cheap, and it has been retired. (It is paraphrased rather than
+ * quoted on purpose: a verbatim copy of a dead instruction gets skim-read as a live one.)
  *
- * `border:` appears only as `border: 0` resets and as `border-image-*` longhands.
+ * The reason is arithmetic, not taste. A nine-sliced PNG has a fixed pixel size.
+ * `keys/key.legend.rest.png` is 160x40 and was stretched across every station tab; a 320x80 @2x
+ * sits beside it on disk and nothing ever referenced it. On the Electron app at devicePixelRatio 2
+ * every key, plate and window in the game was a bitmap upsampled 2x. That is what a player sees as
+ * a smudge, and no amount of Cycles quality in the source render survives the upsample.
+ *
+ * So: MATERIAL IS COMPUTED. Gradients, the Deckplate paint worklet and SVG border-images resolve
+ * at the device's own resolution on any display, and they are what this file now uses. The Cycles
+ * renders are not deleted and not worthless — ONE_PHOTOGRAPH.md section 4.11 re-purposes them as
+ * the CALIBRATION REFERENCE the computed material is judged against. If a computed plate does not
+ * look as good as `plate.bench.raised.png`, the computed plate is wrong, not the rule.
+ *
+ * STILL PRODUCTION AND STILL MANDATORY: the kit's vector half — 263 icons, 44 marks, the
+ * logotype, and any SVG border-image. Those are resolution-independent already. A glyph drawn
+ * where a produced mark exists is a defect (section 4.12).
+ *
+ * The intent the old rule was protecting — that a screen must read as a built machine and not as a
+ * flat CSS box — is unchanged and still enforced. Only the means changed.
  *
  * Requires: tokens/tokens.css (custom properties), motion.css (transitions).
  *
@@ -82,20 +97,49 @@ body.fh-root {
   padding: var(--fh-space-m);
 }
 
-/* The smoked window: a real darkening pane with a lit rim, so the scene reads THROUGH it and
- * stays sharp. No backdrop-filter — it is banned in flight and it blurs the world anyway. */
+/* The smoked window: a darkening pane with a lit rim, so the scene reads THROUGH it and stays
+ * sharp. No backdrop-filter — it is banned in flight and it blurs the world anyway.
+ *
+ * Was `window.glass.png` nine-sliced at 20px. The centre of that render is a soft specular
+ * highlight, and `border-image-slice: fill` STRETCHES the centre: a highlight authored for a
+ * 96x96 pane became a grey blur smeared across a 440x135 chart. Computed, the rim stays a crisp
+ * 1px at any size and the specular is placed as a fraction of the box instead of stretched. */
 .fh-window {
-  border-style: solid;
-  border-width: 20px;
-  border-image-source: url('../assets/windows/window.glass.png');
-  border-image-slice: 20 fill;
-  border-image-repeat: stretch;
-  border-image-width: 20px;
+  border: 0;
+  border-radius: 2px;
   padding: var(--fh-space-l);
   box-sizing: border-box;
+  background:
+    /* the rim: a lit top edge and a dark sill, both hairlines that never soften */
+    linear-gradient(180deg, rgb(226 232 240 / .13), rgb(226 232 240 / 0) 1px) padding-box,
+    /* the specular, placed not stretched — a raking band across the upper third */
+    linear-gradient(104deg, transparent 12%, rgb(214 230 246 / .045) 26%,
+                    rgb(214 230 246 / .085) 33%, rgb(214 230 246 / .03) 41%, transparent 56%) padding-box,
+    /* the pane itself: darker at the sill, so the glass has a direction */
+    linear-gradient(176deg, rgb(9 12 17 / .80), rgb(6 8 12 / .92)) padding-box;
+  box-shadow:
+    inset 0 0 0 1px rgb(226 232 240 / .07),
+    inset 0 1px 0 0 rgb(226 232 240 / .10),
+    inset 0 -1px 0 0 rgb(0 0 0 / .55);
 }
-.fh-window--deep     { border-image-source: url('../assets/windows/window.glass.deep.png'); }
-.fh-window--viewport { border-image-source: url('../assets/windows/window.viewport.png'); }
+.fh-window--deep {
+  background:
+    linear-gradient(180deg, rgb(226 232 240 / .10), rgb(226 232 240 / 0) 1px) padding-box,
+    linear-gradient(104deg, transparent 16%, rgb(190 214 240 / .03) 30%,
+                    rgb(190 214 240 / .06) 36%, transparent 52%) padding-box,
+    linear-gradient(176deg, rgb(5 7 10 / .90), rgb(3 4 7 / .96)) padding-box;
+}
+.fh-window--viewport {
+  background:
+    linear-gradient(180deg, rgb(242 185 80 / .16), rgb(242 185 80 / 0) 1px) padding-box,
+    linear-gradient(104deg, transparent 14%, rgb(255 226 176 / .05) 30%,
+                    rgb(255 226 176 / .09) 36%, transparent 54%) padding-box,
+    linear-gradient(176deg, rgb(14 12 9 / .82), rgb(8 7 5 / .93)) padding-box;
+  box-shadow:
+    inset 0 0 0 1px rgb(242 185 80 / .20),
+    inset 0 1px 0 0 rgb(242 185 80 / .14),
+    inset 0 -1px 0 0 rgb(0 0 0 / .6);
+}
 
 /* The POSTER legend rail: the single piece of hardware a title-register screen carries. */
 .fh-rail {
@@ -208,13 +252,23 @@ body.fh-root {
  */
 
 .fh-key {
-  border-style: solid;
-  border-width: 18px;
-  border-image-source: url('../assets/keys/key.secondary.rest.png');
-  border-image-slice: 18 fill;
-  border-image-repeat: stretch;
-  border-image-width: 18px;
-  background: transparent;
+  /* THE KEY CAP, COMPUTED. Was `key.secondary.rest.png` nine-sliced at 18px, one PNG per state.
+   * Five states x five variants was twenty-five bitmaps, each upsampled on any HiDPI display.
+   * The cap is now built from light: a body that is brighter where the key light hits it, a 1px
+   * lit top edge and a 1px dark sill, and an outer seat shadow. Those hairlines are the whole
+   * illusion of a moulded cap and they are exactly 1 device pixel at every scale, which is the one
+   * thing a stretched nine-slice can never be. */
+  border: 0;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / .055), rgb(255 255 255 / 0) 42%) padding-box,
+    linear-gradient(168deg, #2b3038 0%, #23272e 46%, #191c22 100%) padding-box;
+  box-shadow:
+    inset 0 1px 0 0 rgb(226 232 240 / .14),
+    inset 0 0 0 1px rgb(226 232 240 / .055),
+    inset 0 -1px 0 0 rgb(0 0 0 / .62),
+    0 1px 0 0 rgb(0 0 0 / .5),
+    0 2px 5px -2px rgb(0 0 0 / .55);
   color: var(--fh-text);
   font-family: var(--fh-face-display);
   font-variation-settings: 'wght' 600, 'wdth' 62;
@@ -226,51 +280,174 @@ body.fh-root {
   padding: 0 var(--fh-space-xl);
   cursor: pointer;
   box-sizing: border-box;
+  text-shadow: 0 -1px 0 rgb(0 0 0 / .65);
 }
-.fh-key:hover  { border-image-source: url('../assets/keys/key.secondary.hover.png'); }
-.fh-key:active { border-image-source: url('../assets/keys/key.secondary.pressed.png'); }
+@supports (background-image: paint(dp-plate)) {
+  /* The worklet paints a brushed face at the device's resolution — the grain never tiles and never
+   * blurs, which is what the Cycles render was for. */
+  .fh-key { background:
+    linear-gradient(180deg, rgb(255 255 255 / .055), rgb(255 255 255 / 0) 42%) padding-box,
+    paint(dp-plate) padding-box,
+    linear-gradient(168deg, #2b3038 0%, #23272e 46%, #191c22 100%) padding-box; }
+}
+.fh-key:hover {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / .085), rgb(255 255 255 / 0) 44%) padding-box,
+    linear-gradient(168deg, #343a44 0%, #2a2f37 46%, #1e222a 100%) padding-box;
+}
+/* Pressed SINKS: the lit edge moves to the bottom and the seat shadow collapses. The element does
+ * not move, exactly as the sprite set was careful to guarantee. */
+.fh-key:active {
+  background: linear-gradient(168deg, #16191e 0%, #1c2026 54%, #23272e 100%) padding-box;
+  box-shadow:
+    inset 0 2px 4px 0 rgb(0 0 0 / .7),
+    inset 0 0 0 1px rgb(0 0 0 / .5),
+    inset 0 -1px 0 0 rgb(226 232 240 / .09);
+}
 .fh-key:disabled,
 .fh-key[aria-disabled='true'] {
-  border-image-source: url('../assets/keys/key.secondary.disabled.png');
+  background: linear-gradient(168deg, #23262b 0%, #1e2126 100%) padding-box;
+  box-shadow: inset 0 0 0 1px rgb(226 232 240 / .04), inset 0 -1px 0 0 rgb(0 0 0 / .4);
   color: var(--fh-text-tertiary);
   cursor: default;
+  text-shadow: none;
 }
 
-.fh-key--primary          { border-image-source: url('../assets/keys/key.primary.rest.png'); }
-.fh-key--primary:hover    { border-image-source: url('../assets/keys/key.primary.hover.png'); }
-.fh-key--primary:active   { border-image-source: url('../assets/keys/key.primary.pressed.png'); }
-.fh-key--primary:disabled { border-image-source: url('../assets/keys/key.primary.disabled.png'); }
+/* PRIMARY is consequence: pressing it changes the world, so it is the heaviest object available
+ * and the only key that is lit from inside. */
+.fh-key--primary {
+  background:
+    linear-gradient(180deg, rgb(255 236 200 / .22), rgb(255 236 200 / 0) 46%) padding-box,
+    linear-gradient(168deg, #c8923a 0%, #a9761f 48%, #7d5412 100%) padding-box;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 238 205 / .45),
+    inset 0 0 0 1px rgb(255 214 140 / .22),
+    inset 0 -1px 0 0 rgb(0 0 0 / .5),
+    0 1px 0 0 rgb(0 0 0 / .5),
+    0 3px 12px -3px rgb(242 185 80 / .35);
+  color: #1a1206;
+  text-shadow: 0 1px 0 rgb(255 236 200 / .3);
+}
+.fh-key--primary:hover {
+  background:
+    linear-gradient(180deg, rgb(255 240 210 / .3), rgb(255 240 210 / 0) 48%) padding-box,
+    linear-gradient(168deg, #dba646 0%, #bd8626 48%, #8d6015 100%) padding-box;
+}
+.fh-key--primary:active {
+  background: linear-gradient(168deg, #7d5412 0%, #a9761f 56%, #c8923a 100%) padding-box;
+  box-shadow: inset 0 2px 5px 0 rgb(0 0 0 / .5), inset 0 0 0 1px rgb(0 0 0 / .35);
+}
+.fh-key--primary:disabled {
+  background: linear-gradient(168deg, #4a412f 0%, #3a3426 100%) padding-box;
+  box-shadow: inset 0 0 0 1px rgb(226 232 240 / .05);
+  color: #8a7f68; text-shadow: none;
+}
 
-.fh-key--hazard          { border-image-source: url('../assets/keys/key.hazard.rest.png'); }
-.fh-key--hazard:hover    { border-image-source: url('../assets/keys/key.hazard.hover.png'); }
-.fh-key--hazard:active   { border-image-source: url('../assets/keys/key.hazard.pressed.png'); }
-.fh-key--hazard:disabled { border-image-source: url('../assets/keys/key.hazard.disabled.png'); }
+/* HAZARD keeps its painted stripe, which is a tile and not a nine-slice, plus a red rim. */
+.fh-key--hazard {
+  background:
+    linear-gradient(180deg, rgb(255 210 200 / .07), rgb(255 210 200 / 0) 42%) padding-box,
+    linear-gradient(168deg, #3a2622 0%, #2e1d1a 48%, #221413 100%) padding-box;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 180 165 / .16),
+    inset 0 0 0 1px rgb(214 90 70 / .3),
+    inset 0 -1px 0 0 rgb(0 0 0 / .6),
+    0 1px 0 0 rgb(0 0 0 / .5);
+  color: #f0c8bd;
+}
+.fh-key--hazard:hover {
+  background: linear-gradient(168deg, #472d28 0%, #38231f 48%, #291817 100%) padding-box;
+}
+.fh-key--hazard:active {
+  background: linear-gradient(168deg, #1c1110 0%, #261715 56%, #32201c 100%) padding-box;
+  box-shadow: inset 0 2px 5px 0 rgb(0 0 0 / .68), inset 0 0 0 1px rgb(214 90 70 / .25);
+}
+.fh-key--hazard:disabled {
+  background: linear-gradient(168deg, #2b2320 0%, #241d1b 100%) padding-box;
+  box-shadow: inset 0 0 0 1px rgb(226 232 240 / .04);
+  color: var(--fh-text-tertiary);
+}
 
+/* LEGEND IS NOT A KEY. ONE_PHOTOGRAPH.md section 4.2: "a filter or a tab is a lit legend on a
+ * rail. A key is mass only when pressing it changes the world." A market filter or a screen tab
+ * changes what you are LOOKING at, never the world, so it carries no cap, no bevel and no fill —
+ * it is a word that lights. This is the class the station dock and the eight market filters wear,
+ * so it is the single most-seen control in the game, and it was the worst offender: a 160x40 PNG
+ * stretched across every one of them, with the selected state a solid amber fill that shouted
+ * louder than UNDOCK.
+ *
+ * Three weights, one lamp bar, so a legend can never show two states at once. */
 .fh-key--legend {
-  border-width: 14px;
-  border-image-source: url('../assets/keys/key.legend.rest.png');
-  border-image-slice: 14 fill;
-  border-image-width: 14px;
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  text-shadow: none;
   min-height: 40px;
-  min-width: 96px;
+  min-width: 0;
+  padding: 0 14px;
+  font-variation-settings: 'wght' 560, 'wdth' 78;
   color: var(--fh-text-resting);
+  transition: color 160ms ease, font-variation-settings 160ms ease;
+}
+.fh-key--legend::after {
+  content: '';
+  position: absolute; left: 50%; translate: -50% 0; bottom: 0;
+  height: 2px; width: 0;
+  background: var(--fh-legend, #f2b950);
+  box-shadow: 0 0 10px rgb(242 185 80 / .5);
+  transition: width 200ms ease;
+  pointer-events: none;
+}
+.fh-key--legend:hover {
+  background: none;
+  color: var(--fh-text);
+  font-variation-settings: 'wght' 640, 'wdth' 86;
+}
+.fh-key--legend:hover::after {
+  width: 34%; background: currentColor; box-shadow: none; opacity: .45;
 }
 .fh-key--legend[aria-selected='true'],
-.fh-key--legend.is-lit { border-image-source: url('../assets/keys/key.legend.lit.png');
-                         color: var(--fh-text); }
-.fh-key--legend:hover  { border-image-source: url('../assets/keys/key.legend.hover.png'); }
-
-.fh-key--small {
-  border-width: 12px;
-  border-image-source: url('../assets/keys/key.small.rest.png');
-  border-image-slice: 12 fill;
-  border-image-width: 12px;
-  min-height: 36px;
-  min-width: 88px;
-  padding: 0 var(--fh-space-l);
+.fh-key--legend[aria-pressed='true'],
+.fh-key--legend.is-lit {
+  background: none;
+  box-shadow: none;
+  color: var(--fh-text);
+  font-variation-settings: 'wght' 760, 'wdth' 100;
 }
-.fh-key--small:hover  { border-image-source: url('../assets/keys/key.small.hover.png'); }
-.fh-key--small:active { border-image-source: url('../assets/keys/key.small.pressed.png'); }
+.fh-key--legend[aria-selected='true']::after,
+.fh-key--legend[aria-pressed='true']::after,
+.fh-key--legend.is-lit::after {
+  width: 100%; opacity: 1;
+  background: var(--fh-legend, #f2b950);
+  box-shadow: 0 0 12px rgb(242 185 80 / .45);
+}
+.fh-key--legend:disabled,
+.fh-key--legend[aria-disabled='true'] {
+  background: none; box-shadow: none; color: var(--fh-text-tertiary); cursor: default;
+}
+.fh-key--legend:disabled::after { width: 0; }
+
+/* SMALL stays mass — it is an adjuster you press repeatedly (quantity, steppers), and a word with
+ * no cap gives nothing to aim at. Just the same cap, compact, and computed. */
+.fh-key--small {
+  border-radius: 2px;
+  min-height: 36px;
+  min-width: 0;
+  padding: 0 var(--fh-space-l);
+  box-shadow:
+    inset 0 1px 0 0 rgb(226 232 240 / .11),
+    inset 0 0 0 1px rgb(226 232 240 / .05),
+    inset 0 -1px 0 0 rgb(0 0 0 / .55),
+    0 1px 0 0 rgb(0 0 0 / .42);
+}
+.fh-key--small:active {
+  box-shadow:
+    inset 0 2px 3px 0 rgb(0 0 0 / .62),
+    inset 0 0 0 1px rgb(0 0 0 / .45),
+    inset 0 -1px 0 0 rgb(226 232 240 / .07);
+}
 
 /* A socket is a machined recess that holds a verb icon — the action bar is sockets, not buttons */
 .fh-socket {
@@ -451,18 +628,41 @@ body.fh-root {
 
 /* Any list of things that exist in the world is a row of IMAGED tiles, never a row of words. */
 .fh-tile {
-  border-style: solid; border-width: 20px;
-  border-image-source: url('../assets/windows/window.glass.png');
-  border-image-slice: 20 fill; border-image-width: 20px;
+  /* A tile is a lit pane holding an image, so it wears the same computed glass as .fh-window.
+     It used to nine-slice window.glass.png at 20px, which meant the pane's specular was stretched
+     to whatever the tile happened to measure. */
+  border: 0; border-radius: 2px;
+  background:
+    linear-gradient(180deg, rgb(226 232 240 / .12), rgb(226 232 240 / 0) 1px) padding-box,
+    linear-gradient(104deg, transparent 12%, rgb(214 230 246 / .04) 26%,
+                    rgb(214 230 246 / .08) 33%, transparent 52%) padding-box,
+    linear-gradient(176deg, rgb(11 14 19 / .84), rgb(7 9 13 / .94)) padding-box;
+  box-shadow:
+    inset 0 0 0 1px rgb(226 232 240 / .07),
+    inset 0 1px 0 0 rgb(226 232 240 / .10),
+    inset 0 -1px 0 0 rgb(0 0 0 / .55);
   display: grid; grid-template-rows: 1fr auto;
-  min-width: 168px; min-height: 132px; padding: 0; cursor: pointer;
-  background: transparent; color: var(--fh-text-resting);
-  /* border-box like every other surface here: without it the 20 px border-image is ADDED to
-     the stated size, and a row of tiles silently grows 40 px taller than its frame. */
+  min-width: 168px; min-height: 132px; padding: 10px; cursor: pointer;
+  color: var(--fh-text-resting);
   box-sizing: border-box;
+  transition: box-shadow 160ms ease, color 160ms ease;
 }
+.fh-tile:hover { box-shadow:
+  inset 0 0 0 1px rgb(226 232 240 / .13),
+  inset 0 1px 0 0 rgb(226 232 240 / .16),
+  inset 0 -1px 0 0 rgb(0 0 0 / .55); color: var(--fh-text); }
+/* Selected: the pane warms and gains an amber rim -- the viewport render's whole job. */
 .fh-tile[aria-selected='true'] {
-  border-image-source: url('../assets/windows/window.viewport.png');
+  background:
+    linear-gradient(180deg, rgb(242 185 80 / .16), rgb(242 185 80 / 0) 1px) padding-box,
+    linear-gradient(104deg, transparent 14%, rgb(255 226 176 / .05) 30%,
+                    rgb(255 226 176 / .09) 36%, transparent 54%) padding-box,
+    linear-gradient(176deg, rgb(16 13 9 / .86), rgb(9 7 5 / .95)) padding-box;
+  box-shadow:
+    inset 0 0 0 1px rgb(242 185 80 / .32),
+    inset 0 1px 0 0 rgb(242 185 80 / .2),
+    inset 0 -1px 0 0 rgb(0 0 0 / .6),
+    0 0 18px -6px rgb(242 185 80 / .4);
   color: var(--fh-text);
 }
 .fh-tile-art { display: grid; place-items: center; min-height: 78px; }

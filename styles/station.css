@@ -643,13 +643,17 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   margin: 0;
   max-width: none;
   padding: 0;
-  background: none;
-  border-style: solid;
-  border-width: 12px 16px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip.png");
-  border-image-slice: 12 16 12 16 fill;
-  border-image-repeat: stretch;
-  border-image-width: 12px 16px;
+  /* Was `plate.legend.strip.png` nine-sliced 12x16. A tape is a thin strip of stock with a
+     shadowed lip; computed, that lip stays 1px at any width instead of smearing. */
+  border: 0;
+  border-radius: 1px;
+  padding: 7px 13px;
+  background: linear-gradient(177deg, #1b1f25, #14171c) padding-box;
+  box-shadow:
+    inset 0 1px 0 0 rgb(226 232 240 / .10),
+    inset 0 0 0 1px rgb(226 232 240 / .05),
+    inset 0 -1px 0 0 rgb(0 0 0 / .55),
+    0 1px 3px -1px rgb(0 0 0 / .6);
   font-family: var(--fh-face-display, var(--k-display));
   font-variation-settings: "wght" 600, "wdth" 62;
   font-size: var(--k-fs-fine);
@@ -665,7 +669,12 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 #screens .sx-berth .sxb-berth__route[hidden] { display: none; }
 
 #screens .sx-berth .sxb-event[data-tone="danger"] {
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-red.png");
+  background: linear-gradient(177deg, #2a1614, #1d0f0e) padding-box;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 170 150 / .16),
+    inset 0 0 0 1px rgb(214 90 70 / .34),
+    inset 0 -1px 0 0 rgb(0 0 0 / .6),
+    0 1px 3px -1px rgb(0 0 0 / .6);
 }
 #screens .sx-berth .sxb-berth__patch,
 #screens .sx-berth .sxb-berth__route {
@@ -758,19 +767,31 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 #screens .sx-berth .sxb-vital__act {
   min-height: 36px;
   padding: 0 calc(8px * var(--k-s));
-  background: none;
-  border-style: solid;
-  border-width: 12px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.rest.png");
-  border-image-slice: 12 fill;
-  border-image-repeat: stretch;
-  border-image-width: 12px;
+  /* A vital's verb is a small cap: it spends credits, so it is mass, just compact. */
+  border: 0;
+  border-radius: 2px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / .05), rgb(255 255 255 / 0) 44%) padding-box,
+    linear-gradient(168deg, #2b3038, #1c2026) padding-box;
+  box-shadow:
+    inset 0 1px 0 0 rgb(226 232 240 / .12),
+    inset 0 0 0 1px rgb(226 232 240 / .05),
+    inset 0 -1px 0 0 rgb(0 0 0 / .58),
+    0 1px 0 0 rgb(0 0 0 / .45);
   font-size: var(--k-fs-fine);
   color: var(--k-text-live);
+  text-shadow: 0 -1px 0 rgb(0 0 0 / .6);
 }
 #screens .sx-berth .sxb-vital__acts .k-word:hover,
 #screens .sx-berth .sxb-vital__act:hover {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.small.hover.png");
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 46%) padding-box,
+    linear-gradient(168deg, #353b45, #22262d) padding-box;
+}
+#screens .sx-berth .sxb-vital__acts .k-word:active,
+#screens .sx-berth .sxb-vital__act:active {
+  background: linear-gradient(168deg, #16191e, #23272e) padding-box;
+  box-shadow: inset 0 2px 3px 0 rgb(0 0 0 / .62), inset 0 -1px 0 0 rgb(226 232 240 / .07);
 }
 #screens .sx-berth .sxb-vital__ok { font-size: var(--k-fs-fine); color: var(--k-bone-38); }
 
@@ -783,14 +804,17 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   background: none;
 }
 #screens .sx-berth #sx-panel > .k-panel { height: 100%; min-height: 0; padding: 0; gap: calc(28px * var(--k-s)); }
+/* The index well is a SUNK plate: the light comes from above, so a recess is dark at the top lip
+   and catches light at the bottom -- the exact inverse of a cap. Was `plate.bench.sunk.png`. */
 #screens .sx-berth #sx-panel > .k-panel > .k-hang {
-  border-style: solid;
-  border-width: 24px;
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.bench.sunk.png");
-  border-image-slice: 24 fill;
-  border-image-repeat: stretch;
-  border-image-width: 24px;
-  background: none;
+  border: 0;
+  border-radius: 2px;
+  padding: 18px;
+  background: linear-gradient(180deg, #0e1116 0%, #121519 100%) padding-box;
+  box-shadow:
+    inset 0 2px 6px -1px rgb(0 0 0 / .72),
+    inset 0 0 0 1px rgb(0 0 0 / .5),
+    inset 0 -1px 0 0 rgb(226 232 240 / .07);
 }
 #screens .sx-berth #sx-panel > .k-panel > .k-stage {
   background: none;
@@ -1019,13 +1043,20 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   min-height: 56px;
   min-width: calc(140px * var(--k-s));
   padding: 0 calc(16px * var(--k-s));
-  background: none;
-  border-style: solid;
-  border-width: 18px;
-  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.rest.png");
-  border-image-slice: 18 fill;
-  border-image-repeat: stretch;
-  border-image-width: 18px;
+  /* The one key on the station that changes the world, so it is the heaviest object on it and
+     the only one lit from inside. Was `key.primary.rest.png` nine-sliced at 18px. */
+  border: 0;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgb(255 236 200 / .24), rgb(255 236 200 / 0) 46%) padding-box,
+    linear-gradient(168deg, #c8923a 0%, #a9761f 48%, #7d5412 100%) padding-box;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 238 205 / .48),
+    inset 0 0 0 1px rgb(255 214 140 / .24),
+    inset 0 -1px 0 0 rgb(0 0 0 / .5),
+    0 1px 0 0 rgb(0 0 0 / .5),
+    0 4px 16px -4px rgb(242 185 80 / .38);
+  text-shadow: 0 1px 0 rgb(255 236 200 / .28);
   font-family: var(--fh-face-display, var(--k-display));
   font-variation-settings: "wght" 600, "wdth" 62;
   font-size: var(--k-fs-data);
@@ -1035,17 +1066,54 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 }
 #screens .sx-berth .sxb-launch.k-word:hover,
 #screens .sx-berth .sxb-launch.fh-key:hover {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.hover.png");
+  background:
+    linear-gradient(180deg, rgb(255 240 210 / .32), rgb(255 240 210 / 0) 48%) padding-box,
+    linear-gradient(168deg, #dba646 0%, #bd8626 48%, #8d6015 100%) padding-box;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 242 214 / .55),
+    inset 0 0 0 1px rgb(255 220 155 / .3),
+    inset 0 -1px 0 0 rgb(0 0 0 / .5),
+    0 1px 0 0 rgb(0 0 0 / .5),
+    0 5px 20px -4px rgb(242 185 80 / .5);
 }
+#screens .sx-berth .sxb-launch.k-word:active,
+#screens .sx-berth .sxb-launch.fh-key:active {
+  background: linear-gradient(168deg, #7d5412 0%, #a9761f 56%, #c8923a 100%) padding-box;
+  box-shadow: inset 0 2px 5px 0 rgb(0 0 0 / .5), inset 0 0 0 1px rgb(0 0 0 / .35);
+}
+/* Focus is a bone bracket, never an amber ring -- amber already means "this is the live verb"
+   here, so borrowing it for focus would say two different things with one colour (4.3). */
 #screens .sx-berth .sxb-launch.k-word:focus-visible,
 #screens .sx-berth .sxb-launch.fh-key:focus-visible {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.focus.png");
+  outline: 2px solid transparent !important;
+  outline-offset: 0 !important;
+  box-shadow:
+    inset 0 0 0 2px rgb(255 249 235 / .9),
+    inset 0 1px 0 0 rgb(255 238 205 / .48),
+    0 1px 0 0 rgb(0 0 0 / .5),
+    0 5px 20px -4px rgb(242 185 80 / .45);
 }
+/* Undocking into danger: the cap goes red-hot, not grey. */
 #screens .sx-berth .sxb-launch[data-state="risk"] {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.hazard.rest.png");
+  background:
+    linear-gradient(180deg, rgb(255 210 195 / .2), rgb(255 210 195 / 0) 46%) padding-box,
+    linear-gradient(168deg, #b8452f 0%, #93301f 48%, #6a2014 100%) padding-box;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 200 180 / .4),
+    inset 0 0 0 1px rgb(255 150 120 / .24),
+    inset 0 -1px 0 0 rgb(0 0 0 / .5),
+    0 1px 0 0 rgb(0 0 0 / .5),
+    0 4px 16px -4px rgb(214 90 70 / .42);
+  color: #fff0ea;
 }
 #screens .sx-berth .sxb-launch[data-state="risk"]:hover {
-  border-image-source: url("../assets/ui/kit/assets/keys/key.hazard.hover.png");
+  background:
+    linear-gradient(180deg, rgb(255 216 203 / .28), rgb(255 216 203 / 0) 48%) padding-box,
+    linear-gradient(168deg, #cd5138 0%, #a53a26 48%, #782518 100%) padding-box;
+}
+@media (forced-colors: active) {
+  #screens .sx-berth .sxb-launch.k-word:focus-visible,
+  #screens .sx-berth .sxb-launch.fh-key:focus-visible { outline: 2px solid Highlight !important; }
 }
 #screens .sx-berth .sxb-launch__copy { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
 #screens .sx-berth .sxb-launch .sxb-launch__state { color: var(--k-bone-38); margin: 2px 0 0; font-size: var(--k-fs-fine); letter-spacing: 0.08em; }
@@ -1076,7 +1144,13 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__ident,
 html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__news,
 html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   color: var(--k-text-live);
-  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-white.png");
+  /* WANTED: the tape goes bone-bright rather than swapping to a different printed strip. */
+  background: linear-gradient(177deg, #e8e2d4, #cfc8b8) padding-box;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / .7),
+    inset 0 0 0 1px rgb(0 0 0 / .18),
+    inset 0 -1px 0 0 rgb(0 0 0 / .28),
+    0 1px 3px -1px rgb(0 0 0 / .6);
 }
 
 /* ───────────── shared scroll-edge fade ───────────── */
@@ -1200,3 +1274,26 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   #screens .sx-berth .sxb-berth__lamp,
   #screens .sx-berth .sxb-launch__light { forced-color-adjust: none; }
 }
+
+/* The shipworks verb rack sits in the ~115px fleet column, but its verbs are sentences ("Take it
+   to the range", "Select a slot") laid out as non-wrapping inline-blocks. They ran past the column
+   and slid UNDER the stage panel at x=300, so the player saw "range", "ecord", ": a slot" -- three
+   words with their heads cut off. Nothing was clipping them; they were simply behind something.
+   A verb wraps inside its own column instead. */
+/* The shipworks verb rack carried `margin-right: calc(400px * var(--k-s) + var(--k-gap))` -- a
+   hard-coded reservation for a 400px right panel that the berth layout no longer puts there. It
+   squeezed the rack to 115px, so its verbs ("Take it to the range", "Select a slot") overflowed
+   and slid UNDER the stage panel: the player saw "range", "ecord", ": a slot", three words with
+   their heads cut off. Nothing was clipping them; they were behind something.
+
+   The rack sits at the end of its own row and wraps at spaces. NOT `overflow-wrap: anywhere` --
+   that broke "Record" into "Reco / rd", which is worse than the bug it fixed. */
+#screens .sx-berth .sx-sw__main > .sx-sw-verbs {
+  margin-right: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: calc(16px * var(--k-s));
+  min-width: 0;
+}
+#screens .sx-berth .sx-sw-verb { white-space: nowrap; max-width: 100%; }

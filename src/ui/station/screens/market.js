@@ -33,7 +33,6 @@ import {
   paintPlate,
   paintRow,
   paintSelectedTableRow,
-  paintWindow,
   pinKeyrack,
   syncKeys,
 } from './fhChrome.js';
@@ -335,7 +334,11 @@ export function createMarketScreen(ctx) {
     paintHero(quoteEl.querySelector('.k-hero__n'));
     paintLegend(quoteEl.querySelector('.k-hero__w'));
     const chart = quoteEl.querySelector('.sx-mkt-chart');
-    if (chart) paintWindow(chart);
+    // The chart wears NO window. ONE_PHOTOGRAPH.md section 4.5: an instrument shows real data
+    // as light, or it is not on the screen. A bezel around a price line is a picture of an
+    // instrument; the line itself is the instrument, and the darkening it used to sit on is
+    // the berth veil's job now. This is also where the smudge came from: the glass render's
+    // centre specular, stretched by border-image-slice:fill across a 440px-wide chart.
     for (const row of quoteEl.querySelectorAll('.k-row')) paintRow(row, false);
   }
 
@@ -359,8 +362,13 @@ export function createMarketScreen(ctx) {
     for (const btn of tradeEl.querySelectorAll('[data-q]')) paintKey(btn, 'small');
     const buy = tradeEl.querySelector('.sx-trade__go--buy, [data-mode="buy"]');
     const sell = tradeEl.querySelector('.sx-trade__go--sell, [data-mode="sell"]');
-    if (buy) paintKey(buy, buy.hasAttribute('data-go') ? 'primary' : 'legend');
-    if (sell) paintKey(sell, sell.hasAttribute('data-go') ? 'primary' : 'legend');
+    // A DISABLED VERB IS NOT THE HEAVIEST THING ON THE SCREEN. ONE_PHOTOGRAPH.md section 4.4 asks
+    // whether the most consequential control is the heaviest object; with no credits, BUY wore the
+    // full amber cap while SELL -- the only trade the player could actually make -- was a bare
+    // word beside it. The live side earns mass only while it can be pressed.
+    const heavy = (btn) => btn.hasAttribute('data-go') && !btn.disabled ? 'primary' : 'legend';
+    if (buy) paintKey(buy, heavy(buy));
+    if (sell) paintKey(sell, heavy(sell));
     for (const row of tradeEl.querySelectorAll('.k-row')) paintRow(row, false);
     dressState(tradeEl);
     syncKeys(tradeEl);

@@ -247,9 +247,11 @@ html.sf-high-contrast :focus-visible { outline-color:#fff !important; }
 /* Focus is not a ring (ONE_PHOTOGRAPH.md 4.3). A key is mass, so it shows focus the way a real
    key does: the cap lifts into the light and a bone bracket runs down its leading edge. Amber is
    reserved for a lamp that means something is ON, so focus must never borrow it. */
-.dp-key:focus-visible { outline:2px solid transparent; outline-offset:0; color:var(--dp-ink); filter:brightness(1.16); }
-.dp-key:focus-visible::after { content:""; position:absolute; right:0; top:12%; bottom:12%; width:2px;
-  background:var(--dp-ink); pointer-events:none; }
+/* The bracket is an inset shadow, not a pseudo-element: ::before is the LED pip and ::after is
+   the hazard stripe on .dp-key--hazard, so a focus pseudo here would silently delete the
+   hazard band on exactly the keys that most need to look dangerous. */
+.dp-key:focus-visible { outline:2px solid transparent; outline-offset:0; color:var(--dp-ink);
+  filter:brightness(1.16); box-shadow:inset -2px 0 0 0 var(--dp-ink); }
 @media (forced-colors:active) { .dp-key:focus-visible { outline:2px solid Highlight; } }
 .dp-key[aria-pressed="true"], .dp-key.is-on { color:var(--dp-ink); }
 .dp-key[aria-pressed="true"]::before, .dp-key.is-on::before, .dp-key--primary::before { background:${LED_ON}; box-shadow:${LED_ON_GLOW}; }
