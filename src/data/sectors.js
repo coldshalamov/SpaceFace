@@ -67,7 +67,7 @@ const CORE_SECTORS = [
         center: { x: 720, z: -260 }, clusterRadius: 380, count: 42,
       },
       {
-        id: 'f_helios_outer', type: 'ast_common_rock', countWeight: 0.7,
+        id: 'f_helios_outer', type: 'ast_metallic', countWeight: 0.7,
         center: { x: -900, z: 640 }, clusterRadius: 320, count: 28,
       },
     ],

@@ -100,7 +100,7 @@ not to invent.
 | WORLD-07 | Sker Bazaar has ships on the apron | `src/data/sectors.js` (`sector_sker_haven` traffic) | Seed 4242 spawns at least two non-player ships near `station_sker` | Raise `enemyDensity`. Add an outlaw encounter | OPEN |
 | WORLD-08 | A Collective hull hails in yard language, not Concord boilerplate | `src/data/factionContactGrammar.js`, `src/data/barks.js` | `FACTION_CONTACT_GRAMMAR.faction_dmc` exists and a Ceres trader or patrol line uses it | Change heat math. Add a faction | OPEN |
 | WORLD-09 | A Meridian hull hails in invoice language | `src/data/factionContactGrammar.js`, `src/data/barks.js` | A Tethys trader line uses an MTS-specific sentence | Retune prices | OPEN |
-| WORLD-10 | Helios outer rocks are not the same type as the starter field | `src/data/sectors.js` Helios fields | `f_helios_outer` uses a second existing asteroid type | Change beam rate, hold size, tax, or next-field distance (§22 A3) | OPEN |
+| WORLD-10 | Helios outer rocks are not the same type as the starter field | `src/data/sectors.js` Helios fields | `f_helios_outer` uses a second existing asteroid type | Change beam rate, hold size, tax, or next-field distance (§22 A3) | SHIPPED |
 | WORLD-11 | Io Reach traffic can include one named courier | `src/data/laneContacts.js` | `pickNamedLaneContact` can return an Io-only id | Add a station | OPEN |
 | WORLD-12 | Charon traffic can include one named miner | `src/data/laneContacts.js` | The Expanse sector ids include that contact | Add a claimable | OPEN |
 | WORLD-13 | Tethys has one always-there dressing piece made from a place that already exists | `src/data/worldOneOffs.js`, `src/systems/world.js` | Activating Tethys spawns that `placeId` near the customs gate or the hub | Add a GLB or a mission | OPEN |
@@ -149,6 +149,7 @@ not to invent.
 | WORLD-01 | WF-04 | 147e71c24 | Choir refuel depot (station_depot3) adds missions service so docking shows Missions board |
 | PIC-01 | WF-11 | 62c7346d8 | NPC Kestrel resolves through packaged whole-ship allowlist as complete body |
 | PIC-09 | WF-09 | 79657724b | Starter weapons scar with their own heat; heatForWeaponVariant resolves weapon IDs via vfxProfiles |
+| WORLD-10 | WF-04 | pending | Helios outer rocks (f_helios_outer) use ast_metallic instead of repeating starter ast_common_rock |
 
 ## CUT
 
