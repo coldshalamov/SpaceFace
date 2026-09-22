@@ -112,8 +112,13 @@ import {
 import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
 import {
+  clearWaveHullRunwayKeys,
   collectMeshPresentationEntities,
+  collectWaveHullDecodeKeys,
+  entityMatchesWaveHullRunway,
   isPresentationLedgerRow,
+  makeWaveHullDecodeStub,
+  noteWaveHullRunwayKeys,
   resolveWorldPresentationEntity,
 } from '../world/presentationSources.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
@@ -1243,6 +1248,10 @@ function isHoldExemptMeshBuild(entity, state, glassIds) {
   // prefetch window left those approach rocks listed but unbuilt until hold release —
   // the +20 s asteroid dump on soft-GPU crucible seed 4242. Match the collect horizon
   // for ledger rows only; combat-list hulls stay on the prefetch window.
+  //
+  // Wave-planned hull keys (Choice B) are next-contact by schedule — owe their mesh under
+  // the hold even when spawn distance sits on the glass lip (~165 WU vs ~163 halfX).
+  if (entityMatchesWaveHullRunway(entity, state)) return true;
   const env = renderAdmissionEnv(state);
   const horizon = isPresentationLedgerRow(entity)
     ? TABLE_COLLECT_HORIZON_SECONDS
@@ -1367,18 +1376,63 @@ function kickDecodeRunwayAssets(owner, entities) {
   if (!state || state.mode !== 'flight' || !renderer || !renderer.domElement) return 0;
   const pending = owner._decodeRunwayPrefetchIds || (owner._decodeRunwayPrefetchIds = new Set());
   const list = Array.isArray(entities) ? entities : [];
+  // Prefer planned wave hulls so spawn-cohort decode finishes before a rim pop.
+  const ordered = list.length > 1
+    ? list.slice().sort((a, b) => {
+      const aw = entityMatchesWaveHullRunway(a, state) ? 0 : 1;
+      const bw = entityMatchesWaveHullRunway(b, state) ? 0 : 1;
+      return aw - bw;
+    })
+    : list;
   let started = 0;
-  for (let i = 0; i < list.length && started < 2; i++) {
-    const entity = list[i];
+  for (let i = 0; i < ordered.length && started < 2; i++) {
+    const entity = ordered[i];
     if (!entity || entity.alive === false) continue;
     if (entity.type !== 'ship' && entity.type !== 'station') continue;
     if (!meshNeedsAuthoredDecode(owner, entity)) continue;
     if (pending.has(entity.id)) continue;
-    if (!isEntityAuthoredUpgradeRelevant(entity, state)) continue;
+    // Wave-planned keys are next-contact; do not wait for the ordinary decode disc
+    // once the schedule has named them.
+    if (!entityMatchesWaveHullRunway(entity, state)
+        && !isEntityAuthoredUpgradeRelevant(entity, state)) continue;
     pending.add(entity.id);
     started += 1;
-    Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, {})).catch(() => {}).finally(() => {
+    const opts = entityMatchesWaveHullRunway(entity, state)
+      ? { residencyRole: 'wave-hull-decode-runway' }
+      : {};
+    Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, opts)).catch(() => {}).finally(() => {
       pending.delete(entity.id);
+    });
+  }
+  return started;
+}
+
+/**
+ * Lane C Choice B — on run:wavePlanned, decode the wave's real hull keys before
+ * materialize. Soft-GPU still skips pipeline precompile; this only warms the
+ * authored GLB library via preloadAuthoredAssetsForEntity (same helper kickDecode
+ * uses). Works in loading (wave 1 plans during the shell) and in flight.
+ */
+function kickWaveHullDecodeAssets(owner, hullKeys) {
+  const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
+  if (!state || !renderer || !renderer.domElement) return 0;
+  if (state.mode !== 'flight' && state.mode !== 'loading') return 0;
+  const pending = owner._waveHullDecodePending || (owner._waveHullDecodePending = new Set());
+  const list = Array.isArray(hullKeys) ? hullKeys : [];
+  let started = 0;
+  for (let i = 0; i < list.length && started < 2; i++) {
+    const key = list[i];
+    if (!key || typeof key.key !== 'string' || pending.has(key.key)) continue;
+    const stub = makeWaveHullDecodeStub(key);
+    if (!stub) continue;
+    pending.add(key.key);
+    started += 1;
+    Promise.resolve(preloadAuthoredAssetsForEntity(renderer, stub, {
+      residencyRole: 'wave-hull-decode-runway',
+      sectorId: (state.world && state.world.currentSectorId) || null,
+    })).catch(() => {}).finally(() => {
+      pending.delete(key.key);
     });
   }
   return started;
@@ -8918,8 +8972,16 @@ export const render = {
     // PQ-210.00: the arena publishes real spawn-spec exemplars on every run:wavePlanned —
     // wave 1's receipt lands while mode is still 'loading', so these jobs drain behind the
     // shell like every other queued admission. run:ended retires the retained roots.
+    // That publisher stays unwired (measured iGPU regression). Lane C Choice B instead
+    // kicks decode/runway for the plan's real hull keys only — no exemplar mesh, no
+    // pipeline precompile (soft-GPU skips those anyway).
     onBus('survivalArena:rosterPrewarm', (p) => this._admitSurvivalRosterPrewarm(p));
-    onBus('run:ended', () => this._releaseSurvivalRosterPrewarm('run_ended'));
+    onBus('run:wavePlanned', (p) => this._kickWaveHullDecodeRunway(p));
+    onBus('run:ended', () => {
+      this._releaseSurvivalRosterPrewarm('run_ended');
+      clearWaveHullRunwayKeys(this.state);
+      if (this._waveHullDecodePending) this._waveHullDecodePending.clear();
+    });
     const compileSectorPipelines = async (sector) => {
       if (gpu.software) {
         return {
@@ -9291,6 +9353,17 @@ export const render = {
     this._resizeHandler = null;
     this._videoSettingsOff = null;
     return destroyed;
+  },
+
+  // Lane C Choice B — warm planned wave hull decode before materialize. Collects real
+  // schedule/package/swarm keys only, notes them for residency priority, and kicks the
+  // same preloadAuthoredAssetsForEntity path kickDecode uses. No vf.build, no pipeline
+  // compile, no dummy catalog.
+  _kickWaveHullDecodeRunway(payload) {
+    const plan = payload && payload.plan;
+    const keys = collectWaveHullDecodeKeys(plan);
+    noteWaveHullRunwayKeys(this.state, keys);
+    return kickWaveHullDecodeAssets(this, keys);
   },
 
   // PQ-210.00 Crucible roster prewarm. A wave that introduces a hull the GPU has never drawn
