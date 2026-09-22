@@ -184,6 +184,13 @@ export const COLLISION_DELTA_V_REF = 150;     // WU/s — reference slam; curve 
 export const HS_IMPACT_MIN = 0.016;           // s — ~one rendered frame at the deltaV floor
 export const HS_IMPACT_MAX = 0.09;            // s — slam ceiling; well under HS_CAPITAL_KILL
 export const COLLISION_HITSTOP_COOLDOWN = 0.18; // s of real frame time between armed collision beats
+// F9 — the rope's joke is three bodies agreeing. A player-caused release whose contact chain
+// reaches a THIRD distinct body earns exactly one extra dip, long enough to see the chain land.
+// It is not a resource: one beat per causal root, inside a short window; a two-body contact and
+// an NPC-only chain stay silent.
+export const CHAIN_BEAT_WINDOW_TICKS = 90; // sim ticks after the causal root — a throw resolves fast
+export const CHAIN_BEAT_DIP_S = 0.14;      // s — the extra beat's dip
+export const CHAIN_BEAT_FOV = 2.0;         // deg — modest punch so the second beat reads
 // While cooling, only a MEANINGFULLY harder hit interrupts the armed beat. A bare `>` let a grind
 // whose deltaV crept up frame over frame (10 -> 12 -> 15 ...) re-arm every single frame and
 // machine-gun the effect; the ratio makes the escalation have to be real, not incidental.
@@ -607,6 +614,8 @@ export const feel = {
     this._armedCollisionTick = null;
     this._armedCollisionAId = null;
     this._armedCollisionBId = null;
+    this._chainBeats = new Map();   // causal rootId -> { bodies:Set, fired, lastTick } — F9 once-per-chain
+    this._chainBeatQueued = 0;      // extra dip seconds owed to a chain's third-body contact
     this._velocityDriveScratch = {};
     this._legacyDriveScratch = {};
     this._regionCrossfadeScratch = {};
@@ -1229,6 +1238,23 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // Consequences can arrive inside physics:impact dispatch or at the deferred contact flush.
     // Both feed one frame-level beat; neither listener writes timeScale or routes damage.
     bus.on('physics:impact', (p) => this._onPhysicsImpact(p));
+    bus.on('emergent:contact', (p) => {
+      if (!p || !(p.impulse > 0)) return;
+      const deltaV = Number.isFinite(p.deltaV) && p.deltaV > 0
+        ? p.deltaV
+        : p.impulse / Math.max(1, p.mass || 1);
+      this._queueCollisionFeel(
+        p,
+        deltaV,
+        !!p.playerInvolved,
+        p.aId,
+        p.bId,
+        p.impulse,
+        p.knockId != null ? p.knockId : p.bId,
+        p.otherId != null ? p.otherId : p.aId,
+        deltaV,
+      );
+    });
     bus.on('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
 
     // Rated holy-shit moments (PQ-146.03). bulletTime rates `stunt:trickDetected` receipts and
@@ -1333,10 +1359,43 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const knockId = playerIsContact ? playerId : p.targetId;
     const otherId = knockId === p.targetId ? p.otherId : p.targetId;
     this._queueCollisionFeel(p, p.deltaV, playerInvolved, p.targetId, p.otherId,
-      p.exchangedMomentum, knockId, otherId, p.feelDeltaV);
+      p.exchangedMomentum, knockId, otherId, p.feelDeltaV, this._chainBeatFor(p, playerId));
   },
 
-  _queueCollisionFeel(p, deltaV, playerInvolved, aId, bId, momentum, knockId, otherId, feelDeltaV = null) {
+  // F9 — the rope's joke is three bodies agreeing: a player-caused release whose contact chain
+  // reaches a THIRD distinct body earns exactly one extra beat. The causal root id keys the chain;
+  // a two-body contact, an NPC-only chain, or a contact past the window earns nothing.
+  _chainBeatFor(p, playerId) {
+    if (playerId == null || !Number.isFinite(p.tick)) return false;
+    const provenance = p.provenance || {};
+    const evidenceRoot = p.stuntEvidence && p.stuntEvidence.root;
+    const playerCaused = provenance.actorId === playerId
+      || (evidenceRoot && evidenceRoot.actorId === playerId);
+    if (!playerCaused) return false;
+    const rootId = provenance.rootId ?? (evidenceRoot && evidenceRoot.id);
+    if (rootId == null) return false;
+    const rootTick = Number.isFinite(provenance.tick) ? provenance.tick
+      : (evidenceRoot && Number.isFinite(evidenceRoot.tick) ? evidenceRoot.tick : null);
+    if (!Number.isFinite(rootTick) || p.tick - rootTick > CHAIN_BEAT_WINDOW_TICKS) return false;
+    let chain = this._chainBeats.get(rootId);
+    if (!chain) {
+      chain = { bodies: new Set(), fired: false, lastTick: p.tick };
+      this._chainBeats.set(rootId, chain);
+    }
+    chain.lastTick = p.tick;
+    if (p.targetId != null) chain.bodies.add(p.targetId);
+    if (p.otherId != null) chain.bodies.add(p.otherId);
+    if (this._chainBeats.size > 16) {
+      for (const [id, entry] of this._chainBeats) {
+        if (p.tick - entry.lastTick > CHAIN_BEAT_WINDOW_TICKS) this._chainBeats.delete(id);
+      }
+    }
+    if (chain.fired || chain.bodies.size < 3) return false;
+    chain.fired = true;
+    return true;
+  },
+
+  _queueCollisionFeel(p, deltaV, playerInvolved, aId, bId, momentum, knockId, otherId, feelDeltaV = null, chainBeat = false) {
     const state = this.state;
     if (!state || state.mode !== 'flight' || !this._modalClear()) return;
     const mr = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
@@ -1411,6 +1470,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     result.tick = tick;
     result.aId = aId;
     result.bId = bId;
+    result.chainBeat = chainBeat === true;
     this._pendingCollisionFeel = result;
   },
 
@@ -1421,7 +1481,8 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
 
     const cooling = this._collisionHitstopCooldown > 0;
     const armed = this._armedCollisionDeltaV || 0;
-    if (cooling && !(pending.deltaV > armed * COLLISION_UPGRADE_RATIO)) return;
+    // A chain's third-body contact always arms — it is a discrete event, not a grind repeat.
+    if (cooling && !pending.chainBeat && !(pending.deltaV > armed * COLLISION_UPGRADE_RATIO)) return;
 
     if (this.state.mode !== 'flight' || !this._modalClear()) return;
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
@@ -1440,6 +1501,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     this._armedCollisionTick = pending.tick;
     this._armedCollisionAId = pending.aId;
     this._armedCollisionBId = pending.bId;
+    if (pending.chainBeat) this._chainBeatQueued = CHAIN_BEAT_DIP_S;
   },
 
   _onMoment(p) {
@@ -1570,6 +1632,8 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     this._armedCollisionTick = null;
     this._armedCollisionAId = null;
     this._armedCollisionBId = null;
+    this._chainBeats.clear();
+    this._chainBeatQueued = 0;
   },
 
   frame(frameDt, state) {
@@ -1609,6 +1673,13 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       }
     }
     this._flushPendingCollision();
+
+    // F9 — the chain's extra beat lands once the contact's own dip has cleared: dip, resume, dip.
+    if (this._chainBeatQueued > 0 && this._hsTimer <= 0) {
+      const dipS = this._chainBeatQueued;
+      this._chainBeatQueued = 0;
+      this._trigger(dipS, CHAIN_BEAT_FOV, 0, null);
+    }
 
     const photoFeel = photoModeFeelPresentation(this.state);
     if (photoFeel.silencePunch) {
