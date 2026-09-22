@@ -190,6 +190,44 @@ const EDGE_RIGHT = 'right';
 const EDGE_BOTTOM = 'bottom';
 const EDGE_LEFT = 'left';
 
+/** A hostile can shoot when it is alive and not explicitly unarmed. */
+export function hostileCanShoot(entity) {
+  if (!entity || entity.alive === false) return false;
+  const data = entity.data || {};
+  if (data.unarmed === true || data.canShoot === false) return false;
+  const weapons = data.weapons || entity.weapons;
+  if (Array.isArray(weapons)) return weapons.length > 0;
+  return true;
+}
+
+/**
+ * Wave G4 — one edge mark for a shooter outside the frame. In-frame, dead, and unarmed
+ * attackers get none. The side is the quadrant of the off-frame screen point.
+ */
+export function offscreenShooterMarker({
+  alive = true,
+  canShoot = false,
+  onScreen = false,
+  screenX = 0,
+  screenY = 0,
+  frameWidth = 1280,
+  frameHeight = 720,
+} = {}) {
+  if (!alive || !canShoot || onScreen) return null;
+  const w = Math.max(1, Number(frameWidth) || 1280);
+  const h = Math.max(1, Number(frameHeight) || 720);
+  const cx = w * 0.5;
+  const cy = h * 0.5;
+  const dx = screenX - cx;
+  const dy = screenY - cy;
+  const nx = Math.abs(dx) / cx;
+  const ny = Math.abs(dy) / cy;
+  const side = nx >= ny
+    ? (dx < 0 ? EDGE_LEFT : EDGE_RIGHT)
+    : (dy < 0 ? EDGE_TOP : EDGE_BOTTOM);
+  return { side };
+}
+
 function clamp(value, min, max) {
   return value < min ? min : (value > max ? max : value);
 }
@@ -893,7 +931,19 @@ export function createThreatHalo(root, busOrOpts) {
       projectionWorld.z = entity.pos.z;
       const projected = worldToScreen(projectionWorld, projectionScreen);
       const telegraphed = !!cueForIds(entity.id, null);
-      if (!projected || (projected.onScreen && !telegraphed)) continue;
+      if (!projected) continue;
+      // G4: an in-frame attacker gets no edge mark, even when it is telegraphing.
+      // One mark per shooter, never one per projectile.
+      const marker = offscreenShooterMarker({
+        alive: entity.alive !== false,
+        canShoot: hostileCanShoot(entity),
+        onScreen: projected.onScreen === true,
+        screenX: projected.x,
+        screenY: projected.y,
+        frameWidth: viewportW || 1280,
+        frameHeight: viewportH || 720,
+      });
+      if (!marker) continue;
 
       const dist = Math.sqrt(distSq);
       const tier = contactThreatTier(entity, true);
