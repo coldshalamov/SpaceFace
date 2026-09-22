@@ -1945,16 +1945,76 @@ export function injectHudCss() {
   }
 
   /* ══ DECKPLATE REGISTER — the 2026-09-18 reset ═══════════════════════════════════════════
-     The 2026-09-14 glass register (smoked translucent cards, neon cyan) was the tenth generic
-     one-off; the owner never approved a frame and the standing bar is consistent, high-detail,
-     creative, interactive, non-generic. This register assembles the flight HUD from the
-     deckplate design system (src/ui/deckplate/*) instead of re-mixing a surface by hand:
+     CORRECTED 2026-09-22. This comment used to say the owner's 2026-09-14 words were "the tenth
+     generic one-off" and that "the owner never approved a frame". Both halves are wrong about
+     what was said. On 2026-09-14 the owner looked at THIS HUD and said the register had "a
+     strange wood look that's not visible against the backdrop and also doesn't fit with this
+     game; it would have to be more sleek and glass ... maybe some slight neon look", and that the
+     speed dial read "like a car dashboard ... anything like that should at least resemble an
+     instrument in an advanced spaceship and maintain the illusion." That is the most specific
+     direction the flight HUD has ever been given, and it is about the flight HUD.
+
+     What was substituted for it was the owner's 2026-09-18 praise -- which was about the 3D WORLD
+     ART ("real rock texture, warm directional light, a physical machine, almost no chrome"), not
+     about the HUD. Good words, wrong surface: applied here they produced a gunmetal chassis
+     bolted over the live sim, which is exactly the "not visible against the backdrop" complaint
+     restated in a different material.
+
+     design/frontend/ONE_PHOTOGRAPH.md sections 4.9 and 5 (P5) answer the 09-14 words: the flight
+     layer is LIGHT. Weight 0.05 -- almost nothing on this screen is an object. Readings are
+     phosphor that EMITS (cool bone, a cool halo: the "slight neon" asked for, without a hue to
+     manage), occlusion is a veil that reaches the frame edge with no inner boundary, and the
+     ordnance dock is the only mass in flight.
+
+     Unchanged and deliberately so: the deckplate token vocabulary, the HUD's contract DOM (sf-*
+     classes, data-* attrs, aria roles), the --glass-* aliases that promptDeck.js and
+     contactHailPrompt.js still consume, no backdrop-filter (flight perf floor), and the
+     hull-silhouette dial, which ONE_PHOTOGRAPH section 8 protects as the only drawn instrument in
+     the game and the seed of P5.
+
+     The register still assembles from the deckplate design system (src/ui/deckplate/*):
      the ship's own machined hardware — gunmetal plate under one warm key light, etched
      legends, and the ONE accent: the warm lamp (live = filament amber, danger = lamp red).
      The HUD's contract DOM (sf-* classes, data-* attrs, aria roles) is untouched — only the
      paint changes. --glass-* aliases are kept as deckplate synonyms because promptDeck.js /
      contactHailPrompt.js (out of this session's scope) still consume them. No backdrop-filter
      (flight perf floor). */
+
+  /* ── THE FLIGHT VEIL ───────────────────────────────────────────────────────────────────────
+     With the plate gone the readings sit straight on the sim, and this sector is lit bright ochre.
+     Section 4.1 forbids the obvious answer -- a rectangle of darkening with a visible inner edge --
+     and names the replacement: a gradient that reaches the frame edge with no inner boundary. So
+     the HUD gets a grade, not a box. It is darkest in the bottom corners where the readings live
+     and clears completely through the middle, where the player is actually flying.
+
+     Pointer-events none, painted below every child, and no backdrop-filter (flight perf floor). */
+  #hud::before {
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(74% 46% at 0% 100%, rgb(4 6 9 / .90), rgb(4 6 9 / .55) 42%, transparent 76%),
+      radial-gradient(52% 34% at 100% 100%, rgb(4 6 9 / .78), rgb(4 6 9 / .38) 46%, transparent 78%),
+      linear-gradient(0deg, rgb(4 6 9 / .62) 0%, rgb(4 6 9 / .22) 12%, transparent 26%),
+      linear-gradient(180deg, rgb(4 6 9 / .55) 0%, rgb(4 6 9 / .18) 9%, transparent 20%);
+  }
+  @media (forced-colors:active) { #hud::before { display:none; } }
+
+  /* ── PHOSPHOR ──────────────────────────────────────────────────────────────────────────────
+     What you READ in flight is a cool emitter with its own halo -- the "slight neon look" the
+     owner asked for on 09-14, expressed as light rather than as a second hue to manage. Warm amber
+     stays reserved for a lamp that means something is live or dangerous, so the two never blur.
+     The halo is a glow, NOT a contrast mechanism: the ink itself is bone-bright over the veil. */
+  #hud .sf-cluster-chassis {
+    --hud-paper:var(--dp-phos);
+    --hud-muted:var(--dp-phos-dim);
+  }
+  #hud .sf-cluster-chassis :is(.sf-stat__v, .sf-speed__digits, .sf-bar__v, .sf-schematic__pct) {
+    color:var(--dp-phos);
+    text-shadow:0 0 12px var(--dp-phos-halo), 0 1px 0 rgb(0 0 0 / .8);
+  }
+  #hud .sf-cluster-chassis :is(.sf-stat__k, .sf-bar__k, .sf-legend, .k-caps) {
+    color:var(--dp-phos-dim);
+    text-shadow:0 1px 0 rgb(0 0 0 / .75);
+  }
 
   :root {
     --glass-fill:rgb(18 21 26 / .92);
@@ -2305,22 +2365,25 @@ export function injectHudCss() {
     left:calc(14px * var(--k-s, 1) + var(--sf-safe-inset-x, 0px));
     bottom:calc(14px * var(--k-s, 1));
   }
+  /* THE CLUSTER PLATE IS DEAD (ONE_PHOTOGRAPH section 4.9 -- "the object the owner named twice").
+     It was a 624x360 bezelled slab of opaque gunmetal bolted over the live sim: the single
+     largest object on the screen the player looks at most, and it was furniture, not information.
+     Nothing in it changes the world, so by section 4.2 none of it is mass. The chassis survives
+     only as a layout container -- same children, same order, same geometry -- with no face. */
   #hud .sf-cluster-chassis {
-    position:relative; display:flex; align-items:stretch; gap:calc(8px * var(--k-s, 1));
+    position:relative; display:flex; align-items:stretch; gap:calc(14px * var(--k-s, 1));
     box-sizing:border-box; width:max-content; max-width:calc(100vw - 28px);
-    border:14px solid transparent;
-    border-image:url("/assets/ui/deckplate/hw/bezel.svg") 30 / 30px / 0 stretch;
-    background:var(--dp-metal-layers), var(--dp-metal-2);
-    box-shadow:var(--dp-stand-off);
-    padding:4px; pointer-events:auto;
+    border:0; background:none; box-shadow:none;
+    padding:0; pointer-events:auto;
   }
   @media (max-width:1759px) {
     #hud .sf-cluster-chassis { flex-direction:column; }
   }
-  /* instruments are glass windows seated in the chassis, not plates of their own */
+  /* Instruments are LIGHT now, not glass windows seated in a chassis. A card around a reading is
+     a smaller version of the plate that just died. */
   #hud .sf-cluster-chassis > .sf-bars {
-    margin:0; max-width:272px; border-radius:2px;
-    background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
+    margin:0; max-width:272px; border-radius:0;
+    background:none; box-shadow:none;
   }
   #hud .sf-cluster-chassis > .sf-command-deck {
     position:static; left:auto; right:auto; bottom:auto; transform:none;
@@ -2332,7 +2395,7 @@ export function injectHudCss() {
      which stretched the chassis across the screen; inside the cluster they leave layout until shown. */
   #hud .sf-cluster-chassis .sf-stat--chip:not(.sf-chip-show) { display:none; }
   #hud .sf-cluster-chassis .sf-kit-gauge.sf-speed {
-    background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth); border-radius:2px 2px 0 0;
+    background:none; box-shadow:none; border-radius:0;
   }
   #hud .sf-cluster-chassis .sf-cluster { justify-content:flex-start; }
 
@@ -2405,9 +2468,6 @@ export function injectHudCss() {
     position:absolute; left:calc(14px * var(--k-s, 1) + var(--sf-safe-inset-x, 0px)); top:calc(18px * var(--k-s, 1));
     width:calc(292px * clamp(.9, var(--k-s, 1), 1.15)); max-width:calc(100vw - 28px);
     display:flex; flex-direction:column; gap:0; box-sizing:border-box; pointer-events:auto;
-    border:5px solid transparent;
-    border-image:url("/assets/ui/deckplate/hw/bezel-thin.svg") 12 / 12px / 0 stretch;
-    background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
     box-shadow:0 10px 24px rgb(0 0 0 / .45), var(--dp-glass-depth);
     padding:4px 0;
   }
@@ -2435,8 +2495,7 @@ export function injectHudCss() {
   /* fire control: TARGET and TETHER rows on glass, each with its LED */
   #hud .sf-fc-strip {
     display:flex; flex-direction:column; gap:1px; padding:5px 10px 6px; border-radius:2px;
-    background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
-  }
+    background:none;  }
   #hud .sf-fc-row { display:grid; grid-template-columns:7px auto minmax(0, 1fr) auto; align-items:center; gap:8px; min-height:22px; }
   #hud .sf-fc-led {
     display:block; width:7px; height:7px; border-radius:50%;
@@ -2485,9 +2544,6 @@ export function injectHudCss() {
   /* the right dock's readouts are the same glass as the comms strip (the radar keeps its round
      binnacle): one material per function, left and right */
   #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel {
-    border:5px solid transparent;
-    border-image:url("/assets/ui/deckplate/hw/bezel-thin.svg") 12 / 12px / 0 stretch;
-    background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
     box-shadow:0 10px 24px rgb(0 0 0 / .45), var(--dp-glass-depth);
     border-radius:0;
   }
@@ -2514,15 +2570,10 @@ export function injectHudCss() {
      fasteners and scratches the menus keep; wells are smoked glass with a lit rim; the area
      around the ship is the glance instrument (threat arcs + the tether arc); no plate touches an
      edge; one legend voice in every instrument. ══ */
-  #hud .sf-cluster-chassis {
-    border:10px solid transparent;
-    border-image:url("/assets/ui/deckplate/hw/bezel-thin.svg") 12 / 12px / 0 stretch;
-    background:var(--dp-key-pool) border-box, var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-tex-grain) 0 0 / 256px repeat border-box, var(--dp-metal-2);
-    padding:3px;
-  }
+  /* (was the SECOND of three stacked chassis paints -- a thin bezel over brushed metal. The
+     cluster plate is dead; see the register note above. Section 4.9.) */
   #hud .sf-threat-lamp { top:-11px; }
   #hud > .sf-leftcontext, #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel {
-    background:var(--dp-glass-solid), var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-2);
   }
   /* the threat row: dark lens when clear, the lamp driven red with contacts, bright when near */
   #hud .sf-fc-row[data-state="contact"] .sf-fc-led { background:radial-gradient(circle at 42% 34%, var(--dp-danger-hot), var(--dp-danger) 45%, #5c140c); box-shadow:0 0 5px rgb(255 80 56 / .3); }
@@ -2546,8 +2597,7 @@ export function injectHudCss() {
   #hud .sf-cluster-chassis .sf-stat--chip.sf-chip-show {
     display:flex; align-items:baseline; gap:14px; box-sizing:border-box; width:100%; min-width:0;
     padding:5px 12px 6px; margin:4px 0 0; border-radius:2px;
-    background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
-  }
+    background:none;  }
   #hud .sf-cluster-chassis .sf-stat--chip .sf-stat__k {
     font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 62; font-size:12px;
     letter-spacing:.18em; text-transform:uppercase; color:var(--dp-ink-mute);
@@ -2620,15 +2670,17 @@ export function injectHudCss() {
      displays are smoked-glass windows seated in it; amber marks what the pilot acts on; red is
      threat only. No backdrop-filter in flight. ══ */
   #hud { --sf-hud-edge:clamp(16px, 2.4vh, 32px); }
-  /* Dark well inside a fastened ring: metal-on-metal (PASS 5/6) made the screws disappear. */
+  /* THE THIRD stacked chassis paint, and the one that actually won the cascade: a dark well in a
+     fastened ring, with screws. Three different slabs were declared for this one element in this
+     one file -- each pass adding a fourth prototype instead of finishing the third. All three are
+     gone. The chassis is a layout container; the readings are light (section 4.9). */
   #hud .sf-cluster-chassis {
-    --sf-cluster-ring:22px;
+    --sf-cluster-ring:0px;
     overflow:visible;
-    border:var(--sf-cluster-ring) solid transparent;
-    border-image:url("/assets/ui/deckplate/hw/bezel.svg") 30 / 30px / 0 stretch;
-    background:#07090c;
-    box-shadow:var(--dp-stand-off), inset 0 0 0 1px rgb(255 236 204 / .06);
-    padding:8px;
+    border:0;
+    background:none;
+    box-shadow:none;
+    padding:0;
   }
   #hud .sf-threat-lamp { display:flex; top:-14px; right:28px; gap:8px; z-index:2; }
   #hud .sf-threat-lamp__lens { width:12px; height:12px; }
@@ -2636,10 +2688,8 @@ export function injectHudCss() {
   #hud .sf-cluster-chassis .sf-kit-gauge.sf-speed,
   #hud .sf-cluster-chassis .sf-fc-strip,
   #hud .sf-cluster-chassis .sf-stat--chip.sf-chip-show {
-    background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth);
-  }
+    background:none;  }
   #hud > .sf-leftcontext, #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel {
-    background:var(--dp-glass-solid), var(--dp-metal-layers), var(--dp-metal-2);
   }
   /* Side readouts were still the thin bezel that reads as a CSS card next to the cluster.
      They take the same fastened ring as the instrument chassis. The contact count stays
@@ -2649,17 +2699,13 @@ export function injectHudCss() {
   #hud .sf-target,
   #hud .sf-cargo-panel,
   #hud .sf-overview:not(.sf-overview--count) {
-    border:12px solid transparent;
-    border-image:url("/assets/ui/deckplate/hw/bezel.svg") 30 / 18px / 0 stretch;
     border-radius:0;
-    background:#07090c;
-    box-shadow:var(--dp-stand-off), inset 0 0 0 1px rgb(255 236 204 / .06);
   }
   #hud > .sf-leftcontext > :first-child {
     border-top:0 !important;
     box-shadow:none !important;
   }
-  #hud #sf-wpnstat { background:var(--dp-glass-solid); box-shadow:var(--dp-glass-depth); }
+  #hud #sf-wpnstat { background:none; box-shadow:none; }
   html #hud:has(.sf-cluster-chassis) > .sf-leftstack { left:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); bottom:var(--sf-hud-edge); }
   #hud > .sf-leftcontext {
     left:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); top:var(--sf-hud-edge);
