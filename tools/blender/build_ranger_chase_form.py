@@ -2,14 +2,15 @@
 
 Imports the live Ranger only for root, sockets, and collision. Replaces the
 render meshes with one closed explorer that reads at the live chase camera:
-C2 formed shell (mid ≠ bow — not a needle-tube), twin nacelle throats in the
-primary loft, thick-root wings grown from the loft, a formed survey pylon (not
-a stick or hoop), and greenhouse/survey wells as deep holes. Principled islands
-only. No seats. No megatex. Hitch/Kestrel/Hornet/Drifter are never loaded.
-Hornet interceptor and Drifter workboat silhouettes are not copied.
+C3 formed shell — blunt forward third (no needle), twin nacelle throats in the
+primary loft, wing planform grown from the continuous shell (not card fins), a
+formed survey pylon (not a stick or hoop), and greenhouse/survey wells as deep
+holes. Principled islands only. No seats. No megatex. Hitch/Kestrel/Hornet/
+Drifter are never loaded. Hornet interceptor and Drifter workboat silhouettes
+are not copied.
 
-C2 kills C1 leftovers: TUBE_PADDLE (needle + card fins) and CAGE_READ (wrapping
-rings). Seams are shallow scores in one sheet. No extra wrapping hoops.
+C3 kills C2 leftover TUBE_PADDLE (forward needle taper at D=144). Keeps C2 win:
+CAGE_READ NO (shallow scores, not wrapping rings). Wells stay HOLES.
 
 Does not rescale the root — live sockets already sit in the ~18 m authored
 space. Runtime display scale is applied by the chase still helper, not here.
@@ -26,7 +27,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
-REVISION = "chase_form_v2b"
+REVISION = "chase_form_v3e"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FAMILY = ROOT_DIR / "assets" / "ships" / "fleet_player_bodies_v1" / "ranger"
 LIVE_PARTS = ROOT_DIR / "assets" / "ships" / "parts" / "wholeships"
@@ -212,29 +213,31 @@ def loft_rings(name, rings, material, bevel=0.010, cap=True):
 
 
 def shell_ring(st):
-    """Convex formed explorer YZ. Max beam at mid-height. No vertical slab.
+    """Convex formed explorer YZ. Planform beam reads from the chase camera.
 
-    Needle + cabin shoulder + survey deck live in station height/flat, not a
-    second body. Sideboard is the slope — not a paddle lobe.
+    C3b: chase is 60° dorsal — max half-beam must live near the crown/deck, not
+    only at mid-height (that hid C3a planform as a tube). Flat deck carries the
+    explorer planform. Sideboard is the slope — not a paddle lobe. No vertical slab.
     """
     x, beam, hh, zc, keel, flat, box, _chine = st
     flat = max(0.0, min(1.0, float(flat)))
     box = max(0.0, min(1.0, float(box)))
     beam = max(0.18, float(beam))
-    crown = zc + hh * (0.92 - 0.08 * flat)
+    crown = zc + hh * (0.88 - 0.06 * flat)
     keel_z = zc - hh - keel * (1.0 - 0.16 * box)
-    beam_z = zc + hh * 0.04 * (1.0 - box)
+    # Beam height sits high so dorsal chase silhouette owns the planform width.
+    beam_z = zc + hh * (0.28 + 0.22 * flat - 0.10 * box)
 
     def half(sign):
         return [
-            (x, sign * beam * 0.16, crown - hh * 0.03),
-            (x, sign * beam * (0.40 + 0.08 * flat), crown - hh * 0.16),
-            (x, sign * beam * (0.68 + 0.06 * flat), zc + hh * 0.36),
-            (x, sign * beam * (0.90 + 0.02 * (1.0 - box)), zc + hh * 0.12),
+            (x, sign * beam * (0.28 + 0.18 * flat), crown - hh * 0.02),
+            (x, sign * beam * (0.62 + 0.16 * flat), crown - hh * 0.10),
+            (x, sign * beam * (0.88 + 0.06 * flat), zc + hh * 0.42),
             (x, sign * beam, beam_z),
-            (x, sign * beam * (0.88 - 0.04 * box), zc - hh * 0.16),
-            (x, sign * beam * (0.64 - 0.08 * box), zc - hh * 0.46),
-            (x, sign * beam * (0.36 - 0.06 * box), zc - hh * 0.76),
+            (x, sign * beam * (0.92 - 0.04 * box), zc + hh * 0.06),
+            (x, sign * beam * (0.78 - 0.08 * box), zc - hh * 0.22),
+            (x, sign * beam * (0.52 - 0.10 * box), zc - hh * 0.52),
+            (x, sign * beam * (0.28 - 0.06 * box), zc - hh * 0.78),
             (x, sign * beam * 0.12, keel_z),
         ]
 
@@ -450,22 +453,24 @@ def delete_render_meshes():
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-# C2 formed explorer. Mid ≠ bow. Cabin shoulder + survey deck + wing-root
-# flare live in the primary loft. Slimmer than Drifter (max hull beam 1.92 vs
-# 3.20) but not C1's needle (1.28). (x, beam, hh, zc, keel, flat, box, chine)
+# C3b formed explorer. Planform lives in the primary loft (Drifter C14 lesson:
+# sideboards ARE the hull — no paddle lobes). Blunt forward third. Slimmer than
+# Drifter (max half-beam ~2.82 vs 3.20) but not a needle-tube. Wings are short
+# tips grown from the shell edge, not card fins.
+# (x, beam, hh, zc, keel, flat, box, chine)
 HULL_STATIONS = [
-    # C2b: kill needle read — fat shoulder early, mid bulk, soft bow (not a spike).
-    (8.55, 0.42, 0.34, 0.12, 0.08, 0.18, 0.16, 0.08),
-    (7.20, 0.78, 0.56, 0.16, 0.08, 0.34, 0.20, 0.12),
-    (5.70, 1.18, 0.82, 0.22, 0.10, 0.52, 0.26, 0.16),
-    (4.00, 1.48, 0.96, 0.26, 0.10, 0.68, 0.32, 0.20),
-    (2.20, 1.72, 0.84, 0.20, 0.10, 0.54, 0.36, 0.20),
-    (0.40, 1.92, 0.78, 0.18, 0.10, 0.40, 0.42, 0.18),
-    (-1.40, 2.05, 0.80, 0.16, 0.10, 0.34, 0.46, 0.18),
-    (-3.40, 1.82, 0.82, 0.18, 0.08, 0.30, 0.44, 0.16),
-    (-5.40, 1.58, 0.78, 0.18, 0.08, 0.24, 0.38, 0.14),
-    (-6.90, 1.70, 0.70, 0.18, 0.08, 0.20, 0.34, 0.12),
-    (-8.45, 0.96, 0.54, 0.14, 0.06, 0.14, 0.28, 0.10),
+    # C3e: kill forward needle — fat blunt bow, planform reaches cabin early.
+    (7.85, 1.88, 0.68, 0.14, 0.08, 0.62, 0.32, 0.18),
+    (6.60, 2.28, 0.86, 0.18, 0.08, 0.76, 0.36, 0.22),
+    (5.10, 2.62, 0.98, 0.20, 0.10, 0.86, 0.40, 0.26),
+    (3.50, 2.86, 1.08, 0.22, 0.10, 0.92, 0.44, 0.30),
+    (1.70, 2.98, 1.00, 0.18, 0.10, 0.94, 0.48, 0.32),
+    (0.00, 3.02, 0.92, 0.14, 0.10, 0.94, 0.52, 0.32),
+    (-1.80, 2.92, 0.92, 0.14, 0.10, 0.90, 0.52, 0.30),
+    (-3.60, 2.52, 0.92, 0.16, 0.08, 0.76, 0.48, 0.26),
+    (-5.40, 2.10, 0.88, 0.16, 0.08, 0.58, 0.44, 0.22),
+    (-6.90, 1.98, 0.80, 0.16, 0.08, 0.46, 0.40, 0.18),
+    (-8.45, 1.18, 0.60, 0.12, 0.06, 0.30, 0.32, 0.14),
 ]
 
 
@@ -664,52 +669,29 @@ def build_nacelles(hull, mats, lod):
 
 
 def build_wings(hull, mats, lod):
-    """Swept explorer wings grown from the mid-aft loft. Thick root inside the shell."""
+    """No separate paddle tips. Planform is the continuous shell sideboard.
+
+    C3d: prior tip-fin lofts still read as card paddles on the diamond shell.
+    Keep only a short thick root fairing sunk into the flank so the sideboard
+    edge stays one sheet — not a bolted fin.
+    """
     hull_mat = mats["Material_Hull"]
-    armor = mats["Material_Armor"]
     mark = mats["Material_Mark"]
     bits = []
     if lod > 1:
         return bits
-    beam = hull_station_at(-1.40)[1]
+    beam = hull_station_at(0.10)[1]
     for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
-        # C2b: stubby thick-root planform — not a card paddle tip.
-        root_y = beam * 0.55 * sign
-        mid_y = (beam + 0.22) * sign
-        out_y = (beam + 0.38) * sign
-        tip_y = (beam + 0.48) * sign
-        bits.append(loft_rings(
-            f"LOD0_Wing_{tag}",
-            [
-                airfoil(0.10, root_y, 0.10, 2.10, 0.58),
-                airfoil(-0.40, mid_y, 0.14, 1.70, 0.42),
-                airfoil(-0.95, out_y, 0.16, 1.20, 0.28),
-                airfoil(-1.45, tip_y, 0.18, 0.82, 0.18),
-            ],
-            hull_mat, 0.008, cap=True,
-        ))
         bits.append(add_box(
             f"LOD0_WingRoot_{tag}",
-            (1.55, 0.55, 0.38),
-            (-0.45, beam * 0.72 * sign, 0.14),
-            hull_mat, 0.008,
+            (2.40, 0.42, 0.46),
+            (0.20, beam * 0.82 * sign, 0.18),
+            hull_mat, 0.010,
         ))
         bits.append(add_box(
-            f"LOD0_WingLE_{tag}", (0.12, 0.58, 0.07),
-            (-0.48, (root_y + mid_y) * 0.5, 0.26), mark, 0.0,
+            f"LOD0_WingLE_{tag}", (0.14, 0.36, 0.06),
+            (1.10, beam * 0.88 * sign, 0.34), mark, 0.0,
         ))
-        if lod == 0:
-            def flap_slot(name=f"FlapSlot_{tag}", loc=(-1.42, out_y, 0.14)):
-                return add_box(name, (0.18, 0.34, 0.18), loc, hull_mat, 0.0)
-            cut(hull, flap_slot)
-            bits.append(loft_rings(
-                f"LOD0_Flap_{tag}",
-                [
-                    airfoil(-1.24, out_y * 0.96, 0.12, 0.50, 0.13),
-                    airfoil(-1.58, out_y, 0.12, 0.36, 0.10),
-                ],
-                armor, 0.003, cap=True,
-            ))
     return bits
 
 
@@ -896,11 +878,11 @@ def build_guns(mats, lod):
     armor = mats["Material_Armor"]
     bits = []
     for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
-        gun = add_box(f"LOD0_GunFore_{tag}", (0.92, 0.12, 0.12), (7.15, 0.32 * sign, 0.28), mech, 0.002)
+        gun = add_box(f"LOD0_GunFore_{tag}", (0.72, 0.14, 0.14), (6.55, 0.55 * sign, 0.22), mech, 0.002)
         bits.append(gun)
-        bits.append(add_box(f"LOD0_GunForeHouse_{tag}", (0.36, 0.20, 0.16), (6.68, 0.32 * sign, 0.28), armor, 0.002))
+        bits.append(add_box(f"LOD0_GunForeHouse_{tag}", (0.32, 0.22, 0.16), (6.20, 0.55 * sign, 0.22), armor, 0.002))
         if lod < 2:
-            def bore(name=f"GunBoreFore_{tag}", loc=(7.52, 0.32 * sign, 0.28)):
+            def bore(name=f"GunBoreFore_{tag}", loc=(6.85, 0.55 * sign, 0.22)):
                 return add_cylinder(
                     name, 0.032, 0.16, loc, mech, 0.0,
                     rotation=(0.0, math.radians(90.0), 0.0), vertices=8,
@@ -1187,7 +1169,7 @@ def build_one(source: Path, output: Path, lod: int):
     shade_objects([obj for obj in bpy.data.objects if obj.type == "MESH" and not is_collision(obj)])
     bpy.context.view_layer.update()
     size, low, high = mesh_world_size()
-    if size.x < 16.4 or size.x > 18.8 or size.y < 4.0 or size.y > 6.2 or size.z > 4.5:
+    if size.x < 16.0 or size.x > 18.8 or size.y < 4.0 or size.y > 7.0 or size.z > 4.5:
         raise RuntimeError(f"form envelope broken: size=({size.x:.2f},{size.y:.2f},{size.z:.2f})")
     triangulate_and_uv()
     export_glb(output, root)
@@ -1257,7 +1239,7 @@ def main():
         reports.append(build_one(source, output, lod))
     promoted = promote_live(out_dir) if args.promote else []
     summary = {"ok": True, "revision": REVISION, "lods": reports, "promoted": promoted}
-    (out_dir / "ranger_chase_form_v2.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "ranger_chase_form_v3.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary))
 
 
