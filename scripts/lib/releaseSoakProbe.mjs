@@ -332,6 +332,13 @@ export async function runReleaseSoakProbe({
         // that killed it, not a bare waitForFunction timeout.
         const diag = await captureCycleStateDiag(page).catch(() => null);
         warmupError.message = `${warmupError.message} | cycle-state: ${JSON.stringify(diag)}`;
+        const warmupConsoleHead = (pageIssueTracker?.issues || [])
+          .filter((issue) => issue.type === 'error' || issue.type === 'pageerror')
+          .slice(0, 6)
+          .map((issue) => `${issue.type}: ${String(issue.text || '').slice(0, 300)}`);
+        if (warmupConsoleHead.length > 0) {
+          warmupError.message += ` | console-errors: ${JSON.stringify(warmupConsoleHead)}`;
+        }
         throw warmupError;
       }
       // No ensureMarketOpen here: the warmup cycle ends in the same post-roundtrip
@@ -1160,6 +1167,7 @@ async function captureCycleStateDiag(page) {
           frameErrorCount: s?.frameErrorCount ?? null,
           simClosed: simDiag?.closed ?? null,
           closeCause: simDiag?.closeCauseMessage ?? null,
+          closeCauseSite: simDiag?.closeCauseSite ?? null,
         };
       })(),
       saveStartedSnapshot: window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null,
@@ -2247,7 +2255,21 @@ async function exerciseMarketRoundtrip(page) {
     }
     await ensureBuyMode();
     buy = await walkRowsForCommit(BUY_VERIFY);
-    assert(buy, `a freed hold must offer a buyable row: ${JSON.stringify(await tradeConsoleDiag())}`);
+    // A freed hold is not yet a funded one: the roundtrip bleeds bid-ask spread
+    // every cycle while in-flight pickups pile high-value ore into the hold, so
+    // late-soak saves can sit on 200+ u of cargo with single-digit credits. A
+    // pilot just sells what they hauled — keep liquidating held stacks (each
+    // whole-stack sale funds the next attempt) until a buy commits or the
+    // register stops buying. Same bound as the space drain.
+    for (let attempts = 0; !buy && attempts < 24; attempts++) {
+      await ensureMode(sellMode);
+      const extra = await walkRowsForCommit(SELL_VERIFY, 45, { commitQty: null });
+      if (!extra) break;
+      drainedStacks += 1;
+      await ensureBuyMode();
+      buy = await walkRowsForCommit(BUY_VERIFY);
+    }
+    assert(buy, `a drained hold must offer a buyable row: ${JSON.stringify(await tradeConsoleDiag())}`);
     if (drainedStacks > 0) sell.drainedStacks = drainedStacks;
   }
   return { shell: 'orbital-command', direction, buy, sell };
