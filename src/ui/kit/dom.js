@@ -50,10 +50,18 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
   // migration that silently half-lands. A screen opts in once, in its mount, and from then on no
   // retired sheet can reach it. Precedent for the dual vocabulary: test/map-hud-kit.test.mjs
   // already accepts `dp-key--primary` where it used to demand `k-word--primary`.
-  const dp = system === 'dp';
+  // 'dp'    the BENCH variant: a machined target with a lamp rail. Correct on a station.
+  // 'light' the POSTER variant: a word of light, no plate, no rail. Correct where there is no
+  //         hardware in front of the player -- a title, a pause, a menu over the world.
+  // The choice is the screen's WEIGHT (design/frontend/ONE_PHOTOGRAPH.md section 3), not a taste.
+  const lit = system === 'light';
+  const dp = system === 'dp' || lit;
   // A labelled list of real buttons, not an ARIA menu: the repo's checks, probes and captures reach the
   // title by getByRole('button', { name }) (Task A choice over the spec's role=menu/menuitem markup).
-  const list = el('ul', dp ? (row ? 'dp-menu dp-menu--row' : 'dp-menu') : (row ? 'k-words k-words--row' : 'k-words'));
+  const list = el('ul', lit
+    ? (row ? 'dp-lit dp-lit--fine' : 'dp-lit')
+    : dp ? (row ? 'dp-menu dp-menu--row' : 'dp-menu')
+      : (row ? 'k-words k-words--row' : 'k-words'));
   list.setAttribute('aria-label', ariaLabel);
   const buttons = [];
   let group = null;
@@ -63,7 +71,7 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
     // (no text node, so the verb's label and accessible name are unchanged), and `hint` is the
     // verb's key, printed by CSS from a data attribute for the same reason.
     if (item.group && item.group !== group) {
-      const head = el('li', dp ? 'dp-menu__group dp-etch' : 'k-words__group', item.group);
+      const head = el('li', lit ? 'dp-lit__group dp-etch' : dp ? 'dp-menu__group dp-etch' : 'k-words__group', item.group);
       head.setAttribute('role', 'presentation');
       list.append(head);
     }
@@ -79,11 +87,13 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
     // parentheses stay in the DOM (visually hidden), so textContent and the accessible name are
     // exactly the label, and every probe that finds the verb by name still finds it.
     const keyed = item.keycap ? /^(.*\S)\s*\(([^()]{1,12})\)$/.exec(String(item.label)) : null;
-    const cls = dp
-      ? 'dp-menu__item' + (size === 'menu' ? '' : ` dp-menu__item--${size}`)
-        + (item.primary ? ' dp-menu__item--primary' : '') + (item.danger ? ' dp-menu__item--danger' : '')
-      : 'k-word' + (size === 'menu' ? '' : ` k-word--${size}`)
-        + (item.primary ? ' k-word--primary' : '') + (item.danger ? ' k-word--danger' : '');
+    const cls = lit
+      ? 'dp-lit__item' + (item.primary ? ' dp-lit__item--primary' : '') + (item.danger ? ' dp-lit__item--danger' : '')
+      : dp
+        ? 'dp-menu__item' + (size === 'menu' ? '' : ` dp-menu__item--${size}`)
+          + (item.primary ? ' dp-menu__item--primary' : '') + (item.danger ? ' dp-menu__item--danger' : '')
+        : 'k-word' + (size === 'menu' ? '' : ` k-word--${size}`)
+          + (item.primary ? ' k-word--primary' : '') + (item.danger ? ' k-word--danger' : '');
     const button = el('button', cls, keyed ? '' : item.label);
     if (keyed) {
       const cap = el('span', dp ? 'dp-kbd' : 'k-kbd');
@@ -105,7 +115,7 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
       cue('confirm'); onPick?.(item.action, button);
     });
     buttons.push(button); li.append(button);
-    if (item.sub) li.append(el('div', dp ? 'dp-menu__note' : 'k-word-sub', item.sub));
+    if (item.sub) li.append(el('div', lit ? 'dp-lit__note' : dp ? 'dp-menu__note' : 'k-word-sub', item.sub));
     list.append(li);
   }
   roving(list, () => buttons, { row, onMove: button => onMove?.(button.dataset.action, button) });

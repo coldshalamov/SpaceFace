@@ -83,6 +83,21 @@ export const DECKPLATE_LIGHT_CSS = `
   content:""; position:absolute; left:calc(var(--dp-u) * -2); top:14%; bottom:14%;
   width:2px; background:var(--dp-ink); border-radius:1px;
 }
+/* THE RING COMES OFF, AND ONLY HERE. styles/accessibility.css draws a 2px ring on every
+   :focus-visible in the game, and that rule is the floor for everything this system has not
+   reached -- it stays. An item inside an attention lamp opts out of it because it already has a
+   BETTER indicator: a hard 2px bone bracket at its leading edge that is always drawn, plus the
+   pool of light around it. Never remove a ring without putting something at least as legible in
+   its place; the bracket above is that something, and it survives forced colours, which the ring's
+   colour does not.
+
+   !important is load-bearing here and not laziness: hardware.js already carries
+   :root :focus-visible { outline-color: var(--dp-lamp) !important }, so the ring is defended by
+   an important declaration and can only be answered by one. Scoped to items that carry the
+   bracket, so it can never silently strip an indicator from something the system has not reached. */
+.dp-attend :is(a, button, [role="option"], [role="tab"], [tabindex]):focus-visible,
+.dp-lit__item:focus-visible { outline:2px solid transparent !important; outline-offset:0 !important; }
+
 @media (prefers-reduced-motion:reduce) {
   /* The lamp lands instead of travelling. The state is identical; only the journey is gone. */
   .dp-attend { transition-duration:1ms; }
@@ -139,6 +154,38 @@ export const DECKPLATE_LIGHT_CSS = `
   margin:calc(var(--dp-u) * -1) 0 calc(var(--dp-u) * 1.5) calc(var(--dp-u) * 2);
 }
 .dp-lit__key { margin-left:auto; }
+
+/* THE PRIMARY VERB. One per screen: the thing a stranger came here to do. It is the only word in
+   the column that is already lit, and it is a size up -- because a menu where the one action a
+   player wants weighs the same as SANDBOX is a menu that has made no decision. Its lamp is warm:
+   it is something you can ACT on, not something you read. */
+.dp-lit__item--primary {
+  color:var(--dp-ink);
+  font-size:calc(var(--dp-fs-menu) * 1.22);
+  font-variation-settings:"wght" 800, "wdth" 104;
+  --dp-lamp-current:.62;
+  text-shadow:0 0 26px rgb(255 217 140 / .30), 0 0 8px rgb(255 217 140 / .18), 0 1px 0 rgb(0 0 0 / .6);
+}
+.dp-lit__item--primary:is(:hover, :focus-visible) {
+  --dp-lamp-current:1;
+  text-shadow:0 0 34px rgb(255 217 140 / .46), 0 0 10px rgb(255 217 140 / .28), 0 1px 0 rgb(0 0 0 / .6);
+}
+/* The lamp bead that marks the primary as live hardware rather than just large type. */
+.dp-lit__item--primary::after {
+  content:""; position:absolute; left:calc(var(--dp-u) * -4); top:50%; translate:0 -50%;
+  width:7px; height:7px; border-radius:50%;
+  background:var(--dp-lamp-now); box-shadow:0 0 var(--dp-lamp-halo) var(--dp-lamp-bloom);
+  transition:background var(--dp-d-settle) var(--dp-ease-lamp), box-shadow var(--dp-d-settle) var(--dp-ease-lamp);
+}
+/* DANGER is the same lamp driven red. No second hue enters for it. */
+.dp-lit__item--danger:is(:hover, :focus-visible) {
+  color:var(--dp-danger-hot);
+  text-shadow:0 0 22px rgb(255 80 56 / .34), 0 0 6px rgb(255 80 56 / .2), 0 1px 0 rgb(0 0 0 / .6);
+}
+@media (forced-colors:active) {
+  .dp-lit__item--primary { color:Highlight; }
+  .dp-lit__item--primary::after { background:Highlight; box-shadow:none; }
+}
 /* A quiet run of verbs — a footer, a bank. Same substance, one size down. */
 .dp-lit--fine .dp-lit__item {
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 620, "wdth" 70;

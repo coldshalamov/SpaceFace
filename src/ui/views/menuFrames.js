@@ -35,6 +35,13 @@ export function createTitleFrame(root) {
   const backdrop = el('div', 'k-world k-world--plate');
   backdrop.setAttribute('aria-hidden', 'true');
 
+  // The veil, not a panel. The words need the world darkened behind them to hold contrast, and the
+  // way that has always been done here is a rectangle with an edge. This is a gradient that reaches
+  // the frame edge on the leading side, so the type is legible and there is no box
+  // (design/frontend/ONE_PHOTOGRAPH.md section 4.1).
+  const veil = el('div', 'dp-veil dp-veil--column');
+  veil.setAttribute('aria-hidden', 'true');
+
   const head = el('header', 'dp-frame__head');
   const title = el('div', 'dp-title');
   // The eyebrow does a job instead of decorating one: it is where the live contract line lives, so
@@ -57,7 +64,7 @@ export function createTitleFrame(root) {
   stage.setAttribute('aria-label', 'Main menu');
   body.appendChild(stage);
 
-  for (const node of [backdrop, head, body]) root.appendChild(node);
+  for (const node of [backdrop, veil, head, body]) root.appendChild(node);
   return { backdrop, title: head, stage, status };
 }
 

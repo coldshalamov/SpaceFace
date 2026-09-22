@@ -4,7 +4,7 @@
 // This file owns no CSS. Continue is enabled iff a save exists, shows the exact latest slot
 // metadata, and loads that displayed slot so players trust resume before committing to a load.
 import { createTitleFrame } from '../views/menuFrames.js';
-import { injectDeckplate } from '../deckplate/index.js';
+import { injectDeckplate, attachAttentionLamp } from '../deckplate/index.js';
 import { CREDITS } from '../../data/credits.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { requestCodexTab } from './codex.js';
@@ -15,6 +15,8 @@ import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 
 const LS_PREFIX = 'sf.save.';
+/** The attention lamp's listeners, released when the screen unmounts. */
+let detachLamp = null;
 // spec2/03 §3: the still begins its slow drift after this much idle time. Input re-arms the window.
 const ATTRACT_IDLE_MS = 12_000;
 
@@ -264,6 +266,14 @@ export const mainMenuScreen = {
 
     // The words. Visible words follow the sheet; the accessible names keep the game's core copy
     // (coreText) so every route that finds "New Game" / "Continue" / "Quit Game" still does.
+    // THE COLUMN IS FIVE VERBS, and one of them is the reason a stranger opened the game. Until
+    // 2026-09-22 it was eight words at identical weight, so NEW GAME weighed exactly as much as
+    // SANDBOX and the screen had made no decision. Everything that is a REFERENCE rather than a way
+    // into the game moved to the footer line with Credits and Achievements; what is left is play,
+    // resume, the other mode, the settings, and the way out.
+    //
+    // `primary` is resolved after the save scan (_applySave): Continue when there is something to
+    // continue, New Game when there is not. Marking it here would light a dead verb on first paint.
     const items = [
       { action: 'continue', label: coreText('continue'), sub: 'Checking saves...', current: true },
       { action: 'newGame', label: coreText('newGame') },
@@ -271,28 +281,46 @@ export const mainMenuScreen = {
       // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
       // launches through the ordinary New Game path and never touches the Adventure save.
       { action: 'crucible', label: 'Crucible' },
-      // "Archive" — opens the Codex on its Archive tab, where the authored intro cinematics replay.
-      { action: 'archive', label: 'Archive' },
       { action: 'settings', label: coreText('settings') },
+      { action: 'quit', label: 'Quit', danger: true },
     ];
+    // The quiet line: reference and dev, at etch size, out of the way of the decision.
+    // "Archive" opens the Codex on its Archive tab, where the authored intro cinematics replay.
+    const asideItems = [{ action: 'archive', label: 'Archive' }];
     // "Sandbox" — DEV ONLY. A testing harness for reaching mid-game features without playing for
     // an hour. Stripped from production builds via IS_DEV. See src/ui/screens/sandbox.js.
-    if (IS_DEV) items.push({ action: 'sandbox', label: 'Sandbox' });
-    items.push({ action: 'quit', label: 'Quit', danger: true });
+    if (IS_DEV) asideItems.push({ action: 'sandbox', label: 'Sandbox' });
 
     // The decorative legend rail is gone (2026-09-22). It was a 64x787 nine-slice plate whose only
     // job was to stand beside the verbs; the bench measured it as painted and empty, and in the
     // picture it read as a black bar somebody forgot to fill. Every menu item now carries its own
     // lamp rail, which is the same piece of hardware doing the same job while also saying which
     // verb is awake. An ornament became an instrument. design/frontend/THE_BAR.md §3.
+    // The POSTER variant: there is no hardware in front of a player looking at a title screen, so
+    // a verb is a word of light rather than a machined plate with a lamp rail. Weight 0.05.
     const list = words(items, {
       ariaLabel: 'Title menu',
-      system: 'dp',
+      system: 'light',
       onPick: (action) => this._pick(ctx, action),
     });
+    // Focus is a light source, not a ring: the focused word lights its neighbours and the rest of
+    // the column recedes. This replaces the gold rectangle that read as a browser focus ring.
+    stage.classList.add('dp-attend');
     stage.appendChild(list);
 
-    const byAction = (action) => list.querySelector('[data-action="' + action + '"]');
+    // The quiet line sits under the column, in the same substance one size down, so reference verbs
+    // are reachable without competing with the decision.
+    const aside = words(asideItems, {
+      ariaLabel: 'Reference',
+      system: 'light',
+      row: true,
+      onPick: (action) => this._pick(ctx, action),
+    });
+    aside.classList.add('of-title-aside');
+    stage.appendChild(aside);
+    detachLamp = attachAttentionLamp(stage);
+
+    const byAction = (action) => stage.querySelector('[data-action="' + action + '"]');
     const bContinue = byAction('continue');
     const bNew = byAction('newGame');
     const bLoad = byAction('load');
@@ -307,7 +335,9 @@ export const mainMenuScreen = {
     if (bSandbox) bSandbox.classList.add('k-38');
     // The save summary rides Continue's sub line. `.sf-menu-save-summary` / `has-save` are inert
     // hooks the boot and title-continue checks query; kit.css styles the sub line.
-    const saveSummary = bContinue.parentElement.querySelector('.dp-menu__note');
+    // The light variant names its sub line dp-lit__note; the bench one names it dp-menu__note.
+    // Query both, so changing a screen's weight never silently drops the save summary.
+    const saveSummary = bContinue.parentElement.querySelector('.dp-lit__note, .dp-menu__note');
     saveSummary.classList.add('sf-menu-save-summary');
 
     // The fine line: "SpaceFace v0.0.0 · " then the Credits word (Task B §1.6). The version text
@@ -429,7 +459,20 @@ export const mainMenuScreen = {
       refs.saveSummary.textContent = coreText('noSave');
       setDisabled(refs.bContinue, true, 'No save found yet');
     }
+    // ONE primary verb, and it is whichever one actually starts play. Continue is the primary when
+    // there is a save to continue; with none it is a dead word at the top of the list, so New Game
+    // takes the lamp. Deciding this at build time would light a verb that cannot be used.
+    this._setPrimary(latest ? refs.bContinue : refs.bNew);
     this._syncCurrent();
+  },
+
+  /** The one lit verb. Exactly one item carries the primary treatment at any time. */
+  _setPrimary(target) {
+    if (!refs || !refs.root) return;
+    for (const el of refs.root.querySelectorAll('.dp-lit__item--primary')) {
+      el.classList.remove('dp-lit__item--primary');
+    }
+    if (target) target.classList.add('dp-lit__item--primary');
   },
 
   // The default word (Continue when it can load, else New Game) carries aria-current and the
@@ -459,7 +502,12 @@ export const mainMenuScreen = {
     this._loadVersion();
     this._startIdleAttract({ state: ctx && ctx.state, rootEl: refs && refs.root });
   },
-  onHide() { this._stopIdleAttract(); },
+  onHide() {
+    this._stopIdleAttract();
+    // The lamp holds a ResizeObserver and four listeners on the menu; a screen that hides without
+    // releasing them leaks one set per mount.
+    if (detachLamp) { detachLamp(); detachLamp = null; }
+  },
   refresh(ctx, options = {}) {
     if (options && options.periodic && refs && this._menuSig != null
       && this._menuSig === this._menuInputs(ctx)) return;
