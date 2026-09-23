@@ -5,6 +5,14 @@
 // CPU admissions so Helios/hub decode finishes before the player is looking at a live frame.
 
 import { CAMERA_DIRECTOR_COMBAT_MAX_ZOOM } from './cameraDirector.js';
+import {
+  TABLE_BAND,
+  TABLE_FRAME_SKIRT_WU,
+  classifyTableBand,
+  glassHalfExtents,
+  tableLookAtDelta,
+  tablePrefetchZoomFromState,
+} from './tabletopPolicy.js';
 
 export const AUTHORED_UPGRADE_STEADY_LIMIT = 1;
 export const AUTHORED_UPGRADE_OPENING_LIMIT = 2;
@@ -113,18 +121,47 @@ export function combatantAdmissionPriority(entity, liveState) {
 }
 
 // A live survival run is one small room with a known fight roster, but the renderer still mounts
-// the staging sector the arena was carved from. Stations, rocks, place dressing and fx that sit
-// beyond the fight-fit envelope cannot appear on the arena's glass, so admitting them through the
-// same serial lane starves the combatants that gate the fight (and the dead hulk exemplars that
-// gate the wrecks). Those jobs are refused at enqueue — the ordinary approach trigger re-requests
-// any body the player actually closes on, and anything still pending re-requests once the run ends.
+// the staging sector the arena was carved from. Stations, rocks, place dressing and fx that the
+// composed frame cannot show still queue through the same serial lane and starve the combatants
+// that gate the fight (and the dead hulk exemplars that gate the wrecks). The defer criterion is
+// the renderer's own on-glass classifier: the live look-at table plus the frame skirt and the
+// body's radius. A body in the glass or runway band can be on the picture — it queues; only a
+// body provably beyond the band is refused at enqueue. The ordinary approach trigger re-requests
+// anything the frame ever reaches, and anything still pending re-requests once the run ends.
 const SURVIVAL_DEFERRED_DRESSING_TYPES = new Set(['station', 'asteroid', 'fx', 'place']);
+const _arenaDressingDelta = { x: 0, z: 0 };
 
 export function survivalDefersArenaDressingJob(entity, liveState) {
   const run = liveState && liveState.run;
   if (!run || run.kind !== 'survival' || !run.phase || run.phase === 'inactive') return false;
   if (!entity || entity.alive === false || entity.isPlayer === true) return false;
   if (!SURVIVAL_DEFERRED_DRESSING_TYPES.has(entity.type)) return false;
-  const distance = planarRangeWU(entity, livePlayerEntity(liveState));
-  return distance !== null && distance > CAMERA_DIRECTOR_COMBAT_MAX_ZOOM;
+  const pos = entity.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+  // Until the camera has composed a single frame nothing is provably off the glass — early cook
+  // sweeps admit normally and the combatant rung keeps that work behind the fight.
+  const camera = liveState.camera || {};
+  if (!Number.isFinite(camera.liveZoom) && !Number.isFinite(camera.composedZoom)) return false;
+  const player = livePlayerEntity(liveState);
+  const focus = camera.focus || {};
+  if ((!Number.isFinite(focus.x) || !Number.isFinite(focus.z))
+      && !(player && player.pos && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z))) {
+    return false;
+  }
+  const zoom = tablePrefetchZoomFromState(liveState);
+  const video = liveState.settings && liveState.settings.video || {};
+  const fov = Number.isFinite(camera.fov) ? camera.fov : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const glass = glassHalfExtents(zoom, fov, aspect, tilt);
+  const delta = tableLookAtDelta(liveState, player && player.pos, pos, _arenaDressingDelta);
+  const band = classifyTableBand({
+    dx: delta.x,
+    dz: delta.z,
+    radius: Math.max(0, Number(entity.radius) || 0),
+    glassHalfX: glass.halfX,
+    glassHalfZ: glass.halfZ,
+    runwayWu: TABLE_FRAME_SKIRT_WU,
+  });
+  return band === TABLE_BAND.BEYOND;
 }

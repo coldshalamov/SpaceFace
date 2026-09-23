@@ -62,45 +62,68 @@ test('a hostile ship inside the fight-fit envelope takes the combatant rung', ()
   assert.equal(combatantAdmissionPriority(hostile, null), null);
 });
 
-test('a live survival run defers far dressing; near dressing and every ship stay queued', () => {
+test('a live survival run defers only what the composed frame cannot show', () => {
   const player = { id: 'player', team: 0, pos: { x: 0, z: 0 } };
+  // Crucible applied zoom ~380: the composed glass is about ±431 x ±280 WU plus the 48 WU skirt.
   const live = {
     playerId: player.id,
     entities: new Map([[player.id, player]]),
     run: { kind: 'survival', phase: 'wave' },
+    camera: { liveZoom: 380, fov: 50, aspect: 16 / 9, tilt: 60, focus: { x: 0, z: 0 } },
+    world: { frameOrigin: { x: 0, z: 0 } },
   };
-  const far = CAMERA_DIRECTOR_COMBAT_MAX_ZOOM + 100;
 
   for (const type of ['station', 'asteroid', 'fx', 'place']) {
     assert.equal(
-      survivalDefersArenaDressingJob({ id: `${type}-far`, type, pos: { x: far, z: 0 } }, live),
-      true, `far ${type} defers while the run holds the arena`,
+      survivalDefersArenaDressingJob({ id: `${type}-glass`, type, pos: { x: 400, z: 0 } }, live),
+      false, `${type} inside the composed frame still admits`,
     );
     assert.equal(
-      survivalDefersArenaDressingJob({ id: `${type}-near`, type, pos: { x: 100, z: 0 } }, live),
-      false, `near ${type} is on the arena glass and still admits`,
+      survivalDefersArenaDressingJob({ id: `${type}-runway`, type, pos: { x: 460, z: 0 } }, live),
+      false, `${type} in the skirt runway still admits`,
+    );
+    assert.equal(
+      survivalDefersArenaDressingJob({ id: `${type}-beyond`, type, pos: { x: 600, z: 0 } }, live),
+      true, `${type} provably beyond the band defers while the run holds the arena`,
     );
   }
 
-  // Ships and wrecks are fight-relevant bodies — never deferred no matter the range.
+  // A body far from the player is NOT deferred when the look-at lead puts it on the glass.
+  const led = { ...live, camera: { ...live.camera, focus: { x: 200, z: 0 } } };
   assert.equal(survivalDefersArenaDressingJob(
-    { id: 'hostile', type: 'ship', team: 1, pos: { x: far, z: 0 } }, live,
+    { id: 'station-led', type: 'station', pos: { x: 600, z: 0 } }, led,
+  ), false, '600 WU from the player is on-glass when the camera leads the hull');
+
+  // The body's own radius counts: a large landmark reaching the skirt stays queued.
+  assert.equal(survivalDefersArenaDressingJob(
+    { id: 'station-big', type: 'station', radius: 200, pos: { x: 650, z: 0 } }, live,
+  ), false);
+
+  // Before the camera composes a frame nothing is provably off-glass — fail open.
+  const unread = { ...live, camera: { zoom: 144, tilt: 60, focus: null } };
+  assert.equal(survivalDefersArenaDressingJob(
+    { id: 'station-early', type: 'station', pos: { x: 2000, z: 0 } }, unread,
+  ), false);
+
+  // Ships and wrecks are fight-relevant bodies — never deferred no matter the band.
+  assert.equal(survivalDefersArenaDressingJob(
+    { id: 'hostile', type: 'ship', team: 1, pos: { x: 2000, z: 0 } }, live,
   ), false);
   assert.equal(survivalDefersArenaDressingJob(
-    { id: 'wreck', type: 'wreck', pos: { x: far, z: 0 } }, live,
+    { id: 'wreck', type: 'wreck', pos: { x: 2000, z: 0 } }, live,
   ), false);
 
   // No live survival run — nothing defers.
   assert.equal(survivalDefersArenaDressingJob(
-    { id: 'station', type: 'station', pos: { x: far, z: 0 } },
+    { id: 'station', type: 'station', pos: { x: 2000, z: 0 } },
     { ...live, run: { kind: 'survival', phase: 'inactive' } },
   ), false);
   assert.equal(survivalDefersArenaDressingJob(
-    { id: 'station', type: 'station', pos: { x: far, z: 0 } },
+    { id: 'station', type: 'station', pos: { x: 2000, z: 0 } },
     { ...live, run: null },
   ), false);
   assert.equal(survivalDefersArenaDressingJob(
-    { id: 'station', type: 'station', pos: { x: far, z: 0 } },
+    { id: 'station', type: 'station', pos: { x: 2000, z: 0 } },
     { ...live, run: { kind: 'adventure', phase: 'active' } },
   ), false);
 });

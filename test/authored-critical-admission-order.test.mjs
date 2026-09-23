@@ -463,7 +463,8 @@ test('a hostile inside the fight-fit envelope dequeues before dressing and a que
       entityList: [player],
       settings: { video: {} },
       run: { kind: 'survival', phase: 'wave' },
-      world: { currentSectorId: 'sector_helios_prime' },
+      world: { currentSectorId: 'sector_helios_prime', frameOrigin: { x: 0, z: 0 } },
+      camera: { liveZoom: 380, fov: 50, aspect: 16 / 9, tilt: 60, focus: { x: 0, z: 0 } },
     };
     globalThis.window = { SF: { state: runtimeState } };
 
