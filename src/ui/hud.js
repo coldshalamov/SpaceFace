@@ -4372,6 +4372,15 @@ export function createHud(ctx, alerts) {
 
     const pinned = !!(state.settings && state.settings.ui && state.settings.ui.overviewOpen);
     if (!mountContactRoster(rightDock, elOverview, radar.el, locked)) return;
+    // A lock mounts the list (G7), but a lock on something the roster cannot list — a target that
+    // died, drifted past 5200 WU, or is not a ship/derelict — leaves nothing to show. The inline
+    // display below would beat the stylesheet's `:empty { display:none }`, so an empty list would
+    // sit on the deck as a bare glass bar. Hide it here instead; rows stay retained while hidden
+    // and the next non-empty sample reconciles them back to the truth.
+    if (!contacts.length) {
+      setDisplay(elOverview, false);
+      return;
+    }
 
     const targetId = state.player.targetId;
     const expanded = contactRosterExpanded({
