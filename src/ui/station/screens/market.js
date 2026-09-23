@@ -848,6 +848,22 @@ export function createMarketScreen(ctx) {
     const row = ev.target.closest('.sx-mkt-row[data-cmdty]');
     if (row) selectCommodity(row.getAttribute('data-cmdty'));
   });
+  // The register rebuilds its rows on every price/stock tick, so a press that lands on a row
+  // node replaced between pointerdown and pointerup never dispatches click — the player sees
+  // "click did nothing". Track the press by commodity id and select on release over the same
+  // id: survives node replacement while keeping same-row click semantics (drag-off cancels).
+  let pressCmdtyId = null;
+  listEl.addEventListener('pointerdown', (ev) => {
+    const row = ev.target.closest && ev.target.closest('.sx-mkt-row[data-cmdty]');
+    pressCmdtyId = row ? row.getAttribute('data-cmdty') : null;
+  });
+  listEl.addEventListener('pointerup', (ev) => {
+    const row = ev.target.closest && ev.target.closest('.sx-mkt-row[data-cmdty]');
+    const upId = row ? row.getAttribute('data-cmdty') : null;
+    if (pressCmdtyId && upId && upId === pressCmdtyId) selectCommodity(upId);
+    pressCmdtyId = null;
+  });
+  listEl.addEventListener('pointercancel', () => { pressCmdtyId = null; });
   listEl.addEventListener('input', (ev) => {
     if (!ev.target.matches('[data-market-search]')) return;
     marketQuery = ev.target.value || '';
