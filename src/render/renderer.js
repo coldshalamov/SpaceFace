@@ -5182,6 +5182,9 @@ export const render = {
     this._rosterPrewarmWeaponIds = new Set();
     this._rosterPrewarmRoots = [];
     this._rosterPrewarmPending = new Set();
+    // Diagnostics: what each pending bounded-warm promise is, so a settle that times out can
+    // name what it was still waiting on instead of only counting it.
+    this._rosterPrewarmPendingLabels = new WeakMap();
     // Hidden root holding one instantiated copy of every mountable accessory record — the
     // fitSeed picks mounts per entity id, so only the whole catalog covers every live spawn.
     this._rosterPartCatalogRoot = null;
@@ -6893,13 +6896,23 @@ export const render = {
           // fire-and-forgets outside liveSectorGpuAdmission), so their links can still be
           // queued when the last load resolves. Flush + drain that queue inside the same
           // hold or the leftovers land as off-frame links inside the fight.
+          // Only work that can still ATTACH something is worth holding the shell for. A bare
+          // bounded-warm decode ('decode:' label) resolves to a cached record and nothing else:
+          // finish() has already snapshotted the decoded records into the warm root, so a decode
+          // landing now adds no subtree, no compile and no upload for the sweep below to cover.
+          // Waiting on them was the whole 8 s open-route timeout (kestrel_lod1/lod2 decodes).
+          const attachPending = () => [...this._rosterPrewarmPending].filter((promise) => {
+            const label = this._rosterPrewarmPendingLabels
+              && this._rosterPrewarmPendingLabels.get(promise);
+            return !(typeof label === 'string' && label.startsWith('decode:'));
+          });
           for (;;) {
-            while (this._rosterPrewarmPending.size > 0) {
+            for (let pending = attachPending(); pending.length > 0; pending = attachPending()) {
               const waitSliceMs = deadline - prepareNow();
               if (waitSliceMs <= 0) { timedOut = true; break; }
               flushPipelinesBehindShell();
               await Promise.race([
-                Promise.allSettled([...this._rosterPrewarmPending]),
+                Promise.allSettled(pending),
                 new Promise((resolve) => setTimeout(resolve, Math.min(waitSliceMs, 250))),
               ]);
             }
@@ -6914,9 +6927,14 @@ export const render = {
               new Promise((resolve) => setTimeout(resolve, Math.min(waitSliceMs, 250))),
             ]);
           }
+          const stillPending = this._rosterPrewarmPending ? [...this._rosterPrewarmPending] : [];
           recordOpeningCookStep(state.render, 'live.rosterPrewarmSettle', prewarmStarted,
             timedOut ? 'timeout' : 'resolved', {
-              left: this._rosterPrewarmPending ? this._rosterPrewarmPending.size : 0,
+              left: stillPending.length,
+              pending: stillPending.length > 0
+                ? stillPending.slice(0, 12).map((promise) => (this._rosterPrewarmPendingLabels
+                  && this._rosterPrewarmPendingLabels.get(promise)) || 'other').join('|')
+                : undefined,
               queuedPipelines: pipelineAdmissions.pendingCount | 0,
             });
           // The post-opening pass released before this cohort settled, so late-attached
@@ -10068,10 +10086,11 @@ export const render = {
     // re-adds the root after begin() returns — re-adding to the same parent is a no-op.
     if (root.parent !== scene) scene.add(root);
     const sectorId = (state && state.world && state.world.currentSectorId) || null;
-    const track = (promise) => {
+    const track = (promise, label = 'warm') => {
       const settled = Promise.resolve(promise).catch(() => null);
       if (this._rosterPrewarmPending) {
         this._rosterPrewarmPending.add(settled);
+        if (this._rosterPrewarmPendingLabels) this._rosterPrewarmPendingLabels.set(settled, label);
         settled.finally(() => {
           if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
         });
@@ -10098,7 +10117,7 @@ export const render = {
           warm.pendingAttachments.push(track(mesh.userData.requestAuthoredUpgrade(renderer, scene, {
             residencyRole: 'crucible-roster-warm',
             sectorId,
-          })));
+          }), `attach:${spec && spec.id}`));
         }
       } catch (error) {
         console.warn('[render] crucible warm spawnable build failed', spec && spec.id, error);
@@ -10141,7 +10160,7 @@ export const render = {
             residencyRole: 'crucible-roster-warm',
             sectorId,
             upgradeJobKey: `${specPrefix}job:${spec.id}`,
-          }));
+          }), `ship:${spec.id}`);
           kick.then((result) => { entry.result = result; });
           warm.pendingAttachments.push(kick);
         }
@@ -10169,7 +10188,7 @@ export const render = {
           });
           // Backstop for boundaries mounted after the pre-drain kick: finish() awaits these
           // completions (budget-guarded) so a late mount still composes before the batch.
-          if (kick) warm.pendingAttachments.push(track(kick));
+          if (kick) warm.pendingAttachments.push(track(kick, `kick:${mesh.name || 'mesh'}`));
         } catch (_) { /* a refused request leaves the live trigger armed */ }
       }
     } catch (error) {
@@ -10251,7 +10270,7 @@ export const render = {
         residencyRole: 'crucible-roster-warm',
         sectorId,
         isResidencyOwnerActive: () => warm.building === true,
-      })));
+      }), `decode:${file}`));
     }
     return warm;
   },
