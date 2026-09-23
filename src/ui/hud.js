@@ -966,7 +966,15 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
   return { x, y, width: chipWidth, height: chipHeight, onScreen, directionDeg };
 }
 
-export function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+// JS-side last-written cache — mirror setStyle. Reading el.textContent every call forces a
+// DOM text walk (and can flush layout); hud.frame self-time in cpu-profile-flight was ~38 ms
+// over 60 s settled with dozens of setText sites on every slow/overlay tick.
+export function setText(el, text) {
+  if (!el) return;
+  if (el._sfText === text) return;
+  el._sfText = text;
+  el.textContent = text;
+}
 function setScaleX(el, value, opts = null) {
   if (!el) return;
   const min = opts && Number.isFinite(opts.min) ? opts.min : 0;
