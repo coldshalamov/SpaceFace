@@ -2054,7 +2054,23 @@ async function clickWaypointWithPointer(page, locator, timeoutMs = 10_000) {
   throw new Error(`Set Waypoint pointer click did not arm autopilot; last box=${JSON.stringify(lastBox)}`);
 }
 
+async function reopenMarketTabWhenShellLost(page) {
+  // A stray keypress can back the station screen out of the market tab — the trade shell
+  // is then absent entirely and every commit dies blind with an all-null diag. Re-open
+  // the market tab through the public control; bounded, and the walk's own asserts still
+  // report a market that truly will not open.
+  for (let attempts = 0; attempts < 3; attempts++) {
+    if (await page.locator('.sx-trade:visible').count().catch(() => 0) > 0) return true;
+    const marketTab = page.locator('[role="tab"]', { hasText: /market/i }).first();
+    if (!(await marketTab.isVisible().catch(() => false))) return false;
+    await marketTab.click().catch(() => {});
+    await page.waitForTimeout(400);
+  }
+  return page.locator('.sx-trade:visible').count().catch(() => 0) > 0;
+}
+
 async function exerciseMarketRoundtrip(page) {
+  await reopenMarketTabWhenShellLost(page);
   // The live market is the orbital-command trade console (.sx-trade + data-mode segment buttons).
   // The legacy .st-buy-btn/[data-trade-mode] shell no longer exists — one current-UI path only.
   // Each roundtrip ends in Sell mode, which narrows the register to held cargo ("IN HOLD").
@@ -2190,7 +2206,10 @@ async function exerciseMarketRoundtrip(page) {
   // lands. A row can list while its quote fails (no market entry at this berth, locked
   // cargo, empty stock), so "listed" is not "actionable".
   const walkRowsForCommit = async (verifyFn, limit = 14, options = {}) => {
-    const count = await rows.count().catch(() => 0);
+    let count = await rows.count().catch(() => 0);
+    if (count === 0 && await reopenMarketTabWhenShellLost(page)) {
+      count = await rows.count().catch(() => 0);
+    }
     for (let i = 0; i < Math.min(count, limit); i++) {
       const row = rows.nth(i);
       const id = await row.getAttribute('data-cmdty').catch(() => null);
@@ -2201,6 +2220,12 @@ async function exerciseMarketRoundtrip(page) {
       // with the console state that explains them.
       if (!committed) console.log(`[trade-walk] row ${i} ${id} ms=${Date.now() - t0} diag=${JSON.stringify(await tradeConsoleDiag())}`);
       if (committed) return committed;
+      // A dead row is quotable-detail; the shell itself vanishing is a stray-key
+      // back-out — re-open the tab once and restart the walk on the live rows.
+      if (!options.__reopened && await page.locator('.sx-trade:visible').count().catch(() => 0) === 0
+          && await reopenMarketTabWhenShellLost(page)) {
+        return walkRowsForCommit(verifyFn, limit, { ...options, __reopened: true });
+      }
     }
     return null;
   };
