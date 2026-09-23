@@ -112,6 +112,25 @@ export const FACTION_CONTACT_GRAMMAR = Object.freeze({
     }),
     sampleLine: 'Tethys exchange hail: present bill of lading or settle the transit tariff at the buoy.',
   }),
+  faction_choir: Object.freeze({
+    id: 'faction_choir',
+    callsign: 'The Choir',
+    contactWord: 'PATTERN',
+    firstFire: true,
+    lawfulRoe: 'weapons_free',
+    demandType: 'tithe',
+    scanPolicy: 'pattern_read_before_hail',
+    lootLegality: 'consecrated_hold',
+    barkSituations: Object.freeze(['scan', 'warn', 'demand-cargo', 'attack', 'patrol-greeting']),
+    primaryBark: 'attack',
+    aftermath: Object.freeze({
+      repChannel: 'faction:repDelta',
+      heatChannel: null,
+      paperwork: false,
+      graffitiTone: 'pattern_interval',
+    }),
+    sampleLine: 'The seventh interval. Your correction is already notated.',
+  }),
 });
 
 export const PRESSURE_FACTION_IDS = Object.freeze([
