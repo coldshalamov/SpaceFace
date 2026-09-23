@@ -28,9 +28,10 @@ const CSS = `
 .orr-turntable > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .orr-turntable > .orr-turntable__row { position:absolute !important; inset:0; margin:0 !important; padding:0 !important; display:block !important; }
 .orr-turntable > .orr-turntable__row > li { position:absolute; margin:0; transform:translateX(-50%); list-style:none; text-align:center; pointer-events:auto; }
-.orr-turntable__art { position:absolute; transform:translateX(-50%); pointer-events:none; opacity:.46; background:center / 178% auto no-repeat;
-  filter:saturate(.6) brightness(.8); transition:opacity .22s linear, filter .22s linear, transform .3s var(--dp-ease-out, ease-out); }
-.orr-turntable__art.is-on { opacity:1; filter:saturate(1) brightness(1.05) drop-shadow(0 0 16px rgb(255 226 178 / .25)); transform:translateX(-50%) scale(1.1); }
+.orr-turntable__art { position:absolute; transform:translateX(-50%); pointer-events:none; opacity:1; background:center / 178% auto no-repeat;
+  filter:saturate(.75) brightness(.62) drop-shadow(0 10px 8px rgb(0 0 0 / .55)); transition:opacity .22s linear, filter .22s linear; }
+/* the chosen hull is the staged one: its station keeps only its word and the lit index */
+.orr-turntable__art.is-on { opacity:0; }
 html.sf-reduce-motion .orr-turntable__art { transition:none; }
 .orr-stationrow { position:relative !important; padding-bottom:26px !important; }
 .orr-stationrow > .orr-stationrow__rule { position:absolute; left:0; right:0; bottom:0; width:100%; height:20px; overflow:visible; pointer-events:none; }
@@ -390,9 +391,9 @@ export function createTurntable({ row, host, anchor, art = null, artWidth = 150 
     const W = hb.width; const H = hb.height;
     // round the object's base: centred a little right of the cell (where the staged hull sits),
     // low enough that only the floor is under the front arc, never the object
-    const rx = Math.min(ab.width * 0.33, 470);
+    const rx = Math.min(ab.width * 0.3, 430);
     const ry = rx * 0.27;
-    g = { cx: ab.left - hb.left + ab.width * 0.56, cy: Math.min(ab.top - hb.top + ab.height * 0.8, H - ry - 132), rx, ry };
+    g = { cx: ab.left - hb.left + ab.width * 0.6, cy: Math.min(ab.top - hb.top + ab.height * 0.8, H - ry - 132), rx, ry };
     face.setAttribute('viewBox', `0 0 ${W} ${H}`);
     track.setAttribute('d', ring(-104, 104));
     trackBloom.setAttribute('d', ring(-104, 104));

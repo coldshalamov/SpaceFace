@@ -802,7 +802,7 @@ export const pauseScreen = {
     if (pauseRail) pauseRail.dispose();
     // Every verb on its own tick so the Hand always points at the actual choice; a group is a
     // cluster with its name engraved on the rim beside it.
-    pauseRail = createArcRail({ host: stage, list, frame: rootEl, clustered: true, dense: true, span: 118, pivotY: 0.54 });
+    pauseRail = createArcRail({ host: stage, list, frame: rootEl, clustered: true, dense: true, span: 112, pivotY: 0.52 });
 
     // The column ends in a legend strip, not an air gap: the keys that are live while this modal
     // is up as machined caps, then the build mark — the two .k-fine lines the pause grid's foot

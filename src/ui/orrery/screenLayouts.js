@@ -252,7 +252,7 @@ html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-
   caret-color:var(--dp-hand, #f2b950); outline:none; }
 #screens .orr-newgame .orr-ng-input:focus { background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / .1)) !important; }
 #screens .orr-newgame .orr-ng-input::placeholder { color:rgb(232 226 212 / .32); }
-#screens .orr-newgame .orr-ng-input::selection { background:rgb(242 185 80 / .22); color:rgb(255 244 214); }
+#screens .orr-newgame .orr-ng-input::selection { background:transparent; color:var(--dp-hand-hot, #ffd98c); }
 #screens .orr-newgame .orr-ng-key--small::before { content:"↻"; margin-right:8px; font-size:13px; letter-spacing:0; color:var(--dp-hand, #f2b950); }
 /* choice words on the dials: engraved capitals; the chosen one is lit */
 #screens .orr-newgame .orr-stopscale .k-word { background:none !important; border:0 !important; box-shadow:none !important; border-image:none !important;

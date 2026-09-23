@@ -43,8 +43,7 @@ const CSS = `
   transform-origin:0 50%; transition:color .16s linear, transform .24s var(--dp-ease-out, ease-out), text-shadow .16s linear; }
 .orr-arcrail-host .dp-lit__item[data-awake] {
   color:rgb(246 241 230) !important; transform:scale(1.06);
-  text-shadow:0 0 1px rgb(255 226 178 / .55), 0 0 9px rgb(255 217 140 / .2), 0 1px 0 rgb(0 0 0 / .6) !important;
-  background:linear-gradient(90deg, rgb(242 185 80 / .7), rgb(242 185 80 / 0)) no-repeat 0 calc(100% - 1px) / 70% 1.5px !important; }
+  text-shadow:0 0 1px rgb(255 226 178 / .55), 0 0 9px rgb(255 217 140 / .2), 0 1px 0 rgb(0 0 0 / .6) !important; }
 .orr-arcrail-host .dp-lit__item[aria-disabled="true"], .orr-arcrail-host .dp-lit__item:disabled {
   color:rgb(232 226 212 / .34) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5) !important; }
 .orr-arcrail-host .dp-lit__item--danger[data-awake] { color:var(--dp-danger-hot, #ff7a5c) !important;
@@ -57,7 +56,7 @@ const CSS = `
 .orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item[data-awake] { color:rgb(246 241 230) !important; }
 .orr-arcrail-host .dp-kbd { display:none !important; }
 .orr-svg text.orr-arcrail__cluster { font-size:9px; letter-spacing:.3em; fill:rgb(232 226 212 / .5); text-anchor:start; }
-.orr-svg .orr-arcrail__sector text { letter-spacing:.34em; fill:rgb(232 226 212 / .62); font-weight:650; }
+.orr-svg .orr-arcrail__sector text { letter-spacing:.3em; fill:rgb(232 226 212 / .72); font-weight:700; }
 /* notes stay for the accessibility tree; the dial shows the fact elsewhere (the eyebrow) */
 .orr-arcrail-host .dp-lit__note { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important;
   clip-path:inset(50%) !important; white-space:nowrap !important; margin:0 !important; }
@@ -234,7 +233,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   let blade = null; let bladeBloom = null; let core = null; let tail = null; let bead = null; let beadBloom = null;
   let glint = null; let glintBloom = null; let trailHost = null; let ticks = []; let leader = null;
   // a needle's spring: one slight overshoot, settled in about a quarter second
-  const handSpring = createSpring({ value: 20, preset: { k: 190, c: 15 }, onUpdate: (deg) => paintHand(deg) });
+  const handSpring = createSpring({ value: 20, preset: { k: 95, c: 11.5 }, onUpdate: (deg) => paintHand(deg) });
   let handIndex = -1;
 
   function paintHand(deg) {
@@ -339,7 +338,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
             }
             const mid = (sa + sb) / 2;
             layer.appendChild(circularText(pivot.x, pivot.y, rb - 8, String(g).toUpperCase(),
-              { startDeg: mid + 90, size: 9, className: 'orr-arcrail__sector', anchor: 'middle', upright: true }));
+              { startDeg: mid + 90, size: 11.5, className: 'orr-arcrail__sector', anchor: 'middle', upright: true }));
           }
           start = i;
         }

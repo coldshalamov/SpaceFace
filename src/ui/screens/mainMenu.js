@@ -359,7 +359,7 @@ export const mainMenuScreen = {
     if (arcRail) arcRail.dispose();
     injectOrreryScreens();
     rootEl.classList.add('orr-title');
-    arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside], engraving: 'SpaceFace · Helios Reach · Contract 47-A · Mass variance survey' });
+    arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside] });
 
     const byAction = (action) => stage.querySelector('[data-action="' + action + '"]');
     const bContinue = byAction('continue');
