@@ -25,6 +25,8 @@ import {
   requestCrucibleRun,
 } from '../crucibleLaunch.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
+import { createStationRow } from '../orrery/stopDial.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import {
   buildCodeFor,
   buildNameFor,
@@ -108,8 +110,15 @@ function pin(node, props) {
   }
   return node;
 }
+// ORRERY (design/frontend/ORRERY.md §6 Crucible): the Field Hardware helpers pinned plates, key
+// sprites and tile panes inline with !important. Under ORRERY they only mark nodes for the composition
+// sheet (src/ui/orrery/screenLayouts.js, .orr-crucible) and pin nothing; ids, hooks, aria and
+// handlers are untouched.
+const ORRERY = true;
+const mark = (node, ...cls) => { if (node && node.classList && typeof node.classList.add === 'function') node.classList.add(...cls); return node; };
 function paintMarking(node) {
   if (!node) return node;
+  if (ORRERY) return mark(node, 'fh-title', 'orr-mark');
   if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-title');
   return pin(node, {
     'font-family': 'var(--fh-face-display)',
@@ -127,6 +136,10 @@ function paintMarking(node) {
 }
 function paintLegend(node, lit = false) {
   if (!node) return node;
+  if (ORRERY) {
+    if (typeof node.setAttribute === 'function' && !node.getAttribute('data-fh-lit')) node.setAttribute('data-fh-lit', lit ? 'on' : 'off');
+    return mark(node, 'fh-legend', 'orr-legend');
+  }
   if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-legend');
   if (typeof node.setAttribute === 'function' && !node.getAttribute('data-fh-lit')) {
     node.setAttribute('data-fh-lit', lit ? 'on' : 'off');
@@ -143,6 +156,7 @@ function paintLegend(node, lit = false) {
 }
 function paintWindow(node) {
   if (!node) return node;
+  if (ORRERY) return mark(node, 'fh-window', 'orr-window');
   if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-window', 'fh-window--deep');
   if (forcedColorsActive()) {
     return pin(node, { 'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid', background: 'transparent' });
@@ -155,6 +169,7 @@ function paintWindow(node) {
 }
 function paintInput(input) {
   if (!input) return input;
+  if (ORRERY) return mark(input, 'fh-input', 'orr-input');
   if (input.classList && typeof input.classList.add === 'function') input.classList.add('fh-input');
   const apply = (state) => {
     if (forcedColorsActive()) {
@@ -183,6 +198,7 @@ function paintInput(input) {
 }
 function paintKey(button, kind = 'legend') {
   if (!button) return button;
+  if (ORRERY) { mark(button, 'k-word', 'orr-key', 'orr-key--' + kind); button._fhSync = () => {}; return button; }
   const spec = FH_KEY[kind] || FH_KEY.legend;
   if (button.classList && typeof button.classList.add === 'function') {
     button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
@@ -236,6 +252,7 @@ function paintKey(button, kind = 'legend') {
 }
 function paintTile(button, selected) {
   if (!button) return button;
+  if (ORRERY) return mark(button, 'fh-tile', 'orr-tile');
   if (button.classList && typeof button.classList.add === 'function') button.classList.add('fh-tile');
   if (forcedColorsActive()) {
     return pin(button, {
@@ -610,6 +627,7 @@ export const crucibleScreen = {
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-title');
     pin(rootEl, { background: 'transparent' });
+    if (ORRERY) { injectOrreryScreens(); rootEl.classList.add('orr-crucible'); }
 
     const previous = lastCrucibleSetup();
     let starterId = crucibleStarterIdForSetup(previous);
@@ -1301,6 +1319,9 @@ export const crucibleScreen = {
 
     syncMode();
     syncHull();
+    // ORRERY: each tile row loses its cards and runs on a ruled line with the amber index under the
+    // chosen tile (the tiles keep their art, their words, aria-pressed and their handlers).
+    if (ORRERY) this._stations = [modes, hulls, arenas].map((row) => createStationRow({ row }));
     this._regions = { title, stage, foot, enter };
     // data-k-ready belongs to the ScreenManager on a screen that declares `stage`: the door is not
     // ready to photograph when its words are built, it is ready when the arena behind them is lit.
@@ -2121,6 +2142,7 @@ export const crucibleResultsScreen = {
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'sf-crucible-results');
+    if (ORRERY) { injectOrreryScreens(); rootEl.classList.add('orr-crucible'); }
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');

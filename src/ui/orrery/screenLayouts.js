@@ -95,6 +95,61 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 #screens .orr-newgame .sf-ng-route__step:first-child::before { color:var(--dp-hand, #f2b950); }
 #screens .orr-newgame .sf-ng-route__steps { padding-left:34px !important; }
 #screens .orr-newgame .sf-ng-route__steps::before { left:20px; }
+/* crucible: the door's tile rows are stations on ruled lines; the smoked window is glass; the keys
+   are light. (Door, armory, refit and results share the .orr-crucible root.) */
+#screens .orr-crucible .orr-mark { font-family:var(--dp-face-display, "Archivo"); font-stretch:125%;
+  font-variation-settings:"wght" 800, "wdth" 125 !important; font-size:clamp(56px, min(9vw, 12vh), 132px) !important; line-height:.9 !important;
+  letter-spacing:.005em; text-transform:uppercase; color:rgb(236 230 216) !important; background:none !important; -webkit-text-fill-color:currentColor;
+  margin:0; text-shadow:0 2px 18px rgb(0 0 0 / .5); }
+#screens .orr-crucible .orr-window { position:relative; background:none !important; border:0 !important; border-image:none !important;
+  box-shadow:none !important; padding:6px 0 !important; }
+#screens .orr-crucible .orr-window::before { content:""; position:absolute; inset:-30px -70px -30px -40px; z-index:-1; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(4 6 9 / .74), rgb(4 6 9 / .46) 62%, transparent); }
+#screens .orr-crucible .k-row { background:none !important; border:0 !important; box-shadow:none !important; }
+#screens .orr-crucible .orr-legend { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:10px !important;
+  letter-spacing:.26em !important; text-transform:uppercase; color:rgb(232 226 212 / .58) !important; margin:0 0 8px !important; }
+#screens .orr-crucible .orr-legend[data-fh-lit="on"] { color:rgb(232 226 212 / .72) !important; }
+#screens .orr-crucible .orr-stationrow { gap:clamp(8px, 1.4vw, 26px) !important; }
+#screens .orr-crucible .orr-tile { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
+  display:flex !important; flex-direction:column; align-items:center; gap:6px; padding:4px 6px !important; min-width:0 !important; width:auto !important;
+  min-height:0 !important; color:rgb(232 226 212 / .58) !important; cursor:pointer; }
+#screens .orr-crucible .orr-tile .fh-tile-art img { width:calc(58px * var(--k-s, 1)) !important; height:calc(58px * var(--k-s, 1)) !important;
+  opacity:.62; filter:saturate(.7); transition:opacity .18s linear, filter .18s linear, transform .24s var(--dp-ease-out, ease-out); }
+#screens .orr-crucible .orr-tile .fh-tile-art svg { width:34px; height:34px; opacity:.6; color:rgb(232 226 212); }
+#screens .orr-crucible .orr-tile .fh-tile-legend { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px;
+  letter-spacing:.18em; text-transform:uppercase; text-align:center; line-height:1.25; }
+#screens .orr-crucible .orr-tile:is([aria-pressed="true"], :hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none; }
+#screens .orr-crucible .orr-tile[aria-pressed="true"] .fh-tile-art img { opacity:1; filter:saturate(1) drop-shadow(0 0 10px rgb(255 190 110 / .35)); transform:scale(1.08); }
+#screens .orr-crucible .orr-tile[aria-pressed="true"] .fh-tile-art svg { opacity:1; }
+#screens .orr-crucible .orr-tile[aria-disabled="true"] { opacity:.45; }
+#screens .orr-crucible .orr-input { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
+  color:rgb(246 241 230) !important; font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 800, "wdth" 125;
+  font-size:clamp(28px, 3.6vh, 44px); font-variant-numeric:tabular-nums; letter-spacing:.04em; padding:0 2px 6px !important; min-height:0 !important;
+  background-image:linear-gradient(90deg, rgb(232 226 212 / .5), rgb(232 226 212 / .06)) !important; background-size:100% 1px !important;
+  background-position:0 100% !important; background-repeat:no-repeat !important; caret-color:var(--dp-hand, #f2b950); outline:none; }
+#screens .orr-crucible .orr-input:focus { background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / .08)) !important; }
+#screens .orr-crucible :is(.orr-key--small, .orr-key--legend) { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
+  min-width:0 !important; min-height:0 !important; padding:6px 2px !important; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
+  font-size:12px !important; letter-spacing:.22em; text-transform:uppercase; color:rgb(232 226 212 / .7) !important; }
+#screens .orr-crucible :is(.orr-key--small, .orr-key--legend):is(:hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none; }
+#screens .orr-crucible :is(.orr-key--hazard, .orr-key--primary) { position:relative; overflow:visible; border:0 !important; border-image:none !important;
+  border-radius:0 !important; background:none !important; box-shadow:none !important; clip-path:none; min-width:0 !important; min-height:0 !important;
+  color:var(--dp-hand, #f2b950) !important; padding:10px 4px 14px !important; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%;
+  font-variation-settings:"wght" 800, "wdth" 125; font-size:clamp(20px, 2.4vh, 28px) !important; letter-spacing:.1em; text-transform:uppercase;
+  text-shadow:0 0 18px rgb(242 185 80 / .35);
+  background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / 0)) !important; background-size:100% 2px !important;
+  background-position:0 100% !important; background-repeat:no-repeat !important; }
+#screens .orr-crucible :is(.orr-key--hazard, .orr-key--primary):is(:hover, :focus, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important;
+  outline:none !important; box-shadow:none !important; text-shadow:0 0 26px rgb(255 217 140 / .6);
+  background-image:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c), rgb(255 217 140 / 0)) !important; }
+/* the share and ghost codes are secondary readings: a size down from the seed */
+#screens .orr-crucible .sf-crd-share .orr-input, #screens .orr-crucible input.orr-input:not(#sf-crd-seed):not([inputmode="numeric"]) {
+  font-size:clamp(16px, 2vh, 22px) !important; }
+html body #screens .k-screen.orr-crucible .sf-back.k-word { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
+  font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:13px !important; letter-spacing:.24em; color:rgb(232 226 212 / .7) !important; }
+html body #screens .k-screen.orr-crucible .sf-back.k-word::after { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
+  padding:0 !important; color:rgb(232 226 212 / .4) !important; font-size:10px !important; letter-spacing:.2em; }
+
 /* new game: the Field Hardware form becomes instruments. Selectors carry #screens so they meet the
    retired kit sheet's own specificity instead of losing to it. */
 #screens .orr-newgame .orr-ng-title { font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-weight:800;

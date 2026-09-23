@@ -24,6 +24,8 @@ const CSS = `
 .orr-stoparc > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .orr-stoparc > .orr-stoparc__row { position:absolute !important; inset:0; margin:0 !important; padding:0 !important; display:block !important; }
 .orr-stoparc > .orr-stoparc__row > li { position:absolute; margin:0; transform:translateX(-50%); list-style:none; text-align:center; }
+.orr-stationrow { position:relative !important; padding-bottom:26px !important; }
+.orr-stationrow > .orr-stationrow__rule { position:absolute; left:0; right:0; bottom:0; width:100%; height:20px; overflow:visible; pointer-events:none; }
 .orr-stopscale__art { position:absolute; transform:translate(-50%, -50%); pointer-events:none; opacity:.42;
   background:center / contain no-repeat; transition:opacity .2s linear, transform .32s var(--dp-ease-out, ease-out), filter .2s linear; }
 .orr-stopscale__art.is-on { opacity:1; transform:translate(-50%, -50%) scale(1.14); filter:drop-shadow(0 0 12px rgb(223 238 255 / .4)); }
@@ -245,4 +247,77 @@ export function createStopArc({ row, width = 560, radius = 160, span = 84, art =
   }
   update({ instant: true });
   return { el: wrap, update, dispose() { spring.stop(); if (mo) mo.disconnect(); } };
+}
+
+/**
+ * Station ROW: the flowing form, for rows of produced-art choices (mode, build, arena tiles). The row
+ * keeps its own flex flow -- each choice keeps its art and its word -- and loses its card; a ruled
+ * line of light runs under the row with a tick under every choice, and the amber index slides to
+ * the chosen one (aria-pressed / aria-selected). Measured from the laid-out row, re-measured when
+ * the row resizes, so it follows wrapping and responsive sizes without a fixed geometry.
+ */
+export function createStationRow({ row } = {}) {
+  const doc = (row && row.ownerDocument) || globalThis.document;
+  if (!row || !doc || typeof doc.createElementNS !== 'function' || !row.parentNode || typeof row.getBoundingClientRect !== 'function') {
+    return { el: null, update() {}, dispose() {} };
+  }
+  injectOrrery();
+  injectStyle(doc);
+  row.classList.add('orr-stationrow');
+  const face = svg('svg', { class: 'orr-svg orr-stationrow__rule', 'aria-hidden': 'true' });
+  row.appendChild(face);
+  const line = svg('path', { d: '', class: 'orr-core orr-rest', 'stroke-width': 1 });
+  const fine = svg('path', { d: '', class: 'orr-core orr-faint', 'stroke-width': 1 });
+  const ticks = svg('g');
+  const bloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 7, opacity: '.22' });
+  const blade = svg('path', { d: '', fill: 'var(--dp-hand, #f2b950)' });
+  const beadBloom = svg('circle', { r: 7, fill: 'var(--dp-hand, #f2b950)', opacity: '.22' });
+  const bead = svg('circle', { r: 3.2, fill: 'var(--dp-hand-hot, #ffd98c)' });
+  face.append(line, fine, ticks, bloom, blade, beadBloom, bead);
+  const Y = 10;
+  const buttons = () => [...row.querySelectorAll('button')];
+  let xs = [];
+  let current = -1;
+  const paint = (x) => {
+    blade.setAttribute('d', `M ${(x - 2).toFixed(1)} ${Y} L ${x.toFixed(1)} ${Y - 14} L ${(x + 2).toFixed(1)} ${Y} Z`);
+    bloom.setAttribute('d', `M ${x.toFixed(1)} ${Y} L ${x.toFixed(1)} ${Y - 14}`);
+    for (const b of [bead, beadBloom]) { b.setAttribute('cx', x.toFixed(1)); b.setAttribute('cy', String(Y)); }
+  };
+  const spring = createSpring({ value: 0, preset: { k: 300, c: 25 }, onUpdate: paint });
+  function measure() {
+    const rb = row.getBoundingClientRect();
+    if (!rb.width) return;
+    face.setAttribute('viewBox', `0 0 ${rb.width.toFixed(1)} 20`);
+    xs = buttons().map((b) => { const bb = b.getBoundingClientRect(); return bb.left - rb.left + bb.width / 2; });
+    // the line spans the stations (and a little air), not the whole row box
+    const x0 = Math.max(0, (xs[0] ?? 0) - 36);
+    const x1 = Math.min(rb.width, (xs[xs.length - 1] ?? rb.width) + 36);
+    line.setAttribute('d', `M ${x0} ${Y} L ${x1.toFixed(1)} ${Y}`);
+    const f = [];
+    for (let x = x0 + 4; x < x1; x += 8) f.push(`M ${x.toFixed(1)} ${Y} L ${x.toFixed(1)} ${Y + 4}`);
+    fine.setAttribute('d', f.join(' '));
+    ticks.textContent = '';
+    xs.forEach((x) => ticks.appendChild(svg('path', { d: `M ${x.toFixed(1)} ${Y - 5} L ${x.toFixed(1)} ${Y + 7}`, class: 'orr-core orr-hi', 'stroke-width': 1.4, opacity: '.5' })));
+    current = -1;
+    update({ instant: true });
+  }
+  function update({ instant = false } = {}) {
+    const list = buttons();
+    let idx = list.findIndex((b) => b.getAttribute('aria-pressed') === 'true' || b.getAttribute('aria-selected') === 'true');
+    if (idx < 0 || !xs.length) return;
+    if (idx === current && !instant) return;
+    current = idx;
+    spring.set(xs[idx], { instant });
+    [...ticks.children].forEach((t, i) => { t.setAttribute('class', `orr-core ${i === idx ? 'orr-hand' : 'orr-hi'}`); t.setAttribute('opacity', i === idx ? '1' : '.5'); });
+  }
+  let mo = null;
+  if (typeof MutationObserver === 'function') {
+    mo = new MutationObserver(() => update());
+    mo.observe(row, { subtree: true, attributes: true, attributeFilter: ['aria-pressed', 'aria-selected'] });
+  }
+  let ro = null;
+  if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => measure()); ro.observe(row); }
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => measure());
+  measure();
+  return { el: face, update, measure, dispose() { spring.stop(); if (mo) mo.disconnect(); if (ro) ro.disconnect(); face.remove(); } };
 }
