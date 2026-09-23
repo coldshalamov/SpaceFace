@@ -224,6 +224,17 @@ test('no family exceeds the existing reflection ceiling — this redistributes, 
     'lacquer is a coating, exposed working edges are metal');
 });
 
+// TOOL-06: refractory ceramic stays matte next to painted metal. The Tiles132C scan's unglazed
+// tile fraction reads ~0.8-1.0 rough; thermal_ceramic's multiplier must stay clearly above the
+// satin painted_shell family so liner and lacquer never share a response.
+test('thermal_ceramic stays matte next to painted_shell', () => {
+  const { thermal_ceramic, painted_shell } = MATERIAL_FAMILIES;
+  assert.ok(thermal_ceramic.roughness > painted_shell.roughness,
+    `ceramic ${thermal_ceramic.roughness} must out-rough the paint ${painted_shell.roughness}`);
+  assert.ok(thermal_ceramic.roughness >= 0.9,
+    `ceramic ${thermal_ceramic.roughness} fell below the unglazed-tile matte band`);
+});
+
 // TOOL-05: the seal reads in the direction the Rubber004 scan actually is. The scan measures
 // mean roughness 0.59 (range 0.40-0.82) — a satin elastomer. The family multiplier lands a
 // typical seal (base roughness ~0.9-1.0) inside that envelope; dead-matte (>=1.0) reads drier
