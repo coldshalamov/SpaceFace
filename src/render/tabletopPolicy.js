@@ -149,6 +149,28 @@ export const TABLE_AI_AUTHORITY_WU = tableAiAuthorityWu();
  */
 export const TABLE_SIM_ASPECT = 48 / 9;
 
+/**
+ * Extra world units kept around the readable glass. The mathematical frustum
+ * and the chase focus can disagree by a hull radius at the edge of the
+ * picture; this skirt is what stops a body from being evicted while a pixel
+ * of it is still on screen.
+ */
+export const TABLE_FRAME_SKIRT_WU = 48;
+
+/**
+ * Zoom the mesh runway must cover. The picture uses the live zoom. The runway
+ * also covers the zoom the camera is opening toward (`composedZoom`) and the
+ * zoom the player asked for, so a zoom-out does not spend a quarter-second
+ * with an empty rim.
+ */
+export function tablePrefetchZoomFromState(state) {
+  const camera = state && state.camera || {};
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : 0;
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : 0;
+  const composed = Number.isFinite(camera.composedZoom) ? camera.composedZoom : 0;
+  return Math.max(live, requested, composed) || 144;
+}
+
 /** Live table envelope. Prefetch uses the wider of live and requested zoom. */
 export function tableCameraEnvelope(state) {
   const camera = state && state.camera || {};
