@@ -21,23 +21,20 @@ test('INST-04: the decision card declares no 10px consumer radius', () => {
     'no deck surface keeps a consumer-card radius');
 });
 
-test('INST-04: the card wears the flight bezel + glass tokens', () => {
-  assert.match(
-    CSS,
-    /#sf-prompt-deck \.sf-prompt \{[^}]*border-image:url\("\/assets\/ui\/deckplate\/hw\/bezel-thin\.svg"\)/,
-    'the decision card wears the deckplate hardware bezel',
-  );
+// Owner ruling 2026-09-22 (design/frontend/ONE_PHOTOGRAPH.md section 0): CSS may not imitate a
+// physical material. This assertion used to REQUIRE a fastened SVG bezel / keycap; it now requires
+// the printed replacement and forbids the bezel coming back.
+test('INST-04: the card is a printed field on the deckplate surface token', () => {
+  assert.doesNotMatch(CSS, /(?:bezel|keycap)[a-z-]*\.svg/, 'the decision card wears no fastened bezel');
   assert.match(CSS, /#sf-prompt-deck \.sf-prompt \{[^}]*--dp-glass-solid/,
-    'the card sits on deckplate glass');
-  assert.match(CSS, /#sf-prompt-deck \.sf-prompt \{[^}]*--dp-metal-2/,
-    'the card sits on the flight plate metal');
+    'the card sits on the deckplate surface token');
 });
 
 test('INST-04: verbs are glass keys with the lamp as the selection language', () => {
   assert.match(CSS, /#sf-prompt-deck \.sf-prompt__choice \{[^}]*--dp-glass-solid/,
     'choice keys sit on deckplate glass');
   assert.match(CSS, /--dp-lamp/, 'lamp tokens drive selection/attention states');
-  assert.match(CSS, /keycap\.svg/, 'printed keycaps use the deckplate keycap asset');
+  assert.doesNotMatch(CSS, /keycap\.svg/, 'choices are printed keys, not a keycap image');
   assert.match(CSS, /#sf-prompt-deck \.sf-prompt-chip \{[^}]*--dp-glass-solid/,
     'collapsed chips ride the same plate language');
 });

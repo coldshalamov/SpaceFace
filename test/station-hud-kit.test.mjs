@@ -35,10 +35,16 @@ function accentViolations(css) {
   return bad;
 }
 
+// Owner ruling 2026-09-22 (design/frontend/ONE_PHOTOGRAPH.md section 0): CSS may not imitate a
+// physical material. This assertion used to REQUIRE a fastened SVG bezel / keycap; it now requires
+// the printed replacement and forbids the bezel coming back.
+// The primary control is PRINTED: the lamp itself, with the cut corner painted by its fill.
 function workbenchCoversPrimary(css) {
   const rule = css.match(/button\[data-sf-role="primary"\]\s*\{([^}]+)\}/);
   if (!rule) return false;
-  return /appearance:\s*none/.test(rule[1]) && /(?:keycap|bezel)\.svg/.test(rule[1]);
+  return /appearance:\s*none/.test(rule[1])
+    && /linear-gradient\(225deg, transparent calc\(var\(--dp-cut\) \* \.7071\), var\(--dp-lamp\) 0\)/.test(rule[1])
+    && !/(?:keycap|bezel)\.svg/.test(rule[1]);
 }
 
 function stripComments(src) {
@@ -222,10 +228,12 @@ function buttonInner(html, id) {
 
 const css = read('styles/station-workbench.css');
 
-test('the station workbench has one lamp accent and a machined bezel', () => {
+test('the station workbench has one lamp accent and printed panels', () => {
   assert.deepEqual(accentViolations(css), []);
   assert.ok(accentViolations('#hud { --sf-accent: #7dffb3; --sf-station-accent: var(--dp-lamp); }').some((item) => /second accent/.test(item)));
-  assert.match(css, /border-image:\s*url\("\/assets\/ui\/deckplate\/hw\/bezel\.svg"\)/);
+  // Was: the panels must wear bezel.svg. Owner ruling 2026-09-22 -- a panel is a printed field.
+  assert.doesNotMatch(css, /(?:bezel|keycap)[a-z-]*\.svg/);
+  assert.match(css, /background:\s*var\(--dp-field\)/);
   assert.match(css, /border-radius:\s*0/);
   assert.doesNotMatch(css, /\.card\b|data-sf-card|sf-card/);
 });

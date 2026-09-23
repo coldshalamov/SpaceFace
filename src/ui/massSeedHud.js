@@ -29,7 +29,7 @@ export const MASS_SEED_HUD_CSS = `
   border: 1px solid var(--hud-line, var(--dp-metal-4, #2f3542));
   border-left: 2px solid var(--dp-lamp, #f2b950);
   border-radius: var(--dp-r-instrument, 3px);
-  box-shadow: var(--dp-glass-depth, inset 0 0 0 1px rgb(2 3 5 / .9)), var(--dp-stand-off, 0 10px 22px rgb(0 0 0 / .32));
+  box-shadow: none;
   text-shadow: var(--dp-emit, none);
   pointer-events: none; white-space: nowrap;
 }

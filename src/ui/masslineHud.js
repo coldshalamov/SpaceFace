@@ -259,15 +259,15 @@ export const MASSLINE_HUD_CSS = `
   gap:6px 10px; align-items:center; max-width:min(560px, 60vw); }
 #sf-ml2 .ml2-pill { display:flex; align-items:center; gap:7px; padding:3px 9px;
   border-radius:var(--dp-r-instrument, 3px);
-  background-color:var(--dp-metal-1, #12151a); background-image:var(--dp-plate-img, none);
-  border:0; box-shadow:var(--dp-plate-bevel, 0 2px 10px rgb(0 0 0 / .5));
+  background-color:var(--dp-metal-1, #12151a); background-image:none;
+  border:0; box-shadow:none;
   font:600 12px/1.4 system-ui, sans-serif; letter-spacing:.06em; color:var(--dp-ink-dim, #cbd5e1); }
 #sf-ml2 .ml2-pill .ml2-fill { width:64px; height:4px; border-radius:2px; background:var(--dp-metal-3, rgba(148,163,184,0.22));
   position:relative; overflow:hidden; }
 #sf-ml2 .ml2-pill .ml2-fill i { position:absolute; inset:0; transform-origin:left center; background:var(--dp-lamp, var(--dp-lamp, #f2b950)); }
-#sf-ml2 .ml2-pill.ml2-on { box-shadow:var(--dp-plate-bevel, none), 0 0 8px var(--dp-lamp-bloom, rgba(95,215,255,.3)); color:var(--dp-lamp-hot, #e0f6ff); }
+#sf-ml2 .ml2-pill.ml2-on { box-shadow:0 0 8px var(--dp-lamp-bloom, rgba(95,215,255,.3)); color:var(--dp-lamp-hot, #e0f6ff); }
 #sf-ml2 .ml2-pill.ml2-cloak .ml2-fill i { background:#9f8bff; }
-#sf-ml2 .ml2-pill.ml2-cloak.ml2-on { box-shadow:var(--dp-plate-bevel, none), 0 0 8px rgba(159,139,255,.3); color:#efeaff; }
+#sf-ml2 .ml2-pill.ml2-cloak.ml2-on { box-shadow:0 0 8px rgba(159,139,255,.3); color:#efeaff; }
 #sf-ml2 .ml2-pill.ml2-strain .ml2-fill i { background:var(--dp-lamp, #f2b950); }
 #sf-ml2 .ml2-pill.ml2-strain.ml2-warn { color:#ffd08a; border:1px solid #8a6b3a; }
 #sf-ml2 .ml2-pill.ml2-strain.ml2-warn .ml2-fill i { background:#ff9d5c; }

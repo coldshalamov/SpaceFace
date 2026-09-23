@@ -20,9 +20,9 @@ export const VELOCITY_RAIL_CSS = `
   border:0; border-radius:var(--dp-r-instrument, 3px);
   background-color:var(--dp-metal-1, #12151a);
   /* The produced carrier shell, under the deckplate plate light. */
-  background-image:var(--dp-plate-img, none), url("assets/ui/kit/assets/svg/velocity-rail-shell.svg");
+  background-image:none, url("assets/ui/kit/assets/svg/velocity-rail-shell.svg");
   background-size:auto, 100% 100%; background-position:center, center; background-repeat:no-repeat;
-  box-shadow:var(--dp-plate-bevel-raised, 0 2px 10px rgb(0 0 0 / .38));
+  box-shadow:none;
   color:var(--sv-ink); isolation:isolate; contain:style;
   font-family:var(--k-text, 'Instrument Sans'), Arial, sans-serif;
 }
@@ -46,13 +46,13 @@ export const VELOCITY_RAIL_CSS = `
 .sf-speed .sf-speed__track {
   position:absolute; left:6.75%; right:8.1%; top:77.6%; height:4.31%;
   border-radius:var(--dp-r-plate, 2px); overflow:hidden;
-  box-shadow:var(--dp-channel-bevel, inset 0 1px 2px rgb(0 0 0 / .7));
+  box-shadow:none;
 }
 .sf-speed .sf-speed__bed { position:absolute; inset:0; background:var(--sv-track); }
 .sf-speed .sf-speed__fill {
   position:absolute; inset:0; transform:scaleX(0); transform-origin:left center;
   background:linear-gradient(180deg, var(--dp-lamp-hot, #ffd98c) 0%, var(--sv-signal) 55%, var(--dp-lamp-dim, #8a6b3a) 100%);
-  box-shadow:0 0 8px var(--dp-lamp-bloom, rgb(242 185 80 / .34)), inset 0 1px 0 rgb(255 255 255 / .28);
+  box-shadow:0 0 8px var(--dp-lamp-bloom, rgb(242 185 80 / .34));
   transition:none;
 }
 .sf-speed .sf-speed__ticks {

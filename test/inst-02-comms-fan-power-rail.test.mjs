@@ -26,12 +26,11 @@ test('INST-02 comms fan declares no web-kit radius', () => {
   );
 });
 
-test('INST-02 comms fan hub and wedges use flight bezel/glass tokens', () => {
-  assert.match(
-    CSS,
-    /#sf-commsfan \.sf-commsfan__hub \{[^}]*border-image:url\("\/assets\/ui\/deckplate\/hw\/bezel-thin\.svg"\)/,
-    'hub must wear the deckplate hardware bezel',
-  );
+// Owner ruling 2026-09-22 (design/frontend/ONE_PHOTOGRAPH.md section 0): CSS may not imitate a
+// physical material. This assertion used to REQUIRE a fastened SVG bezel / keycap; it now requires
+// the printed replacement and forbids the bezel coming back.
+test('INST-02 comms fan hub and wedges are printed fields on the deckplate surface token', () => {
+  assert.doesNotMatch(CSS, /(?:bezel|keycap)[a-z-]*\.svg/, 'the fan wears no fastened bezel or keycap image');
   assert.match(CSS, /#sf-commsfan \.sf-commsfan__hub \{[^}]*--dp-glass-solid/, 'hub must sit on deckplate glass');
   assert.match(CSS, /#sf-commsfan \.sf-commsfan__wedge \{[^}]*--dp-glass-solid/, 'wedge keys must sit on deckplate glass');
   assert.match(CSS, /\.sf-haildeck__link \{[^}]*--dp-glass-solid/, 'haildeck links must sit on deckplate glass');

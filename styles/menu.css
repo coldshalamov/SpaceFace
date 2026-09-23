@@ -69,7 +69,7 @@
   background: color-mix(in srgb, var(--panel) 96%, transparent);
   border: 1px solid var(--mf-line-2);
   border-radius: 6px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, .6);
+  box-shadow: none;
   /* max-height alone only promised to cap the panel; with no overflow the list simply drew past its
      own border and off the screen. On a 1152x720 laptop the Pause menu's last entry — MAIN MENU —
      was 18px below the viewport with nothing able to scroll to it, so a player could not quit to
@@ -331,7 +331,7 @@
     color-mix(in srgb, var(--accent) 60%, transparent) var(--sf-range-fill, 0%),
     color-mix(in srgb, var(--panel) 90%, transparent) var(--sf-range-fill, 0%));
   border: 1px solid rgba(148, 178, 205, .2);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
+  box-shadow: none;
 }
 .screen.sf-menu input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -385,7 +385,7 @@
   border-radius: 3px;
   padding: 6px 12px;
   pointer-events: auto;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4);
+  box-shadow: none;
   transition: border-color .12s ease, box-shadow .12s ease, background-color .12s ease;
 }
 .screen.sf-menu select:hover,
@@ -399,7 +399,7 @@
 .screen.sf-menu input[type=number]:focus-visible {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 1px 2px rgba(0, 0, 0, .4);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 /* Numeric readout: DATA face, plain ink -- a percentage is a value, not a state. */

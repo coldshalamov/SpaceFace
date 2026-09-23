@@ -1376,14 +1376,14 @@ export function injectHudCss() {
     box-sizing:border-box; justify-content:center; align-items:flex-end;
     gap:var(--sf-socket-gap); padding:2px var(--sf-socket-gap) 0;
     border-style:solid; border-width:var(--sf-lip);
-    border-image-source:url("assets/ui/kit/assets/sockets/socket.bracket@2x.png");
+    border-image-source:none;
     border-image-slice:36 fill; border-image-width:var(--sf-lip);
   }
   .sf-pslot {
     position:relative; box-sizing:border-box;
     flex:0 0 var(--sf-socket); width:var(--sf-socket); height:var(--sf-socket);
     display:grid; place-items:center; padding:0; border:0; box-shadow:none; opacity:1;
-    background:url("assets/ui/kit/assets/sockets/socket.rest@2x.png")
+    background:none
       center / var(--sf-socket) var(--sf-socket) no-repeat;
     color:var(--k-bone-62);
     transition:color var(--k-d-focus) var(--k-ease);
@@ -1418,7 +1418,7 @@ export function injectHudCss() {
   .sf-pslot__sweep circle { stroke:var(--k-signal, var(--hud-amber)); stroke-width:2.6; }
 
   .sf-pslot[data-state="armed"] {
-    background-image:url("assets/ui/kit/assets/sockets/socket.lit@2x.png");
+    background-image:none;
     color:var(--k-text-live);
   }
   /* Every produced glyph carries a second .accent path. Lighting only that path is what makes an
@@ -1426,18 +1426,18 @@ export function injectHudCss() {
   .sf-pslot[data-state="armed"] .fh-glyph .accent { fill:var(--k-signal, var(--hud-amber)); }
   .sf-pslot[data-state="armed"] .sf-pslot__name { color:var(--k-text-live); }
   .sf-pslot[data-state="cooling"] {
-    background-image:url("assets/ui/kit/assets/sockets/socket.cooling@2x.png"); opacity:1;
+    background-image:none; opacity:1;
   }
   .sf-pslot[data-state="cooling"] .sf-pslot__art { opacity:.55; }
   .sf-pslot[data-state="unaffordable"] { opacity:1; }
   .sf-pslot[data-state="unaffordable"] .sf-pslot__art { opacity:.38; }
   .sf-pslot[data-state="locked"] {
-    background-image:url("assets/ui/kit/assets/sockets/socket.locked@2x.png"); opacity:1;
+    background-image:none; opacity:1;
   }
   .sf-pslot[data-state="locked"] .sf-pslot__art { opacity:.42; }
   .sf-pslot[data-state="locked"] .sf-pslot__key { opacity:1; }
   .sf-pslot[data-state="empty"] {
-    background-image:url("assets/ui/kit/assets/sockets/socket.empty@2x.png"); opacity:1;
+    background-image:none; opacity:1;
   }
   .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.28; }
   .sf-pslot[data-state="empty"] .sf-pslot__key { opacity:1; }
@@ -1632,7 +1632,7 @@ export function injectHudCss() {
     display:flex; align-items:center; gap:0; padding:0 2px;
     box-sizing:border-box; overflow:visible; background:none;
     border-style:solid; border-width:8px 10px;
-    border-image-source:url("assets/ui/kit/assets/gauges/bar.seg.bezel.png");
+    border-image-source:none;
     border-image-slice:8 10 8 10 fill; border-image-width:8px 10px;
   }
   .sf-kit-bar > .sf-bar__fill {
@@ -1642,17 +1642,17 @@ export function injectHudCss() {
   .sf-kit-bar:not(:has(.sf-kit-seg.is-on)) > .sf-bar__fill { opacity:1; }
   .sf-kit-seg {
     flex:0 0 12px; width:12px; height:16px;
-    background:url("assets/ui/kit/assets/gauges/bar.seg.off.png") center / 12px 16px no-repeat;
+    background:linear-gradient(90deg, rgb(232 226 212 / .16) 9px, transparent 0) center / 12px 16px no-repeat;
   }
   .sf-kit-seg.is-on {
-    background-image:url("assets/ui/kit/assets/gauges/bar.seg.on.png");
+    background-image:none;
   }
   .sf-kit-seg.is-hot {
-    background-image:url("assets/ui/kit/assets/gauges/bar.seg.hot.png");
+    background-image:none;
   }
   .sf-kit-seg.is-cold,
   html[data-k-temp="wanted"] .sf-kit-seg.is-on {
-    background-image:url("assets/ui/kit/assets/gauges/bar.seg.cold.png");
+    background-image:none;
   }
 
   .sf-command-deck {
@@ -1664,12 +1664,12 @@ export function injectHudCss() {
   .sf-kit-gauge {
     position:relative; width:360px; height:200px; max-width:100%;
     margin:0 auto; color:var(--k-signal, var(--hud-amber));
-    background:url("assets/ui/kit/assets/gauges/gauge.speed.bezel.png") center / contain no-repeat;
+    background:none center / contain no-repeat;
     --sf-gauge-deg:-110deg; --sf-gauge-arc:0deg;
   }
   .sf-kit-gauge__arc {
     position:absolute; inset:0; pointer-events:none;
-    background:url("assets/ui/kit/assets/gauges/gauge.speed.lit-arc.png") center / contain no-repeat;
+    background:none center / contain no-repeat;
     -webkit-mask-image:conic-gradient(from -110deg at 50% 62%, #000 0deg, #000 var(--sf-gauge-arc), transparent var(--sf-gauge-arc));
     mask-image:conic-gradient(from -110deg at 50% 62%, #000 0deg, #000 var(--sf-gauge-arc), transparent var(--sf-gauge-arc));
   }
@@ -1683,7 +1683,7 @@ export function injectHudCss() {
   .sf-kit-gauge__face {
     position:absolute; left:100px; top:108px; width:160px; height:72px;
     display:grid; place-items:center;
-    background:url("assets/ui/kit/assets/gauges/gauge.speed.face.png") center / contain no-repeat;
+    background:none center / contain no-repeat;
   }
   .sf-kit-gauge__num {
     font-family:var(--k-display, var(--hud-display));
@@ -1707,17 +1707,17 @@ export function injectHudCss() {
   .sf-kit-radar__bezel {
     left:50%; top:0; width:100%; height:calc(var(--sf-radar-size, 220px) + var(--sf-kit-radar-rim) * 2);
     transform:translateX(-50%);
-    background:url("assets/ui/kit/assets/radar/radar.bezel.png") center / contain no-repeat;
+    background:none center / contain no-repeat;
     z-index:0;
   }
   .sf-kit-radar__face {
     left:50%; top:var(--sf-kit-radar-rim); width:var(--sf-radar-size, 220px); height:var(--sf-radar-size, 220px);
     transform:translateX(-50%); border-radius:50%;
-    background:url("assets/ui/kit/assets/radar/radar.face.png") center / contain no-repeat;
+    background:none center / contain no-repeat;
     z-index:1;
   }
   html[data-k-temp="wanted"] .sf-kit-radar__face {
-    background-image:url("assets/ui/kit/assets/radar/radar.wanted-face.png");
+    background-image:none;
   }
   .sf-kit-radar .sf-radar {
     z-index:2; background:none; margin-top:var(--sf-kit-radar-rim);
@@ -1729,7 +1729,7 @@ export function injectHudCss() {
   .sf-radar-wrap.sf-kit-radar .sf-radar-objective-key { position:relative; z-index:2; }
   .sf-kit-radar__n {
     left:50%; top:8px; width:16px; height:10px; transform:translateX(-50%);
-    background:url("assets/ui/kit/assets/radar/radar.n-lit.png") center / contain no-repeat;
+    background:none center / contain no-repeat;
     z-index:3;
   }
   .sf-radar-wrap.sf-kit-radar:has(.sf-radar--expanded) {
@@ -2095,10 +2095,10 @@ export function injectHudCss() {
   .sf-toast {
     box-sizing:border-box;
     background-color:var(--dp-metal-2);
-    background-image:var(--dp-plate-img);
+    background-image:none;
     border:0;
     border-radius:var(--dp-r-plate);
-    box-shadow:var(--dp-plate-bevel);
+    box-shadow:none;
     backdrop-filter:none !important;
     -webkit-backdrop-filter:none !important;
   }
@@ -2106,7 +2106,7 @@ export function injectHudCss() {
   .sf-alert { border-radius:var(--dp-r-instrument); }
 
   /* --- left instrument card: hull schematic + vitals, a raised plate --- */
-  #hud .sf-bars { width:100%; max-width:288px; padding:10px 12px 11px; gap:5px 10px; border-radius:var(--dp-r-instrument); box-shadow:var(--dp-plate-bevel-raised); }
+  #hud .sf-bars { width:100%; max-width:288px; padding:10px 12px 11px; gap:5px 10px; border-radius:var(--dp-r-instrument); box-shadow:none; }
   #hud .sf-condition-head { color:var(--hud-muted); }
   #hud .sf-condition-state { color:var(--hud-cyan); }
   #hud .sf-cond-stat { color:var(--hud-muted); }
@@ -2122,26 +2122,26 @@ export function injectHudCss() {
   #hud .sf-bars .sf-bar.sf-kit-bar, #hud .sf-kit-bar {
     height:26px; min-height:26px; padding:3px 8px; gap:3px;
     border:0; border-image:none; border-radius:var(--dp-r-plate);
-    background-color:var(--dp-metal-0); background-image:var(--dp-channel-img);
-    box-shadow:var(--dp-channel-bevel);
+    background-color:var(--dp-metal-0); background-image:none;
+    box-shadow:none;
   }
-  #hud .sf-kit-bar > .sf-bar__fill { inset:6px 8px; background:linear-gradient(180deg, var(--dp-lamp-hot), var(--dp-lamp) 55%, var(--dp-lamp-dim)); opacity:0; }
+  #hud .sf-kit-bar > .sf-bar__fill { inset:6px 8px; background:linear-gradient(var(--dp-lamp) 0 0); opacity:0; }
   #hud .sf-kit-bar:not(:has(.sf-kit-seg.is-on)) > .sf-bar__fill { opacity:1; }
   #hud .sf-kit-seg {
     flex:1 1 0; min-width:0; max-width:12px; height:11px; border-radius:1px;
-    background:linear-gradient(180deg, var(--dp-metal-0), var(--dp-metal-1));
-    box-shadow:inset 0 1px 1px rgb(0 0 0 / .6);
+    background:linear-gradient(var(--dp-rule) 0 0);
+    box-shadow:none;
   }
   #hud .sf-kit-seg.is-on {
-    background:linear-gradient(180deg, var(--dp-lamp-hot) 0%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
-    box-shadow:0 0 6px var(--dp-lamp-bloom), inset 0 1px 0 rgb(255 255 255 / .3);
+    background:linear-gradient(var(--dp-lamp) 0 0);
+    box-shadow:0 0 6px var(--dp-lamp-bloom);
   }
   #hud .sf-kit-seg.is-hot {
-    background:linear-gradient(180deg, var(--dp-danger-hot) 0%, var(--dp-danger) 55%, #a8241a 100%);
-    box-shadow:0 0 6px var(--dp-danger-bloom), inset 0 1px 0 rgb(255 255 255 / .26);
+    background:linear-gradient(var(--dp-danger) 0 0);
+    box-shadow:0 0 6px var(--dp-danger-bloom);
   }
-  #hud .sf-kit-seg.is-cold { background:linear-gradient(180deg, #efe6d2, #b9ae97); box-shadow:none; }
-  html[data-k-temp="wanted"] #hud .sf-kit-seg.is-on { background:linear-gradient(180deg, var(--dp-danger-hot), var(--dp-danger) 55%, #a8241a); box-shadow:0 0 7px var(--dp-danger-bloom); }
+  #hud .sf-kit-seg.is-cold { background:linear-gradient(#d8d2c4 0 0); box-shadow:none; }
+  html[data-k-temp="wanted"] #hud .sf-kit-seg.is-on { background:linear-gradient(var(--dp-danger) 0 0); box-shadow:0 0 7px var(--dp-danger-bloom); }
 
   /* --- speed instrument: a machined dp-gauge. The 2026-09-14 glass ring is retired with the
          register it belonged to. velocityRailStyles.js owns the instrument's own skin and wins
@@ -2151,10 +2151,10 @@ export function injectHudCss() {
     filter:none;
     color:var(--dp-lamp);
     background-color:var(--dp-metal-1);
-    background-image:var(--dp-plate-img);
+    background-image:none;
     border:0;
     border-radius:var(--dp-r-instrument);
-    box-shadow:var(--dp-plate-bevel-raised);
+    box-shadow:none;
   }
   #hud .sf-kit-gauge__arc {
     background:repeating-conic-gradient(from -110deg at 50% 62%,
@@ -2187,8 +2187,8 @@ export function injectHudCss() {
   }
   #hud .sf-prail__slots {
     border:0; border-image:none; border-radius:var(--dp-r-instrument);
-    background-color:var(--dp-metal-1); background-image:var(--dp-plate-img);
-    box-shadow:var(--dp-plate-bevel-raised);
+    background-color:var(--dp-metal-1); background-image:none;
+    box-shadow:none;
     padding:8px 10px 24px; gap:8px; align-items:flex-end;
   }
   /* dp-socket: the bay cut into the rail. State lives in data-state (powerRail.js), the lamp
@@ -2198,8 +2198,7 @@ export function injectHudCss() {
       radial-gradient(120% 90% at 50% 0%, rgb(255 232 190 / .05), transparent 55%),
       linear-gradient(180deg, rgb(0 0 0 / .62), rgb(0 0 0 / .22) 58%, rgb(255 255 255 / .028));
     border:0; border-radius:var(--dp-r-instrument);
-    box-shadow:inset 0 2px 5px rgb(0 0 0 / .78), inset 0 -1px 0 rgb(255 232 190 / .10),
-      inset 1px 0 0 rgb(0 0 0 / .4), inset -1px 0 0 rgb(0 0 0 / .4);
+    box-shadow:none;
     color:var(--dp-ink-dim); opacity:1;
   }
   #hud .sf-pslot__key {
@@ -2214,8 +2213,7 @@ export function injectHudCss() {
       radial-gradient(120% 90% at 50% 0%, rgb(255 217 140 / .16), transparent 55%),
       linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .16) 58%, rgb(255 217 140 / .06));
     color:var(--dp-lamp-hot);
-    box-shadow:inset 0 2px 5px rgb(0 0 0 / .7), inset 0 -1px 0 var(--dp-lamp-bloom),
-      inset 1px 0 0 rgb(0 0 0 / .4), inset -1px 0 0 rgb(0 0 0 / .4), 0 0 12px var(--dp-lamp-bloom-soft);
+    box-shadow:0 0 12px var(--dp-lamp-bloom-soft);
   }
   #hud .sf-pslot[data-state="armed"] .fh-glyph .accent { fill:var(--dp-lamp); }
   #hud .sf-pslot[data-state="armed"] .sf-pslot__name { color:var(--dp-ink); }
@@ -2223,7 +2221,7 @@ export function injectHudCss() {
   #hud .sf-pslot[data-state="cooling"] .sf-pslot__art { opacity:.6; }
   #hud .sf-pslot[data-state="unaffordable"] { opacity:.62; }
   #hud .sf-pslot[data-state="unaffordable"] .sf-pslot__art { opacity:.4; }
-  #hud .sf-pslot[data-state="locked"] { box-shadow:inset 0 2px 5px rgb(0 0 0 / .78), inset 1px 0 0 rgb(0 0 0 / .4), inset -1px 0 0 rgb(0 0 0 / .4); }
+  #hud .sf-pslot[data-state="locked"] { box-shadow:none; }
   #hud .sf-pslot[data-state="locked"] .sf-pslot__art { opacity:.36; }
   #hud .sf-pslot[data-state="empty"] { background:var(--dp-metal-0); }
   #hud .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.22; }
@@ -2231,14 +2229,14 @@ export function injectHudCss() {
 
   /* --- radar: the instrument binnacle — a machined ring, dark lens, warm rose --- */
   #hud .sf-kit-radar__bezel {
-    background:radial-gradient(circle at 50% 34%, var(--dp-metal-3), var(--dp-metal-1) 58%, var(--dp-metal-0) 100%);
+    background:none;
     border:0; border-radius:50%;
-    box-shadow:var(--dp-plate-bevel-raised);
+    box-shadow:none;
   }
   #hud .sf-kit-radar__face {
     background:radial-gradient(circle at 50% 38%, rgb(0 0 0 / .24), rgb(0 0 0 / .5) 76%);
     background-image:none; border-radius:50%;
-    box-shadow:inset 0 2px 8px rgb(0 0 0 / .7), inset 0 -1px 0 rgb(255 232 190 / .06);
+    box-shadow:none;
   }
   #hud .sf-kit-radar__n { filter:none; }
 
@@ -2269,16 +2267,16 @@ export function injectHudCss() {
   }
   #hud .sf-overview--count .sf-overview-footer::before {
     content:""; flex:0 0 auto; width:6px; height:6px; transform:rotate(45deg);
-    border:1.5px solid var(--dp-ink-dim); box-shadow:0 1px 0 rgb(0 0 0 / .6);
+    border:1.5px solid var(--dp-ink-dim); box-shadow:none;
   }
-  #hud .sf-target { padding:10px 12px; border-radius:var(--dp-r-instrument); box-shadow:var(--dp-plate-bevel-raised); }
+  #hud .sf-target { padding:10px 12px; border-radius:var(--dp-r-instrument); box-shadow:none; }
   #hud .sf-target__name { color:var(--hud-paper); text-shadow:0 0 10px var(--dp-lamp-bloom-soft); }
   #hud .sf-target__faction, #hud .sf-target__meta, #hud .sf-target__dist,
   #hud .sf-target__identity, #hud .sf-target__intent, #hud .sf-target__tri-label,
   #hud .sf-target__tri-layer, #hud .sf-tri__k, #hud .sf-target__threat-word { color:var(--hud-muted); }
   #hud .sf-target__dist { color:var(--dp-lamp-hot); }
-  #hud .sf-target__rangebar { background-color:var(--dp-metal-0); background-image:var(--dp-channel-img); box-shadow:var(--dp-channel-bevel); border-radius:var(--dp-r-plate); }
-  #hud .sf-target__rangefill { background:linear-gradient(180deg, var(--dp-lamp-hot), var(--dp-lamp) 55%, var(--dp-lamp-dim)); box-shadow:0 0 6px var(--dp-lamp-bloom); }
+  #hud .sf-target__rangebar { background-color:var(--dp-metal-0); background-image:none; box-shadow:none; border-radius:var(--dp-r-plate); }
+  #hud .sf-target__rangefill { background:linear-gradient(var(--dp-lamp) 0 0); box-shadow:0 0 6px var(--dp-lamp-bloom); }
   #hud #sf-sector-law { padding:10px 12px; }
   #hud .sf-law__head, #hud .sf-law__meta, #hud .sf-law__detail, #hud .sf-law__jurisdiction { color:var(--hud-muted); }
   #hud .sf-law__headline { color:var(--hud-paper); }
@@ -2297,7 +2295,7 @@ export function injectHudCss() {
   #hud .sf-commtape {
     padding:5px 2px 6px; border-bottom:0; border-radius:0;
     background-color:transparent; background-image:none;
-    box-shadow:inset 0 -1px 0 var(--dp-metal-4), inset 0 -2px 0 rgb(0 0 0 / .5);
+    box-shadow:none;
   }
   #hud .sf-commtape__band, #hud .sf-commtape .sf-comm-backlog-btn, #hud .sf-commtape .sf-contact-hail__button {
     font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 62; letter-spacing:.14em;
@@ -2324,8 +2322,8 @@ export function injectHudCss() {
        right edge under the rail's bracket (see .sf-command-deck max-width), and at 2560x1080 a
        right-aligned reading landed exactly under it. */
     justify-content:flex-start; gap:14px; margin-top:0; padding:5px 12px 6px;
-    background-color:var(--dp-metal-1); background-image:var(--dp-plate-img);
-    border-radius:0 0 var(--dp-r-instrument) var(--dp-r-instrument); box-shadow:var(--dp-plate-bevel);
+    background-color:var(--dp-metal-1); background-image:none;
+    border-radius:0 0 var(--dp-r-instrument) var(--dp-r-instrument); box-shadow:none;
   }
   #hud #sf-wpnstat .sf-stat__k {
     font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 62;
@@ -2335,8 +2333,8 @@ export function injectHudCss() {
 
   /* --- comms band key: a raised machined key, not a caption --- */
   #hud .sf-band-hud__button {
-    background-color:var(--dp-metal-2); background-image:var(--dp-plate-img);
-    border:0; border-radius:var(--dp-r-instrument); box-shadow:var(--dp-plate-bevel-raised);
+    background-color:var(--dp-metal-2); background-image:none;
+    border:0; border-radius:var(--dp-r-instrument); box-shadow:none;
     min-width:0; padding:7px 14px;
     font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 62;
     letter-spacing:.16em; color:var(--dp-ink-dim); text-shadow:var(--dp-etch-shadow);
@@ -2345,7 +2343,7 @@ export function injectHudCss() {
   #hud .sf-band-hud__button[data-off="true"] { color:var(--dp-ink-mute); }
   #hud .sf-band-hud__button:hover, #hud .sf-band-hud__button:focus-visible {
     color:var(--dp-lamp-hot); background-color:var(--dp-metal-2);
-    box-shadow:var(--dp-plate-bevel-raised), 0 0 0 2px var(--dp-lamp);
+    box-shadow:0 0 0 2px var(--dp-lamp);
   }
 
   /* --- onboarding card lives in a stylesheet injected later; the plate re-stated at ID weight --- */
@@ -2353,10 +2351,10 @@ export function injectHudCss() {
   #sf-onboarding .sf-ob-card {
     box-sizing:border-box;
     background-color:var(--dp-metal-1) !important;
-    background-image:var(--dp-plate-img) !important;
+    background-image:none !important;
     border:0 !important;
     border-radius:var(--dp-r-instrument) !important;
-    box-shadow:var(--dp-plate-bevel-raised) !important;
+    box-shadow:none !important;
     padding:10px 12px !important;
   }
   #hud #sf-onboarding .sf-ob-title { color:var(--hud-paper); }
@@ -2391,7 +2389,7 @@ export function injectHudCss() {
   .sf-alert { padding:7px 18px; }
   .sf-alert.sf-alert--floor {
     padding:4px 14px; font-size:var(--dp-fs-data); font-weight:500; letter-spacing:.02em;
-    color:var(--dp-ink-dim); background-color:var(--dp-metal-1); box-shadow:var(--dp-plate-bevel);
+    color:var(--dp-ink-dim); background-color:var(--dp-metal-1); box-shadow:none;
   }
   .sf-alert--dock { padding:9px 24px; }
   .sf-toast { padding:6px 10px; }
@@ -2456,17 +2454,17 @@ export function injectHudCss() {
   }
   #hud .sf-threat-lamp__lens {
     display:block; width:10px; height:10px; border-radius:50%;
-    background:radial-gradient(circle at 40% 35%, #3a1a15, #140807 70%);
-    box-shadow:inset 0 1px 2px rgb(0 0 0 / .8), 0 0 0 1.5px #06080a, 0 1px 0 1.5px rgb(255 236 204 / .12);
+    background:linear-gradient(var(--dp-rule-hi) 0 0);
+    box-shadow:0 1px 0 1.5px rgb(255 236 204 / .12);
   }
   #hud[data-threat="contact"] .sf-threat-lamp__lens {
-    background:radial-gradient(circle at 40% 35%, var(--dp-danger-hot), var(--dp-danger) 45%, #5c140c);
-    box-shadow:0 0 6px rgb(255 80 56 / .3), 0 0 0 1.5px #06080a;
+    background:linear-gradient(var(--dp-danger) 0 0);
+    box-shadow:0 0 6px rgb(255 80 56 / .3);
   }
   #hud[data-threat="contact"] .sf-threat-lamp::after { color:var(--dp-ink-dim); }
   #hud[data-threat="near"] .sf-threat-lamp__lens {
-    background:radial-gradient(circle at 40% 35%, #fff1ea, var(--dp-danger-hot) 30%, var(--dp-danger) 70%);
-    box-shadow:0 0 10px var(--dp-danger-bloom), 0 0 22px rgb(255 80 56 / .3), 0 0 0 1.5px #06080a;
+    background:linear-gradient(var(--dp-danger) 0 0);
+    box-shadow:0 0 10px var(--dp-danger-bloom), 0 0 22px rgb(255 80 56 / .3);
     animation:sf-threat-beat 1.1s steps(1, end) infinite;
   }
   #hud[data-threat="near"] .sf-threat-lamp::after { color:var(--dp-danger-hot); }
@@ -2482,7 +2480,7 @@ export function injectHudCss() {
   #hud .sf-overview-row:hover { background:linear-gradient(90deg, rgb(255 255 255 / .05), transparent 70%); }
   #hud .sf-overview-row.selected {
     background:linear-gradient(90deg, rgb(255 255 255 / .05), transparent 70%);
-    box-shadow:inset 3px 0 0 var(--dp-lamp), 0 8px 14px -12px var(--dp-lamp-bloom);
+    box-shadow:0 8px 14px -12px var(--dp-lamp-bloom);
   }
   #hud .sf-overview-row__name { color:var(--dp-ink); font-weight:600; }
   #hud .sf-overview-row.selected .sf-overview-row__name { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
@@ -2513,7 +2511,7 @@ export function injectHudCss() {
     position:absolute; left:calc(14px * var(--k-s, 1) + var(--sf-safe-inset-x, 0px)); top:calc(18px * var(--k-s, 1));
     width:calc(292px * clamp(.9, var(--k-s, 1), 1.15)); max-width:calc(100vw - 28px);
     display:flex; flex-direction:column; gap:0; box-sizing:border-box; pointer-events:auto;
-    box-shadow:0 10px 24px rgb(0 0 0 / .45), var(--dp-glass-depth);
+    box-shadow:var(--dp-glass-depth);
     padding:4px 0;
   }
   #hud > .sf-leftcontext:not(:has(> :not([hidden], [style*="display: none"], [style*="display:none"]))) { display:none; }
@@ -2524,7 +2522,7 @@ export function injectHudCss() {
     border:0 !important; border-radius:0 !important; margin:0 !important; max-width:none !important;
   }
   #hud > .sf-leftcontext > * { padding:8px 12px !important; }
-  #hud > .sf-leftcontext > * + * { border-top:1px solid rgb(255 255 255 / .045) !important; box-shadow:inset 0 1px 0 rgb(0 0 0 / .55) !important; }
+  #hud > .sf-leftcontext > * + * { border-top:1px solid rgb(255 255 255 / .045) !important; box-shadow:none !important; }
   #hud > .sf-leftcontext #sf-onboarding .sf-ob-card { padding:0 !important; }
   #hud > .sf-leftcontext > .sf-mission-tracker { border-left:0 !important; position:relative; padding-left:18px !important; }
   #hud > .sf-leftcontext > .sf-mission-tracker::before {
@@ -2544,8 +2542,8 @@ export function injectHudCss() {
   #hud .sf-fc-row { display:grid; grid-template-columns:7px auto minmax(0, 1fr) auto; align-items:center; gap:8px; min-height:22px; }
   #hud .sf-fc-led {
     display:block; width:7px; height:7px; border-radius:50%;
-    background:radial-gradient(circle at 42% 36%, #3b352c, #17140f 70%);
-    box-shadow:inset 0 1px 1.5px rgb(0 0 0 / .85), 0 0 0 1px rgb(0 0 0 / .6);
+    background:linear-gradient(var(--dp-rule-hi) 0 0);
+    box-shadow:none;
   }
   #hud .sf-fc-k {
     font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 62; font-size:12px;
@@ -2562,12 +2560,12 @@ export function injectHudCss() {
   #hud .sf-fc-row[data-state="clear"] .sf-fc-v,
   #hud .sf-fc-row[data-state="blocked"] .sf-fc-v { color:#c2cfdb; font-weight:500; text-shadow:0 1px 0 rgb(0 0 0 / .75); }
   #hud .sf-fc-row:is([data-state="locked"], [data-state="ready"], [data-state="latched"]) .sf-fc-led {
-    background:radial-gradient(circle at 42% 34%, #fff6df 0%, var(--dp-lamp-hot) 22%, var(--dp-lamp) 55%, var(--dp-lamp-dim) 100%);
+    background:linear-gradient(var(--dp-lamp) 0 0);
     box-shadow:0 0 6px var(--dp-lamp-bloom), 0 0 14px var(--dp-lamp-bloom-soft);
   }
   #hud .sf-fc-row[data-state="latched"] .sf-fc-v { color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp); }
   #hud .sf-fc-row:is([data-state="hostile"], [data-state="strain"]) .sf-fc-led {
-    background:radial-gradient(circle at 42% 34%, #fff1ea, var(--dp-danger-hot) 26%, var(--dp-danger) 60%, #6b1a10);
+    background:linear-gradient(var(--dp-danger) 0 0);
     box-shadow:0 0 8px var(--dp-danger-bloom);
   }
   #hud .sf-fc-row:is([data-state="hostile"], [data-state="strain"]) .sf-fc-v { color:var(--dp-danger-hot); text-shadow:0 0 10px var(--dp-danger-bloom); }
@@ -2592,7 +2590,7 @@ export function injectHudCss() {
   /* the right dock's readouts are the same glass as the comms strip (the radar keeps its round
      binnacle): one material per function, left and right */
   #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel {
-    box-shadow:0 10px 24px rgb(0 0 0 / .45), var(--dp-glass-depth);
+    box-shadow:var(--dp-glass-depth);
     border-radius:0;
   }
   /* An instrument with no reading is not a hole in the deck. These four wear a bezel and a glass
@@ -2604,10 +2602,10 @@ export function injectHudCss() {
 
   /* option B: information reads in bone; the lamp stays on what the pilot acts on */
   #hud .sf-kit-seg.is-on {
-    background:linear-gradient(180deg, #f3eee2 0%, #d2c9b5 55%, #948c7b 100%);
-    box-shadow:0 0 5px rgb(232 226 212 / .22), inset 0 1px 0 rgb(255 255 255 / .45);
+    background:linear-gradient(#d8d2c4 0 0);
+    box-shadow:0 0 5px rgb(232 226 212 / .22);
   }
-  #hud .sf-kit-bar > .sf-bar__fill { background:linear-gradient(180deg, #f3eee2, #d2c9b5 55%, #948c7b); }
+  #hud .sf-kit-bar > .sf-bar__fill { background:linear-gradient(#d8d2c4 0 0); }
   #hud .sf-integrity { --si-signal:var(--dp-ink); }
   #hud #sf-wpnstat .sf-stat__v { color:var(--dp-ink); text-shadow:none; }
   #hud .sf-overview--count .sf-overview-footer { color:var(--dp-ink); }
@@ -2624,9 +2622,9 @@ export function injectHudCss() {
   #hud > .sf-leftcontext, #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel {
   }
   /* the threat row: dark lens when clear, the lamp driven red with contacts, bright when near */
-  #hud .sf-fc-row[data-state="contact"] .sf-fc-led { background:radial-gradient(circle at 42% 34%, var(--dp-danger-hot), var(--dp-danger) 45%, #5c140c); box-shadow:0 0 5px rgb(255 80 56 / .3); }
+  #hud .sf-fc-row[data-state="contact"] .sf-fc-led { background:linear-gradient(var(--dp-danger) 0 0); box-shadow:0 0 5px rgb(255 80 56 / .3); }
   #hud .sf-fc-row[data-state="near"] .sf-fc-led {
-    background:radial-gradient(circle at 42% 34%, #fff1ea, var(--dp-danger-hot) 26%, var(--dp-danger) 60%, #6b1a10);
+    background:linear-gradient(var(--dp-danger) 0 0);
     box-shadow:0 0 8px var(--dp-danger-bloom), 0 0 16px rgb(255 80 56 / .3);
   }
   #hud .sf-fc-row[data-state="clear"] .sf-fc-v { color:var(--dp-ink-mute); font-weight:500; text-shadow:none; }
@@ -2699,7 +2697,7 @@ export function injectHudCss() {
   /* what to do now reads first: the tracked objective and its nav line head the strip, the
      status, band and log follow (a short screen clips the log, never the objective) */
   #hud > .sf-leftcontext > :is(.sf-mission-tracker, .sf-objectives, .sf-nav-readout) { order:-1; }
-  #hud > .sf-leftcontext > * { border-top:1px solid rgb(255 255 255 / .045) !important; box-shadow:inset 0 1px 0 rgb(0 0 0 / .55) !important; }
+  #hud > .sf-leftcontext > * { border-top:1px solid rgb(255 255 255 / .045) !important; box-shadow:none !important; }
   /* a short, narrow screen stacks the cluster: tighten it so it and the strip both fit 720 */
   @media (max-width:1759px) and (max-height:820px) {
     #hud .sf-cluster-chassis { gap:5px; }
@@ -2776,14 +2774,15 @@ export function injectHudCss() {
      mark is bone (information); amber is what is armed or chosen. */
   #hud .sf-prail__slots {
     border:8px solid transparent;
-    border-image:url("/assets/ui/deckplate/hw/bezel-thin.svg") 12 / 12px / 0 stretch;
-    background:var(--dp-metal-layers), var(--dp-metal-1);
-    box-shadow:var(--dp-plate-bevel-raised);
+    border-image:none;
+    background:var(--dp-metal-1);
+    box-shadow:none;
   }
   #hud .sf-pslot { background:linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .18) 60%, rgb(255 255 255 / .03)); }
+  /* the scope's rim is one hairline ring, not a 14px bezel of dark metal */
   #hud .sf-kit-radar__bezel {
-    border:14px solid var(--dp-metal-2);
-    box-shadow:var(--dp-stand-off), inset 0 2px 0 rgb(255 236 204 / .16), inset 0 -3px 0 rgb(0 0 0 / .55);
+    border:1px solid var(--dp-rule-hi);
+    box-shadow:none;
   }
   /* a ready power is information (bone); amber is kept for what is armed or chosen, so the rail no
      longer lights a dozen amber marks at rest (critic round 3) */
@@ -2799,18 +2798,18 @@ export function injectHudCss() {
   #hud .sf-ob-kicker > span:first-child, #hud .sf-comm__tag {
     font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; letter-spacing:.16em; text-transform:uppercase; color:var(--dp-ink-dim);
   }
-  /* the band key carries its lamp: dark when the band is off, lit when it is on; hover lights the
-     legend, never an outer ring */
+  /* the band key carries its state on its leading edge: a quiet rule when the band is off, the
+     lamp when it is on; hover lights the legend, never an outer ring */
   #hud .sf-band-hud__button {
-    padding-left:28px;
-    background-image:radial-gradient(circle at 14px 50%, #3b352c 0, #17140f 3.5px, rgb(0 0 0 / .7) 4.5px, transparent 5px), var(--dp-plate-img);
+    padding-left:14px;
+    background-image:linear-gradient(90deg, var(--dp-rule-hi) 2px, transparent 0);
   }
   #hud .sf-band-hud__button:not([data-off="true"]) {
     color:var(--dp-ink);
-    background-image:radial-gradient(circle at 14px 50%, #fff6df 0, var(--dp-lamp-hot) 1.5px, var(--dp-lamp) 3.5px, rgb(242 185 80 / .35) 5px, rgb(242 185 80 / .12) 9px, transparent 12px), var(--dp-plate-img);
+    background-image:linear-gradient(90deg, var(--dp-lamp) 2px, transparent 0);
   }
   #hud .sf-band-hud__button:hover, #hud .sf-band-hud__button:focus-visible {
-    box-shadow:var(--dp-plate-bevel-raised), 0 8px 16px -10px var(--dp-lamp-bloom); outline:0 solid transparent !important;
+    box-shadow:0 8px 16px -10px var(--dp-lamp-bloom); outline:0 solid transparent !important;
   }
   @media (forced-colors:active) { #hud .sf-band-hud__button:focus-visible { outline:2px solid Highlight !important; } }
   #hud .sf-pslot[data-state="ready"] .fh-glyph .accent { fill:var(--dp-lamp-hot); }
@@ -2818,12 +2817,12 @@ export function injectHudCss() {
   /* alerts, toasts, the edge-arrow caption: the same flight glass, one lit rim */
   html .sf-alert, html .sf-alert.sf-alert--floor, html .sf-toast, html #hud .sf-objarrow__label, html #hud .sf-commtape {
     background:var(--dp-glass-flight); background-color:transparent;
-    box-shadow:var(--dp-glass-depth), 0 10px 22px rgb(0 0 0 / .32);
+    box-shadow:var(--dp-glass-depth);
   }
   /* an information line lights a bone lens; amber is for a warning the pilot must act on */
   html .sf-alert--info .dp-annunc__lens {
-    background:radial-gradient(circle at 42% 34%, #fffaf0 0%, #d8d2c4 38%, transparent 72%);
-    box-shadow:0 0 5px rgb(232 226 212 / .22), inset 0 -1px 1px rgb(0 0 0 / .35);
+    background:linear-gradient(var(--dp-ink) 0 0);
+    box-shadow:0 0 5px rgb(232 226 212 / .22);
   }
 
   /* --- high contrast: the token remap (deckplate/tokens.js) flattens the plates; keep the

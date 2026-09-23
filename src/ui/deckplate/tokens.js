@@ -1,23 +1,30 @@
-// Deckplate — the SpaceFace design system. Tokens first: every surface assembles these, nothing
+// Deckplate -- the SpaceFace design system. Tokens first: every surface assembles these, nothing
 // hand-mixes a colour, a radius, a duration or a font size of its own.
 //
-// TASTE LAW (owner signals of record, 2026-09-18 reset — the only two that exist):
-//   1. The one praised artifact: "real rock texture, warm directional light, a physical machine,
-//      almost no chrome" → materials and light over decoration.
-//   2. "A bit generic and simple for an A-list spaceship game."
-// Everything below follows from those two sentences and nowhere else.
+// THE LAW (owner, in the order it was said -- design/frontend/ONE_PHOTOGRAPH.md section 0):
+//   2026-09-14  the flight HUD: "more sleek and glass ... maybe some slight neon look".
+//   2026-09-18  the world art (praise): "real rock texture, warm directional light, a physical
+//               machine, almost no chrome". About the 3D, NOT the interface.
+//   2026-09-22  the interface: "free of any common CSS anti-patterns of old internet (mostly when
+//               CSS is pretending to be physical materials, it looks awful and we need either
+//               custom or downloaded assets for a lot of things)".
+// An earlier header here called the 09-18 praise "the only two [signals] that exist" and built the
+// interface out of it: brushed-steel tiles, bevels, LED dots, screws. That was an agent's misreading
+// and the owner has now said so in plain words.
 //
-// THE LANGUAGE. The flight deck is the ship's own machined hardware, not an app theme:
-//   - ONE accent system: the warm lamp. Live state is a warm filament ramp (dim → live → hot);
-//     danger is the same lamp driven red. There is no second hue to manage.
-//   - Materials are gunmetal plate, etched legend, lamp emitter. Light comes from the top-left
-//     (the warm key) and from the lamps themselves — never from box-shadow decoration.
-//   - "Almost no chrome": corners are 2–3 px machined breaks, not consumer glass radii; a plate's
-//     edge is its bevel, not a drawn frame.
+// THE LANGUAGE -- everything on the screen is PRINTED or LIT (ONE_PHOTOGRAPH section 9):
+//   printed  a flat field of one colour with a hard edge, type on it, a hairline rule. It claims
+//            no material, so it cannot lie about one. A field you can PRESS has the cut: one 45deg
+//            chamfer on its top-right corner, and that cut edge lights when the control is live.
+//   lit      emission: the warm lamp on what you can act on, the cool phosphor on what you read.
+//            The only things on the screen that glow.
+//   objects  a hull, a crest, a commodity is PRODUCED ART at the size it is shown, never CSS.
+// Depth is never faked. It comes from the world behind the interface and from real renders.
 //
-// Floors that bind every consumer (AGENTS.md §6, FIELD_HARDWARE_PROGRAM §7): 12 px type floor
-// (check-type-floor scans src/ui), WCAG AA text contrast (check-wcag-contrast), reduced-motion and
-// forced-colours variants are part of the token layer, and no backdrop-filter in flight.
+// Floors that bind every consumer (AGENTS.md section 6): 12 px type floor (check-type-floor scans
+// src/ui), WCAG AA text contrast measured on composited pixels (scripts/ui-contrast.mjs),
+// reduced-motion and forced-colours variants live in the token layer, no backdrop-filter in flight.
+// test/ui-no-material-imitation.test.mjs keeps the screws out.
 
 export const DECKPLATE_TOKENS_CSS = `
 :root {
@@ -103,12 +110,38 @@ export const DECKPLATE_TOKENS_CSS = `
   --dp-lamp-bloom-soft:rgb(242 185 80 / .16);
   --dp-danger-bloom:rgb(255 80 56 / .38);
 
-  /* ── Key light: the warm directional light the metal answers to. ONE direction for the whole
-        system — top-left, raking. Changing this changes where every bevel in the game is lit. ── */
-  --dp-key:rgb(255 224 178 / .16);        /* warm catch on lit faces */
-  --dp-key-edge:rgb(255 232 190 / .42);   /* the lit bevel line */
-  --dp-shade:rgb(2 3 5 / .55);            /* ambient occlusion under a land */
-  --dp-shade-edge:rgb(0 0 0 / .68);       /* the dark bevel line */
+  /* -- PRINTED: the flat fields, rules and the cut (ONE_PHOTOGRAPH section 9.1). --
+     A flat fill is written "linear-gradient(X 0 0)": one colour stop at two positions is a solid
+     image, which is what a background LAYER needs (a colour may only sit in the last layer). */
+  --dp-field:rgb(10 12 16 / .84);          /* a printed field over the world; the popover */
+  --dp-field-ink:rgb(232 226 212 / .08);   /* the ghost field: secondary keys, the selected row */
+  --dp-field-ink-hi:rgb(232 226 212 / .14);
+  --dp-sheet:rgb(8 9 12 / .90);            /* THE sheet: one per screen, on a frame edge */
+  --dp-rule:rgb(232 226 212 / .10);        /* the hairline between rows, under heads */
+  --dp-rule-hi:rgb(232 226 212 / .22);     /* a rail at rest */
+  --dp-cut:calc(10px * var(--dp-s));
+  --dp-cut-sheet:calc(18px * var(--dp-s));
+  --dp-cut-shape:polygon(0 0, calc(100% - var(--dp-cut)) 0, 100% var(--dp-cut), 100% 100%, 0 100%);
+  --dp-cut-sheet-shape:polygon(0 0, calc(100% - var(--dp-cut-sheet)) 0, 100% var(--dp-cut-sheet), 100% 100%, 0 100%);
+  /* The lit cut: a 2px band lying exactly on the chamfer. At 225deg the gradient starts in the
+     top-right corner, so the clip diagonal is var(--dp-cut) / sqrt(2) along it. */
+  --dp-cut-lit:linear-gradient(225deg, transparent calc(var(--dp-cut) * .7071),
+    var(--dp-lamp-hot) calc(var(--dp-cut) * .7071) calc(var(--dp-cut) * .7071 + 2px), transparent 0);
+  /* The focus bracket: a 2px bone bar on the leading edge. A background layer, never an outline:
+     a clipped field clips its own outline. */
+  --dp-bracket:linear-gradient(90deg, var(--dp-ink) 2px, transparent 0);
+  --dp-key-h:calc(56px * var(--dp-s));     /* the primary action */
+  --dp-key-h-2:calc(40px * var(--dp-s));   /* secondary, destructive */
+  --dp-hint-h:calc(22px * var(--dp-s));    /* a keyboard-key hint */
+  --dp-lamp-glow:0 0 28px rgb(242 185 80 / .35), 0 0 6px rgb(242 185 80 / .22);
+  --dp-text-legible:0 1px 0 rgb(0 0 0 / .5);   /* the only black shadow: type over the world */
+
+  /* Retired key-light tokens (the bevel system). Kept as names that paint nothing, so a legacy
+     sheet that still reads one draws no bevel instead of an invalid declaration. */
+  --dp-key:transparent;
+  --dp-key-edge:transparent;
+  --dp-shade:transparent;
+  --dp-shade-edge:transparent;
 
   /* ── The viewport factor. 1 at a 1920-wide frame, 0.75 at 1280, 1.25 at 2560, and capped by
         height as well as width so 2560×1080 keeps the 1080-tall column geometry. Owned HERE as of
@@ -165,30 +198,9 @@ export const DECKPLATE_TOKENS_CSS = `
   --dp-d-breathe:3.4s;      /* idle lamp breath */
   --dp-d-escalate:560ms;    /* annunciator escalation beat */
 
-  /* ── Composite material bundles: a surface applies the material with TWO declarations
-        (background-image + box-shadow, or text-shadow). The recipe lives exactly here. ── */
-  --dp-plate-img:
-    radial-gradient(150% 130% at 14% 0%, var(--dp-key) 0%, rgb(255 224 178 / .055) 34%, transparent 60%),
-    linear-gradient(178deg, var(--dp-metal-3) 0%, var(--dp-metal-2) 40%, var(--dp-metal-1) 74%, var(--dp-metal-0) 100%),
-    repeating-linear-gradient(0deg, rgb(255 255 255 / .02) 0 1px, transparent 1px 3px);
-  --dp-plate-bevel:
-    inset 0 1px 0 var(--dp-key-edge),
-    inset 1px 0 0 rgb(255 232 190 / .18),
-    inset 0 -1px 0 var(--dp-shade-edge),
-    inset -1px 0 0 rgb(0 0 0 / .42),
-    0 2px 12px rgb(0 0 0 / .5);
-  --dp-plate-bevel-raised:
-    inset 0 1px 0 var(--dp-key-edge),
-    inset 1px 0 0 rgb(255 232 190 / .22),
-    inset 0 -1px 0 var(--dp-shade-edge),
-    inset -1px 0 0 rgb(0 0 0 / .46),
-    0 1px 0 rgb(255 255 255 / .05),
-    0 8px 22px rgb(0 0 0 / .58);
-  --dp-channel-img:
-    linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .18) 55%, rgb(255 255 255 / .03));
-  --dp-channel-bevel:
-    inset 0 1px 2px rgb(0 0 0 / .7),
-    inset 0 -1px 0 rgb(255 232 190 / .07);
+  /* The plate and channel bundles (a brushed ramp with a lit top bevel; an inset recess) were CSS
+     imitating a material (owner, 2026-09-22). They are gone, and so is every consumer of them;
+     test/ui-no-material-imitation.test.mjs keeps them from coming back. */
   /* THE MARK FACE. A drawn mark is not text and must not be lit like text: it is a milled plate
      catching the same warm key as every other surface, bright along the top edge and falling to
      the shadowed bottom. Built from the system's own ink and lamp rather than a hand-mixed ramp,
@@ -200,131 +212,52 @@ export const DECKPLATE_TOKENS_CSS = `
     color-mix(in srgb, var(--dp-lamp-dim) 82%, var(--dp-ink)) 100%);
   --dp-mark-shadow:drop-shadow(0 2px 0 rgb(0 0 0 / .45)) drop-shadow(0 6px 22px rgb(0 0 0 / .5));
 
-  --dp-etch-shadow:0 -1px 0 rgb(0 0 0 / .55), 0 1px 0 rgb(255 232 190 / .10);
+  /* An engraving shadow (dark incision, warm bounce) imitated a material; a legend is printed. */
+  --dp-etch-shadow:var(--dp-text-legible);
 }
 
-/* ══ COMPUTED MATERIAL ═════════════════════════════════════════════════════════════════════════
-   The recipes that replaced the kit's raster nine-slices, published as tokens so a surface applies
-   one and never re-mixes its own.
+/* == THE CAP TOKENS, PRINTED ====================================================================
+   These names replaced the kit's raster nine-slices on 2026-09-22 with a COMPUTED cap: a lit top
+   rule, a dark sill and a seat shadow, "the whole illusion" of a raised key. The owner then ruled
+   that CSS pretending to be a physical material looks awful. The names stay because six sheets and
+   the inline pins in src/ui/kit/computedMaterial.js read them; every value is now printed.
 
-   WHY THESE EXIST. Until 2026-09-22 a key, plate, window or tape was a nine-sliced PNG:
-   keys/key.legend.rest.png is 160x40, stretched across controls three times that width, and the
-   320x80 @2x beside it on disk was referenced by nothing. On any HiDPI display — which is the
-   Electron app at devicePixelRatio 2 — every control in the game was a bitmap upsampled 2x. That
-   is the smudge. ONE_PHOTOGRAPH.md section 4.11 retires raster nine-slices as UI material and
-   keeps the Cycles renders as the calibration reference these are judged against: if a computed
-   cap does not look as good as key.primary.rest.png, the recipe is wrong, not the rule.
-
-   WHAT MAKES A CAP READ AS A CAP. Not the radius and not the fill — the EDGES. A 1px lit top rule,
-   a 1px dark sill, and a seat shadow under it. Those three hairlines are the whole illusion, they
-   are the first thing a careless pass drops, and unlike a stretched slice they are exactly one
-   device pixel at every scale. Keep them.
-
-   HOW TO USE. A raised control:
-     background: var(--dp-cap-rest) padding-box;  box-shadow: var(--dp-cap-lift);
-   and its states swap --dp-cap-hover / --dp-cap-press with --dp-cap-sink. A recess uses
-   --dp-well-face / --dp-well-sink. Everything is padding-box so a surface keeps its own border. */
+     cap        a pressable ghost field         (the cut is the consumer's clip-path)
+     cap-live   the one consequential verb:     flat lamp, dark ink
+     cap-risk   destructive:                    ghost field, red rule along the bottom
+     well       a place you type into:          a bottom rail, no box
+     stock/pane a surface:                      the printed field
+     chan       an input underline:             a rail, lit on focus
+   Every lift, sink and edge is a no-op: there is no raised thing to shade. */
 :root {
-  /* — the raised cap — */
-  --dp-cap-rest:
-    linear-gradient(180deg, rgb(255 255 255 / .055), rgb(255 255 255 / 0) 42%),
-    linear-gradient(168deg, #2b3038 0%, #23272e 46%, #191c22 100%);
-  --dp-cap-hover:
-    linear-gradient(180deg, rgb(255 255 255 / .085), rgb(255 255 255 / 0) 44%),
-    linear-gradient(168deg, #343a44 0%, #2a2f37 46%, #1e222a 100%);
-  --dp-cap-press: linear-gradient(168deg, #16191e 0%, #1c2026 54%, #23272e 100%);
-  --dp-cap-off:   linear-gradient(168deg, #23262b 0%, #1e2126 100%);
-  --dp-cap-lift:
-    inset 0 1px 0 0 rgb(226 232 240 / .14),
-    inset 0 0 0 1px rgb(226 232 240 / .055),
-    inset 0 -1px 0 0 rgb(0 0 0 / .62),
-    0 1px 0 0 rgb(0 0 0 / .5),
-    0 2px 5px -2px rgb(0 0 0 / .55);
-  --dp-cap-sink:
-    inset 0 2px 4px 0 rgb(0 0 0 / .7),
-    inset 0 0 0 1px rgb(0 0 0 / .5),
-    inset 0 -1px 0 0 rgb(226 232 240 / .09);
-  --dp-cap-off-edge: inset 0 0 0 1px rgb(226 232 240 / .04), inset 0 -1px 0 0 rgb(0 0 0 / .4);
+  --dp-cap-rest:linear-gradient(var(--dp-field-ink) 0 0);
+  --dp-cap-hover:linear-gradient(var(--dp-field-ink-hi) 0 0);
+  --dp-cap-press:linear-gradient(rgb(232 226 212 / .05) 0 0);
+  --dp-cap-off:linear-gradient(rgb(232 226 212 / .04) 0 0);
+  --dp-cap-lift:0 0 0 0 transparent;
+  --dp-cap-sink:0 0 0 0 transparent;
+  --dp-cap-off-edge:0 0 0 0 transparent;
 
-  /* — the consequence cap: the only control lit from inside — */
-  --dp-cap-live:
-    linear-gradient(180deg, rgb(255 236 200 / .22), rgb(255 236 200 / 0) 46%),
-    linear-gradient(168deg, #d29b41 0%, #bb862a 52%, #9c6c1d 100%);
-  /* The ramp is shallower than it looks in isolation on purpose: the old bottom stop
-     (#7d5412) put a two-line key's second line at L~0.17, a dead zone where even pure
-     black ink caps out at 4.4:1. Measured with scripts/ui-contrast.mjs, not guessed. */
-  --dp-cap-live-hover:
-    linear-gradient(180deg, rgb(255 240 210 / .3), rgb(255 240 210 / 0) 48%),
-    linear-gradient(168deg, #dba646 0%, #bd8626 48%, #8d6015 100%);
-  --dp-cap-live-lift:
-    inset 0 1px 0 0 rgb(255 238 205 / .45),
-    inset 0 0 0 1px rgb(255 214 140 / .22),
-    inset 0 -1px 0 0 rgb(0 0 0 / .5),
-    0 1px 0 0 rgb(0 0 0 / .5),
-    0 3px 12px -3px rgb(242 185 80 / .35);
+  --dp-cap-live:linear-gradient(var(--dp-lamp) 0 0);
+  --dp-cap-live-hover:linear-gradient(var(--dp-lamp-hot) 0 0);
+  --dp-cap-live-lift:0 0 0 0 transparent;
 
-  /* — the destructive cap — */
-  --dp-cap-risk:
-    linear-gradient(180deg, rgb(255 210 195 / .2), rgb(255 210 195 / 0) 46%),
-    linear-gradient(168deg, #b8452f 0%, #93301f 48%, #6a2014 100%);
-  --dp-cap-risk-lift:
-    inset 0 1px 0 0 rgb(255 200 180 / .4),
-    inset 0 0 0 1px rgb(255 150 120 / .24),
-    inset 0 -1px 0 0 rgb(0 0 0 / .5),
-    0 1px 0 0 rgb(0 0 0 / .5),
-    0 4px 16px -4px rgb(214 90 70 / .42);
+  --dp-cap-risk:linear-gradient(0deg, var(--dp-danger) 2px, transparent 0), linear-gradient(var(--dp-field-ink) 0 0);
+  --dp-cap-risk-lift:0 0 0 0 transparent;
 
-  /* — the recess. Light comes from above, so a well is dark at the top lip and catches light at
-       the bottom: the exact inverse of a cap, which is what sells it as sunk. — */
-  --dp-well-face: linear-gradient(180deg, #0e1116 0%, #121519 100%);
-  --dp-well-sink:
-    inset 0 2px 6px -1px rgb(0 0 0 / .72),
-    inset 0 0 0 1px rgb(0 0 0 / .5),
-    inset 0 -1px 0 0 rgb(226 232 240 / .07);
+  --dp-well-face:linear-gradient(0deg, var(--dp-rule-hi) 2px, transparent 0);
+  --dp-well-sink:0 0 0 0 transparent;
 
-  /* — the flat plate: a panel of stock, no lift, just an edge — */
-  --dp-stock-face: linear-gradient(176deg, #1b1f25 0%, #14171c 100%);
-  --dp-stock-edge:
-    inset 0 1px 0 0 rgb(226 232 240 / .10),
-    inset 0 0 0 1px rgb(226 232 240 / .05),
-    inset 0 -1px 0 0 rgb(0 0 0 / .55);
+  --dp-stock-face:linear-gradient(var(--dp-field) 0 0);
+  --dp-stock-edge:0 0 0 0 transparent;
 
-  /* — smoked glass. The specular is PLACED as a fraction of the box, never stretched: that is
-       precisely what border-image-slice: fill got wrong on the market chart. — */
-  --dp-pane-face:
-    linear-gradient(180deg, rgb(226 232 240 / .13), rgb(226 232 240 / 0) 1px),
-    linear-gradient(104deg, transparent 12%, rgb(214 230 246 / .045) 26%,
-                    rgb(214 230 246 / .085) 33%, rgb(214 230 246 / .03) 41%, transparent 56%),
-    linear-gradient(176deg, rgb(9 12 17 / .80), rgb(6 8 12 / .92));
-  --dp-pane-edge:
-    inset 0 0 0 1px rgb(226 232 240 / .07),
-    inset 0 1px 0 0 rgb(226 232 240 / .10),
-    inset 0 -1px 0 0 rgb(0 0 0 / .55);
-  --dp-pane-live-face:
-    linear-gradient(180deg, rgb(242 185 80 / .16), rgb(242 185 80 / 0) 1px),
-    linear-gradient(104deg, transparent 14%, rgb(255 226 176 / .05) 30%,
-                    rgb(255 226 176 / .09) 36%, transparent 54%),
-    linear-gradient(176deg, rgb(14 12 9 / .82), rgb(8 7 5 / .93));
-  --dp-pane-live-edge:
-    inset 0 0 0 1px rgb(242 185 80 / .22),
-    inset 0 1px 0 0 rgb(242 185 80 / .16),
-    inset 0 -1px 0 0 rgb(0 0 0 / .6),
-    0 0 18px -6px rgb(242 185 80 / .35);
+  --dp-pane-face:linear-gradient(var(--dp-field) 0 0);
+  --dp-pane-edge:0 0 0 0 transparent;
+  --dp-pane-live-face:linear-gradient(90deg, var(--dp-lamp) 2px, transparent 0), linear-gradient(var(--dp-field) 0 0);
+  --dp-pane-live-edge:0 0 0 0 transparent;
 
-  /* — an input's underline: a machined channel, not a border — */
-  --dp-chan-rest: linear-gradient(180deg, rgb(0 0 0 / .5) 0 1px, rgb(226 232 240 / .08) 1px 2px);
-  --dp-chan-live: linear-gradient(180deg, rgb(0 0 0 / .5) 0 1px, var(--dp-lamp-hot) 1px 2px);
-}
-
-@supports (background-image: paint(dp-plate)) {
-  /* The worklet grains the cap at the device's resolution. This is the layer the Cycles render was
-     standing in for, and it is the one thing a gradient alone cannot do. */
-  :root {
-    --dp-cap-rest:
-      linear-gradient(180deg, rgb(255 255 255 / .055), rgb(255 255 255 / 0) 42%),
-      paint(dp-plate),
-      linear-gradient(168deg, #2b3038 0%, #23272e 46%, #191c22 100%);
-  }
+  --dp-chan-rest:linear-gradient(0deg, var(--dp-rule-hi) 2px, transparent 0);
+  --dp-chan-live:linear-gradient(0deg, var(--dp-lamp) 2px, transparent 0);
 }
 
 /* High contrast remaps the tokens, not the components: the whole system re-themes from here. */
@@ -334,8 +267,8 @@ html.sf-high-contrast {
   --dp-ink:#fff; --dp-ink-dim:#e8e8e8; --dp-ink-mute:#c9c9c9;
   --dp-lamp-dim:#c9a86a; --dp-lamp:#ffd98c; --dp-lamp-hot:#fff;
   --dp-danger:#ff6a54; --dp-danger-hot:#ffb0a0;
-  --dp-key:rgb(255 255 255 / .06); --dp-key-edge:rgb(255 255 255 / .85);
-  --dp-shade:rgb(0 0 0 / .9); --dp-shade-edge:#000;
+  --dp-rule:rgb(255 255 255 / .45); --dp-rule-hi:rgb(255 255 255 / .75);
+  --dp-field:#000; --dp-field-ink:rgb(255 255 255 / .12); --dp-sheet:#000;
 }
 `;
 

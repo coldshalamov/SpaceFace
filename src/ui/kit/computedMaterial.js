@@ -1,30 +1,23 @@
-// Computed material for surfaces that paint themselves with inline style pins.
+// Printed surfaces for screens that paint themselves with inline style pins.
 //
-// WHY THIS EXISTS. Seven screens — codex, crucible, help, newGame, range, saveLoad, techTree —
-// each carry their own copy of the same paintPlate / paintKey / paintInput helpers, and each copy
-// pinned a nine-sliced PNG inline:
+// WHY THIS EXISTS. Seven screens -- codex, crucible, help, newGame, range, saveLoad, techTree -- pin
+// their surfaces inline rather than through classes, because the kit's component sheet
+// (assets/ui/kit/kit/fh.css) is injected by stationApp.ensureStylesheet() and so is absent until the
+// player first docks. That is worth fixing separately; until then a pin is how these surfaces get
+// painted, and this module is the one place the paint is decided.
 //
-//     'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
-//     'border-image-slice': '18 fill', 'border-image-repeat': 'stretch', ...
+// HISTORY, because it is the lesson. These pins were nine-sliced PNGs (a 240x56 key upsampled 2x on
+// every HiDPI display -- the owner's "smudges"), then COMPUTED caps (a lit top rule, a dark sill and a
+// seat shadow standing in for a moulded key), and on 2026-09-22 the owner ruled that CSS pretending
+// to be a physical material looks awful (design/frontend/ONE_PHOTOGRAPH.md sections 0 and 9). They are
+// now PRINTED: a flat field, the cut corner on anything pressable (painted by the fill, so the pin
+// needs no clip-path), a lamp bar for selection, a rail under a field you type into.
 //
-// `keys/key.primary.rest.png` is 240x56. A 480x112 @2x sits beside it on disk and nothing
-// references it, so on the Electron app at devicePixelRatio 2 every one of these controls was a
-// bitmap upsampled 2x. ONE_PHOTOGRAPH.md §4.11 retires raster nine-slices as UI material.
+// THE GEOMETRY RULE. A nine-slice painted INTO the border box, so the old border widths are real
+// spacing the layout depends on. Every recipe keeps the border at its original width, transparent,
+// and paints border-box. Same box model, same content position, nothing moves.
 //
-// These screens pin inline rather than using classes because the kit's component sheet
-// (assets/ui/kit/kit/fh.css) is injected by stationApp.ensureStylesheet() and so is absent until
-// the player first docks. That is worth fixing separately; until then a pin is how these surfaces
-// get a material, and this module makes the pin computed instead of raster.
-//
-// THE GEOMETRY RULE. A nine-slice paints INTO the border box, so `border-width: 18px` is real
-// spacing the layout depends on. Every recipe here keeps the border at its original width and
-// makes it transparent, painting the face `border-box`. Same box model, same content position,
-// nothing moves.
-//
-// WHAT MAKES A CAP READ AS A CAP: a 1px lit top rule, a 1px dark sill, a seat shadow. Those three
-// hairlines are the whole illusion and they are exactly one device pixel at any scale — the one
-// thing a stretched slice can never be. The values live in Deckplate's tokens (--dp-cap-*), so a
-// pin here and a class in a stylesheet resolve to the same material.
+// The module keeps its name because seven screens import it.
 
 /** Shared by every recipe: keep the box, hide the border, paint across the whole of it. */
 function box(width) {
@@ -39,28 +32,41 @@ function box(width) {
   };
 }
 
+/** The cut corner as a fill: the field in `colour` with its top-right chamfer left open. */
+const cut = (colour) => `linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), ${colour} 0)`;
+const LIT_CUT = 'var(--dp-cut-lit)';
+const BRACKET = 'var(--dp-bracket)';
+const LAMP_EDGE = 'linear-gradient(90deg, var(--dp-lamp, #f2b950) 2px, transparent 0)';
+const LAMP_UNDER = 'linear-gradient(0deg, var(--dp-lamp, #f2b950) 2px, transparent 0)';
+const RAIL = (colour, px = 2) => `linear-gradient(0deg, ${colour} ${px}px, transparent 0)`;
+const FIELD = 'var(--dp-field, rgb(10 12 16 / .84))';
+const INK = 'var(--dp-field-ink, rgb(232 226 212 / .08))';
+const INK_HI = 'var(--dp-field-ink-hi, rgb(232 226 212 / .14))';
+
+// A secondary key: a ghost field with the cut; hover lights the cut, focus adds the bone bracket.
 const CAP = {
-  rest: { bg: 'var(--dp-cap-rest)', sh: 'var(--dp-cap-lift)' },
-  hover: { bg: 'var(--dp-cap-hover)', sh: 'var(--dp-cap-lift)' },
-  focus: { bg: 'var(--dp-cap-hover)', sh: 'inset 0 0 0 2px var(--dp-ink, #e2e8f0), var(--dp-cap-lift)' },
-  pressed: { bg: 'var(--dp-cap-press)', sh: 'var(--dp-cap-sink)' },
-  disabled: { bg: 'var(--dp-cap-off)', sh: 'var(--dp-cap-off-edge)' },
+  rest: { bg: cut(INK), sh: 'none' },
+  hover: { bg: `${LIT_CUT}, ${cut(INK_HI)}`, sh: 'none' },
+  focus: { bg: `${LIT_CUT}, ${BRACKET}, ${cut(INK_HI)}`, sh: 'none' },
+  pressed: { bg: cut('rgb(232 226 212 / .05)'), sh: 'none' },
+  disabled: { bg: cut('rgb(232 226 212 / .04)'), sh: 'none' },
 };
+// The one consequential verb: the field IS the lamp. Its focus is the global bone outline (no clip).
 const CAP_LIVE = {
-  rest: { bg: 'var(--dp-cap-live)', sh: 'var(--dp-cap-live-lift)' },
-  hover: { bg: 'var(--dp-cap-live-hover)', sh: 'var(--dp-cap-live-lift)' },
-  focus: { bg: 'var(--dp-cap-live-hover)', sh: 'inset 0 0 0 2px rgb(255 249 235 / .9), var(--dp-cap-live-lift)' },
-  pressed: { bg: 'var(--dp-cap-press)', sh: 'var(--dp-cap-sink)' },
-  disabled: { bg: 'var(--dp-cap-off)', sh: 'var(--dp-cap-off-edge)' },
+  rest: { bg: cut('var(--dp-lamp, #f2b950)'), sh: 'none' },
+  hover: { bg: cut('var(--dp-lamp-hot, #ffd98c)'), sh: 'var(--dp-lamp-glow)' },
+  focus: { bg: cut('var(--dp-lamp-hot, #ffd98c)'), sh: 'var(--dp-lamp-glow)' },
+  pressed: { bg: cut('var(--dp-lamp-dim, #8a6b3a)'), sh: 'none' },
+  disabled: { bg: RAIL('var(--dp-lamp-dim, #8a6b3a)', 1), sh: 'none' },
 };
-// A LEGEND IS NOT A KEY (§4.2): a filter or a tab changes what you are looking at, never the world,
-// so it carries no cap — just a word that lights, with one bar under it.
+// A LEGEND IS NOT A KEY (section 4.2): a filter or a tab changes what you are looking at, never the
+// world, so it carries no field and no cut -- just a word that lights, with one bar under it.
 const LEGEND = {
   rest: { bg: 'none', sh: 'none' },
-  hover: { bg: 'none', sh: 'inset 0 -2px 0 0 rgb(226 232 240 / .45)' },
-  focus: { bg: 'none', sh: 'inset 0 -2px 0 0 var(--dp-ink, #e2e8f0)' },
-  pressed: { bg: 'none', sh: 'inset 0 -2px 0 0 var(--dp-lamp-hot, #f2b950)' },
-  lit: { bg: 'none', sh: 'inset 0 -2px 0 0 var(--dp-lamp-hot, #f2b950)' },
+  hover: { bg: RAIL('rgb(232 226 212 / .45)'), sh: 'none' },
+  focus: { bg: BRACKET, sh: 'none' },
+  pressed: { bg: LAMP_UNDER, sh: 'none' },
+  lit: { bg: LAMP_UNDER, sh: 'none' },
   disabled: { bg: 'none', sh: 'none' },
 };
 
@@ -72,51 +78,53 @@ const LEGEND = {
 export function capPins(kind, state = 'rest', width = '14px') {
   const table = kind === 'primary' ? CAP_LIVE : kind === 'legend' ? LEGEND : CAP;
   const face = table[state] || table.rest;
-  return { ...box(width), 'background-image': face.bg, 'box-shadow': face.sh };
+  const bg = kind === 'hazard' && state !== 'hover' && state !== 'focus'
+    ? `${RAIL('var(--dp-danger, #ff5038)')}, ${face.bg}`
+    : kind === 'hazard'
+      ? cut('var(--dp-danger, #ff5038)')
+      : face.bg;
+  const pins = { ...box(width), 'background-image': bg, 'box-shadow': face.sh };
+  // Ink follows the field: on the lamp (and on a red hazard under the hand) the legend is dark, or
+  // it measures ~1.4:1 on the composited frame (scripts/ui-contrast.mjs caught it on save/load).
+  if (kind === 'primary') pins.color = state === 'disabled' ? 'var(--dp-ink-mute, #b0aea6)' : 'var(--dp-metal-0, #0b0d10)';
+  else if (kind === 'hazard' && (state === 'hover' || state === 'focus')) pins.color = 'var(--dp-metal-0, #0b0d10)';
+  return pins;
 }
 
-/** A plate: `raised` is a cap of stock, `sunk` is a recess, `edge` is thin stock. */
+/** A plate: a printed field whatever its old variant (raised, sunk, edge). */
 export function platePins(variant = 'sunk', width = '24px') {
-  const face = variant === 'raised'
-    ? { bg: 'var(--dp-cap-rest)', sh: 'var(--dp-cap-lift)' }
-    : variant === 'edge'
-      ? { bg: 'var(--dp-stock-face)', sh: 'var(--dp-stock-edge)' }
-      : { bg: 'var(--dp-well-face)', sh: 'var(--dp-well-sink)' };
-  return { ...box(width), 'background-image': face.bg, 'box-shadow': face.sh };
+  void variant;
+  return { ...box(width), 'background-image': `linear-gradient(${FIELD} 0 0)`, 'box-shadow': 'none' };
 }
 
-/** Smoked glass. The specular is PLACED as a fraction of the box, never stretched. */
+/** A pane: the printed field; the viewport (the chosen pane) carries the lamp on its leading edge. */
 export function panePins(variant = 'glass', width = '20px') {
-  const face = variant === 'viewport'
-    ? { bg: 'var(--dp-pane-live-face)', sh: 'var(--dp-pane-live-edge)' }
+  const bg = variant === 'viewport'
+    ? `${LAMP_EDGE}, linear-gradient(${FIELD} 0 0)`
     : variant === 'deep'
-      ? { bg: 'linear-gradient(176deg, rgb(5 7 10 / .90), rgb(3 4 7 / .96))', sh: 'var(--dp-pane-edge)' }
-      : { bg: 'var(--dp-pane-face)', sh: 'var(--dp-pane-edge)' };
-  return { ...box(width), 'background-image': face.bg, 'box-shadow': face.sh };
-}
-
-/** An input's underline: a machined channel, not a border. */
-export function channelPins(state = 'rest', width = '12px') {
-  const bg = state === 'focus'
-    ? 'var(--dp-chan-live)'
-    : state === 'error'
-      ? 'linear-gradient(180deg, rgb(0 0 0 / .5) 0 1px, #d65a46 1px 2px)'
-      : state === 'disabled'
-        ? 'linear-gradient(180deg, rgb(0 0 0 / .4) 0 1px, rgb(226 232 240 / .04) 1px 2px)'
-        : 'var(--dp-chan-rest)';
+      ? 'linear-gradient(rgb(5 7 10 / .92) 0 0)'
+      : `linear-gradient(${FIELD} 0 0)`;
   return { ...box(width), 'background-image': bg, 'box-shadow': 'none' };
 }
 
-/** A selected row: the lamp reaches it from the left edge (§5 P2), never a fill. */
-export function rowPins(width = '8px 16px') {
-  return {
-    ...box(width),
-    'background-image': 'linear-gradient(90deg, rgb(242 185 80 / .14), rgb(242 185 80 / 0) 62%)',
-    'box-shadow': 'inset 2px 0 0 0 var(--dp-lamp-hot, #f2b950)',
-  };
+/** A field you type into: a rail under the words; focus lights it, an error drives it red. */
+export function channelPins(state = 'rest', width = '12px') {
+  const bg = state === 'focus'
+    ? RAIL('var(--dp-lamp, #f2b950)')
+    : state === 'error'
+      ? RAIL('var(--dp-danger, #ff5038)')
+      : state === 'disabled'
+        ? RAIL('var(--dp-rule, rgb(232 226 212 / .10))')
+        : RAIL('var(--dp-rule-hi, rgb(232 226 212 / .22))');
+  return { ...box(width), 'background-image': bg, 'box-shadow': 'none' };
 }
 
-/** A recess a number or a thumb sits in. */
+/** A selected row: the lamp on its leading edge over a faint ink field. */
+export function rowPins(width = '8px 16px') {
+  return { ...box(width), 'background-image': `${LAMP_EDGE}, linear-gradient(${INK} 0 0)`, 'box-shadow': 'none' };
+}
+
+/** Where a number or a thumb sits: a rail beneath it, not a recess. */
 export function wellPins(width = '10px') {
-  return { ...box(width), 'background-image': 'var(--dp-well-face)', 'box-shadow': 'var(--dp-well-sink)' };
+  return { ...box(width), 'background-image': RAIL('var(--dp-rule-hi, rgb(232 226 212 / .22))'), 'box-shadow': 'none' };
 }

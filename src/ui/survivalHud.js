@@ -689,8 +689,8 @@ export const survivalHud = {
     font-weight:700; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
     color:var(--dp-ink-mute, var(--sf-calm)); }
   .sf-crun__track { position:relative; flex:1 1 auto; min-width:44px; height:8px; overflow:hidden;
-    border-radius:1px; background:var(--dp-channel-img, rgb(0 0 0 / .45));
-    box-shadow:var(--dp-channel-bevel, inset 0 1px 2px rgb(0 0 0 / .7)); }
+    border-radius:1px; background:none;
+    box-shadow:none; }
   .sf-crun__track--xp { height:5px; }
   .sf-crun__fill { position:absolute; inset:0 auto 0 0; width:0; }
   .sf-crun__fill--foe { background:linear-gradient(180deg, var(--dp-danger-hot, #ff8a70), var(--dp-danger, #ff5038) 55%, #a8241a);

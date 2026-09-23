@@ -52,7 +52,7 @@ test('station controller loads kit last and stamps docked Field Hardware tempera
   assert.match(src, /arriving && !arrivedOnce \? 'poster' : 'bench'/);
 });
 
-test('station chrome is built from computed material, not stretched bitmaps', () => {
+test('station chrome is printed, not stretched bitmaps and not CSS pretending to be metal', () => {
   const css = read('styles/station.css');
   // INVERTED 2026-09-22. This test used to assert the OPPOSITE: that `key.legend.rest.png`,
   // `key.primary.rest.png`, `plate.bench.sunk.png` and friends all appeared in this sheet. It was
@@ -80,11 +80,15 @@ test('station chrome is built from computed material, not stretched bitmaps', ()
       `styles/station.css must not paint a control with ${pattern} -- computed material only`);
   }
 
-  // What replaced them. A control still has to be a MOULDED object: a lit top edge, a dark sill
-  // and a seat shadow are what make a cap read as a cap, and they are the first thing a lazy pass
-  // would drop on the way to a flat rectangle.
-  assert.match(css, /inset 0 1px 0 0 rgb\(226 232 240/,
-    'the dock rail lost its lit edge -- a control with no bevel is the flat CSS box this guards');
+  // INVERTED AGAIN 2026-09-22, the same day. This used to require "a lit top edge, a dark sill and
+  // a seat shadow" because "a control with no bevel is the flat CSS box this guards". Those three
+  // hairlines are CSS pretending to be a moulded cap, and the owner ruled that exact thing out:
+  // "free of any common CSS anti-patterns of old internet (mostly when CSS is pretending to be
+  // physical materials, it looks awful)". design/frontend/ONE_PHOTOGRAPH.md sections 0 and 9.
+  // The intent that survives is that the rail is not a row of anonymous boxes: its current
+  // destination is LIT, from the Deckplate lamp token.
+  assert.doesNotMatch(decl, /inset 0 1px 0 0 rgb\(226 232 240/,
+    'the dock rail must not fake a moulded cap with a lit top edge');
   assert.match(css, /--dp-lamp-hot/,
     'the rail must light its current destination from the Deckplate lamp token');
 
@@ -95,7 +99,7 @@ test('station chrome is built from computed material, not stretched bitmaps', ()
   assert.doesNotMatch(css, /:not\(\.sx-observatory\)/);
 });
 
-test('the Field Hardware kit layer states the computed-material doctrine', () => {
+test('the Field Hardware kit layer states the printed doctrine', () => {
   // The old header in fh.css read: "EVERY material here is a produced asset ... there is no
   // linear-gradient, no box-shadow and no border: standing in for a material anywhere in this
   // file ... a screen built from CSS borders is rejected before it is looked at." That sentence is
@@ -105,10 +109,14 @@ test('the Field Hardware kit layer states the computed-material doctrine', () =>
   const fh = read('assets/ui/kit/kit/fh.css');
   assert.doesNotMatch(fh, /a screen built\s*\n?\s*\*?\s*from CSS borders is rejected/,
     'fh.css must not re-assert that computed material is rejected');
-  assert.match(fh, /MATERIAL IS COMPUTED/,
-    'fh.css must state the computed-material doctrine it now follows');
-  assert.match(fh, /CALIBRATION REFERENCE/,
-    'fh.css must record what the Cycles renders are FOR, or they read as dead weight');
+  // Was: fh.css must say MATERIAL IS COMPUTED and name the Cycles renders a CALIBRATION REFERENCE
+  // for gradient caps. The owner retired computed material the same day (sections 0 and 9).
+  assert.match(fh, /PRINTED AND LIT/,
+    'fh.css must state the printed doctrine it now follows');
+  assert.match(fh, /nothing here may reference them/,
+    'fh.css must record that the Cycles renders are reference only');
+  assert.doesNotMatch(fh.replace(/\/\*[\s\S]*?\*\//g, ''), /paint\(dp-plate\)/,
+    'fh.css must not grind a brushed face with the retired paint worklet');
 
   // The control classes themselves: no stretched key bitmaps left in the kit layer. Comments are
   // stripped first, for the same reason as above -- the header cites the filenames it retired.

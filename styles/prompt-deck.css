@@ -221,15 +221,15 @@
    means read (countdown, meter). Corners are machined 2px breaks — no 10px card radius. ══════ */
 #sf-prompt-deck .sf-prompt {
   border:5px solid transparent; border-radius:0;
-  border-image:url("/assets/ui/deckplate/hw/bezel-thin.svg") 12 / 12px / 0 stretch;
-  background:var(--dp-glass-solid), var(--dp-tex-brushed) 0 0 / 512px repeat border-box, var(--dp-metal-2);
-  box-shadow:0 10px 24px rgb(0 0 0 / .5), var(--dp-glass-depth);
+  border-image:none;
+  background:var(--dp-glass-solid), var(--dp-metal-2);
+  box-shadow:var(--dp-glass-depth);
   color:var(--dp-ink);
 }
 /* Attention states light the bezel itself rather than a consumer accent edge. */
 #sf-prompt-deck .sf-prompt--warn,
 #sf-prompt-deck .sf-prompt--danger {
-  border-image-source:url("/assets/ui/deckplate/hw/bezel-lit.svg");
+  border-image-source:none;
 }
 #sf-prompt-deck .sf-prompt__head {
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 72;
@@ -249,7 +249,7 @@
 /* the meter is a recessed phosphor channel, not a painted progress bar */
 #sf-prompt-deck .sf-prompt-meter {
   background:var(--dp-metal-0); border-radius:2px;
-  box-shadow:inset 0 1px 2px rgb(0 0 0 / .8), 0 1px 0 rgb(255 236 204 / .06);
+  box-shadow:0 1px 0 rgb(255 236 204 / .06);
 }
 #sf-prompt-deck .sf-prompt-meter i {
   background:var(--dp-phos); box-shadow:var(--dp-phos-emit-soft);
@@ -257,7 +257,7 @@
 /* verbs are glass keys; selection is the lamp — lit edge, lit legend, printed keycap */
 #sf-prompt-deck .sf-prompt__choice {
   border:0; border-radius:2px; background:var(--dp-glass-solid);
-  box-shadow:var(--dp-glass-depth), 0 4px 10px rgb(0 0 0 / .35);
+  box-shadow:var(--dp-glass-depth);
   color:var(--dp-ink-dim);
   font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 75;
   letter-spacing:.12em; text-transform:uppercase;
@@ -265,7 +265,7 @@
 }
 #sf-prompt-deck .sf-prompt__choice b {
   border:0; border-radius:0; min-width:22px; min-height:20px; padding:0 3px;
-  border-image:url("/assets/ui/deckplate/hw/keycap.svg") 10 10 12 / 8px 10px 10px / 0 stretch;
+  border-image:none;
   color:var(--dp-ink-mute); background:transparent;
 }
 #sf-prompt-deck .sf-prompt__choice:hover,
@@ -273,12 +273,12 @@
 #sf-prompt-deck .sf-prompt__choice.is-highlight {
   color:var(--dp-lamp-hot); text-shadow:var(--dp-emit-lamp);
   outline:0;
-  box-shadow:inset 3px 0 0 var(--dp-lamp), 0 8px 16px -10px var(--dp-lamp-bloom), var(--dp-glass-depth), 0 4px 10px rgb(0 0 0 / .35);
+  box-shadow:0 8px 16px -10px var(--dp-lamp-bloom), var(--dp-glass-depth);
 }
 #sf-prompt-deck .sf-prompt__choice:hover b,
 #sf-prompt-deck .sf-prompt__choice:focus-visible b,
 #sf-prompt-deck .sf-prompt__choice.is-highlight b {
-  border-image-source:url("/assets/ui/deckplate/hw/keycap.svg");
+  border-image-source:none;
   color:var(--dp-lamp-hot);
 }
 #sf-prompt-deck .sf-prompt__choice:focus-visible { outline:2px solid var(--dp-ink, #e8e2d4); outline-offset:2px; }
@@ -287,29 +287,29 @@
   opacity:1; color:var(--dp-ink-mute); cursor:not-allowed; outline:none;
   box-shadow:var(--dp-glass-depth);
 }
-#sf-prompt-deck .sf-prompt__choice--danger:not(:disabled) { box-shadow:inset 3px 0 0 var(--dp-danger), var(--dp-glass-depth), 0 4px 10px rgb(0 0 0 / .35); }
+#sf-prompt-deck .sf-prompt__choice--danger:not(:disabled) { box-shadow:var(--dp-glass-depth); }
 #sf-prompt-deck .sf-prompt__choice--danger:not(:disabled) b { color:var(--dp-danger-hot); }
 #sf-prompt-deck .sf-prompt__choice--danger:not(:disabled):hover,
 #sf-prompt-deck .sf-prompt__choice--danger:not(:disabled):focus-visible {
   color:var(--dp-danger-hot); text-shadow:0 0 12px var(--dp-danger-bloom);
-  box-shadow:inset 3px 0 0 var(--dp-danger), 0 8px 16px -10px var(--dp-danger-bloom), var(--dp-glass-depth), 0 4px 10px rgb(0 0 0 / .35);
+  box-shadow:0 8px 16px -10px var(--dp-danger-bloom), var(--dp-glass-depth);
 }
 /* collapsed decisions: the same plate language, one row */
 #sf-prompt-deck .sf-prompt-chip {
   border:0; border-radius:2px; background:var(--dp-glass-solid);
-  box-shadow:var(--dp-glass-depth), 0 4px 10px rgb(0 0 0 / .35);
+  box-shadow:var(--dp-glass-depth);
   color:var(--dp-ink-dim); font-family:var(--dp-face-etch);
   font-variation-settings:"wght" 650, "wdth" 72; letter-spacing:.1em; text-transform:uppercase;
 }
 #sf-prompt-deck .sf-prompt-chip__key {
   border:0; border-radius:0;
-  border-image:url("/assets/ui/deckplate/hw/keycap.svg") 10 10 12 / 8px 10px 10px / 0 stretch;
+  border-image:none;
   color:var(--dp-ink-mute); background:transparent;
 }
 #sf-prompt-deck .sf-prompt-chip__time { color:var(--dp-phos); text-shadow:var(--dp-emit); }
 #sf-prompt-deck .sf-prompt-chip:hover, #sf-prompt-deck .sf-prompt-chip:focus-visible {
   color:var(--dp-lamp-hot); outline:2px solid var(--dp-lamp); outline-offset:2px;
-  box-shadow:inset 3px 0 0 var(--dp-lamp), var(--dp-glass-depth), 0 4px 10px rgb(0 0 0 / .35);
+  box-shadow:var(--dp-glass-depth);
 }
 
 @media (forced-colors: active) {

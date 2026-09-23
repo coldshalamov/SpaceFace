@@ -166,14 +166,13 @@ export const DECKPLATE_LAYOUT_CSS = `
   font-size:var(--dp-fs-title);
   line-height:.92; letter-spacing:-.005em; text-transform:uppercase;
   color:var(--dp-ink);
-  /* Cut, not embossed: the incision reads above the stroke, the bounce below it. */
-  text-shadow:0 -1px 0 rgb(0 0 0 / .62), 0 1px 0 rgb(255 232 190 / .13), 0 3px 16px rgb(0 0 0 / .45);
+  /* Printed, not engraved (owner, 2026-09-22): one legibility shadow over the world. */
+  text-shadow:var(--dp-text-legible);
 }
 .dp-title__name--hero { font-size:var(--dp-fs-name); font-variation-settings:"wght" 800, "wdth" 86; }
 .dp-title__rule {
-  height:2px; margin-top:calc(var(--dp-u) * 1.5);
-  background:linear-gradient(90deg, var(--dp-metal-4) 0%, var(--dp-metal-3) 42%, transparent 100%);
-  box-shadow:0 1px 0 var(--dp-key-edge);
+  height:1px; margin-top:calc(var(--dp-u) * 1.5);
+  background:linear-gradient(90deg, var(--dp-rule-hi) 0%, var(--dp-rule) 42%, transparent 100%);
 }
 /* The one place a screen may say something beside its title. */
 .dp-title__aside { margin-left:auto; display:flex; align-items:center; gap:var(--dp-gap); }
@@ -225,12 +224,12 @@ export const DECKPLATE_LAYOUT_CSS = `
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
-   3. dp-menu — a menu item is a machined target, not a line of text.
+   3. dp-menu — a menu item is a target, not a line of text.
 
-   At rest the plate is dark and the lamp is cold: the item is hardware you COULD wake. On hover or
-   focus the lamp comes up, the plate catches the key light, and the item slides one unit toward
-   the reader — the travel is what makes it feel like a switch rather than a link. Disabled keeps
-   the plate and kills the lamp, so a dead control looks dead instead of looking unstyled.
+   At rest the lamp is cold: the item is something you COULD wake. On hover or focus the lamp comes
+   up, a faint ink field appears behind the word, and the item slides one unit toward the reader —
+   the travel is what makes it feel like a switch rather than a link. No plate catches a key light:
+   there is no plate (owner, 2026-09-22). Disabled kills the lamp, so a dead control looks dead.
    ══════════════════════════════════════════════════════════════════════════════════════════════ */
 .dp-menu { display:flex; flex-direction:column; gap:calc(var(--dp-u) * 1.5); margin:0; padding:0; list-style:none; }
 .dp-menu__item {
@@ -270,8 +269,8 @@ export const DECKPLATE_LAYOUT_CSS = `
   color:var(--dp-ink);
   font-variation-settings:"wght" 800, "wdth" 104;
   transform:translateX(calc(var(--dp-u) * 1.5));
-  background-color:rgb(255 232 190 / .035);
-  box-shadow:inset 0 1px 0 rgb(255 232 190 / .10), inset 0 -1px 0 rgb(0 0 0 / .35);
+  background-color:rgb(232 226 212 / .05);
+  box-shadow:none;
   outline:none;
 }
 /* C6 — the rail is a filament. --dp-lamp-current is typed, so one number drives the colour, the
@@ -283,12 +282,9 @@ export const DECKPLATE_LAYOUT_CSS = `
   background:var(--dp-lamp-now);
   box-shadow:0 0 var(--dp-lamp-halo) var(--dp-lamp-bloom), 0 0 3px var(--dp-lamp-bloom);
 }
-/* Focus is the lamp at full current plus a machined edge on the plate, not a drawn rectangle
-   floating around the word. The rail going hot is the primary cue; the edge is the confirmation. */
-.dp-menu__item:focus-visible {
-  box-shadow:inset 0 1px 0 var(--dp-key-edge), inset 0 -1px 0 var(--dp-shade-edge),
-    inset 0 0 0 1px rgb(242 185 80 / .16);
-}
+/* Focus is the lamp at full current plus the ink field, not a drawn rectangle floating around
+   the word. The rail going hot is the primary cue. */
+.dp-menu__item:focus-visible { background-color:rgb(232 226 212 / .08); }
 .dp-menu__item:focus-visible::before { background:var(--dp-lamp-hot); box-shadow:0 0 14px var(--dp-lamp-bloom), 0 0 4px var(--dp-lamp-bloom); }
 .dp-menu__item:active { transform:translateX(calc(var(--dp-u) * 1.5)) translateY(1px); }
 .dp-menu__item[aria-disabled="true"], .dp-menu__item:disabled {
@@ -347,8 +343,7 @@ export const DECKPLATE_LAYOUT_CSS = `
   font-family:var(--dp-face-etch);
   font-variation-settings:"wght" 660, "wdth" 74;
   letter-spacing:.11em;
-  background-image:var(--dp-plate-img); background-color:var(--dp-metal-1);
-  box-shadow:var(--dp-plate-bevel);
+  background-color:var(--dp-field-ink);
 }
 .dp-menu--banked > li[data-bank] .dp-menu__item::before { top:14%; bottom:14%; }
 .dp-menu--banked > li[data-bank] .dp-menu__item:is(:hover, :focus-visible) { transform:translateY(-1px); }
@@ -373,7 +368,7 @@ export const DECKPLATE_LAYOUT_CSS = `
 .dp-menu__item--fine::before { display:none; }
 .dp-menu__item--fine:is(:hover, :focus-visible) {
   transform:none; color:var(--dp-lamp); background-color:transparent;
-  box-shadow:inset 0 -1px 0 var(--dp-lamp);
+  background-image:linear-gradient(0deg, var(--dp-lamp) 1px, transparent 0);
 }
 
 /* PRIMARY — the one verb the screen exists for. It is the only item whose lamp is already lit, and
@@ -388,19 +383,18 @@ export const DECKPLATE_LAYOUT_CSS = `
 .dp-menu__item--danger::before { background:var(--dp-danger); opacity:.35; }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
-   4. dp-field — a slot cut into the plate.
+   4. dp-field — a place you type into: words on a rail.
 
-   Recessed (the channel material), with the lamp living under the lip. At rest the underline is a
-   cold machined line; on focus it becomes the filament. No rounded pill, no 1px grey box.
+   No recessed slot (owner, 2026-09-22: CSS pretending to be a material). At rest the rail is a
+   quiet hairline; on focus it becomes the lamp. No rounded pill, no 1px grey box.
    ══════════════════════════════════════════════════════════════════════════════════════════════ */
 .dp-field { position:relative; display:flex; align-items:center; gap:calc(var(--dp-u) * 2); min-width:0; }
 .dp-field__slot {
   flex:1 1 auto; min-width:0; box-sizing:border-box;
   padding:calc(var(--dp-u) * 2) calc(var(--dp-u) * 2.5);
-  border:0; border-radius:var(--dp-r-plate) var(--dp-r-plate) 0 0;
-  background-color:var(--dp-metal-0);
-  background-image:var(--dp-channel-img);
-  box-shadow:var(--dp-channel-bevel), inset 0 -2px 0 var(--dp-metal-4);
+  border:0; border-radius:0;
+  background:linear-gradient(0deg, var(--dp-rule-hi) 2px, transparent 0);
+  box-shadow:none;
   color:var(--dp-ink);
   font-family:var(--dp-face-read); font-size:var(--dp-fs-data);
   font-variant-numeric:tabular-nums;
@@ -409,9 +403,10 @@ export const DECKPLATE_LAYOUT_CSS = `
 .dp-field__slot::placeholder { color:var(--dp-ink-mute); opacity:1; }
 .dp-field__slot:focus, .dp-field__slot:focus-visible {
   outline:none;
-  box-shadow:var(--dp-channel-bevel), inset 0 -2px 0 var(--dp-lamp), 0 2px 10px -4px var(--dp-lamp-bloom);
+  background:linear-gradient(0deg, var(--dp-lamp) 2px, transparent 0);
+  box-shadow:0 8px 12px -10px var(--dp-lamp-bloom);
 }
-.dp-field__slot:disabled { color:var(--dp-ink-mute); box-shadow:var(--dp-channel-bevel), inset 0 -2px 0 var(--dp-metal-3); }
+.dp-field__slot:disabled { color:var(--dp-ink-mute); background:linear-gradient(0deg, var(--dp-rule) 2px, transparent 0); }
 .dp-field__mark { flex:0 0 auto; color:var(--dp-ink-mute); display:flex; }
 .dp-field__slot:focus ~ .dp-field__mark, .dp-field:focus-within .dp-field__mark { color:var(--dp-lamp); }
 
@@ -437,9 +432,7 @@ export const DECKPLATE_LAYOUT_CSS = `
   font-size:var(--dp-fs-etch);
   letter-spacing:.17em; text-transform:uppercase;
   color:var(--dp-ink-mute);
-  text-shadow:var(--dp-etch-shadow);
-  border-bottom:1px solid var(--dp-metal-4);
-  box-shadow:0 1px 0 var(--dp-key-edge);
+  border-bottom:1px solid var(--dp-rule-hi);
 }
 .dp-table__body { display:flex; flex-direction:column; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; }
 .dp-table__row {
@@ -463,11 +456,10 @@ export const DECKPLATE_LAYOUT_CSS = `
 .dp-table__row:is(:hover, :focus-visible)::before { opacity:.8; }
 .dp-table__row[aria-selected="true"] {
   color:var(--dp-ink);
-  background-color:rgb(255 232 190 / .07);
-  box-shadow:inset 0 1px 0 rgb(255 232 190 / .10), inset 0 -1px 0 rgb(0 0 0 / .4);
+  background-color:rgb(232 226 212 / .08);
 }
 .dp-table__row[aria-selected="true"]::before { opacity:1; box-shadow:0 0 9px var(--dp-lamp-bloom); }
-.dp-table__row:focus-visible { box-shadow:inset 0 0 0 1px var(--dp-lamp); }
+.dp-table__row:focus-visible { background-image:var(--dp-bracket); }
 
 /* C5 (scroll-driven arrival) was here and is RETIRED, 2026-09-22.
    design/frontend/ONE_PHOTOGRAPH.md §4.14: a row resolving from transparent as it enters the

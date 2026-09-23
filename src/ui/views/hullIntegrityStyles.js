@@ -11,8 +11,8 @@ export const HULL_INTEGRITY_CSS = `
   position:relative; display:block; isolation:isolate; contain:style; box-sizing:border-box;
   width:100%; max-width:272px; height:auto; aspect-ratio:272 / 174; grid-column:1 / -1; grid-row:auto;
   margin:0; padding:0; border:0; border-radius:var(--dp-r-instrument, 3px); overflow:visible;
-  background-color:var(--dp-metal-1, #12151a); background-image:var(--dp-plate-img, none);
-  box-shadow:var(--dp-plate-bevel-raised, 0 2px 10px rgb(0 0 0 / .38));
+  background-color:var(--dp-metal-1, #12151a); background-image:none;
+  box-shadow:none;
   color:var(--si-paper); font-family:var(--k-text, 'Instrument Sans'), Arial, sans-serif;
   font-size:12px; line-height:1; font-variant-numeric:tabular-nums; text-shadow:none;
 }

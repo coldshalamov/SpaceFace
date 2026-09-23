@@ -50,9 +50,12 @@ test('the Crucible readout is an instrument, not a translucent rectangle', () =>
     'the parent comms bezel is the chassis; the readout is the glass');
 });
 
-test('the results plate assembles deckplate bezels and keycaps', () => {
+// Owner ruling 2026-09-22 (design/frontend/ONE_PHOTOGRAPH.md section 0): CSS may not imitate a
+// physical material. This assertion used to REQUIRE a fastened SVG bezel / keycap; it now requires
+// the printed replacement and forbids the bezel coming back.
+test('the results plate assembles printed fields and keys', () => {
   assert.match(screensCss, /sf-crucible-results/, 'results has a deckplate skin');
-  assert.match(screensCss, /CRRES[\s\S]*bezel\.svg/, 'story and ledger sit in bezels');
-  assert.match(screensCss, /\$\{dpKey\(`\$\{CRRES\} \.k-foot \.k-word`\)\}/,
-    'the three ways out are keycaps');
+  assert.doesNotMatch(screensCss, /(?:bezel|keycap)[a-z-]*\.svg/, 'story and ledger sit on printed fields, not bezels');
+  assert.match(screensCss, /\$\{printedKey\(`\$\{CRRES\} \.k-foot \.k-word`\)\}/,
+    'the three ways out are printed keys');
 });

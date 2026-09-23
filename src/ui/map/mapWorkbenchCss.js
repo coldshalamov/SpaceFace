@@ -1,4 +1,5 @@
-/** Chart workbench — the flight HUD structural kit, scoped to the map. */
+/** Chart workbench -- the flight HUD structural kit, scoped to the map. Printed, not machined
+ *  (owner, 2026-09-22): a panel is a flat field, the primary control is the lamp with the cut. */
 export const MAP_WORKBENCH_CSS = `
 #sf-galaxymap {
   --sf-map-accent: var(--dp-lamp);
@@ -9,9 +10,9 @@ export const MAP_WORKBENCH_CSS = `
 }
 #sf-galaxymap :is(.gm-right-inspector, .gm-apron, .gm-ribbon) {
   border: 14px solid transparent;
-  border-image: url("/assets/ui/deckplate/hw/bezel.svg") 30 / 30px / 0 stretch;
+  border-image: none;
   border-radius: 0;
-  background-color: var(--dp-metal-2);
+  background: var(--dp-field);
   box-shadow: none;
 }
 #sf-galaxymap button[data-sf-role="primary"] {
@@ -20,9 +21,13 @@ export const MAP_WORKBENCH_CSS = `
   border-style: solid;
   border-color: transparent;
   border-width: 10px 10px 12px;
-  border-image: url("/assets/ui/deckplate/hw/keycap.svg") 10 10 12 / 10px 10px 12px / 0 stretch;
+  border-image: none;
   border-radius: 0;
-  background-color: var(--dp-metal-3);
-  color: var(--sf-map-accent);
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut) * .7071), var(--dp-lamp) 0);
+  color: var(--dp-metal-0);
+}
+#sf-galaxymap button[data-sf-role="primary"]:is(:disabled, [aria-disabled="true"]) {
+  background: linear-gradient(0deg, var(--dp-lamp-dim) 1px, transparent 0);
+  color: var(--dp-ink-mute);
 }
 `;
