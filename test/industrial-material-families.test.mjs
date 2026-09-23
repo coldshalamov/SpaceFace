@@ -224,6 +224,20 @@ test('no family exceeds the existing reflection ceiling — this redistributes, 
     'lacquer is a coating, exposed working edges are metal');
 });
 
+// TOOL-05: the seal reads in the direction the Rubber004 scan actually is. The scan measures
+// mean roughness 0.59 (range 0.40-0.82) — a satin elastomer. The family multiplier lands a
+// typical seal (base roughness ~0.9-1.0) inside that envelope; dead-matte (>=1.0) reads drier
+// than the material ever does.
+test('matte_seal sits inside the Rubber004 roughness envelope, not dead-matte', () => {
+  const seal = MATERIAL_FAMILIES.matte_seal;
+  assert.ok(seal.roughness >= 0.50 && seal.roughness <= 0.80,
+    `seal multiplier ${seal.roughness} outside the Rubber004 envelope (0.40-0.82 scan, mean 0.59)`);
+  assert.ok(seal.roughness < 1.0, 'a multiplier at or above 1 reads drier than the scan');
+  // The seal stays an elastomer, not a metal — only the roughness direction moved.
+  assert.ok(seal.metalness <= 0.3);
+  assert.equal('color' in seal, false, 'the seal keeps the painted family color — no family tint');
+});
+
 // ----------------------------------------------------------------------------- state / attention
 
 test('emission is never invented for a surface the author left dark', () => {

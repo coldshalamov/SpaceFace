@@ -53,8 +53,11 @@ export const MATERIAL_FAMILIES = Object.freeze({
   radiator_fin: Object.freeze({
     id: 'radiator_fin', substance: 'thermal-fin', env: 1.70, roughness: 0.94, metalness: 1.00,
   }),
+  // Elastomer gasket and seal stock: the Rubber004 scan measures mean roughness 0.59
+  // (range 0.40-0.82) — satin, not dead-matte. A multiplier near the scan lets seals
+  // pick up a soft sheen under service lighting instead of reading as dry chalk.
   matte_seal: Object.freeze({
-    id: 'matte_seal', substance: 'elastomer', env: 0.55, roughness: 1.12, metalness: 0.15,
+    id: 'matte_seal', substance: 'elastomer', env: 0.55, roughness: 0.62, metalness: 0.15,
   }),
   // Printed markings do not shine. Today they carry the same 2.1 as the plate they sit on, which is
   // motivates a separate response for printed markings.
