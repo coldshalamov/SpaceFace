@@ -59,6 +59,8 @@ const SCREENS = Object.freeze({
   drill: () => import('../src/ui/asteroid/asteroidScreen.js').then((m) => m.asteroidScreen),
   localmap: () => import('../src/ui/screens/localmap.js').then((m) => m.localmapScreen),
   starmap: () => import('../src/ui/screens/starmap.js').then((m) => m.starmapScreen),
+  // ORRERY (design/frontend/ORRERY.md): the Phase 0a direction proof, the flight HUD composed from the library.
+  orreryFlight: () => import('../src/ui/orrery/flightPreview.js').then((m) => m.orreryFlightScreen),
 });
 
 /** The flight HUD is not a .mount() screen; it is the always-mounted overlay createHud() builds
@@ -477,6 +479,8 @@ async function goto(rawId) {
       const ctx = { state, bus, screenManager: manager, registry, writeStorePage() {}, publishStoreStill() {} };
       screen.mount(root, ctx);
       screen.onShow?.(ctx);
+      // An ORRERY screen arrives with choreography (rings draw, springs settle); shoot it at rest.
+      if (typeof screen.settled === 'function') await screen.settled();
       benchOwnerLive = !!benchDraftOwner;
       currentScreen = screen;
       current = id;

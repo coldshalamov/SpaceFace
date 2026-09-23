@@ -6,6 +6,7 @@ export const BACKDROPS = Object.freeze({
   title: '../assets/ui/backdrops/backdrop-title.jpg',
   shell: '../assets/ui/backdrops/backdrop-shell.jpg',
   world: '../assets/ui/backdrops/backdrop-crucible-door.jpg',
+  space: '../assets/ui/backdrops/backdrop-space.jpg',
 });
 
 /** `ruleset` picks the Crucible run a draft/refit shot seeds (tools/ui-bench.js seedCrucibleShot).
@@ -40,6 +41,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'flight', screen: 'flight', backdrop: 'world' },
   { id: 'power-rail', screen: 'flight', backdrop: 'world' },
   { id: 'crucibleHud', screen: 'crucibleHud', backdrop: 'world' },
+  // ORRERY Phase 0a: the flight HUD composed from src/ui/orrery over a real frame of open flight.
+  { id: 'orrery-flight', screen: 'orreryFlight', backdrop: 'space' },
   { id: 'comms-radial', screen: 'flight', overlay: 'comms', backdrop: 'world' },
   { id: 'wingman-radial', screen: 'flight', overlay: 'wingman', backdrop: 'world' },
 
