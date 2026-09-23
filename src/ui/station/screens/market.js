@@ -700,7 +700,7 @@ export function createMarketScreen(ctx) {
     stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
     quoteEl.innerHTML = marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
       titleHtml: entitySpanHtml('commodity:' + r.id, escapeHtml(def.name)), mode, buy, sell, avg,
-      demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, hist, trackedGuidance,
+      demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, drivers: drivers.primary, hist, trackedGuidance,
       producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
       quoteAge: quoteAgeWord(state, sid, r.id), saleQty: qty,
@@ -949,6 +949,149 @@ export function createMarketScreen(ctx) {
       renderStage(state);
       renderConsole(state);
     }
+  });
+
+  // THE CROSSHAIR. The quote's trace carries every sample in data-points ("x%:y%:price:secondsFromNow:h|f");
+  // hovering the plot parks a hairline on the nearest one and reads its price and age beside it.
+  // Nothing re-renders: the cursor is one element inside the plot, moved by transform.
+  function relAge(sec, kind) {
+    const n = Number(sec);
+    if (!Number.isFinite(n)) return kind === 'f' ? 'forecast' : '';
+    if (kind === 'f') return n <= 0 ? 'now' : `in ${Math.max(1, Math.round(n / 60))} min`;
+    const ago = -n;
+    if (ago < 20) return 'now';
+    return ago < 90 ? `${Math.round(ago)} s ago` : `${Math.round(ago / 60)} min ago`;
+  }
+  function chartSamples(host) {
+    if (host._samples && host._samplesSrc === host.dataset.points) return host._samples;
+    host._samplesSrc = host.dataset.points || '';
+    host._samples = host._samplesSrc.split(';').filter(Boolean).map((row) => {
+      const [x, y, price, sec, kind] = row.split(':');
+      return { x: Number(x), y: Number(y), price: Number(price), sec: sec === '' ? NaN : Number(sec), kind };
+    }).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    return host._samples;
+  }
+  function showSample(plot, index, { announce = false } = {}) {
+    const host = plot.closest('[data-chart-host]');
+    const cursor = plot.querySelector('[data-chart-cursor]');
+    const samples = host ? chartSamples(host) : [];
+    if (!cursor || !samples.length) return;
+    const i = Math.max(0, Math.min(samples.length - 1, index));
+    const best = samples[i];
+    plot._index = i;
+    cursor.hidden = false;
+    cursor.style.setProperty('--cx', `${best.x}%`);
+    cursor.style.setProperty('--cy', `${best.y}%`);
+    cursor.dataset.kind = best.kind;
+    cursor.classList.toggle('is-left', best.x > 70);
+    const age = relAge(best.sec, best.kind);
+    const text = `${fmt(best.price)} cr${age ? ' · ' + age : ''}`;
+    const label = cursor.querySelector('b');
+    if (label) label.textContent = text;
+    if (announce) {
+      const live = plot.querySelector('[data-chart-live]');
+      if (live) live.textContent = `${best.kind === 'f' ? 'Forecast' : 'Sample'} ${i + 1} of ${samples.length}: ${fmt(best.price)} credits${age ? ', ' + age : ''}.`;
+    }
+  }
+  quoteEl.addEventListener('pointermove', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    if (!plot) return;
+    const host = plot.closest('[data-chart-host]');
+    const samples = host ? chartSamples(host) : [];
+    if (!samples.length) return;
+    const rect = plot.getBoundingClientRect();
+    if (!rect.width) return;
+    const fx = ((ev.clientX - rect.left) / rect.width) * 100;
+    let best = 0;
+    for (let i = 1; i < samples.length; i++) if (Math.abs(samples[i].x - fx) < Math.abs(samples[best].x - fx)) best = i;
+    showSample(plot, best);
+  });
+  quoteEl.addEventListener('pointerleave', () => {
+    const cursor = quoteEl.querySelector('[data-chart-cursor]');
+    const plot = quoteEl.querySelector('.sx-mkt-instrument__plot');
+    if (cursor && (!plot || plot !== document.activeElement)) cursor.hidden = true;
+  });
+  // Keyboard: the plot takes focus; Left/Right step through the samples (Home/End jump), and each
+  // step is read aloud -- the same inspection the older probe offered, on the new instrument.
+  quoteEl.addEventListener('keydown', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    if (!plot || plot !== ev.target) return;
+    const host = plot.closest('[data-chart-host]');
+    const n = host ? chartSamples(host).length : 0;
+    if (!n) return;
+    const at = Number.isInteger(plot._index) ? plot._index : n - 1;
+    const next = ev.key === 'ArrowLeft' ? at - 1 : ev.key === 'ArrowRight' ? at + 1
+      : ev.key === 'Home' ? 0 : ev.key === 'End' ? n - 1 : null;
+    if (next === null) return;
+    ev.preventDefault();
+    showSample(plot, next, { announce: true });
+  });
+  quoteEl.addEventListener('focusin', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    if (plot && plot === ev.target) {
+      const host = plot.closest('[data-chart-host]');
+      const n = host ? chartSamples(host).length : 0;
+      if (n) showSample(plot, Number.isInteger(plot._index) ? plot._index : n - 1, { announce: true });
+    }
+  });
+  quoteEl.addEventListener('focusout', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    const cursor = plot && plot.querySelector('[data-chart-cursor]');
+    if (cursor) cursor.hidden = true;
+  });
+
+  // THE SCRUB. Press on the quantity numeral and drag sideways: the amount runs from 0 to what you
+  // can move, the total rolling live. One unit per 6px, faster the further you pull, clamped to
+  // the trade limit -- the same limit Max uses. Typing still works; so do Fewer/More/Max and the
+  // arrow keys, which are the keyboard channel for the same control.
+  let scrub = null;
+  function scrubLimit() {
+    const state = ctx.state || {};
+    const rows = tradedList(state); const r = rows.find((x) => x.id === selectedId);
+    return r ? tradeQuantityLimit(state, { id: selectedId, entry: r.entry, def: r.def }) : 0;
+  }
+  consoleEl.addEventListener('pointerdown', (ev) => {
+    const input = ev.target.closest && ev.target.closest('.sx-qty__in');
+    if (!input || ev.button !== 0) return;
+    scrub = { x: ev.clientX, base: qty, limit: scrubLimit(), moved: false, id: ev.pointerId, input };
+  });
+  consoleEl.addEventListener('pointermove', (ev) => {
+    if (!scrub || ev.pointerId !== scrub.id) return;
+    const dx = ev.clientX - scrub.x;
+    if (!scrub.moved && Math.abs(dx) < 4) return;
+    if (!scrub.moved) {
+      scrub.moved = true;
+      try { scrub.input.setPointerCapture(ev.pointerId); } catch (_) {}
+      consoleEl.classList.add('is-scrubbing');
+    }
+    ev.preventDefault();
+    const steps = Math.sign(dx) * Math.floor(Math.pow(Math.abs(dx) / 6, 1.25));
+    const next = Math.max(0, Math.min(scrub.limit, scrub.base + steps));
+    if (next === qty) return;
+    qty = next;
+    scrub.input.value = String(qty);
+    renderStage(ctx.state || {});
+    renderConsole(ctx.state || {}, { receiptOnly: true });
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
+  });
+  function endScrub(ev) {
+    if (!scrub || (ev && ev.pointerId !== scrub.id)) return;
+    const moved = scrub.moved;
+    scrub = null;
+    consoleEl.classList.remove('is-scrubbing');
+    if (moved) renderConsole(ctx.state || {});
+  }
+  consoleEl.addEventListener('pointerup', endScrub);
+  consoleEl.addEventListener('pointercancel', endScrub);
+  consoleEl.addEventListener('keydown', (ev) => {
+    if (!ev.target.classList || !ev.target.classList.contains('sx-qty__in')) return;
+    if (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown') return;
+    ev.preventDefault();
+    const step = ev.shiftKey ? 10 : 1;
+    qty = Math.max(0, Math.min(scrubLimit(), qty + (ev.key === 'ArrowUp' ? step : -step)));
+    ev.target.value = String(qty);
+    renderStage(ctx.state || {});
+    renderConsole(ctx.state || {}, { receiptOnly: true });
   });
 
   consoleEl.addEventListener('input', (ev) => {

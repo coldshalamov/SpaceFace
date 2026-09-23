@@ -1843,12 +1843,18 @@ input[type="radio"]:checked::before {
    modes both need the second channel (grammar §4). */
 .sf-entity-link {
   font: inherit; color: var(--sf-paper); background: none; border: 0; padding: 0;
-  text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--sf-you) 55%, transparent);
-  text-underline-offset: 3px; cursor: pointer; text-transform: none; letter-spacing: normal;
+  /* The underline is the LAMP, not green (2026-09-22, ONE_PHOTOGRAPH.md section 4.8: a hue leak).
+     A name you can open is a thing you can act on, and amber is the one colour for that. It was
+     --sf-you at 55%, which put a green bar under every station name and commodity title. Its
+     weight follows the type (a hairline on body text, a 3px rule under an 80px title) so a title
+     link never reads as a thick coloured border. */
+  text-decoration: underline; text-decoration-color: rgb(242 185 80 / .5);
+  text-decoration-thickness: max(1px, .045em);
+  text-underline-offset: max(3px, .12em); cursor: pointer; text-transform: none; letter-spacing: normal;
   box-shadow: none; text-align: left; min-width: 0; overflow-wrap: break-word;
 }
-.sf-entity-link:hover { color: var(--sf-you); text-decoration-color: var(--sf-you); }
-.sf-entity-link:focus-visible { outline: 2px solid var(--sf-you); outline-offset: 2px; }
+.sf-entity-link:hover { color: var(--dp-ink, #e8e2d4); text-decoration-color: var(--dp-lamp-hot, #ffd98c); }
+.sf-entity-link:focus-visible { outline: 2px solid var(--dp-ink, #e8e2d4); outline-offset: 2px; }
 .sf-entity-link:active { transform: none; }
 .sf-drawer__links { display: flex; flex-direction: column; min-width: 0; }
 .sf-entity-link--row {
@@ -1856,7 +1862,7 @@ input[type="radio"]:checked::before {
   text-decoration-color: transparent;   /* the row IS the affordance; underline returns on hover/focus */
 }
 .sf-entity-link--row:last-child { border-bottom: 0; }
-.sf-entity-link--row:hover, .sf-entity-link--row:focus-visible { text-decoration-color: var(--sf-you); }
+.sf-entity-link--row:hover, .sf-entity-link--row:focus-visible { text-decoration-color: var(--dp-lamp-hot, #ffd98c); }
 
 .sf-drawer--entity { --sf-entity-accent: var(--sf-calm); }
 .sf-drawerlayer > .sf-drawer--entity { top: auto; bottom: 0; height: fit-content; max-height: 100%; }

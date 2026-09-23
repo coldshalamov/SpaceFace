@@ -84,57 +84,92 @@ export function trendHtml(history = []) {
   const pct = Math.round(((hist.at(-1) - hist[0]) / hist[0]) * 100);
   return `<span class="sx-mkt-row__tr k-t-fine ${pct >= 0 ? 'k-good is-up' : 'k-bad is-down'}">${pct >= 0 ? '▲' : '▼'}${Math.abs(pct)}%</span>`;
 }
+/**
+ * The quote's instrument: the last ten minutes of this station's price, drawn as light.
+ *
+ * It used to be a 300x74 SVG scaled up to fill its box -- a thin line in a dark rectangle that a
+ * player read as the "Stable demand" box, an instrument that showed nothing (ONE_PHOTOGRAPH.md
+ * section 4.5). Now the plot is sized to its container: the trace is a 2px phosphor line that
+ * stays 2px at any width (non-scaling stroke), the galactic average is a dashed reference, the
+ * station's buy and sell quotes are two lamp ticks on the right edge, and the forecast cone keeps
+ * its place after "now". Labels are HTML, positioned in percent, so they are real type at any
+ * scale instead of text stretched with the drawing. Every sample is written into data-points so
+ * the controller can run a hover crosshair without recomputing anything.
+ */
 export function buildChart(history, average, gradientId, label, extras = {}) {
   const histPts = historySamples(history);
   const hist = histPts.map((p) => p.mid);
   if (!hist.length) return '<p class="k-empty">Price history unavailable.</p>';
   const forecastPts = forecastSamples(extras && extras.forecast);
   const forecast = forecastPts.map((p) => p.mid);
-  const W = 300, H = 74, pad = 5;
+  const W = 1000, H = 240, pad = 10;
   const avg = Number.isFinite(Number(average)) ? Number(average) : hist[0];
-  const min = Math.min(...hist, avg, ...(forecast.length ? forecast : [hist[0]]));
-  const max = Math.max(...hist, avg, ...(forecast.length ? forecast : [hist[0]]));
-  // A FLAT SERIES MUST NOT DRAW AT THE FLOOR. `max - min || 1` turns an unchanging price into a
-  // span of 1, and every sample then maps to (1 - 0/1) = the bottom of the box: the chart claimed
-  // the price was pinned at its minimum when in fact it had not moved at all, and left the whole
-  // instrument empty above it. A commodity at rest sits on the mid-line.
+  const buyQ = Number(extras && extras.buy);
+  const sellQ = Number(extras && extras.sell);
+  const refs = [avg, ...(Number.isFinite(buyQ) ? [buyQ] : []), ...(Number.isFinite(sellQ) ? [sellQ] : [])];
+  let min = Math.min(...hist, ...refs, ...(forecast.length ? forecast : [hist[0]]));
+  let max = Math.max(...hist, ...refs, ...(forecast.length ? forecast : [hist[0]]));
+  // A FLAT SERIES MUST NOT DRAW AT THE FLOOR. `max - min || 1` turned an unchanging price into a
+  // span of 1 and every sample then mapped to the bottom of the box. A commodity at rest sits on
+  // the mid-line, with a little headroom either side so the reference lines separate.
   const flat = max - min < 1e-9;
+  if (!flat) { const head = (max - min) * 0.12; min -= head; max += head; }
   const span = flat ? 1 : max - min;
   const mapper = chartXMapper(histPts, forecastPts, extras && extras.now, pad, W - 2 * pad);
   const y = flat ? () => H / 2 : (v) => pad + (1 - (v - min) / span) * (H - 2 * pad);
-  const histCoords = histPts.map((p, i) => ({
-    x: mapper.at(p.t, i),
-    y: y(p.mid),
-  }));
+  const histCoords = histPts.map((p, i) => ({ x: mapper.at(p.t, i), y: y(p.mid), mid: p.mid, t: p.t }));
   const points = histCoords.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`);
-  const endX = histCoords.at(-1).x.toFixed(1);
-  const endY = histCoords.at(-1).y.toFixed(1);
+  const end = histCoords.at(-1);
+  const endX = end.x.toFixed(1);
   const histMids = hist.join(',');
   let coneMarkup = '';
+  let forecastCoords = [];
   if (forecastPts.length) {
     const join = histCoords.at(-1);
-    const forecastCoords = forecastPts.map((p, i) => ({
-      x: mapper.at(p.t, histPts.length + i),
-      y: y(p.mid),
-    }));
+    forecastCoords = forecastPts.map((p, i) => ({ x: mapper.at(p.t, histPts.length + i), y: y(p.mid), mid: p.mid, t: p.t }));
     const coneCoords = [join, ...forecastCoords];
     const conePoints = coneCoords.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`);
     const forecastLine = forecastCoords.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`);
     const nowX = join.x.toFixed(1);
     const lastX = coneCoords.at(-1).x.toFixed(1);
-    coneMarkup = `<line class="sx-mkt-now" data-now x1="${nowX}" y1="${pad}" x2="${nowX}" y2="${H - pad}"/>
-    <path class="sx-mkt-cone" data-forecast-band data-forecast-mids="${escapeHtml(forecast.join(','))}" d="M ${conePoints.join(' L ')} L ${lastX},${H - pad} L ${nowX},${H - pad} Z"/>
-    <path class="sx-mkt-forecast" data-forecast-line fill="none" stroke-width="1.4" stroke-dasharray="4 3" stroke-linejoin="round" d="M ${forecastLine.join(' L ')}"/>`;
+    coneMarkup = `<line class="sx-mkt-now" data-now x1="${nowX}" y1="0" x2="${nowX}" y2="${H}" vector-effect="non-scaling-stroke"/>
+    <path class="sx-mkt-cone" data-forecast-band data-forecast-mids="${escapeHtml(forecast.join(','))}" d="M ${conePoints.join(' L ')} L ${lastX},${H} L ${nowX},${H} Z"/>
+    <path class="sx-mkt-forecast" data-forecast-line fill="none" vector-effect="non-scaling-stroke" stroke-dasharray="6 5" stroke-linejoin="round" d="M ${forecastLine.join(' L ')}"/>`;
   }
   const forecastNote = forecast.length
     ? ` History ${hist.length} samples, ${fmt(hist[0])} to ${fmt(hist.at(-1))} credits. Forecast ${forecast.length} steps, ${fmt(forecast[0])} to ${fmt(forecast.at(-1))} credits.`
     : `: ${hist.length} samples, ${fmt(hist[0])} to ${fmt(hist.at(-1))} credits.`;
-  return `<svg class="sx-mkt-chart" data-chart="${escapeHtml(gradientId)}" data-history-mids="${escapeHtml(histMids)}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(label || 'Price history')}${forecastNote}">
-    <line class="sx-mkt-avg" x1="${pad}" y1="${y(avg).toFixed(1)}" x2="${W-pad}" y2="${y(avg).toFixed(1)}" stroke-dasharray="2 4"/>
-    <path class="of-chart-area" d="M ${pad},${H-pad} L ${points.join(' L ')} L ${endX},${H-pad} Z"/>
-    <path class="sx-mkt-line" data-history-line d="M ${points.join(' L ')}" fill="none" stroke-width="1.6" stroke-linejoin="round"/>
-    ${coneMarkup}
-    <circle cx="${endX}" cy="${endY}" r="3"/></svg>`;
+  // percent positions for the HTML overlay (labels, the live dot, the crosshair's samples)
+  const px = (x) => ((x / W) * 100).toFixed(2);
+  const py = (v) => ((y(v) / H) * 100).toFixed(2);
+  const now = Number(extras && extras.now);
+  const ago = (t) => (Number.isFinite(t) && Number.isFinite(now) ? Math.round(t - now) : '');
+  const dataPoints = [...histCoords.map((p) => `${px(p.x)}:${((p.y / H) * 100).toFixed(2)}:${Math.round(p.mid)}:${ago(p.t)}:h`),
+    ...forecastCoords.map((p) => `${px(p.x)}:${((p.y / H) * 100).toFixed(2)}:${Math.round(p.mid)}:${ago(p.t)}:f`)].join(';');
+  const tick = (cls, v, word) => (Number.isFinite(v)
+    ? `<span class="sx-mkt-instrument__tick sx-mkt-instrument__tick--${cls}" style="top:${py(v)}%" aria-hidden="true"><i></i>${word} ${fmt(v)}</span>` : '');
+  const rangeLabels = flat ? '' :
+    `<span class="sx-mkt-instrument__y sx-mkt-instrument__y--max" aria-hidden="true">${fmt(max)}</span>` +
+    `<span class="sx-mkt-instrument__y sx-mkt-instrument__y--min" aria-hidden="true">${fmt(min)}</span>`;
+  // data-so-chart opts the trace out of stationEffects' older in-SVG probe: this instrument carries
+  // its own crosshair (pointer and Left/Right keys, market.js), drawn in HTML so its label is not
+  // stretched with the plot.
+  return `<figure class="sx-mkt-instrument" data-chart-host data-points="${escapeHtml(dataPoints)}">
+  <div class="sx-mkt-instrument__plot" tabindex="0" role="group" aria-label="${escapeHtml(label || 'Price history')} trace. Use Left and Right to read recorded samples.">
+    <svg class="sx-mkt-chart" data-chart="${escapeHtml(gradientId)}" data-so-chart="instrument" data-history-mids="${escapeHtml(histMids)}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${escapeHtml(label || 'Price history')}${forecastNote}">
+      <line class="sx-mkt-avg" x1="0" y1="${y(avg).toFixed(1)}" x2="${W}" y2="${y(avg).toFixed(1)}" vector-effect="non-scaling-stroke" stroke-dasharray="3 6"/>
+      <path class="of-chart-area" d="M ${histCoords[0].x.toFixed(1)},${H} L ${points.join(' L ')} L ${endX},${H} Z"/>
+      <path class="sx-mkt-line" data-history-line d="M ${points.join(' L ')}" fill="none" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
+      ${coneMarkup}
+    </svg>
+    ${rangeLabels}
+    <span class="sx-mkt-instrument__avg" style="top:${py(avg)}%" aria-hidden="true">avg ${fmt(avg)}</span>
+    ${tick('buy', buyQ, 'buy')}${tick('sell', sellQ, 'sell')}
+    <span class="sx-mkt-instrument__dot" style="left:${px(end.x)}%;top:${((end.y / H) * 100).toFixed(2)}%" aria-hidden="true"></span>
+    <span class="sx-mkt-instrument__cursor" data-chart-cursor hidden aria-hidden="true"><i></i><b></b></span>
+    <span class="sx-mkt-instrument__live" data-chart-live aria-live="polite"></span>
+  </div>
+</figure>`;
 }
 export function marketRowHtml({ id, name, category = '', buy, sell, stock, held = 0, hist = [], demandWord = 'normal', driversSummary = '', selected = false, tracked = false, profitPct = null, presentation = null }) {
   const family = marketFamily(category);
@@ -249,11 +284,38 @@ function saleLineHtml({ sell, saleQty, saleQuote }) {
 }
 
 function chartKeyHtml(hasForecast) {
-  if (!hasForecast) return '';
-  return `<p class="k-t-fine sx-mkt-chart-key"><span data-history-key>Last ten minutes</span><span data-forecast-key>Forecast</span></p>`;
+  return `<p class="k-t-fine sx-mkt-chart-key"><span data-history-key>Last ten minutes</span><span class="sx-mkt-chart-key__now">now</span>${hasForecast ? '<span data-forecast-key>Forecast</span>' : ''}</p>`;
 }
 
-export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', hist = [], forecast = [], now, regime = '', quoteAge = '', saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType }) {
+// What each price driver is ABOUT, so its short word can stand alone on the reading line.
+const DRIVER_KIND = Object.freeze({ role: 'Local', geography: 'Spread', conflict: 'Sector', cycle: 'Trend' });
+const DRIVER_ARROW = Object.freeze({ up: '\u2191', down: '\u2193' });
+
+/**
+ * THE READING LINE. The quote used to open with a seven-line paragraph -- every driver's full
+ * explanation run together (ONE_PHOTOGRAPH.md section 4.6, "the essay"). A reading is a word and
+ * a cause: Local Balanced / Spread Tight core / Sector No conflict / Trend Stable. The paragraph is
+ * kept, visually hidden, because the stage is aria-describedby it -- a screen reader still gets
+ * the whole explanation, and it is still the codex's prose, not the market's.
+ */
+function driverLineHtml(primary) {
+  const items = (Array.isArray(primary) ? primary : []).filter((d) => d && d.shortLabel);
+  if (!items.length) return '';
+  return `<ul class="sx-mkt-drivers" aria-hidden="true">${items.map((d) => {
+    const dir = String(d.direction || 'flat');
+    const arrow = DRIVER_ARROW[dir] && !/[\u2191\u2193]/.test(d.shortLabel) ? ` ${DRIVER_ARROW[dir]}` : '';
+    return `<li class="sx-mkt-drivers__item" data-dir="${escapeHtml(dir)}" title="${escapeHtml(d.explanation || '')}"><span class="sx-mkt-drivers__k">${escapeHtml(DRIVER_KIND[d.id] || d.label || '')}</span><span class="sx-mkt-drivers__v">${escapeHtml(d.shortLabel)}${arrow}</span></li>`;
+  }).join('')}</ul>`;
+}
+
+/** The four readings under the trace are also its key: each carries the mark it draws. */
+function readoutsHtml({ buy, sell, avg, demandWord }) {
+  const item = (key, cls, value, sub) =>
+    `<div class="sx-mkt-readouts__item sx-mkt-readouts__item--${cls}"><dt><i class="sx-mkt-readouts__mark" aria-hidden="true"></i>${escapeHtml(key)}${sub ? ` <span class="sx-mkt-readouts__sub">${escapeHtml(sub)}</span>` : ''}</dt><dd>${escapeHtml(value)}</dd></div>`;
+  return `<dl class="sx-mkt-readouts">${item('Buy', 'buy', `${fmt(buy)} cr`, 'you pay')}${item('Sell', 'sell', `${fmt(sell)} cr`, 'station pays')}${item('Galactic average', 'avg', `${fmt(avg)} cr`)}${item('Demand', 'demand', demandWord)}</dl>`;
+}
+
+export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', drivers = [], hist = [], forecast = [], now, regime = '', quoteAge = '', saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType }) {
   const legalText = ({ legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' })[legal] || String(legal);
   const chainHtml = supplyChainHtml(presentSupplyChain({ producedBy, consumedBy, stationType }));
   const forecastPts = forecastSamples(forecast);
@@ -262,13 +324,14 @@ export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml
     `<p class="k-caps sx-mkt-cat-inline">${escapeHtml(category || 'goods')} · <span class="${legal === 'contraband' ? 'k-bad' : legal === 'restricted' ? 'k-signal' : ''}">${escapeHtml(legalText)}</span></p>
     <h2 class="k-display k-t-title sx-mkt-title">${titleHtml || escapeHtml(name)}</h2>
     <div class="k-hero k-hero--hero k-hero--signal sx-mkt__hero"><div class="k-hero__n">${fmt(mode === 'sell' ? sell : buy)}</div><div class="k-hero__w">${mode === 'sell' ? 'station pays' : 'you pay'} · per unit</div></div>
-    <p class="k-sentence" id="sx-market-driver-summary">${escapeHtml(driversSummary)}</p>
+    ${driverLineHtml(drivers)}
+    <p class="k-sentence sx-mkt-essay" id="sx-market-driver-summary">${escapeHtml(driversSummary)}</p>
     ${chainHtml}
     ${coneReadoutHtml({ regime, quoteAge })}
-    ${buildChart(hist, avg, `sxmkt-${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, name, { forecast: forecastPts, now })}
+    ${buildChart(hist, avg, `sxmkt-${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, name, { forecast: forecastPts, now, buy, sell })}
     ${chartKeyHtml(forecastPts.length > 0)}
-    ${saleLineHtml({ sell, saleQty, saleQuote })}
-    <ul class="k-rows sx-mkt-stats">${statRow('Buy', fmt(buy) + ' cr', 'you pay')}${statRow('Sell', fmt(sell) + ' cr', 'station pays')}${statRow('Galactic average', fmt(avg) + ' cr')}${statRow('Demand', demandWord)}</ul>`;
+    ${readoutsHtml({ buy, sell, avg, demandWord })}
+    ${saleLineHtml({ sell, saleQty, saleQuote })}`;
 }
 export function marketReceiptRow(k, v, tone) {
   const cls = tone === 'gain' ? ' k-good' : tone === 'loss' ? ' k-bad' : '';
