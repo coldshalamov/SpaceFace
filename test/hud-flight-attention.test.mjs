@@ -488,7 +488,7 @@ test('the law paragraph retires during the opening while live incidents still su
 test('the caption and the bypassed comms log line consult the opening rule', () => {
   // Caption: the HUD asks the rule before painting the event sentence; the aria-live line still
   // lands because assistive tech is not on screen.
-  assert.match(HUD_SRC, /if \(openingInstructionSolo\(state\)\) \{\s*caption\.classList\.remove\('show'\)/,
+  assert.match(HUD_SRC, /if \(openingInstructionSolo\(state\)[^}]*?\{\s*caption\.classList\.remove\('show'\)/,
     'the event caption must retire while the opening objective owns the screen');
   // Log line: authored scenario dialogue keeps its bypass flag, but the bypass itself yields
   // during the window so the line is held until the player has done the thing.
