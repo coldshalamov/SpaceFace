@@ -2175,14 +2175,16 @@ async function exerciseMarketRoundtrip(page) {
       // The register rebuilds its row nodes on every price tick and the list lives in a
       // short scroll rail: Playwright's pointer-path click can lose the hit test to
       // sibling chrome while a real pilot's click reaches the row's delegated handler.
-      // Try the real click first; fall back to dispatching click on the row itself —
-      // the same event the screen's delegated listener consumes. Selection is still
-      // verified below before any commit is attempted — never trade blind.
-      clickErr = await row.click({ timeout: 1_500 }).then(() => null, (e) => String(e && e.message || e).split('\n').slice(0, 4).join(' | '));
+      // Dispatch the click on the row first — the same event the screen's
+      // delegated listener consumes, with no actionability wait — and fall
+      // back to the pointer path. Selection is still verified below before
+      // any commit is attempted — never trade blind.
+      clickErr = await pBound(row.dispatchEvent('click'), 4_000, null)
+        .then((ok) => ok === null ? 'dispatch:bounded-timeout' : null,
+          (e) => `dispatch:${String(e && e.message || e).split('\n')[0]}`);
       if (await pBound(row.getAttribute('aria-selected'), 4_000, null) !== 'true') {
-        await pBound(row.dispatchEvent('click'), 4_000, null)
-          .then((ok) => { if (ok === null) clickErr = `${clickErr} | dispatch:bounded-timeout`; },
-            (e) => { clickErr = `${clickErr} | dispatch:${String(e && e.message || e).split('\n')[0]}`; });
+        clickErr = await row.click({ timeout: 1_500 })
+          .then(() => clickErr, (e) => `${clickErr} | ${String(e && e.message || e).split('\n').slice(0, 4).join(' | ')}`);
       }
       if (await pBound(row.getAttribute('aria-selected'), 4_000, null) !== 'true') {
         const box = await pBound(row.boundingBox(), 4_000, null);
@@ -2298,8 +2300,14 @@ async function exerciseMarketRoundtrip(page) {
   // cycle 42 burned all 300s inside the walk on a full-hold register).
   const marketDeadline = Date.now() + 160_000;
   const walkBudget = () => ({ walkDeadline: marketDeadline });
+  // A pilot reads the hold gauge first: with zero free volume every buy row is
+  // dead by definition ("no hold space"), so the initial buy walk can only burn
+  // ~2min of per-row timeouts. One state read replaces the doomed scan — the
+  // sell-first path below drains room and the buy walk still proves the leg.
+  const initialFree = await readHoldFreeVolume();
   let direction = 'buy-first';
-  let buy = await walkRowsForCommit(BUY_VERIFY, 14, walkBudget());
+  let buy = (initialFree != null && initialFree < 1) ? null
+    : await walkRowsForCommit(BUY_VERIFY, 14, walkBudget());
   let sell = null;
   if (buy) {
     await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
