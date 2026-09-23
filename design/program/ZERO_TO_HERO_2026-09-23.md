@@ -34,10 +34,10 @@ Build-map entry: [`build_map.md` §25](../../build_map.md#25-zero-to-hero--the-a
 
 | # | Finding | What the frame shows |
 |---|---|---|
-| **F1** | **You cannot find your own ship.** | Crucible at 166–168 WU/s: the player hull is a ~15–20 px chevron at 1080p, off-centre from the aim ring. Adventure at cruise: the hull is lost at the head of a ~600 px plume. Nothing in `FEEL_CONTRACT.md` or any packet measures how big the player's hull is on screen. |
+| **F1** | **You cannot find your own ship.** | Crucible at 166–168 WU/s: the player hull is a ~15–20 px chevron at 1080p, off-centre from the aim ring. Adventure at cruise: the hull is lost at the head of a ~600 px plume. Nothing in `FEEL_CONTRACT.md` or any packet measures how big the player's hull is on screen. **Measured and fixed the same day:** the drawn hull was 1–2 WU on a 28–32 WU collision body (4 px in the Crucible) because the micro-motion scale channel captured its base from the pre-swap substrate and flattened the authored radius fit on every hull admitted after first scan (introduced 2026-09-20). |
 | **F2** | **The frame is louder than the fight.** | Crucible round 1: arena ribbons and violet ring segments cover a third of the frame; one frame holds a galaxy, a ringed gas giant, a blue planet and a nebula (space wallpaper). The near rocks read as beige clay with pink crystals. The actors are the smallest things on the glass — the exact "particle-effects showcase where the underlying event was boring" `VISION.md` forbids. |
 | **F3** | **The kill does not read.** | 400 ms after the first Crucible kill there is no wreck, burst or moved body anywhere you would see it. The four channels fire (`PQ-210.04`); at this scale they land on a few pixels. |
-| **F4** | **The HUD narrates.** | A permanent card, "Banking — primary fire (LMB) · recharging / Trap — Y · 6 remaining · armed"; a seven-line target card; "Bank St…" and "Concus…" cut off; a floating "Research unlocked gear."; the Massline's `CAN` state printed on a rock, where a stranger reads it as a cargo can; a nine-key tray as the teaching. |
+| **F4** | **The HUD narrates.** | A permanent card, "Banking — primary fire (LMB) · recharging / Trap — Y · 6 remaining · armed"; a seven-line target card; "Bank St…" and "Concus…" cut off; a floating "Research unlocked gear."; the Massline's `CAN` state printed on a rock, where a stranger reads it as a cargo can; a nine-key tray as the teaching. The ORRERY flight cluster (v2–v4, landed an hour after these frames) replaces the card set with one ring instrument; the `CAN` word, the truncated band label and the truncated bottom-right legend were still on the glass after it. |
 | **F5** | **Screens are spreadsheets and the demo path is not a path.** | Station, results and the Crucible door are tables and card grids. The title lists Crucible fourth. Launch to first control in the Crucible took 81 s on a loaded machine (cook ledger: rock pools 13.6 s, Crucible warm 12.9 s, post-opening pipelines 14.0 s, first-frame pool census 15.3 s) — re-measure quiet before quoting it, but no quiet reading will make it 10 s. There is no demo build, no end-of-demo card, no bridge from results into adventure. |
 
 ## 2. The look and feel: **see the body**
@@ -74,8 +74,16 @@ Each is **NEW**. Each gets its instrument before its fix.
 
 ## 4. The phases
 
-Order is law: a phase starts when the one before it has shipped a slice a stranger can see. Each
-phase ends with a **stranger pass** (the §3 row) — a look at the real frames, not a green check.
+Phases 1–4 run in parallel, one agent per lane, because their files are disjoint. Phase 5 starts
+when Phases 1 and 4 each have a visible slice; Phase 6 after Phase 5's demo flag; Phase 7 last.
+Each phase ends with a **stranger pass** (the §3 row) — a look at the real frames, not a green check.
+
+| Lane | Phase | Owns (exact files decide; check `NOW.md` first) |
+|---|---|---|
+| Body | 1 | `src/render/partsLibrary.js` ship build paths, `src/render/camera.js` zoom terms, plume sizing in `src/render/thruster/` |
+| Frame | 2 | `src/render/spaceBackground.js`, `src/data/sectorVisualProfiles.js`, arena presentation, `src/render/industrialMaterialFamilies.js` |
+| Hit | 3 | `src/systems/aftermathWrecks.js`, `src/render/vfx.js`, `src/render/feel.js`, `src/ui/screens/crucible.js` replay |
+| Instrument | 4 | `src/ui/orrery/`, `src/ui/hud.js`, `src/ui/masslineHud.js`, Crucible screens (the live ORRERY lane) |
 
 ### Phase 1 — THE BODY *(camera and hull presentation)*
 
@@ -206,4 +214,5 @@ One line per slice that landed: phase, what a stranger now sees, the number, the
 
 | Phase | Slice | Number | Commit |
 |---|---|---|---|
-| 1 | Body-scale probe built; baseline taken | see the probe's first readings | pending |
+| 1 | `probe:body-scale` built: drawn hull, collision body, zoom terms, plume, hostiles per 250 ms | baseline: player hull p50 12 px (adventure) / 4 px (Crucible) on a 167 / 103 px body | `dbcc1d4e1`, `64d481cb8` |
+| 1 | Ships draw at the size of their body again (every hull admitted after the micro-motion tracker's first scan had been drawn at ~1/20 scale) | player hull p50 **12 → 175 px** adventure, **4 → 63 px** Crucible; Crucible hostile median **5.5 → 65 px**; pinned by `test/ship-hull-scale-swap.test.mjs` | `cc0ea72ca` |
