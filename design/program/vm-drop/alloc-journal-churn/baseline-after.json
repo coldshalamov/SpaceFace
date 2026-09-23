@@ -1,0 +1,22 @@
+{
+  "scratch": "16c2a6810658348e0a46164eecfcf129ff318625",
+  "probe": "probe:smooth-flight:crucible --seed=4242",
+  "gpu": "software/SwiftShader",
+  "launchToFlightSec": 11.9,
+  "hitchCallbacks": "31/365",
+  "gameSpeedPct": 69.5,
+  "worstFrameMs": 267,
+  "p50_p95_p99_ms": [
+    83.3,
+    116.7,
+    166.7
+  ],
+  "microbench": {
+    "entities": 64,
+    "ticks": 120,
+    "transformCount": 64,
+    "coalesceCount": 7616,
+    "writeSequence": 128,
+    "pending": 128
+  }
+}
