@@ -80,9 +80,13 @@ export function createStationEffects({ root, app, body, dock, credits, getState 
       chartData.set(chart, data);
     }
     // A diagram accompanies real empty-state copy; it contains no invented cargo or preview hull.
+    // The only diagram is an empty cargo hold, so it belongs to hold and cargo states alone: on the
+    // job board and the unselected brief it was a generic wireframe crate standing in for "nothing".
     for (const state of body.querySelectorAll('.sf-state--empty:not([data-so-empty])')) {
       state.dataset.soEmpty = 'true';
-      if (!state.querySelector('img,canvas')) state.classList.add('so-empty-illustrated');
+      const code = (state.querySelector('[data-sf-code]') || {}).dataset?.sfCode || '';
+      const aboutCargo = /HOLD|CARGO/.test(code); // HOLD_EMPTY on the market's Sell side
+      if (aboutCargo && !state.querySelector('img,canvas')) state.classList.add('so-empty-illustrated');
     }
   }
   function probeAt(chart, index, keyboard = false) {

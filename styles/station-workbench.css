@@ -52,10 +52,13 @@
   border-width: 10px 10px 12px;
   border-image: none;
   border-radius: 0;
-  background: linear-gradient(225deg, transparent calc(var(--dp-cut) * .7071), var(--dp-lamp) 0);
+  /* border-box + no-repeat: the key keeps the retired nine-slice's 10px transparent border as its
+     footprint, and a padding-box gradient TILES into that border -- the cut reappeared as a black
+     notch in all four corners of ACCEPT. One fill, painted once, across the whole key. */
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut) * .7071), var(--dp-lamp) 0) border-box no-repeat;
   color: var(--dp-metal-0);
 }
 #screens .sx-berth button[data-sf-role="primary"]:is(:disabled, [aria-disabled="true"]) {
-  background: linear-gradient(0deg, var(--dp-lamp-dim) 1px, transparent 0);
+  background: linear-gradient(0deg, var(--dp-lamp-dim) 1px, transparent 0) border-box no-repeat;
   color: var(--dp-ink-mute);
 }

@@ -1612,3 +1612,40 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   #screens .sx-berth .sx-bar__stage .sx-talk__avatar { -webkit-mask-image: none; mask-image: none; }
 }
 #screens .sx-berth .sx-mkt__console.is-scrubbing .sx-qty__in { user-select: none; caret-color: transparent; }
+
+/* ------------------------------------------------------------------------------------------------
+   CONTRACTS: THE HANG READS WHOLE (2026-09-22 demo pass)
+   An accepted job was a flex row -- title | nowrap meta | Track -- so the meta ("Deliver to
+   destination · Helios Gate") took the width and the title clamped to "Contract 47-A:…". The row is
+   now two lines: the title owns line one beside Track, the objective runs under it.
+   A board decision ("Two posted jobs can be taken…") borrowed the posted-row grid, which put its
+   option name in the crest column and its trade-off in the payout column, in capitals. Each option
+   is now a stacked choice: the job, then what it costs you, in a sentence.
+   ------------------------------------------------------------------------------------------------ */
+#screens .sx-berth .sx-ct__jobs .sx-job {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "title track" "meta track";
+  align-items: center; column-gap: calc(16px * var(--k-s)); row-gap: 4px;
+  padding-block: calc(12px * var(--k-s));
+}
+#screens .sx-berth .sx-ct__jobs .sx-job__title { grid-area: title; -webkit-line-clamp: 2; }
+#screens .sx-berth .sx-ct__jobs .sx-job__meta {
+  grid-area: meta; white-space: normal; -webkit-line-clamp: 2; color: var(--dp-ink-dim, #b9b4a8);
+}
+#screens .sx-berth .sx-ct__jobs .sx-job__track { grid-area: track; align-self: center; }
+
+#screens .sx-berth .sx-decision { display: flex; flex-direction: column; gap: 2px; margin-bottom: calc(18px * var(--k-s)); }
+#screens .sx-berth .sx-decision > .k-sentence { margin: 0 0 calc(8px * var(--k-s)); }
+#screens .sx-berth .sx-decision__opt.k-row {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  min-height: 0; padding: calc(12px * var(--k-s)) 12px calc(12px * var(--k-s)) 14px;
+  text-align: left;
+}
+#screens .sx-berth .sx-decision__opt > .k-row__name {
+  white-space: normal; overflow: visible; text-overflow: clip; max-width: none;
+}
+#screens .sx-berth .sx-decision__opt > .k-row__sub {
+  white-space: normal; text-transform: none; letter-spacing: 0; font-family: inherit;
+  font-size: var(--k-fs-data, 13px); line-height: 1.4; color: var(--dp-ink-dim, #b9b4a8); max-width: none;
+}
