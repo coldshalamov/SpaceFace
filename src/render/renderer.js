@@ -5467,6 +5467,16 @@ export const render = {
       }
       return touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene);
     };
+    // Loading-shell form of the touch above: one render draws the whole group on the same target.
+    const touchExactTargetSubjects = (subjects) => {
+      const list = (Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean);
+      if (list.length === 0) return { skipped: true, reason: 'empty touch group' };
+      for (const subject of list) stampSubjectEnv(subject);
+      if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
+        return this.bloom.touchScenePipelines(list, cam.obj, scene);
+      }
+      return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene);
+    };
     const compileForCurrentTarget = (subjects, compileOptions) => {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
       if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
@@ -7058,6 +7068,20 @@ export const render = {
           }
           recordOpeningCookStep(state.render, 'live.postOpeningPipelines', postStarted, postOutcome);
         }
+        // The post-opening pass above is the last step that draws the bounded warm roots (it
+        // reveals their hidden holders for its touches). Park them now: every step below is about
+        // the picture flight will present, and the warm roots are never part of it. Left mounted,
+        // the census walked ~13k hidden warm nodes and queued every count-0 instanced twin as an
+        // upload (21.7 s of a 66 s Crucible launch); the settle's never-linked sweep and the
+        // scene-wide depth sweep re-walked them too.
+        {
+          const parkStarted = prepareNow();
+          const parked = this._parkBoundedWarmRoots();
+          if (parked.roots > 0) {
+            recordOpeningCookStep(state.render, 'live.parkWarmRoots', parkStarted, 'resolved',
+              { roots: parked.roots, nodes: parked.nodes });
+          }
+        }
         // The pool/buffer seal is the LAST barrier before flight, not an optional extra.
         // shouldAwaitOpeningGpuCook is false without KHR_parallel_shader_compile, so the old
         // guard skipped this sweep on exactly the hardware that bricks worst — the Intel/ANGLE
@@ -7304,6 +7328,15 @@ export const render = {
             shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
           });
         }
+      }
+      // Backstop for the park after the post-opening pass: nothing that runs before the first
+      // flight frame may leave a bounded warm root mounted (see _parkBoundedWarmRoots for why it is
+      // the biggest per-frame cost in a Crucible fight). A no-op when the earlier park ran.
+      const parkStarted = prepareNow();
+      const parked = this._parkBoundedWarmRoots();
+      if (parked.roots > 0) {
+        recordOpeningCookStep(state.render, 'live.parkWarmRootsLate', parkStarted, 'resolved',
+          { roots: parked.roots, nodes: parked.nodes });
       }
       this._sessionLiveSectorCookedId = sectorId;
       state.render.sessionLiveSectorCookedId = sectorId;
@@ -7937,6 +7970,28 @@ export const render = {
             const restoreSubject = revealSubjectForCompile(subject);
             try { return run(); } finally { restoreSubject(); }
           };
+          // A touch reveals only the subject's own subtree, then renders the scene. Three stops
+          // projecting at the first invisible ancestor, so a subject parked under a hidden holder
+          // (the asteroid leaf blanket, every crucible roster-warm holder) draws NOTHING — yet each
+          // of those no-op touches still paid a whole-scene hide/restore walk, a full render call
+          // and a presented frame. Thousands of them were most of this step's 110 s on the owner's
+          // iGPU. Their programs are still issued by compileOne (compile walks the subject itself,
+          // not its ancestors) and their depth variants by the staged shadow pass below.
+          const touchCanDraw = (subject) => {
+            for (let node = subject && subject.parent; node; node = node.parent) {
+              if (node.visible === false) return false;
+              if (node === scene) return true;
+            }
+            return false;
+          };
+          let touchesSkippedHidden = 0;
+          // Loading shell: units share a frame until ~16 ms of work, then yield. One whole frame per
+          // unit (the old cadence) made this step O(units x frame time). The jump shell keeps its
+          // per-unit cadence, exactly as cook.touch and cook.buffers do above.
+          const rockPoolYieldBase = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
+          const rockPoolYield = state.mode === 'loading'
+            ? createSlicedYield(rockPoolYieldBase, { sliceMs: 16 })
+            : rockPoolYieldBase;
           try {
             rockPools = await admitOpeningUnitsAcrossSlices({
               units: cookUnits,
@@ -7946,9 +8001,36 @@ export const render = {
               deadlineMs: cookDeadlineMs - (cookNow() - cookStarted),
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
               compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
-              touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
-              yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser,
+              touchOne: (subject) => {
+                if (!touchCanDraw(subject)) {
+                  touchesSkippedHidden += 1;
+                  return { skipped: true, reason: 'hidden-ancestor' };
+                }
+                return whileRevealed(subject, () => touchExactTargetSubject(subject));
+              },
+              // Loading shell: the drawable members of each group share one render (see
+              // touchSubjectOnExactTarget); restore is last-in-first-out for nested subjects.
+              touchMany: state.mode === 'loading'
+                ? (subjects) => {
+                  const drawable = subjects.filter(touchCanDraw);
+                  touchesSkippedHidden += subjects.length - drawable.length;
+                  if (drawable.length === 0) return { skipped: true, reason: 'hidden-ancestor' };
+                  const restores = [];
+                  try {
+                    for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
+                    return touchExactTargetSubjects(drawable);
+                  } finally {
+                    for (let i = restores.length - 1; i >= 0; i--) restores[i]();
+                  }
+                }
+                : null,
+              touchBatchSize: 24,
+              yieldToMain: rockPoolYield,
             });
+            if (rockPools && typeof rockPools === 'object') {
+              rockPools.touchesSkippedHidden = touchesSkippedHidden;
+              rockPools.yields = typeof rockPoolYield.yields === 'number' ? rockPoolYield.yields : undefined;
+            }
             // The color pass leaves each new chunk's castShadow depth variant unlinked, and the
             // post-opening shadow pass already released before these chunks existed (leaf
             // registration happens in the stamp loop above). Prime depth on the same subjects
@@ -7982,6 +8064,14 @@ export const render = {
         recordOpeningCookStep(state.render, 'cook.rockPools', rockPoolsStarted,
           rockPools.skipped === true ? 'skipped' : (rockPools.error ? 'error' : 'resolved'), {
             roots: cookCompileRoots.length,
+            units: rockPools.subjects,
+            issued: rockPools.issued,
+            touched: rockPools.touched,
+            hiddenTouchSkips: rockPools.touchesSkippedHidden,
+            yields: rockPools.yields,
+            issueMs: rockPools.timing ? rockPools.timing.issueMs : undefined,
+            drainMs: rockPools.timing ? rockPools.timing.drainMs : undefined,
+            touchMs: rockPools.timing ? rockPools.timing.touchMs : undefined,
           });
       }
       if (asteroidLeafWarmRoot && asteroidLeafWarmRoot.parent === scene) {
@@ -8229,11 +8319,40 @@ export const render = {
               restoreSubject();
             }
           };
+          // Group form of whileRevealed: reveal every subject (and its hidden ancestors) of a
+          // touch group, run once, restore last-in-first-out so shared ancestors and nested
+          // subjects return exactly to where they started.
+          const whileRevealedGroup = (subjects, run) => {
+            const restores = [];
+            try {
+              for (const subject of subjects) {
+                const restoreSubject = revealSubjectForCompile(subject);
+                const savedAncestors = [];
+                for (let p = subject && subject.parent; p; p = p.parent) {
+                  if (p.visible === false) { savedAncestors.push(p); p.visible = true; }
+                }
+                restores.push(() => {
+                  for (const p of savedAncestors) p.visible = false;
+                  restoreSubject();
+                });
+              }
+              return run();
+            } finally {
+              for (let i = restores.length - 1; i >= 0; i--) restores[i]();
+            }
+          };
           lateColor = await admitOpeningUnitsAcrossSlices({
             units: uniqueAdmissionUnits(lateCompileRoots.flatMap((root) => collectCompileSubjects(root))),
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
             compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
+            // Thousands of units on a Crucible cook (the bounded roster warm's palette subjects):
+            // one touch each was ~6 ms of whole-scene hide/render/restore — ~20 s of the launch.
+            // Loading only; the same shell-less path keeps one subject per touch.
+            touchMany: state.mode === 'loading'
+              ? (subjects) => whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects))
+              : null,
+            touchBatchSize: 24,
             yieldToMain: yieldToBrowser,
           });
         } catch (error) {
@@ -10308,6 +10427,38 @@ export const render = {
       };
     }
     return root;
+  },
+
+  /**
+   * Detach the bounded warm roots (Crucible roster warm, opening species warm) from the live scene
+   * once the loading cook is finished with them. They exist only so their programs link and their
+   * buffers upload behind the shell; they are hidden and never drawn in flight. Mounted, they were
+   * still a scene-graph subtree — 13,845 of the 16,506 nodes in a seed-4242 Crucible fight — and
+   * three's per-frame scene.updateMatrixWorld() walks hidden subtrees too: ~11 ms a frame on the
+   * owner's iGPU, the largest single cost in the fight, plus every scene.traverse() and every
+   * in-flight exact-target touch (which hides and restores the whole graph per subject).
+   *
+   * Detaching releases nothing: linked programs belong to the materials (released only on material
+   * dispose), uploaded buffers to the geometries, and decoded records to the residency leases the
+   * package instances hold. The roots stay in _rosterPrewarmRoots, so the late rock re-skin sweep
+   * still recompiles them and _releaseSurvivalRosterPrewarm still disposes them at run end.
+   */
+  _parkBoundedWarmRoots() {
+    let roots = 0;
+    let nodes = 0;
+    for (const root of this._rosterPrewarmRoots || []) {
+      const tag = root && root.userData && root.userData.rosterPrewarm;
+      if (tag !== 'bounded-cook' && tag !== 'opening-species-warm') continue;
+      if (!root.parent) continue;
+      try {
+        root.traverse(() => { nodes += 1; });
+        root.parent.remove(root);
+        roots += 1;
+      } catch (error) {
+        console.warn('[render] bounded warm root park failed', root.name, error);
+      }
+    }
+    return { roots, nodes };
   },
 
   _releaseSurvivalRosterPrewarm(reason) {

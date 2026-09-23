@@ -284,9 +284,14 @@ export function withOnlySubjectsDrawable(scene, subjects, fn) {
  * Draw one already-compiled subject to the exact HDR/screen target so ANGLE links the program
  * and uploads its buffers. Other drawables stay in the graph for lights but are hidden so this
  * is not a whole-scene discovery pass.
+ *
+ * `subject` may also be an array: every listed subject draws in ONE render. Each subject still
+ * gets exactly the draw it would get alone (same program, same buffers, same target, same
+ * lights); only the whole-scene hide/restore walk and the render call's fixed cost are shared.
  */
 export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camera, lightingScene) {
-  if (!renderer || typeof renderer.render !== 'function' || !subject || !lightingScene) {
+  const subjects = (Array.isArray(subject) ? subject : [subject]).filter(Boolean);
+  if (!renderer || typeof renderer.render !== 'function' || subjects.length === 0 || !lightingScene) {
     return { skipped: true, reason: 'touch unavailable' };
   }
   const previousTarget = typeof renderer.getRenderTarget === 'function'
@@ -296,11 +301,13 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
   try {
     renderer.autoClear = false;
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(renderTarget || null);
-    withOnlySubjectsDrawable(lightingScene, [subject], () => {
-      if (typeof subject.updateMatrixWorld === 'function') subject.updateMatrixWorld(true);
+    withOnlySubjectsDrawable(lightingScene, subjects, () => {
+      for (const item of subjects) {
+        if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
+      }
       renderer.render(lightingScene, camera);
     });
-    return { skipped: false };
+    return { skipped: false, subjects: subjects.length };
   } finally {
     renderer.autoClear = previousAutoClear;
     if (typeof renderer.setRenderTarget === 'function') {
@@ -359,17 +366,26 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   const issued = [];
   let compiled = [];
   let drained = null;
+  // Where the step's wall time went. A cook that reads "110 s" in the ledger is unreadable
+  // without knowing whether it was issuing, waiting on the driver, or touching.
+  let issueMs = 0;
+  let drainMs = 0;
+  let touchMs = 0;
   try {
     // Issue without awaiting. Each call runs `renderer.compile()` synchronously inside its promise
     // executor and then suspends on the batch, so the whole cohort reaches the driver before the
     // first wait begins. Awaiting here instead would deadlock: nothing settles until drain().
+    const issueStarted = now();
     for (let index = 0; index < ordered.length; index++) {
       if (overBudget()) break;
       issued.push(compileOne ? compileOne(ordered[index]) : null);
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
+    issueMs = now() - issueStarted;
+    const drainStarted = now();
     drained = await batch.drain();
     compiled = await Promise.all(issued);
+    drainMs = now() - drainStarted;
   } finally {
     batch.close();
     // Settling only RESOLVES each suspended compile; the `finally` that restores its captured
@@ -379,21 +395,47 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     if (typeof batch.restoreEntryTarget === 'function') batch.restoreEntryTarget();
   }
   const results = [];
-  for (let index = 0; index < ordered.length; index++) {
-    if (overBudget()) break;
-    results.push({
-      compiled: compiled[index] ?? null,
-      touched: touchOne ? touchOne(ordered[index]) : null,
-    });
-    if (yieldToMain && index < ordered.length - 1) await yieldToMain();
+  const touchStarted = now();
+  // Optional grouped touch: `touchMany(subjects)` draws a whole group in one render. Same subjects
+  // in the same order, each drawn exactly as touchOne would draw it; what is shared is the
+  // whole-scene hide/restore walk and the render call, which were most of a touch's cost.
+  const touchMany = typeof options.touchMany === 'function' ? options.touchMany : null;
+  const touchBatchSize = Math.max(1, Math.floor(Number(options.touchBatchSize) || 1));
+  if (touchMany && touchBatchSize > 1) {
+    for (let index = 0; index < ordered.length; index += touchBatchSize) {
+      if (overBudget()) break;
+      const group = ordered.slice(index, index + touchBatchSize);
+      const touched = touchMany(group);
+      for (let offset = 0; offset < group.length; offset++) {
+        results.push({ compiled: compiled[index + offset] ?? null, touched });
+      }
+      if (yieldToMain && index + touchBatchSize < ordered.length) await yieldToMain();
+    }
+  } else {
+    for (let index = 0; index < ordered.length; index++) {
+      if (overBudget()) break;
+      results.push({
+        compiled: compiled[index] ?? null,
+        touched: touchOne ? touchOne(ordered[index]) : null,
+      });
+      if (yieldToMain && index < ordered.length - 1) await yieldToMain();
+    }
   }
+  touchMs = now() - touchStarted;
   return {
     batched: true,
     contextLost: drained ? drained.contextLost === true : false,
     skipped: ordered.length === 0,
     subjects: ordered.length,
+    issued: issued.length,
+    touched: results.length,
     materials: Number(units.materialCount) || (units.programSubjects || []).length,
     geometries: Number(units.geometryCount) || (units.geometrySubjects || []).length,
+    timing: {
+      issueMs: Math.round(issueMs),
+      drainMs: Math.round(drainMs),
+      touchMs: Math.round(touchMs),
+    },
     results,
   };
 }
