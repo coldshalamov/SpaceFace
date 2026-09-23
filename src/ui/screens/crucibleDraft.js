@@ -296,6 +296,54 @@ export function weaponSpareContrast(spares) {
     + `Hardest shove: ${shove.name} (impulse ${shortNum(shove.impulse)}).`;
 }
 
+/**
+ * INF-036 drawn: two short scales under a hardpoint's weapon spares -- sustained fire and shove --
+ * one tick per spare, the chosen one lit and read out. Null where fewer than two spares carry both
+ * figures, and where there is no SVG (node tests); the sentence stays for the ear either way.
+ */
+function spareScales(spares) {
+  if (typeof document === 'undefined' || typeof document.createElementNS !== 'function') return null;
+  const entries = (Array.isArray(spares) ? spares : []).map((spare) => {
+    const def = spare && WEAPON_DEF_BY_ID.get(spare.defId);
+    return { id: String(spare && spare.instanceId), dps: finiteNum(def && def.dps), impulse: finiteNum(def && def.impulsePerHit) };
+  }).filter((e) => e.dps != null && e.impulse != null);
+  if (entries.length < 2) return null;
+  const NS = 'http://www.w3.org/2000/svg';
+  const node = (tag, attrs) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+    return n;
+  };
+  const W = 284; const x0 = 56; const x1 = 232;
+  const root = node('svg', { viewBox: `0 0 ${W} 48`, width: W, height: 48, class: 'orr-svg orr-hp__scales', 'aria-hidden': 'true' });
+  const readouts = [];
+  const ticks = [];
+  [['dps', 'Fire', 14], ['impulse', 'Shove', 38]].forEach(([key, word, y]) => {
+    const max = Math.max(...entries.map((e) => e[key])) || 1;
+    const label = node('text', { x: 0, y: y + 3.5, class: 'orr-hp__scale-word' });
+    label.textContent = word.toUpperCase();
+    root.appendChild(label);
+    root.appendChild(node('path', { d: `M ${x0} ${y} L ${x1} ${y} M ${x1} ${y - 3} L ${x1} ${y + 3}`, class: 'orr-core orr-faint', 'stroke-width': 1 }));
+    for (const e of entries) {
+      const x = x0 + ((x1 - x0) * e[key]) / max;
+      const tick = node('path', { d: `M ${x.toFixed(1)} ${y - 5} L ${x.toFixed(1)} ${y + 5}`, class: 'orr-hp__tick', 'data-id': e.id });
+      ticks.push(tick);
+      root.appendChild(tick);
+    }
+    const readout = node('text', { x: x1 + 10, y: y + 4, class: 'orr-hp__scale-val' });
+    readouts.push([readout, key]);
+    root.appendChild(readout);
+  });
+  return {
+    el: root,
+    update(chosenId) {
+      const chosen = entries.find((e) => e.id === String(chosenId)) || entries[0];
+      for (const t of ticks) t.classList.toggle('is-chosen', t.getAttribute('data-id') === chosen.id);
+      for (const [readout, key] of readouts) readout.textContent = shortNum(chosen[key]);
+    },
+  };
+}
+
 /** One refit row, in words. `options` is every spare that legally fits this hardpoint. */
 export function refitRowLines(row) {
   if (!row) return null;
@@ -743,6 +791,8 @@ export const crucibleRefitScreen = {
     const lightRow = (event) => {
       const rowEl = event && event.target && event.target.closest ? event.target.closest('.sf-cru-row') : null;
       if (!rowEl || !this._jig) return;
+      if (event.type === 'pointerover' && typeof performance !== 'undefined'
+        && performance.now() - this._jig.laidOutAt() < 420) return;
       const index = [...rows.children].indexOf(rowEl);
       if (index < 0) return;
       this._lit = index;
@@ -862,8 +912,13 @@ export const crucibleRefitScreen = {
 
     this._regions = { title: h, stage, foot };
     rootEl.dataset.kReady = '1';
-    if (typeof done.focus === 'function') {
-      try { done.focus(); } catch { /* focus is best-effort */ }
+    // Focus starts where the Hand is -- on the lit hardpoint's choice -- so the screen has one
+    // amber, not the Hand on the ship and a lit key in the corner. Escape still launches.
+    const litRow = Number.isInteger(this._lit) ? rows.children[this._lit] : null;
+    const start = (litRow && (litRow.querySelector('[data-spare][aria-checked="true"]')
+      || litRow.querySelector('.sf-cru-act:not([hidden]):not(:disabled)'))) || done;
+    if (start && typeof start.focus === 'function') {
+      try { start.focus(); } catch { /* focus is best-effort */ }
     }
   },
 
@@ -942,6 +997,7 @@ export const crucibleRefitScreen = {
       const name = el('span', 'k-row__name', '');
       name.appendChild(el('span', 'orr-hp__label', lines.label));
       if (lines.slotTag) name.appendChild(el('span', 'sf-cru-slottag', lines.slotTag));
+      if (state !== 'fitted') name.appendChild(el('span', 'orr-hp__empty', 'Empty'));
       head.appendChild(name);
       left.appendChild(head);
       // the reading line: what is fitted (or the spares) and, at its end, the verb that changes it
@@ -971,8 +1027,10 @@ export const crucibleRefitScreen = {
         const spareWords = el('div', 'k-row__sub orr-hp__spares');
         spareWords.setAttribute('role', 'radiogroup');
         spareWords.setAttribute('aria-label', `Spare for ${lines.label.toLowerCase()}`);
+        const scales = spareScales(row.spares);
         const syncSpares = () => {
           for (const b of spareWords.children) b.setAttribute('aria-checked', String(b.dataset.spare === pick.value));
+          if (scales) scales.update(pick.value);
         };
         pick.addEventListener('change', () => {
           this._spareChoice.set(row.slotIndex, pick.value);
@@ -996,21 +1054,30 @@ export const crucibleRefitScreen = {
         }
         syncSpares();
         line.appendChild(spareWords);
+        if (scales) line.appendChild(scales.el);
         left.appendChild(pick);
         row._pick = pick;
+        row._drawn = !!scales;
       } else {
-        const valueEl = el('div', 'k-row__sub orr-hp__value', lines.value);
+        // an empty hardpoint's head already says Empty: its line says why
+        const said = state === 'bare' ? String(lines.value).replace(/^Empty — /, '') : lines.value;
+        const valueEl = el('div', 'k-row__sub orr-hp__value', said.charAt(0).toUpperCase() + said.slice(1));
         if (lines.valueRef) decorateEntityNode(valueEl, lines.valueRef);
         line.appendChild(valueEl);
       }
       // INF-036: the honest comparison, under the picker — the picker itself is untouched,
       // so customization is preserved and the contrast only advises.
-      if (lines.contrast) left.appendChild(el('div', 'k-row__sub orr-hp__contrast', lines.contrast));
+      if (lines.contrast) {
+        // drawn as scales above where it can be; the sentence stays for the ear
+        left.appendChild(el('div', `k-row__sub orr-hp__contrast${row._drawn ? ' orr-hp__contrast--drawn' : ''}`, lines.contrast));
+      }
       item.appendChild(left);
 
       const action = word(lines.action, lines.action === 'Strip' ? 'k-word--body k-word--danger' : 'k-word--body');
       action.classList.add('sf-cru-act');
       action.disabled = !!lines.disabled;
+      // nothing can go in: no verb to offer
+      if (state === 'bare') action.hidden = true;
       if (!lines.disabled) {
         action.addEventListener('click', () => {
           // Routed through the run owner, which calls ships.unfitModule / ships.fitModule
@@ -1031,7 +1098,7 @@ export const crucibleRefitScreen = {
       }
       line.appendChild(action);
       rows.appendChild(item);
-      jigNodes.push({ el: item, slotType: row.slotType, state });
+      jigNodes.push({ el: item, slotType: row.slotType, state, num: String((row.slotIndex || 0) + 1).padStart(2, '0') });
     }
 
     if (this._jig) {

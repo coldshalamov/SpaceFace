@@ -231,6 +231,17 @@ html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-
    verb at the end of its first line. Left-column labels read toward the ship. */
 html body #screens > .k-screen.orr-refit > .k-title, html body #screens > .k-screen.orr-refit > .k-foot { position:relative; z-index:2; }
 html body #screens > .k-screen.orr-refit > .k-title .sf-cru-note { margin:10px 0 0; max-width:34ch; font-size:13px; color:var(--dp-hand-hot, #ffd98c); }
+/* the title names the place; the ship is the loud thing here */
+html body #screens > .k-screen.orr-refit > .k-title .k-t-title { font-size:clamp(34px, 4.4vh, 50px) !important; letter-spacing:.04em; }
+html body #screens > .k-screen.orr-refit > .k-title .sf-cru-sub { font-size:14px; color:rgb(232 226 212 / .66); max-width:44ch; }
+/* one amber on the screen: the keys rest in bone and light only when the player reaches for them */
+html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word.k-word--primary { color:rgb(246 241 230) !important; text-shadow:0 0 16px rgb(0 0 0 / .6) !important;
+  background-image:linear-gradient(90deg, rgb(236 230 216 / .7), rgb(236 230 216 / 0)) !important; }
+html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; text-shadow:0 0 22px rgb(242 185 80 / .5) !important;
+  background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / 0)) !important; }
+html body #screens > .k-screen.orr-refit .k-foot .sf-cru-kbd { display:inline-grid; place-items:center; margin-left:12px; min-width:26px; height:18px; padding:0 5px; box-sizing:border-box;
+  font-family:var(--dp-face-label, "Archivo"); font-size:10px; font-weight:650; letter-spacing:.08em; vertical-align:3px;
+  color:rgb(236 230 216 / .78); box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42); border-radius:3px; background:none; text-shadow:none; }
 html body #screens > .k-screen.orr-refit > .k-title .sf-cru-note:empty { display:none; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on { position:absolute !important; inset:0 !important; margin:0 !important; padding:0 !important; max-height:none !important;
   overflow:visible !important; z-index:1; grid-area:auto; pointer-events:none;
@@ -272,11 +283,31 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__s
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left .orr-hp__spare::after { transform-origin:right; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare[aria-checked="true"] { color:rgb(246 241 230); text-shadow:0 0 12px rgb(0 0 0 / .8); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare[aria-checked="true"]::after { transform:scaleX(1); }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare:is(:hover, :focus-visible) { color:rgb(250 246 236); outline:none; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare:is(:hover, :focus-visible) { color:rgb(250 246 236); outline:none !important; box-shadow:none !important; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare:focus-visible::after { transform:scaleX(1); background:var(--dp-hand, #f2b950); box-shadow:0 0 8px rgb(242 185 80 / .5); }
 /* the verb sits at the end of the label's first line */
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act { flex:none; margin:0 !important; padding:2px 0 !important; font-size:11px !important; letter-spacing:.26em !important;
-  color:rgb(232 226 212 / .6) !important; align-self:baseline; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act { flex:none; margin:0 !important; padding:2px 0 !important; font-size:12.5px !important; letter-spacing:.22em !important;
+  color:rgb(236 230 216 / .82) !important; align-self:baseline; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act[hidden] { display:none !important; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__line { gap:6px 12px !important; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__empty { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.26em;
+  text-transform:uppercase; color:rgb(236 230 216 / .42); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare-name { font-variation-settings:"wght" 620, "wdth" 112; }
+/* one hardpoint unfolds at a time: the lit one shows every spare and the scales; the rest show their pick */
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open:not(.is-lit) .orr-hp__spare:not([aria-checked="true"]) { display:none; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-row:not(.is-lit) :is(.orr-hp__scales, .orr-hp__contrast) { display:none; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__contrast--drawn { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales { display:block; margin-top:6px; overflow:visible; }
+/* the lit open hardpoint stacks its choice: spares, their scales, then the verb, all on the ship's side */
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open.is-lit .orr-hp__line { flex-direction:column; align-items:flex-start; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left.is-open.is-lit .orr-hp__line { align-items:flex-end; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open.is-lit .orr-hp__spares { flex-direction:column; gap:1px; align-items:flex-start; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left.is-open.is-lit .orr-hp__spares { align-items:flex-end; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open.is-lit .sf-cru-act { margin-top:4px !important; align-self:auto; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-word { font-size:9.5px; font-weight:650; letter-spacing:.24em; fill:rgb(236 230 216 / .55); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-val { font-family:var(--dp-face-numeral, "Archivo"); font-size:13px; font-weight:560; letter-spacing:0; fill:rgb(246 241 230); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__tick { stroke:rgb(236 230 216 / .5); stroke-width:1.4; fill:none; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__tick.is-chosen { stroke:var(--dp-hand-hot, #ffd98c); stroke-width:2.2; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act::before { display:none !important; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act:disabled { color:rgb(232 226 212 / .26) !important; }
 /* lit: the Hand is on this hardpoint -- its numeral takes the lamp, its words brighten, its verb is the one to press */
