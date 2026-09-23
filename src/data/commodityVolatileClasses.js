@@ -29,12 +29,36 @@ export const VOLATILE_CLASSES = Object.freeze({
     fieldPull: true,
     throwRangeMult: 0.5,
   }),
+  cryogenic: Object.freeze({
+    id: 'cryogenic',
+    lamp: 'cyan',
+    silhouetteNote: 'Double-jacketed cryo flask with frost venting and thermal isolation bands',
+    slam: 'cryo_flash',
+    fieldPull: false,
+    throwRangeMult: 1.0,
+  }),
 });
 
 export const VOLATILE_BY_COMMODITY = Object.freeze({
+  // Explosive: high-energy fuel cells, pressurized combustible gas, military munitions, and impulse charges
   cmdty_fuel_cells: 'explosive',
+  cmdty_munitions: 'explosive',
+  cmdty_impulse_charge: 'explosive',
+  cmdty_gas_hydrogen: 'explosive',
+
+  // Corrosive: volatile ice, reactive exotic compounds
   cmdty_volatiles: 'corrosive',
+  cmdty_exotic_xenium: 'corrosive',
+
+  // Superdense: dense heavy ballast ores and relativistic core elements
   cmdty_ore_platinoid: 'superdense',
+  cmdty_ore_platinium: 'superdense',
+  cmdty_ore_goldium: 'superdense',
+  cmdty_ore_einsteinium: 'superdense',
+
+  // Cryogenic: sub-zero coolant ice and supercooled liquid gas
+  cmdty_ice_water: 'cryogenic',
+  cmdty_gas_helium3: 'cryogenic',
 });
 
 /**
