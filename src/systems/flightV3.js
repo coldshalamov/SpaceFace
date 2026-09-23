@@ -795,8 +795,19 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   // The speed gate is on TOTAL speed: a hull with nothing to shed (parked or settle-slow inside
   // the arrival margin) must release the brake and creep to the arrival radius, while any fast
   // vector — inbound, tangential, outbound, or avoidance-aligned — counts down the same room.
-  const terminalBrake = speed > 4 && (
-    dist <= stoppingDistance + arrivalRadius + 45 + lateralSpeed * 1.4 ||
+  const approachMargin = arrivalRadius + 45 + lateralSpeed * 1.4;
+  // Settle latch: once a braked approach has shed to creep speed inside the margin, low
+  // throttle alone carries the hull to the arrival radius. Without it the speed>4 edge pulses
+  // brake on/off at ~20 Hz — counter-thrust slams under the floor in a tick, forward thrust
+  // rebuilds past it in two — flickering status and inputs for the last ~60 WU. A settled
+  // hull only re-opens the stop plan on a genuinely fast vector.
+  if (autopilot.status === 'braking' && speed <= 2.5 && dist <= approachMargin) {
+    autopilot.brakeSettled = true;
+  }
+  if (autopilot.brakeSettled && dist > approachMargin * 1.6) autopilot.brakeSettled = false;
+  const brakeFloor = autopilot.brakeSettled ? Math.max(30, desiredSpeed * 1.4) : 4;
+  const terminalBrake = speed > brakeFloor && (
+    dist <= stoppingDistance + approachMargin ||
     (halfway && closingSpeed > desiredSpeed * 0.92)
   );
   // Obstacle avoidance can ask a fast Newtonian hull to make a large heading change. Once the
@@ -842,10 +853,13 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     // gate as speed < 120*1.85 — a hair under its own governed cruise equilibrium — so the boost
     // latch could never engage and an exiled hull limped home at ~223 WU/s. Gate on the speed
     // the profile can actually hold under boost, still bounded by the approach plan so the burn
-    // cannot outrun the remaining stopping distance.
+    // cannot outrun the remaining stopping distance. The fallbacks mirror the kernel's governed
+    // caps: reaction boost is combatSpeed*(boostSpeedMult||1.55); a profile that resolves down
+    // to bare maxSpeed boosts to the gravimetric boostMaxSpeed||maxSpeed envelope, not a
+    // multiplied ceiling the kernel never honors.
     const boostSpeedCeiling = positive(profile.boostMaxSpeed, 0)
-      || positive(profile.combatSpeed, 0) * positive(profile.boostSpeedMult, 1)
-      || positive(profile.maxSpeed, 120) * positive(profile.boostSpeedMult, 1.5);
+      || positive(profile.combatSpeed, 0) * positive(profile.boostSpeedMult, 1.55)
+      || positive(profile.maxSpeed, 150);
     boost = cruiseClear &&
       dist > Math.max(arrivalRadius * 5, stoppingDistance * 1.25 + 220) &&
       speed < Math.min(desiredSpeed, boostSpeedCeiling);

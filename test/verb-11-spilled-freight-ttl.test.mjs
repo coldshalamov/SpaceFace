@@ -104,6 +104,38 @@ test('a Helios spill on seed 4242 still exists when a cruise-speed ship reaches 
   }
 });
 
+test('the custody deadline writes freight off without despawning the pod', () => {
+  const h = boot(4242);
+  const live = fire(h);
+  spillByDriveKill(h, live);
+  const spilled = pods(h, live);
+  assert.ok(spilled.length >= 1, 'the drive kill spilled freight pods');
+
+  // A live raider hunts live pods; disabling its drive keeps predation open (so custody keeps
+  // ticking) while making it ineligible to collect. The carrier dies mid-fight, so the
+  // deadline closes custody abandoned and the encounter resolves — its despawnAll sweep is
+  // exactly what must not reach the written-off pods.
+  const raider = h.state.entities.get(live.data.predationRaiderId);
+  raider.disabled = true;
+  const carrier = h.state.entities.get(live.data.predationTargetId);
+  carrier.alive = false;
+
+  // 85 s is past the 80 s custody window: the ledger must be closed (pods 'lost', custody
+  // terminal) while the physical pods survive on their own 240 s despawnAt — unrostered, so
+  // the encounter's closing despawnAll cannot sweep them with the scene.
+  h.sim.runTicks(85 * 60);
+  const record = live.data.freightCargoCustody;
+  assert.equal(record.terminal, true);
+  for (const pod of record.pods) {
+    const entity = h.state.entities.get(pod.entityId);
+    assert.ok(entity && entity.alive !== false, `pod ${pod.entityId} was retired with the custody ledger`);
+    assert.ok(entity.collides !== false, `pod ${pod.entityId} stopped colliding — unropeable salvage`);
+    assert.ok(entity.data.despawnAt - h.state.simTime > 60, `pod ${pod.entityId} lost its long fuse`);
+    assert.equal(entity.data.freightCustodyPod.status, 'custody_timeout');
+    assert.ok(!live.ids.includes(pod.entityId), `pod ${pod.entityId} stayed on the encounter roster`);
+  }
+});
+
 test('respilled raider freight keeps the same long window', () => {
   const h = boot(4242);
   const live = fire(h);

@@ -1853,7 +1853,17 @@ function tickFreightCargoCustody(d, live, state, now) {
       const entity = podEntityForRecord(state, record, pod);
       pod.status = 'lost';
       record.lostQty += pod.qty;
-      if (entity) d.retireFreightPickup(entity, 'custody_timeout');
+      // VERB-11 — the custody ledger writes the freight off at the deadline, and the pod
+      // leaves the encounter roster: free salvage on its own despawnAt
+      // (FREIGHT_POD_TTL_S), rope-collectible after the fight ends. Keeping it rostered
+      // lets the encounter's closing despawnAll sweep it with the scene (~80 s),
+      // re-imposing the bound the pod TTL already replaced.
+      const rosterIndex = live.ids.indexOf(pod.entityId);
+      if (rosterIndex !== -1) live.ids.splice(rosterIndex, 1);
+      if (live.roles) delete live.roles[pod.entityId];
+      if (entity && entity.data && entity.data.freightCustodyPod) {
+        entity.data.freightCustodyPod.status = 'custody_timeout';
+      }
     }
     const carrier = selectedFreightCarrier(live, state, true);
     const carrierCannotContinue = record.carrierDead || record.carrierAbandoned

@@ -820,6 +820,7 @@ test('real authority: an off-lane knock inside the silhouette recovers through t
 
 async function flyAutopilotDockApproach({ startPos, startVel, secondsMax }) {
   const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  const prevBus = flightV3.bus;
   try {
     const station = heliosStation();
     const player = {
@@ -867,6 +868,7 @@ async function flyAutopilotDockApproach({ startPos, startVel, secondsMax }) {
       speed: Math.hypot(player.vel.x, player.vel.z),
     };
   } finally {
+    flightV3.bus = prevBus;
     owner.dispose();
   }
 }
