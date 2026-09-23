@@ -300,24 +300,36 @@ for (const [label, selfOverrides, contactOverrides] of [
 }
 
 {
-  // A parked or drifting target cannot exploit the boom-zoom extend: after the pass the run
-  // wheels straight back into reform and re-commits instead of flying the long egress leg.
-  const runtime = new CombatDoctrineRuntime({ seed: 61 });
-  let result = runtime.update({
-    tick: 0, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
-    perception: perception([shipContact(1, { x: 210, threat: 0.9 })]), directive,
+  // A parked offender cannot exploit a CONTROL-dispatched responder's boom-zoom extend: after the
+  // pass the lawman wheels straight back into reform and re-commits instead of flying the long
+  // egress leg. Only the dispatch takes that shortcut. An ordinary interceptor past a parked
+  // target still extends and returns (PQ-140.00): a player at rest is not a license to skip the
+  // readable gap between passes.
+  const dispatch = Object.freeze({
+    ...directive,
+    formation: Object.freeze({ ...directive.formation, breakFormation: true, breakReason: 'security_response_target' }),
   });
-  assert.equal(result.phase, 'engine_flare');
-  result = runtime.update({
-    tick: 30, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
-    perception: perception([shipContact(1, { x: 160, threat: 0.9 })]), directive,
-  });
-  assert.equal(result.phase, 'strike');
-  result = runtime.update({
-    tick: 60, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
-    perception: perception([shipContact(1, { x: 40, threat: 0.9 })], { x: 160, vx: 70 }), directive,
-  });
-  assert.equal(result.phase, 'reform', 'stationary target skips the extend leg and re-attacks');
+  for (const [label, passDirective, expected] of [
+    ['dispatched responder', dispatch, 'reform'],
+    ['ordinary interceptor', directive, 'extend'],
+  ]) {
+    const runtime = new CombatDoctrineRuntime({ seed: 61 });
+    let result = runtime.update({
+      tick: 0, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+      perception: perception([shipContact(1, { x: 210, threat: 0.9 })]), directive: passDirective,
+    });
+    assert.equal(result.phase, 'engine_flare', label);
+    result = runtime.update({
+      tick: 30, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+      perception: perception([shipContact(1, { x: 160, threat: 0.9 })]), directive: passDirective,
+    });
+    assert.equal(result.phase, 'strike', label);
+    result = runtime.update({
+      tick: 60, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+      perception: perception([shipContact(1, { x: 40, threat: 0.9 })], { x: 160, vx: 70 }), directive: passDirective,
+    });
+    assert.equal(result.phase, expected, `${label} past a stationary target`);
+  }
 }
 
 {

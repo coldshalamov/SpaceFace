@@ -37,6 +37,10 @@ const INTERCEPTOR_EXTEND_MAX_TICKS = 180;
 const INTERCEPTOR_REFORM_TICKS = 45;
 // Below this speed the target cannot maneuver out of a re-attack: a parked or drifting craft
 // gains nothing from the flyby's long extend leg, so the run wheels straight back into reform.
+// Only a CONTROL-dispatched responder takes that shortcut (securityDispatched). Every other
+// interceptor stays PQ-140.00's positioning problem and extends-and-returns even past a parked
+// player: applied to everyone, the shortcut erased the readable gap between passes whenever the
+// player came to rest, which hands-off assisted flight does by design.
 const INTERCEPTOR_STATIONARY_TARGET_SPEED = 8;
 const BRAWLER_COMMIT_MIN_TICKS = 90;
 const BRAWLER_COMMIT_MAX_TICKS = 120;
@@ -251,7 +255,7 @@ export class CombatDoctrineRuntime {
       return snapshot(record, target, directive, factionBehavior, self);
     }
     if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
-      updateInterceptor(record, tick, self, target, distance);
+      updateInterceptor(record, tick, self, target, distance, securityDispatched(directive, self));
     } else if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
       updateBrawler(record, tick, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
@@ -358,7 +362,7 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
   };
 }
 
-function updateInterceptor(record, tick, self, target, distance) {
+function updateInterceptor(record, tick, self, target, distance, dispatched = false) {
   if (record.flightProfile === 'brawler_commit') {
     updateBrawler(record, tick, self, target, distance);
     return;
@@ -372,7 +376,7 @@ function updateInterceptor(record, tick, self, target, distance) {
     record.closestDistance = Math.min(record.closestDistance, distance);
     const passed = runHasPassed(record, self, target, distance);
     if ((age >= INTERCEPTOR_STRIKE_MIN_TICKS && passed) || age >= INTERCEPTOR_STRIKE_MAX_TICKS) {
-      if (interceptorTargetStationary(target)) beginReform(record, tick);
+      if (dispatched && interceptorTargetStationary(target)) beginReform(record, tick);
       else beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
     }
   } else if (record.phase === 'extend' && age >= INTERCEPTOR_EXTEND_TICKS &&
@@ -627,6 +631,13 @@ function updateCapitalBroadside(record, tick, self, distance) {
     // A new act begins: announce it through the charge telegraph even mid-broadside.
     record.bossStage = stageIndex;
     if (record.phase !== 'broadside_approach') {
+      // An act that opens during the shift beat (a pressure break or disabled-target hatch just
+      // put the hull on its egress point, then damage crossed the act threshold) completes that
+      // shift exactly as its timer exit does: the cycle advances and the egress point is released.
+      // Without this the boss charged and fired while steering for a point 960 WU away, because
+      // a set flightPoint outranks every maneuver in the planner.
+      if (record.phase === 'broadside_shift') record.cycle++;
+      record.flightPoint = null;
       enter(record, 'broadside_charge', tick, stage.cue);
       return;
     }
@@ -1178,6 +1189,18 @@ function flightProfileFor(doctrineId, self) {
   if (doctrineId === CombatDoctrineId.SWARM_PACK || doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'flyby';
   if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'ranged_standoff';
   return 'ranged_standoff';
+}
+
+// A CONTROL dispatch names its offender twice: doctrine.js stamps the squad directive's formation
+// with breakReason 'security_response_target', and the member's own activity is an attack_run
+// whose reason is 'security_response:<incident>'. Either is enough; the activity survives an
+// Enemy Mind formation rewrite that replaces the break reason.
+function securityDispatched(directive, self) {
+  const formation = directive && directive.formation;
+  if (formation && formation.breakReason === 'security_response_target') return true;
+  const activity = self && self.activity;
+  return !!(activity && activity.kind === 'attack_run' && activity.targetId != null
+    && String(activity.reason || '').startsWith('security_response:'));
 }
 
 function interceptorTargetStationary(target) {
