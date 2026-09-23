@@ -1274,6 +1274,44 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       cam.updateMatrixWorld(true);
     },
     composition() { return _directorFrame; },
+    // Read-only snapshot of every term that fed this frame's chase zoom and focus. Diagnostic
+    // surface for scripts/probe-body-scale.mjs; gameplay never reads it.
+    zoomDiagnostics() {
+      return {
+        requestedZoom: c.zoom,
+        baseZoom: resolveBaseZoom(),
+        dynamicZoom: _dynamicZoom,
+        composedZoom: c.composedZoom,
+        speedZoomFactor: _speedZoomFactor,
+        speedEmaWu: _speedZoomSpeedEma,
+        contextZoomBias: _contextZoomBias,
+        contextMinZoom: _contextMinZoom,
+        contextZoomCap: _contextZoomCap,
+        boostZoomFactor: _boostZoomFactor,
+        pushZoom: _pushZoom,
+        holdS: _holdT,
+        velocityLeadX: _velocityLeadX,
+        velocityLeadZ: _velocityLeadZ,
+        compositionBiasX: _compositionBiasX,
+        compositionBiasZ: _compositionBiasZ,
+        boostLag: _boostLag,
+        latchSpringX: _latchSpring.x,
+        latchSpringZ: _latchSpring.z,
+        kickX: c.kickOffset ? c.kickOffset.x : 0,
+        kickZ: c.kickOffset ? c.kickOffset.z : 0,
+        focusX: c.focus ? c.focus.x : 0,
+        focusZ: c.focus ? c.focus.z : 0,
+        director: _directorFrame ? {
+          mode: _directorFrame.mode,
+          focusX: _directorFrame.focusX,
+          focusZ: _directorFrame.focusZ,
+          zoom: _directorFrame.zoom,
+          requiredZoom: _directorFrame.requiredZoom,
+          targetId: _directorFrame.targetId,
+          nearPlane: _directorFrame.nearPlane,
+        } : null,
+      };
+    },
     // pushZoom(factor, durationS): factor>0 pushes the camera OUT (wider), factor<0 pushes IN
     // (tighter) for `durationS`, easing in and out. e.g. pushZoom(0.25, 0.8) widens 25% over 0.8s;
     // pushZoom(-0.04, 0.25) tightens to 0.96x for 0.25s (kill-cam kiss). The effect is additive on
