@@ -71,12 +71,33 @@ export function admitReceipt({
     return { admit: false, reason: 'radio-chatter' };
   }
   const k = String(kind || 'info');
+  if (k === 'stunt') return { admit: true, reason: 'stunt' };
   if (k === 'danger') return { admit: false, reason: 'danger-floor' };
   if (k === 'bark' || k === 'chatter') return { admit: false, reason: 'chatter' };
-  if (combat && k !== 'error' && !COMBAT_KEEP.test(line)) {
+  // A named stunt is the result of the fight, not noise over it — the stunt channel stays
+  // admitted under combat quiet. Everything else still needs the keep-words.
+  if (combat && k !== 'error' && channel !== 'stunt' && !COMBAT_KEEP.test(line)) {
     return { admit: false, reason: 'combat-quiet' };
   }
   return { admit: true, reason: 'receipt' };
+}
+
+/** VERB-05 — one receipt, the trick's name. Amendments are a different event and stay quiet. */
+export function stuntTrickReceiptLine(trick) {
+  if (!trick || trick.amendment) return '';
+  const name = trick.name || trick.trickId || '';
+  return String(name).trim();
+}
+
+/** Admit each episode once. `seen` is a Set of episode keys owned by the receipt binder. */
+export function stuntDetectionReceipt(seen, trick) {
+  const text = stuntTrickReceiptLine(trick);
+  if (!text || !seen || typeof seen.add !== 'function') return null;
+  const key = trick.episodeId != null ? `e:${trick.episodeId}` : `n:${text}`;
+  if (seen.has(key)) return null;
+  seen.add(key);
+  if (seen.size > 64) seen.delete(seen.values().next().value);
+  return { text, kind: 'stunt', channel: 'stunt' };
 }
 
 // ── Opening one-instruction rule ─────────────────────────────────────────────
