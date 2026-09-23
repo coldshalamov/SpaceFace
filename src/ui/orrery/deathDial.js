@@ -41,8 +41,9 @@ const CSS = `
 @media (max-height:820px) {
   .orr-deathdial__groups { display:none; }
   .orr-deathdial__name { font-size:19px; }
-  .orr-deathdial__warn { display:none; }
+  .orr-deathdial__warn:not(.orr-deathdial__vitals) { display:none; }
 }
+.orr-deathdial__vitals[hidden] { display:none; }
 .orr-deathdial .orr-deathdial__gauge text { font-weight:650; letter-spacing:.14em; fill:rgb(236 230 216 / .78); }
 .orr-deathdial .orr-deathdial__gauge.is-empty text { fill:rgb(255 140 118 / .92); }
 .orr-deathdial .orr-deathdial__card text { font-size:10px; font-weight:650; letter-spacing:.3em; fill:rgb(236 230 216 / .52); }
@@ -119,6 +120,15 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
     line('orr-deathdial__detail', caption.detail);
     line('orr-deathdial__warn', caption.warn);
   }
+  // on a small dial the gauges' readings move here, one line
+  let vitalsLine = null;
+  if (vitals.length) {
+    vitalsLine = doc.createElement('p');
+    vitalsLine.className = 'orr-deathdial__warn orr-deathdial__vitals';
+    vitalsLine.textContent = vitals.map((v) => `${v.word} ${Math.round(Math.max(0, Math.min(100, Number(v.value) || 0)))}%`).join(' · ');
+    vitalsLine.hidden = true;
+    cap.appendChild(vitalsLine);
+  }
   if (hits.length) {
     // time runs left to right; each tick is as tall as its damage; the last is the blow
     const n = hits.length;
@@ -180,6 +190,7 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
     const cx = W / 2;
     const cy = 58 + Rc + Math.max(0, (room - 2 * (Rc + 58)) / 2);
     Object.assign(cap.style, { left: `${Math.round((W - capW) / 2)}px`, top: `${Math.round(cy + Rc + 72)}px` });
+    if (vitalsLine) vitalsLine.hidden = Rc >= 150;
     const reach = Rc + 560;
     Object.assign(pool.style, { left: `${cx - reach}px`, top: `${cy - reach}px`, width: `${reach * 2}px`, height: `${reach * 2}px` });
     // the drawing: its frame is square with the ship ~0.85 of it; the ship spans ~1.05 Rc
@@ -254,7 +265,13 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
       const norm = ((mid % 360) + 360) % 360;
       const upright = norm > 90 && norm < 270;
       const words = `${String(vital.word).toUpperCase()} ${Math.round(pct)}%`;
-      g.appendChild(circularText(cx, cy, rl - 3.5, words, { startDeg: upright ? mid + 90 : mid - 90, size: fs, anchor: 'middle', upright }));
+      // glyphs stand outward from a clockwise path and inward from an upright one: seat the path so
+      // the letters always sit between this gauge and the next, never across the lit span; a small
+      // dial has no room between its gauges, so its readings go in the caption instead
+      if (Rc >= 150) {
+        const rp = upright ? r + 6 + fs * 0.72 : r + 6;
+        g.appendChild(circularText(cx, cy, rp, words, { startDeg: upright ? mid + 90 : mid - 90, size: fs, anchor: 'middle', upright }));
+      }
       layer.appendChild(rise(g, 200 + i * 80));
     });
 
