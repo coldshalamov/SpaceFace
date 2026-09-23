@@ -49,6 +49,7 @@ html.sf-reduce-motion .orr-radar__sweep { animation:none; }
 .orr-toasts { display:flex; flex-direction:column; gap:10px; width:340px; pointer-events:none; }
 .orr-toast { position:relative; display:grid; grid-template-columns:18px 1fr; column-gap:12px; row-gap:4px; align-items:start;
   padding:8px 4px 8px 0; background:none; text-shadow:0 0 14px rgb(0 0 0 / .95), 0 0 4px rgb(0 0 0 / .9), 0 1px 2px rgb(0 0 0 / .9); }
+.orr-toast::before { content:""; position:absolute; inset:-14px -24px; z-index:-1; pointer-events:none; background:radial-gradient(closest-side, rgb(3 4 7 / .7), rgb(3 4 7 / .34) 60%, transparent); }
 .orr-toast svg { grid-row:1 / span 2; width:18px; height:18px; margin-top:1px; }
 .orr-toast .orr-label { color:var(--dp-ink-dim, #b7b4a6); }
 .orr-toast__text { font-family:var(--dp-face-read, "Instrument Sans"); font-size:14px; line-height:1.35; color:var(--dp-ink, #e8e2d4); }
@@ -243,7 +244,7 @@ export function createLockRing({ hostile = false } = {}) {
     const [x1, y1] = polar(c, c, 46, a);
     s.appendChild(svg('path', { d: `M ${x0} ${y0} L ${x1} ${y1}`, class: `orr-core orr-${hostile ? 'threat' : 'phos'}`, 'stroke-width': 1.6 }));
   }
-  const hp = arcGauge({ cx: c, cy: c, r: 52, from: -40, to: 40, width: 2.5, tone: hostile ? 'threat' : 'phos', ghost: true, head: false });
+  const hp = arcGauge({ cx: c, cy: c, r: 52, from: -40, to: 40, width: 1.2, tone: hostile ? 'threat' : 'phos', ghost: true, head: false });
   s.appendChild(hp.el);
   // the leader: out at 45 degrees, then level to the label
   const [lx, ly] = polar(c, c, 48, 45);

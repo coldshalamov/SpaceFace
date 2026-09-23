@@ -13,7 +13,7 @@ const CSS = `
 .orr-flightpreview__place { position:absolute; left:40px; top:34px; }
 .orr-flightpreview__tape { position:absolute; left:50%; top:26px; transform:translateX(-50%); }
 .orr-flightpreview__toasts { position:absolute; right:32px; top:168px; }
-.orr-flightpreview__cluster { position:absolute; left:18px; bottom:6px; }
+.orr-flightpreview__cluster { position:absolute; left:18px; bottom:24px; }
 @media (max-width:1700px) { .orr-flightpreview { --orr-cluster-scale:.82; } .orr-radar, .orr-tape { zoom:.86; } }
 .orr-flightpreview__radar { position:absolute; right:30px; bottom:18px; }
 /* a low vignette only where instruments sit, so they read over bright nebula without any box */
@@ -96,7 +96,7 @@ export const orreryFlightScreen = {
     lock.set({ x: 991, y: 407, name: 'Hauler 12', detail: 'civil · towing', distance: 1240, hull: 0.82, lead: { x: 26, y: -9 } });
     threat.set({ x: 957, y: 541, bearings: [112, 128] });
     threat.edge(stage, { x: 1884, y: 640, bearing: 90, label: 'Raider · 2.1k', labelSide: 'left' });
-    toasts.push({ kind: 'Payload', html: 'Tether locked · <b>960 t</b> on the line', delay: 700 });
+    toasts.push({ kind: 'Contract', html: 'Sample located · marked on your chart', delay: 700 });
     toasts.push({ kind: 'Salvage', html: '<b>+240 cr</b> · Hull plating recovered', gain: true, delay: 900 });
 
     cluster.arrive();
