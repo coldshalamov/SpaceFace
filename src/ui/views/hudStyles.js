@@ -1999,6 +1999,24 @@ export function injectHudCss() {
                              rgb(3 5 8 / .14) 29%, transparent 40%),
       linear-gradient(180deg, rgb(3 5 8 / .72) 0%, rgb(3 5 8 / .30) 7%, transparent 17%);
   }
+  /* Below 1760px the cluster stacks into one tall column, and at 1280x720 its upper half (the
+     integrity dial, the vitals, fire control) rises out of the corner grade onto the bright world
+     (scripts/ui-contrast.mjs at --viewport=1280x720: "No lock" 1.6:1). The answer is still a grade,
+     not a card: one more layer that runs up the whole left edge behind the column and falls off to
+     nothing past it, so there is no inner boundary to read as a plate. */
+  @media (max-width:1759px) {
+    #hud::before {
+      background:
+        linear-gradient(90deg, rgb(3 5 8 / .86) 0, rgb(3 5 8 / .80) 330px, rgb(3 5 8 / .36) 440px,
+                               rgb(3 5 8 / .10) 520px, transparent 580px),
+        radial-gradient(82% 56% at 0% 100%, rgb(3 5 8 / .95), rgb(3 5 8 / .88) 30%, rgb(3 5 8 / .62) 52%,
+                        rgb(3 5 8 / .30) 72%, rgb(3 5 8 / .10) 88%, transparent 100%),
+        radial-gradient(46% 30% at 100% 100%, rgb(3 5 8 / .86), rgb(3 5 8 / .46) 48%, transparent 82%),
+        linear-gradient(0deg, rgb(3 5 8 / .86) 0%, rgb(3 5 8 / .70) 9%, rgb(3 5 8 / .40) 19%,
+                               rgb(3 5 8 / .14) 29%, transparent 40%),
+        linear-gradient(180deg, rgb(3 5 8 / .72) 0%, rgb(3 5 8 / .30) 7%, transparent 17%);
+    }
+  }
   @media (forced-colors:active) { #hud::before { display:none; } }
 
   /* ── PHOSPHOR ──────────────────────────────────────────────────────────────────────────────

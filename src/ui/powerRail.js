@@ -272,7 +272,7 @@ export function readBombBayModel(state, nowS) {
     cooldownMs: Math.max(0, until - nowS) * 1000, deployed, armedCount, fields,
     // Bombs OUT of the ship, not bombs in the rack: "BAY 0/6" over a loaded key read as an empty
     // magazine. The legend counts drifting bombs only while there are some.
-    badge: deployed > 0 ? `BAY ${deployed}/${BOMB_DRIFT.maxActive} OUT` : 'BAY',
+    badge: deployed > 0 ? `BAY ${deployed}/${BOMB_DRIFT.maxActive}` : 'BAY',
     // Rack honesty: the loaded magazine count rides the description, never the name.
     description: `${def.name}${cell ? ` ×${cell.count} loaded` : ''}. ${def.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
   };
