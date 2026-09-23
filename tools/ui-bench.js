@@ -50,6 +50,7 @@ const SCREENS = Object.freeze({
   crucibleDraft: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleDraftScreen),
   crucibleRefit: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleRefitScreen),
   crucibleResults: () => import('../src/ui/screens/crucible.js').then((m) => m.crucibleResultsScreen),
+  demoEnd: () => import('../src/ui/screens/demoEnd.js').then((m) => m.demoEndScreen),
   replay: () => import('../src/ui/screens/replay.js').then((m) => m.replayScreen),
   clips: () => import('../src/ui/screens/clips.js').then((m) => m.clipsScreen),
   sandbox: () => import('../src/ui/screens/sandbox.js').then((m) => m.sandboxScreen),
@@ -244,6 +245,14 @@ function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fitt
 }
 
 function seedCrucibleShot(screenId, shot) {
+  // The demo end card reads the same transient the undock trigger writes (state.ui.demoEnd) and
+  // the per-save earnings counter; seed both so the shot is the card a player sees, not a stub.
+  if (screenId === 'demoEnd') {
+    state.ui.demoEnd = { moduleDefId: 'mod_engine_fusion_m' };
+    state.player.stats = state.player.stats || {};
+    state.player.stats.creditsEarned = 1840;
+    return;
+  }
   const ruleset = params.get('ruleset') || shot.ruleset || null;
   if (screenId === 'crucibleDraft') {
     seedCrucibleRun(state, ruleset === 'scored'

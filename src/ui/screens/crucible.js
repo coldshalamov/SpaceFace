@@ -12,6 +12,7 @@
 
 import { COMBAT_LAB_ARENAS, COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { WEAPONS } from '../../data/weapons.js';
+import { IS_DEMO } from '../../core/demoMode.js';
 import {
   CRUCIBLE_ARENA_ID,
   CRUCIBLE_DEFAULT_RULESET,
@@ -2273,6 +2274,20 @@ export const crucibleResultsScreen = {
 
     const newSeed = addWord(word('New run', 'k-word--emph'));
     newSeed.addEventListener('click', () => ctx.bus.emit('ui:replaceScreen', { id: 'crucible' }));
+
+    // ZERO_TO_HERO Phase 5.1/5.5: in the demo the results plate bridges to the belt — same
+    // teardown Main menu runs, then a fresh adventure through the ordinary game:new route.
+    if (IS_DEMO) {
+      const belt = addWord(word('Take it to the belt', 'k-word--emph'));
+      belt.addEventListener('click', () => {
+        ctx.bus.emit('game:over:dismissed', {});
+        ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
+        ctx.bus.emit('ui:closeAll', {});
+        const difficulty = ctx.state && ctx.state.settings && ctx.state.settings.gameplay
+          && ctx.state.settings.gameplay.difficulty || 'standard';
+        ctx.bus.emit('game:new', { name: null, difficulty });
+      });
+    }
 
     const menu = addWord(word('Main menu', 'k-word--emph k-word--danger'));
     menu.addEventListener('click', () => {

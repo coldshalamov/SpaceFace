@@ -19,6 +19,7 @@ const checks = [
   ['../src/ui/screens/newGame.js', 'newGameScreen'],
   ['../src/ui/screens/pause.js', 'pauseScreen'],
   ['../src/ui/screens/gameOver.js', 'gameOverScreen'],
+  ['../src/ui/screens/demoEnd.js', 'demoEndScreen'],
   ['../src/ui/screens/settings.js', 'settingsScreen'],
   ['../src/ui/screens/saveLoad.js', 'saveLoadScreen'],
   ['../src/ui/screens/help.js', 'helpScreen'],

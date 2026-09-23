@@ -73,6 +73,7 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'crucible-refit-swarm', screen: 'crucibleRefit', backdrop: 'world', ruleset: 'swarm' },
   { id: 'crucible-results', screen: 'crucibleResults', backdrop: 'world' },
   { id: 'crucibleResults', screen: 'crucibleResults', backdrop: 'world' },
+  { id: 'demoEnd', screen: 'demoEnd', backdrop: 'world' },
 
   { id: 'asteroid-works', screen: 'drill', backdrop: 'world' },
   { id: 'drill', screen: 'drill', backdrop: 'world' },

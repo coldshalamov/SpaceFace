@@ -21,6 +21,7 @@
 // without opening a menu.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { IS_DEMO } from '../core/demoMode.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE } from '../ui/hudAttention.js';
@@ -331,6 +332,7 @@ export const onboarding = {
     bus.on('save:loaded', (p) => {
       this._teardown();
       this._dockControlInRange = false;
+      this._demoFittedThisDock = null;
       this._gateControlInRange = false;
       this._lastControlMode = null;
       this._beginStoryMode();
@@ -338,7 +340,11 @@ export const onboarding = {
     });
 
     // Objective completion hooks (real events verified against the systems).
-    bus.on('dock:docked', () => { this._dockControlInRange = false; this._onBeatEvent('dock:docked'); });
+    bus.on('dock:docked', () => {
+      this._dockControlInRange = false;
+      this._demoFittedThisDock = null;
+      this._onBeatEvent('dock:docked');
+    });
     bus.on('economy:tradeCompleted', (p) => {
       if (p && p.side === 'sell') this._onBeatEvent('sold', p);
     });
@@ -377,6 +383,13 @@ export const onboarding = {
     bus.on('entity:killed', (p) => this._onRescueKilled(p || {}));
     bus.on('player:death', () => this._onRescuePlayerDeath());
     bus.on('rescue:started', (p) => this._showStoreSentenceOnce(p || {}));
+
+    // ── Demo end card (ZERO_TO_HERO Phase 5.5) ──────────────────────────────────────────
+    // Once per save: the player undocks carrying a module they fitted during that dock →
+    // the card. The flag rides state.player.hints like every other one-time flag, so it
+    // persists with the save and adds no top-level field.
+    bus.on('module:equipped', (p) => this._onDemoModuleEquipped(p || {}));
+    bus.on('dock:undocked', () => this._maybeShowDemoEndCard());
 
     // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
     bus.on('tether:latched', (p) => this._onLatchPointer(p || {}));
@@ -574,11 +587,38 @@ export const onboarding = {
     return !!(ob && ob.active && !ob.finished);
   },
 
+  // ── Demo end card (ZERO_TO_HERO Phase 5.5) ─────────────────────────────────────────────
+  // A fitting made while docked at a station (ships.fitModule emits module:equipped with the
+  // ACTIVE ship's entity id) is remembered until the dock ends. A crucible refit also emits
+  // module:equipped but is never docked, so it cannot arm the card.
+  _onDemoModuleEquipped(p) {
+    if (!IS_DEMO || !p) return;
+    const st = this.state;
+    if (!st || !st.ui || !st.ui.docked) return;
+    if (p.shipId !== st.playerId) return;
+    this._demoFittedThisDock = p.defId || null;
+  },
+
+  _maybeShowDemoEndCard() {
+    const fitted = this._demoFittedThisDock;
+    this._demoFittedThisDock = null;
+    if (!IS_DEMO || !fitted) return;
+    const st = this.state;
+    if (!st || !st.player) return;
+    if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') return;
+    if (!st.player.hints) st.player.hints = {};
+    if (st.player.hints.demoEndShown) return;
+    st.player.hints.demoEndShown = true;
+    if (st.ui) st.ui.demoEnd = { moduleDefId: fitted };
+    this.bus.emit('ui:pushScreen', { id: 'demoEnd' });
+  },
+
   _isOre(id) { return !!id && ORE_PREFIXES.some((p) => String(id).startsWith(p)); },
 
   _begin(payload) {
     const st = this.state;
     this._dockControlInRange = false;
+    this._demoFittedThisDock = null;
     this._gateControlInRange = false;
     this._lastControlMode = null;
     this._latchDenialStreak = 0;

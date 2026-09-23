@@ -103,7 +103,8 @@ if (!args.shots.length) {
 async function shoot(page, id, outDir) {
   const started = Date.now();
   const bg = args.bg ? `&bg=${encodeURIComponent(bgUrl(args.bg))}` : '';
-  const url = `${base}?screen=${encodeURIComponent(id)}&chrome=0${bg}`;
+  const demo = args.demo ? '&demo=1' : '';
+  const url = `${base}?screen=${encodeURIComponent(id)}&chrome=0${demo}${bg}`;
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
   const opened = await page.waitForFunction(() => window.__BENCH_READY === true, null, { timeout: 45_000 })
     .then(() => true)
@@ -306,6 +307,7 @@ function parseArgs(argv) {
     headed: false,
     list: false,
     walk: false,
+    demo: false,
     probe: null,
     max: 24,
     viewport: { width: 1920, height: 1080 },
@@ -313,6 +315,7 @@ function parseArgs(argv) {
   for (const arg of argv) {
     if (arg === '--list') parsed.list = true;
     if (arg === '--walk') parsed.walk = true;
+    if (arg === '--demo') parsed.demo = true;
     if (arg === '--headed') parsed.headed = true;
     if (arg.startsWith('--shot=')) parsed.shots.push(...splitIds(arg.slice('--shot='.length)));
     if (arg.startsWith('--bg=')) parsed.bg = arg.slice('--bg='.length);

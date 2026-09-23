@@ -101,6 +101,9 @@ const SCREEN_MODULES = [
   { path: './screens/newGame.js', load: () => import('./screens/newGame.js'), name: 'newGameScreen' },
   { path: './screens/pause.js', load: () => import('./screens/pause.js'), name: 'pauseScreen' },
   { path: './screens/gameOver.js', load: () => import('./screens/gameOver.js'), name: 'gameOverScreen' },
+  // DEMO END (ZERO_TO_HERO Phase 5.5): the once-per-save close card; pushed by onboarding's
+  // fitted-undock trigger, never by menu navigation.
+  { path: './screens/demoEnd.js', load: () => import('./screens/demoEnd.js'), name: 'demoEndScreen' },
   // CRUCIBLE (PQ-133 §12): the Survival door, its seeded rearm draft, and the ten-wave refit.
   // Both draft surfaces live in one module, so two entries load the same chunk by export name.
   { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleDraftScreen' },
@@ -129,7 +132,7 @@ const SCREEN_MODULES = [
 const BOOT_SCREEN_EXPORTS = new Set([
   'mainMenuScreen', 'motionAskScreen', 'newGameScreen', 'pauseScreen', 'gameOverScreen',
   'settingsScreen', 'saveLoadScreen', 'helpScreen', 'creditsScreen',
-  'crucibleScreen', 'crucibleResultsScreen',
+  'crucibleScreen', 'crucibleResultsScreen', 'demoEndScreen',
 ]);
 
 function yieldPresentationFrame() {

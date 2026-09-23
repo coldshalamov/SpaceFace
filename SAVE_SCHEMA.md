@@ -302,6 +302,7 @@ Current save version: `14`
 | `$.player.salvageRights` | number | 0 |
 | `$.player.stats` | object | {} |
 | `$.player.stats.biggestSingleProfit` | number | 0 |
+| `$.player.stats.creditsEarned` | number | 0 |
 | `$.player.stats.kills` | number | 0 |
 | `$.player.stats.lifetimeProfit` | number | 0 |
 | `$.player.stats.missionsDone` | number | 0 |
@@ -380,7 +381,8 @@ Current save version: `14`
 | `$.settings.video.qualityPreset` | string | medium |
 | `$.settings.video.renderGraph` | boolean | false |
 | `$.settings.video.renderScale` | number | 1 |
-| `$.settings.video.shadows` | boolean | true |
+| `$.settings.video.shadows` | boolean | false |
+| `$.settings.video.shadowsDefaultVersion` | number | 1 |
 | `$.settings.video.vsync` | boolean | true |
 | `$.signalInvestigation` | object | {} |
 | `$.sites` | object | {} |

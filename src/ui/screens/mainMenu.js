@@ -11,6 +11,7 @@ import { requestCodexTab } from './codex.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
+import { IS_DEMO } from '../../core/demoMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { createArcRail } from '../orrery/arcRail.js';
@@ -281,6 +282,13 @@ export function paintLeftoverVersion(target, stillCurrent) {
 
 let refs = null;
 
+/** The one lit verb's action. Demo: the Crucible door always (ZERO_TO_HERO Phase 5.1). Otherwise
+ *  Continue when a save exists, New Game when none does — the pre-demo decision, unchanged. */
+export function titlePrimaryAction(demo, hasSave) {
+  if (demo) return 'crucible';
+  return hasSave ? 'continue' : 'newGame';
+}
+
 export const mainMenuScreen = {
   id: 'mainMenu',
 
@@ -308,11 +316,14 @@ export const mainMenuScreen = {
     // resume, the other mode, the settings, and the way out.
     //
     // `primary` is resolved after the save scan (_applySave): Continue when there is something to
-    // continue, New Game when there is not. Marking it here would light a dead verb on first paint.
+    // continue, New Game when there is not — except in the demo, where the Crucible is always the
+    // one lit verb (ZERO_TO_HERO Phase 5.1). Marking it here would light a dead verb on first paint.
     const items = [
       { action: 'continue', label: coreText('continue'), sub: 'Checking saves...', current: true },
-      { action: 'newGame', label: coreText('newGame') },
-      { action: 'load', label: 'Load' },
+      // The demo renames the verb to the mode it starts; the accessible name stays coreText so
+      // every route that finds "New Game" still does.
+      { action: 'newGame', label: IS_DEMO ? 'Adventure' : coreText('newGame') },
+      ...(IS_DEMO ? [] : [{ action: 'load', label: 'Load' }]),
       // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
       // launches through the ordinary New Game path and never touches the Adventure save.
       { action: 'crucible', label: 'Crucible' },
@@ -370,7 +381,8 @@ export const mainMenuScreen = {
     const bSettings = byAction('settings');
     const bSandbox = byAction('sandbox');
     const bQuit = byAction('quit');
-    bLoad.setAttribute('aria-label', coreText('loadGame'));
+    if (bLoad) bLoad.setAttribute('aria-label', coreText('loadGame'));
+    if (IS_DEMO) bNew.setAttribute('aria-label', coreText('newGame'));
     bArchive.setAttribute('aria-label', coreText('signalArchive'));
     bQuit.setAttribute('aria-label', coreText('quitGame'));
     if (bSandbox) bSandbox.classList.add('k-38');
@@ -510,8 +522,13 @@ export const mainMenuScreen = {
     }
     // ONE primary verb, and it is whichever one actually starts play. Continue is the primary when
     // there is a save to continue; with none it is a dead word at the top of the list, so New Game
-    // takes the lamp. Deciding this at build time would light a verb that cannot be used.
-    this._setPrimary(latest ? refs.bContinue : refs.bNew);
+    // takes the lamp. The demo lights the Crucible regardless (ZERO_TO_HERO Phase 5.1). Deciding
+    // this at build time would light a verb that cannot be used.
+    const primaryAction = titlePrimaryAction(IS_DEMO, !!latest);
+    this._setPrimary(
+      primaryAction === 'crucible' ? refs.bCrucible
+        : primaryAction === 'continue' ? refs.bContinue
+          : refs.bNew);
     this._syncCurrent();
   },
 
@@ -524,11 +541,12 @@ export const mainMenuScreen = {
     if (target) target.classList.add('dp-lit__item--primary');
   },
 
-  // The default word (Continue when it can load, else New Game) carries aria-current and the
-  // list's single Tab stop; the kit's roving focus takes over once focus is inside the list.
+  // The default word (Continue when it can load, else New Game — always Crucible in the demo)
+  // carries aria-current and the list's single Tab stop; the kit's roving focus takes over once
+  // focus is inside the list.
   _syncCurrent() {
     if (!refs) return;
-    const target = refs.buttons.find((b) => !isDisabled(b)) || null;
+    const target = (IS_DEMO ? refs.bCrucible : null) || refs.buttons.find((b) => !isDisabled(b)) || null;
     for (const b of refs.buttons) {
       const current = b === target;
       if (current) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');

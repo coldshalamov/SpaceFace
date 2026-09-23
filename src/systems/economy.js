@@ -2052,6 +2052,9 @@ export const economy = {
     const before = normalizeCredits(p.credits);
     p.credits = normalizeCredits(before + amount);
     recordEconomyCash(this.state.economy, this.state.simTime, p.credits - before, reason);
+    // Per-save earnings total (ZERO_TO_HERO Phase 5.5: the demo end card reads it). Grants only —
+    // the New Game stake is a direct assignment, never a grant, so it is not counted as earned.
+    if (p.stats) p.stats.creditsEarned = (p.stats.creditsEarned || 0) + (p.credits - before);
     this.bus.emit('credits:changed', { delta: p.credits - before, reason: reason || 'grant', total: p.credits });
     return p.credits;
   },
