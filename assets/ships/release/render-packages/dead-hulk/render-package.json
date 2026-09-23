@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1918ddb26503162d8013f1fce8dcc4f10e80da92388f711c78c33bbfa695b088",
+  "contentHash": "16dc703cd350585b597a33ccc772b508649c676f8ff5618725e437cef536c267",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.dead-hulk.node.lod0-hulk-material-armor.primitive.0",
       "indexCount": 7392,
       "indexed": true,
-      "materialHash": "d455734b78e9da232c05a6be31a012bb81b89d9564d672bc082e7026b19ad496",
+      "materialHash": "c5888753015f3c31160ffcfdc75467d6bee24d1bf34252158e7bac9a973cdc71",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.003",
       "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-armor",
@@ -145,7 +145,7 @@
       "id": "sf.render.dead-hulk.node.lod0-hulk-material-glass.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "1cf0652fdde25f1959cf7073c2966921537e9d229e7e9bffdbb160cadaf1ba7b",
+      "materialHash": "ed05bdfee9a59f50ccbeeea1ddd47fc16d0baf82c192e5be187c7a30c73fb337",
       "materialPipelineKey": "blend",
       "meshName": "Cube.037",
       "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-glass",
@@ -170,7 +170,7 @@
       "id": "sf.render.dead-hulk.node.lod0-hulk-material-heat.primitive.0",
       "indexCount": 2556,
       "indexed": true,
-      "materialHash": "576e5dde93ee693a09d69f695ba599131a101c33252491b95e331e3bdb1acaf9",
+      "materialHash": "ceef94af2205b8d7a56d5bad9ff3d1c775597ac8883f44b8e5478c7da7a2f083",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-heat",
@@ -195,7 +195,7 @@
       "id": "sf.render.dead-hulk.node.lod0-hulk-material-hull.primitive.0",
       "indexCount": 11412,
       "indexed": true,
-      "materialHash": "be9c3101f57cda70d780f6e52abfa69f650cdbb20567b7724f25be02c4316781",
+      "materialHash": "02065b6ec21baf8d098fc8d32e18de76786ec8dd8e891626137e49fba4443a53",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-hull",
@@ -220,7 +220,7 @@
       "id": "sf.render.dead-hulk.node.lod0-hulk-material-hull.primitive.1",
       "indexCount": 126,
       "indexed": true,
-      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
+      "materialHash": "a4235fa87814690e69754b8d221869db34567a71a917f83a39387358e1f51dcf",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-hull",
@@ -245,7 +245,7 @@
       "id": "sf.render.dead-hulk.node.lod0-hulk-material-insulation.primitive.0",
       "indexCount": 1776,
       "indexed": true,
-      "materialHash": "18b8153e581521fae95f9181321fbc2e6481accf1584aa9dba86947e34a40b84",
+      "materialHash": "57305c04ed6a06545b56ff51fea0fa96e18fc92fdbde445946a1c3c40e2a91ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hulk_RuptureInsulationMesh",
       "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-insulation",
@@ -270,7 +270,7 @@
       "id": "sf.render.dead-hulk.node.lod0-hulk-material-service.primitive.0",
       "indexCount": 1692,
       "indexed": true,
-      "materialHash": "7933292e186bcb2ebedb39a6d0bb7324a9da5b97d8dea1973b476bc2720fa612",
+      "materialHash": "f55b57efb92f177d64f204ee755cea5afa904dabe14747ae483b4549c50d36dd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.062",
       "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-service",
@@ -295,7 +295,7 @@
       "id": "sf.render.dead-hulk.node.lod0-hulk-material-structural.primitive.0",
       "indexCount": 29628,
       "indexed": true,
-      "materialHash": "e8afc7dcaa110864da75d15e7f676bbda438f59836aed653dd587fb4aadb588e",
+      "materialHash": "dc52b6e0307c0fdee4a35ff9b6ecc6977846e21f073fcf037cf273bc69653ff2",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
       "nodeId": "sf.render.dead-hulk.node.lod0-hulk-material-structural",
@@ -320,7 +320,7 @@
       "id": "sf.render.dead-hulk.node.lod0-remaster-material-rubber-heatscale.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
+      "materialHash": "a4235fa87814690e69754b8d221869db34567a71a917f83a39387358e1f51dcf",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner",
       "nodeId": "sf.render.dead-hulk.node.lod0-remaster-material-rubber-heatscale",
@@ -345,7 +345,7 @@
       "id": "sf.render.dead-hulk.node.lod1-hulk-material-armor.primitive.0",
       "indexCount": 3804,
       "indexed": true,
-      "materialHash": "d455734b78e9da232c05a6be31a012bb81b89d9564d672bc082e7026b19ad496",
+      "materialHash": "c5888753015f3c31160ffcfdc75467d6bee24d1bf34252158e7bac9a973cdc71",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.001",
       "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-armor",
@@ -370,7 +370,7 @@
       "id": "sf.render.dead-hulk.node.lod1-hulk-material-glass.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "1cf0652fdde25f1959cf7073c2966921537e9d229e7e9bffdbb160cadaf1ba7b",
+      "materialHash": "ed05bdfee9a59f50ccbeeea1ddd47fc16d0baf82c192e5be187c7a30c73fb337",
       "materialPipelineKey": "blend",
       "meshName": "Cube.104",
       "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-glass",
@@ -395,7 +395,7 @@
       "id": "sf.render.dead-hulk.node.lod1-hulk-material-heat.primitive.0",
       "indexCount": 1176,
       "indexed": true,
-      "materialHash": "576e5dde93ee693a09d69f695ba599131a101c33252491b95e331e3bdb1acaf9",
+      "materialHash": "ceef94af2205b8d7a56d5bad9ff3d1c775597ac8883f44b8e5478c7da7a2f083",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.006",
       "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-heat",
@@ -420,7 +420,7 @@
       "id": "sf.render.dead-hulk.node.lod1-hulk-material-hull.primitive.0",
       "indexCount": 5460,
       "indexed": true,
-      "materialHash": "be9c3101f57cda70d780f6e52abfa69f650cdbb20567b7724f25be02c4316781",
+      "materialHash": "02065b6ec21baf8d098fc8d32e18de76786ec8dd8e891626137e49fba4443a53",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-hull",
@@ -445,7 +445,7 @@
       "id": "sf.render.dead-hulk.node.lod1-hulk-material-insulation.primitive.0",
       "indexCount": 852,
       "indexed": true,
-      "materialHash": "18b8153e581521fae95f9181321fbc2e6481accf1584aa9dba86947e34a40b84",
+      "materialHash": "57305c04ed6a06545b56ff51fea0fa96e18fc92fdbde445946a1c3c40e2a91ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hulk_RuptureInsulationMesh",
       "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-insulation",
@@ -470,7 +470,7 @@
       "id": "sf.render.dead-hulk.node.lod1-hulk-material-service.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "7933292e186bcb2ebedb39a6d0bb7324a9da5b97d8dea1973b476bc2720fa612",
+      "materialHash": "f55b57efb92f177d64f204ee755cea5afa904dabe14747ae483b4549c50d36dd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.119",
       "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-service",
@@ -495,7 +495,7 @@
       "id": "sf.render.dead-hulk.node.lod1-hulk-material-structural.primitive.0",
       "indexCount": 15444,
       "indexed": true,
-      "materialHash": "e8afc7dcaa110864da75d15e7f676bbda438f59836aed653dd587fb4aadb588e",
+      "materialHash": "dc52b6e0307c0fdee4a35ff9b6ecc6977846e21f073fcf037cf273bc69653ff2",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.077",
       "nodeId": "sf.render.dead-hulk.node.lod1-hulk-material-structural",
@@ -520,7 +520,7 @@
       "id": "sf.render.dead-hulk.node.lod1-remaster-material-rubber-heatscale.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
+      "materialHash": "a4235fa87814690e69754b8d221869db34567a71a917f83a39387358e1f51dcf",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner.004",
       "nodeId": "sf.render.dead-hulk.node.lod1-remaster-material-rubber-heatscale",
@@ -545,7 +545,7 @@
       "id": "sf.render.dead-hulk.node.lod2-hulk-material-armor.primitive.0",
       "indexCount": 684,
       "indexed": true,
-      "materialHash": "d455734b78e9da232c05a6be31a012bb81b89d9564d672bc082e7026b19ad496",
+      "materialHash": "c5888753015f3c31160ffcfdc75467d6bee24d1bf34252158e7bac9a973cdc71",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.002",
       "nodeId": "sf.render.dead-hulk.node.lod2-hulk-material-armor",
@@ -570,7 +570,7 @@
       "id": "sf.render.dead-hulk.node.lod2-hulk-material-heat.primitive.0",
       "indexCount": 612,
       "indexed": true,
-      "materialHash": "576e5dde93ee693a09d69f695ba599131a101c33252491b95e331e3bdb1acaf9",
+      "materialHash": "ceef94af2205b8d7a56d5bad9ff3d1c775597ac8883f44b8e5478c7da7a2f083",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.011",
       "nodeId": "sf.render.dead-hulk.node.lod2-hulk-material-heat",
@@ -595,7 +595,7 @@
       "id": "sf.render.dead-hulk.node.lod2-hulk-material-hull.primitive.0",
       "indexCount": 2484,
       "indexed": true,
-      "materialHash": "be9c3101f57cda70d780f6e52abfa69f650cdbb20567b7724f25be02c4316781",
+      "materialHash": "02065b6ec21baf8d098fc8d32e18de76786ec8dd8e891626137e49fba4443a53",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.010",
       "nodeId": "sf.render.dead-hulk.node.lod2-hulk-material-hull",
@@ -620,7 +620,7 @@
       "id": "sf.render.dead-hulk.node.lod2-hulk-material-structural.primitive.0",
       "indexCount": 4488,
       "indexed": true,
-      "materialHash": "e8afc7dcaa110864da75d15e7f676bbda438f59836aed653dd587fb4aadb588e",
+      "materialHash": "dc52b6e0307c0fdee4a35ff9b6ecc6977846e21f073fcf037cf273bc69653ff2",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.133",
       "nodeId": "sf.render.dead-hulk.node.lod2-hulk-material-structural",
@@ -645,7 +645,7 @@
       "id": "sf.render.dead-hulk.node.lod2-remaster-material-rubber-heatscale.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
+      "materialHash": "a4235fa87814690e69754b8d221869db34567a71a917f83a39387358e1f51dcf",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner.005",
       "nodeId": "sf.render.dead-hulk.node.lod2-remaster-material-rubber-heatscale",
@@ -658,168 +658,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "18b8153e581521fae95f9181321fbc2e6481accf1584aa9dba86947e34a40b84",
-      "id": "material:18b8153e581521fae95f9181",
-      "name": "Material_Insulation",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hulk_rupture_insulation_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_rupture_insulation_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_rupture_insulation_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_rupture_insulation_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "1cf0652fdde25f1959cf7073c2966921537e9d229e7e9bffdbb160cadaf1ba7b",
-      "id": "material:1cf0652fdde25f1959cf7073",
-      "name": "Material_Glass",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hulk_dead_glass_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_dead_glass_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_dead_glass_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_dead_glass_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "576e5dde93ee693a09d69f695ba599131a101c33252491b95e331e3bdb1acaf9",
-      "id": "material:576e5dde93ee693a09d69f69",
-      "name": "Material_Heat",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hulk_heat_affected_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_heat_affected_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_heat_affected_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_heat_affected_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
-      "id": "material:62757001ceb6d643a2a31c70",
-      "name": "Material_Rubber_HeatScale",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Rubber_HeatScale_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Rubber_HeatScale_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7933292e186bcb2ebedb39a6d0bb7324a9da5b97d8dea1973b476bc2720fa612",
-      "id": "material:7933292e186bcb2ebedb39a6",
-      "name": "Material_Service",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hulk_service_trunks_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_service_trunks_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_service_trunks_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hulk_service_trunks_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "be9c3101f57cda70d780f6e52abfa69f650cdbb20567b7724f25be02c4316781",
-      "id": "material:be9c3101f57cda70d780f6e5",
+      "hash": "02065b6ec21baf8d098fc8d32e18de76786ec8dd8e891626137e49fba4443a53",
+      "id": "material:02065b6ec21baf8d098fc8d3",
       "name": "Material_Hull",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -850,8 +690,72 @@
       ]
     },
     {
-      "hash": "d455734b78e9da232c05a6be31a012bb81b89d9564d672bc082e7026b19ad496",
-      "id": "material:d455734b78e9da232c05a6be",
+      "hash": "57305c04ed6a06545b56ff51fea0fa96e18fc92fdbde445946a1c3c40e2a91ae",
+      "id": "material:57305c04ed6a06545b56ff51",
+      "name": "Material_Insulation",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hulk_rupture_insulation_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_rupture_insulation_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_rupture_insulation_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_rupture_insulation_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a4235fa87814690e69754b8d221869db34567a71a917f83a39387358e1f51dcf",
+      "id": "material:a4235fa87814690e69754b8d",
+      "name": "Material_Rubber_HeatScale",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Rubber_HeatScale_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c5888753015f3c31160ffcfdc75467d6bee24d1bf34252158e7bac9a973cdc71",
+      "id": "material:c5888753015f3c31160ffcfd",
       "name": "Material_Armor",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -882,8 +786,40 @@
       ]
     },
     {
-      "hash": "e8afc7dcaa110864da75d15e7f676bbda438f59836aed653dd587fb4aadb588e",
-      "id": "material:e8afc7dcaa110864da75d15e",
+      "hash": "ceef94af2205b8d7a56d5bad9ff3d1c775597ac8883f44b8e5478c7da7a2f083",
+      "id": "material:ceef94af2205b8d7a56d5bad",
+      "name": "Material_Heat",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hulk_heat_affected_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_heat_affected_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_heat_affected_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_heat_affected_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "dc52b6e0307c0fdee4a35ff9b6ecc6977846e21f073fcf037cf273bc69653ff2",
+      "id": "material:dc52b6e0307c0fdee4a35ff9",
       "name": "Material_Structural",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -908,6 +844,70 @@
         {
           "colorSpace": "linear",
           "name": "hulk_structural_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ed05bdfee9a59f50ccbeeea1ddd47fc16d0baf82c192e5be187c7a30c73fb337",
+      "id": "material:ed05bdfee9a59f50ccbeeea1",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hulk_dead_glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_dead_glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_dead_glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_dead_glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f55b57efb92f177d64f204ee755cea5afa904dabe14747ae483b4549c50d36dd",
+      "id": "material:f55b57efb92f177d64f204ee",
+      "name": "Material_Service",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hulk_service_trunks_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_service_trunks_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_service_trunks_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hulk_service_trunks_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -2258,19 +2258,19 @@
       "sha256": "7e8c419f054da9590a8d13175c4b0b82619a16b1329d115a7c7749ec7bc2ed6a"
     },
     "sourceGlb": {
-      "bytes": 3543104,
-      "sha256": "d50f077e7b8c51611d7d4c2e7491f4f8db37057556d70f4c9ce771ba660b4d8f",
+      "bytes": 1944544,
+      "sha256": "5aa5868c64e80d50724614b89cfcbe411cd76b3a16115d72c252d3daea47fee8",
       "uri": "place_dead_hulk.glb"
     },
     "sourceManifest": {
-      "bytes": 169401,
-      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4087852,
-    "sha256": "41f3d577fad27b48fb37280d205366b990bf689890244a6be3ab05c9f7d9e5de",
+    "bytes": 2489292,
+    "sha256": "a6da902bd349c2b2ef80304b29d5a3ac7c7a82987e99fc03e9cb7679caeeb52d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3130,7 +3130,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dead_hulk.glb"
   },
-  "runtimeHash": "b50510e3c55666d9012191f57d66da913d2ae060be4c1e5e3965de177d6e5463",
+  "runtimeHash": "90ab07529806370f98403a9e520604da89adf4175ac09b5e8777bb82440f99ef",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

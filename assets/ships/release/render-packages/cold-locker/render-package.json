@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4fec19368f92bd085f3de66910a983247ad9caa02ba4a4cd1cb2bf81f8fe039b",
+  "contentHash": "8a4ee44dadeda6d919459fcda15f2b0783f3b62bb13ba53dcbf5b5f16f9c23fc",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1099,13 +1099,13 @@
       },
       "drawMode": 4,
       "geometryHash": "48775f7e3c07165ce2b20af933542a69e35c9b7c26e11b567861f713f5e85697",
-      "id": "sf.render.cold-locker.node.locker-drum-mesh.primitive.0",
+      "id": "sf.render.cold-locker.node.locker-drum-joined.primitive.0",
       "indexCount": 60,
       "indexed": true,
       "materialHash": "b6096d8a315bf4d19f719ab77943d3606ffe0b6b937addf5a0743151453da1df",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.047",
-      "nodeId": "sf.render.cold-locker.node.locker-drum-mesh",
+      "nodeId": "sf.render.cold-locker.node.locker-drum-joined",
       "primitiveIndex": 0,
       "vertexCount": 36
     },
@@ -4872,7 +4872,7 @@
       ]
     },
     {
-      "id": "sf.render.cold-locker.node.locker-drum-mesh",
+      "id": "sf.render.cold-locker.node.locker-drum-joined",
       "localTransform": [
         1,
         0,
@@ -4892,8 +4892,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "locker_drum__mesh",
-      "nodeName": "locker_drum__mesh",
+      "mergeBoundary": "locker_drum_joined",
+      "nodeName": "locker_drum_joined",
       "nodePath": [
         0,
         43,
@@ -7768,22 +7768,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "7a612a05d2a12744833749013b7129d22a6ec33b7c79ff66c3ec07badb72e9cf"
+      "sha256": "ed25adc65237cfdd56f3ebc963d15a5a29321d811f14d8ad622e98fa91edbb40"
     },
     "sourceGlb": {
-      "bytes": 73164,
-      "sha256": "a114ebde7ee538ea29091b0ead5ca0d9b6b62f6ae2d364aeabe689a27b9e4dce",
+      "bytes": 73192,
+      "sha256": "096d9f47d4c54d08352e067aea2c9c124256aad661a1a4ff778403d07faff9c4",
       "uri": "place_cold_locker.glb"
     },
     "sourceManifest": {
-      "bytes": 169401,
-      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 193332,
-    "sha256": "d428f63947c728c82650dbf65e5331558ec23748c6960d5c500617eeac74a5dc",
+    "bytes": 193336,
+    "sha256": "8c0ff1b6ccfbdc68fe55183d182fc1f8a1d044340eeff5bccc0985f965e882db",
     "uri": "render.glb"
   },
   "runtime": {
@@ -9595,7 +9595,7 @@
           0,
           1
         ],
-        "name": "locker_drum__mesh",
+        "name": "locker_drum_joined",
         "planIndex": 51,
         "tags": {
           "canopy": false
@@ -10962,7 +10962,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cold_locker.glb"
   },
-  "runtimeHash": "03beae84e0422424bc07eb2266bab0340abe92143b3318caa7ccaae312f4d09f",
+  "runtimeHash": "ea8aa172f64dcd74dfef05f1b9cc0f8111585b404cc8bc0876af2ca6b6c84623",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -11024,7 +11024,7 @@
         "sf.render.cold-locker.node.locker-dog-1",
         "sf.render.cold-locker.node.locker-dog-2",
         "sf.render.cold-locker.node.locker-drum",
-        "sf.render.cold-locker.node.locker-drum-mesh",
+        "sf.render.cold-locker.node.locker-drum-joined",
         "sf.render.cold-locker.node.locker-embed-plug",
         "sf.render.cold-locker.node.locker-hatch",
         "sf.render.cold-locker.node.locker-hoop-hi",

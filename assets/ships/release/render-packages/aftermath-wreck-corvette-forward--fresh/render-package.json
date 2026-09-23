@@ -191,7 +191,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3303715af92d3951ba5fa1bc1b8c965cbbd20b6d5973787332de8dc902949b09",
+  "contentHash": "27a7115905dfdf5f78ce1fbfaeb4e6bf3b645b7a24b1418ae05b4b87ba68590f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -6507,14 +6507,14 @@
       "uri": "place_aftermath_wreck_corvette_forward__fresh.glb"
     },
     "sourceManifest": {
-      "bytes": 150282,
-      "sha256": "f6d24642f2b73885b210b85374298812ff404a6707c3a64752210238e6b29d43",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 229496,
-    "sha256": "69a63d099974a885ba05d57c684d62300b55e2c6f6974bb3c5cf18603ae17bde",
+    "sha256": "d0fe929171dc4f5e4d0737a9d34c51fd02898cfbafe88909f2e833b767a642fb",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6693,8 +6693,10 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 11,
-      "mechanical": 72
+      "glass": 1,
+      "hull": 14,
+      "mechanical": 64,
+      "rubber": 4
     },
     "materialProfiles": [
       {
@@ -6950,12 +6952,12 @@
       {
         "allowTextures": true,
         "planIndex": 52,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 53,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -6970,32 +6972,32 @@
       {
         "allowTextures": true,
         "planIndex": 56,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 57,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 58,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 59,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 60,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 61,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -9361,7 +9363,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_forward__fresh.glb"
   },
-  "runtimeHash": "88f4f8cc27d592527d4bf1d9be7067f54ebcf528a0e2cb2ab84c541436fede18",
+  "runtimeHash": "22fd84b6800849e128005b3c8d764b20f4d1d3084413112bd3b112961a5d8a67",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

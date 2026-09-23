@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "85354a269e85fe770a81ffd612fa74c14f466eb484ebb92ec47a6ce5a7555cf7",
+  "contentHash": "adb4af231b9725c523a3dc5d2cc682f6be861a879dd9f95f1aaf05ee93bf3398",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -13019,14 +13019,14 @@
       "uri": "place_aftermath_wreck_ore_freighter_stern.glb"
     },
     "sourceManifest": {
-      "bytes": 150282,
-      "sha256": "f6d24642f2b73885b210b85374298812ff404a6707c3a64752210238e6b29d43",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 431648,
-    "sha256": "f25bc66a36f60117620ba5c88bf476866fd91c58eb2f38b924438f07ccc0c233",
+    "sha256": "df6723d1f3fd9b78a62ebce2321483abbcc363fd1b0a5158ef53bfe975e8262f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -13168,8 +13168,9 @@
       }
     ],
     "materialProfileRoles": {
-      "geology": 167,
-      "hull": 5
+      "geology": 147,
+      "hull": 9,
+      "rubber": 16
     },
     "materialProfiles": [
       {
@@ -13430,37 +13431,37 @@
       {
         "allowTextures": true,
         "planIndex": 53,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 54,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 55,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 56,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 57,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 58,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 59,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -13485,12 +13486,12 @@
       {
         "allowTextures": true,
         "planIndex": 64,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 65,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -13530,32 +13531,32 @@
       {
         "allowTextures": true,
         "planIndex": 73,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 74,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 75,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 76,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 77,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 78,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -13580,12 +13581,12 @@
       {
         "allowTextures": true,
         "planIndex": 83,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 84,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -13715,7 +13716,7 @@
       {
         "allowTextures": true,
         "planIndex": 110,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -13875,12 +13876,12 @@
       {
         "allowTextures": true,
         "planIndex": 142,
-        "role": "geology"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 143,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -18684,7 +18685,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_stern.glb"
   },
-  "runtimeHash": "8ef39203ccf28e8c0066c2c5c979aee3fba2fc9b0de6dac605396e5972b88db9",
+  "runtimeHash": "f4338b3c34bb41efc97c32beb154cd5c4b8bad1b1ed449b31df03bf5b0370c36",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

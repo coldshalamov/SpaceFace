@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8fadd5f4362d79505b2eb1b3bc45420af981fccb8e4a465d38e21c022cad3320",
+  "contentHash": "648d106637a5e561905ab0d02211e8a262fdd6baa516ce21678104622ec2d816",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.debris-chunk.node.lod0-debris-material-accent.primitive.0",
       "indexCount": 3384,
       "indexed": true,
-      "materialHash": "36c5f393fae493d10c2d79ba53677c7be9971e28d4e308a8d99357eb2fe48664",
+      "materialHash": "658aba879137ae38ddf9d44948b03c937be64b1732964af4a5502568d2dafdee",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.026",
       "nodeId": "sf.render.debris-chunk.node.lod0-debris-material-accent",
@@ -99,7 +99,7 @@
       "id": "sf.render.debris-chunk.node.lod0-debris-material-cable.primitive.0",
       "indexCount": 4512,
       "indexed": true,
-      "materialHash": "cd6dff08d7314cd41e29b9f5bc890f7bc71b64450f3fc2f79afc2eefe3af0b22",
+      "materialHash": "ba0e5290186fd6ea9476a0065d3edf1365f1dccd28a4d7feb88d15218f091f48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.027",
       "nodeId": "sf.render.debris-chunk.node.lod0-debris-material-cable",
@@ -124,7 +124,7 @@
       "id": "sf.render.debris-chunk.node.lod0-debris-material-decal.primitive.0",
       "indexCount": 9312,
       "indexed": true,
-      "materialHash": "97887c3df802629dbcb18fa8cf465df98c5c0f601eafe692dfae42be5a83b465",
+      "materialHash": "386c3efb74a9261261ccfeb209b457f5d509d6a44287d7e9d7efe33ba6bd365c",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.debris-chunk.node.lod0-debris-material-decal",
@@ -149,7 +149,7 @@
       "id": "sf.render.debris-chunk.node.lod0-debris-material-hull.primitive.0",
       "indexCount": 4224,
       "indexed": true,
-      "materialHash": "df2a3b15e4683e1b22ff2668bb14cc5d58f6621b8107dea60625e67a7c0c9a47",
+      "materialHash": "c7990edfd160a7b726bbb553a3f61c3237af0182e3db4dd4318f7c0f8d72a4a8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Debris_PressureShell_Mesh.002",
       "nodeId": "sf.render.debris-chunk.node.lod0-debris-material-hull",
@@ -174,7 +174,7 @@
       "id": "sf.render.debris-chunk.node.lod0-debris-material-insulation.primitive.0",
       "indexCount": 612,
       "indexed": true,
-      "materialHash": "a2d37aefa263265b9981d8e01758577151a0e39ac0f5ec51934af41b55689582",
+      "materialHash": "b977ef46f6dc0dadbfda4a14515f1704e23bc9057278c797c2199b9c431b9dd5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Debris_RuptureBlanket_Mesh",
       "nodeId": "sf.render.debris-chunk.node.lod0-debris-material-insulation",
@@ -199,7 +199,7 @@
       "id": "sf.render.debris-chunk.node.lod0-debris-material-mechanical.primitive.0",
       "indexCount": 13548,
       "indexed": true,
-      "materialHash": "a8b8c3a3b6e563d7464ddb5db16b268fe25881b0b64bb181bcf0ae44f6efc779",
+      "materialHash": "771ef2b2b62dff2a9da5aab8f809f614d0a0389956927dd70d2180891be88281",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.036",
       "nodeId": "sf.render.debris-chunk.node.lod0-debris-material-mechanical",
@@ -224,7 +224,7 @@
       "id": "sf.render.debris-chunk.node.lod0-debris-material-radiator.primitive.0",
       "indexCount": 1692,
       "indexed": true,
-      "materialHash": "7ee86fbbb0554447122db73d2fdccdf4fa95357564e6086d90146ab7ead56ae0",
+      "materialHash": "74adc016daa2147187d3feab0500cc5945755b9858537a82ba89eed3f52353f9",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.014",
       "nodeId": "sf.render.debris-chunk.node.lod0-debris-material-radiator",
@@ -249,7 +249,7 @@
       "id": "sf.render.debris-chunk.node.lod0-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 336,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_CurledPressureSkin",
       "nodeId": "sf.render.debris-chunk.node.lod0-remaster-material-mechanical-brushednickel",
@@ -274,7 +274,7 @@
       "id": "sf.render.debris-chunk.node.lod0-remaster-material-rubber-heatscale.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
+      "materialHash": "a4235fa87814690e69754b8d221869db34567a71a917f83a39387358e1f51dcf",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner",
       "nodeId": "sf.render.debris-chunk.node.lod0-remaster-material-rubber-heatscale",
@@ -299,7 +299,7 @@
       "id": "sf.render.debris-chunk.node.lod1-debris-material-accent.primitive.0",
       "indexCount": 1944,
       "indexed": true,
-      "materialHash": "36c5f393fae493d10c2d79ba53677c7be9971e28d4e308a8d99357eb2fe48664",
+      "materialHash": "658aba879137ae38ddf9d44948b03c937be64b1732964af4a5502568d2dafdee",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.064",
       "nodeId": "sf.render.debris-chunk.node.lod1-debris-material-accent",
@@ -324,7 +324,7 @@
       "id": "sf.render.debris-chunk.node.lod1-debris-material-cable.primitive.0",
       "indexCount": 1296,
       "indexed": true,
-      "materialHash": "cd6dff08d7314cd41e29b9f5bc890f7bc71b64450f3fc2f79afc2eefe3af0b22",
+      "materialHash": "ba0e5290186fd6ea9476a0065d3edf1365f1dccd28a4d7feb88d15218f091f48",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.065",
       "nodeId": "sf.render.debris-chunk.node.lod1-debris-material-cable",
@@ -349,7 +349,7 @@
       "id": "sf.render.debris-chunk.node.lod1-debris-material-decal.primitive.0",
       "indexCount": 744,
       "indexed": true,
-      "materialHash": "97887c3df802629dbcb18fa8cf465df98c5c0f601eafe692dfae42be5a83b465",
+      "materialHash": "386c3efb74a9261261ccfeb209b457f5d509d6a44287d7e9d7efe33ba6bd365c",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.015",
       "nodeId": "sf.render.debris-chunk.node.lod1-debris-material-decal",
@@ -374,7 +374,7 @@
       "id": "sf.render.debris-chunk.node.lod1-debris-material-hull.primitive.0",
       "indexCount": 2412,
       "indexed": true,
-      "materialHash": "df2a3b15e4683e1b22ff2668bb14cc5d58f6621b8107dea60625e67a7c0c9a47",
+      "materialHash": "c7990edfd160a7b726bbb553a3f61c3237af0182e3db4dd4318f7c0f8d72a4a8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Debris_PressureShell_Mesh",
       "nodeId": "sf.render.debris-chunk.node.lod1-debris-material-hull",
@@ -399,7 +399,7 @@
       "id": "sf.render.debris-chunk.node.lod1-debris-material-insulation.primitive.0",
       "indexCount": 360,
       "indexed": true,
-      "materialHash": "a2d37aefa263265b9981d8e01758577151a0e39ac0f5ec51934af41b55689582",
+      "materialHash": "b977ef46f6dc0dadbfda4a14515f1704e23bc9057278c797c2199b9c431b9dd5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Debris_RuptureBlanket_Mesh",
       "nodeId": "sf.render.debris-chunk.node.lod1-debris-material-insulation",
@@ -424,7 +424,7 @@
       "id": "sf.render.debris-chunk.node.lod1-debris-material-mechanical.primitive.0",
       "indexCount": 6576,
       "indexed": true,
-      "materialHash": "a8b8c3a3b6e563d7464ddb5db16b268fe25881b0b64bb181bcf0ae44f6efc779",
+      "materialHash": "771ef2b2b62dff2a9da5aab8f809f614d0a0389956927dd70d2180891be88281",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.069",
       "nodeId": "sf.render.debris-chunk.node.lod1-debris-material-mechanical",
@@ -449,7 +449,7 @@
       "id": "sf.render.debris-chunk.node.lod1-debris-material-radiator.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "7ee86fbbb0554447122db73d2fdccdf4fa95357564e6086d90146ab7ead56ae0",
+      "materialHash": "74adc016daa2147187d3feab0500cc5945755b9858537a82ba89eed3f52353f9",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.053",
       "nodeId": "sf.render.debris-chunk.node.lod1-debris-material-radiator",
@@ -474,7 +474,7 @@
       "id": "sf.render.debris-chunk.node.lod1-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 336,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_CurledPressureSkin.002",
       "nodeId": "sf.render.debris-chunk.node.lod1-remaster-material-mechanical-brushednickel",
@@ -499,7 +499,7 @@
       "id": "sf.render.debris-chunk.node.lod1-remaster-material-rubber-heatscale.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
+      "materialHash": "a4235fa87814690e69754b8d221869db34567a71a917f83a39387358e1f51dcf",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner.001",
       "nodeId": "sf.render.debris-chunk.node.lod1-remaster-material-rubber-heatscale",
@@ -524,7 +524,7 @@
       "id": "sf.render.debris-chunk.node.lod2-debris-material-accent.primitive.0",
       "indexCount": 792,
       "indexed": true,
-      "materialHash": "36c5f393fae493d10c2d79ba53677c7be9971e28d4e308a8d99357eb2fe48664",
+      "materialHash": "658aba879137ae38ddf9d44948b03c937be64b1732964af4a5502568d2dafdee",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.094",
       "nodeId": "sf.render.debris-chunk.node.lod2-debris-material-accent",
@@ -549,7 +549,7 @@
       "id": "sf.render.debris-chunk.node.lod2-debris-material-decal.primitive.0",
       "indexCount": 276,
       "indexed": true,
-      "materialHash": "97887c3df802629dbcb18fa8cf465df98c5c0f601eafe692dfae42be5a83b465",
+      "materialHash": "386c3efb74a9261261ccfeb209b457f5d509d6a44287d7e9d7efe33ba6bd365c",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.017",
       "nodeId": "sf.render.debris-chunk.node.lod2-debris-material-decal",
@@ -574,7 +574,7 @@
       "id": "sf.render.debris-chunk.node.lod2-debris-material-hull.primitive.0",
       "indexCount": 1518,
       "indexed": true,
-      "materialHash": "df2a3b15e4683e1b22ff2668bb14cc5d58f6621b8107dea60625e67a7c0c9a47",
+      "materialHash": "c7990edfd160a7b726bbb553a3f61c3237af0182e3db4dd4318f7c0f8d72a4a8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Debris_PressureShell_Mesh",
       "nodeId": "sf.render.debris-chunk.node.lod2-debris-material-hull",
@@ -599,7 +599,7 @@
       "id": "sf.render.debris-chunk.node.lod2-debris-material-mechanical.primitive.0",
       "indexCount": 2652,
       "indexed": true,
-      "materialHash": "a8b8c3a3b6e563d7464ddb5db16b268fe25881b0b64bb181bcf0ae44f6efc779",
+      "materialHash": "771ef2b2b62dff2a9da5aab8f809f614d0a0389956927dd70d2180891be88281",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.070",
       "nodeId": "sf.render.debris-chunk.node.lod2-debris-material-mechanical",
@@ -624,7 +624,7 @@
       "id": "sf.render.debris-chunk.node.lod2-debris-material-radiator.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "7ee86fbbb0554447122db73d2fdccdf4fa95357564e6086d90146ab7ead56ae0",
+      "materialHash": "74adc016daa2147187d3feab0500cc5945755b9858537a82ba89eed3f52353f9",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.084",
       "nodeId": "sf.render.debris-chunk.node.lod2-debris-material-radiator",
@@ -649,7 +649,7 @@
       "id": "sf.render.debris-chunk.node.lod2-remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 336,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_CurledPressureSkin.003",
       "nodeId": "sf.render.debris-chunk.node.lod2-remaster-material-mechanical-brushednickel",
@@ -674,7 +674,7 @@
       "id": "sf.render.debris-chunk.node.lod2-remaster-material-rubber-heatscale.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
+      "materialHash": "a4235fa87814690e69754b8d221869db34567a71a917f83a39387358e1f51dcf",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner.002",
       "nodeId": "sf.render.debris-chunk.node.lod2-remaster-material-rubber-heatscale",
@@ -687,136 +687,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
-      "id": "material:09306e58ed6387f8ee509fc5",
-      "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_BrushedNickel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "36c5f393fae493d10c2d79ba53677c7be9971e28d4e308a8d99357eb2fe48664",
-      "id": "material:36c5f393fae493d10c2d79ba",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "debris_heat_affected_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "debris_heat_affected_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "debris_heat_affected_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "debris_heat_affected_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "62757001ceb6d643a2a31c708ef82495a256433b2040c467735ec82e94bf80c0",
-      "id": "material:62757001ceb6d643a2a31c70",
-      "name": "Material_Rubber_HeatScale",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Rubber_HeatScale_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Rubber_HeatScale_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7ee86fbbb0554447122db73d2fdccdf4fa95357564e6086d90146ab7ead56ae0",
-      "id": "material:7ee86fbbb0554447122db73d",
-      "name": "Material_Radiator",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "debris_radiator_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "debris_radiator_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "debris_radiator_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "debris_radiator_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "97887c3df802629dbcb18fa8cf465df98c5c0f601eafe692dfae42be5a83b465",
-      "id": "material:97887c3df802629dbcb18fa8",
+      "hash": "386c3efb74a9261261ccfeb209b457f5d509d6a44287d7e9d7efe33ba6bd365c",
+      "id": "material:386c3efb74a9261261ccfeb2",
       "name": "Material_Decal",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -847,40 +719,72 @@
       ]
     },
     {
-      "hash": "a2d37aefa263265b9981d8e01758577151a0e39ac0f5ec51934af41b55689582",
-      "id": "material:a2d37aefa263265b9981d8e0",
-      "name": "Material_Insulation",
+      "hash": "658aba879137ae38ddf9d44948b03c937be64b1732964af4a5502568d2dafdee",
+      "id": "material:658aba879137ae38ddf9d449",
+      "name": "Material_Accent",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "debris_insulation_basecolor",
+          "name": "debris_heat_affected_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "debris_insulation_orm",
+          "name": "debris_heat_affected_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "debris_insulation_normal",
+          "name": "debris_heat_affected_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "debris_insulation_orm",
+          "name": "debris_heat_affected_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "a8b8c3a3b6e563d7464ddb5db16b268fe25881b0b64bb181bcf0ae44f6efc779",
-      "id": "material:a8b8c3a3b6e563d7464ddb5d",
+      "hash": "74adc016daa2147187d3feab0500cc5945755b9858537a82ba89eed3f52353f9",
+      "id": "material:74adc016daa2147187d3feab",
+      "name": "Material_Radiator",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "debris_radiator_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "debris_radiator_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "debris_radiator_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "debris_radiator_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "771ef2b2b62dff2a9da5aab8f809f614d0a0389956927dd70d2180891be88281",
+      "id": "material:771ef2b2b62dff2a9da5aab8",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -911,8 +815,72 @@
       ]
     },
     {
-      "hash": "cd6dff08d7314cd41e29b9f5bc890f7bc71b64450f3fc2f79afc2eefe3af0b22",
-      "id": "material:cd6dff08d7314cd41e29b9f5",
+      "hash": "a4235fa87814690e69754b8d221869db34567a71a917f83a39387358e1f51dcf",
+      "id": "material:a4235fa87814690e69754b8d",
+      "name": "Material_Rubber_HeatScale",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Rubber_HeatScale_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Rubber_HeatScale_ao-Material_Rubber_HeatScale_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b977ef46f6dc0dadbfda4a14515f1704e23bc9057278c797c2199b9c431b9dd5",
+      "id": "material:b977ef46f6dc0dadbfda4a14",
+      "name": "Material_Insulation",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "debris_insulation_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "debris_insulation_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "debris_insulation_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "debris_insulation_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ba0e5290186fd6ea9476a0065d3edf1365f1dccd28a4d7feb88d15218f091f48",
+      "id": "material:ba0e5290186fd6ea9476a006",
       "name": "Material_Cable",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -943,8 +911,8 @@
       ]
     },
     {
-      "hash": "df2a3b15e4683e1b22ff2668bb14cc5d58f6621b8107dea60625e67a7c0c9a47",
-      "id": "material:df2a3b15e4683e1b22ff2668",
+      "hash": "c7990edfd160a7b726bbb553a3f61c3237af0182e3db4dd4318f7c0f8d72a4a8",
+      "id": "material:c7990edfd160a7b726bbb553",
       "name": "Material_Hull",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -969,6 +937,38 @@
         {
           "colorSpace": "linear",
           "name": "debris_painted_skin_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cd4ef2431d6f6aa83e87af7f52617493ddc80701140c98693e9d159e0572fe5b",
+      "id": "material:cd4ef2431d6f6aa83e87af7f",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
@@ -2543,19 +2543,19 @@
       "sha256": "b64262af6a7d354b51f3494ce89facdbb91009d296acdef45a60d79a96103971"
     },
     "sourceGlb": {
-      "bytes": 2904112,
-      "sha256": "a302a3136541e549ae6a17589339f8389a9a01b8d63193e39ecec573eb4e0795",
+      "bytes": 1542516,
+      "sha256": "1b3e131dfb51106b1a42f85e97ce148237848c77b202e59f9d58827321b9ee8a",
       "uri": "place_debris_chunk.glb"
     },
     "sourceManifest": {
-      "bytes": 169401,
-      "sha256": "052fd926a23fbe45aa0169a96a6e63690127d691de545a9d23aaf028afee8e1c",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3260336,
-    "sha256": "6b593e6596a683f5373cbdec8361f5c2e16b76a1a1ba5976d1634accfc152bde",
+    "bytes": 1898740,
+    "sha256": "187567941be18689953ca3d88d05c2ead898aeca10597dd1ece02ebf13d68e8c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3459,7 +3459,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_debris_chunk.glb"
   },
-  "runtimeHash": "8811e124b1d7cda4d9348eb4ba5310728e868d8f66bb63f5c82c8f80e9827d03",
+  "runtimeHash": "b948dfe444068051dcb4e155e800e77212bbfdaba68df7a91f70688f1422f581",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

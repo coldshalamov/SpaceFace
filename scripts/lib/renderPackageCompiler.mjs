@@ -123,8 +123,8 @@ export async function compileRenderPackage(options = {}) {
   const metadataBytes = Buffer.from(`${stableJsonStringify(metadata, 2)}\n`);
   await mkdir(outputDir, { recursive: true });
   await Promise.all([
-    writeFile(renderPath, renderBytes),
-    writeFile(metadataPath, metadataBytes),
+    writeFileWithRetry(renderPath, renderBytes),
+    writeFileWithRetry(metadataPath, metadataBytes),
   ]);
 
   return Object.freeze({
@@ -134,6 +134,22 @@ export async function compileRenderPackage(options = {}) {
     renderBytes: renderBytes.length,
     metadataBytes: metadataBytes.length,
   });
+}
+
+// Windows file locks (antivirus/indexer scans of freshly written package files) surface as
+// UNKNOWN/EPERM/EBUSY on a following write and fail full-pilot rebuilds at random files. Bounded
+// retry keeps package writes deterministic; non-transient codes still throw immediately.
+const RETRYABLE_WRITE_CODES = new Set(['UNKNOWN', 'EPERM', 'EBUSY']);
+
+async function writeFileWithRetry(path, bytes, attempts = 6) {
+  for (let i = 0; ; i++) {
+    try {
+      return await writeFile(path, bytes);
+    } catch (error) {
+      if (i >= attempts - 1 || !RETRYABLE_WRITE_CODES.has(error?.code)) throw error;
+      await new Promise((resolveRetry) => setTimeout(resolveRetry, 120 * (i + 1)));
+    }
+  }
 }
 
 export function normalizeSemanticManifest(value) {

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cf3b36bcee526f4b8faa24e28b063b5dc15ee1fd7c5d1bab9c838553987a582f",
+  "contentHash": "66902f2aa316671f7215b8577101592dc687f37eede876fa99c4fbc0b9473689",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -4322,14 +4322,14 @@
       "uri": "place_aftermath_wreck_ore_freighter_hopper.glb"
     },
     "sourceManifest": {
-      "bytes": 150282,
-      "sha256": "f6d24642f2b73885b210b85374298812ff404a6707c3a64752210238e6b29d43",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 137484,
-    "sha256": "1c1d72f1a9390701f2b9acf79a094cb7a197b823f6f03a93ab57b01eaa18ce67",
+    "sha256": "c8a9db31018bc83f1972318f566c3a4e057bfb5a17ac8c5f5a181ebc00b8fa46",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4397,8 +4397,8 @@
       }
     ],
     "materialProfileRoles": {
-      "geology": 55,
-      "hull": 1
+      "geology": 47,
+      "hull": 9
     },
     "materialProfiles": [
       {
@@ -4529,32 +4529,32 @@
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 30,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 31,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -4614,12 +4614,12 @@
       {
         "allowTextures": true,
         "planIndex": 44,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 45,
-        "role": "geology"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -6201,7 +6201,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_hopper.glb"
   },
-  "runtimeHash": "95424c7a492fb01d8099a9c331a9df82f606096ab1a380631296b6485ada7548",
+  "runtimeHash": "c2d711140b0e45b2d5866529c62acee91f16d6ed72ec0ce18f59f7ca74b1095b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

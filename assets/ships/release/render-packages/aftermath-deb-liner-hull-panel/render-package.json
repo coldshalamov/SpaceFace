@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bd50ce3536b7da4017772f0497f568e9505d34a5a142374f3b4c261b292bbef4",
+  "contentHash": "93c7ad73c01ee18bcf5f3f0c24de2df627583965d44c4682f58e27559a86395a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1509,14 +1509,14 @@
       "uri": "place_aftermath_deb_liner_hull_panel.glb"
     },
     "sourceManifest": {
-      "bytes": 150282,
-      "sha256": "f6d24642f2b73885b210b85374298812ff404a6707c3a64752210238e6b29d43",
+      "bytes": 184173,
+      "sha256": "44be99c5a3fcf0c6c053f030f7a4aaa972e4a4e32c84a07873cd82c7564916f1",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 45772,
-    "sha256": "017327a843aabd57a318972049d54be23cd16f1e0dfd5f052925179d5b279e69",
+    "sha256": "29b37af8af11087381a5f09f57c8ae027166342b6d5ea041c08319069aa9517f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1546,7 +1546,8 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 19
+      "glass": 1,
+      "hull": 18
     },
     "materialProfiles": [
       {
@@ -1572,7 +1573,7 @@
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -2165,7 +2166,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel.glb"
   },
-  "runtimeHash": "a9ae95dd6af8e6dfd8ce6fe033e6271e0663c9be02e88082604663870744477f",
+  "runtimeHash": "469ce901d5676a29f805ec31ad984cb8eca502eead083b636ab10de726e97e75",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
