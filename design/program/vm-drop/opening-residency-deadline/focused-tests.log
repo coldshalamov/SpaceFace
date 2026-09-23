@@ -1,0 +1,57 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: resolving-marker meshes are not opening submission leaves
+ok 1 - resolving-marker meshes are not opening submission leaves
+  ---
+  duration_ms: 3.437534
+  ...
+# Subtest: awaiting-authored entity roots do not enter the opening entity census
+ok 2 - awaiting-authored entity roots do not enter the opening entity census
+  ---
+  duration_ms: 2.989096
+  ...
+# Subtest: opening plan completes when only stamped production roots remain after skipping awaiting authored
+ok 3 - opening plan completes when only stamped production roots remain after skipping awaiting authored
+  ---
+  duration_ms: 14.6077
+  ...
+# Subtest: prepareStartupGpuResidency honors deadlineMs and stops early
+ok 4 - prepareStartupGpuResidency honors deadlineMs and stops early
+  ---
+  duration_ms: 2.179964
+  ...
+# Subtest: soft-GPU opening cook passes deadlineMs into residency
+ok 5 - soft-GPU opening cook passes deadlineMs into residency
+  ---
+  duration_ms: 0.758954
+  ...
+# Subtest: soft-GPU opening.planWait does not poll
+ok 6 - soft-GPU opening.planWait does not poll
+  ---
+  duration_ms: 2.775009
+  ...
+# Subtest: soft-GPU opening.drainWait does not await concurrent submission
+ok 7 - soft-GPU opening.drainWait does not await concurrent submission
+  ---
+  duration_ms: 0.6373
+  ...
+# Subtest: soft-GPU opening residency budget is tighter than hardware
+ok 8 - soft-GPU opening residency budget is tighter than hardware
+  ---
+  duration_ms: 0.515544
+  ...
+# Subtest: self-build still follows a soft planWait miss
+ok 9 - self-build still follows a soft planWait miss
+  ---
+  duration_ms: 0.53607
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 605.504118
+FOCUSED:0
