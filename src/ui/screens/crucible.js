@@ -28,6 +28,7 @@ import {
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { createDeathDial } from '../orrery/deathDial.js';
 import {
   buildCodeFor,
   buildNameFor,
@@ -2181,6 +2182,7 @@ export const crucibleResultsScreen = {
 
     for (const id of resultSectionOrder(result)) {
       const band = el('div', 'sf-crres__band');
+      band.dataset.band = id;
       // A heading role rather than an <h2>, so the sections read as one column of sentences.
       const bandTitle = el('p', 'k-caps sf-crres__band-title', sectionTitle(id, result.outcome));
       bandTitle.setAttribute('role', 'heading');
@@ -2224,6 +2226,21 @@ export const crucibleResultsScreen = {
       // A share-surface failure must never take down the results plate.
     }
     rootEl.appendChild(stage);
+
+    // ORRERY §6: a death is read off an instrument -- the ship, what was left of it, the blow from
+    // its bearing, the last hits -- beside the story and the ledger. The kill-chain and last-seconds
+    // rows stay in the plate for the ear (the dial is aria-hidden); the eye reads the dial.
+    this._dial = null;
+    if (ORRERY && result && result.defeat) {
+      const dialHost = el('div', 'sf-crres__dial');
+      dialHost.setAttribute('aria-hidden', 'true');
+      // built detached; it joins the plate only where it can draw (a real layout, SVG)
+      this._dial = createDeathDial({ host: dialHost, ...deathDialSpec(result, ctx) });
+      if (this._dial.active()) {
+        stage.appendChild(dialHost);
+        rootEl.classList.add('has-deathdial');
+      }
+    }
 
     // .k-corner — the hero number: the best chain (swarm) or the score (gauntlet).
     const heroSpec = resultHero(result);
@@ -2328,4 +2345,47 @@ export const crucibleResultsScreen = {
   onHide() {
     if (canAnimate()) cue('close');
   },
+
+  dispose() {
+    if (this._dial) this._dial.dispose();
+    this._dial = null;
+  },
 };
+
+/**
+ * What the death dial draws, in the plate's own words: the kill chain, what was left, the last hits.
+ * DOM-free; the dial only lays it out.
+ */
+export function deathDialSpec(result, ctx) {
+  const defeat = result && result.defeat;
+  if (!defeat) return {};
+  const vitals = defeat.vitalsPct && typeof defeat.vitalsPct === 'object' ? defeat.vitalsPct : {};
+  const trail = Array.isArray(result.damageTrail) ? result.damageTrail : [];
+  const breakdown = damageBreakdown(trail);
+  const rows = new Map(killChainRows(defeat));
+  const death = result.death && typeof result.death === 'object' ? result.death : null;
+  let warn = rows.get('It warned you') || '';
+  if (!warn && death && typeof death.telegraphName === 'string' && death.telegraphName) {
+    const lead = Number.isFinite(Number(death.telegraphLeadMs)) ? ` — ${Math.round(Number(death.telegraphLeadMs))} ms before impact` : '';
+    warn = `${death.telegraphName}${lead}`;
+  }
+  const player = ctx && ctx.state && ctx.state.player;
+  const ships = Array.isArray(player && player.ownedShips) ? player.ownedShips : [];
+  const index = Number.isInteger(player && player.activeShipIndex) ? player.activeShipIndex : 0;
+  return {
+    hullId: result.hullId || (ships[index] && ships[index].defId) || null,
+    direction: defeat.direction || null,
+    vitals: [['Shield', vitals.shield], ['Armour', vitals.armor], ['Hull', vitals.hull]]
+      .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
+      .map(([word, value]) => ({ word, value })),
+    hitAmounts: trail.map((e) => Number(e && e.amount)).filter((n) => Number.isFinite(n) && n > 0),
+    hitGroups: breakdown.rows.map((r) => ({ weapon: r.weapon, hits: r.hits, amount: r.amount })),
+    hitSummary: breakdown.hits ? `Last ${breakdown.hits} hit${breakdown.hits === 1 ? '' : 's'} · ${breakdown.total} damage` : '',
+    caption: {
+      label: 'Killed by',
+      name: rows.get('Killed by') || 'Unidentified attacker',
+      detail: [rows.get('Its weapon'), rows.get('It came from'), rows.get('It got in')].filter(Boolean).join(' · '),
+      warn: warn ? `It warned you: ${warn}` : '',
+    },
+  };
+}
