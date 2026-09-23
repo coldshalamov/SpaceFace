@@ -1,4 +1,5 @@
 import { createTerminalArtwork, ensureBootTerminalCanvas } from './loadingTerminalArt.js';
+import { mountBootRing } from './orrery/bootRing.js';
 
 const DEFAULT_STAGE = Object.freeze({
   id: 'restoring-save',
@@ -33,6 +34,9 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   const progress = document.querySelector ? document.querySelector('[data-loading-progress]') : null;
   const pctEl = document.querySelector ? document.querySelector('[data-loading-pct]') : null;
   if (!overlay) return { show() {}, hide() {}, destroy() {} };
+  // ORRERY: the progress reads on a ring round the turning emblem, a tick per reported stage.
+  let ring = { set() {}, mark() {} };
+  try { ring = mountBootRing(document, overlay); } catch (_) { /* decoration never blocks boot */ }
 
   const raf = typeof globalThis.requestAnimationFrame === 'function'
     ? globalThis.requestAnimationFrame.bind(globalThis)
@@ -137,6 +141,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const shown = clamp01(displayProgress);
     if (progress) progress.style.width = `${(shown * 100).toFixed(2)}%`;
     if (pctEl) pctEl.textContent = `${Math.round(shown * 100)}%`;
+    ring.set(shown);
     // Feed the smoothed value to the artwork so its segment bar, pct and worker morphs move
     // with the bar instead of stepping. NO_ART keeps this a no-op when the canvas is absent.
     (terminalArt || NO_ART).updateProgress({
@@ -228,6 +233,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const stageChanged = !activeStage || activeStage.id !== stage.id
       || Math.abs((Number(activeStage.progress) || 0) - amount) > 1e-6;
     activeStage = stage;
+    ring.mark(amount);
     overlay.style.display = 'flex';
     overlay.classList.remove('hidden');
     overlay.setAttribute('aria-busy', 'true');
@@ -238,6 +244,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       // No animation clock (probes, unit tests): keep the honest step write.
       if (progress) progress.style.width = `${Math.round(amount * 100)}%`;
       if (pctEl) pctEl.textContent = `${Math.round(amount * 100)}%`;
+      ring.set(amount);
     } else {
       targetProgress = amount;
       // A fresh session or a regressed target snaps to the reported step; a re-show of the

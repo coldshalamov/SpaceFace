@@ -411,3 +411,35 @@ html.sf-reduce-motion .cine-rule,
 html.sf-reduce-motion .cine-contract,
 html.sf-reduce-motion .cine-begin,
 html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !important; transform: none !important; }
+
+/* -- ORRERY loading (design/frontend/ORRERY.md section 6 Loading) --------------------------------
+   The name is the drawn logotype mark, not bold UI type; the progress is a ring of ice (data in
+   motion) round the slowly turning emblem, with a bone tick for every stage the boot reports; the
+   2 px bar stays in the DOM for the presenter and its checks, hidden. Stage sentences read below. */
+#boot-overlay.boot-overlay--orrery .boot-lockup { width:min(92vw, 620px); }
+#boot-overlay.boot-overlay--orrery .boot-wordmark {
+  display:block; width:min(64vw, 380px); aspect-ratio:684.7 / 60; font-size:0; line-height:0; color:transparent; text-indent:0;
+  background:rgb(236 230 216); filter:drop-shadow(0 2px 14px rgb(0 0 0 / .6));
+  -webkit-mask:url("/assets/ui/kit/marks/logotype/spaceface-logotype.svg") left top / 100% 100% no-repeat;
+  mask:url("/assets/ui/kit/marks/logotype/spaceface-logotype.svg") left top / 100% 100% no-repeat; }
+#boot-overlay.boot-overlay--orrery .boot-progress-row { order:-1; position:relative; width:auto; justify-content:center; margin:0 0 18px; }
+#boot-overlay.boot-overlay--orrery .boot-progress { display:none; }
+#boot-overlay.boot-overlay--orrery .boot-progress-pct { position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); min-width:0;
+  text-align:center; color:#dfeeff; font-size:17px; font-weight:600; letter-spacing:.02em; text-shadow:0 0 12px rgb(0 0 0 / .8); }
+#boot-overlay.boot-overlay--orrery .boot-label { margin-top:16px; font-size:11px; font-weight:650; letter-spacing:.24em; text-transform:uppercase; color:rgb(232 226 212 / .85); }
+#boot-overlay.boot-overlay--orrery .boot-detail { font-size:13px; color:rgb(232 226 212 / .6); }
+.boot-ring { width:144px; height:144px; overflow:visible; }
+.boot-ring__emblem { opacity:.5; transform-box:fill-box; transform-origin:center; animation:boot-ring-turn 60s linear infinite; }
+.boot-ring__grad { fill:none; stroke:rgb(232 226 212 / .28); stroke-width:1; }
+.boot-ring__track { fill:none; stroke:rgb(232 226 212 / .14); stroke-width:1.5; }
+.boot-ring__bloom { fill:none; stroke:rgb(143 203 255 / .28); stroke-width:6; stroke-linecap:round; }
+.boot-ring__fill { fill:none; stroke:#8fcbff; stroke-width:2; stroke-linecap:round; }
+.boot-ring__head { fill:#dfeeff; filter:drop-shadow(0 0 5px rgb(143 203 255 / .9)); }
+.boot-ring__marks path { stroke:rgb(236 230 216 / .8); stroke-width:1.4; }
+@keyframes boot-ring-turn { to { transform:rotate(360deg); } }
+html.sf-reduce-motion .boot-ring__emblem { animation:none; }
+@media (prefers-reduced-motion: reduce) { .boot-ring__emblem { animation:none; } }
+@media (forced-colors: active) {
+  #boot-overlay.boot-overlay--orrery .boot-wordmark { background:none; -webkit-mask:none; mask:none; width:auto; aspect-ratio:auto; font-size:32px; line-height:1; color:CanvasText; }
+  .boot-ring__emblem { display:none; }
+}
