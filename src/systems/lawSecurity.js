@@ -3182,6 +3182,10 @@ export function scanLineOccluded(origin, target, occluder) {
   return (dx * dx + dz * dz) <= r * r;
 }
 
+// Per-entity cone scratch via WeakMap (no enumerable _sf* on entities). Scanner identity is
+// recomputed every call so patrol nets that clear role/flag correctly return null after break.
+const CUSTOMS_CONE_SCRATCH = new WeakMap();
+
 export function customsScanConeOf(entity) {
   if (!entity || entity.alive === false || !entity.pos) return null;
   const data = entity.data || {};
@@ -3194,19 +3198,33 @@ export function customsScanConeOf(entity) {
     || data.enemyId === 'customs_cutter'
     || data.role === 'customs';
   if (!isScanner) return null;
-  const heading = Number.isFinite(explicit && explicit.heading)
+  let cone = CUSTOMS_CONE_SCRATCH.get(entity);
+  if (!cone) {
+    cone = {
+      origin: null,
+      heading: 0,
+      halfAngle: CUSTOMS_SCAN_HALF_ANGLE,
+      range: CUSTOMS_SCAN_RANGE,
+      dwellS: CUSTOMS_SCAN_DWELL_S,
+      scanner: null,
+    };
+    CUSTOMS_CONE_SCRATCH.set(entity, cone);
+  }
+  cone.origin = entity.pos;
+  cone.heading = Number.isFinite(explicit && explicit.heading)
     ? explicit.heading
     : (Number.isFinite(entity.rot) ? entity.rot : 0);
-  const halfAngle = Number.isFinite(explicit && explicit.halfAngle)
+  cone.halfAngle = Number.isFinite(explicit && explicit.halfAngle)
     ? explicit.halfAngle
     : CUSTOMS_SCAN_HALF_ANGLE;
-  const range = Number.isFinite(explicit && explicit.range)
+  cone.range = Number.isFinite(explicit && explicit.range)
     ? explicit.range
     : CUSTOMS_SCAN_RANGE;
-  const dwellS = Number.isFinite(explicit && explicit.dwellS)
+  cone.dwellS = Number.isFinite(explicit && explicit.dwellS)
     ? explicit.dwellS
     : CUSTOMS_SCAN_DWELL_S;
-  return { origin: entity.pos, heading, halfAngle, range, dwellS, scanner: entity };
+  cone.scanner = entity;
+  return cone;
 }
 
 export function aggressionCauseFor(state, attacker, target) {
