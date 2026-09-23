@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-22",
+  "updated": "2026-09-23",
   "runs": [
     {
       "date": "2026-08-12",
@@ -73,20 +73,6 @@
     }
   ],
   "units": [
-    {
-      "id": "causal-work-hail",
-      "date": "2026-08-12",
-      "wf": "WF-01",
-      "mode": "integration",
-      "verdict": "accepted",
-      "reason": "stamp-gated work hail with means",
-      "fingerprint": "verb=hail,subject=worker,sector=ceres,layer=midground,tempo=burst,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "evidence": "design/program/receipts/inference-5x-2026-08-11/EVIDENCE.md",
-      "review": "design/inference-workflows/records/inference-5x-2026-08-11/U3_REVIEW.md",
-      "sector": "ceres"
-    },
     {
       "id": "manifest-cargo-value",
       "date": "2026-08-12",
@@ -1637,6 +1623,19 @@
       "references": [],
       "integration": "live",
       "commit": "8190dd475",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inst-08-unknown-weapon-recipe",
+      "date": "2026-09-23",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A family-less weapon id resolves to the authored generic combat discharge sfx_wpn_unclassified, never the starter pulse",
+      "fingerprint": "verb=fire,subject=weapon-audio,sector=any,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "b284eb6f5",
       "verification": "focused_green"
     }
   ],

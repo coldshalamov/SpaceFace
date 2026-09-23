@@ -123,7 +123,7 @@ not to invent.
 | INST-05 | Resting flight does not wear the aerospace G-LOC sheet | `index.html`, `styles/hud.css` | G-LOC and EMP rules apply only while that effect is on | Delete the effects. Repaint station | OPEN |
 | INST-06 | The boot screen does not write to instruments that are not in the page | `src/ui/loadingTerminalArt.js` | No queries for `data-loading-diag-stream`, `-hex`, `-subsystems`, or `-segments` | Invent a second boot story | OPEN |
 | INST-07 | The boot picture is not a 640×380 buffer stretched over the window | `index.html` | `#boot-terminal-canvas` is not a tiny buffer scaled to the viewport | Replace the loader with a new product | OPEN |
-| INST-08 | An unknown gun does not sound like the starter pulse | `src/audio/audioSystem.js` (`weaponRecipeFor`) | A weapon id with no family resolves to a named generic combat recipe, or fails closed, never `sfx_wpn_pulse_laser` | Author a new sample bank (§22 C5 is the verb table) | OPEN |
+| INST-08 | An unknown gun does not sound like the starter pulse | `src/audio/audioSystem.js` (`weaponRecipeFor`) | A weapon id with no family resolves to a named generic combat recipe, or fails closed, never `sfx_wpn_pulse_laser` | Author a new sample bank (§22 C5 is the verb table) | SHIPPED b284eb6f5 |
 | INST-09 | Doctrine setup, telegraph, commit, and aftermath are four cues | `src/audio/audioSystem.js` | Those four cue ids resolve to four recipe ids, not all `sfx_encounter_escalation` | Add a music system | OPEN |
 | INST-10 | Hover and tab are not the click sample at another pitch | `src/data/audioRecipes.js` | `sfx_ui_hover` and `sfx_ui_tab` bind distinct samples, or synth-only, not `ui_click` | Replace the combat mix | OPEN |
 | INST-11 | A capital's pre-detonation ticks are not menu hovers | `src/audio/audioSystem.js` | Those ticks use a combat recipe, not `sfx_ui_hover` | Retune the explosion | OPEN |
@@ -168,6 +168,7 @@ not to invent.
 | PIC-10 | PIC-10 | 49bbd51ca | Graphics-lab ship/bolt glow demos are additive geometry coaxial with the drive/bolt; prose names the banned camera-facing card |
 | VERB-09 | verb-09-helios-impulse-charge | 40a2f2c4c | Capital's `military` secondary role authors `cmdty_impulse_charge` as a produced line; the starter station keeps a full reference lot buyable |
 | WORLD-14 | world-14-research-sensor-sweep | 8190dd475 | Research stations schedule a research-only `sensor_sweep` side event; the dish-sweep VFX renders it |
+| INST-08 | inst-08-unknown-weapon-recipe | b284eb6f5 | A family-less weapon id resolves to the authored generic combat discharge `sfx_wpn_unclassified`, never the starter pulse |
 
 ## CUT
 
