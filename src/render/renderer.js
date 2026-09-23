@@ -5036,6 +5036,9 @@ export const render = {
         getGpuTimers: () => this._gpuTimers,
         getGpuOrigin: () => this._gpuFrameOrigin || null,
       });
+      // Seed the CAS gate at boot — a below-res first frame must not wait for a resize.
+      const disp = displayPixelFootprint();
+      this.bloom.setSize(drawSize.x, drawSize.y, disp.x, disp.y);
     } catch (err) {
       console.warn('[render] bloom unavailable, falling back:', err);
       this.bloom = null;
@@ -13887,7 +13890,10 @@ export const render = {
   // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
   _applySize() {
     const drawSize = applyRendererSize(this.renderer, this.state);
-    if (this.bloom) this.bloom.setSize(drawSize.x, drawSize.y);
+    if (this.bloom) {
+      const disp = displayPixelFootprint();
+      this.bloom.setSize(drawSize.x, drawSize.y, disp.x, disp.y);
+    }
     if (this._renderGraph && this.state?.settings?.video?.renderGraph === true) {
       const video = this.state?.settings?.video || {};
       this._renderGraph.setOptions({
@@ -14107,6 +14113,16 @@ export function applyFirstPlayablePaintRelease(owner) {
     if (render && typeof render.resumeDeferredPipelineAdmissions === 'function') {
       void render.resumeDeferredPipelineAdmissions();
     }
+    // A survival arena's cook warmed the whole roster and its boundary settle drained the
+    // authored upgrade queue to idle before the shell released, so the first-flight queue hold
+    // has nothing left to defer — it only parked mid-round spawns. A wasp reinforcement at +2 s
+    // drew its procedural stand-in and swapped to the authored hull at +18 s (seed 4242). Release
+    // it at the first paint: the queue still admits one entity per healthy frame, and the
+    // roster's programs and buffers are already resident (0 in-round links / full uploads).
+    if (owner && owner.scene && owner.state && owner.state.mode === 'flight'
+        && survivalRunHoldsArena(owner.state)) {
+      resumeAuthoredUpgradeQueueAfterOpening(owner.scene);
+    }
   }
   return owner;
 }
@@ -14194,6 +14210,23 @@ function applyRendererSize(renderer, state) {
   renderer.setPixelRatio(Math.max(0.2, base * scale * dyn));
   renderer.setSize(window.innerWidth, window.innerHeight);
   return renderer.getDrawingBufferSize(_drawSize);
+}
+
+// The display's native pixel footprint: CSS viewport × devicePixelRatio. This is the size the
+// browser upscales the drawing buffer to — the CAS gate (src/render/cas.js) compares the actual
+// drawing buffer against it, so a renderScale/dynRes/cap-reduced frame sharpens and a full-res
+// or supersampled one does not. Reuses _drawSize-style module state; _applySize can run per
+// frame under the dynamic-resolution controller, so this must not allocate.
+const _displayFootprint = { x: 0, y: 0 };
+function displayPixelFootprint() {
+  _displayFootprint.x = 0;
+  _displayFootprint.y = 0;
+  if (typeof window === 'undefined') return _displayFootprint;
+  const dpr = Number.isFinite(window.devicePixelRatio) && window.devicePixelRatio > 0
+    ? window.devicePixelRatio : 1;
+  _displayFootprint.x = (Number.isFinite(window.innerWidth) ? window.innerWidth : 0) * dpr;
+  _displayFootprint.y = (Number.isFinite(window.innerHeight) ? window.innerHeight : 0) * dpr;
+  return _displayFootprint;
 }
 
 function finiteInRange(value, min, max, fallback) {

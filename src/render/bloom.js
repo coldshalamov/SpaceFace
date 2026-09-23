@@ -10,6 +10,9 @@
 //   pass 1  bright+down rtScene   -> down[0] (½)   bright-pass + 5-tap 2D downsample
 //   pass 2  downsample  down[0]   -> down[1] (¼)   5-tap 2D downsample  [if levels>=2]
 //   pass 3  composite   rtScene + multi-scale bloom (down[0]+w*down[1]) -> default framebuffer
+//   pass 4  [below-res only] composite -> rtPost, then FidelityFX CAS sharpen -> default
+//           framebuffer. The canvas backing store is the low-res frame; the browser does the
+//           display upscale, so CasFilter runs sharpen-only on the presented bytes.
 //
 // Structural note: the old additive upsample chain allocated a separate half-res RT and an extra
 // fullscreen pass per frame. Multi-scale composite sampling (same idea as SpaceRenderGraph) keeps
@@ -33,6 +36,7 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
+import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
 // A scene pass slower than this is a brick, not a frame. 200 ms is ~12 dropped frames at 60 Hz —
@@ -1075,6 +1079,18 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     stencilBuffer: false,
     samples: 0,
   };
+  // rtPost carries the presented sRGB bytes for the CAS pass — exactly what would reach the
+  // canvas, so byte storage is honest (no depth, no filtering; CasFilter texelFetches).
+  const postRtOpts = {
+    type: THREE.UnsignedByteType,
+    magFilter: THREE.NearestFilter,
+    minFilter: THREE.NearestFilter,
+    depthBuffer: false,
+    stencilBuffer: false,
+  };
+  let rtPost = null;
+  // A below-display-resolution frame runs CasFilter; a full-res frame skips it entirely.
+  let casActive = false;
 
   // The bloom path already presents through a post composite, so multisampling the full-resolution HDR
   // scene target adds a costly resolve before the downsample/composite chain. Keep the offscreen target
@@ -1165,6 +1181,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uToe:       { value: toe },       // lifted black floor (0 = true blacks)
     uGrainFrame: { value: 0 },
   });
+  // CAS needs GLSL3 (texelFetch, uvec4 bit-cast uniforms) — the only GLSL3 material in the chain.
+  const casMat = new THREE.ShaderMaterial({
+    uniforms: createCasUniforms(),
+    vertexShader: QUAD_VERT,
+    fragmentShader: CAS_FRAG,
+    glslVersion: THREE.GLSL3,
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  });
 
   function postStyleScale() {
     return Math.max(grain, vignette, grade, toe);
@@ -1190,6 +1216,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compositeMat.uniforms.tScene.value = null;
     compositeMat.uniforms.tBloom0.value = null;
     compositeMat.uniforms.tBloom1.value = null;
+    casMat.uniforms.tSrc.value = null;
     const glState = renderer && renderer.state;
     if (!glState || typeof glState.unbindTexture !== 'function') return;
     const gl = renderer.getContext && renderer.getContext();
@@ -1527,8 +1554,17 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compositeMat.uniforms.uAces.value = aces;
     const timeS = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
     compositeMat.uniforms.uGrainFrame.value = Math.floor(timeS * POST_GRAIN_FPS);
-    blit(compositeMat, null);
+    // Below-res frame: composite presents into rtPost, then CasFilter sharpens it to screen.
+    // Full-res: composite writes the canvas directly — no extra target, no extra pass.
+    const sharpen = casActive && rtPost;
+    blit(compositeMat, sharpen ? rtPost : null);
     if (tier1) tier1.countRenderPassPixels(W * H, 'bloom-composite');
+    if (sharpen) {
+      casMat.uniforms.tSrc.value = rtPost.texture;
+      blit(casMat, null);
+      casMat.uniforms.tSrc.value = null;
+      if (tier1) tier1.countRenderPassPixels(W * H, 'cas-sharpen');
+    }
   }
 
   function setInstrumentation(next) {
@@ -1633,42 +1669,54 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // recreate the whole pyramid at the current size so the next frame can render cleanly.
     rtScene.dispose();
     for (const rt of down) rt.dispose();
+    if (rtPost) { rtPost.dispose(); rtPost = null; }
     const next = createRenderTargets('contextRestore');
     rtScene = next.rtScene;
     halfW = next.halfW;
     halfH = next.halfH;
     levels = next.levels;
     down = next.down;
+    if (casActive) rtPost = allocRenderTarget(W, H, postRtOpts, 'contextRestore');
   }
 
   function contextLossResources() {
-    return [rtScene, ...down].filter(Boolean);
+    return [rtScene, rtPost, ...down].filter(Boolean);
   }
 
   function openingProgramMaterials() {
-    return [downsampleMat, compositeMat];
+    return [downsampleMat, compositeMat, casMat];
   }
 
-  function setSize(w, h) {
+  function setSize(w, h, displayW, displayH) {
     const nextW = Math.max(1, w | 0);
     const nextH = Math.max(1, h | 0);
-    // Hot path: _applySize() may re-enter with an unchanged drawing buffer — never touch GPU RTs.
-    if (nextW === W && nextH === H) return;
-    W = nextW;
-    H = nextH;
-    halfW = Math.max(1, W >> 1);
-    halfH = Math.max(1, H >> 1);
-    const newLevels = levelCountForSize(W, H);
-    resizeRenderTarget(rtScene, W, H, 'resize');
-    // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
-    while (down.length < newLevels) {
-      const i = down.length;
-      down.push(allocRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), pyramidRtOpts, 'resize'));
+    // The gate re-evaluates on every call — dynamic resolution can flip a frame below display
+    // res without the buffer size changing class, and a stale flag is a silent miss.
+    casActive = resolveCasSharpenActive(nextW, nextH, displayW, displayH);
+    if (nextW !== W || nextH !== H) {
+      W = nextW;
+      H = nextH;
+      halfW = Math.max(1, W >> 1);
+      halfH = Math.max(1, H >> 1);
+      const newLevels = levelCountForSize(W, H);
+      resizeRenderTarget(rtScene, W, H, 'resize');
+      // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
+      while (down.length < newLevels) {
+        const i = down.length;
+        down.push(allocRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), pyramidRtOpts, 'resize'));
+      }
+      while (down.length > newLevels) { const rt = down.pop(); rt.dispose(); }
+      levels = newLevels;
+      for (let i = 0; i < levels; i++) {
+        resizeRenderTarget(down[i], Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), 'resize');
+      }
+      if (rtPost) resizeRenderTarget(rtPost, W, H, 'resize');
     }
-    while (down.length > newLevels) { const rt = down.pop(); rt.dispose(); }
-    levels = newLevels;
-    for (let i = 0; i < levels; i++) {
-      resizeRenderTarget(down[i], Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), 'resize');
+    // RTs are only created at init/resize/context-restore — rtPost joins that rule here,
+    // lazily on the first below-res sizing, never inside render().
+    if (casActive) {
+      if (!rtPost) rtPost = allocRenderTarget(W, H, postRtOpts, 'cas-sharpen');
+      applyCasSetup(casMat.uniforms, CAS_SHARPNESS, W, H, W, H);
     }
   }
 
@@ -1738,14 +1786,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       presentationParity: 'canonical-base-ao-off-bloom-neutral',
       upsampleTargets: 0,
       sharedQuadGeometry: true,
-      targets: 1 + down.length,
-      renderTargetCount: 1 + down.length,
+      targets: 1 + down.length + (rtPost ? 1 : 0),
+      renderTargetCount: 1 + down.length + (rtPost ? 1 : 0),
       drawingBufferWidth: W,
       drawingBufferHeight: H,
       sceneTargetWidth: rtScene.width,
       sceneTargetHeight: rtScene.height,
       effectiveSceneScale: 1,
-      fullFramePasses: 2,
+      casSharpenActive: casActive,
+      casSharpenTarget: rtPost ? { width: rtPost.width, height: rtPost.height } : null,
+      fullFramePasses: casActive && rtPost ? 3 : 2,
       // Downsample pyramid only — multi-scale composite replaced the upsample chain.
       bloomPasses: enabled && strength > 0.0001 ? down.length : 0,
       passFamilies: {
@@ -1754,15 +1804,18 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         ao: 0,
         bloom: enabled && strength > 0.0001 ? down.length : 0,
         composite: 1,
+        cas: casActive && rtPost ? 1 : 0,
       },
     };
   }
 
   function dispose() {
     rtScene.dispose();
+    if (rtPost) { rtPost.dispose(); rtPost = null; }
     for (const rt of down) rt.dispose();
     downsampleMat.dispose();
     compositeMat.dispose();
+    casMat.dispose();
     releaseSharedQuadGeometry();
   }
 
