@@ -236,7 +236,7 @@ html body #screens > .k-screen.orr-refit > .k-title .k-t-title { font-size:clamp
 html body #screens > .k-screen.orr-refit > .k-title .sf-cru-sub { font-size:14px; color:rgb(232 226 212 / .66); max-width:44ch; }
 /* one amber on the screen: the keys rest in bone and light only when the player reaches for them */
 html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word.k-word--primary { color:rgb(246 241 230) !important; text-shadow:0 0 16px rgb(0 0 0 / .6) !important;
-  background-image:linear-gradient(90deg, rgb(236 230 216 / .7), rgb(236 230 216 / 0)) !important; }
+  background-image:none !important; padding-bottom:8px !important; }
 html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; text-shadow:0 0 22px rgb(242 185 80 / .5) !important;
   background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / 0)) !important; }
 html body #screens > .k-screen.orr-refit .k-foot .sf-cru-kbd { display:inline-grid; place-items:center; margin-left:12px; min-width:26px; height:18px; padding:0 5px; box-sizing:border-box;
@@ -264,12 +264,12 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .k-row__na
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left .k-row__name { flex-direction:row-reverse; }
 /* the hardpoint's name is for the ear: its numeral already says which one */
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-slottag { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.26em;
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-slottag { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11.5px; letter-spacing:.22em;
   text-transform:uppercase; color:rgb(232 226 212 / .62); margin:0; background:none; border:0; padding:0; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__value { font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 720, "wdth" 118; font-size:17px; line-height:1.15;
   letter-spacing:.01em; color:rgb(240 235 224); text-shadow:0 1px 0 rgb(0 0 0 / .6), 0 0 14px rgb(0 0 0 / .8); }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-bare .orr-hp__value { font-family:var(--dp-face-label, "Archivo"); font-variation-settings:normal; font-weight:500; font-size:12.5px;
-  color:rgb(232 226 212 / .5); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-bare .orr-hp__value { font-family:var(--dp-face-label, "Archivo"); font-variation-settings:normal; font-weight:500; font-size:13px;
+  color:rgb(236 230 216 / .7); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__contrast { font-size:11.5px; line-height:1.35; color:rgb(232 226 212 / .58); max-width:100%; white-space:normal; }
 /* the spares: words; the chosen one stands bright on a fine rule of its own */
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spares { display:flex; flex-wrap:wrap; gap:2px 16px; margin:0; }
@@ -277,7 +277,7 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left .
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare { all:unset; box-sizing:border-box; cursor:pointer; position:relative; display:inline-flex; align-items:baseline; gap:7px;
   padding:2px 0 5px; color:rgb(232 226 212 / .56); transition:color .16s linear; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare-name { font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 680, "wdth" 115; font-size:15px; letter-spacing:.01em; }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare-stat { font-family:var(--dp-face-label, "Archivo"); font-size:11px; font-weight:500; letter-spacing:.04em; color:rgb(232 226 212 / .5); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare-stat { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:500; letter-spacing:.03em; color:rgb(236 230 216 / .7); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__spare::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:rgb(236 230 216 / .8);
   transform:scaleX(0); transform-origin:left; transition:transform .22s var(--dp-ease-out, ease-out); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left .orr-hp__spare::after { transform-origin:right; }
@@ -290,8 +290,8 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-ac
   color:rgb(236 230 216 / .82) !important; align-self:baseline; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act[hidden] { display:none !important; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__line { gap:6px 12px !important; }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__empty { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.26em;
-  text-transform:uppercase; color:rgb(236 230 216 / .42); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__empty { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11.5px; letter-spacing:.22em;
+  text-transform:uppercase; color:rgb(236 230 216 / .7); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare-name { font-variation-settings:"wght" 620, "wdth" 112; }
 /* one hardpoint unfolds at a time: the lit one shows every spare and the scales; the rest show their pick */
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open:not(.is-lit) .orr-hp__spare:not([aria-checked="true"]) { display:none; }
@@ -304,10 +304,18 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left.i
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open.is-lit .orr-hp__spares { flex-direction:column; gap:1px; align-items:flex-start; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left.is-open.is-lit .orr-hp__spares { align-items:flex-end; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open.is-lit .sf-cru-act { margin-top:4px !important; align-self:auto; }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-word { font-size:9.5px; font-weight:650; letter-spacing:.24em; fill:rgb(236 230 216 / .55); }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-val { font-family:var(--dp-face-numeral, "Archivo"); font-size:13px; font-weight:560; letter-spacing:0; fill:rgb(246 241 230); }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__tick { stroke:rgb(236 230 216 / .5); stroke-width:1.4; fill:none; }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__tick.is-chosen { stroke:var(--dp-hand-hot, #ffd98c); stroke-width:2.2; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-word { font-size:11px; font-weight:650; letter-spacing:.2em; fill:rgb(236 230 216 / .72); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-val { font-family:var(--dp-face-numeral, "Archivo"); font-size:14px; font-weight:600; letter-spacing:0; fill:rgb(246 241 230); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-delta { font-size:12px; font-weight:600; fill:var(--dp-ice, #8fcbff); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-max { font-size:10px; font-weight:600; letter-spacing:.06em; fill:rgb(236 230 216 / .5); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__track { stroke:rgb(236 230 216 / .25); stroke-width:2; fill:none; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__track-end { stroke:rgb(236 230 216 / .45); stroke-width:1; fill:none; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__tick { stroke:rgb(236 230 216 / .62); stroke-width:1.6; fill:none; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__tick.is-chosen { stroke:var(--dp-hand-hot, #ffd98c); stroke-width:2.6; }
+/* the lit verb carries the key that presses it */
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled)::after { content:"Enter"; position:static; display:inline-grid; place-items:center; transform:none;
+  width:auto; height:17px; margin-left:9px; padding:0 5px; background:none !important; box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42) !important; border-radius:3px;
+  font-size:9.5px; letter-spacing:.08em; color:rgb(236 230 216 / .78); vertical-align:1px; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act::before { display:none !important; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act:disabled { color:rgb(232 226 212 / .26) !important; }
 /* lit: the Hand is on this hardpoint -- its numeral takes the lamp, its words brighten, its verb is the one to press */

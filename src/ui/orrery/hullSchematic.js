@@ -50,14 +50,19 @@ html.sf-reduce-motion .orr-hull--settled .orr-hull__label { transition:none; }
 .orr-hull__node .orr-hull__glow { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:8; opacity:0; transition:opacity .18s linear; }
 .orr-hull__node.is-open .orr-hull__core { fill:none; }
 .orr-hull__node.is-open .orr-hull__ring { stroke-dasharray:3.2 2.2; }
-.orr-hull__node.is-bare .orr-hull__ring { stroke:rgb(236 230 216 / .4); stroke-dasharray:1.5 2.5; }
+.orr-hull__node.is-bare .orr-hull__ring { stroke:rgb(236 230 216 / .55); stroke-dasharray:3.2 2.2; }
+.orr-hull__node .orr-hull__hit { fill:transparent; stroke:none; pointer-events:all; cursor:pointer; }
 .orr-hull__node.is-bare .orr-hull__core { fill:none; }
 .orr-hull__node.is-lit { transform:scale(1.3); }
 .orr-hull__node.is-lit .orr-hull__ring { stroke:var(--dp-hand-hot, #ffd98c); stroke-dasharray:none; }
 .orr-hull__node.is-lit .orr-hull__core { fill:var(--dp-hand-hot, #ffd98c); }
 .orr-hull__node.is-lit .orr-hull__glow { opacity:.24; }
-.orr-svg text.orr-hull__num { font-size:10px; font-weight:650; letter-spacing:.04em; fill:rgb(236 230 216 / .72);
-  paint-order:stroke; stroke:rgb(4 6 9 / .9); stroke-width:3px; stroke-linejoin:round; }
+.orr-svg text.orr-hull__num { font-size:11.5px; font-weight:700; letter-spacing:.04em; fill:rgb(236 230 216 / .86);
+  paint-order:stroke; stroke:rgb(4 6 9 / .95); stroke-width:4px; stroke-linejoin:round; }
+.orr-svg .orr-hull__fitted { fill:none; stroke-linecap:butt; }
+.orr-svg .orr-hull__fitted.is-fitted { stroke:rgb(236 230 216 / .8); }
+.orr-svg .orr-hull__fitted.is-empty { stroke:rgb(236 230 216 / .22); }
+.orr-svg .orr-hull__fitted.is-lit { stroke:var(--dp-hand, #f2b950); }
 .orr-svg text.orr-hull__num.is-lit { fill:var(--dp-hand-hot, #ffd98c); }
 .orr-hull__rise { opacity:0; animation:orr-hull-rise .5s var(--dp-ease-out, ease-out) forwards; animation-delay:var(--orr-delay, 0ms); }
 @keyframes orr-hull-rise { from { opacity:0; } to { opacity:1; } }
@@ -133,7 +138,7 @@ const INERT = Object.freeze({
  * @param {() => Element[]} [o.avoid] chrome the labels and the ship keep clear of (title, keys)
  * @param {number} [o.labelWidth] label column width in px
  */
-export function createHullSchematic({ host, avoid = () => [], labelWidth = 300, gap = 34, edge = 72 } = {}) {
+export function createHullSchematic({ host, avoid = () => [], onPick = null, labelWidth = 300, gap = 34, edge = 72 } = {}) {
   const doc = host && host.ownerDocument;
   if (!doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function'
     || typeof doc.createElement !== 'function') return INERT;
@@ -169,6 +174,7 @@ export function createHullSchematic({ host, avoid = () => [], labelWidth = 300, 
   let nodeEls = [];
   let numEls = [];
   let leaderEls = [];
+  let segEls = [];
   let hand = null;
 
   const schedule = () => {
@@ -219,6 +225,7 @@ export function createHullSchematic({ host, avoid = () => [], labelWidth = 300, 
     nodeEls.forEach((n, i) => { if (n) n.classList.toggle('is-lit', i === litIndex); });
     numEls.forEach((n, i) => { if (n) n.classList.toggle('is-lit', i === litIndex); });
     leaderEls.forEach((set, i) => { if (set) for (const p of set) p.classList.toggle('is-lit', i === litIndex); });
+    segEls.forEach((s, i) => { if (s) s.classList.toggle('is-lit', i === litIndex); });
     if (!geo || !hand) return;
     const target = geo.angles[litIndex];
     const visible = on && Number.isFinite(target);
@@ -240,7 +247,7 @@ export function createHullSchematic({ host, avoid = () => [], labelWidth = 300, 
     pool.style.display = 'none';
     layer.textContent = '';
     under.textContent = '';
-    nodeEls = []; numEls = []; leaderEls = []; hand = null; geo = null;
+    nodeEls = []; numEls = []; leaderEls = []; segEls = []; hand = null; geo = null;
     for (const n of nodes) {
       if (!n || !n.el || !n.el.style) continue;
       n.el.classList.remove('orr-hull__label', 'is-left', 'is-right');
@@ -308,14 +315,13 @@ export function createHullSchematic({ host, avoid = () => [], labelWidth = 300, 
     // the beads on the render's own sockets; several of one type spread along their mark
     const totals = {};
     const ordinals = nodes.map((n) => { totals[n.slotType] = (totals[n.slotType] || 0) + 1; return totals[n.slotType] - 1; });
-    let points = nodes.map((n, i) => {
-      const uv = markForSlot(info.marks, n.slotType, ordinals[i], totals[n.slotType]);
-      return uv ? { x: imgRect.left + uv[0] * imgW, y: imgRect.top + uv[1] * imgH } : { x: hx, y: hy };
-    });
-    points = separateBeads(points, 20);
+    const uvs = nodes.map((n, i) => markForSlot(info.marks, n.slotType, ordinals[i], totals[n.slotType]) || [0.5, 0.5]);
+    let points = uvs.map(([u, v]) => ({ x: imgRect.left + u * imgW, y: imgRect.top + v * imgH }));
+    points = separateBeads(points, 22);
 
-    // two balanced columns, evenly spaced, each clear of the chrome in its lane
-    const cols = splitColumns(points);
+    // two balanced columns, evenly spaced, each clear of the chrome in its lane; sides and order come
+    // from the image's own coordinates, so they are the same at every screen size
+    const cols = splitColumns(uvs.map(([u, v]) => ({ x: u, y: v })));
     const tops = new Array(nodes.length);
     const sides = new Array(nodes.length);
     for (const [key, side] of [['left', -1], ['right', 1]]) {
@@ -362,16 +368,17 @@ export function createHullSchematic({ host, avoid = () => [], labelWidth = 300, 
     const drift = svg('g', { class: 'orr-drift', style: `transform-origin:${hx.toFixed(1)}px ${hy.toFixed(1)}px; --orr-drift-s:720s` });
     drift.appendChild(svg('path', { d: ticksD(hx, hy, R + 30, 48, { len: 4, inward: false }), class: 'orr-core orr-faint', 'stroke-width': 1 }));
     dial.appendChild(drift);
-    if (engraving) dial.appendChild(circularText(hx, hy, R + 44, engraving.toUpperCase(), { startDeg: 270, size: 10, className: 'orr-micro', anchor: 'middle', upright: true }));
     layer.appendChild(rise(dial, 0));
 
     geo = { hx, hy, R, angles: [] };
     leaderEls = []; nodeEls = []; numEls = [];
+    const exits = [];
     nodes.forEach((n, i) => {
       const p = points[i];
       const side = sides[i];
       const cy = tops[i] + Math.min(heights[i], 44) / 2 + 2;
       const [ex, ey] = rimExit(hx, hy, R, side, cy);
+      exits[i] = [ex, ey];
       const colEdge = side < 0 ? hx - R - gap + 6 : hx + R + gap - 6;
       geo.angles[i] = bearing(hx, hy, ex, ey);
       // inside the ring the line runs behind the drawing; outside it runs flat to its label
@@ -389,23 +396,56 @@ export function createHullSchematic({ host, avoid = () => [], labelWidth = 300, 
       const [t1x, t1y] = polar(hx, hy, R + 7, geo.angles[i]);
       layer.appendChild(rise(svg('path', { d: `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${t1x.toFixed(1)} ${t1y.toFixed(1)}`, class: 'orr-core orr-hi', 'stroke-width': 1.2 }), 120 + i * 40));
     });
+    // the fitted gauge and the engraving sit on the dial where no hardpoint's line crosses it: the
+    // bottom if it is free, else the top, else nowhere
+    const text = engraving ? engraving.toUpperCase() : '';
+    const spanDeg = Math.max(36, ((text.length * 9.4) / (R + 46)) * (180 / Math.PI) + 8);
+    const clear = (mid) => geo.angles.every((a) => Math.abs(((a - mid + 540) % 360) - 180) > spanDeg / 2 + 5);
+    const at = clear(180) ? 180 : clear(0) ? 0 : null;
+    segEls = [];
+    if (at != null) {
+      const n = nodes.length;
+      const segSpan = Math.min(spanDeg, 8 * n + 8);
+      const step = segSpan / n;
+      const bottom = at === 180;
+      nodes.forEach((node, i) => {
+        // read left to right whichever arc it is on
+        const k = bottom ? n - 1 - i : i;
+        const s0 = at - segSpan / 2 + k * step + 0.9;
+        const seg = svg('path', {
+          d: arcD(hx, hy, R + 16, s0, s0 + step - 1.8),
+          class: `orr-hull__fitted ${node.state === 'fitted' ? 'is-fitted' : 'is-empty'}`, 'stroke-width': 4,
+        });
+        layer.appendChild(rise(seg, 160 + i * 30));
+        segEls[i] = seg;
+      });
+      if (text) {
+        layer.appendChild(rise(circularText(hx, hy, R + 38, text, {
+          startDeg: bottom ? 270 : 90, size: 10, className: 'orr-micro', anchor: 'middle', upright: bottom,
+        }), 200));
+      }
+    }
     // nodes and their numerals over the lines
     points.forEach((p, i) => {
       const kind = nodes[i].state === 'fitted' ? 'is-fitted' : nodes[i].state === 'open' ? 'is-open' : 'is-bare';
       const g = svg('g', { class: `orr-hull__node ${kind}` });
       g.append(
-        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 11, class: 'orr-hull__glow' }),
-        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 8, class: 'orr-hull__well' }),
-        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 7, class: 'orr-hull__ring' }),
-        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 2.6, class: 'orr-hull__core' }),
+        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 12, class: 'orr-hull__glow' }),
+        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 9.5, class: 'orr-hull__well' }),
+        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 8, class: 'orr-hull__ring' }),
+        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 3, class: 'orr-hull__core' }),
+        svg('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 14, class: 'orr-hull__hit' }),
       );
+      if (typeof onPick === 'function') g.addEventListener('click', () => onPick(i));
       layer.appendChild(rise(g, 200 + i * 40));
       nodeEls[i] = g;
-      // the numeral beside its node, on the side its label is
-      const side = sides[i];
+      // the numeral beside its node, pushed out along the way its line leaves
+      const [ex, ey] = exits[i];
+      const len = Math.hypot(ex - p.x, ey - p.y) || 1;
+      const dx = (ex - p.x) / len; const dy = (ey - p.y) / len;
       const num = svg('text', {
-        x: (p.x + side * 12).toFixed(1), y: (p.y - 9).toFixed(1),
-        class: 'orr-hull__num', 'text-anchor': side < 0 ? 'end' : 'start',
+        x: (p.x + dx * 19).toFixed(1), y: (p.y + dy * 19 + 4).toFixed(1),
+        class: 'orr-hull__num', 'text-anchor': dx < -0.35 ? 'end' : dx > 0.35 ? 'start' : 'middle',
       });
       num.textContent = nodes[i].num || String(i + 1).padStart(2, '0');
       layer.appendChild(rise(num, 240 + i * 40));

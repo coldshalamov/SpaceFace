@@ -1,43 +1,28 @@
-# The hull as a drawing in light for the refit jig (src/ui/orrery/hullSchematic.js).
+# The refit jig's drawing of a hull (src/ui/orrery/hullSchematic.js), from tools/art/render_jig.py.
 #
-# Input: a published plan render (<hull>.top.webp, nose up, transparent film). Output: the same frame,
-# the same size, so the render's plan-view marks (assets/ui/renders/hulls/manifest.json `top.marks`)
-# land on it unchanged. The body is a faint warm-bone wash from the render's own luminance, its panel
-# seams are drawn as fine light lines (edges of the luminance), and its silhouette is a crisp outline.
-# No colour of the model survives: decals, pastel blocks and flat shading read as placeholder at jig
-# size, while the ship's own structure reads as a technical drawing.
+# Input: the Freestyle line render (plan view, nose along +X, white lines over a flat near-black fill,
+# transparent film). Output: the published drawing, nose up, in the plan view's own frame and size, so
+# the plan marks (assets/ui/renders/hulls/manifest.json `top.marks`) land on it unchanged. The lines
+# are warm bone; the fill stays near-black and nearly opaque, so whatever the jig draws behind the
+# ship (its leaders) is hidden where the ship is.
 #
-#   python tools/art/jig_glyph.py assets/ui/renders/hulls/ship_hornet.top.webp assets/ui/renders/hulls/ship_hornet.jig.webp
+#   blender -b -P tools/art/render_jig.py -- <glb> <raw.png> 1024
+#   python tools/art/jig_glyph.py <raw.png> assets/ui/renders/hulls/ship_<hull>.jig.webp
 import sys
-from PIL import Image, ImageChops, ImageFilter, ImageOps
+from PIL import Image, ImageChops
 
 src, out = sys.argv[1], sys.argv[2]
-BONE = (236, 229, 214)
+BONE = (238, 231, 216)
+FILL = (11, 11, 12)
 
-im = Image.open(src).convert('RGBA')
-a = im.getchannel('A')
-mask = a.point(lambda v: 255 if v > 96 else 0)
-lum = ImageOps.autocontrast(im.convert('L'), cutoff=1)
-
-# body: a faint wash, a little brighter where the render is lit
-body = Image.eval(lum, lambda v: int(16 + (v / 255) ** 1.15 * 96))
-body = ImageChops.multiply(body, mask)
-
-# seams: luminance edges inside the hull, thinned and softened into hairlines
-seams = lum.filter(ImageFilter.GaussianBlur(0.8)).filter(ImageFilter.FIND_EDGES)
-seams = seams.point(lambda v: 0 if v < 16 else min(255, int((v - 16) * 4.2)))
-seams = ImageChops.multiply(seams, mask.filter(ImageFilter.MinFilter(5)))
-seams = seams.filter(ImageFilter.GaussianBlur(0.45)).point(lambda v: int(v * 0.9))
-
-# the silhouette: a crisp outline two pixels wide
-edge = ImageChops.subtract(mask.filter(ImageFilter.MaxFilter(5)), mask.filter(ImageFilter.MinFilter(3)))
-edge = edge.filter(ImageFilter.GaussianBlur(0.55))
-
-alpha = ImageChops.lighter(ImageChops.lighter(body, seams), edge)
-tint = Image.new('RGB', im.size, BONE)
-glyph = Image.merge('RGBA', (*tint.split(), alpha))
-glyph.save(out, 'WEBP', quality=92, method=6)
-prev = Image.new('RGBA', glyph.size, (6, 8, 12, 255))
-prev.alpha_composite(glyph)
-prev.convert('RGB').resize((512, 512), Image.LANCZOS).save(out.rsplit('.', 1)[0] + '_prev.jpg', quality=88)
+im = Image.open(src).convert('RGBA').rotate(90, expand=False, resample=Image.BICUBIC)
+body = im.getchannel('A')
+line = im.convert('L')  # the fill is near-black, so the lines are the light
+k = line.point(lambda v: min(255, int(v * 1.08)))
+bone = Image.new('RGB', im.size, BONE)
+dark = Image.new('RGB', im.size, FILL)
+rgb = Image.composite(bone, dark, k)
+alpha = ImageChops.lighter(body.point(lambda v: int(v * 0.95)), k)
+glyph = Image.merge('RGBA', (*rgb.split(), alpha))
+glyph.save(out, 'WEBP', quality=94, method=6)
 print('ok', out)

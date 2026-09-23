@@ -314,32 +314,51 @@ function spareScales(spares) {
     for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
     return n;
   };
-  const W = 284; const x0 = 56; const x1 = 232;
-  const root = node('svg', { viewBox: `0 0 ${W} 48`, width: W, height: 48, class: 'orr-svg orr-hp__scales', 'aria-hidden': 'true' });
+  const W = 300; const x0 = 62; const x1 = 222;
+  const root = node('svg', { viewBox: `0 0 ${W} 58`, width: W, height: 58, class: 'orr-svg orr-hp__scales', 'aria-hidden': 'true' });
   const readouts = [];
   const ticks = [];
-  [['dps', 'Fire', 14], ['impulse', 'Shove', 38]].forEach(([key, word, y]) => {
+  [['dps', 'Fire', 17], ['impulse', 'Shove', 45]].forEach(([key, word, y]) => {
     const max = Math.max(...entries.map((e) => e[key])) || 1;
-    const label = node('text', { x: 0, y: y + 3.5, class: 'orr-hp__scale-word' });
+    const label = node('text', { x: 0, y: y + 4, class: 'orr-hp__scale-word' });
     label.textContent = word.toUpperCase();
     root.appendChild(label);
-    root.appendChild(node('path', { d: `M ${x0} ${y} L ${x1} ${y} M ${x1} ${y - 3} L ${x1} ${y + 3}`, class: 'orr-core orr-faint', 'stroke-width': 1 }));
+    // the track from zero to the best spare on this axis, its best figure at the end
+    root.appendChild(node('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-hp__track' }));
+    root.appendChild(node('path', { d: `M ${x0} ${y - 4} L ${x0} ${y + 4}`, class: 'orr-hp__track-end' }));
+    const top = node('text', { x: x1, y: y - 7, class: 'orr-hp__scale-max', 'text-anchor': 'end' });
+    top.textContent = shortNum(max);
+    root.appendChild(top);
     for (const e of entries) {
       const x = x0 + ((x1 - x0) * e[key]) / max;
       const tick = node('path', { d: `M ${x.toFixed(1)} ${y - 5} L ${x.toFixed(1)} ${y + 5}`, class: 'orr-hp__tick', 'data-id': e.id });
       ticks.push(tick);
       root.appendChild(tick);
     }
-    const readout = node('text', { x: x1 + 10, y: y + 4, class: 'orr-hp__scale-val' });
-    readouts.push([readout, key]);
+    const readout = node('text', { x: x1 + 12, y: y + 5, class: 'orr-hp__scale-val' });
+    const delta = node('tspan', { class: 'orr-hp__scale-delta', dx: 6 });
+    readouts.push([readout, delta, key]);
     root.appendChild(readout);
   });
   return {
     el: root,
     update(chosenId) {
       const chosen = entries.find((e) => e.id === String(chosenId)) || entries[0];
-      for (const t of ticks) t.classList.toggle('is-chosen', t.getAttribute('data-id') === chosen.id);
-      for (const [readout, key] of readouts) readout.textContent = shortNum(chosen[key]);
+      for (const t of ticks) {
+        const on = t.getAttribute('data-id') === chosen.id;
+        t.classList.toggle('is-chosen', on);
+        // the chosen mark stands taller than the rest
+        const d = t.getAttribute('d').split(' ');
+        const y = (Number(d[2]) + Number(d[5])) / 2;
+        t.setAttribute('d', `M ${d[1]} ${y - (on ? 7 : 5)} L ${d[4]} ${y + (on ? 7 : 5)}`);
+      }
+      for (const [readout, delta, key] of readouts) {
+        const best = Math.max(...entries.filter((e) => e !== chosen).map((e) => e[key]));
+        const diff = chosen[key] - best;
+        readout.textContent = shortNum(chosen[key]);
+        delta.textContent = diff === 0 ? '' : `${diff > 0 ? '+' : '−'}${shortNum(Math.abs(diff))}`;
+        readout.appendChild(delta);
+      }
     },
   };
 }
@@ -786,6 +805,15 @@ export const crucibleRefitScreen = {
     this._jig = createHullSchematic({
       host: stage,
       avoid: () => [rootEl.querySelector('.k-title'), rootEl.querySelector('.k-foot')],
+      // a node on the ship is a way to its hardpoint: focus moves to that label's choice
+      onPick: (index) => {
+        const row = rows.children[index];
+        const target = row && (row.querySelector('[data-spare][aria-checked="true"]')
+          || row.querySelector('.sf-cru-act:not([hidden]):not(:disabled)') || row.querySelector('button'));
+        this._lit = index;
+        if (this._jig) this._jig.light(index);
+        if (target && typeof target.focus === 'function') target.focus();
+      },
     });
     // The Hand follows the player: the hardpoint under the pointer or holding focus is lit.
     const lightRow = (event) => {
