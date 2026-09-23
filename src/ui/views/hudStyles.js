@@ -2779,11 +2779,11 @@ export function injectHudCss() {
     box-shadow:none;
   }
   #hud .sf-pslot { background:linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .18) 60%, rgb(255 255 255 / .03)); }
-  /* the scope's rim is one hairline ring, not a 14px bezel of dark metal */
-  #hud .sf-kit-radar__bezel {
-    border:1px solid var(--dp-rule-hi);
-    box-shadow:none;
-  }
+  /* The scope's rim is one hairline ring ON THE SCOPE FACE, not a 14px bezel of dark metal -- and
+     not a ring on the empty bezel box either, which the bench rightly reports as a painted empty
+     box. The bezel element stays only as the layout host. */
+  #hud .sf-kit-radar__bezel { border:0; background:none; box-shadow:none; }
+  #hud .sf-kit-radar__face { box-shadow:none; outline:1px solid var(--dp-rule-hi); outline-offset:0; }
   /* a ready power is information (bone); amber is kept for what is armed or chosen, so the rail no
      longer lights a dozen amber marks at rest (critic round 3) */
   #hud .sf-pslot[data-state="ready"] .sf-pslot__art { color:var(--dp-ink); }

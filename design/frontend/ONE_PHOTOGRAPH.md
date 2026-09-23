@@ -421,6 +421,25 @@ its WCAG floor measured against the composited frame.
 6. The seven screens that pin material inline do so because `fh.css` is injected at first dock, so
    they render differently before and after one. That wants its own pass.
 
+### Where this stands, 2026-09-22, evening (after the owner's material ruling)
+
+**Landed:** every CSS material imitation removed and guarded (`test/ui-no-material-imitation.test.mjs`
+-- LED dots, brushed tiles, bezels/keycaps, inset bevels, the paint worklet, the kit's photographed
+controls); the printed grammar of section 9 in the Deckplate controls, the per-screen skins, the kit
+layer and the inline pins; the station **head band** (purse and gauges out of every tab, the 400px
+hole closed, each tab full width); the **market instrument** (the reading line replacing the essay,
+a real trace with a crosshair and Left/Right inspection, readouts as its key, a draggable quantity);
+the **bar** (the contact's portrait as the screen's subject); section 4.8's green entity-link
+underline (it was `--sf-you`, not the faction colour).
+
+**Open, in order:** (1) hull renders -> the new-game lineup and the shipworks/THE SHIP jig (section 9.2
+assets 1-2, 9.3); (2) the chart's composition (lenses as a word rail, detail only on selection, the
+clipped position readout); (3) the tech tree as traces of light; (4) settings live preview;
+(5) save thumbnails for save/load; (6) commodity pictograms; (7) the crest wall and standing gauge on
+factions; (8) the fh.css first-dock injection; (9) section 9.5's RATCHET guard (inset shadows,
+non-falloff gradients, hex literals over legacy sheets) -- not built; (10) the flight dock and
+integrity card still wear older flat panels, and flight is still unverified in motion.
+
 ---
 
 ## 8. What to protect

@@ -1611,3 +1611,4 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
 @media (forced-colors: active) {
   #screens .sx-berth .sx-bar__stage .sx-talk__avatar { -webkit-mask-image: none; mask-image: none; }
 }
+#screens .sx-berth .sx-mkt__console.is-scrubbing .sx-qty__in { user-select: none; caret-color: transparent; }

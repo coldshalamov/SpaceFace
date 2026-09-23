@@ -1070,16 +1070,26 @@ export function createMarketScreen(ctx) {
     if (next === qty) return;
     qty = next;
     scrub.input.value = String(qty);
-    renderStage(ctx.state || {});
+    // no selection may grow under the drag: park the caret at the end of the number
+    try { scrub.input.setSelectionRange(scrub.input.value.length, scrub.input.value.length); } catch (_) {}
+    // One quote per frame, and only the console's: the pointer can fire far faster than a frame,
+    // and the quote above (its trace, its readings) does not depend on the quantity until release.
+    if (!scrubFrame) scrubFrame = requestAnimationFrame(flushScrub);
+  });
+  let scrubFrame = 0;
+  function flushScrub() {
+    scrubFrame = 0;
     renderConsole(ctx.state || {}, { receiptOnly: true });
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
-  });
+  }
+  consoleEl.addEventListener('selectstart', (ev) => { if (scrub && scrub.moved) ev.preventDefault(); });
   function endScrub(ev) {
     if (!scrub || (ev && ev.pointerId !== scrub.id)) return;
     const moved = scrub.moved;
     scrub = null;
     consoleEl.classList.remove('is-scrubbing');
-    if (moved) renderConsole(ctx.state || {});
+    if (scrubFrame) { cancelAnimationFrame(scrubFrame); scrubFrame = 0; }
+    if (moved) { renderStage(ctx.state || {}); renderConsole(ctx.state || {}); }
   }
   consoleEl.addEventListener('pointerup', endScrub);
   consoleEl.addEventListener('pointercancel', endScrub);
