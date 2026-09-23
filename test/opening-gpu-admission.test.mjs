@@ -11,6 +11,7 @@ import {
   uniqueAdmissionUnits,
   withOnlySubjectsDrawable,
 } from '../src/render/openingGpuAdmission.js';
+import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
 
 test('family customProgramCacheKey values do not collapse distinct maps into one opening program', () => {
   const family = () => 'spaceface-common-rock-pbr';
@@ -135,6 +136,146 @@ test('exact-target touch hides other drawables and restores them', () => {
   assert.equal(receipt.skipped, false);
   assert.equal(rendered.length, 1);
   assert.equal(other.visible, true);
+});
+
+test('an exact-target touch reaches a subject parked under a hidden holder', () => {
+  // The straggler sweep collects pools whose holders are visible:false at cook time. A bare
+  // withOnlySubjectsDrawable re-hid a drawable ancestor mid-touch, render() skipped the whole
+  // subtree, and the "touch" drew nothing — the program still linked inside the first
+  // presented bloomScene. The holder is a Mesh on purpose: only a drawable ancestor exercises
+  // the keep-set.
+  const scene = new THREE.Scene();
+  const holder = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  const keep = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  const other = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  holder.add(keep);
+  scene.add(holder, other);
+  holder.visible = false;
+  const rendered = [];
+  const renderer = {
+    autoClear: true,
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+    render() {
+      rendered.push({ holder: holder.visible, keep: keep.visible, other: other.visible });
+    },
+  };
+  const restore = revealSubjectWithAncestors(keep);
+  let receipt;
+  try {
+    receipt = touchSubjectOnExactTarget(renderer, null, keep, {}, scene);
+  } finally {
+    restore();
+  }
+  assert.equal(receipt.skipped, false);
+  assert.deepEqual(rendered, [{ holder: true, keep: true, other: false }],
+    'the revealed chain stays drawable so the subject actually renders');
+  assert.equal(holder.visible, false, 'holder hidden again after the touch');
+  assert.equal(other.visible, true, 'hidden drawables restored');
+});
+
+test('a batched admission touches every issued unit even when the deadline lapses mid-issue', async () => {
+  // The brick this removes: an issued-but-never-drawn unit pays its final link/bufferData inside
+  // the first presented scene pass. The deadline gates issuing; an issued subject is always
+  // drawn. Units the issue loop never reached stay budget-gated — their touch would pay a full
+  // blocking link under the shell. The injected clock makes the lapse deterministic.
+  const order = [];
+  const subjects = ['a', 'b', 'c'].map((id) => ({
+    id, material: { uuid: `m${id}` }, geometry: { uuid: `g${id}` },
+  }));
+  let tick = 0;
+  const result = await admitOpeningUnitsAcrossSlices({
+    subjects,
+    deadlineMs: 5,
+    now: () => (tick += 2),
+    beginReadinessBatch: () => ({
+      async drain() { order.push('drain'); return { contextLost: false }; },
+      close() { order.push('close'); },
+    }),
+    compileOne: (subject) => {
+      order.push(`compile:${subject.id}`);
+      return Promise.resolve(`compiled:${subject.id}`);
+    },
+    touchOne: (subject) => { order.push(`touch:${subject.id}`); },
+    yieldToMain: async () => {},
+  });
+  assert.equal(result.issued, 1, 'the clock ran the deadline out after one issue');
+  assert.equal(result.touched, 1, 'the issued unit still drew; unissued units stayed gated');
+  assert.deepEqual(order, ['compile:a', 'drain', 'close', 'touch:a']);
+  assert.deepEqual(result.results.map((entry) => entry.compiled), ['compiled:a']);
+});
+
+test('a throwing touch reports the row and still draws the rest of the cohort', async () => {
+  const order = [];
+  const subjects = ['a', 'b', 'c'].map((id) => ({
+    id, material: { uuid: `m${id}` }, geometry: { uuid: `g${id}` },
+  }));
+  const result = await admitOpeningUnitsAcrossSlices({
+    subjects,
+    beginReadinessBatch: () => ({
+      async drain() { return { contextLost: false }; },
+      close() {},
+    }),
+    compileOne: (subject) => Promise.resolve(`compiled:${subject.id}`),
+    touchOne: (subject) => {
+      order.push(`touch:${subject.id}`);
+      if (subject.id === 'b') throw new Error('touch b failed');
+    },
+  });
+  assert.equal(result.touched, 3, 'a bad touch must not abandon the cohort');
+  assert.deepEqual(order, ['touch:a', 'touch:b', 'touch:c']);
+  assert.equal(result.results[0].touchError, null);
+  assert.match(String(result.results[1].touchError), /touch b failed/);
+  assert.equal(result.results[2].touchError, null);
+});
+
+test('a grouped touch never straddles the issued boundary', async () => {
+  const order = [];
+  const subjects = ['a', 'b', 'c'].map((id) => ({
+    id, material: { uuid: `m${id}` }, geometry: { uuid: `g${id}` },
+  }));
+  let tick = 0;
+  const result = await admitOpeningUnitsAcrossSlices({
+    subjects,
+    deadlineMs: 5,
+    now: () => (tick += 2),
+    beginReadinessBatch: () => ({
+      async drain() { return { contextLost: false }; },
+      close() {},
+    }),
+    compileOne: (subject) => Promise.resolve(`compiled:${subject.id}`),
+    touchMany: (group) => { order.push(`touch:${group.map((s) => s.id).join('')}`); return group.length; },
+    touchBatchSize: 2,
+    yieldToMain: async () => {},
+  });
+  assert.equal(result.issued, 1);
+  // Without the clamp, batch [a,b] would draw the never-issued b under the shell.
+  assert.deepEqual(order, ['touch:a']);
+  assert.equal(result.touched, 1);
+});
+
+test('one rejected compile still draws the rest of the issued cohort', async () => {
+  // Promise.all used to reject the cohort on one bad compile, skipping every later touch —
+  // a single straggler error left the whole settle un-touched and linking in-flight.
+  const order = [];
+  const subjects = ['a', 'b', 'c'].map((id) => ({
+    id, material: { uuid: `m${id}` }, geometry: { uuid: `g${id}` },
+  }));
+  const result = await admitOpeningUnitsAcrossSlices({
+    subjects,
+    beginReadinessBatch: () => ({
+      async drain() { return { contextLost: false }; },
+      close() {},
+    }),
+    compileOne: (subject) => (subject.id === 'b'
+      ? Promise.reject(new Error('compile b failed'))
+      : Promise.resolve(`compiled:${subject.id}`)),
+    touchOne: (subject) => { order.push(`touch:${subject.id}`); },
+  });
+  assert.equal(result.touched, 3, 'every issued unit is drawn once');
+  assert.deepEqual(order, ['touch:a', 'touch:b', 'touch:c']);
+  assert.deepEqual(result.results.map((entry) => entry.compiled),
+    ['compiled:a', null, 'compiled:c'], 'the rejected compile records null, not a cohort abort');
 });
 
 test('a grouped exact-target touch draws every member in one render and hides only the rest', () => {

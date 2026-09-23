@@ -6,6 +6,7 @@ import {
   collectCompileSubjects,
   compileSubjectsAcrossPresents,
   revealSubjectForCompile,
+  revealSubjectWithAncestors,
   shouldSliceCompileAcrossPresents,
 } from '../src/render/compilePresentSlice.js';
 
@@ -118,4 +119,47 @@ test('reveal for compile opens a zero drawRange so residency can upload the buff
   restore();
   assert.equal(mesh.visible, false);
   assert.equal(geometry.drawRange.count, 0);
+});
+
+test('reveal with ancestors unhides the holder chain so a parked subject actually draws', () => {
+  // render() skips a hidden object's whole subtree: a pool mesh held under a visible:false
+  // holder was "touched" without ever drawing, so its program still linked inside the first
+  // presented bloomScene. The reveal must reach the ancestors, not just the subject.
+  const scene = { visible: true };
+  const holder = { visible: false, parent: scene };
+  const mesh = { isMesh: true, visible: false, frustumCulled: true, parent: holder };
+  scene.parent = null;
+  const restore = revealSubjectWithAncestors(mesh);
+  assert.equal(mesh.visible, true, 'subject revealed');
+  assert.equal(holder.visible, true, 'hidden holder revealed');
+  assert.equal(scene.visible, true, 'scene root untouched-value preserved');
+  restore();
+  assert.equal(mesh.visible, false);
+  assert.equal(holder.visible, false, 'holder re-hidden after the touch');
+  assert.equal(scene.visible, true);
+});
+
+test('reveal with ancestors never unhides an authored-fallback holder', () => {
+  // Fallback layers are never-live content: revealSubjectForCompile refuses them at the
+  // subject level, and the ancestor walk must obey the same rule one level up.
+  const scene = { visible: true, parent: null };
+  const holder = { visible: false, parent: scene, userData: { authoredReadableFallbackLayer: true } };
+  const mesh = { isMesh: true, visible: true, frustumCulled: true, parent: holder };
+  const restore = revealSubjectWithAncestors(mesh);
+  assert.equal(holder.visible, false, 'tagged fallback holder stays hidden');
+  restore();
+  assert.equal(holder.visible, false);
+});
+
+test('reveal with ancestors restores ancestors when the subject reveal throws', () => {
+  const scene = { visible: true, parent: null };
+  const holder = { visible: false, parent: scene };
+  const mesh = {
+    isMesh: true,
+    visible: true,
+    parent: holder,
+    traverse() { throw new Error('traverse boom'); },
+  };
+  assert.throws(() => revealSubjectWithAncestors(mesh), /traverse boom/);
+  assert.equal(holder.visible, false, 'ancestor visibility restored on throw');
 });

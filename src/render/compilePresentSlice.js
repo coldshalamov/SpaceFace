@@ -119,6 +119,37 @@ export function revealSubjectForCompile(subject) {
   };
 }
 
+/**
+ * revealSubjectForCompile covers the subject and its descendants only. A subject parked under a
+ * hidden holder — an inactive pool root, an unselected LOD level, a count-0 instanced cohort —
+ * is still skipped by render()'s ancestor walk, so its "touch" draws nothing and the program
+ * links inside the first presented scene pass anyway. This reveal additionally unhides every
+ * ancestor up to the scene root for the duration of the compile/touch, then restores all of it.
+ * Under the loading shell the momentary reveal is never presented.
+ */
+export function revealSubjectWithAncestors(subject) {
+  if (!subject) return () => {};
+  const ancestors = [];
+  for (let p = subject.parent; p; p = p.parent) {
+    // Authored-fallback holders obey the same rule as revealSubjectForCompile's own visit:
+    // never-live layers stay hidden. A subject parked under one cannot draw anyway.
+    if (p.userData && p.userData.authoredReadableFallbackLayer === true) continue;
+    ancestors.push({ object: p, visible: p.visible });
+    p.visible = true;
+  }
+  let restoreSubject = () => {};
+  try {
+    restoreSubject = revealSubjectForCompile(subject);
+  } catch (error) {
+    for (const entry of ancestors) entry.object.visible = entry.visible;
+    throw error;
+  }
+  return () => {
+    restoreSubject();
+    for (const entry of ancestors) entry.object.visible = entry.visible;
+  };
+}
+
 /** Wait until the current display callback has presented, then resume on a later turn. */
 export function yieldAfterPresent() {
   return new Promise((resolve) => {

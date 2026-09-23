@@ -265,6 +265,11 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
 
 export function withOnlySubjectsDrawable(scene, subjects, fn) {
   const keep = new Set((Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean));
+  // A drawable ancestor must stay un-hidden: render() skips a hidden object's whole subtree, so
+  // hiding one would make the subject's "draw" a silent no-op and leave its program cold.
+  for (const subject of [...keep]) {
+    for (let p = subject.parent; p; p = p.parent) keep.add(p);
+  }
   const saved = [];
   if (scene && typeof scene.traverse === 'function') {
     scene.traverse((object) => {
@@ -321,8 +326,10 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   const compileOne = typeof options.compileOne === 'function' ? options.compileOne : null;
   const touchOne = typeof options.touchOne === 'function' ? options.touchOne : null;
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
-  const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now() : Date.now());
+  const now = typeof options.now === 'function'
+    ? options.now
+    : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now());
   const started = now();
   const deadlineMs = Number.isFinite(options.deadlineMs) ? options.deadlineMs : 0;
   const overBudget = () => deadlineMs > 0 && (now() - started) > deadlineMs;
@@ -384,7 +391,10 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     issueMs = now() - issueStarted;
     const drainStarted = now();
     drained = await batch.drain();
-    compiled = await Promise.all(issued);
+    // One rejected compile must not discard the cohort's touches — every issued unit that skips
+    // its draw still links inside the first presented scene pass. Settle each and keep going.
+    compiled = (await Promise.allSettled(issued))
+      .map((entry) => (entry && entry.status === 'fulfilled' ? entry.value : null));
     drainMs = now() - drainStarted;
   } finally {
     batch.close();
@@ -401,22 +411,45 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   // whole-scene hide/restore walk and the render call, which were most of a touch's cost.
   const touchMany = typeof options.touchMany === 'function' ? options.touchMany : null;
   const touchBatchSize = Math.max(1, Math.floor(Number(options.touchBatchSize) || 1));
+  // The deadline gates ISSUE, not touch: a compiled-but-never-drawn unit still pays its final
+  // link/bufferData inside the first presented scene pass, which is the brick this admission
+  // exists to remove. Every issued subject is drawn even over budget; subjects that were never
+  // issued stay budget-gated, since their touch would pay a full blocking link under the shell.
   if (touchMany && touchBatchSize > 1) {
     for (let index = 0; index < ordered.length; index += touchBatchSize) {
-      if (overBudget()) break;
-      const group = ordered.slice(index, index + touchBatchSize);
-      const touched = touchMany(group);
+      if (overBudget() && index >= issued.length) break;
+      // A batch must not straddle the issued boundary: an unissued subject pays a full
+      // blocking link under the shell, which is exactly what the deadline exists to avoid.
+      const group = ordered.slice(index, Math.min(index + touchBatchSize, issued.length));
+      if (!group.length) break;
+      // A throwing touch reports per-row and keeps the rest of the cohort drawing — every
+      // skipped issued subject would otherwise link inside the first presented scene pass.
+      let touched = null;
+      let touchError = null;
+      try {
+        touched = touchMany(group);
+      } catch (error) {
+        touchError = error;
+      }
       for (let offset = 0; offset < group.length; offset++) {
-        results.push({ compiled: compiled[index + offset] ?? null, touched });
+        results.push({ compiled: compiled[index + offset] ?? null, touched, touchError });
       }
       if (yieldToMain && index + touchBatchSize < ordered.length) await yieldToMain();
     }
   } else {
     for (let index = 0; index < ordered.length; index++) {
-      if (overBudget()) break;
+      if (overBudget() && index >= issued.length) break;
+      let touched = null;
+      let touchError = null;
+      try {
+        touched = touchOne ? touchOne(ordered[index]) : null;
+      } catch (error) {
+        touchError = error;
+      }
       results.push({
         compiled: compiled[index] ?? null,
-        touched: touchOne ? touchOne(ordered[index]) : null,
+        touched,
+        touchError,
       });
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }

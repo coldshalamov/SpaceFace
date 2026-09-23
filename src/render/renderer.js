@@ -233,6 +233,7 @@ import {
   collectCompileSubjects,
   compileSubjectsAcrossPresents,
   revealSubjectForCompile,
+  revealSubjectWithAncestors,
   shouldSliceCompileAcrossPresents,
   yieldAfterPresent,
 } from './compilePresentSlice.js';
@@ -6924,8 +6925,17 @@ export const render = {
         const seenStale = new Set();
         scene.traverse((object) => {
           if (!object || !object.geometry || !object.material || seenStale.has(object)) return;
+          // A hidden ancestor used to bounce the subject out of the settle — pools held invisible
+          // at cook time (the SF_*_Pool and Parallax_* brick owners) then linked their programs
+          // inside the first presented bloomScene. Collect them anyway; the reveal below unhides
+          // the chain for the compile+touch and restores it under the shell. Exclusions: every
+          // tagged warm root (bounded-cook, species warms, spec exemplars — none ever presents),
+          // and authored-fallback layers only while hidden; a fallback that is visible right now
+          // is live content and still needs its material settled.
           for (let p = object; p; p = p.parent) {
-            if (p.visible === false) return;
+            const data = p.userData;
+            if (data && (data.rosterPrewarm != null
+                || (data.authoredReadableFallbackLayer === true && p.visible === false))) return;
           }
           const materials = Array.isArray(object.material) ? object.material : [object.material];
           for (const material of materials) {
@@ -6944,13 +6954,35 @@ export const render = {
           }
         });
         if (staleSubjects.length > 0 && prepareNow() - prepareStarted < PREPARE_BUDGET_MS) {
+          // Lit pool materials key on the shadow map state; arm it for the admit window so a
+          // still-shadowless loading frame cannot bake a variant the first presented frame
+          // would have to re-link.
+          const restoreSettleShadows = armAdmissionShadows({
+            renderer,
+            light: this._keyLight,
+            enabled: this._shadowSettingOn === true,
+          });
           try {
             materialSettle = await admitOpeningUnitsAcrossSlices({
               deadlineMs: Math.min(6000, remainingMs()),
               units: uniqueAdmissionUnits(staleSubjects),
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-              compileOne: (subject) => compileSubjectColorAndDepth(subject, this._selectPostRoute()),
-              touchOne: touchExactTargetSubject,
+              compileOne: (subject) => {
+                const restore = revealSubjectWithAncestors(subject);
+                try {
+                  return compileSubjectColorAndDepth(subject, this._selectPostRoute());
+                } finally {
+                  restore();
+                }
+              },
+              touchOne: (subject) => {
+                const restore = revealSubjectWithAncestors(subject);
+                try {
+                  return touchExactTargetSubject(subject);
+                } finally {
+                  restore();
+                }
+              },
               // Loading shell: issues and touches share a frame until ~8 ms of work, as the cook's touches
               // do. A frame-plus-flush yield after each one spent 26 frames on the 14 stragglers found on
               // the owner's laptop. The jump shell keeps one item per frame.
@@ -6965,6 +6997,8 @@ export const render = {
               unbound: staleSubjects.length,
               error: String(error && error.message || error),
             };
+          } finally {
+            restoreSettleShadows();
           }
         } else {
           materialSettle = {

@@ -566,7 +566,7 @@ test('live mesh builds hold unready geometry behind the residency latch', () => 
   const buildStart = RENDERER_SOURCE.indexOf('const m = this.vf.build(e);');
   assert.ok(buildStart >= 0, 'the live mesh build must exist');
   const body = RENDERER_SOURCE.slice(buildStart, buildStart + 4000);
-  const flagIndex = body.indexOf('data.geometryPending = true');
+  const flagIndex = body.indexOf('.geometryPending = true');
   assert.ok(flagIndex >= 0, 'the pending latch must still be armed');
   const before = body.slice(0, flagIndex);
   assert.match(before, /hasUnresidentGeometry\(m\)/,
