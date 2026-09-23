@@ -1,6 +1,6 @@
 # Baseline after (scratch with patches)
 
-- Scratch: `vm-work/shader-admission-slice` @ `c5de6ab2c` (local only; not pushed)
+- Scratch: `vm-work/shader-admission-slice` @ `c5de6ab2c16e903abc0b8f8f11162e70674fce0e` (local only; not pushed)
 - Base master: `0612d2b9fc994557dd35cb00d0df21b791722c23`
 - Command: `npm run check:baseline -- --json`
 - Soft-GPU VM; fps is owner-verify.

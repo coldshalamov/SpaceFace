@@ -35,7 +35,7 @@ Phase A citations:
 - Patches: `patches/0001` … `0004`
 - Focused tests: `test/shader-admission-slice.test.mjs` + flight-present / compile-present / shader-link / opening-submission / admission-slice / pipeline-auto-flush (**49 pass**)
 - npm script: `check:shader-admission-slice`
-- Scratch branch kept **local only** (not pushed): `vm-work/shader-admission-slice` @ `c5de6ab2c16e903abc0b8f8f11162e70674fce0e`
+- Scratch branch kept **local only** (not pushed): `vm-work/shader-admission-slice` @ `c5de6ab2c16e903abc0b8f8f11162e70674fce0e16e903abc0b8f8f11162e70674fce0e`
 
 ## Risks for the importer
 
