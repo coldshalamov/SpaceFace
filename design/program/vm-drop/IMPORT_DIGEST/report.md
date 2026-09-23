@@ -43,6 +43,8 @@ Order follows fresh-profile portable self-time poles, then opening/soft-GPU cook
 | 26 | `customs-scan-cone-scratch` | `a0a063664` | WeakMap cone pool for `customsScanConeOf`; **~1.38×** offline; tests 11/11. Covers law long-tail **15.0 ms** self. |
 | 27 | `hostile-for-ai-earlyout` | `1ef01cc3c` | Structural early-outs for `isHostileForAI` (no tick-Map); NPC **~1.72×**, no-ai alloc **~2.67×**; tests 28/28. Covers `isHostileForAI` **39.6 ms** self. |
 | 28 | `stunt-flight-range-prefilter` | `342fde89b` | Type+2400 WU prefilter before stunt hostility scan; **~5.1×** offline; tests 20/20. Cuts `StuntFlightObserver.update` / hostility calls. |
+| 29 | `assign-flight-frame-ref` | `397d70741` | Attach `result.telemetry` by ref in `assignFlightFrame`; **~3.36×** offline; clears stale optional keys; tests 78/78. Covers `assignFlightFrame` **135 hits** self. |
+| 30 | `npc-jobs-id-list-cache` | `c34e1072f` | Cache `Object.keys(npcJobs.byId)` for per-tick drive; **~2.41×** offline; tests 89+15+12+5 pass. Covers `npcJobsRuntime.update` **59 hits** self. |
 
 ### Optional / separate backlog (not in top portable poles)
 
@@ -118,6 +120,8 @@ Order follows fresh-profile portable self-time poles, then opening/soft-GPU cook
 | `customsScanConeOf` 15.0 ms | #26 |
 | `isHostileForAI` 39.6 ms | #27 (+ #28 reduces a hot caller) |
 | `StuntFlightObserver.update` (profile hits) | #28 |
+| `assignFlightFrame` 135 hits | #29 |
+| `npcJobsRuntime.update` 59 hits | #30 |
 | Soft-GPU `bufferData` / `isProgram` / bloom | **Ignore** for portable hillclimb |
 
 ---
@@ -128,8 +132,8 @@ Report-only under `design/program/vm-drop/IMPORT_DIGEST/`. No `src/` changes. Pu
 
 ## Hillclimb follow-ups (this session)
 
-- **Shipped:** `combat-subsystem-key-cache` (above); then `npc-field-role-cache`, `docking-corridor-publish-scratch`, `customs-scan-cone-scratch`; then **`hostile-for-ai-earlyout`**, **`stunt-flight-range-prefilter`**.
+- **Shipped:** `combat-subsystem-key-cache` (above); then `npc-field-role-cache`, `docking-corridor-publish-scratch`, `customs-scan-cone-scratch`; then **`hostile-for-ai-earlyout`**, **`stunt-flight-range-prefilter`**; then **`assign-flight-frame-ref`**, **`npc-jobs-id-list-cache`**.
 - **Tried / miss:** `makeResult` / `normalizeInput` pooling on `propulsionKernel.js` — V8 short-lived alloc beat pooled fill+clear (~0.4–1.0×); travel-drive byte-identical fixture also forbids private result keys.
-- **Tried / miss this pass:** `lawfulPatrols` per-tick cache (once/update ~0.87×); `pruneEvidence` same-tick skip (~1.25× / empty-map noise) and watermark/lives-cadence (≤1.1× single-call or regress); `isHostileForAI` tick pair Map cache (~0.58×) — replaced by structural early-outs; `normalizeCraftInput` module scratch (~0.86×); `assignFlightFrame` for-in/hot-scalars with optional keys (~1.2×, not ≥2×); customs sticky-boolean without invalidation (broke patrol-net null-after-break); `copyInput` seq-stable action-key skip (~1.32× stable / ~1.0× when seq bumps every frame — not shipped).
+- **Tried / miss this pass:** `lawfulPatrols` per-tick cache (once/update ~0.87×); `pruneEvidence` same-tick skip (~1.25× / empty-map noise) and watermark/lives-cadence (≤1.1× single-call or regress); `isHostileForAI` tick pair Map cache (~0.58×) — replaced by structural early-outs; `normalizeCraftInput` module scratch (~0.86×); `assignFlightFrame` for-in/hot-scalars with optional keys (~1.2×, not ≥2×) — **superseded by ref-attach #29**; customs sticky-boolean without invalidation (broke patrol-net null-after-break); `copyInput` seq-stable action-key skip (~1.32× / ~1.0× when seq bumps) and loop unroll (~1.10×) — not shipped; `lifetimeSweep` pose-already-dirty skip (~1.08×); `isHostileToPlayer` structural reorder (~1.28×); `materialSurface` entity cache (~0.95×).
 - **Tried / miss earlier:** `combat-entity-key-cache` / syncCombatantBounds early-out (see SKIP).
-- **Remaining portable heat (not newly packaged):** `assignFlightFrame`/`normalizeCraftInput` leftovers after propulsion, `pruneEvidence` residual, `lifetimeSweep`, `copyInput`, `npcJobsRuntime` / law long-tail beyond customs, soft-GPU bloom/`isProgram` (ignore). Top poles still primarily covered by import rows #1–#28.
+- **Remaining portable heat (honest stop):** `pruneEvidence` residual, `lifetimeSweep`, `copyInput` (need ≥~1.5×), `normalizeCraftInput` (pooling loses), law long-tail beyond customs, soft-GPU bloom/`isProgram` (ignore). Top poles primarily covered by import rows **#1–#30**. Further micro-packages on the residual list are weak misses — stop adding until a clear ≥~1.5× approach appears.

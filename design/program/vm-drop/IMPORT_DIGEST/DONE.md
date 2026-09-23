@@ -28,10 +28,16 @@ New measured packages outboxed beside this digest:
 - `npc-field-role-cache` (~3.6× data/ai identity cache) — row 24
 - `docking-corridor-publish-scratch` (~3.7× proxy-diag scratch + key cache) — row 25
 - `customs-scan-cone-scratch` (~1.38× WeakMap cone pool) — row 26
+- `hostile-for-ai-earlyout` (~1.72× NPC / ~2.67× no-ai) — row 27
+- `stunt-flight-range-prefilter` (~5.1×) — row 28
+- `assign-flight-frame-ref` (~3.36× telemetry by ref) — row 29
+- `npc-jobs-id-list-cache` (~2.41× Object.keys cache) — row 30
 
 ## Picture / live game
 
-Untouched. Report-only folder under the vm-drop fence.
+Untouched. Report-only folder under the vm-drop fence. Package folders carry their own patches; this digest stays report-only.
 
 - #27 `hostile-for-ai-earlyout` @ `1ef01cc3c`
 - #28 `stunt-flight-range-prefilter` @ `342fde89b`
+- #29 `assign-flight-frame-ref` @ `397d70741`
+- #30 `npc-jobs-id-list-cache` @ `c34e1072f`
