@@ -1671,6 +1671,9 @@ export const aftermathWrecks = {
         hulkOfDefId: marker.victimDefId || null,
         hulkVisual: marker.victimVisual ? { ...marker.victimVisual } : null,
         hulkFactionId: marker.victimFactionId || null,
+        // Sim-time of the kill — the render's ember pass cools the hull off this stamp;
+        // a marker from an old field spawns already-cold, which is the truth.
+        killedAt: Number.isFinite(marker.t) ? marker.t : 0,
         provenanceLine: line,
         provenance: {
           source: isPlayerWreckMarker(marker) ? PLAYER_WRECK_KIND : 'battle-aftermath',

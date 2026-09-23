@@ -3349,44 +3349,69 @@ function restorePackagedBodyFallback(root, reason) {
 const HULK_COLOR_SCALE = 0.42;
 const HULK_ENVMAP_SCALE = 0.3;
 const HULK_MIN_ROUGHNESS = 0.92;
+// A fresh kill is still hot: the clones carry the same ember hue as the hot-vein language
+// (VEIN_EMBER in asteroidMotionPresentation.js) and cool to zero over a few seconds of sim
+// time. Emissive colour + intensity are uniforms — fading them never re-keys a program.
+export const HULK_EMBER_COLOR = 0xff9a3c;
+export const HULK_EMBER_SECONDS = 6;
+export const HULK_EMBER_PEAK = 1.5;
+
+export function hulkEmberIntensityAt(ageS) {
+  const age = Number(ageS);
+  if (!Number.isFinite(age) || age <= 0) return HULK_EMBER_PEAK;
+  if (age >= HULK_EMBER_SECONDS) return 0;
+  const left = 1 - age / HULK_EMBER_SECONDS;
+  return HULK_EMBER_PEAK * left * left;
+}
+
+export function updateHulkEmber(ember, simTime) {
+  if (!ember || !ember.mats) return;
+  const intensity = hulkEmberIntensityAt((Number(simTime) || 0) - (Number(ember.killedAt) || 0));
+  for (const m of ember.mats) {
+    if (m) m.emissiveIntensity = intensity;
+  }
+}
+
 export function deadenPackagedHulk(group) {
-  if (!group || typeof group.traverse !== 'function') return group;
   const clones = new Map();
-  group.traverse((node) => {
-    if (!node || !node.isMesh) return;
-    const mats = Array.isArray(node.material) ? node.material : [node.material];
-    if (mats.every((m) => m && m.blending === THREE.AdditiveBlending)) {
-      node.visible = false;
-      return;
-    }
-    const dead = mats.map((m) => {
-      if (!m) return m;
-      let clone = clones.get(m);
-      if (!clone) {
-        clone = m.clone();
-        if (clone.color && typeof clone.color.multiplyScalar === 'function') {
-          clone.color.multiplyScalar(HULK_COLOR_SCALE);
-        }
-        if (clone.emissive && typeof clone.emissive.setScalar === 'function') {
-          clone.emissive.setScalar(0);
-        }
-        clone.emissiveIntensity = 0;
-        if ('envMapIntensity' in clone) {
-          clone.envMapIntensity = (Number.isFinite(clone.envMapIntensity) ? clone.envMapIntensity : 1) * HULK_ENVMAP_SCALE;
-        }
-        if ('roughness' in clone && Number.isFinite(clone.roughness)) {
-          clone.roughness = Math.max(clone.roughness, HULK_MIN_ROUGHNESS);
-        }
-        clone.needsUpdate = true;
-        clones.set(m, clone);
+  if (group && typeof group.traverse === 'function') {
+    group.traverse((node) => {
+      if (!node || !node.isMesh) return;
+      const mats = Array.isArray(node.material) ? node.material : [node.material];
+      if (mats.every((m) => m && m.blending === THREE.AdditiveBlending)) {
+        node.visible = false;
+        return;
       }
-      return clone;
+      const dead = mats.map((m) => {
+        if (!m) return m;
+        let clone = clones.get(m);
+        if (!clone) {
+          clone = m.clone();
+          if (clone.color && typeof clone.color.multiplyScalar === 'function') {
+            clone.color.multiplyScalar(HULK_COLOR_SCALE);
+          }
+          // Ember hue at zero intensity: dark now, hot later only through emissiveIntensity.
+          if (clone.emissive && typeof clone.emissive.setHex === 'function') {
+            clone.emissive.setHex(HULK_EMBER_COLOR);
+          }
+          clone.emissiveIntensity = 0;
+          if ('envMapIntensity' in clone) {
+            clone.envMapIntensity = (Number.isFinite(clone.envMapIntensity) ? clone.envMapIntensity : 1) * HULK_ENVMAP_SCALE;
+          }
+          if ('roughness' in clone && Number.isFinite(clone.roughness)) {
+            clone.roughness = Math.max(clone.roughness, HULK_MIN_ROUGHNESS);
+          }
+          clone.needsUpdate = true;
+          clones.set(m, clone);
+        }
+        return clone;
+      });
+      node.material = Array.isArray(node.material) ? dead : dead[0];
+      node.userData.hulkDeadBody = true;
     });
-    node.material = Array.isArray(node.material) ? dead : dead[0];
-    node.userData.hulkDeadBody = true;
-  });
-  group.userData.hulkDeadBody = true;
-  return group;
+    group.userData.hulkDeadBody = true;
+  }
+  return [...clones.values()];
 }
 
 function attachPackagedBody(root, relativeFile, entity) {
@@ -3448,8 +3473,14 @@ function attachPackagedBody(root, relativeFile, entity) {
         return false;
       }
       if (deadHulk) {
-        deadenPackagedHulk(packaged);
+        const emberMats = deadenPackagedHulk(packaged);
         packaged.userData.hulkOfDefId = entity && entity.data && entity.data.hulkOfDefId || null;
+        if (emberMats.length) {
+          root.userData.hulkEmber = {
+            mats: emberMats,
+            killedAt: Number(entity && entity.data && entity.data.killedAt) || 0,
+          };
+        }
       }
       fitPackagedGroup(packaged, entity && entity.radius);
       freezeStaticChildMatrices(packaged);

@@ -11,6 +11,11 @@ import {
   createVisualFactory,
   deadenPackagedHulk,
   fitPackagedGroup,
+  hulkEmberIntensityAt,
+  updateHulkEmber,
+  HULK_EMBER_COLOR,
+  HULK_EMBER_PEAK,
+  HULK_EMBER_SECONDS,
 } from '../src/render/visualFactory.js';
 
 const factory = createVisualFactory();
@@ -91,15 +96,53 @@ test('dead hulk: lights out, darkened, roughened — and shared materials untouc
   const navGlow = new THREE.Mesh(new THREE.SphereGeometry(0.05), glowMat);
   group.add(hull, navGlow);
 
-  deadenPackagedHulk(group);
+  const emberMats = deadenPackagedHulk(group);
 
   assert.equal(navGlow.visible, false, 'additive glow sheets are hidden on a dead hull');
   assert.equal(group.userData.hulkDeadBody, true);
   const deadMat = hull.material;
   assert.notEqual(deadMat, shared, 'dead hull must not mutate the shared authored material');
-  assert.equal(deadMat.emissiveIntensity, 0, 'dead hull emits nothing');
-  assert.equal(deadMat.emissive.getHex(), 0x000000);
+  assert.equal(deadMat.emissiveIntensity, 0, 'dead hull emits nothing until the ember pass drives it');
+  assert.equal(deadMat.emissive.getHex(), HULK_EMBER_COLOR, 'dead hull carries the ember hue');
   assert.ok(deadMat.roughness >= 0.9, `dead hull roughened, got ${deadMat.roughness}`);
   assert.ok(deadMat.color.r < shared.color.r * 0.6, 'dead hull darkened');
   assert.equal(shared.emissiveIntensity, 0.9, "the live ship's shared material stays lit");
+  assert.ok(emberMats.length >= 1, 'deaden returns the cloned materials for the ember pass');
+  assert.ok(emberMats.includes(deadMat));
+});
+
+test('a fresh kill glows ember and cools to dead over six seconds of sim time', () => {
+  const at0 = hulkEmberIntensityAt(0);
+  const at3 = hulkEmberIntensityAt(3);
+  const at6 = hulkEmberIntensityAt(6);
+  assert.equal(at0, HULK_EMBER_PEAK, 'the kill frame is the hottest');
+  assert.ok(at0 > at3 && at3 > 0, `cooling: ${at0} > ${at3} > 0`);
+  assert.equal(at6, 0, 'six seconds dead is cold');
+  assert.equal(hulkEmberIntensityAt(30), 0, 'an old field spawns cold');
+
+  const mat = new THREE.MeshStandardMaterial();
+  const ember = { mats: [mat], killedAt: 10 };
+  updateHulkEmber(ember, 10);
+  assert.equal(mat.emissiveIntensity, HULK_EMBER_PEAK);
+  updateHulkEmber(ember, 10 + HULK_EMBER_SECONDS);
+  assert.equal(mat.emissiveIntensity, 0);
+});
+
+test('hulk clone materials are ordinary materials — the root teardown disposes them', () => {
+  // renderer.disposeObject traverses the released root and disposes every material that is
+  // not flagged spacefaceSharedAsset. The clones carry no shared flag, so release disposes
+  // them; a leaked clone would keep a live ship's look alive by accident, not die with it.
+  const shared = new THREE.MeshStandardMaterial({ color: 0x8899aa });
+  const group = new THREE.Group();
+  group.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), shared));
+  const emberMats = deadenPackagedHulk(group);
+  for (const clone of emberMats) {
+    assert.notEqual(clone, shared);
+    assert.ok(!(clone.userData && clone.userData.spacefaceSharedAsset),
+      'clone must not be flagged shared — the per-root disposer owns its life');
+    let disposed = false;
+    clone.dispose = () => { disposed = true; };
+    clone.dispose();
+    assert.equal(disposed, true);
+  }
 });

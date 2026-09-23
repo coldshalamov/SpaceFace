@@ -23,7 +23,7 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, instantiatePackagedPrimitives, setEnvMapForShips, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { asteroidLeafResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, instantiatePackagedPrimitives, setEnvMapForShips, updateHulkEmber, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
@@ -12013,6 +12013,8 @@ export const render = {
       if (!mesh || (entity && entity.alive === false)) continue;
 
       const userData = mesh.userData || (mesh.userData = {});
+      // A fresh kill's hulk cools on sim time — uniform emissive fade on its own clones only.
+      if (userData.hulkEmber) updateHulkEmber(userData.hulkEmber, this.state.simTime);
       if (this.collisionDebug && this.collisionDebug.on) userData.__lastEntity = entity;
       if (entity && entity.alive !== false) {
         world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
