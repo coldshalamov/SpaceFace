@@ -45,7 +45,14 @@ const CSS = `
 .orr-cluster { position:relative; width:${W}px; height:${H}px; pointer-events:none; color:var(--dp-ink, #e8e2d4);
   transform-origin:0 100%; transform:scale(var(--orr-cluster-scale, 1)); }
 .orr-cluster > svg { position:absolute; left:0; top:0; width:${W}px; height:${H}px; overflow:visible; }
-/* free type over a live world needs a soft, edge-less shadow — never a box */
+/* free type over a live world needs a soft, edge-less shadow — never a box. Every glyph also carries
+   a tight halo of the void, so a label stays legible over a bright foundry floor or a sunlit hull */
+.orr-cluster__keytag, .orr-cluster__speedfoot, .orr-cluster__read, .orr-cluster__legend, .orr-cluster__payload, .orr-cluster__count {
+  text-shadow:0 0 1px rgb(3 4 7 / .95), 0 0 3px rgb(3 4 7 / .85), 0 0 9px rgb(3 4 7 / .6); }
+/* small type gets its own pool of shadow, sized to the words, not the block */
+.orr-cluster__keytag::before, .orr-cluster__speedfoot > .orr-label::before { content:""; position:absolute; inset:-9px -16px; z-index:-1; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(3 4 7 / .7), rgb(3 4 7 / .5) 72%, transparent); }
+.orr-cluster__speedfoot > .orr-label { position:relative; }
 .orr-cluster .orr-soft::before { content:""; position:absolute; inset:-18px -26px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(3 4 7 / .72), rgb(3 4 7 / .38) 55%, transparent); }
 .orr-cluster__legend { position:absolute; left:${P.x - 62}px; top:${P.y + 68}px; width:124px; display:grid; grid-template-columns:16px auto 1fr; column-gap:7px; row-gap:4px; align-items:center; }
@@ -348,7 +355,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const strainEl = el('small');
   payload.append(el('span', 'orr-label', 'Payload · on the line'), massEl, strainEl);
   place(payload, px + 36, py - 26);
-  payload.style.opacity = '0';
+  // hidden by visibility, not opacity: the arrival animation drives opacity and would flash it
+  payload.style.visibility = 'hidden';
   const massCounter = createCounter(massEl, { format: (n) => `${Math.round(n)} T` });
 
   root.append(energyRead, heatRead, speedBlock, legend, payload);
@@ -450,7 +458,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     // tether
     const t = d.tether || null;
     const tethered = !!(t && t.state && t.state !== 'Idle' && Number(t.mass) > 0);
-    if (changed('tethered', tethered)) { tetherG.setAttribute('opacity', tethered ? '1' : '0'); payload.style.opacity = tethered ? '1' : '0'; }
+    if (changed('tethered', tethered)) { tetherG.setAttribute('opacity', tethered ? '1' : '0'); payload.style.visibility = tethered ? 'visible' : 'hidden'; }
     if (tethered) {
       const st = Math.max(0, Math.min(1, Number(t.strain) || 0));
       if (changed('mass', Math.round(Number(t.mass)))) massCounter.set(Number(t.mass));
