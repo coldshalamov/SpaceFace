@@ -441,6 +441,9 @@ export function promoteFarActor(state, id, helpers) {
     : 0;
   const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};
   if (rec.hullDefId && data.hullDefId == null) data.hullDefId = rec.hullDefId;
+  // leanIdentityData can shelve a hull whose only identity was shipDefId/typeId; promotion must
+  // re-canonicalize it onto defId or the ship returns without a whole-ship selector (D29).
+  if (rec.type === 'ship' && data.defId == null && data.hullDefId) data.defId = data.hullDefId;
   if (rec.intent) data.intent = rec.intent;
   if (rec.route) data.route = rec.route;
   if (rec.jobId != null) data.jobId = rec.jobId;

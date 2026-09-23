@@ -287,6 +287,8 @@ test('far snapshot stays lean and promote runs catch-up first', () => {
   assert.ok(live);
   assert.ok(Math.abs(live.pos.x - 100) < 0.01, `expected catch-up pose ~100, got ${live.pos.x}`);
   assert.equal(getFarActor(state, rec.id), null);
+  assert.equal(live.data.defId, 'hull_workhorse',
+    'a hull shelved under shipDefId promotes with defId re-canonicalized (D29: the whole-ship selector reads defId only)');
 });
 
 test('production leftover S3 still shelves after delayed far-actor exit', () => {

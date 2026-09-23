@@ -1064,7 +1064,9 @@ const REQUIRED_WHOLE_SHIP_ASSET_REFS = Object.freeze(new Set([
 export function requiresProductionWholeShipForEntity(entity) {
   if (!entity || entity.type !== 'ship' || !entity.data) return false;
   const data = entity.data;
-  if (REQUIRED_WHOLE_SHIP_DEF_ID_SET.has(data.defId)) {
+  // hullDefId is the far-actor table's canonical ship-def alias (leanIdentityData): a hull
+  // promoted before defId is re-stamped must still resolve its required body.
+  if (REQUIRED_WHOLE_SHIP_DEF_ID_SET.has(data.defId || data.hullDefId)) {
     return true;
   }
   if (REQUIRED_WHOLE_SHIP_TRAFFIC_ROLES.has(String(data.trafficRole || ''))) return true;
@@ -1708,7 +1710,7 @@ export function wholeShipVisualForEntity(entity, options = {}) {
     ));
   }
   if (options.requiredWholeShip !== true && !requiresProductionWholeShipForEntity(entity)) return null;
-  const defId = data.defId;
+  const defId = data.defId || data.hullDefId;
   const file = WHOLE_SHIP_FILE_BY_DEF_ID[defId];
   return applyFactionWholeShipKit(entity, file ? liveWholeShipSelection(
     file,
