@@ -55,6 +55,12 @@ import {
   sectorLocalToGlobalForSector,
 } from '../data/sectorCoordinates.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import {
+  ENCOUNTER_REPETITION_DAY_SECONDS,
+  ENCOUNTER_SHAPE_BUDGET_PER_HOUR,
+  ENCOUNTER_SHAPE_HOUR_SECONDS,
+  encounterGrammarKey,
+} from './encounterScripts.js';
 import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptTextWithFallback } from '../data/encounters.js';
 import { ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
@@ -2720,6 +2726,27 @@ function clearCeresActivityAmbushMarker(entity) {
  */
 export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = null, encounterCatalog = ENCOUNTERS) {
   const out = [];
+  if (!Array.isArray(zones) || !zones.length) return out;
+  // PQ-171.01 shape budget: the meter buckets sightings by fixed sim hour
+  // (floor(t / ENCOUNTER_SHAPE_HOUR_SECONDS)), and every planned delay stays inside its day, so
+  // the budget window is the fixed hour the day falls in — SHAPE_BUCKET_DAYS sector-days. Plan
+  // the bucket's days in order, carry the grammar-key counts forward, and planEncountersDay's
+  // retry skips any key already at ENCOUNTER_SHAPE_BUDGET_PER_HOUR. At most SHAPE_BUCKET_DAYS
+  // day-plans per call — no recursion, no cache, and identical draws at any bucket position.
+  const day = dayIndex | 0;
+  const bucketStart = Math.max(0, Math.floor(day / SHAPE_BUCKET_DAYS) * SHAPE_BUCKET_DAYS);
+  const shapeCounts = new Map();
+  let items = out;
+  for (let prior = bucketStart; prior <= day; prior++) {
+    items = planEncountersDay(seed, sectorId, prior, zones, ecologyState, encounterCatalog, shapeCounts);
+  }
+  return items;
+}
+
+const SHAPE_BUCKET_DAYS = ENCOUNTER_SHAPE_HOUR_SECONDS / ENCOUNTER_REPETITION_DAY_SECONDS;
+
+function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState = null, encounterCatalog = ENCOUNTERS, shapeCounts = null) {
+  const out = [];
 
   if (!Array.isArray(zones) || !zones.length) return out;
   const rng = mulberry32(hash32(seed == null ? 0 : seed, String(sectorId), dayIndex | 0));
@@ -2776,17 +2803,34 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
         if (!(days > 0) || !(dayIndex < days)) return 1;
         return Math.max(1, Number(candidate.earlyWindowWeight) || 1);
       };
-      const enc = pickWeighted(candidates, rng, (candidate) => (
+      const weightOf = (candidate) => (
         (ecologyState ? regionalEncounterWeight(ecologyState, sectorId, candidate) : (candidate.weight || 1))
         * earlyFactor(candidate)
-      ));
-      if (!enc) continue;
-      if (enc.rare && rng() < RARE_GATE) continue;     // rare shapes need the extra gate
-      const zone = pickZoneFor(enc, zonesByType, rng, sectorId);
-      if (!zone) continue;
-      const item = resolveEncounter(enc, zone, sectorId, dayIndex, seq++, rng);
+      );
+      // A grammar key at its sim-hour budget is skipped and the draw retried, so the next
+      // eligible candidate in the same weighted order takes the slot. Re-draws re-roll the zone
+      // too — a shape locked out at one zone can still land where its key is cold.
+      let item = null;
+      let chosen = null;
+      let placedKey = null;
+      for (let attempt = 0; attempt < Math.max(1, candidates.length * 2); attempt++) {
+        const enc = pickWeighted(candidates, rng, weightOf);
+        if (!enc) break;
+        if (enc.rare && rng() < RARE_GATE) break;      // rare shapes need the extra gate
+        const zone = pickZoneFor(enc, zonesByType, rng, sectorId);
+        if (!zone) break;
+        const resolved = resolveEncounter(enc, zone, sectorId, dayIndex, seq++, rng);
+        if (!resolved) break;
+        const grammarKey = shapeCounts ? encounterGrammarKey(enc, resolved.zoneType) : null;
+        if (grammarKey && (shapeCounts.get(grammarKey) || 0) >= ENCOUNTER_SHAPE_BUDGET_PER_HOUR) continue;
+        item = resolved;
+        chosen = enc;
+        placedKey = grammarKey;
+        break;
+      }
       if (!item) continue;
-      item.regionalWeight = ecologyState ? regionalEncounterWeight(ecologyState, sectorId, enc) : (enc.weight || 1);
+      if (placedKey) shapeCounts.set(placedKey, (shapeCounts.get(placedKey) || 0) + 1);
+      item.regionalWeight = ecologyState ? regionalEncounterWeight(ecologyState, sectorId, chosen) : (chosen.weight || 1);
       item.delay = delayLo + rng() * delaySpan;
       out.push(item);
     }
@@ -2850,12 +2894,23 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
     if (currentTierItems.length >= maxForTier) {
       for (let i = out.length - 1; i >= 0; i--) {
         if (out[i].tier === item.tier) {
+          if (shapeCounts) {
+            const dropEnc = (encounterCatalog || ENCOUNTERS)[out[i].shapeId];
+            if (dropEnc) {
+              const dropKey = encounterGrammarKey(dropEnc, out[i].zoneType);
+              shapeCounts.set(dropKey, Math.max(0, (shapeCounts.get(dropKey) || 0) - 1));
+            }
+          }
           out.splice(i, 1);
           break;
         }
       }
     }
     out.push(item);
+    if (shapeCounts) {
+      const guaranteedKey = encounterGrammarKey(enc, item.zoneType);
+      shapeCounts.set(guaranteedKey, (shapeCounts.get(guaranteedKey) || 0) + 1);
+    }
   }
 
   // Nominal spacing: keep planned onsets ≥45 s apart (the runtime gate enforces the real law).
