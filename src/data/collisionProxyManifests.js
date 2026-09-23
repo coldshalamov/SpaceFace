@@ -482,8 +482,15 @@ export function computeCaptureAssist(manifest, entity, pos, vel, inputMag = 0) {
   const tune = docking.assist;
   const ex = state.berth.x - finite(pos.x);
   const ez = state.berth.z - finite(pos.z);
-  let ax = tune.kp * ex - tune.kd * finite(vel && vel.x);
-  let az = tune.kp * ez - tune.kd * finite(vel && vel.z);
+  // The position pull fades as speed nears the berth gate: capture.speedGate (26) only marks
+  // capturability, so a hull already at dock-legal speed (berth.speedGate 12) is fast enough —
+  // any further pull just pumps it over the gate and forces the envelope brake to fight the
+  // assist back down every tick. The kd damping term is untouched: it still bleeds speed and
+  // holds the lane at the gate. The 2 wu/s band turns the fight into a smooth handoff.
+  const berthGate = positive(docking.berth && docking.berth.speedGate, 12);
+  const pullFade = clamp((berthGate - 2 - state.speed) / 2, 0, 1);
+  let ax = tune.kp * ex * pullFade - tune.kd * finite(vel && vel.x);
+  let az = tune.kp * ez * pullFade - tune.kd * finite(vel && vel.z);
   const mag = Math.hypot(ax, az);
   if (mag > tune.maxAccel) {
     const k = tune.maxAccel / mag;

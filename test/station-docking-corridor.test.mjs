@@ -967,12 +967,26 @@ test('real authority: a latched hull at the soak drift state re-opens the stop p
       `a latched hull carrying 82 wu/s inside the margin must brake, not cruise (status: ${autopilot.status})`);
     // And the full scenario still converges: keep stepping — the hull must shed and reach the
     // corridor instead of holding the drift.
+    let creepStarted = false;
+    let prevBrake = null;
+    let brakeFlips = 0;
     for (let t = 1; t < 240 * 60; t++) {
       rig.stepCraft(t);
       if (state.dockingCorridor && state.dockingCorridor.phase === 'berthed') break;
+      // While the latch is armed the settled creep must hold governed speed under the
+      // re-engage floor — the 15-25 Hz brake flicker the latch exists to kill. Count
+      // edges only inside latched ticks; a duty-cycling floor racks up hundreds.
+      if (autopilot.brakeSettled === true) {
+        if (state.input.brake !== true) creepStarted = true;
+        if (creepStarted && prevBrake !== null && state.input.brake !== prevBrake) brakeFlips++;
+      }
+      prevBrake = state.input.brake;
     }
     assert.equal(state.dockingCorridor.phase, 'berthed',
       `the latched 82 wu/s drift must recover and berth (ended ${Math.hypot(player.pos.x, player.pos.z).toFixed(0)} wu from target, speed ${Math.hypot(player.vel.x, player.vel.z).toFixed(0)})`);
+    assert.ok(creepStarted, 'the drift must shed speed and re-arm the settle latch');
+    assert.ok(brakeFlips <= 8,
+      `settled creep must not duty-cycle the brake (${brakeFlips} edges — the governed cap must sit under the re-engage floor)`);
   } finally {
     rig.dispose();
   }
