@@ -937,7 +937,7 @@ export const mining = {
       // A facility-owned heist capsule is custody freight, not scrap: the magnet's velocity write
       // corrupts the fork's fresh-custody sample, and a collection would consume a mission load.
       if (pickupData.heistFacilityRole === 'cargo_capsule') continue;
-      if (state.player && state.player.tether && state.player.tether.targetId === e.id) continue;
+      if (isMasslineLatchedPickup(state, player, e)) continue;
       const embargoUntil = Number(pickupData.pickupEmbargoUntil);
       if (Number.isFinite(embargoUntil) && state.simTime < embargoUntil) {
         // Jettison reaction mass must establish real separation before the generic magnet/direct
@@ -2297,4 +2297,59 @@ function maxFittedMagnetRange(player) {
     if (Number.isFinite(value) && value > max) max = value;
   }
   return max;
+}
+
+/**
+ * Returns true if an entity is latched/tethered to the player via Massline rope,
+ * preventing _updatePickups from magnet-vacuuming or scooping it into the hold.
+ * Covers state.player.tether, player.tether, combat.attachments authority,
+ * player.masslineTelemetry, and entity-level latched/tethered flags.
+ */
+export function isMasslineLatchedPickup(state, player, entity) {
+  if (!entity) return false;
+  const id = entity.id;
+  if (id == null) return false;
+  const idStr = String(id);
+
+  // 1. Direct flags on entity or entity.data
+  const d = entity.data;
+  if (d && (d.masslineLatched || d.latched || d.tethered || d.tetherPayload)) return true;
+  if (entity.masslineLatched || entity.latched || entity.tethered) return true;
+
+  // 2. state.player.tether mirror or player.tether entity field
+  const tether = (state && state.player && state.player.tether) || (player && player.tether);
+  if (tether && tether.active !== false) {
+    if (tether.targetId != null && (tether.targetId === id || String(tether.targetId) === idStr)) return true;
+    if (tether.attachedId != null && (tether.attachedId === id || String(tether.attachedId) === idStr)) return true;
+    if (tether.targetEntityId != null && (tether.targetEntityId === id || String(tether.targetEntityId) === idStr)) return true;
+  }
+
+  // 3. state.player.masslineTelemetry
+  const telem = state && state.player && state.player.masslineTelemetry;
+  if (telem && telem.targetId != null && (telem.targetId === id || String(telem.targetId) === idStr)) {
+    return true;
+  }
+
+  // 4. Combat attachments authority (SG-02 / SG-03)
+  const playerId = (player && player.id != null) ? player.id : (state && state.playerId);
+  const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (attachments && typeof attachments === 'object') {
+    const pStr = playerId != null ? String(playerId) : null;
+    for (const att of Object.values(attachments)) {
+      if (!att || att.state === 'broken' || att.state === 'detached' || att.state === 'pruned') continue;
+      const isPlayerAttachment = pStr != null && (
+        (att.ownerId != null && String(att.ownerId) === pStr) ||
+        (att.sourceId != null && String(att.sourceId) === pStr) ||
+        (att.bodyAId != null && String(att.bodyAId) === pStr)
+      );
+      if (isPlayerAttachment) {
+        if (att.targetId != null && (att.targetId === id || String(att.targetId) === idStr)) return true;
+        if (att.attachedId != null && (att.attachedId === id || String(att.attachedId) === idStr)) return true;
+        if (att.bodyBId != null && (att.bodyBId === id || String(att.bodyBId) === idStr)) return true;
+        if (att.targetEntityId != null && (att.targetEntityId === id || String(att.targetEntityId) === idStr)) return true;
+      }
+    }
+  }
+
+  return false;
 }
