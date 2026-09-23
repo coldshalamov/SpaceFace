@@ -282,9 +282,16 @@ function setOpacity(el, opacity) {
   el.style.opacity = next;
 }
 
+// Quantized numeric early-out: settled chevrons rebuilt translate3d every overlay tick
+// just to strcmp _sfTransform. Cache tenths-of-a-px so a still cue skips toFixed + template.
+// Picture unchanged (same toFixed(1) rounding).
 function setHudTransform(el, x, y) {
-  const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
-  if (el._sfTransform === next) return;
+  const qx = Math.round(Number(x) * 10);
+  const qy = Math.round(Number(y) * 10);
+  if (el._sfHudTx === qx && el._sfHudTy === qy) return;
+  el._sfHudTx = qx;
+  el._sfHudTy = qy;
+  const next = `translate3d(${(qx / 10).toFixed(1)}px,${(qy / 10).toFixed(1)}px,0) translate(-50%,-50%)`;
   el._sfTransform = next;
   el.style.transform = next;
 }
