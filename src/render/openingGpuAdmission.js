@@ -378,6 +378,15 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   let issueMs = 0;
   let drainMs = 0;
   let touchMs = 0;
+  // `issueKeyFor` is a producer-side program signature (material manifest + object/geometry
+  // features). Units dedupe by material OBJECT, so thousands of palette-cloned subjects share
+  // one signature: only the first needs its compile issued — the linked program is keyed by
+  // signature, not material identity. A covered subject still owes its touch (its own geometry
+  // buffers and material uniforms upload on that draw), and a signature miss degrades to the
+  // same blocking link an unissued subject already pays inside a batched touch — never worse.
+  const issueKeyFor = typeof options.issueKeyFor === 'function' ? options.issueKeyFor : null;
+  const seenIssueKeys = issueKeyFor ? new Set() : null;
+  let issueDedupeSkips = 0;
   try {
     // Issue without awaiting. Each call runs `renderer.compile()` synchronously inside its promise
     // executor and then suspends on the batch, so the whole cohort reaches the driver before the
@@ -385,7 +394,20 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     const issueStarted = now();
     for (let index = 0; index < ordered.length; index++) {
       if (overBudget()) break;
-      issued.push(compileOne ? compileOne(ordered[index]) : null);
+      const subject = ordered[index];
+      let issueKey = null;
+      if (issueKeyFor) {
+        try { issueKey = issueKeyFor(subject); } catch (_) { issueKey = null; }
+      }
+      if (issueKey && seenIssueKeys.has(issueKey)) {
+        // Keep `issued` index-aligned with `ordered` so the touch gate still counts this
+        // subject as issued — its program is covered by the sibling's in-flight compile.
+        issued.push(Promise.resolve({ skipped: true, reason: 'program-signature-covered' }));
+        issueDedupeSkips += 1;
+        continue;
+      }
+      if (issueKey) seenIssueKeys.add(issueKey);
+      issued.push(compileOne ? compileOne(subject) : null);
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
     issueMs = now() - issueStarted;
@@ -461,6 +483,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     skipped: ordered.length === 0,
     subjects: ordered.length,
     issued: issued.length,
+    issueDedupeSkips,
     touched: results.length,
     materials: Number(units.materialCount) || (units.programSubjects || []).length,
     geometries: Number(units.geometryCount) || (units.geometrySubjects || []).length,

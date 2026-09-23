@@ -275,6 +275,7 @@ import {
   createOpeningProducerCensus,
   createOpeningSubmissionPlan,
   createOpeningSubmissionReceipt,
+  openingProgramSubjectKey,
   openingSubmissionUnboundSubjects,
   validateOpeningSubmissionReceipt,
 } from './openingSubmissionPlan.js';
@@ -282,6 +283,7 @@ import {
   admitOpeningUnitsAcrossSlices,
   captureOpeningAdmissionIdentity,
   describeOpeningAdmissionIdentityDelta,
+  materialHasCompiledProgram,
   touchSubjectOnExactTarget,
   uniqueAdmissionUnits,
 } from './openingGpuAdmission.js';
@@ -940,6 +942,72 @@ export function holdFirstFlightStreaming(state) {
 function survivalRunHoldsArena(state) {
   const run = state && state.run;
   return !!(run && run.kind === 'survival' && run.phase && run.phase !== 'inactive');
+}
+
+// Compile-issue signature. Admission units dedupe by material OBJECT, so the bounded roster
+// warm's palette clones (~3000 unique materials sharing a handful of program signatures) each
+// issued their own compile — ~4 ms of reveal/env/compile JS per unit. The linked program is
+// keyed by signature, not material identity, so one issue per signature links the cohort.
+const _compileIssueMaterialKeys = new WeakMap();
+
+function compileIssueMaterialKey(material) {
+  if (!material || typeof material !== 'object') return null;
+  const cached = _compileIssueMaterialKeys.get(material);
+  if (cached !== undefined) return cached;
+  let key = null;
+  try {
+    // Producer-side subject key: material type + customProgramCacheKey + defines + blending +
+    // texture identities + shader source. Never customProgramCacheKey alone — authored
+    // families share that string across distinct maps/defines (openingSubmissionPlan §key).
+    key = openingProgramSubjectKey(material) || null;
+  } catch (_) { key = null; }
+  // A custom onBeforeCompile changes the emitted program while leaving the manifest equal.
+  // Own-property check: three's default lives on the prototype, authored patches are assigned.
+  if (key && Object.prototype.hasOwnProperty.call(material, 'onBeforeCompile')) {
+    try {
+      const src = Function.prototype.toString.call(material.onBeforeCompile);
+      key += `|obc:${src.length}:${src.charCodeAt(0)}:${src.charCodeAt(src.length >> 1)}:${src.charCodeAt(src.length - 1)}`;
+    } catch (_) { key = null; }
+  }
+  _compileIssueMaterialKeys.set(material, key);
+  return key;
+}
+
+/**
+ * Program signature for one compile subject, or null when any material cannot be keyed —
+ * null never dedupes, so an unkeyable subject always issues its own compile. Object and
+ * geometry features that change the linked program while the material stays identical
+ * (instancing, skinning, morphs, the vertex attribute set) ride in the same key.
+ */
+function openingCompileIssueKey(subject) {
+  if (!subject || typeof subject !== 'object') return null;
+  const materials = Array.isArray(subject.material)
+    ? subject.material.filter(Boolean)
+    : (subject.material ? [subject.material] : []);
+  if (materials.length === 0) return null;
+  const parts = [];
+  for (const material of materials) {
+    const key = compileIssueMaterialKey(material);
+    if (!key) return null;
+    parts.push(key);
+  }
+  const geometry = subject.geometry;
+  const attributes = geometry && geometry.attributes
+    ? Object.keys(geometry.attributes).sort().join(',')
+    : '';
+  const morphs = geometry && geometry.morphAttributes
+    ? Object.keys(geometry.morphAttributes).sort().join(',')
+    : '';
+  const drawClass = (subject.isInstancedMesh === true ? 'I' : '')
+    + (subject.isSkinnedMesh === true ? 'S' : '')
+    + (subject.isBatchedMesh === true ? 'B' : '')
+    + (subject.isPoints === true ? 'P' : '')
+    + (subject.isLine === true ? 'L' : '')
+    + (subject.isSprite === true ? 'R' : '')
+    + (subject.isMesh === true ? 'M' : '');
+  return `${drawClass}|${attributes}|${morphs}`
+    + `|${geometry && geometry.morphTargetsRelative === true ? 'rel' : ''}`
+    + `|${parts.join('|')}`;
 }
 
 /** Pure render-streaming policy used by reconciliation and focused tests. */
@@ -7220,10 +7288,19 @@ export const render = {
               // frame. (Iterating the returned object itself throws — it is not a list.)
               const sealUnits = uniqueAdmissionUnits(
                 latePoolRoots.flatMap((root) => collectCompileSubjects(root)),
+                {
+                  skipReadyMaterial: (material) => {
+                    try {
+                      return materialHasCompiledProgram(material,
+                        (entry) => renderer.properties.get(entry));
+                    } catch (_) { return false; }
+                  },
+                },
               );
               poolSealUnits = sealUnits.programSubjects.length;
               await admitOpeningUnitsAcrossSlices({
                 units: sealUnits,
+                issueKeyFor: openingCompileIssueKey,
                 beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
                 compileOne: (subject) => whileRevealed(subject,
                   () => compileSubjectColorAndDepth(subject, sealRoute)),
@@ -7987,9 +8064,13 @@ export const render = {
       // instantiates every decoded record into the hidden root so the compile batch and
       // shadow pass cover it. No contract sweep — that measured 140 decodes / ~4000 pool roots
       // and was the launch regression in the receipt.
-      let crucibleWarm = null;
-      let crucibleWarmRoot = null;
-      if (warmFirstFlightFx && !cookOverBudget()) {
+      // A crucible launch already began the bounded warm at game:scenePrepared — its decodes
+      // and boundary kicks spent the loading window draining instead of starting here.
+      let crucibleWarm = this._earlyCrucibleWarm || null;
+      let crucibleWarmRoot = crucibleWarm && crucibleWarm.root ? crucibleWarm.root : null;
+      this._earlyCrucibleWarm = null;
+      this._earlyCrucibleWarmMenu = false;
+      if (!crucibleWarm && warmFirstFlightFx && !cookOverBudget()) {
         try {
           crucibleWarm = this._beginCrucibleBoundedRosterWarm({
             yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser,
@@ -8004,12 +8085,14 @@ export const render = {
           console.warn('[render] crucible bounded roster warm begin failed', error);
           crucibleWarm = null;
         }
-        if (crucibleWarm && crucibleWarm.root) {
-          crucibleWarmRoot = crucibleWarm.root;
-          scene.add(crucibleWarmRoot);
-          addFirstFlightBufferRoot(crucibleWarmRoot);
-          // Stays mounted hidden for the run — _releaseSurvivalRosterPrewarm tears the root
-          // down at run end, and the bare→PBR sweep reaches it via _rosterPrewarmRoots.
+      }
+      if (crucibleWarm && crucibleWarm.root) {
+        crucibleWarmRoot = crucibleWarm.root;
+        scene.add(crucibleWarmRoot);
+        addFirstFlightBufferRoot(crucibleWarmRoot);
+        // Stays mounted hidden for the run — _releaseSurvivalRosterPrewarm tears the root
+        // down at run end, and the bare→PBR sweep reaches it via _rosterPrewarmRoots.
+        if (!this._rosterPrewarmRoots.includes(crucibleWarmRoot)) {
           this._rosterPrewarmRoots.push(crucibleWarmRoot);
         }
       }
@@ -8182,7 +8265,17 @@ export const render = {
         const sceneCompileSubjects = (survivalCook && !cookOverBudget())
           ? collectCompileSubjects(scene)
           : [];
-        const cookUnits = uniqueAdmissionUnits(cookCompileSubjects.concat(sceneCompileSubjects));
+        // A same-sector recook re-collects subjects whose programs already linked — drop those
+        // materials at unit construction so their subjects owe only the geometry-buffer touch.
+        const materialAlreadyLinked = (material) => {
+          try {
+            return materialHasCompiledProgram(material, (entry) => renderer.properties.get(entry));
+          } catch (_) { return false; }
+        };
+        const cookUnits = uniqueAdmissionUnits(
+          cookCompileSubjects.concat(sceneCompileSubjects),
+          { skipReadyMaterial: materialAlreadyLinked },
+        );
         const rockPoolsStarted = cookNow();
         if (cookCompileRoots.length > 0 || sceneCompileSubjects.length > 0) {
           const whileRevealed = (subject, run) => {
@@ -8214,6 +8307,10 @@ export const render = {
           try {
             rockPools = await admitOpeningUnitsAcrossSlices({
               units: cookUnits,
+              // Thousands of palette-cloned subjects share a program signature — issue one
+              // compile per signature, not one per material object (~14 s of per-unit issue
+              // JS on the owner's iGPU collapses to the distinct-program count).
+              issueKeyFor: openingCompileIssueKey,
               // The scene-wide set can be hundreds of units on a survival cook — the issue and
               // touch loops honour deadlineMs and stop issuing when the cook window closes
               // (drain itself is bounded by the readiness batch's own timeout).
@@ -8285,6 +8382,7 @@ export const render = {
             roots: cookCompileRoots.length,
             units: rockPools.subjects,
             issued: rockPools.issued,
+            issueDedupeSkips: rockPools.issueDedupeSkips,
             touched: rockPools.touched,
             hiddenTouchSkips: rockPools.touchesSkippedHidden,
             yields: rockPools.yields,
@@ -8561,7 +8659,21 @@ export const render = {
             }
           };
           lateColor = await admitOpeningUnitsAcrossSlices({
-            units: uniqueAdmissionUnits(lateCompileRoots.flatMap((root) => collectCompileSubjects(root))),
+            // The cook's issue pass already linked most of this cohort — ready materials drop
+            // at unit construction and the remaining cold ones issue one compile per program
+            // signature, so the re-sweep only pays for genuinely late subjects.
+            units: uniqueAdmissionUnits(
+              lateCompileRoots.flatMap((root) => collectCompileSubjects(root)),
+              {
+                skipReadyMaterial: (material) => {
+                  try {
+                    return materialHasCompiledProgram(material,
+                      (entry) => renderer.properties.get(entry));
+                  } catch (_) { return false; }
+                },
+              },
+            ),
+            issueKeyFor: openingCompileIssueKey,
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
             compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
@@ -8956,6 +9068,47 @@ export const render = {
       this._sessionRecookKeepGpu = false;
       if (state.render) state.render.sessionLiveSectorCookedId = null;
     });
+    onBus('game:scenePrepared', () => {
+      // The sandbox hook stages the survival run inside this same emit; defer one microtask so
+      // state.run is populated before the survival check reads it. A crucible launch then
+      // begins the bounded roster warm at the door — its GLB decodes and boundary kicks drain
+      // through the ordinary loading window instead of starting inside the prepare cook.
+      queueMicrotask(() => {
+        try { this._beginEarlyCrucibleRosterWarm(); }
+        catch (error) { console.warn('[render] early crucible roster warm failed', error); }
+      });
+    });
+    // The Crucible door is where the roster becomes knowable: opening any crucible screen
+    // begins the bounded roster warm behind the menu, so its GLB decodes and boundary kicks
+    // drain during the door/draft dwell — launch then finds the work done instead of paying
+    // it inside the launch window. Navigating away discards a warm no launch claimed.
+    onBus('ui:screenTop', (payload) => {
+      try {
+        const id = payload && payload.id;
+        if (typeof id === 'string' && id.indexOf('crucible') === 0) {
+          queueMicrotask(() => {
+            try { this._beginMenuCrucibleRosterWarm(); }
+            catch (error) { console.warn('[render] menu crucible roster warm failed', error); }
+          });
+          return;
+        }
+        if (this._earlyCrucibleWarmMenu === true) {
+          // A launch flips mode to loading around the same turn the screen stack changes —
+          // defer the discard check so a claimed warm is not dropped mid-transition.
+          setTimeout(() => {
+            try {
+              if (this._earlyCrucibleWarmMenu !== true) return;
+              const st = this.state;
+              if (!st || survivalRunHoldsArena(st) || st.mode === 'loading') return;
+              this._discardEarlyCrucibleWarm();
+            } catch (_) { /* menu warm discard is best-effort */ }
+          }, 0);
+        }
+      } catch (_) { /* the menu warm is best-effort */ }
+    });
+    // A failed/abandoned transition never reaches the cook — drop the staged warm root now
+    // rather than leaving it mounted hidden until the next New Game supersedes it.
+    onBus('game:startFailed', () => { this._discardEarlyCrucibleWarm(); });
     onBus('save:restoring', () => {
       // The save system emits this synchronously before it destroys the current entity graph.
       // Keep the current sector's decoded authored resources resident across that short gap; the
@@ -9444,6 +9597,10 @@ export const render = {
     onBus('run:wavePlanned', (p) => this._kickWaveHullDecodeRunway(p));
     onBus('run:ended', () => {
       this._releaseSurvivalRosterPrewarm('run_ended');
+      // The early warm's root was pushed into _rosterPrewarmRoots at begin, so the release
+      // above already disposed it — drop the handle so the cook never adopts a dead root.
+      this._earlyCrucibleWarm = null;
+      this._earlyCrucibleWarmMenu = false;
       clearWaveHullRunwayKeys(this.state);
       if (this._waveHullDecodePending) this._waveHullDecodePending.clear();
     });
@@ -10337,7 +10494,10 @@ export const render = {
     // cook and its own boundary runs the same compose through the _meshes kick below.)
     if (profile === 'crucible') {
       const playerShipSpec = cruciblePlayerShipExemplarSpec(state);
-      if (playerShipSpec) shipSpecs.push(playerShipSpec);
+      if (playerShipSpec) {
+        shipSpecs.push(playerShipSpec);
+        warm.playerSpecDefId = playerShipSpec.data && playerShipSpec.data.defId;
+      }
     }
     for (const spec of shipSpecs) {
       try {
@@ -10470,6 +10630,134 @@ export const render = {
       }), `decode:${file}`));
     }
     return warm;
+  },
+
+  /**
+   * Crucible launches stage the survival run at game:scenePrepared, while the route is still
+   * inside the loading shell — well before prepareLiveSectorBeforeFlight's cook. Beginning the
+   * bounded warm here starts its explicit GLB decodes and queues its boundary kicks during the
+   * ordinary loading window (the upgrade queue's readable-ship lane passes the first-flight
+   * hold; the rest drain the moment prepare lifts the publication holds). The cook's finish()
+   * then measures an instantiate instead of a decode wait. Never sim work: exemplars build
+   * through visualFactory and kicks go through the real requestAuthoredUpgrade path, exactly
+   * as the cook-time begin() does.
+   */
+  _beginEarlyCrucibleRosterWarm() {
+    const { scene, state } = this;
+    if (!scene || !state) return;
+    const staged = this._earlyCrucibleWarm;
+    if (staged) {
+      // A door-staged warm belongs to THIS launch when the staged run is the survival one —
+      // the roster profile is fixed, so its decodes and kicks stay valid. A launch that is
+      // not the Crucible leaves it orphaned: discard it now so its hidden root never reaches
+      // the ordinary cook's censuses.
+      if (!survivalRunHoldsArena(state)) {
+        this._discardEarlyCrucibleWarm();
+        return;
+      }
+      this._earlyCrucibleWarmMenu = false;
+      this._topUpEarlyCrucibleWarmPlayerSpec(staged);
+      return;
+    }
+    if (state.mode !== 'loading') return;
+    if (!survivalRunHoldsArena(state)) return;
+    try {
+      const warm = this._beginCrucibleBoundedRosterWarm({
+        yieldToMain: yieldToBrowser,
+        profile: 'crucible',
+      });
+      if (!warm || !warm.root) return;
+      if (warm.root.parent !== scene) scene.add(warm.root);
+      this._rosterPrewarmRoots.push(warm.root);
+      this._earlyCrucibleWarm = warm;
+    } catch (error) {
+      console.warn('[render] early crucible roster warm begin failed', error);
+      this._earlyCrucibleWarm = null;
+    }
+  },
+
+  /**
+   * The Crucible door/draft screens open while the player is still deciding — the roster is
+   * already fixed at that point (fixed 'crucible' profile), so the warm's GLB decodes and
+   * boundary kicks can spend the menu dwell instead of the launch window. The run itself is
+   * not staged yet: the warm reads only the profile and the player's owned hull, exactly what
+   * the door already knows. Nothing sim-side is touched — exemplars and kicks go through the
+   * same visualFactory/requestAuthoredUpgrade path the cook uses.
+   */
+  _beginMenuCrucibleRosterWarm() {
+    const { scene, state } = this;
+    if (!scene || !state || this._earlyCrucibleWarm) return;
+    // A live survival run already carries its warm; mid-run draft/refit screens share the
+    // crucible screen ids, so both guards are needed, not just the screen name.
+    if (state.mode === 'flight' || survivalRunHoldsArena(state)) return;
+    try {
+      const warm = this._beginCrucibleBoundedRosterWarm({
+        yieldToMain: yieldToBrowser,
+        profile: 'crucible',
+      });
+      if (!warm || !warm.root) return;
+      if (warm.root.parent !== scene) scene.add(warm.root);
+      this._rosterPrewarmRoots.push(warm.root);
+      this._earlyCrucibleWarm = warm;
+      this._earlyCrucibleWarmMenu = true;
+    } catch (error) {
+      console.warn('[render] menu crucible roster warm begin failed', error);
+      this._earlyCrucibleWarm = null;
+      this._earlyCrucibleWarmMenu = false;
+    }
+  },
+
+  /**
+   * The door-staged warm resolves the player hull from the adventure save; the staged run's
+   * prepared hull can differ. Kick the resolved spec's family too — a missing player compose
+   * still runs inside the round otherwise.
+   */
+  _topUpEarlyCrucibleWarmPlayerSpec(warm) {
+    const { renderer, scene, state } = this;
+    if (!warm || !warm.root || !renderer || !scene || !state || !this.vf) return;
+    const spec = cruciblePlayerShipExemplarSpec(state);
+    const defId = spec && spec.data && spec.data.defId;
+    if (!spec || !defId || defId === warm.playerSpecDefId) return;
+    try {
+      const ship = this.vf.build(spec);
+      if (!ship) return;
+      ship.visible = false;
+      warm.root.add(ship);
+      warm.playerSpecDefId = defId;
+      if (typeof ship.userData?.requestAuthoredUpgrade === 'function') {
+        const entry = { id: spec.id, boundary: ship, result: undefined };
+        warm.boundaryKicks.push(entry);
+        const sectorId = (state.world && state.world.currentSectorId) || null;
+        const kick = warm.track(requestAuthoredUpgrade(ship, renderer, scene, {
+          residencyRole: 'crucible-roster-warm',
+          sectorId,
+          upgradeJobKey: `crucible-warm:job:${spec.id}`,
+        }), `ship:${spec.id}`);
+        kick.then((result) => { entry.result = result; });
+        warm.pendingAttachments.push(kick);
+      }
+    } catch (error) {
+      console.warn('[render] early crucible warm player top-up failed', error);
+    }
+  },
+
+  _discardEarlyCrucibleWarm() {
+    const warm = this._earlyCrucibleWarm;
+    this._earlyCrucibleWarm = null;
+    this._earlyCrucibleWarmMenu = false;
+    if (!warm || !warm.root) return;
+    // Decodes tag their residency to the warm owner — close it so a discarded warm does not
+    // pin its GLB records as live forever.
+    warm.building = false;
+    const root = warm.root;
+    const list = Array.isArray(this._rosterPrewarmRoots) ? this._rosterPrewarmRoots : [];
+    const index = list.indexOf(root);
+    if (index >= 0) list.splice(index, 1);
+    try {
+      if (root.parent) root.parent.remove(root);
+      if (this._contextLost === true) return;
+      if (!disposePreparedAuthoredBoundary(root)) disposeObject(root);
+    } catch (_) { /* teardown is best-effort */ }
   },
 
   async _finishCrucibleBoundedRosterWarm(warm, options = {}) {
