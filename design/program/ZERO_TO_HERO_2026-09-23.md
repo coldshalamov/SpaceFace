@@ -227,7 +227,25 @@ Everything else in this program already had an owner. These did not:
 - Re-opening a `done` packet to re-derive it instead of looking at what it put on screen.
 - Taking a later phase because it is more fun while an earlier one has no visible slice.
 
-## 7. Progress
+## 7. Next, in order (after the first session, 2026-09-23)
+
+The first session closed Phase 1's body scale, most of Phase 3, the Phase 4 Crucible sentence
+card, Phase 5's demo flag and end card, and F6. What the stranger pass still showed, in the order a
+stranger would notice it:
+
+1. **Load** (Phase 5.4): Crucible launch → control is still 47–108 s on a busy host. Take a quiet
+   reading first; then the ~14 s of fixed bootstrap waits and the first-frame census.
+2. **Belt tail** (F6 follow-up): after the bridge, ~8 bodies still compiling at 10–20 s on a busy
+   host — throughput, not ordering. Order what the opening frame shows first.
+3. **The rocks and the sky** (Phase 2.3, 2.1): beige-clay rocks with pink crystals; a galaxy plate
+   plus a ringed giant in one Crucible frame. `AQ-SURFACE` and C6's luminance numbers.
+4. **`CAN`** (Phase 4.2): the latch state is still a bare word beside the body.
+5. **Round zero** (Phase 5.3) and the **live title** (Phase 5.2): not started.
+6. **The honest death** (Phase 5.6): the stranger pass reached results through the run's end API
+   because the fight never killed the player in four minutes; re-walk it after F6 and take the
+   `PQ-210.08` scripted path end to end.
+
+## 8. Progress
 
 One line per slice that landed: phase, what a stranger now sees, the number, the commit.
 
@@ -243,4 +261,5 @@ One line per slice that landed: phase, what a stranger now sees, the number, the
 | 5 | The demo build: one flag on the one game path. The title lights Crucible, New Game reads Adventure, Load is hidden; results offer **Take it to the belt**; after the first upgrade is fitted and flown out of the dock, a once-per-save end card with **Keep playing** | `test/demo-mode.test.mjs`, `test/demo-path.test.mjs` (14 pins); bench shots `title --demo`, `demoEnd` | `d0453e19f`, `9210ff7b7` |
 | 5 | The Crucible starts cooking when you open its door, and stops compiling the same program twice: the roster warm begins behind the menu, duplicate compile issues (~2 800 per cook) are skipped, already-linked materials leave the queue | launch → control on a loaded host **85 / 112 / 87 s → 87 / 78 / 61 s** (median −10 s); `live.cook` **34 → 10–22 s**. **Still far from the 15 s bar**: what remains is real coverage (~660 unique programs, warm-root uploads, first-frame census) plus ~14 s of fixed bootstrap — the next cut is a quiet-host reading and the bootstrap waits, never the wave prewarm | `2685e58b8` |
 | 3 | A kill's hulk no longer links a shader mid-fight: the dead-hull clone keeps its program key, and one exemplar of each roster hulk is warmed before wave 1 | post-launch program links in a Crucible round with kills **+4 → 0** (four kill-containing runs, 0 draw-time links); `probe:smooth-flight:crucible --with-kill` | `e680c9116`, `d84fb8f45` |
+| 1 | The fight starts on time on a busy machine (F6): a hostile ship inside the fight-fit range takes the admission lane ahead of station furniture and the queued hub, and a Crucible run stops admitting Helios dressing it cannot show | wave-1 materialization → first hostile shot at 77–85 % host load **never in 240 s → 0.3–1.3 sim-s**; belt-bridge hull painted by 5 s on every run; `test/authored-upgrade-policy.test.mjs`, `test/authored-critical-admission-order.test.mjs` | `100d9dbb9` |
 | 2 | The sky yields a single camera-visible planet or wormhole; the authored plates and starfields remain, and a departed landmark can hand off its place as you fly. The arena, sky luminance and substances are still open. | concurrent hero limit **up to 3 → 1**; four live sector captures: Helios 1, Ceres 0, Pallas 1, Veil 1; 28 focused tests and the public flight route passed | `88a91dff0` |
