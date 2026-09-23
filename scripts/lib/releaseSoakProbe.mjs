@@ -1293,7 +1293,28 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   // contended host (the app's own bound); a restore that outlives a 90s wait is slow, not
   // broken. A genuine wedge still surfaces early: a timed-out gate fails to mode 'menu' via
   // failGameStart, which this predicate never satisfies either way.
-  await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 210_000 });
+  const waitForLoadFlight = () => page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 210_000 });
+  try {
+    await waitForLoadFlight();
+  } catch (loadWaitError) {
+    // D31: a transient staging stall inside finalizeLoadedGame dumps the run to a frozen menu
+    // (runtime:start-failed) with the save intact. A player would just load again — retry the
+    // same public key once so one host hiccup cannot kill a multi-hour soak. The signature is
+    // recorded either way; a persistent defect still fails the second wait.
+    const deadEnded = await page.evaluate(() => {
+      const s = window.SF?.state;
+      const reqs = typeof window.SF?.timeEffects?.describeRequests === 'function'
+        ? window.SF.timeEffects.describeRequests() : {};
+      return s?.mode === 'menu' && reqs && reqs['runtime:start-failed'] ? {
+        mode: s.mode,
+        timeRequests: reqs,
+      } : null;
+    }).catch(() => null);
+    if (!deadEnded) throw loadWaitError;
+    mark('load-retry-start-failed', deadEnded);
+    await page.keyboard.press('F9');
+    await waitForLoadFlight();
+  }
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
   const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);

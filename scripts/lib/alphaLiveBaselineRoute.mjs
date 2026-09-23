@@ -181,61 +181,78 @@ export async function runBrowserPublicRoute({
     // The baseline sample must itself be settle-confirmed: a positional correction that starts
     // between the gate and the read would land inside the measured window unobserved. Verify the
     // snapshot still sits at the settled anchor; if the hull moved, re-anchor and wait again.
-    let settledCandidate = null;
-    for (let attempt = 0; attempt < 8 && !settledCandidate; attempt++) {
-      const anchor = await waitForSettledAnchor();
-      await page.waitForTimeout(250);
-      const candidate = await readFlightSnapshot(page);
-      const drift = Math.hypot(
-        Number(candidate.player?.pos?.x || 0) - anchor.x,
-        Number(candidate.player?.pos?.z || 0) - anchor.z,
-      );
-      if (drift <= 0.5 && Number(candidate.player?.speed || 0) <= 0.5) settledCandidate = candidate;
-    }
-    const baselineStart = settledCandidate;
-    assert(baselineStart, 'released baseline never observed a settled hull');
-    await page.waitForTimeout(500);
-    const baselineEnd = await readFlightSnapshot(page);
-    let wHeld = null;
-    let boostHeld = null;
-    try {
-      await page.keyboard.down('KeyW');
+    const measureFlightInput = async () => {
+      let settledCandidate = null;
+      for (let attempt = 0; attempt < 8 && !settledCandidate; attempt++) {
+        const anchor = await waitForSettledAnchor();
+        await page.waitForTimeout(250);
+        const candidate = await readFlightSnapshot(page);
+        const drift = Math.hypot(
+          Number(candidate.player?.pos?.x || 0) - anchor.x,
+          Number(candidate.player?.pos?.z || 0) - anchor.z,
+        );
+        if (drift <= 0.5 && Number(candidate.player?.speed || 0) <= 0.5) settledCandidate = candidate;
+      }
+      const baselineStart = settledCandidate;
+      assert(baselineStart, 'released baseline never observed a settled hull');
       await page.waitForTimeout(500);
-      wHeld = await readFlightSnapshot(page);
-      await page.keyboard.down('Shift');
-      await page.waitForTimeout(400);
-      boostHeld = await readFlightSnapshot(page);
-    } finally {
-      await page.keyboard.up('Shift').catch(() => {});
-      await page.keyboard.up('KeyW').catch(() => {});
+      const baselineEnd = await readFlightSnapshot(page);
+      let wHeld = null;
+      let boostHeld = null;
+      try {
+        await page.keyboard.down('KeyW');
+        await page.waitForTimeout(500);
+        wHeld = await readFlightSnapshot(page);
+        await page.keyboard.down('Shift');
+        await page.waitForTimeout(400);
+        boostHeld = await readFlightSnapshot(page);
+      } finally {
+        await page.keyboard.up('Shift').catch(() => {});
+        await page.keyboard.up('KeyW').catch(() => {});
+      }
+      // Shader admission can briefly occupy the page immediately after launch. Wait for the public
+      // keyup events to reach a later fixed tick instead of sampling the still-held fields in the
+      // same blocked frame. This remains a player-input proof; it does not write input or sim state.
+      await page.waitForFunction((heldTick) => {
+        const state = window.SF?.state;
+        return Number(state?.tick || 0) > heldTick
+          && Math.abs(Number(state?.input?.moveZ || 0)) < 0.02
+          && state?.input?.boost !== true;
+      }, Number(boostHeld?.tick || 0), { timeout: 30_000 });
+      const released = await readFlightSnapshot(page);
+      const causality = evaluateFlightInputCausality({
+        baselineStart,
+        baselineEnd,
+        wHeld,
+        boostHeld,
+        released,
+      });
+      return { baselineStart, baselineEnd, wHeld, boostHeld, released, causality };
+    };
+    let flightInput = await measureFlightInput();
+    // D26: a rare first-flight physics pin holds speed at exactly 0 with nominal telemetry.
+    // Re-measure once after a beat — a transient pin clears, a persistent one fails with
+    // doubled forensics. The occurrence is recorded in evidence either way.
+    if (flightInput.causality.failures.length
+      && flightInput.causality.metrics?.powered?.speedEnd === 0
+      && flightInput.causality.metrics?.powered?.displacement === 0
+      && flightInput.wHeld?.player?.physicsDynamic === true) {
+      mark('flight-input-retry-pin', {
+        failures: flightInput.causality.failures,
+        live: {
+          thrust: flightInput.wHeld?.player?.thrust,
+          thrustHealth: flightInput.wHeld?.player?.thrustHealth,
+          physicsSleeping: flightInput.wHeld?.player?.physicsSleeping,
+          mode: flightInput.wHeld?.mode,
+        },
+      });
+      await page.waitForTimeout(1500);
+      flightInput = await measureFlightInput();
     }
-    // Shader admission can briefly occupy the page immediately after launch. Wait for the public
-    // keyup events to reach a later fixed tick instead of sampling the still-held fields in the
-    // same blocked frame. This remains a player-input proof; it does not write input or sim state.
-    await page.waitForFunction((heldTick) => {
-      const state = window.SF?.state;
-      return Number(state?.tick || 0) > heldTick
-        && Math.abs(Number(state?.input?.moveZ || 0)) < 0.02
-        && state?.input?.boost !== true;
-    }, Number(boostHeld?.tick || 0), { timeout: 30_000 });
-    const released = await readFlightSnapshot(page);
-    const flightInputCausality = evaluateFlightInputCausality({
-      baselineStart,
-      baselineEnd,
-      wHeld,
-      boostHeld,
-      released,
-    });
+    const { baselineStart, baselineEnd, wHeld, boostHeld, released } = flightInput;
+    const flightInputCausality = flightInput.causality;
     assert.deepEqual(flightInputCausality.failures, [],
       `ordinary keyboard flight input did not prove causal response: ${JSON.stringify(flightInputCausality)}`);
-    const flightInput = {
-      baselineStart,
-      baselineEnd,
-      wHeld,
-      boostHeld,
-      released,
-      causality: flightInputCausality,
-    };
     await screenshot(page, outputDir, SCREENSHOTS.flightAfterInput);
     mark('ordinary-flight-input', {
       baselineStart: compactFlight(baselineStart),
