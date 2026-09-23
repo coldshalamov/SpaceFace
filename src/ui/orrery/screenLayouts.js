@@ -397,7 +397,8 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results .sf-crres__step-
 /* armory: the offers on a rail at the left, one line each (the verb, the name, the price); the one
    under the pointer or focus is read out at the right -- its words, where it goes on the ship, how it
    compares, what it leaves in the wallet (crucibleDraft.js _paintReading). */
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-stage { max-width:min(560px, 40vw); display:flex; flex-direction:column; min-height:0; height:100%; position:relative; overflow:visible !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-stage { max-width:min(560px, 40vw); display:flex; flex-direction:column; min-height:0; height:100%; position:relative; overflow:visible !important;
+  -webkit-mask-image:none !important; mask-image:none !important; }
 @media (max-width:1500px) {
   html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-stage { max-width:34vw; }
   html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading.orr-armory-reading { left:calc(var(--k-margin, 64px) + 34vw + 40px) !important;
@@ -408,10 +409,13 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru
   -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 36px), transparent); mask-image:linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 36px), transparent); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale { position:absolute; left:-18px; top:64px; bottom:6px; width:10px; pointer-events:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale[hidden] { display:none; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale__track { position:absolute; left:4px; top:0; bottom:0; width:1px; background:rgb(236 230 216 / .2); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale__track { position:absolute; left:4px; top:0; bottom:0; width:2px; background:rgb(236 230 216 / .25); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale__thumb { position:absolute; left:-1px; width:3px; background:rgb(236 230 216 / .7); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale__words { position:absolute; left:18px; bottom:-22px; margin:0; white-space:nowrap; font-family:var(--dp-face-label, "Archivo");
-  font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:rgb(236 230 216 / .6); }
+  font-stretch:112%; font-weight:650; font-size:11.5px; letter-spacing:.18em; text-transform:uppercase; color:rgb(236 230 216 / .7); }
+/* the rail's Hand is full amber whatever lit its row; a purchase says so clearly */
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.is-lit { opacity:1 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-note { font-size:13px !important; color:rgb(236 230 216 / .82) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory > .k-title .k-t-title { font-size:clamp(34px, 4.4vh, 50px) !important; letter-spacing:.04em; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory > .k-title .sf-cru-sub { font-size:14px; color:rgb(236 230 216 / .66); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-cards { display:flex !important; flex-direction:column; gap:0 !important; max-height:calc(100vh - 430px); overflow:hidden auto;
@@ -509,7 +513,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-hint { display:inline-flex; align-items:center; margin-left:18px; }
 
 /* the door: the arena as hero art at the right, the form at the left, the share codes in a drawer */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .orr-door-hero { position:absolute; top:0; right:0; bottom:0; width:calc(100vw - max(40vw, 600px)); z-index:0; pointer-events:none;
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .orr-door-hero { position:absolute; top:0; right:0; bottom:0; width:calc(100vw - max(40vw, 680px)); z-index:0; pointer-events:none;
   -webkit-mask-image:linear-gradient(90deg, transparent 0, rgb(0 0 0 / .5) 22%, #000 46%), linear-gradient(0deg, transparent 0, #000 22%);
   -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent 0, rgb(0 0 0 / .5) 22%, #000 46%), linear-gradient(0deg, transparent 0, #000 22%);
   mask-composite:intersect; }
@@ -560,6 +564,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
 /* builds as words too: the stock glyphs leave; every selector stays inside the dark field */
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .fh-tile-art { display:none !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .orr-tile { min-height:0 !important; padding:6px 0 !important; width:auto !important; min-width:0 !important; max-width:96px; flex:none !important; }
+@media (min-width:1400px) { html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .orr-tile { width:84px !important; } }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-arenas) .orr-tile { flex:none !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) { max-width:max(40vw, 640px); flex-wrap:nowrap !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) .fh-tile-legend { font-size:clamp(11.5px, .66vw, 12.5px) !important; letter-spacing:clamp(.08em, .12vw, .16em) !important; line-height:1.3 !important; }
