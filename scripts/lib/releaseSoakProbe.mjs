@@ -393,14 +393,34 @@ export async function runReleaseSoakProbe({
     const memoryCheckpoints = [];
     let index = 0;
     while (index < cycles || Date.now() - soakStartedAt < minDurationMs) {
-      try {
-        const cycle = await withTimeout(
-          runSoakCycle(page, { index, outputDir, log: doLog, screenshots: takeCycleScreenshots }),
-          cycleTimeoutMs,
-          `release-soak cycle ${index}`,
-        );
-        cycleResults.push(cycle);
-      } catch (cycleError) {
+      let cycle = null;
+      let cycleError = null;
+      // One retry per cycle. A cycle that fails mid-market dies docked at the
+      // station screen — exactly the state every cycle opens in — so a transient
+      // interaction stall (a busy page starving protocol calls for tens of
+      // seconds) must not void the whole soak window. The retry is logged; a
+      // real defect fails twice and still kills the run with diagnostics.
+      for (let attempt = 0; attempt < 2 && !cycle && !cycleError; attempt++) {
+        try {
+          cycle = await withTimeout(
+            runSoakCycle(page, { index, outputDir, log: doLog, screenshots: takeCycleScreenshots }),
+            cycleTimeoutMs,
+            `release-soak cycle ${index}`,
+          );
+        } catch (attemptError) {
+          if (attempt === 0) {
+            doLog(`[cycle ${index}] failed; retrying once (${String(attemptError && attemptError.message || attemptError).slice(0, 160)})`);
+            await setSoakTransition(page, null).catch(() => {});
+            continue;
+          }
+          cycleError = attemptError;
+        } finally {
+          // A cycle that throws mid-transition must not leave the tag armed — later
+          // gameplay hitches would be misfiled as transition spans and pass leniently.
+          await setSoakTransition(page, null);
+        }
+      }
+      if (cycleError) {
         // A dead cycle must carry the live state that killed it — a waitForFunction
         // timeout alone says nothing about whether the world restored, the ship is
         // wedged, or the page froze.
@@ -429,11 +449,8 @@ export async function runReleaseSoakProbe({
           }
         } catch { /* trail dump is best-effort over the primary diag */ }
         throw cycleError;
-      } finally {
-        // A cycle that throws mid-transition must not leave the tag armed — later
-        // gameplay hitches would be misfiled as transition spans and pass leniently.
-        await setSoakTransition(page, null);
       }
+      cycleResults.push(cycle);
       memoryCheckpoints.push(await withTimeout(
         readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`),
         30_000,
@@ -2064,13 +2081,13 @@ async function reopenMarketTabWhenShellLost(page) {
   // the market tab through the public control; bounded, and the walk's own asserts still
   // report a market that truly will not open.
   for (let attempts = 0; attempts < 3; attempts++) {
-    if (await page.locator('.sx-trade:visible').count().catch(() => 0) > 0) return true;
+    if (await pBound(page.locator('.sx-trade:visible').count(), 4_000, 0) > 0) return true;
     const marketTab = page.locator('[role="tab"]', { hasText: /market/i }).first();
-    if (!(await marketTab.isVisible().catch(() => false))) return false;
-    await marketTab.click().catch(() => {});
+    if (!(await pBound(marketTab.isVisible(), 4_000, false))) return false;
+    await pBound(marketTab.click({ timeout: 4_000 }), 5_000, null);
     await page.waitForTimeout(400);
   }
-  return page.locator('.sx-trade:visible').count().catch(() => 0) > 0;
+  return pBound(page.locator('.sx-trade:visible').count(), 4_000, 0) > 0;
 }
 
 async function exerciseMarketRoundtrip(page) {
@@ -2081,7 +2098,7 @@ async function exerciseMarketRoundtrip(page) {
   // After the load+redock the hold can be empty, which collapses the console into the
   // HOLD_EMPTY data state — its public "Switch to Buy" verb is the designed way out.
   const holdEmptyVerb = page.locator('.sf-state[data-sf-state="empty"] .sf-state__verb', { hasText: /switch to buy/i }).first();
-  if (await holdEmptyVerb.isVisible().catch(() => false)) await holdEmptyVerb.click();
+  if (await pBound(holdEmptyVerb.isVisible(), 4_000, false)) await pBound(holdEmptyVerb.click({ timeout: 4_000 }), 5_000, null);
   const activeTradeShell = page.locator('.sx-trade:visible').first();
   // Live station chrome refreshes under the pointer; when a pointer-path click loses the
   // hit test, dispatch the click on the node itself — the same event the delegated
@@ -2089,10 +2106,10 @@ async function exerciseMarketRoundtrip(page) {
   const clickWithFallback = async (locator, timeout = 5_000) => {
     const ok = await locator.click({ timeout }).then(() => true, () => false);
     if (ok) return true;
-    return locator.dispatchEvent('click').then(() => true, () => false);
+    return pBound(locator.dispatchEvent('click').then(() => true), 4_000, false);
   };
-  const modeIsOn = (locator) => locator.getAttribute('class')
-    .then((value) => String(value || '').includes('is-on')).catch(() => false);
+  const modeIsOn = (locator) => pBound(locator.getAttribute('class'), 4_000, null)
+    .then((value) => String(value || '').includes('is-on'));
   // A mode click that never lands would trade in the wrong direction — retry the public
   // control until the console itself reports the mode active.
   const ensureMode = async (locator) => {
@@ -2114,7 +2131,7 @@ async function exerciseMarketRoundtrip(page) {
   // Observer tap: a row that refuses to commit is only diagnosable if the bus says why.
   // tradeFailed carries the rejection reason (price_changed, cargo_full, no_stock, …) and
   // tradeCompleted distinguishes "rejected" from "landed where the verify could not see it".
-  await page.evaluate(() => {
+  await pBound(page.evaluate(() => {
     const w = window;
     if (w.__SOAK_TRADE_TAP__ || !w.SF?.bus?.on) return;
     w.__SOAK_TRADE_TAP__ = true;
@@ -2126,7 +2143,7 @@ async function exerciseMarketRoundtrip(page) {
     };
     w.SF.bus.on('economy:tradeFailed', push('failed'));
     w.SF.bus.on('economy:tradeCompleted', push('completed'));
-  }).catch(() => {});
+  }), 8_000, null);
   const tradeConsoleDiag = () => page.evaluate(() => {
     const shell = document.querySelector('.sx-trade');
     const liveMode = shell?.querySelector('.sx-trade__go.is-on')?.getAttribute('data-mode') || null;
@@ -2154,7 +2171,7 @@ async function exerciseMarketRoundtrip(page) {
   // market leg; a row attempt never outlives it.
   const attemptRowCommit = async (row, id, verifyFn, { commitQty = '1', walkDeadline = Infinity } = {}) => {
     let clickErr = null;
-    if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') {
+    if (await pBound(row.getAttribute('aria-selected'), 4_000, null) !== 'true') {
       // The register rebuilds its row nodes on every price tick and the list lives in a
       // short scroll rail: Playwright's pointer-path click can lose the hit test to
       // sibling chrome while a real pilot's click reaches the row's delegated handler.
@@ -2162,15 +2179,17 @@ async function exerciseMarketRoundtrip(page) {
       // the same event the screen's delegated listener consumes. Selection is still
       // verified below before any commit is attempted — never trade blind.
       clickErr = await row.click({ timeout: 1_500 }).then(() => null, (e) => String(e && e.message || e).split('\n').slice(0, 4).join(' | '));
-      if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') {
-        await row.dispatchEvent('click').catch((e) => { clickErr = `${clickErr} | dispatch:${String(e && e.message || e).split('\n')[0]}`; });
+      if (await pBound(row.getAttribute('aria-selected'), 4_000, null) !== 'true') {
+        await pBound(row.dispatchEvent('click'), 4_000, null)
+          .then((ok) => { if (ok === null) clickErr = `${clickErr} | dispatch:bounded-timeout`; },
+            (e) => { clickErr = `${clickErr} | dispatch:${String(e && e.message || e).split('\n')[0]}`; });
       }
-      if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') {
-        const box = await row.boundingBox().catch(() => null);
-        const hitStack = box ? await page.evaluate(({ x, y }) => {
+      if (await pBound(row.getAttribute('aria-selected'), 4_000, null) !== 'true') {
+        const box = await pBound(row.boundingBox(), 4_000, null);
+        const hitStack = box ? await pBound(page.evaluate(({ x, y }) => {
           return (document.elementsFromPoint(x, y) || []).slice(0, 4)
             .map((el) => `${el.tagName}.${String(el.className || '').split(' ').slice(0, 2).join('.')}`);
-        }, { x: box.x + box.width / 2, y: box.y + box.height / 2 }).catch(() => null) : null;
+        }, { x: box.x + box.width / 2, y: box.y + box.height / 2 }), 4_000, null) : null;
         console.log(`[trade-walk] row ${id} never selected clickErr=${clickErr} box=${JSON.stringify(box)} hit=${JSON.stringify(hitStack)}`);
         return null;
       }
@@ -2193,11 +2212,12 @@ async function exerciseMarketRoundtrip(page) {
     if (commitQty != null) await qtyInput.fill(commitQty, { timeout: 1_500 }).catch(() => {});
     const enableDeadline = Math.min(Date.now() + 2_400, walkDeadline);
     while (Date.now() < enableDeadline) {
-      if (await tradeGo.isEnabled().catch(() => false)) break;
+      if (await pBound(tradeGo.isEnabled(), 4_000, false)) break;
       await page.waitForTimeout(400);
     }
-    if (!(await tradeGo.isEnabled().catch(() => false))) return null;
-    const before = await readTradeSnapshot(page, id);
+    if (!(await pBound(tradeGo.isEnabled(), 4_000, false))) return null;
+    const before = await pBound(readTradeSnapshot(page, id), 5_000, null);
+    if (!before) return null;
     // The console re-renders on every price tick: a GO node resolved before the click can be
     // detached by the time the event dispatches, and a transient disabled/tradeBusy instant eats
     // the handler silently (no trade event either way). A pilot just clicks again — so does the
@@ -2213,7 +2233,7 @@ async function exerciseMarketRoundtrip(page) {
       // Same live-refresh hazard as the register rows: try the pointer click first,
       // then dispatch the click on the node — the same event its handler consumes.
       let clicked = await tradeGo.click({ timeout: 2_000 }).then(() => true, () => false);
-      if (!clicked) clicked = await tradeGo.dispatchEvent('click').then(() => true, () => false);
+      if (!clicked) clicked = await pBound(tradeGo.dispatchEvent('click').then(() => true), 4_000, false);
       if (!clicked) continue;
       const remainMs = Math.max(500, deadline - Date.now());
       landed = await page.waitForFunction(verifyFn, before, { timeout: Math.min(3_000, remainMs) }).then(() => true, () => false);
@@ -2225,35 +2245,35 @@ async function exerciseMarketRoundtrip(page) {
   // cargo, empty stock), so "listed" is not "actionable".
   const walkRowsForCommit = async (verifyFn, limit = 14, options = {}) => {
     const walkDeadline = Number.isFinite(options.walkDeadline) ? options.walkDeadline : Infinity;
-    let count = await rows.count().catch(() => 0);
+    let count = await pBound(rows.count(), 4_000, 0);
     if (count === 0 && await reopenMarketTabWhenShellLost(page)) {
-      count = await rows.count().catch(() => 0);
+      count = await pBound(rows.count(), 4_000, 0);
     }
     for (let i = 0; i < Math.min(count, limit); i++) {
       if (Date.now() >= walkDeadline) return null;
       const row = rows.nth(i);
-      const id = await row.getAttribute('data-cmdty').catch(() => null);
+      const id = await pBound(row.getAttribute('data-cmdty'), 4_000, null);
       if (!id) continue;
       const t0 = Date.now();
       const committed = await attemptRowCommit(row, id, verifyFn, options);
       // Success is one line per walk (the roundtrip mark); only dead rows narrate,
       // with the console state that explains them.
-      if (!committed) console.log(`[trade-walk] row ${i} ${id} ms=${Date.now() - t0} diag=${JSON.stringify(await tradeConsoleDiag())}`);
+      if (!committed) console.log(`[trade-walk] row ${i} ${id} ms=${Date.now() - t0} diag=${JSON.stringify(await pBound(tradeConsoleDiag(), 5_000, null))}`);
       if (committed) return committed;
       // A dead row is quotable-detail; the shell itself vanishing is a stray-key
       // back-out — re-open the tab once and restart the walk on the live rows.
-      if (!options.__reopened && await page.locator('.sx-trade:visible').count().catch(() => 0) === 0
+      if (!options.__reopened && await pBound(page.locator('.sx-trade:visible').count(), 4_000, 0) === 0
           && await reopenMarketTabWhenShellLost(page)) {
         return walkRowsForCommit(verifyFn, limit, { ...options, __reopened: true });
       }
     }
     return null;
   };
-  const readHoldFreeVolume = () => page.evaluate(() => {
+  const readHoldFreeVolume = () => pBound(page.evaluate(() => {
     const c = window.SF?.state?.player?.cargo;
     if (!c || !(c.capVolume > 0)) return null;
     return c.capVolume - (c.usedVolume || 0);
-  }).catch(() => null);
+  }), 4_000, null);
   const BUY_VERIFY = ({ commodityId, credits, owned }) => {
     const s = window.SF?.state;
     return Number(s?.player?.credits) < credits
@@ -2282,16 +2302,16 @@ async function exerciseMarketRoundtrip(page) {
     // Prefer selling back exactly the bought unit so cargo stays neutral; when the
     // register won't buy that commodity here, any held unit still lands the leg.
     const sameRow = page.locator(`[data-cmdty="${buy.commodityId}"]`).first();
-    const sameRowPresent = await sameRow.count().catch(() => 0) > 0;
+    const sameRowPresent = await pBound(sameRow.count(), 4_000, 0) > 0;
     sell = (sameRowPresent ? await attemptRowCommit(sameRow, buy.commodityId, SELL_VERIFY, walkBudget()) : null)
       || await walkRowsForCommit(SELL_VERIFY, 14, walkBudget());
-    assert(sell, `buy leg landed but no sell commits: ${JSON.stringify(await tradeConsoleDiag())}`);
+    assert(sell, `buy leg landed but no sell commits: ${JSON.stringify(await pBound(tradeConsoleDiag(), 5_000, null))}`);
   } else {
     direction = 'sell-first';
     await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
     await ensureMode(sellMode);
     sell = await walkRowsForCommit(SELL_VERIFY, 14, walkBudget());
-    assert(sell, `market register must offer a sellable held row: ${JSON.stringify(await tradeConsoleDiag())}`);
+    assert(sell, `market register must offer a sellable held row: ${JSON.stringify(await pBound(tradeConsoleDiag(), 5_000, null))}`);
     // One sold unit does not free a 60-deep overfill. Drain whole sellable stacks —
     // the console defaults Sell qty to the held stack — until the buy leg below has
     // room. Bounded: each commit clears a stack, and the loop stops when no row
@@ -2320,7 +2340,7 @@ async function exerciseMarketRoundtrip(page) {
       await ensureBuyMode();
       buy = await walkRowsForCommit(BUY_VERIFY, 14, walkBudget());
     }
-    assert(buy, `a drained hold must offer a buyable row: ${JSON.stringify(await tradeConsoleDiag())}`);
+    assert(buy, `a drained hold must offer a buyable row: ${JSON.stringify(await pBound(tradeConsoleDiag(), 5_000, null))}`);
     if (drainedStacks > 0) sell.drainedStacks = drainedStacks;
   }
   return { shell: 'orbital-command', direction, buy, sell };
@@ -2333,11 +2353,11 @@ async function ensureMarketOpen(page) {
   // station shell; verify the tab actually selected and fall back to dispatching the
   // click on the tab node — the same event its handler consumes.
   for (let attempt = 0; attempt < 3; attempt++) {
-    if (await marketTab.getAttribute('aria-selected').catch(() => null) === 'true') break;
+    if (await pBound(marketTab.getAttribute('aria-selected'), 4_000, null) === 'true') break;
     await marketTab.click({ timeout: 4_000 }).catch(() => {});
-    if (await marketTab.getAttribute('aria-selected').catch(() => null) === 'true') break;
-    await marketTab.dispatchEvent('click').catch(() => {});
-    if (await marketTab.getAttribute('aria-selected').catch(() => null) === 'true') break;
+    if (await pBound(marketTab.getAttribute('aria-selected'), 4_000, null) === 'true') break;
+    await pBound(marketTab.dispatchEvent('click'), 4_000, null);
+    if (await pBound(marketTab.getAttribute('aria-selected'), 4_000, null) === 'true') break;
   }
   // The trade console is hidden while the register is empty (HOLD_EMPTY/EXCHANGE_DARK);
   // give the live market-open tick room to populate before calling it absent.
@@ -4557,6 +4577,20 @@ function errorCount(errors) { return ['pageErrors', 'requestFailures', 'glErrors
 function relativeTo(root, filePath) { return path.relative(root, filePath).replace(/\\/g, '/'); }
 function distance(a, b) { return Math.hypot(Number(a?.x || 0) - Number(b?.x || 0), Number(a?.z || 0) - Number(b?.z || 0)); }
 async function isDocked(page) { return page.evaluate(() => window.SF?.state?.ui?.docked === true).catch(() => false); }
+// Playwright is*/getAttribute/count/evaluate/dispatchEvent calls carry no timeout:
+// they queue behind the page's main thread, and a page stalled in shader-link, GC,
+// or register-rebuild work holds each one for tens of seconds (PQ-033.02: a
+// ~cycle-110 walk burned 60–90s per row on a saturated page). Race every such call
+// in the market path against a bound so one stalled call reads as a dead row —
+// the walk keeps stepping and the cycle-level retry absorbs genuine storms.
+function pBound(promise, timeoutMs, fallback) {
+  let timer;
+  return Promise.race([
+    promise.catch(() => fallback),
+    new Promise((resolve) => { timer = setTimeout(() => resolve(fallback), timeoutMs); }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 function withTimeout(promise, timeoutMs, label) {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs} ms`)), timeoutMs); })]).finally(() => clearTimeout(timer));
