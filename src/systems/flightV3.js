@@ -31,6 +31,7 @@ import {
   resolveCollisionProxyManifest,
   resolveCorridorAxisWorld,
 } from '../data/collisionProxyManifests.js';
+import { entityNeedsFlightStep } from '../world/activityRuntime.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
 // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
@@ -206,6 +207,8 @@ export const flightV3 = {
     for (const entity of flightCraftCandidates(state)) {
       if (!entity || entity.id === state.playerId || entity.alive === false) continue;
       if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+      // Abstract/dormant/aggregate stay under catch-up unless a wake carries intent.
+      if (!entityNeedsFlightStep(entity)) continue;
       if (!npcFlightNeedsCommand(entity)) continue;
       const intent = entity.data && entity.data.intent;
       if (intent) this._stepCraft(entity, intent, dt, state, false);

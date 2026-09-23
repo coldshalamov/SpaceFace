@@ -1172,6 +1172,22 @@ export function entityNeedsPhysics(entity) {
   return isExactTier(activity.simTier);
 }
 
+/**
+ * Exact/near craft keep the 60 Hz flight integrator. Abstract/dormant/aggregate craft are
+ * owned by catch-up / scheduled wakes — continuous drag on a shelved actor fights that
+ * authority and burns registry.step on the settled long-tail. A live intent on a wake edge
+ * still steps once so the command is consumed.
+ */
+export function entityNeedsFlightStep(entity) {
+  if (!entity || entity.alive === false) return false;
+  const activity = entity.activity;
+  if (!activity || !activity.simTier) return true;
+  if (activity.pinnedExact) return true;
+  if (isExactTier(activity.simTier)) return true;
+  const intent = entity.data && entity.data.intent;
+  return !!(intent && typeof intent === 'object');
+}
+
 export function entityNeedsAiThink(entity, state = null) {
   if (!entity || entity.alive === false) return false;
   const runtime = state && RUNTIMES.get(state);
