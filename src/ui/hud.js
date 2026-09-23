@@ -38,6 +38,7 @@ import { coreText } from './localizedCoreCopy.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
+import { fuelReserveWarning } from './fuelReserveWarning.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
@@ -4013,7 +4014,7 @@ export function createHud(ctx, alerts) {
   // ---------------------------------------------------------------------------
   // 60Hz cheap path
   // ---------------------------------------------------------------------------
-  let lowShieldActive = false, lowHullActive = false;
+  let lowShieldActive = false, lowHullActive = false, lowFuelActive = false, fuelWarnArmed = false;
   let lastDefId = null;
   let elReticle = null;
   let cachedNavStationId = null;
@@ -4029,7 +4030,7 @@ export function createHud(ctx, alerts) {
   const overlayClock = createHudClock(30);
   const radarClock = createHudClock(10);
 
-  function syncSafetyAlerts(p, hullFrac, shieldFrac) {
+  function syncSafetyAlerts(p, hullFrac, shieldFrac, fuelFrac) {
     if (!alerts || !p) return;
     if (hullFrac == null) hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
     if (shieldFrac == null) shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
@@ -4041,6 +4042,23 @@ export function createHud(ctx, alerts) {
     if (lowHull && !lowHullActive) alerts.raise({ key: 'low-hull', sev: 'danger', text: 'HULL CRITICAL', ttl: Infinity });
     if (!lowHull && lowHullActive) alerts.clear('low-hull');
     lowHullActive = lowHull;
+    // A hidden-HUD tick calls this without a fuel sample. Leaving the lamp alone
+    // keeps a menu from clearing FUEL LOW and speaking it again on the way back.
+    if (fuelFrac == null) return;
+    const fuel = fuelReserveWarning(
+      { low: lowFuelActive },
+      fuelFrac,
+      fuelWarnArmed,
+    );
+    if (fuel.raise) alerts.raise({ key: 'low-fuel', sev: 'warn', text: 'FUEL LOW', ttl: Infinity });
+    if (fuel.speak && ctx.bus && typeof ctx.bus.emit === 'function') {
+      // Finite ttl takes the one-voice floor and the existing alert tone. The pill stays
+      // until the tank climbs back out. Empty still owns OUT OF FUEL on its own event.
+      ctx.bus.emit('alert', { key: 'fuel-low', sev: 'warn', text: 'FUEL LOW', ttl: 3 });
+    }
+    if (fuel.clear) alerts.clear('low-fuel');
+    lowFuelActive = fuel.low;
+    fuelWarnArmed = fuel.nextArmed;
   }
 
   function escapeHtml(s) {
@@ -4892,7 +4910,7 @@ export function createHud(ctx, alerts) {
       setClass(fillEls.energy && fillEls.energy.parentElement, 'sf-bar--low', capFrac < 0.2 && capFrac > 0);
 
       // contextual low alerts via alerts module
-      syncSafetyAlerts(p, hullFrac, shieldFrac);
+      syncSafetyAlerts(p, hullFrac, shieldFrac, fuelFrac);
 
       if (slow) {
         setText(numEls.energy, Math.max(0, Math.round(p.cap)) + '');
