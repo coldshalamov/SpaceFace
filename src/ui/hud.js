@@ -1866,10 +1866,18 @@ export function createHud(ctx, alerts) {
   const firstUseProjectionScreen = { x: 0, y: 0, onScreen: false };
   ctx.bus.on('hud:firstUse', (payload) => {
     if (!payload || !payload.text) return;
+    const kind = firstUseAttachKind(payload.verbId);
+    // G13: a HUD string is not a caption on the player's hull. A hint whose only anchor is the
+    // player ("Research unlocked gear.", "Fit the module.") goes to the ordinary receipt line;
+    // hints anchored to a station, rock or latched body still float at that body.
+    if (kind === 'player' && (payload.entityId == null || payload.entityId === state.playerId)) {
+      ctx.bus.emit('toast', { text: payload.text, kind: 'info', ttl: 7 });
+      return;
+    }
     firstUseHint = {
       verbId: payload.verbId,
       text: payload.text,
-      kind: firstUseAttachKind(payload.verbId),
+      kind,
       entityId: payload.entityId,
       until: (state.simTime || 0) + 7,
     };
