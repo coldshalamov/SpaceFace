@@ -3136,6 +3136,50 @@ export function wreckVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:wre
 }
 
 /**
+ * One wreck exemplar per roster ship, carrying the same visual-identity surface the kill
+ * marker stamps (hulkVisual + hulkFactionId). The dead-hulk attach decodes the victim's file
+ * under the 'place' slot — a second blueprint the live hull's 'hull' decode never produces —
+ * so without these the first mid-round kill decodes, instantiates and links the hulk inside
+ * the fight. Admission subjects only — never registered with the sim.
+ */
+export function hulkExemplarSpecsForShips(shipSpecs, idPrefix = 'crucible-warm:hulk:') {
+  const prefix = String(idPrefix || 'crucible-warm:hulk:');
+  const specs = [];
+  const coveredFiles = new Set();
+  for (const ship of shipSpecs || []) {
+    const data = ship && ship.data || {};
+    const visual = {};
+    let any = false;
+    for (const field of ['defId', 'lootTableId', 'silhouette', 'assetRef', 'trafficRole']) {
+      if (data[field]) { visual[field] = data[field]; any = true; }
+    }
+    if (!any) continue;
+    const spec = {
+      id: `${prefix}${ship.id || specs.length}`,
+      type: 'wreck',
+      pos: { x: 0, y: 0, z: 0 },
+      radius: Number.isFinite(ship.radius) ? ship.radius : 10,
+      alive: true,
+      data: {
+        wreckClass: 'battlefield',
+        parentType: 'ship',
+        hulkOfDefId: data.defId || null,
+        hulkVisual: visual,
+        hulkFactionId: ship.factionId || null,
+      },
+    };
+    // Several roster ships resolve the same hulk file (wasp_swarmer/choir_zealot both draw
+    // ashline_dart) — one exemplar per resolved file, not per ship, or the warm decodes and
+    // instantiates the same blueprint half a dozen times.
+    const file = hulkPackagedFileForEntity(spec);
+    if (!file || coveredFiles.has(file)) continue;
+    coveredFiles.add(file);
+    specs.push(spec);
+  }
+  return specs;
+}
+
+/**
  * PQ-210.00 — one real buildAsteroid root per canonical type. Sector field records promote into
  * entities by approach, so the first rock of a type the ruleset can spawn must not compose its
  * leaf/detail materials inside the round. Variant detail layouts are id-seeded, but every
@@ -3387,6 +3431,12 @@ export function deadenPackagedHulk(group) {
         let clone = clones.get(m);
         if (!clone) {
           clone = m.clone();
+          // Material.clone() drops own-property shader patches — without these the dead
+          // material keys a fresh program and links it at the kill moment (the +4
+          // wreck_PackagedBody links). The dead state only moves uniforms, so the clone
+          // should share the live hull's already-linked program.
+          clone.onBeforeCompile = m.onBeforeCompile;
+          clone.customProgramCacheKey = m.customProgramCacheKey;
           if (clone.color && typeof clone.color.multiplyScalar === 'function') {
             clone.color.multiplyScalar(HULK_COLOR_SCALE);
           }

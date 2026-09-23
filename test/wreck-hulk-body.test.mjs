@@ -12,6 +12,7 @@ import {
   deadenPackagedHulk,
   fitPackagedGroup,
   hulkEmberIntensityAt,
+  hulkExemplarSpecsForShips,
   updateHulkEmber,
   HULK_EMBER_COLOR,
   HULK_EMBER_PEAK,
@@ -65,6 +66,28 @@ test('a wreck without hulk identity still takes the generic aftermath piece', ()
   );
 });
 
+test('a roster hulk exemplar resolves the ship\'s whole-ship file through the wreck path', () => {
+  // The kill marker stamps hulkVisual from the victim's own identity fields; the warm
+  // exemplar carries the same surface, so its attach decodes exactly what the kill decodes.
+  const [spec] = hulkExemplarSpecsForShips([{
+    id: 'crucible-warm:ship:wasp_swarmer',
+    type: 'ship',
+    factionId: 'faction_reach',
+    radius: 8,
+    data: { lootTableId: 'wasp_swarmer', defId: 'ship_wasp', silhouette: 'drone_swarm' },
+  }]);
+  assert.equal(spec.type, 'wreck');
+  assert.equal(spec.data.hulkOfDefId, 'ship_wasp');
+  assert.equal(spec.data.hulkFactionId, 'faction_reach');
+  assert.equal(spec.data.hulkVisual.lootTableId, 'wasp_swarmer');
+  const root = factory.build(spec);
+  assert.equal(
+    root.userData.authoredPackageUrl,
+    'assets/ships/release/parts/wholeships/ashline_dart.glb',
+    `exemplar resolves the same file the kill would, got ${root.userData.authoredPackageUrl}`,
+  );
+});
+
 test('the fitted hulk fills the victim circle — longest axis / (2*radius) in [0.7, 1.3]', () => {
   // The packaged path's own fitter is the law: whatever envelope the GLB admits, the drawn
   // body's longest axis lands at the collision diameter. Wasp-sized envelope as the probe.
@@ -109,6 +132,22 @@ test('dead hulk: lights out, darkened, roughened — and shared materials untouc
   assert.equal(shared.emissiveIntensity, 0.9, "the live ship's shared material stays lit");
   assert.ok(emberMats.length >= 1, 'deaden returns the cloned materials for the ember pass');
   assert.ok(emberMats.includes(deadMat));
+});
+
+test('dead-hulk clones keep the live material\'s program identity — no fresh link at the kill', () => {
+  // Material.clone() drops own-property onBeforeCompile/customProgramCacheKey, so a naive
+  // clone keys a NEW program and links it inside the fight (the +4 wreck_PackagedBody
+  // links). The dead state only moves uniforms; the clone must reuse the linked program.
+  const shared = new THREE.MeshStandardMaterial({ color: 0x8899aa });
+  const patch = function onBeforeCompile(shaderobject, renderer) { shaderobject.uniforms.uX = { value: 1 }; };
+  shared.onBeforeCompile = patch;
+  shared.customProgramCacheKey = () => 'spaceface-test-hulk-family';
+  const group = new THREE.Group();
+  group.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), shared));
+  const [clone] = deadenPackagedHulk(group);
+  assert.equal(clone.onBeforeCompile, patch, 'clone keeps the shader patch');
+  assert.equal(clone.customProgramCacheKey(), 'spaceface-test-hulk-family',
+    'clone keeps the program cache key — three reuses the live program');
 });
 
 test('a fresh kill glows ember and cools to dead over six seconds of sim time', () => {

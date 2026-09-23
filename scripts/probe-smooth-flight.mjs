@@ -21,6 +21,10 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HEADLESS = process.argv.includes('--headless');
 const CRUCIBLE = process.argv.includes('--crucible');
+// --with-kill: the weave-and-shoot pilot aims at the nearest hostile (same input channel a
+// player drives) so the sample contains a real entity:killed — the dead-hulk attach's
+// program/buffer coverage is only measured when a kill actually happens.
+const WITH_KILL = process.argv.includes('--with-kill');
 // PQ-210.00's done-when samples 30 s of crucible flight — the authored wave-arrival freeze sat
 // ~22 s into seed 4242, so the default 20 s window can miss it entirely.
 const SAMPLE_MS = Math.max(5000, Number(process.env.SPACEFACE_SMOOTH_MS || (CRUCIBLE ? 30_000 : 20_000)));
@@ -416,6 +420,31 @@ try {
     };
   });
 
+  if (WITH_KILL) {
+    await page.evaluate(() => {
+      window.__SF_KILL_COUNT__ = 0;
+      window.SF.bus.on('entity:killed', () => { window.__SF_KILL_COUNT__ += 1; });
+      // Aim the reticle at the nearest hostile every 200 ms so held LMB actually connects —
+      // the crucible kill-shot script's channel, not a faked kill.
+      window.__SF_AIM__ = setInterval(() => {
+        const st = window.SF.state;
+        const p = st.entities && st.entities.get(st.playerId);
+        if (!p || !p.pos) return;
+        let best = null; let bestD = Infinity;
+        for (const e of st.entityList || []) {
+          if (!e || e === p || e.alive === false || !e.pos) continue;
+          if (e.team == null || e.team === p.team) continue;
+          const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
+          if (d < bestD) { bestD = d; best = e; }
+        }
+        if (!best) return;
+        st.input = st.input || {};
+        st.input.aimX = best.pos.x;
+        st.input.aimZ = best.pos.z;
+        if (st.player) st.player.targetId = best.id;
+      }, 200);
+    });
+  }
   const started = Date.now();
   const cpuBefore = cpuSnapshot();
   let phase = 0;
@@ -432,6 +461,12 @@ try {
   }
   await page.keyboard.up('KeyW');
   const hostBusy = hostBusyPct(cpuBefore, cpuSnapshot());
+  const killsInSample = WITH_KILL
+    ? await page.evaluate(() => {
+      clearInterval(window.__SF_AIM__);
+      return window.__SF_KILL_COUNT__ || 0;
+    }).catch(() => null)
+    : null;
 
   // Find any event entry holding a non-serializable (giant) payload BEFORE the snapshot crosses
   // the wire — a BufferAttribute inside a detail object serializes as full base64 and can
@@ -967,6 +1002,7 @@ try {
       return 'NOT COVERED — no wave materialized in this window. The link/upload counts below say'
         + ' nothing about wave-arrival cost, and must not be compared against a run that was covered.';
     })()}`,
+    `  kills in sample             ${killsInSample == null ? 'n/a (run with --with-kill to force live kills)' : killsInSample}`,
     `  program links / buffer uploads ${countersLine}`,
     `  link placement                ${linkSplitLine}`,
     `  admissions queued at flight   pipelines ${admissionAtFlightStart.pendingPipelines ?? 'n/a'}, residency ${admissionAtFlightStart.pendingResidency ?? 'n/a'}`,
