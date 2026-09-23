@@ -14,6 +14,7 @@ import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
 import { settleCrucibleRun } from './survivalRecords.js';
 import { challengeFromRun } from './survivalMutators.js';
 import { currentStuntRunRules, stuntAssistProfile } from '../combat/stuntRunRules.js';
+import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 
 /** How many recent hits on the player the summary keeps. Bounded: this is a ring, not a log. */
 export const DAMAGE_TRAIL_LENGTH = 8;
@@ -34,6 +35,21 @@ function liveSurvivalRun(state) {
   return run;
 }
 
+// playerDefeat.impactDirection() speaks in enum words (FRONT, AFT, PORT, STARBOARD, CONTACT,
+// UNKNOWN). The headline is the first line of the results screen, so it speaks the way a pilot
+// does: "from astern", never "from AFT", and an unknown bearing is simply not mentioned.
+const BEARING_WORDS = Object.freeze({
+  FRONT: ' head-on', AFT: ' from astern', PORT: ' from port', STARBOARD: ' from starboard',
+  CONTACT: ' at point-blank range', UNKNOWN: '',
+});
+
+function bearingPhrase(direction) {
+  if (!direction) return '';
+  const key = String(direction).toUpperCase();
+  if (Object.prototype.hasOwnProperty.call(BEARING_WORDS, key)) return BEARING_WORDS[key];
+  return ` from ${String(direction).toLowerCase()}`;
+}
+
 /**
  * Turn the defeat receipt combat already builds into one plain sentence a player can act on.
  * Exported so a check can assert the wording without a DOM or a live run.
@@ -42,7 +58,7 @@ export function deathSentence(receipt, context = {}) {
   if (!receipt) return 'The run ended.';
   const attacker = receipt.attacker || (receipt.source && receipt.source.label) || 'Something';
   const weapon = receipt.weapon ? ` with its ${receipt.weapon}` : '';
-  const direction = receipt.direction ? ` from ${receipt.direction}` : '';
+  const direction = bearingPhrase(receipt.direction);
   const layer = receipt.dominantLayer === 'hull'
     ? 'through the hull'
     : `through your ${receipt.dominantLayer || 'hull'}`;
@@ -286,6 +302,12 @@ export function storyMomentsFor(summary = {}) {
   if (hit && typeof hit === 'object' && num(hit.amount) > 0) {
     moments.push(`Hardest hit: ${Math.round(num(hit.amount))} from ${hit.weapon || 'unidentified fire'}`);
   }
+  const stunts = Array.isArray(input.stuntKills) ? input.stuntKills : [];
+  if (stunts.length > 0) {
+    const topStunt = stunts[0];
+    const stuntName = topStunt.name || topStunt.trickId || 'Stunt';
+    moments.push(`Stunt kill: ${stuntName}`);
+  }
   if (Number.isFinite(input.firstKillInS) && input.firstKillInS >= 0) {
     const seconds = Math.round(input.firstKillInS * 10) / 10;
     moments.push(`First kill ${seconds}s in`);
@@ -347,6 +369,8 @@ export const survivalResults = {
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._onDamage(p)));
+    this._unsubs.push(this.bus.on('stunt:trickDetected', (p) => this._onTrick(p)));
+    this._unsubs.push(this.bus.on('stunt:trickAmended', (p) => this._onTrick(p)));
     // PQ-174.06: the tells before a death. A death the player could not have read is a bug
     // report, not a story beat — so every telegraph aimed at the player is kept with its time.
     this._unsubs.push(this.bus.on('ai:telegraph', (p) => this._onTelegraph(p)));
@@ -420,6 +444,7 @@ export const survivalResults = {
     this._stylePeak = 1;
     this._deathMark = null;
     this._defeatReceipt = null;
+    this._stuntKills = [];
   },
 
   _simNow() {
@@ -473,6 +498,36 @@ export const survivalResults = {
     if (this._telegraphTrail.length > TELEGRAPH_TRAIL_LENGTH) this._telegraphTrail.shift();
   },
 
+  _onTrick(trick) {
+    if (!liveSurvivalRun(this.state)) return;
+    if (!trick || typeof trick !== 'object') return;
+    if (this.state && this.state.playerId != null && trick.actorId != null && trick.actorId !== this.state.playerId) return;
+    const isKill = !!(
+      trick.consequence?.killed
+      || (Array.isArray(trick.victimLives) && trick.victimLives.some((v) => v && v.dead))
+    );
+    if (!isKill) return;
+    const name = trick.name || (trick.trickId && TRICK_DEFINITIONS[trick.trickId]?.name) || trick.trickId || 'Stunt';
+    const existingIndex = trick.episodeId != null
+      ? this._stuntKills.findIndex((s) => s.episodeId === trick.episodeId)
+      : -1;
+    const record = {
+      name,
+      trickId: trick.trickId || null,
+      family: trick.family || (trick.trickId && TRICK_DEFINITIONS[trick.trickId]?.family) || null,
+      points: Number.isFinite(Number(trick.baseScore || trick.points)) ? Number(trick.baseScore || trick.points) : 0,
+      tick: this._tickNow(),
+      simTime: this._simNow(),
+      episodeId: trick.episodeId || null,
+    };
+    if (existingIndex >= 0) {
+      this._stuntKills[existingIndex] = record;
+    } else {
+      this._stuntKills.push(record);
+      if (this._stuntKills.length > 32) this._stuntKills.shift();
+    }
+  },
+
   _onEntityKilled(payload) {
     if (!liveSurvivalRun(this.state)) return;
     if (!payload || payload.killerId !== this.state.playerId) return;
@@ -486,6 +541,57 @@ export const survivalResults = {
     const run = this.state.run;
     const wave = run && Number.isInteger(run.wave) ? run.wave : 0;
     this._killsByWave.set(wave, (this._killsByWave.get(wave) || 0) + 1);
+
+    const stunt = payload.stunt || (payload.presentation && payload.presentation.stunt);
+    const stuntName = payload.stuntName || (stunt && stunt.name);
+    const cause = payload.cause || (payload.presentation && payload.presentation.cause);
+    if (stuntName || stunt) {
+      const name = stuntName || stunt.name || (stunt.trickId && TRICK_DEFINITIONS[stunt.trickId]?.name) || 'Stunt';
+      this._stuntKills.push({
+        name,
+        trickId: (stunt && stunt.trickId) || null,
+        family: (stunt && stunt.family) || (stunt?.trickId && TRICK_DEFINITIONS[stunt.trickId]?.family) || null,
+        points: Number(stunt && (stunt.points || stunt.baseScore)) || 0,
+        tick: this._tickNow(),
+        simTime: this._simNow(),
+      });
+    } else if (cause === 'terrain_collision' || cause === 'shove') {
+      this._stuntKills.push({
+        name: 'Rock Discovery',
+        trickId: 'rock_discovery',
+        family: 'impact',
+        points: 50,
+        tick: this._tickNow(),
+        simTime: this._simNow(),
+      });
+    } else if (cause === 'ship_collision' || cause === 'slam') {
+      this._stuntKills.push({
+        name: 'Wrecking Ball',
+        trickId: 'wrecking_ball',
+        family: 'tether',
+        points: 90,
+        tick: this._tickNow(),
+        simTime: this._simNow(),
+      });
+    } else if (cause === 'throw') {
+      this._stuntKills.push({
+        name: 'Bolas',
+        trickId: 'bolas',
+        family: 'tether',
+        points: 90,
+        tick: this._tickNow(),
+        simTime: this._simNow(),
+      });
+    } else if (cause === 'field') {
+      this._stuntKills.push({
+        name: 'Well Golf',
+        trickId: 'well_golf',
+        family: 'field',
+        points: 140,
+        tick: this._tickNow(),
+        simTime: this._simNow(),
+      });
+    }
   },
 
   _onWaveCleared(payload) {
@@ -596,6 +702,23 @@ export const survivalResults = {
     const liveMult = run.style && Number.isFinite(run.style.multiplier) ? run.style.multiplier : 1;
     if (liveMult > this._stylePeak) this._stylePeak = liveMult;
     const receipt = this._defeatReceipt;
+    if (this._stuntKills.length === 0 && this.state && this.state.stunts?.combo) {
+      const combo = this.state.stunts.combo;
+      const acts = Array.isArray(combo.acts) ? combo.acts : [];
+      const lastTricks = Array.isArray(combo.lastTricks) ? combo.lastTricks : [];
+      for (const act of [...acts, ...lastTricks]) {
+        if (act && act.name) {
+          this._stuntKills.push({
+            name: act.name,
+            trickId: act.trickId || null,
+            family: act.family || null,
+            points: Number(act.points) || 0,
+            tick: this._tickNow(),
+            simTime: this._simNow(),
+          });
+        }
+      }
+    }
     const pickEntries = Array.isArray(run.modifiers)
       ? run.modifiers.map((entry) => ({
         verb: (entry && entry.verb) || null,
@@ -653,6 +776,7 @@ export const survivalResults = {
           ? Math.max(0, this._firstKillSimTime - this._runStartSimTime)
           : null,
         stylePeak: this._stylePeak,
+        stuntKills: this._stuntKills,
       }),
       // PQ-174.06: the build the player converged on, and its shareable code — both read from
       // the draft the run recorded, never a constant.
@@ -693,6 +817,8 @@ export const survivalResults = {
     result.remainingEnemies=Math.max(0,(run.threatBudget??0)-(run.resolvedThreat??0));
     result.recordRules=this._stuntRules;
     result.bestLine=this.state.stunts?.combo?.bestLine?structuredClone(this.state.stunts.combo.bestLine):null;
+    result.stuntKills = this._stuntKills.map((s) => ({ ...s }));
+    result.combo = this.state && this.state.stunts?.combo ? structuredClone(this.state.stunts.combo) : null;
     try {
       const settled = settleCrucibleRun({ result, run });
       result.unlocksEarned = settled.unlocksEarned.slice();

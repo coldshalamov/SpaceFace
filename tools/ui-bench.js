@@ -196,12 +196,14 @@ const manager = {
 const BENCH_CRUCIBLE_RESULT = Object.freeze({
   outcome: 'defeat', seed: 4242, arenaId: 'helios_core', ruleset: 'swarm',
   wave: 6, deepestWave: 6, wavesCleared: 5, kills: 31, score: 1240, credits: 88, xp: 640, level: 4,
+  bestChain: 24, bestChainPoints: 960, lastRoundCleared: 5, remainingEnemies: 6,
+  roundThreatResolved: 18, roundThreatBudget: 24,
   picks: [
     { verb: 'Volume', defId: 'wpn_autocannon_m', wave: 2 },
     { verb: 'Pierce', defId: 'wpn_railgun_m', wave: 4 },
     { verb: 'Screen', defId: 'wpn_flak_turret_s', wave: 6 },
   ],
-  headline: 'Reaver Corsair killed you on wave 6 from AFT with its Heavy Autocannon M, through the hull.',
+  headline: 'Reaver Corsair killed you on wave 6 from astern with its Heavy Autocannon M, through the hull.',
   buildName: 'Volume Pierce Screen',
   buildCode: 'VOL · PRC · SCR',
   death: {
