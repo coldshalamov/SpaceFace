@@ -18,7 +18,7 @@ import { starterAirCard } from '../starterAirCard.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createStageHull } from './stageHull.js';
-import { createStopScale } from '../orrery/stopDial.js';
+import { createStopScale, createStopArc } from '../orrery/stopDial.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { injectDeckplate } from '../deckplate/index.js';
@@ -321,6 +321,22 @@ function shipDefFor(ctx, shipId) {
 // one-word tag beneath it. paintKey pins its alignment inline on every state change, so the rail
 // asks for it through data-key-align rather than overriding once (the hull names sat centred over
 // left-set tags).
+// The chosen hull's numbers as three short arcs of ice with their readings (mass, thrust, line).
+function paintStarterStats(host, card, scale) {
+  const rows = [['Mass', card.massT, scale.massT, 't'], ['Thrust', card.thrust, scale.thrust, ''], ['Line', card.lineWuPerS, scale.lineWuPerS, 'wu/s']];
+  host.textContent = '';
+  for (const [name, value, max, unit] of rows) {
+    const f = Math.max(0, Math.min(1, value / max));
+    const cell = el('div', 'orr-ng-stat');
+    const a0 = -120; const a1 = 120; const aF = a0 + (a1 - a0) * f;
+    const p = (a) => `${(26 + 20 * Math.sin(a * Math.PI / 180)).toFixed(2)} ${(28 - 20 * Math.cos(a * Math.PI / 180)).toFixed(2)}`;
+    const arc = (from, to) => `M ${p(from)} A 20 20 0 ${to - from > 180 ? 1 : 0} 1 ${p(to)}`;
+    cell.innerHTML = `<svg viewBox="0 0 52 44"><path d="${arc(a0, a1)}" class="orr-ng-stat__track"/>`
+      + `<path d="${arc(a0, aF)}" class="orr-ng-stat__fill"/></svg>`
+      + `<b>${value >= 1000 ? (value / 1000).toFixed(1) + 'k' : Math.round(value)}<i>${unit}</i></b><span>${name}</span>`;
+    host.appendChild(cell);
+  }
+}
 function railWord(b) {
   b.dataset.keyAlign = 'flex-start';
   paintKey(b, 'legend');
@@ -438,16 +454,8 @@ export const newGameScreen = {
     starterField.wrap.appendChild(starterWords);
     starterField.wrap.appendChild(starterDesc);
     body.appendChild(starterField.wrap);
-    // ORRERY: the three hulls are stations on a ruled scale, each with its holo plan view standing
-    // over it; the amber index slides to the one aria-pressed marks. The words stay the controls.
-    if (ORRERY) {
-      const art = {};
-      for (const s of NEW_GAME_STARTERS) { const url = hullPosterUrl(s.shipId, 'holo'); if (url) art['starter:' + s.id] = url; }
-      // On a short screen the station art would push the seed field under the fold (the launch
-      // traversal must not scroll the form); the big stage hull already shows the choice there.
-      const short = (typeof window !== 'undefined' ? window.innerHeight : 1080) < 860;
-      this._starterDial = createStopScale({ row: starterWords, width: 470, art: short ? null : art, artSize: 76 });
-    }
+    // ORRERY: the hull choice is made at the hull -- it moves to the stage (below, once the stage
+    // exists) as stations on an arc under the ship with the Hand rising from a hub beneath it.
     body.appendChild(hairline());
 
     // Difficulty: four words in a row, the live one bright, its sentence beneath. A hidden <select>
@@ -601,6 +609,10 @@ export const newGameScreen = {
       for (const [slot, moduleName] of starterLoadoutRows(starter)) {
         const li = el('li');
         const word = el('span', 'k-t-body k-62 fh-legend', moduleName);
+        if (ORRERY) {
+          const m = /^(.*\S)\s+([SMLX]{1,2})$/.exec(String(moduleName));
+          if (m) { word.textContent = m[1]; const size = el('small', 'orr-ng-size', m[2]); size.title = 'Size ' + m[2]; word.appendChild(size); }
+        }
         word.setAttribute('aria-disabled', 'true');
         word.title = slot;
         paintLegend(word);
@@ -642,9 +654,26 @@ export const newGameScreen = {
     caption.appendChild(hullName);
     caption.appendChild(hullBlurb);
     stage.appendChild(caption);
-    // ORRERY: the left column holds the choices; what the chosen hull carries and the run it opens
-    // are about the hull, so they read beside it (and the form no longer scrolls past its fold).
-    if (ORRERY) caption.append(loadoutField.wrap, route);
+    // ORRERY: the left column holds the pilot's choices; the hull's choice, what it carries, its
+    // numbers and the run it opens are about the hull, so they read at the hull.
+    if (ORRERY) {
+      caption.append(loadoutField.wrap, route);
+      // the stats as three short arcs of ice, filled against the largest of the starters
+      const cards = NEW_GAME_STARTERS.map((s) => starterAirCard(s));
+      const scale = { massT: Math.max(...cards.map((c) => c.massT), 1), thrust: Math.max(...cards.map((c) => c.thrust), 1), lineWuPerS: Math.max(...cards.map((c) => c.lineWuPerS), 1) };
+      const stats = el('div', 'orr-ng-stats');
+      stats.setAttribute('aria-hidden', 'true');
+      caption.insertBefore(stats, loadoutField.wrap);
+      this._paintStats = (starter) => paintStarterStats(stats, starterAirCard(starter), scale);
+      // on the screen itself, not the stage cell: the stage ends above the floor, and the arc has to
+      // sit under the ship rather than across it
+      const pick = el('div', 'orr-ng-pick');
+      pick.appendChild(starterField.wrap);
+      rootEl.appendChild(pick);
+      const art = {};
+      for (const s of NEW_GAME_STARTERS) { const url = hullPosterUrl(s.shipId, 'holo'); if (url) art['starter:' + s.id] = url; }
+      this._starterDial = createStopArc({ row: starterWords, width: 600, radius: 150, span: 76, art, artSize: 44 });
+    }
     rootEl.appendChild(stage);
     this.hull = createStageHull(stage, { rootEl, zoom: STAGE_ZOOM });
 
@@ -743,6 +772,7 @@ export const newGameScreen = {
       b.tabIndex = -1;
     }
     refs.starterDesc.textContent = starterAirCard(starter).sentence;
+    if (this._paintStats) this._paintStats(starter);
     const ship = shipDefFor(refs.ctx, starter.shipId);
     refs.hullName.textContent = (ship && ship.name) || starter.name;
     refs.hullBlurb.textContent = starter.blurb;

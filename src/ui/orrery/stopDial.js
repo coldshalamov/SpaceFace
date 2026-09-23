@@ -20,6 +20,10 @@ const CSS = `
 .orr-stopscale > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .orr-stopscale > .orr-stopscale__row { position:absolute !important; inset:0; margin:0 !important; padding:0 !important; display:block !important; }
 .orr-stopscale > .orr-stopscale__row > li { position:absolute; margin:0; transform:translateX(-50%); list-style:none; text-align:center; }
+.orr-stoparc { position:relative; width:var(--orr-arc-w, 560px); height:var(--orr-arc-h, 220px); }
+.orr-stoparc > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.orr-stoparc > .orr-stoparc__row { position:absolute !important; inset:0; margin:0 !important; padding:0 !important; display:block !important; }
+.orr-stoparc > .orr-stoparc__row > li { position:absolute; margin:0; transform:translateX(-50%); list-style:none; text-align:center; }
 .orr-stopscale__art { position:absolute; transform:translate(-50%, -50%); pointer-events:none; opacity:.42;
   background:center / contain no-repeat; transition:opacity .2s linear, transform .32s var(--dp-ease-out, ease-out), filter .2s linear; }
 .orr-stopscale__art.is-on { opacity:1; transform:translate(-50%, -50%) scale(1.14); filter:drop-shadow(0 0 12px rgb(223 238 255 / .4)); }
@@ -139,3 +143,106 @@ export function createStopScale({ row, width = 460, art = null, artSize = 72 } =
 
 /** Kept for callers of the first draft; the dial became a scale (see the file note). */
 export const createStopDial = createStopScale;
+
+/**
+ * Stop ARC: the wide form, for a stage rather than a form column. Stations ride an upward arc with a
+ * visible hub beneath it; the amber Hand rises from the hub to the chosen station; each station can
+ * carry produced art (a hull's holo plan view) with its word above it. Same contract as the scale:
+ * it seats the screen's own buttons and follows aria-pressed.
+ */
+export function createStopArc({ row, width = 560, radius = 160, span = 84, art = null, artSize = 46 } = {}) {
+  const doc = (row && row.ownerDocument) || globalThis.document;
+  if (!row || !doc || typeof doc.createElementNS !== 'function' || !row.parentNode) {
+    return { el: null, update() {}, dispose() {} };
+  }
+  injectOrrery();
+  injectStyle(doc);
+  const H = radius + 58;
+  const cx = width / 2;
+  const cy = H - 18;
+  const wrap = doc.createElement('div');
+  wrap.className = 'orr-stoparc';
+  wrap.style.setProperty('--orr-arc-w', `${width}px`);
+  wrap.style.setProperty('--orr-arc-h', `${H}px`);
+  row.parentNode.insertBefore(wrap, row);
+  const face = svg('svg', { class: 'orr-svg', viewBox: `0 0 ${width} ${H}`, 'aria-hidden': 'true' });
+  wrap.appendChild(face);
+  wrap.appendChild(row);
+  row.classList.add('orr-stoparc__row');
+  const items = () => [...row.children].filter((li) => li.querySelector && li.querySelector('button'));
+  const n = Math.max(1, items().length);
+  const step = n > 1 ? span / (n - 1) : 0;
+  const angles = Array.from({ length: n }, (_, i) => -span / 2 + step * i);
+  const pt = (r, a) => [cx + r * Math.sin(a * Math.PI / 180), cy - r * Math.cos(a * Math.PI / 180)];
+  const arcPath = (r, a0, a1) => { const [x0, y0] = pt(r, a0); const [x1, y1] = pt(r, a1); return `M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`; };
+  const a0 = -span / 2 - 14;
+  const a1 = span / 2 + 14;
+  face.appendChild(svg('path', { d: arcPath(radius, a0, a1), class: 'orr-bloom orr-hi', 'stroke-width': 5, opacity: '.12' }));
+  face.appendChild(svg('path', { d: arcPath(radius, a0, a1), stroke: 'rgb(236 230 216 / .6)', 'stroke-width': 1.2, fill: 'none' }));
+  const fine = [];
+  for (let a = a0 + 2; a < a1; a += 3) { const [x0, y0] = pt(radius, a); const [x1, y1] = pt(radius - 5, a); fine.push(`M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`); }
+  face.appendChild(svg('path', { d: fine.join(' '), class: 'orr-core orr-faint', 'stroke-width': 1 }));
+  face.appendChild(svg('path', { d: arcPath(radius * 0.42, a0, a1), stroke: 'rgb(232 226 212 / .12)', 'stroke-width': 1, 'stroke-dasharray': '1 5', fill: 'none' }));
+  const stationTicks = angles.map((a) => {
+    const [x0, y0] = pt(radius - 10, a); const [x1, y1] = pt(radius + 8, a);
+    const t = svg('path', { d: `M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`, class: 'orr-core orr-hi', 'stroke-width': 1.5 });
+    face.appendChild(t);
+    return t;
+  });
+  const tail = svg('path', { d: '', fill: 'var(--dp-hand, #f2b950)', opacity: '.8' });
+  const bloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 9, opacity: '.22' });
+  const blade = svg('path', { d: '', fill: 'var(--dp-hand, #f2b950)' });
+  const hub = svg('g');
+  hub.append(
+    svg('circle', { cx, cy, r: 10, fill: 'var(--dp-hand, #f2b950)' }),
+    svg('circle', { cx, cy, r: 10, fill: 'none', stroke: 'rgb(236 230 216)', 'stroke-width': 1.4 }),
+    svg('circle', { cx, cy, r: 3.4, fill: 'rgb(255 244 214)' }),
+  );
+  const beadBloom = svg('circle', { r: 8, fill: 'var(--dp-hand, #f2b950)', opacity: '.22' });
+  const bead = svg('circle', { r: 3.4, fill: 'var(--dp-hand-hot, #ffd98c)' });
+  face.append(tail, bloom, blade, hub, beadBloom, bead);
+  const paint = (deg) => {
+    const [tx, ty] = pt(radius - 4, deg);
+    const [lx, ly] = [cx + 3.2 * Math.cos(deg * Math.PI / 180), cy + 3.2 * Math.sin(deg * Math.PI / 180)];
+    const [rx, ry] = [cx - 3.2 * Math.cos(deg * Math.PI / 180), cy - 3.2 * Math.sin(deg * Math.PI / 180)];
+    blade.setAttribute('d', `M ${lx.toFixed(1)} ${ly.toFixed(1)} L ${tx.toFixed(1)} ${ty.toFixed(1)} L ${rx.toFixed(1)} ${ry.toFixed(1)} Z`);
+    bloom.setAttribute('d', `M ${cx} ${cy} L ${tx.toFixed(1)} ${ty.toFixed(1)}`);
+    const [kx, ky] = pt(-18, deg);
+    tail.setAttribute('d', `M ${(cx + 5 * Math.cos(deg * Math.PI / 180)).toFixed(1)} ${(cy + 5 * Math.sin(deg * Math.PI / 180)).toFixed(1)} L ${kx.toFixed(1)} ${ky.toFixed(1)} L ${(cx - 5 * Math.cos(deg * Math.PI / 180)).toFixed(1)} ${(cy - 5 * Math.sin(deg * Math.PI / 180)).toFixed(1)} Z`);
+    for (const b of [bead, beadBloom]) { b.setAttribute('cx', tx.toFixed(1)); b.setAttribute('cy', ty.toFixed(1)); }
+  };
+  const spring = createSpring({ value: angles[0], preset: { k: 190, c: 15 }, onUpdate: paint });
+  paint(angles[0]);
+  const arts = [];
+  items().forEach((li, i) => {
+    const [sx, sy] = pt(radius, angles[i]);
+    const action = li.querySelector('button').dataset.action;
+    const hasArt = !!(art && art[action]);
+    li.style.left = `${sx.toFixed(1)}px`;
+    li.style.top = `${(sy - (hasArt ? artSize + 62 : 48)).toFixed(1)}px`;
+    if (hasArt) {
+      const img = doc.createElement('div');
+      img.className = 'orr-stopscale__art';
+      Object.assign(img.style, { left: `${sx.toFixed(1)}px`, top: `${(sy - 18 - artSize / 2).toFixed(1)}px`, width: `${artSize}px`, height: `${artSize}px`, backgroundImage: `url("${art[action]}")` });
+      wrap.insertBefore(img, row);
+      arts[i] = img;
+    }
+  });
+  let current = -1;
+  function update({ instant = false } = {}) {
+    let idx = items().findIndex((li) => li.querySelector('button[aria-pressed="true"]'));
+    if (idx < 0) idx = 0;
+    if (idx === current && !instant) return;
+    current = idx;
+    spring.set(angles[idx], { instant });
+    stationTicks.forEach((t, i) => { t.setAttribute('class', `orr-core ${i === idx ? 'orr-hand' : 'orr-hi'}`); t.setAttribute('opacity', i === idx ? '1' : '.5'); });
+    arts.forEach((img, i) => { if (img) img.classList.toggle('is-on', i === idx); });
+  }
+  let mo = null;
+  if (typeof MutationObserver === 'function') {
+    mo = new MutationObserver(() => update());
+    mo.observe(row, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'] });
+  }
+  update({ instant: true });
+  return { el: wrap, update, dispose() { spring.stop(); if (mo) mo.disconnect(); } };
+}
