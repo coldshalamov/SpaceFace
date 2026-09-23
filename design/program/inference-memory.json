@@ -74,46 +74,6 @@
   ],
   "units": [
     {
-      "id": "manifest-cargo-value",
-      "date": "2026-08-12",
-      "wf": "WF-06",
-      "mode": "starved",
-      "verdict": "accepted",
-      "reason": "manifest shows catalog cargo value",
-      "fingerprint": "verb=appraise,subject=hauler,sector=any,layer=midground,tempo=burst,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "evidence": "design/program/receipts/inference-5x-2026-08-11/EVIDENCE.md",
-      "review": "design/inference-workflows/records/inference-5x-2026-08-11/U4_REVIEW.md"
-    },
-    {
-      "id": "target-living-work-readout",
-      "date": "2026-08-12",
-      "wf": "WF-14",
-      "mode": "starved",
-      "verdict": "accepted",
-      "reason": "lock shows work phase literacy",
-      "fingerprint": "verb=read,subject=worker,sector=ceres,layer=foreground,tempo=ambient,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "evidence": "design/program/receipts/inference-5x-2026-08-11/EVIDENCE.md",
-      "review": "design/inference-workflows/records/inference-5x-2026-08-11/U5_REVIEW.md",
-      "sector": "ceres"
-    },
-    {
-      "id": "field-anchor-fire-window",
-      "date": "2026-08-12",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "field anchor now fires during its authored anchor-hold window",
-      "fingerprint": "verb=hold,subject=field-anchor,sector=any,layer=combat,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "60fdde59",
-      "verification": "focused_green"
-    },
-    {
       "id": "ceres-rich-seam-opportunity",
       "date": "2026-08-12",
       "wf": "WF-01",
@@ -1636,6 +1596,45 @@
       "references": [],
       "integration": "live",
       "commit": "b284eb6f5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "verb-04-first-well-hint",
+      "date": "2026-09-23",
+      "wf": "WF-03",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "first player well deployment emits one-shot contextual hint",
+      "fingerprint": "verb=deploy,subject=well,sector=any,domain=wf-03",
+      "references": [],
+      "integration": "live",
+      "commit": "5b19fa765",
+      "verification": "focused_green"
+    },
+    {
+      "id": "world-08-dmc-contact-grammar",
+      "date": "2026-09-23",
+      "wf": "WF-01",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "define Collective yard contact grammar and Ceres patrol line",
+      "fingerprint": "verb=hail,subject=collective,sector=ceres,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "44d500c8b",
+      "verification": "focused_green"
+    },
+    {
+      "id": "verb-10-latched-pickup-vacuum",
+      "date": "2026-09-23",
+      "wf": "WF-06",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "skip updatePickups vacuum on Massline-latched pickup",
+      "fingerprint": "verb=latch,subject=pickup,sector=any,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "ce206fb31",
       "verification": "focused_green"
     }
   ],

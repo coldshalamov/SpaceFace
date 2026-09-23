@@ -40,12 +40,12 @@ Reference root: `assets/reference/cc0/`. Not runtime until a line promotes one f
 | TOOL-01 | A denied latch ticks instead of clicking like a menu | `assets/reference/cc0/kenney/interface/Audio/tick_001.ogg` or `error_001.ogg`, plus the deny cue in `src/audio/` | The deny cue id plays one of those files, and a successful latch still plays a different id | Use `confirmation_001.ogg`. Play it every frame while the button is held | SHIPPED |
 | TOOL-02 | Hover and tab are two different interface sounds | `assets/reference/cc0/kenney/interface/Audio/`, `src/data/audioRecipes.js` | `sfx_ui_hover` and `sfx_ui_tab` bind two different Kenney files, neither of them `ui_click` | Retune the combat mix | SHIPPED df4d6bd90 |
 | TOOL-03 | The authored starter shot stays the starter shot | `assets/audio/wpn/wpn_pulse.wav`, `assets/reference/cc0/kenney/sci-fi/Audio/laserSmall_000.ogg` | Listen to both. Keep `wpn_pulse.wav` unless the Kenney file is clearly the heavier, more mechanical shot, and say which you kept | Replace the pulse because a free file exists | SHIPPED |
-| TOOL-04 | A light metal kiss and a heavy metal slam are different recordings if the live cues are still one sample | `assets/reference/cc0/kenney/impact/Audio/impactMetal_light_000.ogg`, `impactMetal_heavy_000.ogg`, the impact recipes | The light cue and the heavy cue resolve to two files. If the authored `impact_kiss` / `impact_hull` already differ, leave them and mark this SHIPPED already true | Layer both files on one hit | OPEN |
+| TOOL-04 | A light metal kiss and a heavy metal slam are different recordings if the live cues are still one sample | `assets/reference/cc0/kenney/impact/Audio/impactMetal_light_000.ogg`, `impactMetal_heavy_000.ogg`, the impact recipes | The light cue and the heavy cue resolve to two files. If the authored `impact_kiss` / `impact_hull` already differ, leave them and mark this SHIPPED already true | Layer both files on one hit | SHIPPED already true |
 | TOOL-05 | The seal reads drier or oilier in the direction Rubber004 actually is | `assets/reference/cc0/ambientcg/Rubber004/Rubber004_1K-JPG_Roughness.jpg`, `matte_seal` in `src/render/industrialMaterialFamilies.js` | The family's roughness moves toward the scan, and the color of the seal stays the painted family color | Paste the rubber color photo onto a hull | OPEN |
 | TOOL-06 | Ceramic stays matte next to painted metal | `assets/reference/cc0/ambientcg/Tiles132C/Tiles132C_1K-JPG_Roughness.jpg`, `thermal_ceramic` in the same families file | Ceramic roughness stays higher than `painted_shell`, using the tile scan as the check | Assign the tile color as a station albedo | OPEN |
-| TOOL-07 | Full resolution is not sharpened on top of an already sharp frame | the CAS pass from AQ-CAS, once it exists | A fixture or a read of the pass shows strength 0 when render size equals canvas size | Delete the pass | OPEN |
-| TOOL-08 | The foundry light never becomes the sky | the environment wiring from AQ-LIGHT, once it exists | `scene.background` is still the sector plate while the foundry HDRI is assigned as light | Turn the HDRI up until it beats the muzzle | OPEN |
-| TOOL-09 | The player's hull is never the simplified LOD | the LOD output from AQ-LOD, once it exists | The player def stays on the full mesh. One other hull may use the simplify | Run `meshopt_simplifySloppy` on anything | OPEN |
+| TOOL-07 | Full resolution is not sharpened on top of an already sharp frame | the CAS pass from AQ-CAS, once it exists | A fixture or a read of the pass shows strength 0 when render size equals canvas size | Delete the pass | SHIPPED already true |
+| TOOL-08 | The foundry light never becomes the sky | the environment wiring from AQ-LIGHT, once it exists | `scene.background` is still the sector plate while the foundry HDRI is assigned as light | Turn the HDRI up until it beats the muzzle | SHIPPED already true |
+| TOOL-09 | The player's hull is never the simplified LOD | the LOD output from AQ-LOD, once it exists | The player def stays on the full mesh. One other hull may use the simplify | Run `meshopt_simplifySloppy` on anything | SHIPPED already true |
 
 This catalog is the assignment list. It is not the 20-line cap on owner-dropped raw notes
 (that cap is in [`INFERENCE_CONVERGENCE.md`](./INFERENCE_CONVERGENCE.md)). Do not add a vague
@@ -61,8 +61,8 @@ not to invent.
 | PIC-03 | Kit and hero decals stay up at the distance the code comment says they still read | `src/render/ships/shipKit.js`, `src/render/ships/kestrelHero.js` | Decals are not hidden at the current LOD1 cut while the comment still claims they read much farther | Author new LOD meshes | SHIPPED |
 | PIC-04 | The hero fan stops when the sim pauses | `src/render/ships/kestrelHero.js` | The fan advances on sim time, not `performance.now()` | Rewrite the hero GLB | SHIPPED |
 | PIC-05 | Pickup spiral motes do not draw far off the glass | `src/render/pickupMotionPresentation.js` | Spiral VFX uses the live table draw radius | Retune the sim magnet range | SHIPPED |
-| PIC-06 | A wreck you just made, on screen, is not hidden for the opening pipeline hold | `src/render/pipelineAutoFlushPolicy.js`, `src/render/renderer.js` | An on-glass fresh wreck submits during the hold the same way on-glass rocks do | Remove the hold | OPEN |
-| PIC-07 | A large wreck does not swallow the chase camera | `src/render/renderer.js` | `'wreck'` is in the camera-clearance kinds when the span is already large enough for stations | Write a general occluder pass | OPEN |
+| PIC-06 | A wreck you just made, on screen, is not hidden for the opening pipeline hold | `src/render/pipelineAutoFlushPolicy.js`, `src/render/renderer.js` | An on-glass fresh wreck submits during the hold the same way on-glass rocks do | Remove the hold | SHIPPED already true |
+| PIC-07 | A large wreck does not swallow the chase camera | `src/render/renderer.js` | `'wreck'` is in the camera-clearance kinds when the span is already large enough for stations | Write a general occluder pass | CLAIMED 2026-09-23 |
 | PIC-08 | A shove-kill and a gun-kill do not share the generic explosion schedule | `src/render/combat/phasedExplosions.js`, `src/presentation/causalVfxGrammar.js` | The schedule id follows the real cause already in the grammar | Grow the explosion solver | SHIPPED 26732571a |
 | PIC-09 | Starter weapons scar with their own heat, not the unknown-weapon default | `src/render/weapons/contactMarks.js` | `heatForWeaponVariant` maps the starter ids in `vfxProfiles.js` to a named heat, not the unknown default | Redesign the scar atlas | SHIPPED |
 | PIC-10 | The graphics lab does not teach a camera-facing halo as the method | `src/render/graphicsLab.js` | The lab-only halo demo is relabeled or restaged off the banned card | Change production VFX | SHIPPED 49bbd51ca |
@@ -76,13 +76,13 @@ not to invent.
 | VERB-01 | When the opening raid times out, the ships are still there | `src/data/encounters/015-opening-hauler-raid.js` | `raid_over` does not `despawnAll`; hauler and raiders remain ordinary entities | Add a fence route (§22 F11). Add encounter 016 | SHIPPED |
 | VERB-02 | The opening raid is already happening; it does not wait for accept | `src/data/encounters/015-opening-hauler-raid.js` | No offer choice and no pass-on-timeout; the fight is in the sky | Rewrite spawn range or timing (§22 A1) | SHIPPED 0c4293e4d |
 | VERB-03 | The hitch hint can fire on a heavy hauler, not only an express liner | `src/systems/onboarding.js` | Locking the opening mule can show the existing hitch hint once | Add a tow force (§22 F14). Flip the 47-A pin | SHIPPED fb1c6484a |
-| VERB-04 | The first Well you drop tells you, once, that you dropped it | `src/systems/onboarding.js` | The first player `fields:deployed` emits one hint and does not repeat that session | Change well force or radius | OPEN |
+| VERB-04 | The first Well you drop tells you, once, that you dropped it | `src/systems/onboarding.js` | The first player `fields:deployed` emits one hint and does not repeat that session | Change well force or radius | SHIPPED 5b19fa765 |
 | VERB-05 | A detected stunt says its name once, as a receipt | `src/systems/stuntGrammar.js`, `src/ui/hudAttention.js` | `stunt:trickDetected` admits one receipt with the trick name | Add a combo meter. Toast a shove, hit, or dock sentence (§22 G3) | OPEN |
 | VERB-06 | The opening hauler's cargo can cook when it slams | `src/data/encounters/015-opening-hauler-raid.js` | Its commodity is one `lootShards.js` already treats as a volatile slam | Add an explosive system. Retint pods (§22 F4) | SHIPPED f6ca40d5b |
 | VERB-07 | Rocks dropped for the opening fight are not wiped at 45 seconds | `src/systems/terrainAnchors.js` | Those anchors survive until the player leaves the neighbourhood | Build a machine (§22 F13) | OPEN |
 | VERB-08 | The throw diamond hides when you are the body that will move | `src/ui/masslineHud.js` | A heavy anchor or self-sling does not draw the meeting diamond | Draw a path ghost (§22 F1). Change release impulse | OPEN |
 | VERB-09 | Helios sells one stack of impulse charges | Helios market or station stock data consumed by `src/systems/economy.js` | A new game can buy `cmdty_impulse_charge` at Helios Station | Change the charge solver or the ten-verb curve (§22 B8) | SHIPPED 40a2f2c4c |
-| VERB-10 | A pod or chip on your rope is not vacuumed into the hold | `src/systems/mining.js` | `_updatePickups` skips a Massline-latched pickup | Change credit amounts (§22 F6) | OPEN |
+| VERB-10 | A pod or chip on your rope is not vacuumed into the hold | `src/systems/mining.js` | `_updatePickups` skips a Massline-latched pickup | Change credit amounts (§22 F6) | SHIPPED ce206fb31 |
 | VERB-11 | Spilled freight stays in the world long enough to rope | `src/systems/traffic.js` and the pickup TTL it uses | On seed 4242 a Helios spill still exists when a cruise-speed ship reaches latch range | Add a scavenger behaviour | OPEN |
 | VERB-12 | A wreck made in this swarm round can be roped before the shop | `src/systems/tetherGameplay.js` | A survival-cohort wreck is a legal Massline target in the round that spawned it | Persist it across the shop (§22 B3) | OPEN |
 | VERB-13 | One flight key dumps the selected lot as the payload body that already exists | `src/systems/input.js`, `src/systems/cargo.js` | The key emits `cargo:jettisoned` and a payload body exists | Add a minigame. Build the hot-dock spill (§22 F7) | OPEN |
@@ -98,7 +98,7 @@ not to invent.
 | WORLD-05 | A new game's Helios bar can name the Silver-Draft before you have scanned it | `src/ui/station/barContacts.js`, `src/ui/uniqueWreckRumorSurface.js` | `generateContacts('station_helios', new game)` can include rumor `bar.helios_meridian.silver_draft` | Invent a wreck class | OPEN |
 | WORLD-06 | The Helios locker reads as a cache | `src/data/sectors.js` (`poi_helios_locker`) | Its POI type is `cache` and the scanner uses the cache label | Add a pirate base or a new POI type | SHIPPED |
 | WORLD-07 | Sker Bazaar has ships on the apron | `src/data/sectors.js` (`sector_sker_haven` traffic) | Seed 4242 spawns at least two non-player ships near `station_sker` | Raise `enemyDensity`. Add an outlaw encounter | OPEN |
-| WORLD-08 | A Collective hull hails in yard language, not Concord boilerplate | `src/data/factionContactGrammar.js`, `src/data/barks.js` | `FACTION_CONTACT_GRAMMAR.faction_dmc` exists and a Ceres trader or patrol line uses it | Change heat math. Add a faction | OPEN |
+| WORLD-08 | A Collective hull hails in yard language, not Concord boilerplate | `src/data/factionContactGrammar.js`, `src/data/barks.js` | `FACTION_CONTACT_GRAMMAR.faction_dmc` exists and a Ceres trader or patrol line uses it | Change heat math. Add a faction | SHIPPED 44d500c8b |
 | WORLD-09 | A Meridian hull hails in invoice language | `src/data/factionContactGrammar.js`, `src/data/barks.js` | A Tethys trader line uses an MTS-specific sentence | Retune prices | OPEN |
 | WORLD-10 | Helios outer rocks are not the same type as the starter field | `src/data/sectors.js` Helios fields | `f_helios_outer` uses a second existing asteroid type | Change beam rate, hold size, tax, or next-field distance (§22 A3) | SHIPPED |
 | WORLD-11 | Io Reach traffic can include one named courier | `src/data/laneContacts.js` | `pickNamedLaneContact` can return an Io-only id | Add a station | SHIPPED 0444daa66 |
@@ -137,14 +137,16 @@ not to invent.
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
-
-| PIC-02 | 2026-09-22 | devin-inference-10 | `src/render/rockSurfaceLibrary.js` |
-| VERB-02 | 2026-09-22 | devin-inference-10 | `src/data/encounters/015-opening-hauler-raid.js` |
+| PIC-07 | 2026-09-23 | zcode-catalog-grunt | `src/render/renderer.js` |
 
 ## SHIPPED
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
+| VERB-10 | verb-10-latched-pickup-vacuum | ce206fb31 | isMasslineLatchedPickup skips Massline-latched pickups/pods/chips during updatePickups vacuum and direct collection |
+| VERB-04 | verb-04-first-well-hint | 5b19fa765 | First player fields:deployed emits one-shot contextual hint (firstWellDrop) and does not repeat that session |
+| WORLD-08 | world-08-dmc-contact-grammar | 44d500c8b | FACTION_CONTACT_GRAMMAR.faction_dmc defines yard grammar; Ceres patrol and trader lines speak in yard register |
+| TOOL-04 | tool-04-metal-kiss-slam | already true | Authored impact_kiss.wav (0.45s) and impact_hull.wav (0.55s) already resolve to distinct audio files |
 | TOOL-01 | tool-01-denied-latch-tick | 6ac65cd74 | `sfx_massline_deny` binds promoted Kenney tick; latch keeps `tether_latch` |
 | PIC-02 | pic-02-rock-variant-surfaces | c4592b62f | five common-rock variants get distinct tint/ORM material specs via `rockSurfaceVariantSpec` |
 | WORLD-01 | WF-04 | 147e71c24 | Choir refuel depot (station_depot3) adds missions service so docking shows Missions board |
