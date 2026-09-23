@@ -309,6 +309,27 @@ function boundedVictimMass(mass) {
   return Number.isFinite(m) && m > 0 ? m : null;
 }
 
+// The hull it was, beyond a bare def id: the render side resolves a wholeship file off
+// lootTableId → silhouette → assetRef → trafficRole → defId, so a wreck that should draw as
+// "the ship you killed" needs the same fields the victim's own admission read. Pure
+// presentation metadata — none of it feeds a gameplay decision.
+const VICTIM_VISUAL_FIELDS = Object.freeze(['defId', 'lootTableId', 'silhouette', 'assetRef', 'trafficRole']);
+
+function victimVisualFor(data) {
+  const src = data && typeof data === 'object' ? data : {};
+  const visual = {};
+  let any = false;
+  for (const field of VICTIM_VISUAL_FIELDS) {
+    const v = boundedIdentityText(src[field]);
+    if (v) { visual[field] = v; any = true; }
+  }
+  return any ? visual : null;
+}
+
+function normalizeVictimVisual(input) {
+  return victimVisualFor(input);
+}
+
 // Pose is inherited as-is. Finite-or-zero only — not a new clamp, not drag.
 function boundedPoseAngle(value) {
   const n = Number(value);
@@ -569,6 +590,7 @@ function makeMarker(state, payload, entity) {
     victimRadius: boundedVictimRadius(entity && entity.radius),
     // The hull it was: enough identity for a render pass to draw the victim's own hull dead.
     victimDefId: boundedIdentityText(data.defId || null),
+    victimVisual: victimVisualFor(data),
     victimRot: boundedPoseAngle(entity && entity.rot),
     victimPitch: boundedPoseAngle(entity && entity.pitch),
     victimBank: boundedPoseAngle(entity && entity.bank),
@@ -623,6 +645,7 @@ function makePlayerWreckMarker(state, payload, entity) {
     victimMass: boundedVictimMass(entity && entity.mass),
     victimRadius: boundedVictimRadius(entity && entity.radius),
     victimDefId: boundedIdentityText(entity && entity.data && entity.data.defId || null),
+    victimVisual: victimVisualFor(entity && entity.data),
     victimRot: boundedPoseAngle(entity && entity.rot),
     victimPitch: boundedPoseAngle(entity && entity.pitch),
     victimBank: boundedPoseAngle(entity && entity.bank),
@@ -775,6 +798,9 @@ function normalizeMarker(input) {
     // WRECK_RADIUS exactly like the day the marker was written.
     victimRadius: boundedVictimRadius(input.victimRadius),
     victimDefId: boundedIdentityText(input.victimDefId),
+    // Legacy markers carry no visual identity — null falls back to the bare def id at resolve
+    // time, exactly like the day the marker was written.
+    victimVisual: normalizeVictimVisual(input.victimVisual),
     victimRot: boundedPoseAngle(input.victimRot),
     victimPitch: boundedPoseAngle(input.victimPitch),
     victimBank: boundedPoseAngle(input.victimBank),
@@ -1310,6 +1336,7 @@ export const aftermathWrecks = {
       victimMass: boundedVictimMass(payload.victimMass),
       victimRadius: boundedVictimRadius(payload.victimRadius),
       victimDefId: boundedIdentityText(payload.victimDefId),
+      victimVisual: normalizeVictimVisual(payload.victimVisual),
       victimRot: boundedPoseAngle(payload.victimRot),
       victimPitch: boundedPoseAngle(payload.victimPitch),
       victimBank: boundedPoseAngle(payload.victimBank),
@@ -1637,9 +1664,13 @@ export const aftermathWrecks = {
           : (cls ? cls.label : marker.wreckClassLabel || 'Battlefield Wreck'),
         playerWreck: isPlayerWreckMarker(marker),
         wreckClassBlurb: cls ? cls.blurb : null,
-        // The hull it was, when the victim carried a def id — the handle a dead-hull render
-        // pass would need to draw the victim's own shape instead of generic debris.
+        // The hull it was: defId plus the same visual-identity fields the victim's own
+        // admission read (lootTableId/silhouette/assetRef/trafficRole), so a dead-hull render
+        // pass resolves the file the victim actually drew — faction kit and hostile-family
+        // overrides included — not just the chassis map entry.
         hulkOfDefId: marker.victimDefId || null,
+        hulkVisual: marker.victimVisual ? { ...marker.victimVisual } : null,
+        hulkFactionId: marker.victimFactionId || null,
         provenanceLine: line,
         provenance: {
           source: isPlayerWreckMarker(marker) ? PLAYER_WRECK_KIND : 'battle-aftermath',

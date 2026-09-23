@@ -60,6 +60,7 @@ import {
   releaseBoundaryResidency,
   residencyOptionsForBoundary,
   waitForOpeningGraphPublicationRelease,
+  wholeShipVisualForEntity,
 } from './partsLibrary.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
@@ -3057,7 +3058,27 @@ function packagedPartUrl(relativeFile) {
   return `${RELEASE_PART_ROOT}${String(relativeFile || '').replace(/^[\\/]+/, '')}`;
 }
 
+// A kill wreck is the ship you killed, not generic debris (CV-SO): the marker carries the
+// same visual-identity fields the victim's own admission read, so this resolves through the
+// same wholeship selector — hostile-family, silhouette, and faction-kit files included.
+// Files without a packaged-live pilot resolve null inside the selector and fall back to the
+// aftermath piece below.
+function hulkPackagedFileForEntity(e) {
+  const data = e && e.data || {};
+  const visual = data.hulkVisual && typeof data.hulkVisual === 'object'
+    ? data.hulkVisual
+    : (data.hulkOfDefId ? { defId: data.hulkOfDefId } : null);
+  if (!visual) return null;
+  const selection = wholeShipVisualForEntity(
+    { type: 'ship', factionId: data.hulkFactionId || null, data: visual },
+    { requiredWholeShip: true },
+  );
+  return selection && selection.file || null;
+}
+
 function wreckPackagedFile(e) {
+  const hulkFile = hulkPackagedFileForEntity(e);
+  if (hulkFile) return hulkFile;
   const identity = interactionProfileForEntity(e);
   const data = e && e.data || {};
   if (identity.hazardous) return 'places/place_aftermath_aft_engine_section.glb';
@@ -3265,7 +3286,7 @@ export function instantiatePackagedPrimitives(record, parent, options = {}) {
   }
 }
 
-function fitPackagedGroup(group, targetRadius) {
+export function fitPackagedGroup(group, targetRadius) {
   if (!group) return;
   group.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(group);
@@ -3321,9 +3342,59 @@ function restorePackagedBodyFallback(root, reason) {
   return true;
 }
 
+// Dead-hulk presentation: the victim's own authored hull with every light out. Shared
+// authored materials feed live ships, so each mesh gets a clone — killed emissive, darkened
+// and roughened body paint. Additive sheets are pure glow (engine throats, nav bloom): a dead
+// hull emits nothing, so those meshes hide outright instead of cloning dark.
+const HULK_COLOR_SCALE = 0.42;
+const HULK_ENVMAP_SCALE = 0.3;
+const HULK_MIN_ROUGHNESS = 0.92;
+export function deadenPackagedHulk(group) {
+  if (!group || typeof group.traverse !== 'function') return group;
+  const clones = new Map();
+  group.traverse((node) => {
+    if (!node || !node.isMesh) return;
+    const mats = Array.isArray(node.material) ? node.material : [node.material];
+    if (mats.every((m) => m && m.blending === THREE.AdditiveBlending)) {
+      node.visible = false;
+      return;
+    }
+    const dead = mats.map((m) => {
+      if (!m) return m;
+      let clone = clones.get(m);
+      if (!clone) {
+        clone = m.clone();
+        if (clone.color && typeof clone.color.multiplyScalar === 'function') {
+          clone.color.multiplyScalar(HULK_COLOR_SCALE);
+        }
+        if (clone.emissive && typeof clone.emissive.setScalar === 'function') {
+          clone.emissive.setScalar(0);
+        }
+        clone.emissiveIntensity = 0;
+        if ('envMapIntensity' in clone) {
+          clone.envMapIntensity = (Number.isFinite(clone.envMapIntensity) ? clone.envMapIntensity : 1) * HULK_ENVMAP_SCALE;
+        }
+        if ('roughness' in clone && Number.isFinite(clone.roughness)) {
+          clone.roughness = Math.max(clone.roughness, HULK_MIN_ROUGHNESS);
+        }
+        clone.needsUpdate = true;
+        clones.set(m, clone);
+      }
+      return clone;
+    });
+    node.material = Array.isArray(node.material) ? dead : dead[0];
+    node.userData.hulkDeadBody = true;
+  });
+  group.userData.hulkDeadBody = true;
+  return group;
+}
+
 function attachPackagedBody(root, relativeFile, entity) {
   if (!root || !relativeFile) return root;
   const url = packagedPartUrl(relativeFile);
+  // The packaged file IS the victim's own hull only when the hulk selector chose it —
+  // a wreck that fell back to a generic aftermath piece must not be dead-stated.
+  const deadHulk = relativeFile === hulkPackagedFileForEntity(entity);
   hideProceduralChildren(root);
   root.userData.authoredAssetState = 'awaiting-authored-admission';
   root.userData.authoredPackageUrl = url;
@@ -3375,6 +3446,10 @@ function attachPackagedBody(root, relativeFile, entity) {
         root.userData.authoredAssetState = 'unavailable';
         restorePackagedBodyFallback(root, 'packaged-body-empty');
         return false;
+      }
+      if (deadHulk) {
+        deadenPackagedHulk(packaged);
+        packaged.userData.hulkOfDefId = entity && entity.data && entity.data.hulkOfDefId || null;
       }
       fitPackagedGroup(packaged, entity && entity.radius);
       freezeStaticChildMatrices(packaged);
