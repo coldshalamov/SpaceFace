@@ -149,6 +149,8 @@ a hull.
 3. No truncated primary label at either resolution.
 4. Crucible door, refit and results rebuilt from the ORRERY library. Results is the kill replay,
    the stunt names and **Again** — not a table.
+5. The demo end card (`src/ui/screens/demoEnd.js`, landed on the plain kit) moves onto ORRERY
+   with the rest: the Hand on **Keep playing**, the three facts as rolling counters.
 
 *Wrong:* a token rename, restyling the same boxes, anything under `approved/` treated as law.
 
@@ -159,7 +161,9 @@ a hull.
    only, by `?demo=1` so the default route stays testable. In the demo the title's primary verb is
    **Crucible**, New Game reads **Adventure**, Load is hidden; Continue still appears when a save
    exists. Crucible results gain **Take it to the belt** (starts Adventure). Nothing is locked or
-   timed.
+   timed. Build: `node scripts/build-bundle.mjs --demo` (or `SPACEFACE_DEMO=1`); dev server:
+   `?demo=1`; bench: `node scripts/ui-bench.mjs --demo --shot=title`. URLs for Feedback and the
+   store page live in `src/data/demoConfig.js` (blank hides the word).
 2. **Live title.** The title plays a deterministic Crucible replay behind the menu (the replay ring
    buffer of `PQ-160` exists), instead of a still with drift. Determinism at the front of the house.
 3. **Round zero teaches by doing.** The first 45 s of the first Crucible run hands the player three
@@ -231,4 +235,6 @@ One line per slice that landed: phase, what a stranger now sees, the number, the
 | 3 | The wreck is the ship you killed: a kill hulk resolves the same authored hull file the victim drew (a swarmer's hulk is its dart), lights out, fitted to its body | hulk identity **generic aftermath piece → victim's own hull** (live: 11/11 meshes dead-stamped, drawn 19.2 WU on a 21 WU body); `test/wreck-hulk-body.test.mjs` | `958eb44f7` |
 | 3 | A fresh kill still glows: the dead hull carries an ember that cools to cold over its first six seconds of sim time, so the consequence reads before it settles into terrain | ember 1.5 at the kill → 0.375 at 3 s → 0 at 6 s; no program re-key | `80f6830b9` |
 | 4 | The Crucible stops narrating the fight: the permanent "Banking … / Trap … remaining · armed" card is gone (the ordnance ring carries the trap count), and a hint with nothing to point at ("Research unlocked gear.") arrives as a receipt instead of hovering over your hull | persistent sentence cards in Crucible flight **1 → 0**; strings anchored to the player hull **1 → 0** | `aea22be1b`, `0ad761241` |
+| 3 | Checked: the sweeping blue wakes are true — every player round's wake sits on its sim path (banked rounds really curve) | ribbon vs sim path deviation **0.00 WU** over 12 rounds; `test/weapon-ribbon-frame-truth.test.mjs` | `81cf8d982` |
+| 5 | The demo build: one flag on the one game path. The title lights Crucible, New Game reads Adventure, Load is hidden; results offer **Take it to the belt**; after the first upgrade is fitted and flown out of the dock, a once-per-save end card with **Keep playing** | `test/demo-mode.test.mjs`, `test/demo-path.test.mjs` (14 pins); bench shots `title --demo`, `demoEnd` | `d0453e19f` |
 | 2 | The sky yields a single camera-visible planet or wormhole; the authored plates and starfields remain, and a departed landmark can hand off its place as you fly. The arena, sky luminance and substances are still open. | concurrent hero limit **up to 3 → 1**; four live sector captures: Helios 1, Ceres 0, Pallas 1, Veil 1; 28 focused tests and the public flight route passed | `88a91dff0` |
