@@ -196,15 +196,29 @@ measured the sim while the player lives in the frame: the witness added today me
 5. Results screen with the seed, the ghost and "run it again"; then **Adventure**: undock, take one
    job, solve one physical problem, get paid, fit one upgrade, feel it on the way out.
 
-## 6. Screen defects a demo player will see (live ledger, opened 2026-09-22)
+## 6. The demo defect ledger — everything a demo player will hit (live, opened 2026-09-22)
 
 Owner, 2026-09-22: *"total-fix mode … if you see bugs somewhere that aren't related that would hurt
 the demo experience fix them … documented or fixed issues when you find them rather than letting it
-go by."* Every row was seen on a real screen (`node scripts/ui-bench.mjs --shot=<id>`, real DOM
-over a still). A row leaves this table only when it is fixed and re-shot; the fix names its commit.
-Rows marked **bench** may be fixture-only; the owner of the row proves which before closing it.
+go by."* This table is the ONE place a noticed-but-not-yours defect goes; root `AGENTS.md` §7 is
+the law, this is the ledger. Any defect a demo player would meet qualifies — screen, gameplay,
+performance, audio, save, flow — not just pixels.
 
-| # | Screen (shot id) | What a stranger sees | Demo step | State |
+- **Add** one row when a defect is real but you are not fixing it this session: what a stranger
+  sees, where (bench shot id, route, or system), the demo step it hurts, and the cheapest known
+  repro. If you cannot write a repro, log what you did see and how.
+- **Remove** the row in the same commit that fixes it (screen rows: re-shot through the bench
+  first). Rows are never struck through, marked done, or moved to an archive — the ledger holds
+  only open defects, so its length is the honest count of what a player will hit.
+- **Burn it down:** any sitting may claim any row, and a sitting dispatched into files carrying an
+  open row handles that row as part of its unit. If the table grows past one screen, clearing rows
+  outranks new queue units.
+
+The screen rows below were each seen on a real screen (`node scripts/ui-bench.mjs --shot=<id>`,
+real DOM over a still). Rows marked **bench** may be fixture-only; the owner of the row proves
+which before closing it.
+
+| # | Where (shot id / route / system) | What a stranger sees | Demo step | State |
 |---|---|---|---|---|
 | D1 | `new-game` | The ship stage is a black rectangle until (or unless) the live hull draws; no picture of any of the three starter hulls | Adventure start | open: produced hull renders as the poster (ONE_PHOTOGRAPH §9 asset #1) |
 | D2 | `new-game` | The hull sub-names (Skater / Tug / Brawler) sit left-aligned under centred tab words; "line 5728 WU/s" is jargon; the first starter's pitch is "Stops badly" | Adventure start | open |
