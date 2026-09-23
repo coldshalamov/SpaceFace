@@ -4085,9 +4085,9 @@ export function createHud(ctx, alerts) {
   const _overviewContacts = [];        // retained scratch: cleared per call, never reallocated
   const _overviewOrder = [];           // retained scratch: this sample's rows, in display order
   let _overviewIdScratch = new Set();  // retained scratch: swapped with _knownContactIds each call
-  // Compact contacts roster (GDD 2.0 "Radar & Contacts"): known targeting contacts remain available
-  // whenever radar can identify them. Scan/threat reveals still surface the empty shell for a beat,
-  // and state.settings.ui.overviewOpen remains the manual PIN (O key).
+  // Compact contacts roster (GDD 2.0 "Radar & Contacts"): only a lock mounts it (Wave G7), and an
+  // empty sample hides it even then. While mounted, scan/threat reveals and the manual PIN
+  // (state.settings.ui.overviewOpen, O key) expand it from the count line to full rows.
   const OVERVIEW_HOSTILE_REVEAL_R = 2600;   // a hostile inside this radius keeps the strip open
   const OVERVIEW_SCAN_REVEAL_MS = 7000;     // how long a scan pulse holds the strip open
   const OVERVIEW_CONTACT_REVEAL_MS = 5000;  // how long a newly-arrived contact holds it open
