@@ -21,7 +21,7 @@ node --test test/presentation-journal.test.mjs
 
 ## Apply order
 
-Clean on bare `origin/master` @ `59df2a08e`. Independent of `hitch-opening-drain`.
+Clean on bare `origin/master` @ `59df2a08ed9684e947f79d88e1d41f5c59acbee0`. Independent of `hitch-opening-drain`.
 Can stack either order.
 
 ## Picture defaults

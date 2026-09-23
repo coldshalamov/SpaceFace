@@ -21,7 +21,7 @@ node --test test/opening-soft-gpu-drain-skip.test.mjs
 
 ## Apply order
 
-Clean on bare `origin/master` @ `59df2a08e`. Independent of hitch-shed-floor /
+Clean on bare `origin/master` @ `59df2a08ed9684e947f79d88e1d41f5c59acbee0`. Independent of hitch-shed-floor /
 hitch-asteroid-cell-key (those are already reflected on current master via lane-D
 `HITCH_FRAME_TICKS=6.5` and numeric asteroid cell keys). Orthogonal to
 shader-admission-slice.

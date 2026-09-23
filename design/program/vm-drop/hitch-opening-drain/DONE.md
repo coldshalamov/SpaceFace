@@ -7,7 +7,7 @@ Crucible seed 4242 on quiet soft-GPU VM.
 
 ## Before / after (quiet soft-GPU, crucible seed 4242)
 
-| Metric | Before (master `59df2a08e`) | After (scratch `d6a1c419e`) | Notes |
+| Metric | Before (master `59df2a08ed9684e947f79d88e1d41f5c59acbee0`) | After (scratch `d6a1c419e`) | Notes |
 |---|---|---|---|
 | `wait.prepareOpeningGpuResources` | **874 ms** | **67 ms** | **win (−92%)** |
 | `opening.planWait` | 818 ms resolved → plan incomplete | **0 ms skipped** (`soft-gpu-self-build`) | **win** |

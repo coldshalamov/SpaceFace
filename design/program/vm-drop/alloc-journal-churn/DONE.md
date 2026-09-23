@@ -18,7 +18,7 @@ Focused tests **12/12**. Primary signal: offline microbench + crucible hitch/wor
 
 ### Quiet soft-GPU crucible seed 4242
 
-| Metric | Before (master `59df2a08e`) | After (scratch) | Notes |
+| Metric | Before (master `59df2a08ed9684e947f79d88e1d41f5c59acbee0`) | After (scratch) | Notes |
 |---|---|---|---|
 | worst frame | 783 ms | **267 ms** | **win** |
 | hitch callbacks | 65 / 342 | **31 / 365** | **win** |
