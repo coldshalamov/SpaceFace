@@ -21,6 +21,7 @@ import { masslineInstrumentReadout } from '../hudAttention.js';
 import { SHIPS } from '../../data/ships.js';
 import { injectOrrery } from './tokens.js';
 import { createFlightCluster } from './flightCluster.js';
+import { applyOrreryHudSkin } from './hudSkin.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const GROUP_NAME = Object.freeze({ ORDNANCE: 'Ordnance', FIELDWORK: 'Fieldwork', RIG: 'Rig', BAY: 'Bay' });
@@ -156,6 +157,7 @@ export function mountOrreryCluster(root, state, { bindings = null } = {}) {
   host.appendChild(cluster.el);
   root.appendChild(host);
   root.dataset.hud = 'orrery';
+  const removeSkin = applyOrreryHudSkin(document);
   cluster.arrive();
   const tracker = createCooldownTracker();
   let ordnance = null;
@@ -167,6 +169,6 @@ export function mountOrreryCluster(root, state, { bindings = null } = {}) {
       const model = readClusterModel(liveState, p, { ordnance });
       if (model) cluster.update(model);
     },
-    dispose() { cluster.dispose(); host.remove(); if (root.dataset.hud === 'orrery') delete root.dataset.hud; },
+    dispose() { cluster.dispose(); host.remove(); removeSkin(); if (root.dataset.hud === 'orrery') delete root.dataset.hud; },
   };
 }

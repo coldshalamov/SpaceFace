@@ -373,7 +373,7 @@ test('the live HUD BAND tape mounts one silent rotating ticker without duplicati
     'multiple cited lines rotate at a bounded cadence');
   assert.doesNotMatch(marketSrc, /setInterval\(/,
     'the feed owns no permanent interval loop');
-  assert.match(hudStyles, /\.sf-commtape__news \{ min-width:0; flex:1 1 auto; overflow:hidden; \}/,
+  assert.match(hudStyles, /\.sf-commtape__news \{ min-width:0; flex:1 1 0; overflow:hidden; \}/,
     'the tape gives the long headline bounded horizontal space');
   assert.match(hudStyles, /\.sf-news-ticker \{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap;/,
     'a long headline stays one readable HUD line rather than obscuring flight instruments');

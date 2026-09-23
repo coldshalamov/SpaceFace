@@ -34,7 +34,8 @@ for (const sector of SECTORS) {
   }
 }
 const MAX_LOG = 12;            // rolling headlines kept on state.ui.marketNews.log
-const MAX_TICKER_ITEMS = 8;    // DOM ticker cap
+const MAX_TICKER_ITEMS = 8;
+const TICKER_LEGIBLE_PX = 140;    // DOM ticker cap
 
 // ---- token building (pure) -----------------------------------------------------------------
 
@@ -458,7 +459,9 @@ export function createMarketNews(ctx) {
     // headline can be squeezed to a couple of characters ("TR…"), which reads as broken text.
     // Flight already surfaces news through the one-voice alert floor, so below a readable width
     // the tape stays chrome-only instead of showing a truncated stub.
-    if (el.clientWidth > 0 && el.clientWidth < 64) setTickerHostVisible(false);
+    // 64 px still passed "TRAGE…" (seen live 2026-09-23): a stub is broken below about a dozen
+    // characters, so the floor is a readable headline width, not a couple of glyphs.
+    if (el.clientWidth > 0 && el.clientWidth < TICKER_LEGIBLE_PX) setTickerHostVisible(false);
     scheduleTicker(items);
   }
 
