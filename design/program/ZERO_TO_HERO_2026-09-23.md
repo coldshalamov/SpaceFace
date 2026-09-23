@@ -149,8 +149,12 @@ a hull.
 
 ### Phase 5 — THE DEMO PATH *(front door to end card)* — mostly **NEW**
 
-1. **Demo build.** One flag on the same game path (never a fork): the title opens on **Crucible**
-   first, non-demo surfaces are hidden, and saves are separate from the full game.
+1. **Demo build.** One flag on the same game path (never a fork): `IS_DEMO` in
+   `src/core/demoMode.js`, set by a bundle define (`build-bundle --demo`) and, on the dev server
+   only, by `?demo=1` so the default route stays testable. In the demo the title's primary verb is
+   **Crucible**, New Game reads **Adventure**, Load is hidden; Continue still appears when a save
+   exists. Crucible results gain **Take it to the belt** (starts Adventure). Nothing is locked or
+   timed.
 2. **Live title.** The title plays a deterministic Crucible replay behind the menu (the replay ring
    buffer of `PQ-160` exists), instead of a still with drift. Determinism at the front of the house.
 3. **Round zero teaches by doing.** The first 45 s of the first Crucible run hands the player three
@@ -159,8 +163,10 @@ a hull.
 4. **Load.** Crucible launch to control inside the §3 bar; the long cook stages (rock pools,
    Crucible warm, post-opening pipelines, first-frame census) are overlapped with the door, the
    draft and the countdown, never deleted.
-5. **End card.** After the adventure beat: what you did (stunts, the ship you fitted), feedback,
-   and a store link slot. No nag.
+5. **End card.** Once per save, after the adventure beat (first module fitted and the ship
+   undocked with it): what you did (best stunt, credits earned, the module you fitted), **Keep
+   playing** (the default), **Feedback** and a store link — both read from build config and hidden
+   when blank — and Main menu. No nag, no lock.
 6. **The path, scripted.** `PQ-210.08` plays end to end.
 
 *Wrong:* a second entry point or build; a tutorial modal; a loading screen that hides a cut picture.
@@ -216,4 +222,5 @@ One line per slice that landed: phase, what a stranger now sees, the number, the
 |---|---|---|---|
 | 1 | `probe:body-scale` built: drawn hull, collision body, zoom terms, plume, hostiles per 250 ms | baseline: player hull p50 12 px (adventure) / 4 px (Crucible) on a 167 / 103 px body | `dbcc1d4e1`, `64d481cb8` |
 | 1 | Ships draw at the size of their body again (every hull admitted after the micro-motion tracker's first scan had been drawn at ~1/20 scale) | player hull p50 **12 → 175 px** adventure, **4 → 63 px** Crucible; Crucible hostile median **5.5 → 65 px**; pinned by `test/ship-hull-scale-swap.test.mjs` | `cc0ea72ca` |
+| 3 | A Crucible kill leaves the ship's body: the arena has no sector, so every swarm kill had been rejected before a wreck existed. Now one latchable body per kill at the victim's pose, size and real momentum, eight kept (the farthest retires), still there after the shop | swarm-kill wrecks **0 → 1 per kill**, radius 9 → victim radius, at-kill speed kept up to 600 WU/s; `test/crucible-wreck-body.test.mjs` | `e01a87854` |
 | 2 | The sky yields a single camera-visible planet or wormhole; the authored plates and starfields remain, and a departed landmark can hand off its place as you fly. The arena, sky luminance and substances are still open. | concurrent hero limit **up to 3 → 1**; four live sector captures: Helios 1, Ceres 0, Pallas 1, Veil 1; 28 focused tests and the public flight route passed | `88a91dff0` |
