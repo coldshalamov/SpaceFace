@@ -417,11 +417,13 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card:disabled .sf-cru-name, html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card:disabled .sf-cru-price { color:rgb(236 230 216 / .45) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card:is(:hover, :focus-visible):not(:disabled) .sf-cru-price { color:var(--dp-hand-hot, #ffd98c) !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory::before { background:radial-gradient(ellipse at 62% 42%, rgb(4 6 9 / .55), rgb(4 6 9 / .8) 60%, rgb(4 6 9 / .9) 100%) !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading { position:absolute; top:clamp(150px, 20vh, 230px); left:calc(var(--k-margin, 96px) + min(560px, 40vw) + 72px); width:min(46vw, 820px);
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading { position:absolute; top:clamp(150px, 20vh, 230px); left:calc(var(--k-margin, 96px) + min(560px, 40vw) + 56px);
+  right:var(--k-margin, 64px); max-width:820px;
   display:grid; grid-template-columns:minmax(0, 300px) minmax(0, 1fr); column-gap:40px; align-items:start; z-index:1; pointer-events:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading[hidden] { display:none; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading { grid-template-columns:minmax(0, 360px) minmax(0, 1fr) !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__jig { width:360px; height:420px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading { grid-template-columns:minmax(0, clamp(200px, 19vw, 360px)) minmax(0, 1fr) !important; column-gap:clamp(20px, 2.4vw, 40px) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__jig { width:100%; aspect-ratio:6 / 7; height:auto; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading :is(.orr-armory-compare, .orr-armory-budget) { width:100%; max-width:360px; height:auto; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__verb { margin:0 0 6px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11.5px;
   letter-spacing:.26em; text-transform:uppercase; color:rgb(236 230 216 / .66); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading__name { margin:0; font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 800, "wdth" 125;
