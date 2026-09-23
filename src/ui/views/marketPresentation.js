@@ -1,6 +1,7 @@
 // Market display only. Prices, affordability, selection and transaction ownership remain in market.js.
 // An explicit read model keeps the rendered register testable without importing game simulation.
-import { escapeMarkup as escapeHtml, iconHtml } from './identity.js';
+import { escapeMarkup as escapeHtml } from './identity.js';
+import { commodityGlyphHtml } from './commodityGlyphs.js';
 const fmt = n => Math.round(Number(n) || 0).toLocaleString('en-US');
 export const MARKET_FILTERS = Object.freeze([
   { id: 'all', label: 'All stock' }, { id: 'hold', label: 'In hold' },
@@ -82,7 +83,9 @@ export function trendHtml(history = []) {
   const hist = finiteHistory(history);
   if (hist.length < 2 || hist[0] <= 0) return '<span class="sx-mkt-row__tr k-t-fine" aria-label="History unavailable">—</span>';
   const pct = Math.round(((hist.at(-1) - hist[0]) / hist[0]) * 100);
-  return `<span class="sx-mkt-row__tr k-t-fine ${pct >= 0 ? 'k-good is-up' : 'k-bad is-down'}">${pct >= 0 ? '▲' : '▼'}${Math.abs(pct)}%</span>`;
+  // A price that has not moved is flat, not up: every row of a quiet exchange read "▲0%" in green.
+  if (pct === 0) return '<span class="sx-mkt-row__tr k-t-fine is-flat" aria-label="Unchanged">0%</span>';
+  return `<span class="sx-mkt-row__tr k-t-fine ${pct > 0 ? 'k-good is-up' : 'k-bad is-down'}">${pct > 0 ? '▲' : '▼'}${Math.abs(pct)}%</span>`;
 }
 /**
  * The quote's instrument: the last ten minutes of this station's price, drawn as light.
@@ -173,13 +176,12 @@ export function buildChart(history, average, gradientId, label, extras = {}) {
 }
 export function marketRowHtml({ id, name, category = '', buy, sell, stock, held = 0, hist = [], demandWord = 'normal', driversSummary = '', selected = false, tracked = false, profitPct = null, presentation = null }) {
   const family = marketFamily(category);
-  const glyph = family === 'raw' ? 'ore' : family === 'industry' ? 'industry' : family === 'military' ? 'warning' : 'cargo';
   const presentationId = presentation && typeof presentation.id === 'string' ? presentation.id.trim() : '';
   const presentationColor = presentation && typeof presentation.color === 'string'
     && /^#[0-9a-f]{6}$/i.test(presentation.color) ? presentation.color : '';
   const icon = presentationId && presentationColor
-    ? `<span class="sx-mkt-row__commodity" data-commodity-presentation="${escapeHtml(presentationId)}" style="color:${escapeHtml(presentationColor)}">${iconHtml(glyph, 'of-commodity-icon')}</span>`
-    : iconHtml(glyph, 'of-commodity-icon');
+    ? `<span class="sx-mkt-row__commodity" data-commodity-presentation="${escapeHtml(presentationId)}" style="color:${escapeHtml(presentationColor)}">${commodityGlyphHtml(category, 'of-commodity-icon')}</span>`
+    : commodityGlyphHtml(category, 'of-commodity-icon');
   const profitBadge = Number.isFinite(profitPct) && profitPct >= 15 && held > 0
     ? `<span class="sx-mkt-row__profit" title="Local sell price beats your cost basis by ${Math.round(profitPct)}%">+${Math.round(profitPct)}% PROFIT</span>`
     : '';

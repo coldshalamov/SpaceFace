@@ -1649,3 +1649,13 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   white-space: normal; text-transform: none; letter-spacing: 0; font-family: inherit;
   font-size: var(--k-fs-data, 13px); line-height: 1.4; color: var(--dp-ink-dim, #b9b4a8); max-width: none;
 }
+
+/* The exchange's column heads stay put while the rows scroll under them; at 42 % the rows showed
+   through and "COMMODITY BUY SELL" printed over "Stellarite Ore 839 0%". The head is now the
+   sheet itself, with its hairline, so a scrolled row passes cleanly beneath it. */
+#screens .sx-berth .sx-mkt-table thead { background: rgb(9 11 14); }
+#screens .sx-berth .sx-mkt-table thead th {
+  background: rgb(9 11 14);
+  box-shadow: inset 0 -1px 0 var(--dp-rule, rgb(232 226 212 / .10));
+}
+#screens .sx-berth .sx-mkt-row__tr.is-flat { color: var(--dp-ink-mute, #9a968c); }
