@@ -112,8 +112,13 @@ zooming so close the fight leaves the frame.
 
 1. **One sky.** One hero celestial body per sector and arena; the rest of the plate is dark enough
    that muzzles and engines are the brightest things in frame (C6's luminance numbers).
-2. **Arena lines at rest.** Arena field and ricochet visuals re-cut as thin instrument lines that
-   brighten only when a body rides them. The arena stays readable; it stops being the subject.
+2. **The wakes and the rings.** Attributed 2026-09-23 by hiding objects and diffing pixels: the
+   sweeping blue arcs are the player's round wakes (`SF_WeaponRibbons`, 24 recorded heads, 90–500
+   WU long) and the violet ring segments are the kill/impact structural beats
+   (`SF_ArcadeStructuralFx`, ~700 per fight). Neither is arena decoration. The wakes must match the
+   round's sim path exactly (a wake that bends while the round flew straight lies about the shot);
+   then both families are sized and weighted under the hierarchy — a wake is a thin line behind the
+   round, a ring beat never out-shouts the body it marks.
 3. **Substances.** Common rocks from beige clay to painted industrial stone (`AQ-SURFACE`); NPC
    plumes at parity with the player's.
 
@@ -224,4 +229,6 @@ One line per slice that landed: phase, what a stranger now sees, the number, the
 | 1 | Ships draw at the size of their body again (every hull admitted after the micro-motion tracker's first scan had been drawn at ~1/20 scale) | player hull p50 **12 → 175 px** adventure, **4 → 63 px** Crucible; Crucible hostile median **5.5 → 65 px**; pinned by `test/ship-hull-scale-swap.test.mjs` | `cc0ea72ca` |
 | 3 | A Crucible kill leaves the ship's body: the arena has no sector, so every swarm kill had been rejected before a wreck existed. Now one latchable body per kill at the victim's pose, size and real momentum, eight kept (the farthest retires), still there after the shop | swarm-kill wrecks **0 → 1 per kill**, radius 9 → victim radius, at-kill speed kept up to 600 WU/s; `test/crucible-wreck-body.test.mjs` | `e01a87854` |
 | 3 | The wreck is the ship you killed: a kill hulk resolves the same authored hull file the victim drew (a swarmer's hulk is its dart), lights out, fitted to its body | hulk identity **generic aftermath piece → victim's own hull** (live: 11/11 meshes dead-stamped, drawn 19.2 WU on a 21 WU body); `test/wreck-hulk-body.test.mjs` | `958eb44f7` |
+| 3 | A fresh kill still glows: the dead hull carries an ember that cools to cold over its first six seconds of sim time, so the consequence reads before it settles into terrain | ember 1.5 at the kill → 0.375 at 3 s → 0 at 6 s; no program re-key | `80f6830b9` |
+| 4 | The Crucible stops narrating the fight: the permanent "Banking … / Trap … remaining · armed" card is gone (the ordnance ring carries the trap count), and a hint with nothing to point at ("Research unlocked gear.") arrives as a receipt instead of hovering over your hull | persistent sentence cards in Crucible flight **1 → 0**; strings anchored to the player hull **1 → 0** | `aea22be1b`, `0ad761241` |
 | 2 | The sky yields a single camera-visible planet or wormhole; the authored plates and starfields remain, and a departed landmark can hand off its place as you fly. The arena, sky luminance and substances are still open. | concurrent hero limit **up to 3 → 1**; four live sector captures: Helios 1, Ceres 0, Pallas 1, Veil 1; 28 focused tests and the public flight route passed | `88a91dff0` |
