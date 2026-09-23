@@ -77,7 +77,7 @@ function finiteCoordinate(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-export function projectRadarPoint(playerPos, targetPos, range, metrics = COMPACT_METRICS) {
+export function projectRadarPoint(playerPos, targetPos, range, metrics = COMPACT_METRICS, out = null) {
   if (!playerPos || !targetPos || !metrics) return null;
   const px = finiteCoordinate(playerPos.x);
   const pz = finiteCoordinate(playerPos.z);
@@ -98,6 +98,21 @@ export function projectRadarPoint(playerPos, targetPos, range, metrics = COMPACT
   const y = offRange
     ? metrics.center + Math.sin(angle) * metrics.radius
     : metrics.center - dz * scale;
+  // Optional out-param: radar.draw projects every contact each tick. Returning a fresh
+  // Object.freeze({}) per call dominated radar alloc (cpu-profile-flight). One-shot callers
+  // (tests, planObjectiveCue) still get a frozen object when out is omitted.
+  if (out) {
+    out.x = x;
+    out.y = y;
+    out.dx = dx;
+    out.dz = dz;
+    out.distance = distance;
+    out.offRange = offRange;
+    out.angle = angle;
+    out.scale = scale;
+    out.resolved = true;
+    return out;
+  }
   return Object.freeze({ x, y, dx, dz, distance, offRange, angle, scale, resolved: true });
 }
 
