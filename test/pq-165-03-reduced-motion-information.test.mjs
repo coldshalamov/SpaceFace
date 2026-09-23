@@ -7,7 +7,13 @@ import {
 } from '../src/ui/reducedMotionInformation.js';
 import { blockedOutputAlertText, applyBlockedOutputMachine } from '../src/ui/alerts.js';
 import { buildDamageIndicatorCue } from '../src/ui/damageIndicators.js';
-import { masslineTetherStatus } from '../src/ui/hud.js';
+import {
+  flightDestinationSurface,
+  masslineTetherStatus,
+  resolveFlightObjectiveCommand,
+} from '../src/ui/hud.js';
+import { lawChangeLine, stepLawHud } from '../src/ui/sectorLawPresenter.js';
+import { admitReceipt, stuntDetectionReceipt } from '../src/ui/hudAttention.js';
 import { resolveCollisionFeel } from '../src/render/feel.js';
 
 test('PQ-165.03 every named fact has a non-vestibular channel', () => {
@@ -68,4 +74,35 @@ test('PQ-165.03 a running mill does not hide a starved neighbour', () => {
   assert.ok(blocked.has('s1::a'));
   blocked = applyBlockedOutputMachine(blocked, { siteId: 's1', machineId: 'a', state: 'running' });
   assert.equal(blocked.size, 0);
+});
+
+test('PQ-165.03 motion reduce keeps the objective line, a law change, and a stunt name', () => {
+  const state = {
+    simTime: 10,
+    settings: { video: { motionReduce: true } },
+    story: { beatIndex: 0 },
+    missions: { active: [] },
+    nav: {},
+    ui: {},
+  };
+  const command = resolveFlightObjectiveCommand(state);
+  const objective = flightDestinationSurface(state, command);
+  assert.equal(objective.show, true, 'objective surface hidden under motion reduce');
+  assert.ok(objective.line.trim().length > 0, 'objective line empty under motion reduce');
+
+  const law = stepLawHud(null, {
+    type: 'change',
+    profile: { sectorName: 'Ceres Belt', level: 'CHECKPOINT' },
+  }, state.simTime);
+  assert.equal(law.mode, 'line');
+  assert.equal(law.line, lawChangeLine(law.profile));
+  assert.match(law.line, /CERES BELT/);
+
+  const receipt = stuntDetectionReceipt(new Set(), { name: 'Rock Discovery', episodeId: 'ep-1' });
+  assert.equal(receipt.text, 'Rock Discovery');
+  assert.equal(receipt.channel, 'stunt');
+  const admitted = admitReceipt({
+    text: receipt.text, kind: receipt.kind, channel: receipt.channel, combat: true,
+  });
+  assert.equal(admitted.admit, true, 'stunt name dropped under combat quiet');
 });
