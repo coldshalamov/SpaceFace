@@ -530,10 +530,23 @@ ${GM} .k-word::after { display:none; }
 ${GM} .gm-stamp { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); }
 ${GM} .gm-level { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); }
 ${GM} .gm-level b { color:var(--dp-ink-dim); font-weight:inherit; }
-/* panes: printed fields */
-${GM} :is(.gm-left-rail, .gm-right-inspector, .gm-deck, .gm-hints, .gm-search-results) {
+/* panes: printed fields -- only the inspector and the two popovers. The lens rail and the foot are
+   words on hairlines over the chart (ONE_PHOTOGRAPH §9.3: kill the LENSES sheet and the CARGO DECK
+   band); a field there read as an old web sidebar and printed over the navigation answers. */
+${GM} :is(.gm-right-inspector, .gm-hints, .gm-search-results) {
   border-style:solid; border-color:transparent; border-width:16px; border-radius:0; ${SURFACE} color:var(--dp-ink);
   scrollbar-width:thin; scrollbar-color:rgb(232 226 212 / .24) transparent;
+}
+/* the lens rail's veil: light falling off from the frame's left edge, so a mark or a course line the
+   chart draws under the rail cannot print through the words. No inner boundary. */
+${GM} .gm-body-container::before {
+  content:""; position:absolute; z-index:-1; pointer-events:none; left:0; top:0; bottom:0;
+  width:calc(var(--k-margin) + var(--gm-rail-w) + 72px);
+  background:linear-gradient(90deg, rgb(4 5 7 / .82), rgb(4 5 7 / .7) 62%, transparent);
+}
+${GM} .gm-left-rail {
+  padding:0 8px 20px 0; scrollbar-width:thin; scrollbar-color:rgb(232 226 212 / .24) transparent;
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent);
 }
 /* the scale: words on a rail, the current scale lit */
 ${GM} .gm-scale-buttons.k-words { display:inline-flex; flex-wrap:nowrap; gap:0 18px; padding:0; width:max-content; border-radius:0; box-shadow:none; background:${RAIL}; }
@@ -580,7 +593,7 @@ ${GM} :is(.gm-frame-reason, .gm-plot-reason, .gm-engage-reason, .gm-ribbon-reaso
 ${GM} .gm-rail-sec { border:0; background-image:${HAIR_TOP}; background-repeat:no-repeat; }
 ${GM} .gm-rail-sec:first-child { background-image:none; }
 ${GM} .gm-rail-sum { justify-content:flex-start; ${GM_ETCH} font-size:12px; color:var(--dp-ink-dim); }
-${GM} .gm-rail-sum-t { font-family:inherit; font-size:inherit; font-variation-settings:inherit; letter-spacing:inherit; color:inherit; }
+${GM} .gm-rail-sum-t { margin-right:auto; font-family:inherit; font-size:inherit; font-variation-settings:inherit; letter-spacing:inherit; color:inherit; }
 ${GM} .gm-rail-sum-n { margin-left:auto; font-family:var(--dp-face-etch); letter-spacing:.06em; color:var(--dp-ink-mute); }
 ${GM} .gm-rail-sum::after {
   content:""; flex:0 0 auto; align-self:center; width:6px; height:6px; margin:0 3px 3px 10px;
@@ -588,14 +601,14 @@ ${GM} .gm-rail-sum::after {
 }
 ${GM} .gm-rail-sec[open] > .gm-rail-sum::after { transform:rotate(45deg); margin-bottom:6px; }
 ${GM} :is(.gm-rail-sec[open] > .gm-rail-sum, .gm-rail-sum:hover) { color:var(--dp-ink); }
-${GM} .gm-layer-buttons { gap:14px; }
-${GM} .gm-layer-bank { gap:1px; }
-${GM} .gm-layer-bank-title { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); margin:0 0 4px; }
+${GM} .gm-layer-buttons { gap:8px; }
+${GM} .gm-layer-bank { gap:2px; }
+${GM} .gm-layer-bank-title { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); margin:0 0 2px; text-shadow:var(--dp-text-legible); }
 ${GM} .gm-layer-btn.k-word {
-  position:relative; box-sizing:border-box; display:flex; align-items:center; gap:10px; width:100%; max-width:100%; min-height:34px;
+  position:relative; box-sizing:border-box; display:flex; align-items:center; gap:10px; width:100%; max-width:100%; min-height:26px;
   margin:0; padding:0 10px 0 12px; border:0; border-image:none; border-radius:0; cursor:pointer;
-  background:none; box-shadow:none; text-shadow:none;
-  ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute);
+  background:none; box-shadow:none; text-shadow:var(--dp-text-legible);
+  ${GM_ETCH} font-size:12px; color:var(--dp-ink-dim);
 }
 ${GM} .gm-layer-btn.k-word::before { display:none; }
 ${GM} .gm-layer-btn.k-word:is([aria-pressed="true"], .active) { color:var(--dp-ink); background:${LAMP_EDGE}; }
@@ -609,10 +622,22 @@ ${GM} .gm-layer-btn.k-word:is([aria-pressed="true"], .active) .gm-layer-ico .dp-
 ${GM} .gm-layer-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 ${GM} .gm-rail-commodity label { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); }
 ${GM} .gm-rail-commodity :is(select, .sf-select__field) {
-  min-height:34px; padding:0 26px 0 0; border:0; border-radius:0; box-shadow:none;
-  background:${CHEVRON} right 6px center / 10px 6px no-repeat, ${INPUT_RAIL};
-  color:var(--dp-ink); font-family:var(--dp-face-read); font-size:13px;
+  min-height:28px; padding:0 4px 0 0; border:0; border-radius:0; box-shadow:none;
+  background:${INPUT_RAIL};
+  color:var(--dp-ink); font-family:var(--dp-face-read); font-size:13px; text-shadow:var(--dp-text-legible);
 }
+/* the native select needs the drawn chevron; the kit's select already carries its own glyph */
+${GM} .gm-rail-commodity select { padding-right:26px; background:${CHEVRON} right 6px center / 10px 6px no-repeat, ${INPUT_RAIL}; }
+${GM} .gm-rail-commodity .sf-select__field { width:100%; justify-content:space-between; }
+/* popovers sit over the inspector: an .84 field let its tabs and keys print through the key list */
+${GM} :is(.gm-hints, .gm-search-results) { background:var(--dp-metal-1); }
+${GM} .gm-rail-commodity .sf-select__list {
+  border:0; border-radius:0; box-shadow:none; padding:4px 0; background:var(--dp-metal-1);
+  scrollbar-width:thin; scrollbar-color:rgb(232 226 212 / .24) transparent;
+}
+${GM} .gm-rail-commodity .sf-select__opt { border-radius:0; padding:6px 12px; font-family:var(--dp-face-read); font-size:13px; color:var(--dp-ink-dim); }
+${GM} .gm-rail-commodity .sf-select__opt:is(:hover, .is-active) { color:var(--dp-ink); background:${INK_FIELD}; }
+${GM} .gm-rail-commodity .sf-select__opt.is-selected { color:var(--dp-ink); background:${LAMP_EDGE}, ${INK_FIELD}; }
 ${GM} :is(.gm-rail-item, .gm-legend-row) { border:0; background-image:${HAIR_TOP}; background-repeat:no-repeat; }
 ${GM} .gm-rail-legend > .gm-legend-row:first-of-type { background-image:none; }
 ${GM} :is(.gm-rail-item.is-tracked, .gm-rail-item.is-current) { color:var(--dp-ink); background:${LAMP_EDGE}, ${INK_FIELD}; box-shadow:none; }
@@ -645,6 +670,9 @@ ${GM} .gm-ins-target-name {
   font-size:clamp(20px, 1.5vw, 28px); line-height:1.05; letter-spacing:.04em; text-transform:uppercase; color:var(--dp-ink);
 }
 ${GM} :is(.gm-inspector-empty, .gm-ins-note) { font-family:var(--dp-face-read); color:var(--dp-ink-dim); }
+/* a data state inside the inspector column reads at the column's scale, not the screen's: the shared
+   28px headline took three lines of a 288px column and ran under the fade */
+${GM} .gm-right-inspector .sf-state__head { font-size:17px; line-height:1.15; }
 ${GM} .gm-ins-row { color:var(--dp-ink-dim); }
 ${GM} .gm-ins-row-val { color:var(--dp-phos); }
 /* the weather: a flat meter */
@@ -654,9 +682,32 @@ ${GM} .gm-weather-seg--civil { background:var(--dp-ink-dim); }
 ${GM} .gm-weather[data-weather-level="working"] .gm-weather-word { color:var(--dp-lamp-hot); }
 ${GM} .gm-weather[data-weather-level="hot"] .gm-weather-word { color:var(--dp-danger-hot); }
 ${GM} .gm-deck-table .k-row { background-image:${HAIR_TOP}; background-repeat:no-repeat; }
+/* the foot: the route and the deck over the navigation answers, words on hairlines. A veil from
+   the frame's bottom edge (light falloff, no inner boundary) keeps chart marks from printing
+   through the words. */
+${GM} .gm-apron { position:relative; }
+${GM} .gm-apron::before {
+  content:""; position:absolute; z-index:-1; pointer-events:none;
+  left:calc(-1 * var(--k-margin)); right:calc(-1 * var(--k-margin)); bottom:calc(-1 * var(--k-margin)); top:-64px;
+  background:linear-gradient(0deg, rgb(4 5 7 / .94), rgb(4 5 7 / .86) 50%, transparent);
+}
+${GM} .gm-ribbon { border:0; background:none; box-shadow:none; }
+${GM} .gm-ribbon-head { text-shadow:var(--dp-text-legible); }
+${GM} :is(.gm-ribbon-meta, .gm-ribbon-legs) { color:var(--dp-ink-dim); font-size:12px; }
+${GM} .gm-ribbon-meta span { color:var(--dp-ink-mute); }
+${GM} .gm-navfoot { border-top:0; background:${HAIR_TOP}; }
+${GM} .gm-navfoot .gm-nav-row-k { ${GM_ETCH} font-size:12px; color:var(--dp-ink-mute); }
+${GM} .gm-navfoot .gm-nav-row-v { font-family:var(--dp-face-read); font-size:15px; font-weight:500; line-height:1.25; color:var(--dp-ink); text-shadow:var(--dp-text-legible); }
+${GM} .gm-navfoot .gm-nav-row-d { font-family:var(--dp-face-read); font-size:12px; color:var(--dp-ink-mute); font-variant-numeric:tabular-nums; }
+${GM} .gm-navfoot .gm-nav-row[data-tone="tracked"] { background:${LAMP_EDGE}; }
+${GM} .gm-navfoot .gm-nav-row[data-tone="tracked"] .gm-nav-row-v { color:var(--dp-lamp-hot); }
+${GM} .gm-navfoot .gm-nav-row[data-tone="muted"] .gm-nav-row-v { color:var(--dp-ink-mute); font-style:normal; }
 @media (forced-colors:active) {
   ${GM} { background:Canvas; }
-  ${GM} :is(.gm-left-rail, .gm-right-inspector, .gm-deck, .gm-hints, .gm-search-results) { border:1px solid CanvasText; background:Canvas; }
+  ${GM} :is(.gm-right-inspector, .gm-hints, .gm-search-results) { border:1px solid CanvasText; background:Canvas; }
+  ${GM} .gm-left-rail { -webkit-mask-image:none; mask-image:none; }
+  ${GM} :is(.gm-apron, .gm-body-container)::before { display:none; }
+  ${GM} .gm-navfoot .gm-nav-row[data-tone="tracked"] { background:none; border-left:2px solid Highlight; }
   ${GM} :is(.gm-scale-btn, .gm-tab, .gm-layer-btn).k-word { border:1px solid ButtonText; background:ButtonFace; color:ButtonText; }
   ${GM} :is(.gm-scale-btn[aria-pressed="true"], .gm-tab[aria-selected="true"], .gm-layer-btn[aria-pressed="true"]).k-word { outline:2px solid Highlight; }
   ${GM} :is(.gm-search-input, .gm-rail-commodity select) { border:1px solid CanvasText; background:Canvas; color:CanvasText; }
