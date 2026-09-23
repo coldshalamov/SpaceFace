@@ -165,6 +165,7 @@ ${M} .sx-mkt__analysis { -webkit-mask-image:none !important; mask-image:none !im
 ${M} .so-route-disclosure { border-top:1px solid rgb(${BONE} / .12) !important; border-bottom:0 !important; padding-top:8px !important; }
 ${M} .sx-trade, ${M} .sx-mkt__console { border-top:0 !important; }
 ${M} .sx-mkt-sale { color:rgb(${BONE} / .75) !important; }
+${M} .sx-mkt-chart-key, ${M} .sx-mkt-chart-key [data-history-key] { color:rgb(${BONE} / .7) !important; }
 ${M} .so-route-disclosure > summary { ${LABEL} font-size:10px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; list-style:none; cursor:pointer; }
 ${M} .so-route-disclosure > summary::-webkit-details-marker { display:none; }
 ${M} .so-route-disclosure > summary::before { content:"›  "; }
@@ -258,7 +259,7 @@ ${M} .sx-decision__opt { ${PLAIN} display:inline-flex !important; flex-direction
 ${M} .sx-decision__opt::before { content:"›" !important; display:inline !important; position:static !important; background:none !important; width:auto !important;
   height:auto !important; color:rgb(${BONE} / .55); }
 ${M} .sx-decision__opt .k-row__name { ${LABEL} font-size:11px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; white-space:nowrap; flex:none; }
-${M} .sx-decision__opt .k-row__sub { font-size:12px !important; color:rgb(${BONE} / .6) !important; }
+${M} .sx-decision__opt .k-row__sub { font-size:11.5px !important; color:rgb(${BONE} / .7) !important; }
 ${M} .sx-decision__opt:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand, #f2b950) !important; }
 ${M} .sx-decision__opt:is(:hover, :focus-visible) { outline:none !important; }
 html.sf-reduce-motion ${M} :is(.orr-qdial__fill, .orr-qdial__hand) { transition:none; }
@@ -274,6 +275,10 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-qty .sx-qty__in { left:55px; width:100px !important; top:64px; height:44px !important; font-size:36px !important; line-height:44px !important; }
   ${M} .sx-qty .sx-qty__words { top:176px; left:4px; right:4px; }
   ${M} .sx-mkt-instrument__plot { height:80px !important; }
+  ${M} .sx-mkt-chart-key { display:flex !important; margin-top:4px !important; font-size:10.5px !important; }
+  ${M} .sx-qty .orr-qdial { filter:drop-shadow(0 0 6px rgb(7 8 10 / .9)); }
+  ${M} .sx-mkt__quote > .sx-mkt-chain { display:none !important; }
+  ${M} .sx-mkt__analysis { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent) !important; }
   ${M} .sx-decision__opt { flex-direction:column !important; gap:1px !important; }
   ${M} .sx-decision__opt { position:relative !important; padding-left:16px !important; align-items:flex-start !important; }
   ${M} .sx-decision__opt::before { position:absolute !important; left:0; top:1px; }

@@ -1,4 +1,5 @@
 import { shipworksFrameHtml } from '../../views/stationFrames.js';
+import { injectOrreryShipworks } from '../../orrery/shipworksLayouts.js';
 // src/ui/station/screens/shipworks.js — "Shipworks" and THE SHIP: the shared stage (Frontend
 // Task C §1.9). The hull fills the panel behind everything, orbitable; the hulls (fleet / for sale)
 // as a column of rows down the hang; the hull's name at title size with its blurb; six compact
@@ -308,6 +309,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let host = initialHost;
   const el = document.createElement('div');
   el.className = 'k-panel sx-sw';
+  // ORRERY: the dock host's composition (src/ui/orrery/shipworksLayouts.js); THE SHIP keeps its sheet
+  injectOrreryShipworks(document);
   // The kit panel: the hulls down the hang column, the stage to its right. The canvas fills the
   // whole panel behind both (positioned like .k-world); the corner rows, the pinned labels, the
   // four bands along the foot and the verbs all sit on top. The chooser is a third child that

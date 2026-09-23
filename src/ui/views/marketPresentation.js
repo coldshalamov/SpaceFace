@@ -269,6 +269,10 @@ function coneReadoutHtml({ regime, quoteAge }) {
 }
 
 export function saleLineHtml({ sell, saleQty, saleQuote }) {
+  // no amount on the dial yet: the line says what a unit fetches instead of inventing a sale of one
+  if (Number(saleQty) === 0 && Number.isFinite(Number(sell))) {
+    return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="0" data-sale-credits="0">A unit sells here for ${fmt(Number(sell))} cr</p>`;
+  }
   const qty = Math.max(1, Math.floor(Number(saleQty) || 1));
   // INF-083: a contemplated batch is quoted through the economy owner for the FULL
   // quantity — stock-sensitive average over the whole move, never unit×qty. The legacy
