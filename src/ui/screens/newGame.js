@@ -18,7 +18,7 @@ import { starterAirCard } from '../starterAirCard.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createStageHull } from './stageHull.js';
-import { createStopScale, createStopArc } from '../orrery/stopDial.js';
+import { createStopScale, createTurntable } from '../orrery/stopDial.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { injectDeckplate } from '../deckplate/index.js';
@@ -321,19 +321,30 @@ function shipDefFor(ctx, shipId) {
 // one-word tag beneath it. paintKey pins its alignment inline on every state change, so the rail
 // asks for it through data-key-align rather than overriding once (the hull names sat centred over
 // left-set tags).
-// The chosen hull's numbers as three short arcs of ice with their readings (mass, thrust, line).
-function paintStarterStats(host, card, scale) {
-  const rows = [['Mass', card.massT, scale.massT, 't'], ['Thrust', card.thrust, scale.thrust, ''], ['Line', card.lineWuPerS, scale.lineWuPerS, 'wu/s']];
+// The chosen hull's numbers as three bone tick-scale arcs: a lit fill for this hull, faint marks
+// where the other two starters sit, the reading in the display face under the arc. (Fixed specs are
+// bone; ice is for data in motion.)
+function paintStarterStats(host, card, scale, others = []) {
+  const rows = [['Mass', 'massT', 't'], ['Thrust', 'thrust', ''], ['Line', 'lineWuPerS', 'wu/s']];
   host.textContent = '';
-  for (const [name, value, max, unit] of rows) {
-    const f = Math.max(0, Math.min(1, value / max));
+  const a0 = -110; const a1 = 110;
+  const p = (a, r = 22) => [30 + r * Math.sin(a * Math.PI / 180), 30 - r * Math.cos(a * Math.PI / 180)];
+  const arc = (from, to, r = 22) => { const [x0, y0] = p(from, r); const [x1, y1] = p(to, r); return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
+  for (const [name, key, unit] of rows) {
+    const value = Number(card[key]) || 0;
+    const f = Math.max(0, Math.min(1, value / scale[key]));
+    const ticks = [];
+    for (let a = a0; a <= a1 + 0.01; a += 10) { const [x0, y0] = p(a, 25); const [x1, y1] = p(a, a % 50 === 0 ? 31 : 28); ticks.push(`M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`); }
+    const ghosts = others.map((o) => {
+      const g = a0 + (a1 - a0) * Math.max(0, Math.min(1, (Number(o[key]) || 0) / scale[key]));
+      const [x0, y0] = p(g, 17); const [x1, y1] = p(g, 27);
+      return `<path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}" class="orr-ng-stat__ghost"/>`;
+    }).join('');
+    const reading = value >= 1000 ? (value / 1000).toFixed(1) + 'k' : String(Math.round(value));
     const cell = el('div', 'orr-ng-stat');
-    const a0 = -120; const a1 = 120; const aF = a0 + (a1 - a0) * f;
-    const p = (a) => `${(26 + 20 * Math.sin(a * Math.PI / 180)).toFixed(2)} ${(28 - 20 * Math.cos(a * Math.PI / 180)).toFixed(2)}`;
-    const arc = (from, to) => `M ${p(from)} A 20 20 0 ${to - from > 180 ? 1 : 0} 1 ${p(to)}`;
-    cell.innerHTML = `<svg viewBox="0 0 52 44"><path d="${arc(a0, a1)}" class="orr-ng-stat__track"/>`
-      + `<path d="${arc(a0, aF)}" class="orr-ng-stat__fill"/></svg>`
-      + `<b>${value >= 1000 ? (value / 1000).toFixed(1) + 'k' : Math.round(value)}<i>${unit}</i></b><span>${name}</span>`;
+    cell.innerHTML = `<svg viewBox="0 0 60 44"><path d="${ticks.join(' ')}" class="orr-ng-stat__ticks"/>`
+      + `<path d="${arc(a0, a1)}" class="orr-ng-stat__track"/><path d="${arc(a0, a0 + (a1 - a0) * f)}" class="orr-ng-stat__fill"/>${ghosts}</svg>`
+      + `<b>${reading}<i>${unit}</i></b><span>${name}</span>`;
     host.appendChild(cell);
   }
 }
@@ -544,7 +555,9 @@ export const newGameScreen = {
     newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); });
     seedRow.appendChild(seed); seedRow.appendChild(newSeed);
     seedField.wrap.appendChild(seedRow);
-    const seedDesc = el('p', 'k-t-fine k-38', 'Leave blank for a random universe. The same seed always produces the same contracts and markets.');
+    const seedDesc = el('p', 'k-t-fine k-38', ORRERY
+      ? 'Blank is a random universe; a seed always deals the same contracts and markets.'
+      : 'Leave blank for a random universe. The same seed always produces the same contracts and markets.');
     seedDesc.id = 'sf-ng-seed-desc';
     seedField.wrap.appendChild(seedDesc);
     body.appendChild(seedField.wrap);
@@ -664,15 +677,18 @@ export const newGameScreen = {
       const stats = el('div', 'orr-ng-stats');
       stats.setAttribute('aria-hidden', 'true');
       caption.insertBefore(stats, loadoutField.wrap);
-      this._paintStats = (starter) => paintStarterStats(stats, starterAirCard(starter), scale);
+      this._paintStats = (starter) => paintStarterStats(stats, starterAirCard(starter), scale,
+        NEW_GAME_STARTERS.filter((s) => s.id !== starter.id).map((s) => starterAirCard(s)));
       // on the screen itself, not the stage cell: the stage ends above the floor, and the arc has to
       // sit under the ship rather than across it
+      // the hull choice as a turntable round the ship's base: the three hulls stand on its front arc
+      // as their rendered hero art, the amber index riding the ring to the chosen one
       const pick = el('div', 'orr-ng-pick');
       pick.appendChild(starterField.wrap);
       rootEl.appendChild(pick);
       const art = {};
-      for (const s of NEW_GAME_STARTERS) { const url = hullPosterUrl(s.shipId, 'holo'); if (url) art['starter:' + s.id] = url; }
-      this._starterDial = createStopArc({ row: starterWords, width: 600, radius: 150, span: 76, art, artSize: 44 });
+      for (const s of NEW_GAME_STARTERS) { const url = hullPosterUrl(s.shipId, 'hero'); if (url) art['starter:' + s.id] = url; }
+      this._starterDial = createTurntable({ row: starterWords, host: rootEl, anchor: stage, art, artWidth: 132 });
     }
     rootEl.appendChild(stage);
     this.hull = createStageHull(stage, { rootEl, zoom: STAGE_ZOOM });

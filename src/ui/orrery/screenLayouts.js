@@ -56,10 +56,17 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 @media (max-width: 1100px) { .of-pause > .sf-pause-brief.orr-brief { width:min(420px, 40vw); } }
 
 #screens .k-screen.orr-newgame { background:
-  linear-gradient(90deg, rgb(6 8 11 / .96) 0%, rgb(6 8 11 / .9) 30%, rgb(6 8 11 / .52) 58%, rgb(6 8 11 / .34) 100%),
+  linear-gradient(90deg, rgb(6 8 11 / .84) 0%, rgb(6 8 11 / .74) 30%, rgb(6 8 11 / .4) 58%, rgb(6 8 11 / .24) 100%),
   url("/assets/ui/backdrops/backdrop-title.jpg") center / cover no-repeat !important; }
 /* the hull's choice at the hull: stations on an arc under the ship */
-#screens .orr-newgame > .orr-ng-pick { position:absolute; left:66%; bottom:clamp(8px, 2.6vh, 40px); transform:translateX(-50%); z-index:3; }
+#screens .orr-newgame > .orr-ng-pick { position:absolute; inset:0; pointer-events:none; z-index:3; }
+#screens .orr-newgame .orr-turntable .k-word { background:none !important; border:0 !important; box-shadow:none !important; border-image:none !important;
+  min-width:0 !important; min-height:0 !important; padding:2px 4px !important; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%;
+  font-variation-settings:"wght" 760, "wdth" 125; font-size:15px !important; letter-spacing:.14em; text-transform:uppercase; color:rgb(232 226 212 / .58) !important;
+  text-shadow:0 1px 0 rgb(0 0 0 / .6), 0 0 12px rgb(0 0 0 / .6); white-space:nowrap; }
+#screens .orr-newgame .orr-turntable .k-word[aria-pressed="true"] { color:rgb(246 241 230) !important; text-shadow:0 0 1px rgb(255 226 178 / .5), 0 0 10px rgb(255 217 140 / .25), 0 1px 0 rgb(0 0 0 / .6); }
+#screens .orr-newgame .orr-turntable .k-word:is(:hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none; }
+#screens .orr-newgame .orr-turntable .k-word-sub { text-align:center; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:rgb(232 226 212 / .45); margin-top:3px; }
 #screens .orr-newgame .orr-ng-pick > div > .orr-ng-label, #screens .orr-newgame .orr-ng-pick #sf-ng-starter-label { display:none; }
 #screens .orr-newgame .orr-ng-pick .k-sentence { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 #screens .orr-newgame .orr-stoparc .k-word { background:none !important; border:0 !important; box-shadow:none !important; border-image:none !important;
@@ -72,12 +79,15 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 /* the numbers as arcs of ice */
 #screens .orr-newgame .orr-ng-stats { display:flex; gap:22px; margin:4px 0 2px; }
 #screens .orr-newgame .orr-ng-stat { position:relative; width:64px; display:flex; flex-direction:column; align-items:center; }
-#screens .orr-newgame .orr-ng-stat svg { width:64px; height:54px; overflow:visible; }
-#screens .orr-newgame .orr-ng-stat__track { fill:none; stroke:rgb(232 226 212 / .2); stroke-width:2; stroke-linecap:round; }
-#screens .orr-newgame .orr-ng-stat__fill { fill:none; stroke:#8fcbff; stroke-width:2.6; stroke-linecap:round; filter:drop-shadow(0 0 4px rgb(143 203 255 / .5)); }
-#screens .orr-newgame .orr-ng-stat b { position:absolute; top:22px; left:0; right:0; text-align:center; font-family:var(--dp-face-numeral, "Archivo");
-  font-weight:600; font-size:14px; color:#dfeeff; letter-spacing:.01em; }
-#screens .orr-newgame .orr-ng-stat b i { font-style:normal; font-size:9px; margin-left:2px; color:rgb(223 238 255 / .6); }
+#screens .orr-newgame .orr-ng-stat { width:78px; }
+#screens .orr-newgame .orr-ng-stat svg { width:78px; height:58px; overflow:visible; }
+#screens .orr-newgame .orr-ng-stat__ticks { fill:none; stroke:rgb(232 226 212 / .3); stroke-width:1; }
+#screens .orr-newgame .orr-ng-stat__track { fill:none; stroke:rgb(232 226 212 / .16); stroke-width:1.6; stroke-linecap:round; }
+#screens .orr-newgame .orr-ng-stat__fill { fill:none; stroke:rgb(246 241 230); stroke-width:2.4; stroke-linecap:round; filter:drop-shadow(0 0 4px rgb(255 236 200 / .35)); }
+#screens .orr-newgame .orr-ng-stat__ghost { stroke:rgb(232 226 212 / .38); stroke-width:1.2; }
+#screens .orr-newgame .orr-ng-stat b { position:static; margin-top:-6px; text-align:center; font-family:var(--dp-face-display, "Archivo");
+  font-variation-settings:"wght" 760, "wdth" 125; font-size:17px; color:rgb(246 241 230); letter-spacing:.02em; }
+#screens .orr-newgame .orr-ng-stat b i { font-style:normal; font-size:9px; margin-left:3px; color:rgb(232 226 212 / .55); letter-spacing:.1em; }
 #screens .orr-newgame .orr-ng-stat span { margin-top:2px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-size:9px; letter-spacing:.24em;
   text-transform:uppercase; color:rgb(232 226 212 / .55); }
 /* the loadout: one module a line, the size a small ringed tag */
@@ -162,7 +172,7 @@ html body #screens .k-screen.orr-crucible .sf-back.k-word::after { background:no
 /* the retired kit drew a hairline under every word row */
 #screens .orr-newgame .k-words { background:none !important; background-image:none !important; }
 /* the hull's side: name, blurb, what it carries, the run it opens */
-#screens .orr-newgame .orr-ng-caption { max-width:400px; display:flex; flex-direction:column; gap:10px; }
+#screens .orr-newgame .orr-ng-caption { max-width:320px; display:flex; flex-direction:column; gap:10px; }
 #screens .orr-newgame .orr-ng-caption .k-words--row { gap:6px 16px; flex-wrap:wrap; }
 #screens .orr-newgame .orr-ng-caption .sf-ng-route { margin-top:6px; }
 #screens .orr-newgame .orr-ng-caption .k-caps { font-size:10px; letter-spacing:.26em; color:rgb(232 226 212 / .55); margin-bottom:8px; }
@@ -177,7 +187,8 @@ html body #screens .k-screen.orr-crucible .sf-back.k-word::after { background:no
   caret-color:var(--dp-hand, #f2b950); outline:none; }
 #screens .orr-newgame .orr-ng-input:focus { background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / .1)) !important; }
 #screens .orr-newgame .orr-ng-input::placeholder { color:rgb(232 226 212 / .32); }
-#screens .orr-newgame .orr-ng-input::selection { background:rgb(143 203 255 / .16); color:rgb(246 241 230); }
+#screens .orr-newgame .orr-ng-input::selection { background:rgb(242 185 80 / .22); color:rgb(255 244 214); }
+#screens .orr-newgame .orr-ng-key--small::before { content:"↻"; margin-right:8px; font-size:13px; letter-spacing:0; color:var(--dp-hand, #f2b950); }
 /* choice words on the dials: engraved capitals; the chosen one is lit */
 #screens .orr-newgame .orr-stopscale .k-word { background:none !important; border:0 !important; box-shadow:none !important; border-image:none !important;
   min-width:0 !important; min-height:0 !important; padding:2px 4px !important; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;

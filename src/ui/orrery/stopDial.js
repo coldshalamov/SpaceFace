@@ -24,6 +24,14 @@ const CSS = `
 .orr-stoparc > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .orr-stoparc > .orr-stoparc__row { position:absolute !important; inset:0; margin:0 !important; padding:0 !important; display:block !important; }
 .orr-stoparc > .orr-stoparc__row > li { position:absolute; margin:0; transform:translateX(-50%); list-style:none; text-align:center; }
+.orr-turntable { position:absolute; inset:0; pointer-events:none; z-index:3; }
+.orr-turntable > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.orr-turntable > .orr-turntable__row { position:absolute !important; inset:0; margin:0 !important; padding:0 !important; display:block !important; }
+.orr-turntable > .orr-turntable__row > li { position:absolute; margin:0; transform:translateX(-50%); list-style:none; text-align:center; pointer-events:auto; }
+.orr-turntable__art { position:absolute; transform:translateX(-50%); pointer-events:none; opacity:.46; background:center / 178% auto no-repeat;
+  filter:saturate(.6) brightness(.8); transition:opacity .22s linear, filter .22s linear, transform .3s var(--dp-ease-out, ease-out); }
+.orr-turntable__art.is-on { opacity:1; filter:saturate(1) brightness(1.05) drop-shadow(0 0 16px rgb(255 226 178 / .25)); transform:translateX(-50%) scale(1.1); }
+html.sf-reduce-motion .orr-turntable__art { transition:none; }
 .orr-stationrow { position:relative !important; padding-bottom:26px !important; }
 .orr-stationrow > .orr-stationrow__rule { position:absolute; left:0; right:0; bottom:0; width:100%; height:20px; overflow:visible; pointer-events:none; }
 .orr-stopscale__art { position:absolute; transform:translate(-50%, -50%); pointer-events:none; opacity:.42;
@@ -320,4 +328,112 @@ export function createStationRow({ row } = {}) {
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => measure());
   measure();
   return { el: face, update, measure, dispose() { spring.stop(); if (mo) mo.disconnect(); if (ro) ro.disconnect(); face.remove(); } };
+}
+
+/**
+ * TURNTABLE: the choice made at the object. A ring in perspective round the base of a staged object
+ * (the new-game hull); only its front arc is drawn, so it never crosses the object. The choices stand
+ * on it as produced art with their words under them; the amber index -- a bead with a short lit arc
+ * -- rides the ring to the chosen one on the needle's spring. Same contract as the other stop
+ * elements: it seats the screen's own buttons and follows aria-pressed. `anchor` is the element the
+ * ring sits under; it is measured on build and on resize (no per-frame reads).
+ */
+export function createTurntable({ row, host, anchor, art = null, artWidth = 150 } = {}) {
+  const doc = (row && row.ownerDocument) || globalThis.document;
+  if (!row || !host || !anchor || !doc || typeof doc.createElementNS !== 'function' || typeof anchor.getBoundingClientRect !== 'function') {
+    return { el: null, update() {}, dispose() {} };
+  }
+  injectOrrery();
+  injectStyle(doc);
+  const wrap = doc.createElement('div');
+  wrap.className = 'orr-turntable';
+  const face = svg('svg', { class: 'orr-svg', 'aria-hidden': 'true' });
+  wrap.appendChild(face);
+  wrap.appendChild(row);
+  row.classList.add('orr-turntable__row');
+  host.appendChild(wrap);
+  const items = () => [...row.children].filter((li) => li.querySelector && li.querySelector('button'));
+  const n = Math.max(1, items().length);
+  const T = n === 1 ? [0] : Array.from({ length: n }, (_, i) => -56 + (112 * i) / (n - 1));
+  let g = null;
+  const pt = (t, k = 1) => [g.cx + g.rx * k * Math.sin(t * Math.PI / 180), g.cy + g.ry * k * Math.cos(t * Math.PI / 180)];
+  const ring = (t0, t1, steps = 48, k = 1) => {
+    const pts = [];
+    for (let i = 0; i <= steps; i += 1) { const [x, y] = pt(t0 + ((t1 - t0) * i) / steps, k); pts.push(`${x.toFixed(1)} ${y.toFixed(1)}`); }
+    return `M ${pts.join(' L ')}`;
+  };
+  const track = svg('path', { d: '', stroke: 'rgb(236 230 216 / .5)', 'stroke-width': 1.2, fill: 'none' });
+  const trackBloom = svg('path', { d: '', class: 'orr-bloom orr-hi', 'stroke-width': 6, opacity: '.12' });
+  const inner = svg('path', { d: '', stroke: 'rgb(232 226 212 / .16)', 'stroke-width': 1, 'stroke-dasharray': '1 6', 'stroke-linecap': 'round', fill: 'none' });
+  const fine = svg('path', { d: '', class: 'orr-core orr-faint', 'stroke-width': 1 });
+  const ticks = svg('g');
+  const lit = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 2, 'stroke-linecap': 'round', fill: 'none' });
+  const litBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 8, opacity: '.2' });
+  const beadBloom = svg('circle', { r: 9, fill: 'var(--dp-hand, #f2b950)', opacity: '.22' });
+  const bead = svg('circle', { r: 4, fill: 'var(--dp-hand-hot, #ffd98c)' });
+  face.append(trackBloom, track, inner, fine, ticks, litBloom, lit, beadBloom, bead);
+  const paint = (t) => {
+    if (!g) return;
+    const d = ring(t - 9, t + 9, 12);
+    lit.setAttribute('d', d);
+    litBloom.setAttribute('d', d);
+    const [x, y] = pt(t);
+    for (const b of [bead, beadBloom]) { b.setAttribute('cx', x.toFixed(1)); b.setAttribute('cy', y.toFixed(1)); }
+  };
+  const spring = createSpring({ value: T[0], preset: { k: 190, c: 15 }, onUpdate: paint });
+  const arts = [];
+  let current = -1;
+  function build() {
+    const hb = host.getBoundingClientRect();
+    const ab = anchor.getBoundingClientRect();
+    if (!hb.width || !ab.width) return;
+    const W = hb.width; const H = hb.height;
+    // round the object's base: centred a little right of the cell (where the staged hull sits),
+    // low enough that only the floor is under the front arc, never the object
+    const rx = Math.min(ab.width * 0.33, 470);
+    const ry = rx * 0.27;
+    g = { cx: ab.left - hb.left + ab.width * 0.56, cy: Math.min(ab.top - hb.top + ab.height * 0.8, H - ry - 132), rx, ry };
+    face.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    track.setAttribute('d', ring(-104, 104));
+    trackBloom.setAttribute('d', ring(-104, 104));
+    inner.setAttribute('d', ring(-96, 96, 48, 0.8));
+    const f = [];
+    for (let t = -100; t <= 100; t += 4) { const [x0, y0] = pt(t); f.push(`M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x0.toFixed(1)} ${(y0 - 4).toFixed(1)}`); }
+    fine.setAttribute('d', f.join(' '));
+    ticks.textContent = '';
+    T.forEach((t) => { const [x, y] = pt(t); ticks.appendChild(svg('path', { d: `M ${x.toFixed(1)} ${(y - 9).toFixed(1)} L ${x.toFixed(1)} ${(y + 9).toFixed(1)}`, class: 'orr-core orr-hi', 'stroke-width': 1.5, opacity: '.55' })); });
+    items().forEach((li, i) => {
+      const [x, y] = pt(T[i]);
+      li.style.left = `${x.toFixed(1)}px`;
+      li.style.top = `${(y + 18).toFixed(1)}px`;
+      const action = li.querySelector('button').dataset.action;
+      if (art && art[action]) {
+        let img = arts[i];
+        if (!img) { img = doc.createElement('div'); img.className = 'orr-turntable__art'; img.style.backgroundImage = `url("${art[action]}")`; wrap.insertBefore(img, row); arts[i] = img; }
+        const h = artWidth * 0.56;
+        Object.assign(img.style, { left: `${x.toFixed(1)}px`, top: `${(y - 8 - h).toFixed(1)}px`, width: `${artWidth}px`, height: `${h.toFixed(0)}px` });
+      }
+    });
+    current = -1;
+    update({ instant: true });
+  }
+  function update({ instant = false } = {}) {
+    let idx = items().findIndex((li) => li.querySelector('button[aria-pressed="true"]'));
+    if (idx < 0) idx = 0;
+    if (idx === current && !instant) return;
+    current = idx;
+    spring.set(T[idx], { instant });
+    [...ticks.children].forEach((t, i) => { t.setAttribute('class', `orr-core ${i === idx ? 'orr-hand' : 'orr-hi'}`); t.setAttribute('opacity', i === idx ? '1' : '.55'); });
+    arts.forEach((img, i) => { if (img) img.classList.toggle('is-on', i === idx); });
+  }
+  let mo = null;
+  if (typeof MutationObserver === 'function') {
+    mo = new MutationObserver(() => update());
+    mo.observe(row, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'] });
+  }
+  let ro = null;
+  if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => build()); ro.observe(host); }
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => build());
+  build();
+  return { el: wrap, update, layout: build, get geometry() { return g; }, dispose() { spring.stop(); if (mo) mo.disconnect(); if (ro) ro.disconnect(); wrap.remove(); } };
 }
