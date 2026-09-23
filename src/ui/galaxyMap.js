@@ -3302,6 +3302,7 @@ export const galaxyMapScreen = {
   _deckEl: null,
   _navFootEl: null,
   _lastNavFootKey: null,
+  _chromeRectCache: null,
   _deckTableEl: null,
   _deckSortBtn: null,
   _deckSortMode: 'best',
@@ -3326,10 +3327,46 @@ export const galaxyMapScreen = {
    * reserved rectangles rather than as a competing pass. Anything painted on the shared path after
    * the level belongs here, or labels get placed underneath it and the overlap defect comes back
    * wearing new geometry. (The navigation answers used to be such a plate; they are DOM in the
-   * foot row now, so nothing on the shared path needs a rectangle today.)
+   * foot row now.) The DOM chrome that sits over the full-frame canvas (the lens rail, the
+   * inspector, the foot) is reserved too: those regions are words on hairlines now, not opaque
+   * fields, so a label placed under them prints through the words.
    */
   _reservedLabelRects(w, h, extra = []) {
-    return Array.isArray(extra) ? extra.filter(Boolean).slice() : [];
+    const rects = Array.isArray(extra) ? extra.filter(Boolean).slice() : [];
+    for (const rect of this._chromeLabelRects(w, h)) rects.push(rect);
+    return rects;
+  },
+
+  /**
+   * Canvas-space rectangles of the DOM regions laid over the chart. Measured at most every 250 ms
+   * (and whenever the canvas size changes) so a LOCAL-scale draw at display refresh does not force
+   * a layout per frame. Headless fixtures hand back a full-frame rect for every element; anything
+   * covering half the canvas or more is not a chrome region and is skipped.
+   */
+  _chromeLabelRects(w, h) {
+    if (!HAS_DOC || !this._root || !this._canvas || typeof this._canvas.getBoundingClientRect !== 'function') return [];
+    const now = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
+      ? performance.now() : 0;
+    const cache = this._chromeRectCache;
+    if (cache && cache.w === w && cache.h === h && now - cache.at < 250) return cache.rects;
+    const frame = this._canvas.getBoundingClientRect();
+    const rects = [];
+    for (const selector of ['.gm-left-rail', '.gm-right-inspector', '.gm-apron']) {
+      const el = typeof this._root.querySelector === 'function' ? this._root.querySelector(selector) : null;
+      if (!el || typeof el.getBoundingClientRect !== 'function') continue;
+      const r = el.getBoundingClientRect();
+      const width = Number(r && r.width) || 0;
+      const height = Number(r && r.height) || 0;
+      if (!(width > 0 && height > 0) || width * height >= w * h * 0.5) continue;
+      rects.push({
+        x: (Number(r.left) || 0) - (Number(frame.left) || 0) - 8,
+        y: (Number(r.top) || 0) - (Number(frame.top) || 0) - 8,
+        width: width + 16,
+        height: height + 16,
+      });
+    }
+    this._chromeRectCache = { w, h, at: now, rects };
+    return rects;
   },
 
   /**
@@ -3763,6 +3800,7 @@ export const galaxyMapScreen = {
     this._deckEl = rootEl.querySelector('#gm-cargo-deck');
     this._navFootEl = rootEl.querySelector('#gm-navfoot');
     this._lastNavFootKey = null;
+    this._chromeRectCache = null;
     this._deckTableEl = rootEl.querySelector('#gm-deck-table');
     this._deckSortBtn = rootEl.querySelector('#gm-deck-sort');
     this._localModelDirty = true;
