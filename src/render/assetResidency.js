@@ -339,6 +339,29 @@ export function createAssetResidencyRegistry(options = {}) {
     return released;
   }
 
+  // Scene-boundary owners only self-release when their own 'removed' listener fires — an
+  // interior detach (a wrapper above the boundary was removed) or a retention that landed
+  // while the boundary was already parked never dispatches it, so the registry would pin the
+  // dead tree forever. The renderer periodically hands back owners that are detached and
+  // claimed by no live binding; parked-but-claimed boundaries (docked player hull, staged
+  // admissions) are the caller's claim check to preserve.
+  function releaseDetachedBoundaryOwners(options = {}) {
+    const isDetached = typeof options.isDetached === 'function'
+      ? options.isDetached
+      : (owner) => owner && owner.parent == null;
+    const isClaimed = typeof options.isClaimed === 'function' ? options.isClaimed : null;
+    const reason = options.reason || 'detached-boundary-owner';
+    const released = [];
+    for (const [owner, state] of [...owners.entries()]) {
+      if (state.released || !owner || owner.isObject3D !== true) continue;
+      if (!isDetached(owner)) continue;
+      if (isClaimed && isClaimed(owner)) continue;
+      releaseOwner(owner, reason);
+      released.push(owner);
+    }
+    return Object.freeze(released);
+  }
+
   function handoffOwnerWhenCovered(owner, reason = 'owner-handed-off') {
     const state = owners.get(owner);
     if (!state || state.released || state.assets.size === 0) return false;
@@ -755,6 +778,11 @@ export function createAssetResidencyRegistry(options = {}) {
         if (!tag) tag = typeof owner;
         return Object.freeze({
           owner: String(tag),
+          // `.type` wins the tag for Object3D owners, so surface `.name` separately — a boundary
+          // owner row must name WHICH boundary still pins assets or the row is unactionable.
+          ownerName: owner && typeof owner === 'object' && typeof owner.name === 'string'
+            ? owner.name
+            : null,
           // Render-package owners carry their content hash; surfaces which package a pending
           // decode request belongs to (the row tag alone collapses every package owner to one).
           contentHash: owner && typeof owner === 'object' && typeof owner.contentHash === 'string'
@@ -989,6 +1017,7 @@ export function createAssetResidencyRegistry(options = {}) {
     beginRequest,
     release,
     releaseOwner,
+    releaseDetachedBoundaryOwners,
     releaseUnreferencedCacheOwners,
     handoffOwnerWhenCovered,
     isOwnerReleased,

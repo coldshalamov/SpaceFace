@@ -17,6 +17,12 @@ import {
   createSpaceReflectionEnvironment,
   SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
 } from './spaceReflectionEnvironment.js';
+import {
+  IBL_SOURCE_BACKGROUND,
+  IBL_SOURCE_FOUNDRY,
+  loadFoundryIblTexture,
+  resolveIblSource,
+} from './foundryEnvironment.js';
 import { asteroidLeafResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, instantiatePackagedPrimitives, setEnvMapForShips, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
@@ -47,6 +53,7 @@ import {
   authoredReadmissionStatus,
   collectFirstFlightCookEntities,
   describeAuthoredUpgradeQueue,
+  inspectAuthoredBoundaryRegistrations,
   FIRST_FLIGHT_ROCK_COOK_CAP,
   firstFlightRockCookRadiusWu,
   isFirstFlightCookEntity,
@@ -315,12 +322,14 @@ import {
   shouldKeepPersistentLandmarkResident,
   submitCullHalfExtents,
   TABLE_BAND,
+  TABLE_FRAME_SKIRT_WU,
   TABLE_BUILD_URGENT_SECONDS,
   TABLE_COLLECT_HORIZON_SECONDS,
   TABLE_PROMOTE_HORIZON_SECONDS,
   TABLE_RESIDENCY_PREFETCH_SECONDS,
   TABLE_SUBMIT_APPROACH_SECONDS,
   tableLookAtDelta,
+  tablePrefetchZoomFromState,
   tableShadowCasterRadius,
   tableTravelSpeed,
   timeToEnterRadiusSeconds,
@@ -771,10 +780,7 @@ function liveTableCamera(state) {
   const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
   const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
   const zoom = Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144);
-  const prefetchZoom = Math.max(
-    Number.isFinite(live) ? live : 0,
-    Number.isFinite(requested) ? requested : 0,
-  ) || zoom;
+  const prefetchZoom = tablePrefetchZoomFromState(state);
   const fov = Number.isFinite(camera.fov) ? camera.fov
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
@@ -1251,8 +1257,20 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   owner._holdExemptCollectS = 0;
   owner._renderResidencyPollS -= dt;
   let pollDue = false;
-  if (owner._renderResidencyPollS <= 0) {
+  const pollCamera = owner.state && owner.state.camera || {};
+  const pollZoom = tablePrefetchZoomFromState(owner.state);
+  const pollFocus = pollCamera.focus || {};
+  const pollFocusX = Number(pollFocus.x) || 0;
+  const pollFocusZ = Number(pollFocus.z) || 0;
+  const zoomOpened = Number.isFinite(owner._residencyPollZoom)
+    && pollZoom > owner._residencyPollZoom + 12;
+  const focusMoved = Number.isFinite(owner._residencyPollFocusX)
+    && Math.hypot(pollFocusX - owner._residencyPollFocusX, pollFocusZ - owner._residencyPollFocusZ) > 80;
+  if (owner._renderResidencyPollS <= 0 || zoomOpened || focusMoved) {
     owner._renderResidencyPollS = RENDER_RESIDENCY_POLL_SECONDS;
+    owner._residencyPollZoom = pollZoom;
+    owner._residencyPollFocusX = pollFocusX;
+    owner._residencyPollFocusZ = pollFocusZ;
     pollDue = true;
   }
   owner._cacheLeaseSweepS = (owner._cacheLeaseSweepS || 0) - dt;
@@ -1409,14 +1427,15 @@ function entityIsOnReadableGlass(entity, state) {
   const cam = liveTableCamera(state);
   const glass = glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt);
   const delta = tableLookAtDelta(state, player.pos, entity.pos, _residencyLookDelta);
-  return classifyTableBand({
+  const band = classifyTableBand({
     dx: delta.x,
     dz: delta.z,
     glassHalfX: glass.halfX,
     glassHalfZ: glass.halfZ,
-    runwayWu: 0,
+    runwayWu: TABLE_FRAME_SKIRT_WU,
     radius: entityVisualCullRadius(entity),
-  }) === TABLE_BAND.GLASS;
+  });
+  return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
 }
 
 /**
@@ -2624,6 +2643,9 @@ function getPooledNavLightSources(root) {
 
 /** How many retired-with-cause boundary records to keep readable after disposal erases them. */
 export const SECTOR_BOUNDARY_FAILURE_TAIL = 24;
+// A cleanup-blocked record may retry its boundary teardown this many times before the
+// manager accepts the residue as permanent rather than re-arming every sweep forever.
+export const SECTOR_BOUNDARY_CLEANUP_MAX_RETRIES = 3;
 
 /**
  * Reveal early only what the player can actually see from where they arrived.
@@ -2677,6 +2699,12 @@ export function pruneSettledSectorBoundaryRecords(records, options = {}) {
       && record.cleanupBlocked !== true)) {
       records.delete(record);
       options.onPruned?.(record);
+      continue;
+    }
+    if (record.cleanupBlocked === true) {
+      // A blocked teardown keeps its boundary pinned until retried — hand it back to the
+      // manager so the bounded retry arm can run instead of accumulating permanently.
+      options.onCleanupBlocked?.(record);
       continue;
     }
     if (record.state === SECTOR_BOUNDARY_PREPARATION_STATE.live
@@ -3223,6 +3251,12 @@ export function createSectorBoundaryGenerationManager(options = {}) {
       if (record.cleanupError || record.restoreError) {
         record.cleanupBlocked = true;
         record.state = states.aborting;
+        // Leave a retryable record: a blocked record that stays in `records` forever pins its
+        // boundary (and the whole detached tree) for the session. A bounded retry count keeps
+        // transient teardown races from becoming permanent pins without looping forever on a
+        // deterministically-throwing disposer.
+        record.cleanupRetries = (Number(record.cleanupRetries) || 0) + 1;
+        if (record.cleanupRetries <= SECTOR_BOUNDARY_CLEANUP_MAX_RETRIES) record.cleanupPromise = null;
         return record;
       }
       if (records.get(record.id) === record) records.delete(record.id);
@@ -3424,6 +3458,24 @@ export function createSectorBoundaryGenerationManager(options = {}) {
     },
     get(id) {
       return records.get(id) || null;
+    },
+    /** True while any live record (or one of its staged prewarm boundaries) still owns this
+     * boundary — a prepared admission parked off-scene is claimed, never leak-sweepable. */
+    isBoundaryClaimed(boundary) {
+      if (!boundary) return false;
+      for (const record of records.values()) {
+        if (record.boundary === boundary) return true;
+        for (const prepared of record.boundaryRecords || []) {
+          if (prepared && prepared.boundary === boundary) return true;
+        }
+      }
+      return false;
+    },
+    /** Re-arms a cleanup-blocked record's teardown. `disposeRecord` cleared `cleanupPromise`
+     * on the failure path only while retries remain, so this is a no-op once exhausted. */
+    retryBlockedCleanup(record) {
+      if (!record || record.cleanupBlocked !== true || record.cleanupPromise) return null;
+      return disposeRecord(record);
     },
     inspect() {
       return [...records.values()].map((record) => ({
@@ -4139,6 +4191,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
     } else if (owner._envMap && typeof owner._envMap.dispose === 'function') {
       invokeRendererDisposer(owner._envMap, 'environment map', true);
     }
+    invokeRendererDisposer(owner._foundryEnvTexture, 'foundry IBL source', true);
     invokeRendererDisposer(owner._gpuTimers, 'GPU timers', true);
   }
   // The coordinator's scene hook and owner registry are shared by renderer-created pools and
@@ -4168,6 +4221,8 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._rebuildRestoredGpuResources = null;
   owner._envMap = null;
   owner._envMapTarget = null;
+  owner._foundryEnvTexture = null;
+  owner._envMapSource = null;
   owner._lostEnvMap = null;
   owner._contextRecovery = null;
   owner._adaptive = null;
@@ -4495,6 +4550,11 @@ export const render = {
     // a driver/GPU hiccup.
     this._envMap = null;
     this._envMapTarget = null;
+    // AQ-LIGHT: fetch the foundry HDRI once; when it lands, _bakeEnv promotes it as the PMREM
+    // source (foundryEnvironment.js). The visible sky stays the sector plate either way.
+    this._foundryEnvTexture = null;
+    this._envMapSource = null;
+    this._loadFoundryIbl();
     try {
       // wait one frame so scene.background (an async-decoded CanvasTexture) is present, then bake
       const bakeEnv = () => {
@@ -8987,6 +9047,9 @@ export const render = {
           isEligible: (entity) => sectorPrewarmEntityIsEligible(record, entity),
         }),
         onPruned: () => { prunedRecords++; },
+        onCleanupBlocked: (prepared) => {
+          this._sectorBoundaryPreparations.retryBlockedCleanup?.(prepared);
+        },
       });
       reviseSectorPrewarmPopulation(record, prunedRecords);
       const eligibleIds = new Set();
@@ -9635,6 +9698,11 @@ export const render = {
           }
         } else {
           this._openingEnvFrozen = false;
+          // A foundry HDRI that landed during the frozen first picture is promoted now — the
+          // curated shot kept its env; the live one gets the industrial light.
+          if (this._foundryEnvTexture && this._envMapSource !== IBL_SOURCE_FOUNDRY) {
+            this._bakeEnv({ force: true });
+          }
           releaseOpeningGraphPublication(this);
           this._openingFirstPicturePrepared = false;
           // F9 / Continue waits on authored-visuals BEFORE the live-sector cook.
@@ -10960,6 +11028,77 @@ export const render = {
     globalPickupMotion.prune(active);
     globalOrdnanceMotion.prune(active);
     globalInfrastructureMotion.prune(active);
+    this._releaseDetachedBoundaryOwners();
+  },
+
+  // A residency owner releases itself only when its own 'removed' event fires — boundaries
+  // detached as interior nodes (a wrapper or the scene owner above them was removed) or
+  // retained while already parked never dispatch it, so the registry keeps pinning the dead
+  // tree: composed GLB buffers, LOD family, damage closures and all. Reclaim owners that are
+  // no longer scene-anchored and are claimed by no live binding — bound meshes, entity mesh
+  // pointers, presentation slots, sector preparations, or prepared/queued authored lifecycle.
+  // Parked-but-claimed boundaries (docked player hull, staged admissions) stay untouched.
+  _releaseDetachedBoundaryOwners() {
+    const residency = this._assetResidency;
+    const scene = this.scene;
+    if (!residency || typeof residency.releaseDetachedBoundaryOwners !== 'function' || !scene) return;
+    const world = this._presentationWorld;
+    const isClaimed = (boundary) => {
+      for (const mesh of this._meshes.values()) {
+        for (let cur = mesh; cur; cur = cur.parent) {
+          if (cur === boundary) return true;
+        }
+      }
+      const entities = this.state && this.state.entities;
+      if (entities && typeof entities.values === 'function') {
+        for (const entity of entities.values()) {
+          if (entity && (entity.mesh === boundary || (entity.view && entity.view.root === boundary))) {
+            return true;
+          }
+        }
+      }
+      const refs = world && world.meshRefs;
+      if (refs) {
+        for (let i = 0; i < refs.length; i++) {
+          if (refs[i] === boundary) return true;
+        }
+      }
+      if (this._sectorBoundaryPreparations
+          && typeof this._sectorBoundaryPreparations.isBoundaryClaimed === 'function'
+          && this._sectorBoundaryPreparations.isBoundaryClaimed(boundary)) return true;
+      if (typeof inspectAuthoredBoundaryRegistrations === 'function') {
+        const regs = inspectAuthoredBoundaryRegistrations(scene, boundary);
+        if (regs && (regs.preparedRoots > 0 || regs.queuedLifecycle > 0
+            || regs.queuedKey || regs.inJobsArray)) return true;
+      }
+      return false;
+    };
+    const released = residency.releaseDetachedBoundaryOwners({
+      reason: 'detached-unclaimed-boundary',
+      isDetached: (owner) => {
+        let root = owner;
+        while (root.parent) root = root.parent;
+        return root !== scene && root.isScene !== true;
+      },
+      isClaimed,
+    });
+    for (const owner of released) {
+      // Sever the external pins that outlived the boundary before tree teardown: the living
+      // hull overlay stays parented to whatever hull it last attached to, and motion records
+      // can pin the tree through a recycled entity id.
+      try { this._livingHullPresentation?.detach?.(owner); } catch (_) { /* best effort */ }
+      globalShipMicroMotion.releaseMesh(owner);
+      globalAsteroidMotion.releaseMesh(owner);
+      globalInfrastructureMotion.releaseMesh(owner);
+      try {
+        if (!disposePreparedAuthoredBoundary(owner)) disposeObject(owner);
+      } catch (_) {
+        try { disposeObject(owner); } catch (_) { /* best effort */ }
+      }
+    }
+    if (released.length) {
+      this._detachedBoundaryOwnersReleased = (this._detachedBoundaryOwnersReleased || 0) + released.length;
+    }
   },
 
   _rebindPresentationMeshes() {
@@ -11007,6 +11146,18 @@ export const render = {
   // Bake (or re-bake) the PMREM environment map from the current nebula backdrop. Called once at
   // init after the starfield background decodes, AND on WebGL context restore (a lost GL context
   // invalidates the envMap GPU texture — without re-baking, chrome hulls go matte after recovery).
+  // Fetch the foundry HDRI (foundryEnvironment.js) once; the texture becomes the PMREM source
+  // for the next env bake. Arrival during the frozen opening picture only banks the texture —
+  // the unfreeze promotion below (or a context-restore force-bake) upgrades the live env.
+  _loadFoundryIbl() {
+    loadFoundryIblTexture(THREE).then((texture) => {
+      if (!texture) return;
+      if (!this._rendererLifecycle) { try { texture.dispose(); } catch (_) {} return; }
+      this._foundryEnvTexture = texture;
+      this._bakeEnv();
+    });
+  },
+
   _bakeEnv(options = {}) {
     if (this._openingEnvFrozen === true && options.force !== true) return;
     try {
@@ -11016,18 +11167,24 @@ export const render = {
         : this._envMap;
       const disposePrevious = options.disposePrevious !== false;
       const pmrem = new THREE.PMREMGenerator(renderer);
-      // Capture the IBL from the dedicated reflection rig, NOT from the live scene.
+      // Capture the IBL from the foundry HDRI when it has arrived, NOT from the live scene.
       //
       // The live scene is deliberately near-black, so convolving it produced an environment with
       // almost no reflected structure — which is why coated paint, bare metal, glass and bevels all
       // resolved to the same flat plastic response no matter what their roughness/metalness maps
-      // said. spaceReflectionEnvironment.js exists precisely to fix that (three broad emissive area
-      // cards: warm key, cool rim, neutral fill) and was written but never imported anywhere in
-      // src/. The cards live in their own offscreen scene, so the playable backdrop stays black and
-      // its black level is untouched.
+      // said. The industrial_workshop_foundry HDRI (foundryEnvironment.js, luminance-normalized
+      // to the card rig's band) supplies a real industrial light so paint, rubber, and bare metal
+      // separate under it; the emissive card rig below stays the last-resort fallback, and
+      // scene.background — the visible sector plate — is never touched either way.
       let reflectionEnv = null;
       let envTarget;
-      if (scene.background && scene.background.isTexture) {
+      const iblSource = resolveIblSource({
+        foundryTexture: this._foundryEnvTexture,
+        background: scene.background,
+      });
+      if (iblSource === IBL_SOURCE_FOUNDRY) {
+        envTarget = pmrem.fromEquirectangular(this._foundryEnvTexture);
+      } else if (iblSource === IBL_SOURCE_BACKGROUND) {
         envTarget = pmrem.fromEquirectangular(scene.background);
       } else {
         reflectionEnv = createSpaceReflectionEnvironment(THREE);
@@ -11035,6 +11192,7 @@ export const render = {
           reflectionEnv.scene, SPACE_REFLECTION_PMREM_SIGMA_RADIANS, 0.1, 1000,
         );
       }
+      this._envMapSource = iblSource;
       const envMap = envTarget.texture;
       pmrem.dispose();
       if (reflectionEnv) reflectionEnv.dispose();
@@ -11349,7 +11507,19 @@ export const render = {
       ? performance.now()
       : Date.now());
     const simNow = Number(this.state && this.state.simTime) || 0;
-    while (this._meshBuildQueueHead < this._meshBuildQueue.length && built < buildBudget) {
+    while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
+      const peek = resolveWorldPresentationEntity(
+        this.state,
+        this._meshBuildQueue[this._meshBuildQueueHead],
+      );
+      // A count cap of a few builds per frame is right for off-screen runway
+      // filler. It is wrong for a body already on the glass: that is a hole in
+      // the picture. On-glass builds ignore the count and stop on the time
+      // slice instead. A caller that asked for exactly one build (the loading
+      // yield) keeps that count.
+      const onGlassOverflow = buildBudget > 1 && buildBudget !== Infinity
+        && entityIsOnReadableGlass(peek, this.state);
+      if (built >= buildBudget && !onGlassOverflow) break;
       if (!shouldContinueAdmissionSlice({
         buildBudget,
         startedAtMs,
@@ -11573,8 +11743,8 @@ export const render = {
     const bounds = this._entityViewBounds;
     bounds.x = Number.isFinite(focus.x) ? focus.x : 0;
     bounds.z = Number.isFinite(focus.z) ? focus.z : 0;
-    bounds.halfX = extents.halfX;
-    bounds.halfZ = extents.halfZ;
+    bounds.halfX = extents.halfX + TABLE_FRAME_SKIRT_WU;
+    bounds.halfZ = extents.halfZ + TABLE_FRAME_SKIRT_WU;
     bounds.margin = extents.runway;
     bounds.glassHalfX = extents.glass.halfX;
     bounds.glassHalfZ = extents.glass.halfZ;
