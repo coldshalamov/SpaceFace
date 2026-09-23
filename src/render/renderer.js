@@ -4195,6 +4195,12 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   return true;
 }
 
+/** The loading cook's bounded warm roots (see render._parkBoundedWarmRoots). */
+function isBoundedWarmRoot(root) {
+  const tag = root && root.userData && root.userData.rosterPrewarm;
+  return tag === 'bounded-cook' || tag === 'opening-species-warm';
+}
+
 export const render = {
   name: 'render',
   init(ctx) {
@@ -7076,10 +7082,33 @@ export const render = {
         // scene-wide depth sweep re-walked them too.
         {
           const parkStarted = prepareNow();
+          // The census used to be the pass that STAMPED the warm records' geometries resident
+          // (cook.buffers ran before finish() instantiated them, and touches upload without
+          // stamping). Those geometry objects are shared with the hulls a wave composes mid-round,
+          // and a live build holding an unstamped geometry waits on the residency latch before it
+          // may draw. Stamp them here, scoped to the warm roots and skipping the count-0 instanced
+          // twins (never drawn live; their geometry is the direct mesh's, already in this set).
+          const warmRoots = (this._rosterPrewarmRoots || [])
+            .filter((root) => isBoundedWarmRoot(root) && root.parent);
+          let warmResidency = null;
+          if (warmRoots.length > 0) {
+            try {
+              warmResidency = await prepareStartupGeometryResidency(renderer, warmRoots, {
+                includeEmpty: false,
+                yieldToMain: createSlicedYield(yieldToBrowser, { sliceMs: 16 }),
+                onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+              });
+            } catch (error) {
+              console.warn('[render] bounded warm root residency stamp failed', error);
+            }
+          }
           const parked = this._parkBoundedWarmRoots();
           if (parked.roots > 0) {
-            recordOpeningCookStep(state.render, 'live.parkWarmRoots', parkStarted, 'resolved',
-              { roots: parked.roots, nodes: parked.nodes });
+            recordOpeningCookStep(state.render, 'live.parkWarmRoots', parkStarted, 'resolved', {
+              roots: parked.roots,
+              nodes: parked.nodes,
+              stampedGeometries: warmResidency ? warmResidency.geometryWorkItems : undefined,
+            });
           }
         }
         // The pool/buffer seal is the LAST barrier before flight, not an optional extra.
@@ -10447,13 +10476,18 @@ export const render = {
     let roots = 0;
     let nodes = 0;
     for (const root of this._rosterPrewarmRoots || []) {
-      const tag = root && root.userData && root.userData.rosterPrewarm;
-      if (tag !== 'bounded-cook' && tag !== 'opening-species-warm') continue;
-      if (!root.parent) continue;
+      if (!isBoundedWarmRoot(root) || !root.parent) continue;
       try {
         root.traverse(() => { nodes += 1; });
         root.parent.remove(root);
         roots += 1;
+        // Diagnostics only: probes audit which program keys the warm compiled; parked roots are
+        // off the scene graph, so they are published here instead of found by a scene walk.
+        const render = this.state && this.state.render;
+        if (render) {
+          if (!Array.isArray(render.parkedWarmRoots)) render.parkedWarmRoots = [];
+          if (!render.parkedWarmRoots.includes(root)) render.parkedWarmRoots.push(root);
+        }
       } catch (error) {
         console.warn('[render] bounded warm root park failed', root.name, error);
       }
@@ -10464,6 +10498,7 @@ export const render = {
   _releaseSurvivalRosterPrewarm(reason) {
     const roots = Array.isArray(this._rosterPrewarmRoots) ? this._rosterPrewarmRoots : [];
     this._rosterPrewarmRoots = [];
+    if (this.state && this.state.render) this.state.render.parkedWarmRoots = [];
     if (this._rosterPrewarmIds) this._rosterPrewarmIds.clear();
     if (this._rosterPrewarmWeaponIds) this._rosterPrewarmWeaponIds.clear();
     if (this._rosterPrewarmPending) this._rosterPrewarmPending.clear();

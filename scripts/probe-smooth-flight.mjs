@@ -290,9 +290,19 @@ try {
     const r = render && render.renderer;
     if (!scene || !r || !r.properties) return null;
     const rows = [];
+    // Warm roots on the scene, plus the bounded warm roots the renderer parks off the graph once
+    // the loading cook is done with them (render._parkBoundedWarmRoots) — parked roots still hold
+    // every program the warm linked, so they belong in the audit.
+    const warmRoots = [];
     scene.traverse((object) => {
       const tag = object.userData && object.userData.rosterPrewarm;
-      if (!tag || object.parent !== scene) return;
+      if (tag && object.parent === scene) warmRoots.push(object);
+    });
+    for (const parked of Array.isArray(render.parkedWarmRoots) ? render.parkedWarmRoots : []) {
+      if (parked && !warmRoots.includes(parked)) warmRoots.push(parked);
+    }
+    warmRoots.forEach((object) => {
+      const tag = object.userData && object.userData.rosterPrewarm;
       let materials = 0;
       let unready = 0;
       let meshes = 0;
