@@ -1,31 +1,969 @@
 {
   "schema": "spaceface.runtimeWitness.probe.v1",
-  "longTaskWitness": null,
+  "longTaskWitness": {
+    "supported": true,
+    "count": 58,
+    "totalMs": 18493,
+    "maxMs": 3309,
+    "over50Ms": 58,
+    "over100Ms": 48,
+    "top": [
+      {
+        "startTime": 17086,
+        "durationMs": 3309,
+        "name": "self"
+      },
+      {
+        "startTime": 26886,
+        "durationMs": 1921,
+        "name": "self"
+      },
+      {
+        "startTime": 20703,
+        "durationMs": 1735,
+        "name": "self"
+      },
+      {
+        "startTime": 24669,
+        "durationMs": 1044,
+        "name": "self"
+      },
+      {
+        "startTime": 48902,
+        "durationMs": 981,
+        "name": "self"
+      },
+      {
+        "startTime": 23600,
+        "durationMs": 701,
+        "name": "self"
+      },
+      {
+        "startTime": 16423,
+        "durationMs": 646,
+        "name": "self"
+      },
+      {
+        "startTime": 44640,
+        "durationMs": 639,
+        "name": "self"
+      },
+      {
+        "startTime": 43115,
+        "durationMs": 447,
+        "name": "self"
+      },
+      {
+        "startTime": 23282,
+        "durationMs": 310,
+        "name": "self"
+      },
+      {
+        "startTime": 20400,
+        "durationMs": 288,
+        "name": "self"
+      },
+      {
+        "startTime": 22449,
+        "durationMs": 282,
+        "name": "self"
+      }
+    ],
+    "heavyResources": [
+      {
+        "name": "vendor/three.module.js",
+        "kb": 635,
+        "responseEnd": 78
+      },
+      {
+        "name": "render/partsLibrary.js",
+        "kb": 473,
+        "responseEnd": 99
+      },
+      {
+        "name": "systems/missions.js",
+        "kb": 376,
+        "responseEnd": 476
+      },
+      {
+        "name": "systems/traffic.js",
+        "kb": 462,
+        "responseEnd": 487
+      },
+      {
+        "name": "render/renderer.js",
+        "kb": 668,
+        "responseEnd": 541
+      },
+      {
+        "name": "render/vfx.js",
+        "kb": 655,
+        "responseEnd": 541
+      }
+    ],
+    "jsHeapSeries": [
+      364,
+      363,
+      375,
+      426
+    ],
+    "economySeries": [
+      "2s/90L/5760p",
+      "2s/90L/5760p",
+      "2s/90L/5760p",
+      "2s/90L/5760p"
+    ],
+    "geometrySeries": [
+      148,
+      205,
+      330,
+      337
+    ],
+    "textureSeries": [
+      114,
+      314,
+      338,
+      353
+    ]
+  },
   "gcProbe": null,
   "allocProfile": null,
   "verdict": {
-    "ok": null,
-    "kind": "inconclusive",
-    "headline": "Not enough runtime samples yet.",
-    "next": "Let the game run a few seconds, then read window.__SF_WITNESS__.verdict().",
+    "ok": true,
+    "kind": "presenting",
+    "headline": "The 3D world is presenting. Biggest recent cost: presentation (p95 70.1 ms).",
+    "next": "If you came here for performance, that is the only legal first target.",
     "facts": {
-      "sampleCount": 0
+      "sampleCount": 8,
+      "simDelta": 1.1666666666666625,
+      "frameDelta": 34,
+      "renderDelta": 34,
+      "rendererFrameDelta": 102,
+      "posDelta": 227.5,
+      "errorDelta": 0,
+      "canvasChanged": true,
+      "canvasStuck": false,
+      "canvasHashCount": 3,
+      "hitchCount": 0,
+      "mode": "flight",
+      "clockScale": 1,
+      "lifecycle": "foreground-visible",
+      "suspended": false,
+      "documentHidden": false,
+      "contextLost": false,
+      "lastFrameError": null,
+      "frameErrorCount": 0,
+      "topPhase": "presentation",
+      "topPhaseP95": 70.09999999403954,
+      "speed": 194.9999237060547
     }
   },
-  "sampleCount": 0,
-  "first": null,
-  "last": null,
-  "canvasFrames": [],
+  "sampleCount": 30,
+  "first": {
+    "wallMs": 34733.59999999404,
+    "simTime": 0.7666666666666674,
+    "tick": 46,
+    "mode": "flight",
+    "clockScale": 1,
+    "posX": 0,
+    "posZ": 0,
+    "hasPos": true,
+    "speed": 0,
+    "lifecycle": "foreground-visible",
+    "suspended": false,
+    "documentHidden": false,
+    "visibilityState": "visible",
+    "executedFrames": 90,
+    "renderUpdates": 90,
+    "rendererFrame": 322,
+    "rendererFrameObserved": true,
+    "drawCalls": 67,
+    "costs": [],
+    "contextLost": false,
+    "lastFrameError": null,
+    "frameErrorCount": 0,
+    "callbackMs": 0,
+    "simMs": 0,
+    "renderMs": 0,
+    "vfxMs": 0,
+    "uiMs": 0,
+    "admissionMs": 0,
+    "topPhase": null,
+    "topPhaseP95": 0,
+    "hitch": false,
+    "longTasks": {
+      "supported": true,
+      "count": 20,
+      "totalMs": 11383,
+      "maxMs": 3309,
+      "over50Ms": 20,
+      "over100Ms": 15,
+      "top": [
+        {
+          "startTime": 17086,
+          "durationMs": 3309,
+          "name": "self"
+        },
+        {
+          "startTime": 26886,
+          "durationMs": 1921,
+          "name": "self"
+        },
+        {
+          "startTime": 20703,
+          "durationMs": 1735,
+          "name": "self"
+        },
+        {
+          "startTime": 24669,
+          "durationMs": 1044,
+          "name": "self"
+        },
+        {
+          "startTime": 23600,
+          "durationMs": 701,
+          "name": "self"
+        },
+        {
+          "startTime": 16423,
+          "durationMs": 646,
+          "name": "self"
+        },
+        {
+          "startTime": 23282,
+          "durationMs": 310,
+          "name": "self"
+        },
+        {
+          "startTime": 20400,
+          "durationMs": 288,
+          "name": "self"
+        },
+        {
+          "startTime": 22449,
+          "durationMs": 282,
+          "name": "self"
+        },
+        {
+          "startTime": 22736,
+          "durationMs": 253,
+          "name": "self"
+        },
+        {
+          "startTime": 33868,
+          "durationMs": 145,
+          "name": "self"
+        },
+        {
+          "startTime": 16234,
+          "durationMs": 129,
+          "name": "self"
+        }
+      ]
+    },
+    "gpuResidency": {
+      "geometries": 148,
+      "textures": 114,
+      "programs": 73
+    },
+    "economy": {
+      "stations": 2,
+      "listings": 90,
+      "withHistory": 90,
+      "historyPoints": 5760
+    },
+    "jsHeap": {
+      "usedMb": 364,
+      "totalMb": 435,
+      "limitMb": 4192
+    },
+    "heavyResources": [
+      {
+        "name": "vendor/three.module.js",
+        "kb": 635,
+        "responseEnd": 78
+      },
+      {
+        "name": "render/partsLibrary.js",
+        "kb": 473,
+        "responseEnd": 99
+      },
+      {
+        "name": "systems/missions.js",
+        "kb": 376,
+        "responseEnd": 476
+      },
+      {
+        "name": "systems/traffic.js",
+        "kb": 462,
+        "responseEnd": 487
+      },
+      {
+        "name": "render/renderer.js",
+        "kb": 668,
+        "responseEnd": 541
+      },
+      {
+        "name": "render/vfx.js",
+        "kb": 655,
+        "responseEnd": 541
+      }
+    ],
+    "loadingReadiness": {
+      "wallMs": 1790124454010,
+      "elapsedMs": 19839,
+      "stageId": "entering-flight",
+      "authored": {
+        "ready": true,
+        "pipelineReady": true,
+        "playerStatus": "authored",
+        "startingHubStatus": "missing",
+        "openingPending": 2,
+        "openingPendingIds": [
+          "308:compiling-pipelines:ship:ship_mule:promise",
+          "309:compiling-pipelines:ship:ship_atlas:promise"
+        ],
+        "openingPipelinePending": 0
+      },
+      "pendingPipelineAdmissions": 24,
+      "pendingAuthoredGpuResidency": 0,
+      "openingCompositionSettle": null,
+      "programCount": 73,
+      "geometryCount": 148,
+      "rendererTextureCount": 114,
+      "promiseStates": {
+        "pipelinePrecompileReady": {
+          "status": "fulfilled",
+          "settledWallMs": 1790124436359,
+          "result": {
+            "skipped": true,
+            "reason": "opening-submission-plan-owns-first-picture",
+            "watermark": null,
+            "capturedCount": null,
+            "remainingCount": null,
+            "textures": null,
+            "uploads": null,
+            "uploadMs": null,
+            "openingCompositionRoots": null,
+            "vfxRoots": null,
+            "vfxTextures": null,
+            "openingFrame": null
+          }
+        },
+        "exactPipelineWarmupReady": {
+          "status": "fulfilled",
+          "settledWallMs": 1790124453050,
+          "result": {
+            "skipped": false,
+            "reason": null,
+            "watermark": 16,
+            "capturedCount": 0,
+            "remainingCount": 0,
+            "textures": null,
+            "uploads": null,
+            "uploadMs": null,
+            "openingCompositionRoots": null,
+            "vfxRoots": null,
+            "vfxTextures": null,
+            "openingFrame": null
+          }
+        },
+        "authoredGpuAdmissionReady": {
+          "status": "fulfilled",
+          "settledWallMs": 1790124453050,
+          "result": {
+            "skipped": false,
+            "reason": null,
+            "watermark": 5,
+            "capturedCount": 0,
+            "remainingCount": 0,
+            "textures": null,
+            "uploads": null,
+            "uploadMs": null,
+            "openingCompositionRoots": null,
+            "vfxRoots": null,
+            "vfxTextures": null,
+            "openingFrame": null
+          }
+        },
+        "openingGpuResidencyReady": {
+          "status": "fulfilled",
+          "settledWallMs": 1790124453100,
+          "result": {
+            "skipped": false,
+            "reason": null,
+            "watermark": null,
+            "capturedCount": null,
+            "remainingCount": null,
+            "textures": 80,
+            "uploads": 80,
+            "uploadMs": 0.09999999403953552,
+            "openingCompositionRoots": 5,
+            "vfxRoots": 0,
+            "vfxTextures": 79,
+            "openingFrame": null
+          }
+        }
+      },
+      "startupGpuResidency": {
+        "skipped": false,
+        "reason": null,
+        "watermark": null,
+        "capturedCount": null,
+        "remainingCount": null,
+        "textures": 80,
+        "uploads": 80,
+        "uploadMs": 0.09999999403953552,
+        "openingCompositionRoots": 5,
+        "vfxRoots": 0,
+        "vfxTextures": 79,
+        "openingFrame": null
+      },
+      "openingSubmission": {
+        "planComplete": true,
+        "roots": 5,
+        "drawLeaves": 67,
+        "producerCensusMatches": true,
+        "admittedPrograms": 44,
+        "deferredGlobalPrograms": 0,
+        "validation": {
+          "ok": false,
+          "reason": "uncaptured-first-draw-resource",
+          "uncaptured": [
+            "textures"
+          ],
+          "uncapturedProgramKeys": 0,
+          "uncapturedGeometryBufferIds": 0,
+          "uncapturedTextureIds": 1,
+          "uncapturedShadowResourceIds": 0
+        }
+      },
+      "partLoads": []
+    },
+    "tableCensus": {
+      "available": true,
+      "glass": 4,
+      "runway": 5,
+      "beyond": 64,
+      "submitted": 9,
+      "resident": 12,
+      "landmarks": 23,
+      "glassHalfX": 144,
+      "glassHalfZ": 93,
+      "runwayWu": 120,
+      "renderWorkEnabled": true,
+      "hitchAttributionEnabled": true
+    },
+    "hitchAttribution": {
+      "frames": 0,
+      "hitches": 0,
+      "named": 0,
+      "unknown": 0,
+      "firstHitches": 0,
+      "echoHitches": 0,
+      "longestStreak": 0,
+      "coverage": 1,
+      "counts": {
+        "compile": 0,
+        "upload": 0,
+        "compose": 0,
+        "meshBuild": 0,
+        "shadow": 0,
+        "speedLines": 0,
+        "bloom": 0,
+        "gc": 0,
+        "restore": 0,
+        "autosave": 0,
+        "present": 0,
+        "sim": 0,
+        "ui": 0,
+        "admission": 0,
+        "vfx": 0,
+        "feel": 0,
+        "callbackUntracked": 0,
+        "externalScheduling": 0,
+        "unknown": 0
+      },
+      "bySimSystem": {},
+      "bySimSystemPartial": {},
+      "simStepHistogram": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4+": 0
+      },
+      "unknownLargestPhase": {},
+      "residualMsTotal": 0,
+      "residualFrames": 0,
+      "intervalFrames": 0,
+      "frameMsTotal": 0,
+      "callbackIntervalMsTotal": 0,
+      "intervalDisagreementMsTotal": 0,
+      "intervalDisagreementMedianMs": 0,
+      "intervalDisagreementMedianCount": 0,
+      "intervalClampedFrames": 0,
+      "intervalClampedDisagreementMsTotal": 0,
+      "schedulingFrames": 0,
+      "schedulingExternalGapMsTotal": 0,
+      "schedulingDispatchLagMsTotal": 0,
+      "schedulingGapDominant": 0,
+      "schedulingDispatchDominant": 0,
+      "simOwnedSystemTotalMs": 0,
+      "simOwnedPhaseMs": 0,
+      "simMeasuredFrames": 0,
+      "simPartiallyMeasuredFrames": 0,
+      "simUnmeasuredFrames": 0,
+      "simZeroStepFrames": 0
+    },
+    "elapsedMs": 0
+  },
+  "last": {
+    "wallMs": 54484.5,
+    "simTime": 6.299999999999983,
+    "tick": 378,
+    "mode": "flight",
+    "clockScale": 1,
+    "posX": 856.5641479492188,
+    "posZ": -2.3971939086914062,
+    "hasPos": true,
+    "speed": 194.9999237060547,
+    "lifecycle": "foreground-visible",
+    "suspended": false,
+    "documentHidden": false,
+    "visibilityState": "visible",
+    "executedFrames": 258,
+    "renderUpdates": 258,
+    "rendererFrame": 1063,
+    "rendererFrameObserved": true,
+    "drawCalls": 114,
+    "costs": [
+      {
+        "name": "presentation",
+        "p95": 70.09999999403954,
+        "avg": 27.514285713966405,
+        "max": 973.0999999940395
+      },
+      {
+        "name": "render",
+        "p95": 65.19999998807907,
+        "avg": 23.351785713363263,
+        "max": 969.0999999940395
+      },
+      {
+        "name": "simFrame",
+        "p95": 9.900000005960464,
+        "avg": 6.132738095309053,
+        "max": 25.80000001192093
+      },
+      {
+        "name": "admission",
+        "p95": 9.199999988079071,
+        "avg": 7.037500000070958,
+        "max": 195.19999995827675
+      },
+      {
+        "name": "sim",
+        "p95": 4.9000000059604645,
+        "avg": 2.997777777744664,
+        "max": 22.200000017881393
+      },
+      {
+        "name": "ui",
+        "p95": 4.5,
+        "avg": 2.8130952385919437,
+        "max": 10.700000017881393
+      }
+    ],
+    "contextLost": false,
+    "lastFrameError": null,
+    "frameErrorCount": 0,
+    "callbackMs": 15.5,
+    "simMs": 2.5,
+    "renderMs": 5.800000011920929,
+    "vfxMs": 1,
+    "uiMs": 1.5,
+    "admissionMs": 0,
+    "topPhase": "presentation",
+    "topPhaseP95": 70.09999999403954,
+    "hitch": false,
+    "longTasks": {
+      "supported": true,
+      "count": 58,
+      "totalMs": 18493,
+      "maxMs": 3309,
+      "over50Ms": 58,
+      "over100Ms": 48,
+      "top": [
+        {
+          "startTime": 17086,
+          "durationMs": 3309,
+          "name": "self"
+        },
+        {
+          "startTime": 26886,
+          "durationMs": 1921,
+          "name": "self"
+        },
+        {
+          "startTime": 20703,
+          "durationMs": 1735,
+          "name": "self"
+        },
+        {
+          "startTime": 24669,
+          "durationMs": 1044,
+          "name": "self"
+        },
+        {
+          "startTime": 48902,
+          "durationMs": 981,
+          "name": "self"
+        },
+        {
+          "startTime": 23600,
+          "durationMs": 701,
+          "name": "self"
+        },
+        {
+          "startTime": 16423,
+          "durationMs": 646,
+          "name": "self"
+        },
+        {
+          "startTime": 44640,
+          "durationMs": 639,
+          "name": "self"
+        },
+        {
+          "startTime": 43115,
+          "durationMs": 447,
+          "name": "self"
+        },
+        {
+          "startTime": 23282,
+          "durationMs": 310,
+          "name": "self"
+        },
+        {
+          "startTime": 20400,
+          "durationMs": 288,
+          "name": "self"
+        },
+        {
+          "startTime": 22449,
+          "durationMs": 282,
+          "name": "self"
+        }
+      ]
+    },
+    "gpuResidency": {
+      "geometries": 342,
+      "textures": 353,
+      "programs": 105
+    },
+    "economy": {
+      "stations": 2,
+      "listings": 90,
+      "withHistory": 90,
+      "historyPoints": 5760
+    },
+    "jsHeap": {
+      "usedMb": 409,
+      "totalMb": 476,
+      "limitMb": 4192
+    },
+    "heavyResources": [
+      {
+        "name": "vendor/three.module.js",
+        "kb": 635,
+        "responseEnd": 78
+      },
+      {
+        "name": "render/partsLibrary.js",
+        "kb": 473,
+        "responseEnd": 99
+      },
+      {
+        "name": "systems/missions.js",
+        "kb": 376,
+        "responseEnd": 476
+      },
+      {
+        "name": "systems/traffic.js",
+        "kb": 462,
+        "responseEnd": 487
+      },
+      {
+        "name": "render/renderer.js",
+        "kb": 668,
+        "responseEnd": 541
+      },
+      {
+        "name": "render/vfx.js",
+        "kb": 655,
+        "responseEnd": 541
+      }
+    ],
+    "loadingReadiness": {
+      "wallMs": 1790124473761,
+      "elapsedMs": 39590,
+      "stageId": "entering-flight",
+      "authored": {
+        "ready": true,
+        "pipelineReady": true,
+        "playerStatus": "authored",
+        "startingHubStatus": "missing",
+        "openingPending": 5,
+        "openingPendingIds": [
+          "83:missing:fx:no-hook:no-promise",
+          "319:missing:ship:ship_ironback:no-hook:no-promise",
+          "320:missing:ship:ship_hornet:no-hook:no-promise",
+          "326:missing:ship:ship_mule:no-hook:no-promise",
+          "328:missing:ship:ship_wasp:no-hook:no-promise"
+        ],
+        "openingPipelinePending": 5
+      },
+      "pendingPipelineAdmissions": 0,
+      "pendingAuthoredGpuResidency": 0,
+      "openingCompositionSettle": null,
+      "programCount": 105,
+      "geometryCount": 342,
+      "rendererTextureCount": 353,
+      "promiseStates": {
+        "pipelinePrecompileReady": {
+          "status": "fulfilled",
+          "settledWallMs": 1790124436359,
+          "result": {
+            "skipped": true,
+            "reason": "opening-submission-plan-owns-first-picture",
+            "watermark": null,
+            "capturedCount": null,
+            "remainingCount": null,
+            "textures": null,
+            "uploads": null,
+            "uploadMs": null,
+            "openingCompositionRoots": null,
+            "vfxRoots": null,
+            "vfxTextures": null,
+            "openingFrame": null
+          }
+        },
+        "exactPipelineWarmupReady": {
+          "status": "fulfilled",
+          "settledWallMs": 1790124453050,
+          "result": {
+            "skipped": false,
+            "reason": null,
+            "watermark": 16,
+            "capturedCount": 0,
+            "remainingCount": 0,
+            "textures": null,
+            "uploads": null,
+            "uploadMs": null,
+            "openingCompositionRoots": null,
+            "vfxRoots": null,
+            "vfxTextures": null,
+            "openingFrame": null
+          }
+        },
+        "authoredGpuAdmissionReady": {
+          "status": "fulfilled",
+          "settledWallMs": 1790124453050,
+          "result": {
+            "skipped": false,
+            "reason": null,
+            "watermark": 5,
+            "capturedCount": 0,
+            "remainingCount": 0,
+            "textures": null,
+            "uploads": null,
+            "uploadMs": null,
+            "openingCompositionRoots": null,
+            "vfxRoots": null,
+            "vfxTextures": null,
+            "openingFrame": null
+          }
+        },
+        "openingGpuResidencyReady": {
+          "status": "fulfilled",
+          "settledWallMs": 1790124453100,
+          "result": {
+            "skipped": false,
+            "reason": null,
+            "watermark": null,
+            "capturedCount": null,
+            "remainingCount": null,
+            "textures": 80,
+            "uploads": 80,
+            "uploadMs": 0.09999999403953552,
+            "openingCompositionRoots": 5,
+            "vfxRoots": 0,
+            "vfxTextures": 79,
+            "openingFrame": null
+          }
+        }
+      },
+      "startupGpuResidency": {
+        "skipped": false,
+        "reason": null,
+        "watermark": null,
+        "capturedCount": null,
+        "remainingCount": null,
+        "textures": 80,
+        "uploads": 80,
+        "uploadMs": 0.09999999403953552,
+        "openingCompositionRoots": 5,
+        "vfxRoots": 0,
+        "vfxTextures": 79,
+        "openingFrame": null
+      },
+      "openingSubmission": {
+        "planComplete": true,
+        "roots": 5,
+        "drawLeaves": 67,
+        "producerCensusMatches": true,
+        "admittedPrograms": 44,
+        "deferredGlobalPrograms": 0,
+        "validation": {
+          "ok": false,
+          "reason": "uncaptured-first-draw-resource",
+          "uncaptured": [
+            "textures"
+          ],
+          "uncapturedProgramKeys": 0,
+          "uncapturedGeometryBufferIds": 0,
+          "uncapturedTextureIds": 1,
+          "uncapturedShadowResourceIds": 0
+        }
+      },
+      "partLoads": []
+    },
+    "tableCensus": {
+      "available": true,
+      "glass": 2,
+      "runway": 5,
+      "beyond": 68,
+      "submitted": 7,
+      "resident": 20,
+      "landmarks": 23,
+      "glassHalfX": 221,
+      "glassHalfZ": 144,
+      "runwayWu": 146,
+      "renderWorkEnabled": true,
+      "hitchAttributionEnabled": true
+    },
+    "hitchAttribution": {
+      "frames": 168,
+      "hitches": 146,
+      "named": 136,
+      "unknown": 10,
+      "firstHitches": 17,
+      "echoHitches": 129,
+      "longestStreak": 40,
+      "coverage": 0.9315068493150684,
+      "counts": {
+        "compile": 5,
+        "upload": 2,
+        "compose": 0,
+        "meshBuild": 0,
+        "shadow": 0,
+        "speedLines": 0,
+        "bloom": 9,
+        "gc": 0,
+        "restore": 0,
+        "autosave": 0,
+        "present": 0,
+        "sim": 0,
+        "ui": 0,
+        "admission": 0,
+        "vfx": 0,
+        "feel": 0,
+        "callbackUntracked": 0,
+        "externalScheduling": 120,
+        "unknown": 10
+      },
+      "bySimSystem": {},
+      "bySimSystemPartial": {},
+      "simStepHistogram": {
+        "0": 0,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4+": 0
+      },
+      "unknownLargestPhase": {
+        "externalScheduling": 6,
+        "sim": 4
+      },
+      "residualMsTotal": 720.1999999821201,
+      "residualFrames": 10,
+      "intervalFrames": 145,
+      "frameMsTotal": 17082.400000000023,
+      "callbackIntervalMsTotal": 19276.399999976158,
+      "intervalDisagreementMsTotal": -2193.999999976135,
+      "intervalDisagreementMedianMs": -1.3999999880834366,
+      "intervalDisagreementMedianCount": 145,
+      "intervalClampedFrames": 9,
+      "intervalClampedDisagreementMsTotal": -2285.5999999940395,
+      "schedulingFrames": 120,
+      "schedulingExternalGapMsTotal": 11937.699999809265,
+      "schedulingDispatchLagMsTotal": 2237.2999996959625,
+      "schedulingGapDominant": 116,
+      "schedulingDispatchDominant": 4,
+      "simOwnedSystemTotalMs": 0,
+      "simOwnedPhaseMs": 0,
+      "simMeasuredFrames": 0,
+      "simPartiallyMeasuredFrames": 0,
+      "simUnmeasuredFrames": 0,
+      "simZeroStepFrames": 0
+    },
+    "elapsedMs": 19754
+  },
+  "canvasFrames": [
+    {
+      "elapsedMs": 0,
+      "path": "/workspace/spaceface-master-witness/.devshots/runtime-witness/run3/t00.png",
+      "hash": "c123e9f13ec4d6e8b0d38ba1f773a38c02ecb79750668cadeb560d8933bdd82b"
+    },
+    {
+      "elapsedMs": 10408,
+      "path": "/workspace/spaceface-master-witness/.devshots/runtime-witness/run3/t01.png",
+      "hash": "8fb3211378b323260e53fb2eb3515e4856d9dd2fefb0d5c265e655be8e77774a"
+    },
+    {
+      "elapsedMs": 20286,
+      "path": "/workspace/spaceface-master-witness/.devshots/runtime-witness/run3/t-final.png",
+      "hash": "ad94776deb54de480bc3ebdf096f0b56e253c6870bb6b4d151dcf777baec0875"
+    }
+  ],
   "pageErrors": [],
   "consoleHits": [
-    "[http.404] http://127.0.0.1:39369/src/data/emergentPrimitives.js",
-    "[console.error] Failed to load resource: the server responded with a status of 404 (Not Found)"
+    "[console.log] [render] GPU: %s | tier: %s | pixelRatio: %s | buffer: %dx%d ANGLE (Mesa, llvmpipe (LLVM 19.1.7 256 bits), OpenGL 4.5) software 1.00 1280 719",
+    "[http.404] http://127.0.0.1:33229/__spaceface_player_store",
+    "[console.error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "[console.info] [render] opening ledger 8174 ms: opening.rockSurfaceLibrary 35ms resolved | opening.firstPresentAdmission 0ms resolved | opening.planWait 8089ms resolved | opening.residency 14ms resolved (subjects=67,textureRefs=79,textures=80) | opening.postResources 34ms resolved (route=bloom) | opening.capturedPipelineDrain 0ms skipped (captured=0,stillPending=0) | opening.drainWait 0ms resolved | opening.receipt 1ms resolved | wait.prepareOpeningGpuResources 8174ms resolved",
+    "[console.warning] [GPU brick] bloomScene 207.9ms {\"owners\":[{\"object\":\"plume-layer:core\",\"material\":\"plume:family_industrial_main_plu\",\"root\":\"plume-system:family_industrial_main_plume\",\"key\":\"73,74,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal\",\"siblingKeys\":[],\"visible\":true},{\"object\":\"plume-layer:inner\",\"material\":\"plume:family_industrial_main_plu\",\"root\":\"plume-system:family_industrial_main_plume\",\"key\":\"73,74,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal\",\"siblingKeys\":[],\"visible\":true},{\"object\":\"plume-layer:sheath\",\"material\":\"plume:family_industrial_main_plu\",\"root\":\"plume-system:family_industrial_main_plume\",\"key\":\"73,74,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal\",\"siblingKeys\":[],\"visible\":true},{\"object\":\"plume-layer:vapor\",\"material\":\"plume:family_industrial_main_plu\",\"root\":\"plume-system:family_industrial_main_plume\",\"key\":\"73,74,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal\",\"siblingKeys\":[],\"visible\":true}],\"newGeometries\":[{\"object\":\"plume-layer:core\",\"root\":\"plume-system:family_industrial_main_plume\",\"geometry\":\"PlaneGeometry\",\"uuid\":\"2c753518\",\"visible\":true,\"count\":4},{\"object\":\"plume-layer:inner\",\"root\":\"plume-system:family_industrial_main_plume\",\"geometry\":\"PlaneGeometry\",\"uuid\":\"3f999660\",\"visible\":true,\"count\":4},{\"object\":\"plume-layer:sheath\",\"root\":\"plume-system:family_industrial_main_plume\",\"geometry\":\"PlaneGeometry\",\"uuid\":\"1e426ffb\",\"visible\":true,\"count\":4},{\"object\":\"plume-layer:vapor\",\"root\":\"plume-system:family_industrial_main_plume\",\"geometry\":\"PlaneGeometry\",\"uuid\":\"4fc52a24\",\"visible\":true,\"count\":4},{\"object\":\"plume-layer:distortion\",\"root\":\"plume-system:family_industrial_main_plume\",\"geometry\":\"PlaneGeometry\",\"uuid\":\"b0d63d34\",\"visible\":false,\"count\":0}],\"unstampedVisible\":[{\"object\":\"AuthoredResolvingMarker\",\"root\":\"ship_mule_DirectAuthoredAdmission_AuthoredAssetBoundary\",\"geometry\":\"OctahedronGeometry\",\"uuid\":\"c8a9c298\",\"drawRange\":null},{\"object\":\"AuthoredResolvingMarker\",\"root\":\"ship_atlas_DirectAuthoredAdmission_AuthoredAssetBoundary\",\"geometry\":\"OctahedronGeometry\",\"uuid\":\"c8a9c298\",\"drawRange\":null},{\"object\":\"AuthoredResolvingMarker\",\"root\":\"ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary\",\"geometry\":\"OctahedronGeometry\",\"uuid\":\"c8a9c298\",\"drawRange\":null},{\"object\":\"AuthoredResolvingMarker\",\"root\":\"ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary\",\"geometry\":\"OctahedronGeometry\",\"uuid\":\"c8a9c298\",\"drawRange\":null},{\"object\":\"AuthoredResolvingMarker\",\"root\":\"ship_mule_DirectAuthoredAdmission_AuthoredAssetBoundary\",\"geometry\":\"OctahedronGeometry\",\"uuid\":\"c8a9c298\",\"drawRange\":null},{\"object\":\"AuthoredResolvingMarker\",\"root\":\"ship_mule_DirectAuthoredAdmission_AuthoredAssetBoundary\",\"geometry\":\"OctahedronGeometry\",\"uuid\":\"c8a9c298\",\"drawRange\":null},{\"object\":\"SF_PlaceFallback_place_lane_pin_Hull\",\"root\":\"SF_PlaceFallback_place_lane_pin_AuthoredAssetBoundary\",\"geometry\":\"BoxGeometry\",\"uuid\":\"e673fe69\",\"drawRange\":null},{\"object\":\"SF_PlaceFallback_place_tally_post_Hull\",\"root\":\"SF_PlaceFallback_place_tally_post_AuthoredAssetBoundary\",\"geometry\":\"BoxGeometry\",\"uuid\":\"e673fe69\",\"drawRange\":null},{\"object\":\"plume-layer:core\",\"root\":\"plume-system:family_industrial_main_plume\",\"geometry\":\"PlaneGeometry\",\"uuid\":\"2c753518\",\"count\":4,\"drawRange\":null},{\"object\":\"plume-layer:inner\",\"root\":\"plume-system:family_industrial_main_plume\",\"geometry\":\"PlaneGeometry\",\"uuid\":\"3f999660\",\"count\":4,\"drawRange\":null},{\"object\":\"plume-layer:sheath\",\"root\":\"plume-system:family_industrial_main_plume\",\"geometry\":\"PlaneGeometry\",\"uuid\":\"1e426ffb\",\"count\":4,\"drawRange\":null},{\"object\":\"plume-layer:vapor\",\"root\":\"plume-system:family_industrial_main_plume\",\"geometry\":\"PlaneGeometry\",\"uuid\":\"4fc52a24\",\"count\":4,\"drawRange\":null},{\"object\":\"Mesh\",\"root\":\"sf-liquid-plasma-root\",\"geometry\":\"BufferGeometry\",\"uuid\":\"09a0f662\",\"drawRange\":864},{\"object\":\"Mesh\",\"root\":\"sf-liquid-plasma-root\",\"geometry\":\"BufferGeometry\",\"uuid\":\"91e6217a\",\"drawRange\":null},{\"object\":\"Mesh\",\"root\":\"sf-liquid-plasma-root\",\"geometry\":\"BufferGeometry\",\"uuid\":\"cdf61645\",\"drawRange\":null},{\"object\":\"sf-plasma-throat-0\",\"root\":\"sf-liquid-plasma-root\",\"geometry\":\"PlaneGeometry\",\"uuid\":\"5a349704\",\"drawRange\":null},{\"object\":\"Mesh\",\"root\":\"sf-energy-massline\",\"geometry\":\"CylinderGeometry\",\"uuid\":\"81249240\",\"drawRange\":null},{\"object\":\"Mesh\",\"root\":\"sf-energy-massline\",\"geometry\":\"CylinderGeometry\",\"uuid\":\"81249240\",\"drawRange\":null}],\"programsBefore\":79,\"programsAfter\":80,\"geometriesBefore\":151,\"geometriesAfter\":155,\"texturesBefore\":114,\"texturesAfter\":118,\"newPrograms\":[\"73,74,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal\"]}",
+    "[console.warning] [GPU brick] bloomScene 430.4ms {\"owners\":[],\"newGeometries\":[],\"unstampedVisible\":[{\"object\":\"AuthoredResolvingMarker\",\"root\":\"ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary\",\"geometry\":\"OctahedronGeometry\",\"uuid\":\"c8a9c298\",\"drawRange\":null},{\"object\":\"AuthoredResolvingMarker\",\"root\":\"ship_mule_DirectAuthoredAdmission_AuthoredAssetBoundary\",\"geometry\":\"OctahedronGeometry\",\"uuid\":\"c8a9c298\",\"drawRange\":null},{\"object\":\"AuthoredResolvingMarker\",\"root\":\"ship_mule_DirectAuthoredAdmission_AuthoredAssetBoundary\",\"geometry\":\"OctahedronGeometry\",\"uuid\":\"c8a9c298\",\"drawRange\":null}],\"programsBefore\":102,\"programsAfter\":102,\"geometriesBefore\":290,\"geometriesAfter\":290,\"texturesBefore\":338,\"texturesAfter\":338,\"newPrograms\":[]}",
+    "[console.warning] [GPU brick] bloomScene 623.6ms {\"owners\":[],\"newGeometries\":[],\"unstampedVisible\":[{\"object\":\"AuthoredResolvingMarker\",\"root\":\"ship_wasp_DirectAuthoredAdmission_AuthoredAssetBoundary\",\"geometry\":\"OctahedronGeometry\",\"uuid\":\"c8a9c298\",\"drawRange\":null},{\"object\":\"AuthoredResolvingMarker\",\"root\":\"ship_mule_DirectAuthoredAdmission_AuthoredAssetBoundary\",\"geometry\":\"OctahedronGeometry\",\"uuid\":\"c8a9c298\",\"drawRange\":null}],\"programsBefore\":102,\"programsAfter\":102,\"geometriesBefore\":330,\"geometriesAfter\":330,\"texturesBefore\":338,\"texturesAfter\":338,\"newPrograms\":[]}",
+    "[console.warning] [GPU brick] bloomScene 203.8ms {\"owners\":[],\"newGeometries\":[],\"unstampedVisible\":[],\"programsBefore\":102,\"programsAfter\":102,\"geometriesBefore\":330,\"geometriesAfter\":330,\"texturesBefore\":338,\"texturesAfter\":338,\"newPrograms\":[]}",
+    "[console.warning] [GPU brick] bloomScene 963.7ms {\"owners\":[],\"newGeometries\":[],\"unstampedVisible\":[],\"programsBefore\":105,\"programsAfter\":105,\"geometriesBefore\":333,\"geometriesAfter\":333,\"texturesBefore\":353,\"texturesAfter\":353,\"newPrograms\":[]}"
   ],
   "logs": [
-    "[2026-09-22T04:45:31.543Z] launching isolated Electron",
-    "[2026-09-22T04:47:02.695Z] probe failed: TimeoutError: CSP-safe page condition timed out after 90000ms\n    at waitForPageCondition (file:///workspace/spaceface-master-witness/scripts/lib/playwrightCspPolling.mjs:58:17)\n    at async file:///workspace/spaceface-master-witness/scripts/probe-runtime-witness.mjs:3169:3"
+    "[2026-09-23T00:46:58.963Z] launching isolated Electron",
+    "[2026-09-23T00:47:14.164Z] new game",
+    "[2026-09-23T00:47:15.265Z] loading stage=preparing-run sim=0 frames=46",
+    "[2026-09-23T00:47:16.365Z] loading stage=authored-library sim=0 frames=55",
+    "[2026-09-23T00:47:19.984Z] loading stage=authored-library sim=0 frames=56",
+    "[2026-09-23T00:47:21.742Z] loading stage=authored-library sim=0 frames=57",
+    "[2026-09-23T00:47:22.875Z] loading stage=authored-visuals sim=0 frames=60",
+    "[2026-09-23T00:47:23.900Z] loading stage=authored-visuals sim=0 frames=64",
+    "[2026-09-23T00:47:33.145Z] entered flight {\"mode\":\"flight\",\"simTime\":0.4666666666666666}"
   ],
-  "gpu": null,
+  "gpu": {
+    "renderer": "ANGLE (Mesa, llvmpipe (LLVM 19.1.7 256 bits), OpenGL 4.5)",
+    "tier": "software"
+  },
   "route": {
     "kind": "new-game",
     "label": "New Game seed 47",
@@ -38,44 +976,1813 @@
     "sampleMs": 20000,
     "sampleEveryMs": 500,
     "noSampleShots": false,
-    "simDelta": 0,
-    "executedFrameDelta": 0,
-    "instrumentation": null
+    "simDelta": 5.5333333333333155,
+    "executedFrameDelta": 168,
+    "instrumentation": {
+      "available": true,
+      "previousRenderWorkEnabled": false,
+      "previousHitchAttributionEnabled": false,
+      "previousSystemTimingEnabled": false,
+      "previousSystemTimingFullCoverage": false,
+      "renderWorkEnabled": true,
+      "hitchAttributionEnabled": true,
+      "systemTimingEnabled": true,
+      "systemTimingFullCoverage": false,
+      "restored": true
+    }
   },
   "loadingReadiness": {
-    "events": [],
-    "samples": []
+    "events": [
+      {
+        "wallMs": 1790124435096,
+        "elapsedMs": 925,
+        "id": "preparing-run",
+        "progress": 0.08,
+        "label": "Preparing flight systems",
+        "detail": "Creating the pilot, ship, and starting sector",
+        "transition": "new-game"
+      },
+      {
+        "wallMs": 1790124435506,
+        "elapsedMs": 1335,
+        "id": "authored-library",
+        "progress": 0.25,
+        "label": "Loading critical flight assets",
+        "detail": "Loading only assets required by the opening composition",
+        "transition": "new-game"
+      },
+      {
+        "wallMs": 1790124442311,
+        "elapsedMs": 8140,
+        "id": "authored-visuals",
+        "progress": 0.5,
+        "label": "Building the opening scene",
+        "detail": "Committing authored objects before the first playable frame",
+        "transition": "new-game"
+      },
+      {
+        "wallMs": 1790124444926,
+        "elapsedMs": 10755,
+        "id": "render-pipelines",
+        "progress": 0.78,
+        "label": "Preparing flight shaders",
+        "detail": "Warming the current render path to avoid first-use stalls",
+        "transition": "new-game"
+      },
+      {
+        "wallMs": 1790124444927,
+        "elapsedMs": 10756,
+        "id": "gpu-resources",
+        "progress": 0.9,
+        "label": "Preparing the opening route",
+        "detail": "Uploading opening materials in responsive batches",
+        "transition": "new-game"
+      },
+      {
+        "wallMs": 1790124444928,
+        "elapsedMs": 10757,
+        "id": "entering-flight",
+        "progress": 0.96,
+        "label": "Handing over flight control",
+        "detail": "Finalizing the playable frame",
+        "transition": "new-game"
+      }
+    ],
+    "samples": [
+      {
+        "wallMs": 1790124435259,
+        "elapsedMs": 1088,
+        "stageId": "preparing-run",
+        "authored": {
+          "ready": false,
+          "pipelineReady": false,
+          "playerStatus": "missing",
+          "startingHubStatus": "not-present",
+          "openingPending": 0,
+          "openingPendingIds": [],
+          "openingPipelinePending": 0
+        },
+        "pendingPipelineAdmissions": 0,
+        "pendingAuthoredGpuResidency": 0,
+        "openingCompositionSettle": null,
+        "programCount": 31,
+        "geometryCount": 58,
+        "rendererTextureCount": 14,
+        "promiseStates": {
+          "pipelinePrecompileReady": {
+            "status": "pending",
+            "observedWallMs": 1790124435259
+          }
+        },
+        "startupGpuResidency": null,
+        "openingSubmission": null,
+        "partLoads": []
+      },
+      {
+        "wallMs": 1790124436359,
+        "elapsedMs": 2188,
+        "stageId": "authored-library",
+        "authored": {
+          "ready": false,
+          "pipelineReady": false,
+          "playerStatus": "loading",
+          "startingHubStatus": "missing",
+          "openingPending": 8,
+          "openingPendingIds": [
+            "1:loading:ship:ship_kestrel:promise",
+            "307:loading:ship:ship_atlas:promise",
+            "308:loading:ship:ship_mule:promise",
+            "309:loading:ship:ship_atlas:promise",
+            "312:loading:ship:ship_wasp:promise",
+            "313:loading:ship:ship_wasp:promise",
+            "314:loading:ship:ship_mule:promise",
+            "315:loading:ship:ship_mule:promise"
+          ],
+          "openingPipelinePending": 8
+        },
+        "pendingPipelineAdmissions": 6,
+        "pendingAuthoredGpuResidency": 0,
+        "openingCompositionSettle": null,
+        "programCount": 36,
+        "geometryCount": 54,
+        "rendererTextureCount": 13,
+        "promiseStates": {
+          "pipelinePrecompileReady": {
+            "status": "pending",
+            "observedWallMs": 1790124436353
+          }
+        },
+        "startupGpuResidency": null,
+        "openingSubmission": null,
+        "partLoads": []
+      },
+      {
+        "wallMs": 1790124439976,
+        "elapsedMs": 5805,
+        "stageId": "authored-library",
+        "authored": {
+          "ready": false,
+          "pipelineReady": false,
+          "playerStatus": "loading",
+          "startingHubStatus": "missing",
+          "openingPending": 8,
+          "openingPendingIds": [
+            "1:loading:ship:ship_kestrel:promise",
+            "307:loading:ship:ship_atlas:promise",
+            "308:loading:ship:ship_mule:promise",
+            "309:loading:ship:ship_atlas:promise",
+            "312:loading:ship:ship_wasp:promise",
+            "313:loading:ship:ship_wasp:promise",
+            "314:loading:ship:ship_mule:promise",
+            "315:loading:ship:ship_mule:promise"
+          ],
+          "openingPipelinePending": 8
+        },
+        "pendingPipelineAdmissions": 5,
+        "pendingAuthoredGpuResidency": 0,
+        "openingCompositionSettle": null,
+        "programCount": 36,
+        "geometryCount": 54,
+        "rendererTextureCount": 13,
+        "promiseStates": {
+          "pipelinePrecompileReady": {
+            "status": "fulfilled",
+            "settledWallMs": 1790124436359,
+            "result": {
+              "skipped": true,
+              "reason": "opening-submission-plan-owns-first-picture",
+              "watermark": null,
+              "capturedCount": null,
+              "remainingCount": null,
+              "textures": null,
+              "uploads": null,
+              "uploadMs": null,
+              "openingCompositionRoots": null,
+              "vfxRoots": null,
+              "vfxTextures": null,
+              "openingFrame": null
+            }
+          }
+        },
+        "startupGpuResidency": null,
+        "openingSubmission": null,
+        "partLoads": []
+      },
+      {
+        "wallMs": 1790124441723,
+        "elapsedMs": 7552,
+        "stageId": "authored-library",
+        "authored": {
+          "ready": false,
+          "pipelineReady": false,
+          "playerStatus": "loading",
+          "startingHubStatus": "missing",
+          "openingPending": 8,
+          "openingPendingIds": [
+            "1:loading:ship:ship_kestrel:promise",
+            "307:loading:ship:ship_atlas:promise",
+            "308:loading:ship:ship_mule:promise",
+            "309:loading:ship:ship_atlas:promise",
+            "312:loading:ship:ship_wasp:promise",
+            "313:loading:ship:ship_wasp:promise",
+            "314:loading:ship:ship_mule:promise",
+            "315:loading:ship:ship_mule:promise"
+          ],
+          "openingPipelinePending": 8
+        },
+        "pendingPipelineAdmissions": 4,
+        "pendingAuthoredGpuResidency": 0,
+        "openingCompositionSettle": null,
+        "programCount": 36,
+        "geometryCount": 54,
+        "rendererTextureCount": 13,
+        "promiseStates": {
+          "pipelinePrecompileReady": {
+            "status": "fulfilled",
+            "settledWallMs": 1790124436359,
+            "result": {
+              "skipped": true,
+              "reason": "opening-submission-plan-owns-first-picture",
+              "watermark": null,
+              "capturedCount": null,
+              "remainingCount": null,
+              "textures": null,
+              "uploads": null,
+              "uploadMs": null,
+              "openingCompositionRoots": null,
+              "vfxRoots": null,
+              "vfxTextures": null,
+              "openingFrame": null
+            }
+          }
+        },
+        "startupGpuResidency": null,
+        "openingSubmission": null,
+        "partLoads": []
+      },
+      {
+        "wallMs": 1790124442869,
+        "elapsedMs": 8698,
+        "stageId": "authored-visuals",
+        "authored": {
+          "ready": false,
+          "pipelineReady": false,
+          "playerStatus": "loading",
+          "startingHubStatus": "missing",
+          "openingPending": 8,
+          "openingPendingIds": [
+            "1:loading:ship:ship_kestrel:promise",
+            "307:loading:ship:ship_atlas:promise",
+            "308:loading:ship:ship_mule:promise",
+            "309:loading:ship:ship_atlas:promise",
+            "312:loading:ship:ship_wasp:promise",
+            "313:loading:ship:ship_wasp:promise",
+            "314:loading:ship:ship_mule:promise",
+            "315:loading:ship:ship_mule:promise"
+          ],
+          "openingPipelinePending": 8
+        },
+        "pendingPipelineAdmissions": 2,
+        "pendingAuthoredGpuResidency": 0,
+        "openingCompositionSettle": null,
+        "programCount": 37,
+        "geometryCount": 54,
+        "rendererTextureCount": 13,
+        "promiseStates": {
+          "pipelinePrecompileReady": {
+            "status": "fulfilled",
+            "settledWallMs": 1790124436359,
+            "result": {
+              "skipped": true,
+              "reason": "opening-submission-plan-owns-first-picture",
+              "watermark": null,
+              "capturedCount": null,
+              "remainingCount": null,
+              "textures": null,
+              "uploads": null,
+              "uploadMs": null,
+              "openingCompositionRoots": null,
+              "vfxRoots": null,
+              "vfxTextures": null,
+              "openingFrame": null
+            }
+          }
+        },
+        "startupGpuResidency": null,
+        "openingSubmission": null,
+        "partLoads": []
+      },
+      {
+        "wallMs": 1790124443892,
+        "elapsedMs": 9721,
+        "stageId": "authored-visuals",
+        "authored": {
+          "ready": true,
+          "pipelineReady": true,
+          "playerStatus": "authored",
+          "startingHubStatus": "missing",
+          "openingPending": 7,
+          "openingPendingIds": [
+            "307:loading:ship:ship_atlas:promise",
+            "308:loading:ship:ship_mule:promise",
+            "309:loading:ship:ship_atlas:promise",
+            "312:loading:ship:ship_wasp:promise",
+            "313:loading:ship:ship_wasp:promise",
+            "314:loading:ship:ship_mule:promise",
+            "315:loading:ship:ship_mule:promise"
+          ],
+          "openingPipelinePending": 7
+        },
+        "pendingPipelineAdmissions": 1,
+        "pendingAuthoredGpuResidency": 0,
+        "openingCompositionSettle": null,
+        "programCount": 37,
+        "geometryCount": 54,
+        "rendererTextureCount": 13,
+        "promiseStates": {
+          "pipelinePrecompileReady": {
+            "status": "fulfilled",
+            "settledWallMs": 1790124436359,
+            "result": {
+              "skipped": true,
+              "reason": "opening-submission-plan-owns-first-picture",
+              "watermark": null,
+              "capturedCount": null,
+              "remainingCount": null,
+              "textures": null,
+              "uploads": null,
+              "uploadMs": null,
+              "openingCompositionRoots": null,
+              "vfxRoots": null,
+              "vfxTextures": null,
+              "openingFrame": null
+            }
+          }
+        },
+        "startupGpuResidency": null,
+        "openingSubmission": null,
+        "partLoads": []
+      },
+      {
+        "wallMs": 1790124453050,
+        "elapsedMs": 18879,
+        "stageId": "entering-flight",
+        "authored": {
+          "ready": false,
+          "pipelineReady": false,
+          "playerStatus": "authored",
+          "startingHubStatus": "missing",
+          "openingPending": 3,
+          "openingPendingIds": [
+            "307:loading:ship:ship_atlas:promise",
+            "308:loading:ship:ship_mule:promise",
+            "309:loading:ship:ship_atlas:promise"
+          ],
+          "openingPipelinePending": 3
+        },
+        "pendingPipelineAdmissions": 0,
+        "pendingAuthoredGpuResidency": 0,
+        "openingCompositionSettle": null,
+        "programCount": 69,
+        "geometryCount": 112,
+        "rendererTextureCount": 88,
+        "promiseStates": {
+          "pipelinePrecompileReady": {
+            "status": "fulfilled",
+            "settledWallMs": 1790124436359,
+            "result": {
+              "skipped": true,
+              "reason": "opening-submission-plan-owns-first-picture",
+              "watermark": null,
+              "capturedCount": null,
+              "remainingCount": null,
+              "textures": null,
+              "uploads": null,
+              "uploadMs": null,
+              "openingCompositionRoots": null,
+              "vfxRoots": null,
+              "vfxTextures": null,
+              "openingFrame": null
+            }
+          },
+          "exactPipelineWarmupReady": {
+            "status": "pending",
+            "observedWallMs": 1790124453049
+          },
+          "authoredGpuAdmissionReady": {
+            "status": "pending",
+            "observedWallMs": 1790124453049
+          },
+          "openingGpuResidencyReady": {
+            "status": "pending",
+            "observedWallMs": 1790124453049
+          }
+        },
+        "startupGpuResidency": null,
+        "openingSubmission": {
+          "planComplete": true,
+          "roots": 5,
+          "drawLeaves": 67,
+          "producerCensusMatches": true,
+          "admittedPrograms": 44,
+          "deferredGlobalPrograms": 0,
+          "validation": null
+        },
+        "partLoads": []
+      }
+    ]
   },
-  "openingRenderWork": null,
+  "openingRenderWork": {
+    "entityViewSync": {
+      "last": 0.19999998807907104,
+      "avg": 0.5648648658314267,
+      "min": 0.09999999403953552,
+      "max": 4.5,
+      "p50": 0.30000001192092896,
+      "p95": 0.9000000059604645,
+      "p99": 3.800000011920929,
+      "samples": 37
+    },
+    "prepareFrame": {
+      "last": 0.699999988079071,
+      "avg": 2.7891891872560657,
+      "min": 0.09999999403953552,
+      "max": 47.599999994039536,
+      "p50": 0.699999988079071,
+      "p95": 10.400000005960464,
+      "p99": 10.699999988079071,
+      "samples": 37
+    },
+    "pipelineAdmissionSync": {
+      "last": 976.8999999761581,
+      "avg": 421.5545454540036,
+      "min": 0.09999999403953552,
+      "max": 1723.699999988079,
+      "p50": 269.09999999403954,
+      "p95": 976.8999999761581,
+      "p99": 976.8999999761581,
+      "samples": 11
+    },
+    "compose": {
+      "last": 32.5,
+      "avg": 32.5,
+      "min": 32.5,
+      "max": 32.5,
+      "p50": 32.5,
+      "p95": 32.5,
+      "p99": 32.5,
+      "samples": 1
+    },
+    "gpuResidencyUpload": {
+      "last": 0.09999999403953552,
+      "avg": 0.09999999403953552,
+      "min": 0.09999999403953552,
+      "max": 0.09999999403953552,
+      "p50": 0.09999999403953552,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 1
+    },
+    "gpuGeometryResidency": {
+      "last": 0.19999998807907104,
+      "avg": 0.13333332538604736,
+      "min": 0.09999999403953552,
+      "max": 0.19999998807907104,
+      "p50": 0.09999999403953552,
+      "p95": 0.19999998807907104,
+      "p99": 0.19999998807907104,
+      "samples": 9
+    },
+    "bloomScene": {
+      "last": 2.7999999821186066,
+      "avg": 2.7999999821186066,
+      "min": 2.7999999821186066,
+      "max": 2.7999999821186066,
+      "p50": 2.7999999821186066,
+      "p95": 2.7999999821186066,
+      "p99": 2.7999999821186066,
+      "samples": 1
+    },
+    "bloomDownsample": {
+      "last": 0.20000001788139343,
+      "avg": 0.20000001788139343,
+      "min": 0.20000001788139343,
+      "max": 0.20000001788139343,
+      "p50": 0.20000001788139343,
+      "p95": 0.20000001788139343,
+      "p99": 0.20000001788139343,
+      "samples": 1
+    },
+    "bloomComposite": {
+      "last": 44.900000005960464,
+      "avg": 44.900000005960464,
+      "min": 44.900000005960464,
+      "max": 44.900000005960464,
+      "p50": 44.900000005960464,
+      "p95": 44.900000005960464,
+      "p99": 44.900000005960464,
+      "samples": 1
+    },
+    "drawPreparedFrame": {
+      "last": 122.2000000178814,
+      "avg": 122.2000000178814,
+      "min": 122.2000000178814,
+      "max": 122.2000000178814,
+      "p50": 122.2000000178814,
+      "p95": 122.2000000178814,
+      "p99": 122.2000000178814,
+      "samples": 1
+    }
+  },
   "openingFirstTouchOwner": null,
   "openingExactOwnerTouch": null,
   "noSubmitDiagnostic": null,
   "sectorTransition": null,
   "tableCensus": {
-    "available": false,
-    "sampleCount": 0
+    "available": true,
+    "sampleCount": 30,
+    "first": {
+      "available": true,
+      "glass": 4,
+      "runway": 5,
+      "beyond": 64,
+      "submitted": 9,
+      "resident": 12,
+      "landmarks": 23,
+      "glassHalfX": 144,
+      "glassHalfZ": 93,
+      "runwayWu": 120,
+      "renderWorkEnabled": true,
+      "hitchAttributionEnabled": true
+    },
+    "last": {
+      "available": true,
+      "glass": 2,
+      "runway": 5,
+      "beyond": 68,
+      "submitted": 7,
+      "resident": 20,
+      "landmarks": 23,
+      "glassHalfX": 221,
+      "glassHalfZ": 144,
+      "runwayWu": 146,
+      "renderWorkEnabled": true,
+      "hitchAttributionEnabled": true
+    },
+    "ranges": {
+      "glass": {
+        "min": 2,
+        "max": 8
+      },
+      "runway": {
+        "min": 1,
+        "max": 6
+      },
+      "beyond": {
+        "min": 62,
+        "max": 71
+      },
+      "submitted": {
+        "min": 4,
+        "max": 12
+      },
+      "resident": {
+        "min": 12,
+        "max": 20
+      },
+      "landmarks": {
+        "min": 23,
+        "max": 23
+      }
+    }
   },
   "hitchAttribution": {
-    "frames": 0,
-    "hitches": 0,
-    "named": 0,
-    "unknown": 0,
-    "firstHitches": 0,
-    "echoHitches": 0,
-    "longestStreak": 0,
-    "coverage": 0,
-    "counts": {}
+    "frames": 174,
+    "hitches": 152,
+    "named": 142,
+    "unknown": 10,
+    "firstHitches": 17,
+    "echoHitches": 135,
+    "longestStreak": 46,
+    "coverage": 0.9342105263157895,
+    "counts": {
+      "compile": 5,
+      "upload": 2,
+      "compose": 0,
+      "meshBuild": 0,
+      "shadow": 0,
+      "speedLines": 0,
+      "bloom": 9,
+      "gc": 0,
+      "restore": 0,
+      "autosave": 0,
+      "present": 0,
+      "sim": 0,
+      "ui": 0,
+      "admission": 0,
+      "vfx": 0,
+      "feel": 0,
+      "callbackUntracked": 0,
+      "externalScheduling": 126,
+      "unknown": 10
+    },
+    "bySimSystem": {},
+    "bySimSystemPartial": {},
+    "simStepHistogram": {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4+": 0
+    },
+    "unknownLargestPhase": {
+      "externalScheduling": 6,
+      "sim": 4
+    },
+    "residualMsTotal": 720.1999999821201,
+    "residualFrames": 10,
+    "intervalFrames": 151,
+    "frameMsTotal": 17615.700000000026,
+    "callbackIntervalMsTotal": 19821.59999999404,
+    "intervalDisagreementMsTotal": -2205.8999999940133,
+    "intervalDisagreementMedianMs": -1.2999999999956344,
+    "intervalDisagreementMedianCount": 151,
+    "intervalClampedFrames": 9,
+    "intervalClampedDisagreementMsTotal": -2285.5999999940395,
+    "schedulingFrames": 126,
+    "schedulingExternalGapMsTotal": 12373.599999815226,
+    "schedulingDispatchLagMsTotal": 2286.199999701923,
+    "schedulingGapDominant": 122,
+    "schedulingDispatchDominant": 4,
+    "simOwnedSystemTotalMs": 0,
+    "simOwnedPhaseMs": 0,
+    "simMeasuredFrames": 0,
+    "simPartiallyMeasuredFrames": 0,
+    "simUnmeasuredFrames": 0,
+    "simZeroStepFrames": 0
   },
   "hostLoad": {
-    "available": false
+    "available": true,
+    "logicalCpus": 8,
+    "memoryUsedMb": 10834.78125,
+    "memoryTotalMb": 16013.296875,
+    "cpuBusyPercent": 42.33906387250595
   },
   "bloomPhases": {
-    "bloomScene": null,
-    "bloomDownsample": null,
-    "bloomComposite": null
+    "bloomScene": {
+      "last": 3.699999988079071,
+      "avg": 19.866666666050065,
+      "min": 2.199999988079071,
+      "max": 965.5999999940395,
+      "p50": 3.300000011920929,
+      "p95": 62.5,
+      "p99": 432.7000000178814,
+      "samples": 174
+    },
+    "bloomDownsample": {
+      "last": 0.09999999403953552,
+      "avg": 0.07988505836190848,
+      "min": 0,
+      "max": 0.20000001788139343,
+      "p50": 0.09999999403953552,
+      "p95": 0.20000001788139343,
+      "p99": 0.20000001788139343,
+      "samples": 174
+    },
+    "bloomComposite": {
+      "last": 0.10000002384185791,
+      "avg": 0.04137931061887193,
+      "min": 0,
+      "max": 0.19999998807907104,
+      "p50": 0,
+      "p95": 0.10000002384185791,
+      "p99": 0.19999998807907104,
+      "samples": 174
+    }
   },
-  "systemTiming": null,
+  "systemTiming": {
+    "core.preStep": {
+      "last": 0.10000002384185791,
+      "avg": 0.07528089974703414,
+      "min": 0,
+      "max": 0.30000001192092896,
+      "p50": 0.09999999403953552,
+      "p95": 0.19999998807907104,
+      "p99": 0.20000001788139343,
+      "samples": 89
+    },
+    "input": {
+      "last": 0,
+      "avg": 0.09662921341617456,
+      "min": 0,
+      "max": 0.29999998211860657,
+      "p50": 0.09999999403953552,
+      "p95": 0.20000001788139343,
+      "p99": 0.20000001788139343,
+      "samples": 89
+    },
+    "autoTargetAssist": {
+      "last": 0,
+      "avg": 0.007865168070525265,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "flybyFocus": {
+      "last": 0,
+      "avg": 0.03421052741376977,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.10000002384185791,
+      "p99": 0.10000002384185791,
+      "samples": 38
+    },
+    "bulletTime": {
+      "last": 0.09999999403953552,
+      "avg": 0.013483145933472709,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.10000002384185791,
+      "samples": 89
+    },
+    "cloak": {
+      "last": 0,
+      "avg": 0.0067415726318788,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "lawSecurity": {
+      "last": 0.09999999403953552,
+      "avg": 0.07894736920532427,
+      "min": 0,
+      "max": 0.20000001788139343,
+      "p50": 0.09999999403953552,
+      "p95": 0.19999998807907104,
+      "p99": 0.20000001788139343,
+      "samples": 38
+    },
+    "scanner": {
+      "last": 0,
+      "avg": 0.01842105153359865,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 38
+    },
+    "pirateParley": {
+      "last": 0,
+      "avg": 0.03157894627044076,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 38
+    },
+    "pirateDisengage": {
+      "last": 0,
+      "avg": 0.010526316730599655,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.10000002384185791,
+      "samples": 38
+    },
+    "aceMemory": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "factionPresence": {
+      "last": 0.29999998211860657,
+      "avg": 0.09999999403953552,
+      "min": 0,
+      "max": 0.29999998211860657,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "nemesis": {
+      "last": 0,
+      "avg": 0.0033707866507969547,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "nemesisEncounter": {
+      "last": 0,
+      "avg": 0.004494382089443421,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "capitalBossEncounters": {
+      "last": 0,
+      "avg": 0.002247191547008043,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.10000002384185791,
+      "samples": 89
+    },
+    "tacticalAI": {
+      "last": 1.300000011920929,
+      "avg": 0.9684210505924726,
+      "min": 0.3999999761581421,
+      "max": 1.9000000059604645,
+      "p50": 0.9000000059604645,
+      "p95": 1.4000000059604645,
+      "p99": 1.5,
+      "samples": 38
+    },
+    "barkDirector": {
+      "last": 0.09999999403953552,
+      "avg": 0.23333333929379782,
+      "min": 0.09999999403953552,
+      "max": 0.4000000059604645,
+      "p50": 0.20000001788139343,
+      "p95": 0.20000001788139343,
+      "p99": 0.20000001788139343,
+      "samples": 3
+    },
+    "aiEncounter": {
+      "last": 0,
+      "avg": 0.00789473715581392,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 38
+    },
+    "actions": {
+      "last": 0.09999999403953552,
+      "avg": 0.08539325869485234,
+      "min": 0,
+      "max": 0.20000001788139343,
+      "p50": 0.09999999403953552,
+      "p95": 0.20000001788139343,
+      "p99": 0.20000001788139343,
+      "samples": 89
+    },
+    "beacons": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "travelLanes": {
+      "last": 0.09999999403953552,
+      "avg": 0.1999999980131785,
+      "min": 0.09999999403953552,
+      "max": 0.4000000059604645,
+      "p50": 0.09999999403953552,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 3
+    },
+    "flight": {
+      "last": 0.4000000059604645,
+      "avg": 0.3561797761515285,
+      "min": 0.09999999403953552,
+      "max": 0.7999999821186066,
+      "p50": 0.30000001192092896,
+      "p95": 0.5999999940395355,
+      "p99": 0.7000000178813934,
+      "samples": 89
+    },
+    "cruise": {
+      "last": 0,
+      "avg": 0.0033707866507969547,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "aiPorts": {
+      "last": 0,
+      "avg": 0.04999999937258268,
+      "min": 0,
+      "max": 0.20000001788139343,
+      "p50": 0,
+      "p95": 0.10000002384185791,
+      "p99": 0.10000002384185791,
+      "samples": 38
+    },
+    "tumbleStates": {
+      "last": 0,
+      "avg": 0.033707865168539325,
+      "min": 0,
+      "max": 1,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.10000002384185791,
+      "samples": 89
+    },
+    "collisionConsequences": {
+      "last": 0,
+      "avg": 0.002247190877292933,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "stuntGrammar": {
+      "last": 0.09999999403953552,
+      "avg": 0.08426966124706053,
+      "min": 0,
+      "max": 0.20000001788139343,
+      "p50": 0.09999999403953552,
+      "p95": 0.19999998807907104,
+      "p99": 0.20000001788139343,
+      "samples": 89
+    },
+    "weapons": {
+      "last": 0.09999999403953552,
+      "avg": 0.047191011771727145,
+      "min": 0,
+      "max": 0.20000001788139343,
+      "p50": 0,
+      "p95": 0.10000002384185791,
+      "p99": 0.19999998807907104,
+      "samples": 89
+    },
+    "countermeasures": {
+      "last": 0,
+      "avg": 0.008988763844029288,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "bombs": {
+      "last": 0,
+      "avg": 0.012359549825111131,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "impulseCharges": {
+      "last": 0,
+      "avg": 0.005617977193232333,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "mines": {
+      "last": 0,
+      "avg": 0.0033707863159394,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "massSeed": {
+      "last": 0,
+      "avg": 0.0056179775280898875,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "uniqueLootAbilities": {
+      "last": 0,
+      "avg": 0.007865168070525265,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "dockingCorridor": {
+      "last": 0,
+      "avg": 0.043820224116357526,
+      "min": 0,
+      "max": 0.20000001788139343,
+      "p50": 0,
+      "p95": 0.10000002384185791,
+      "p99": 0.19999998807907104,
+      "samples": 89
+    },
+    "environmentalMachinery": {
+      "last": 0,
+      "avg": 0.01573033614105053,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "survivalArena": {
+      "last": 0,
+      "avg": 0.002247190877292933,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "fields": {
+      "last": 0.20000001788139343,
+      "avg": 0.05280899063924725,
+      "min": 0,
+      "max": 0.30000001192092896,
+      "p50": 0,
+      "p95": 0.10000002384185791,
+      "p99": 0.20000001788139343,
+      "samples": 89
+    },
+    "planetRuntime": {
+      "last": 0,
+      "avg": 0.005263157581028186,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 38
+    },
+    "physics": {
+      "last": 0.699999988079071,
+      "avg": 0.6280898880422785,
+      "min": 0.19999998807907104,
+      "max": 1.5999999940395355,
+      "p50": 0.5999999940395355,
+      "p95": 1.199999988079071,
+      "p99": 1.4000000059604645,
+      "samples": 89
+    },
+    "combat": {
+      "last": 0,
+      "avg": 0.04606741700279579,
+      "min": 0,
+      "max": 0.30000001192092896,
+      "p50": 0,
+      "p95": 0.10000002384185791,
+      "p99": 0.20000001788139343,
+      "samples": 89
+    },
+    "combatOutcome": {
+      "last": 0,
+      "avg": 0.010526316730599655,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.10000002384185791,
+      "samples": 38
+    },
+    "aftermathWrecks": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "titles": {
+      "last": 0,
+      "avg": 0.007894736371542277,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 38
+    },
+    "wingMorale": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "tetherGameplay": {
+      "last": 0,
+      "avg": 0.096629213081317,
+      "min": 0,
+      "max": 0.5999999940395355,
+      "p50": 0,
+      "p95": 0.4000000059604645,
+      "p99": 0.5999999940395355,
+      "samples": 89
+    },
+    "surrenderRecovery": {
+      "last": 0,
+      "avg": 0.005617977193232333,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "masslineTelemetry": {
+      "last": 0,
+      "avg": 0.0033707863159394,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "masslineThreats": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 89
+    },
+    "masslineImpacts": {
+      "last": 0,
+      "avg": 0.004494381754585866,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "masslineSnares": {
+      "last": 0,
+      "avg": 0.007865168070525265,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "masslineThrow": {
+      "last": 0,
+      "avg": 0.0067415729667363545,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "masslineImpactDamage": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "lootShards": {
+      "last": 0,
+      "avg": 0.008988763844029288,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "terrainAnchors": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "jettisonImpulse": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "mining": {
+      "last": 0,
+      "avg": 0.024719102663940257,
+      "min": 0,
+      "max": 0.19999998807907104,
+      "p50": 0,
+      "p95": 0.10000002384185791,
+      "p99": 0.10000002384185791,
+      "samples": 89
+    },
+    "fieldDepletion": {
+      "last": 0,
+      "avg": 0.008988763844029288,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "cargo": {
+      "last": 0,
+      "avg": 0.002631578790514093,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 38
+    },
+    "automation": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "asteroidSites": {
+      "last": 0.10000002384185791,
+      "avg": 0.06666667262713115,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0.09999999403953552,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 3
+    },
+    "wingmen": {
+      "last": 0.09999999403953552,
+      "avg": 0.002247190877292933,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "crafting": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "economy": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "intervention": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "world": {
+      "last": 0,
+      "avg": 0.09438202119945141,
+      "min": 0,
+      "max": 0.5,
+      "p50": 0.09999999403953552,
+      "p95": 0.19999998807907104,
+      "p99": 0.30000001192092896,
+      "samples": 89
+    },
+    "heistFacilities": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "regionalEcology": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "tensionDirector": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "encounterDirector": {
+      "last": 0.09999999403953552,
+      "avg": 0.09999999403953552,
+      "min": 0.09999999403953552,
+      "max": 0.09999999403953552,
+      "p50": 0.09999999403953552,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 3
+    },
+    "routeFollower": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "livingPoiBehaviors": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "pirateRumor": {
+      "last": 0,
+      "avg": 0.03333333134651184,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "ambushSignatures": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "bountyHunt": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "stationSideEventDirector": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "stationServices": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 89
+    },
+    "difficultyDirector": {
+      "last": 0.09999999403953552,
+      "avg": 0.013483145598615154,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "gateControlDirector": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "salvage": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "salvageActions": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "survivorPod": {
+      "last": 0.09999999403953552,
+      "avg": 0.03333333134651184,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "recoveryEncounter": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "factions": {
+      "last": 0.10000002384185791,
+      "avg": 0.0666666825612386,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0.10000002384185791,
+      "p95": 0.10000002384185791,
+      "p99": 0.10000002384185791,
+      "samples": 3
+    },
+    "sectorSim": {
+      "last": 0,
+      "avg": 0.0333333412806193,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "npcJobsRuntime": {
+      "last": 0.10000002384185791,
+      "avg": 0.12105263377490796,
+      "min": 0,
+      "max": 1.0999999940395355,
+      "p50": 0.09999999403953552,
+      "p95": 0.29999998211860657,
+      "p99": 0.30000001192092896,
+      "samples": 38
+    },
+    "missions": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "careerOrigins": {
+      "last": 0.09999999403953552,
+      "avg": 0.06666666269302368,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0.09999999403953552,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 3
+    },
+    "careerLadders": {
+      "last": 0,
+      "avg": 0.03333333134651184,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "liveCareerLadderBranches": {
+      "last": 0.09999999403953552,
+      "avg": 0.13333332538604736,
+      "min": 0.09999999403953552,
+      "max": 0.19999998807907104,
+      "p50": 0.09999999403953552,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 3
+    },
+    "story": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "scenarioRuntime": {
+      "last": 0.09999999403953552,
+      "avg": 0.16666667660077414,
+      "min": 0.09999999403953552,
+      "max": 0.20000001788139343,
+      "p50": 0.20000001788139343,
+      "p95": 0.20000001788139343,
+      "p99": 0.20000001788139343,
+      "samples": 3
+    },
+    "swarmArena": {
+      "last": 0,
+      "avg": 0.0033707863159394,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "survivalWave": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 89
+    },
+    "survivalRun": {
+      "last": 0,
+      "avg": 0.004494381754585866,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "swarmChain": {
+      "last": 0,
+      "avg": 0.0011235954386464666,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 89
+    },
+    "heat": {
+      "last": 0,
+      "avg": 0.0033707863159394,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 89
+    },
+    "traffic": {
+      "last": 0.19999998807907104,
+      "avg": 0.13947368530850662,
+      "min": 0,
+      "max": 0.30000001192092896,
+      "p50": 0.09999999403953552,
+      "p95": 0.20000001788139343,
+      "p99": 0.29999998211860657,
+      "samples": 38
+    },
+    "drill": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "claims": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "chronicler": {
+      "last": 0,
+      "avg": 0.010112359617533309,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.10000002384185791,
+      "samples": 89
+    },
+    "bandRadio": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "onboarding": {
+      "last": 0,
+      "avg": 0.03333333134651184,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "masslineHud": {
+      "last": 0.09999999403953552,
+      "avg": 0.12368420707552057,
+      "min": 0,
+      "max": 0.30000001192092896,
+      "p50": 0.09999999403953552,
+      "p95": 0.29999998211860657,
+      "p99": 0.29999998211860657,
+      "samples": 38
+    },
+    "massSeedHud": {
+      "last": 0,
+      "avg": 0.007894737940085562,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.10000002384185791,
+      "samples": 38
+    },
+    "fieldHud": {
+      "last": 0,
+      "avg": 0.007894736371542277,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 38
+    },
+    "planetHud": {
+      "last": 0,
+      "avg": 0.00789473715581392,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.09999999403953552,
+      "p99": 0.09999999403953552,
+      "samples": 38
+    },
+    "survivalHud": {
+      "last": 0,
+      "avg": 0,
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 38
+    },
+    "crucibleFocus": {
+      "last": 0,
+      "avg": 0.005263157581028186,
+      "min": 0,
+      "max": 0.09999999403953552,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.09999999403953552,
+      "samples": 38
+    },
+    "voiceArbiter": {
+      "last": 0,
+      "avg": 0.018421053886413574,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0.10000002384185791,
+      "p99": 0.10000002384185791,
+      "samples": 38
+    },
+    "save": {
+      "last": 0,
+      "avg": 0.0333333412806193,
+      "min": 0,
+      "max": 0.10000002384185791,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0,
+      "samples": 3
+    },
+    "core.lifetimeSweep": {
+      "last": 0.10000002384185791,
+      "avg": 0.05168539419602812,
+      "min": 0,
+      "max": 0.20000001788139343,
+      "p50": 0,
+      "p95": 0.10000002384185791,
+      "p99": 0.19999998807907104,
+      "samples": 89
+    }
+  },
   "productionMatrix": null,
-  "error": "TimeoutError: CSP-safe page condition timed out after 90000ms\n    at waitForPageCondition (file:///workspace/spaceface-master-witness/scripts/lib/playwrightCspPolling.mjs:58:17)\n    at async file:///workspace/spaceface-master-witness/scripts/probe-runtime-witness.mjs:3169:3",
+  "error": null,
   "cleanupError": null
 }
