@@ -6,10 +6,13 @@ coolRuntime retained scratch (no double object-spread) + flightV3 bodySnapshot `
 
 ## How to apply
 
+`propulsionKernel.js` is CRLF on master; use `--ignore-space-change`:
+
 ```bash
 git fetch origin
 git checkout -B import/flight-propulsion-scratch origin/master
-git am design/program/vm-drop/flight-propulsion-scratch/patches/*.patch
+git apply --ignore-space-change design/program/vm-drop/flight-propulsion-scratch/patches/*.patch
+git add -A && git commit -m "perf(flight): coolRuntime scratch + trust normalized bodySnapshot"
 node --test \
   test/flightV3.spec.mjs \
   test/velocity-vectoring.test.mjs \
@@ -25,4 +28,4 @@ Untouched.
 
 ## Apply order
 
-Independent. Clean on bare `origin/master`.
+Independent.
