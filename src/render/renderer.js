@@ -205,6 +205,7 @@ import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { applySectorExitResidency, getAssetResidency } from './assetResidency.js';
+import { createCrucibleWarmPackageResidency } from './crucibleWarmPackageResidency.js';
 import {
   ADMISSION_SLICE_TARGET_MS,
   shouldContinueAdmissionSlice,
@@ -10859,11 +10860,32 @@ export const render = {
     const packageInstances = [];
     let instantiated = 0;
     let paletteSubjects = 0;
-    for (const { cacheKey, record } of records) {
+    // A census record is only cache/bootstrap-owned: retain each package under a dedicated warm
+    // owner before createInstance (a released or evicted package re-acquires through the normal
+    // loader), then drain every lease with one owner release at warm teardown.
+    const warmPackageResidency = createCrucibleWarmPackageResidency({
+      residency: this._assetResidency || getAssetResidency(renderer),
+      profile: warm.profile || 'crucible',
+    });
+    const reloadAuthoredPart = (partUrl, partOptions) => (
+      loadAuthoredPart(partUrl, { renderer, ...partOptions })
+    );
+    for (const { cacheKey, record: decoded } of records) {
+      let record = decoded;
       if (!record) continue;
       const parts = String(cacheKey || '').split('::');
       const url = parts[0];
       const slot = parts[1];
+      if (record.renderPackage) {
+        try {
+          record = await warmPackageResidency.retainForInstance(
+            { record, url, slot },
+            { loadPart: reloadAuthoredPart, sectorId },
+          );
+        } catch (error) {
+          console.warn('[render] crucible warm package reacquire failed', record.assetId || url, error);
+        }
+      }
       const holder = new THREE.Group();
       holder.visible = false;
       try {
@@ -10892,11 +10914,13 @@ export const render = {
         }
         if (record.renderPackage && typeof record.renderPackage.createInstance === 'function') {
           try {
-            const instance = record.renderPackage.createInstance({
-              name: `SF_CrucibleWarm_${record.assetId || 'package'}`,
-              residencyRole: 'crucible-roster-warm',
-              sectorId,
-            });
+            const instance = record.renderPackage.createInstance(
+              warmPackageResidency.instanceOptions({
+                name: `SF_CrucibleWarm_${record.assetId || 'package'}`,
+                residencyRole: 'crucible-roster-warm',
+                sectorId,
+              }),
+            );
             if (instance && instance.root) {
               holder.add(instance.root);
               packageInstances.push(instance);
@@ -10957,13 +10981,15 @@ export const render = {
       if (budgetLeft() <= 4000) break;
     }
     // Let the package instances' residency leases release with the root at teardown — the hook
-    // is the one disposeObject already honours on userData.
-    if (packageInstances.length > 0) {
+    // is the one disposeObject already honours on userData. The warm owner's own retains drain
+    // through the same hook so a retain without an instance cannot leak.
+    if (packageInstances.length > 0 || warmPackageResidency.retained) {
       root.userData.releaseAuthoredAssetResidency = () => {
         for (const instance of packageInstances) {
           try { instance && typeof instance.dispose === 'function' && instance.dispose(); }
           catch (_) { /* teardown is best-effort */ }
         }
+        warmPackageResidency.release();
       };
     }
     if (state && state.render) {
