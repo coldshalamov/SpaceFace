@@ -2490,6 +2490,14 @@ export const onboarding = {
   _onMissingThreeWell(payload) {
     if (!payload || payload.kind !== 'well') return;
     this._noteVerbUse('well');
+    const source = this.state?.entities?.get ? this.state.entities.get(payload.sourceId) : null;
+    const isPlayer = payload.isPlayer
+      || payload.sourceId === this.state?.playerId
+      || (source && source.ownerId === this.state?.playerId)
+      || (!payload.npc && !payload.planted && (payload.sourceId == null || payload.sourceId === this.state?.playerId));
+    if (isPlayer) {
+      this._showHint('firstWellDrop', firstUseLine('firstWellDrop') || 'Well deployed. Pull the scrap.', payload);
+    }
   },
 
   _resolveMissingThreeDone() {
