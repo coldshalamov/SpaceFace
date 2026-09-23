@@ -559,10 +559,15 @@ export const mainMenuScreen = {
   // The default word (Continue when it can load, else New Game — always Crucible in the demo)
   // carries aria-current and the list's single Tab stop; the kit's roving focus takes over once
   // focus is inside the list.
-  /** The one awake word: the demo's Crucible always; otherwise the first usable verb — the same
-   *  pick _syncCurrent stamps and onShow focuses, so the ORRERY Hand's focus rule lands on it. */
+  /** The one awake word: the demo's Crucible always; otherwise the word the lamp lit — the
+   *  primary verb — so the Hand cannot wake beside a different word than the lit one. A lit verb
+   *  that is still aria-disabled refuses with a deny ("is initializing"), so pointing at it is
+   *  honest; with no lamp stamped yet the first usable verb is the fallback. */
   _currentTarget() {
-    return (IS_DEMO ? refs.bCrucible : null) || refs.buttons.find((b) => !isDisabled(b)) || null;
+    if (IS_DEMO) return refs.bCrucible || null;
+    const lit = refs.root && refs.root.querySelector('.dp-lit__item--primary');
+    if (lit) return lit;
+    return refs.buttons.find((b) => !isDisabled(b)) || null;
   },
 
   _syncCurrent() {
