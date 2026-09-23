@@ -22,6 +22,7 @@ import { SECTORS } from '../src/data/sectors.js';
 import {
   getDerivedStats,
   fittingsFromDefaultModules,
+  resetDerivedStatsCache,
 } from '../src/systems/ships.js';
 import { economy } from '../src/systems/economy.js';
 import {
@@ -78,6 +79,9 @@ function withTempScannerCloak(patches, fn) {
     restores.push({ def, had, prev });
     def.mods.scannerCloak = value;
   }
+  // getDerivedStats memoizes on composition, not catalog contents (INF-097): drop the memo
+  // after the patch and after the restore so neither side reads a stale entry.
+  resetDerivedStatsCache();
   try {
     return fn();
   } finally {
@@ -85,6 +89,7 @@ function withTempScannerCloak(patches, fn) {
       if (had) def.mods.scannerCloak = prev;
       else delete def.mods.scannerCloak;
     }
+    resetDerivedStatsCache();
   }
 }
 

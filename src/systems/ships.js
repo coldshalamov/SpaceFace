@@ -904,9 +904,19 @@ export function getDerivedStats(defId, fittings = [], player = null) {
  * stores blocks on entities. Nested blocks (propulsion, flightModel, roleIdentity) are shared
  * and must be treated read-only — replace keys, never mutate in place (no such writer exists).
  * LRU-bounded (64) so ghost-hover spam cannot grow it.
+ *
+ * The key does NOT cover catalog contents (SHIPS / MODULES records): the game treats them as
+ * immutable authored data and nothing in src/ writes them. A fixture that patches a catalog
+ * record in place (e.g. `MODULES[i].mods.radarRangePct = NaN`) must call
+ * resetDerivedStatsCache() after the patch AND after restoring it, or it reads a stale entry.
  */
 const DERIVED_STATS_CACHE_MAX = 64;
 const derivedStatsCache = new Map();
+
+/** Drop every memoized derived block. Test seam for in-place catalog patches (see above). */
+export function resetDerivedStatsCache() {
+  derivedStatsCache.clear();
+}
 
 function derivedStatsKey(defId, fittings, player) {
   const eff = (player && player.efficiencyMods) || {};
