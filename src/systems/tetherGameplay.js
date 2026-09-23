@@ -2457,7 +2457,9 @@ function weaponSynthesisedAim(state) {
 }
 
 function acquisitionCursorActive(state) {
-  if (weaponSynthesisedAim(state)) return false;
+  // Ordinary Tab combat assist leaves aimWorld at the physical cursor. Only G's draw mode
+  // synthesizes that coordinate from the gun lead and must be excluded from latch intent.
+  if (state?.input?.autoFire && weaponSynthesisedAim(state)) return false;
   const input = state && state.input;
   if (!input) return false;
   // Live input stamps this every tick for pointer, gamepad, and touch aim. An explicit false (or a
@@ -2472,9 +2474,15 @@ function acquisitionCursorActive(state) {
 
 function preciseCursorScore(entity, aim) {
   if (!entity || !entity.pos || !aim) return 0;
-  const miss = Math.max(0,
-    Math.hypot(aim.x - entity.pos.x, aim.z - entity.pos.z) - Math.max(0, finite(entity.radius)));
-  return clamp01(1 - miss / CURSOR_LATCH_GRACE);
+  const centerDistance = Math.hypot(aim.x - entity.pos.x, aim.z - entity.pos.z);
+  const radius = Math.max(0, finite(entity.radius));
+  const surfaceMiss = Math.max(0, centerDistance - radius);
+  // A large asteroid used to earn a perfect 1 everywhere inside its radius. That made it tie
+  // with a small ship directly under the reticle, then size/context could steal the latch.
+  // Surface grace still helps acquire large bodies, but the closest center breaks overlap.
+  const surfaceScore = clamp01(1 - surfaceMiss / CURSOR_LATCH_GRACE);
+  const centerPenalty = 0.35 * clamp01(centerDistance / (radius + CURSOR_LATCH_GRACE));
+  return clamp01(surfaceScore * (1 - centerPenalty));
 }
 
 function masslineRouteTargetId(state) {

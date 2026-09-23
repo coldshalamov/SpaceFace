@@ -1,7 +1,7 @@
 // UI key router (ARCHITECTURE §5.6) — a single document keydown listener for UI-OWNED keys.
 //
 // UI owns: ESC (back/pause), map bindings, T (tech), mission log, K (codex), F1/H (help),
-//          Tab (cycle target), P (pause), E (dock in range / undock station hub; Enter secondary dock),
+//          Tab (cycle target), Backspace (free aim), P (pause), E (dock in range / undock station hub; Enter secondary dock),
 //          F5/F9 (quick save/load), cargo/comms overlays, mouse-wheel (camera zoom passthrough → camera:zoom).
 // Flight/input system owns movement+fire keys (W/A/S/D, mouse-aim, Space/LMB, RMB, Q/E, F) — NOT here.
 //
@@ -356,6 +356,10 @@ export function createUiInput(ctx, screenManager) {
       case 'Tab':
         ev.preventDefault();
         bus.emit('ui:cycleTarget', { dir: ev.shiftKey ? -1 : 1 });
+        return;
+      case 'Backspace':
+        ev.preventDefault();
+        bus.emit('ui:clearTarget');
         return;
       // Dock / interact: default binding is `E` (spec §15.4), sourced from the live binding
       // registry so the prompt and handler can never drift. Enter remains a secondary trigger.

@@ -125,6 +125,15 @@ test('target panel identifies a mineable asteroid by geological name and interac
   assert.equal(targetPanel.targetInteractionClass(rock), 'Mineable Asteroid');
 });
 
+test('flight Tab cycles the combat target and Backspace releases it', () => {
+  const h = inputHarness();
+  assert.equal(press(h.listeners, 'Tab', 'Tab').defaultPrevented, true);
+  assert.deepEqual(h.events.findLast((event) => event.name === 'ui:cycleTarget')?.payload, { dir: 1 });
+  assert.equal(press(h.listeners, 'Backspace', 'Backspace').defaultPrevented, true);
+  assert.equal(h.events.findLast((event) => event.name === 'ui:clearTarget')?.name, 'ui:clearTarget');
+  h.input.dispose();
+});
+
 test('selected ordinary wreck is labeled salvage and B explains the salvage verb', () => {
   const wreck = entity('wreck', 'wreck', { parentType: 'hull' });
   assert.equal(targetPanel.targetDisplayName(wreck), 'Wreckage');

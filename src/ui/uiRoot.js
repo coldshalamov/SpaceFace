@@ -965,6 +965,7 @@ export const ui = {
     this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
     this.bus.on('ui:closeAll', () => this.screenManager.closeAll());
     this.bus.on('ui:cycleTarget', ({ dir } = {}) => cycleTarget(this.state, dir || 1, this.bus));
+    this.bus.on('ui:clearTarget', () => clearCombatTarget(this.state, this.bus));
     // PQ-015 component sub-selection: cycle a component (subsystem / salvage weak-point) on the
     // current target. Reachable via the target panel component chip (DOM); a keyboard binding is a
     // pending input.js shared-change request (see REPORT). Selection is transient on state.ui.
@@ -1440,7 +1441,7 @@ function cycleTarget(state, dir, bus) {
   } else {
     for (const e of state.entityList || []) consider(e);
   }
-  contacts.sort((a, b) => a.d - b.d);
+  contacts.sort((a, b) => a.d - b.d || String(a.e.id).localeCompare(String(b.e.id)));
   if (!contacts.length) {
     state.player.targetId = null;
     if (bus) bus.emit('toast', { text: 'No contacts in scanner range', kind: 'info', ttl: 2 });
@@ -1448,10 +1449,27 @@ function cycleTarget(state, dir, bus) {
   }
   const ids = contacts.map((c) => c.e.id);
   const idx = ids.indexOf(state.player.targetId);
-  const nextIdx = idx < 0 ? 0 : (idx + dir + ids.length) % ids.length;
+  // Free aim is an explicit slot after the last contact. It must stay off until the next Tab;
+  // otherwise the automatic nearest-hostile refresh would immediately undo the release.
+  if (idx >= 0 && ((dir > 0 && idx === ids.length - 1) || (dir < 0 && idx === 0))) {
+    clearCombatTarget(state, bus);
+    return;
+  }
+  const nextIdx = idx < 0 ? (dir < 0 ? ids.length - 1 : 0) : idx + (dir < 0 ? -1 : 1);
   const target = contacts[nextIdx].e;
   state.player.targetId = target.id;
+  if (state.input) state.input.targetAssistDisabled = false;
   if (bus) bus.emit('toast', { text: 'Target: ' + targetLabel(target), kind: 'info', ttl: 2 });
+}
+
+function clearCombatTarget(state, bus) {
+  if (!state?.player) return;
+  state.player.targetId = null;
+  if (state.input) {
+    state.input.targetAssistDisabled = true;
+    if (state.input.autoAim) state.input.autoAim = null;
+  }
+  if (bus) bus.emit('toast', { text: 'Free aim · Tab to lock', kind: 'info', ttl: 2 });
 }
 
 // PQ-015: sub-select one component (combat subsystem / salvage weak-point) on the current target and
@@ -1525,6 +1543,7 @@ function isDeliberateNonHostilePick(player, state, entity) {
 }
 
 function targetNearestHostileToPlayer(state, bus, options = {}) {
+  if (state.input?.targetAssistDisabled === true) return;
   const player = state.entities.get(state.playerId);
   if (!player) return;
   const quiet = !!options.quiet;
@@ -1601,7 +1620,7 @@ export function destroyedLockToast(state, payload) {
   return { text: 'TARGET DESTROYED · ' + targetLabel(entity), kind: 'good', ttl: 2.5 };
 }
 
-export { cycleTarget, targetNearestHostileToPlayer };
+export { cycleTarget, clearCombatTarget, targetNearestHostileToPlayer };
 
 function targetLabel(e) {
   if (!e) return 'Contact';

@@ -170,8 +170,8 @@ test('the PQ-002 lab pins a deterministic weaving-target kill-criterion matrix',
 
 test('G activates auto-target weapon lead and never creates a pursuit/orbit slot', () => {
   const state = createGameState(0x507007);
-  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0 };
-  const target = { id: 2, type: 'ship', alive: true, pos: { x: 220, z: 0 }, vel: { x: 0, z: 30 }, rot: 0 };
+  const player = { id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0 };
+  const target = { id: 2, type: 'ship', alive: true, team: 1, pos: { x: 220, z: 0 }, vel: { x: 0, z: 30 }, rot: 0, data: { ai: { huntPlayer: true } } };
   state.playerId = player.id;
   state.player.targetId = target.id;
   state.entities.set(player.id, player);
