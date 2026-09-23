@@ -42,6 +42,7 @@ export const STATION_CONTROLS = Object.freeze({
   'set-course': { label: 'Set course' },
   'accept-mission': { label: 'Accept', role: 'primary' },
   'mission-row': { label: 'Mission' },
+  'decision-option': { label: 'Choose' },
   track: { label: 'Track' },
   blueprint: { label: 'Blueprint' },
   'source-market': { label: 'Source in market' },

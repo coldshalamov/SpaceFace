@@ -269,7 +269,7 @@ function marketDecisionHtml(state, stationId) {
     `<section class="sx-decision">` +
       `<p class="k-sentence">${escapeHtml(decision.situation)}</p>` +
       decision.options.map((option) => (
-        `<button type="button" class="k-row sx-decision__opt" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}">` +
+        `<button type="button" ${stationControlAttrs('decision-option')} class="k-row sx-decision__opt" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}">` +
           `<span class="k-row__name">${escapeHtml(option.label)}</span>` +
           `<span class="k-row__sub">${escapeHtml(option.tradeoff)}</span>` +
         `</button>`
