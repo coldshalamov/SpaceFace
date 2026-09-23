@@ -15,6 +15,7 @@ import { applyFeelEnvelope } from '../src/data/flightFeelEnvelopes.js';
 import {
   OVERCAP_ASSIST_BLEND_WU_S,
   VELOCITY_VECTORING_DEFAULTS,
+  VECTORING_SLIP_LEAD_RAD,
   createPropulsionRuntime,
   stepPropulsion,
 } from '../src/core/flight/propulsionKernel.js';
@@ -342,4 +343,53 @@ test(`kernel redirect table: twitch, W+turn sweep and W+strafe+turn per variant 
     assert.ok(row.turn90.minSpeed >= row.turn90.cruise * 0.75,
       `${EARNED} — ${row.variant}: a held full turn keeps >= 75% of cruise (min ${row.turn90.minSpeed})`);
   }
+});
+
+test(`a sustained turn welds the nose to the path: the hull never parks off its own trail — "${TWITCH}"`, () => {
+  // Regression: the yaw controller could spin the nose at maxYawRate (~2.6 rad/s) while the
+  // vectoring assist bent the path at ~0.9 rad/s, so a held turn ratcheted the nose-vs-velocity
+  // slip open to 40-80 deg and parked there — a clean circle in the exhaust trail with the hull
+  // visibly pointing out of it. The lead bound (VECTORING_SLIP_LEAD_RAD) caps the yaw command at
+  // the rate the drive can actually rotate the velocity once the allowance is spent.
+  const profile = hitchPlayerProfile();
+  const deg = (r) => r * 180 / Math.PI;
+  for (const turn of [0.5, -0.7, 1]) {
+    const b = cruiseBody(profile);
+    let prev = headingOf(b);
+    let swept = 0;
+    let maxSlip = 0;
+    simulate(profile, b, () => ({ throttle: 1, turn, velocityVectoring: true }), 14 * 60, (i, bb) => {
+      const h = headingOf(bb);
+      swept += Math.abs(wrap(h - prev));
+      prev = h;
+      if (i >= 6 * 60) maxSlip = Math.max(maxSlip, Math.abs(wrap(bb.rot - h)));
+      return false;
+    });
+    assert.ok(maxSlip <= VECTORING_SLIP_LEAD_RAD + 0.06,
+      `held turn ${turn}: steady nose-vs-path lead ${deg(maxSlip).toFixed(1)} deg must stay within the `
+      + `${deg(VECTORING_SLIP_LEAD_RAD).toFixed(0)} deg lead allowance (was parking at 40-80 deg)`);
+    assert.ok(swept > Math.PI * 2,
+      `held turn ${turn}: the welded carve still turns — swept ${deg(swept).toFixed(0)} deg in 14 s`);
+  }
+  // The bound is one-sided: a yaw command pushing FURTHER into an at-cap lead is clamped to the
+  // followable rate; whipping back toward the path keeps full authority.
+  const half = profile.combatSpeed * 0.5;
+  const deeper = step(profile, body({ vel: { x: half, z: 0 }, rot: 0.6 }),
+    { throttle: 1, turn: 1, velocityVectoring: true });
+  assert.equal(deeper.telemetry.vectoring.leadBounded, true, 'lead at 34 deg, demand deeper: bounded');
+  assert.ok(Math.abs(deeper.telemetry.vectoring.slipRad - 0.6) < 1e-9, 'telemetry reports the slip');
+  assert.ok(deeper.telemetry.targetYawRate < profile.maxYawRate,
+    `bounded yaw command ${deeper.telemetry.targetYawRate} < maxYawRate ${profile.maxYawRate}`);
+  const back = step(profile, body({ vel: { x: half, z: 0 }, rot: 0.6 }),
+    { throttle: 1, turn: -1, velocityVectoring: true });
+  assert.equal(back.telemetry.vectoring.leadBounded, false);
+  assert.ok(Math.abs(back.telemetry.targetYawRate + profile.maxYawRate) < 1e-9,
+    'turning back toward the path is never clamped');
+  // A flip is a flip: with the nose already ~126 deg off the path the bound releases and the yaw
+  // command is full authority — reversals still swing through.
+  const flip = step(profile, body({ vel: { x: half, z: 0 }, rot: Math.PI * 0.7 }),
+    { throttle: 1, turn: 1, velocityVectoring: true });
+  assert.equal(flip.telemetry.vectoring.leadBounded, false, 'inside the flip band the nose is free');
+  assert.ok(Math.abs(flip.telemetry.targetYawRate - profile.maxYawRate) < 1e-9,
+    'flip keeps the full yaw-rate command');
 });
