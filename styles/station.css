@@ -1659,3 +1659,133 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   box-shadow: inset 0 -1px 0 var(--dp-rule, rgb(232 226 212 / .10));
 }
 #screens .sx-berth .sx-mkt-row__tr.is-flat { color: var(--dp-ink-mute, #9a968c); }
+
+/* ───────────── SHIPWORKS + THE SHIP — the hull render, the system callouts, THE SHIP's columns ─────────────
+   One block for the shared ship stage (src/ui/station/screens/shipworks.js), both hosts: the dock
+   tab and the in-flight THE SHIP screen. Printed and lit (design/frontend/ONE_PHOTOGRAPH.md 9):
+   the hull is produced art, a callout is a printed field with the cut, a bead is flat ink. */
+
+/* The produced render (src/ui/ship/hullPoster.js) is the stage until the authored hull has drawn,
+   and for good where the live preview never arrives. It sits over the canvas and under every
+   overlay; shipworks.js places it so its hull fills the room the labels leave. The canvas clears
+   to an opaque frame while the dock and hull stream in, so behind a render it waits, unfocusable. */
+.sx-sw__stage > .sx-sw__poster {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 0;
+  object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none;
+  opacity: 1; transition: opacity 600ms var(--k-ease, ease-out);
+}
+.sx-sw__stage > .sx-sw__poster[hidden] { display: none; }
+.sx-sw__stage.is-live > .sx-sw__poster { opacity: 0; }
+.sx-sw__stage.has-poster > .sx-sw__canvas { transition: opacity 600ms var(--k-ease, ease-out); }
+.sx-sw__stage.has-poster:not(.is-live) > .sx-sw__canvas { opacity: 0; pointer-events: none; }
+/* A render cannot be orbited, and scars are pinned to the live hull's geometry: both wait for it. */
+.sx-sw__stage.has-poster:not(.is-live) :is(.sx-sw__camera, .sx-sw__dragcue, .sx-sw__scarfield) { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .sx-sw__stage > .sx-sw__poster, .sx-sw__stage.has-poster > .sx-sw__canvas { transition: none; }
+}
+
+/* The callouts (src/ui/ship/calloutLayout.js): a bead on the socket, a leader, the label in a
+   column beside the hull. A label opens the slot's hardware, so it is a printed field with the
+   cut; a fitted slot carries the lamp bar on its leading edge, an open one a quiet rule. */
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy {
+  box-sizing: border-box; padding: 5px calc(var(--dp-cut, 10px) + 8px) 6px 12px;
+  background:
+    linear-gradient(90deg, var(--dp-lamp, #f2b950) 2px, transparent 0),
+    linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), rgb(10 12 16 / .86) 0);
+  text-shadow: none;
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint.is-empty .sx-hardpoint__copy {
+  background:
+    linear-gradient(90deg, var(--dp-rule-hi, rgb(232 226 212 / .22)) 2px, transparent 0),
+    linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), rgb(10 12 16 / .86) 0);
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, .is-selected) .sx-hardpoint__copy {
+  background:
+    var(--dp-cut-lit, linear-gradient(transparent 0 0)),
+    linear-gradient(90deg, var(--dp-lamp, #f2b950) 2px, transparent 0),
+    linear-gradient(var(--dp-field-ink-hi, rgb(232 226 212 / .14)) 0 0),
+    linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), rgb(10 12 16 / .86) 0);
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint:focus-visible .sx-hardpoint__copy {
+  background:
+    var(--dp-cut-lit, linear-gradient(transparent 0 0)),
+    var(--dp-bracket, linear-gradient(90deg, #e8e2d4 2px, transparent 0)),
+    linear-gradient(var(--dp-field-ink-hi, rgb(232 226 212 / .14)) 0 0),
+    linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), rgb(10 12 16 / .86) 0);
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy em { color: var(--dp-ink-dim, #b9b4a8); }
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint.is-empty .sx-hardpoint__copy b { color: var(--dp-ink-dim, #b9b4a8); }
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__copy b { color: var(--dp-lamp-hot, #ffd98c); }
+/* The bead: flat ink, 7 px; lamp when the slot is under the hand or chosen. */
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint__reticle {
+  left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--dp-ink, #e8e2d4); box-shadow: 0 0 0 2px rgb(10 12 16 / .7);
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__reticle {
+  background: var(--dp-lamp, #f2b950); box-shadow: 0 0 8px var(--dp-lamp-bloom, rgb(242 185 80 / .45));
+}
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint__leader path { stroke: rgb(232 226 212 / .5); stroke-width: 1.25; }
+.sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__leader path { stroke: var(--dp-lamp, #f2b950); }
+/* THE SHIP's Deckplate sheet pins the bead and leader with an id selector; the same rules, as strong. */
+html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint__reticle { box-shadow: 0 0 0 2px rgb(10 12 16 / .7); }
+html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint.is-empty .sx-hardpoint__copy b { color: var(--dp-ink-dim, #b9b4a8); }
+html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__reticle {
+  background: var(--dp-lamp, #f2b950); box-shadow: 0 0 8px var(--dp-lamp-bloom, rgb(242 185 80 / .45));
+}
+html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint__leader path { stroke: rgb(232 226 212 / .5); }
+html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:hover, :focus-visible, .is-selected) .sx-hardpoint__leader path { stroke: var(--dp-lamp, #f2b950); }
+
+/* The bomb rack's sockets read name over state, like the system rows above them. */
+.sx-sw-rack__copy > .k-row__sub { white-space: normal; }
+
+/* THE SHIP in flight: the three columns are the grid's, never laid over each other. The systems
+   column was still the dock's 400 px absolute plate pinned to the panel's right edge, so it sat
+   80 px over the stage; the stats and the verbs kept a 400 px right margin for a plate that is not
+   in their column. */
+.sf-ship.dp-frame > .sx-sw > .sx-sw__rail { grid-column: 1; grid-row: 1; }
+.sf-ship.dp-frame > .sx-sw > .sx-sw__main { grid-column: 2; grid-row: 1; min-width: 0; }
+.sf-ship.dp-frame > .sx-sw > .sx-sw__side {
+  grid-column: 3; grid-row: 1; position: relative; inset: auto; width: auto; max-height: none;
+}
+.sf-ship.dp-frame .sx-sw__stats { margin-right: 0; flex: 0 1 auto; min-height: 0; max-height: 48%; overflow: hidden auto; }
+.sf-ship.dp-frame .sx-sw__main > .sx-sw-verbs { margin-right: 0; }
+/* The fleet card: the hull's role on its own line, whole, under the name; "Active" rides the
+   name's line instead of squeezing the role into "STARTER SC..." beside it. */
+.sx-sw-row.k-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name flag" "sub sub"; align-items: baseline; row-gap: 2px; }
+.sx-sw-row > .sx-sw-row__body { display: contents; }
+.sx-sw-row .sx-sw-row__name { grid-area: name; min-width: 0; }
+.sx-sw-row .sx-sw-row__sub { grid-area: sub; white-space: normal; overflow: visible; text-overflow: clip; }
+.sx-sw-row > .sx-sw-row__flag, .sx-sw-row > .sx-sw-row__price { grid-area: flag; }
+
+/* The six readings are one strip under the hull (shipworks.js moves the rack out of the stage):
+   a printed band on the stats plate's head, the reading in phosphor after its etched name. */
+#screens .sx-sw > .sx-sw__main > .sx-sw__gauges,
+.sx-sw > .sx-sw__main > .sx-sw__gauges {
+  position: static; inset: auto; width: auto; max-height: none; overflow: visible; flex: 0 0 auto;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px calc(36px * var(--k-s, 1));
+  margin: calc(12px * var(--k-s, 1)) 0 0; padding: 12px 18px 10px;
+  background: linear-gradient(0deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0), var(--dp-field, rgb(10 12 16 / .84));
+}
+#screens .sx-sw > .sx-sw__main > .sx-sw__gauges > .sx-sw-gauge,
+.sx-sw > .sx-sw__main > .sx-sw__gauges > .sx-sw-gauge {
+  display: inline-flex; align-items: baseline; gap: 10px; min-height: 0; padding: 0; margin: 0;
+  border: 0; background: none; box-shadow: none;
+}
+.sx-sw > .sx-sw__main > .sx-sw__gauges + .sx-sw__stats { margin-top: 0; }
+html body #screens #sf-ship .sx-sw > .sx-sw__main > .sx-sw__gauges {
+  padding: 12px 18px 10px;
+  background: linear-gradient(0deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0), var(--dp-field, rgb(10 12 16 / .84));
+}
+html body #screens #sf-ship .sx-sw > .sx-sw__main > .sx-sw__gauges > .sx-sw-gauge { min-height: 0; }
+
+/* A build key reads "Save fit 0/6", not "SAVE FIT0/6". */
+.sx-sw-preset__label + .sx-sw-preset__sub { margin-inline-start: .5em; }
+
+/* THE SHIP's hull name is the screen's display moment, sized to the frame: at 1280 x 800 the
+   kit's title size took a third of the stage's height and left the hull a thumbnail. */
+.sf-ship.dp-frame .sx-sw__name { font-size: clamp(34px, min(3.6vw, 6.4vh), 76px); }
+
+/* The dock host on a short frame (1280 x 800): the stage gives up height before the stats do,
+   so the four hero numbers are never cut in half at the fold; the rows under them scroll. */
+:is(#screens .sx-observatory, .sx-observatory) .sx-sw > .sx-sw__main > .sx-sw__stage { flex: 1 1 0; min-height: calc(190px * var(--k-s, 1)); }
+:is(#screens .sx-observatory, .sx-observatory) .sx-sw > .sx-sw__main > .sx-sw__stats { flex: 0 1 auto; min-height: calc(120px * var(--k-s, 1)); overflow: hidden auto; }

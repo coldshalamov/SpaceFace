@@ -73,6 +73,8 @@ import {
   buildLoadoutPresetRailModel,
   sanitizePresetSelectionMap,
 } from '../../ship/loadoutPresets.js';
+import { fitHullInk, layoutHullCallouts, pointsBox, separateBeads } from '../../ship/calloutLayout.js';
+import { createStagePoster } from '../../ship/hullPoster.js';
 import {
   dressState,
   ensureInteriorStyle,
@@ -172,6 +174,18 @@ function fittedIdentityLine(def) {
   return parts.join(' · ');
 }
 
+/**
+ * The system labels around the hull. Every bead is inside the hull's box (`keepOut`: the render's
+ * ink on the poster, the beads' own spread on the live hull, never narrower than centre +-100);
+ * the labels stand in a column on each side of it, stacked so no two touch, and a label can never
+ * print over a bead (src/ui/ship/calloutLayout.js). The old solver placed each card next to its
+ * own bead and never looked at the others, so "Thrusters OPEN / S" carried the weapon's bead on
+ * its text, and each leader started 17 px below its bead, which is why they read as loose elbows.
+ *
+ * Returns per slot: the card relative to its bead (`calloutX` is the card's facing edge -- the
+ * right edge for a left card, which the CSS pulls left by its own width), the card in stage
+ * coordinates, and the leader as an SVG path relative to the bead.
+ */
 export function calculateSpatialSlotLayout({
   projectedSlots = [],
   stageWidth = 1100,
@@ -181,189 +195,82 @@ export function calculateSpatialSlotLayout({
   calloutHeight = 36,
   edgeInset = 12,
   nameplateBottom = 0,
-  // Right-edge reservations in stage coordinates: [{ top, bottom, leftX }] for chrome that owns
-  // the right flank — the gauges rack up top and the operation plate at bottom. A callout card
-  // whose y-band intersects a zone keeps its right edge left of that zone's leftX; without this
-  // the flank pushes cards to stageWidth and they print under the gauges/plate.
+  // Chrome that owns the right flank (gauges rack, operation plate): [{ top, bottom, leftX }].
   rightZones = [],
-  // Left-edge reservations [{ top, bottom, rightX, push }] for chrome that owns a left-flank
-  // column — the nameplate up top ('below' pushes crossing cards under it) and the camera words
-  // at the foot ('above' caps them over it). Sliding a card right instead would cover the
-  // hardpoint the card annotates.
+  // Chrome in the left flank (nameplate, camera words): [{ top, bottom, rightX, push }].
   leftZones = [],
+  // Where labels may go at all (stage px); defaults to the stage less the edge inset.
+  bounds = null,
+  // The hull's box; defaults to the beads' spread grown by nodeRadius, at least centre +-100.
+  keepOut = null,
+  // Any other chrome labels must keep off, in stage px: [{ left, top, right, bottom }].
+  obstacles: extraObstacles = [],
+  gap = 28,
+  pitch = 6,
+  beadRadius = 6,
 } = {}) {
   if (!Array.isArray(projectedSlots) || !projectedSlots.length || stageWidth <= 0 || stageHeight <= 0) return [];
-
   const cx = stageWidth * 0.5;
-  const cy = stageHeight * 0.5;
-
-  const leftGroup = [];
-  const rightGroup = [];
-  const ambiguous = [];
-
-  for (const item of projectedSlots) {
-    if (item.x < cx - 12) {
-      leftGroup.push(item);
-    } else if (item.x > cx + 12) {
-      rightGroup.push(item);
-    } else {
-      ambiguous.push(item);
-    }
+  const area = bounds || { left: edgeInset, top: edgeInset, right: stageWidth - edgeInset, bottom: stageHeight - edgeInset };
+  let hull = keepOut;
+  if (!hull) {
+    const spread = pointsBox(projectedSlots, nodeRadius) || { left: cx, right: cx, top: 0, bottom: stageHeight };
+    hull = {
+      left: Math.min(spread.left, cx - 100),
+      right: Math.max(spread.right, cx + 100),
+      top: spread.top,
+      bottom: spread.bottom,
+    };
   }
-
-  ambiguous.sort((a, b) => (a.y - b.y));
-  for (const item of ambiguous) {
-    const localX = (item.local && typeof item.local.x === 'number') ? item.local.x : 0;
-    if (localX < 0) {
-      leftGroup.push(item);
-    } else if (localX > 0) {
-      rightGroup.push(item);
-    } else if (leftGroup.length <= rightGroup.length) {
-      leftGroup.push(item);
-    } else {
-      rightGroup.push(item);
-    }
+  const obstacles = [];
+  if (nameplateBottom > 0) obstacles.push({ left: 0, right: Math.max(0, hull.left - 1), top: 0, bottom: nameplateBottom });
+  for (const zone of leftZones) {
+    if (!zone || zone.rightX == null) continue;
+    obstacles.push({ left: 0, right: zone.rightX, top: zone.top, bottom: zone.bottom });
   }
-
-  leftGroup.sort((a, b) => a.y - b.y);
-  rightGroup.sort((a, b) => a.y - b.y);
-
-  const leftMinY = nameplateBottom > 0
-    ? Math.max(32, Math.min(stageHeight * 0.38, nameplateBottom + 6))
-    : 32;
-  const rightMinY = 44;
-  const maxY = Math.max(leftMinY + 40, stageHeight - calloutHeight - 16);
-
-  const results = [];
-
-  function layoutFlank(group, isLeft, minY) {
-    const count = group.length;
-    if (!count) return;
-
-    const minPitch = 42;
-    // Per-card vertical bounds from the left-side zones: 'below' zones set a floor, 'above'
-    // zones a ceiling. The bounds hold through the backward and compressed passes below — a
-    // cramped pitch is preferable to a card printed on the nameplate or the camera words.
-    const bounds = group.map((s) => {
-      let lo = minY;
-      let hi = maxY;
-      if (isLeft) {
-        // The card's x-range is y-independent on the left flank, so its overlap with a zone's
-        // column can be checked up front.
-        const cardLeft = Math.max(edgeInset,
-          Math.max((s.cardW || calloutWidth) + edgeInset, Math.min(s.x - nodeRadius - 16, cx - 100)) - (s.cardW || calloutWidth));
-        for (const zone of leftZones) {
-          if (!zone || zone.rightX == null || cardLeft >= zone.rightX) continue;
-          if (zone.push === 'above') hi = Math.min(hi, zone.top - calloutHeight - 6);
-          else lo = Math.max(lo, zone.bottom + 6);
-        }
-      }
-      if (lo > hi) lo = hi; // unresolvable — keep clear of the interactive element
-      return { lo, hi };
-    });
-    const targetYs = group.map((s, i) => Math.max(bounds[i].lo, Math.min(bounds[i].hi, s.y - 18)));
-
-    for (let i = 1; i < count; i++) {
-      if (targetYs[i] < targetYs[i - 1] + minPitch) {
-        targetYs[i] = targetYs[i - 1] + minPitch;
-      }
-    }
-
-    if (targetYs[count - 1] > bounds[count - 1].hi) {
-      targetYs[count - 1] = bounds[count - 1].hi;
-      for (let i = count - 2; i >= 0; i--) {
-        if (targetYs[i] > targetYs[i + 1] - minPitch) {
-          targetYs[i] = Math.max(bounds[i].lo, targetYs[i + 1] - minPitch);
-        }
-      }
-      if (targetYs[0] < minY) {
-        const avail = Math.max(1, maxY - minY);
-        // The pitch floor is the card's own height: tighter than that and the cards overprint
-        // each other, which is how "Cargo" used to land on "Utility".
-        const compressedPitch = Math.max(calloutHeight + 2, Math.min(minPitch, avail / Math.max(1, count - 1)));
-        for (let i = 0; i < count; i++) {
-          targetYs[i] = Math.max(bounds[i].lo, Math.min(bounds[i].hi, minY + i * compressedPitch));
-        }
-      }
-    }
-
-    group.forEach((item, i) => {
-      const { index, order, x, y } = item;
-      const targetY = targetYs[i];
-      const cardW = item.cardW || calloutWidth;
-
-      let absoluteLabelX;
-      let calloutX;
-      if (isLeft) {
-        // .is-callout-left copies carry translateX(-100%): --callout-x anchors the card's RIGHT
-        // edge, not its left. Anchor it at the solved right edge or every left card renders one
-        // card-width left of its solved position — into the nameplate and camera columns the
-        // zones are meant to protect.
-        const cardRight = Math.max(cardW + edgeInset, Math.min(x - nodeRadius - 16, cx - 100));
-        absoluteLabelX = Math.max(edgeInset, cardRight - cardW);
-        calloutX = cardRight - x;
-      } else {
-        // The card's right bound is the nearer of the stage edge and any reserved zone its
-        // y-band crosses (gauges rack at top-right, operation plate at bottom-right).
-        let rightBound = stageWidth - edgeInset;
-        for (const zone of rightZones) {
-          if (!zone || zone.leftX == null) continue;
-          if (targetY + calloutHeight > zone.top && targetY < zone.bottom) {
-            rightBound = Math.min(rightBound, zone.leftX - edgeInset);
-          }
-        }
-        const targetLeft = Math.min(rightBound - cardW, Math.max(x + nodeRadius + 16, cx + 100));
-        absoluteLabelX = Math.max(edgeInset, Math.min(rightBound - cardW, Math.max(edgeInset, targetLeft)));
-        calloutX = absoluteLabelX - x;
-      }
-
-      // The copy is offset from the node's zero-size point: --callout-x/y must be the card's
-      // stage position minus the node position exactly, or every card renders one nodeRadius
-      // low-and-right of where the solver placed it — straight through the reserved zones.
-      const calloutY = Math.round(targetY - y);
-      const visualCardLeft = absoluteLabelX;
-      const visualCardRight = absoluteLabelX + calloutWidth;
-      const visualCardTop = targetY;
-      const visualCardBottom = targetY + calloutHeight;
-
-      let leaderD = '';
-      const reticleY = 17;
-      const cardCenterY = calloutY + 17;
-      if (isLeft) {
-        const reticleX = 0;
-        const cardX = calloutX; // the card's right edge — the side facing the node
-        const midX = Math.round(reticleX - Math.max(6, Math.min(20, (reticleX - cardX) * 0.35)));
-        leaderD = `M ${reticleX} ${reticleY} H ${midX} V ${cardCenterY} H ${cardX}`;
-      } else {
-        const reticleX = 34;
-        const cardX = calloutX;
-        const midX = Math.round(reticleX + Math.max(6, Math.min(20, (cardX - reticleX) * 0.35)));
-        leaderD = `M ${reticleX} ${reticleY} H ${midX} V ${cardCenterY} H ${cardX}`;
-      }
-
-      results.push({
-        item,
-        index,
-        order,
-        x,
-        y,
-        isLeft,
-        calloutX,
-        calloutY,
-        visualCardLeft,
-        visualCardRight,
-        visualCardTop,
-        visualCardBottom,
-        leaderD,
-        zIndex: projectedSlots.length - order + 2,
-      });
-    });
+  for (const zone of rightZones) {
+    if (!zone || zone.leftX == null) continue;
+    obstacles.push({ left: zone.leftX, right: stageWidth, top: zone.top, bottom: zone.bottom });
   }
-
-  layoutFlank(leftGroup, true, leftMinY);
-  layoutFlank(rightGroup, false, rightMinY);
-
-  return results;
+  // A local x that disagrees with the projection only matters dead on the centre line.
+  const dots = projectedSlots.map((s) => {
+    const localX = s.local && typeof s.local.x === 'number' ? s.local.x : 0;
+    const onCentre = Math.abs(s.x - (hull.left + hull.right) / 2) <= 12;
+    return {
+      x: s.x,
+      y: s.y,
+      w: s.cardW || calloutWidth,
+      h: s.cardH || calloutHeight,
+      side: onCentre && localX ? (localX < 0 ? 'left' : 'right') : undefined,
+    };
+  });
+  for (const ob of extraObstacles) if (ob) obstacles.push(ob);
+  const placed = layoutHullCallouts({ dots, bounds: area, keepOut: hull, obstacles, gap, pitch, beadRadius });
+  return placed.map((card, i) => {
+    const item = projectedSlots[i];
+    const isLeft = card.side === 'left';
+    const calloutX = Math.round((isLeft ? card.right : card.left) - item.x);
+    const calloutY = Math.round(card.top - item.y);
+    const leaderD = card.leader.length
+      ? card.leader.map(([px, py], k) => `${k ? 'L' : 'M'} ${Math.round(px - item.x)} ${Math.round(py - item.y)}`).join(' ')
+      : '';
+    return {
+      item,
+      index: item.index,
+      order: item.order,
+      x: item.x,
+      y: item.y,
+      isLeft,
+      calloutX,
+      calloutY,
+      visualCardLeft: card.left,
+      visualCardRight: card.right,
+      visualCardTop: card.top,
+      visualCardBottom: card.bottom,
+      leaderD,
+      zIndex: projectedSlots.length - (item.order || 0) + 2,
+    };
+  });
 }
 
 export function createShipworksScreen(ctx) {
@@ -423,6 +330,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   const gaugeRackEl = el.querySelector('.sx-sw__gauges');
   const deltaEl = el.querySelector('.sx-sw__delta');
   const acquiringEl = el.querySelector('.sx-sw__acquiring');
+  // The hull's produced render (src/ui/ship/hullPoster.js): the stage until the authored hull has
+  // drawn, and the stage for good where the live preview never arrives. Both hosts show the
+  // three-quarter hero view: it is the angle the live camera frames, so the crossfade to the live
+  // hull does not jump.
+  const POSTER_VIEW = 'hero';
+  const poster = createStagePoster(stageEl, { after: canvas, onChange: () => scheduleSpatialProjection() });
+  // The six readings (mass, energy, shield, cargo, thrust, heat) are one strip under the hull
+  // (ONE_PHOTOGRAPH 9.3), not a 400 px column standing over the stage's right flank: at 1280 wide
+  // that column took half the stage, the hull shrank to a thumbnail and the last reading was cut.
+  if (gaugeRackEl && stageEl.parentNode) stageEl.after(gaugeRackEl);
 
   function dressFrame() {
     ensureInteriorStyle();
@@ -736,10 +653,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     canvas.dataset.previewAssetState = 'loading';
     canvas.dataset.previewReveal = gated ? 'acquiring' : 'direct';
     previewRevealPhase = gated ? 'acquiring' : 'direct';
-    stageEl.classList.toggle('is-acquiring', gated);
+    // A hull with a produced render needs no "reading the hull" card: the render is the stage
+    // while the optics resolve, with its name, gauges and system beads on it. The card (and the
+    // yielding of everything else) stays for hulls that have no render.
+    const carded = gated && !poster.has();
+    stageEl.classList.toggle('is-acquiring', carded);
     stageEl.classList.remove('is-revealing');
     if (acquiringEl) {
-      if (gated) {
+      if (carded) {
         const generation = previewSettleGeneration;
         mountDataState(acquiringEl, 'loading', {
           code: 'OPTICS_UNRESOLVED',
@@ -844,12 +765,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       dockId: shipworksDockIdForState(ctx.state),
       onFirstFrame: ({ defId } = {}) => {
         if (!defId || defId !== expectedPreviewDefId) return;
+        syncPosterLive();
         const state = mount && mount.getAssetState ? mount.getAssetState() : 'rendered';
         if (!stageEl.classList.contains('is-acquiring') || stablePreviewState(state)) settlePreviewReveal(defId, state);
         else watchPreviewSettlement(defId, previewSettleGeneration);
       },
       onAssetSettled: ({ defId, state } = {}) => {
         if (!defId || defId !== expectedPreviewDefId) return;
+        syncPosterLive();
         settlePreviewReveal(defId, state || (mount && mount.getAssetState ? mount.getAssetState() : 'authored'));
       },
     });
@@ -859,6 +782,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       canvas.dataset.previewBlocked = 'webgl-unavailable';
       canvas.dataset.previewAssetState = 'unavailable';
       stageEl.classList.remove('is-acquiring', 'is-revealing');
+      // With a produced render the stage still has its picture: the render is the final image,
+      // the way it is on a device that refuses the second context. No error card over it.
+      if (poster.has()) return null;
       stageEl.classList.add('is-preview-unavailable');
       mountDataState(acquiringEl, 'error', {
         code: 'PREVIEW_UNAVAILABLE',
@@ -946,6 +872,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function previewShip(defId, fittings, isPlayer, meta) {
+    poster.setHull(defId || null, POSTER_VIEW);
     ensureMount();
     writeCanvasPreviewMeta(defId, fittings, meta);
     expectedPreviewDefId = defId || null;
@@ -1060,7 +987,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   function massDeltaChipHtml(metric) {
     const text = massDeltaChipText(metric);
     if (metric && metric.basis === 'situational' && metric.assumption) {
-      return `<span title="${escapeHtml(metric.verb + ' · ' + metric.assumption)}">${escapeHtml(text)}</span>`;
+      return `<span${whyAttr(metric.verb + ' · ' + metric.assumption)}>${escapeHtml(text)}</span>`;
     }
     return escapeHtml(text);
   }
@@ -1551,6 +1478,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   // ---------- object-centric system projection ----------
   let spatialAnchors = new Map();
+  // Per slot index: its type and its place among slots of that type, for the poster's marks.
+  let spatialSlotMeta = new Map();
   let scarAnchors = new Map();
 
   function typeOrdinal(slots, slotIndex) {
@@ -1630,6 +1559,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   function renderSpatialSlots() {
     spatialAnchors = new Map();
+    spatialSlotMeta = new Map();
     if (mode !== 'fleet') { slotfieldEl.innerHTML = ''; return; }
     const ship = viewedShip();
     const def = ship && SHIP_BY_ID.get(ship.defId);
@@ -1640,6 +1570,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const fitted = fittings[i] && FITTABLE_BY_ID.get(fittings[i]);
       const anchor = localSlotAnchor(def, slots, i);
       spatialAnchors.set(i, anchor);
+      spatialSlotMeta.set(i, {
+        type: slot.type,
+        ordinal: typeOrdinal(slots, i),
+        count: slots.filter((s) => s.type === slot.type).length,
+      });
       // An unfitted slot is named for the SLOT, not for a part called "Empty Cargo". The old label
       // ("Empty " + type) read as installed hardware whose name happened to start with "Empty",
       // which is why an open bay looked like a component of the ship. Name the mount, then state
@@ -1671,25 +1606,19 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     });
   }
 
-  function syncPowerBeamProjection(stageRect) {
-    if (!mount || !stageRect) return;
+  // `pointOf(slotIndex)` -> the slot's bead in stage px (live hull or poster); `reactor` is where
+  // the power flows from: the hull's heart on the poster, the stage's lower centre on the live hull.
+  function syncPowerBeamProjection(stageRect, pointOf, reactor) {
+    if (!stageRect || typeof pointOf !== 'function') return;
     powerBeam.resize(stageRect.width, stageRect.height);
     if (!Array.isArray(currentPowerSlotIndices) || !currentPowerSlotIndices.length) {
       powerBeam.setPath([], { active: false });
       return;
     }
-    const points = [];
-    const reactor = { x: stageRect.width * 0.5, y: stageRect.height * 0.62 };
-    points.push(reactor);
+    const points = [reactor || { x: stageRect.width * 0.5, y: stageRect.height * 0.62 }];
     for (const slotIndex of currentPowerSlotIndices) {
-      const local = spatialAnchors.get(slotIndex);
-      if (!local) continue;
-      const projected = mount.projectLocalPoint(local);
-      if (!projected) continue;
-      points.push({
-        x: projected.x - stageRect.left,
-        y: projected.y - stageRect.top,
-      });
+      const p = pointOf(slotIndex);
+      if (p) points.push(p);
     }
     if (points.length < 2) {
       powerBeam.setPath([], { active: false });
@@ -1712,14 +1641,65 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
   }
 
+  /** The live hull has drawn when its authored asset is in: then the poster yields to it. */
+  function syncPosterLive() {
+    if (!poster.has()) { canvas.tabIndex = 0; return; }
+    const state = mount && mount.getAssetState ? mount.getAssetState() : '';
+    const sameHull = !!mount && (!mount.getDefId || mount.getDefId() === poster.defId());
+    // Only ever poster -> live for one hull: a refit that re-seats the same hull must not flash
+    // the render back in. A different hull resets through poster.setHull.
+    if (!poster.isLive() && sameHull && /^authored/.test(String(state || ''))) {
+      poster.setLive(true);
+      scheduleSpatialProjection();
+    }
+    // The canvas cannot be orbited while it is hidden behind the render: keep it out of the tab order.
+    canvas.tabIndex = poster.showing() ? -1 : 0;
+  }
+
+  function stageLocalRect(rect, stageRect, pad = 0) {
+    if (!rect || rect.width <= 0 || rect.height <= 0) return null;
+    return {
+      left: rect.left - stageRect.left - pad,
+      top: rect.top - stageRect.top - pad,
+      right: rect.right - stageRect.left + pad,
+      bottom: rect.bottom - stageRect.top + pad,
+    };
+  }
+
+  // The nameplate's padded box is far wider than its ink; the zone follows the text extent
+  // (per-text-node Range rects -- a whole-contents bounding rect would union the block boxes and
+  // be no narrower than the padded box), or a card crossing only padding would be pushed away.
+  function nameplateInkRect() {
+    if (!nameplateEl || !nameplateEl.isConnected) return null;
+    let ink = null;
+    const walker = document.createTreeWalker(nameplateEl, NodeFilter.SHOW_TEXT);
+    for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+      if (!t.nodeValue || !t.nodeValue.trim()) continue;
+      const r = document.createRange();
+      r.selectNodeContents(t);
+      for (const rr of r.getClientRects()) {
+        if (rr.width <= 0 || rr.height <= 0) continue;
+        ink = ink
+          ? { left: Math.min(ink.left, rr.left), top: Math.min(ink.top, rr.top), right: Math.max(ink.right, rr.right), bottom: Math.max(ink.bottom, rr.bottom) }
+          : { left: rr.left, top: rr.top, right: rr.right, bottom: rr.bottom };
+      }
+    }
+    if (!ink) return null;
+    return { left: ink.left, top: ink.top, right: ink.right, bottom: ink.bottom, width: ink.right - ink.left, height: ink.bottom - ink.top };
+  }
+
   function updateSpatialProjection() {
     if (!stageEl.isConnected) return;
-    // No preview mount (secondaryPreviewWebGlBlocked: a second hangar compile TDRs Intel/ANGLE, the
-    // owner's own laptop) means no hull to pin the systems to. The pins used to stay at the
-    // slotfield origin — seven "PHYSICAL / S" callouts piled on one point above the hull's name,
-    // and no way to choose a system at all. They lay out as a systems board instead: the same
-    // buttons, the same copy, as a wrapped row of chips at the foot of the stage.
-    if (slotfieldEl) slotfieldEl.classList.toggle('is-board', !mount);
+    syncPosterLive();
+    const posterOn = poster.showing();
+    // The live hull pins the systems when it is on the glass: no render for this hull, or the
+    // authored hull has drawn over the render. Otherwise the render pins them, on its own marks.
+    const livePath = !!mount && !posterOn;
+    // No hull picture at all -- no preview mount (secondaryPreviewWebGlBlocked: a second hangar
+    // compile TDRs Intel/ANGLE, the owner's own laptop) and no render for this hull -- means no
+    // hull to pin the systems to. They lay out as a systems board: the same buttons, the same
+    // copy, as a wrapped row of chips at the foot of the stage.
+    if (slotfieldEl) slotfieldEl.classList.toggle('is-board', !livePath && !posterOn);
     // The operation plate is bottom-anchored to the panel while the gauges rack lives at the
     // stage's top-right; CSS cannot express "start under the rack" across the two containing
     // blocks, so the plate's top is pinned here in its own containing-block coordinates. When
@@ -1734,165 +1714,157 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         sideEl.style.top = `${top}px`;
       }
     }
-    if (!mount) return;
+    if (!livePath && !posterOn) return;
     const stageRect = stageEl.getBoundingClientRect();
     if (stageRect.width <= 0 || stageRect.height <= 0) return;
     const focusLine = el.querySelector('.sx-sw__focusline');
     if (focusLine && selectedSlot < 0) focusLine.classList.remove('is-on');
 
     const nodes = [...slotfieldEl.querySelectorAll('[data-spatial-slot]')];
-    if (!nodes.length) return;
+    // The copy is white-space:nowrap -- its size is text-driven and position-independent, so
+    // measure it now: a planning width would push a 60 px card into columns it never enters.
+    const cards = nodes.map((node) => {
+      const copyEl = node.querySelector('.sx-hardpoint__copy');
+      const r = copyEl ? copyEl.getBoundingClientRect() : null;
+      return { w: r && r.width > 4 ? r.width : 200, h: r && r.height > 4 ? r.height : 36 };
+    });
 
-    const nodeRadius = 17;
-    const calloutWidth = 200;
-    const calloutHeight = 36;
-    const edgeInset = 12;
-    const cx = stageRect.width * 0.5;
-    const cy = stageRect.height * 0.5;
+    // Where the hull and its labels may go: the stage less its edge, less the gauges rack's
+    // column when the rack stands down the right flank.
+    const inset = 12;
+    const region = { left: inset, top: inset, right: stageRect.width - inset, bottom: stageRect.height - inset };
+    const obstacles = [];
+    const gaugesRect = gaugeRackEl && gaugeRackEl.isConnected && getComputedStyle(gaugeRackEl).visibility !== 'hidden'
+      ? stageLocalRect(gaugeRackEl.getBoundingClientRect(), stageRect, 4) : null;
+    if (gaugesRect) {
+      if (gaugesRect.bottom - gaugesRect.top > stageRect.height * 0.3 && gaugesRect.left > stageRect.width * 0.4) {
+        region.right = Math.min(region.right, gaugesRect.left - 12);
+      } else obstacles.push(gaugesRect);
+    }
+    const npRect = nameplateInkRect();
+    const nameplateZone = npRect ? stageLocalRect(npRect, stageRect, 6) : null;
+    if (nameplateZone) obstacles.push(nameplateZone);
+    if (livePath) {
+      for (const sel of ['.sx-sw__camera', '.sx-sw__dragcue']) {
+        const chrome = el.querySelector(sel);
+        const r = chrome && chrome.isConnected ? stageLocalRect(chrome.getBoundingClientRect(), stageRect, 4) : null;
+        if (r) obstacles.push(r);
+      }
+    }
 
+    // The render: its hull fitted into the region with a label column's width free on each side,
+    // and never over the nameplate (then it drops into the band under it).
+    let keepOut = null;
+    let heart = null;
+    if (posterOn) {
+      const reserveX = nodes.length ? Math.max(...cards.map((c) => c.w)) + 32 : 0;
+      const fitArgs = { ink: poster.ink(), imageAspect: poster.aspect(), reserveX, reserveY: 8 };
+      let fit = fitHullInk({ region, ...fitArgs });
+      if (nameplateZone && fit.inkRect.left < nameplateZone.right && fit.inkRect.right > nameplateZone.left
+          && fit.inkRect.top < nameplateZone.bottom && fit.inkRect.bottom > nameplateZone.top) {
+        fit = fitHullInk({ region: { ...region, top: Math.max(region.top, nameplateZone.bottom + 6) }, ...fitArgs });
+      }
+      poster.place(fit.imgRect);
+      keepOut = { left: fit.inkRect.left - 6, top: fit.inkRect.top, right: fit.inkRect.right + 6, bottom: fit.inkRect.bottom };
+      heart = { x: (fit.inkRect.left + fit.inkRect.right) / 2, y: (fit.inkRect.top + fit.inkRect.bottom) / 2 };
+    }
+
+    const pointOf = (index) => {
+      if (livePath) {
+        const local = spatialAnchors.get(index);
+        const projected = local && mount.projectLocalPoint(local);
+        return projected ? { x: projected.x - stageRect.left, y: projected.y - stageRect.top } : null;
+      }
+      const meta = spatialSlotMeta.get(index);
+      return meta ? poster.pointFor(meta.type, meta.ordinal, meta.count) : null;
+    };
+
+    const cx = heart ? heart.x : stageRect.width * 0.5;
+    const cy = heart ? heart.y : stageRect.height * 0.5;
     const projectedSlots = [];
     nodes.forEach((node, order) => {
       const index = Number(node.getAttribute('data-spatial-slot'));
-      const local = spatialAnchors.get(index);
-      const projected = local && mount.projectLocalPoint(local);
-      if (!projected) return;
-      const x = Math.max(36, Math.min(stageRect.width - 36, projected.x - stageRect.left));
-      const y = Math.max(38, Math.min(stageRect.height - 38, projected.y - stageRect.top));
-      // The copy is white-space:nowrap — its width is text-driven and position-independent, so
-      // measure it now: the solver's 200 px planning width would push a 60 px card into reserved
-      // columns it never actually enters.
-      const copyEl = node.querySelector('.sx-hardpoint__copy');
-      const measured = copyEl ? copyEl.getBoundingClientRect().width : 0;
-      const cardW = measured > 4 ? measured : calloutWidth;
+      const p = pointOf(index);
+      // A bead with nowhere to go yet (the render's marks still arriving) waits unseen rather
+      // than piling on the slotfield's origin.
+      node.style.visibility = p ? '' : 'hidden';
+      if (!p) return;
       projectedSlots.push({
         node,
         index,
         order,
-        x,
-        y,
-        local,
-        cardW,
+        x: Math.max(24, Math.min(stageRect.width - 24, p.x)),
+        y: Math.max(24, Math.min(stageRect.height - 24, p.y)),
+        local: spatialAnchors.get(index),
+        cardW: cards[order].w,
+        cardH: cards[order].h,
       });
     });
 
-    if (!projectedSlots.length) return;
-
-    const nameplateRect = nameplateEl && nameplateEl.isConnected ? nameplateEl.getBoundingClientRect() : null;
-    const nameplateBottom = nameplateRect && nameplateRect.bottom > stageRect.top
-      ? nameplateRect.bottom - stageRect.top
-      : 0;
-
-    // Right-flank reservations, measured live in stage coordinates: the gauges rack pinned to the
-    // stage's top-right and the operation plate pinned bottom-right. Both own their column; a
-    // callout card whose band crosses either keeps clear of its left edge.
-    const rightZones = [];
-    for (const zoneEl of [gaugeRackEl, sideEl, el.querySelector('.sx-sw__dragcue')]) {
-      if (!zoneEl || !zoneEl.isConnected) continue;
-      const zr = zoneEl.getBoundingClientRect();
-      if (zr.width <= 0 || zr.height <= 0) continue;
-      rightZones.push({
-        top: zr.top - stageRect.top,
-        bottom: zr.bottom - stageRect.top,
-        leftX: zr.left - stageRect.left,
+    if (projectedSlots.length) {
+      separateBeads(projectedSlots, 14).forEach((p, i) => { projectedSlots[i].x = p.x; projectedSlots[i].y = p.y; });
+      const layout = calculateSpatialSlotLayout({
+        projectedSlots,
+        stageWidth: stageRect.width,
+        stageHeight: stageRect.height,
+        nodeRadius: 17,
+        bounds: region,
+        keepOut,
+        obstacles,
       });
-    }
-    // Left-flank reservations: the nameplate's column (cards drop below it) and the camera
-    // words' corner (cards keep above it — that row is interactive). The nameplate's padded box
-    // is far wider than its ink; the zone follows the text extent (per-text-node Range rects —
-    // a whole-contents bounding rect would union the block boxes and be no narrower than the
-    // padded box), or a card crossing only padding would be pushed into a band that does not exist.
-    const leftZones = [];
-    if (nameplateRect && nameplateRect.width > 0 && nameplateRect.height > 0) {
-      let ink = null;
-      const walker = document.createTreeWalker(nameplateEl, NodeFilter.SHOW_TEXT);
-      for (let t = walker.nextNode(); t; t = walker.nextNode()) {
-        if (!t.nodeValue || !t.nodeValue.trim()) continue;
-        const r = document.createRange();
-        r.selectNodeContents(t);
-        for (const rr of r.getClientRects()) {
-          if (rr.width <= 0 || rr.height <= 0) continue;
-          ink = ink
-            ? { top: Math.min(ink.top, rr.top), right: Math.max(ink.right, rr.right), bottom: Math.max(ink.bottom, rr.bottom) }
-            : { top: rr.top, right: rr.right, bottom: rr.bottom };
+
+      layout.forEach((res) => {
+        const { item, isLeft, calloutX, calloutY, leaderD, zIndex } = res;
+        const { node, index, x, y } = item;
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        node.style.zIndex = String(zIndex);
+        node.classList.toggle('is-callout-left', isLeft);
+        node.style.setProperty('--callout-x', `${calloutX}px`);
+        node.style.setProperty('--callout-y', `${calloutY}px`);
+
+        const leaderPath = node.querySelector('.sx-hardpoint__leader path');
+        if (leaderPath) {
+          if (leaderD) leaderPath.setAttribute('d', leaderD);
+          else leaderPath.removeAttribute('d');
         }
-      }
-      const zoneRect = ink || nameplateRect;
-      leftZones.push({
-        top: zoneRect.top - stageRect.top,
-        bottom: zoneRect.bottom - stageRect.top,
-        rightX: zoneRect.right - stageRect.left,
-        push: 'below',
+
+        if (index === selectedSlot) {
+          const dx = x - cx;
+          const dy = y - cy;
+          if (focusLine) {
+            focusLine.style.left = `${cx}px`;
+            focusLine.style.top = `${cy}px`;
+            focusLine.style.width = `${Math.hypot(dx, dy)}px`;
+            focusLine.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+            focusLine.classList.add('is-on');
+          }
+          deltaEl.style.left = `${Math.max(16, Math.min(stageRect.width - 270, x + 24))}px`;
+          deltaEl.style.top = `${Math.max(70, Math.min(stageRect.height - 130, y - 18))}px`;
+        }
       });
     }
-    const cameraEl = el.querySelector('.sx-sw__camera');
-    if (cameraEl && cameraEl.isConnected) {
-      const cr = cameraEl.getBoundingClientRect();
-      if (cr.width > 0 && cr.height > 0) {
-        leftZones.push({
-          top: cr.top - stageRect.top,
-          bottom: cr.bottom - stageRect.top,
-          rightX: cr.right - stageRect.left,
-          push: 'above',
-        });
-      }
+
+    // Scars are placed on the live hull's geometry; the render carries no scar marks, so they
+    // wait for the live hull (the poster CSS hides the field meanwhile).
+    if (livePath) {
+      const scars = [...scarfieldEl.querySelectorAll('[data-scar-id]')];
+      scars.forEach((node, order) => {
+        const scarId = node.getAttribute('data-scar-id');
+        const local = scarAnchors.get(scarId);
+        const projected = local && mount.projectLocalPoint(local);
+        if (!projected) return;
+        const x = Math.max(28, Math.min(stageRect.width - 28, projected.x - stageRect.left));
+        const y = Math.max(30, Math.min(stageRect.height - 30, projected.y - stageRect.top));
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        node.style.zIndex = String(70 - order);
+      });
     }
-
-    const layout = calculateSpatialSlotLayout({
-      projectedSlots,
-      stageWidth: stageRect.width,
-      stageHeight: stageRect.height,
-      nodeRadius,
-      calloutWidth,
-      calloutHeight,
-      edgeInset,
-      nameplateBottom,
-      rightZones,
-      leftZones,
-    });
-
-    layout.forEach((res) => {
-      const { item, isLeft, calloutX, calloutY, leaderD, zIndex } = res;
-      const { node, index, x, y } = item;
-      node.style.left = `${x}px`;
-      node.style.top = `${y}px`;
-      node.style.zIndex = String(zIndex);
-      node.classList.toggle('is-callout-left', isLeft);
-      node.style.setProperty('--callout-x', `${calloutX}px`);
-      node.style.setProperty('--callout-y', `${calloutY}px`);
-
-      const leaderPath = node.querySelector('.sx-hardpoint__leader path');
-      if (leaderPath) {
-        leaderPath.setAttribute('d', leaderD);
-      }
-
-      if (index === selectedSlot) {
-        const dx = x - cx;
-        const dy = y - cy;
-        if (focusLine) {
-          focusLine.style.left = `${cx}px`;
-          focusLine.style.top = `${cy}px`;
-          focusLine.style.width = `${Math.hypot(dx, dy)}px`;
-          focusLine.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
-          focusLine.classList.add('is-on');
-        }
-        deltaEl.style.left = `${Math.max(16, Math.min(stageRect.width - 270, x + 24))}px`;
-        deltaEl.style.top = `${Math.max(70, Math.min(stageRect.height - 130, y - 18))}px`;
-      }
-    });
-
-    const scars = [...scarfieldEl.querySelectorAll('[data-scar-id]')];
-    scars.forEach((node, order) => {
-      const scarId = node.getAttribute('data-scar-id');
-      const local = scarAnchors.get(scarId);
-      const projected = local && mount.projectLocalPoint(local);
-      if (!projected) return;
-      const x = Math.max(28, Math.min(stageRect.width - 28, projected.x - stageRect.left));
-      const y = Math.max(30, Math.min(stageRect.height - 30, projected.y - stageRect.top));
-      node.style.left = `${x}px`;
-      node.style.top = `${y}px`;
-      node.style.zIndex = String(70 - order);
-    });
-    syncPowerBeamProjection(stageRect);
+    syncPowerBeamProjection(stageRect, (index) => {
+      const hit = projectedSlots.find((p) => p.index === index);
+      return hit ? { x: hit.x, y: hit.y } : pointOf(index);
+    }, heart);
   }
 
   // ---------- left rail ----------
@@ -2070,7 +2042,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const label = d ? d.name : 'Empty socket';
       const sub = d ? (dry ? `fitted · magazine dry — restock from the hangar` : `${cell.count}/${d.magazine} loaded`) : 'choose ordnance';
       return `<li class="k-row sx-sw-rack__cell${dry || !d ? ' is-empty' : ''}" data-rack-socket="${i}" tabindex="0" role="button" aria-label="Rack socket ${i + 1}: ${escapeHtml(label)}">` +
-        `<span class="k-row__name">${escapeHtml(label)}<span class="k-row__sub">${escapeHtml(sub)}</span></span>` +
+        // Name over its state, the way the system rows above it read ("Weapon / 0/1 fitted"):
+        // inline, the two ran together as "Empty socketchoose ordnance".
+        `<span class="k-row__name sx-sw-flow__copy sx-sw-rack__copy">${escapeHtml(label)} <span class="k-row__sub">${escapeHtml(sub)}</span></span>` +
         `<span class="k-row__num k-38">S${i + 1}</span></li>`;
     }).join('');
     const armedCells = rack.cells.filter((c) => c && c.id && c.count > 0).length;
