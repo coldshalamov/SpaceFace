@@ -53,7 +53,7 @@ const CSS = `
 .orr-cluster__legend b { font-family:var(--dp-face-numeral); font-weight:520; font-size:13px; color:var(--dp-phos, #dfeeff); font-variant-numeric:tabular-nums; text-align:right; }
 .orr-cluster__legend b.is-hull { font-weight:300; font-size:26px; line-height:.9; }
 .orr-cluster__legend b.is-hull i { font-style:normal; font-size:12px; font-weight:500; color:var(--dp-ink-dim, #b7b4a6); margin-left:1px; }
-.orr-cluster__legend .orr-label { font-size:10px; }
+.orr-cluster__legend .orr-label { font-size:max(10px, calc(10px / var(--orr-cluster-scale, 1))); }
 .orr-cluster__legend .is-critical, .orr-cluster__legend .is-critical i { color:var(--dp-danger, #ff5038); }
 .orr-cluster__read { position:absolute; display:flex; flex-direction:column; gap:3px; }
 .orr-cluster__read .orr-value { font-size:15px; }
@@ -69,7 +69,8 @@ const CSS = `
 .orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); opacity:1; }
 .orr-cluster__key.is-cooldown .orr-cluster__icon { opacity:.5; }
 .orr-cluster__key.is-locked .orr-cluster__icon, .orr-cluster__key.is-empty .orr-cluster__icon { opacity:.24; }
-.orr-cluster__keytag { position:absolute; top:50%; transform:translateY(-50%); white-space:nowrap; font-size:10px; }
+/* labels hold a 10 px floor on screen whatever the cluster's scale */
+.orr-cluster__keytag { position:absolute; top:50%; transform:translateY(-50%); white-space:nowrap; font-size:max(10px, calc(10px / var(--orr-cluster-scale, 1))); }
 .orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 10}px; }
 .orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 9}px; color:var(--dp-ink-dim, #b7b4a6); }
 .orr-cluster__keytag b { font-weight:700; color:var(--dp-ink, #e8e2d4); margin-left:6px; letter-spacing:.08em; }
@@ -191,7 +192,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const energyVal = el('b', 'orr-value');
   energyRead.append(el('span', 'orr-label', 'Energy'), energyVal);
   const [enx, eny] = at(R.flank + 12, 274);
-  place(energyRead, 22, eny - 42);
+  place(energyRead, 22, eny - 30);
   const heatRead = el('div', 'orr-cluster__read orr-cluster__fade orr-soft');
   const heatVal = el('b', 'orr-value');
   heatRead.append(el('span', 'orr-label', 'Heat'), heatVal);
@@ -217,7 +218,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const boost = arcGauge({ cx: P.x, cy: P.y, r: R.boost, from: SPEED_FROM, to: SPEED_TO, width: 3, tone: 'phos', track: 'faint', ghost: false, head: false });
   s.appendChild(boost.el);
   // boost is named by engraving along its own arc, so the label can never collide with a flank read
-  s.appendChild(circularText(P.x, P.y, R.boost - 9, 'BOOST', { startDeg: 300, size: 6.5, className: 'orr-micro' }));
+  s.appendChild(circularText(P.x, P.y, R.boost - 10, 'BOOST', { startDeg: 298, size: 9, className: 'orr-micro orr-micro--hi' }));
 
   const speedBlock = el('div', 'orr-cluster__speed orr-cluster__fade orr-soft');
   const speedVal = el('b', 'orr-numeral');
@@ -263,7 +264,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const handSpring = createSpring({ value: 40, preset: 'swing', onUpdate: (deg) => {
     const [a0x, a0y] = at(R.speed + 12, deg);
     const [a1x, a1y] = at(R.crescent - KEY_R - 5, deg);
-    const [g0x, g0y] = at(-R.orbit + 12, deg);
+    const [g0x, g0y] = at(-R.orbit - 4, deg);
     const d = `M ${f1(a0x)} ${f1(a0y)} L ${f1(a1x)} ${f1(a1y)}`;
     armGhost.setAttribute('d', `M ${f1(g0x)} ${f1(g0y)} L ${f1(a0x)} ${f1(a0y)}`);
     armLine.setAttribute('d', d);

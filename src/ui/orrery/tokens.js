@@ -72,6 +72,7 @@ export const ORRERY_CSS = `
 .orr-svg text { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; letter-spacing:.14em; fill:var(--dp-ink-dim, #b7b4a6); }
 /* engraved micro-lettering on rings: equipment labelling, not reading text */
 .orr-svg .orr-micro text { font-weight:600; letter-spacing:.32em; fill:rgb(232 226 212 / .42); }
+.orr-svg .orr-micro--hi text { letter-spacing:.28em; fill:rgb(232 226 212 / .62); }
 
 /* Drift: the outer tick rings turn slowly, on the compositor. */
 .orr-drift { transform-box:view-box; animation:orr-drift var(--orr-drift-s, 900s) linear infinite; }
