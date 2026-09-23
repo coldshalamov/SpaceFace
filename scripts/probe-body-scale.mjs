@@ -157,6 +157,10 @@ try {
           return;
         }
         if (role) return; // non-plume vfxRole (navBlinker, shieldBubblePool): effect, not hull
+        // Living-hull decal layer (kill tallies, repair patches, scorch, grime): an overlay that
+        // pops visible on first damage/kill at hull-radius scale (~34 WU vs a ~1 WU hull), not
+        // hull geometry. Excluding keeps the measure invariant to damage state.
+        if (obj.userData && obj.userData.spacefaceLivingHullPresentation) return;
         if (obj.isMesh && obj.geometry) {
           if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
           if (obj.geometry.boundingBox) {
@@ -210,6 +214,35 @@ try {
         : (render.meshes && typeof render.meshes.get === 'function' ? render.meshes.get(entity && entity.id) : null)
     );
 
+    // Collision-body measure that cannot be fooled by scene structure: the on-screen distance
+    // between pos ± radius along the camera's screen-right axis, pinned to the entity's plane.
+    function bodyPxOf(pos, radius, cam, THREE, right) {
+      if (!pos || !Number.isFinite(radius) || radius <= 0) return null;
+      const a = new THREE.Vector3(pos.x + right.x * radius, pos.y, pos.z + right.z * radius).project(cam);
+      const b = new THREE.Vector3(pos.x - right.x * radius, pos.y, pos.z - right.z * radius).project(cam);
+      if (a.z > 1 || b.z > 1) return null;
+      const ax = (a.x * 0.5 + 0.5) * W();
+      const ay = (-a.y * 0.5 + 0.5) * H();
+      const bx = (b.x * 0.5 + 0.5) * W();
+      const by = (-b.y * 0.5 + 0.5) * H();
+      return Math.hypot(ax - bx, ay - by);
+    }
+
+    // Visible world height on the entity's plane: cast the screen top-centre and bottom-centre
+    // rays to plane y = pos.y and measure between the intersections.
+    function frameHeightWuAt(cam, THREE, planeY) {
+      const camPos = new THREE.Vector3().setFromMatrixPosition(cam.matrixWorld);
+      const pts = [];
+      for (const ndcY of [1, -1]) {
+        const dir = new THREE.Vector3(0, ndcY, 0.5).unproject(cam).sub(camPos);
+        if (Math.abs(dir.y) < 1e-9) return null;
+        const t = (planeY - camPos.y) / dir.y;
+        if (t <= 0) return null;
+        pts.push(new THREE.Vector3(camPos.x + dir.x * t, planeY, camPos.z + dir.z * t));
+      }
+      return pts[0].distanceTo(pts[1]);
+    }
+
     const collect = () => {
       const SF = window.SF;
       if (!SF || !SF.state || !SF.THREE) return;
@@ -218,12 +251,20 @@ try {
       const ctrl = render && render.cameraCtrl;
       const p = st.entities && st.entities.get(st.playerId);
       if (!cam || !p || !p.pos) return;
+      cam.updateMatrixWorld(true);
+      cam.updateProjectionMatrix();
+      const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
+      right.y = 0;
+      if (right.lengthSq() > 1e-12) right.normalize(); else right.set(1, 0, 0);
       const diag = ctrl && typeof ctrl.zoomDiagnostics === 'function' ? ctrl.zoomDiagnostics() : null;
       const sample = {
         t: performance.now(),
         simTime: st.simTime,
         speedWu: p.vel ? Math.hypot(p.vel.x || 0, p.vel.z || 0) : 0,
         mode: st.mode,
+        bodyRadiusWu: Number.isFinite(p.radius) ? p.radius : null,
+        bodyPx: bodyPxOf(p.pos, p.radius, cam, THREE, right),
+        frameHeightWu: frameHeightWuAt(cam, THREE, p.pos.y),
         zoom: diag ? {
           requested: diag.requestedZoom,
           base: diag.baseZoom,
@@ -258,6 +299,14 @@ try {
         const { hull, plume } = boxesOf(pmesh, THREE);
         const hull2d = projectBox(hull, cam, THREE);
         sample.player = hull2d;
+        if (hull2d && !hull.isEmpty()) {
+          const ws = hull.getSize(new THREE.Vector3());
+          sample.player.worldSizeWu = {
+            x: Number(ws.x.toFixed(2)),
+            y: Number(ws.y.toFixed(2)),
+            z: Number(ws.z.toFixed(2)),
+          };
+        }
         // The visible exhaust is scene-level VFX, not a child of the hull mesh: NPC ships get a
         // pooled SF_RibbonTrail (engineTrailSurfaces.js), and the player hero gets the plasma
         // volume/stream groups (thruster/systems/*.js — named plume-system:*, sf-liquid-plasma-*,
@@ -339,6 +388,7 @@ try {
         }
       }
       const sizes = [];
+      const bodySizes = [];
       const detail = [];
       for (const e of st.entityList || []) {
         if (!e || e.alive === false || e.type !== 'ship' || e.id === st.playerId) continue;
@@ -350,15 +400,26 @@ try {
         if (!b2d || !b2d.inFrame) { sample.hostiles.outOfFrame += 1; continue; }
         sample.hostiles.inFrame += 1;
         sizes.push(b2d.pxMax);
-        if (detail.length < 12) detail.push({ id: e.id, tag, pxMax: Math.round(b2d.pxMax) });
+        const bpx = bodyPxOf(e.pos, e.radius, cam, THREE, right);
+        if (Number.isFinite(bpx)) bodySizes.push(bpx);
+        if (detail.length < 12) detail.push({ id: e.id, tag, pxMax: Math.round(b2d.pxMax), bodyPx: Math.round(bpx || 0) });
       }
       if (detail.length) sample.hostiles.detail = detail;
+      const med = (arr) => {
+        arr.sort((a, b) => a - b);
+        return arr.length % 2
+          ? arr[(arr.length - 1) / 2]
+          : (arr[arr.length / 2 - 1] + arr[arr.length / 2]) / 2;
+      };
       if (sizes.length) {
         sizes.sort((a, b) => a - b);
         sample.hostiles.minPx = sizes[0];
-        sample.hostiles.medianPx = sizes.length % 2
-          ? sizes[(sizes.length - 1) / 2]
-          : (sizes[sizes.length / 2 - 1] + sizes[sizes.length / 2]) / 2;
+        sample.hostiles.medianPx = med(sizes);
+      }
+      if (bodySizes.length) {
+        bodySizes.sort((a, b) => a - b);
+        sample.hostiles.bodyMinPx = bodySizes[0];
+        sample.hostiles.bodyMedianPx = med(bodySizes);
       }
       samples.push(sample);
     };
@@ -444,9 +505,12 @@ try {
   console.log(`  GPU                       ${payload.gpu || 'unknown'}`);
   console.log(`  host CPU busy             ${hostBusy.toFixed(0)}% (geometry probe — load stretches sample count, not measured sizes)`);
   console.log(`  samples                   ${summary.samples}`);
-  console.log(`  player hull px            p10 ${px(summary.playerHullPx.p10)} / p50 ${px(summary.playerHullPx.p50)} / p90 ${px(summary.playerHullPx.p90)}`);
+  console.log(`  player hull px (drawn)    p10 ${px(summary.playerHullPx.p10)} / p50 ${px(summary.playerHullPx.p50)} / p90 ${px(summary.playerHullPx.p90)}`);
+  console.log(`  player body px (collision) p10 ${px(summary.playerBodyPx.p10)} / p50 ${px(summary.playerBodyPx.p50)} / p90 ${px(summary.playerBodyPx.p90)}`);
+  console.log(`  frame height WU p50       ${px(summary.frameHeightWu.p50)}`);
   console.log(`  player off-centre px p50  ${px(summary.playerCenterOffsetPx.p50)}`);
   console.log(`  hostile hull px           median ${px(summary.hostilePx.median)} / min ${px(summary.hostilePx.min)}`);
+  console.log(`  hostile body px           median ${px(summary.hostileBodyPx.median)}`);
   console.log(`  zoom base / applied p50,p90  ${px(summary.zoom.base)} / ${px(summary.zoom.dynamicP50)}, ${px(summary.zoom.dynamicP90)}`);
   console.log(`  player speed p50/p90      ${px(summary.speedWu.p50)} / ${px(summary.speedWu.p90)} WU/s`);
   console.log('  zoom term binding (fraction of samples):');

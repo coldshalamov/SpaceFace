@@ -69,6 +69,9 @@ export function summarizeBodyScaleSamples(samples) {
     .filter(Number.isFinite);
   const hostileMedian = list.map((s) => s.hostiles && s.hostiles.medianPx).filter(Number.isFinite);
   const hostileMin = list.map((s) => s.hostiles && s.hostiles.minPx).filter(Number.isFinite);
+  const hostileBodyMedian = list.map((s) => s.hostiles && s.hostiles.bodyMedianPx).filter(Number.isFinite);
+  const playerBodyPx = list.map((s) => s.bodyPx).filter(Number.isFinite);
+  const frameHeightWu = list.map((s) => s.frameHeightWu).filter(Number.isFinite);
   const zoomP50src = list.map((s) => s.zoom && s.zoom.dynamic).filter(Number.isFinite);
   const zoomBase = list.map((s) => s.zoom && s.zoom.base).filter(Number.isFinite);
   const speedWu = list.map((s) => s.speedWu).filter(Number.isFinite);
@@ -95,8 +98,11 @@ export function summarizeBodyScaleSamples(samples) {
   return {
     samples: n,
     playerHullPx: { p10: percentile(playerPx, 0.1), p50: percentile(playerPx, 0.5), p90: percentile(playerPx, 0.9) },
+    playerBodyPx: { p10: percentile(playerBodyPx, 0.1), p50: percentile(playerBodyPx, 0.5), p90: percentile(playerBodyPx, 0.9) },
+    frameHeightWu: { p50: median(frameHeightWu) },
     playerCenterOffsetPx: { p50: median(playerCenter) },
     hostilePx: { median: median(hostileMedian), min: median(hostileMin) },
+    hostileBodyPx: { median: median(hostileBodyMedian) },
     zoom: { base: median(zoomBase), dynamicP50: percentile(zoomP50src, 0.5), dynamicP90: percentile(zoomP50src, 0.9) },
     speedWu: { p50: median(speedWu), p90: percentile(speedWu, 0.9) },
     bindingFraction: Object.fromEntries(Object.entries(bindingCounts).map(([k, v]) => [k, frac(v)])),

@@ -43,13 +43,18 @@ test('summarizeBodyScaleSamples aggregates a synthetic run', () => {
         directorMode: 'FOLLOW',
       },
       player: { pxMax: 20 + i, centerOffsetPx: 50 },
+      bodyPx: 200 + i * 2,
+      frameHeightWu: 400,
       plumeCoversHull: i < 5,
-      hostiles: { inFrame: i < 3 ? 2 : 0, outOfFrame: 1, medianPx: 8, minPx: 4 },
+      hostiles: { inFrame: i < 3 ? 2 : 0, outOfFrame: 1, medianPx: 8, minPx: 4, bodyMedianPx: 80 },
     });
   }
   const s = summarizeBodyScaleSamples(samples);
   assert.equal(s.samples, 10);
   assert.equal(s.playerHullPx.p50, 24.5);
+  assert.equal(s.playerBodyPx.p50, 209);
+  assert.equal(s.frameHeightWu.p50, 400);
+  assert.equal(s.hostileBodyPx.median, 80);
   assert.equal(s.plumeCoversHullFraction, 0.5);
   assert.equal(s.hostilesInFrameFraction, 0.3);
   assert.equal(s.bindingFraction.speedZoomFactor, 0.5);
