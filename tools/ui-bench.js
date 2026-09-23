@@ -136,6 +136,8 @@ function seededState() {
 }
 
 const state = seededState();
+// Probes drive live changes on a mounted screen (a repair, a sale) through the same state the screen reads.
+window.__BENCH_STATE = state;
 
 /** Move the seeded player hull to entity id `id` (0 is the seed; 1 reads as a live run). */
 function rekeyPlayer(id) {
@@ -314,6 +316,7 @@ const bus = {
     for (const fn of listeners.get(key) || []) fn(payload);
   },
 };
+window.__BENCH_BUS = bus;
 const manager = {
   pushScreen(id) { void goto(id); },
   popScreen() { void back(); },

@@ -47,8 +47,9 @@ import { bindStationMarkup, stationControlAttrs, stationControlLabel } from './s
 import { missionDockAttention } from './missionDockAttention.js';
 import { yardJobReadout } from './serviceQuotes.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
-import { injectOrreryStation, vitalDialSvg, vitalValueHtml } from '../orrery/stationLayouts.js';
+import { injectOrreryStation, setVitalDial, vitalDialSvg, vitalValueHtml } from '../orrery/stationLayouts.js';
 import { createStationRow } from '../orrery/stopDial.js';
+import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -961,8 +962,16 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const cls = 'k-word k-word--fine fh-key fh-key--small sxb-vital__act' + (ghost ? ' sxb-vital__act--ghost' : '');
     const why = cost.title ? ` data-why="${escapeHtml(cost.title)}"` : '';
     // the verb over its price (the words read "Repair · 22 cr" to anything that reads text)
-    const copy = ghost ? escapeHtml(label)
-      : `<span class="orr-act__verb">${escapeHtml(label)}</span><span class="orr-act__sep"> · </span><span class="orr-act__cost">${escapeHtml(text)}</span>`;
+    // one line per service: the verb, then its price. A leading detail ("66 mun · ") stays in the
+    // text for anything that reads it, visually quiet; a ghost verb shows its price too when it has one.
+    const parts = String(text).split(' · ');
+    const price = parts.pop() || '';
+    const detail = parts.length ? parts.join(' · ') + ' · ' : '';
+    const priced = /\d/.test(price);
+    const copy = ghost && !priced ? `<span class="orr-act__verb">${escapeHtml(label)}</span>`
+      : `<span class="orr-act__verb">${escapeHtml(label)}</span><span class="orr-act__sep"> · </span>` +
+        (detail ? `<span class="orr-act__detail">${escapeHtml(detail)}</span>` : '') +
+        `<span class="orr-act__cost">${escapeHtml(price)}</span>`;
     return `<button type="button" ${stationControlAttrs(id)} class="${cls}" data-vital-act="${id}"${why}` +
       ` aria-label="${escapeHtml(cost.title || (label + ' ' + text))}">${copy}</button>`;
   }
@@ -978,7 +987,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         vitalDialSvg({ frac: v.frac }) +
         `<span class="k-bar__fill sxb-vital__fill" style="width:${pct}%"></span></span>`;
     // a track-less unit (Munitions, Rights) still stands on its dial, drawn open (no fill)
-    const bareDial = v.track === false ? `<span class="orr-vdial-bare" aria-hidden="true">${vitalDialSvg({ bare: true })}</span>` : '';
+    const bareDial = v.track === false
+      ? `<span class="orr-vdial-bare" aria-hidden="true">${vitalDialSvg(v.frac > 0 || v.k === 'muni' ? { frac: v.frac } : { bare: true })}</span>` : '';
     const label = `${stationIcon(v.k)}<span class="sxb-vital__label k-t-body k-62">${escapeHtml(v.label)}</span>${track}`;
     const headEl = v.openHold
       ? `<button type="button" ${stationControlAttrs('hold-manifest')} class="k-word k-word--body sxb-vital__head" data-hold data-pop-owner` +
@@ -988,6 +998,44 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const acts = v.acts.filter(Boolean);
     const actsEl = `<span class="sxb-vital__acts">${acts.join('')}</span>`;
     return `<li class="k-row k-row--static sxb-vital sxb-vital--${v.k}" data-tone="${v.tone}">${bareDial}${headEl}${value}${actsEl}</li>`;
+  }
+
+  function patchVitals(vitals) {
+    const lis = [...vitalsEl.children];
+    if (lis.length !== vitals.length || typeof document === 'undefined') return false;
+    if (lis.some((li, i) => !li.classList.contains('sxb-vital--' + vitals[i].k))) return false;
+    const tpl = document.createElement('template');
+    // a DOM without <template> content (the node test shim) rebuilds the row instead
+    if (!tpl || !tpl.content || typeof lis[0]?.querySelector !== 'function') return false;
+    vitals.forEach((v, i) => {
+      const li = lis[i];
+      tpl.innerHTML = vitalHtml(v);
+      const next = tpl.content.firstElementChild;
+      if (!next) return;
+      if (li.getAttribute('data-tone') !== v.tone) li.setAttribute('data-tone', v.tone);
+      // the dial moves; its words are swapped only where they changed
+      const dial = li.querySelector('.orr-vdial');
+      if (!dial || !setVitalDial(dial, v.frac)) {
+        const oldDial = li.querySelector('.sxb-vital__track, .orr-vdial-bare');
+        const newDial = next.querySelector('.sxb-vital__track, .orr-vdial-bare');
+        if (oldDial && newDial) oldDial.replaceWith(newDial);
+      }
+      const fillEl = li.querySelector('.sxb-vital__fill');
+      const nextFill = next.querySelector('.sxb-vital__fill');
+      if (fillEl && nextFill && fillEl.style.width !== nextFill.style.width) fillEl.style.width = nextFill.style.width;
+      const track = li.querySelector('.sxb-vital__track');
+      const nextTrack = next.querySelector('.sxb-vital__track');
+      if (track && nextTrack && track.getAttribute('aria-label') !== nextTrack.getAttribute('aria-label')) track.setAttribute('aria-label', nextTrack.getAttribute('aria-label'));
+      for (const sel of ['.sxb-vital__label', '.sxb-vital__value', '.sxb-vital__acts']) {
+        const a = li.querySelector(sel);
+        const b = next.querySelector(sel);
+        if (a && b && a.outerHTML !== b.outerHTML) a.replaceWith(b);
+      }
+      const head = li.querySelector('button.sxb-vital__head');
+      const nextHead = next.querySelector('button.sxb-vital__head');
+      if (head && nextHead && head.getAttribute('aria-label') !== nextHead.getAttribute('aria-label')) head.setAttribute('aria-label', nextHead.getAttribute('aria-label'));
+    });
+    return true;
   }
 
   function renderStatus() {
@@ -1010,7 +1058,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         aria: `Hull ${(hullF * 100).toFixed(0)} percent`,
         acts: [vitalActHtml('repair', costs.repair, 'Repair'),
                vitalActHtml('wash', costs.wash, 'Wash', true),
-               vitalActHtml('insurance', costs.insurance, s.player?.insurance?.insuredModules ? 'Insurance · Active' : 'Insurance', true)],
+               vitalActHtml('insurance', costs.insurance, s.player?.insurance?.insuredModules ? 'Insured' : 'Insure', true)],
       },
       {
         k: 'fuel', label: 'Fuel', frac: fuelF, tone: vitalTone(fuelF, 'fuel'),
@@ -1030,10 +1078,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     ];
     // Munitions has no meter in state, so it appears only when there is something to load — an
     // action-only unit rather than a permanently-present tile reading "Rearm".
+    const muniAboard = Math.max(0, Math.floor(Number(cargo.items && cargo.items.cmdty_munitions) || 0));
     if (costs.resupply && !costs.resupply.disabled) {
       vitals.push({
-        k: 'muni', label: 'Munitions', frac: 0, tone: 'warn', track: false,
-        value: 'Low', aria: 'Munitions low',
+        k: 'muni', label: 'Munitions', frac: Math.min(1, muniAboard / MUNITIONS_LOAD), tone: 'warn', track: false,
+        value: `${fmtCr(muniAboard)} / ${MUNITIONS_LOAD}`, aria: `Munitions low: ${fmtCr(muniAboard)} aboard of a ${MUNITIONS_LOAD}-round load`,
         acts: [vitalActHtml('resupply', costs.resupply, 'Resupply')],
       });
     }
@@ -1062,7 +1111,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
     const vitalsHtml = vitals.map(vitalHtml).join('');
     if (vitalsHtml !== readoutsSignature) {
-      vitalsEl.innerHTML = vitalsHtml;
+      // The same vitals in the same order are patched in place, so a repair glides the dial up
+      // instead of redrawing it; a vital arriving or leaving rebuilds the row.
+      if (!patchVitals(vitals)) vitalsEl.innerHTML = vitalsHtml;
       readoutsSignature = vitalsHtml;
     }
 
