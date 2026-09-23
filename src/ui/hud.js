@@ -994,6 +994,68 @@ function setStyle(el, prop, value) {
   cache[prop] = value;
   el.style[prop] = value;
 }
+
+// Optical G-lag / bloom translate3d writes. Call sites used to rebuild
+// `translate3d(${(x).toFixed(2)}px,...)` every frame; setStyle only skipped the DOM
+// write after the template alloc. Cache hundredths-of-a-px (+ suffix/plain) so a still
+// offset skips toFixed + template entirely. Same rounding → same picture.
+function setLagTranslate(el, x, y, opts = null) {
+  if (!el) return;
+  const suffix = (opts && opts.suffix) || '';
+  const plain = (opts && Object.prototype.hasOwnProperty.call(opts, 'plain'))
+    ? opts.plain
+    : 'none';
+  // Exact-zero fast path matches the old `if (x !== 0 || y !== 0)` call-site gate:
+  // no toFixed, and subsequent settled frames are two property reads.
+  if (x === 0 && y === 0) {
+    if (el._sfLagActive === false && el._sfLagPlain === plain) return;
+    el._sfLagActive = false;
+    el._sfLagQx = 0;
+    el._sfLagQy = 0;
+    el._sfLagSuf = '';
+    el._sfLagPlain = plain;
+    const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+    if (cache.transform === plain) return;
+    cache.transform = plain;
+    el.style.transform = plain;
+    return;
+  }
+  const nx = Number(x);
+  const ny = Number(y);
+  const ox = Number.isFinite(nx) ? nx : 0;
+  const oy = Number.isFinite(ny) ? ny : 0;
+  if (ox === 0 && oy === 0) {
+    if (el._sfLagActive === false && el._sfLagPlain === plain) return;
+    el._sfLagActive = false;
+    el._sfLagQx = 0;
+    el._sfLagQy = 0;
+    el._sfLagSuf = '';
+    el._sfLagPlain = plain;
+    const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+    if (cache.transform === plain) return;
+    cache.transform = plain;
+    el.style.transform = plain;
+    return;
+  }
+  const qx = Math.round(ox * 100);
+  const qy = Math.round(oy * 100);
+  if (
+    el._sfLagActive === true
+    && el._sfLagQx === qx
+    && el._sfLagQy === qy
+    && el._sfLagSuf === suffix
+  ) return;
+  el._sfLagActive = true;
+  el._sfLagQx = qx;
+  el._sfLagQy = qy;
+  el._sfLagSuf = suffix;
+  el._sfLagPlain = null;
+  const next = `translate3d(${(qx / 100).toFixed(2)}px,${(qy / 100).toFixed(2)}px,0)${suffix}`;
+  const cache = el._sfStyle || (el._sfStyle = Object.create(null));
+  cache.transform = next;
+  el.style.transform = next;
+}
+
 function setCssVar(el, name, value) {
   if (!el) return;
   const cache = el._sfCssVar || (el._sfCssVar = Object.create(null));
@@ -3891,11 +3953,7 @@ export function createHud(ctx, alerts) {
       }
       const innerRing = lockRing.firstElementChild;
       if (innerRing) {
-        if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-          setStyle(innerRing, 'transform', `translate3d(${(opticalGLag.x * 0.95).toFixed(2)}px,${(opticalGLag.y * 0.95).toFixed(2)}px,0)`);
-        } else {
-          setStyle(innerRing, 'transform', 'none');
-        }
+        setLagTranslate(innerRing, opticalGLag.x * 0.95, opticalGLag.y * 0.95);
       }
     } else {
       setClass(lockRing, 'active', false);
@@ -3907,7 +3965,7 @@ export function createHud(ctx, alerts) {
       }
       if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1.4)');
       const innerRing = lockRing.firstElementChild;
-      if (innerRing) setStyle(innerRing, 'transform', 'none');
+      if (innerRing) setLagTranslate(innerRing, 0, 0);
     }
     // Lock-acquired tone & snap-shut latch: fire on rising edge (not-locked → locked).
     if (isLocked && !_wasLocked) {
@@ -3978,11 +4036,10 @@ export function createHud(ctx, alerts) {
         const innerDiamond = lockDiamond.firstElementChild;
         if (innerDiamond) {
           const spin = shape === 'bracket-friendly' ? ' rotate(45deg)' : '';
-          if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-            setStyle(innerDiamond, 'transform', `translate3d(${(opticalGLag.x * 0.9).toFixed(2)}px,${(opticalGLag.y * 0.9).toFixed(2)}px,0)${spin}`);
-          } else {
-            setStyle(innerDiamond, 'transform', spin ? 'rotate(45deg)' : 'none');
-          }
+          setLagTranslate(innerDiamond, opticalGLag.x * 0.9, opticalGLag.y * 0.9, {
+            suffix: spin,
+            plain: spin ? 'rotate(45deg)' : 'none',
+          });
         }
       } else {
         setClass(lockDiamond, 'visible', false);
@@ -4010,11 +4067,7 @@ export function createHud(ctx, alerts) {
       setClass(leadPip, 'on-solution', pipOverlay.onSolution);
       const innerPip = leadPip.firstElementChild;
       if (innerPip) {
-        if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-          setStyle(innerPip, 'transform', `translate3d(${(opticalGLag.x * 1.05).toFixed(2)}px,${(opticalGLag.y * 1.05).toFixed(2)}px,0)`);
-        } else {
-          setStyle(innerPip, 'transform', 'none');
-        }
+        setLagTranslate(innerPip, opticalGLag.x * 1.05, opticalGLag.y * 1.05);
       }
       if (leadPipArc && !pipOverlay.onSolution) {
         const pointer = state.input && state.input.pointerScreen;
@@ -4664,11 +4717,7 @@ export function createHud(ctx, alerts) {
     setArc(targetArcHull, rHull, hullFrac);
 
     if (targetArcsSvg) {
-      if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-        setStyle(targetArcsSvg, 'transform', `translate3d(${(opticalGLag.x * 0.85).toFixed(2)}px,${(opticalGLag.y * 0.85).toFixed(2)}px,0)`);
-      } else {
-        setStyle(targetArcsSvg, 'transform', 'none');
-      }
+      setLagTranslate(targetArcsSvg, opticalGLag.x * 0.85, opticalGLag.y * 0.85);
     }
   }
 
@@ -4846,11 +4895,7 @@ export function createHud(ctx, alerts) {
 
     if (!elReticle) elReticle = document.getElementById('aim-reticle');
     if (elReticle && elReticle.firstElementChild) {
-      if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-        setStyle(elReticle.firstElementChild, 'transform', `translate3d(${(opticalGLag.x).toFixed(2)}px,${(opticalGLag.y).toFixed(2)}px,0)`);
-      } else {
-        setStyle(elReticle.firstElementChild, 'transform', 'none');
-      }
+      setLagTranslate(elReticle.firstElementChild, opticalGLag.x, opticalGLag.y);
     }
 
     // J06: gated on the slow clock, and `update` is a no-op when the slot signature is unchanged.
@@ -5059,12 +5104,12 @@ export function createHud(ctx, alerts) {
       if (elReticle) {
         const inner = elReticle.firstElementChild;
         if (inner) {
-          const bloomScale = (1 + _recoilBloom * 0.25).toFixed(3);
-          if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
-            setStyle(inner, 'transform', `translate3d(${opticalGLag.x.toFixed(2)}px,${opticalGLag.y.toFixed(2)}px,0) scale(${bloomScale})`);
-          } else {
-            setStyle(inner, 'transform', `scale(${bloomScale})`);
-          }
+          const bloomQ = Math.round((1 + _recoilBloom * 0.25) * 1000);
+          const bloomScale = (bloomQ / 1000).toFixed(3);
+          setLagTranslate(inner, opticalGLag.x, opticalGLag.y, {
+            suffix: ` scale(${bloomScale})`,
+            plain: `scale(${bloomScale})`,
+          });
         }
       }
       // Class/archetype label: surfaces the ship's role + drive family so the player feels the
