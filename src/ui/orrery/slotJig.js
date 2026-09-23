@@ -7,7 +7,7 @@
 //
 // No layout or no SVG (node tests): it stands down and the reading carries the words alone.
 
-import { svg, polar, arcD, ticksD } from './svg.js';
+import { svg, polar, arcD, ticksD, circularText } from './svg.js';
 import { injectOrrery } from './tokens.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { loadHullPosterManifest, markForSlot, SLOT_MARKS } from '../ship/hullPoster.js';
@@ -27,6 +27,10 @@ const CSS = `
 html.sf-reduce-motion .orr-slotjig .orr-slotjig__halo { animation:none; }
 .orr-slotjig .orr-slotjig__word { font-size:10.5px; font-weight:650; letter-spacing:.18em; fill:var(--dp-hand-hot, #ffd98c);
   paint-order:stroke; stroke:rgb(4 6 9 / .9); stroke-width:4px; stroke-linejoin:round; }
+.orr-slotjig .orr-slotjig__bearing { font-size:10px; font-weight:650; letter-spacing:.08em; fill:rgb(236 230 216 / .45); }
+.orr-slotjig .orr-slotjig__seg { fill:none; stroke:rgb(236 230 216 / .22); }
+.orr-slotjig .orr-slotjig__seg.is-fitted { stroke:rgb(236 230 216 / .8); }
+.orr-slotjig .orr-slotjig__seg.is-target { stroke:var(--dp-hand, #f2b950); }
 .orr-slotjig .orr-slotjig__sub { font-size:10.5px; font-weight:600; letter-spacing:.04em; fill:rgb(236 230 216 / .82);
   paint-order:stroke; stroke:rgb(4 6 9 / .9); stroke-width:4px; stroke-linejoin:round; }
 `;
@@ -98,14 +102,39 @@ export function createSlotJig({ host } = {}) {
     }
     // the dial: the refit's ring round the ship, its ticks, and room outside it for the words
     const cxd = W / 2; const cyd = H / 2;
-    const R = side / 2 - 34;
+    const R = side / 2 - 46;
     const inner = R * 2 - 16;
     const frame = inner / 0.86;
     const fx = cxd - frame / 2; const fy = cyd - frame / 2;
+    art.style.right = 'auto'; art.style.bottom = 'auto';
     art.style.left = `${fx}px`; art.style.top = `${fy}px`; art.style.width = `${frame}px`; art.style.height = `${frame}px`;
-    art.style.inset = 'auto';
     layer.appendChild(svg('path', { d: arcD(cxd, cyd, R, 0, 360), class: 'orr-core orr-rest', 'stroke-width': 1 }));
     layer.appendChild(svg('path', { d: ticksD(cxd, cyd, R, 72, { len: 3, major: 6, majorLen: 8 }), class: 'orr-core orr-faint', 'stroke-width': 1 }));
+    if (R >= 150) {
+      for (let deg = 30; deg < 360; deg += 30) {
+        if (deg === 180) continue;
+        const [bx, by] = polar(cxd, cyd, R - 17, deg);
+        const b = svg('text', { x: bx.toFixed(1), y: (by + 3).toFixed(1), 'text-anchor': 'middle', class: 'orr-slotjig__bearing' });
+        b.textContent = String(deg).padStart(3, '0');
+        layer.appendChild(b);
+      }
+    }
+    const filled = spec.filled || [];
+    if (filled.length) {
+      const n = filled.length;
+      const span = Math.min(60, 8 * n + 8);
+      const step = span / n;
+      filled.forEach((on, i) => {
+        const k = n - 1 - i;
+        const s0 = 180 - span / 2 + k * step + 0.9;
+        layer.appendChild(svg('path', { d: arcD(cxd, cyd, R + 14, s0, s0 + step - 1.8),
+          class: `orr-slotjig__seg${on ? ' is-fitted' : ''}${i === spec.target ? ' is-target' : ''}`, 'stroke-width': 4 }));
+      });
+      if (spec.engraving) {
+        const eng = circularText(cxd, cyd, R + 30, String(spec.engraving).toUpperCase(), { startDeg: 270, size: 10, anchor: 'middle', upright: true, className: 'orr-micro' });
+        layer.appendChild(eng);
+      }
+    }
     const pts = uvs.map(([u, v]) => ({ x: fx + u * frame, y: fy + v * frame }));
     pts.forEach((p, i) => {
       if (i === spec.target) return;

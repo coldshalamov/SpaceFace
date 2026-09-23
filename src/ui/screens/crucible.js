@@ -664,6 +664,37 @@ export const crucibleScreen = {
     title.appendChild(sub);
     rootEl.appendChild(title);
 
+    // ORRERY §6 door: the arena you are about to fight in stands at the right as its own produced
+    // render, large, with its name engraved under it; choosing another arena cross-fades it. The
+    // form keeps the left. For the eye only: the arena tiles carry the words and the choice.
+    let paintHero = () => {};
+    if (ORRERY && typeof document !== 'undefined' && typeof document.createElementNS === 'function') {
+      const hero = el('div', 'orr-door-hero');
+      hero.setAttribute('aria-hidden', 'true');
+      const layers = [el('img', 'orr-door-hero__art'), el('img', 'orr-door-hero__art')];
+      for (const img of layers) { img.alt = ''; img.decoding = 'async'; hero.appendChild(img); }
+      const heroName = el('p', 'orr-door-hero__name', '');
+      const heroLine = el('p', 'orr-door-hero__line', '');
+      const heroWords = el('div', 'orr-door-hero__words');
+      heroWords.append(heroName, heroLine);
+      hero.appendChild(heroWords);
+      rootEl.appendChild(hero);
+      let front = 0;
+      let shown = null;
+      paintHero = (id, name, line) => {
+        const src = kitUrl((ARENA_TILE[id] || ARENA_TILE.helios_core).replace(/\.png$/, '@2x.png'));
+        heroName.textContent = name || '';
+        heroLine.textContent = line || '';
+        if (shown === src) return;
+        shown = src;
+        const next = layers[1 - front];
+        next.src = src;
+        next.classList.add('is-on');
+        layers[front].classList.remove('is-on');
+        front = 1 - front;
+      };
+    }
+
     // .k-stage — Mode, Hull and Seed as imaged tiles inside a smoked window.
     const stage = el('section', 'k-stage fh-window fh-window--deep');
     paintWindow(stage);
@@ -1007,6 +1038,8 @@ export const crucibleScreen = {
     const arenaSentence = el('p', 'k-sentence sf-crd-arena', '');
     const syncArena = () => {
       arenaSentence.textContent = (arenaDescriptions[arenaId] || arenaDescriptions.helios_core)[1];
+      const described = arenaDescriptions[arenaId] || arenaDescriptions.helios_core;
+      paintHero(arenaId, described[0], described[1]);
       for (const button of arenas.querySelectorAll('button')) {
         syncChoice(button, button.dataset.arenaId === arenaId);
       }
@@ -1057,6 +1090,20 @@ export const crucibleScreen = {
     // never a service. Both fields are plain paste targets; a bad code fails closed with the
     // reason on the note line.
     const shareBody = settingRow('Share', 'sf-crd-row--share');
+    // ORRERY: the share fields live in a drawer under their caption; the word opens it.
+    if (ORRERY && shareBody.parentNode && typeof shareBody.parentNode.querySelector === 'function') {
+      const shareRow = shareBody.parentNode;
+      const cap = shareRow.querySelector('.k-row__name');
+      const toggle = el('button', 'orr-door-drawer', 'Share codes');
+      toggle.type = 'button';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.addEventListener('click', () => {
+        const open = !shareRow.classList.contains('is-open');
+        shareRow.classList.toggle('is-open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+      if (cap) cap.replaceWith(toggle); else shareRow.insertBefore(toggle, shareBody);
+    }
     const shareNote = el('p', 'k-t-fine k-38 sf-crd-share-sub',
       'A run code sets the seed, the build and the rules. A ghost code adds a hull to race.');
     const codeRow = el('div', 'k-words k-words--row sf-crd-share');

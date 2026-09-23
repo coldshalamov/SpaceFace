@@ -634,6 +634,14 @@ export const crucibleDraftScreen = {
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
       cards.addEventListener('focusin', (event) => this._readFrom(event));
       cards.addEventListener('pointerover', (event) => this._readFrom(event));
+      const railScale = el('div', 'orr-rail-scale');
+      railScale.setAttribute('aria-hidden', 'true');
+      const track = el('div', 'orr-rail-scale__track');
+      track.appendChild(el('div', 'orr-rail-scale__thumb'));
+      railScale.append(track, el('p', 'orr-rail-scale__words', ''));
+      stage.appendChild(railScale);
+      this._railScale = railScale;
+      cards.addEventListener('scroll', () => this._syncRailScale(), { passive: true });
     }
 
     // .k-foot — Keep current loadout, Re-roll (with the wallet beside it), the keys in fine print.
@@ -832,7 +840,7 @@ export const crucibleDraftScreen = {
     reroll.hidden = !lines.visible;
     reroll.style.display = lines.visible ? '' : 'none';
     // The balance, and which draw this is — a player who has paid twice should be able to see it.
-    this._wallet.textContent = shop ? `${context.state.run.credits} cr to spend` : lines.visible
+    this._wallet.textContent = shop ? (this._reading ? '' : `${context.state.run.credits} cr to spend`) : lines.visible
       ? (lines.draw ? `${lines.wallet} · ${lines.draw}` : lines.wallet)
       : '';
     // The keys a card cannot print on itself. Esc and R ride inside their own keys; the offer
@@ -884,8 +892,11 @@ export const crucibleDraftScreen = {
     const rows = owner && typeof owner.refitRows === 'function' ? owner.refitRows() : [];
     const hullId = activeLoadout(context).hullId;
     const slot = Number.isInteger(offer.slotIndex) ? offer.slotIndex : -1;
+    const fittedCount = rows.filter((row) => !!row.defId).length;
+    const hullName = hullId ? (entityLabel('hull:' + hullId) || hullId.replace(/^ship_/, '')) : '';
     r.jig.show({
       hullId,
+      engraving: hullName ? `${hullName} \u00b7 ${fittedCount} of ${rows.length} fitted` : '',
       slots: rows.map((row) => row.slotType),
       filled: rows.map((row) => !!row.defId),
       target: slot,
@@ -918,8 +929,38 @@ export const crucibleDraftScreen = {
     parts.buy.classList.toggle('is-off', !offer.available);
     // the rail's Hand sits on the row being read
     if (this._cards) {
-      for (const card of this._cards.querySelectorAll('.sf-cru-card')) card.classList.toggle('is-lit', card.dataset.offerId === offer.id);
+      for (const card of this._cards.querySelectorAll('.sf-cru-card')) {
+        const lit = card.dataset.offerId === offer.id;
+        card.classList.toggle('is-lit', lit);
+        if (lit && typeof card.scrollIntoView === 'function' && this._cards.getBoundingClientRect) {
+          const box = this._cards.getBoundingClientRect();
+          const row = card.getBoundingClientRect();
+          if (row.top < box.top || row.bottom > box.bottom) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      }
     }
+    this._syncRailScale();
+  },
+
+  /** Where the rail is: a thin scale beside it with its thumb, and 'first-last of all'. */
+  _syncRailScale() {
+    const cards = this._cards;
+    const scale = this._railScale;
+    if (!cards || !scale || typeof cards.getBoundingClientRect !== 'function') return;
+    const all = [...cards.querySelectorAll('.sf-cru-card')];
+    const box = cards.getBoundingClientRect();
+    const shown = all.map((c, i) => [i, c.getBoundingClientRect()]).filter(([, r]) => r.bottom > box.top + 8 && r.top < box.bottom - 8);
+    const overflow = cards.scrollHeight > cards.clientHeight + 2;
+    scale.hidden = !overflow || !all.length;
+    if (scale.hidden) return;
+    const first = shown.length ? shown[0][0] + 1 : 1;
+    const last = shown.length ? shown[shown.length - 1][0] + 1 : all.length;
+    scale.querySelector('.orr-rail-scale__words').textContent = `${first}\u2013${last} of ${all.length}`;
+    const thumb = scale.querySelector('.orr-rail-scale__thumb');
+    const frac = cards.clientHeight / cards.scrollHeight;
+    const pos = cards.scrollTop / Math.max(1, cards.scrollHeight - cards.clientHeight);
+    thumb.style.height = `${Math.max(8, frac * 100)}%`;
+    thumb.style.top = `${pos * (100 - Math.max(8, frac * 100))}%`;
   },
 
   // One offer: the key numeral in fine print, the verb as the one permitted caps label, the name
