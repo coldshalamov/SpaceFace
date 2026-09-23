@@ -1,4 +1,4 @@
-import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV } from '../../views/marketPresentation.js';
+import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV, saleLineHtml } from '../../views/marketPresentation.js';
 import { marketFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/market.js — "Market": the dense register (Frontend Task C §1.3).
 // Left half: the commodity table — name, buy, sell, stock, held — twelve rows visible with hairlines,
@@ -1179,9 +1179,19 @@ export function createMarketScreen(ctx) {
     if (!scrubFrame) scrubFrame = requestAnimationFrame(flushScrub);
   });
   let scrubFrame = 0;
+  function refreshSaleLine() {
+    const line = quoteEl.querySelector('[data-sale-line]');
+    if (!line) return;
+    const state = ctx.state || {};
+    const r = tradedList(state).find((x) => x.id === selectedId);
+    if (!r) return;
+    const html = saleLineHtml({ sell: unitSell(r.entry, r.def), saleQty: qty, saleQuote: contemplatedSaleQuote(stationId(state), r.id, qty) });
+    if (line.outerHTML !== html) line.outerHTML = html;
+  }
   function flushScrub() {
     scrubFrame = 0;
     renderConsole(ctx.state || {}, { receiptOnly: true });
+    refreshSaleLine();
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
   }
   consoleEl.addEventListener('selectstart', (ev) => { if (scrub && scrub.moved) ev.preventDefault(); });
