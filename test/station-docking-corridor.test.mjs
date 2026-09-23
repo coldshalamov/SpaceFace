@@ -818,58 +818,78 @@ test('real authority: an off-lane knock inside the silhouette recovers through t
 // real SG-02 authority — no scripted impulses, only the autopilot's own commands.
 // ---------------------------------------------------------------------------------------------
 
-async function flyAutopilotDockApproach({ startPos, startVel, secondsMax }) {
+async function createAutopilotApproachRig({ startPos, startVel }) {
   const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
   const prevBus = flightV3.bus;
+  const station = heliosStation();
+  const player = {
+    id: 'player', type: 'ship', alive: true, collides: true, flags: {},
+    pos: { ...startPos }, vel: { ...startVel }, rot: Math.atan2(startVel.z, startVel.x),
+    angVel: 0, radius: 14, mass: 32, data: {},
+    propulsion: PROPULSION_PROFILES.drive_reaction_m,
+    boost: { energy: 200, max: 200 },
+  };
+  const bus = createBus();
+  const autopilot = {
+    active: true, targetEntityId: station.id,
+    target: { x: station.pos.x, z: station.pos.z },
+    label: 'Helios Station', arrivalRadius: 90, status: '', distance: 0,
+  };
+  const state = {
+    mode: 'flight', playerId: player.id, tick: 0, simTime: 0,
+    entities: new Map([[player.id, player], [station.id, station]]),
+    entityIndex: { stations: [station] }, entityList: [player, station],
+    input: {}, ui: {}, nav: { autopilot }, player,
+  };
+  flightV3.bus = bus;
+  dockingCorridor.init({ bus });
+  owner.syncFromEntities([station, player]);
+  const berth = resolveBerthWorld(station, HELIOS);
+  const dt = 1 / 60;
+  const stepCraft = (t) => {
+    state.tick = t; state.simTime = t * dt;
+    // input.js republishes the raw pilot axes every tick; no keys are held in these scenarios.
+    state.input.moveX = 0; state.input.moveZ = 0; state.input.turnIntent = 0;
+    state.input.boost = false; state.input.brake = false;
+    flightV3._stepCraft(player, state.input, dt, state, true);
+    dockingCorridor.update(dt, state);
+    owner.step(dt);
+  };
+  const dispose = () => { flightV3.bus = prevBus; owner.dispose(); };
+  return { owner, state, player, autopilot, station, berth, dt, stepCraft, dispose };
+}
+
+async function flyAutopilotDockApproach({ startPos, startVel, secondsMax, onTick }) {
+  const rig = await createAutopilotApproachRig({ startPos, startVel });
+  const { state, player, autopilot, berth } = rig;
   try {
-    const station = heliosStation();
-    const player = {
-      id: 'player', type: 'ship', alive: true, collides: true, flags: {},
-      pos: { ...startPos }, vel: { ...startVel }, rot: Math.atan2(startVel.z, startVel.x),
-      angVel: 0, radius: 14, mass: 32, data: {},
-      propulsion: PROPULSION_PROFILES.drive_reaction_m,
-      boost: { energy: 200, max: 200 },
-    };
-    const bus = createBus();
-    const autopilot = {
-      active: true, targetEntityId: station.id,
-      target: { x: station.pos.x, z: station.pos.z },
-      label: 'Helios Station', arrivalRadius: 90, status: '', distance: 0,
-    };
-    const state = {
-      mode: 'flight', playerId: player.id, tick: 0, simTime: 0,
-      entities: new Map([[player.id, player], [station.id, station]]),
-      entityIndex: { stations: [station] }, entityList: [player, station],
-      input: {}, ui: {}, nav: { autopilot }, player,
-    };
-    flightV3.bus = bus;
-    dockingCorridor.init({ bus });
-    owner.syncFromEntities([station, player]);
-    const berth = resolveBerthWorld(station, HELIOS);
-    const dt = 1 / 60;
     const ticks = Math.round(secondsMax * 60);
     const speeds = [];
+    const trace = [];
     for (let t = 0; t < ticks; t++) {
-      state.tick = t; state.simTime = t * dt;
-      // input.js republishes the raw pilot axes every tick; no keys are held in these scenarios.
-      state.input.moveX = 0; state.input.moveZ = 0; state.input.turnIntent = 0;
-      state.input.boost = false; state.input.brake = false;
-      flightV3._stepCraft(player, state.input, dt, state, true);
-      dockingCorridor.update(dt, state);
-      owner.step(dt);
+      if (onTick) onTick(state, player, autopilot, t);
+      rig.stepCraft(t);
       speeds.push(Math.hypot(player.vel.x, player.vel.z));
+      if (t % 30 === 0) {
+        trace.push({
+          t, status: autopilot.status, settled: autopilot.brakeSettled === true,
+          speed: Math.round(Math.hypot(player.vel.x, player.vel.z)),
+          dist: Math.round(Math.hypot(player.pos.x - autopilot.target.x, player.pos.z - autopilot.target.z)),
+          phase: state.dockingCorridor && state.dockingCorridor.phase,
+        });
+      }
       if (state.dockingCorridor && state.dockingCorridor.phase === 'berthed') break;
     }
     return {
       berthed: state.dockingCorridor.phase === 'berthed',
       berthDist: Math.hypot(player.pos.x - berth.x, player.pos.z - berth.z),
       speeds,
+      trace,
       ticks: speeds.length,
       speed: Math.hypot(player.vel.x, player.vel.z),
     };
   } finally {
-    flightV3.bus = prevBus;
-    owner.dispose();
+    rig.dispose();
   }
 }
 
@@ -923,6 +943,39 @@ test('real authority: an inbound burn-speed approach berths promptly', async () 
     `a direct burn-speed approach must berth promptly (ended ${run.berthDist.toFixed(0)} wu out after ${(run.ticks / 60).toFixed(0)}s)`);
   assert.ok(run.berthDist <= HELIOS.docking.berth.dockRadius);
   assert.ok(run.speed < HELIOS.docking.berth.speedGate);
+});
+
+// The soak's second dock signature: the hull sat latched inside the approach margin carrying
+// 82.6 wu/s — `cruising`, never re-braking, 143 wu out with the berth 87 wu away. On the
+// reaction-M profile the heading-capture gate is precisionSpeed*0.72 = 82.8, so a vector at 82
+// can never capture; the settle floor was the only gate left, and desiredSpeed*1.4 there is 127
+// — above the hull's own speed, licensing the unbraked drift forever. A latched hull at the
+// observed speed and range must re-open the stop plan on the very next tick.
+test('real authority: a latched hull at the soak drift state re-opens the stop plan', async () => {
+  // Place the hull ~143 wu from the corridor-mouth aim (the soak's autopilot.distance) on a
+  // tangential vector — inside the stopping bound, where the settle floor is the only gate.
+  const mouth = { x: -85.91347391416552, z: 85.91347391416554 };
+  const rig = await createAutopilotApproachRig({
+    startPos: { x: mouth.x + 143, z: mouth.z },
+    startVel: { x: 0, z: 82.6 },
+  });
+  const { state, player, autopilot } = rig;
+  try {
+    autopilot.brakeSettled = true;
+    rig.stepCraft(0);
+    assert.equal(state.input.brake, true,
+      `a latched hull carrying 82 wu/s inside the margin must brake, not cruise (status: ${autopilot.status})`);
+    // And the full scenario still converges: keep stepping — the hull must shed and reach the
+    // corridor instead of holding the drift.
+    for (let t = 1; t < 240 * 60; t++) {
+      rig.stepCraft(t);
+      if (state.dockingCorridor && state.dockingCorridor.phase === 'berthed') break;
+    }
+    assert.equal(state.dockingCorridor.phase, 'berthed',
+      `the latched 82 wu/s drift must recover and berth (ended ${Math.hypot(player.pos.x, player.pos.z).toFixed(0)} wu from target, speed ${Math.hypot(player.vel.x, player.vel.z).toFixed(0)})`);
+  } finally {
+    rig.dispose();
+  }
 });
 
 function round6(value) {

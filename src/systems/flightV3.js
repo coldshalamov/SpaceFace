@@ -796,16 +796,19 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   // the arrival margin) must release the brake and creep to the arrival radius, while any fast
   // vector — inbound, tangential, outbound, or avoidance-aligned — counts down the same room.
   const approachMargin = arrivalRadius + 45 + lateralSpeed * 1.4;
-  // Settle latch: once a braked approach has shed to creep speed inside the margin, low
+  // Settle latch: once a braked approach has shed to creep speed inside the margin, damped
   // throttle alone carries the hull to the arrival radius. Without it the speed>4 edge pulses
   // brake on/off at ~20 Hz — counter-thrust slams under the floor in a tick, forward thrust
-  // rebuilds past it in two — flickering status and inputs for the last ~60 WU. A settled
-  // hull only re-opens the stop plan on a genuinely fast vector.
+  // rebuilds past it in two — flickering status and inputs for the last ~60 WU. The re-engage
+  // floor must track the plan, not exceed it: desiredSpeed*1.4 can rise above the hull's own
+  // speed (91 desired at 143 WU out -> a 127 floor), which would license an unbraked cruise
+  // inside the margin forever — the soak's 82 WU/s orbit. The floor stays bounded by the
+  // plan and by 30, so a genuinely fast vector always re-opens the stop.
   if (autopilot.status === 'braking' && speed <= 2.5 && dist <= approachMargin) {
     autopilot.brakeSettled = true;
   }
   if (autopilot.brakeSettled && dist > approachMargin * 1.6) autopilot.brakeSettled = false;
-  const brakeFloor = autopilot.brakeSettled ? Math.max(30, desiredSpeed * 1.4) : 4;
+  const brakeFloor = autopilot.brakeSettled ? Math.min(30, Math.max(6, desiredSpeed)) : 4;
   const terminalBrake = speed > brakeFloor && (
     dist <= stoppingDistance + approachMargin ||
     (halfway && closingSpeed > desiredSpeed * 0.92)
@@ -847,6 +850,9 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     const rightZ = Math.cos(rot);
     const facingDot = Math.cos(turnError);
     throttle = facingDot > -0.25 ? clamp(0.35 + facingDot * 0.78, -1, 1) : 0;
+    // A settled hull creeps on damped thrust so speed rebuilds over seconds, not ticks —
+    // that is what actually ends the release-edge flap the latch covers.
+    if (autopilot.brakeSettled) throttle = clamp(throttle * 0.3, -1, 1);
     strafe = clamp((guidance.x * rightX + guidance.z * rightZ) * 0.72, -1, 1);
     const cruiseClear = !guidance.avoiding && Math.abs(turnError) < 0.34;
     // A hull whose catalog profile carries no authored maxSpeed (the reaction family) read this
@@ -918,6 +924,7 @@ function stopAutopilot(host, state, reason) {
   if (!autopilot || autopilot.active !== true) return;
   clearAutopilotAvoidance(autopilot, true);
   autopilot.active = false;
+  autopilot.brakeSettled = false;
   autopilot.status = reason || 'idle';
   if (state && state.input) {
     state.input.autopilot = false;
