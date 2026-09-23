@@ -2441,16 +2441,9 @@ function masslineObstructed(host, state, player, target) {
 // CONTRACT — cursor proximity is opt-in player intent, never reticle state — and the precision-pick
 // profile puts 0.34 on the cursor axis, enough to decide the pick on its own.
 //
-// combat/autoTargetMode.tickAutoTarget OVERWRITES state.input.aimWorld with the weapon lead point
-// for the whole time auto-target is held (autoTargetMode.js:146-149), and stamps state.input.autoAim
-// as the provenance marker for exactly that write — the same marker weapons.js:167 already reads to
-// re-solve per mount, and which is cleared the moment auto-target stops driving the aim. Without
-// this gate, holding auto-target silently steered Massline acquisition onto whatever the guns had
-// locked: measured on a two-anchor scene, steering intent selected the turn-side rock under
-// 'massive-anchor-sling' with cursor 0.000, and holding auto-target on the OTHER rock flipped the
-// context to 'precision-pick' with cursor 1.000 and moved the selection onto the gun target.
-// Fail closed: while the aim point belongs to the guns, the cursor axis contributes nothing at all
-// and steering intent decides, which is the contract's own answer.
+// G draw mode writes a weapon lead point into aimWorld and marks it with autoAim. It must not
+// turn that gun solution into a Massline cursor paint. Ordinary Tab assist leaves aimWorld at
+// the physical cursor, so its autoAim marker does not suppress manual Massline aim.
 function weaponSynthesisedAim(state) {
   const marker = state && state.input && state.input.autoAim;
   return !!(marker && typeof marker === 'object' && marker.targetId != null);

@@ -47,11 +47,11 @@
 //    c. forceId forces a specific candidate — used for exact leases (cursor paint, focus, route).
 //    d. The 200ms hold + 80ms refresh throttle = up to 280ms lag between intent and visible receipt.
 //
-// 5. CURSOR / AIM SCORING  (tetherGameplay.js:1566 preciseCursorScore)
-//    a. preciseCursorScore: miss = max(0, hypot(aim - center) - radius);
-//       score = 1 - miss/CURSOR_LATCH_GRACE.
-//    b. acquisitionCursorActive: FALSE if weapon aim is synthesised (autoAim marker); otherwise
-//       checks input.aimIntentActive (or legacy pointerScreen.active fallback).
+// 5. CURSOR / AIM SCORING  (tetherGameplay.js preciseCursorScore)
+//    a. Surface grace is reduced by distance from the entity center, so a large body cannot
+//       earn perfect precision throughout its radius.
+//    b. acquisitionCursorActive ignores a synthesised gun point only in G draw mode; ordinary
+//       Tab assist keeps the physical aimWorld and uses aimIntentActive.
 //    c. CURSOR_LATCH_GRACE (36/96) is the live precise cursor radius. AIM_RAY_GRACE remains
 //       presentation/check-script scale through cursorAimScore().
 //
@@ -781,24 +781,14 @@ test('determinism: two identical clutter runs produce byte-equal latch events', 
 
 // ── Adjacent-target aim: large entity grace vs. small neighbor ─────────────────────────────────
 //
-// In the live path, preciseCursorScore subtracts the target radius before applying
-// CURSOR_LATCH_GRACE:
-//   miss = max(0, hypot(aim - center) - radius)
-//   score = 1 - miss / CURSOR_LATCH_GRACE
-// So the RADIUS IS subtracted from the center distance. A large entity (radius=30) has a 30wu
-// "free zone" around its center where miss=0 and score=1. This means a large entity's cursor
-// score is 1.0 for a 30wu radius around its center, while a small entity (radius=6) only gets
-// score=1.0 for a 6wu radius. This IS a form of grace — the entity radius itself is the grace.
-//
-// In a dense pocket, a large asteroid (radius=30) next to a small cargo pod (radius=6) can
-// "steal" the cursor if the aim is between them: the large asteroid's miss is smaller even if
-// the aim is closer to the small pod's center, because the large radius subtracts more.
+// Large bodies retain a wider surface grace, but center distance distinguishes overlapping
+// targets. A cursor directly on the smaller body's center must choose it.
 
 test('large-radius entities retain surface grace without perfect scores across their body', () => {
   const p = player({ vel: { x: 0, z: 0 } });
-  // Large asteroid at (150, 0) radius 30. Its score=1 zone is a 30-radius circle.
+  // Large asteroid at (150, 0) radius 30.
   const big = asteroid(60, 150, 0, { mass: 5200, radius: 30 });
-  // Small cargo pod at (150, 35) radius 6. Its score=1 zone is a 6-radius circle.
+  // Small cargo pod at (150, 35) radius 6.
   const pod = cargoPod(61, 150, 35, { mass: 180, radius: 6 });
   const h = buildClutterHarness([big, pod], {
     player: p,
@@ -812,25 +802,7 @@ test('large-radius entities retain surface grace without perfect scores across t
   assert.equal(receipt?.selected?.targetId, pod.id,
     'a direct aim on the small pod must select it despite the large neighbor');
 
-  // Now aim between them — at (150, 20), 20 from big center, 15 from pod center.
-  // Big miss = max(0, 20 - 30) = 0, score = 1.0.
-  // Pod miss = max(0, 15 - 6) = 9, score = 1 - 9/CURSOR_LATCH_GRACE = 0.75.
-  // The big asteroid has a HIGHER cursor score despite being farther from the aim point!
-  const h2 = buildClutterHarness([big, pod], {
-    player: p,
-    aimWorld: { x: 150, z: 20 },
-    aimIntentActive: true,
-    pointerActive: true,
-  });
-  settleReceipt(h2);
-  const receipt2 = h2.state.masslineAcquisition;
-  // WRONG: the aim is closer to the pod (15wu from pod center, 20wu from big center) but the
-  // big asteroid's radius subtracts 30 from its 20wu distance, giving miss=0 score=1.0, while the
-  // pod's radius subtracts only 6 from its 15wu distance, giving miss=9 score=0.75.
-  // correct expectation: the pod should win because the aim point is closer to the pod's surface
-  // (9wu from pod surface, 0wu from big surface — actually the aim is INSIDE the big asteroid's
-  // radius, so miss=0 for both if the aim is inside the big). This is geometrically correct
-  // (the aim is inside the big asteroid's body) but can feel like a steal in a dense pocket.
+  // Between the bodies, the rock still has surface coverage; neither earns a perfect cursor score.
   const bigScore = preciseCursorScoreFor(big, { x: 150, z: 20 });
   const podScore = preciseCursorScoreFor(pod, { x: 150, z: 20 });
   assert.ok(bigScore >= podScore,
