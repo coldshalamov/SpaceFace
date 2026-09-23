@@ -13100,11 +13100,17 @@ export const vfx = {
       )
       : null;
 
+    // Same rule as the main bell in _engineDriveFor: a thrusting carve projects backwards onto the
+    // hull axis, but with forward held that is the turn, not a brake, so the bow pair stays cold.
+    const input = this.state.input;
+    const pilotHoldsDrive = !!(input && Number.isFinite(input.moveZ) && input.moveZ > 0.05
+      && !(actuators && actuators.pilotBrake));
+
     const view = this._retroSocketView;
     view.length = 0;
     let peak = 0;
     const authoredSockets = this._rcsSocketObjects(player);
-    if (firings) {
+    if (firings && !pilotHoldsDrive) {
       for (let i = 0; i < firings.length && view.length < this._retroSockets.length; i++) {
         const jet = firings[i];
         if (jet.role !== 'reverse-left' && jet.role !== 'reverse-right') continue;
@@ -13385,9 +13391,14 @@ export const vfx = {
       this._mainDriveDemandScratch,
     );
     const reverse = md ? Math.max(0, md.reverse || 0) : Math.max(0, actuators && actuators.reverse || 0);
-    const retroOnly = !!(md && md.retroOnly);
+    // A velocity-vectoring carve swings the velocity ahead of the nose, so the net acceleration
+    // (pure centripetal, speed held) projects backwards onto the hull axis and reads as retro
+    // demand. With the pilot holding forward that is not a brake: the main jet blanked for the
+    // whole of every thrusting turn. Only the pilot's own brake darkens the bell while W is held.
+    const pilotHoldsDrive = pilotForward > 0.05 && !(actuators && actuators.pilotBrake);
+    const retroOnly = !!(md && md.retroOnly) && !pilotHoldsDrive;
     if (md) {
-      if (retroOnly || reverse > 0.05) {
+      if (retroOnly || (reverse > 0.05 && !pilotHoldsDrive)) {
         throttle = md.main;
       } else if (md.main > 0.001) {
         throttle = md.main;
@@ -13441,7 +13452,7 @@ export const vfx = {
     out.speedDrive = speedDrive;
     out.boost = boost;
     out.cruise = cruise;
-    out.reverse = reverse;
+    out.reverse = pilotHoldsDrive ? 0 : reverse;
     out.retroOnly = retroOnly;
     out.brake = brake;
     out.dashFired = !!this._plumeDashPending;

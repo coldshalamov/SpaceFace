@@ -929,6 +929,11 @@ export const mining = {
       if (!e.alive || (e.type !== 'pickup' && e.type !== 'payload')) continue;
       const pickupData = e.data || {};
       if (pickupData.anchored) continue;
+      // A towable body (47-A evidence spindle, rescue pods, the swing-lesson rock) is moved by the
+      // tether, never vacuumed: it carries no salvage to collect, so the homing write only rammed a
+      // 960 t spindle into the Kestrel at spawn and pinned it there, shoving the ship ~80 WU and
+      // flinching the hull for seconds on every New Game.
+      if (pickupData.tetherPayload) continue;
       // A facility-owned heist capsule is custody freight, not scrap: the magnet's velocity write
       // corrupts the fork's fresh-custody sample, and a collection would consume a mission load.
       if (pickupData.heistFacilityRole === 'cargo_capsule') continue;
