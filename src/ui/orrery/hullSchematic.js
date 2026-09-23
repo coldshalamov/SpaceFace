@@ -41,7 +41,7 @@ html.sf-reduce-motion .orr-hull--settled .orr-hull__label { transition:none; }
 .orr-svg .orr-hull__leader.is-lit { stroke:var(--dp-hand, #f2b950); opacity:.95; }
 .orr-svg .orr-hull__leader--hidden { stroke-dasharray:3 3; }
 .orr-svg .orr-hull__leader--hidden.is-lit { opacity:.85; }
-.orr-svg .orr-hull__bearing { font-size:9px; font-weight:650; letter-spacing:.08em; fill:rgb(236 230 216 / .42); }
+.orr-svg .orr-hull__bearing { font-size:10px; font-weight:650; letter-spacing:.08em; fill:rgb(236 230 216 / .5); }
 .orr-svg .orr-hull__leader-bloom { opacity:0; transition:opacity .18s linear; }
 .orr-svg .orr-hull__leader-bloom.is-lit { opacity:.22; }
 .orr-hull__node { transform-box:fill-box; transform-origin:center; transition:transform .28s var(--dp-ease-over, ease-out); }
@@ -178,6 +178,18 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
   let segEls = [];
   let hand = null;
   let litChangedAt = -1e9;
+  // the drawing's own coverage, sampled once per picture, so a line knows where it is hidden
+  let alphaMap = null;
+  function sampleArt() {
+    alphaMap = null;
+    try {
+      const c = doc.createElement('canvas');
+      c.width = 256; c.height = 256;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.drawImage(art, 0, 0, 256, 256);
+      alphaMap = g.getImageData(0, 0, 256, 256).data;
+    } catch (_) { alphaMap = null; }
+  }
 
   const schedule = () => {
     if (frame) return;
@@ -186,7 +198,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     frame = raf(() => { frame = 0; relayout(); });
   };
 
-  art.addEventListener('load', () => { art.classList.add('is-ready'); schedule(); });
+  art.addEventListener('load', () => { art.classList.add('is-ready'); sampleArt(); schedule(); });
   art.addEventListener('error', () => schedule());
   loadHullPosterManifest().then((m) => { manifest = m; schedule(); });
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => schedule()) : null;
@@ -267,8 +279,8 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     if (!artUrl || !info || W < 480 || H < 320 || !nodes.length) { standDown(); return; }
     on = true;
     host.classList.add('orr-hull--on');
-    if (art.getAttribute('src') !== artUrl) { art.classList.remove('is-ready'); art.src = artUrl; }
-    if (art.complete && art.naturalWidth) art.classList.add('is-ready');
+    if (art.getAttribute('src') !== artUrl) { art.classList.remove('is-ready'); alphaMap = null; art.src = artUrl; }
+    if (art.complete && art.naturalWidth) { art.classList.add('is-ready'); if (!alphaMap) sampleArt(); }
     art.hidden = false;
     pool.style.display = '';
     markLabels();
@@ -385,7 +397,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     const exits = [];
     const hidden = [];
     // the bearing scale: a numeral every 30 degrees just inside the rim, where no line leaves
-    for (let deg = 30; deg < 360; deg += 30) {
+    for (let deg = 30; deg < 360 && W >= 1440; deg += 30) {
       const near = (a) => Math.abs(((a - deg + 540) % 360) - 180) < 7;
       if (deg === 180) continue;
       const [bx, by] = polar(hx, hy, R - 17, deg);
@@ -408,14 +420,35 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
         ? `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`
         : `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${(ex + side * 10).toFixed(1)} ${ey.toFixed(1)} L ${(colEdge - side * 22).toFixed(1)} ${cy.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`;
       const stop = `M ${colEdge.toFixed(1)} ${(cy - 5).toFixed(1)} L ${colEdge.toFixed(1)} ${(cy + 5).toFixed(1)}`;
-      // where it crosses the ship it is a hidden line: a fine dash over the drawing
-      const lineUnder = svg('path', { d: inner, class: 'orr-core orr-hi orr-hull__leader orr-hull__leader--hidden', 'stroke-width': 1, opacity: '.34' });
+      // where it crosses the ship it is a hidden line, a fine dash over the drawing; over open glass
+      // it is a plain line -- the run is split at the silhouette
+      const overShip = (x, y) => {
+        if (!alphaMap) return true;
+        const u = (x - imgRect.left) / imgW; const v = (y - imgRect.top) / imgH;
+        if (u < 0 || u >= 1 || v < 0 || v >= 1) return false;
+        return alphaMap[(((v * 256) | 0) * 256 + ((u * 256) | 0)) * 4 + 3] > 120;
+      };
+      const runLen = Math.hypot(ex - p.x, ey - p.y);
+      const steps = Math.max(2, Math.ceil(runLen / 4));
+      const runs = [];
+      let from = 0; let state = overShip(p.x, p.y);
+      for (let k = 1; k <= steps; k += 1) {
+        const t = k / steps;
+        const s = overShip(p.x + (ex - p.x) * t, p.y + (ey - p.y) * t);
+        if (s !== state || k === steps) { runs.push([from, t, state]); from = t; state = s; }
+      }
+      const at = (t) => `${(p.x + (ex - p.x) * t).toFixed(1)} ${(p.y + (ey - p.y) * t).toFixed(1)}`;
+      const hiddenD = runs.filter((r) => r[2]).map((r) => `M ${at(r[0])} L ${at(r[1])}`).join(' ');
+      const openD = runs.filter((r) => !r[2]).map((r) => `M ${at(r[0])} L ${at(r[1])}`).join(' ');
+      const lineUnder = svg('path', { d: hiddenD || 'M 0 0', class: 'orr-core orr-hi orr-hull__leader orr-hull__leader--hidden', 'stroke-width': 1, opacity: '.34' });
+      const lineOpen = svg('path', { d: openD || 'M 0 0', class: 'orr-core orr-hi orr-hull__leader', 'stroke-width': 1, opacity: '.72' });
+      layer.appendChild(rise(lineOpen, 120 + i * 40));
       const bloom = svg('path', { d: outer, class: 'orr-bloom orr-hand orr-hull__leader-bloom', 'stroke-width': 5, opacity: '0' });
       const lineOver = svg('path', { d: `${outer} ${stop}`, class: 'orr-core orr-hi orr-hull__leader', 'stroke-width': 1, opacity: '.72' });
       hidden.push(rise(lineUnder, 120 + i * 40));
       layer.appendChild(rise(bloom, 120 + i * 40));
       layer.appendChild(rise(lineOver, 120 + i * 40));
-      leaderEls[i] = [lineUnder, bloom, lineOver];
+      leaderEls[i] = [lineUnder, lineOpen, bloom, lineOver];
       // the tick on the rim where this line leaves the ship
       const [t1x, t1y] = polar(hx, hy, R + 7, geo.angles[i]);
       layer.appendChild(rise(svg('path', { d: `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${t1x.toFixed(1)} ${t1y.toFixed(1)}`, class: 'orr-core orr-hi', 'stroke-width': 1.2 }), 120 + i * 40));

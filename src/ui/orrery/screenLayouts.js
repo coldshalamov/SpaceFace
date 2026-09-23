@@ -235,7 +235,8 @@ html body #screens > .k-screen.orr-refit > .k-title .sf-cru-note { margin:10px 0
 html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit > .k-foot { justify-content:center; }
 html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit > .k-foot .k-words { justify-content:center; column-gap:56px; }
 html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word:not(.k-word--primary) { font-family:var(--dp-face-display, "Archivo") !important; font-variation-settings:"wght" 760, "wdth" 125 !important;
-  font-size:clamp(15px, 1.8vh, 19px) !important; letter-spacing:.08em !important; color:rgb(236 230 216 / .72) !important; }
+  font-size:clamp(14px, 1.6vh, 17px) !important; letter-spacing:.08em !important; color:rgb(236 230 216 / .72) !important; }
+html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word.k-word--primary { font-size:clamp(14px, 1.6vh, 17px) !important; }
 html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word:not(.k-word--primary):is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
 /* the title names the place; the ship is the loud thing here */
 html body #screens > .k-screen.orr-refit > .k-title .k-t-title { font-size:clamp(34px, 4.4vh, 50px) !important; letter-spacing:.04em; }
