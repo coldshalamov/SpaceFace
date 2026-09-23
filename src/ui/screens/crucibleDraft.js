@@ -377,7 +377,7 @@ function svgNode(tag, attrs = {}) {
  * axes combat pays (sustained fire, shove). The offer's mark is lit and taller, the fitted one a
  * bone notch, the difference in ice. Null for anything that is not a weapon-for-weapon swap.
  */
-function offerCompare(offer) {
+function offerCompare(offer, best = {}) {
   const def = offer && WEAPON_DEF_BY_ID.get(offer.defId);
   if (!def) return null;
   const fitted = offer.replaces ? WEAPON_DEF_BY_ID.get(offer.replaces) : null;
@@ -388,7 +388,7 @@ function offerCompare(offer) {
     const mine = finiteNum(def[key]);
     if (mine == null) return;
     const theirs = fitted ? finiteNum(fitted[key]) : null;
-    const max = Math.max(mine, theirs || 0) * 1.12 || 1;
+    const max = Math.max(mine, theirs || 0, Number(best[key]) || 0) || 1;
     const label = svgNode('text', { x: 0, y: y + 4, class: 'orr-armory-compare__word' });
     label.textContent = word.toUpperCase();
     root.appendChild(label);
@@ -436,10 +436,10 @@ function budgetGauge(wallet, price) {
   }
   root.appendChild(svgNode('path', { d: `M ${at(w).toFixed(1)} ${y - 9} L ${at(w).toFixed(1)} ${y + 9}`, class: 'orr-armory-budget__end' }));
   const top = svgNode('text', { x: at(w).toFixed(1), y: y - 13, 'text-anchor': 'middle', class: 'orr-armory-budget__word' });
-  top.textContent = `${w} CR`;
+  top.textContent = `WALLET ${w} CR`;
   root.appendChild(top);
   const under = svgNode('text', { x: x0, y: y + 26, class: 'orr-armory-budget__read' });
-  under.textContent = left >= 0 ? `${p} cr now \u00b7 ${left} cr left` : `Short ${-left} cr`;
+  under.textContent = left >= 0 ? `costs ${p} \u00b7 leaves ${left}` : `short ${-left} cr`;
   if (left < 0) under.setAttribute('class', 'orr-armory-budget__read is-short');
   root.appendChild(under);
   return root;
@@ -625,9 +625,10 @@ export const crucibleDraftScreen = {
         jig: el('div', 'orr-armory-reading__jig'),
         compare: el('div', 'orr-armory-reading__compare'),
         budget: el('div', 'orr-armory-reading__budget'),
+        buy: el('p', 'orr-armory-reading__buy', ''),
       };
       const words = el('div', 'orr-armory-reading__words');
-      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget);
+      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget, parts.buy);
       reading.append(parts.jig, words);
       rootEl.appendChild(reading);
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
@@ -783,8 +784,29 @@ export const crucibleDraftScreen = {
       ? offers.filter(offer => this._category === 'All' || categoryFor(offer) === this._category)
         .sort((a, b) => a.price - b.price || a.name.localeCompare(b.name))
       : offers.slice(0, SURVIVAL_DRAFT_CHOICES);
+    let lastPrice = null;
+    let walletDrawn = false;
+    let key = 1;
+    const credits = Number(context.state?.run?.credits) || 0;
     for (const offer of visibleOffers) {
-      const card = this._buildCard(context, offer, cards.childElementCount + 1);
+      // the armory's rail: the price as an engraved divider over each price's group, and the wallet
+      // as a line where the rail passes what the run can pay
+      if (shop && this._reading && Number.isFinite(offer.price)) {
+        if (!walletDrawn && offer.price > credits && !offer.purchased) {
+          const line = el('p', 'orr-rail-wallet', `Wallet ${credits} cr`);
+          line.setAttribute('aria-hidden', 'true');
+          cards.appendChild(line);
+          walletDrawn = true;
+        }
+        if (offer.price !== lastPrice) {
+          const divider = el('p', 'orr-rail-divider', `${offer.price} cr`);
+          divider.setAttribute('aria-hidden', 'true');
+          cards.appendChild(divider);
+          lastPrice = offer.price;
+        }
+      }
+      const card = this._buildCard(context, offer, key);
+      key += 1;
       cards.appendChild(card);
     }
 
@@ -817,6 +839,12 @@ export const crucibleDraftScreen = {
     // numbers are on the cards.
     const keys = offers.length && shop ? '1–3 buy · Tab browse' : '';
     this._hint.textContent = keys && this._wallet.textContent ? ` · ${keys}` : keys;
+    if (shop && this._reading && offers.length) {
+      this._hint.textContent = '';
+      const cap = (t) => el('span', 'orr-armory-keycap', t);
+      this._hint.append(cap('1'), cap('2'), cap('3'), el('span', 'orr-armory-hintword', 'Buy'), cap('Tab'), el('span', 'orr-armory-hintword', 'Browse'));
+    }
+    if (this._flash && this._flash.until > Date.now() && !notice) this._note.textContent = this._flash.text;
 
     // Only claim focus when it is not already inside this surface, and when the rebuild did not
     // just restore the player's place. A refused re-roll must not yank the player off the
@@ -865,7 +893,14 @@ export const crucibleDraftScreen = {
       sub: offer.replaces ? `replaces ${fittingName(offer.replaces)}` : 'empty',
     });
     parts.compare.textContent = '';
-    const compare = offerCompare(offer);
+    const best = {};
+    for (const o of (this._offersById ? this._offersById.values() : [])) {
+      const d = WEAPON_DEF_BY_ID.get(o.defId);
+      if (!d) continue;
+      best.dps = Math.max(best.dps || 0, finiteNum(d.dps) || 0);
+      best.impulsePerHit = Math.max(best.impulsePerHit || 0, finiteNum(d.impulsePerHit) || 0);
+    }
+    const compare = offerCompare(offer, best);
     if (compare) parts.compare.appendChild(compare);
     parts.budget.textContent = '';
     if (Number.isFinite(offer.price) && !offer.purchased) {
@@ -873,6 +908,18 @@ export const crucibleDraftScreen = {
       if (gauge) parts.budget.appendChild(gauge);
     }
     r.el.classList.toggle('is-unavailable', !offer.available);
+    // the verb that spends, and its key -- or why it cannot
+    parts.buy.textContent = '';
+    if (offer.purchased) parts.buy.textContent = 'Fitted';
+    else if (offer.available) {
+      parts.buy.appendChild(el('span', 'orr-armory-reading__buy-word', `Buy \u00b7 ${offer.price} cr`));
+      parts.buy.appendChild(el('span', 'orr-armory-keycap', 'Enter'));
+    } else parts.buy.textContent = offer.unavailableReason || '';
+    parts.buy.classList.toggle('is-off', !offer.available);
+    // the rail's Hand sits on the row being read
+    if (this._cards) {
+      for (const card of this._cards.querySelectorAll('.sf-cru-card')) card.classList.toggle('is-lit', card.dataset.offerId === offer.id);
+    }
   },
 
   // One offer: the key numeral in fine print, the verb as the one permitted caps label, the name
@@ -908,6 +955,7 @@ export const crucibleDraftScreen = {
     card.appendChild(el('p', 'k-t-fine k-38 sf-cru-slot', lines.slot));
 
     card.addEventListener('click', () => {
+      if (offer.available) this._flash = { text: `Bought ${lines.name}.`, until: Date.now() + 5000 };
       ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
       if (ctx.state?.run?.ruleset === 'swarm' && ctx.state.run.phase === 'draft') this.refresh(ctx);
     });
