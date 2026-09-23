@@ -71,6 +71,18 @@ ${S} #hud .sf-band-hud__button:hover, ${S} #hud .sf-band-hud__button:focus-visib
 ${S} #hud > .sf-leftcontext > *, ${S} #hud > .sf-leftcontext > * + * { border-top:0 !important; }
 ${S} #hud > .sf-leftcontext > .sf-mission-tracker::before { top:13px; bottom:auto; left:5px; width:7px; height:7px; border-radius:0;
   transform:rotate(45deg); background:var(--dp-hand, #f2b950); box-shadow:0 0 9px rgb(242 185 80 / .55); }
+/* the objective's bearing dial takes the pin's place when there is a bearing to show */
+${S} #hud .sf-mission-tracker { position:relative; }
+${S} #hud .sf-mission-tracker:not(.sf-mt--nobearing) { padding-left:52px !important; }
+${S} #hud .sf-mission-tracker:not(.sf-mt--nobearing)::before { display:none; }
+${S} #hud .sf-mission-tracker .sf-mt-dial { display:block !important; position:absolute; left:2px; top:50%; width:40px; height:40px; margin-top:-20px; overflow:visible; }
+${S} #hud .sf-mission-tracker.sf-mt--nobearing .sf-mt-dial { display:none !important; }
+${S} #hud .sf-mt-dial__ring { fill:rgb(4 6 9 / .55); stroke:rgb(232 226 212 / .5); stroke-width:1; }
+${S} #hud .sf-mt-dial__ticks { stroke:rgb(232 226 212 / .55); stroke-width:1; fill:none; }
+${S} #hud .sf-mt-dial__needle { transform-box:view-box; transform-origin:17px 17px; transition:transform .45s cubic-bezier(.3, 1.3, .5, 1); }
+${S} #hud .sf-mt-dial__needle path { fill:var(--dp-hand, #f2b950); }
+${S} #hud .sf-mt-dial__needle circle { fill:rgb(4 6 9); stroke:var(--dp-hand-hot, #ffd98c); stroke-width:1.2; }
+html.sf-reduce-motion ${S} #hud .sf-mt-dial__needle { transition:none; }
 ${S} #hud .sf-commtape, html ${S} #hud .sf-commtape { background:none !important; background-color:transparent !important; box-shadow:none !important; border:0 !important; }
 ${S} #hud > .sf-leftcontext::before { ${pool('-18px -60px -24px -24px')} }
 ${S} #hud > .sf-leftcontext { ${HALO} }

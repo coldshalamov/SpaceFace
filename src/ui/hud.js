@@ -412,6 +412,20 @@ export function objectiveBearingGlyph(state, wp) {
 }
 
 /**
+ * The same bearing as objectiveBearingGlyph, in dial degrees (0 = screen up, clockwise), for the
+ * objective's bearing dial. Null when there is no bearing to show.
+ */
+export function objectiveBearingDeg(state, wp) {
+  const pos = wp && wp.pos;
+  const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (!pos || !player || !player.pos) return null;
+  const dx = Number(pos.x) - Number(player.pos.x);
+  const dz = Number(pos.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return null;
+  return ((Math.atan2(-dx, dz) * 180) / Math.PI + 360) % 360;
+}
+
+/**
  * Project an off-screen goal onto the HUD edge using the same fixed world orientation as the
  * radar. Do not use worldToScreen() for a point behind the chase camera: perspective projection
  * mirrors that point across the screen, which makes the arrow send the player away from the goal.
@@ -1385,6 +1399,19 @@ export function createHud(ctx, alerts) {
     '<div class="sf-mt-title mono"></div>' +
     '<div class="sf-mt-obj mono"></div>' +
     '<div class="sf-mt-time mono"></div>';
+  // ORRERY: the objective's bearing as a small dial beside its words -- a ring, its quarter ticks,
+  // and the amber needle toward the objective (the skin shows it; the old face never does)
+  const mtDial = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  mtDial.setAttribute('class', 'sf-mt-dial');
+  mtDial.setAttribute('viewBox', '0 0 34 34');
+  mtDial.setAttribute('aria-hidden', 'true');
+  mtDial.style.display = 'none';
+  mtDial.innerHTML = '<circle cx="17" cy="17" r="13" class="sf-mt-dial__ring"/>'
+    + '<path d="M17 2.5 L17 6.5 M31.5 17 L27.5 17 M17 31.5 L17 27.5 M2.5 17 L6.5 17" class="sf-mt-dial__ticks"/>'
+    + '<g class="sf-mt-dial__needle"><path d="M14.4 17 L17 3.8 L19.6 17 Z"/><circle cx="17" cy="17" r="2.8"/></g>';
+  missionTracker.prepend(mtDial);
+  const mtNeedle = mtDial.querySelector('.sf-mt-dial__needle');
+  let mtNeedleDeg = null;
   leftContext.appendChild(missionTracker);   // relocated into the bottom-left contextual column
   missionTracker.style.pointerEvents = 'auto';
   const objectiveHudDrag = createHudDragController({
@@ -5020,6 +5047,17 @@ export function createHud(ctx, alerts) {
       const onboardingVerb = navWaypoint && navWaypoint.reason;
       const command = resolveFlightObjectiveCommand(state, wp);
       const dest = flightDestinationSurface(state, command);
+      // the dial's needle takes the nearest way round to the objective's bearing
+      const bearingDeg = objectiveBearingDeg(state, (command && command.waypoint) || wp);
+      if (bearingDeg != null && mtNeedle) {
+        let next = bearingDeg;
+        if (mtNeedleDeg != null) { while (next - mtNeedleDeg > 180) next -= 360; while (next - mtNeedleDeg < -180) next += 360; }
+        if (mtNeedleDeg == null || Math.abs(next - mtNeedleDeg) > 0.5) {
+          mtNeedleDeg = next;
+          mtNeedle.style.transform = `rotate(${next.toFixed(1)}deg)`;
+        }
+      }
+      setClass(missionTracker, 'sf-mt--nobearing', bearingDeg == null);
       setDisplay(mtTitle, false);
       setDisplay(mtTime, false);
       if (dest.line) rememberObjective(objectiveRecall, dest.line);
