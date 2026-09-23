@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { onboarding } from '../src/systems/onboarding.js';
-import { titlePrimaryAction } from '../src/ui/screens/mainMenu.js';
+import { titlePrimaryAction, titleVerbOrder } from '../src/ui/screens/mainMenu.js';
 import { crucibleResultsScreen } from '../src/ui/screens/crucible.js';
 import { mountScreen } from './helpers/fake-dom.mjs';
 
@@ -39,6 +39,10 @@ test('IS_DEMO is true on a non-production page with ?demo=1', async () => {
 test('non-demo title primary is Continue with a save, New Game without', () => {
   assert.equal(titlePrimaryAction(false, true), 'continue');
   assert.equal(titlePrimaryAction(false, false), 'newGame');
+});
+
+test('non-demo title order is unchanged', () => {
+  assert.deepEqual(titleVerbOrder(false), ['continue', 'newGame', 'load', 'crucible', 'settings', 'quit']);
 });
 
 export function mountResults(result, ctxExtra = {}) {

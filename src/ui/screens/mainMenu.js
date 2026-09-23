@@ -289,6 +289,13 @@ export function titlePrimaryAction(demo, hasSave) {
   return hasSave ? 'continue' : 'newGame';
 }
 
+/** The verbs' reading order. DEMO_READINESS §5: in the demo the Crucible is the FIRST button,
+ *  not just the lit one — Adventure (New Game renamed) second, Continue third. */
+export function titleVerbOrder(demo) {
+  if (demo) return ['crucible', 'newGame', 'continue', 'settings', 'quit'];
+  return ['continue', 'newGame', 'load', 'crucible', 'settings', 'quit'];
+}
+
 export const mainMenuScreen = {
   id: 'mainMenu',
 
@@ -318,18 +325,26 @@ export const mainMenuScreen = {
     // `primary` is resolved after the save scan (_applySave): Continue when there is something to
     // continue, New Game when there is not — except in the demo, where the Crucible is always the
     // one lit verb (ZERO_TO_HERO Phase 5.1). Marking it here would light a dead verb on first paint.
-    const items = [
-      { action: 'continue', label: coreText('continue'), sub: 'Checking saves...', current: true },
+    // DEMO_READINESS §5: in the demo the Crucible is the FIRST button, not just the lit one —
+    // titleVerbOrder owns the reading order both modes share.
+    const labels = {
       // The demo renames the verb to the mode it starts; the accessible name stays coreText so
       // every route that finds "New Game" still does.
-      { action: 'newGame', label: IS_DEMO ? 'Adventure' : coreText('newGame') },
-      ...(IS_DEMO ? [] : [{ action: 'load', label: 'Load' }]),
+      newGame: IS_DEMO ? 'Adventure' : coreText('newGame'),
+      continue: coreText('continue'),
+      load: 'Load',
       // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
       // launches through the ordinary New Game path and never touches the Adventure save.
-      { action: 'crucible', label: 'Crucible' },
-      { action: 'settings', label: coreText('settings') },
-      { action: 'quit', label: 'Quit', danger: true },
-    ];
+      crucible: 'Crucible',
+      settings: coreText('settings'),
+      quit: 'Quit',
+    };
+    const items = titleVerbOrder(IS_DEMO).map((action) => ({
+      action,
+      label: labels[action],
+      ...(action === 'continue' ? { sub: 'Checking saves...', current: true } : {}),
+      ...(action === 'quit' ? { danger: true } : {}),
+    }));
     // The quiet line: reference and dev, at etch size, out of the way of the decision.
     // "Archive" opens the Codex on its Archive tab, where the authored intro cinematics replay.
     const asideItems = [{ action: 'archive', label: 'Archive' }];
@@ -544,9 +559,15 @@ export const mainMenuScreen = {
   // The default word (Continue when it can load, else New Game — always Crucible in the demo)
   // carries aria-current and the list's single Tab stop; the kit's roving focus takes over once
   // focus is inside the list.
+  /** The one awake word: the demo's Crucible always; otherwise the first usable verb — the same
+   *  pick _syncCurrent stamps and onShow focuses, so the ORRERY Hand's focus rule lands on it. */
+  _currentTarget() {
+    return (IS_DEMO ? refs.bCrucible : null) || refs.buttons.find((b) => !isDisabled(b)) || null;
+  },
+
   _syncCurrent() {
     if (!refs) return;
-    const target = (IS_DEMO ? refs.bCrucible : null) || refs.buttons.find((b) => !isDisabled(b)) || null;
+    const target = this._currentTarget();
     for (const b of refs.buttons) {
       const current = b === target;
       if (current) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
@@ -564,7 +585,9 @@ export const mainMenuScreen = {
     this._hold();
     this._arrive();
     if (refs) {
-      const target = refs.buttons.find((b) => !isDisabled(b));
+      // Focus the word _syncCurrent lights — in the demo that is the Crucible, not merely the
+      // first usable verb — or the ORRERY Hand wakes on a different word than the primary.
+      const target = this._currentTarget();
       if (target) try { target.focus(); } catch (e) {}
     }
     this._loadVersion();

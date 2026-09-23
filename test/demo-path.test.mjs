@@ -8,7 +8,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { IS_DEMO } from '../src/core/demoMode.js';
 import { onboarding } from '../src/systems/onboarding.js';
-import { titlePrimaryAction } from '../src/ui/screens/mainMenu.js';
+import { titlePrimaryAction, titleVerbOrder } from '../src/ui/screens/mainMenu.js';
 import { crucibleResultsScreen } from '../src/ui/screens/crucible.js';
 import { demoEndFacts, demoEndScreen } from '../src/ui/screens/demoEnd.js';
 import { mountScreen, textLines } from './helpers/fake-dom.mjs';
@@ -43,6 +43,10 @@ test('the demo flag is on when the bundle define is baked', () => {
 test('demo title primary is the Crucible, save or no save', () => {
   assert.equal(titlePrimaryAction(true, true), 'crucible');
   assert.equal(titlePrimaryAction(true, false), 'crucible');
+});
+
+test('demo title puts the Crucible FIRST in the list (DEMO_READINESS §5)', () => {
+  assert.deepEqual(titleVerbOrder(true), ['crucible', 'newGame', 'continue', 'settings', 'quit']);
 });
 
 test('the results plate offers Take it to the belt and bridges through game:new', () => {
