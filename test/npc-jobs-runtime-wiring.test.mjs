@@ -760,3 +760,84 @@ test('migration v11→v12 (real load): a pre-v12 envelope with no npcJobs loads 
   const jobs = sim.registry.get('npcJobsRuntime');
   assert.deepEqual(jobs._byId(), {}, 'old save → empty job bag (migration seeded {byId:{}}, runtime deserialized cleanly)');
 });
+
+test('id list: update reuses one job-id list while the bag is settled', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const eA = hull(sim, 'rec-ids-a');
+  const eB = hull(sim, 'rec-ids-b');
+  sim.helpers.npcJobs.assign(eA, minerSpec());
+  sim.helpers.npcJobs.assign(eB, minerSpec());
+  steps(sim, 30);
+  const first = jobs._jobIdList();
+  assert.ok(Array.isArray(first));
+  assert.deepEqual([...first].sort(), ['job:rec-ids-a', 'job:rec-ids-b']);
+  steps(sim, 60);
+  assert.equal(jobs._jobIdList(), first, 'a settled bag reuses the same list instance across updates');
+  assert.deepEqual(new Set(jobs._jobIdList()), new Set(Object.keys(jobs._byId())));
+});
+
+test('id list: assign, release, newGame and deserialize each dirty the list', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const eA = hull(sim, 'rec-mut-a');
+  sim.helpers.npcJobs.assign(eA, minerSpec());
+  const withA = jobs._jobIdList();
+  assert.deepEqual([...withA], ['job:rec-mut-a']);
+
+  const eB = hull(sim, 'rec-mut-b');
+  sim.helpers.npcJobs.assign(eB, minerSpec());
+  const withAB = jobs._jobIdList();
+  assert.notEqual(withAB, withA, 'assign dirties the cached list');
+  assert.deepEqual(new Set(withAB), new Set(['job:rec-mut-a', 'job:rec-mut-b']));
+
+  assert.equal(sim.helpers.npcJobs.release('job:rec-mut-b'), true);
+  const afterRelease = jobs._jobIdList();
+  assert.notEqual(afterRelease, withAB, 'release dirties the cached list');
+  assert.deepEqual([...afterRelease], ['job:rec-mut-a']);
+
+  const blob = JSON.parse(JSON.stringify(jobs.serialize()));
+  jobs.newGame();
+  assert.deepEqual(jobs._jobIdList(), [], 'newGame wipes the bag and the list together');
+  jobs.deserialize(blob);
+  assert.deepEqual(jobs._jobIdList(), ['job:rec-mut-a'], 'deserialize restores the saved id set');
+});
+
+test('id list: a malformed entry swept during update leaves the list', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const e = hull(sim, 'rec-malformed-ok');
+  sim.helpers.npcJobs.assign(e, minerSpec());
+  jobs._byId()['job:malformed'] = { worldRecordId: 'rec-ghost' };
+  const e2 = hull(sim, 'rec-malformed-ok2');
+  sim.helpers.npcJobs.assign(e2, minerSpec());
+  assert.ok(jobs._jobIdList().includes('job:malformed'), 'precondition: the tombstone id was listed');
+  sim.step(DT);
+  assert.equal(jobs._byId()['job:malformed'], undefined, 'update sweeps the malformed entry');
+  assert.equal(jobs._jobIdList().includes('job:malformed'), false,
+    'the sweep dirties the list — no stale id is iterated next tick');
+});
+
+test('id list: a job that completes offscreen is relinked out of the list, not left stale', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const e = hull(sim, 'rec-away-done');
+  sim.helpers.npcJobs.assign(e, haulerSpec());
+  steps(sim, 5);
+  assert.ok(jobs._jobIdList().includes('job:rec-away-done'));
+
+  sim.bus.emit('sector:exit', { sectorId: 'sector_a' });
+  despawn(sim.state, e.id);
+  const entry = jobs._byId()['job:rec-away-done'];
+  assert.ok(entry && entry.entityId === null, 'the job virtualized on exit');
+  sim.state.world.currentSectorId = 'sector_b';
+  sim.state.simTime = entry.lastAdvanceSimT + 120;
+  sim.state.world.currentSectorId = 'sector_a';
+  hull(sim, 'rec-away-done');
+  sim.bus.emit('sector:enter', { sectorId: 'sector_a' });
+
+  assert.equal(jobs._byId()['job:rec-away-done'], undefined,
+    'the offscreen COMPLETE relink deletes the record');
+  assert.equal(jobs._jobIdList().includes('job:rec-away-done'), false,
+    'the relink delete dirties the list — the finished id cannot be iterated');
+});

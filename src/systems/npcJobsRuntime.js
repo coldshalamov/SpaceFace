@@ -745,6 +745,9 @@ export const npcJobsRuntime = {
     this._threatQueryState = this.state;
     this._lastThreatQueryTick = null;
     this._threatQueryDirty = true;
+    this._jobIds = null;
+    this._jobIdsById = null;
+    this._jobIdsDirty = true;
 
     // Runtime bridge for intents: every kernel intent is surfaced on the bus under its own event
     // name (npcjobs:transit / :work / :cycle / :hold / :complete / …). Cargo/economy owners MAY
@@ -856,7 +859,10 @@ export const npcJobsRuntime = {
   _ensureState() {
     const state = this.state;
     if (!state.npcJobs || typeof state.npcJobs !== 'object') state.npcJobs = { byId: {}, siteCouriers: {} };
-    if (!state.npcJobs.byId || typeof state.npcJobs.byId !== 'object') state.npcJobs.byId = {};
+    if (!state.npcJobs.byId || typeof state.npcJobs.byId !== 'object') {
+      state.npcJobs.byId = {};
+      this._invalidateJobIds();
+    }
     if (!state.npcJobs.siteCouriers || typeof state.npcJobs.siteCouriers !== 'object'
       || Array.isArray(state.npcJobs.siteCouriers)) {
       state.npcJobs.siteCouriers = {};
@@ -872,6 +878,19 @@ export const npcJobsRuntime = {
   },
   _byId() { return this._ensureState().byId; },
   _lots() { return this._ensureState().lots; },
+  _invalidateJobIds() { this._jobIdsDirty = true; },
+  _jobIdList() {
+    const byId = this._byId();
+    if (this._jobIdsDirty !== true
+      && this._jobIdsById === byId
+      && Array.isArray(this._jobIds)) {
+      return this._jobIds;
+    }
+    this._jobIdsById = byId;
+    this._jobIds = Object.keys(byId);
+    this._jobIdsDirty = false;
+    return this._jobIds;
+  },
 
   /**
    * INF-071: complete the miner→hauler handoff with one shared cargo identity. A miner's
@@ -1744,6 +1763,7 @@ export const npcJobsRuntime = {
 
   newGame() {
     this.state.npcJobs = { byId: {}, siteCouriers: {}, lots: {} };
+    this._invalidateJobIds();
     this._pendingMinerFieldRetargets = new Map();
     this._heaveToLease = null;
     this._fieldRetargetScanAccum = 0;
@@ -1911,6 +1931,7 @@ export const npcJobsRuntime = {
       || job.materialized !== true || sectorId !== CERES_ACTIVITY_SECTOR_ID
       || !this._isCanonicalCeresRealTargetRoute(realTargetActor, job.route, job.speed))) return null;
     byId[jobId] = entry;
+    this._invalidateJobIds();
     entity.data.jobId = jobId;
     stampJobOwnedPersistence(entity);
     this._threatQueryDirty = true;
@@ -2020,6 +2041,7 @@ export const npcJobsRuntime = {
       towNextScanSimT: 0,
     };
     this._byId()[jobId] = entry;
+    this._invalidateJobIds();
     this._threatQueryDirty = true;
     return entry;
   },
@@ -2558,6 +2580,7 @@ export const npcJobsRuntime = {
     if (realTargetJobBinding) this._clearCeresRealTargetsForJob(jobId, true);
     else this._clearCeresRealTargetsForEntry(entry, true);
     delete byId[jobId];
+    this._invalidateJobIds();
     return true;
   },
 
@@ -3027,7 +3050,7 @@ export const npcJobsRuntime = {
       this._sweepJobOwnedPersistence();
     }
     const byId = this._byId();
-    const ids = Object.keys(byId);
+    const ids = this._jobIdList();
     const step = Math.max(0, finite(dt, 0));
     const simT = finite(this.state.simTime, 0);
     this._expireHeaveToLease(simT);
@@ -3100,7 +3123,7 @@ export const npcJobsRuntime = {
       }
 
       const entry = byId[jobId];
-      if (!entry || !entry.job) { delete byId[jobId]; continue; }
+      if (!entry || !entry.job) { delete byId[jobId]; this._invalidateJobIds(); continue; }
 
       if (entry.entityId == null) {
         // Virtualized: try to re-link if its hull has rematerialized in the current sector.
@@ -3913,6 +3936,7 @@ export const npcJobsRuntime = {
       if (entity.data && entity.data.jobId === ('job:' + entry.worldRecordId)) delete entity.data.jobId;
       if (formationSlot) this._clearCeresFormationEntry(formationSlot, entry);
       delete this._byId()['job:' + entry.worldRecordId];
+      this._invalidateJobIds();
       return true;
     }
     materialize(entry.job);
@@ -4070,6 +4094,7 @@ export const npcJobsRuntime = {
       };
     }
     this.state.npcJobs = { byId, siteCouriers: {}, lots: {} };
+    this._invalidateJobIds();
     if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
       this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));
     }
