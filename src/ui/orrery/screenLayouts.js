@@ -503,7 +503,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-hint { display:inline-flex; align-items:center; margin-left:18px; }
 
 /* the door: the arena as hero art at the right, the form at the left, the share codes in a drawer */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .orr-door-hero { position:absolute; top:0; right:0; bottom:0; width:62vw; z-index:0; pointer-events:none;
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .orr-door-hero { position:absolute; top:0; right:0; bottom:0; width:66vw; z-index:0; pointer-events:none;
   -webkit-mask-image:linear-gradient(90deg, transparent 0, rgb(0 0 0 / .55) 18%, #000 42%), linear-gradient(0deg, transparent 0, #000 22%);
   -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent 0, rgb(0 0 0 / .55) 18%, #000 42%), linear-gradient(0deg, transparent 0, #000 22%);
   mask-composite:intersect; }
@@ -516,7 +516,31 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
   letter-spacing:.04em; text-transform:uppercase; color:rgb(246 241 230); text-shadow:0 2px 24px rgb(0 0 0 / .8); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__line { margin:8px 0 0; font-size:15px; line-height:1.45; color:rgb(236 230 216 / .85); text-shadow:0 1px 12px rgb(0 0 0 / .9); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-title, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-stage, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-foot { position:relative; z-index:1; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-stage { max-width:min(900px, 50vw); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-stage { max-width:min(900px, 50vw); background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+/* the form: arenas as words (the hero shows the pick), room between the blocks, captions at the floor */
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-arenas .fh-tile-art { display:none !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-arenas .orr-tile { min-height:0 !important; padding:6px 0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-arena { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row { margin-bottom:22px !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row > .k-row__name { font-size:11.5px !important; letter-spacing:.24em !important; color:rgb(236 230 216 / .7) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-seed input { font-size:clamp(18px, 2.2vh, 22px) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .fh-tile[data-locked='1'] .fh-tile-legend { opacity:.45; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records summary { font-size:11.5px !important; letter-spacing:.22em; color:rgb(236 230 216 / .7) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice { display:flex !important; align-items:baseline; gap:14px; flex-wrap:wrap; border:0 !important; padding:0 !important; min-height:0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice .k-word { font-size:12px !important; letter-spacing:.22em !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice .k-word::after { content:" ›"; background:none !important; position:static !important; transform:none !important; width:auto !important; height:auto !important; }
+/* one amber: Launch rests in bone until the player reaches for it */
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-key--primary { color:rgb(246 241 230) !important; text-shadow:0 0 16px rgb(0 0 0 / .6) !important;
+  background-image:linear-gradient(90deg, rgb(236 230 216 / .55), rgb(236 230 216 / 0)) !important; }
+/* a short plate keeps the seed in view: one-line descriptions, tighter blocks */
+@media (max-height:800px) {
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row { margin-bottom:10px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings .k-sentence { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:46vw; margin:4px 0 0 !important; font-size:13px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings .k-t-fine { display:none; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-modes .fh-tile-art img { width:34px !important; height:34px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-modes .orr-tile, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .orr-tile { min-height:0 !important; }
+}
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-title .k-t-name { font-size:clamp(56px, 8.5vh, 104px) !important; }
 /* the door's form reads over the dark side of the plate */
 html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results)::before { background:linear-gradient(90deg, rgb(4 6 9 / .9) 0, rgb(4 6 9 / .78) 38%, rgb(4 6 9 / .3) 62%, rgb(4 6 9 / .15) 100%) !important; }

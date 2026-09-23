@@ -35,6 +35,17 @@ const CSS = `
 html.sf-reduce-motion .orr-turntable__art { transition:none; }
 .orr-stationrow { position:relative !important; padding-bottom:26px !important; }
 .orr-stationrow > .orr-stationrow__rule { position:absolute; left:0; right:0; bottom:0; width:100%; height:20px; overflow:visible; pointer-events:none; }
+/* the chosen station rests as a bright bone notch; the Hand lights amber only where the player is */
+.orr-stationrow__rule .orr-stationrow__blade, .orr-stationrow__rule .orr-stationrow__bead { fill:rgb(236 230 216 / .9); }
+.orr-stationrow__rule .orr-stationrow__glow { fill:rgb(236 230 216 / .5); opacity:.14; }
+.orr-stationrow__rule .orr-stationrow__beam { stroke:rgb(236 230 216 / .6); opacity:.14; }
+.orr-stationrow__rule path.orr-stationrow__tick { stroke:rgb(236 230 216 / .5); }
+.orr-stationrow__rule path.orr-stationrow__tick.is-chosen { stroke:rgb(246 241 230 / .95); }
+.orr-stationrow:is(:focus-within, :hover) .orr-stationrow__blade { fill:var(--dp-hand, #f2b950); }
+.orr-stationrow:is(:focus-within, :hover) .orr-stationrow__bead { fill:var(--dp-hand-hot, #ffd98c); }
+.orr-stationrow:is(:focus-within, :hover) .orr-stationrow__glow { fill:var(--dp-hand, #f2b950); opacity:.22; }
+.orr-stationrow:is(:focus-within, :hover) .orr-stationrow__beam { stroke:var(--dp-hand, #f2b950); opacity:.22; }
+.orr-stationrow:is(:focus-within, :hover) path.orr-stationrow__tick.is-chosen { stroke:var(--dp-hand, #f2b950); }
 .orr-stopscale__art { position:absolute; transform:translate(-50%, -50%); pointer-events:none; opacity:.42;
   background:center / contain no-repeat; transition:opacity .2s linear, transform .32s var(--dp-ease-out, ease-out), filter .2s linear; }
 .orr-stopscale__art.is-on { opacity:1; transform:translate(-50%, -50%) scale(1.14); filter:drop-shadow(0 0 12px rgb(223 238 255 / .4)); }
@@ -278,10 +289,10 @@ export function createStationRow({ row } = {}) {
   const line = svg('path', { d: '', class: 'orr-core orr-rest', 'stroke-width': 1 });
   const fine = svg('path', { d: '', class: 'orr-core orr-faint', 'stroke-width': 1 });
   const ticks = svg('g');
-  const bloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 7, opacity: '.22' });
-  const blade = svg('path', { d: '', fill: 'var(--dp-hand, #f2b950)' });
-  const beadBloom = svg('circle', { r: 7, fill: 'var(--dp-hand, #f2b950)', opacity: '.22' });
-  const bead = svg('circle', { r: 3.2, fill: 'var(--dp-hand-hot, #ffd98c)' });
+  const bloom = svg('path', { d: '', class: 'orr-stationrow__beam', 'stroke-width': 7, fill: 'none', 'stroke-linecap': 'round' });
+  const blade = svg('path', { d: '', class: 'orr-stationrow__blade' });
+  const beadBloom = svg('circle', { r: 7, class: 'orr-stationrow__glow' });
+  const bead = svg('circle', { r: 3.2, class: 'orr-stationrow__bead' });
   face.append(line, fine, ticks, bloom, blade, beadBloom, bead);
   const Y = 10;
   const buttons = () => [...row.querySelectorAll('button')];
@@ -306,7 +317,7 @@ export function createStationRow({ row } = {}) {
     for (let x = x0 + 4; x < x1; x += 8) f.push(`M ${x.toFixed(1)} ${Y} L ${x.toFixed(1)} ${Y + 4}`);
     fine.setAttribute('d', f.join(' '));
     ticks.textContent = '';
-    xs.forEach((x) => ticks.appendChild(svg('path', { d: `M ${x.toFixed(1)} ${Y - 5} L ${x.toFixed(1)} ${Y + 7}`, class: 'orr-core orr-hi', 'stroke-width': 1.4, opacity: '.5' })));
+    xs.forEach((x) => ticks.appendChild(svg('path', { d: `M ${x.toFixed(1)} ${Y - 5} L ${x.toFixed(1)} ${Y + 7}`, class: 'orr-core orr-stationrow__tick', 'stroke-width': 1.4 })));
     current = -1;
     update({ instant: true });
   }
@@ -317,7 +328,7 @@ export function createStationRow({ row } = {}) {
     if (idx === current && !instant) return;
     current = idx;
     spring.set(xs[idx], { instant });
-    [...ticks.children].forEach((t, i) => { t.setAttribute('class', `orr-core ${i === idx ? 'orr-hand' : 'orr-hi'}`); t.setAttribute('opacity', i === idx ? '1' : '.5'); });
+    [...ticks.children].forEach((t, i) => t.classList.toggle('is-chosen', i === idx));
   }
   let mo = null;
   if (typeof MutationObserver === 'function') {
@@ -325,7 +336,13 @@ export function createStationRow({ row } = {}) {
     mo.observe(row, { subtree: true, attributes: true, attributeFilter: ['aria-pressed', 'aria-selected'] });
   }
   let ro = null;
-  if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => measure()); ro.observe(row); }
+  if (typeof ResizeObserver === 'function') {
+    ro = new ResizeObserver(() => measure());
+    ro.observe(row);
+    for (const b of buttons()) ro.observe(b);
+  }
+  for (const img of row.querySelectorAll('img')) if (!img.complete) img.addEventListener('load', () => measure(), { once: true });
+  if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(() => measure());
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => measure());
   measure();
   return { el: face, update, measure, dispose() { spring.stop(); if (mo) mo.disconnect(); if (ro) ro.disconnect(); face.remove(); } };
