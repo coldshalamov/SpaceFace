@@ -677,6 +677,18 @@ test('job-owned persistence: a towed lot sheds its mark when the tow releases', 
   custodyLot.flags = { persistent: true };
   jobs._clearTugAttachment({ ...entry, towTargetId: custodyLot.id, towTargetRef: custodyLot }, 'npc_tow_job_released');
   assert.equal(custodyLot.flags.persistent, true, 'custody/provenance lot stays serialized');
+
+  // A live-attached lot carries the occupational latch (flags.tethered + npcMasslineLatch).
+  // The latch is itself a 'tethered' anchor — the release must unpin before checking anchors
+  // or the mark-drop is unreachable for every real tow (review 4a).
+  const latched = sim.spawn({ type: 'wreck', team: 2, pos: { x: 50, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, mass: 40 });
+  latched.data = { towable: true, npcTowedByJobId: 'job:rec-tug', npcMasslineLatch: true };
+  latched.flags = { persistent: true, tethered: true };
+  jobs._clearTugAttachment({ ...entry, towTargetId: latched.id, towTargetRef: latched }, 'npc_tow_job_released');
+  assert.equal(latched.data.npcMasslineLatch, undefined, 'latch unpinned');
+  assert.equal(latched.flags.tethered, undefined, 'tethered flag cleared');
+  assert.equal(latched.flags.persistent, undefined,
+    'latched lot sheds its mark — the tethered anchor must not veto its own release');
 });
 
 test('job-owned persistence: a virtualized job keeps the mark through the sweep; relink restamps', () => {
@@ -706,6 +718,8 @@ test('job-owned persistence: a virtualized job keeps the mark through the sweep;
   delete e.flags.persistent;
   assert.equal(jobs._tryRelink(entry, sim.state.simTime), true);
   assert.equal(e.data.jobId, 'job:rec-sweep', 'virtual job re-bound to its hull');
+  assert.equal(e.flags.persistent, undefined,
+    'relink re-binds without stamping — a mid-restore mark is culled as stale before the live tick');
   jobs._sweepJobOwnedPersistence();
   assert.equal(e.flags.persistent, true, 'the sweep restamps a relinked mid-job hull');
 });

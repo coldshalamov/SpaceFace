@@ -536,7 +536,8 @@ function jobPersistenceAnchorReason(entity) {
   if (f.missionPinned || d.missionPinned || d.missionId || d.missionTag
     || d.missionTargetSlot || d.contractId) return 'mission';
   if (d.itinerary || d.claimDepotId || d.claimTravelTrafficHookId) return 'itinerary';
-  if (d.freightCustodyPersistence || d.surrenderRecovery || d.freightCustody) return 'custody';
+  if (d.freightCustodyPersistence || d.surrenderRecovery || d.freightCustody
+    || d.freightCustodyPod) return 'custody';
   if (d.ceresActivityCast || d.ceresActivityJobOwned || d.activityActorSlotId
     || d.activityObjectSlotId) return 'activity';
   if (d.worldSiteTrafficHookId || d.worldRecordSlotId) return 'site';
@@ -546,7 +547,11 @@ function jobPersistenceAnchorReason(entity) {
   if (d.npcTowedByJobId != null) return 'tow';
   if (f.tethered || d.tethered) return 'tethered';
   if (d.wingman || d.role === 'wingman') return 'wingman';
-  if (d.predationRole || d.predationIdentityKey || ai.predationStatus || ai.predationRole) return 'predation';
+  // Terminal statuses ('cleared', 'cargo_escape', 'cargo_recovery', 'cargo_respilled') are
+  // cleanup residue the director never deletes — only live predation binds the hull.
+  if (d.predationRole || d.predationIdentityKey || ai.predationRole
+    || ai.predationStatus === 'standby' || ai.predationStatus === 'telegraph'
+    || ai.predationStatus === 'active') return 'predation';
   if (ai.securityTargetId || ai.witnessRole) return 'security';
   if (d.lotId || d.lotSource || d.custody) return 'lot';
   if (d.manifestId || d.payloadType) return 'manifest-payload';
@@ -588,7 +593,11 @@ function stampJobOwnedPersistence(entity) {
 // Anchored hulls (Ceres cast, site slots, missions, custody…) own their persistence
 // through other systems and are never touched.
 function releaseJobOwnedPersistence(entity) {
-  if (!isJobPersistenceEligible(entity)) return;
+  // Loose bodies (towed lots, marked wrecks) carry no traffic/durable fields — the mark
+  // they hold is always a job/tow stamp, so eligibility extends to them. Anchored hulls
+  // of any type still keep their other owner's mark.
+  if (!isJobPersistenceEligible(entity)
+    && entity && entity.type !== 'payload' && entity.type !== 'wreck') return;
   if (jobPersistenceAnchorReason(entity)) return;
   dropPersistentMark(entity);
 }
@@ -2192,7 +2201,12 @@ export const npcJobsRuntime = {
           extracted: false,
         },
       });
-      if (!jobId) return;
+      if (!jobId) {
+        // assign refused — the latched target was never attached, so unpin it here or its
+        // latch leaks a permanent 'tethered' persistence anchor.
+        unpinOccupationalLatch(target);
+        return;
+      }
       data.jobKind = 'salvor';
       data.towTargetId = target.id;
       adopted += 1;
@@ -2322,7 +2336,6 @@ export const npcJobsRuntime = {
         bestId = candidateId;
       }
     });
-    if (best) pinOccupationalLatch(best);
     return best;
   },
 
@@ -2388,13 +2401,15 @@ export const npcJobsRuntime = {
     }
     if (target && target.data) {
       if (target.data.npcTowAttachmentId === attachmentId) delete target.data.npcTowAttachmentId;
+      // Unpin before the anchor check: the occupational latch's flags.tethered is itself an
+      // anchor, so checking first made the release path unreachable for live-attached lots.
+      unpinOccupationalLatch(target);
       if (target.data.npcTowedByJobId === jobId) {
         delete target.data.npcTowedByJobId;
         // The lot persisted to survive Continue with its tug; detached, it reverts to an
         // ordinary loose body unless another owner still needs it serialized.
         if (!jobPersistenceAnchorReason(target)) dropPersistentMark(target);
       }
-      unpinOccupationalLatch(target);
     }
     entry.towAttachmentId = null;
     entry.towTargetId = null;
@@ -2492,7 +2507,12 @@ export const npcJobsRuntime = {
       sourceWorld: { x: entity.pos.x, y: 0, z: entity.pos.z },
       targetWorld: { x: target.pos.x, y: 0, z: target.pos.z },
     });
-    if (!created || created.ok !== true || !created.attachment) return false;
+    if (!created || created.ok !== true || !created.attachment) {
+      // The target was latched for this attach; a refused create leaves it pinned forever
+      // otherwise (the latch also vetoes its persistence release as a 'tethered' anchor).
+      unpinOccupationalLatch(target);
+      return false;
+    }
     const attachment = created.attachment;
     entry.towAttachmentId = attachment.id;
     entry.towTargetId = target.id;
