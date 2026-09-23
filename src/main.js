@@ -874,10 +874,18 @@ async function waitForAuthoredPartLibrary(state, timeoutMs = 20000) {
 async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000, isCurrent = null) {
   const started = nowMs();
   let readiness = authoredVisualReadiness(state);
+  let heartbeatLogged = false;
   while (!readiness.pipelineReady && nowMs() - started < timeoutMs) {
     await nextFrame();
     if (isCurrent && !isCurrent()) return false;
     readiness = authoredVisualReadiness(state);
+    // A same-session restore re-stages every required pipeline; on a contended host the gate
+    // can sit inside its own bound long enough that probes and players both wonder what is
+    // stuck. Name the blocking entries once mid-wait instead of only at the timeout warn.
+    if (!heartbeatLogged && nowMs() - started > 25000) {
+      heartbeatLogged = true;
+      console.warn('[SpaceFace] authored visuals still staging after 25s', readiness);
+    }
   }
   if (readiness.pipelineReady) return true;
   console.warn('[SpaceFace] initial authored visuals were not staged before pipeline preparation', readiness);

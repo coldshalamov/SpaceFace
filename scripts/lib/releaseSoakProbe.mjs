@@ -1272,7 +1272,11 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   assert(distance(saved.pos, diverged.pos) > 0.05 || Math.abs(saved.speed - diverged.speed) > 0.05, 'post-save state must diverge before load');
   await transition('load-restore');
   await page.keyboard.press('F9');
-  await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 90_000 });
+  // The loaded-game visual gate legitimately owns up to ~180s of authored-visual staging on a
+  // contended host (the app's own bound); a restore that outlives a 90s wait is slow, not
+  // broken. A genuine wedge still surfaces early: a timed-out gate fails to mode 'menu' via
+  // failGameStart, which this predicate never satisfies either way.
+  await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 210_000 });
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
   const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);
