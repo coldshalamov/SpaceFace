@@ -5382,6 +5382,13 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
         ? '[partsLibrary] authored admission aborted; owner left before publish'
         : '[partsLibrary] authored composition failed; no substitute visual published', {
       entity: entity && entity.id,
+      // Selector fields decide which whole-ship map the entity needed — without them a
+      // "no required packaged whole-ship selection" warning cannot name the missing row.
+      defId: entity && entity.data && entity.data.defId,
+      trafficRole: entity && entity.data && entity.data.trafficRole,
+      assetRef: entity && entity.data && entity.data.assetRef,
+      lootTableId: entity && entity.data && entity.data.lootTableId,
+      silhouette: entity && entity.data && entity.data.silhouette,
       message: String(error && error.message || error),
       causes: error && Array.isArray(error.errors)
         ? error.errors.map((cause) => String(cause && (cause.message || cause.reason || cause))).slice(0, 8)
