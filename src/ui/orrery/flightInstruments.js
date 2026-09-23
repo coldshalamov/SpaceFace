@@ -27,7 +27,7 @@ html.sf-reduce-motion .orr-radar__sweep { animation:none; }
 .orr-radar__foot b { font-family:var(--dp-face-numeral); font-weight:520; font-size:13px; color:var(--dp-phos, #dfeeff); letter-spacing:.02em; }
 .orr-tape { position:relative; width:640px; pointer-events:none; text-align:center; }
 .orr-tape__title { font-family:var(--dp-face-read, "Instrument Sans"); font-size:16px; color:var(--dp-ink, #e8e2d4); letter-spacing:.005em; margin-bottom:10px; text-shadow:0 1px 10px rgb(0 0 0 / .8); }
-.orr-tape__title .orr-label { margin-right:10px; color:var(--dp-hand, #f2b950); }
+.orr-tape__title .orr-label { margin-right:10px; color:var(--dp-ink-dim, #b7b4a6); }
 .orr-tape svg { width:640px; height:58px; display:block; }
 .orr-tape__marker { position:absolute; top:0; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; }
 .orr-tape__dist { font-family:var(--dp-face-numeral); font-weight:520; font-size:15px; color:var(--dp-hand-hot, #ffd98c); font-variant-numeric:tabular-nums; white-space:nowrap; }
@@ -48,12 +48,12 @@ html.sf-reduce-motion .orr-radar__sweep { animation:none; }
 .orr-edge__label { position:absolute; top:22px; left:50%; transform:translateX(-50%); white-space:nowrap; font-size:10px; color:var(--dp-danger, #ff5038); }
 .orr-toasts { display:flex; flex-direction:column; gap:10px; width:340px; pointer-events:none; }
 .orr-toast { position:relative; display:grid; grid-template-columns:18px 1fr; column-gap:12px; row-gap:4px; align-items:start;
-  padding:12px 18px 12px 14px; background:linear-gradient(90deg, rgb(5 7 10 / .0), rgb(5 7 10 / .78) 16%, rgb(5 7 10 / .78) 82%, rgb(5 7 10 / .0)); }
+  padding:8px 4px 8px 0; background:none; text-shadow:0 0 14px rgb(0 0 0 / .95), 0 0 4px rgb(0 0 0 / .9), 0 1px 2px rgb(0 0 0 / .9); }
 .orr-toast svg { grid-row:1 / span 2; width:18px; height:18px; margin-top:1px; }
 .orr-toast .orr-label { color:var(--dp-ink-dim, #b7b4a6); }
 .orr-toast__text { font-family:var(--dp-face-read, "Instrument Sans"); font-size:14px; line-height:1.35; color:var(--dp-ink, #e8e2d4); }
 .orr-toast__text b { font-family:var(--dp-face-numeral); font-weight:600; color:var(--dp-phos, #dfeeff); }
-.orr-toast.is-gain .orr-label { color:var(--dp-hand, #f2b950); }
+.orr-toast.is-gain .orr-label { color:var(--dp-ink, #e8e2d4); }
 .orr-toast__decay { animation:orr-decay var(--orr-life, 6s) linear forwards; }
 @keyframes orr-decay { from { stroke-dashoffset:0; } to { stroke-dashoffset:1; } }
 .orr-toast.is-arriving { animation:orr-toast-in 520ms var(--dp-ease-out) both; animation-delay:var(--orr-delay, 0ms); }
@@ -228,9 +228,16 @@ export function createLockRing({ hostile = false } = {}) {
   const c = 120;
   const tone = hostile ? 'threat' : 'hi';
   const s = svg('svg', { class: 'orr-svg', viewBox: '0 0 240 240', 'aria-hidden': 'true' });
+  s.appendChild(ring({ cx: c, cy: c, r: 26, tone, width: 1.2, bloom: 4 }));
   const turning = svg('g', { class: 'orr-lock__ring' });
-  for (let i = 0; i < 4; i += 1) turning.appendChild(ring({ cx: c, cy: c, r: 30, from: i * 90 + 12, to: i * 90 + 68, tone, width: 1.4, bloom: 4 }));
+  turning.appendChild(svg('path', { d: ticksD(c, c, 34, 48, { len: 3, major: 4, majorLen: 7, inward: false }), class: `orr-core orr-${hostile ? 'threat' : 'rest'}`, 'stroke-width': 1 }));
   s.appendChild(turning);
+  // the lead pip: where to aim, so a moving target is hit, not chased
+  const lead = svg('g', { opacity: 0 });
+  const leadLine = svg('path', { d: '', class: 'orr-core orr-faint', 'stroke-width': 1, 'stroke-dasharray': '2 3' });
+  const leadDot = svg('circle', { r: 4, class: `orr-core orr-${hostile ? 'threat' : 'phos'}`, 'stroke-width': 1.4, fill: 'none' });
+  lead.append(leadLine, leadDot);
+  s.appendChild(lead);
   for (const a of [45, 135, 225, 315]) {
     const [x0, y0] = polar(c, c, 38, a);
     const [x1, y1] = polar(c, c, 46, a);
@@ -250,10 +257,16 @@ export function createLockRing({ hostile = false } = {}) {
   meta.append(dist, detail);
   label.append(name, meta);
   root.appendChild(label);
-  const distCounter = createCounter(dist, { format: (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n))).toUpperCase() });
+  const distCounter = createCounter(dist, { format: (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k wu` : `${Math.round(n)} wu`).toUpperCase() });
   return {
     el: root,
-    set({ x = 0, y = 0, name: n = '', detail: d = '', distance = 0, hull = 1 } = {}) {
+    set({ x = 0, y = 0, name: n = '', detail: d = '', distance = 0, hull = 1, lead: leadAt = null } = {}) {
+      if (leadAt) {
+        lead.setAttribute('opacity', '1');
+        leadDot.setAttribute('cx', String(c + leadAt.x));
+        leadDot.setAttribute('cy', String(c + leadAt.y));
+        leadLine.setAttribute('d', `M ${c} ${c} L ${c + leadAt.x} ${c + leadAt.y}`);
+      }
       root.style.left = `${x}px`;
       root.style.top = `${y}px`;
       if (name.textContent !== n) decrypt(name, n, { duration: 280 });
@@ -270,6 +283,7 @@ export function createThreatChannel() {
   injectStyle();
   const root = el('div', 'orr-threat');
   const s = svg('svg', { class: 'orr-svg', viewBox: '0 0 220 220', 'aria-hidden': 'true' });
+  s.appendChild(svg('circle', { cx: 110, cy: 110, r: 82, class: 'orr-core orr-faint', 'stroke-width': 1, fill: 'none', 'stroke-dasharray': '1 5' }));
   const arcs = svg('g');
   s.appendChild(arcs);
   root.appendChild(s);
@@ -282,9 +296,9 @@ export function createThreatChannel() {
       arcs.textContent = '';
       for (const b of bearings) {
         const g = svg('g', { class: 'orr-threat__arc' });
-        g.appendChild(svg('path', { d: arcD(110, 110, 82, b - 13, b + 13), class: 'orr-bloom orr-threat', 'stroke-width': 9 }));
-        g.appendChild(svg('path', { d: arcD(110, 110, 82, b - 13, b + 13), class: 'orr-core orr-threat', 'stroke-width': 2.4 }));
-        const [tx, ty] = polar(110, 110, 91, b);
+        g.appendChild(svg('path', { d: arcD(110, 110, 82, b - 9, b + 9), class: 'orr-bloom orr-threat', 'stroke-width': 9 }));
+        g.appendChild(svg('path', { d: arcD(110, 110, 82, b - 9, b + 9), class: 'orr-core orr-threat', 'stroke-width': 2.4 }));
+        const [tx, ty] = polar(110, 110, 93, b);
         g.appendChild(svg('path', { d: `M ${tx - 4} ${ty} L ${tx} ${ty - 6} L ${tx + 4} ${ty} Z`, fill: 'var(--dp-danger, #ff5038)', transform: `rotate(${b} ${tx} ${ty})` }));
         arcs.appendChild(g);
       }
@@ -326,7 +340,7 @@ export function createSignalToasts() {
       const ringSvg = svg('svg', { class: 'orr-svg', viewBox: '0 0 18 18', 'aria-hidden': 'true' });
       ringSvg.append(
         svg('circle', { cx: 9, cy: 9, r: 7, class: 'orr-core orr-faint', 'stroke-width': 1.2, fill: 'none' }),
-        svg('path', { d: arcD(9, 9, 7, 0, 359.99), class: `orr-core orr-${gain ? 'hand' : 'phos'} orr-toast__decay`, 'stroke-width': 1.6, pathLength: 1, 'stroke-dasharray': '1 1' }),
+        svg('path', { d: arcD(9, 9, 7, 0, 359.99), class: 'orr-core orr-phos orr-toast__decay', 'stroke-width': 1.8, pathLength: 1, 'stroke-dasharray': '1 1' }),
       );
       const k = el('span', 'orr-label', kind);
       const body = el('div', 'orr-toast__text');

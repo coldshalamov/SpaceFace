@@ -1,60 +1,93 @@
-// ORRERY flight Cluster (design/frontend/ORRERY.md §6 Flight): ONE instrument in place of the old
-// card + bar rows + readout stack. The hull's own plan view, drawn as instrument light, sits at the
-// centre of a ring stack — shield (segmented, outer), armour, hull (inner) — with energy and heat as
-// two horns above it, a slowly turning tick orbit, the heading pip, and the amber Hand pointing where
-// the ship is actually GOING (its drift against the nose: the reading a momentum game lives on).
-// Speed is a big thin numeral on a Scale with the reference mark; target, tether and threat are
-// three quiet reads beneath it, the threat read lit red only by threat.
+// ORRERY flight Cluster v2 (design/frontend/ORRERY.md §6 Flight) — ONE instrument, one pivot.
+//
+// Everything in the bottom-left radiates from a single centre, like an orrery:
+//   · the hull's own plan view, as instrument light, at the pivot;
+//   · the ring stack — shield (segmented), armour (hairline), hull — with a legend in the bottom gap
+//     so each arc is named by its own swatch;
+//   · energy and heat as arcs on the left flank, each read at its arc's end;
+//   · speed as a curved Scale on the right flank (floating cursor, reference tick) beside the huge
+//     thin numeral, boost as a labelled charge arc inside it;
+//   · the heading track over the nose, with a velocity pip showing where the ship is really going;
+//   · the ordnance ORBIT: the four groups as glyph nodes on a large concentric arc; the armed group
+//     unfolds its keys further out, and the Hand — a hairline orrery arm with a counterweight —
+//     swings from the pivot to the armed key;
+//   · the tether: when a mass is on the line, a beam leaves the hull for a payload glyph with a
+//     strain arc and a rolling mass counter.
+// (Critic pass 1, 2026-09-23: 6.5/10 — "three detached islands", a carried-over web list, amber on
+// nine things. This is the structural answer.)
 import { svg, arcD, polar, circularText } from './svg.js';
-import { arcGauge, orbitRing, ring, hand, scale } from './instruments.js';
-import { decrypt, createCounter } from './text.js';
+import { arcGauge, orbitRing, ring } from './instruments.js';
+import { createSpring } from './motion.js';
+import { createCounter } from './text.js';
 import { hullPosterUrl } from '../hullPosters.js';
 
 const STYLE_ID = 'sf-orrery-cluster-style';
-const CLUSTER_CSS = `
-.orr-cluster { position:relative; display:flex; align-items:flex-end; gap:6px; pointer-events:none; color:var(--dp-ink, #e8e2d4); }
-.orr-cluster__dialwrap { position:relative; width:330px; flex:0 0 330px; }
-.orr-cluster__id { position:absolute; left:4px; top:-50px; display:flex; flex-direction:column; gap:5px; }
+const ICON_ROOT = new URL('../../../assets/ui/kit/icons/48/', import.meta.url).href;
+
+// viewBox 760 x 440; the pivot
+const W = 760;
+const H = 520;
+const P = Object.freeze({ x: 250, y: 330 });
+const R = Object.freeze({
+  hull: 104, armor: 113, shield: 123, orbit: 145, heading: 154, flank: 164, speed: 176,
+  groups: 220, unfold: 286,
+});
+const GAUGE_FROM = 225;
+const GAUGE_TO = 495;
+const SPEED_FROM = 146;  // zero, low on the right flank
+const SPEED_TO = 34;     // full, high on the right flank
+
+const CSS = `
+.orr-cluster { position:relative; width:${W}px; height:${H}px; pointer-events:none; color:var(--dp-ink, #e8e2d4);
+  transform-origin:0 100%; transform:scale(var(--orr-cluster-scale, 1)); }
+.orr-cluster > svg { position:absolute; left:0; top:0; width:${W}px; height:${H}px; overflow:visible; }
+.orr-cluster__id { position:absolute; left:216px; top:16px; display:flex; flex-direction:column; gap:5px; }
 .orr-cluster__name { font-size:15px; letter-spacing:.06em; }
-.orr-cluster__dial { width:330px; height:330px; }
-.orr-cluster__horn { position:absolute; top:22px; display:flex; flex-direction:column; gap:4px; }
-.orr-cluster__horn--l { left:0; align-items:flex-start; }
-.orr-cluster__horn--r { right:0; align-items:flex-end; text-align:right; }
-.orr-cluster__horn .orr-value { font-size:17px; }
-.orr-cluster__hull { position:absolute; left:50%; top:238px; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:5px; }
-.orr-cluster__hullnum { display:flex; align-items:baseline; gap:2px; }
-.orr-cluster__hullnum .orr-numeral { font-size:42px; }
-.orr-cluster__hullnum > i { font-style:normal; font-family:var(--dp-face-label); font-weight:500; font-size:15px; color:var(--dp-ink-dim, #b7b4a6); }
-.orr-cluster__layers { display:flex; gap:12px; }
-.orr-cluster__layers b { font-family:var(--dp-face-numeral); font-weight:520; color:var(--dp-phos, #dfeeff); margin-left:4px; letter-spacing:0; }
-.orr-cluster__flight { display:flex; flex-direction:column; gap:10px; width:262px; padding:0 0 18px 4px; }
-.orr-cluster__speedhead { display:flex; justify-content:space-between; align-items:baseline; width:236px; }
-.orr-cluster__speedhead b { color:var(--dp-hand); font-weight:700; margin-left:4px; }
-.orr-cluster__speed { display:flex; align-items:flex-end; gap:10px; height:88px; }
-.orr-cluster__speed .orr-numeral { font-size:98px; font-weight:260; }
-.orr-cluster__speed .orr-label { margin-bottom:12px; }
-.orr-cluster__scale { width:236px; height:30px; margin-top:-4px; }
-.orr-cluster__reads { display:grid; grid-template-columns:auto 1fr; column-gap:14px; row-gap:7px; margin:4px 0 0; align-items:baseline; }
-.orr-cluster__reads dt { display:flex; align-items:center; gap:7px; }
-.orr-cluster__reads dt::before { content:""; width:5px; height:5px; border-radius:50%; background:var(--dp-line); }
-.orr-cluster__reads dd { margin:0; font-family:var(--dp-face-read, "Instrument Sans"); font-size:14px; color:var(--dp-ink, #e8e2d4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.orr-cluster__reads dd.is-quiet { color:var(--dp-ink-dim, #b7b4a6); }
-.orr-cluster__reads .is-threat dt::before { background:var(--dp-danger, #ff5038); box-shadow:0 0 8px var(--dp-danger, #ff5038); }
-.orr-cluster__reads dd.is-threat { color:var(--dp-danger, #ff5038); }
-.orr-cluster__reads .is-live dt::before { background:var(--dp-hand); }
-.orr-cluster__glyph { opacity:.96; }
-.orr-cluster.is-arriving .orr-cluster__flight > *, .orr-cluster.is-arriving .orr-cluster__horn, .orr-cluster.is-arriving .orr-cluster__hull, .orr-cluster.is-arriving .orr-cluster__id { animation:orr-rise 460ms var(--dp-ease-out) both; animation-delay:var(--orr-delay, 0ms); }
-.orr-cluster.is-arriving .orr-cluster__glyph { animation:orr-glyph-in 900ms var(--dp-ease-out) both; }
-@keyframes orr-glyph-in { from { opacity:0; transform:scale(.92); } to { opacity:.96; transform:none; } }
+.orr-cluster__legend { position:absolute; left:${P.x - 62}px; top:${P.y + 80}px; width:124px; display:grid; grid-template-columns:16px auto 1fr; column-gap:7px; row-gap:4px; align-items:center; }
+.orr-cluster__legend svg { width:16px; height:8px; overflow:visible; }
+.orr-cluster__legend b { font-family:var(--dp-face-numeral); font-weight:520; font-size:13px; color:var(--dp-phos, #dfeeff); font-variant-numeric:tabular-nums; text-align:right; }
+.orr-cluster__legend b.is-hull { font-weight:300; font-size:26px; line-height:.9; }
+.orr-cluster__legend b.is-hull i { font-style:normal; font-size:12px; font-weight:500; color:var(--dp-ink-dim, #b7b4a6); margin-left:1px; }
+.orr-cluster__legend .orr-label { font-size:10px; }
+.orr-cluster__legend .is-critical, .orr-cluster__legend .is-critical i { color:var(--dp-danger, #ff5038); }
+.orr-cluster__read { position:absolute; display:flex; flex-direction:column; gap:3px; }
+.orr-cluster__read .orr-value { font-size:15px; }
+.orr-cluster__speed { position:absolute; left:6px; top:2px; display:flex; flex-direction:column; gap:7px; }
+.orr-cluster__speed .orr-numeral { font-size:106px; font-weight:250; line-height:.8; }
+.orr-cluster__speedfoot { display:flex; gap:12px; align-items:baseline; }
+.orr-cluster__speedfoot b { font-family:var(--dp-face-numeral); font-weight:520; font-size:12px; color:var(--dp-ink, #e8e2d4); margin-left:4px; letter-spacing:.02em; }
+.orr-cluster__key { position:absolute; width:56px; height:56px; margin:-28px 0 0 -28px; }
+.orr-cluster__key svg { position:absolute; inset:0; width:56px; height:56px; overflow:visible; }
+.orr-cluster__icon { position:absolute; left:50%; top:50%; width:22px; height:22px; margin:-11px 0 0 -11px; background:currentColor;
+  -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:.88; }
+.orr-cluster__key.is-open .orr-cluster__keytag { display:none; }
+.orr-cluster__key.is-node .orr-cluster__icon { width:18px; height:18px; margin:-9px 0 0 -9px; opacity:.72; }
+.orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); opacity:1; }
+.orr-cluster__key.is-spent .orr-cluster__icon { opacity:.42; }
+.orr-cluster__key.is-locked .orr-cluster__icon { opacity:.26; }
+.orr-cluster__keytag { position:absolute; left:44px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:3px; white-space:nowrap; }
+.orr-cluster__keytag .orr-label { font-size:10px; }
+.orr-cluster__keytag .orr-label + .orr-label { color:var(--dp-ink-dim, #b7b4a6); opacity:.9; letter-spacing:.08em; }
+.orr-cluster__key.is-armed .orr-cluster__keytag .orr-label:first-child { color:var(--dp-hand, #f2b950); }
+.orr-cluster__key.is-locked .orr-cluster__keytag .orr-label:last-child::after { content:" · locked"; }
+.orr-cluster__key.is-spent .orr-cluster__keytag .orr-label:last-child::after { content:" · cooling"; }
+.orr-cluster__count { position:absolute; right:-2px; bottom:-2px; font-family:var(--dp-face-numeral); font-weight:600; font-size:10px; color:var(--dp-phos, #dfeeff); }
+.orr-cluster__payload { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; }
+.orr-cluster__payload .orr-counter, .orr-cluster__payload b { font-family:var(--dp-face-numeral); font-weight:360; font-size:20px; color:var(--dp-phos, #dfeeff); }
+.orr-cluster__beam { stroke-dasharray:2 7; animation:orr-beam 1.1s linear infinite; }
+@keyframes orr-beam { to { stroke-dashoffset:-18; } }
 .orr-cluster__glyph { transform-box:fill-box; transform-origin:center; }
-html.sf-reduce-motion .orr-cluster * { animation:none !important; }
+.orr-cluster.is-arriving .orr-cluster__glyph { animation:orr-glyph-in 900ms var(--dp-ease-out) both; }
+@keyframes orr-glyph-in { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:none; } }
+.orr-cluster.is-arriving .orr-cluster__fade { animation:orr-rise 460ms var(--dp-ease-out) both; animation-delay:var(--orr-delay, 0ms); }
+html.sf-reduce-motion .orr-cluster *, html.sf-reduce-motion .orr-cluster__beam { animation:none !important; }
 `;
 
 function injectStyle(doc = globalThis.document) {
   if (!doc?.head || doc.getElementById(STYLE_ID)) return;
   const style = doc.createElement('style');
   style.id = STYLE_ID;
-  style.textContent = CLUSTER_CSS;
+  style.textContent = CSS;
   doc.head.appendChild(style);
 }
 
@@ -64,117 +97,223 @@ const el = (tag, cls, text) => {
   if (text != null) node.textContent = text;
   return node;
 };
+const at = (r, deg) => polar(P.x, P.y, r, deg);
+const place = (node, x, y) => { node.style.left = `${x}px`; node.style.top = `${y}px`; };
 
-// Dial geometry (viewBox 0 0 330 330)
-const C = 165;
-const R = Object.freeze({ orbit: 144, heading: 152, shield: 127, armor: 117, hull: 108, horn: 160 });
-const GAUGE_FROM = 225;   // the gap at the bottom (135..225) holds the hull reading
-const GAUGE_TO = 495;
-
-export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', classLine = 'Kestrel class · starter' } = {}) {
+/**
+ * @param {object} o
+ * @param {{name:string, icon:string, slots:{key:string,name:string,icon:string}[]}[]} o.groups
+ */
+export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', classLine = 'Kestrel class · starter', groups = [] } = {}) {
   injectStyle();
   const root = el('section', 'orr-cluster');
   root.setAttribute('aria-label', 'Ship status');
+  const s = svg('svg', { class: 'orr-svg', viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' });
+  root.appendChild(s);
 
-  // ---- the dial ------------------------------------------------------------------------------
-  const dialWrap = el('div', 'orr-cluster__dialwrap');
-  const dial = svg('svg', { class: 'orr-svg orr-cluster__dial', viewBox: '0 0 330 330', 'aria-hidden': 'true' });
-
-  const orbit = orbitRing({ cx: C, cy: C, r: R.orbit, count: 120, major: 10, len: 3, majorLen: 8, tone: 'faint', drift: 1500 });
+  // ---- orbit, heading, drift ------------------------------------------------------------------
+  const orbit = orbitRing({ cx: P.x, cy: P.y, r: R.orbit, count: 120, major: 10, len: 3, majorLen: 8, tone: 'faint', drift: 1500 });
   orbit.rotor.classList.add('orr-spin-in');
-  dial.appendChild(orbit.el);
-  // engraved micro-lettering along the orbit's lower flanks: the hull's plate, like equipment
-  dial.appendChild(circularText(C, C, R.orbit + 7, 'HX-47A · VECTOR REACTION DRIVE M', { startDeg: 218, size: 6.5, className: 'orr-micro' }));
-  // the heading track: a faint arc over the nose, with the heading pip dead ahead
-  dial.appendChild(ring({ cx: C, cy: C, r: R.heading, from: -58, to: 58, tone: 'faint', width: 1, draw: true, delay: 80 }));
-  dial.appendChild(svg('path', { d: `M ${C - 5} ${C - R.heading - 9} L ${C} ${C - R.heading - 2} L ${C + 5} ${C - R.heading - 9}`, class: 'orr-core orr-hi', 'stroke-width': 1.2, fill: 'none' }));
+  s.appendChild(orbit.el);
+  s.appendChild(ring({ cx: P.x, cy: P.y, r: R.heading, from: -46, to: 46, tone: 'faint', width: 1, draw: true, delay: 80 }));
+  const [hx, hy] = at(R.heading, 0);
+  s.appendChild(svg('path', { d: `M ${hx - 5} ${hy - 8} L ${hx} ${hy - 1} L ${hx + 5} ${hy - 8}`, class: 'orr-core orr-hi', 'stroke-width': 1.2, fill: 'none' }));
+  const driftPip = svg('g');
+  driftPip.append(
+    svg('circle', { cx: hx, cy: hy, r: 4.5, class: 'orr-core orr-phos', 'stroke-width': 1.3, fill: 'none' }),
+    svg('path', { d: `M ${hx} ${hy - 4.5} L ${hx} ${hy - 9} M ${hx - 4.5} ${hy} L ${hx - 8} ${hy} M ${hx + 4.5} ${hy} L ${hx + 8} ${hy}`, class: 'orr-core orr-phos', 'stroke-width': 1.2 }),
+  );
+  s.appendChild(driftPip);
+  s.appendChild(circularText(P.x, P.y, R.orbit + 7, `${String(name).toUpperCase()} · ${String(classLine).toUpperCase()}`, { startDeg: 212, size: 6.5, className: 'orr-micro' }));
 
-  // gauges
-  const shield = arcGauge({ cx: C, cy: C, r: R.shield, from: GAUGE_FROM, to: GAUGE_TO, width: 3.2, tone: 'phos', segments: 18, segmentGap: 2.2 });
-  const armor = arcGauge({ cx: C, cy: C, r: R.armor, from: GAUGE_FROM, to: GAUGE_TO, width: 2, tone: 'hi', head: false });
-  const hull = arcGauge({ cx: C, cy: C, r: R.hull, from: GAUGE_FROM, to: GAUGE_TO, width: 3, tone: 'phos' });
-  dial.appendChild(shield.el);
-  dial.appendChild(armor.el);
-  dial.appendChild(hull.el);
-  // gauge end ticks, so the gap reads as deliberate
+  // ---- the ring stack ----------------------------------------------------------------------------
+  const shield = arcGauge({ cx: P.x, cy: P.y, r: R.shield, from: GAUGE_FROM, to: GAUGE_TO, width: 3.2, tone: 'phos', segments: 18, segmentGap: 2.4 });
+  const armor = arcGauge({ cx: P.x, cy: P.y, r: R.armor, from: GAUGE_FROM, to: GAUGE_TO, width: 1.6, tone: 'hi', head: false });
+  const hull = arcGauge({ cx: P.x, cy: P.y, r: R.hull, from: GAUGE_FROM, to: GAUGE_TO, width: 3, tone: 'phos' });
+  s.append(shield.el, armor.el, hull.el);
   for (const a of [GAUGE_FROM, GAUGE_TO]) {
-    const [x0, y0] = polar(C, C, R.hull - 7, a);
-    const [x1, y1] = polar(C, C, R.shield + 7, a);
-    dial.appendChild(svg('path', { d: `M ${x0} ${y0} L ${x1} ${y1}`, class: 'orr-core orr-rest', 'stroke-width': 1 }));
+    const [x0, y0] = at(R.hull - 7, a);
+    const [x1, y1] = at(R.shield + 7, a);
+    s.appendChild(svg('path', { d: `M ${x0} ${y0} L ${x1} ${y1}`, class: 'orr-core orr-rest', 'stroke-width': 1 }));
   }
-  // horns: energy (left, rising) and heat (right)
-  const energy = arcGauge({ cx: C, cy: C, r: R.horn, from: 250, to: 312, width: 3, tone: 'phos', ghost: false });
-  const heat = arcGauge({ cx: C, cy: C, r: R.horn, from: 110, to: 48, width: 3, tone: 'hi', ghost: false });
-  dial.appendChild(energy.el);
-  dial.appendChild(heat.el);
 
-  // the hull, as instrument light
-  const glyphUrl = hullPosterUrl(shipId, 'holo');
-  if (glyphUrl) {
-    dial.appendChild(svg('image', { class: 'orr-cluster__glyph', href: glyphUrl, x: C - 84, y: C - 100, width: 168, height: 168, preserveAspectRatio: 'xMidYMid meet' }));
-  }
-  // the Hand: where the ship is going, against where it points
-  const driftHand = hand({ cx: C, cy: C, r0: R.orbit - 12, r1: R.heading + 6 });
-  dial.appendChild(driftHand.el);
-  dialWrap.appendChild(dial);
-
-  const id = el('header', 'orr-cluster__id');
-  const nameEl = el('b', 'orr-display orr-cluster__name');
-  const classEl = el('span', 'orr-label');
-  id.append(nameEl, classEl);
-
-  const hornL = el('span', 'orr-cluster__horn orr-cluster__horn--l');
+  // ---- left flank: energy (upper) and heat (lower) ------------------------------------------------
+  const energy = arcGauge({ cx: P.x, cy: P.y, r: R.flank, from: 252, to: 306, width: 3, tone: 'phos', ghost: false });
+  const heat = arcGauge({ cx: P.x, cy: P.y, r: R.flank, from: 204, to: 246, width: 3, tone: 'hi', ghost: false });
+  s.append(energy.el, heat.el);
+  const energyRead = el('div', 'orr-cluster__read orr-cluster__fade');
   const energyVal = el('b', 'orr-value');
-  hornL.append(el('i', 'orr-label', 'Energy'), energyVal);
-  const hornR = el('span', 'orr-cluster__horn orr-cluster__horn--r');
+  energyRead.append(el('span', 'orr-label', 'Energy'), energyVal);
+  const [ex, ey] = at(R.flank + 16, 306);
+  place(energyRead, ex - 62, ey - 30);
+  const heatRead = el('div', 'orr-cluster__read orr-cluster__fade');
   const heatVal = el('b', 'orr-value');
-  hornR.append(el('i', 'orr-label', 'Heat'), heatVal);
+  heatRead.append(el('span', 'orr-label', 'Heat'), heatVal);
+  const [tx, ty] = at(R.flank + 16, 204);
+  place(heatRead, tx - 56, ty - 6);
 
-  const hullBlock = el('div', 'orr-cluster__hull');
-  const hullNum = el('div', 'orr-cluster__hullnum');
-  const hullVal = el('b', 'orr-numeral');
-  hullNum.append(hullVal, el('i', null, '%'));
-  const hullState = el('span', 'orr-label');
-  const layers = el('div', 'orr-cluster__layers');
-  const shieldVal = el('b');
-  const armorVal = el('b');
-  const sLab = el('span', 'orr-label', 'Shield'); sLab.appendChild(shieldVal);
-  const aLab = el('span', 'orr-label', 'Armor'); aLab.appendChild(armorVal);
-  layers.append(sLab, aLab);
-  hullBlock.append(hullNum, hullState, layers);
-  dialWrap.append(id, hornL, hornR, hullBlock);
+  // ---- right flank: speed Scale on an arc, boost inside it ---------------------------------------
+  s.appendChild(svg('path', { d: arcD(P.x, P.y, R.speed, SPEED_TO, SPEED_FROM), class: 'orr-core orr-faint', 'stroke-width': 1 }));
+  const tickParts = [];
+  for (let i = 0; i <= 22; i += 1) {
+    const a = SPEED_FROM + (SPEED_TO - SPEED_FROM) * (i / 22);
+    const [x0, y0] = at(R.speed + 2, a);
+    const [x1, y1] = at(R.speed + (i % 5 === 0 ? 9 : 5), a);
+    tickParts.push(`M ${x0} ${y0} L ${x1} ${y1}`);
+  }
+  s.appendChild(svg('path', { d: tickParts.join(' '), class: 'orr-core orr-rest', 'stroke-width': 1 }));
+  const speedArc = arcGauge({ cx: P.x, cy: P.y, r: R.speed, from: SPEED_FROM, to: SPEED_TO, width: 2.4, tone: 'phos', track: 'faint', ghost: false, head: false });
+  s.appendChild(speedArc.el);
+  const speedCursor = svg('path', { d: '', class: 'orr-core orr-phos', 'stroke-width': 1.6, fill: 'none', 'stroke-linejoin': 'miter' });
+  s.appendChild(speedCursor);
+  const refTick = svg('path', { d: '', class: 'orr-core orr-hi', 'stroke-width': 1.6 });
+  s.appendChild(refTick);
+  const refText = svg('text', { 'font-size': 9 });
+  s.appendChild(refText);
+  const boost = arcGauge({ cx: P.x, cy: P.y, r: R.flank, from: SPEED_FROM, to: SPEED_TO, width: 1.8, tone: 'phos', track: 'faint', ghost: false, head: false });
+  s.appendChild(boost.el);
+  const [bx, by] = at(R.flank + 2, SPEED_FROM + 7);
+  const boostText = svg('text', { x: bx + 4, y: by + 10, 'font-size': 8, 'text-anchor': 'start' });
+  boostText.textContent = 'BOOST';
+  s.appendChild(boostText);
 
-  // ---- flight readings --------------------------------------------------------------------------
-  const flight = el('div', 'orr-cluster__flight');
-  const speedHead = el('div', 'orr-cluster__speedhead');
-  const refVal = el('b');
-  const refLab = el('span', 'orr-label', 'Ref'); refLab.appendChild(refVal);
-  speedHead.append(el('span', 'orr-label', 'Speed'), refLab);
-  const speedRow = el('div', 'orr-cluster__speed');
+  const speedBlock = el('div', 'orr-cluster__speed orr-cluster__fade');
   const speedVal = el('b', 'orr-numeral');
-  speedRow.append(speedVal, el('span', 'orr-label', 'wu/s'));
-  const scaleSvg = svg('svg', { class: 'orr-svg orr-cluster__scale', viewBox: '0 0 236 30', 'aria-hidden': 'true' });
-  const speedScale = scale({ x: 0, y: 9, w: 236, ticks: 24, major: 6, tone: 'phos', reference: true });
-  scaleSvg.appendChild(speedScale.el);
-  const boostScale = scale({ x: 0, y: 26, w: 110, ticks: 0, major: 1, tone: 'phos' });
-  scaleSvg.appendChild(boostScale.el);
+  const speedFoot = el('div', 'orr-cluster__speedfoot');
+  const refVal = el('b');
+  const refLab = el('span', 'orr-label', 'Ref');
+  refLab.appendChild(refVal);
+  speedFoot.append(el('span', 'orr-label', 'Speed · wu/s'), refLab);
+  speedBlock.append(speedVal, speedFoot);
 
-  const reads = el('dl', 'orr-cluster__reads');
-  const mkRead = (label) => {
-    const row = { dt: el('dt', 'orr-label', label), dd: el('dd') };
-    reads.append(row.dt, row.dd);
-    return row;
+  // ---- the hull at the pivot ----------------------------------------------------------------------
+  const glyphUrl = hullPosterUrl(shipId, 'holo');
+  if (glyphUrl) s.appendChild(svg('image', { class: 'orr-cluster__glyph', href: glyphUrl, x: P.x - 82, y: P.y - 96, width: 164, height: 164, preserveAspectRatio: 'xMidYMid meet' }));
+
+  // ---- legend in the gap ---------------------------------------------------------------------------
+  const legend = el('div', 'orr-cluster__legend orr-cluster__fade');
+  const swatch = (kind) => {
+    const sw = svg('svg', { viewBox: '0 0 16 8', class: 'orr-svg' });
+    if (kind === 'shield') sw.appendChild(svg('path', { d: 'M 0 4 L 4 4 M 6 4 L 10 4 M 12 4 L 16 4', class: 'orr-core orr-phos', 'stroke-width': 3, 'stroke-linecap': 'butt' }));
+    else if (kind === 'armor') sw.appendChild(svg('path', { d: 'M 0 4 L 16 4', class: 'orr-core orr-hi', 'stroke-width': 1.6 }));
+    else sw.appendChild(svg('path', { d: 'M 0 4 L 16 4', class: 'orr-core orr-phos', 'stroke-width': 3, 'stroke-linecap': 'butt' }));
+    return sw;
   };
-  const targetRead = mkRead('Target');
-  const tetherRead = mkRead('Tether');
-  const threatRead = mkRead('Threat');
-  flight.append(speedHead, speedRow, scaleSvg, reads);
+  const legendRow = (kind, label) => {
+    const val = el('b');
+    const lab = el('span', 'orr-label', label);
+    legend.append(swatch(kind), val, lab);
+    return { val, lab };
+  };
+  const hullRow = legendRow('hull', 'Hull');
+  hullRow.val.classList.add('is-hull');
+  const shieldRow = legendRow('shield', 'Shield');
+  const armorRow = legendRow('armor', 'Armor');
 
-  root.append(dialWrap, flight);
+  // ---- the ordnance orbit + the Hand ----------------------------------------------------------------
+  s.appendChild(svg('path', { d: arcD(P.x, P.y, R.groups, 36, 136), class: 'orr-core orr-faint', 'stroke-width': 1 }));
+  const handArm = svg('g', { class: 'orr-cluster__hand' });
+  const handLine = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.2 });
+  const handBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 5 });
+  const handWeight = svg('circle', { r: 4, fill: 'var(--dp-hand, #f2b950)' });
+  const handPivot = svg('circle', { cx: P.x, cy: P.y, r: 3.4, fill: 'none', class: 'orr-core orr-hand', 'stroke-width': 1.3 });
+  handArm.append(handBloom, handLine, handWeight, handPivot);
+  const handSpring = createSpring({ value: 70, preset: 'swing', onUpdate: (deg) => {
+    const [x0, y0] = at(-34, deg);
+    const [x1, y1] = at(R.unfold - 31, deg);
+    const d = `M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+    handLine.setAttribute('d', d);
+    handBloom.setAttribute('d', d);
+    handWeight.setAttribute('cx', x0.toFixed(1));
+    handWeight.setAttribute('cy', y0.toFixed(1));
+  } });
+  const keyLayer = el('div');
+  root.append(keyLayer);
 
-  const hullCounter = createCounter(hullVal, { format: (n) => String(Math.round(n)) });
+  const groupAngles = [46, 72, 98, 124];
+  const nodes = [];
+  const keys = [];
+  const mkSocket = (x, y, { icon, node = false, label = '', sub = '' }) => {
+    const k = el('div', `orr-cluster__key${node ? ' is-node' : ''}`);
+    place(k, x, y);
+    const ks = svg('svg', { viewBox: '-28 -28 56 56', class: 'orr-svg' });
+    const r0 = node ? 17 : 22;
+    ks.appendChild(svg('circle', { r: r0, class: 'orr-core orr-faint', 'stroke-width': 1, fill: 'rgb(5 7 10 / .42)' }));
+    const cdB = svg('path', { d: arcD(0, 0, r0 + 3.5, 0, 359.99), class: 'orr-bloom orr-phos', 'stroke-width': 4, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
+    const cd = svg('path', { d: arcD(0, 0, r0 + 3.5, 0, 359.99), class: 'orr-core orr-phos', 'stroke-width': node ? 1.4 : 1.8, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
+    const armedB = svg('circle', { r: r0, class: 'orr-bloom orr-hand', 'stroke-width': 7, fill: 'none', opacity: 0 });
+    const armed = svg('circle', { r: r0, class: 'orr-core orr-hand', 'stroke-width': 1.6, fill: 'none', opacity: 0 });
+    ks.append(cdB, cd, armedB, armed);
+    k.appendChild(ks);
+    const ic = el('span', 'orr-cluster__icon');
+    ic.style.setProperty('--orr-icon', `url("${ICON_ROOT}icon-${icon}.svg")`);
+    k.appendChild(ic);
+    const tag = el('div', 'orr-cluster__keytag');
+    tag.append(el('span', 'orr-label', label), el('span', 'orr-label', sub));
+    k.appendChild(tag);
+    const count = el('span', 'orr-cluster__count');
+    k.appendChild(count);
+    keyLayer.appendChild(k);
+    const spring = createSpring({ value: 0, preset: 'settle', onUpdate: (v) => { const d = `${Math.max(0, Math.min(1, v))} 1`; cd.setAttribute('stroke-dasharray', d); cdB.setAttribute('stroke-dasharray', d); } });
+    return { el: k, armed, armedB, spring, count, tag };
+  };
+  groups.forEach((group, gi) => {
+    const a = groupAngles[gi] ?? (46 + gi * 26);
+    const [nx, ny] = at(R.groups, a);
+    const node = mkSocket(nx, ny, { icon: group.icon, node: true, label: group.name, sub: group.slots.map((sl) => sl.key).join(' · ') });
+    nodes.push({ group, angle: a, node });
+  });
+  const unfoldLayer = svg('g');
+  s.appendChild(unfoldLayer);
+  s.appendChild(handArm);
+
+  // ---- the tether ------------------------------------------------------------------------------------
+  const tetherG = svg('g', { opacity: 0 });
+  const [px, py] = at(232, 8);
+  const [bx0, by0] = at(R.heading + 10, 8);
+  tetherG.append(
+    svg('path', { d: `M ${bx0} ${by0} L ${px} ${py}`, class: 'orr-core orr-phos orr-cluster__beam', 'stroke-width': 1.4 }),
+    svg('circle', { cx: px, cy: py, r: 11, class: 'orr-core orr-phos', 'stroke-width': 1.4, fill: 'rgb(5 7 10 / .5)' }),
+    svg('circle', { cx: px, cy: py, r: 3.2, fill: 'var(--dp-phos, #dfeeff)' }),
+  );
+  const strain = arcGauge({ cx: px, cy: py, r: 17, from: -120, to: 120, width: 2, tone: 'phos', ghost: false, head: false });
+  tetherG.appendChild(strain.el);
+  s.appendChild(tetherG);
+  const payload = el('div', 'orr-cluster__payload orr-cluster__fade');
+  const massEl = el('span');
+  payload.append(el('span', 'orr-label', 'Payload · on the line'), massEl);
+  place(payload, px - 58, py + 20);
+  payload.style.alignItems = 'center';
+  payload.style.width = '116px';
+  payload.style.opacity = '0';
+  const massCounter = createCounter(massEl, { format: (n) => `${Math.round(n)} T` });
+
+  root.append(energyRead, heatRead, speedBlock, legend, payload);
+
+  // ---- update --------------------------------------------------------------------------------------
   const last = {};
-  const changed = (key, value) => { if (last[key] === value) return false; last[key] = value; return true; };
+  const changed = (k, v) => { if (last[k] === v) return false; last[k] = v; return true; };
+  let unfolded = -1;
+
+  function unfold(groupIndex) {
+    unfoldLayer.textContent = '';
+    for (const k of keys) { k.spring.stop(); k.el.remove(); }
+    keys.length = 0;
+    const n = nodes[groupIndex];
+    if (!n) return;
+    const slots = n.group.slots;
+    const spread = 11;
+    const start = n.angle - ((slots.length - 1) * spread) / 2;
+    slots.forEach((slot, i) => {
+      const a = start + i * spread;
+      const [kx, ky] = at(R.unfold, a);
+      const [lx0, ly0] = at(R.groups + 20, n.angle);
+      const [lx1, ly1] = at(R.unfold - 25, a);
+      unfoldLayer.appendChild(svg('path', { d: `M ${lx0} ${ly0} L ${lx1} ${ly1}`, class: 'orr-core orr-rest', 'stroke-width': 1 }));
+      const k = mkSocket(kx, ky, { icon: slot.icon, label: slot.name, sub: `Key ${slot.key}` });
+      keys.push({ ...k, slot, angle: a });
+    });
+  }
 
   function update(d = {}) {
     const frac = (v, m) => (Number(m) > 0 ? Math.max(0, Math.min(1, Number(v) / Number(m))) : 0);
@@ -182,13 +321,14 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     if (changed('hull', Math.round(hullF * 1000))) {
       hull.set(hullF);
       hull.setTone(hullF < 0.3 ? 'threat' : 'phos');
-      hullCounter.set(hullF * 100);
-      hullState.textContent = hullF < 0.3 ? 'Hull · critical' : hullF < 0.6 ? 'Hull · damaged' : 'Hull · stable';
+      hullRow.val.innerHTML = `${Math.round(hullF * 100)}<i>%</i>`;
+      hullRow.val.classList.toggle('is-critical', hullF < 0.3);
+      hullRow.lab.classList.toggle('is-critical', hullF < 0.3);
     }
     const shieldF = frac(d.shield, d.shieldMax);
-    if (changed('shield', Math.round(shieldF * 1000))) { shield.set(shieldF); shieldVal.textContent = String(Math.round(shieldF * 100)); }
+    if (changed('shield', Math.round(shieldF * 1000))) { shield.set(shieldF); shieldRow.val.textContent = String(Math.round(shieldF * 100)); }
     const armorF = frac(d.armor, d.armorMax);
-    if (changed('armor', Math.round(armorF * 1000))) { armor.set(armorF); armorVal.textContent = String(Math.round(Number(d.armor) || 0)); }
+    if (changed('armor', Math.round(armorF * 1000))) { armor.set(armorF); armorRow.val.textContent = String(Math.round(Number(d.armor) || 0)); }
     const energyF = frac(d.energy, d.energyMax);
     if (changed('energy', Math.round(energyF * 1000))) { energy.set(energyF); energyVal.textContent = String(Math.round(Number(d.energy) || 0)); }
     const heatF = Math.max(0, Math.min(1, Number(d.heat) || 0));
@@ -196,49 +336,83 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     const ref = Number(d.speedRef) || 180;
     const max = Number(d.speedMax) || ref * 1.25;
     const speed = Math.max(0, Number(d.speed) || 0);
-    if (changed('speed', Math.round(speed))) { speedVal.textContent = String(Math.round(speed)); speedScale.set(speed / max); }
-    if (changed('ref', ref)) { refVal.textContent = String(Math.round(ref)); speedScale.setReference(ref / max); }
-    if (changed('boost', Math.round((Number(d.boost) || 0) * 100))) boostScale.set(Number(d.boost) || 0);
-    if (Number.isFinite(d.drift) && changed('drift', Math.round(d.drift))) driftHand.pointTo(d.drift);
-    const target = d.target && d.target.name ? `${d.target.name}${d.target.detail ? ` · ${d.target.detail}` : ''}` : 'No lock';
-    if (changed('target', target)) { targetRead.dd.textContent = target; targetRead.dd.classList.toggle('is-quiet', !d.target); }
-    const tether = d.tether && d.tether.state ? `${d.tether.state}${d.tether.detail ? ` · ${d.tether.detail}` : ''}` : 'Idle';
-    if (changed('tether', tether)) {
-      tetherRead.dd.textContent = tether;
-      tetherRead.dd.classList.toggle('is-quiet', !(d.tether && d.tether.state && d.tether.state !== 'Idle'));
-      tetherRead.dt.classList.toggle('is-live', !!(d.tether && d.tether.state && d.tether.state !== 'Idle'));
+    if (changed('speed', Math.round(speed))) {
+      speedVal.textContent = String(Math.round(speed));
+      const f = Math.min(1, speed / max);
+      speedArc.set(f);
+      const a = SPEED_FROM + (SPEED_TO - SPEED_FROM) * f;
+      const [c0x, c0y] = at(R.speed - 11, a - 3.2);
+      const [c1x, c1y] = at(R.speed - 3, a);
+      const [c2x, c2y] = at(R.speed - 11, a + 3.2);
+      speedCursor.setAttribute('d', `M ${c0x} ${c0y} L ${c1x} ${c1y} L ${c2x} ${c2y}`);
     }
-    const level = d.threat && d.threat.level || 'clear';
-    const threatText = d.threat && d.threat.text || (level === 'clear' ? 'Clear' : 'Contact');
-    if (changed('threat', `${level}|${threatText}`)) {
-      threatRead.dd.textContent = threatText;
-      const hot = level !== 'clear';
-      threatRead.dd.classList.toggle('is-threat', hot);
-      threatRead.dd.classList.toggle('is-quiet', !hot);
-      threatRead.dt.classList.toggle('is-threat', hot);
+    if (changed('ref', ref)) {
+      refVal.textContent = String(Math.round(ref));
+      const a = SPEED_FROM + (SPEED_TO - SPEED_FROM) * Math.min(1, ref / max);
+      const [r0x, r0y] = at(R.speed - 4, a);
+      const [r1x, r1y] = at(R.speed + 13, a);
+      refTick.setAttribute('d', `M ${r0x} ${r0y} L ${r1x} ${r1y}`);
+      const [lx, ly] = at(R.speed + 17, a);
+      refText.setAttribute('x', lx.toFixed(1));
+      refText.setAttribute('y', (ly + 3).toFixed(1));
+      refText.textContent = 'REF';
     }
+    if (changed('boost', Math.round((Number(d.boost) || 0) * 100))) boost.set(Number(d.boost) || 0);
+    if (Number.isFinite(d.drift) && changed('drift', Math.round(d.drift))) {
+      const deg = Math.max(-46, Math.min(46, d.drift));
+      driftPip.setAttribute('transform', `rotate(${deg} ${P.x} ${P.y})`);
+    }
+    // ordnance: the armed group unfolds; the Hand swings to the armed key
+    const slotStates = d.ordnance || {};
+    let armedGroup = 0;
+    nodes.forEach((n, gi) => { if (n.group.slots.some((sl) => (slotStates[sl.key] || {}).state === 'armed')) armedGroup = gi; });
+    if (armedGroup !== unfolded) { unfolded = armedGroup; unfold(armedGroup); }
+    nodes.forEach((n, gi) => {
+      const readiness = n.group.slots.reduce((m, sl) => {
+        const st = slotStates[sl.key] || {};
+        return Math.min(m, st.state === 'cooldown' ? Number(st.cooldown) || 0 : 1);
+      }, 1);
+      n.node.spring.set(readiness);
+      n.node.el.style.opacity = gi === armedGroup ? '1' : '0.86';
+      n.node.el.classList.toggle('is-open', gi === armedGroup);
+    });
+    let armedAngle = null;
+    for (const k of keys) {
+      const st = slotStates[k.slot.key] || {};
+      const state = st.state || 'ready';
+      k.el.className = `orr-cluster__key is-${state === 'cooldown' ? 'spent' : state}`;
+      const on = state === 'armed' ? '1' : '0';
+      k.armed.setAttribute('opacity', on);
+      k.armedB.setAttribute('opacity', on);
+      k.spring.set(state === 'cooldown' ? Number(st.cooldown) || 0 : (state === 'locked' ? 0 : 1));
+      k.count.textContent = Number.isFinite(st.count) ? `×${st.count}` : '';
+      if (state === 'armed') armedAngle = k.angle;
+    }
+    if (armedAngle != null) handSpring.set(armedAngle);
+    // tether
+    const t = d.tether || null;
+    const tethered = !!(t && t.state && t.state !== 'Idle' && Number(t.mass) > 0);
+    if (changed('tethered', tethered)) { tetherG.setAttribute('opacity', tethered ? '1' : '0'); payload.style.opacity = tethered ? '1' : '0'; }
+    if (tethered) { massCounter.set(Number(t.mass)); strain.set(Number(t.strain) || 0); strain.setTone(Number(t.strain) > 0.85 ? 'threat' : 'phos'); }
   }
 
   function arrive() {
     root.classList.add('is-arriving');
-    const staged = [id, hornL, hornR, hullBlock, speedHead, speedRow, scaleSvg, reads];
-    staged.forEach((node, i) => node.style.setProperty('--orr-delay', `${160 + i * 45}ms`));
-    decrypt(nameEl, name, { duration: 320, delay: 120 });
-    decrypt(classEl, classLine, { duration: 380, delay: 180 });
+    [energyRead, heatRead, speedBlock, legend, payload].forEach((node, i) => node.style.setProperty('--orr-delay', `${160 + i * 50}ms`));
     setTimeout(() => root.classList.remove('is-arriving'), 1400);
   }
-
-  nameEl.textContent = name;
-  classEl.textContent = classLine;
 
   return {
     el: root,
     update,
     arrive,
-    dispose() { for (const g of [shield, armor, hull, energy, heat, speedScale, boostScale, driftHand]) g.dispose(); },
+    dispose() {
+      for (const g of [shield, armor, hull, energy, heat, speedArc, boost, strain]) g.dispose();
+      handSpring.stop();
+      for (const n of nodes) n.node.spring.stop();
+      for (const k of keys) k.spring.stop();
+    },
   };
 }
 
-// exported for the showcase
-export const CLUSTER_GEOMETRY = Object.freeze({ C, R, GAUGE_FROM, GAUGE_TO });
-export { arcD };
+export const CLUSTER_GEOMETRY = Object.freeze({ W, H, P, R });
