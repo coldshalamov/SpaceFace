@@ -38,6 +38,7 @@ import { crucibleFittingDescription } from '../crucibleCombatReadout.js';
 import { decorateEntityNode, entityLabel } from '../entityResolver.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { createHullSchematic } from '../orrery/hullSchematic.js';
+import { createSlotJig } from '../orrery/slotJig.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 
 /**
@@ -363,6 +364,87 @@ function spareScales(spares) {
   };
 }
 
+/** An SVG node, or null where there is no SVG (node tests). */
+function svgNode(tag, attrs = {}) {
+  if (typeof document === 'undefined' || typeof document.createElementNS !== 'function') return null;
+  const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+  return n;
+}
+
+/**
+ * The armory reading's comparison: a weapon offer against the weapon it would replace, on the two
+ * axes combat pays (sustained fire, shove). The offer's mark is lit and taller, the fitted one a
+ * bone notch, the difference in ice. Null for anything that is not a weapon-for-weapon swap.
+ */
+function offerCompare(offer) {
+  const def = offer && WEAPON_DEF_BY_ID.get(offer.defId);
+  if (!def) return null;
+  const fitted = offer.replaces ? WEAPON_DEF_BY_ID.get(offer.replaces) : null;
+  const root = svgNode('svg', { viewBox: '0 0 360 64', width: 360, height: 64, class: 'orr-svg orr-armory-compare', 'aria-hidden': 'true' });
+  if (!root) return null;
+  const x0 = 70; const x1 = 290;
+  [['dps', 'Fire', 20], ['impulsePerHit', 'Shove', 50]].forEach(([key, word, y]) => {
+    const mine = finiteNum(def[key]);
+    if (mine == null) return;
+    const theirs = fitted ? finiteNum(fitted[key]) : null;
+    const max = Math.max(mine, theirs || 0) * 1.12 || 1;
+    const label = svgNode('text', { x: 0, y: y + 4, class: 'orr-armory-compare__word' });
+    label.textContent = word.toUpperCase();
+    root.appendChild(label);
+    root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-armory-compare__track' }));
+    root.appendChild(svgNode('path', { d: `M ${x0} ${y - 4} L ${x0} ${y + 4}`, class: 'orr-armory-compare__track' }));
+    if (theirs != null) {
+      const tx = x0 + ((x1 - x0) * theirs) / max;
+      root.appendChild(svgNode('path', { d: `M ${tx.toFixed(1)} ${y - 5} L ${tx.toFixed(1)} ${y + 5}`, class: 'orr-armory-compare__fitted' }));
+    }
+    const mx = x0 + ((x1 - x0) * mine) / max;
+    root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${mx.toFixed(1)} ${y}`, class: 'orr-armory-compare__fill' }));
+    root.appendChild(svgNode('path', { d: `M ${mx.toFixed(1)} ${y - 7} L ${mx.toFixed(1)} ${y + 7}`, class: 'orr-armory-compare__mark' }));
+    const val = svgNode('text', { x: x1 + 12, y: y + 5, class: 'orr-armory-compare__val' });
+    val.textContent = shortNum(mine);
+    if (theirs != null && theirs !== mine) {
+      const d = svgNode('tspan', { dx: 6, class: 'orr-armory-compare__delta' });
+      d.textContent = `${mine > theirs ? '+' : '\u2212'}${shortNum(Math.abs(mine - theirs))}`;
+      val.appendChild(d);
+    }
+    root.appendChild(val);
+  });
+  return root;
+}
+
+/**
+ * The run wallet as a gauge: what it holds, the price lifted out of it in the lamp (or in red past
+ * its end when the wallet is short), and what would be left.
+ */
+function budgetGauge(wallet, price) {
+  const root = svgNode('svg', { viewBox: '0 0 360 58', width: 360, height: 58, class: 'orr-svg orr-armory-budget', 'aria-hidden': 'true' });
+  if (!root) return null;
+  const x0 = 0; const x1 = 300; const y = 26;
+  const w = Math.max(0, Number(wallet) || 0);
+  const p = Math.max(0, Number(price) || 0);
+  const scale = Math.max(w, p, 1);
+  const at = (v) => x0 + ((x1 - x0) * v) / scale;
+  root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-armory-budget__track' }));
+  const left = w - p;
+  if (left >= 0) {
+    root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${at(left).toFixed(1)} ${y}`, class: 'orr-armory-budget__keep' }));
+    root.appendChild(svgNode('path', { d: `M ${at(left).toFixed(1)} ${y} L ${at(w).toFixed(1)} ${y}`, class: 'orr-armory-budget__spend' }));
+  } else {
+    root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${at(w).toFixed(1)} ${y}`, class: 'orr-armory-budget__keep' }));
+    root.appendChild(svgNode('path', { d: `M ${at(w).toFixed(1)} ${y} L ${at(p).toFixed(1)} ${y}`, class: 'orr-armory-budget__short' }));
+  }
+  root.appendChild(svgNode('path', { d: `M ${at(w).toFixed(1)} ${y - 9} L ${at(w).toFixed(1)} ${y + 9}`, class: 'orr-armory-budget__end' }));
+  const top = svgNode('text', { x: at(w).toFixed(1), y: y - 13, 'text-anchor': 'middle', class: 'orr-armory-budget__word' });
+  top.textContent = `${w} CR`;
+  root.appendChild(top);
+  const under = svgNode('text', { x: x0, y: y + 26, class: 'orr-armory-budget__read' });
+  under.textContent = left >= 0 ? `${p} cr now \u00b7 ${left} cr left` : `Short ${-left} cr`;
+  if (left < 0) under.setAttribute('class', 'orr-armory-budget__read is-short');
+  root.appendChild(under);
+  return root;
+}
+
 /** One refit row, in words. `options` is every spare that legally fits this hardpoint. */
 export function refitRowLines(row) {
   if (!row) return null;
@@ -528,6 +610,31 @@ export const crucibleDraftScreen = {
     this._note = note;
     rootEl.appendChild(stage);
 
+    // ORRERY §6 armory: the offers stand on a rail; the one under the pointer or focus is read out
+    // beside it -- its words, where it goes on the ship, how it compares, what it leaves in the
+    // wallet. The reading is for the eye (aria-hidden): each offer's own button carries every word.
+    this._reading = null;
+    if (typeof document !== 'undefined' && typeof document.createElementNS === 'function') {
+      const reading = el('aside', 'orr-armory-reading');
+      reading.setAttribute('aria-hidden', 'true');
+      const parts = {
+        verb: el('p', 'orr-armory-reading__verb', ''),
+        name: el('h2', 'orr-armory-reading__name', ''),
+        blurb: el('p', 'orr-armory-reading__blurb', ''),
+        act: el('p', 'orr-armory-reading__act', ''),
+        jig: el('div', 'orr-armory-reading__jig'),
+        compare: el('div', 'orr-armory-reading__compare'),
+        budget: el('div', 'orr-armory-reading__budget'),
+      };
+      const words = el('div', 'orr-armory-reading__words');
+      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget);
+      reading.append(parts.jig, words);
+      rootEl.appendChild(reading);
+      this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
+      cards.addEventListener('focusin', (event) => this._readFrom(event));
+      cards.addEventListener('pointerover', (event) => this._readFrom(event));
+    }
+
     // .k-foot — Keep current loadout, Re-roll (with the wallet beside it), the keys in fine print.
     const foot = el('footer', 'k-foot sf-cru-foot');
     const words = el('ul', 'k-words k-words--row');
@@ -682,6 +789,14 @@ export const crucibleDraftScreen = {
     }
 
     this._note.textContent = notice || lines.notice || '';
+    this._offersById = new Map(visibleOffers.map((offer) => [offer.id, offer]));
+    rootEl.classList.toggle('orr-armory', shop && !!this._reading);
+    if (this._reading) {
+      this._reading.el.hidden = !shop || !visibleOffers.length;
+      const keep = this._offersById.get(this._reading.offerId);
+      const first = keep || visibleOffers.find((offer) => offer.available) || visibleOffers[0];
+      if (shop && first) this._paintReading(context, first);
+    }
 
     setKeyLabel(this._skip, shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
       'Esc', 'Escape');
@@ -715,6 +830,49 @@ export const crucibleDraftScreen = {
         }
       }
     }
+  },
+
+  /** The offer under the pointer or holding focus becomes the reading. */
+  _readFrom(event) {
+    const card = event && event.target && event.target.closest ? event.target.closest('[data-offer-id]') : null;
+    const offer = card && this._offersById ? this._offersById.get(card.dataset.offerId) : null;
+    if (offer && this._ctx) this._paintReading(this._ctx, offer);
+  },
+
+  _paintReading(context, offer) {
+    const r = this._reading;
+    if (!r || !offer) return;
+    if (r.offerId === offer.id && r.credits === context.state?.run?.credits) return;
+    r.offerId = offer.id;
+    r.credits = context.state?.run?.credits;
+    const lines = offerCardLines(offer, context.state);
+    const { parts } = r;
+    parts.verb.textContent = lines.verb;
+    parts.name.textContent = lines.name;
+    parts.blurb.textContent = lines.blurb;
+    parts.act.textContent = lines.activation || '';
+    // where it goes: the run's ship with that hardpoint lit
+    const owner = draftOwner(context);
+    const rows = owner && typeof owner.refitRows === 'function' ? owner.refitRows() : [];
+    const hullId = activeLoadout(context).hullId;
+    const slot = Number.isInteger(offer.slotIndex) ? offer.slotIndex : -1;
+    r.jig.show({
+      hullId,
+      slots: rows.map((row) => row.slotType),
+      filled: rows.map((row) => !!row.defId),
+      target: slot,
+      label: slot >= 0 ? `Hardpoint ${slot + 1}` : '',
+      sub: offer.replaces ? `replaces ${fittingName(offer.replaces)}` : 'empty',
+    });
+    parts.compare.textContent = '';
+    const compare = offerCompare(offer);
+    if (compare) parts.compare.appendChild(compare);
+    parts.budget.textContent = '';
+    if (Number.isFinite(offer.price) && !offer.purchased) {
+      const gauge = budgetGauge(context.state?.run?.credits, offer.price);
+      if (gauge) parts.budget.appendChild(gauge);
+    }
+    r.el.classList.toggle('is-unavailable', !offer.available);
   },
 
   // One offer: the key numeral in fine print, the verb as the one permitted caps label, the name
