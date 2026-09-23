@@ -160,6 +160,11 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
           </div>
           <div class="gm-deck-table k-table" id="gm-deck-table" role="list"></div>
         </div>
+        <!-- The four navigation answers (POSITION / TRACKING / DESTINATION / NEXT LEG) as one band of
+             readouts across the foot. They used to be a plate painted on the canvas in the corner,
+             under the DOM foot, so the foot's field printed over half of it. In the layout, nothing
+             can sit on top of them. Rows come from resolveMapNavContext via galaxyMap._updateNavFoot. -->
+        <div class="gm-navfoot" id="gm-navfoot" role="group" aria-label="Where you are"></div>
       </div>
     `;
 }

@@ -662,13 +662,13 @@ function mountWith(state, { busEvents = [] } = {}) {
 }
 
 // =============================================================================================
-// 7. NO SELECTION IS NEVER AN EMPTY PANEL — it answers the four navigation questions
+// 7. NO SELECTION IS NEVER AN EMPTY SCREEN — the four navigation questions are always answered
 // =============================================================================================
-// The four answers live on ONE of two surfaces, and both must be proven. When the window is wide
-// enough the cartouche paints them on the chart and the panel deliberately does NOT repeat the same
-// sentences (progressive disclosure, ADR D9.9); when the window is too narrow for the cartouche the
-// DOM rows are the documented fallback. Asserting only the DOM rows measures the retired always-on
-// dump rather than the shipped behaviour, so this block proves both paths.
+// The four answers are the foot band (#gm-navfoot): a DOM row of the chart's layout, present at
+// every window size. They used to be a plate painted on the canvas corner, under the DOM foot, whose
+// field printed over half of it; a DOM copy in the panel was the small-window fallback. The panel
+// still deliberately does NOT repeat them (progressive disclosure, ADR D9.9), so this block proves
+// the band carries all four at a wide AND a small window, and the panel never duplicates them.
 {
   const navState = makeState({
     sectorId: TETHYS,
@@ -679,22 +679,33 @@ function mountWith(state, { busEvents = [] } = {}) {
   galaxyMapScreen._draw();
   galaxyMapScreen._updateInspector();
   const panel = root.querySelector('#gm-tabpanel');
-  // It must be the SAME object the on-canvas cartouche reads, or panel and chart can disagree.
+  // It must be the SAME object the foot band reads, or panel and chart can disagree.
   const ctxRows = galaxyMapScreen._navContext(galaxyMapScreen._ctx.state).rows;
   assert.equal(ctxRows.length, 4, 'the shared nav context must answer all four navigation questions');
 
-  // 7a. Wide window: the cartouche carries the four answers on glass, and the panel stays compact
-  // by NOT repeating the same sentence.
-  const canvasTexts = galaxyMapScreen._g._rec.texts.map((t) => t.text).join(' | ');
-  for (const row of ctxRows) {
-    assert.ok(canvasTexts.includes(row.label),
-      `the cartouche must paint the ${row.label} answer at this window size; got ${canvasTexts.slice(0, 400)}`);
-  }
+  const assertFootRows = (footRoot, where) => {
+    const foot = footRoot.querySelector('#gm-navfoot');
+    assert.ok(foot, `${where}: the navigation foot band must exist`);
+    const rows = foot.querySelectorAll('.gm-nav-row');
+    assert.equal(rows.length, 4, `${where}: the foot band must carry all four answers`);
+    for (let i = 0; i < rows.length; i++) {
+      const value = rows[i].querySelector('.gm-nav-row-v');
+      assert.ok(value && value.textContent.trim().length > 0,
+        'a row must never be blank — absence is stated in words, not left empty');
+      assert.ok(rows[i].hasAttribute('data-tone'),
+        'tone must be an attribute so the row never depends on colour alone');
+      assert.match(rows[i].textContent, new RegExp(ctxRows[i].label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+        'the rows must be rendered from resolveMapNavContext, not re-derived');
+    }
+  };
+
+  // 7a. Wide window: the band answers, and the panel stays compact by NOT repeating the sentences.
+  assertFootRows(root, 'wide window');
   assert.ok(panel.textContent.trim().length > 0, 'the no-selection panel must never be blank');
   assert.equal(panel.querySelectorAll('.gm-nav-row').length, 0,
-    'the cartouche already answers these four questions — the panel must not duplicate them');
+    'the foot band already answers these four questions — the panel must not duplicate them');
 
-  // 7b. Small window: the cartouche is withheld, so the DOM rows become the answer surface.
+  // 7b. Small window: nothing is withheld — the band is layout, not a plate that needs room.
   const { root: smallRoot } = mountWith(makeState({
     sectorId: TETHYS,
     route: makeRoute(2),
@@ -704,20 +715,10 @@ function mountWith(state, { busEvents = [] } = {}) {
   galaxyMapScreen._canvas.height = 360;
   galaxyMapScreen._draw();
   galaxyMapScreen._updateInspector();
-  const rows = smallRoot.querySelector('#gm-tabpanel').querySelectorAll('.gm-nav-row');
-  assert.equal(rows.length, 4, 'a window too small for the cartouche must fall back to all four DOM rows');
-  for (const row of rows) {
-    const value = row.querySelector('.gm-nav-row-v');
-    assert.ok(value && value.textContent.trim().length > 0,
-      'a row must never be blank — absence is stated in words, not left empty');
-    assert.ok(row.hasAttribute('data-tone'),
-      'tone must be an attribute so the row never depends on colour alone');
-  }
-  for (let i = 0; i < rows.length; i++) {
-    assert.match(rows[i].textContent, new RegExp(ctxRows[i].label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
-      'the fallback rows must be rendered from resolveMapNavContext, not re-derived');
-  }
-  ok('the four navigation answers are on glass with nothing selected — cartouche when it fits, DOM rows when it cannot');
+  assertFootRows(smallRoot, 'small window');
+  assert.equal(smallRoot.querySelector('#gm-tabpanel').querySelectorAll('.gm-nav-row').length, 0,
+    'a small window must not fall back to a second copy in the panel');
+  ok('the four navigation answers are on glass with nothing selected — the foot band, at every window size');
 }
 
 // =============================================================================================

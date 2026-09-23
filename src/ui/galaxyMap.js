@@ -2677,7 +2677,9 @@ function sectorHoldingsSignal(state, sectorId) {
 }
 
 function weightedCommodityLabel(lines = []) {
-  const top = Array.from(lines)
+  // `profile && profile.produces` hands in null for a sector with no economy profile; Array.from(null)
+  // threw and took the whole THREAT tab down with it.
+  const top = Array.from(lines || [])
     .filter((line) => line && line.commodityId)
     .sort((a, b) => (Number(b.weight) || 0) - (Number(a.weight) || 0))
     .slice(0, 2)
@@ -3298,6 +3300,8 @@ export const galaxyMapScreen = {
   _weatherEl: null,
   _lastWeatherKey: null,
   _deckEl: null,
+  _navFootEl: null,
+  _lastNavFootKey: null,
   _deckTableEl: null,
   _deckSortBtn: null,
   _deckSortMode: 'best',
@@ -3319,25 +3323,13 @@ export const galaxyMapScreen = {
    *
    * `layoutMapLabels` already does deterministic decluttering and already accepts `reserved` — the
    * brief says extend it, not write a second solver, so the new furniture is expressed as more
-   * reserved rectangles rather than as a competing pass. Anything drawn on the shared path after
-   * the level (the cartouche today) belongs here, or labels get placed underneath it and the
-   * overlap defect comes back wearing new geometry.
+   * reserved rectangles rather than as a competing pass. Anything painted on the shared path after
+   * the level belongs here, or labels get placed underneath it and the overlap defect comes back
+   * wearing new geometry. (The navigation answers used to be such a plate; they are DOM in the
+   * foot row now, so nothing on the shared path needs a rectangle today.)
    */
   _reservedLabelRects(w, h, extra = []) {
-    const rects = Array.isArray(extra) ? extra.filter(Boolean).slice() : [];
-    const rows = this._lastNavContext && this._lastNavContext.rows;
-    const bounds = navCartoucheBounds(rows ? rows.length : 0, w, h);
-    if (bounds) {
-      rects.push({
-        // A few pixels of breathing room, so a label may not merely avoid overlapping the plate but
-        // must clear its edge — abutting text reads as an overlap even when it technically is not.
-        x: bounds.x - 4,
-        y: bounds.y - 4,
-        width: bounds.width + 8,
-        height: bounds.height + 8,
-      });
-    }
-    return rects;
+    return Array.isArray(extra) ? extra.filter(Boolean).slice() : [];
   },
 
   /**
@@ -3607,7 +3599,7 @@ export const galaxyMapScreen = {
     if (typeof rootEl.setAttribute === 'function') rootEl.setAttribute('data-fh-register', 'bench');
     if (rootEl.dataset) rootEl.dataset.kReady = '0';
     if (rootEl.style && typeof rootEl.style.setProperty === 'function') {
-      rootEl.style.setProperty('--gm-apron-h', 'clamp(168px, 26vh, 232px)');
+      rootEl.style.setProperty('--gm-apron-h', 'clamp(200px, 30vh, 300px)');
     }
     const layerButtonById = new Map(LAYER_DEFS.map((layer) => [layer.id, `
             <button ${mapControlAttrs('layer')} class="gm-layer-btn k-word k-word--body fh-key fh-key--legend${this._layers[layer.id] ? ' active is-lit' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
@@ -3769,6 +3761,8 @@ export const galaxyMapScreen = {
     this._ribbonEl = rootEl.querySelector('#gm-route-ribbon');
     this._weatherEl = rootEl.querySelector('#gm-crest-weather');
     this._deckEl = rootEl.querySelector('#gm-cargo-deck');
+    this._navFootEl = rootEl.querySelector('#gm-navfoot');
+    this._lastNavFootKey = null;
     this._deckTableEl = rootEl.querySelector('#gm-deck-table');
     this._deckSortBtn = rootEl.querySelector('#gm-deck-sort');
     this._localModelDirty = true;
@@ -5171,37 +5165,18 @@ export const galaxyMapScreen = {
   /**
    * OVERVIEW — never empty, and never a wall.
    *
-   * With a selection it shows that selection's detail. With NO selection it answers the four
-   * navigation questions from the same `_navContext` object the on-canvas cartouche reads, then
-   * the pocket-careers line and a short click hint. All four rows live in one section so the
-   * default panel stays compact.
+   * With a selection it shows that selection's detail. With NO selection it shows the
+   * pocket-careers line and a short click hint. The four navigation answers are NOT repeated here:
+   * the foot band (`#gm-navfoot`, `_updateNavFoot`) carries them at every scale and window size,
+   * and the same sentence twice on one screen reads as a mistake.
    */
   _overviewTabHtml(state, selectionHtml) {
     if (selectionHtml) return selectionHtml;
-    const nav = this._navContext(state);
-    const rows = (nav && Array.isArray(nav.rows)) ? nav.rows : [];
-    // The cartouche already paints these four rows on the chart itself; repeating them verbatim
-    // made the same sentence read twice on one screen. Keep the DOM copy only as the fallback
-    // for windows too small to carry the cartouche (navCartoucheBounds returns null there).
-    const w = this._canvas ? this._canvas.width / this._dpr : 0;
-    const h = this._canvas ? this._canvas.height / this._dpr : 0;
-    const cartoucheVisible = !!navCartoucheBounds(rows.length, w, h);
-    const navHtml = cartoucheVisible ? '' : rows.map((row) => {
-      const detail = row.detail
-        ? `<div class="gm-nav-row-d">${escapeMapHtml(row.detail)}</div>`
-        : '';
-      return `<div class="gm-nav-row" data-tone="${escapeMapHtml(row.tone || '')}">
-        <span class="gm-nav-row-k">${escapeMapHtml(row.label)}</span>
-        <span class="gm-nav-row-v">${escapeMapHtml(row.value)}</span>
-        ${detail}
-      </div>`;
-    }).join('');
     // The pocket's trades appear the moment the Chart opens — §11.11 #1 is a surfacing problem, and
     // the roster is one tab deeper. Rendered only when careers are actually on record here, so the
     // no-selection panel never grows a block that says nothing.
     const careersHtml = careersOverviewLineHtml(state, currentSectorId(state));
     return `
-      ${navHtml ? `<div class="gm-ins-section">${navHtml}</div>` : ''}
       ${careersHtml}
       <div class="gm-ins-section">
         <div class="gm-ins-note">Click a sector, station or contact to inspect it. <b>Double-click</b> any mark to lay a course. Other tabs hold trade, threat, careers and survey depth.</div>
@@ -5840,10 +5815,36 @@ export const galaxyMapScreen = {
     `;
   },
 
+  /**
+   * The four navigation answers as the foot band: POSITION / TRACKING / DESTINATION / NEXT LEG,
+   * each a key-value readout (label, value, detail) in `resolveMapNavContext` order. Change-keyed,
+   * because `_draw` runs at display refresh at LOCAL scale and the rows only change when the answer
+   * does. The row classes (`gm-nav-row`, `-k`, `-v`, `-d`, `data-tone`) are the contract the
+   * journey steps read the answers from, so they stay the same names the inspector fallback used.
+   */
+  _updateNavFoot(nav) {
+    if (!HAS_DOC || !this._navFootEl) return;
+    const rows = (nav && Array.isArray(nav.rows)) ? nav.rows : [];
+    const key = rows.map((row) => `${row.key}|${row.value}|${row.detail || ''}|${row.tone || ''}`).join('#');
+    if (this._lastNavFootKey === key) return;
+    this._lastNavFootKey = key;
+    this._navFootEl.innerHTML = rows.map((row) => {
+      const detail = row.detail
+        ? `<span class="gm-nav-row-d">${escapeMapHtml(row.detail)}</span>`
+        : '';
+      return `<div class="gm-nav-row" data-nav-row="${escapeMapHtml(row.key || '')}" data-tone="${escapeMapHtml(row.tone || '')}">
+          <span class="gm-nav-row-k">${escapeMapHtml(row.label)}</span>
+          <span class="gm-nav-row-v">${escapeMapHtml(row.value)}</span>
+          ${detail}
+        </div>`;
+    }).join('');
+  },
+
   _updateCargoDeck(state) {
     if (!HAS_DOC || !this._deckTableEl) return;
     if (!state) {
       this._deckTableEl.innerHTML = '';
+      if (this._deckEl) this._deckEl.hidden = true;
       return;
     }
     if (this._deckSortBtn) {
@@ -5866,6 +5867,10 @@ export const galaxyMapScreen = {
       includeHeldCargo: true,
       sortBy: this._deckSortMode,
     });
+    // No lane, no band. The empty state used to hold a wide field across half the foot with three
+    // lines of prose in it; the ECONOMY tab still says how to seed lanes. The copy stays in the DOM
+    // (hidden) so a fixture reading the table still finds the empty state.
+    if (this._deckEl) this._deckEl.hidden = !this._deckRoutes.length;
     if (!this._deckRoutes.length) {
       this._deckTableEl.innerHTML = `
         <div class="gm-deck-empty">
@@ -6789,10 +6794,7 @@ export const galaxyMapScreen = {
     // the scope remembers. GALAXY is excluded: at that scale nothing is reading local contacts.
     if (level !== 'galaxy') this._syncLocalIntel(state);
 
-    // Resolved BEFORE the level dispatch so each level can reserve the cartouche's rectangle in the
-    // label solver, and drawn AFTER it so nothing paints over the readout. Both halves matter: the
-    // reservation is what keeps a sector label from being placed under the plate in the first place,
-    // and it needs the row count before any label is laid out.
+    // Resolved once per frame; the foot band and the framing controls both read this one object.
     const navContext = this._navContext(state);
     this._lastNavContext = navContext;
 
@@ -6800,11 +6802,13 @@ export const galaxyMapScreen = {
     else if (level === 'system') this._drawSystem(g, state, w, h);
     else this._drawLocal(g, state, w, h);
 
-    // THE NAVIGATION CARTOUCHE — drawn on the SHARED path, after the level, so the four answers are
+    // THE NAVIGATION FOOT — refreshed on the SHARED path, after the level, so the four answers are
     // present at every scale by construction. Putting it inside the three level draws would let a
     // future edit to any one of them silently drop the readout at that scale, which is exactly the
-    // "answered at LOCAL and SYSTEM but not GALAXY" gap this replaces.
-    drawNavCartouche(g, navContext.rows, w, h, { title: level.toUpperCase() });
+    // "answered at LOCAL and SYSTEM but not GALAXY" gap this replaces. It is DOM in the layout's foot
+    // row, not a plate painted on the canvas: the painted plate sat under the DOM foot, whose field
+    // printed over half of it.
+    this._updateNavFoot(navContext);
     this._syncFramingControls(navContext);
 
     // SLICE C: the ribbon rides the shared draw path for the same reason the cartouche does — so
@@ -7371,6 +7375,23 @@ export const galaxyMapScreen = {
       });
       this._goalLabelPlacement = goalLabelPos;
     }
+    // The operator tag ("YOU") is painted last at a fixed offset up-right of the ship, outside the
+    // solver. Block its rectangle too, or the home sector's name is placed straight through it.
+    if (model.player && model.player.drawPos) {
+      const opText = mapOperatorLabel(state);
+      if (opText) {
+        g.save();
+        g.font = FONT_MONO(600, 8);
+        const opW = g.measureText(opText).width;
+        g.restore();
+        galaxyReserved.push({
+          x: sx(model.player.drawPos.x) + 14 - 3,
+          y: sy(model.player.drawPos.z) - 9 - 9,
+          width: opW + 6,
+          height: 18,
+        });
+      }
+    }
     const galaxyLabelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
       reserved: this._reservedLabelRects(w, h, galaxyReserved),
     });
@@ -7486,20 +7507,8 @@ export const galaxyMapScreen = {
     const labelCandidates = [];
     setMapCanvasAriaLabel(this._canvas, 'system', this._layers.holdings ? model.ownership : []);
 
-    // Header sector plate: brass index tick + Saira name, quiet and machined.
-    g.save();
-    g.fillStyle = INK.brass;
-    g.beginPath();
-    g.moveTo(16, 15); g.lineTo(22, 18); g.lineTo(16, 21); g.closePath();
-    g.fill();
-    g.fillStyle = hexToRgba(INK.ink0, 0.85);
-    g.font = FONT_DISPLAY(600, 13);
-    g.textAlign = 'left'; g.textBaseline = 'top';
-    g.fillText(String(model.sectorName || '').toUpperCase(), 27, 13);
-    g.font = FONT_MONO(500, 8);
-    g.fillStyle = INK.ink2;
-    g.fillText('SYSTEM SURVEY', 27, 30);
-    g.restore();
+    // No sector stamp in the canvas corner: the title lockup already names the sector, and the
+    // stamp was 8px type in the page margin, the only place the chart printed below the 12px floor.
 
     // Player position marker on the system map: amber heading triangle with a white keyline.
     // This mark was already here, but it projected the GLOBAL player position onto a sector-local
@@ -8693,180 +8702,6 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
   g.fill();
   g.stroke();
   g.restore();
-}
-
-/**
- * THE NAVIGATION CARTOUCHE — the four always-present answers, painted on the chart itself.
- *
- * Deliberately NOT a DOM panel. ADR D9.9 rejects new permanent panels outright: the reported
- * density paradox ("too little useful information, yet crowded") is a progressive-disclosure
- * failure, and a fifth rail would make it worse. A cartouche is what a paper survey chart already
- * has — the block in the corner that tells you what you are looking at — so this is in-identity
- * furniture rather than added UI, it costs no layout, and it cannot push the chart smaller.
- *
- * Tone maps to colour AND to a leading glyph AND to weight, never to colour alone:
- *   TRACKED -> filled brass tick + bright ink   (the only tone permitted bright gold)
- *   PLAIN   -> hairline tick + normal ink
- *   MUTED   -> open dash + dimmed ink
- */
-/**
- * The cartouche's geometry, derived in ONE place so the drawer and the label declutterer cannot
- * disagree about where it is. A reserved rectangle that drifted from the plate it describes would
- * silently reintroduce the marker-overlap defect it exists to prevent.
- *
- * Returns null when the chart is too small to carry a cartouche at all.
- */
-function navCartoucheBounds(rowCount, w, h) {
-  if (!(rowCount > 0)) return null;
-  // Two 12px lines per row (label over value) need 28px: at 26 the value line started 10px under
-  // the label and the two printed through each other on every frame.
-  const rowH = 28;
-  const padX = 12;
-  const padY = 10;
-  const boxW = Math.min(300, Math.max(212, w * 0.26));
-  const boxH = padY * 2 + rowCount * rowH;
-  // A chart this narrow has nowhere to put a cartouche without covering the marks it describes.
-  // Withholding it is better than occluding the thing the pilot is reading.
-  if (w < 420 || h < boxH + 90) return null;
-  return { x: 14, y: h - boxH - 14, width: boxW, height: boxH, rowH, padX, padY };
-}
-
-function drawNavCartouche(g, rows, w, h, options = {}) {
-  if (!Array.isArray(rows) || !rows.length) return;
-  const bounds = navCartoucheBounds(rows.length, w, h);
-  if (!bounds) return;
-  const { rowH, padX, padY, width: boxW, height: boxH, x: x0, y: y0 } = bounds;
-
-  g.save();
-  g.translate(x0, y0);
-
-  // Plate: the chart's glass, painted — the same pane the DOM regions wear. A smoked face falling
-  // away from the one upper-left light, a reflection plane across its upper third, seated in a dark
-  // line with a lit top and left rim and a shadowed lip.
-  const face = g.createLinearGradient(0, 0, 0, boxH);
-  face.addColorStop(0, 'rgba(17, 21, 27, 0.9)');
-  face.addColorStop(1, 'rgba(7, 9, 12, 0.94)');
-  g.fillStyle = face;
-  g.fillRect(0, 0, boxW, boxH);
-  const spec = g.createLinearGradient(0, 0, boxW * 0.21, boxH);
-  spec.addColorStop(0, 'rgba(255, 250, 240, 0.075)');
-  spec.addColorStop(0.27, 'rgba(255, 250, 240, 0.028)');
-  spec.addColorStop(0.285, 'rgba(255, 250, 240, 0)');
-  g.fillStyle = spec;
-  g.fillRect(0, 0, boxW, boxH);
-  g.lineWidth = 1;
-  g.strokeStyle = 'rgba(2, 3, 5, 0.92)';
-  g.strokeRect(0.5, 0.5, boxW - 1, boxH - 1);
-  g.beginPath(); g.moveTo(2, 1.5); g.lineTo(boxW - 2, 1.5);
-  g.strokeStyle = 'rgba(255, 236, 204, 0.3)'; g.stroke();
-  g.beginPath(); g.moveTo(1.5, 2); g.lineTo(1.5, boxH - 2);
-  g.strokeStyle = 'rgba(255, 236, 204, 0.12)'; g.stroke();
-  g.beginPath(); g.moveTo(2, boxH - 1.5); g.lineTo(boxW - 2, boxH - 1.5);
-  g.strokeStyle = 'rgba(0, 0, 0, 0.5)'; g.stroke();
-
-  // The scale legend sits in the plate's lower right; the last value is fitted short of it.
-  let titleW = 0;
-  if (options.title) {
-    g.font = CARTOUCHE_ETCH;
-    setLetterSpacing(g, '1.6px');
-    titleW = g.measureText(options.title).width;
-    setLetterSpacing(g, '0px');
-  }
-
-  let y = padY;
-  rows.forEach((row, index) => {
-    const tracked = row.tone === NAV_ROW_TONE.TRACKED;
-    const muted = row.tone === NAV_ROW_TONE.MUTED;
-    const last = index === rows.length - 1;
-
-    // Leading lamp — the non-colour half of the tone signal: lit and glowing when tracked, a dark
-    // lamp when plain, no lamp (an open dash) when muted.
-    const lx = padX - 1.5;
-    const ly = y + 7;
-    if (tracked) {
-      const glow = g.createRadialGradient(lx, ly, 0, lx, ly, 7);
-      glow.addColorStop(0, '#fff6df');
-      glow.addColorStop(0.22, '#ffd98c');
-      glow.addColorStop(0.5, '#f2b950');
-      glow.addColorStop(0.72, 'rgba(242, 185, 80, 0.28)');
-      glow.addColorStop(1, 'rgba(242, 185, 80, 0)');
-      g.fillStyle = glow;
-      g.beginPath(); g.arc(lx, ly, 7, 0, Math.PI * 2); g.fill();
-    } else if (muted) {
-      g.strokeStyle = INK.ink2;
-      g.beginPath(); g.moveTo(lx - 3, ly); g.lineTo(lx + 3, ly); g.stroke();
-    } else {
-      g.fillStyle = '#17140f';
-      g.beginPath(); g.arc(lx, ly, 3.2, 0, Math.PI * 2); g.fill();
-      g.strokeStyle = 'rgba(0, 0, 0, 0.7)';
-      g.stroke();
-      g.fillStyle = 'rgba(255, 236, 204, 0.16)';
-      g.beginPath(); g.arc(lx - 0.8, ly - 0.9, 1, 0, Math.PI * 2); g.fill();
-    }
-
-    // Sizes are written at the 12px floor. The label is an etched legend (the condensed face in
-    // caps, tracked out); the value is the reading face.
-    g.textAlign = 'left';
-    g.textBaseline = 'top';
-    g.font = CARTOUCHE_ETCH;
-    setLetterSpacing(g, '1.6px');
-    g.fillStyle = 'rgba(232, 226, 212, 0.56)';
-    g.fillText(row.label, padX + 8, y);
-    setLetterSpacing(g, '0px');
-
-    g.font = CARTOUCHE_VALUE;
-    g.fillStyle = tracked ? '#ffd98c' : (muted ? INK.ink2 : '#e8e2d4');
-    const budget = boxW - padX * 2 - 10 - (last && titleW ? titleW + 14 : 0);
-    g.fillText(fitCartoucheText(g, row.value, budget), padX + 8, y + 13);
-
-    if (row.detail) {
-      g.font = FONT_MONO(500, 12);
-      g.fillStyle = 'rgba(232, 226, 212, 0.5)';
-      const detailW = g.measureText(row.detail).width;
-      // Detail is right-aligned against the plate edge so the four value strings stay on one
-      // reading column no matter how long each detail happens to be.
-      if (detailW < boxW - padX * 2 - 90) {
-        g.textAlign = 'right';
-        g.fillText(row.detail, boxW - padX, y + 1);
-        g.textAlign = 'left';
-      }
-    }
-    y += rowH;
-  });
-
-  if (options.title) {
-    g.font = CARTOUCHE_ETCH;
-    setLetterSpacing(g, '1.6px');
-    g.fillStyle = 'rgba(232, 226, 212, 0.42)';
-    g.textAlign = 'right';
-    g.textBaseline = 'bottom';
-    g.fillText(options.title, boxW - padX + 1.6, boxH - 6);
-    setLetterSpacing(g, '0px');
-  }
-  g.restore();
-}
-
-/** The cartouche's two voices: the etched legend (Archivo, condensed caps) and the reading face. */
-const CARTOUCHE_ETCH = 'condensed 700 12px Archivo, "Instrument Sans", system-ui, sans-serif';
-const CARTOUCHE_VALUE = '600 13px "Instrument Sans", system-ui, sans-serif';
-/** letterSpacing is a newer canvas property; where it is missing the legend is simply untracked. */
-function setLetterSpacing(g, value) {
-  if (g && 'letterSpacing' in g) g.letterSpacing = value;
-}
-
-/** Ellipsize to a pixel budget. A cartouche that overflows its plate is worse than a short label. */
-function fitCartoucheText(g, text, maxWidth) {
-  const s = String(text == null ? '' : text);
-  if (!s) return '';
-  if (g.measureText(s).width <= maxWidth) return s;
-  let lo = 0;
-  let hi = s.length;
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    if (g.measureText(`${s.slice(0, mid)}…`).width <= maxWidth) lo = mid;
-    else hi = mid - 1;
-  }
-  return `${s.slice(0, Math.max(1, lo))}…`;
 }
 
 /** Hostile: a red open diamond, rotated to heading — threat reads before color-blind shape. */
