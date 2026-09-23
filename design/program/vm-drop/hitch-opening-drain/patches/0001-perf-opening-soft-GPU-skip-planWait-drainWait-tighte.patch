@@ -1,0 +1,152 @@
+From d6a1c419e96bf5e6422cbdada63615816e60e9b9 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 22:14:46 -0400
+Subject: [PATCH] perf(opening): soft-GPU skip planWait/drainWait; tighten
+ residency budget
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet soft-GPU was spending ~0.8–2.5s inside prepareOpeningGpuResources
+polling concurrent warmup (planWait) and exact-plan drain. Loading already
+fire-and-forgets the cook; awaiting those polls only contended the event
+loop. Skip both polls on soft-GPU/no-KHR, self-build the plan, and cap
+residency at 750ms so a complete plan cannot stall the cook either.
+---
+ src/render/renderer.js                    | 48 +++++++++++------------
+ test/opening-soft-gpu-drain-skip.test.mjs | 41 +++++++++++++++++++
+ 2 files changed, 64 insertions(+), 25 deletions(-)
+ create mode 100644 test/opening-soft-gpu-drain-skip.test.mjs
+
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index c2952122f..293d2cf52 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -8563,15 +8563,15 @@ export const render = {
+         // the receipt entirely. Give the published plan a bounded window first; on KHR runners the
+         // warmup never runs, so self-build immediately.
+         let plan = state.render.openingSubmissionPlan;
++        // Soft-GPU / no-KHR: a prior miss showed waiting here just renamed cost into
++        // drainWait+residency (~2.5 s wall). Do not poll — use a plan already published
++        // by the concurrent warmup if present, otherwise self-build below.
+         if (!plan && !shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })) {
+           const planWaitStarted = openingNow();
+-          while (!state.render.openingSubmissionPlan
+-              && openingNow() - planWaitStarted < 8000
+-              && !isWebGlContextUnavailable(this._contextLost, this.renderer)) {
+-            await new Promise((resolve) => setTimeout(resolve, 100));
+-          }
+-          recordOpeningCookStep(state.render, 'opening.planWait', planWaitStarted,
+-            state.render.openingSubmissionPlan ? 'resolved' : 'timeout');
++          recordOpeningCookStep(state.render, 'opening.planWait', planWaitStarted, 'skipped', {
++            budgetMs: 0,
++            reason: 'soft-gpu-self-build',
++          });
+           plan = state.render.openingSubmissionPlan || null;
+         }
+         if (!plan) plan = buildOpeningSubmissionPlan();
+@@ -8592,13 +8592,20 @@ export const render = {
+           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+           textures: plan.textureRefs,
+         });
++        // Soft-GPU cannot hide texture uploads behind parallel compile; keep residency
++        // bounded so this stage yields back to the loading/flight event loop sooner.
++        const softGpuOpening = !shouldAwaitOpeningGpuCook({
++          gpu: state.render && state.render.gpu,
++          renderer,
++        });
++        const residencyBudgetMs = softGpuOpening ? 750 : 5000;
+         const result = await Promise.race([
+           residency,
+           new Promise((resolve) => setTimeout(() => resolve({
+             skipped: true,
+             reason: 'loading-budget',
+             textures: 0,
+-          }), 5000)),
++          }), residencyBudgetMs)),
+         ]);
+         recordOpeningCookStep(state.render, 'opening.residency', openingStepStarted,
+           result && result.reason === 'loading-budget' ? 'timeout' : 'resolved', {
+@@ -8669,24 +8676,15 @@ export const render = {
+         // presented frame. Give the published drain a bounded window to settle before the census;
+         // on KHR runners the warmup never runs, so the handle stays unset and this skips.
+         const drainWaitStarted = openingNow();
++        // Soft-GPU: the concurrent exact-plan drain still runs; awaiting it here was the
++        // dominant prepareOpeningGpuResources wall after planWait was removed (~1.9 s).
++        // Freeze the receipt with whatever is already resident and let mid-flight admission
++        // cover the rest — same fire-and-forget policy as waitForOpeningGpuResources.
+         if (!shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })) {
+-          while (!state.render.openingSubmissionReady
+-              && openingNow() - drainWaitStarted < 2000
+-              && !isWebGlContextUnavailable(this._contextLost, this.renderer)) {
+-            await new Promise((resolve) => setTimeout(resolve, 100));
+-          }
+-          const submission = state.render.openingSubmissionReady;
+-          if (submission && typeof submission.then === 'function') {
+-            const drainOutcome = await Promise.race([
+-              Promise.resolve(submission).then(() => 'resolved', () => 'error'),
+-              new Promise((resolve) => setTimeout(() => resolve('timeout'), 8000)),
+-            ]);
+-            recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, drainOutcome);
+-          } else {
+-            recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, 'skipped', {
+-              reason: 'no-submission-handle',
+-            });
+-          }
++          recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, 'skipped', {
++            budgetMs: 0,
++            reason: 'soft-gpu-no-await',
++          });
+         }
+         // The first visible frame is the only submission. Capture its resource baseline now that
+         // exact leaves, textures, and post targets are admitted; drawPreparedFrame validates that
+diff --git a/test/opening-soft-gpu-drain-skip.test.mjs b/test/opening-soft-gpu-drain-skip.test.mjs
+new file mode 100644
+index 000000000..6b8023843
+--- /dev/null
++++ b/test/opening-soft-gpu-drain-skip.test.mjs
+@@ -0,0 +1,41 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import { readFileSync } from 'node:fs';
++import { fileURLToPath } from 'node:url';
++import { dirname, join } from 'node:path';
++
++const root = join(dirname(fileURLToPath(import.meta.url)), '..');
++const rendererSrc = readFileSync(join(root, 'src/render/renderer.js'), 'utf8');
++
++function sectionAround(marker, before = 500, after = 900) {
++  const idx = rendererSrc.indexOf(marker);
++  assert.ok(idx > 0, `missing marker ${marker}`);
++  return rendererSrc.slice(Math.max(0, idx - before), idx + after);
++}
++
++test('soft-GPU opening.planWait does not poll', () => {
++  const section = sectionAround("recordOpeningCookStep(state.render, 'opening.planWait'");
++  assert.match(section, /soft-gpu-self-build/);
++  assert.match(section, /budgetMs:\s*0/);
++  assert.equal(/await new Promise\(\(resolve\) => setTimeout/.test(section), false);
++  assert.equal(/<\s*8000/.test(section), false);
++});
++
++test('soft-GPU opening.drainWait does not await concurrent submission', () => {
++  const section = sectionAround("recordOpeningCookStep(state.render, 'opening.drainWait'");
++  assert.match(section, /soft-gpu-no-await/);
++  assert.match(section, /budgetMs:\s*0/);
++  assert.equal(/while\s*\(!state\.render\.openingSubmissionReady/.test(section), false);
++  assert.equal(/setTimeout\(\(\) => resolve\('timeout'\),\s*8000\)/.test(section), false);
++});
++
++test('soft-GPU opening residency budget is tighter than hardware', () => {
++  const section = sectionAround('residencyBudgetMs');
++  assert.match(section, /softGpuOpening \? 750 : 5000/);
++});
++
++test('self-build still follows a soft planWait miss', () => {
++  const idx = rendererSrc.indexOf("recordOpeningCookStep(state.render, 'opening.planWait'");
++  const after = rendererSrc.slice(idx, idx + 1400);
++  assert.match(after, /buildOpeningSubmissionPlan\s*\(/);
++});
+-- 
+2.47.3
+
