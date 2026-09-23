@@ -8803,10 +8803,8 @@ export const render = {
       if (scaled > 0.001) cam.addTrauma(scaled);
     });
     onBus('camera:kill', () => cam.killCam && cam.killCam());
-    // FR-5: ease the frame back to center after a boost-release or a tether slingshot exit/overload
-    // (cruise-drop settle stays owned by spec2/02 §1). Boost distance is state-smoothed in camera.js;
-    // do not schedule a separate release pulse here, or Shift tapping becomes an in/out camera cut.
-    onBus('ship:boostStop', () => { if (cam.easeRecenter) cam.easeRecenter(0.4); });
+    // Boost release leaves velocity lookahead in place. The chase camera already eases its small
+    // boost-distance cue; recentering the focus here yanks a fast ship back on depletion.
     onBus('tether:released', () => cam.easeRecenter && cam.easeRecenter(0.4));
     onBus('tether:broken', () => cam.easeRecenter && cam.easeRecenter(0.4));
     onBus('massline:selfSling', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));

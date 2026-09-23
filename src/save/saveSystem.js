@@ -3955,10 +3955,16 @@ function normalizeVitals(out, base, repairGarbage = false) {
   out.drag = positiveNumber(out.drag, base.drag);
   if (!out.boost || typeof out.boost !== 'object' || Array.isArray(out.boost)) out.boost = clonePlain(base.boost || {});
   else {
-    out.boost.max = nonNegativeNumber(out.boost.max, base.boost && base.boost.max);
-    out.boost.energy = boundedVital(out.boost.energy, out.boost.max, base.boost && base.boost.energy, true);
+    // The ship definition owns the meter size. Rebase an older save's charge by its fill
+    // fraction so capacity increases apply to existing pilots without gifting a refill.
+    const savedMax = nonNegativeNumber(out.boost.max, base.boost && base.boost.max);
+    const savedEnergy = boundedVital(out.boost.energy, savedMax, base.boost && base.boost.energy, true);
+    out.boost.max = nonNegativeNumber(base.boost && base.boost.max, savedMax);
+    out.boost.energy = savedMax > 0
+      ? out.boost.max * Math.min(1, savedEnergy / savedMax)
+      : out.boost.max;
     out.boost.drainRate = nonNegativeNumber(out.boost.drainRate, base.boost && base.boost.drainRate);
-    out.boost.regenRate = nonNegativeNumber(out.boost.regenRate, base.boost && base.boost.regenRate);
+    out.boost.regenRate = nonNegativeNumber(base.boost && base.boost.regenRate, out.boost.regenRate);
     out.boost.dashImpulse = nonNegativeNumber(out.boost.dashImpulse, base.boost && base.boost.dashImpulse);
     out.boost.dashCd = nonNegativeNumber(out.boost.dashCd, base.boost && base.boost.dashCd);
     out.boost.dashCdT = nonNegativeNumber(out.boost.dashCdT, 0);

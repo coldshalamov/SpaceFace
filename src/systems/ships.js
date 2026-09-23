@@ -1126,7 +1126,9 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   // (5) boost/dash config (Phase 3). regenRate rides the energy efficiency multiplier so better
   // power systems help boost recharge. A ship with no boost block gets a near-zero pool (can't boost).
   const bdef = shipDef.boost || {};
-  const boostRegen = (bdef.regenRate || 18) * energyRegenMult;
+  // A doubled reservoir should not double the wait between runs. Preserve each hull's authored
+  // recovery time by scaling recharge with the larger meter.
+  const boostRegen = (bdef.regenRate || 18) * 2 * energyRegenMult;
   const flightClass = flightClassForShip(shipDef);
   const propulsion = buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped);
   const flightModel = buildFlightModel({

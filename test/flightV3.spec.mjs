@@ -210,6 +210,19 @@ function simulate({ profile, b, input, ticks, runtime }) {
   assert.ok(speed > profile.maxSpeed * 0.98 && speed < profile.maxSpeed * 1.01, 'gravimetric drive should converge to target speed');
 }
 
+// 5b. Releasing gravimetric boost must not issue an automatic brake at the lower cap.
+{
+  const profile = PROPULSION_PROFILES.drive_gravimetric_s;
+  const coasting = body({ vel: { x: profile.boostMaxSpeed, z: 0 } });
+  simulate({ profile, b: coasting, input: { throttle: 1, assistMode: 'assisted' }, ticks: 120 });
+  assert.ok(coasting.vel.x >= profile.boostMaxSpeed * 0.99,
+    `post-boost speed should coast, got ${coasting.vel.x.toFixed(1)}`);
+  const braked = body({ vel: { x: profile.boostMaxSpeed, z: 0 } });
+  simulate({ profile, b: braked, input: { throttle: 0, brake: true, assistMode: 'assisted' }, ticks: 60 });
+  assert.ok(braked.vel.x < profile.boostMaxSpeed * 0.8,
+    'a deliberate brake must still arrest gravimetric overspeed');
+}
+
 // 6. Pulse plate turns charge into a discrete momentum impulse.
 {
   const profile = PROPULSION_PROFILES.drive_pulse_plate_m;

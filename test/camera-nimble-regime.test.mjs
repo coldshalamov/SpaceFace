@@ -85,6 +85,26 @@ function publishHitchFeel(speed, options = {}) {
   return { player, state, exceptional: readOwnedExceptionalSpeed(state) };
 }
 
+test('boost depletion keeps a fast ship in its speed frame', () => {
+  if (!globalThis.window) globalThis.window = { innerWidth: 1600, innerHeight: 900 };
+  const { player, state } = publishHitchFeel(HITCH_GOVERNED_CRUISE * 2);
+  player.flags.boosting = true;
+  const camera = createChaseCamera(state);
+  camera.snapToPlayer();
+  const dt = 1 / 60;
+  for (let i = 0; i < 120; i++) camera.follow(dt);
+  const boostedDistance = camera.obj.position.distanceTo(state.camera.focus);
+  player.flags.boosting = false;
+  camera.follow(dt);
+  const firstReleaseDistance = camera.obj.position.distanceTo(state.camera.focus);
+  for (let i = 0; i < 60; i++) camera.follow(dt);
+  const coastingDistance = camera.obj.position.distanceTo(state.camera.focus);
+  assert.ok(firstReleaseDistance >= boostedDistance * 0.99,
+    `depletion should not snap the frame inward (${boostedDistance} -> ${firstReleaseDistance})`);
+  assert.ok(coastingDistance >= boostedDistance * 0.9,
+    `unchanged speed should keep most of the wide frame (${boostedDistance} -> ${coastingDistance})`);
+});
+
 function visibleDepthFromPublisher(speed, exceptional, maxSpeedRef) {
   const ordinary = resolveSpeedZoomFactor(speed, maxSpeedRef, false);
   const factor = resolveExceptionalSpeedZoomFactor(exceptional, ordinary);
