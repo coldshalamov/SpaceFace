@@ -1,0 +1,14 @@
+{
+  "webgl": true,
+  "vendor": "WebKit",
+  "renderer": "WebKit WebGL",
+  "unmaskedVendor": "Google Inc. (Google)",
+  "unmaskedRenderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "detectGpu": {
+    "tier": "software",
+    "software": true,
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "vendor": "Google Inc. (Google)"
+  },
+  "note": "Standalone WebGL probe (game never reached detectGpu because boot 404ed on emergentPrimitives.js)"
+}

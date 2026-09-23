@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/design/program/vm-drop/mining-barge-wreck/wreck_mining_barge.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/mining-barge-wreck",
+  "focus": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "sizeM": [
+    146.7663,
+    63.0,
+    31.537
+  ],
+  "sizeMaxM": 146.7663,
+  "distanceScale": 9.1729,
+  "cameras": {
+    "play_chase": 1320.9,
+    "play_chase_abeam": 1320.9,
+    "play_chase_close": 532.03,
+    "baseDefault": 144.0,
+    "baseClose": 58.0,
+    "playWidthFracTarget": [
+      0.08,
+      0.22
+    ],
+    "closeWidthFracTarget": [
+      0.2,
+      0.42
+    ]
+  },
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/mining-barge-wreck/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/mining-barge-wreck/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/mining-barge-wreck/play_chase_close.png"
+  },
+  "triangles": 2160,
+  "note": "Distances scaled for hero-wreck occupancy; pose from spaceface_chase_camera."
+}

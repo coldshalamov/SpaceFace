@@ -1,0 +1,244 @@
+{
+  "ok": true,
+  "revision": "chase_form_v1",
+  "lods": [
+    {
+      "ok": true,
+      "asset": "ship_mule",
+      "revision": "chase_form_v1",
+      "lod": 0,
+      "source": "/workspace/spaceface/assets/ships/parts/wholeships/mule_production_v1.glb",
+      "output": "/workspace/spaceface/design/program/vm-drop/mule-chase/mule_c1_lod0.glb",
+      "cargo": {
+        "kind": "hole+stacked_containers",
+        "size": [
+          5.2,
+          2.0,
+          1.2
+        ],
+        "location": [
+          0.1,
+          0.0,
+          0.4
+        ]
+      },
+      "bridge": {
+        "kind": "tub+canopy+cab",
+        "location": [
+          5.1,
+          0.0,
+          0.75
+        ]
+      },
+      "drive": {
+        "drives": [
+          {
+            "side": "Port",
+            "y": -0.95,
+            "z": 0.18
+          },
+          {
+            "side": "Starboard",
+            "y": 0.95,
+            "z": 0.18
+          }
+        ]
+      },
+      "size": [
+        16.76,
+        5.504,
+        3.154
+      ],
+      "boundsMin": [
+        -8.56,
+        -2.752,
+        -1.074
+      ],
+      "boundsMax": [
+        8.2,
+        2.752,
+        2.08
+      ],
+      "triangles": 25398,
+      "hullTriangles": 16616,
+      "objects": [
+        "COLLISION_HULL",
+        "LOD0_AftHouse",
+        "LOD0_AftWalk",
+        "LOD0_Bell_Port",
+        "LOD0_Bell_Starboard",
+        "LOD0_BellThroat_Port",
+        "LOD0_Canopy",
+        "LOD0_Container_Lower_Aft",
+        "LOD0_Hull",
+        "LOD0_PalletA",
+        "LOD0_ReturnChevron"
+      ],
+      "bytes": 1107616,
+      "gates": {
+        "TUBE_PADDLE": "NO",
+        "CAGE_READ": "NO",
+        "wells": "HOLES"
+      }
+    },
+    {
+      "ok": true,
+      "asset": "ship_mule",
+      "revision": "chase_form_v1",
+      "lod": 1,
+      "source": "/workspace/spaceface/assets/ships/parts/wholeships/mule_production_v1_lod1.glb",
+      "output": "/workspace/spaceface/design/program/vm-drop/mule-chase/mule_c1_lod1.glb",
+      "cargo": {
+        "kind": "hole+stacked_containers",
+        "size": [
+          5.2,
+          2.0,
+          1.2
+        ],
+        "location": [
+          0.1,
+          0.0,
+          0.4
+        ]
+      },
+      "bridge": {
+        "kind": "tub+canopy+cab",
+        "location": [
+          5.1,
+          0.0,
+          0.75
+        ]
+      },
+      "drive": {
+        "drives": [
+          {
+            "side": "Port",
+            "y": -0.95,
+            "z": 0.18
+          },
+          {
+            "side": "Starboard",
+            "y": 0.95,
+            "z": 0.18
+          }
+        ]
+      },
+      "size": [
+        16.76,
+        5.504,
+        3.154
+      ],
+      "boundsMin": [
+        -8.56,
+        -2.752,
+        -1.074
+      ],
+      "boundsMax": [
+        8.2,
+        2.752,
+        2.08
+      ],
+      "triangles": 23886,
+      "hullTriangles": 16616,
+      "objects": [
+        "COLLISION_HULL.001",
+        "LOD0_AftHouse",
+        "LOD0_AftWalk",
+        "LOD0_Bell_Port",
+        "LOD0_Bell_Starboard",
+        "LOD0_BellThroat_Port",
+        "LOD0_Canopy",
+        "LOD0_Container_Lower_Aft",
+        "LOD0_Hull",
+        "LOD0_RepairPatch",
+        "LOD0_ReturnChevron"
+      ],
+      "bytes": 1046312,
+      "gates": {
+        "TUBE_PADDLE": "NO",
+        "CAGE_READ": "NO",
+        "wells": "HOLES"
+      }
+    },
+    {
+      "ok": true,
+      "asset": "ship_mule",
+      "revision": "chase_form_v1",
+      "lod": 2,
+      "source": "/workspace/spaceface/assets/ships/parts/wholeships/mule_production_v1_lod2.glb",
+      "output": "/workspace/spaceface/design/program/vm-drop/mule-chase/mule_c1_lod2.glb",
+      "cargo": {
+        "kind": "hole+stacked_containers",
+        "size": [
+          5.2,
+          2.0,
+          1.2
+        ],
+        "location": [
+          0.1,
+          0.0,
+          0.4
+        ]
+      },
+      "bridge": {
+        "kind": "tub+canopy+cab",
+        "location": [
+          5.1,
+          0.0,
+          0.75
+        ]
+      },
+      "drive": {
+        "drives": [
+          {
+            "side": "Port",
+            "y": -0.95,
+            "z": 0.18
+          },
+          {
+            "side": "Starboard",
+            "y": 0.95,
+            "z": 0.18
+          }
+        ]
+      },
+      "size": [
+        16.76,
+        5.504,
+        3.154
+      ],
+      "boundsMin": [
+        -8.56,
+        -2.752,
+        -1.074
+      ],
+      "boundsMax": [
+        8.2,
+        2.752,
+        2.08
+      ],
+      "triangles": 23886,
+      "hullTriangles": 16616,
+      "objects": [
+        "COLLISION_HULL.002",
+        "LOD0_AftHouse",
+        "LOD0_AftWalk",
+        "LOD0_Bell_Port",
+        "LOD0_Bell_Starboard",
+        "LOD0_BellThroat_Port",
+        "LOD0_Canopy",
+        "LOD0_Container_Lower_Aft",
+        "LOD0_Hull",
+        "LOD0_RepairPatch",
+        "LOD0_ReturnChevron"
+      ],
+      "bytes": 1046312,
+      "gates": {
+        "TUBE_PADDLE": "NO",
+        "CAGE_READ": "NO",
+        "wells": "HOLES"
+      }
+    }
+  ],
+  "promoted": []
+}
