@@ -1156,7 +1156,8 @@ ${TT} .tt-side [data-actions] .k-word { width:100%; max-width:none; justify-cont
 /* a locked or unaffordable node: the verb's place holds its reason, as a disabled key (no fill, a
    dim lamp hairline), never a tab word */
 ${TT} .tt-side [data-actions] .k-word[aria-disabled="true"] {
-  box-sizing:border-box; min-height:var(--dp-key-h-2); padding:8px 14px; border:1px solid rgb(138 107 58 / .85); border-image:none; background:none; box-shadow:none;
+  box-sizing:border-box; min-height:var(--dp-key-h-2); padding:8px 14px; border-image:none; background:none; box-shadow:none;
+  outline:1px solid rgb(138 107 58 / .85); outline-offset:-1px;
   ${ETCH} letter-spacing:.1em; line-height:1.3; color:var(--dp-ink-dim); cursor:default; text-align:left; white-space:normal;
 }
 ${TT} .tt-side [data-actions] .k-word[aria-disabled="true"]:focus-visible { outline:0 solid transparent !important; background:var(--dp-bracket); }

@@ -1240,6 +1240,8 @@ export const techTreeScreen = {
     const unlockRows = unlockRowsHtml(n.unlocks);
     const effects = formatUnlocks(n.unlocks);
     const rpText = cost.rp ? Math.round(cost.rp).toLocaleString() : '0';
+    // A locked node's first question is what stands in the way, so its requirements come first.
+    const requiresHtml = `<div class="k-caps">Requires</div>${prereqHtml}`;
 
     sel.innerHTML = `
       <p class="tt-dossier__kicker">${escapeHtml(branchLabel)} branch · tier ${tier}</p>
@@ -1249,10 +1251,10 @@ export const techTreeScreen = {
         <div><dt>Credits</dt><dd>${escapeHtml(fmtCr(cost.credits || 0))}</dd></div>
         <div><dt>Research points</dt><dd>${escapeHtml(rpText)}</dd></div>
       </dl>
+      ${readiness.state === 'locked' ? requiresHtml : ''}
       ${effects || !unlockRows ? `<p class="k-sentence">${effects || 'No listed effects.'}</p>` : ''}
       ${unlockRows ? `<div class="k-caps">Unlocks</div><ul class="k-rows tt-unlocks" aria-label="Unlocks">${unlockRows}</ul>` : ''}
-      <div class="k-caps">Requires</div>
-      ${prereqHtml}
+      ${readiness.state === 'locked' ? '' : requiresHtml}
     `;
 
     if (readiness.state === 'available') {
