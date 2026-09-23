@@ -262,10 +262,12 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
       : 0;
     for (let sequence = startSequence; sequence <= newestSequence; sequence++) {
       const slot = retainedSlot(sequence);
-      if (!slot || slot.tick !== tick || slot.entityId !== entityId
+      if (!slot || slot.entityId !== entityId
         || slot.generation !== generation) continue;
-      // A coalesced write can precede another kind for the same entity. Refresh the later records too
-      // so sequence-order consumers never observe a revision or scalar snapshot moving backwards.
+      // Coalesced writes (same-tick or cross-tick while retained) can precede another kind for
+      // the same entity. Refresh later retained records too so sequence-order consumers never
+      // observe a revision, tick, or scalar snapshot moving backwards.
+      if (slot.tick < tick) slot.tick = tick;
       slot.revision = revision;
       fillPose(slot, source);
     }
@@ -368,9 +370,14 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     }
 
     const prior = retainedSlot(sequenceTable[entityId]);
-    if (prior && prior.kind === kind && prior.tick === tick && prior.generation === generation) {
+    // Coalesce across ticks while the prior record is still retained. Soft-GPU presents
+    // slower than the sim, so same-entity transform/visual spam was the top alloc-profile
+    // site (append @ presentationJournal). Presentation only needs the latest undrained
+    // pose/visual; intermediate ticks are overwritten in place (revision + scalars + tick).
+    if (prior && prior.kind === kind && prior.generation === generation && prior.tick <= tick) {
       const revision = nextCounter(revisions[entityId]);
       revisions[entityId] = revision;
+      prior.tick = tick;
       refreshCoalescedRecords(
         prior.sequence,
         tick,
@@ -381,6 +388,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
       );
       if (kind === PRESENTATION_JOURNAL_KINDS.TRANSFORM) transformCoalesceCount++;
       else visualCoalesceCount++;
+      lastRecordTick = tick;
       return prior.sequence;
     }
 
