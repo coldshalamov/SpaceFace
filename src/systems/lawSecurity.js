@@ -25,6 +25,11 @@ import {
 } from '../ai/engagementAuthority.js';
 import { hotUntilActive } from '../economy/customsRisk.js';
 import {
+  customsWeirForSector,
+  customsWeirSegments,
+  pointInsideCustomsWeir,
+} from '../world/customsWeir.js';
+import {
   impoundBillFor,
   isImpoundWorkComplete,
   quoteImpoundBill,
@@ -228,6 +233,7 @@ export const lawSecurity = {
     this._enforceSanctuaryWithdrawals(state);
     this._updateLawfulInspection(state);
     this._updateCustomsScanCones(_dt, state);
+    this._updateCustomsWeir(_dt, state);
     if ((state.tick | 0) >= (own.nextAmbientScanTick | 0)) {
       own.nextAmbientScanTick = (state.tick | 0) + AMBIENT_SCAN_INTERVAL_TICKS;
       const actors = collectLivingWorldActors(state, this._ambientActorScratch || (this._ambientActorScratch = []));
@@ -2180,6 +2186,68 @@ export const lawSecurity = {
     });
   },
 
+  // Helios is a corridor. Tethys is a cone. Standing in the old zone disc is not enough.
+  _updateCustomsWeir(dt, state) {
+    const step = Number(dt);
+    const own = ensureState(state);
+    const sectorId = state.world && state.world.currentSectorId;
+    const weir = customsWeirForSector(sectorId);
+    if (!weir) {
+      if (own.customsWeir && own.customsWeir.seen === true) {
+        this._emit('customs:weirPresence', { weirId: own.customsWeir.id, inside: false });
+      }
+      own.customsWeir = null;
+      if (this._weirPodDwell) this._weirPodDwell.clear();
+      return;
+    }
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const inside = !!(player && player.pos && pointInsideCustomsWeir(weir, player.pos));
+    const wasSeen = !!(own.customsWeir && own.customsWeir.seen === true && own.customsWeir.id === weir.id);
+    own.customsWeir = {
+      active: true,
+      id: weir.id,
+      sectorId,
+      shape: weir.shape,
+      segments: customsWeirSegments(weir),
+      seen: inside,
+    };
+    if (inside && !wasSeen) this._emit('customs:weirPresence', { weirId: weir.id, inside: true });
+    if (!inside && wasSeen) this._emit('customs:weirPresence', { weirId: weir.id, inside: false });
+    if (!(step > 0)) return;
+    this._dwellWeirPods(step, state, weir);
+  },
+
+  _dwellWeirPods(step, state, weir) {
+    const dwell = this._weirPodDwell || (this._weirPodDwell = new Map());
+    const list = state.entityList || [];
+    const seen = new Set();
+    for (let i = 0; i < list.length; i++) {
+      const pod = list[i];
+      if (!isJettisonedCargoPod(pod) || !pod.pos || !pod.data) continue;
+      const key = `${weir.id}:${pod.id}`;
+      seen.add(key);
+      if (!pointInsideCustomsWeir(weir, pod.pos)) {
+        dwell.delete(key);
+        continue;
+      }
+      if (pod.data.customsScanned) continue;
+      const legality = pod.data.legality || commodityLegality(pod.data.commodityId);
+      if (legality !== 'contraband') {
+        dwell.delete(key);
+        continue;
+      }
+      const next = (Number(dwell.get(key)) || 0) + step;
+      dwell.set(key, next);
+      if (next < weir.dwellS) continue;
+      this._emitPodCustomsScan({ id: weir.id, factionId: 'faction_scn' }, pod, 'customs_weir');
+    }
+    for (const key of dwell.keys()) {
+      if (!seen.has(key) || !String(key).startsWith(`${weir.id}:`)) dwell.delete(key);
+    }
+  },
+
   // ── PQ-148.02: physical customs cone over a field pod ─────────────────────────────────────
 
   _updateCustomsScanCones(dt, state) {
@@ -2238,7 +2306,7 @@ export const lawSecurity = {
     }
   },
 
-  _emitPodCustomsScan(scanner, pod) {
+  _emitPodCustomsScan(scanner, pod, source = 'customs_scan_cone') {
     if (!pod || !pod.data || pod.data.customsScanned) return;
     const commodityId = pod.data.commodityId;
     const units = Math.max(0, Number(pod.data.amount) || 0);
@@ -2246,7 +2314,7 @@ export const lawSecurity = {
     pod.data.customsScannedAt = inspectionNow(this.state);
     this._emit('contraband:scanned', {
       found: true,
-      source: 'customs_scan_cone',
+      source,
       podId: pod.id,
       commodityId,
       units,
