@@ -1,0 +1,7 @@
+tier-label: soft-GPU / software (SwiftShader-class); integrated shares this pool path
+afterInit allocations: 3
+afterScaleSweep(1,0.85,0.75,0.5,0.34,0.5,0.75,1) allocations: 3
+delta on scale sweep: 0 (expect 0)
+afterMaxResize(1600x900) allocations: 6
+delta on real max resize: 3 (expect >0)
+final contentScale=1 pool=1600x900 content=1600x900
