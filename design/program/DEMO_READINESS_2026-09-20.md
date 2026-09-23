@@ -195,3 +195,29 @@ measured the sim while the player lives in the frame: the witness added today me
    changes handling; no frame over 100 ms.
 5. Results screen with the seed, the ghost and "run it again"; then **Adventure**: undock, take one
    job, solve one physical problem, get paid, fit one upgrade, feel it on the way out.
+
+## 6. Screen defects a demo player will see (live ledger, opened 2026-09-22)
+
+Owner, 2026-09-22: *"total-fix mode … if you see bugs somewhere that aren't related that would hurt
+the demo experience fix them … documented or fixed issues when you find them rather than letting it
+go by."* Every row was seen on a real screen (`node scripts/ui-bench.mjs --shot=<id>`, real DOM
+over a still). A row leaves this table only when it is fixed and re-shot; the fix names its commit.
+Rows marked **bench** may be fixture-only; the owner of the row proves which before closing it.
+
+| # | Screen (shot id) | What a stranger sees | Demo step | State |
+|---|---|---|---|---|
+| D1 | `new-game` | The ship stage is a black rectangle until (or unless) the live hull draws; no picture of any of the three starter hulls | Adventure start | open: produced hull renders as the poster (ONE_PHOTOGRAPH §9 asset #1) |
+| D2 | `new-game` | The hull sub-names (Skater / Tug / Brawler) sit left-aligned under centred tab words; "line 5728 WU/s" is jargon; the first starter's pitch is "Stops badly" | Adventure start | open |
+| D3 | `crucible-draft` | REARM is an empty screen: "Wave 0 cleared. Nothing new fits this hull." and one CONTINUE key | Crucible round break | open (bench fixture may lack offers; a real empty draft must not show a dead screen) |
+| D4 | `crucible-refit` | Two hardpoint rows in a panel sized for twenty; LAUNCH NEXT ROUND and CONTINUE — KEEP GOING read as the same verb; "Esc launch" orphaned at the right edge | Crucible round break | open |
+| D5 | `crucible-results` | The ledger says **Best chain 0** while the story beside it says **Best chain 24 on round 4**; two rows read "Not recorded"; the headline says "from AFT", the story "from astern" | Crucible results | open |
+| D6 | `crucible` | The chosen tile's lit cut edge floats as a stray slash above an unfilled tile; the seed has two stacked rules | Crucible door | open |
+| D7 | `station-contracts` | Long contract titles truncate mid-word ("Contract 47-A: Mass…") | Adventure: take one job | open |
+| D8 | `station-shipworks`, `ship` | The text schematic's labels collide with its dotted connectors | Adventure: fit one upgrade | open: side-elevation render + leader lines (§9 asset #2) |
+| D9 | `station-market` | Every commodity row carries the same cube icon | Adventure: trade | open: 8 category pictograms (§9) |
+| D10 | `chart` | The bottom-left POSITION/TRACKING readout is clipped; the cargo band is half empty | Adventure: route | open |
+| D11 | `tech-tree` | The tree is clipped at the bottom; every node is the same grey; the detail pane is empty until a click | Menu → research | open |
+| D12 | `codex` | The detail pane shows a placeholder glyph and nothing else until an entry is chosen | Menu → codex | open |
+| D13 | `save-load` | The preview frame is empty | Continue / load | open |
+| D14 | `flight`, `crucibleHud` | The integrity card and ordnance dock are older filled panels beside the printed HUD; `BAY 0/6` is an empty box | Whole demo | open |
+| D15 | every non-station screen | `fh.css` is injected only at first dock, so menus render differently before and after docking once | Whole demo | open |
