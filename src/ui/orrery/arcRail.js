@@ -57,6 +57,7 @@ const CSS = `
 .orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item[data-awake] { color:rgb(246 241 230) !important; }
 .orr-arcrail-host .dp-kbd { display:none !important; }
 .orr-svg text.orr-arcrail__cluster { font-size:9px; letter-spacing:.3em; fill:rgb(232 226 212 / .5); text-anchor:start; }
+.orr-svg .orr-arcrail__sector text { letter-spacing:.34em; fill:rgb(232 226 212 / .62); font-weight:650; }
 /* notes stay for the accessibility tree; the dial shows the fact elsewhere (the eyebrow) */
 .orr-arcrail-host .dp-lit__note { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important;
   clip-path:inset(50%) !important; white-space:nowrap !important; margin:0 !important; }
@@ -66,8 +67,8 @@ const CSS = `
 .orr-arcrail-host .dp-lit--fine .dp-lit__item[data-awake] { color:var(--dp-ink, #e8e2d4) !important; transform:none; }
 .orr-arcrail-host .dp-kbd { background:none !important; border:0 !important; box-shadow:none !important; color:rgb(232 226 212 / .5) !important;
   font-size:.62em !important; letter-spacing:.2em !important; padding:0 0 0 .4em !important; }
-.orr-arcrail__trail { fill:none; stroke:var(--dp-hand, #f2b950); stroke-linecap:round; animation:orr-trail-fade 700ms linear forwards; }
-@keyframes orr-trail-fade { from { opacity:.55; } to { opacity:0; } }
+.orr-arcrail__trail { fill:none; stroke:var(--dp-hand, #f2b950); stroke-linecap:round; animation:orr-trail-fade 520ms ease-out forwards; }
+@keyframes orr-trail-fade { from { opacity:.5; } to { opacity:0; } }
 @media (forced-colors: active) {
   .orr-arcrail-host [data-dp-focus]::before, .orr-arcrail-host .dp-lit__item:focus-visible::before {
     display:block !important; content:""; position:absolute; left:-10px; top:14%; bottom:14%; width:2px; background:CanvasText; }
@@ -81,7 +82,7 @@ html.sf-reduce-motion .orr-arcrail__trail { display:none; }
   mask-image:radial-gradient(circle closest-side, rgb(0 0 0 / .18) 0%, rgb(0 0 0 / .45) 48%, #000 82%);
   animation:orr-emblem-drift 540s linear infinite; }
 .orr-arcrail__glow { position:absolute; border-radius:50%; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(4 6 9 / .62), rgb(4 6 9 / .4) 46%, rgb(4 6 9 / .16) 72%, transparent); }
+  background:radial-gradient(closest-side, rgb(4 6 9 / .36), rgb(4 6 9 / .26) 46%, rgb(4 6 9 / .1) 72%, transparent); }
 .orr-arcrail__face { animation:orr-emblem-drift 720s linear infinite; }
 .orr-arcrail.is-arriving .orr-arcrail__face { animation:orr-face-in 1100ms var(--dp-ease-out, cubic-bezier(.2,.9,.25,1)) both, orr-emblem-drift 720s linear 1100ms infinite; }
 @keyframes orr-face-in { from { opacity:0; transform:rotate(-24deg); } to { opacity:1; transform:none; } }
@@ -109,6 +110,7 @@ function injectStyle(doc = globalThis.document) {
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const ROW_GAP = 26;
+let hubSeq = 0;
 
 /**
  * The dial's geometry for a host of W x H holding `count` verbs. Pure, so it is testable: the pivot
@@ -230,7 +232,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   };
   let geo = null;
   let blade = null; let bladeBloom = null; let core = null; let tail = null; let bead = null; let beadBloom = null;
-  let glint = null; let glintBloom = null; let trailHost = null; let ticks = [];
+  let glint = null; let glintBloom = null; let trailHost = null; let ticks = []; let leader = null;
   // a needle's spring: one slight overshoot, settled in about a quarter second
   const handSpring = createSpring({ value: 20, preset: { k: 190, c: 15 }, onUpdate: (deg) => paintHand(deg) });
   let handIndex = -1;
@@ -240,28 +242,31 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     const { pivot, ri } = geo;
     const rt = ri - 8;                       // the rim: the blade ends ON the lit tick
     const [tx, ty] = polar(pivot.x, pivot.y, rt, deg);
-    const [lx, ly] = polar(pivot.x, pivot.y, 3.6, deg - 90);
-    const [rx, ry] = polar(pivot.x, pivot.y, 3.6, deg + 90);
-    const [t1x, t1y] = polar(tx, ty, 0.75, deg - 90);
-    const [t2x, t2y] = polar(tx, ty, 0.75, deg + 90);
-    // tapered: about 7 px at the hub to 1.5 px at the rim, with a pale hot core down its spine
-    const d = `M ${lx.toFixed(1)} ${ly.toFixed(1)} L ${t1x.toFixed(1)} ${t1y.toFixed(1)} L ${t2x.toFixed(1)} ${t2y.toFixed(1)} L ${rx.toFixed(1)} ${ry.toFixed(1)} Z`;
+    const [lx, ly] = polar(pivot.x, pivot.y, 4.2, deg - 90);
+    const [rx, ry] = polar(pivot.x, pivot.y, 4.2, deg + 90);
+    // a blade: about 8 px at the hub tapering to a true point on the rim, a pale hot core down it
+    const d = `M ${lx.toFixed(1)} ${ly.toFixed(1)} L ${tx.toFixed(1)} ${ty.toFixed(1)} L ${rx.toFixed(1)} ${ry.toFixed(1)} Z`;
     blade.setAttribute('d', d);
     const [c0x, c0y] = polar(pivot.x, pivot.y, 12, deg);
     const [c1x, c1y] = polar(pivot.x, pivot.y, rt - 16, deg);
     core.setAttribute('d', `M ${c0x.toFixed(1)} ${c0y.toFixed(1)} L ${c1x.toFixed(1)} ${c1y.toFixed(1)}`);
     bladeBloom.setAttribute('d', `M ${pivot.x.toFixed(1)} ${pivot.y.toFixed(1)} L ${tx.toFixed(1)} ${ty.toFixed(1)}`);
-    const [k0x, k0y] = polar(pivot.x, pivot.y, 7, deg + 180 - 90);
-    const [k1x, k1y] = polar(pivot.x, pivot.y, 7, deg + 180 + 90);
-    const [kbx, kby] = polar(pivot.x, pivot.y, 34, deg + 180);
-    const [kl, kll] = polar(kbx, kby, 5, deg + 180 - 90);
-    const [kr, krr] = polar(kbx, kby, 5, deg + 180 + 90);
-    tail.setAttribute('d', `M ${k0x.toFixed(1)} ${k0y.toFixed(1)} L ${kl.toFixed(1)} ${kll.toFixed(1)} L ${kr.toFixed(1)} ${krr.toFixed(1)} L ${k1x.toFixed(1)} ${k1y.toFixed(1)} Z`);
+    // a teardrop counterweight: narrow at the hub, swelling to a round end
+    const back = deg + 180;
+    const [n0x, n0y] = polar(pivot.x, pivot.y, 2.4, back - 90);
+    const [n1x, n1y] = polar(pivot.x, pivot.y, 2.4, back + 90);
+    const [ex, ey] = polar(pivot.x, pivot.y, 30, back);
+    const [w0x, w0y] = polar(ex, ey, 6, back - 90);
+    const [w1x, w1y] = polar(ex, ey, 6, back + 90);
+    const [tipx, tipy] = polar(ex, ey, 6, back);
+    tail.setAttribute('d', `M ${n0x.toFixed(1)} ${n0y.toFixed(1)} L ${w0x.toFixed(1)} ${w0y.toFixed(1)} Q ${polar(ex, ey, 8.5, back - 45).map((v) => v.toFixed(1)).join(' ')} ${tipx.toFixed(1)} ${tipy.toFixed(1)} Q ${polar(ex, ey, 8.5, back + 45).map((v) => v.toFixed(1)).join(' ')} ${w1x.toFixed(1)} ${w1y.toFixed(1)} L ${n1x.toFixed(1)} ${n1y.toFixed(1)} Z`);
     // the rim answers where the Hand points: a short arc of light on the orbit, centred on the needle
-    const g = arcD(pivot.x, pivot.y, geo.re + 11, deg - 14, deg + 14);
+    const g = arcD(pivot.x, pivot.y, geo.re + 4, deg - 12, deg + 12);
     glint.setAttribute('d', g);
     glintBloom.setAttribute('d', g);
     for (const b of [bead, beadBloom]) { b.setAttribute('cx', tx.toFixed(1)); b.setAttribute('cy', ty.toFixed(1)); }
+    // the awake word lights only once the tip is within a few degrees of it
+    if (pendingWake !== undefined && handIndex >= 0 && Math.abs(deg - geo.angles[handIndex]) < 5) { applyWake(pendingWake); pendingWake = undefined; }
   }
 
   // the swing leaves a fading arc of light on the rim between where it was and where it went
@@ -270,7 +275,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     const a0 = Math.min(fromDeg, toDeg);
     const a1 = Math.max(fromDeg, toDeg);
     trailHost.textContent = '';
-    trailHost.appendChild(svg('path', { d: arcD(geo.pivot.x, geo.pivot.y, geo.ri - 8, a0, a1), class: 'orr-arcrail__trail', 'stroke-width': 2.2 }));
+    trailHost.appendChild(svg('path', { d: arcD(geo.pivot.x, geo.pivot.y, geo.ri - 8, a0, a1), class: 'orr-arcrail__trail', 'stroke-width': 1.4 }));
   }
 
   function build() {
@@ -310,8 +315,8 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-core orr-rest orr-arcrail__rail', 'stroke-width': 1, pathLength: 1 }));
     layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-bloom orr-rest', 'stroke-width': 4, opacity: '.12' }));
     ticks = angles.map((a) => {
-      const [tx0, ty0] = polar(pivot.x, pivot.y, ri - 8, a);
-      const [tx1, ty1] = polar(pivot.x, pivot.y, ri + 3, a);
+      const [tx0, ty0] = polar(pivot.x, pivot.y, ri - 13, a);
+      const [tx1, ty1] = polar(pivot.x, pivot.y, ri - 3, a);
       const t = svg('path', { d: `M ${tx0.toFixed(1)} ${ty0.toFixed(1)} L ${tx1.toFixed(1)} ${ty1.toFixed(1)}`, class: 'orr-core orr-hi orr-arcrail__tick', 'stroke-width': 1.4 });
       layer.appendChild(t);
       return t;
@@ -323,12 +328,18 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         const next = i < all.length ? all[i].items[0].dataset.group : Symbol('end');
         if (next !== g) {
           if (g) {
-            const first = all[start].items[0];
-            const fb = first.querySelector('button') || first;
-            const [lx, ly] = polar(pivot.x, pivot.y, ri, angles[start]);
-            const t = svg('text', { x: (lx + 10).toFixed(1), y: (ly - (fb.offsetHeight || 24) / 2 - 3).toFixed(1), class: 'orr-arcrail__cluster' });
-            t.textContent = String(g).toUpperCase();
-            layer.appendChild(t);
+            // a sector on the ring: a thin bracket arc over the cluster, its name curved along it
+            const sa = angles[start] - 3;
+            const sb = angles[i - 1] + 3;
+            const rb = re + 22;
+            layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, rb, sa, sb), stroke: 'rgb(232 226 212 / .38)', 'stroke-width': 1, fill: 'none' }));
+            for (const a of [sa, sb]) {
+              const [e0x, e0y] = polar(pivot.x, pivot.y, rb - 4, a); const [e1x, e1y] = polar(pivot.x, pivot.y, rb + 1, a);
+              layer.appendChild(svg('path', { d: `M ${e0x.toFixed(1)} ${e0y.toFixed(1)} L ${e1x.toFixed(1)} ${e1y.toFixed(1)}`, stroke: 'rgb(232 226 212 / .38)', 'stroke-width': 1 }));
+            }
+            const mid = (sa + sb) / 2;
+            layer.appendChild(circularText(pivot.x, pivot.y, rb - 8, String(g).toUpperCase(),
+              { startDeg: mid + 90, size: 9, className: 'orr-arcrail__sector', anchor: 'middle', upright: true }));
           }
           start = i;
         }
@@ -337,19 +348,29 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       layer.appendChild(circularText(pivot.x, pivot.y, re + 22, engraving.toUpperCase(),
         { startDeg: a1 + 34, size: 8, className: 'orr-micro', anchor: 'middle', upright: true }));
     }
+    leader = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.2, opacity: '.9' });
+    layer.appendChild(leader);
     // the Hand: trail, counterweight, bloom, the tapered blade, the hub cap, one bead on the rim
     trailHost = svg('g');
     tail = svg('path', { d: '', fill: 'var(--dp-hand, #f2b950)', opacity: '.8' });
-    bladeBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 10, opacity: '.24' });
+    bladeBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 5, opacity: '.2' });
     blade = svg('path', { d: '', fill: 'var(--dp-hand, #f2b950)' });
     core = svg('path', { d: '', stroke: 'rgb(255 244 214)', 'stroke-width': 1, 'stroke-linecap': 'round', opacity: '.85', fill: 'none' });
     const hub = svg('g');
-    // the hub cap: a dark disc, an amber ring, a bone pin
+    // the hub: a layered jewel -- a soft glow, a dark well with a fine bone rim, an amber cap lit
+    // from the upper left, and a bright crescent of highlight on it
+    const gid = `orr-hub-${++hubSeq}`;
+    const defs = svg('defs');
+    const grad = svg('radialGradient', { id: gid, cx: '38%', cy: '34%', r: '70%' });
+    grad.append(svg('stop', { offset: '0', 'stop-color': 'rgb(255 232 170)' }), svg('stop', { offset: '.55', 'stop-color': 'rgb(242 185 80)' }), svg('stop', { offset: '1', 'stop-color': 'rgb(150 96 24)' }));
+    defs.appendChild(grad);
+    const cres = (r0, a0, a1) => { const [x0, y0] = polar(pivot.x, pivot.y, r0, a0); const [x1, y1] = polar(pivot.x, pivot.y, r0, a1); return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r0} ${r0} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
     hub.append(
-      svg('circle', { cx: pivot.x, cy: pivot.y, r: 20, class: 'orr-bloom orr-hand', 'stroke-width': 8, opacity: '.14', fill: 'none' }),
-      svg('circle', { cx: pivot.x, cy: pivot.y, r: 12, fill: 'var(--dp-hand, #f2b950)' }),
-      svg('circle', { cx: pivot.x, cy: pivot.y, r: 12, fill: 'none', stroke: 'rgb(236 230 216)', 'stroke-width': 1.6 }),
-      svg('circle', { cx: pivot.x, cy: pivot.y, r: 4, fill: 'rgb(255 244 214)' }),
+      defs,
+      svg('circle', { cx: pivot.x, cy: pivot.y, r: 22, class: 'orr-bloom orr-hand', 'stroke-width': 10, opacity: '.12', fill: 'none' }),
+      svg('circle', { cx: pivot.x, cy: pivot.y, r: 16, fill: 'rgb(4 6 9 / .92)', stroke: 'rgb(236 230 216 / .55)', 'stroke-width': 1 }),
+      svg('circle', { cx: pivot.x, cy: pivot.y, r: 10, fill: `url(#${gid})` }),
+      svg('path', { d: cres(7, 290, 350), stroke: 'rgb(255 250 235 / .85)', 'stroke-width': 1.6, 'stroke-linecap': 'round', fill: 'none' }),
     );
     beadBloom = svg('circle', { r: 8, fill: 'var(--dp-hand, #f2b950)', opacity: '.22' });
     bead = svg('circle', { r: 3.4, fill: 'var(--dp-hand-hot, #ffd98c)' });
@@ -382,8 +403,14 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   function lightTick(index) {
     ticks.forEach((t, i) => {
       t.setAttribute('class', `orr-core ${i === index ? 'orr-hand' : 'orr-hi'} orr-arcrail__tick`);
-      t.setAttribute('opacity', i === index ? '1' : '.55');
+      t.setAttribute('opacity', i === index ? '1' : '.5');
     });
+    // the lit verb alone gets a leader from the rail out to its word
+    if (leader && geo && index >= 0 && index < geo.angles.length) {
+      const [x0, y0] = polar(geo.pivot.x, geo.pivot.y, geo.ri - 13, geo.angles[index]);
+      const [x1, y1] = polar(geo.pivot.x, geo.pivot.y, geo.ri + 4, geo.angles[index]);
+      leader.setAttribute('d', `M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`);
+    }
   }
 
   function pointAt(index, { instant = false } = {}) {
@@ -397,11 +424,19 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
 
   // exactly one word is awake: the hovered/focused one, else the screen's current one
   let awakeButton = null;
-  function wake(button) {
+  let pendingWake;
+  function applyWake(button) {
     if (button === awakeButton) return;
     if (awakeButton) awakeButton.removeAttribute('data-awake');
     awakeButton = button || null;
     if (awakeButton) awakeButton.setAttribute('data-awake', '');
+  }
+  function wake(button) {
+    // the previous word goes dark at once; the new one waits for the needle (see paintHand)
+    if (button === awakeButton) { pendingWake = undefined; return; }
+    if (awakeButton) { awakeButton.removeAttribute('data-awake'); awakeButton = null; }
+    pendingWake = button || null;
+    if (handIndex >= 0 && geo && Math.abs(handSpring.value - geo.angles[handIndex]) < 5) { applyWake(pendingWake); pendingWake = undefined; }
   }
   const buttonOf = (node) => (node && typeof node.closest === 'function' ? node.closest('button') : null);
   const restButton = () => {
@@ -424,16 +459,16 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     if (i < 0 || !b) return;
     // hover takes focus, so the mouse and the keyboard share the one awake word
     if (doc.activeElement !== b) { try { b.focus({ preventScroll: true }); } catch (_) {} }
-    wake(b);
     pointAt(i);
+    wake(b);
   };
-  const onFocus = (e) => { const i = indexOf(e.target); if (i >= 0) { wake(buttonOf(e.target)); pointAt(i); } };
+  const onFocus = (e) => { const i = indexOf(e.target); if (i >= 0) { pointAt(i); wake(buttonOf(e.target)); } };
   const onLeave = () => {
     const active = doc.activeElement;
     const i = active ? indexOf(active) : -1;
-    if (i >= 0) { wake(buttonOf(active)); pointAt(i); return; }
-    wake(restButton());
+    if (i >= 0) { pointAt(i); wake(buttonOf(active)); return; }
     pointAt(restIndex());
+    wake(restButton());
   };
   host.addEventListener('pointerover', onOver);
   host.addEventListener('focusin', onFocus);

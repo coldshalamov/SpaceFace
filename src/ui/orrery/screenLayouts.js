@@ -24,7 +24,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 /* pause: the title's grammar held mid-flight -- no web divider under the name; the name in the
    extended display cut the rest of ORRERY uses; the keys in the foot are bare glyphs, no outlines */
 .of-pause.orr-pause .dp-title__rule { display:none; }
-.of-pause.orr-pause .dp-title__name { font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-weight:800;
+#screens .of-pause.orr-pause .dp-title__name, html body #screens .of-pause.orr-pause .dp-title__name { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125%; font-weight:800 !important;
   font-variation-settings:"wght" 800, "wdth" 125; letter-spacing:.005em; text-transform:uppercase; color:rgb(236 230 216);
   background:none !important; -webkit-text-fill-color:currentColor; text-shadow:0 2px 16px rgb(0 0 0 / .5); }
 .of-pause.orr-pause .sf-pause-foot .dp-kbd { background:none !important; border:0 !important; box-shadow:none !important; border-image:none !important;
@@ -52,7 +52,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 /* pause: the dial owns the left edge, so the flight brief is a reading on the right */
 .of-pause > .sf-pause-brief.orr-brief { position:absolute; right:clamp(24px, 3.4vw, 72px); top:clamp(84px, 11vh, 132px);
   width:min(520px, 34vw); margin:0; z-index:2; }
-.of-pause > .sf-pause-brief.orr-brief::before { ${POOL} }
+.of-pause > .sf-pause-brief.orr-brief::before { ${POOL} background:radial-gradient(closest-side, rgb(4 6 9 / .84), rgb(4 6 9 / .56) 60%, transparent); inset:-34px -54px; }
 @media (max-width: 1100px) { .of-pause > .sf-pause-brief.orr-brief { width:min(420px, 40vw); } }
 
 #screens .k-screen.orr-newgame { background:
