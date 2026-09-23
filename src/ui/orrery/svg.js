@@ -65,12 +65,14 @@ export function lightPath(d, { tone = 'rest', width = 1, bloom = 5, bloomTone = 
 
 /** Text on a circular path (for ring legends). */
 let textPathSeq = 0;
-export function circularText(cx, cy, r, text, { startDeg = 0, size = 9, className = '', anchor = 'start' } = {}) {
+export function circularText(cx, cy, r, text, { startDeg = 0, size = 9, className = '', anchor = 'start', upright = false } = {}) {
   const id = `orr-tp-${++textPathSeq}`;
   const g = svg('g', { class: className });
   const [x0, y0] = polar(cx, cy, r, startDeg);
-  const [x1, y1] = polar(cx, cy, r, startDeg + 180);
-  g.appendChild(svg('path', { id, d: `M ${f(x0)} ${f(y0)} A ${r} ${r} 0 1 1 ${f(x1)} ${f(y1)} A ${r} ${r} 0 1 1 ${f(x0)} ${f(y0)}`, fill: 'none', stroke: 'none' }));
+  const [x1, y1] = polar(cx, cy, r, startDeg + (upright ? -180 : 180));
+  // upright: the path runs counter-clockwise, so text on the lower half reads left to right, upright
+  const sw = upright ? 0 : 1;
+  g.appendChild(svg('path', { id, d: `M ${f(x0)} ${f(y0)} A ${r} ${r} 0 1 ${sw} ${f(x1)} ${f(y1)} A ${r} ${r} 0 1 ${sw} ${f(x0)} ${f(y0)}`, fill: 'none', stroke: 'none' }));
   const t = svg('text', { 'font-size': size, 'text-anchor': anchor });
   const tp = svg('textPath', { href: `#${id}`, startOffset: anchor === 'middle' ? '25%' : '0' });
   tp.textContent = text;

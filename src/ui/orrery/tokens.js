@@ -58,7 +58,10 @@ export const ORRERY_CSS = `
 /* Vector light: the core line and its bloom are two strokes of one path, never a live filter. */
 .orr-svg { overflow:visible; display:block; }
 .orr-svg .orr-core { fill:none; stroke-linecap:round; vector-effect:non-scaling-stroke; }
-.orr-svg .orr-bloom { fill:none; stroke-linecap:round; opacity:var(--dp-bloom-a); vector-effect:non-scaling-stroke; }
+/* A bloom that sets its own opacity attribute keeps it: a class rule beats a presentation attribute,
+   and an unconditional opacity here once lit every socket's hidden armed glow (the bronze donuts). */
+.orr-svg .orr-bloom { fill:none; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+.orr-svg .orr-bloom:not([opacity]) { opacity:var(--dp-bloom-a); }
 .orr-svg .orr-rest { stroke:var(--dp-line); }
 .orr-svg .orr-faint { stroke:var(--dp-line-faint); }
 .orr-svg .orr-hi { stroke:var(--dp-line-hi); }

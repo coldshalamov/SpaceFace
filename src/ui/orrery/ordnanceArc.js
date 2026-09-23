@@ -89,8 +89,8 @@ export function createOrdnanceArc({ groups = [], width = 780 } = {}) {
       key.style.setProperty('--orr-delay', `${120 + keys.length * 34}ms`);
       const ks = svg('svg', { viewBox: '-30 -30 60 60', class: 'orr-svg', 'aria-hidden': 'true' });
       ks.appendChild(svg('circle', { r: 24, class: 'orr-core orr-faint', 'stroke-width': 1, fill: 'rgb(5 7 10 / .38)' }));
-      const cdBloom = svg('path', { d: arcD(0, 0, 27.5, 0, 359.99), class: 'orr-bloom orr-phos', 'stroke-width': 5, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
-      const cd = svg('path', { d: arcD(0, 0, 27.5, 0, 359.99), class: 'orr-core orr-phos', 'stroke-width': 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
+      const cdBloom = svg('path', { d: arcD(0, 0, 27.5, 0, 360), class: 'orr-bloom orr-phos', 'stroke-width': 5, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
+      const cd = svg('path', { d: arcD(0, 0, 27.5, 0, 360), class: 'orr-core orr-phos', 'stroke-width': 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
       const armedBloom = svg('circle', { r: 24, class: 'orr-bloom orr-hand', 'stroke-width': 7, fill: 'none', opacity: 0 });
       const armed = svg('circle', { r: 24, class: 'orr-core orr-hand', 'stroke-width': 1.6, fill: 'none', opacity: 0 });
       ks.append(cdBloom, cd, armedBloom, armed);
@@ -138,7 +138,7 @@ export function createOrdnanceArc({ groups = [], width = 780 } = {}) {
         k.key.className = `orr-ordnance__key is-${state}`;
         const on = state === 'armed' ? '1' : '0';
         k.armed.setAttribute('opacity', on);
-        k.armedBloom.setAttribute('opacity', on);
+        k.armedBloom.setAttribute('opacity', on === '1' ? '.26' : '0');
       }
       const ready = state === 'cooldown' ? Math.max(0, Math.min(1, Number(s.cooldown) || 0)) : (state === 'empty' || state === 'locked' ? 0 : 1);
       k.spring.set(ready);

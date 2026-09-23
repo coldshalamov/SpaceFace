@@ -341,7 +341,7 @@ export function createSignalToasts() {
       const ringSvg = svg('svg', { class: 'orr-svg', viewBox: '0 0 18 18', 'aria-hidden': 'true' });
       ringSvg.append(
         svg('circle', { cx: 9, cy: 9, r: 7, class: 'orr-core orr-faint', 'stroke-width': 1.2, fill: 'none' }),
-        svg('path', { d: arcD(9, 9, 7, 0, 359.99), class: 'orr-core orr-phos orr-toast__decay', 'stroke-width': 1.8, pathLength: 1, 'stroke-dasharray': '1 1' }),
+        svg('path', { d: arcD(9, 9, 7, 0, 360), class: 'orr-core orr-phos orr-toast__decay', 'stroke-width': 1.8, pathLength: 1, 'stroke-dasharray': '1 1' }),
       );
       const k = el('span', 'orr-label', kind);
       const body = el('div', 'orr-toast__text');

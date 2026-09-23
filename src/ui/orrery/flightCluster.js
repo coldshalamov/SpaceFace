@@ -48,7 +48,7 @@ const CSS = `
 /* free type over a live world needs a soft, edge-less shadow — never a box */
 .orr-cluster .orr-soft::before { content:""; position:absolute; inset:-18px -26px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(3 4 7 / .72), rgb(3 4 7 / .38) 55%, transparent); }
-.orr-cluster__legend { position:absolute; left:${P.x - 62}px; top:${P.y + 80}px; width:124px; display:grid; grid-template-columns:16px auto 1fr; column-gap:7px; row-gap:4px; align-items:center; }
+.orr-cluster__legend { position:absolute; left:${P.x - 62}px; top:${P.y + 68}px; width:124px; display:grid; grid-template-columns:16px auto 1fr; column-gap:7px; row-gap:4px; align-items:center; }
 .orr-cluster__legend svg { width:16px; height:8px; overflow:visible; }
 .orr-cluster__legend b { font-family:var(--dp-face-numeral); font-weight:520; font-size:13px; color:var(--dp-phos, #dfeeff); font-variant-numeric:tabular-nums; text-align:right; }
 .orr-cluster__legend b.is-hull { font-weight:300; font-size:26px; line-height:.9; }
@@ -57,7 +57,7 @@ const CSS = `
 .orr-cluster__legend .is-critical, .orr-cluster__legend .is-critical i { color:var(--dp-danger, #ff5038); }
 .orr-cluster__read { position:absolute; display:flex; flex-direction:column; gap:3px; }
 .orr-cluster__read .orr-value { font-size:15px; }
-.orr-cluster__speed { position:absolute; left:10px; top:18px; display:flex; flex-direction:column; gap:8px; }
+.orr-cluster__speed { position:absolute; left:22px; top:18px; display:flex; flex-direction:column; gap:8px; }
 .orr-cluster__speed .orr-numeral { font-size:104px; font-weight:250; line-height:.8; text-shadow:0 0 18px rgb(0 0 0 / .55); }
 .orr-cluster__speedfoot { display:flex; gap:12px; align-items:baseline; }
 .orr-cluster__speedfoot b { font-family:var(--dp-face-numeral); font-weight:520; font-size:12px; color:var(--dp-ink, #e8e2d4); margin-left:4px; letter-spacing:.02em; }
@@ -76,10 +76,10 @@ const CSS = `
 .orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); }
 .orr-cluster__key.is-armed .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); }
 .orr-cluster__key.is-locked .orr-cluster__keytag, .orr-cluster__key.is-empty .orr-cluster__keytag { opacity:.55; }
-.orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(-50%, 12px); font-family:var(--dp-face-numeral); font-weight:700; font-size:9px; color:var(--dp-phos, #dfeeff); }
+.orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size:9px; color:var(--dp-phos, #dfeeff); }
 .orr-cluster__payload { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; }
 .orr-cluster__payload .orr-counter { font-family:var(--dp-face-numeral); font-weight:320; font-size:26px; color:var(--dp-phos, #dfeeff); }
-.orr-cluster__payload small { font-family:var(--dp-face-label); font-weight:600; font-size:10px; letter-spacing:.12em; color:var(--dp-ink-dim, #b7b4a6); }
+.orr-cluster__payload small { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size:11px; letter-spacing:.12em; color:var(--dp-ink-dim, #b7b4a6); }
 .orr-cluster__beam { stroke-dasharray:1 5; }
 .orr-cluster__pulse { stroke-dasharray:14 400; animation:orr-pulse 1.6s linear infinite; }
 @keyframes orr-pulse { from { stroke-dashoffset:14; } to { stroke-dashoffset:-400; } }
@@ -120,7 +120,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   root.appendChild(s);
 
   // ---- orbit, heading, drift, engraving -------------------------------------------------------
-  const orbit = orbitRing({ cx: P.x, cy: P.y, r: R.orbit, count: 120, major: 10, len: 3, majorLen: 8, tone: 'faint', drift: 1500 });
+  const orbit = orbitRing({ cx: P.x, cy: P.y, r: R.orbit, count: 90, major: 10, len: 3, majorLen: 8, tone: 'faint', from: 232, to: 488 });
   orbit.rotor.classList.add('orr-spin-in');
   s.appendChild(orbit.el);
   s.appendChild(ring({ cx: P.x, cy: P.y, r: R.heading, from: -40, to: 40, tone: 'faint', width: 1, draw: true, delay: 80 }));
@@ -132,7 +132,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     svg('path', { d: `M ${hx} ${hy - 4.5} L ${hx} ${hy - 9} M ${hx - 4.5} ${hy} L ${hx - 8} ${hy} M ${hx + 4.5} ${hy} L ${hx + 8} ${hy}`, class: 'orr-core orr-phos', 'stroke-width': 1.2 }),
   );
   s.appendChild(driftPip);
-  s.appendChild(circularText(P.x, P.y, R.orbit + 7, `${String(name).toUpperCase()} · ${String(classLine).toUpperCase()}`, { startDeg: 150, size: 6.5, className: 'orr-micro' }));
+  s.appendChild(circularText(P.x, P.y, R.orbit + 9, `${String(name).toUpperCase()} · ${String(classLine).toUpperCase()}`, { startDeg: 160, size: 6.5, className: 'orr-micro', upright: true }));
 
   // ---- the ring stack ----------------------------------------------------------------------------
   const shield = arcGauge({ cx: P.x, cy: P.y, r: R.shield, from: GAUGE_FROM, to: GAUGE_TO, width: 3.2, tone: 'phos', segments: 18, segmentGap: 2.4 });
@@ -148,14 +148,27 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   // ---- the tether (drawn under the hull so the beam leaves from beneath the art) -----------------
   const TETHER_A = 16;
   const tetherG = svg('g', { opacity: 0 });
-  const [tx0, ty0] = at(R.hull - 30, TETHER_A);
-  const [tx1, ty1] = at(R.payload - 16, TETHER_A);
-  const beamD = `M ${f1(tx0)} ${f1(ty0)} L ${f1(tx1)} ${f1(ty1)}`;
-  tetherG.append(
-    svg('path', { d: beamD, class: 'orr-core orr-rest orr-cluster__beam', 'stroke-width': 1.4 }),
-    svg('path', { d: beamD, class: 'orr-bloom orr-phos', 'stroke-width': 4, opacity: '.18' }),
-    svg('path', { d: beamD, class: 'orr-core orr-phos orr-cluster__pulse', 'stroke-width': 2 }),
-  );
+  const [tx0, ty0] = at(58, TETHER_A);
+  const [tx1, ty1] = at(R.payload - 13, TETHER_A);
+  const lineBase = svg('path', { d: '', class: 'orr-core orr-hi', 'stroke-width': 1.2 });
+  const lineBloom = svg('path', { d: '', class: 'orr-bloom orr-phos', 'stroke-width': 4, opacity: '.14' });
+  const linePulse = svg('path', { d: '', class: 'orr-core orr-ice orr-cluster__pulse', 'stroke-width': 2 });
+  const setSag = (strainV) => {
+    // a loaded line sags a little and straightens as the strain rises
+    const sag = 26 * (1 - Math.max(0, Math.min(1, strainV)));
+    const mx = (tx0 + tx1) / 2;
+    const my = (ty0 + ty1) / 2;
+    const dx = tx1 - tx0;
+    const dy = ty1 - ty0;
+    const len = Math.hypot(dx, dy) || 1;
+    const cx = mx - (dy / len) * sag;
+    const cy = my + (dx / len) * sag;
+    const d = `M ${f1(tx0)} ${f1(ty0)} Q ${f1(cx)} ${f1(cy)} ${f1(tx1)} ${f1(ty1)}`;
+    for (const p of [lineBase, lineBloom, linePulse]) p.setAttribute('d', d);
+  };
+  setSag(0.5);
+  tetherG.append(lineBloom, lineBase, linePulse,
+    svg('circle', { cx: f1(tx0), cy: f1(ty0), r: 3.4, class: 'orr-core orr-hi', 'stroke-width': 1.2, fill: 'rgb(5 7 10 / .7)' }));
   const [px, py] = at(R.payload, TETHER_A);
   tetherG.appendChild(svg('path', { d: ticksD(px, py, 27, 10, { from: -130, to: 130, len: 3, major: 5, majorLen: 6, inward: false }), class: 'orr-core orr-rest', 'stroke-width': 1 }));
   const strain = arcGauge({ cx: px, cy: py, r: 22, from: -130, to: 130, width: 2.4, tone: 'phos', ghost: false, head: true });
@@ -178,7 +191,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const energyVal = el('b', 'orr-value');
   energyRead.append(el('span', 'orr-label', 'Energy'), energyVal);
   const [enx, eny] = at(R.flank + 12, 274);
-  place(energyRead, enx - 64, eny - 42);
+  place(energyRead, 22, eny - 42);
   const heatRead = el('div', 'orr-cluster__read orr-cluster__fade orr-soft');
   const heatVal = el('b', 'orr-value');
   heatRead.append(el('span', 'orr-label', 'Heat'), heatVal);
@@ -203,10 +216,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   s.appendChild(refTick);
   const boost = arcGauge({ cx: P.x, cy: P.y, r: R.boost, from: SPEED_FROM, to: SPEED_TO, width: 3, tone: 'phos', track: 'faint', ghost: false, head: false });
   s.appendChild(boost.el);
-  const [bx, by] = at(R.boost - 12, SPEED_FROM + 2);
-  const boostText = svg('text', { x: f1(bx), y: f1(by + 3), 'font-size': 8, 'text-anchor': 'start' });
-  boostText.textContent = 'BOOST';
-  s.appendChild(boostText);
+  // boost is named by engraving along its own arc, so the label can never collide with a flank read
+  s.appendChild(circularText(P.x, P.y, R.boost - 9, 'BOOST', { startDeg: 300, size: 6.5, className: 'orr-micro' }));
 
   const speedBlock = el('div', 'orr-cluster__speed orr-cluster__fade orr-soft');
   const speedVal = el('b', 'orr-numeral');
@@ -241,27 +252,27 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const crescentTrack = svg('path', { d: '', class: 'orr-core orr-faint', 'stroke-width': 1 });
   s.appendChild(crescentTrack);
   const hand = svg('g');
+  const armGhost = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1, opacity: '.16' });
   const armLine = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.3 });
   const armBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 5 });
   const armPip = svg('circle', { r: 2.2, fill: 'var(--dp-hand, #f2b950)' });
-  const weightLine = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.3 });
-  const weightDot = svg('circle', { r: 3.2, fill: 'var(--dp-hand, #f2b950)' });
+  const weightDot = svg('circle', { r: 2.6, fill: 'var(--dp-hand, #f2b950)', opacity: '.34' });
   const hub = svg('circle', { cx: P.x, cy: P.y, r: 3.6, fill: 'none', class: 'orr-core orr-hand', 'stroke-width': 1.3 });
-  hand.append(armBloom, armLine, armPip, weightLine, weightDot, hub);
+  hand.append(armGhost, armBloom, armLine, armPip, weightDot, hub);
   s.appendChild(hand);
   const handSpring = createSpring({ value: 40, preset: 'swing', onUpdate: (deg) => {
     const [a0x, a0y] = at(R.speed + 12, deg);
     const [a1x, a1y] = at(R.crescent - KEY_R - 5, deg);
+    const [g0x, g0y] = at(-R.orbit + 12, deg);
     const d = `M ${f1(a0x)} ${f1(a0y)} L ${f1(a1x)} ${f1(a1y)}`;
+    armGhost.setAttribute('d', `M ${f1(g0x)} ${f1(g0y)} L ${f1(a0x)} ${f1(a0y)}`);
     armLine.setAttribute('d', d);
     armBloom.setAttribute('d', d);
     armPip.setAttribute('cx', f1(a0x));
     armPip.setAttribute('cy', f1(a0y));
-    const [w0x, w0y] = at(R.orbit + 3, deg + 180);
-    const [w1x, w1y] = at(R.orbit + 13, deg + 180);
-    weightLine.setAttribute('d', `M ${f1(w0x)} ${f1(w0y)} L ${f1(w1x)} ${f1(w1y)}`);
-    weightDot.setAttribute('cx', f1(w1x));
-    weightDot.setAttribute('cy', f1(w1y));
+    // the counterweight is the far end of the ghost line: faint, on the inner edge of the orbit
+    weightDot.setAttribute('cx', f1(g0x));
+    weightDot.setAttribute('cy', f1(g0y));
   } });
 
   const keyLayer = el('div');
@@ -271,8 +282,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     const k = el('div', `orr-cluster__key${node ? ' is-node' : ''}`);
     const ks = svg('svg', { viewBox: '-24 -24 48 48', class: 'orr-svg' });
     const r0 = node ? NODE_R : KEY_R;
-    ks.appendChild(svg('circle', { r: r0, class: 'orr-core orr-rest', 'stroke-width': 1, fill: 'rgb(5 7 10 / .28)' }));
-    const cd = svg('path', { d: arcD(0, 0, r0 + 3, 0, 359.99), class: 'orr-core orr-phos', 'stroke-width': node ? 1.4 : 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt' });
+    ks.appendChild(svg('circle', { r: r0, class: 'orr-core orr-rest', 'stroke-width': 1, fill: 'rgb(5 7 10 / .34)' }));
+    const cd = svg('path', { d: arcD(0, 0, r0 + 3.5, 0, 360), class: 'orr-core orr-phos', 'stroke-width': node ? 1.6 : 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt', opacity: '.8' });
     const armedB = svg('circle', { r: r0, class: 'orr-bloom orr-hand', 'stroke-width': 6, fill: 'none', opacity: 0 });
     const armed = svg('circle', { r: r0, class: 'orr-core orr-hand', 'stroke-width': 1.5, fill: 'none', opacity: 0 });
     ks.append(cd, armedB, armed);
@@ -391,10 +402,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         const st = slotStates[sk.slot.key] || {};
         const state = st.state || 'ready';
         sk.el.className = `orr-cluster__key is-${state}`;
-        const on = state === 'armed' ? '1' : '0';
-        sk.armed.setAttribute('opacity', on);
-        sk.armedB.setAttribute('opacity', on);
-        sk.spring.set(state === 'cooldown' ? Number(st.cooldown) || 0 : (state === 'locked' || state === 'empty' ? 0 : 1));
+        sk.armed.setAttribute('opacity', state === 'armed' ? '1' : '0');
+        sk.armedB.setAttribute('opacity', state === 'armed' ? '.26' : '0');
+        sk.spring.set(state === 'cooldown' ? Number(st.cooldown) || 0 : 0);
         sk.count.textContent = Number.isFinite(st.count) ? `×${st.count}` : '';
         if (state === 'armed') armedAngle = sk.angle;
       } else {
@@ -403,7 +413,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
           return Math.min(m, st.state === 'cooldown' ? Number(st.cooldown) || 0 : 1);
         }, 1);
         sk.el.className = 'orr-cluster__key is-node';
-        sk.spring.set(readiness);
+        sk.spring.set(readiness < 1 ? readiness : 0);
       }
     }
     if (armedAngle != null) handSpring.set(armedAngle);
@@ -415,8 +425,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       const st = Math.max(0, Math.min(1, Number(t.strain) || 0));
       massCounter.set(Number(t.mass));
       strain.set(st);
+      setSag(st);
       strain.setTone(st > 0.85 ? 'threat' : 'phos');
-      strainEl.textContent = `Line strain ${Math.round(st * 100)}%`;
+      strainEl.textContent = `STRAIN ${Math.round(st * 100)}%`;
     }
   }
 
