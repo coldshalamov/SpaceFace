@@ -2146,8 +2146,9 @@ async function exerciseMarketRoundtrip(page) {
   // disabled once the console re-prices it (full hold, thin credits, no stock), so
   // "the button enabled once during the walk" is not proof the row is actionable.
   // commitQty null skips the fill and takes the console default (the whole held
-  // stack in Sell mode) — the hold-drain path only.
-  const attemptRowCommit = async (row, id, verifyFn, { commitQty = '1' } = {}) => {
+  // stack in Sell mode) — the hold-drain path only. walkDeadline bounds the whole
+  // market leg; a row attempt never outlives it.
+  const attemptRowCommit = async (row, id, verifyFn, { commitQty = '1', walkDeadline = Infinity } = {}) => {
     let clickErr = null;
     if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') {
       // The register rebuilds its row nodes on every price tick and the list lives in a
@@ -2179,12 +2180,21 @@ async function exerciseMarketRoundtrip(page) {
     // fast into the sell-first fallback (PQ-033.02, 2026-09-22: three runs died at
     // market-opened with the cycle timeout and no diag). Landing is still proven by
     // the state verify below, never by the click.
+    // A console quoting a disabled GO is saying "not actionable" — a pilot reads
+    // the note and moves to the next row. Recheck once for the flicker case, then
+    // skip: a dead row costs ~0.5s instead of ~8s of retry budget, so a full-hold
+    // walk of dead rows cannot eat the whole 300s cycle (PQ-033.02 cycle-42 death).
+    if (commitQty != null) await qtyInput.fill(commitQty, { timeout: 1_500 }).catch(() => {});
+    if (!(await tradeGo.isEnabled().catch(() => false))) {
+      await page.waitForTimeout(400);
+      if (!(await tradeGo.isEnabled().catch(() => false))) return null;
+    }
     const before = await readTradeSnapshot(page, id);
     // The console re-renders on every price tick: a GO node resolved before the click can be
     // detached by the time the event dispatches, and a transient disabled/tradeBusy instant eats
     // the handler silently (no trade event either way). A pilot just clicks again — so does the
     // probe: bounded click→verify attempts inside the same ~8s budget, re-arming qty each time.
-    const deadline = Date.now() + 8_000;
+    const deadline = Math.min(Date.now() + 8_000, walkDeadline);
     let landed = false;
     let attempts = 0;
     while (!landed && Date.now() < deadline && attempts < 3) {
@@ -2206,11 +2216,13 @@ async function exerciseMarketRoundtrip(page) {
   // lands. A row can list while its quote fails (no market entry at this berth, locked
   // cargo, empty stock), so "listed" is not "actionable".
   const walkRowsForCommit = async (verifyFn, limit = 14, options = {}) => {
+    const walkDeadline = Number.isFinite(options.walkDeadline) ? options.walkDeadline : Infinity;
     let count = await rows.count().catch(() => 0);
     if (count === 0 && await reopenMarketTabWhenShellLost(page)) {
       count = await rows.count().catch(() => 0);
     }
     for (let i = 0; i < Math.min(count, limit); i++) {
+      if (Date.now() >= walkDeadline) return null;
       const row = rows.nth(i);
       const id = await row.getAttribute('data-cmdty').catch(() => null);
       if (!id) continue;
@@ -2247,8 +2259,14 @@ async function exerciseMarketRoundtrip(page) {
   // exists, sell down until one unit of volume is free and then buy through
   // whichever register row is stocked. The roundtrip contract is one landed buy +
   // one landed sell, not same-unit bookkeeping.
+  // The market leg is one leg of a ~300s cycle. Every walk below shares this hard
+  // deadline — past it the legs return empty and the asserts narrate a real market
+  // failure instead of the route dying quietly at the cycle budget (PQ-033.02:
+  // cycle 42 burned all 300s inside the walk on a full-hold register).
+  const marketDeadline = Date.now() + 160_000;
+  const walkBudget = () => ({ walkDeadline: marketDeadline });
   let direction = 'buy-first';
-  let buy = await walkRowsForCommit(BUY_VERIFY);
+  let buy = await walkRowsForCommit(BUY_VERIFY, 14, walkBudget());
   let sell = null;
   if (buy) {
     await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
@@ -2257,14 +2275,14 @@ async function exerciseMarketRoundtrip(page) {
     // register won't buy that commodity here, any held unit still lands the leg.
     const sameRow = page.locator(`[data-cmdty="${buy.commodityId}"]`).first();
     const sameRowPresent = await sameRow.count().catch(() => 0) > 0;
-    sell = (sameRowPresent ? await attemptRowCommit(sameRow, buy.commodityId, SELL_VERIFY) : null)
-      || await walkRowsForCommit(SELL_VERIFY);
+    sell = (sameRowPresent ? await attemptRowCommit(sameRow, buy.commodityId, SELL_VERIFY, walkBudget()) : null)
+      || await walkRowsForCommit(SELL_VERIFY, 14, walkBudget());
     assert(sell, `buy leg landed but no sell commits: ${JSON.stringify(await tradeConsoleDiag())}`);
   } else {
     direction = 'sell-first';
     await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
     await ensureMode(sellMode);
-    sell = await walkRowsForCommit(SELL_VERIFY);
+    sell = await walkRowsForCommit(SELL_VERIFY, 14, walkBudget());
     assert(sell, `market register must offer a sellable held row: ${JSON.stringify(await tradeConsoleDiag())}`);
     // One sold unit does not free a 60-deep overfill. Drain whole sellable stacks —
     // the console defaults Sell qty to the held stack — until the buy leg below has
@@ -2274,12 +2292,12 @@ async function exerciseMarketRoundtrip(page) {
     for (let drained = 0; drained < 24; drained++) {
       const free = await readHoldFreeVolume();
       if (free == null || free >= 1) break;
-      const extra = await walkRowsForCommit(SELL_VERIFY, 45, { commitQty: null });
+      const extra = await walkRowsForCommit(SELL_VERIFY, 45, { commitQty: null, ...walkBudget() });
       if (!extra) break;
       drainedStacks += 1;
     }
     await ensureBuyMode();
-    buy = await walkRowsForCommit(BUY_VERIFY);
+    buy = await walkRowsForCommit(BUY_VERIFY, 14, walkBudget());
     // A freed hold is not yet a funded one: the roundtrip bleeds bid-ask spread
     // every cycle while in-flight pickups pile high-value ore into the hold, so
     // late-soak saves can sit on 200+ u of cargo with single-digit credits. A
@@ -2288,11 +2306,11 @@ async function exerciseMarketRoundtrip(page) {
     // register stops buying. Same bound as the space drain.
     for (let attempts = 0; !buy && attempts < 24; attempts++) {
       await ensureMode(sellMode);
-      const extra = await walkRowsForCommit(SELL_VERIFY, 45, { commitQty: null });
+      const extra = await walkRowsForCommit(SELL_VERIFY, 45, { commitQty: null, ...walkBudget() });
       if (!extra) break;
       drainedStacks += 1;
       await ensureBuyMode();
-      buy = await walkRowsForCommit(BUY_VERIFY);
+      buy = await walkRowsForCommit(BUY_VERIFY, 14, walkBudget());
     }
     assert(buy, `a drained hold must offer a buyable row: ${JSON.stringify(await tradeConsoleDiag())}`);
     if (drainedStacks > 0) sell.drainedStacks = drainedStacks;
