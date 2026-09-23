@@ -921,9 +921,14 @@ export const crucibleScreen = {
       syncChoice(card, starter.id === starterId);
       card.addEventListener('click', () => {
         if (!isStarterAvailable(doorProfile, starter.id)) {
+          // A whole sentence: which kit, that it is locked, and what opens it. The bare condition
+          // ("clear wave 10") read as a stray fragment where the build's description had been.
           const row = starterUnlockEntry(starter.id);
+          const earn = row ? unlockConditionText(row) : '';
           hullSentence.dataset.kind = 'earn';
-          hullSentence.textContent = row ? unlockConditionText(row) : 'Closed.';
+          hullSentence.textContent = earn
+            ? `${face} is locked — ${earn} to open it.`
+            : `${face} is locked.`;
           cue('deny');
           return;
         }

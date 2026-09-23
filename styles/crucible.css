@@ -73,7 +73,10 @@ html body #screens .sf-crucible-door .sf-crd-hulls .fh-tile {
 .sf-crucible-door .fh-tile[data-locked='1'] {
   color: var(--dp-ink-mute, var(--fh-text-resting));
 }
-.sf-crucible-door .sf-crd-lock {
+/* The lock badge rides a hull TILE. The records band's unlock rows also carry .sf-crd-lock (as
+   k-row items), and an unscoped rule made every one of them an 18px box pinned to the window's
+   top-right corner: their names spilled out there as stray fragments when the band opened. */
+.sf-crucible-door .fh-tile > .sf-crd-lock {
   position: absolute;
   top: 2px;
   right: 2px;
@@ -82,12 +85,12 @@ html body #screens .sf-crucible-door .sf-crd-hulls .fh-tile {
   color: var(--dp-ink, currentColor);
   pointer-events: none;
 }
-.sf-crucible-door .sf-crd-lock .sf-crd-lock-glyph {
+.sf-crucible-door .fh-tile > .sf-crd-lock .sf-crd-lock-glyph {
   width: 18px;
   height: 18px;
   display: block;
 }
-.sf-crucible-door .sf-crd-lock .accent { fill: var(--dp-lamp, currentColor); }
+.sf-crucible-door .fh-tile > .sf-crd-lock .accent { fill: var(--dp-lamp, currentColor); }
 .sf-crd-records { margin-top: 20px; }
 .sf-crd-records summary { cursor: pointer; padding: 12px 0; }
 .sf-crd-records .k-row { padding-block: 10px; }
