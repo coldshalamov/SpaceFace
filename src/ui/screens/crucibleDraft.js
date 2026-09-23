@@ -1138,14 +1138,14 @@ export const crucibleRefitScreen = {
       const hullName = hullId ? (entityLabel('hull:' + hullId) || hullId.replace(/^ship_/, '')) : '';
       this._jig.setHull(hullId);
       this._jig.setNodes(jigNodes, {
-        engraving: hullName ? `${hullName} · ${jigNodes.length} hardpoints · ${fitted} fitted` : '',
+        engraving: hullName ? `${hullName} · ${fitted} of ${jigNodes.length} fitted` : '',
       });
       // First sight: the Hand starts on the first hardpoint a spare can fill, else the first.
       if (!Number.isInteger(this._lit)) {
         const open = jigNodes.findIndex((n) => n.state === 'open');
         this._lit = open >= 0 ? open : 0;
       }
-      this._jig.light(this._lit);
+      this._jig.light(this._lit, { swing: false });
     }
 
     // INF-060: put the player back where the rebuild found them (same row, same control kind).

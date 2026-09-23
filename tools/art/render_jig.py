@@ -114,7 +114,7 @@ def lineset(name, edges, thickness, alpha):
 # the default lineset becomes the fine one; the heavy outline is its own
 for ls in list(fs.linesets):
     fs.linesets.remove(ls)
-lineset('fine', {'select_crease', 'select_border'}, 0.8, 0.42)
+lineset('fine', {'select_crease', 'select_border'}, 0.8, 0.3)
 lineset('outline', {'select_silhouette', 'select_external_contour', 'select_contour'}, 2.2, 0.92)
 
 sc.render.filepath = out

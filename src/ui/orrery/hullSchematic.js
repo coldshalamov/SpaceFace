@@ -39,7 +39,9 @@ html.sf-reduce-motion .orr-hull__scan::before { animation:none; opacity:0; }
 html.sf-reduce-motion .orr-hull--settled .orr-hull__label { transition:none; }
 .orr-svg .orr-hull__leader { transition:stroke .18s linear, opacity .18s linear; }
 .orr-svg .orr-hull__leader.is-lit { stroke:var(--dp-hand, #f2b950); opacity:.95; }
-.orr-svg .orr-hull__leader--under.is-lit { opacity:.55; }
+.orr-svg .orr-hull__leader--hidden { stroke-dasharray:3 3; }
+.orr-svg .orr-hull__leader--hidden.is-lit { opacity:.85; }
+.orr-svg .orr-hull__bearing { font-size:9px; font-weight:650; letter-spacing:.08em; fill:rgb(236 230 216 / .42); }
 .orr-svg .orr-hull__leader-bloom { opacity:0; transition:opacity .18s linear; }
 .orr-svg .orr-hull__leader-bloom.is-lit { opacity:.22; }
 .orr-hull__node { transform-box:fill-box; transform-origin:center; transition:transform .28s var(--dp-ease-over, ease-out); }
@@ -381,6 +383,17 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     geo = { hx, hy, R, angles: [] };
     leaderEls = []; nodeEls = []; numEls = [];
     const exits = [];
+    const hidden = [];
+    // the bearing scale: a numeral every 30 degrees just inside the rim, where no line leaves
+    for (let deg = 30; deg < 360; deg += 30) {
+      const near = (a) => Math.abs(((a - deg + 540) % 360) - 180) < 7;
+      if (deg === 180) continue;
+      const [bx, by] = polar(hx, hy, R - 17, deg);
+      const t = svg('text', { x: bx.toFixed(1), y: (by + 3).toFixed(1), 'text-anchor': 'middle', class: 'orr-hull__bearing', 'data-deg': deg });
+      t.textContent = String(deg).padStart(3, '0');
+      t._near = near;
+      layer.appendChild(rise(t, 60));
+    }
     nodes.forEach((n, i) => {
       const p = points[i];
       const side = sides[i];
@@ -395,10 +408,11 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
         ? `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`
         : `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${(ex + side * 10).toFixed(1)} ${ey.toFixed(1)} L ${(colEdge - side * 22).toFixed(1)} ${cy.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`;
       const stop = `M ${colEdge.toFixed(1)} ${(cy - 5).toFixed(1)} L ${colEdge.toFixed(1)} ${(cy + 5).toFixed(1)}`;
-      const lineUnder = svg('path', { d: inner, class: 'orr-core orr-hi orr-hull__leader orr-hull__leader--under', 'stroke-width': 1, opacity: '.42' });
+      // where it crosses the ship it is a hidden line: a fine dash over the drawing
+      const lineUnder = svg('path', { d: inner, class: 'orr-core orr-hi orr-hull__leader orr-hull__leader--hidden', 'stroke-width': 1, opacity: '.34' });
       const bloom = svg('path', { d: outer, class: 'orr-bloom orr-hand orr-hull__leader-bloom', 'stroke-width': 5, opacity: '0' });
       const lineOver = svg('path', { d: `${outer} ${stop}`, class: 'orr-core orr-hi orr-hull__leader', 'stroke-width': 1, opacity: '.72' });
-      under.appendChild(rise(lineUnder, 120 + i * 40));
+      hidden.push(rise(lineUnder, 120 + i * 40));
       layer.appendChild(rise(bloom, 120 + i * 40));
       layer.appendChild(rise(lineOver, 120 + i * 40));
       leaderEls[i] = [lineUnder, bloom, lineOver];
@@ -406,9 +420,17 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       const [t1x, t1y] = polar(hx, hy, R + 7, geo.angles[i]);
       layer.appendChild(rise(svg('path', { d: `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${t1x.toFixed(1)} ${t1y.toFixed(1)}`, class: 'orr-core orr-hi', 'stroke-width': 1.2 }), 120 + i * 40));
     });
+    for (const h of hidden) layer.appendChild(h);
+    for (const t of layer.querySelectorAll('.orr-hull__bearing')) {
+      if (geo.angles.some((a) => t._near(a))) t.remove();
+    }
     // the fitted gauge and the engraving sit on the dial where no hardpoint's line crosses it: the
     // bottom if it is free, else the top, else nowhere
-    const text = engraving ? engraving.toUpperCase() : '';
+    // the engraving carries the ship's length (the plan view's own measure) after its name
+    const lengthM = Array.isArray(info.hullSize) ? Number(info.hullSize[info.longAxis || 0]) : NaN;
+    const withLength = engraving && Number.isFinite(lengthM) && lengthM > 0
+      ? engraving.replace(/^([^·]+?)(\s*·|$)/, `$1 · ${lengthM.toFixed(1)} m$2`) : engraving;
+    const text = withLength ? withLength.toUpperCase() : '';
     const spanDeg = Math.max(36, ((text.length * 9.4) / (R + 46)) * (180 / Math.PI) + 8);
     const clear = (mid) => geo.angles.every((a) => Math.abs(((a - mid + 540) % 360) - 180) > spanDeg / 2 + 5);
     const at = clear(180) ? 180 : clear(0) ? 0 : null;
@@ -436,6 +458,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       }
     }
     // nodes and their numerals over the lines
+    const placedNums = [];
     points.forEach((p, i) => {
       const kind = nodes[i].state === 'fitted' ? 'is-fitted' : nodes[i].state === 'open' ? 'is-open' : 'is-bare';
       const g = svg('g', { class: `orr-hull__node ${kind}` });
@@ -449,13 +472,27 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       if (typeof onPick === 'function') g.addEventListener('click', () => onPick(i));
       layer.appendChild(rise(g, 200 + i * 40));
       nodeEls[i] = g;
-      // the numeral beside its node, pushed out along the way its line leaves
+      // the numeral beside its node: out along the way its line leaves, else the first of eight
+      // places round the node clear of every node and every numeral already set
       const [ex, ey] = exits[i];
       const len = Math.hypot(ex - p.x, ey - p.y) || 1;
-      const dx = (ex - p.x) / len; const dy = (ey - p.y) / len;
+      const base = Math.atan2((ey - p.y) / len, (ex - p.x) / len);
+      let spot = null;
+      for (const turn of [0, 0.785, -0.785, 1.571, -1.571, 2.356, -2.356, 3.142]) {
+        const a = base + turn;
+        const cxn = p.x + Math.cos(a) * 21; const cyn = p.y + Math.sin(a) * 21;
+        const box = { l: cxn - 9, r: cxn + 9, t: cyn - 7, b: cyn + 7 };
+        const hitsNode = points.some((q, j) => j !== i && q.x > box.l - 10 && q.x < box.r + 10 && q.y > box.t - 10 && q.y < box.b + 10);
+        const hitsNum = placedNums.some((o) => o.l < box.r && o.r > box.l && o.t < box.b && o.b > box.t);
+        if (!hitsNode && !hitsNum) { spot = { x: cxn, y: cyn, box }; break; }
+      }
+      if (!spot) {
+        const cxn = p.x + Math.cos(base) * 21; const cyn = p.y + Math.sin(base) * 21;
+        spot = { x: cxn, y: cyn, box: { l: cxn - 9, r: cxn + 9, t: cyn - 7, b: cyn + 7 } };
+      }
+      placedNums.push(spot.box);
       const num = svg('text', {
-        x: (p.x + dx * 24).toFixed(1), y: (p.y + dy * 24 + 4).toFixed(1),
-        class: 'orr-hull__num', 'text-anchor': dx < -0.35 ? 'end' : dx > 0.35 ? 'start' : 'middle',
+        x: spot.x.toFixed(1), y: (spot.y + 4).toFixed(1), class: 'orr-hull__num', 'text-anchor': 'middle',
       });
       num.textContent = nodes[i].num || String(i + 1).padStart(2, '0');
       layer.appendChild(rise(num, 240 + i * 40));
@@ -507,13 +544,16 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       markLabels();
       schedule();
     },
-    /** Light one hardpoint: its node, its line, its label (which may unfold), and the Hand swings to it. */
-    light(index) {
+    /**
+     * Light one hardpoint: its node, its line, its label (which may unfold), and the Hand goes to it --
+     * swinging when the player chose it, placed when the screen did (`swing: false`).
+     */
+    light(index, { swing = true } = {}) {
       if (!Number.isInteger(index) || index === litIndex) return;
       litIndex = index;
-      litChangedAt = now();
+      if (swing) litChangedAt = now();
       markLabels();
-      paintLit(false);
+      paintLit(!swing);
       // a lit label can change height (it unfolds its choices): its column re-spaces
       schedule();
     },

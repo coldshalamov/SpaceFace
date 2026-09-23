@@ -231,6 +231,12 @@ html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-
    verb at the end of its first line. Left-column labels read toward the ship. */
 html body #screens > .k-screen.orr-refit > .k-title, html body #screens > .k-screen.orr-refit > .k-foot { position:relative; z-index:2; }
 html body #screens > .k-screen.orr-refit > .k-title .sf-cru-note { margin:10px 0 0; max-width:34ch; font-size:13px; color:var(--dp-hand-hot, #ffd98c); }
+/* the keys sit under the dial, every one of them a word in the display face */
+html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit > .k-foot { justify-content:center; }
+html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit > .k-foot .k-words { justify-content:center; column-gap:56px; }
+html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word:not(.k-word--primary) { font-family:var(--dp-face-display, "Archivo") !important; font-variation-settings:"wght" 760, "wdth" 125 !important;
+  font-size:clamp(15px, 1.8vh, 19px) !important; letter-spacing:.08em !important; color:rgb(236 230 216 / .72) !important; }
+html body #screens > .k-screen.orr-refit.orr-crucible.sf-crucible-refit .k-foot .k-word:not(.k-word--primary):is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
 /* the title names the place; the ship is the loud thing here */
 html body #screens > .k-screen.orr-refit > .k-title .k-t-title { font-size:clamp(34px, 4.4vh, 50px) !important; letter-spacing:.04em; }
 html body #screens > .k-screen.orr-refit > .k-title .sf-cru-sub { font-size:14px; color:rgb(232 226 212 / .66); max-width:44ch; }
