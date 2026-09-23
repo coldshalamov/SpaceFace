@@ -601,6 +601,84 @@ test('save/Continue: an outgoing virtual job cannot leave a phantom hull marker 
     'deserialize removes the outgoing runtime marker instead of leaving traffic permanently yielded');
 });
 
+// ═══ job-owned persistence: the mid-job save mark is stamped at dispatch and released at release ═
+// PQ-033.02 — spawn-stamped traffic hulls never shed flags.persistent, so every hull that ever
+// held a job serialized forever (save grew ~1 hull/10 cycles at ~8 KB each). The release drops
+// the mark only when no other owner (mission/custody/itinerary/activity/tow/lot) needs it.
+test('job-owned persistence: assign stamps the durable worker; release drops the un-anchored mark', () => {
+  const sim = boot();
+  const e = hull(sim, 'rec-persist');
+  e.data.trafficRole = 'hauler';
+  e.data.durable = true;
+  assert.equal(e.flags && e.flags.persistent, undefined, 'fixture starts un-stamped');
+
+  const jobId = sim.helpers.npcJobs.assign(e, haulerSpec());
+  assert.equal(jobId, 'job:rec-persist');
+  assert.equal(e.flags.persistent, true, 'taking a job restores the mid-job persistence mark');
+
+  assert.equal(sim.helpers.npcJobs.release(jobId), true);
+  assert.equal(e.data.jobId, undefined);
+  assert.equal(e.flags && e.flags.persistent, undefined,
+    'released un-anchored worker sheds the mark — its durable record still preserves it');
+});
+
+test('job-owned persistence: anchored workers keep the mark through release', () => {
+  const sim = boot();
+  const anchors = [
+    ['itinerary', { itinerary: { kind: 'claim_depot', bodyId: 'b1' } }],
+    ['mission', { missionId: 'msn-1' }],
+    ['custody', { freightCustodyPersistence: { lotId: 'l1' } }],
+    ['activity', { ceresActivityCast: true }],
+    ['named lane', { namedLaneContactId: 'lane-1' }],
+    ['scripted', { scenarioActorId: 'actor-1' }],
+    ['manifest chain', { cargoManifest: { lines: [], totalQty: 0, custody: true } }],
+    ['data-level', { persistent: true }],
+  ];
+  let n = 0;
+  for (const [label, extra] of anchors) {
+    n += 1;
+    const e = hull(sim, `rec-anchor-${n}`);
+    e.data.trafficRole = 'hauler';
+    Object.assign(e.data, extra);
+    e.flags.persistent = true; // the anchor's own owner stamped it — npcJobs never does
+    const jobId = sim.helpers.npcJobs.assign(e, haulerSpec());
+    assert.ok(jobId, `${label}: job assigned`);
+    assert.equal(sim.helpers.npcJobs.release(jobId), true);
+    assert.equal(e.flags.persistent, true,
+      `${label}: another persistence owner keeps the mark through release`);
+  }
+});
+
+test('job-owned persistence: a towed lot sheds its mark when the tow releases', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const tug = hull(sim, 'rec-tug');
+  tug.data.trafficRole = 'tug';
+  const lot = sim.spawn({ type: 'wreck', team: 2, pos: { x: 30, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, mass: 40 });
+  lot.data = { towable: true, npcTowedByJobId: 'job:rec-tug' };
+  lot.flags = { persistent: true };
+
+  const entry = {
+    worldRecordId: 'rec-tug',
+    towAttachmentId: null,
+    towTargetId: lot.id,
+    towTargetRef: lot,
+    towOwnerRef: tug,
+    towNextScanSimT: 0,
+  };
+  jobs._clearTugAttachment(entry, 'npc_tow_job_released');
+  assert.equal(lot.data.npcTowedByJobId, undefined, 'tow binding released');
+  assert.equal(lot.flags && lot.flags.persistent, undefined,
+    'the detached lot reverts to an ordinary loose body');
+
+  // A custody-marked lot keeps its mark — the tow was not its only persistence owner.
+  const custodyLot = sim.spawn({ type: 'payload', team: 2, pos: { x: 40, z: 0 }, vel: { x: 0, z: 0 }, radius: 6, mass: 30 });
+  custodyLot.data = { towable: true, npcTowedByJobId: 'job:rec-tug', manifestId: 'm-1', lotSource: { lotId: 'l-9' } };
+  custodyLot.flags = { persistent: true };
+  jobs._clearTugAttachment({ ...entry, towTargetId: custodyLot.id, towTargetRef: custodyLot }, 'npc_tow_job_released');
+  assert.equal(custodyLot.flags.persistent, true, 'custody/provenance lot stays serialized');
+});
+
 test('migration v11→v12 (real load): a pre-v12 envelope with no npcJobs loads to an empty bag (fail closed, no crash)', () => {
   const sim = createSimulation({ seed: 7, systems: [npcJobsRuntime, save] });
   sim.state.mode = 'flight';

@@ -158,6 +158,7 @@ function forEachWorldRecordContender(state, worldRecordId, fn) {
 const NPC_TOW_ATTACHMENT_DEF_ID = 'tether_standard';
 const NPC_TOW_MAX_RANGE_WU = 390;
 const NPC_TOW_SCAN_INTERVAL_S = 0.5;
+const JOB_PERSIST_SWEEP_INTERVAL_S = 1.0;
 // At or above this the body is anchored scenery rather than freight (see isTowableCargoTarget).
 const NPC_TOW_PINNED_BODY_MASS = 1e6;
 const NPC_TOW_PHASES = new Set([
@@ -518,6 +519,58 @@ function unpinOccupationalLatch(entity) {
     delete next.tethered;
     entity.flags = next;
   }
+}
+
+// `flags.persistent` on a traffic/durable worker exists to carry mid-job state across
+// save/Continue. Once the job is gone the mark is dead weight: the hull's durable record
+// already preserves it across rematerialize, and an un-marked hull may demote to a far
+// row instead of serializing forever (PQ-033.02: jobless stamped hulls grew the save
+// ~1 hull / 10 cycles at ~8 KB each). Only the job's own release may clear it, and only
+// while no independent owner still needs the hull serialized.
+function jobPersistenceAnchorReason(entity) {
+  const d = (entity && entity.data) || {};
+  const f = (entity && entity.flags) || {};
+  if (d.persistent) return 'data.persistent';
+  if (f.missionPinned || d.missionPinned || d.missionId || d.missionTag
+    || d.missionTargetSlot || d.contractId) return 'mission';
+  if (d.itinerary || d.claimDepotId || d.claimTravelTrafficHookId) return 'itinerary';
+  if (d.freightCustodyPersistence || d.surrenderRecovery) return 'custody';
+  if (d.ceresActivityCast || d.ceresActivityJobOwned || d.activityActorSlotId) return 'activity';
+  if (d.worldSiteTrafficHookId || d.worldRecordSlotId) return 'site';
+  if (d.namedLaneContactId || d.scenarioActorId || d.scenarioRole) return 'scripted';
+  if (d.isBoss || d.encounterBoss || d.missionBoss) return 'boss';
+  if (d.npcTowedByJobId != null) return 'tow';
+  if (d.lotId || d.lotSource || d.custody) return 'lot';
+  if (d.manifestId || d.payloadType) return 'manifest-payload';
+  const manifest = d.cargoManifest;
+  if (manifest && (manifest.active === true || manifest.custody || manifest.lotId
+    || manifest.lotSource || manifest.special === true || manifest.protected === true
+    || manifest.reservedBy)) return 'manifest';
+  return null;
+}
+
+function dropPersistentMark(entity) {
+  if (!entity || !entity.flags || entity.flags.persistent !== true) return;
+  const next = { ...entity.flags };
+  delete next.persistent;
+  entity.flags = next;
+}
+
+// A hull eligible for the job-owned persistence contract: a durable worker. The mark
+// is stamped at spawn/dispatch so a mid-job worker survives save/Continue; once the
+// job is gone it is dead weight and the hull should demote to a far row.
+function isJobPersistenceEligible(entity) {
+  const d = (entity && entity.data) || {};
+  return !!(d.trafficRole || d.jobRole || d.worldRecordId || d.durable);
+}
+
+// Clear the job-owned persistence mark after the entity's job fields are already gone.
+// Anchored hulls (Ceres cast, site slots, missions, custody…) own their persistence
+// through other systems and are never touched.
+function releaseJobOwnedPersistence(entity) {
+  if (!isJobPersistenceEligible(entity)) return;
+  if (jobPersistenceAnchorReason(entity)) return;
+  dropPersistentMark(entity);
 }
 
 function isPatrolNetTarget(candidate, patrol, playerId) {
@@ -1830,6 +1883,14 @@ export const npcJobsRuntime = {
       || !this._isCanonicalCeresRealTargetRoute(realTargetActor, job.route, job.speed))) return null;
     byId[jobId] = entry;
     entity.data.jobId = jobId;
+    // A mid-job traffic worker must survive save/Continue with its work — the same
+    // contract the traffic spawn stamps guarantee. release() drops the mark when the
+    // hull goes idle, so taking a job restores it here. Anchored hulls (Ceres cast,
+    // site slots, missions, custody…) already own their persistence — stamping them
+    // too would serialize a second copy next to their own rematerialize path.
+    if (entity.data.trafficRole && !jobPersistenceAnchorReason(entity)) {
+      entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    }
     this._threatQueryDirty = true;
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     this._refreshCeresRealTargetsForEntry(entry, entity);
@@ -2314,7 +2375,12 @@ export const npcJobsRuntime = {
     }
     if (target && target.data) {
       if (target.data.npcTowAttachmentId === attachmentId) delete target.data.npcTowAttachmentId;
-      if (target.data.npcTowedByJobId === jobId) delete target.data.npcTowedByJobId;
+      if (target.data.npcTowedByJobId === jobId) {
+        delete target.data.npcTowedByJobId;
+        // The lot persisted to survive Continue with its tug; detached, it reverts to an
+        // ordinary loose body unless another owner still needs it serialized.
+        if (!jobPersistenceAnchorReason(target)) dropPersistentMark(target);
+      }
       unpinOccupationalLatch(target);
     }
     entry.towAttachmentId = null;
@@ -2447,6 +2513,11 @@ export const npcJobsRuntime = {
       delete ent.data.jobId;
       delete ent.data.jobPhase;
       delete ent.data.jobProgress;
+      // The spawn stamp persisted this hull so a mid-job worker survives save/Continue.
+      // With the job gone the mark is dead weight — the durable record already preserves
+      // the hull, and clearing lets an idle worker demote to a far row instead of
+      // serializing forever (PQ-033.02). Anchored hulls keep their other owner's mark.
+      releaseJobOwnedPersistence(ent);
     }
     this._clearTugAttachment(entry, 'npc_tow_job_released');
     const formationSlot = this._ceresFormationSlotForWorldRecordId(entry.worldRecordId);
@@ -2457,7 +2528,24 @@ export const npcJobsRuntime = {
     return true;
   },
 
-  // ── PQ-019B: control leases ───────────────────────────────────────────────────────────────────
+  // Drop the job-owned persistence mark from eligible hulls that no longer hold a job and
+  // have no other persistence owner. Jobs end through paths besides release() — sector
+  // despawn, convoy-cap refusal, restore-adopt — so the invariant is enforced here, not at
+  // each writer. Anchored hulls and mid-job workers are untouched.
+  _sweepJobOwnedPersistence() {
+    const list = this.state && this.state.entityList;
+    if (!Array.isArray(list)) return;
+    for (const entity of list) {
+      if (!entity || entity.alive === false) continue;
+      const flags = entity.flags;
+      if (!flags || flags.persistent !== true) continue;
+      const d = entity.data;
+      if (d && d.jobId != null) continue;
+      releaseJobOwnedPersistence(entity);
+    }
+  },
+
+  // ── PQ-019B: control leases ──────────────────────────────────────────────────────────────────────────────────────
   //
   // A lease lets another owner (a heist pursuit) borrow the HULL of a real, already-existing job
   // without inventing a ship and without a second system writing its movement intent. This is what
@@ -2872,6 +2960,18 @@ export const npcJobsRuntime = {
       this._ceresSweepLastSimT = ceresSweepT;
       this._adoptCeresScavengerTractors();
       this._stampCeresPirateInterceptCues();
+    }
+    // Job-owned persistence invariant: a durable worker keeps flags.persistent only while it
+    // holds a job or another owner anchors it. Stamps outlive jobs through every job-loss path
+    // (sector despawn, convoy-cap refusal, restore-adopt — not just release), so normalize on a
+    // slow sim-clock sweep rather than chase each writer.
+    const persistSweepT = finite(this.state.simTime, 0);
+    const lastPersistSweepT = this._persistSweepLastSimT;
+    if (!Number.isFinite(lastPersistSweepT)
+      || persistSweepT < lastPersistSweepT
+      || persistSweepT - lastPersistSweepT >= JOB_PERSIST_SWEEP_INTERVAL_S) {
+      this._persistSweepLastSimT = persistSweepT;
+      this._sweepJobOwnedPersistence();
     }
     const byId = this._byId();
     const ids = Object.keys(byId);
