@@ -179,7 +179,10 @@ test('standoff fire discipline diverges: anchor holds one sustained window, rang
   assert.equal(anchorHold.maneuverKind, ManeuverKind.HOLD);
   assert.equal(anchorHold.allowedActionId, 'action_burst', 'anchor hold advertises the canonical burst verb');
   assert.equal(anchorHold.faceTarget, true, 'anchor keeps its fixed guns aligned while holding');
-  assert.equal(anchorHold.preferredRange, 460, 'anchor engages from its authored 460 wu hold ring');
+  // The hold and standoff rings were pulled inside the camera frame by the Package 0 feel pass
+  // (9411ff8c8, "C1 engagement scale") and again by 5507700e0 ("B3b: inside the composed
+  // frame"): 460 -> 300 -> 220 for the anchor, 620 -> 330 -> 240 for the ranged standoff.
+  assert.equal(anchorHold.preferredRange, 220, 'anchor engages from its authored 220 wu hold ring');
 
   const rangedWindows = fireWindows(ranged);
   assert.ok(rangedWindows.length >= 3, `ranged produces repeated volley windows, got ${rangedWindows.length}`);
@@ -192,7 +195,7 @@ test('standoff fire discipline diverges: anchor holds one sustained window, rang
   }
   const rangedFire = ranged[rangedWindows[0].start];
   assert.equal(rangedFire.phase, 'fire_window');
-  assert.equal(rangedFire.preferredRange, 620, 'ranged engages from its authored 620 wu standoff ring');
+  assert.equal(rangedFire.preferredRange, 240, 'ranged engages from its authored 240 wu standoff ring');
 
   assert.equal(fireWindows(interceptor).length, 0,
     'a 460 wu standoff never enters the interceptor 420 wu strike envelope');
