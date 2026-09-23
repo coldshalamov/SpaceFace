@@ -29,7 +29,7 @@ try {
   surfaces.push(await assertVisiblePseudoSurface('mainMenu'));
   await capture('01-main-menu-qps-1280x720.png');
 
-  await page.locator('[data-screen="mainMenu"] .sf-col button').first().click();
+  await page.locator('[data-screen="mainMenu"] [data-action="newGame"]').first().click();
   await waitForScreen('newGame');
   await page.setViewportSize({ width: 1440, height: 900 });
   surfaces.push(await assertVisiblePseudoSurface('newGame'));

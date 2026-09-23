@@ -526,7 +526,7 @@ export const mainMenuScreen = {
       refs.saveSummary.textContent = coreText('continueSummary', { summary });
       setDisabled(refs.bContinue, false, 'Load ' + summary);
       // ORRERY: the dial shows no sentence under a verb; what Continue would load is the eyebrow.
-      if (refs.status) refs.status.textContent = 'Continue · ' + summary;
+      if (refs.status) refs.status.textContent = coreText('continue') + ' · ' + summary;
       bContinueRow(refs, true);
     } else {
       refs.saveSummary.textContent = coreText('noSave');

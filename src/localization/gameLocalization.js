@@ -7,7 +7,7 @@ import { createLocalizationRuntime, DEFAULT_LOCALE, PSEUDO_LOCALE } from './runt
 import { installLocalizedDocumentBridge, localizationBridgeStats } from './domBridge.js';
 import { STORE_COPY } from './storeCopy.js';
 import { barkMessagesFor } from './barks.js';
-import { SHIPPED_LOCALES } from './pipeline.js';
+import { SHIPPED_LOCALES, translateMessage } from './pipeline.js';
 
 const englishMessages = Object.freeze({
   ...englishExtracted,
@@ -64,11 +64,16 @@ export const gameLocalization = createLocalizationRuntime({
 });
 
 /** Translate generated English inventory copy through the canonical runtime.
- * Unknown dynamic copy still uses the runtime's deterministic fallback/pseudo path. */
+ * Unknown dynamic copy resolves through the same phrase/machine layer the shipped catalogs
+ * use; en-US and the pseudo locale keep the deterministic source/pseudo path. */
 export function localizeText(message, values = {}) {
   const source = String(message == null ? '' : message);
   const key = keyByEnglishMessage.get(source) || `runtime:${source}`;
-  return gameLocalization.t(key, values, source);
+  return gameLocalization.t(key, values, () => {
+    const locale = gameLocalization.locale;
+    if (locale === DEFAULT_LOCALE || locale === PSEUDO_LOCALE) return source;
+    return translateMessage(locale, source, key);
+  });
 }
 
 let bridgeActive = false;

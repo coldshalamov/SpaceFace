@@ -19,6 +19,7 @@
 // the whole difference between an ornament and an instrument.
 
 import { el } from '../kit/dom.js';
+import { localizeText } from '../../localization/gameLocalization.js';
 
 /**
  * The title's authored backdrop plate: the approved "Field at dusk" shot
@@ -26,6 +27,9 @@ import { el } from '../kit/dom.js';
  * `title-field` assembles on the main renderer, and is the whole picture if the stage cannot run.
  */
 export const TITLE_PLATE_SRC = new URL('../../../assets/ui/backdrops/backdrop-title.jpg', import.meta.url).href;
+
+// The eyebrow's standing contract line, resolved through the localization phrase layer.
+export const TITLE_STATUS_LINE = 'Contract 47-A remains open';
 
 export function createTitleFrame(root) {
   root.classList.add('of-title', 'dp-frame', 'dp-frame--screen', 'dp-frame--split');
@@ -50,7 +54,7 @@ export function createTitleFrame(root) {
   const status = el('p', 'dp-title__eyebrow');
   status.dataset.role = 'title-status';
   status.dataset.live = '1';
-  status.textContent = 'Contract 47-A remains open';
+  status.textContent = localizeText(TITLE_STATUS_LINE);
   // The game's name is the DRAWN mark, not the nameplate face. The h1 keeps its text for the
   // accessibility tree and for forced colours; the mask paints over it.
   const name = el('h1', 'dp-logotype', 'SpaceFace');
