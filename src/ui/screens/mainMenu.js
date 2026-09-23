@@ -14,6 +14,7 @@ import { IS_DEV } from '../../core/devMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { createArcRail } from '../orrery/arcRail.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 
 const LS_PREFIX = 'sf.save.';
 /** The attention lamp's listeners, released when the screen unmounts. */
@@ -348,6 +349,8 @@ export const mainMenuScreen = {
     // ORRERY: the same buttons, set round the rim of the emblem's dial; the amber Hand swings from
     // its pivot to whichever verb is awake. The rail only positions the list and draws behind it.
     if (arcRail) arcRail.dispose();
+    injectOrreryScreens();
+    rootEl.classList.add('orr-title');
     arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside], emblemUrl: EMBLEM_URL, engraving: 'SpaceFace · Helios Reach · Contract 47-A · Mass variance survey' });
 
     const byAction = (action) => stage.querySelector('[data-action="' + action + '"]');
@@ -487,6 +490,8 @@ export const mainMenuScreen = {
       const summary = saveSummaryText(latest.slot, latest.meta);
       refs.saveSummary.textContent = coreText('continueSummary', { summary });
       setDisabled(refs.bContinue, false, 'Load ' + summary);
+      // ORRERY: the dial shows no sentence under a verb; what Continue would load is the eyebrow.
+      if (refs.status) refs.status.textContent = 'Continue · ' + summary;
     } else {
       refs.saveSummary.textContent = coreText('noSave');
       setDisabled(refs.bContinue, true, 'No save found yet');

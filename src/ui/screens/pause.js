@@ -24,6 +24,8 @@ import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
 import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
+import { createArcRail } from '../orrery/arcRail.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
 import {
@@ -380,6 +382,9 @@ export function pauseExitConfirmBody(state, target = 'menu') {
 }
 
 let els = null;
+/** ORRERY: pause is the title's dial held mid-flight (design/frontend/ORRERY.md §6 Pause). */
+let pauseRail = null;
+const EMBLEM_URL = new URL('../../../assets/ui/generated/emblem/emblem.webp', import.meta.url).href;
 // Dirty-checked brief writes: periodic refresh passes recompute the lines but only touch the DOM
 // when a value actually changed.
 const briefLast = { objective: undefined, next: undefined, save: undefined };
@@ -767,6 +772,17 @@ export const pauseScreen = {
 
     stage.appendChild(list);
     column.appendChild(stage);
+
+    // ORRERY: the verbs ride the emblem's dial like the title's, one tick per group (the group's
+    // name engraved over its row) with Resume leading as the one lit verb; the brief, which the dial
+    // would cover, becomes a reading on the right. Same list, same roving focus, same buttons.
+    injectOrreryScreens();
+    rootEl.classList.add('orr-pause');
+    const brief = briefKicker.parentElement;
+    if (brief) { brief.classList.add('orr-brief'); rootEl.appendChild(brief); }
+    if (pauseRail) pauseRail.dispose();
+    pauseRail = createArcRail({ host: stage, list, frame: rootEl, grouped: true, dense: true, emblemUrl: EMBLEM_URL,
+      engraving: 'Flight held · SpaceFace · Helios Reach' });
 
     // The column ends in a legend strip, not an air gap: the keys that are live while this modal
     // is up as machined caps, then the build mark — the two .k-fine lines the pause grid's foot

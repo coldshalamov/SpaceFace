@@ -147,6 +147,9 @@ export const DECKPLATE_LIGHT_CSS = `
 .dp-lit__item {
   position:relative; display:flex; align-items:center; gap:calc(var(--dp-u) * 4);
   box-sizing:border-box; width:100%; border:0; background:none;
+  /* styles/ui.css gives every button a 6 px radius and a hover glow (button:hover box-shadow); on a
+     word of light that drew a rounded glass pill round the word. A word has neither. */
+  border-radius:0; box-shadow:none;
   padding:calc(var(--dp-u) * 2) 0 calc(var(--dp-u) * 2) calc(var(--dp-u) * 2);
   color:var(--dp-ink-dim); text-align:left; text-decoration:none;
   font-family:var(--dp-face-display);
@@ -161,6 +164,7 @@ export const DECKPLATE_LIGHT_CSS = `
    SNAPS to its heavier instance rather than interpolating: a width transition is layout and paint
    every frame and it reflows the column. */
 .dp-lit__item:is(:hover, :focus-visible, [aria-current="true"]) {
+  box-shadow:none;
   color:var(--dp-ink);
   font-variation-settings:"wght" 780, "wdth" 100;
   text-shadow:0 0 22px rgb(255 226 178 / .34), 0 0 6px rgb(255 226 178 / .22), 0 1px 0 rgb(0 0 0 / .6);
