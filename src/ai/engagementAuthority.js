@@ -314,51 +314,75 @@ export function isHostileForAI(state, self, other) {
   if (!self || !other || self.team == null || other.team == null) return false;
   if (self.id === other.id) return false;
 
-  const selfAi = self.data && self.data.ai || {};
-  const otherAi = other.data && other.data.ai || {};
+  // Avoid `|| {}` — empty-object fallback allocated on every miss and still paid property reads.
+  const selfData = self.data;
+  const otherData = other.data;
+  const selfAi = selfData ? selfData.ai : null;
+  const otherAi = otherData ? otherData.ai : null;
+
   // An authored predation role owns this actor's complete automatic hostility set while it is
   // standing by, telegraphing, or active. Existing retaliation/security flags must not let the
   // same raider peel off onto the player or another neutral before the bounded objective clears.
-  if (self.data?.predationRole === 'raider'
-    && (selfAi.predationStatus === 'standby'
-      || selfAi.predationStatus === 'telegraph'
-      || selfAi.predationStatus === 'active')) {
-    return isAuthorizedPredationRelation(state, self, other);
+  if (selfData && selfData.predationRole === 'raider') {
+    const predationStatus = selfAi && selfAi.predationStatus;
+    if (predationStatus === 'standby'
+      || predationStatus === 'telegraph'
+      || predationStatus === 'active') {
+      return isAuthorizedPredationRelation(state, self, other);
+    }
   }
   // Throughline ambush prey is a civilian hauler. Team 2 is otherwise never hostile, so the
   // sprung cohort would close to contact and never get a fire bit. This is the only sanctioned
   // pirate→loaded-hauler hostility path, and only while the authored encounter is in conflict.
-  if (isAuthorizedCeresAmbushPreyRelation(state, self, other)) return true;
+  // Gate on team + authored zone before the deep relation (most pairs never qualify).
+  if (other.team === 2
+    && selfAi
+    && selfAi.zoneId === CERES_ACTIVITY_AMBUSH_ZONE_ID
+    && isAuthorizedCeresAmbushPreyRelation(state, self, other)) {
+    return true;
+  }
   // A named incident target outranks the coarse team number. This is the only sanctioned
   // same-team hostility path: lawful patrol response or direct self-defense, both explicit and
   // inspectable. It prevents team 1 from making patrols blind to team-1 raiders.
-  if (selfAi.lawful && selfAi.securityTargetId === other.id) return true;
-  if (otherAi.lawful && otherAi.securityTargetId === self.id) return true;
-  if (selfAi.retaliationTargetId === other.id) return true;
-  if (otherAi.retaliationTargetId === self.id) return true;
-  if (hasFactionFirstFireAuthority(self, selfAi, other)) return true;
-  if (hasFactionFirstFireAuthority(other, otherAi, self)) return true;
+  if (selfAi) {
+    if (selfAi.lawful && selfAi.securityTargetId === other.id) return true;
+    if (selfAi.retaliationTargetId === other.id) return true;
+    if (selfAi.factionPresenceDoctrine && hasFactionFirstFireAuthority(self, selfAi, other)) {
+      return true;
+    }
+  }
+  if (otherAi) {
+    if (otherAi.lawful && otherAi.securityTargetId === self.id) return true;
+    if (otherAi.retaliationTargetId === self.id) return true;
+    if (otherAi.factionPresenceDoctrine && hasFactionFirstFireAuthority(other, otherAi, self)) {
+      return true;
+    }
+  }
   if (self.team === other.team) return false;
 
-  const selfIsPlayer = !!(state && self.id === state.playerId);
-  const otherIsPlayer = !!(state && other.id === state.playerId);
+  const playerId = state && state.playerId;
+  const selfIsPlayer = playerId != null && self.id === playerId;
+  const otherIsPlayer = playerId != null && other.id === playerId;
   // Team 0 is the player flight (player + wingmen). Lawful WANTED gating must cover the whole
   // flight — wingmen share the player's team but not the playerId, so id-only checks left them
   // exposed to team-mismatch hostility while the clean player was ignored.
-  const selfIsPlayerSide = selfIsPlayer || self.team === 0;
-  const otherIsPlayerSide = otherIsPlayer || other.team === 0;
   if (selfIsPlayer) return isHostileToPlayer(other, self.team, state);
   if (otherIsPlayer) return isHostileToPlayer(self, other.team, state);
+  const selfIsPlayerSide = self.team === 0;
+  const otherIsPlayerSide = other.team === 0;
 
-  if (selfAi.passive || otherAi.passive || self.team === 2 || other.team === 2) return false;
-  if (selfAi.lawful && otherIsPlayerSide) return isPlayerWanted(state);
-  if (otherAi.lawful && selfIsPlayerSide) return isPlayerWanted(state);
+  if ((selfAi && selfAi.passive) || (otherAi && otherAi.passive)
+    || self.team === 2 || other.team === 2) return false;
+  if (selfAi && selfAi.lawful && otherIsPlayerSide) return isPlayerWanted(state);
+  if (otherAi && otherAi.lawful && selfIsPlayerSide) return isPlayerWanted(state);
   return self.team !== other.team;
 }
 
 function hasFactionFirstFireAuthority(actor, ai, target) {
   if (!actor || !target || !ai || ai.passive) return false;
-  const profile = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
+  const doctrine = ai.factionPresenceDoctrine;
+  if (!doctrine) return false;
+  const profile = normalizeFactionBehaviorProfile(doctrine);
   return !!profile && profile.firstFire === true
     && profile.firstFireAgainst.includes(target.factionId);
 }
