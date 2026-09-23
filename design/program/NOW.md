@@ -43,7 +43,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| CR-WEIR Helios corridor and Tethys cone | cursor-cr-weir | MUTATING | `src/world/customsWeir.js`, `src/presentation/customsWeir.js`, `src/systems/lawSecurity.js`, `src/render/vfx.js`, `test/customs-weir.test.mjs` | prove the gate sees a body and not the empty disc |
+| AQ-LIGHT foundry HDRI as image-based light (sky stays sector plate) | devin-aq-light | MUTATING | `src/render/foundryEnvironment.js`, `src/render/renderer.js` (env-bake hunks only), `assets/background/env/`, `test/foundry-environment.test.mjs`, `NOTICE`, `design/program/NOW.md` | wire + verify, then release row |
 | AQ-LOD whole-ship LOD: ranger lod1/lod2 real simplification | devin-aq-lod | DONE 38cbe05ef | `scripts/build-wholeship-lod.mjs`, `scripts/check-lod.mjs`, `scripts/lib/renderPackageCompiler.mjs`, `assets/ships/parts/wholeships/ranger_production_v1_lod{1,2}.glb`, `assets/ships/release/parts/wholeships/ranger_production_v1_lod{1,2}.glb`, `assets/ships/release/release_manifest.json`, `assets/ships/render-packages/pilots.json`, `assets/ships/release/render-packages/` (ranger lods + stale-set repair), `src/render/renderPackageManifest.js`, `test/ranger-wholeship-lod-quality.test.mjs`, `test/perf-submit-lod-archetype.test.mjs`, `design/program/DEMO_READINESS_2026-09-20.md` (D16, D17 rows) | recorded, released |
 | AQ-CAS contrast-adaptive sharpen on below-res frames | devin-aq-cas | DONE e0f3c4236 | `src/render/cas.js`, `src/render/casHeaders.generated.js`, `src/render/bloom.js`, `src/render/renderer.js`, `scripts/build-cas-shader.mjs`, `test/cas-sharpen.test.mjs`, `vendor/fidelityfx-cas/` | recorded, released |
 | INFERENCE catalog VERB-02 (opening raid already happening) | devin-inference-10 | DONE 0c4293e4d | `src/data/encounters/015-opening-hauler-raid.js`, `test/opening-hauler-raid-and-pursuit.test.mjs` | recorded, released |
@@ -55,6 +55,7 @@ working. Product status and remaining tasks live in
 | INFERENCE catalog PIC-08 (shove-kill schedule cause) | devin-catalog-grunt | DONE 26732571a | `src/systems/masslineThrow.js`, `src/systems/collisionConsequences.js`, `test/entity-killed-presentation-receipt.test.mjs` | recorded, released |
 | INFERENCE catalog TOOL-02 (hover and tab are different recordings) | devin-catalog-grunt | DONE df4d6bd90 | `assets/audio/ui/ui_hover.wav`, `assets/audio/ui/ui_tab.wav`, `src/audio/sampleLibrary.js`, `src/data/audioRecipes.js`, `assets/reference/cc0/PROVENANCE.md`, `test/audio-ui-hover-tab.test.mjs` | recorded, released |
 | Ten seam-polish fixes (user-requested cracks sweep) | devin-polish-ten | DONE 1d1d1c23e | `src/ui/input.js`, `src/ui/promptDeck.js`, `src/ui/screens/sandbox.js`, `src/ui/uiPrimitives.js`, `src/ui/hud.js`, `src/ui/commandBar.js`, `src/ui/galaxyMap.js`, `src/ui/screens/settings.js`, `src/ui/listControls.js`, `src/ui/bandHud.js`, `test/prompt-deck.test.mjs` | recorded, released |
+| B1 (§22.4): hours 1–10 still pay — income curve, encounters still spawn after hour 4 | zcode-gaprow-B1 | MUTATING | `src/systems/economy.js`, `src/systems/encounterDirector.js`, `test/b1-hours-income-encounter-supply.test.mjs` | derived-model fixture prints income > 0 post-hour-1 and hours-5–9 supply > 0 on seeds 4242 and 8008, then pathspec commit |
 
 
 
