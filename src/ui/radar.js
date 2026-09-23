@@ -86,6 +86,20 @@ const CAPITAL_DEFS = new Set(
 );
 
 const trailMap = new Map();
+// Retained {x,z} slots for contact trails. updateTrail used to allocate a fresh point and
+// shift() the dropped one into GC every time a contact moved ~20 wu — steady radar.draw churn.
+const trailPointPool = [];
+
+function releaseTrailHistory(history) {
+  if (!history || !history.length) return;
+  for (let i = 0; i < history.length; i += 1) trailPointPool.push(history[i]);
+  history.length = 0;
+}
+
+function clearAllTrails() {
+  for (const history of trailMap.values()) releaseTrailHistory(history);
+  trailMap.clear();
+}
 
 /**
  * Range-ring policy: show the farthest positive finite range among the active entity's live
@@ -168,8 +182,19 @@ function updateTrail(entity) {
   const dx = last ? entity.pos.x - last.x : Infinity;
   const dz = last ? entity.pos.z - last.z : Infinity;
   if (!last || dx * dx + dz * dz > 400) {
-    history.push({ x: entity.pos.x, z: entity.pos.z });
-    if (history.length > TRAIL_MAX) history.shift();
+    let pt;
+    if (history.length >= TRAIL_MAX) {
+      // Recycle the dropped tip — same FIFO picture, no alloc and no orphaned point.
+      pt = history.shift();
+      pt.x = entity.pos.x;
+      pt.z = entity.pos.z;
+      history.push(pt);
+    } else {
+      pt = trailPointPool.length ? trailPointPool.pop() : { x: 0, z: 0 };
+      pt.x = entity.pos.x;
+      pt.z = entity.pos.z;
+      history.push(pt);
+    }
   }
 }
 
@@ -770,7 +795,7 @@ export function createRadar(ctx) {
   }
 
   function onSectorEnter() {
-    trailMap.clear();
+    clearAllTrails();
     if (expanded) setExpanded(false);
     markContactsDirty();
   }
@@ -983,7 +1008,10 @@ export function createRadar(ctx) {
     if (trailPruneCountdown-- <= 0) {
       trailPruneCountdown = TRAIL_PRUNE_INTERVAL;
       for (const id of trailMap.keys()) {
-        if (!state.entities.has(id)) trailMap.delete(id);
+        if (!state.entities.has(id)) {
+          releaseTrailHistory(trailMap.get(id));
+          trailMap.delete(id);
+        }
       }
     }
 
@@ -1383,7 +1411,7 @@ export function createRadar(ctx) {
     }
     try { parityTeardown(); } catch (_) {}
     if (frame) { frame.dispose(); frame = null; }
-    trailMap.clear();
+    clearAllTrails();
   }
 
   return { el: wrap, draw, invalidate, destroy, setOrreryFrame };
