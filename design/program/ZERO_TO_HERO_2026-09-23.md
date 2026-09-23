@@ -39,6 +39,7 @@ Build-map entry: [`build_map.md` §25](../../build_map.md#25-zero-to-hero--the-a
 | **F3** | **The kill does not read.** | 400 ms after the first Crucible kill there is no wreck, burst or moved body anywhere you would see it. The four channels fire (`PQ-210.04`); at this scale they land on a few pixels. |
 | **F4** | **The HUD narrates.** | A permanent card, "Banking — primary fire (LMB) · recharging / Trap — Y · 6 remaining · armed"; a seven-line target card; "Bank St…" and "Concus…" cut off; a floating "Research unlocked gear."; the Massline's `CAN` state printed on a rock, where a stranger reads it as a cargo can; a nine-key tray as the teaching. The ORRERY flight cluster (v2–v4, landed an hour after these frames) replaces the card set with one ring instrument; the `CAN` word, the truncated band label and the truncated bottom-right legend were still on the glass after it. |
 | **F5** | **Screens are spreadsheets and the demo path is not a path.** | Station, results and the Crucible door are tables and card grids. The title lists Crucible fourth. Launch to first control in the Crucible took 81 s on a loaded machine (cook ledger: rock pools 13.6 s, Crucible warm 12.9 s, post-opening pipelines 14.0 s, first-frame pool census 15.3 s) — re-measure quiet before quoting it, but no quiet reading will make it 10 s. There is no demo build, no end-of-demo card, no bridge from results into adventure. |
+| **F6** | **On a busy machine the fight does not start.** *(found by the first stranger pass, 2026-09-23)* | 10–17 hostiles orbit the player at 180 WU for four minutes without firing, and after "Take it to the belt" the adventure opening paints only the sky. One cause: NPCs may fire and meshes may show only once their authored admission publishes, and that admission is one serial lane where ~50 jobs — Helios station furniture beside the arena included — queue ahead of the ships you are fighting. Load-dependent, so a quiet bench passes it. |
 
 ## 2. The look and feel: **see the body**
 
@@ -212,6 +213,9 @@ Everything else in this program already had an owner. These did not:
 10. A **trailer from replays**.
 11. A **stranger pass** closing every phase — a look at frames, because forty closed leaves did not
     move the frame.
+12. **Admission follows the law of the glass.** The bodies you are fighting load before the
+    dressing, and a mode never admits a sector it is not in. Found only by walking the path on a
+    busy machine (F6).
 
 ## 6. How agents get this wrong
 
