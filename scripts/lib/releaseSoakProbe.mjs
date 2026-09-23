@@ -2209,13 +2209,18 @@ async function exerciseMarketRoundtrip(page) {
     // window (~2.4s covers the tick cadence) before calling the row dead. Dead
     // rows still skip in ~2.5s instead of ~8s of retry budget, so a full-hold
     // walk cannot eat the whole 300s cycle (PQ-033.02 cycle-42 death).
-    if (commitQty != null) await qtyInput.fill(commitQty, { timeout: 1_500 }).catch(() => {});
+    // Enable-poll before the fill: on a dead row the fill is wasted latency
+    // (each protocol call costs ~1.5s on a contended page). Polls self-pace on
+    // the call's own latency — no extra sleep — and five samples cover the
+    // price-tick flicker window even when calls land slowly.
     const enableDeadline = Math.min(Date.now() + 2_400, walkDeadline);
-    while (Date.now() < enableDeadline) {
-      if (await pBound(tradeGo.isEnabled(), 4_000, false)) break;
-      await page.waitForTimeout(400);
+    let enabled = false;
+    for (let polls = 0; polls < 5 && Date.now() < enableDeadline; polls++) {
+      if (await pBound(tradeGo.isEnabled(), 4_000, false)) { enabled = true; break; }
+      await page.waitForTimeout(250);
     }
-    if (!(await pBound(tradeGo.isEnabled(), 4_000, false))) return null;
+    if (!enabled && !(await pBound(tradeGo.isEnabled(), 4_000, false))) return null;
+    if (commitQty != null) await qtyInput.fill(commitQty, { timeout: 1_500 }).catch(() => {});
     const before = await pBound(readTradeSnapshot(page, id), 5_000, null);
     if (!before) return null;
     // The console re-renders on every price tick: a GO node resolved before the click can be
