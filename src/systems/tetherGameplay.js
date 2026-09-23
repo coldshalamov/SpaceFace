@@ -13,6 +13,7 @@ import {
   stabilizeMasslineSelection,
 } from '../combat/masslineTargetScoring.js';
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
+import { stepLatchRepair } from '../combat/latchRepair.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { createMasslineRuntime } from '../core/constraints/masslineController.js';
@@ -218,6 +219,8 @@ export const tetherGameplay = {
     this._insideTetherUpdate = true;
     try { this._updateTetherGameplay(dt, state); }
     finally { this._insideTetherUpdate = false; }
+    // The line's own phase was just mirrored. Hull climbs only while that line is taut.
+    if (state && state.mode === 'flight') stepLatchRepair(state, dt);
   },
 
   _updateTetherGameplay(dt, state) {
