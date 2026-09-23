@@ -71,7 +71,7 @@ export function validateBank(bank) {
   ];
 
   if (bank.schemaVersion !== 1) errors.push(`schemaVersion must be 1; got ${bank.schemaVersion}.`);
-  if (tasks.length !== 1000) errors.push(`Expected exactly 1000 tasks; got ${tasks.length}.`);
+  if (tasks.length !== 171) errors.push(`Expected exactly 171 curated tasks; got ${tasks.length}.`);
   if (lanes.length !== 10) errors.push(`Expected exactly 10 lanes; got ${lanes.length}.`);
 
   tasks.forEach((task, index) => {
@@ -133,9 +133,9 @@ export function validateBank(bank) {
   if (bank.counts?.total !== tasks.length) errors.push('counts.total does not match tasks.');
 
   const collisionCounts = countBy(tasks, 'collisionKey');
-  const malformedCollisions = Object.entries(collisionCounts).filter(([, count]) => count !== 5);
+  const malformedCollisions = Object.entries(collisionCounts).filter(([, count]) => count < 1 || count > 5);
   if (malformedCollisions.length) {
-    errors.push(`Every collisionKey must own exactly five facets; malformed: ${JSON.stringify(malformedCollisions.slice(0, 10))}.`);
+    errors.push(`Every collisionKey must own one to five facets; malformed: ${JSON.stringify(malformedCollisions.slice(0, 10))}.`);
   }
 
   return {

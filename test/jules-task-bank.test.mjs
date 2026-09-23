@@ -14,39 +14,39 @@ import {
 
 const bank = loadBank(DEFAULT_BANK_PATH);
 
-test('task bank validates as exactly 1,000 contiguous directed tasks', () => {
+test('task bank validates as the curated set of directed tasks', () => {
   const result = validateBank(bank);
   assert.deepEqual(result.errors, []);
   assert.equal(result.ok, true);
-  assert.equal(result.stats.total, 1000);
-  assert.equal(result.stats.collisionKeys, 200);
+  assert.equal(result.stats.total, 171);
+  assert.equal(result.stats.collisionKeys, 136);
   assert.equal(bank.tasks[0].id, 'JULES-0001');
-  assert.equal(bank.tasks.at(-1).id, 'JULES-1000');
+  assert.equal(bank.tasks.at(-1).id, 'JULES-0171');
 });
 
 test('lane and model allocation remains intentional', () => {
   assert.deepEqual(bank.counts.byModel, {
-    'gemini-3.6-flash': 700,
-    'gemini-3.1-pro': 300,
+    'gemini-3.6-flash': 162,
+    'gemini-3.1-pro': 9,
   });
   assert.deepEqual(bank.counts.byLane, {
-    'test-hardening': 170,
-    'bug-hunt': 150,
-    'determinism-save': 90,
-    'performance-lifecycle': 90,
-    'ui-ux-accessibility': 100,
-    'ai-combat-flight': 100,
-    'world-economy-missions-mining': 100,
-    'render-assets-vfx-audio': 80,
-    'tooling-data-docs': 70,
-    'creative-expansion': 50,
+    'test-hardening': 40,
+    'bug-hunt': 50,
+    'determinism-save': 5,
+    'performance-lifecycle': 1,
+    'ui-ux-accessibility': 15,
+    'ai-combat-flight': 22,
+    'world-economy-missions-mining': 17,
+    'render-assets-vfx-audio': 5,
+    'tooling-data-docs': 7,
+    'creative-expansion': 9,
   });
 });
 
 test('every task is independently identifiable and executable', () => {
   const fields = ['id', 'title', 'slug', 'objective', 'branchHint'];
   for (const field of fields) {
-    assert.equal(new Set(bank.tasks.map((task) => task[field])).size, 1000, `${field} must be unique`);
+    assert.equal(new Set(bank.tasks.map((task) => task[field])).size, 171, `${field} must be unique`);
   }
   for (const task of bank.tasks) {
     assert.equal(task.work.length, 4, `${task.id} work steps`);
@@ -93,15 +93,15 @@ test('generated catalogs contain one heading for every canonical task', () => {
 
 test('selector is deterministic and respects collision caps', () => {
   const options = {
-    count: 300,
+    count: 100,
     models: normalizeModels('flash,pro'),
-    seed: '2026-08-27',
+    seed: '2026-09-22',
     maxPerCollision: 2,
   };
   const first = selectTasks(bank, options, { tasks: {} });
   const second = selectTasks(bank, options, { tasks: {} });
   assert.deepEqual(first.map((task) => task.id), second.map((task) => task.id));
-  assert.equal(first.length, 300);
+  assert.equal(first.length, 100);
 
   const counts = new Map();
   for (const task of first) counts.set(task.collisionKey, (counts.get(task.collisionKey) ?? 0) + 1);
@@ -128,14 +128,13 @@ test('selector avoids active collision keys and completed tasks', () => {
 
 
 test('claiming respects configurable collision caps', () => {
-  const pair = bank.tasks.filter((task) => task.collisionKey === bank.tasks[0].collisionKey).slice(0, 2);
+  const family = bank.tasks.filter((task) => task.collisionKey === bank.tasks[0].collisionKey);
+  const first = family.slice(0, 1);
   const state = { schemaVersion: 1, updatedAt: null, tasks: {} };
-  claimTasks(bank, state, pair, 'test-worker', false, 2);
-  assert.equal(Object.keys(state.tasks).length, 2);
-  const third = bank.tasks.find(
-    (task) => task.collisionKey === bank.tasks[0].collisionKey && !pair.some((item) => item.id === task.id),
-  );
-  assert.throws(() => claimTasks(bank, state, [third], 'test-worker', false, 2), /exceeds collision cap 2/);
+  claimTasks(bank, state, first, 'test-worker', false, 1);
+  assert.equal(Object.keys(state.tasks).length, 1);
+  const second = family[1];
+  assert.throws(() => claimTasks(bank, state, [second], 'test-worker', false, 1), /exceeds collision cap 1/);
 });
 
 test('model aliases map to exact Jules model identifiers', () => {
