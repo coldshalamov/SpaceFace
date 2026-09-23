@@ -340,8 +340,37 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-ro
 
 /* results: the death dial takes the right of the plate; the ledger and the story keep the left two
    columns; the kill-chain and last-seconds rows it draws stay for the ear only */
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__stage { grid-template-columns:minmax(260px, 330px) minmax(340px, 470px) minmax(0, 1fr) !important; column-gap:40px; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__dial { order:2; align-self:stretch; min-height:520px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__stage { grid-template-columns:minmax(0, min(600px, 46vw)) !important; grid-template-rows:auto minmax(0, 1fr); row-gap:18px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__ledger { grid-column:1; grid-row:1; overflow:visible !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story { grid-column:1; grid-row:2; min-height:0; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial > .sf-crres__dial { position:absolute; top:28px; bottom:112px; right:max(56px, 3.5vw); width:min(46vw, 880px); z-index:1; }
+/* the ledger's rows stay for the ear; the eye reads four figures */
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="ledger"] { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; margin:0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figures { display:flex; flex-wrap:wrap; column-gap:34px; row-gap:4px; margin:0 0 6px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figure { display:flex; flex-direction:column; margin:0; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figure__n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:300; font-size:clamp(30px, 4vh, 44px); line-height:1;
+  font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.02em; color:rgb(246 241 230); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figure__w { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px; letter-spacing:.24em;
+  text-transform:uppercase; color:rgb(236 230 216 / .62); margin-top:6px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figures__rest { flex-basis:100%; margin:8px 0 0; font-size:12px; color:rgb(236 230 216 / .6); }
+/* the round reached lives in the figures and on the dial; no celebration on a death */
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__hero { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .k-title .k-t-title { background-image:linear-gradient(0deg, rgb(236 230 216 / .5) 2px, transparent 0) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crd-headline { text-wrap:balance; max-width:44ch; }
+/* the story in three sentences; the build as a track of nodes on a hairline */
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="story"] .sf-crres__story-line ~ .sf-crres__story-line ~ .sf-crres__story-line ~ .sf-crres__story-line { display:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial :is(.sf-crres__causal, .sf-crres__build-code) { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build { display:flex !important; position:relative; margin-top:12px !important; padding-top:20px !important; border:0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build::before { content:""; position:absolute; left:5px; right:12%; top:6px; height:1px; background:rgb(236 230 216 / .34); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step { flex:1 1 0; display:block !important; position:relative; border:0 !important; padding:0 12px 0 0 !important; min-height:0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step::before { content:""; position:absolute; left:1px; top:-19px; width:9px; height:9px; border-radius:50%; background:#0b0a09;
+  box-shadow:inset 0 0 0 1.5px rgb(236 230 216 / .85); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step .k-row__sub { display:block; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px; letter-spacing:.2em;
+  text-transform:uppercase; color:rgb(236 230 216 / .6); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step .sf-crres__step-verb { display:block; margin:2px 0 0 !important; font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 720, "wdth" 118;
+  font-size:17px; color:rgb(240 235 224); white-space:normal; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step .k-row__num { display:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__seed { margin:6px 0 0; font-size:11.5px; letter-spacing:.06em; color:rgb(236 230 216 / .6); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band:is([data-band="kill_chain"], [data-band="last_seconds"]) { position:absolute !important; width:1px; height:1px; overflow:hidden;
   clip:rect(0 0 0 0); white-space:nowrap; margin:0 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__hero { z-index:3; }

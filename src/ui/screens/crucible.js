@@ -2234,11 +2234,14 @@ export const crucibleResultsScreen = {
     if (ORRERY && result && result.defeat) {
       const dialHost = el('div', 'sf-crres__dial');
       dialHost.setAttribute('aria-hidden', 'true');
-      // built detached; it joins the plate only where it can draw (a real layout, SVG)
+      // built detached; it joins the plate only where it can draw (a real layout, SVG). It stands in
+      // the right of the whole plate, beside the title as well as the columns, so it has the height.
       this._dial = createDeathDial({ host: dialHost, ...deathDialSpec(result, ctx) });
       if (this._dial.active()) {
-        stage.appendChild(dialHost);
+        rootEl.appendChild(dialHost);
         rootEl.classList.add('has-deathdial');
+        // the run in four figures at the head of the left column; the full ledger stays for the ear
+        ledger.insertBefore(resultFigures(result), ledger.firstChild);
       }
     }
 
@@ -2318,6 +2321,9 @@ export const crucibleResultsScreen = {
 
     foot.appendChild(footWords);
     rootEl.appendChild(foot);
+    if (this._dial && this._dial.active() && result && result.seed != null && again.parentElement) {
+      again.parentElement.appendChild(el('p', 'k-t-fine sf-crres__seed', `Seed ${result.seed}`));
+    }
     this._regions = { title: h, story, ledger, foot, again };
     rootEl.dataset.kReady = '1';
     if (typeof again.focus === 'function') {
@@ -2352,6 +2358,29 @@ export const crucibleResultsScreen = {
   },
 };
 
+/** The run in four figures, for the head of the plate beside the death dial. */
+function resultFigures(result) {
+  const swarm = result.ruleset === SWARM_RULESET;
+  const reached = Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0);
+  const figures = [
+    ['Wave', String(reached || 0)],
+    ['Kills', String(result.kills || 0)],
+    swarm ? ['Best chain', String(result.bestChain || 0)] : ['Score', String(result.score || 0)],
+    ['Salvage', `${result.credits || 0}`],
+  ];
+  const box = el('div', 'orr-crres-figures');
+  for (const [word, value] of figures) {
+    const fig = el('p', 'orr-crres-figure');
+    fig.appendChild(el('span', 'orr-crres-figure__n', value));
+    fig.appendChild(el('span', 'orr-crres-figure__w', word));
+    box.appendChild(fig);
+  }
+  const rest = [swarm ? `Score ${result.score || 0}` : null, `Level ${result.level || 1}`, `${result.xp || 0} xp`]
+    .filter(Boolean).join(' · ');
+  box.appendChild(el('p', 'k-t-fine orr-crres-figures__rest', rest));
+  return box;
+}
+
 /**
  * What the death dial draws, in the plate's own words: the kill chain, what was left, the last hits.
  * DOM-free; the dial only lays it out.
@@ -2381,6 +2410,7 @@ export function deathDialSpec(result, ctx) {
     hitAmounts: trail.map((e) => Number(e && e.amount)).filter((n) => Number.isFinite(n) && n > 0),
     hitGroups: breakdown.rows.map((r) => ({ weapon: r.weapon, hits: r.hits, amount: r.amount })),
     hitSummary: breakdown.hits ? `Last ${breakdown.hits} hit${breakdown.hits === 1 ? '' : 's'} · ${breakdown.total} damage` : '',
+    engraving: Number(result.deepestWave || result.wave) > 0 ? `Wave ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',
     caption: {
       label: 'Killed by',
       name: rows.get('Killed by') || 'Unidentified attacker',

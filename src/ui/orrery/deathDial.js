@@ -2,15 +2,15 @@
 // Crucible results).
 //
 // The ship at the centre as its bone line drawing, nose up. Round it, what was left of it when the
-// killing blow landed: three arcs (shield, armour, hull), their gap turned to face the blow. Round
-// those, the compass (bow, starboard, astern, port). The blow itself comes in from its bearing as a
-// red blade to the hull's edge, with the danger sector lit on the compass and the killer named at
-// the blade's tail. Opposite it, the last hits taken sit as red ticks on an arc of time, each as long
-// as the damage it did, grouped and named by weapon.
+// killing blow landed: three gauges (shield, armour, hull) engraved with their own names, their gap
+// turned to face the blow. Round those, the compass (bow, starboard, astern, port). The blow comes in
+// from its bearing as a slim red blade to the hull's edge across a faint red danger wedge. Under the
+// dial, the killer is named, and the last hits run left to right as a strip of ticks, each as tall as
+// the damage it did, the last one the blow itself.
 //
-// Red is threat, and only the blow and the hits are threat. Everything else is bone light. The
-// words are the screen's own (crucible.js decides them); this only lays them out. No layout (node
-// tests) or no SVG: it stands down, and the screen's rows carry the same facts.
+// Red is threat, and only the blow, the wedge, the emptied gauges and the hits are threat. Everything
+// else is bone light. The words are the screen's own (crucible.js decides them); this only lays them
+// out. No layout (node tests) or no SVG: it stands down, and the screen's rows carry the same facts.
 
 import { svg, polar, arcD, ticksD, circularText } from './svg.js';
 import { injectOrrery } from './tokens.js';
@@ -22,25 +22,24 @@ const CSS = `
 .orr-deathdial { position:relative; min-width:0; min-height:0; pointer-events:none; }
 .orr-deathdial__pool { position:absolute; border-radius:50%; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .82), rgb(4 6 9 / .6) 60%, rgb(4 6 9 / 0)); }
-.orr-deathdial__hull { position:absolute; pointer-events:none; opacity:.92; }
+.orr-deathdial__hull { position:absolute; pointer-events:none; opacity:.94; }
 .orr-deathdial__svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
 .orr-deathdial .orr-threat-fill { fill:var(--dp-danger, #ff5038); }
-.orr-deathdial__caption { position:absolute; width:460px; box-sizing:border-box; }
-.orr-deathdial__caption.is-left { text-align:right; }
-.orr-deathdial__caption.is-centre { text-align:center; }
-.orr-deathdial__k { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10.5px; letter-spacing:.28em;
-  text-transform:uppercase; color:rgb(255 120 96 / .9); margin:0 0 6px; }
+.orr-deathdial__caption { position:absolute; box-sizing:border-box; text-align:center; }
+.orr-deathdial__k { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px; letter-spacing:.28em;
+  text-transform:uppercase; color:rgb(255 120 96 / .92); margin:0 0 6px; }
 .orr-deathdial__name { font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 760, "wdth" 120; font-size:22px; line-height:1.1;
-  color:rgb(246 241 230); margin:0; text-shadow:0 1px 0 rgb(0 0 0 / .6), 0 0 16px rgb(0 0 0 / .8); }
-.orr-deathdial__detail { font-size:13px; line-height:1.4; color:rgb(236 230 216 / .78); margin:6px 0 0; text-shadow:0 0 10px rgb(0 0 0 / .8); }
-.orr-deathdial__warn { font-size:12px; line-height:1.35; color:rgb(236 230 216 / .66); margin:4px 0 0; }
-.orr-deathdial__groups { font-size:11.5px; line-height:1.35; letter-spacing:.02em; color:rgb(255 150 128 / .82); margin:8px 0 0; white-space:pre-wrap; }
-.orr-deathdial .orr-deathdial__vital text { font-size:10px; font-weight:650; letter-spacing:.16em; fill:rgb(236 230 216 / .72); }
-.orr-deathdial .orr-deathdial__vital text .orr-deathdial__pct { fill:rgb(255 120 96); }
-.orr-deathdial .orr-deathdial__card text { font-size:10px; font-weight:650; letter-spacing:.3em; fill:rgb(236 230 216 / .5); }
-.orr-deathdial .orr-deathdial__card.is-threat text { fill:rgb(255 120 96); }
-.orr-deathdial .orr-deathdial__hits text { font-size:10.5px; font-weight:650; letter-spacing:.02em; fill:rgb(255 150 128 / .9); }
-.orr-deathdial .orr-deathdial__hitsum text { font-size:10px; font-weight:650; letter-spacing:.3em; fill:rgb(236 230 216 / .55); }
+  color:rgb(246 241 230); margin:0; text-wrap:balance; text-shadow:0 1px 0 rgb(0 0 0 / .6), 0 0 16px rgb(0 0 0 / .8); }
+.orr-deathdial__detail { font-size:13px; line-height:1.4; color:rgb(236 230 216 / .8); margin:6px 0 0; text-shadow:0 0 10px rgb(0 0 0 / .8); }
+.orr-deathdial__warn { font-size:12.5px; line-height:1.35; color:rgb(236 230 216 / .7); margin:4px 0 0; }
+.orr-deathdial__strip { display:block; margin:14px auto 0; overflow:visible; }
+.orr-deathdial__strip text { font-family:var(--dp-face-label, "Archivo"); font-size:10.5px; font-weight:650; fill:rgb(255 150 128 / .92); }
+.orr-deathdial__strip text.orr-deathdial__strip-word { font-size:10px; letter-spacing:.24em; fill:rgb(236 230 216 / .6); }
+.orr-deathdial__groups { font-size:12px; line-height:1.4; color:rgb(255 150 128 / .86); margin:6px 0 0; }
+.orr-deathdial .orr-deathdial__gauge text { font-weight:650; letter-spacing:.14em; fill:rgb(236 230 216 / .78); }
+.orr-deathdial .orr-deathdial__gauge.is-empty text { fill:rgb(255 140 118 / .92); }
+.orr-deathdial .orr-deathdial__card text { font-size:10px; font-weight:650; letter-spacing:.3em; fill:rgb(236 230 216 / .52); }
+.orr-deathdial .orr-deathdial__engrave text { font-size:10px; font-weight:650; letter-spacing:.3em; fill:rgb(236 230 216 / .5); }
 .orr-deathdial__rise { opacity:0; animation:orr-dd-rise .6s var(--dp-ease-out, ease-out) forwards; animation-delay:var(--orr-delay, 0ms); }
 @keyframes orr-dd-rise { to { opacity:1; } }
 .orr-deathdial__blade { animation:orr-dd-strike .7s cubic-bezier(.2, .9, .2, 1) .5s both; transform-box:view-box; }
@@ -63,16 +62,17 @@ const INERT = Object.freeze({ active: () => false, relayout() {}, dispose() {} }
 
 /**
  * @param {object} o
- * @param {HTMLElement} o.host an empty positioned box the dial fills
+ * @param {HTMLElement} o.host an empty box the dial fills (the caption sits in its lower part)
  * @param {string} [o.hullId] the run's hull (its bone drawing stands at the centre)
  * @param {string} [o.direction] FRONT | AFT | PORT | STARBOARD | CONTACT (point blank) | unknown
  * @param {{word:string, value:number}[]} [o.vitals] what was left, 0..100, in shield/armour/hull order
- * @param {number[]} [o.hitAmounts] the last hits, oldest first
+ * @param {number[]} [o.hitAmounts] the last hits, oldest first (the last is the blow)
  * @param {{weapon:string, hits:number, amount:number}[]} [o.hitGroups] the same hits by weapon
  * @param {string} [o.hitSummary] e.g. "Last 5 hits · 74 damage"
+ * @param {string} [o.engraving] set on the dial's rim opposite the blow (e.g. "Wave 6")
  * @param {{label:string, name:string, detail:string, warn?:string}} [o.caption] the killer, named
  */
-export function createDeathDial({ host, hullId = null, direction = null, vitals = [], hitAmounts = [], hitGroups = [], hitSummary = '', caption = null } = {}) {
+export function createDeathDial({ host, hullId = null, direction = null, vitals = [], hitAmounts = [], hitGroups = [], hitSummary = '', engraving = '', caption = null } = {}) {
   const doc = host && host.ownerDocument;
   if (!doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function') return INERT;
   injectOrrery(doc);
@@ -89,23 +89,52 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
   if (url) hull.src = url; else hull.hidden = true;
   const layer = svg('svg', { class: 'orr-svg orr-deathdial__svg' });
   for (const n of [pool, hull, layer]) n.setAttribute('aria-hidden', 'true');
+
+  // the caption: the killer, the tell, the last hits as a strip, the weapons behind them
   const cap = doc.createElement('div');
   cap.className = 'orr-deathdial__caption orr-deathdial__rise';
   cap.style.setProperty('--orr-delay', '900ms');
   cap.setAttribute('aria-hidden', 'true');
+  const hits = hitAmounts.filter((n) => Number.isFinite(n) && n > 0);
   if (caption) {
-    const line = (tag, cls, text) => { if (!text) return; const n = doc.createElement(tag); n.className = cls; n.textContent = text; cap.appendChild(n); };
-    line('p', 'orr-deathdial__k', caption.label);
-    line('p', 'orr-deathdial__name', caption.name);
-    line('p', 'orr-deathdial__detail', caption.detail);
-    line('p', 'orr-deathdial__warn', caption.warn);
-    const groups = hitGroups.slice(0, 3);
-    if (groups.length) {
-      const list = doc.createElement('p');
-      list.className = 'orr-deathdial__groups';
-      list.textContent = groups.map((grp) => `${grp.weapon} ${grp.hits}× · ${grp.amount}`).join('   ');
-      cap.appendChild(list);
+    const line = (cls, text) => { if (!text) return; const n = doc.createElement('p'); n.className = cls; n.textContent = text; cap.appendChild(n); };
+    line('orr-deathdial__k', caption.label);
+    line('orr-deathdial__name', caption.name);
+    line('orr-deathdial__detail', caption.detail);
+    line('orr-deathdial__warn', caption.warn);
+  }
+  if (hits.length) {
+    // time runs left to right; each tick is as tall as its damage; the last is the blow
+    const n = hits.length;
+    const pitch = 34;
+    const Wd = Math.max(200, 80 + pitch * (n - 1) + 80);
+    const x0 = (Wd - pitch * (n - 1)) / 2;
+    const base = 56;
+    const strip = svg('svg', { class: 'orr-svg orr-deathdial__strip', width: Wd, height: 74, viewBox: `0 0 ${Wd} 74` });
+    const max = Math.max(...hits);
+    strip.appendChild(svg('path', { d: `M ${x0 - 22} ${base} L ${x0 + pitch * (n - 1) + 22} ${base}`, class: 'orr-core orr-faint', 'stroke-width': 1 }));
+    hits.forEach((amount, i) => {
+      const x = x0 + pitch * i;
+      const h = 6 + (30 * amount) / max;
+      const last = i === n - 1;
+      strip.appendChild(svg('path', { d: `M ${x} ${base} L ${x} ${base - h}`, class: 'orr-core orr-threat', 'stroke-width': last ? 4 : 2.4, opacity: last ? '1' : '.62' }));
+      const t = svg('text', { x, y: base - h - 6, 'text-anchor': 'middle' });
+      t.textContent = String(Math.round(amount));
+      strip.appendChild(t);
+    });
+    if (hitSummary) {
+      const w = svg('text', { x: Wd / 2, y: 72, 'text-anchor': 'middle', class: 'orr-deathdial__strip-word' });
+      w.textContent = hitSummary.toUpperCase();
+      strip.appendChild(w);
     }
+    cap.appendChild(strip);
+  }
+  const groups = hitGroups.slice(0, 3);
+  if (groups.length) {
+    const list = doc.createElement('p');
+    list.className = 'orr-deathdial__groups';
+    list.textContent = groups.map((grp) => `${grp.weapon} ${grp.hits}× · ${grp.amount}`).join('   ');
+    cap.appendChild(list);
   }
   host.append(pool, hull, layer, cap);
 
@@ -119,26 +148,17 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
     frame = 0;
     const W = host.clientWidth || 0;
     const H = host.clientHeight || 0;
-    if (W < 300 || H < 300) return;
-    // which side the killer's name goes: out along the blow, or under the dial when there is none
-    const capSide = blowDeg == null ? 'bottom'
-      : (blowDeg === 0 ? 'top' : blowDeg === 180 ? 'bottom' : blowDeg === 90 ? 'right' : 'left');
-    const capW = 460; const capH = caption ? 128 : 0;
-    const Rc = Math.max(120, Math.min(236,
-      (capSide === 'left' || capSide === 'right' ? (W - capW - 40) / 2 - 70 : W / 2 - 80),
-      (capSide === 'top' || capSide === 'bottom' ? (H - capH - 60) / 2 - 80 : H / 2 - 80)));
-    let cx = W / 2; let cy = H / 2;
-    if (capSide === 'bottom') cy = Math.max(Rc + 70, (H - capH - 40) / 2);
-    if (capSide === 'top') cy = Math.min(H - Rc - 70, (H + capH + 40) / 2);
-    if (capSide === 'right') cx = Math.max(Rc + 70, (W - capW - 40) / 2);
-    if (capSide === 'left') cx = Math.min(W - Rc - 70, (W + capW + 40) / 2);
-
-    // words set on a ring, centred on a bearing, reading left to right on whichever half they sit
-    // (circularText centres its words a quarter-turn on from where its path starts)
-    const ringWord = (r, deg, text, className) => {
-      const upright = deg > 90 && deg < 270;
-      return circularText(cx, cy, r, text, { startDeg: upright ? deg + 90 : deg - 90, size: 10, anchor: 'middle', upright, className });
-    };
+    if (W < 260 || H < 300) return;
+    // the caption always sits under the dial; the dial takes what is left, with room round it for
+    // the compass words and the blade's tail
+    const capW = Math.min(520, W);
+    cap.style.width = `${capW}px`;
+    const capH = cap.offsetHeight || 180;
+    const room = H - capH - 24;
+    const Rc = Math.max(90, Math.min(240, W / 2 - 58, room / 2 - 58));
+    const cx = W / 2;
+    const cy = 58 + Rc + Math.max(0, (room - 2 * (Rc + 58)) / 2);
+    Object.assign(cap.style, { left: `${Math.round((W - capW) / 2)}px`, top: `${Math.round(cy + Rc + 72)}px` });
     const reach = Rc + 150;
     Object.assign(pool.style, { left: `${cx - reach}px`, top: `${cy - reach}px`, width: `${reach * 2}px`, height: `${reach * 2}px` });
     // the drawing: its frame is square with the ship ~0.85 of it; the ship spans ~1.05 Rc
@@ -153,6 +173,21 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
       node.style.setProperty('--orr-delay', `${delay}ms`);
       return node;
     };
+    // words set on a ring, centred on a bearing, reading left to right on whichever half they sit
+    // (circularText centres its words a quarter-turn on from where its path starts)
+    const ringWord = (r, deg, text, className) => {
+      const upright = deg > 90 && deg < 270;
+      return circularText(cx, cy, r, text, { startDeg: upright ? deg + 90 : deg - 90, size: 10, anchor: 'middle', upright, className });
+    };
+
+    // the danger wedge first, under everything: 20 degrees from the centre to the rim
+    if (blowDeg != null) {
+      const [ax, ay] = polar(cx, cy, Rc, blowDeg - 10);
+      const [bx, by] = polar(cx, cy, Rc, blowDeg + 10);
+      const wedge = `M ${cx.toFixed(1)} ${cy.toFixed(1)} L ${ax.toFixed(1)} ${ay.toFixed(1)} A ${Rc} ${Rc} 0 0 1 ${bx.toFixed(1)} ${by.toFixed(1)} Z`;
+      layer.appendChild(rise(svg('path', { d: wedge, class: 'orr-threat-fill', opacity: '.1' }), 440));
+      layer.appendChild(rise(svg('path', { d: `M ${cx.toFixed(1)} ${cy.toFixed(1)} L ${ax.toFixed(1)} ${ay.toFixed(1)} M ${cx.toFixed(1)} ${cy.toFixed(1)} L ${bx.toFixed(1)} ${by.toFixed(1)}`, class: 'orr-core orr-threat', 'stroke-width': 1, opacity: '.55' }), 440));
+    }
 
     // the compass
     const compass = svg('g');
@@ -161,114 +196,67 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
       svg('path', { d: ticksD(cx, cy, Rc, 72, { len: 4, major: 9, majorLen: 11 }), class: 'orr-core orr-faint', 'stroke-width': 1 }),
     );
     layer.appendChild(rise(compass, 0));
-    const cards = [['Bow', 0], ['Starboard', 90], ['Astern', 180], ['Port', 270]];
-    // the blow's own bearing is named at its tail, not on the ring its blade crosses
-    for (const [word, deg] of cards) {
+    // the blow's own bearing is named in the caption, not on the ring its blade crosses
+    for (const [word, deg] of [['Bow', 0], ['Starboard', 90], ['Astern', 180], ['Port', 270]]) {
       if (blowDeg === deg) continue;
       layer.appendChild(rise(ringWord(Rc + 16, deg, word.toUpperCase(), 'orr-deathdial__card'), 80));
     }
+    if (engraving) {
+      const at = blowDeg == null ? 0 : (blowDeg + 180) % 360;
+      layer.appendChild(rise(ringWord(Rc + 36, at, engraving.toUpperCase(), 'orr-deathdial__engrave'), 120));
+    }
 
-    // what was left: three arcs, their gap turned to the blow
+    // what was left: three gauges, their gap turned to the blow, each engraved with its own name
     const gapAt = blowDeg == null ? 180 : blowDeg;
-    const a0 = gapAt + 38; const a1 = gapAt + 322;
-    const radii = [0.88, 0.76, 0.64].map((f) => f * Rc);
+    const a0 = gapAt + 30; const a1 = gapAt + 330;
+    const radii = [0.86, 0.75, 0.64].map((f) => f * Rc);
     vitals.slice(0, 3).forEach((vital, i) => {
       const r = radii[i];
-      const g = svg('g', { class: 'orr-deathdial__vital' });
-      g.appendChild(svg('path', { d: arcD(cx, cy, r, a0, a1), class: 'orr-core orr-faint', 'stroke-width': 3 }));
       const pct = Math.max(0, Math.min(100, Number(vital.value) || 0));
-      if (pct > 0) g.appendChild(svg('path', { d: arcD(cx, cy, r, a0, a0 + ((a1 - a0) * pct) / 100), class: 'orr-core orr-hi', 'stroke-width': 3 }));
-      // emptied: a red cap where the arc starts
-      const [e0x, e0y] = polar(cx, cy, r - 5, a0);
-      const [e1x, e1y] = polar(cx, cy, r + 5, a0);
-      g.appendChild(svg('path', { d: `M ${e0x.toFixed(1)} ${e0y.toFixed(1)} L ${e1x.toFixed(1)} ${e1y.toFixed(1)}`, class: 'orr-core orr-threat', 'stroke-width': 2 }));
-      // its word at the arc's start, set just inside the gap
-      const [tx, ty] = polar(cx, cy, r, a0 - 5);
-      const onLeft = tx < cx;
-      const t = svg('text', { x: tx.toFixed(1), y: (ty + 3.5).toFixed(1), 'text-anchor': onLeft ? 'end' : 'start' });
-      t.textContent = `${String(vital.word).toUpperCase()} `;
-      const v = svg('tspan', { class: 'orr-deathdial__pct' });
-      v.textContent = `${Math.round(pct)}%`;
-      t.appendChild(v);
-      g.appendChild(t);
+      const g = svg('g', { class: `orr-deathdial__gauge${pct === 0 ? ' is-empty' : ''}` });
+      // the label runs along the gauge's first stretch; the track and the reading start after it
+      // (the engraving's length at its size, as an angle on this gauge; small dials set it smaller)
+      const fs = Rc < 170 ? 8.5 : 9.5;
+      const labelSpan = Math.min(120, (((String(vital.word).length + 5) * fs * 0.78) / r) * (180 / Math.PI) + 4);
+      const t0 = a0 + labelSpan + 3;
+      const split = t0 + ((a1 - t0) * pct) / 100;
+      g.appendChild(svg('path', { d: arcD(cx, cy, r, t0, a1), class: 'orr-core orr-rest', 'stroke-width': 3, opacity: '.28' }));
+      if (pct > 0) g.appendChild(svg('path', { d: arcD(cx, cy, r, t0, split), class: 'orr-core orr-hi', 'stroke-width': 3, opacity: '.95' }));
+      if (pct < 100) g.appendChild(svg('path', { d: arcD(cx, cy, r, split, a1), class: 'orr-core orr-threat', 'stroke-width': 1, 'stroke-dasharray': '2 3', opacity: '.7' }));
+      // the emptied mark: a red cap where the gauge's reading stops
+      const [c0x, c0y] = polar(cx, cy, r - 5, split);
+      const [c1x, c1y] = polar(cx, cy, r + 5, split);
+      g.appendChild(svg('path', { d: `M ${c0x.toFixed(1)} ${c0y.toFixed(1)} L ${c1x.toFixed(1)} ${c1y.toFixed(1)}`, class: 'orr-core orr-threat', 'stroke-width': 3 }));
+      // the name and the reading, engraved along the gauge (upright on the lower half)
+      const mid = a0 + labelSpan / 2;
+      const norm = ((mid % 360) + 360) % 360;
+      const upright = norm > 90 && norm < 270;
+      const words = `${String(vital.word).toUpperCase()} ${Math.round(pct)}%`;
+      g.appendChild(circularText(cx, cy, r - 3.5, words, { startDeg: upright ? mid + 90 : mid - 90, size: fs, anchor: 'middle', upright }));
       layer.appendChild(rise(g, 200 + i * 80));
     });
 
-    // the last hits: red ticks on an arc of time opposite the blow, oldest first, clockwise
-    const hits = hitAmounts.filter((n) => Number.isFinite(n) && n > 0);
-    if (hits.length) {
-      const mid = (gapAt + 180) % 360;
-      const span = Math.min(84, 14 * hits.length + 16);
-      const h0 = mid - span / 2; const h1 = mid + span / 2;
-      const rh = Rc + 34;
-      const g = svg('g', { class: 'orr-deathdial__hits' });
-      g.appendChild(svg('path', { d: arcD(cx, cy, rh, h0, h1), class: 'orr-core orr-faint', 'stroke-width': 1 }));
-      const max = Math.max(...hits);
-      hits.forEach((amount, i) => {
-        const a = hits.length > 1 ? h0 + 6 + ((span - 12) * i) / (hits.length - 1) : mid;
-        // each tick stands out from the arc, as long as the damage it did
-        const len = 6 + (20 * amount) / max;
-        const [x0, y0] = polar(cx, cy, rh, a);
-        const [x1, y1] = polar(cx, cy, rh + len, a);
-        g.appendChild(svg('path', { d: `M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`, class: 'orr-core orr-threat', 'stroke-width': 2.6 }));
-        // what that hit took, at its tick
-        const [nx, ny] = polar(cx, cy, rh + len + 10, a);
-        const n = svg('text', { x: nx.toFixed(1), y: (ny + 3.5).toFixed(1), 'text-anchor': 'middle' });
-        n.textContent = String(Math.round(amount));
-        g.appendChild(n);
-      });
-      layer.appendChild(rise(g, 420));
-      if (hitSummary) layer.appendChild(rise(ringWord(rh + 56, mid, hitSummary.toUpperCase(), 'orr-deathdial__hitsum'), 480));
-    }
-
-    // the blow: a red blade in from its bearing to the hull's edge, the danger sector on the compass
+    // the blow: a slim red blade from its bearing to the hull's edge, a bright tip where it went in
     const hullHalf = (blowDeg === 90 || blowDeg === 270 ? 0.3 : 0.5) * size;
     if (blowDeg != null) {
-      const sector = svg('g');
-      sector.append(
-        svg('path', { d: arcD(cx, cy, Rc, blowDeg - 14, blowDeg + 14), class: 'orr-bloom orr-threat', 'stroke-width': 9, opacity: '.25' }),
-        svg('path', { d: arcD(cx, cy, Rc, blowDeg - 14, blowDeg + 14), class: 'orr-core orr-threat', 'stroke-width': 2.4 }),
-      );
-      layer.appendChild(rise(sector, 460));
-      const tipR = hullHalf * 0.86;
-      const tailR = Rc + 78;
+      const tipR = hullHalf * 0.88;
+      const tailR = Rc + 52;
       const [tx, ty] = polar(cx, cy, tipR, blowDeg);
-      const half = (Math.atan(7 / tailR) * 180) / Math.PI;
+      const half = (Math.atan(3 / tailR) * 180) / Math.PI;
       const [b0x, b0y] = polar(cx, cy, tailR, blowDeg - half);
       const [b1x, b1y] = polar(cx, cy, tailR, blowDeg + half);
       const blade = svg('g', { class: 'orr-deathdial__blade' });
       const [ox, oy] = polar(cx, cy, 60, blowDeg);
       blade.style.setProperty('--orr-strike-from', `translate(${(ox - cx).toFixed(1)}px, ${(oy - cy).toFixed(1)}px)`);
       blade.append(
-        svg('path', { d: `M ${b0x.toFixed(1)} ${b0y.toFixed(1)} L ${tx.toFixed(1)} ${ty.toFixed(1)} L ${b1x.toFixed(1)} ${b1y.toFixed(1)}`, class: 'orr-bloom orr-threat', 'stroke-width': 10, opacity: '.2' }),
-        svg('path', { d: `M ${b0x.toFixed(1)} ${b0y.toFixed(1)} L ${tx.toFixed(1)} ${ty.toFixed(1)} L ${b1x.toFixed(1)} ${b1y.toFixed(1)} Z`, class: 'orr-threat-fill', opacity: '.92' }),
+        svg('path', { d: `M ${b0x.toFixed(1)} ${b0y.toFixed(1)} L ${tx.toFixed(1)} ${ty.toFixed(1)} L ${b1x.toFixed(1)} ${b1y.toFixed(1)}`, class: 'orr-bloom orr-threat', 'stroke-width': 8, opacity: '.18' }),
+        svg('path', { d: `M ${b0x.toFixed(1)} ${b0y.toFixed(1)} L ${tx.toFixed(1)} ${ty.toFixed(1)} L ${b1x.toFixed(1)} ${b1y.toFixed(1)} Z`, class: 'orr-threat-fill', opacity: '.95' }),
+        svg('circle', { cx: tx.toFixed(1), cy: ty.toFixed(1), r: 6, class: 'orr-threat-fill', opacity: '.25' }),
+        svg('circle', { cx: tx.toFixed(1), cy: ty.toFixed(1), r: 2.6, fill: 'rgb(255 214 200)' }),
       );
-      // the impact: a small star where it went in
-      const burst = [];
-      for (let k = 0; k < 8; k += 1) {
-        const a = blowDeg + 180 + k * 45;
-        const [r0x, r0y] = polar(tx, ty, 5, a);
-        const [r1x, r1y] = polar(tx, ty, k % 2 ? 9 : 14, a);
-        burst.push(`M ${r0x.toFixed(1)} ${r0y.toFixed(1)} L ${r1x.toFixed(1)} ${r1y.toFixed(1)}`);
-      }
-      blade.appendChild(svg('path', { d: burst.join(' '), class: 'orr-core orr-threat', 'stroke-width': 1.6 }));
-      blade.appendChild(svg('circle', { cx: tx.toFixed(1), cy: ty.toFixed(1), r: 3.2, class: 'orr-threat-fill' }));
       layer.appendChild(blade);
     } else if (pointBlank) {
       layer.appendChild(rise(svg('path', { d: arcD(cx, cy, hullHalf * 0.95, 0, 360), class: 'orr-core orr-threat', 'stroke-width': 2, 'stroke-dasharray': '3 4' }), 460));
-    }
-
-    // the killer's name at the blade's tail
-    if (caption) {
-      const [px, py] = blowDeg == null ? [cx, cy + Rc + 60] : polar(cx, cy, Rc + 88, blowDeg);
-      cap.classList.toggle('is-left', capSide === 'left');
-      cap.classList.toggle('is-centre', capSide === 'top' || capSide === 'bottom');
-      let left = px - capW / 2; let top = py;
-      if (capSide === 'top') top = py - capH;
-      if (capSide === 'right') { left = px + 6; top = py - capH / 2; }
-      if (capSide === 'left') { left = px - capW - 6; top = py - capH / 2; }
-      left = Math.max(0, Math.min(W - capW, left));
-      Object.assign(cap.style, { left: `${Math.round(left)}px`, top: `${Math.round(top)}px` });
     }
     drawn = true;
   }
@@ -281,6 +269,7 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
   };
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null;
   if (ro) ro.observe(host);
+  if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(schedule);
   schedule();
 
   return {
