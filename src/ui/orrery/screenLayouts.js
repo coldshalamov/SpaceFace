@@ -26,7 +26,7 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 .of-pause.orr-pause .dp-title__rule { display:none; }
 .of-pause.orr-pause .dp-title__name { font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-weight:800;
   font-variation-settings:"wght" 800, "wdth" 125; letter-spacing:.005em; text-transform:uppercase; color:rgb(236 230 216);
-  text-shadow:0 2px 16px rgb(0 0 0 / .5); }
+  background:none !important; -webkit-text-fill-color:currentColor; text-shadow:0 2px 16px rgb(0 0 0 / .5); }
 .of-pause.orr-pause .sf-pause-foot .dp-kbd { background:none !important; border:0 !important; box-shadow:none !important; border-image:none !important;
   color:rgb(232 226 212 / .78) !important; padding:0 8px 0 0 !important; font-weight:700; letter-spacing:.12em; }
 .of-pause.orr-pause .sf-pause-foot { align-items:baseline; }
@@ -38,7 +38,17 @@ html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; 
 .of-pause > .sf-pause-brief.orr-brief :is(a, [data-entity], .sf-entity) { text-decoration:none !important; border:0 !important;
   box-shadow:none !important; color:rgb(246 241 230) !important; background:none !important; }
 .of-pause > .sf-pause-brief.orr-brief .sf-slot-name { font-size:18px; line-height:1.35; color:rgb(236 230 216); }
-.of-pause > .sf-pause-brief.orr-brief .dp-copy--fine { font-size:11px; letter-spacing:.06em; color:rgb(232 226 212 / .5); }
+.of-pause > .sf-pause-brief.orr-brief .dp-copy--fine { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:rgb(232 226 212 / .5); }
+.of-pause > .sf-pause-brief.orr-brief .sf-slot-name { display:flex; flex-direction:column; gap:6px; }
+.orr-brief__kind { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:10px; letter-spacing:.26em; color:rgb(232 226 212 / .6); }
+.orr-brief__name { font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-weight:800; font-variation-settings:"wght" 800, "wdth" 125;
+  font-size:22px; line-height:1.1; letter-spacing:.005em; text-transform:uppercase; color:rgb(246 241 230); }
+.orr-brief__read { display:flex; align-items:center; gap:10px; margin-top:2px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
+  font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:rgb(232 226 212 / .72); }
+.orr-brief__read b { font-family:var(--dp-face-numeral, "Archivo"); font-size:16px; letter-spacing:.02em; color:#dfeeff; }
+.orr-brief__ring { width:22px; height:22px; }
+.orr-brief__track { fill:none; stroke:rgb(232 226 212 / .2); stroke-width:2; }
+.orr-brief__fill { fill:none; stroke:#8fcbff; stroke-width:2.4; stroke-linecap:round; }
 /* pause: the dial owns the left edge, so the flight brief is a reading on the right */
 .of-pause > .sf-pause-brief.orr-brief { position:absolute; right:clamp(24px, 3.4vw, 72px); top:clamp(84px, 11vh, 132px);
   width:min(520px, 34vw); margin:0; z-index:2; }

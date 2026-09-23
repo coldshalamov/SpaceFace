@@ -48,7 +48,7 @@ test('title verbs are words of light on the ORRERY dial, and the empty decorativ
   // ORRERY (design/frontend/ORRERY.md §6 Title): the same buttons ride the rim of the emblem's dial
   // and the Hand swings to the awake verb. The rail only positions the list; it builds no menu.
   assert.match(menu, /createArcRail\(\{ host: stage, list, frame: rootEl/);
-  assert.match(menu, /emblem\.webp/);
+  // the dial's face is drawn in the rail's own line language, not a raster emblem
   assert.match(DECKPLATE_LAYOUT_CSS, /\.dp-menu__item\[aria-disabled="true"\]/);
 });
 

@@ -304,11 +304,12 @@ function fmtSavedAt(value) {
   if (!value) return '';
   const d = new Date(value);
   if (!Number.isFinite(d.getTime())) return '';
-  // "16:57" today, "Sep 15, 16:57" before: a reading, not a machine timestamp with seconds
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const today = new Date();
-  const sameDay = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
-  return sameDay ? time : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + time;
+  // a reading, not a machine timestamp: "just now", "12 min ago", "3 h ago", else "Sep 15"
+  const mins = Math.round((Date.now() - d.getTime()) / 60000);
+  if (mins >= 0 && mins < 1) return 'just now';
+  if (mins >= 1 && mins < 60) return mins + ' min ago';
+  if (mins >= 60 && mins < 24 * 60) return Math.round(mins / 60) + ' h ago';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 function saveLine(state) {
@@ -388,7 +389,7 @@ export function pauseExitConfirmBody(state, target = 'menu') {
 let els = null;
 /** ORRERY: pause is the title's dial held mid-flight (design/frontend/ORRERY.md §6 Pause). */
 let pauseRail = null;
-const EMBLEM_URL = new URL('../../../assets/ui/generated/emblem/emblem.webp', import.meta.url).href;
+
 // Dirty-checked brief writes: periodic refresh passes recompute the lines but only touch the DOM
 // when a value actually changed.
 const briefLast = { objective: undefined, next: undefined, save: undefined };
@@ -400,9 +401,16 @@ function renderFlightBrief(ctx) {
     briefLast.objective = lines.objective;
     const mention = lines.objectiveMention;
     if (mention && mention.ref) {
-      els.briefObjective.innerHTML = escapeHtml(mention.pre)
-        + entitySpanHtml(mention.ref, escapeHtml(mention.label))
-        + escapeHtml(mention.post);
+      // ORRERY reading: the kind in engraved caps, the contract's name on its own line, and the
+      // progress on a small ring of ice with the time beside it. Same words, instrument form.
+      const kind = String(mention.pre || '').replace(/[\s·-]+$/, '');
+      const pct = /(\d+)% complete/.exec(String(mention.post || ''));
+      const rest = String(mention.post || '').replace(/^[\s·-]+/, '').replace(/\d+% complete\s*·?\s*/, '').trim();
+      const frac = pct ? Math.max(0, Math.min(1, Number(pct[1]) / 100)) : null;
+      const ring = frac == null ? '' : `<svg class="orr-brief__ring" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" class="orr-brief__track"/><circle cx="12" cy="12" r="9" class="orr-brief__fill" pathLength="1" stroke-dasharray="${frac.toFixed(3)} 1" transform="rotate(-90 12 12)"/></svg>`;
+      els.briefObjective.innerHTML = `<span class="orr-brief__kind">${escapeHtml(kind)}</span>`
+        + `<span class="orr-brief__name">${entitySpanHtml(mention.ref, escapeHtml(mention.label))}</span>`
+        + `<span class="orr-brief__read">${ring}${pct ? `<b>${pct[1]}%</b>` : ''}${rest ? `<span>${escapeHtml(rest)}</span>` : ''}</span>`;
     } else {
       els.briefObjective.textContent = lines.objective;
     }
@@ -413,7 +421,8 @@ function renderFlightBrief(ctx) {
   }
   if (lines.save !== briefLast.save) {
     briefLast.save = lines.save;
-    els.briefSave.textContent = lines.save;
+    // the quick keys are printed in the foot already; the brief keeps the save fact only
+    els.briefSave.textContent = String(lines.save).replace(/\s*F5 quick-saves; F9 loads quick\.?$/, '');
   }
 }
 
@@ -767,11 +776,17 @@ export const pauseScreen = {
       },
     });
     list.classList.add('sf-pause-words', 'dp-menu--banked');
+    // ORRERY tiers: Resume is the lamp key; the interruption choices (Game) and the way out (Exit)
+    // are mid; the Ship, Reference, Media and Dev verbs are the quiet tier.
+    const LOW_TIER = new Set(['Ship', 'Reference', 'Media', 'Dev']);
     for (const item of items) {
       const button = list.querySelector(`[data-action="${item.action}"]`);
       if (!button) continue;
       if (item.dev) button.classList.add('k-38');
       if (item.keys) button.setAttribute('aria-keyshortcuts', item.keys);
+      // parentElement, not closest(): the headless shims the pause tests mount on have no closest()
+      const li = button.parentElement;
+      if (li && li.dataset) li.dataset.tier = item.primary ? 'high' : (LOW_TIER.has(item.group) ? 'low' : 'mid');
     }
 
     stage.appendChild(list);
@@ -787,8 +802,7 @@ export const pauseScreen = {
     if (pauseRail) pauseRail.dispose();
     // Every verb on its own tick so the Hand always points at the actual choice; a group is a
     // cluster with its name engraved on the rim beside it.
-    pauseRail = createArcRail({ host: stage, list, frame: rootEl, clustered: true, dense: true, span: 118, pivotY: 0.54,
-      emblemUrl: EMBLEM_URL });
+    pauseRail = createArcRail({ host: stage, list, frame: rootEl, clustered: true, dense: true, span: 118, pivotY: 0.54 });
 
     // The column ends in a legend strip, not an air gap: the keys that are live while this modal
     // is up as machined caps, then the build mark — the two .k-fine lines the pause grid's foot

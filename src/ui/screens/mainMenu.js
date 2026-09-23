@@ -28,7 +28,8 @@ function bContinueRow(r, show) {
 let detachLamp = null;
 /** ORRERY: the verbs ride the rim of the emblem's dial (design/frontend/ORRERY.md §6 Title). */
 let arcRail = null;
-const EMBLEM_URL = new URL('../../../assets/ui/generated/emblem/emblem.webp', import.meta.url).href;
+// The dial's face is drawn in its own line language (arcRail drawFace); the raster emblem is the
+// loading ring's (bootRing.js).
 // spec2/03 §3: the still begins its slow drift after this much idle time. Input re-arms the window.
 const ATTRACT_IDLE_MS = 12_000;
 
@@ -358,7 +359,7 @@ export const mainMenuScreen = {
     if (arcRail) arcRail.dispose();
     injectOrreryScreens();
     rootEl.classList.add('orr-title');
-    arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside], emblemUrl: EMBLEM_URL, engraving: 'SpaceFace · Helios Reach · Contract 47-A · Mass variance survey' });
+    arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside], engraving: 'SpaceFace · Helios Reach · Contract 47-A · Mass variance survey' });
 
     const byAction = (action) => stage.querySelector('[data-action="' + action + '"]');
     const bContinue = byAction('continue');

@@ -51,7 +51,12 @@ const CSS = `
   text-shadow:0 0 22px rgb(255 80 56 / .36), 0 1px 0 rgb(0 0 0 / .6) !important; }
 /* a dense dial (pause): smaller words, the primary a size up as the one lamp key */
 .orr-arcrail-host--dense .dp-lit__item { font-size:clamp(15px, 1.95vh, 22px) !important; letter-spacing:.09em !important; }
-.orr-arcrail-host--dense .dp-lit__item--primary { font-size:clamp(24px, 3.1vh, 36px) !important; letter-spacing:.06em !important; }
+.orr-arcrail-host--dense .dp-lit__item--primary { font-size:clamp(28px, 3.6vh, 42px) !important; letter-spacing:.05em !important; }
+.orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item { font-size:clamp(12px, 1.45vh, 16px) !important; letter-spacing:.14em !important;
+  color:rgb(232 226 212 / .52) !important; }
+.orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item[data-awake] { color:rgb(246 241 230) !important; }
+.orr-arcrail-host .dp-kbd { display:none !important; }
+.orr-svg text.orr-arcrail__cluster { font-size:9px; letter-spacing:.3em; fill:rgb(232 226 212 / .5); text-anchor:start; }
 /* notes stay for the accessibility tree; the dial shows the fact elsewhere (the eyebrow) */
 .orr-arcrail-host .dp-lit__note { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important;
   clip-path:inset(50%) !important; white-space:nowrap !important; margin:0 !important; }
@@ -76,7 +81,10 @@ html.sf-reduce-motion .orr-arcrail__trail { display:none; }
   mask-image:radial-gradient(circle closest-side, rgb(0 0 0 / .18) 0%, rgb(0 0 0 / .45) 48%, #000 82%);
   animation:orr-emblem-drift 540s linear infinite; }
 .orr-arcrail__glow { position:absolute; border-radius:50%; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(255 217 140 / .07), rgb(255 217 140 / .025) 55%, transparent); }
+  background:radial-gradient(closest-side, rgb(4 6 9 / .62), rgb(4 6 9 / .4) 46%, rgb(4 6 9 / .16) 72%, transparent); }
+.orr-arcrail__face { animation:orr-emblem-drift 720s linear infinite; }
+.orr-arcrail.is-arriving .orr-arcrail__face { animation:orr-face-in 1100ms var(--dp-ease-out, cubic-bezier(.2,.9,.25,1)) both, orr-emblem-drift 720s linear 1100ms infinite; }
+@keyframes orr-face-in { from { opacity:0; transform:rotate(-24deg); } to { opacity:1; transform:none; } }
 @keyframes orr-emblem-drift { to { transform:rotate(360deg); } }
 .orr-arcrail__orbit { animation:orr-emblem-drift 900s linear infinite reverse; }
 .orr-arcrail__tick { transition:stroke .18s linear, opacity .18s linear; }
@@ -85,7 +93,7 @@ html.sf-reduce-motion .orr-arcrail__trail { display:none; }
 @keyframes orr-emblem-in { from { opacity:0; transform:rotate(-28deg) scale(.94); } to { opacity:.17; transform:none; } }
 .orr-arcrail.is-arriving .orr-arcrail__rail { stroke-dasharray:1; stroke-dashoffset:1; animation:orr-rail-draw 900ms var(--dp-ease-out, ease-out) 180ms forwards; }
 @keyframes orr-rail-draw { to { stroke-dashoffset:0; } }
-html.sf-reduce-motion .orr-arcrail__emblem, html.sf-reduce-motion .orr-arcrail__orbit,
+html.sf-reduce-motion .orr-arcrail__emblem, html.sf-reduce-motion .orr-arcrail__orbit, html.sf-reduce-motion .orr-arcrail__face,
 html.sf-reduce-motion .orr-arcrail.is-arriving .orr-arcrail__rail { animation:none !important; }
 html.sf-reduce-motion .orr-arcrail.is-arriving .orr-arcrail__rail { stroke-dashoffset:0; }
 @media (forced-colors: active) { .orr-arcrail__emblem, .orr-arcrail__glow { display:none; } }
@@ -110,7 +118,7 @@ const ROW_GAP = 26;
 export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps = null } = {}) {
   const re = clamp(H * 0.33, 210, 420);
   // the hub sits just inside the leading edge: a needle needs a visible pivot to read as one
-  const pivot = { x: clamp(W * 0.034, 40, 72), y: clamp(H * pivotY, re * 0.7, H - re * 0.35) };
+  const pivot = { x: clamp(W * 0.056, 56, 112), y: clamp(H * pivotY, re * 0.7, H - re * 0.35) };
   const ri = re + clamp(H * 0.046, 34, 56);
   const n = Math.max(1, count);
   const spread = span != null ? span : clamp(n * 12, 30, 80);
@@ -130,6 +138,39 @@ export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps 
   const step = n > 1 ? spread / units : 0;
   const anchors = angles.map((a) => { const [x, y] = polar(pivot.x, pivot.y, ri, a); return { a, x, y }; });
   return { W, H, re, ri, pivot, step, angles, anchors };
+}
+
+// The dial's face, drawn in its own line language instead of a raster emblem: orbits at three tiers
+// of light (brightest outside, fading to ~6 % at the hub), a graduated scale, a sun with rays, three
+// small ringed bodies, and the game's verb -- a rock on a tether swinging round the centre.
+function drawFace(p, re) {
+  const g = svg('g', { class: 'orr-arcrail__face', style: `transform-origin:${p.x}px ${p.y}px`, fill: 'none' });
+  const bone = (a) => `rgb(232 226 212 / ${a})`;
+  const ringAt = (f, a, extra = {}) => g.appendChild(svg('path', { d: arcD(p.x, p.y, re * f, 0, 360), stroke: bone(a), 'stroke-width': 1, ...extra }));
+  ringAt(0.9, 0.2);
+  ringAt(0.78, 0.13, { 'stroke-dasharray': '1 6', 'stroke-linecap': 'round', 'stroke-width': 1.4 });
+  ringAt(0.66, 0.14);
+  ringAt(0.52, 0.1, { 'stroke-dasharray': '10 5' });
+  ringAt(0.38, 0.08);
+  ringAt(0.24, 0.06, { 'stroke-dasharray': '1 4', 'stroke-linecap': 'round' });
+  g.appendChild(svg('path', { d: ticksD(p.x, p.y, re * 0.66, 180, { len: 4, major: 15, majorLen: 9, inward: true }), stroke: bone(0.12), 'stroke-width': 1 }));
+  // crosshair and a sun with rays
+  g.appendChild(svg('path', { d: `M ${p.x - re * 0.9} ${p.y} L ${p.x + re * 0.9} ${p.y} M ${p.x} ${p.y - re * 0.9} L ${p.x} ${p.y + re * 0.9}`, stroke: bone(0.05), 'stroke-width': 1 }));
+  g.appendChild(svg('path', { d: arcD(p.x, p.y, re * 0.07, 0, 360), stroke: bone(0.18), 'stroke-width': 1.2 }));
+  g.appendChild(svg('path', { d: ticksD(p.x, p.y, re * 0.16, 24, { len: re * 0.05, inward: true }), stroke: bone(0.1), 'stroke-width': 1 }));
+  // three small bodies riding their orbits, each with its own thin ring
+  for (const [f, a, r] of [[0.66, 38, 9], [0.52, 128, 6], [0.9, 12, 5]]) {
+    const [bx, by] = polar(p.x, p.y, re * f, a);
+    g.appendChild(svg('circle', { cx: bx.toFixed(1), cy: by.toFixed(1), r, stroke: bone(0.3), 'stroke-width': 1.2, fill: 'rgb(5 7 10 / .6)' }));
+    g.appendChild(svg('path', { d: arcD(bx, by, r + 5, 0, 360), stroke: bone(0.14), 'stroke-width': 1 }));
+  }
+  // the tether: from the centre, sagging round to a faceted rock on the outer orbit
+  const [rx, ry] = polar(p.x, p.y, re * 0.78, 152);
+  const [qx, qy] = polar(p.x, p.y, re * 0.66, 104);
+  g.appendChild(svg('path', { d: `M ${p.x} ${p.y} Q ${qx.toFixed(1)} ${qy.toFixed(1)} ${rx.toFixed(1)} ${ry.toFixed(1)}`, stroke: bone(0.26), 'stroke-width': 1.2 }));
+  const rock = [0, 55, 120, 170, 230, 290].map((a, i) => polar(rx, ry, [11, 8, 12, 9, 13, 8][i], a)).map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`);
+  g.appendChild(svg('path', { d: `M ${rock.join(' L ')} Z`, stroke: bone(0.34), 'stroke-width': 1.2, fill: 'rgb(5 7 10 / .55)' }));
+  return g;
 }
 
 /**
@@ -188,10 +229,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     return out;
   };
   let geo = null;
-  let blade = null; let bladeBloom = null; let tail = null; let weight = null; let bead = null; let beadBloom = null;
+  let blade = null; let bladeBloom = null; let core = null; let tail = null; let bead = null; let beadBloom = null;
   let glint = null; let glintBloom = null; let trailHost = null; let ticks = [];
   // a needle's spring: one slight overshoot, settled in about a quarter second
-  const handSpring = createSpring({ value: 20, preset: { k: 300, c: 25 }, onUpdate: (deg) => paintHand(deg) });
+  const handSpring = createSpring({ value: 20, preset: { k: 190, c: 15 }, onUpdate: (deg) => paintHand(deg) });
   let handIndex = -1;
 
   function paintHand(deg) {
@@ -199,18 +240,23 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     const { pivot, ri } = geo;
     const rt = ri - 8;                       // the rim: the blade ends ON the lit tick
     const [tx, ty] = polar(pivot.x, pivot.y, rt, deg);
-    const [lx, ly] = polar(pivot.x, pivot.y, 3.2, deg - 90);
-    const [rx, ry] = polar(pivot.x, pivot.y, 3.2, deg + 90);
-    const [t1x, t1y] = polar(tx, ty, 0.5, deg - 90);
-    const [t2x, t2y] = polar(tx, ty, 0.5, deg + 90);
-    // tapered: about 6 px at the hub to 1 px at the rim
+    const [lx, ly] = polar(pivot.x, pivot.y, 3.6, deg - 90);
+    const [rx, ry] = polar(pivot.x, pivot.y, 3.6, deg + 90);
+    const [t1x, t1y] = polar(tx, ty, 0.75, deg - 90);
+    const [t2x, t2y] = polar(tx, ty, 0.75, deg + 90);
+    // tapered: about 7 px at the hub to 1.5 px at the rim, with a pale hot core down its spine
     const d = `M ${lx.toFixed(1)} ${ly.toFixed(1)} L ${t1x.toFixed(1)} ${t1y.toFixed(1)} L ${t2x.toFixed(1)} ${t2y.toFixed(1)} L ${rx.toFixed(1)} ${ry.toFixed(1)} Z`;
     blade.setAttribute('d', d);
+    const [c0x, c0y] = polar(pivot.x, pivot.y, 12, deg);
+    const [c1x, c1y] = polar(pivot.x, pivot.y, rt - 16, deg);
+    core.setAttribute('d', `M ${c0x.toFixed(1)} ${c0y.toFixed(1)} L ${c1x.toFixed(1)} ${c1y.toFixed(1)}`);
     bladeBloom.setAttribute('d', `M ${pivot.x.toFixed(1)} ${pivot.y.toFixed(1)} L ${tx.toFixed(1)} ${ty.toFixed(1)}`);
-    const [cx, cy] = polar(pivot.x, pivot.y, 30, deg + 180);
-    tail.setAttribute('d', `M ${pivot.x.toFixed(1)} ${pivot.y.toFixed(1)} L ${cx.toFixed(1)} ${cy.toFixed(1)}`);
-    weight.setAttribute('cx', cx.toFixed(1));
-    weight.setAttribute('cy', cy.toFixed(1));
+    const [k0x, k0y] = polar(pivot.x, pivot.y, 7, deg + 180 - 90);
+    const [k1x, k1y] = polar(pivot.x, pivot.y, 7, deg + 180 + 90);
+    const [kbx, kby] = polar(pivot.x, pivot.y, 34, deg + 180);
+    const [kl, kll] = polar(kbx, kby, 5, deg + 180 - 90);
+    const [kr, krr] = polar(kbx, kby, 5, deg + 180 + 90);
+    tail.setAttribute('d', `M ${k0x.toFixed(1)} ${k0y.toFixed(1)} L ${kl.toFixed(1)} ${kll.toFixed(1)} L ${kr.toFixed(1)} ${krr.toFixed(1)} L ${k1x.toFixed(1)} ${k1y.toFixed(1)} Z`);
     // the rim answers where the Hand points: a short arc of light on the orbit, centred on the needle
     const g = arcD(pivot.x, pivot.y, geo.re + 11, deg - 14, deg + 14);
     glint.setAttribute('d', g);
@@ -242,16 +288,19 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     // the emblem and its glow, centred on the pivot
     const size = re * 2;
     Object.assign(emblem.style, { width: `${size}px`, height: `${size}px`, left: `${pivot.x - re}px`, top: `${pivot.y - re}px` });
-    Object.assign(glow.style, { width: `${size * 1.5}px`, height: `${size * 1.5}px`, left: `${pivot.x - re * 1.5}px`, top: `${pivot.y - re * 1.5}px` });
+    // a pool of shadow reaching past the verbs: they read over any world (the held flight, the rock)
+    const reach = ri + 420;
+    Object.assign(glow.style, { width: `${reach * 2}px`, height: `${reach * 2}px`, left: `${pivot.x - reach}px`, top: `${pivot.y - reach}px` });
     // an outer orbit of fine ticks round the emblem, counter-drifting
+    if (!emblemUrl) layer.appendChild(drawFace(pivot, re));
     // the rim scale is the brightest tier: bone ticks over a soft bloom, a lit rim ring
     const orbit = svg('g', { class: 'orr-arcrail__orbit', style: `transform-origin:${pivot.x}px ${pivot.y}px` });
     const rimTicks = ticksD(pivot.x, pivot.y, re + 9, 144, { len: 3, major: 12, majorLen: 8, inward: false });
-    orbit.appendChild(svg('path', { d: rimTicks, class: 'orr-bloom orr-hi', 'stroke-width': 4, opacity: '.14' }));
-    orbit.appendChild(svg('path', { d: rimTicks, class: 'orr-core orr-hi', 'stroke-width': 1 }));
+    orbit.appendChild(svg('path', { d: rimTicks, class: 'orr-bloom orr-hi', 'stroke-width': 4, opacity: '.18' }));
+    orbit.appendChild(svg('path', { d: rimTicks, stroke: 'rgb(236 230 216 / .72)', 'stroke-width': 1, fill: 'none' }));
     layer.appendChild(orbit);
     layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-bloom orr-hi', 'stroke-width': 5, opacity: '.1' }));
-    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-core orr-rest', 'stroke-width': 1.2 }));
+    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), stroke: 'rgb(236 230 216 / .62)', 'stroke-width': 1.2, fill: 'none' }));
     glintBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 8, opacity: '.18' });
     glint = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.4, opacity: '.55' });
     layer.append(glintBloom, glint);
@@ -274,9 +323,12 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         const next = i < all.length ? all[i].items[0].dataset.group : Symbol('end');
         if (next !== g) {
           if (g) {
-            const mid = (angles[start] + angles[i - 1]) / 2;
-            layer.appendChild(circularText(pivot.x, pivot.y, re + 24, String(g).toUpperCase(),
-              { startDeg: mid + 90, size: 8, className: 'orr-micro orr-micro--hi', anchor: 'middle', upright: true }));
+            const first = all[start].items[0];
+            const fb = first.querySelector('button') || first;
+            const [lx, ly] = polar(pivot.x, pivot.y, ri, angles[start]);
+            const t = svg('text', { x: (lx + 10).toFixed(1), y: (ly - (fb.offsetHeight || 24) / 2 - 3).toFixed(1), class: 'orr-arcrail__cluster' });
+            t.textContent = String(g).toUpperCase();
+            layer.appendChild(t);
           }
           start = i;
         }
@@ -287,20 +339,21 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     }
     // the Hand: trail, counterweight, bloom, the tapered blade, the hub cap, one bead on the rim
     trailHost = svg('g');
-    tail = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 2.4, 'stroke-linecap': 'round', opacity: '.7' });
-    weight = svg('circle', { r: 5.5, fill: 'var(--dp-hand, #f2b950)', opacity: '.85' });
-    bladeBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 7, opacity: '.22' });
+    tail = svg('path', { d: '', fill: 'var(--dp-hand, #f2b950)', opacity: '.8' });
+    bladeBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 10, opacity: '.24' });
     blade = svg('path', { d: '', fill: 'var(--dp-hand, #f2b950)' });
+    core = svg('path', { d: '', stroke: 'rgb(255 244 214)', 'stroke-width': 1, 'stroke-linecap': 'round', opacity: '.85', fill: 'none' });
     const hub = svg('g');
     // the hub cap: a dark disc, an amber ring, a bone pin
     hub.append(
-      svg('circle', { cx: pivot.x, cy: pivot.y, r: 17, class: 'orr-core orr-faint', 'stroke-width': 1, fill: 'none' }),
-      svg('circle', { cx: pivot.x, cy: pivot.y, r: 11, fill: 'rgb(5 7 10 / .92)', class: 'orr-core orr-hand', 'stroke-width': 1.6 }),
-      svg('circle', { cx: pivot.x, cy: pivot.y, r: 3.2, fill: 'rgb(236 230 216)' }),
+      svg('circle', { cx: pivot.x, cy: pivot.y, r: 20, class: 'orr-bloom orr-hand', 'stroke-width': 8, opacity: '.14', fill: 'none' }),
+      svg('circle', { cx: pivot.x, cy: pivot.y, r: 12, fill: 'var(--dp-hand, #f2b950)' }),
+      svg('circle', { cx: pivot.x, cy: pivot.y, r: 12, fill: 'none', stroke: 'rgb(236 230 216)', 'stroke-width': 1.6 }),
+      svg('circle', { cx: pivot.x, cy: pivot.y, r: 4, fill: 'rgb(255 244 214)' }),
     );
     beadBloom = svg('circle', { r: 8, fill: 'var(--dp-hand, #f2b950)', opacity: '.22' });
     bead = svg('circle', { r: 3.4, fill: 'var(--dp-hand-hot, #ffd98c)' });
-    layer.append(trailHost, tail, weight, bladeBloom, blade, hub, beadBloom, bead);
+    layer.append(trailHost, tail, bladeBloom, blade, core, hub, beadBloom, bead);
     // seat each row on its tick: the first verb starts just past the tick, its first line centred on
     // it, and a row's further verbs follow along the line; a group's name is engraved over the row
     all.forEach((row, i) => {
