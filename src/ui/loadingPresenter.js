@@ -50,23 +50,64 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   // The underlying re-entrancy is fixed in loadingTerminalArt.js. This guard is here so that the
   // NEXT bug in the artwork costs the player a missing animation instead of the whole game.
   const NO_ART = { updateProgress() {}, start() {}, stop() {}, destroy() {} };
-  // The artwork is acquired lazily and rebuilt after release. hide() destroys the instance once
-  // the hide fade ends — its worker owns a WebGL2 context, and a stopped worker still holds it,
-  // which is how boot-terminal-canvas stayed connected with live GL programs through whole
-  // flights (2026-09-10 canvas census) — and the next show() builds a fresh one on a virgin
-  // canvas, because destroy() detaches the transferred element and it can never host another.
+  // The artwork is acquired lazily. On worker-capable hosts it uses the 2D renderer and can stay
+  // paused between loading screens, so a later New Game/Continue does not wait for another worker
+  // and canvas startup. Hosts without transferable worker canvases keep the old destroy/rebuild
+  // lifecycle, since their renderer may own a main-thread WebGL context.
   let terminalArt = null;
+  let retainWorkerArt = false;
+  let retainedCanvas = null;
+  let retainedPointerMove = null;
+  let needsPointerBridge = false;
   const artwork = () => {
     if (terminalArt) return terminalArt;
     const canvas = ensureBootTerminalCanvas(document);
     if (!canvas) return NO_ART;
     try {
-      terminalArt = createTerminalArtwork({ canvas, waveformCanvas, overlay, document }) || NO_ART;
+      const isolatedWorkerCanvas = typeof globalThis.Worker === 'function'
+        && typeof canvas.transferControlToOffscreen === 'function';
+      // The opening load is already compiling pipelines and uploading large textures on the
+      // shared GPU. Keep the decorative visualizer in its existing worker-based 2D renderer so
+      // it can animate without competing for that GPU time or allocating a second set of GL
+      // feedback buffers.
+      terminalArt = createTerminalArtwork({
+        canvas,
+        waveformCanvas,
+        overlay,
+        force2D: isolatedWorkerCanvas,
+        document,
+      }) || NO_ART;
+      retainWorkerArt = isolatedWorkerCanvas && terminalArt !== NO_ART;
+      retainedCanvas = retainWorkerArt ? canvas : null;
     } catch (err) {
+      retainWorkerArt = false;
+      retainedCanvas = null;
       try { console.warn('[boot] loading artwork failed; continuing without it', err); } catch (_) {}
       terminalArt = NO_ART;
     }
     return terminalArt;
+  };
+
+  const detachRetainedPointerBridge = () => {
+    if (!retainedPointerMove) return;
+    try { overlay.removeEventListener('pointermove', retainedPointerMove); } catch (_) {}
+    retainedPointerMove = null;
+  };
+
+  const attachRetainedPointerBridge = () => {
+    if (!needsPointerBridge || !retainWorkerArt || !retainedCanvas
+        || !terminalArt || typeof overlay.addEventListener !== 'function') return;
+    const receive = terminalArt.__engine && terminalArt.__engine.receive;
+    if (typeof receive !== 'function') return;
+    retainedPointerMove = (event) => {
+      const rect = retainedCanvas.getBoundingClientRect && retainedCanvas.getBoundingClientRect();
+      if (!rect || rect.width <= 0 || rect.height <= 0) return;
+      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = ((event.clientY - rect.top) / rect.height) * 2 - 1;
+      receive.call(terminalArt.__engine, { type: 'pointer', x, y });
+    };
+    overlay.addEventListener('pointermove', retainedPointerMove, { passive: true });
+    needsPointerBridge = false;
   };
 
   let hideTimer = null;
@@ -212,6 +253,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
 
     const art = artwork();
     art.start();
+    attachRetainedPointerBridge();
     art.updateProgress(raf ? { ...stage, progress: clamp01(displayProgress) } : stage);
   };
 
@@ -224,11 +266,15 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     targetAt = null;
     const retiring = terminalArt || NO_ART;
     retiring.stop();
-    // Kill the boot WebGL2 worker immediately so the first flight present is
-    // not racing a second context. Overlay fade can still wait hideDelayMs.
-    if (retiring === terminalArt) {
+    detachRetainedPointerBridge();
+    // A paused 2D worker has no GL context and is cheap to resume on the next load. Release the
+    // non-retained path immediately so a main-thread WebGL context cannot race the flight route.
+    if (retiring === terminalArt && !retainWorkerArt) {
       retiring.destroy();
       terminalArt = null;
+      retainedCanvas = null;
+    } else if (retiring === terminalArt) {
+      needsPointerBridge = true;
     }
     if (hideTimer != null) clearTimeout(hideTimer);
     hideTimer = setTimeout(() => {
@@ -287,8 +333,12 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       if (hideTimer != null) clearTimeout(hideTimer);
       hideTimer = null;
       stopProgressLoop();
+      detachRetainedPointerBridge();
       (terminalArt || NO_ART).destroy();
       terminalArt = null;
+      retainedCanvas = null;
+      retainWorkerArt = false;
+      needsPointerBridge = false;
     },
   };
 }
