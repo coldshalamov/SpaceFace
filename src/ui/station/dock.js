@@ -107,8 +107,12 @@ export function createCommandDock(cfg) {
   function applyPointerField(clientX) {
     fieldFrame = 0;
     if (!allowMotion() || (motionQuery && motionQuery.matches)) { resetField(); return; }
-    const radius = Math.max(112, Math.min(176, el.getBoundingClientRect().width * 0.13));
     const bounds = tiles.map(tile => tile.getBoundingClientRect());
+    // The field reaches about one and a half stations either side, however far apart the rail
+    // spaces them, so a neighbour always answers and the far end of the rail never does.
+    const centres = bounds.map((r) => r.left + r.width / 2);
+    const pitch = centres.length > 1 ? (centres[centres.length - 1] - centres[0]) / (centres.length - 1) : 112;
+    const radius = Math.max(112, Math.min(210, pitch * 1.45));
     for (let i = 0; i < tiles.length; i++) {
       const tile = tiles[i], rect = bounds[i];
       const distance = Math.abs(clientX - (rect.left + rect.width / 2));

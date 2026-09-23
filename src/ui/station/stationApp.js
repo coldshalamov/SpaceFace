@@ -47,6 +47,8 @@ import { bindStationMarkup, stationControlAttrs, stationControlLabel } from './s
 import { missionDockAttention } from './missionDockAttention.js';
 import { yardJobReadout } from './serviceQuotes.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
+import { injectOrreryStation, vitalDialSvg, vitalValueHtml } from '../orrery/stationLayouts.js';
+import { createStationRow } from '../orrery/stopDial.js';
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -227,7 +229,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // No `k-screen`: dropping it takes `#screens .sx-berth.k-screen` out of the cascade in one
     // move, and with it the `padding: 22px 400px 14px 32px` that reserved a hole for a floating
     // vitals panel. The frame owns the regions now (design/frontend/THE_BAR.md).
-    rootEl.classList.add('screen', 'sx-berth', 'sx-observatory', 'dp-frame', 'dp-frame--screen');
+    rootEl.classList.add('screen', 'sx-berth', 'sx-observatory', 'dp-frame', 'dp-frame--screen', 'orr-station');
+    // ORRERY: the shell's composition (vitals as dials, the destination rail's Hand, Undock in bone)
+    injectOrreryStation(rootEl.ownerDocument || globalThis.document);
     rootEl.dataset.dp = '1';
     rootEl.setAttribute('data-fh-temp', 'docked');
     rootEl.setAttribute('data-fh-register', 'bench');
@@ -274,6 +278,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     tile.classList.add('fh-key', 'fh-key--legend');
   });
   app.querySelector('.sxb-ops__dock').appendChild(dock.el);
+  // ORRERY: the destinations stand on a ruled line; the Hand rides it to the open one.
+  const dockRail = createStationRow({ row: dock.el.querySelector('.sx-dock__group--nav') });
   let shown = true;
   const effects = createStationEffects({ root: rootEl, app, body: bodyEl, dock: dock.el, credits: creditsEl, getState: state });
   const commands = createStationCommands({
@@ -553,7 +559,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (dockEl) {
       for (const lit of dockEl.querySelectorAll('[data-dp-next]')) lit.removeAttribute('data-dp-next');
       if (target && target.destination) {
-        const tile = dockEl.querySelector(`[data-nav="${CSS.escape(target.destination)}"]`);
+        // a destination id, matched by value (no CSS.escape: node-run tests have no CSS global)
+        const tile = [...dockEl.querySelectorAll('[data-nav]')].find((t) => t.getAttribute('data-nav') === String(target.destination));
         if (tile) tile.setAttribute('data-dp-next', '');
       }
     }
@@ -953,9 +960,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }
     const cls = 'k-word k-word--fine fh-key fh-key--small sxb-vital__act' + (ghost ? ' sxb-vital__act--ghost' : '');
     const why = cost.title ? ` data-why="${escapeHtml(cost.title)}"` : '';
-    const copy = ghost ? label : `${label} · ${text}`;
+    // the verb over its price (the words read "Repair · 22 cr" to anything that reads text)
+    const copy = ghost ? escapeHtml(label)
+      : `<span class="orr-act__verb">${escapeHtml(label)}</span><span class="orr-act__sep"> · </span><span class="orr-act__cost">${escapeHtml(text)}</span>`;
     return `<button type="button" ${stationControlAttrs(id)} class="${cls}" data-vital-act="${id}"${why}` +
-      ` aria-label="${escapeHtml(cost.title || (label + ' ' + text))}">${escapeHtml(copy)}</button>`;
+      ` aria-label="${escapeHtml(cost.title || (label + ' ' + text))}">${copy}</button>`;
   }
 
   // A vital is one static kit row: the label at body 62 %, the value at emphasis (data-tone kept:
@@ -966,16 +975,19 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const toneCls = v.tone === 'bad' ? ' k-bad' : (v.tone === 'warn' ? ' k-signal' : '');
     const track = v.track === false ? ''
       : `<span class="k-bar sxb-vital__track" role="img" aria-label="${escapeHtml(v.aria)}">` +
+        vitalDialSvg({ frac: v.frac }) +
         `<span class="k-bar__fill sxb-vital__fill" style="width:${pct}%"></span></span>`;
+    // a track-less unit (Munitions, Rights) still stands on its dial, drawn open (no fill)
+    const bareDial = v.track === false ? `<span class="orr-vdial-bare" aria-hidden="true">${vitalDialSvg({ bare: true })}</span>` : '';
     const label = `${stationIcon(v.k)}<span class="sxb-vital__label k-t-body k-62">${escapeHtml(v.label)}</span>${track}`;
     const headEl = v.openHold
       ? `<button type="button" ${stationControlAttrs('hold-manifest')} class="k-word k-word--body sxb-vital__head" data-hold data-pop-owner` +
           ` aria-label="${escapeHtml(v.aria)}. Open the cargo manifest.">${label}</button>`
       : `<span class="sxb-vital__head">${label}</span>`;
-    const value = `<span class="sxb-vital__value k-t-emph${toneCls}"${v.detail ? ` title="${escapeHtml(v.detail)}"` : ''}>${escapeHtml(v.value)}</span>`;
+    const value = `<span class="sxb-vital__value k-t-emph${toneCls}"${v.detail ? ` tabindex="0" data-why="${escapeHtml(v.detail)}"` : ''}>${vitalValueHtml(v.value, escapeHtml)}</span>`;
     const acts = v.acts.filter(Boolean);
     const actsEl = `<span class="sxb-vital__acts">${acts.join('')}</span>`;
-    return `<li class="k-row k-row--static sxb-vital sxb-vital--${v.k}" data-tone="${v.tone}">${headEl}${value}${actsEl}</li>`;
+    return `<li class="k-row k-row--static sxb-vital sxb-vital--${v.k}" data-tone="${v.tone}">${bareDial}${headEl}${value}${actsEl}</li>`;
   }
 
   function renderStatus() {
@@ -1298,6 +1310,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (offExit) offExit();
       subscriptions.splice(0).forEach((off) => off());
       try { dock.dispose && dock.dispose(); } catch (_) {}
+      try { dockRail.dispose(); } catch (_) {}
       try { setStationExitOwner(null); } catch (_) {}
       screenCache.forEach((s) => { try { s.dispose && s.dispose(); } catch (_) {} });
       screenCache.clear();
