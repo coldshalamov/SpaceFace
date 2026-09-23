@@ -188,8 +188,8 @@ export function pickClickTarget(targets, sx, sy) {
 const LOCALMAP_STYLE = `
 #sf-localmap {
   position: absolute; inset: 0; display: flex; flex-direction: column;
-  background: var(--sf-surface); color: var(--sf-paper);
-  font-family: var(--sf-body-face); font-size: 14px;
+  background: var(--dp-field, var(--sf-surface)); color: var(--dp-ink, var(--sf-paper));
+  font-family: var(--dp-face-read, var(--sf-body-face)); font-size: 14px;
   padding-left: var(--sf-safe-inset-x); padding-right: var(--sf-safe-inset-x);
 }
 #sf-localmap .sf-fig,
@@ -200,107 +200,107 @@ const LOCALMAP_STYLE = `
 }
 #sf-localmap .lm-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge);
-  background: color-mix(in srgb, var(--sf-surface) 92%, transparent);
+  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--dp-rule, var(--sf-edge));
+  background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 92%, transparent));
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
 #sf-localmap .lm-title {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+  font-family: var(--dp-face-etch, var(--sf-subhead-face)); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm));
   display: flex; align-items: center; gap: 8px;
 }
 #sf-localmap .lm-title::before {
-  content: ''; display: inline-block; width: 3px; height: 12px; background: var(--sf-goal); border-radius: 1px;
+  content: ''; display: inline-block; width: 3px; height: 12px; background: var(--dp-lamp, var(--sf-goal)); border-radius: 0;
 }
 #sf-localmap .lm-scale {
-  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); margin-top: var(--sp-1);
+  font-family: var(--dp-face-read, var(--sf-body-face)); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); margin-top: var(--sp-1);
 }
 #sf-localmap .lm-close {
-  background: color-mix(in srgb, var(--sf-calm) 8%, transparent); border: 1px solid var(--sf-edge); color: var(--sf-paper);
-  padding: var(--sp-1) var(--sp-3); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;
+  background: var(--dp-field-ink, color-mix(in srgb, var(--sf-calm) 8%, transparent)); border: 1px solid var(--dp-rule, var(--sf-edge)); color: var(--dp-ink, var(--sf-paper));
+  padding: var(--sp-1) var(--sp-3); border-radius: 2px; cursor: pointer; font-size: 13px; font-weight: 500;
   transition: all 0.15s ease;
 }
 #sf-localmap .lm-close:hover {
-  border-color: var(--sf-you); color: var(--sf-you); background: color-mix(in srgb, var(--sf-you) 12%, transparent);
+  border-color: var(--dp-lamp, var(--sf-you)); color: var(--dp-lamp-hot, var(--sf-you)); background: var(--dp-field-ink-hi, color-mix(in srgb, var(--sf-you) 12%, transparent));
   translate: 0 -1px;
 }
 #sf-localmap .lm-close:active {
   translate: 0 1px;
 }
 #sf-localmap .lm-close:focus-visible {
-  outline: 1px solid var(--sf-you); outline-offset: 2px;
+  outline: 1px solid var(--dp-lamp, var(--sf-you)); outline-offset: 2px;
 }
 #sf-localmap .lm-body { flex: 1; position: relative; min-height: 0; }
 #sf-localmap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
 #sf-localmap .lm-legend {
   position: absolute; left: var(--sp-3); bottom: var(--sp-3);
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
-  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  font-family: var(--dp-face-etch, var(--sf-subhead-face)); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm));
+  background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 88%, transparent));
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--sf-edge); border-radius: 4px;
+  border: 1px solid var(--dp-rule, var(--sf-edge)); border-radius: 2px;
   padding: var(--sp-1) var(--sp-2); line-height: 1.5;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 #sf-localmap .lm-routes {
   position: absolute; right: var(--sp-3); top: var(--sp-3); width: 230px; max-height: 60%; overflow-y: auto;
-  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 88%, transparent));
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--sf-edge); border-radius: 4px;
-  padding: var(--sp-2) var(--sp-3); font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-paper);
+  border: 1px solid var(--dp-rule, var(--sf-edge)); border-radius: 2px;
+  padding: var(--sp-2) var(--sp-3); font-family: var(--dp-face-read, var(--sf-body-face)); font-size: 13px; color: var(--dp-ink, var(--sf-paper));
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--sf-calm) 25%, transparent) transparent;
+  scrollbar-width: thin; scrollbar-color: var(--dp-rule-hi, color-mix(in srgb, var(--sf-calm) 25%, transparent)) transparent;
 }
 #sf-localmap .lm-routes h4 {
-  margin: 0 0 var(--sp-2) 0; font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+  margin: 0 0 var(--sp-2) 0; font-family: var(--dp-face-etch, var(--sf-subhead-face)); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm));
   display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2);
 }
 #sf-localmap .lm-route {
   display: block; width: 100%; text-align: left; background: transparent; color: inherit;
-  border: 0; border-bottom: 1px solid var(--sf-edge); padding: var(--sp-1) 4px; line-height: 1.4; cursor: pointer;
-  font-family: var(--sf-body-face); font-size: 13px; border-radius: 2px; transition: all 0.15s ease;
+  border: 0; border-bottom: 1px solid var(--dp-rule, var(--sf-edge)); padding: var(--sp-1) 4px; line-height: 1.4; cursor: pointer;
+  font-family: var(--dp-face-read, var(--sf-body-face)); font-size: 13px; border-radius: 2px; transition: all 0.15s ease;
 }
 #sf-localmap .lm-route:last-child { border-bottom: none; }
 #sf-localmap .lm-route:hover, #sf-localmap .lm-route:focus-visible {
-  outline: 0; background: color-mix(in srgb, var(--sf-goal) 12%, transparent); color: var(--sf-paper);
+  outline: 0; background: var(--dp-field-ink-hi, color-mix(in srgb, var(--sf-goal) 12%, transparent)); color: var(--dp-ink, var(--sf-paper));
 }
 #sf-localmap .lm-route:active {
   translate: 0 1px;
 }
 #sf-localmap .lm-route .lm-route-hdr { display: flex; justify-content: space-between; gap: var(--sp-2); }
-#sf-localmap .lm-route .lm-route-comm { color: var(--sf-calm); }
-#sf-localmap .lm-route .lm-route-profit { color: var(--sf-goal); }
-#sf-localmap .lm-route .lm-route-path { color: var(--sf-calm); }
-#sf-localmap .lm-route .lm-route-meta { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: 2px; color: var(--sf-calm); }
+#sf-localmap .lm-route .lm-route-comm { color: var(--dp-ink-dim, var(--sf-calm)); }
+#sf-localmap .lm-route .lm-route-profit { color: var(--dp-lamp, var(--sf-goal)); }
+#sf-localmap .lm-route .lm-route-path { color: var(--dp-ink-mute, var(--sf-calm)); }
+#sf-localmap .lm-route .lm-route-meta { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: 2px; color: var(--dp-ink-mute, var(--sf-calm)); }
 #sf-localmap .lm-route .lm-route-action {
-  margin-top: 2px; color: var(--sf-you); font-family: var(--sf-subhead-face); font-weight: 600;
+  margin-top: 2px; color: var(--dp-lamp-hot, var(--sf-you)); font-family: var(--dp-face-etch, var(--sf-subhead-face)); font-weight: 600;
   font-size: 12px; letter-spacing: var(--sf-track-micro); text-transform: uppercase;
 }
-#sf-localmap .lm-route .lm-route-stale { color: var(--sf-foe); font-size: 13px; }
-#sf-localmap .lm-routes-empty { color: var(--sf-calm); }
+#sf-localmap .lm-route .lm-route-stale { color: var(--dp-danger, var(--sf-foe)); font-size: 13px; }
+#sf-localmap .lm-routes-empty { color: var(--dp-ink-dim, var(--sf-calm)); }
 #sf-localmap .lm-objective {
   position: absolute; left: var(--sp-3); top: var(--sp-3); width: min(340px, calc(100% - 270px)); min-width: 230px;
-  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 88%, transparent));
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--sf-edge); border-left: var(--sf-rail-w) solid var(--sf-goal);
-  border-radius: 4px; padding: var(--sp-2) var(--sp-3); color: var(--sf-paper);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05), -2px 0 12px color-mix(in srgb, var(--sf-goal) 20%, transparent);
+  border: 1px solid var(--dp-rule, var(--sf-edge)); border-left: var(--sf-rail-w) solid var(--dp-lamp, var(--sf-goal));
+  border-radius: 2px; padding: var(--sp-2) var(--sp-3); color: var(--dp-ink, var(--sf-paper));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 #sf-localmap .lm-objective[hidden] { display: none; }
 #sf-localmap .lm-objective-k {
-  color: var(--sf-goal); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  color: var(--dp-lamp, var(--sf-goal)); font-family: var(--dp-face-etch, var(--sf-subhead-face)); font-weight: 600; font-size: 12px;
   letter-spacing: var(--sf-track-micro); text-transform: uppercase;
 }
 #sf-localmap .lm-objective-title {
-  margin-top: var(--sp-1); font-family: var(--sf-display-face); font-weight: 700; font-size: 28px;
-  line-height: 1.1; color: var(--sf-paper); letter-spacing: 0; text-transform: none; overflow-wrap: anywhere;
+  margin-top: var(--sp-1); font-family: var(--dp-face-display, var(--sf-display-face)); font-weight: 700; font-size: 28px;
+  line-height: 1.1; color: var(--dp-ink, var(--sf-paper)); letter-spacing: 0; text-transform: none; overflow-wrap: anywhere;
 }
 #sf-localmap .lm-objective-body {
-  margin-top: var(--sp-1); font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-calm); line-height: 1.45;
+  margin-top: var(--sp-1); font-family: var(--dp-face-read, var(--sf-body-face)); font-size: 14px; color: var(--dp-ink-dim, var(--sf-calm)); line-height: 1.45;
 }
-#sf-localmap .lm-objective-meta { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-2); color: var(--sf-calm); }
-#sf-localmap .lm-objective-meta .hot { color: var(--sf-goal); }
+#sf-localmap .lm-objective-meta { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-2); color: var(--dp-ink-mute, var(--sf-calm)); }
+#sf-localmap .lm-objective-meta .hot { color: var(--dp-lamp, var(--sf-goal)); }
 @media (max-width: 760px) {
   #sf-localmap .lm-objective { left: var(--sp-2); right: var(--sp-2); top: 58px; width: auto; max-width: none; min-width: 0; }
   #sf-localmap .lm-routes { right: var(--sp-2); left: var(--sp-2); top: auto; bottom: 54px; width: auto; max-height: 25%; }
@@ -333,13 +333,13 @@ function canvasRoles() {
   try { cs = getComputedStyle(document.documentElement); } catch { return fallback; }
   const read = (name, fb) => ((cs.getPropertyValue(name) || '').trim() || fb);
   return {
-    you: read('--sf-you', fallback.you),
-    foe: read('--sf-foe', fallback.foe),
-    goal: read('--sf-goal', fallback.goal),
-    calm: read('--sf-calm', fallback.calm),
-    paper: read('--sf-paper', fallback.paper),
-    surface: read('--sf-surface', fallback.surface),
-    edge: read('--sf-edge', fallback.edge),
+    you: read('--dp-phos', read('--sf-you', fallback.you)),
+    foe: read('--dp-danger', read('--sf-foe', fallback.foe)),
+    goal: read('--dp-lamp', read('--sf-goal', fallback.goal)),
+    calm: read('--dp-ink-dim', read('--sf-calm', fallback.calm)),
+    paper: read('--dp-ink', read('--sf-paper', fallback.paper)),
+    surface: read('--dp-field', read('--sf-surface', fallback.surface)),
+    edge: read('--dp-rule', read('--sf-edge', fallback.edge)),
   };
 }
 
