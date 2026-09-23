@@ -1,0 +1,94 @@
+
+> spaceface@0.1.0 check:integrated-quality-preset
+> node --test test/integrated-quality-preset.test.mjs test/pq-165-00-presets.test.mjs
+
+TAP version 13
+# Subtest: default picture stays Medium — integrated is opt-in only
+ok 1 - default picture stays Medium — integrated is opt-in only
+  ---
+  duration_ms: 3.074528
+  ...
+# Subtest: integrated preset bundles the plumbed \#86–\#94 knobs
+ok 2 - integrated preset bundles the plumbed \#86–\#94 knobs
+  ---
+  duration_ms: 0.625254
+  ...
+# Subtest: leaving integrated restores a stock preset picture
+ok 3 - leaving integrated restores a stock preset picture
+  ---
+  duration_ms: 0.695017
+  ...
+# Subtest: postFx:false zeroes grade/vignette/grain; default postFx leaves them alone
+ok 4 - postFx:false zeroes grade/vignette/grain; default postFx leaves them alone
+  ---
+  duration_ms: 0.689665
+  ...
+# Subtest: 45 fps is a legal frame-cap option; normalize accepts it
+ok 5 - 45 fps is a legal frame-cap option; normalize accepts it
+  ---
+  duration_ms: 0.337267
+  ...
+# Subtest: detectGpu integrated may suggest the preset without applying it
+ok 6 - detectGpu integrated may suggest the preset without applying it
+  ---
+  duration_ms: 1.118827
+  ...
+# Subtest: settings screen lists Integrated GPU and 45 fps
+ok 7 - settings screen lists Integrated GPU and 45 fps
+  ---
+  duration_ms: 1.635404
+  ...
+# pq-165.00 adaptive-quality tier per preset (seed 16500):
+#    {"preset":"low","tier":"low","adaptiveFloor":0.5,"renderScale":0.75,"particleQuality":"low","renderGraph":false}
+#    {"preset":"medium","tier":"medium","adaptiveFloor":0.6,"renderScale":1,"particleQuality":"medium","renderGraph":false}
+#    {"preset":"high","tier":"high","adaptiveFloor":0.6,"renderScale":1,"particleQuality":"high","renderGraph":true}
+# pq-165.00 frame cap applied to the live cap (seed 16500):
+#    {"requested":30,"label":"30 fps","vsync":true,"displayHz":60,"effectiveLiveCap":30}
+#    {"requested":45,"label":"45 fps","vsync":true,"displayHz":60,"effectiveLiveCap":45}
+#    {"requested":60,"label":"60 fps","vsync":true,"displayHz":60,"effectiveLiveCap":60}
+#    {"requested":120,"label":"120 fps","vsync":true,"displayHz":60,"effectiveLiveCap":60}
+#    {"requested":0,"label":"Off","vsync":true,"displayHz":60,"effectiveLiveCap":60}
+# Subtest: three presets each select an adaptive-quality tier (seed 16500)
+ok 8 - three presets each select an adaptive-quality tier (seed 16500)
+  ---
+  duration_ms: 4.030185
+  ...
+# Subtest: preset switch is captured: only presentation keys move, no content changes
+ok 9 - preset switch is captured: only presentation keys move, no content changes
+  ---
+  duration_ms: 1.365324
+  ...
+# Subtest: four frame-cap values resolve against the live cap (seed 16500)
+ok 10 - four frame-cap values resolve against the live cap (seed 16500)
+  ---
+  duration_ms: 0.749739
+  ...
+# Subtest: VSync flag is read: cap can never exceed the display refresh
+ok 11 - VSync flag is read: cap can never exceed the display refresh
+  ---
+  duration_ms: 0.319737
+  ...
+# Subtest: new games persist a quality preset and an uncapped frame-cap default (seed 16500)
+ok 12 - new games persist a quality preset and an uncapped frame-cap default (seed 16500)
+  ---
+  duration_ms: 0.307358
+  ...
+# Subtest: frame-cap debt presents on rAF beats (30 on 60, 120 on 144)
+ok 13 - frame-cap debt presents on rAF beats (30 on 60, 120 on 144)
+  ---
+  duration_ms: 0.441301
+  ...
+# Subtest: settings screen surfaces the preset and frame cap and preserves the Language row
+ok 14 - settings screen surfaces the preset and frame cap and preserves the Language row
+  ---
+  duration_ms: 1.086941
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 279.634552
