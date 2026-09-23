@@ -1319,11 +1319,16 @@ function assignPropulsionRuntime(entity, runtime, boost) {
 }
 
 function assignFlightFrame(entity, result, mode) {
-  const frame = entity._flightFrame || (entity._flightFrame = {});
-  Object.assign(frame, result.telemetry);
+  // Attach kernel telemetry by reference. Object.assign into a retained frame copied ~15 keys
+  // every craft step and left stale optional keys (travelDrive/vectoring) when the kernel omitted
+  // them. Telemetry is freshly allocated in makeResult and discarded after this call; the player
+  // path mutates the same object for autopilot/orbitAssist. Consumers re-read entity._flightFrame
+  // each frame — they do not retain identity across ticks.
+  const frame = result.telemetry || {};
   frame.mode = mode;
   frame.driveId = result.driveId;
   frame.family = result.family;
+  entity._flightFrame = frame;
   return frame;
 }
 
