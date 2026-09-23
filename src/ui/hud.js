@@ -2295,7 +2295,7 @@ export function createHud(ctx, alerts) {
     // Opening one-instruction rule (hudAttention): physical events are not sentences — while the
     // objective owns the first two minutes the visible caption retires. The live-region line
     // above still lands for assistive tech, which is not on screen.
-    if (openingInstructionSolo(state)) {
+    if (openingInstructionSolo(state) || (p.physical === true && p.showVisible === false)) {
       caption.classList.remove('show');
       caption.hidden = true;
       return;

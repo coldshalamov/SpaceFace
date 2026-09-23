@@ -301,6 +301,16 @@ function setVecXZ(vec, x, z) {
   else { vec.x = x; vec.y = 0; vec.z = z; }
 }
 
+function deathVelocity(entity) {
+  const vel = entity && entity.vel;
+  const x = Number(vel && vel.x);
+  const z = Number(vel && vel.z);
+  return {
+    x: Number.isFinite(x) ? x : 0,
+    z: Number.isFinite(z) ? z : 0,
+  };
+}
+
 function activeSectorStations(state) {
   return state && state.world && state.world.activeSector && Array.isArray(state.world.activeSector.stations)
     ? state.world.activeSector.stations
@@ -617,9 +627,9 @@ export const combat = {
       if (difficulty === 'ironman') {
         state.combat.lastPlayerDefeat = receipt;
         t.alive = false;
+        const victimVel = deathVelocity(t);
         setVecXZ(t.vel, 0, 0);
-        bus.emit('player:death', { ...receipt, recoverable: false });
-        bus.emit('camera:shake', { amount: 0.9 });
+        bus.emit('player:death', { ...receipt, recoverable: false, victimVel });
         bus.emit('game:over', { reason: 'ironman_death', recoverable: false, receipt });
         return;
       }
@@ -708,6 +718,7 @@ export const combat = {
     t.alive = false;
     t.flags = t.flags || {};
     t.flags.defeated = true;
+    const victimVel = deathVelocity(t);
     setVecXZ(t.vel, 0, 0);
     this._pendingPlayerRecovery = { playerId: t.id, receipt };
     this.state.combat.lastPlayerDefeat = receipt;
@@ -720,8 +731,7 @@ export const combat = {
     receipt.defeatStreak = streak.count;
     const mercyScale = defeatMercyScale(this.state);
     receipt.defeatMercyScale = mercyScale < 1 ? mercyScale : null;
-    this.bus.emit('player:death', { ...receipt, recoverable: true });
-    this.bus.emit('camera:shake', { amount: 0.9 });
+    this.bus.emit('player:death', { ...receipt, recoverable: true, victimVel });
     this.bus.emit('game:over', { reason: 'ship_destroyed', recoverable: true, receipt });
     return true;
   },

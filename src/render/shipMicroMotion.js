@@ -64,6 +64,7 @@
 //      cold-gas ribbon request the overhead presentation draws along the slide.
 
 import { resolveRcsFirings, resolveActuatorScale } from './rcsJets.js';
+import { clampSlideAgainstHulls, deathSlideOffset, DEATH_SLIDE_S } from './deathSlide.js';
 import {
   integrateBellHeat,
   resolveSlipstreamInto,
@@ -428,6 +429,10 @@ export function createShipMicroMotionTracker() {
 
         // Hyperspace jump dynamics
         jumpCharging: false,
+        jumpKick: 0,
+        jumpKickShudder: 0,
+        deathSlideT: -1,
+        deathSlideVel: null,
         jumpProgress: 0,
 
         // Flight surge & settle
@@ -688,21 +693,27 @@ export function createShipMicroMotionTracker() {
   }
 
   function onJumpStart(payload) {
-    const id = payload && (payload.playerId || payload.id);
+    const id = payload && payload.playerId;
     if (!id) return;
     const rec = getRecord(id);
     rec.jumpCharging = false;
-    rec.recoilVelX -= 8.5; // explosive hyperspace release kick
-    rec.flinchShudder = 0.55;
+    rec.jumpKick = -8.5;
+    rec.jumpKickShudder = 0.55;
   }
 
   function onJumpArrive(payload) {
-    const id = payload && (payload.playerId || payload.id);
+    const id = payload && payload.playerId;
     if (!id) return;
     const rec = getRecord(id);
     rec.jumpCharging = false;
-    rec.recoilVelX += 6.0; // deceleration surge
-    rec.flinchShudder = 0.45;
+    rec.jumpKick = 6;
+    rec.jumpKickShudder = 0.45;
+  }
+
+  function onPlayerDeathSlide(payload) {
+    const vel = payload && payload.victimVel;
+    if (!vel) return;
+    pendingDeathSlide = { x: Number(vel.x) || 0, z: Number(vel.z) || 0 };
   }
 
   function onJumpChargeAbort(payload) {
@@ -717,6 +728,7 @@ export function createShipMicroMotionTracker() {
   // harnesses emit them for script hops too, where no hull exists). Queue and resolve to the
   // player record on its next update.
   const pendingPlayerActions = [];
+  let pendingDeathSlide = null;
   // Player-only yaw swing queue (impacts carry no playerId; resolved on the player's next update).
   const pendingPlayerYawKicks = [];
   // Last tether ends, so a let-go that carries only a target id can still thump both hulls.
@@ -1118,6 +1130,7 @@ export function createShipMicroMotionTracker() {
     busSubscribers.push(bus.on('dock:docked', onDocked));
     busSubscribers.push(bus.on('dock:undocked', onUndocked));
     busSubscribers.push(bus.on('player:respawn', onPlayerRespawn));
+    busSubscribers.push(bus.on('player:death', onPlayerDeathSlide));
     busSubscribers.push(bus.on('cloak:engaged', onCloakEngaged));
     busSubscribers.push(bus.on('cloak:dropped', onCloakDropped));
     busSubscribers.push(bus.on('ship:swingDash', onSwingDash));
@@ -1190,6 +1203,21 @@ export function createShipMicroMotionTracker() {
       }
     }
     if (shieldNow != null) rec.prevShield = shieldNow;
+
+    if (rec.jumpKick) {
+      if (!reducedMotion) {
+        rec.recoilVelX += rec.jumpKick;
+        rec.flinchShudder = Math.max(rec.flinchShudder, rec.jumpKickShudder || 0);
+      }
+      rec.jumpKick = 0;
+    }
+    if (pendingDeathSlide && entity.id === options.playerId) {
+      if (!reducedMotion) {
+        rec.deathSlideVel = pendingDeathSlide;
+        rec.deathSlideT = 0;
+      }
+      pendingDeathSlide = null;
+    }
 
     // 1. Recoil spring integration (Hooke's law + damping)
     const kRecoil = 240.0;
@@ -1568,6 +1596,35 @@ export function createShipMicroMotionTracker() {
       hull.position.x = rec.recoilX * 0.3 + rcsKickFwd * 0.3 + yieldShiftX + haulShiftX;
       hull.position.y = 0;
       hull.position.z = rcsKickLat * 0.3 + yieldShiftZ + haulShiftZ;
+    }
+
+    if (rec.deathSlideT >= 0 && entity.pos && mesh && mesh.position) {
+      rec.deathSlideT += dt;
+      if (reducedMotion || rec.deathSlideT >= DEATH_SLIDE_S) {
+        mesh.position.x = entity.pos.x;
+        mesh.position.z = entity.pos.z;
+        rec.deathSlideT = -1;
+        rec.deathSlideVel = null;
+      } else {
+        const offset = deathSlideOffset(rec.deathSlideVel, rec.deathSlideT);
+        const hulls = [];
+        const entities = options.entities;
+        if (entities && typeof entities.forEach === 'function') {
+          entities.forEach((other) => {
+            if (!other || other.id === entity.id || !other.pos) return;
+            if (other.type !== 'ship' && other.type !== 'station' && other.type !== 'asteroid') return;
+            hulls.push({
+              id: other.id,
+              x: other.pos.x,
+              z: other.pos.z,
+              r: other.radius || 8,
+            });
+          });
+        }
+        clampSlideAgainstHulls(entity.pos, offset, hulls, entity.id);
+        mesh.position.x = entity.pos.x + offset.x;
+        mesh.position.z = entity.pos.z + offset.z;
+      }
     }
 
     // Additive secondary angular micro-motion

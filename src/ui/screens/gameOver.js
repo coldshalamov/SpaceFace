@@ -190,6 +190,7 @@ export const gameOverScreen = {
   _menuButton: null,
 
   mount(rootEl, ctx) {
+    this._rootEl = rootEl;
 
     injectDeckplate();
     rootEl.innerHTML = '';
@@ -339,6 +340,7 @@ export const gameOverScreen = {
 
   onShow(ctx) {
     this._refreshSummary(ctx);
+    this._armDeathSlide(ctx);
     // The kit's settle needs a real frame clock; the after-action unit test runs under a fake document.
     if (typeof requestAnimationFrame === 'function' && this._titleRegion) {
       settle(this._titleRegion, { from: 'left', state: 'gameover-title' });
@@ -351,7 +353,43 @@ export const gameOverScreen = {
     }
   },
 
-  onHide() {},
+  onHide() {
+    if (this._slideTimer) {
+      clearTimeout(this._slideTimer);
+      this._slideTimer = null;
+    }
+    this._endDeathSlide();
+  },
+
+  _armDeathSlide(ctx) {
+    const settings = ctx && ctx.state && ctx.state.settings;
+    const root = this._rootEl;
+    if (!settings || !root) return;
+    const video = settings.video || {};
+    const access = settings.accessibility || {};
+    if (video.motionReduce || video.flashReduce || access.flashReduce) return;
+    if (this._slideTimer) clearTimeout(this._slideTimer);
+    root.classList.remove('k-screen--cold');
+    const hidden = [];
+    for (const child of root.children) {
+      if (!child || !child.style) continue;
+      hidden.push(child);
+      child.style.visibility = 'hidden';
+    }
+    this._slideHidden = hidden;
+    this._slideTimer = setTimeout(() => this._endDeathSlide(), 400);
+  },
+
+  _endDeathSlide() {
+    const root = this._rootEl;
+    if (root) root.classList.add('k-screen--cold');
+    const hidden = this._slideHidden;
+    if (hidden) {
+      for (const child of hidden) child.style.visibility = '';
+      this._slideHidden = null;
+    }
+    this._slideTimer = null;
+  },
   refresh(ctx) { this._refreshSummary(ctx); },
 
   /** The career record: lifetime figures the player earned before this loss. */

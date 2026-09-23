@@ -47,6 +47,15 @@ import {
   ENVIRONMENT_CLASSES,
 } from './environmentMix.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
+import {
+  admitLayerVoice,
+  damageLayer,
+  dopplerFactor,
+  layerRecipeId,
+  pickRemoteEngines,
+  REMOTE_ENGINE_CAP,
+  remoteEnginePlaybackRate,
+} from './hitVoice.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
@@ -1017,7 +1026,9 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
 });
 
 export function resolveAudioCueRecipeId(cueId) {
-  return AUDIO_CUE_TO_RECIPE[cueId] || (AUDIO_RECIPE_BY_ID[cueId] ? cueId : 'sfx_ui_click');
+  if (AUDIO_CUE_TO_RECIPE[cueId]) return AUDIO_CUE_TO_RECIPE[cueId];
+  if (AUDIO_RECIPE_BY_ID[cueId]) return cueId;
+  return null;
 }
 
 export function alertCueOwnsAudio(payload) {
@@ -2730,6 +2741,7 @@ export const audio = {
     }
 
     let att = 1, pan = 0, rate = opts.rate || 1;
+    let lockRate = opts.lockRate === true;
     let occluded = false;
     if (opts.position) {
       if (!Number.isFinite(opts.position.x) || !Number.isFinite(opts.position.z)) return null;
@@ -2748,6 +2760,16 @@ export const audio = {
     // Player damage supplies ship-local panning. Explicit pan intentionally overrides the
     // world-X positional fallback; all other positional sounds keep the established behavior.
     if (Number.isFinite(opts.pan)) pan = clamp(opts.pan, -1, 1);
+    if (recipe.dopplerEnabled && opts.position && opts.entityId !== (this.state && this.state.playerId)) {
+      const player = this.state && this.state.entities && this.state.playerId != null
+        ? this.state.entities.get(this.state.playerId)
+        : null;
+      const sourceVel = opts.velocity || (opts.entity && opts.entity.vel) || null;
+      const factor = dopplerFactor(this._playerPos(), player && player.vel, opts.position, sourceVel);
+      const base = opts.rate != null && opts.rate !== 1 ? opts.rate : 1;
+      rate = base * factor;
+      lockRate = true;
+    }
     let callGain = (opts.gain == null ? 1 : opts.gain);
     if (this._motionReduced() && (busName === 'ambient' || recipeId.includes('traffic') || recipeId.includes('machinery'))) {
       callGain *= 0.35;
@@ -2766,7 +2788,8 @@ export const audio = {
         || (opts.barkSampleId ? resolveBarkSampleBinding(opts.barkSampleId) : null)
         || resolveSampleBinding(recipeId)
       : null;
-    const sampleBuffer = sampleBinding ? rt._samples.acquire(sampleBinding.sampleId) : null;
+    const useSample = !!(sampleBinding && sampleBinding.share > 0);
+    const sampleBuffer = useSample ? rt._samples.acquire(sampleBinding.sampleId) : null;
     const synthPeak = sampleBuffer ? peak * (1 - sampleBinding.share) : peak;
 
     let targetBus = rt.sfxBus;
@@ -2790,7 +2813,8 @@ export const audio = {
     this._noteRecipeHeard(recipeId);
     this._evictIfFull();
     const voice = playRecipe(ctx, recipe, dest, {
-      peakGain: synthPeak, detune: opts.detune || 0, rate, id: rt._nextVoiceId++, trackId: opts.trackId || null,
+      peakGain: synthPeak, detune: opts.detune || 0, rate, lockRate,
+      id: rt._nextVoiceId++, trackId: opts.trackId || null,
       startTime: opts.startTime,
     }, rt._caches);
     voice.busName = busName;
@@ -2927,50 +2951,54 @@ export const audio = {
 
   _onHit(p) {
     if (!p) return;
-    // projectile:hit has no shield/hull split; play a generic hull tick unless combat:damage
-    // (which carries brokeShield) also fires — keep this light to avoid double sounds.
-    const entity = p.attackerId != null && this.state.entities && typeof this.state.entities.get === 'function'
-      ? this.state.entities.get(p.attackerId) : null;
-    this.play('sfx_mining_impact', { position: p.pos, gain: 0.5, rate: 1.4, entity });
+    // Ships wait for combat:damage, which knows the layer. A rock has no layer, so the chip
+    // stays here. Playing the rock sample on a hull was a second, wrong voice.
+    const entities = this.state && this.state.entities;
+    const target = p.targetId != null && entities && typeof entities.get === 'function'
+      ? entities.get(p.targetId)
+      : null;
+    const type = target && target.type || p.type;
+    if (type !== 'asteroid') return;
+    this.play('sfx_mining_impact', {
+      position: p.pos,
+      gain: 0.5,
+      rate: 1.4,
+      entity: target,
+      velocity: target && target.vel,
+    });
   },
 
   _onDamage(p) {
     if (!p) return;
-    const rt = this.rt, ctx = rt.ctx;
+    const rt = this.rt;
     if (p.isPlayer) { rt._lastDamageT = this.state.simTime; this._markMusicDirty(); }
 
-    const onShield = !!p.shieldAbsorbed || Number(p.shieldDamage) > 0 || p.dominantLayer === 'shield';
+    const layer = damageLayer(p);
+    if (!layer) return;
+    const recipeId = layerRecipeId(layer);
+    if (!recipeId) return;
+    const nowMs = this._wallClockMs();
+    if (!rt._layerVoiceBook) rt._layerVoiceBook = Object.create(null);
+    if (!admitLayerVoice(rt._layerVoiceBook, p.targetId, layer, nowMs)) return;
+
     const playerSignature = p.isPlayer ? resolvePlayerDamageAudioSignature(p, this.state) : null;
     const hitPosition = playerSignature && playerSignature.position || p.pos || p.hitPoint;
-    if (onShield) {
-      const now = ctx ? ctx.currentTime : 0;
-      if (now - (rt._lastShieldHitTime || 0) < 2.0) {
-        rt._shieldHitStack = Math.min(4, (rt._shieldHitStack || 0) + 1);
-      } else {
-        rt._shieldHitStack = 0;
-      }
-      rt._lastShieldHitTime = now;
-      const pitchOffset = rt._shieldHitStack;
-      const rate = Math.pow(2, pitchOffset / 12.0);
-      this.play('sfx.shieldHit', { position: hitPosition, gain: 0.7, rate });
-    } else {
-      // combat:damage names this field dominantLayer (not kind). Preserve legacy kind payloads,
-      // but route real armor damage to its hard metallic receipt instead of the hull thump.
-      if (p.dominantLayer === 'armor' || Number(p.armorDamage) > 0 || p.kind === 'armor') {
-        this.play('sfx.armorHit', { position: hitPosition, gain: 0.8 });
-      } else {
-        this.play('sfx.hullHit', { position: hitPosition, gain: 0.9 });
-      }
-    }
-
-    if (playerSignature) {
-      this.play('sfx.playerDamage', {
-        gain: playerSignature.gain,
-        rate: playerSignature.rate,
-        detune: playerSignature.detune,
-        pan: playerSignature.pan,
-      });
-    }
+    const gain = playerSignature
+      ? playerSignature.gain
+      : (layer === 'armor' ? 0.8 : layer === 'shield' ? 0.7 : 0.9);
+    const attacker = p.attackerId != null && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(p.attackerId)
+      : null;
+    this.play(recipeId, {
+      position: hitPosition,
+      gain,
+      rate: playerSignature ? playerSignature.rate : 1,
+      detune: playerSignature ? playerSignature.detune : 0,
+      pan: playerSignature ? playerSignature.pan : undefined,
+      lockRate: !!playerSignature,
+      entity: attacker,
+      velocity: attacker && attacker.vel,
+    });
   },
 
   _onDoctrineTelegraphAudio(p) {
@@ -4127,9 +4155,11 @@ export const audio = {
     const sampleBinding = rt._samples ? resolveSampleBinding(recipeId) : null;
     const sampleBuffer = sampleBinding ? rt._samples.acquire(sampleBinding.sampleId) : null;
     const loopSynthPeak = Math.max(0.02, sampleBuffer ? peak * (1 - sampleBinding.share) : peak);
+    const loopRate = (options.rate || 1) * (isPhysicalAudioBus(busName) ? (rt._bulletTimePitch || 1) : 1);
     const v = playRecipe(ctx, recipe, dest, {
       peakGain: loopSynthPeak,
-      rate: isPhysicalAudioBus(busName) ? (rt._bulletTimePitch || 1) : 1,
+      rate: loopRate,
+      lockRate: options.lockRate === true,
       id: rt._nextVoiceId++,
     }, rt._caches);
     v._panner = panner;
@@ -4142,7 +4172,7 @@ export const audio = {
       : ((recipe.category === 'weapon' || String(recipeId).includes('wpn')) ? 'weaponLoop' : busName);
     if (sampleBuffer) {
       attachSampleLayer(ctx, sampleBuffer, sampleBinding, v, ctx.currentTime, {
-        rate: isPhysicalAudioBus(busName) ? (rt._bulletTimePitch || 1) : 1,
+        rate: loopRate,
         peak: peak * sampleBinding.share,
         loop: true,
       });
@@ -4348,6 +4378,8 @@ export const audio = {
       text,
       assertive: !!opts.assertive,
       shape: opts.shape || 'arc',
+      physical: opts.physical === true,
+      showVisible: opts.showVisible !== false,
     });
   },
 
@@ -4490,7 +4522,9 @@ export const audio = {
     if (!cue) return;
     const accessibility = this.state && this.state.settings && this.state.settings.accessibility;
     const captionsOn = !accessibility || accessibility.captions !== false;
-    if (visualEventAudioAllowed(this.state && this.state.settings) && !this._recipeHeardThisTick(cue.recipeId)) {
+    // combat:damage already spoke the layer. The juice alias must not play it again.
+    const layerAlreadySpoke = typeof eventId === 'string' && eventId.startsWith('combat.damage.');
+    if (!layerAlreadySpoke && visualEventAudioAllowed(this.state && this.state.settings) && !this._recipeHeardThisTick(cue.recipeId)) {
       this.play(cue.recipeId, {
         gain: 0.55 + cue.importance * 0.3,
         critical: cue.importance >= 0.8,
@@ -4498,7 +4532,21 @@ export const audio = {
       });
     }
     if (captionsOn) {
-      this._emitPresentationCaption(cue.caption, { assertive: cue.importance >= 0.8, shape: 'flash' });
+      const video = this.state && this.state.settings && this.state.settings.video;
+      const physical = cue.recipeId === 'sfx.shieldHit'
+        || cue.recipeId === 'sfx.armorHit'
+        || cue.recipeId === 'sfx.hullHit'
+        || cue.recipeId === 'sfx.shieldBreak'
+        || cue.recipeId === 'sfx_explosion_small'
+        || cue.recipeId === 'sfx.killConfirmed';
+      const pictureHeld = !!(video && (video.motionReduce || video.flashReduce))
+        || !!(accessibility && accessibility.flashReduce);
+      this._emitPresentationCaption(cue.caption, {
+        assertive: cue.importance >= 0.8,
+        shape: 'flash',
+        physical,
+        showVisible: !physical || pictureHeld,
+      });
     }
   },
 
@@ -4591,6 +4639,7 @@ export const audio = {
     // to collapse to a UI click on top of the visual-event recipe; the visual-event path owns them.
     if (resolveVisualEventCue(id) && !AUDIO_CUE_TO_RECIPE[id] && !AUDIO_RECIPE_BY_ID[id]) return;
     const rid = resolveAudioCueRecipeId(id);
+    if (!rid) return;
     const opts = (cue && typeof cue === 'object') ? cue : {};
     // While the mine owns the ear its own synthesized voice replaces the flight-mix recipe for
     // these receipts. The semantic cue still travels the bus (captions, `.07` board expressions);
@@ -5302,6 +5351,7 @@ export const audio = {
 
     // Update continuous procedural sources
     this._updateEngineHum();
+    this._syncRemoteEngines(now);
     this._updateBrakeHiss(dt);
     this._updateSlipstreamHiss();
     this._updateTetherHum();
@@ -5348,6 +5398,117 @@ export const audio = {
       rt._loopPositionDirty = false;
     }
     this._gcVoices(now);
+  },
+
+  _setVoiceRate(voice, rate) {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    if (!voice || !ctx || !Number.isFinite(rate)) return;
+    const apply = (sources) => {
+      if (!sources) return;
+      for (let i = 0; i < sources.length; i++) {
+        const source = sources[i];
+        if (!source || !source.playbackRate) continue;
+        try { source.playbackRate.setTargetAtTime(rate, ctx.currentTime, 0.08); } catch (_) {}
+      }
+    };
+    apply(voice.sources);
+    const subs = voice.subVoices;
+    if (subs) {
+      for (let i = 0; i < subs.length; i++) apply(subs[i] && subs[i].sources);
+    }
+  },
+
+  /**
+   * Glass-tier ships other than the player get one engine loop. Cap is six, nearest first.
+   * Throttle under the floor, or leaving the set, ramps out and the voice is kept half a second
+   * so a flicker of thrust does not restart the buffer.
+   */
+  _syncRemoteEngines(now) {
+    const rt = this.rt;
+    if (!rt || !rt.ctx || rt.ctx.state !== 'running') return;
+    const loops = rt.loops;
+    if (!loops) return;
+    const silenceAll = rt._paused || !this.state || this.state.mode !== 'flight';
+    if (silenceAll) {
+      for (const key in loops) {
+        if (!key.startsWith('eng_')) continue;
+        const voice = loops[key];
+        if (voice) voice._baseGain = 0.0001;
+      }
+      return;
+    }
+    if (now < (rt._nextRemoteEngineS || 0)) return;
+    rt._nextRemoteEngineS = now + 0.1;
+
+    const list = this.state.entityList;
+    const player = this._playerPos();
+    const playerId = this.state.playerId;
+    const rows = rt._remoteRows || (rt._remoteRows = []);
+    rows.length = 0;
+    if (Array.isArray(list) && player) {
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        if (!entity || entity.alive === false || entity.id === playerId || !entity.pos) continue;
+        if (entity.type !== 'ship' && entity.type !== 'freighter' && entity.type !== 'drone') continue;
+        const frame = entity._flightFrame;
+        let throttle = 0;
+        if (frame && Number.isFinite(frame.throttle)) throttle = Math.max(0, frame.throttle);
+        else if (frame && Number.isFinite(frame.commandedThrottle)) throttle = Math.max(0, frame.commandedThrottle);
+        const exact = entityNeedsExactAudio(entity, { playerId }) === true;
+        rows.push({
+          id: entity.id,
+          dist: Math.hypot(entity.pos.x - player.x, entity.pos.z - player.z),
+          throttle,
+          exact,
+          entity,
+        });
+      }
+    }
+    const chosen = pickRemoteEngines(rows, REMOTE_ENGINE_CAP, rt._remoteChosen || (rt._remoteChosen = []));
+    const want = rt._remoteWant || (rt._remoteWant = Object.create(null));
+    for (const key in want) want[key] = false;
+    for (let i = 0; i < chosen.length; i++) {
+      const row = chosen[i];
+      const idKey = String(row.id);
+      want[idKey] = true;
+      const loopKey = 'eng_' + idKey;
+      const rate = remoteEnginePlaybackRate(row.id, row.entity.mass);
+      let voice = loops[loopKey];
+      if (!voice) {
+        voice = this._startLoopVoice('sfx_engine_thrust', row.entity.pos, 0.02, {
+          entity: row.entity,
+          trackId: row.id,
+          follow: true,
+          busName: 'engine',
+          rate,
+          lockRate: true,
+        });
+        if (voice) {
+          voice._remoteEngine = true;
+          voice._baseGain = 0.0001;
+          loops[loopKey] = voice;
+        }
+      }
+      if (!voice) continue;
+      voice._remoteQuietSince = 0;
+      voice._remoteRate = rate;
+      voice._baseGain = Math.max(0.0001, 0.45 * Math.min(1, row.throttle));
+      this._setVoiceRate(voice, rate);
+    }
+    for (const key in loops) {
+      if (!key.startsWith('eng_')) continue;
+      const idKey = key.slice(4);
+      if (want[idKey]) continue;
+      const voice = loops[key];
+      if (!voice) continue;
+      if (!voice._remoteQuietSince) voice._remoteQuietSince = now;
+      voice._baseGain = 0.0001;
+      if (now - voice._remoteQuietSince >= 0.5) {
+        this._endLoopVoice(voice);
+        delete loops[key];
+      }
+    }
   },
 
   // Track positional loop voices (beam/mining) toward their target's current position.
@@ -5410,6 +5571,12 @@ export const audio = {
       if (v._panner && (!Number.isFinite(v._audioPanTarget) || Math.abs(v._audioPanTarget - pan) > 1e-5)) {
         try { v._panner.pan.setTargetAtTime(pan, t, 0.05); } catch (_) {}
         v._audioPanTarget = pan;
+      }
+      if (v._remoteEngine) {
+        const playerEnt = this.state && this.state.playerId != null ? entities.get(this.state.playerId) : null;
+        const factor = dopplerFactor(pp, playerEnt && playerEnt.vel, e.pos, e.vel);
+        const base = Number.isFinite(v._remoteRate) ? v._remoteRate : 1;
+        this._setVoiceRate(v, base * factor);
       }
     };
     for (const k in rt.loops) apply(rt.loops[k]);

@@ -2393,14 +2393,15 @@ export const SAMPLE_BINDINGS = {
   'sfx.killSmall': { id: 'exp_small', share: 0.62 },
   sfx_kill_sine: { id: 'escalation_sub', share: 0.5, rate: 0.8 },
   sfx_kill_noise: { id: 'exp_small', share: 0.5, rate: 0.7 },
-  'sfx.killConfirmed': { id: 'exp_small', share: 0.6 },
+  'sfx.killConfirmed': { id: 'kill_confirm_chime', share: 0.6 },
   sfx_kill_confirm: { id: 'kill_confirm_chime', share: 0.6 },
   sfx_vector_mine: { id: 'vector_mine', share: 0.6 },
   'sfx.chargeDetonate': { id: 'exp_large', share: 0.6, rate: 1.3 },
   sfx_player_death: { id: 'player_death', share: 0.65 },
 
   // shields
-  'sfx.shieldHit': { id: 'shield_break', share: 0.45, rate: 1.25 },
+  // The synth tick is the shield hit. share 0 keeps shield_break for the collapse only.
+  'sfx.shieldHit': { id: 'shield_break', share: 0 },
   sfx_shield_break_crystal: { id: 'shield_break', share: 0.6 },
   sfx_shield_break_crack: { id: 'shield_blowout', share: 0.45, rate: 1.4 },
   'sfx.shieldBreak': { id: 'shield_break', share: 0.62 },

@@ -27,6 +27,7 @@ import {
   resolveBackgroundComposition,
   resolveBackgroundStructure,
   resolveBackgroundPaintedSky,
+  resolveSectorVisualProfile,
   estimatePhenomenonCoverage,
 } from '../data/sectorVisualProfiles.js';
 import { DeepSkyPlateResidency, deepSkyPeakResidentBytes } from './deepSkyPlates.js';
@@ -359,7 +360,9 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
   uniform sampler2D uL1;
   uniform sampler2D uL2;
   uniform sampler2D uPaintedSky;
+  uniform sampler2D uPaintedSkyNext;
   uniform float uPaintedSkyStrength;
+  uniform float uPaintedSkyBlend;
   uniform vec2 uPaintedSkyOffset;
   uniform vec2 uPaintedSkyScale;
   uniform vec2 uRepeat0;
@@ -407,7 +410,11 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
     if (uPaintedSkyStrength > 0.0) {
       vec2 skyUv = (vSkyClip.xy / vSkyClip.w) * 0.5 + 0.5;
       skyUv = (skyUv - 0.5) * uPaintedSkyScale + 0.5 + uPaintedSkyOffset;
-      color = mix(color, texture2D(uPaintedSky, skyUv).rgb, uPaintedSkyStrength);
+      vec3 plate = texture2D(uPaintedSky, skyUv).rgb;
+      if (uPaintedSkyBlend > 0.0) {
+        plate = mix(plate, texture2D(uPaintedSkyNext, skyUv).rgb, uPaintedSkyBlend);
+      }
+      color = mix(color, plate, uPaintedSkyStrength);
     }
     gl_FragColor = vec4(max(color, vec3(0.0)), 1.0);
     #include <tonemapping_fragment>
@@ -1878,7 +1885,9 @@ export class SpaceBackground {
         uL1: { value: l1.tex },
         uL2: { value: l2.tex },
         uPaintedSky: { value: this.paintedSky || l0.tex },
+        uPaintedSkyNext: { value: this.paintedSky || l0.tex },
         uPaintedSkyStrength: { value: this._paintedSkyStrength },
+        uPaintedSkyBlend: { value: 0 },
         uPaintedSkyOffset: { value: new THREE.Vector2() },
         uPaintedSkyScale: { value: new THREE.Vector2(0.88, 0.88) },
         uRepeat0: { value: new THREE.Vector2(this.quadSize / l0.tile, this.quadSize / l0.tile) },
@@ -2905,6 +2914,28 @@ export class SpaceBackground {
       // before plates existed.
       if (skyTarget === 0 && this._paintedSkyStrength < 0.002) this._paintedSkyStrength = 0;
       un.uPaintedSkyStrength.value = this._paintedSkyStrength;
+      if (un.uPaintedSkyBlend) {
+        let blend = 0;
+        const jump = this.state && this.state.jump;
+        const video = this.state && this.state.settings && this.state.settings.video;
+        const reduced = !!(video && video.motionReduce);
+        if (!reduced && jump && jump.state === 'JUMPING' && jump.blend > 0 && this.deepSkyPlates) {
+          const sectors = this.state.world && this.state.world.sectors;
+          const target = sectors && jump.targetSectorId ? sectors[jump.targetSectorId] : null;
+          const art = resolveBackgroundPaintedSky(resolveSectorVisualProfile(target));
+          if (art && art.plate && art.plate !== this.deepSkyPlates.activeId) {
+            this.deepSkyPlates.request(art.plate);
+            if (this.deepSkyPlates.pendingDecoded
+              && this.deepSkyPlates.pendingTexture
+              && this.deepSkyPlates.pendingId === art.plate) {
+              blend = jump.blend;
+              un.uPaintedSkyNext.value = this.deepSkyPlates.pendingTexture;
+            }
+          }
+        }
+        un.uPaintedSkyBlend.value = blend;
+        if (blend === 0 && un.uPaintedSky) un.uPaintedSkyNext.value = un.uPaintedSky.value;
+      }
       const skyParallax = skyArt?.parallax || 0.003;
       // Cover the viewport without stretching the painted forms on wide or tall displays.
       const canvas = this.renderer?.domElement;
