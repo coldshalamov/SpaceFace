@@ -935,7 +935,8 @@ export const crucibleDraftScreen = {
         if (lit && typeof card.scrollIntoView === 'function' && this._cards.getBoundingClientRect) {
           const box = this._cards.getBoundingClientRect();
           const row = card.getBoundingClientRect();
-          if (row.top < box.top || row.bottom > box.bottom) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          const clear = Math.min(84, box.height / 4);
+          if (row.top < box.top + clear || row.bottom > box.bottom - clear) card.scrollIntoView({ block: 'center', behavior: 'smooth' });
         }
       }
     }

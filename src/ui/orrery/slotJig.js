@@ -153,17 +153,18 @@ export function createSlotJig({ host } = {}) {
     const right = t.x >= cxd;
     const [rx, ry] = polar(cxd, cyd, R, bearingDeg);
     const ey = Math.max(22, Math.min(H - 30, ry));
-    const ex = right ? Math.min(W - 2, rx + 26) : Math.max(2, rx - 26);
+    const ex = right ? Math.min(W - 2, rx + 38) : Math.max(2, rx - 38);
     layer.appendChild(svg('path', { d: `M ${t.x.toFixed(1)} ${t.y.toFixed(1)} L ${rx.toFixed(1)} ${ry.toFixed(1)} L ${ex.toFixed(1)} ${ey.toFixed(1)}`,
       class: 'orr-core orr-hand', 'stroke-width': 1.2, fill: 'none' }));
-    const [gx0, gy0] = polar(cxd, cyd, R, bearingDeg - 8);
-    void gx0; void gy0;
-    layer.appendChild(svg('path', { d: arcD(cxd, cyd, R, bearingDeg - 8, bearingDeg + 8), class: 'orr-core orr-hand', 'stroke-width': 1.6 }));
-    const word = svg('text', { x: ex.toFixed(1), y: (ey - 6).toFixed(1), 'text-anchor': right ? 'start' : 'end', class: 'orr-slotjig__word' });
+    // both lines sit outside the ring: above the leader on the upper half, below it on the lower
+    const upper = ey < cyd;
+    const wy = upper ? ey - 22 : ey + 16;
+    const sy = upper ? ey - 7 : ey + 31;
+    const word = svg('text', { x: ex.toFixed(1), y: wy.toFixed(1), 'text-anchor': right ? 'start' : 'end', class: 'orr-slotjig__word' });
     word.textContent = String(spec.label || '').toUpperCase();
     layer.appendChild(word);
     if (spec.sub) {
-      const sub = svg('text', { x: ex.toFixed(1), y: (ey + 15).toFixed(1), 'text-anchor': right ? 'start' : 'end', class: 'orr-slotjig__sub' });
+      const sub = svg('text', { x: ex.toFixed(1), y: sy.toFixed(1), 'text-anchor': right ? 'start' : 'end', class: 'orr-slotjig__sub' });
       sub.textContent = spec.sub;
       layer.appendChild(sub);
     }

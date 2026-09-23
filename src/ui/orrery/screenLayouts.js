@@ -397,9 +397,15 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results .sf-crres__step-
 /* armory: the offers on a rail at the left, one line each (the verb, the name, the price); the one
    under the pointer or focus is read out at the right -- its words, where it goes on the ship, how it
    compares, what it leaves in the wallet (crucibleDraft.js _paintReading). */
-html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-stage { max-width:min(560px, 40vw); display:flex; flex-direction:column; min-height:0; height:100%; position:relative; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-stage { max-width:min(560px, 40vw); display:flex; flex-direction:column; min-height:0; height:100%; position:relative; overflow:visible !important; }
+@media (max-width:1500px) {
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-stage { max-width:34vw; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-armory-reading.orr-armory-reading { left:calc(var(--k-margin, 64px) + 34vw + 40px) !important;
+    grid-template-columns:minmax(0, clamp(300px, 27vw, 420px)) minmax(0, 1fr) !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-card.sf-cru-card { grid-template-columns:18px 82px minmax(0, 1fr) auto !important; }
+}
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-stage > .sf-cru-cards { flex:1 1 auto; min-height:0; max-height:none !important;
-  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent); }
+  -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 36px), transparent); mask-image:linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 36px), transparent); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale { position:absolute; left:-18px; top:64px; bottom:6px; width:10px; pointer-events:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale[hidden] { display:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .orr-rail-scale__track { position:absolute; left:4px; top:0; bottom:0; width:1px; background:rgb(236 230 216 / .2); }
