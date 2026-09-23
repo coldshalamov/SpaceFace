@@ -2119,10 +2119,20 @@ async function exerciseMarketRoundtrip(page) {
     return modeIsOn(locator);
   };
   // Reset the public trade-mode control explicitly so cycle 2+ cannot time out looking for
-  // a hidden Buy action.
+  // a hidden Buy action. When the hold empties mid-leg the console collapses into its
+  // HOLD_EMPTY state (no register, no mode row) — the public "Switch to Buy" verb is the
+  // only way back, so every buy-mode ensure offers it alongside the segment click.
   const buyMode = activeTradeShell.locator('button[data-mode="buy"]').first();
   await buyMode.waitFor({ state: 'visible', timeout: 20_000 });
-  const ensureBuyMode = () => ensureMode(buyMode);
+  const ensureBuyMode = async () => {
+    for (let attempt = 0; attempt < 3 && !(await modeIsOn(buyMode)); attempt++) {
+      if (await pBound(holdEmptyVerb.isVisible(), 1_500, false)) {
+        await pBound(holdEmptyVerb.click({ timeout: 2_000 }), 3_000, null);
+      }
+      await clickWithFallback(buyMode);
+    }
+    return modeIsOn(buyMode);
+  };
   await ensureBuyMode();
   const sellMode = activeTradeShell.locator('button[data-mode="sell"]').first();
   const tradeGo = activeTradeShell.locator('.sx-trade__go[data-go]:not([disabled])').first();
@@ -2222,7 +2232,19 @@ async function exerciseMarketRoundtrip(page) {
       await page.waitForTimeout(250);
     }
     if (!enabled && !(await pBound(tradeGo.isEnabled(), 4_000, false))) return null;
-    if (commitQty != null) await qtyInput.fill(commitQty, { timeout: 1_500 }).catch(() => {});
+    // Never commit on a swallowed fill: in Sell mode the console defaults qty to the
+    // whole held stack, so a fill that missed (input detached by a tick re-render)
+    // turns "sell 1" into "sell all" and collapses the console into HOLD_EMPTY —
+    // which killed Electron cycle 28 (356u dump, then no register to buy through).
+    const armQty = async () => {
+      for (let fillTry = 0; fillTry < 2; fillTry++) {
+        await qtyInput.fill(commitQty, { timeout: 1_500 }).catch(() => {});
+        const val = await pBound(qtyInput.inputValue(), 1_500, null);
+        if (Number(val) === Number(commitQty)) return true;
+      }
+      return false;
+    };
+    if (commitQty != null && !(await armQty())) return null;
     const before = await pBound(readTradeSnapshot(page, id), 5_000, null);
     if (!before) return null;
     // The console re-renders on every price tick: a GO node resolved before the click can be
@@ -2234,7 +2256,7 @@ async function exerciseMarketRoundtrip(page) {
     let attempts = 0;
     while (!landed && Date.now() < deadline && attempts < 3) {
       attempts += 1;
-      if (commitQty != null) await qtyInput.fill(commitQty, { timeout: 1_500 }).catch(() => {});
+      if (commitQty != null && !(await armQty())) continue;
       const enabled = await tradeGo.waitFor({ state: 'visible', timeout: 1_500 }).then(() => true, () => false);
       if (!enabled) continue;
       // Same live-refresh hazard as the register rows: try the pointer click first,
@@ -2330,15 +2352,28 @@ async function exerciseMarketRoundtrip(page) {
     // room. Bounded: each commit clears a stack, and the loop stops when no row
     // commits or every held row has been drained twice over.
     let drainedStacks = 0;
+    const drainedIds = [];
     for (let drained = 0; drained < 24; drained++) {
       const free = await readHoldFreeVolume();
       if (free == null || free >= 1) break;
       const extra = await walkRowsForCommit(SELL_VERIFY, 45, { commitQty: null, ...walkBudget() });
       if (!extra) break;
+      if (!drainedIds.includes(extra.commodityId)) drainedIds.push(extra.commodityId);
       drainedStacks += 1;
     }
     await ensureBuyMode();
-    buy = await walkRowsForCommit(BUY_VERIFY, 14, walkBudget());
+    // A pilot who just emptied their hold onto the counter re-buys from the stacks the
+    // register just took: a landed sale lands in station stock, so those rows are
+    // provably buyable — while the rest of a thin book can sit at the 1-unit floor.
+    // Try them before the generic walk, whose row window can end above the only
+    // stocked row (PQ-033.02 Electron cycle-28: hullplate sat below the first 14).
+    for (const id of [...drainedIds, sell.commodityId]) {
+      const row = page.locator(`[data-cmdty="${id}"]`).first();
+      if (await pBound(row.count(), 4_000, 0) < 1) continue;
+      buy = await attemptRowCommit(row, id, BUY_VERIFY, walkBudget());
+      if (buy) break;
+    }
+    if (!buy) buy = await walkRowsForCommit(BUY_VERIFY, 40, walkBudget());
     // A freed hold is not yet a funded one: the roundtrip bleeds bid-ask spread
     // every cycle while in-flight pickups pile high-value ore into the hold, so
     // late-soak saves can sit on 200+ u of cargo with single-digit credits. A
