@@ -169,6 +169,7 @@ export const BARKS = {
       'Reading your hull. You lost, or you working?',
       'Miner’s hail. State your business, keep it short.',
       'Fourteenth shift this week. Reading your beacon. Try not to be interesting.',
+      'Ceres yard control. Check your drift vector; refinery dock is full to the gantry.',
     ],
     warn: [
       'That’s a filed claim you’re drifting into. Back off, we don’t want trouble.',
@@ -211,6 +212,8 @@ export const BARKS = {
       'Just working the belt. You do you.',
       'Safe hauls out there. It’s a long way to anywhere.',
       'Crew of nine down Shaft Four. Two up here. Same ore. Same quotas. Fly past.',
+      'Ceres yard hail: keep your distance from the refinery docks, shift is running hot.',
+      'Ceres trader inbound: Drift ore haul from the belt, clear the conveyor.',
     ],
     distress: [
       'She’s coming apart. Tell the shift I stayed with her.',

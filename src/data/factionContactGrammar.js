@@ -74,6 +74,25 @@ export const FACTION_CONTACT_GRAMMAR = Object.freeze({
     }),
     sampleLine: 'Pass. Say nothing.',
   }),
+  faction_dmc: Object.freeze({
+    id: 'faction_dmc',
+    callsign: 'Drift Collective',
+    contactWord: 'YARD',
+    firstFire: false,
+    lawfulRoe: 'defensive_only',
+    demandType: 'claim_dispute',
+    scanPolicy: 'claim_survey_before_hail',
+    lootLegality: 'ore_and_scrap_only',
+    barkSituations: Object.freeze(['scan', 'warn', 'demand-cargo', 'patrol-greeting']),
+    primaryBark: 'patrol-greeting',
+    aftermath: Object.freeze({
+      repChannel: 'faction:repDelta',
+      heatChannel: null,
+      paperwork: false,
+      graffitiTone: 'yard_tally',
+    }),
+    sampleLine: 'Ceres yard hail: keep your distance from the refinery docks, shift is running hot.',
+  }),
 });
 
 export const PRESSURE_FACTION_IDS = Object.freeze([
