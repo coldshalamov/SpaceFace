@@ -42,3 +42,18 @@ Phase A citations:
 - Live first-draw identity gate still needs an owner-GPU quiet-witness pass to confirm the soft-GPU texture gap is gone on Intel/ANGLE.
 - `scheduler.yield()` / `postTask` availability varies by browser; setTimeout fallback remains.
 - Picture contract untouched: no bloom/shadow/quality cuts; no dummy shader prewarm.
+
+## Crucible A/B (2026-09-22 soft-GPU, seed 4242) — **hitch miss**
+
+Re-applied patches cleanly on bare master `59df2a08e` (`vm-work/shader-admission-measure` @ `9a6bb8369`). Focused **49/49**.
+
+| Metric | Before (master) | After (admission-slice) | Notes |
+|---|---|---|---|
+| novelty NOVEL | 15 | **12** | mild |
+| hitch callbacks | 65 / 342 | **94 / 269** | **miss** |
+| worst frame | 783 ms | **967 ms** | **miss** |
+| game speed | 56.9 % | **41.2 %** | **miss** |
+| `opening.plan` | incomplete | incomplete | needs opening-plan-complete |
+
+Do **not** treat this series as a soft-GPU hitch win. Keep for owner-GPU / first-draw identity import; pair with opening-plan-complete before re-measuring novelty-on-glass.
+

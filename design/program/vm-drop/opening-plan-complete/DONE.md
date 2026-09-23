@@ -41,3 +41,20 @@ GPU tier: **software** (SwiftShader). Owner iGPU fps not claimed.
 - Pair measure: opening-plan-complete + hitch-opening-drain (self-build complete plan).
 - Mid-flight novelty via shader-admission-slice crucible A/B.
 - `radar.draw` / `classifyWorld` from cpu-profile-flight.
+
+## Pair with hitch-opening-drain (combo probe, same tip)
+
+`vm-work/opening-plan-drain-combo` = this patch + hitch-opening-drain on master.
+
+| Metric | Master incomplete | Plan-complete only | Drain only (still incomplete) | **Combo** |
+|---|---|---|---|---|
+| `opening.plan` | incomplete skip | **completes** | incomplete skip | **completes** |
+| planWait | 818 ms | 2970 ms | 0 skip | **0 skip** |
+| prepareOpeningGpuResources | 874 ms | 3003 ms | 67 ms | **1390 ms** (residency+receipt) |
+| launch to flight | 13.1 s | 14.6 s | 11.7 s | **11.7 s** |
+| worst frame | 783 ms | **267 ms** | 800 ms | **317 ms** |
+| novelty NOVEL | 15 | 10 | 15 | **9** |
+| hitch | 65/342 | 51/342 | 45/362 | 64/317 |
+
+Combo closes the identity hole **and** keeps launch at the drain win. Import order: opening-plan-complete, then hitch-opening-drain.
+
