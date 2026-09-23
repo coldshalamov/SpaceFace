@@ -5652,8 +5652,12 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
         // Owner-inactive aborts are the expected race: the entity evicted, died, or the context
         // reset while the demoted level's pipelines were compiling. The active level stays put
         // and a later LOD request retries — teardown noise, not a defect worth a soak warning.
+        // A "must be retained" throw is the same race one step later: the composed part's
+        // package can only lose its boundary-owner retain — and thereby become sweepable — when
+        // the demotion's residency context ended between library load and createInstance. A live,
+        // claimed boundary keeps the mixed-lifetime pin, so the message cannot fire otherwise.
         const ownerGone = causes.length > 0
-          && causes.every((cause) => /became inactive|owner.*inactive/i.test(cause));
+          && causes.every((cause) => /became inactive|owner.*inactive|must be retained before creating an instance/i.test(cause));
         if (ownerGone) {
           console.info('[partsLibrary] whole-ship LOD demotion aborted; owner inactive', { causes });
         } else {
