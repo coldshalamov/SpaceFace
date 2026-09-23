@@ -397,17 +397,46 @@ function drawObjectiveLabel(g, cue) {
   g.restore();
 }
 
-function drawRangePlate(g, metrics, range, expanded) {
-  g.save();
+// Range plate layout is a pure function of (range, expanded, metrics.size). Cache it so
+// settled flight does not re-measureText + lift-search every HUD frame (cpu-profile-flight:
+// drawRangePlate ~102 ms self over 60 s settled).
+const _rangePlateCache = {
+  range: NaN,
+  expanded: null,
+  size: NaN,
+  text: '',
+  width: 0,
+  height: 18,
+  x: 0,
+  y: 0,
+};
+
+function rangePlateLayout(metrics, range, expanded) {
+  const size = metrics.size;
+  if (
+    _rangePlateCache.range === range
+    && _rangePlateCache.expanded === expanded
+    && _rangePlateCache.size === size
+  ) {
+    return _rangePlateCache;
+  }
   const text = `RANGE ${formatRadarDistance(range)}`;
-  g.font = canvasFont(700, 12, 'data');
-  const width = Math.ceil(g.measureText(text).width) + 12;
+  if (!_rangePlateCache._probe) {
+    const c = typeof document !== 'undefined' && document.createElement
+      ? document.createElement('canvas')
+      : null;
+    _rangePlateCache._probe = c ? c.getContext('2d') : null;
+  }
+  const probe = _rangePlateCache._probe;
+  let width;
+  if (probe) {
+    probe.font = canvasFont(700, 12, 'data');
+    width = Math.ceil(probe.measureText(text).width) + 12;
+  } else {
+    width = text.length * 7 + 12;
+  }
   const height = 18;
-  // The range is the scope's scale legend: set on the BOTTOM rim, centred, where contacts are
-  // thinnest and nothing else is drawn (critic 2026-09-19: at the top-right it sat on the
-  // contacts). The canvas is circle-masked, so lift the plate until both lower corners sit inside
-  // the inscribed circle with margin.
-  const radius = metrics.size / 2;
+  const radius = size / 2;
   let lift = 8;
   for (let i = 0; i < 40; i++) {
     const dx = width / 2;
@@ -415,17 +444,30 @@ function drawRangePlate(g, metrics, range, expanded) {
     if (Math.hypot(dx, dy) <= radius - 4) break;
     lift += 2;
   }
-  const x = Math.round(radius - width / 2);
-  const y = metrics.size - lift - height;
+  _rangePlateCache.range = range;
+  _rangePlateCache.expanded = expanded;
+  _rangePlateCache.size = size;
+  _rangePlateCache.text = text;
+  _rangePlateCache.width = width;
+  _rangePlateCache.height = height;
+  _rangePlateCache.x = Math.round(radius - width / 2);
+  _rangePlateCache.y = size - lift - height;
+  return _rangePlateCache;
+}
+
+function drawRangePlate(g, metrics, range, expanded) {
+  const layout = rangePlateLayout(metrics, range, expanded);
+  g.save();
+  g.font = canvasFont(700, 12, 'data');
   g.fillStyle = 'rgba(11,13,16,0.90)';
-  g.fillRect(x, y, width, height);
+  g.fillRect(layout.x, layout.y, layout.width, layout.height);
   g.strokeStyle = 'rgba(174,183,182,0.42)';
   g.lineWidth = 1;
-  g.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
+  g.strokeRect(layout.x + 0.5, layout.y + 0.5, layout.width - 1, layout.height - 1);
   g.fillStyle = expanded ? TACTICAL_MAP_PALETTE.ink : TACTICAL_MAP_PALETTE.inkDim;
   g.textAlign = 'left';
   g.textBaseline = 'middle';
-  g.fillText(text, x + 6, y + height / 2 + 0.5);
+  g.fillText(layout.text, layout.x + 6, layout.y + layout.height / 2 + 0.5);
   g.restore();
 }
 
@@ -1025,15 +1067,17 @@ export function createRadar(ctx) {
       const x = projected.x;
       const y = projected.y;
       const type = entity.type;
-      const colour = contactColor(entity, playerTeam, colorblindMode, state);
-
-      if ((type === 'ship' || type === 'drone') && trailUpdates < MAX_TRAIL_UPDATES) {
-        updateTrail(entity);
-        drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
-        trailUpdates += 1;
-      }
+      const wantsTrail = (type === 'ship' || type === 'drone') && trailUpdates < MAX_TRAIL_UPDATES;
 
       if (hostile) {
+        // Trails still paint on the contact pass (priority pass only draws chevrons).
+        // Skip contactColor when this hostile is past the trail budget.
+        if (wantsTrail) {
+          const colour = contactColor(entity, playerTeam, colorblindMode, state);
+          updateTrail(entity);
+          drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
+          trailUpdates += 1;
+        }
         hostileCount += 1;
         hostileMarks.push({ entity, projected, distanceSq });
         continue; // drawn in the crisp priority pass below
@@ -1041,6 +1085,13 @@ export function createRadar(ctx) {
       if (station) {
         infrastructureMarks.push({ entity, projected, gate, distanceSq });
         continue; // drawn in the glyph pass below
+      }
+
+      const colour = contactColor(entity, playerTeam, colorblindMode, state);
+      if (wantsTrail) {
+        updateTrail(entity);
+        drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
+        trailUpdates += 1;
       }
 
       if (type === 'pickup') {
