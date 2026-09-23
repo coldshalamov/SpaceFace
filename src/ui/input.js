@@ -113,6 +113,12 @@ export function createUiInput(ctx, screenManager) {
     initialDelay: 0.36,
     repeatDelay: 0.12,
   };
+  // Modal pad-verb tracker (D30): raw X/Y edges + held-for duration for screens that declare
+  // `onPadButton` — screen UI like the raw d-pad read, independent of the flight action map.
+  const _padVerb = {
+    x: { held: false, heldFor: 0 },
+    y: { held: false, heldFor: 0 },
+  };
 
   // PQ-164.01: last-used device drives prompt glyphs (bindings.js owns the presentation state).
   // Device order is a local observation counter fed by pad/touch activity *edges* (the shared
@@ -980,6 +986,23 @@ export function createUiInput(ctx, screenManager) {
         else if (!screenManager.locked || !screenManager.locked()) screenManager.popScreen();
         bus.emit('ui:cancel', {});
         bus.emit('audio:cue', { id: 'ui_back' });
+      }
+
+      // Named pad verbs for screens that declare `onPadButton` (D30 refit footer): raw X/Y —
+      // UI-layer buttons like the d-pad read above, so a screen can offer a tap verb and a
+      // hold-to-fire verb without touching the flight action map or owning a timer.
+      if (def && typeof def.onPadButton === 'function' && rawPad) {
+        for (const [name, idx] of [['x', 2], ['y', 3]]) {
+          const down = !!(rawPad.buttons[idx] && rawPad.buttons[idx].pressed);
+          const prev = _padVerb[name];
+          const heldFor = down ? prev.heldFor + dt : 0;
+          const st = { held: down, pressed: down && !prev.held, released: !down && prev.held, heldFor };
+          if (st.held || st.released) {
+            try { def.onPadButton(name, st, ctx); } catch (e) { console.error('[uiInput] onPadButton error:', e); }
+          }
+          prev.held = down;
+          prev.heldFor = heldFor;
+        }
       }
 
       // Direction repeat handling.

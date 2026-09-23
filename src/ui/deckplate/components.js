@@ -118,6 +118,20 @@ export const DECKPLATE_COMPONENTS_CSS = `
 .dp-vital .dp-vital__seg.is-hot { background:var(--dp-danger); box-shadow:0 0 6px var(--dp-danger-bloom); }
 .dp-vital .dp-vital__seg.is-cold { background:var(--dp-ink-dim); box-shadow:none; }
 
+/* ══ 7. dp-holdring — the hold-to-fire tell on a verb: a ring that fills with the lamp while
+   the control is held (D30). Lamp grammar: a quiet rule circle at rest — "this word is
+   holdable" — an arming lamp arc driven by --sf-hold-p (0..1), and the hot core when it lands. */
+.dp-holdring {
+  display:none; width:12px; height:12px; margin-left:7px; vertical-align:-1px; flex:0 0 auto;
+  border-radius:50%;
+  background:conic-gradient(var(--dp-lamp) calc(var(--sf-hold-p, 0) * 360deg), var(--dp-rule) 0);
+  -webkit-mask:radial-gradient(circle, transparent 4.1px, #000 4.3px);
+  mask:radial-gradient(circle, transparent 4.1px, #000 4.3px);
+}
+/* the word carries the ring only while it is the hold target — a quiet circle on a plain tap
+   verb would promise a hold that does nothing */
+[data-hold] .dp-holdring { display:inline-block; }
+
 /* ══ Reduced motion: the machine holds still; every state survives as lamp + word ════════════ */
 @media (prefers-reduced-motion:reduce) {
   .dp-bracket--idle, .dp-bracket--snap,

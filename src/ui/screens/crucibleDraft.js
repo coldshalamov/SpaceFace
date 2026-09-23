@@ -33,7 +33,7 @@ import { WEAPONS } from '../../data/weapons.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
 import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../systems/survivalEndless.js';
 import { survivalRun } from '../../systems/survivalRun.js';
-import { el, settle, cue } from '../kit/index.js';
+import { el, settle, cue, attachHoldVerb } from '../kit/index.js';
 import { crucibleFittingDescription } from '../crucibleCombatReadout.js';
 import { decorateEntityNode, entityLabel } from '../entityResolver.js';
 import { createStationRow } from '../orrery/stopDial.js';
@@ -86,6 +86,9 @@ function setKeyLabel(button, label, key, shortcut) {
   if (!button) return;
   const current = button.dataset ? `${button.dataset.label || ''}|${button.dataset.key || ''}` : '';
   if (current === `${label}|${key || ''}` && button.childNodes && button.childNodes.length) return;
+  // The hold-to-fire ring (attachHoldVerb) is a child of the word — clearing textContent would
+  // strip it, so it is lifted out and put back after the label and key cap.
+  const hold = button.querySelector && button.querySelector('.dp-holdring');
   button.textContent = '';
   button.appendChild(el('span', 'sf-cru-label', label));
   if (key) {
@@ -93,6 +96,7 @@ function setKeyLabel(button, label, key, shortcut) {
     hint.setAttribute('aria-hidden', 'true');
     button.appendChild(hint);
   }
+  if (hold) button.appendChild(hold);
   if (typeof button.setAttribute === 'function') {
     if (shortcut) button.setAttribute('aria-keyshortcuts', shortcut);
     else if (typeof button.removeAttribute === 'function') button.removeAttribute('aria-keyshortcuts');
@@ -1136,6 +1140,11 @@ export const crucibleRefitScreen = {
     }
     foot.appendChild(words);
     rootEl.appendChild(foot);
+    // D30: ending a run is a hold, not a tap — the win on the last wave (the done word) or the
+    // extraction walk-away. One shared helper per word owns the timer and the filling ring;
+    // keyboard F and pad X feed it through _feedEndHold.
+    this._doneHold = attachHoldVerb(done, { ms: 600, onFire: () => done.click() });
+    this._extractHold = attachHoldVerb(this._extract, { ms: 600, onFire: () => this._extract.click() });
     this._syncFoot(ctx);
 
     // Same reasoning as the draft: the run is paused here, so Escape must mean something.
@@ -1148,6 +1157,25 @@ export const crucibleRefitScreen = {
         if (refitFootLines(ctx.state && ctx.state.run).finishes) { cue('deny'); return; }
         done.click();
         return;
+      }
+      // D30: Space taps Keep Going; F is the hold-to-fire "end the run". Neither steals a key a
+      // focused control owns (buttons click on Space, selects keep their arrows), and both work
+      // without walking focus to the footer, which is what the keys are for.
+      if (event.key === ' ') {
+        const a = document.activeElement;
+        const tag = a && a.tagName;
+        if (!a || (tag !== 'BUTTON' && tag !== 'SELECT' && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'A')) {
+          if (refitFootLines(ctx.state && ctx.state.run).cont && this._continue) {
+            event.preventDefault();
+            this._continue.click();
+          }
+        }
+        return;
+      }
+      if (event.key === 'f' || event.key === 'F') {
+        const a = document.activeElement;
+        const tag = a && a.tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') this._feedEndHold(true);
       }
       // Left/Right walk the spare words of the focused hardpoint, choosing as they go.
       if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && document.activeElement
@@ -1178,6 +1206,9 @@ export const crucibleRefitScreen = {
         next.focus();
         if (typeof next.scrollIntoView === 'function') next.scrollIntoView({ block: 'nearest' });
       }
+    });
+    rootEl.addEventListener('keyup', (event) => {
+      if (event.key === 'f' || event.key === 'F') this._feedEndHold(false);
     });
     // Scroll-to-focused: a pad move (the shared gamepad layer moves DOM focus) or a keyboard walk
     // to a hardpoint below the fold must bring the row into the scroll column.
@@ -1212,12 +1243,39 @@ export const crucibleRefitScreen = {
   },
 
   onHide() {
+    this._feedEndHold(false);
     if (canAnimate()) cue('close');
+  },
+
+  /** Route the hold to the word that ends the run right now: Take-the-win on the last wave,
+   *  Extract otherwise. An ineligible target is fed `false`, so a shown→hidden switch mid-hold
+   *  can never leave a stale arming ring on the wrong word. */
+  _feedEndHold(held, heldForSec) {
+    const lines = refitFootLines(this._ctx && this._ctx.state && this._ctx.state.run);
+    if (this._doneHold) this._doneHold.feed(held && !!lines.finishes, heldForSec);
+    if (this._extractHold) this._extractHold.feed(held && !lines.finishes && !!lines.extract, heldForSec);
+  },
+
+  /** D30 pad verbs (the shared layer feeds raw X/Y here per frame while this modal owns
+   *  input): Y taps Keep Going, X holds to end the run — same grammar as Space/F. */
+  onPadButton(name, st, ctx) {
+    if (ctx && ctx.state) this._ctx = ctx;
+    if (name === 'y') {
+      if (st && st.pressed && this._continue
+        && refitFootLines(this._ctx && this._ctx.state && this._ctx.state.run).cont) {
+        cue('confirm');
+        this._continue.click();
+      }
+      return;
+    }
+    if (name === 'x') this._feedEndHold(!!(st && st.held), st && st.heldFor);
   },
 
   dispose() {
     if (this._jig) this._jig.dispose();
     this._jig = null;
+    if (this._doneHold) { this._doneHold.dispose(); this._doneHold = null; }
+    if (this._extractHold) { this._extractHold.dispose(); this._extractHold = null; }
   },
 
   /** The three keys, their words and their fine print, for the run as it stands now. */
@@ -1229,15 +1287,25 @@ export const crucibleRefitScreen = {
       if (node.textContent !== text) node.textContent = text;
       node.hidden = !text;
     };
-    setKeyLabel(this._done, lines.primary, lines.finishes ? '' : 'Esc', lines.finishes ? '' : 'Escape');
+    // D30 caps: the launch key answers to Escape, endless-continue to Space / pad Y, and the
+    // run-ending word (the win or the walk-away) to a 0.6 s hold of F / pad X — the ring on the
+    // word is the hold's progress, so the cap is what fires it, not a tooltip.
+    setKeyLabel(this._done, lines.primary, lines.finishes ? 'hold F·X' : 'Esc', lines.finishes ? 'f' : 'Escape');
     setNote(this._doneNote, lines.primaryNote);
     if (this._done && this._done.title !== lines.primaryNote) this._done.title = lines.primaryNote;
+    if (this._done && this._done.dataset) {
+      if (lines.finishes) this._done.dataset.hold = '1'; else delete this._done.dataset.hold;
+    }
 
     setWordShown(this._continue, !!lines.cont);
-    if (this._continue && lines.cont) this._continue.textContent = lines.cont;
+    if (this._continue && lines.cont) setKeyLabel(this._continue, lines.cont, 'Space·Y', 'Space');
     setNote(this._continueNote, lines.contNote);
 
     setWordShown(this._extract, !!lines.extract);
+    if (this._extract && lines.extract) setKeyLabel(this._extract, lines.extract, 'hold F·X', 'f');
+    if (this._extract && this._extract.dataset) {
+      if (lines.extract) this._extract.dataset.hold = '1'; else delete this._extract.dataset.hold;
+    }
     setNote(this._extractPreview, lines.extractNote);
     // The button's description carries the same settlement, so the offer reads whole to AT.
     if (this._extract && this._extract.title !== lines.extractNote) this._extract.title = lines.extractNote;
