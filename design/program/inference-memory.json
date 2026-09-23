@@ -74,45 +74,6 @@
   ],
   "units": [
     {
-      "id": "ashfall-vault-coordinates",
-      "date": "2026-08-12",
-      "wf": "WF-10",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "Defeating Iron Maw now recovers the hidden Ancient Vault coordinates, reveals a real navigable system-map destination, and preserves the close-approach visit as unfinished exploration.",
-      "fingerprint": "verb=reveal-and-navigate,subject=ancient-vault,sector=sector_ashfall_reach,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "5d08f8fc",
-      "verification": "focused_green"
-    },
-    {
-      "id": "ancient-vault-aftermath-story",
-      "date": "2026-08-12",
-      "wf": "WF-10",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "Physically investigating the recovered Ancient Vault now unlocks a unique durable Ashfall discovery story and advances authored sector exploration.",
-      "fingerprint": "verb=investigate-and-record,subject=ancient-vault,sector=sector_ashfall_reach,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "35910181",
-      "verification": "focused_green"
-    },
-    {
-      "id": "iron-maw-defeat-news",
-      "date": "2026-08-12",
-      "wf": "WF-09",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "Defeating Iron Maw now publishes one authored Ashfall breaking-news item through the live market-news surface.",
-      "fingerprint": "verb=publish-aftermath,subject=iron-maw,sector=sector_ashfall_reach,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "856e8c67",
-      "verification": "focused_green"
-    },
-    {
       "id": "ashfall-radiation-aftermath",
       "date": "2026-08-12",
       "wf": "WF-16",
@@ -1635,6 +1596,45 @@
       "references": [],
       "integration": "live",
       "commit": "918a19f1d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-wf05-concussion-s",
+      "date": "2026-09-23",
+      "wf": "WF-05",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "small concussion cannon provides dedicated S-slot momentum displacement tool for light hulls",
+      "fingerprint": "verb=shove,subject=concussion_s,sector=combat,layer=simulation,tempo=tactical,domain=weapons",
+      "references": [],
+      "integration": "live",
+      "commit": "f2dd8ef9e8b57d63131c8a923060d6ed62bef58c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "fuel-low-before-empty",
+      "date": "2026-09-23",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Crossing under a quarter tank lights a standing FUEL LOW lamp and says it once, before the empty alarm.",
+      "fingerprint": "verb=warn,subject=fuel,sector=any,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "296dab39ea20939c455f64952a26e4866fec1182",
+      "verification": "focused_green"
+    },
+    {
+      "id": "choir-zealot-verse-hail",
+      "date": "2026-09-23",
+      "wf": "WF-09",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A spawned Choir zealot carries the Pattern contact and opens on the faction's own attack line.",
+      "fingerprint": "verb=hail,subject=choir-zealot,sector=any,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "9b0d2dfd8376c1b314157c640bc8197ccff7273c",
       "verification": "focused_green"
     }
   ],
