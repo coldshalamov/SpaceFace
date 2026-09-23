@@ -4,17 +4,21 @@ import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
 
 export const LOOP_FIXED_DT = 1 / 60;
 export const MAX_CATCHUP_STEPS = 4;
-// A SLOW FRAME RATE IS NOT A HITCH. Four catch-up steps cover every callback down to 15 fps, so
-// the world keeps real time on a weak GPU: a 30 fps frame owes two ticks and gets two. Capping
-// those frames (the old one-step cap after a late present, two after any frame over 33 ms) did
-// not make the picture arrive sooner — drawing is the cost on those machines, not the sim — it
-// ran the whole game at 40–65 % speed exactly where it was already struggling.
+// A SLOW FRAME RATE IS NOT A HITCH. Four catch-up steps cover every callback down to 15 fps at
+// full realtime (and ~10–12 fps with one shed tick): a 30 fps frame owes two ticks and gets two.
+// Capping those frames (the old one-step cap after a late present, two after any frame over
+// 33 ms, or treating every soft-GPU ~83 ms callback as a hitch) did not make the picture arrive
+// sooner — drawing is the cost on those machines, not the sim — it ran the whole game at
+// 40–65 % speed exactly where it was already struggling.
 //
 // A hitch is a callback that arrives more than HITCH_FRAME_TICKS late (GC, a long task, a blocked
 // present): the picture was frozen and the pilot could not steer. Replaying all of that time
 // would teleport the ship through whatever was ahead of it, so a hitch resumes the world two
-// ticks on and the rest of the debt is shed.
-export const HITCH_FRAME_TICKS = 4.5;
+// ticks on and the rest of the debt is shed. Threshold stays above MAX_CATCHUP_STEPS so every
+// frame the catch-up ceiling can fully serve is classified as a slow frame, never a hitch.
+// 6.5 ticks (~108 ms) keeps soft-GPU sustained ~12 fps (and down through ~10 fps) on the slow
+// path; a true spike (120 ms+ in continuity / crucible) still sheds.
+export const HITCH_FRAME_TICKS = 6.5;
 export const HITCH_CATCHUP_STEPS = 2;
 
 /** True when this callback's frame delta is a hitch rather than a slow-but-steady frame rate. */

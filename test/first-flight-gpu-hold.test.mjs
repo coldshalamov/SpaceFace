@@ -265,13 +265,25 @@ test('isEntityMeshExpected mirrors the hold-exempt build contract', () => {
       },
     },
   };
-  // Under the hold only the exempt set is owed a mesh: the runway hull is render-relevant
-  // but its build is a scheduled deferral, not a missing admission.
+  // Under the hold only the exempt set is owed a mesh: a parked far R1_RUNWAY hull is
+  // render-relevant but its build is a scheduled deferral, not a missing admission.
   assert.equal(isEntityMeshExpected(runwayShip, state), false);
   assert.equal(isEntityMeshExpected(glassShip, state), true);
   assert.equal(isEntityMeshExpected(focusShip, state), true);
   assert.equal(isEntityMeshExpected(rescueShip, state), true);
   assert.equal(isEntityMeshExpected(unloadedShip, state), false);
+  // Lane C: an inbound contact that will hit the glass inside the residency prefetch
+  // window must build under the hold — waiting for the glass band is the rim blink.
+  const inboundShip = {
+    id: 7, type: 'ship', alive: true,
+    pos: { x: 400, z: 0 }, vel: { x: -200, z: 0 }, radius: 8,
+  };
+  state.entities.set(7, inboundShip);
+  state.entityList.push(inboundShip);
+  player.vel = { x: 0, z: 0 };
+  state.camera = { zoom: 144, tilt: 60, fov: 50, aspect: 16 / 9 };
+  assert.equal(isEntityMeshExpected(inboundShip, state), true,
+    'closing-speed prefetch under the hold poses the hull before glass');
   // Once the hold lifts, plain render relevance owns the contract again.
   state.simTime = 21;
   assert.equal(isEntityMeshExpected(runwayShip, state), true);

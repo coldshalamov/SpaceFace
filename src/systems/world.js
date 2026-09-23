@@ -153,7 +153,7 @@ import {
   insertDressingRow,
   getDressingRow,
 } from '../world/dressingTable.js';
-import { resetWorldPresentationTables } from '../world/presentationSources.js';
+import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
   dropFarActorSector,
   farActorHoldsWorldRecord,
@@ -3167,6 +3167,11 @@ export const world = {
     this._tickFieldRegrowth(state);
     this._tickUsedUpFieldOpportunity(state);
     tickFarActors(state, this.helpers, this.bus);
+    // Lane C: ask Lane A helpers to rematerialize anything already inside the authored
+    // decode disc (TABLE_AUTHORED_DECODE_SECONDS × top speed). tickFarActors covers the
+    // same disc for restore; this call also stamps renderRunwayIds so a just-promoted
+    // hull cannot be omitted by a stale activity frame on the present beat.
+    requestDecodeRunwayPromote(state, this.helpers);
     // 180 s expiry window: a 1 Hz sweep is exact enough and removes a per-tick Object.keys +
     // full-bag scan. Tick-modulo gating keeps the sweep deterministic across replays and catch-up.
     if ((state.tick | 0) % WORLD_RECORD_GC_TICKS === 0) {

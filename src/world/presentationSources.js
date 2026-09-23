@@ -18,6 +18,7 @@ import {
   TABLE_PROMOTE_HORIZON_SECONDS,
 } from '../render/tabletopPolicy.js';
 import { projectileSkipsVisualFactoryMesh } from '../render/weapons/recipes.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
 
 const _farPromoteScratch = [];
 const _rockQueryScratch = [];
@@ -301,6 +302,89 @@ export function requestDecodeRunwayPromote(state, helpers) {
   return result;
 }
 
+
+
+const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
+
+/**
+ * Lane C — wave-planned hull decode keys. Real next-contact keys from the wave
+ * schedule/packages/swarm roster only (no dummy catalog). Silhouette matters:
+ * wasp_swarmer decodes ashline_dart, not wasp_production.
+ */
+export function collectWaveHullDecodeKeys(plan) {
+  const keys = new Map();
+  const takeEnemy = (enemyId) => {
+    if (typeof enemyId !== 'string' || enemyId.length === 0) return;
+    const def = ENEMY_BY_ID.get(enemyId);
+    if (!def || typeof def.shipId !== 'string' || !def.shipId) return;
+    const silhouette = typeof def.silhouette === 'string' ? def.silhouette : '';
+    const token = `${def.shipId}|${silhouette}`;
+    if (keys.has(token)) return;
+    keys.set(token, Object.freeze({
+      defId: def.shipId,
+      silhouette,
+      enemyId,
+      key: token,
+    }));
+  };
+  if (!plan || plan.ok === false) return [];
+  const schedule = Array.isArray(plan.schedule) ? plan.schedule : [];
+  for (const entry of schedule) takeEnemy(entry && entry.enemyId);
+  const packages = Array.isArray(plan.packages) ? plan.packages : [];
+  for (const pkg of packages) takeEnemy(pkg && pkg.enemyId);
+  const swarmRoster = plan.swarm && Array.isArray(plan.swarm.roster) ? plan.swarm.roster : [];
+  for (const entry of swarmRoster) takeEnemy(entry && entry.enemyId);
+  return [...keys.values()];
+}
+
+/** Stub entity whose authoredPreloadPlan matches a live wave hull of this key. */
+export function makeWaveHullDecodeStub(hullKey) {
+  if (!hullKey || typeof hullKey.defId !== 'string' || !hullKey.defId) return null;
+  const silhouette = typeof hullKey.silhouette === 'string' ? hullKey.silhouette : '';
+  const data = { defId: hullKey.defId };
+  if (silhouette) data.silhouette = silhouette;
+  return {
+    id: `wave-hull-decode:${hullKey.key || hullKey.defId}`,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, z: 0 },
+    data,
+  };
+}
+
+/**
+ * Remember planned wave hull keys on state.render so residency consumers can
+ * prioritize decode/admission without inventing a parallel prewarm path.
+ */
+export function noteWaveHullRunwayKeys(state, hullKeys) {
+  if (!state) return [];
+  const render = state.render || (state.render = {});
+  const next = new Set();
+  const list = Array.isArray(hullKeys) ? hullKeys : [];
+  for (const key of list) {
+    if (!key || typeof key.defId !== 'string' || !key.defId) continue;
+    const silhouette = typeof key.silhouette === 'string' ? key.silhouette : '';
+    next.add(`${key.defId}|${silhouette}`);
+  }
+  render.waveHullRunwayKeys = next;
+  return [...next];
+}
+
+export function clearWaveHullRunwayKeys(state) {
+  if (!state || !state.render) return;
+  state.render.waveHullRunwayKeys = null;
+}
+
+export function entityMatchesWaveHullRunway(entity, state) {
+  const keys = state && state.render && state.render.waveHullRunwayKeys;
+  if (!keys || typeof keys.has !== 'function' || !entity || entity.type !== 'ship') return false;
+  const data = entity.data || {};
+  const defId = typeof data.defId === 'string' ? data.defId : '';
+  if (!defId) return false;
+  const silhouette = typeof data.silhouette === 'string' ? data.silhouette : '';
+  return keys.has(`${defId}|${silhouette}`);
+}
+
 export function resetWorldPresentationTables(state) {
   if (!state || !state.world) return;
   // Rows are presentation entities: dropping the table without clearing their render
@@ -319,4 +403,5 @@ export function resetWorldPresentationTables(state) {
   }
   state.world.asteroidField = null;
   state.world.dressing = null;
+  clearWaveHullRunwayKeys(state);
 }
