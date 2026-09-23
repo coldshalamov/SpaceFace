@@ -1,6 +1,11 @@
 <!-- LIFETIME: STABLE -->
 # One photograph
 
+> **SUPERSEDED as direction on 2026-09-22 (late) by [`ORRERY.md`](ORRERY.md).** The owner saw the
+> "printed and lit" result and said quality was going backwards and detail was disappearing. Keep
+> from this file only the owner's no-material-imitation ruling (§0) and the produced-art principle;
+> build to ORRERY.
+
 The art direction for the SpaceFace interface. Written 2026-09-22 from two independent director
 reviews — one from a full brief of the system, one that opened all twelve live screenshots — plus
 the owner's own words, which turn out to have been misread.
