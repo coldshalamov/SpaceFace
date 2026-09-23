@@ -189,7 +189,7 @@ export function marketRowHtml({ id, name, category = '', buy, sell, stock, held 
   return `<tr id="sx-market-tab-${escapeHtml(id)}" class="sx-mkt-row${selected ? ' is-active' : ''}${tracked ? ' is-tracked' : ''}" data-cmdty="${escapeHtml(id)}" role="tab" aria-selected="${!!selected}" tabindex="${selected ? '0' : '-1'}" aria-controls="sx-market-instrument" data-family="${family}"
     aria-label="${escapeHtml(name)}, ${fmt(buy)} credits, ${escapeHtml(demandWord)} demand${held ? `, ${fmt(held)} units held` : ''}${profitBadge ? `, ${Math.round(profitPct)} percent over your cost basis` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(driversSummary)}">
     <td class="k-name sx-mkt-row__name">${icon}${tracked ? '<span class="sx-mkt-row__flag k-t-fine k-signal" aria-hidden="true">◆ </span>' : ''}${escapeHtml(name)}${profitBadge}</td>
-    <td class="k-num sx-mkt-row__price">${fmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${fmt(sell)}</td><td class="k-num sx-mkt-row__stock">${held > 0 ? `<span class="sx-mkt-row__heldtag">held ${fmt(held)}u</span>` : fmt(stock)}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' u' : '—'}</td></tr>`;
+    <td class="k-num sx-mkt-row__price">${fmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${fmt(sell)}</td><td class="k-num sx-mkt-row__stock">${held > 0 ? `<span class="sx-mkt-row__heldtag">held ${fmt(held)}u</span>` : (stock > 0 ? `${fmt(stock)}u` : '<span class="sx-mkt-row__none">\u2014</span>')}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' u' : '—'}</td></tr>`;
 }
 export function statRow(k, v, sub) {
   return `<li class="k-row k-row--static sx-stat"><span class="sx-stat__k">${escapeHtml(k)}${sub ? ` <span class="k-row__sub">${escapeHtml(sub)}</span>` : ''}</span><span class="k-row__num sx-stat__v">${escapeHtml(v)}</span></li>`;
@@ -315,7 +315,7 @@ function driverLineHtml(primary) {
 function readoutsHtml({ buy, sell, avg, demandWord }) {
   const item = (key, cls, value, sub) =>
     `<div class="sx-mkt-readouts__item sx-mkt-readouts__item--${cls}"><dt><i class="sx-mkt-readouts__mark" aria-hidden="true"></i>${escapeHtml(key)}${sub ? ` <span class="sx-mkt-readouts__sub">${escapeHtml(sub)}</span>` : ''}</dt><dd>${escapeHtml(value)}</dd></div>`;
-  return `<dl class="sx-mkt-readouts">${item('Buy', 'buy', `${fmt(buy)} cr`, 'you pay')}${item('Sell', 'sell', `${fmt(sell)} cr`, 'station pays')}${item('Galactic average', 'avg', `${fmt(avg)} cr`)}${item('Demand', 'demand', demandWord)}${item('Spread', 'spread', `${fmt(Math.max(0, (Number(buy) || 0) - (Number(sell) || 0)))} cr`)}</dl>`;
+  return `<dl class="sx-mkt-readouts">${item('Buy', 'buy', `${fmt(buy)} cr`, 'you pay')}${item('Sell', 'sell', `${fmt(sell)} cr`, 'station pays')}${item('Galactic average', 'avg', `${fmt(avg)} cr`)}${item('Demand', 'demand', demandWord)}${item('Margin', 'margin', `${fmt(Math.max(0, (Number(buy) || 0) - (Number(sell) || 0)))} cr`, 'buy \u2212 sell')}</dl>`;
 }
 
 export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', drivers = [], hist = [], forecast = [], now, regime = '', quoteAge = '', saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType }) {

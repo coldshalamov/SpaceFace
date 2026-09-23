@@ -78,7 +78,7 @@ ${M} .sx-mkt-browser { position:relative; }
 ${M} .sx-mkt-browser__mode { margin:0 !important; padding-right:min(46%, 230px) !important; min-height:30px; display:flex !important; align-items:flex-end; }
 ${M} .sx-mkt-search { position:absolute !important; top:0; right:0; width:min(44%, 220px) !important; margin:0 !important; }
 ${M} .sx-mkt-browser__filters { flex-wrap:nowrap !important; overflow-x:auto; scrollbar-width:none;
-  -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+  -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 44px), transparent); mask-image:linear-gradient(90deg, #000 calc(100% - 44px), transparent); padding-right:40px !important; }
 ${M} .sx-mkt-browser__filters::-webkit-scrollbar { display:none; }
 ${M} .sx-mkt-browser__filters li { flex:none; }
 ${M} .sx-mkt-browser__mode { ${LABEL} font-size:10.5px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
@@ -101,7 +101,10 @@ ${M} .sx-mkt-table thead th:nth-child(2), ${M} .sx-mkt-row td:nth-child(2) { wid
 ${M} .sx-mkt-table thead th:nth-child(3), ${M} .sx-mkt-row td:nth-child(3) { width:60px; }
 ${M} .sx-mkt-table thead th:nth-child(4), ${M} .sx-mkt-row td:nth-child(4) { width:92px; }
 ${M} .sx-mkt-table thead th:nth-child(5), ${M} .sx-mkt-row td:nth-child(5) { display:none !important; }
-${M} .sx-mkt-table thead th:is(:nth-child(1), :nth-child(4)) { color:transparent !important; }
+${M} .sx-mkt-table thead th:nth-child(1) { color:transparent !important; }
+${M} .sx-mkt-table thead, ${M} .sx-mkt-table thead tr { background:none !important; box-shadow:none !important; position:static !important; }
+${M} .sx-mkt-row .sx-mkt-row__stock { color:rgb(${BONE} / .6) !important; }
+${M} .sx-mkt-row .sx-mkt-row__none { color:rgb(${BONE} / .35); }
 ${M} .sx-mkt-row .of-commodity-icon, ${M} .sx-mkt-row .sx-mkt-row__commodity { display:none !important; }
 ${M} .sx-mkt-row .sx-mkt-row__heldtag { ${LABEL} font-size:9.5px !important; letter-spacing:.14em !important; color:rgb(248 244 234) !important; }
 ${M} .sx-mkt-row .sx-mkt-row__name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -158,7 +161,9 @@ ${M} .sx-mkt-instrument__dot { background:rgb(248 244 234) !important; box-shado
 ${M} .sx-mkt-readouts__item:is(.sx-mkt-readouts__item--buy, .sx-mkt-readouts__item--sell) { position:absolute !important; width:1px !important; height:1px !important;
   overflow:hidden !important; clip:rect(0 0 0 0) !important; }
 ${M} .sx-mkt-instrument__avg { color:rgb(${BONE} / .72) !important; }
-${M} .sx-mkt__analysis { -webkit-mask-image:none !important; mask-image:none !important; }
+${M} .sx-mkt__analysis { -webkit-mask-image:none !important; mask-image:none !important; border:0 !important; box-shadow:none !important; }
+${M} .so-route-disclosure { border-top:1px solid rgb(${BONE} / .12) !important; border-bottom:0 !important; padding-top:8px !important; }
+${M} .sx-trade, ${M} .sx-mkt__console { border-top:0 !important; }
 ${M} .sx-mkt-sale { color:rgb(${BONE} / .75) !important; }
 ${M} .so-route-disclosure > summary { ${LABEL} font-size:10px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; list-style:none; cursor:pointer; }
 ${M} .so-route-disclosure > summary::-webkit-details-marker { display:none; }
@@ -220,6 +225,7 @@ ${M} .so-trade-breakdown[open] > summary::before { content:"‹  "; }
 ${M} .sx-trade__words { grid-area:verb; display:flex !important; flex-direction:row; align-items:baseline; justify-content:flex-start; gap:26px !important;
   margin:4px 0 0 !important; padding:0 !important; }
 ${M} .sx-trade__words li { margin:0 !important; }
+${M} .sx-trade__words li:has([data-go]) { order:-1; }
 ${M} .sx-trade__go { ${PLAIN} min-height:0 !important; min-width:0 !important; height:auto !important; border-radius:0 !important; }
 ${M} .sx-trade__go::before, ${M} .sx-trade__go::after { display:none !important; }
 /* the commit: the one primary verb, bone at rest, amber where the player reaches */
@@ -236,6 +242,7 @@ ${M} .sx-trade__go:not([data-go])::after { all:unset !important; content:"  \u20
 ${M} .sx-trade__go:not([data-go])::before { all:unset !important; display:none !important; }
 
 /* ---- the decision under the trade: a sentence and its verbs, no rows ------------------------- */
+@media (min-width:1500px) { ${M} { grid-template-columns:minmax(0, 540px) minmax(0, 1fr) !important; } }
 ${M} .sx-mkt__stage { display:grid !important; grid-template-columns:minmax(0, 520px) minmax(0, 1fr); grid-template-rows:minmax(0, 1fr) auto;
   column-gap:clamp(28px, 3vw, 56px); }
 ${M} .sx-mkt__analysis { grid-column:1 / -1; grid-row:1; }
@@ -259,13 +266,17 @@ html body #screens > .sx-berth.orr-station .sx-comms__count:not([hidden]) { font
   border-radius:50% !important; background:rgb(248 244 234) !important; display:inline-block !important; vertical-align:middle; }
 html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-ice, #8fcbff) !important; }
 @media (max-height:800px) {
-  ${M} .sx-mkt__stage { display:grid !important; grid-template-columns:minmax(0, 1fr) 232px !important; grid-template-rows:minmax(0, 1fr) auto; column-gap:28px; }
+  ${M} .sx-mkt__stage { display:grid !important; grid-template-columns:minmax(0, 1fr) 244px !important; grid-template-rows:minmax(0, 1fr) auto; column-gap:28px; }
   ${M} .sx-mkt__analysis { grid-column:1 !important; }
-  ${M} .sx-trade > .sx-qty { width:176px; height:196px; }
-  ${M} .sx-qty .orr-qdial { left:13px; width:150px; height:150px; }
-  ${M} .sx-qty .sx-qty__k { left:13px; width:150px; top:44px; }
-  ${M} .sx-qty .sx-qty__in { left:38px; width:100px !important; top:58px; height:40px !important; font-size:34px !important; line-height:40px !important; }
-  ${M} .sx-qty .sx-qty__words { top:158px; }
+  ${M} .sx-trade > .sx-qty { width:210px; height:204px; }
+  ${M} .sx-qty .orr-qdial { left:20px; width:170px; height:170px; }
+  ${M} .sx-qty .sx-qty__k { left:20px; width:170px; top:50px; }
+  ${M} .sx-qty .sx-qty__in { left:55px; width:100px !important; top:64px; height:44px !important; font-size:36px !important; line-height:44px !important; }
+  ${M} .sx-qty .sx-qty__words { top:176px; left:4px; right:4px; }
+  ${M} .sx-mkt-instrument__plot { height:80px !important; }
+  ${M} .sx-decision__opt { flex-direction:column !important; gap:1px !important; }
+  ${M} .sx-decision__opt { position:relative !important; padding-left:16px !important; align-items:flex-start !important; }
+  ${M} .sx-decision__opt::before { position:absolute !important; left:0; top:1px; }
   ${M} .sx-decision { gap:4px !important; }
   ${M} .sx-mkt-row td { padding-top:5px !important; padding-bottom:5px !important; }
   ${M} .sx-mkt-browser__filters { margin:6px 0 6px !important; }
