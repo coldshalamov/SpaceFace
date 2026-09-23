@@ -13,6 +13,7 @@ import {
   CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
   KILL_MACHINES,
+  STARTER_FIELD_MACHINE,
   PALLAS_REEF_FIELD,
   PALLAS_REEF_SECTOR_ID,
   PALLAS_REEF_SITE_ID,
@@ -29,6 +30,7 @@ import {
   killMachineFieldCenter,
   killMachineFieldDir,
   killMachinePhase,
+  killMachinesForSector,
   pallasReefPhase,
   pointInsideAperture,
   pointInsideCinderSluice,
@@ -104,6 +106,7 @@ export const environmentalMachinery = {
     this._killFieldStrength = new Map();
     this._killPlayerInside = new Set();
     this._anvilsEnsured = new Set();
+    this._starterMouthId = null;
     this._reefPhaseOut = {};
     this._reefFieldPatch = { strength: 0 };
     this._reefFieldRegistered = false;
@@ -144,23 +147,26 @@ export const environmentalMachinery = {
 
   update(_dt, state) {
     const sectorId = state && state.world && state.world.currentSectorId;
-    const inCeres = !!(state && state.mode === 'flight' && sectorId === CINDER_SLUICE_SECTOR_ID);
-    const inPallas = !!(state && state.mode === 'flight' && sectorId === PALLAS_REEF_SECTOR_ID);
-    const inWeather = !!(state && state.mode === 'flight' && WEATHER_SECTOR_IDS.has(sectorId));
-    if (!fieldsFlag('enabled') || !(inCeres || inPallas || inWeather)) {
-      this._clear(!(inCeres || inPallas || inWeather) ? 'inactive_route' : 'fields_disabled');
+    const inFlight = !!(state && state.mode === 'flight');
+    const inCeres = !!(inFlight && sectorId === CINDER_SLUICE_SECTOR_ID);
+    const inPallas = !!(inFlight && sectorId === PALLAS_REEF_SECTOR_ID);
+    const inWeather = !!(inFlight && WEATHER_SECTOR_IDS.has(sectorId));
+    const sectorMachines = inFlight ? killMachinesForSector(sectorId) : EMPTY_LIST;
+    const inKill = sectorMachines.length > 0;
+    if (!fieldsFlag('enabled') || !(inCeres || inPallas || inWeather || inKill)) {
+      this._clear(!(inCeres || inPallas || inWeather || inKill) ? 'inactive_route' : 'fields_disabled');
       return;
     }
 
     if (inCeres) {
       this._updateCinder(state);
-      this._updateKillMachines(state);
       this._updateAperture(state);
     } else {
       this._clearCinder('wrong_sector');
-      this._clearKillMachines('wrong_sector');
       this._clearAperture('wrong_sector');
     }
+    if (inKill) this._updateKillMachines(state, sectorMachines);
+    else this._clearKillMachines('wrong_sector');
 
     if (inPallas) this._updateReef(state);
     else this._clearReef('wrong_sector');
@@ -173,7 +179,7 @@ export const environmentalMachinery = {
     const record = state && state.sites && state.sites.worldById
       && state.sites.worldById[CINDER_SLUICE_SITE_ID];
     const simTime = simTimeOf(state);
-    const machines = KILL_MACHINES.map((machine) => {
+    const machines = [...KILL_MACHINES, STARTER_FIELD_MACHINE].map((machine) => {
       const phase = killMachinePhase(machine, simTime);
       return Object.freeze({
         id: machine.id,
@@ -273,18 +279,60 @@ export const environmentalMachinery = {
     this._publishPhaseTransition(phase);
   },
 
-  _updateKillMachines(state) {
+  _updateKillMachines(state, machines) {
     const simTime = simTimeOf(state);
     const player = state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
       : null;
-    for (const machine of KILL_MACHINES) {
+    const live = machines || KILL_MACHINES;
+    this._retireKillMachinesOutside(live);
+    for (const machine of live) {
       const phase = killMachinePhase(machine, simTime, this._killPhaseOut);
       if (phase.fieldActive) this._upsertKillMachineFields(machine, phase);
       else this._removeKillMachineFields(machine);
       this._ensureAnvil(machine);
+      this._ensureStarterMouth(machine);
       this._updateKillMachinePlayerBoundary(state, machine, player, phase.fieldActive);
     }
+  },
+
+  _retireKillMachinesOutside(live) {
+    const keep = new Set();
+    for (const machine of live) keep.add(machine.id);
+    for (const machine of [...KILL_MACHINES, STARTER_FIELD_MACHINE]) {
+      if (keep.has(machine.id)) continue;
+      this._removeKillMachineFields(machine);
+      if (this._killPlayerInside.has(machine.id)) {
+        this._emitHazardBoundary(false, machine.hazardType, machine.id, machine.id, 'wrong_sector');
+        this._killPlayerInside.delete(machine.id);
+      }
+    }
+    if (!keep.has(STARTER_FIELD_MACHINE.id)) this._starterMouthId = null;
+  },
+
+  // The jaw is an existing kit body. World already knows how to place one; this adapter
+  // asks once per visit, and only for the starter cracker, so Ceres mouths stay as they are.
+  _ensureStarterMouth(machine) {
+    if (!machine || machine.id !== STARTER_FIELD_MACHINE.id || this._starterMouthId) return;
+    const world = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('world')
+      : null;
+    const active = this.state && this.state.world && this.state.world.activeSector;
+    const sector = this.state && this.state.world && this.state.world.sectors
+      ? this.state.world.sectors[machine.sectorId]
+      : null;
+    if (!world || typeof world._spawnPlaceProp !== 'function' || !active || !sector) return;
+    if (active.id !== machine.sectorId) return;
+    const ent = world._spawnPlaceProp(active, sector, machine.placeId, {
+      x: machine.globalPos.x,
+      z: machine.globalPos.z,
+    }, {
+      rot: machine.rot,
+      name: 'Claim Cracker',
+      radius: 18,
+      worldOneOff: true,
+    });
+    if (ent && ent.id != null) this._starterMouthId = ent.id;
   },
 
   _updateAperture(state) {
@@ -700,7 +748,7 @@ export const environmentalMachinery = {
   },
 
   _clearKillMachines(why) {
-    for (const machine of KILL_MACHINES) {
+    for (const machine of [...KILL_MACHINES, STARTER_FIELD_MACHINE]) {
       this._removeKillMachineFields(machine);
       if (this._killPlayerInside.has(machine.id)) {
         this._emitHazardBoundary(false, machine.hazardType, machine.id, machine.id, why);
@@ -709,6 +757,7 @@ export const environmentalMachinery = {
     this._killPlayerInside.clear();
     this._killFieldStrength.clear();
     this._anvilsEnsured.clear();
+    this._starterMouthId = null;
   },
 
   _clearAperture(why) {

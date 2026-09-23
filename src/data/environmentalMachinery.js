@@ -159,17 +159,19 @@ function freezeVec(x, z) {
 
 function buildKillMachine({
   id, hazardType, placeId, localPos, rot, phaseOffsetS, anvil, fields, hazardRadius,
+  sectorId = KILL_MACHINE_SECTOR_ID,
 }) {
   const dir = freezeVec(Math.cos(rot), Math.sin(rot));
   const perp = freezeVec(-dir.z, dir.x);
-  const globalPos = Object.freeze(sectorLocalToGlobalForSector(localPos, KILL_MACHINE_SECTOR_ID));
+  const globalPos = Object.freeze(sectorLocalToGlobalForSector(localPos, sectorId));
+  const fieldRegion = sectorId === 'sector_helios_prime' ? 'helios' : 'ceres';
   const anvilAlong = finite(anvil.along);
   const anvilAcross = finite(anvil.across);
   return Object.freeze({
     id,
     hazardType,
     placeId,
-    sectorId: KILL_MACHINE_SECTOR_ID,
+    sectorId,
     localPos: Object.freeze({ x: localPos.x, z: localPos.z }),
     globalPos,
     rot,
@@ -188,7 +190,7 @@ function buildKillMachine({
       mass: positive(anvil.mass, 8000),
     }),
     fields: Object.freeze((fields || []).map((field) => Object.freeze({
-      id: `environment_ceres_${id}_${field.idSuffix}`,
+      id: `environment_${fieldRegion}_${id}_${field.idSuffix}`,
       kind: field.kind,
       radius: positive(field.radius, 90),
       strength: Math.max(0, finite(field.strength, 0)),
@@ -274,6 +276,41 @@ export const KILL_MACHINES = Object.freeze([
 export const KILL_MACHINE_BY_ID = Object.freeze(Object.fromEntries(
   KILL_MACHINES.map((machine) => [machine.id, machine]),
 ));
+
+// F13 — one cracker in the Helios starter claim. Same shove-into-an-anvil law as the
+// Ceres mouths. It faces south, out of the rock cluster, so it does not hunt the pilot
+// who is mining the middle. The jaw mesh is place_crusher_module, spawned by the adapter.
+export const STARTER_FIELD_SECTOR_ID = 'sector_helios_prime';
+export const STARTER_FIELD_ID = 'f_helios_starter';
+export const STARTER_FIELD_MACHINE = buildKillMachine({
+  id: 'helios_claim_cracker',
+  hazardType: 'debris',
+  placeId: 'place_crusher_module',
+  sectorId: STARTER_FIELD_SECTOR_ID,
+  localPos: { x: 720, z: -420 },
+  rot: -Math.PI / 2,
+  phaseOffsetS: 0,
+  hazardRadius: 96,
+  anvil: { radius: 22, mass: 11000, along: 64, across: 0 },
+  fields: [{
+    idSuffix: 'intake',
+    kind: 'cone',
+    strength: 720,
+    radius: 100,
+    halfAngleRad: 0.52,
+    edgeSoftRad: 0.12,
+    falloff: 1.08,
+    along: -18,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
+export function killMachinesForSector(sectorId) {
+  if (sectorId === KILL_MACHINE_SECTOR_ID) return KILL_MACHINES;
+  if (sectorId === STARTER_FIELD_SECTOR_ID) return Object.freeze([STARTER_FIELD_MACHINE]);
+  return Object.freeze([]);
+}
 
 export function killMachineFieldCenter(machine, field) {
   if (!machine || !field) return freezeVec(0, 0);
