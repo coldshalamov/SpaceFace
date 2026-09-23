@@ -1,7 +1,7 @@
 # Import digest — measured hitch packages (vm-drop only)
 
 **Master tip:** `35e519ebd75325e119c2c7fe61f6a234f2514c1e`  
-**vm-drop tip (at digest write):** `4658fe390aeb85bc266ea1be97c846fe1733d839`  
+**vm-drop tip (at digest write):** (see latest vm-drop commit after this digest)  
 **Fresh profile:** `/workspace/spaceface-scratch/hitch-hillclimb-fresh-20260923/`  
 **When profiled:** 2026-09-23 ~00:09–00:11 EDT — settled held-thrust 60937 ms; idle 57.3%; long tasks 18; soft-GPU (llvmpipe). Picture defaults ON.
 
@@ -41,6 +41,8 @@ Order follows fresh-profile portable self-time poles, then opening/soft-GPU cook
 | 24 | `npc-field-role-cache` | `4833a9989` | Cache `npcFieldRole` vs data/ai identities; **~3.6×** offline; tests 8/8. Covers `npcFieldRole` **20.0 ms** self. |
 | 25 | `docking-corridor-publish-scratch` | `8007735e1` | Reuse proxy-diag out/seen + station key cache; **~3.7×** offline; tests 40/40. Covers `_publishProxyDiagnostics` **20.2 ms** self. |
 | 26 | `customs-scan-cone-scratch` | `a0a063664` | WeakMap cone pool for `customsScanConeOf`; **~1.38×** offline; tests 11/11. Covers law long-tail **15.0 ms** self. |
+| 27 | `hostile-for-ai-earlyout` | `1ef01cc3c` | Structural early-outs for `isHostileForAI` (no tick-Map); NPC **~1.72×**, no-ai alloc **~2.67×**; tests 28/28. Covers `isHostileForAI` **39.6 ms** self. |
+| 28 | `stunt-flight-range-prefilter` | `342fde89b` | Type+2400 WU prefilter before stunt hostility scan; **~5.1×** offline; tests 20/20. Cuts `StuntFlightObserver.update` / hostility calls. |
 
 ### Optional / separate backlog (not in top portable poles)
 
@@ -114,6 +116,8 @@ Order follows fresh-profile portable self-time poles, then opening/soft-GPU cook
 | `npcFieldRole` 20.0 ms | #24 |
 | `_publishProxyDiagnostics` 20.2 ms | #25 |
 | `customsScanConeOf` 15.0 ms | #26 |
+| `isHostileForAI` 39.6 ms | #27 (+ #28 reduces a hot caller) |
+| `StuntFlightObserver.update` (profile hits) | #28 |
 | Soft-GPU `bufferData` / `isProgram` / bloom | **Ignore** for portable hillclimb |
 
 ---
@@ -124,8 +128,8 @@ Report-only under `design/program/vm-drop/IMPORT_DIGEST/`. No `src/` changes. Pu
 
 ## Hillclimb follow-ups (this session)
 
-- **Shipped:** `combat-subsystem-key-cache` (above); then `npc-field-role-cache`, `docking-corridor-publish-scratch`, `customs-scan-cone-scratch`.
+- **Shipped:** `combat-subsystem-key-cache` (above); then `npc-field-role-cache`, `docking-corridor-publish-scratch`, `customs-scan-cone-scratch`; then **`hostile-for-ai-earlyout`**, **`stunt-flight-range-prefilter`**.
 - **Tried / miss:** `makeResult` / `normalizeInput` pooling on `propulsionKernel.js` — V8 short-lived alloc beat pooled fill+clear (~0.4–1.0×); travel-drive byte-identical fixture also forbids private result keys.
-- **Tried / miss this pass:** `lawfulPatrols` per-tick cache (once/update ~0.87×); `pruneEvidence` same-tick skip (~1.25× / empty-map noise); `isHostileForAI` tick pair Map cache (~0.58×); `normalizeCraftInput` module scratch (~0.86×); `assignFlightFrame` for-in/hot-scalars with optional keys (~1.2×, not ≥2×); customs sticky-boolean without invalidation (broke patrol-net null-after-break).
+- **Tried / miss this pass:** `lawfulPatrols` per-tick cache (once/update ~0.87×); `pruneEvidence` same-tick skip (~1.25× / empty-map noise) and watermark/lives-cadence (≤1.1× single-call or regress); `isHostileForAI` tick pair Map cache (~0.58×) — replaced by structural early-outs; `normalizeCraftInput` module scratch (~0.86×); `assignFlightFrame` for-in/hot-scalars with optional keys (~1.2×, not ≥2×); customs sticky-boolean without invalidation (broke patrol-net null-after-break); `copyInput` seq-stable action-key skip (~1.32× stable / ~1.0× when seq bumps every frame — not shipped).
 - **Tried / miss earlier:** `combat-entity-key-cache` / syncCombatantBounds early-out (see SKIP).
-- **Remaining portable heat (not newly packaged):** `isHostileForAI` ~40 ms, `assignFlightFrame`/`normalizeCraftInput` leftovers after propulsion, `pruneEvidence`/`stuntFlightEvidence`, `lifetimeSweep`, `copyInput`, `npcJobsRuntime` / law long-tail beyond customs, soft-GPU bloom/`isProgram` (ignore). Top poles still primarily covered by import rows #1–#23.
+- **Remaining portable heat (not newly packaged):** `assignFlightFrame`/`normalizeCraftInput` leftovers after propulsion, `pruneEvidence` residual, `lifetimeSweep`, `copyInput`, `npcJobsRuntime` / law long-tail beyond customs, soft-GPU bloom/`isProgram` (ignore). Top poles still primarily covered by import rows #1–#28.

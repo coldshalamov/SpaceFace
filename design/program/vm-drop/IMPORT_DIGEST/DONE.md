@@ -32,3 +32,6 @@ New measured packages outboxed beside this digest:
 ## Picture / live game
 
 Untouched. Report-only folder under the vm-drop fence.
+
+- #27 `hostile-for-ai-earlyout` @ `1ef01cc3c`
+- #28 `stunt-flight-range-prefilter` @ `342fde89b`
