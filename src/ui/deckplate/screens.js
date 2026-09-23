@@ -1217,6 +1217,7 @@ ${CX} .cx-reader__turn-key--next { margin-left:auto; }
 /* the catalogue in the foot: what is filed in each section, as readings */
 ${CX} > .k-foot { align-items:center; }
 ${CX} .cx-index { display:block; }
+${CX} .cx-index__cap { margin:0 0 6px; ${ETCH} font-size:12px; letter-spacing:.2em; color:var(--dp-ink-mute); }
 ${CX} .cx-index__list { display:flex; flex-wrap:wrap; gap:10px 34px; margin:0; }
 ${CX} .cx-index__item { display:flex; flex-direction:column; margin:0; }
 ${CX} .cx-index__n {
