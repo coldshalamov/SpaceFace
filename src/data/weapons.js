@@ -67,6 +67,20 @@ const SHIPPED_WEAPONS = [
     intercepts: true,
     impulsePerHit: 5, tumbleTorque: 0.6, impulseProvenance: 'flak_fragment',
   },
+  {
+    // SMALL CONCUSSION CANNON — the light-hardpoint momentum weapon for scouts, interceptors,
+    // and starter hulls (Hitch, Kestrel, Wasp) that cannot mount medium hardware. A hit punches
+    // a light target with 520 momentum (520 ÷ 16 = 32.5 wu/s on a Wasp, ~31 % of governed cruise),
+    // enough to shove it off an attack vector, tumble its firing arc, or slide it into an asteroid.
+    // Heavy hulls (mass 120+) shrug it (4.3 wu/s). Trades away almost all damage (dmg 6 at 1.2 rps = 7.2 dps)
+    // for directional authority and environmental kills.
+    id: 'wpn_concussion_cannon_s', name: 'Concussion Cannon S', slotType: 'weapon', size: 'S', tier: 1, mass: 3, price: 9500,
+    sentence: 'A light kicker slug that trades raw damage for pure momentum: one punch sends a light fighter tumbling into a rock.',
+    dmg: 6, rof: 1.2, dps: 7.2, damageType: 'kinetic', energyCost: 3,
+    projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 1.0,
+    heatPerShot: 10, heatMax: 100, heatDissip: 24,
+    impulsePerHit: 520, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
+  },
 
   // --- MEDIUM (M slot) ---
   {
@@ -78,6 +92,14 @@ const SHIPPED_WEAPONS = [
     // the starter plink scaled up with the damage (S: 84). Every direct upgrade in the kit
     // raises the shove with the DPS; the energy family is no exception.
     impulsePerHit: 126, tumbleTorque: 0.12, impulseProvenance: 'medium_pulse_bolt',
+  },
+  {
+    id: 'wpn_bank_stream_m', name: 'Bank Stream M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 16000, requiresTech: 'tech_kinetic_drivers',
+    sentence: 'A bright fixed stream. Banks off stone. Each shot is light; the ribbon is the gun.',
+    dmg: 5.14, rof: 14, dps: 71.96, damageType: 'kinetic', energyCost: 0.6,
+    projSpeed: 520, range: 280, tracking: 'fixed', spreadDeg: 0.8,
+    heatPerShot: 4, heatMax: 100, heatDissip: 36, armorPierce: 0.35,
+    impulsePerHit: 12, tumbleTorque: 1.2, impulseProvenance: 'bank_stream',
   },
   {
     id: 'wpn_autocannon_m', name: 'Heavy Autocannon M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 19000, requiresTech: 'tech_kinetic_drivers',

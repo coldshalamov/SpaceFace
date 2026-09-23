@@ -77,6 +77,11 @@ export const SANDBOX_PHYSICS_LOADOUTS = Object.freeze([
     label: 'Concussion + force tools',
     itemIds: Object.freeze(['wpn_concussion_cannon_m', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s']),
   }),
+  Object.freeze({
+    id: 'light_impulse',
+    label: 'Light Concussion Kicker (S)',
+    itemIds: Object.freeze(['wpn_concussion_cannon_s', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s']),
+  }),
 ]);
 
 const ceresAcceptancePocket = CERES_ACTIVITY_POCKETS_BY_ID[
@@ -163,10 +168,10 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
 }
 
 /**
- * The survival rulesets a LAUNCH may name. `endless` and `boss_circuit` are continuations reached
- * from inside a live run, not doors, so they are deliberately not on this list.
+ * The survival rulesets a LAUNCH may name. Endless stays a Gauntlet refit continuation.
+ * Boss circuit is a door mode once the account has earned it; the door refuses it otherwise.
  */
-const SURVIVAL_LAUNCH_RULESETS = new Set(['scored', SWARM_RULESET]);
+const SURVIVAL_LAUNCH_RULESETS = new Set(['scored', SWARM_RULESET, 'boss_circuit']);
 
 /** Display names + config for each quick-setup card on the Sandbox screen. */
 export const SCENARIO_PRESETS = Object.freeze([
