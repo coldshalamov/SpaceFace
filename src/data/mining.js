@@ -197,6 +197,50 @@ export const RECIPES = [
   },
 ];
 
+// One chart language for every surface that names a rock. The lock already says
+// "Silicate Asteroid" / "Exotic Asteroid". A scan used to stamp a different token:
+// common rock fell through to "Ore", and platinoid matched the substring "ore" so a
+// rare rock read as iron. The type glyph and the dominant-commodity glyph agree.
+export const ASTEROID_SCAN_GLYPH_BY_TYPE = Object.freeze({
+  ast_common_rock: 'Si',
+  ast_metallic: 'Fe',
+  ast_icy: 'H₂O',
+  ast_crystalline: 'Cr',
+  ast_gas_cloud: 'Gas',
+  ast_rare_exotic: 'Xe',
+});
+
+const COMMODITY_SCAN_GLYPH = Object.freeze({
+  cmdty_silicate: 'Si',
+  cmdty_ore_iron: 'Fe',
+  cmdty_ice_water: 'H₂O',
+  cmdty_crystal_silica: 'Cr',
+  cmdty_crystal_lumin: 'Cr',
+  cmdty_gas_hydrogen: 'Gas',
+  cmdty_gas_helium3: 'Gas',
+  cmdty_ore_platinoid: 'Xe',
+  cmdty_exotic_xenium: 'Xe',
+});
+
+export function asteroidScanGlyph(typeId) {
+  return ASTEROID_SCAN_GLYPH_BY_TYPE[typeId] || 'Ore';
+}
+
+/** Glyph of the heaviest commodity in an ore table. Ties keep the earlier id. */
+export function dominantOreScanGlyph(oreTable) {
+  if (!oreTable || typeof oreTable !== 'object') return 'Ore';
+  let bestId = null;
+  let bestW = -Infinity;
+  for (const id of Object.keys(oreTable).sort()) {
+    const w = Number(oreTable[id]);
+    if (!Number.isFinite(w) || w <= bestW) continue;
+    bestW = w;
+    bestId = id;
+  }
+  if (!bestId || !(bestW > 0)) return 'Ore';
+  return COMMODITY_SCAN_GLYPH[bestId] || 'Ore';
+}
+
 // Per-sector-tier field generation parameters.
 export const FIELDS = {
   0: { astCount: 60,  weights: { ast_common_rock: 60, ast_metallic: 25, ast_icy: 15 },                                              tierCap: 1, respawnSec: 90,  clusterRadius: 350 },

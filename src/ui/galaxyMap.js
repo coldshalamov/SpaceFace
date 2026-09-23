@@ -24,6 +24,7 @@ import { MAP_WORKBENCH_CSS } from './map/mapWorkbenchCss.js';
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { asteroidScanGlyph } from '../data/mining.js';
 import { drawGlyph } from './glyphs.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
@@ -1811,7 +1812,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
       named: !!(e.data && (e.data.namedLaneContactId || e.data.callsign || e.data.name)),
       scanHighlightUntil: kind === 'asteroid' ? (Number(e.data && e.data.scanHighlightUntil) || 0) : 0,
       scanOre: kind === 'asteroid'
-        ? String((e.data && e.data.scanOreGlyph) || asteroidOreGlyph(e.data && e.data.typeId))
+        ? String((e.data && e.data.scanOreGlyph) || asteroidScanGlyph(e.data && e.data.typeId))
         : null,
       // Continuous residency keeps neighbouring sectors' furniture alive, so the LOCAL scope can
       // see gates and stations that belong to somewhere else. Flag them rather than hide them:
@@ -7646,7 +7647,7 @@ export const galaxyMapScreen = {
         const cz = Number(f.center && f.center.z) || 0;
         const radius = Number(f.clusterRadius) || Number(f.radius) || 300;
         const fx = sx(cx), fy = sz(cz), fr = radius * pxPerWU;
-        const glyph = asteroidOreGlyph(f.type);
+        const glyph = asteroidScanGlyph(f.type);
         g.save();
         g.strokeStyle = hexToRgba(INK.brass, 0.30);
         g.fillStyle = hexToRgba(INK.brass, 0.045);
@@ -9109,16 +9110,6 @@ const HAZARD_CANVAS_GLYPHS = {
   debris: 'debris',
 };
 
-function asteroidOreGlyph(typeId) {
-  switch (typeId) {
-    case 'ast_metallic': return 'Fe';
-    case 'ast_icy': return 'H₂O';
-    case 'ast_crystalline': return 'Cr';
-    case 'ast_gas_cloud': return 'Gas';
-    case 'ast_rare_exotic': return 'Xe';
-    default: return 'Si';
-  }
-}
 
 /**
  * A faction hue is data, but a dark hue set as 12px text on the chart's ground does not read (the

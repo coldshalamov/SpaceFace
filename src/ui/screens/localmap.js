@@ -13,6 +13,7 @@
 // read-only over movement/combat state (§0.6); explicit route cards can set the nav waypoint.
 import { LocalSpaceIntel, rankTradeRoutes } from '../navigation/localSpaceMapModel.js';
 import { COMMODITIES } from '../../data/commodities.js';
+import { asteroidScanGlyph } from '../../data/mining.js';
 import { STORY_BEATS } from '../../data/missions.js';
 import { SECTORS } from '../../data/sectors.js';
 import { BINDINGS } from '../bindings.js';
@@ -1030,7 +1031,7 @@ export const localmapScreen = {
       const data = e.data || {};
       if (!(data.scanHighlightUntil > now)) continue;
       const x = wx(e.pos.x), y = wz(e.pos.z);
-      const glyph = data.scanOreGlyph || asteroidOreGlyph(data.typeId);
+      const glyph = data.scanOreGlyph || asteroidScanGlyph(data.typeId);
       g.save();
       g.strokeStyle = ink.goal;
       g.fillStyle = ink.goal;
@@ -1164,19 +1165,6 @@ function routeGuidance(state, wp) {
 
 function sectorName(id) {
   return SECTOR_NAME.get(id) || id || 'target sector';
-}
-
-function asteroidOreGlyph(typeId) {
-  switch (typeId) {
-    case 'ast_metallic': return 'Fe';
-    case 'ast_icy': return 'H2O';
-    case 'ast_crystalline': return 'Cr';
-    case 'ast_gas_cloud': return 'Gas';
-    case 'ast_rare_exotic': return 'Xe';
-    case 'ast_common_rock':
-    default:
-      return 'Si';
-  }
 }
 
 function stationPositionForRoute(state, stationId) {

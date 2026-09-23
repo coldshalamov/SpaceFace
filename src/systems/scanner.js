@@ -3,7 +3,7 @@
 // Consumes the locked input edge `state.input.actions.scanPulse` and annotates live entities with
 // plain data fields that UI/render layers can read. No wall-clock; durations are simTime-based.
 // Ghost reveal uses entity-keyed deterministic streams (hash32), not ambient Math.random.
-import { ASTEROIDS } from '../data/mining.js';
+import { asteroidScanGlyph } from '../data/mining.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js';
 import { hash32 } from '../core/rng.js';
@@ -204,17 +204,6 @@ function clamp01(v) {
   return Math.max(0, Math.min(1, n));
 }
 
-const ASTEROID_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
-const ORE_GLYPH_BY_TAG = Object.freeze({
-  common: 'Si',
-  metal: 'Fe',
-  ice: 'H2O',
-  gas: 'Gas',
-  crystal: 'Cr',
-  exotic: 'Xe',
-  rare: 'Xe',
-});
-
 function pos2(pos) {
   return { x: Number(pos && pos.x) || 0, z: Number(pos && pos.z) || 0 };
 }
@@ -308,32 +297,6 @@ export function recordAnomalyBearing(previous, origin, targetPos, options = {}, 
 
 function dist(posA, posB) {
   return Math.hypot((posA.x || 0) - (posB.x || 0), (posA.z || 0) - (posB.z || 0));
-}
-
-function oreGlyphForAsteroid(entity) {
-  const typeId = entity && entity.data && entity.data.typeId;
-  const def = ASTEROID_BY_ID.get(typeId);
-  const table = def && def.oreTable;
-  let bestOre = null;
-  let bestWeight = -1;
-  if (table) {
-    for (const oreId in table) {
-      if (table[oreId] > bestWeight) {
-        bestOre = oreId;
-        bestWeight = table[oreId];
-      }
-    }
-  }
-  if (bestOre) {
-    if (bestOre.includes('ice')) return 'H2O';
-    if (bestOre.includes('gas')) return 'Gas';
-    if (bestOre.includes('crystal')) return 'Cr';
-    if (bestOre.includes('exotic')) return 'Xe';
-    if (bestOre.includes('ore')) return 'Fe';
-  }
-  const tags = def && def.oreTable ? Object.keys(def.oreTable).join(' ') : String(typeId || '');
-  for (const tag in ORE_GLYPH_BY_TAG) if (tags.includes(tag)) return ORE_GLYPH_BY_TAG[tag];
-  return 'Ore';
 }
 
 function isWreckLike(entity) {
@@ -915,7 +878,7 @@ export const scanner = {
       const data = entity.data || (entity.data = {});
       if (entity.type === 'asteroid') {
         data.scanHighlightUntil = now + ASTEROID_HIGHLIGHT_S;
-        data.scanOreGlyph = oreGlyphForAsteroid(entity);
+        data.scanOreGlyph = asteroidScanGlyph(data.typeId);
         found.asteroids++;
       } else if (isWreckLike(entity)) {
         data.pingedUntil = now + profile.pingPersistS;

@@ -2,7 +2,7 @@
 // Teaches "read the rock before you burn" (SPEC3-15 / first-hour B2 spirit).
 // No sim writes. Deterministic from entity typeId + optional yield hints.
 
-import { ASTEROIDS, ORES } from '../../data/mining.js';
+import { ASTEROIDS, ORES, dominantOreScanGlyph } from '../../data/mining.js';
 import {
   PROSPECTOR_GRADE_ORDER,
   PROSPECTOR_MIN_APPRAISAL_GRADE,
@@ -67,24 +67,7 @@ export function gradeAtLeast(grade, minGrade) {
 }
 
 export function glyphForOreTable(oreTable) {
-  if (!oreTable) return 'Ore';
-  const ids = sortIds(Object.keys(oreTable));
-  let bestId = null;
-  let bestW = -1;
-  for (const id of ids) {
-    const w = finiteOr(oreTable[id], 0);
-    if (w > bestW) {
-      bestW = w;
-      bestId = id;
-    }
-  }
-  if (!bestId) return 'Ore';
-  if (bestId.includes('ice')) return 'H2O';
-  if (bestId.includes('gas')) return 'Gas';
-  if (bestId.includes('crystal') || bestId.includes('gem')) return 'Cr';
-  if (bestId.includes('exotic')) return 'Xe';
-  if (bestId.includes('ore') || bestId.includes('silicate')) return 'Fe';
-  return 'Ore';
+  return dominantOreScanGlyph(oreTable);
 }
 
 /**
