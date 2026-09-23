@@ -1572,3 +1572,42 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
 #screens .sx-berth .sx-mkt-instrument__live {
   position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
 }
+
+/* == THE BAR: THE CONTACT, LIT =================================================================
+   2026-09-22. The bar is a conversation, so its signature is the person: the contact's portrait
+   (a produced 1024px painting, src/data/portraits.js) stands large in the right half of the stage
+   and falls away into the bay on its left and lower edges, the way a figure stands in low light --
+   instead of a 240px thumbnail in a corner beside a 420px padding hole. The conversation reads down
+   the left. The fade is the photograph's own vignette, not a frame. */
+#screens .sx-berth .sx-bar__stage .sx-talk {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 42%);
+  column-gap: clamp(24px, 3vw, 64px); align-items: start;
+  padding-right: 0;
+}
+#screens .sx-berth .sx-bar__stage .sx-talk > * { grid-column: 1; }
+#screens .sx-berth .sx-bar__stage .sx-talk > * + * { margin-top: calc(22px * var(--k-s)); }
+#screens .sx-berth .sx-bar__stage .sx-talk__head { display: contents; }
+#screens .sx-berth .sx-bar__stage .sx-talk__id { grid-column: 1; grid-row: 1; }
+#screens .sx-berth .sx-bar__stage .sx-talk__avatar {
+  grid-column: 2; grid-row: 1 / span 12; align-self: start; justify-self: stretch;
+  width: 100%; height: auto; aspect-ratio: 4 / 5; max-height: min(640px, 64vh); margin: -8px 0 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 26%), linear-gradient(0deg, transparent 0, #000 30%, #000 86%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent 0, #000 26%), linear-gradient(0deg, transparent 0, #000 30%, #000 86%, transparent 100%);
+  mask-composite: intersect;
+}
+#screens .sx-berth .sx-bar__stage .sx-talk__avatar :is(img, canvas, .sx-portrait) {
+  display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%;
+  border: 0; border-radius: 0; box-shadow: none; filter: saturate(.92) contrast(1.04);
+}
+#screens .sx-berth .sx-bar__stage .sx-talk__name { font-size: clamp(34px, 3vw, 56px); line-height: 1; }
+#screens .sx-berth .sx-bar__stage .sx-talk__reply { font-size: clamp(17px, 1.15vw, 21px); line-height: 1.45; color: var(--dp-ink, #e8e2d4); }
+#screens .sx-berth .sx-bar__stage .sx-talk__reply.is-idle { color: #c9c6be; }
+@media (max-width: 1100px) {
+  #screens .sx-berth .sx-bar__stage .sx-talk { grid-template-columns: minmax(0, 1fr); }
+  #screens .sx-berth .sx-bar__stage .sx-talk__avatar { grid-column: 1; grid-row: auto; max-width: 320px; }
+}
+@media (forced-colors: active) {
+  #screens .sx-berth .sx-bar__stage .sx-talk__avatar { -webkit-mask-image: none; mask-image: none; }
+}

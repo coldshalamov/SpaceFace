@@ -62,7 +62,8 @@ export function mountContactPortrait(host, contact, options = {}) {
     img.width = size;
     img.height = size;
     img.alt = (contact && contact.name) ? contact.name + ' portrait' : 'Contact portrait';
-    img.loading = 'lazy';
+    // A portrait that IS the screen's subject (the bar's contact) loads eagerly; a list thumbnail waits.
+    img.loading = options.eager ? 'eager' : 'lazy';
     img.decoding = 'async';
     img.src = src;
     img.addEventListener('error', () => {

@@ -351,7 +351,7 @@ export function createBarScreen(ctx) {
     appendVonnFreightLossMapOffer(state, c);
 
     const big = stageEl.querySelector('[data-bigpic]');
-    if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 240 }); } catch (_) {} }
+    if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 640, eager: true }); } catch (_) {} }
     dressStage();
   }
 
