@@ -2181,14 +2181,18 @@ async function exerciseMarketRoundtrip(page) {
     // market-opened with the cycle timeout and no diag). Landing is still proven by
     // the state verify below, never by the click.
     // A console quoting a disabled GO is saying "not actionable" — a pilot reads
-    // the note and moves to the next row. Recheck once for the flicker case, then
-    // skip: a dead row costs ~0.5s instead of ~8s of retry budget, so a full-hold
-    // walk of dead rows cannot eat the whole 300s cycle (PQ-033.02 cycle-42 death).
+    // the note and moves to the next row. But the register re-renders on every
+    // price tick and GO flickers disabled inside each rebuild: poll for a live
+    // window (~2.4s covers the tick cadence) before calling the row dead. Dead
+    // rows still skip in ~2.5s instead of ~8s of retry budget, so a full-hold
+    // walk cannot eat the whole 300s cycle (PQ-033.02 cycle-42 death).
     if (commitQty != null) await qtyInput.fill(commitQty, { timeout: 1_500 }).catch(() => {});
-    if (!(await tradeGo.isEnabled().catch(() => false))) {
+    const enableDeadline = Math.min(Date.now() + 2_400, walkDeadline);
+    while (Date.now() < enableDeadline) {
+      if (await tradeGo.isEnabled().catch(() => false)) break;
       await page.waitForTimeout(400);
-      if (!(await tradeGo.isEnabled().catch(() => false))) return null;
     }
+    if (!(await tradeGo.isEnabled().catch(() => false))) return null;
     const before = await readTradeSnapshot(page, id);
     // The console re-renders on every price tick: a GO node resolved before the click can be
     // detached by the time the event dispatches, and a transient disabled/tradeBusy instant eats
