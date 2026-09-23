@@ -17588,8 +17588,10 @@
         "npm run check:all",
         "npm run probe:runtime-witness"
       ],
-      "receiptRefs": [],
-      "brief": "Named min-spec GPU; floors measured; two-hour soak on both hosts; 200 save/load cycles. DONE WHEN: Floors green on min-spec; soak logs attached."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-033.02-REPORT.md"
+      ],
+      "brief": "Named min-spec GPU; floors measured; two-hour soak on both hosts; 200 save/load cycles. DONE WHEN: Floors green on min-spec; soak logs attached. ACCEPTANCE PAIR LANDED 2026-09-23 (devin): frozen private candidate 61f1a7654, sequential on one worktree, worktree stable pass both hosts — browser 306 cycles/120.7 min, Electron 359 cycles/120.9 min, zero route failures (one absorbed cycle retry browser-side), context-loss recovery verified both. Soak/route contract GREEN; every floor honestly RED on the contended host (median 33.4/50.1 ms vs 16.7; gameplay hitches 8.20/13.98 per min vs 1; boot 54.1/30.7 s vs 10; heap 121.7/119.8 MB per 30 min vs 30; renderer resources grew; warnings 89/302). externalScheduling owned 76%+ of hitches — a quiet reference host is required before timing floors mean anything; heap/residency slope and the warning classes are real product work. Leaf stays open on DONE-WHEN."
     },
     {
       "id": "PQ-033.03",
