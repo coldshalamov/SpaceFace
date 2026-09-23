@@ -379,8 +379,12 @@ let pipelineReadinessBatch = null;
 // COMPLETION_STATUS_KHR (program.isReady) is answered without that wait, so the hot loop keeps it.
 // Handle validity comes from the context-loss event, three's destroy(), and one native recheck budget
 // that every waiter on a context shares: at most one isProgram() per gap, never one per program per poll.
+// The gap is 2 s, not 250 ms: each isProgram() waits for the GPU process to drain its queue, and on the
+// owner's iGPU that measured 10-28 ms per call — four calls a second, 37 ms/s of main-thread stall in
+// flight whenever any compile was pending (2026-09-22 profile). The two real invalidation paths are
+// already caught without it; this recheck only bounds a pathological silent handle loss.
 const PROGRAM_HANDLE_RECHECK_DELAY_MS = 1000;
-const PROGRAM_HANDLE_RECHECK_GAP_MS = 250;
+const PROGRAM_HANDLE_RECHECK_GAP_MS = 2000;
 const programHandleContexts = new WeakMap();
 
 function programHandleContext(gl) {
@@ -1623,7 +1627,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (typeof renderer.initRenderTarget !== 'function') {
       return { skipped: true, reason: 'initRenderTarget unavailable', targets: 0 };
     }
-    const targets = [rtScene, ...down];
+    const targets = [rtScene, rtPost, ...down].filter(Boolean);
     const allocations = [];
     for (const target of targets) {
       await yieldToMain();
@@ -1653,6 +1657,13 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       }
       quadMesh.material = compositeMat;
       renderer.setRenderTarget(null);
+      if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+      // Every openingProgramMaterials() entry must be linked here: the opening submission gate
+      // refuses the first picture until each one holds a program. casMat was listed but never
+      // compiled, so every New Game sat on the gate's 15 s failsafe
+      // ('post:2:unprepared-material'). Linked regardless of casActive, so dynamic resolution
+      // dropping below display res mid-flight never links the GLSL3 program inside a frame.
+      quadMesh.material = casMat;
       if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
     } finally {
       quadMesh.material = previousMat;

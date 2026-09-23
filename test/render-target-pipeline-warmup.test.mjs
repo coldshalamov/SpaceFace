@@ -240,6 +240,33 @@ test('bloom resource preparation submits its private fullscreen geometry before 
   bloom.dispose();
 });
 
+test('bloom resource preparation links every opening post material, CAS included', async () => {
+  // The opening submission gate refuses the first picture until every openingProgramMaterials()
+  // entry holds a program. The CAS sharpen material was listed but never compiled, so each New
+  // Game waited out the gate's 15 s failsafe ('post:2:unprepared-material').
+  const compiled = [];
+  let activeTarget = null;
+  const renderer = {
+    capabilities: { isWebGL2: true, maxSamples: 0 },
+    autoClear: true,
+    getRenderTarget: () => activeTarget,
+    setRenderTarget: (target) => { activeTarget = target; },
+    initRenderTarget() {},
+    compile(scene) {
+      scene.traverse((object) => { if (object.material) compiled.push(object.material); });
+    },
+    render() {},
+  };
+  const bloom = createBloom(renderer, 64, 64);
+  await bloom.prepareResources();
+  const opening = bloom.openingProgramMaterials();
+  assert.ok(opening.length >= 3, 'downsample, composite and CAS are opening post materials');
+  for (const [index, material] of opening.entries()) {
+    assert.ok(compiled.includes(material), `opening post material ${index} must be compiled during preparation`);
+  }
+  bloom.dispose();
+});
+
 test('render graph exposes every off-scene target to context-loss cleanup', () => {
   const renderer = {
     isWebGLRenderer: true,
