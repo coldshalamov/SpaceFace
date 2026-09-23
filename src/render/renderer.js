@@ -23,7 +23,7 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, instantiatePackagedPrimitives, setEnvMapForShips, updateHulkEmber, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { asteroidLeafResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, updateHulkEmber, upgradeBareRockMaterials, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
@@ -961,12 +961,16 @@ function compileIssueMaterialKey(material) {
     // families share that string across distinct maps/defines (openingSubmissionPlan §key).
     key = openingProgramSubjectKey(material) || null;
   } catch (_) { key = null; }
-  // A custom onBeforeCompile changes the emitted program while leaving the manifest equal.
-  // Own-property check: three's default lives on the prototype, authored patches are assigned.
-  if (key && Object.prototype.hasOwnProperty.call(material, 'onBeforeCompile')) {
+  if (key) {
+    // three's program cache keys on the FULL customProgramCacheKey() — the default returns
+    // onBeforeCompile.toString(), so two same-length patches with equal sampled chars still
+    // link separate programs. A partial fingerprint would merge them and skip the compile
+    // the round then pays mid-flight; the whole string is the only honest dedupe.
     try {
-      const src = Function.prototype.toString.call(material.onBeforeCompile);
-      key += `|obc:${src.length}:${src.charCodeAt(0)}:${src.charCodeAt(src.length >> 1)}:${src.charCodeAt(src.length - 1)}`;
+      const cpck = typeof material.customProgramCacheKey === 'function'
+        ? String(material.customProgramCacheKey() || '')
+        : '';
+      key += `|cpck:${cpck}`;
     } catch (_) { key = null; }
   }
   _compileIssueMaterialKeys.set(material, key);
@@ -978,8 +982,9 @@ function compileIssueMaterialKey(material) {
  * null never dedupes, so an unkeyable subject always issues its own compile. Object and
  * geometry features that change the linked program while the material stays identical
  * (instancing, skinning, morphs, the vertex attribute set) ride in the same key.
+ * Exported for the focused dedupe-key tests.
  */
-function openingCompileIssueKey(subject) {
+export function openingCompileIssueKey(subject) {
   if (!subject || typeof subject !== 'object') return null;
   const materials = Array.isArray(subject.material)
     ? subject.material.filter(Boolean)
@@ -10523,6 +10528,32 @@ export const render = {
         }
       } catch (error) {
         console.warn('[render] crucible warm ship build failed', spec && spec.id, error);
+      }
+    }
+    // A kill's dead hulk is the victim's own authored hull under the 'place' slot — a second
+    // blueprint the live hull's 'hull' decode never produces, dead-material clones the live
+    // program sweep never sees. One exemplar per roster ship runs the real attach → deaden →
+    // fit → pipeline path so the first mid-round kill finds blueprint, programs and buffers
+    // already resident instead of linking inside the fight (the +4 wreck_PackagedBody links).
+    for (const spec of hulkExemplarSpecsForShips(shipSpecs, `${specPrefix}hulk:`)) {
+      try {
+        const hulk = this.vf.build(spec);
+        if (!hulk) continue;
+        hulk.visible = false;
+        root.add(hulk);
+        // Same boundary hook the live kill triggers — attachPackagedBody's admission stages
+        // the packaged group detached, preps its pipelines, then mounts under the warm root.
+        if (typeof hulk.userData?.requestAuthoredUpgrade === 'function') {
+          warm.pendingAttachments.push(track(
+            hulk.userData.requestAuthoredUpgrade(renderer, scene, {
+              residencyRole: 'crucible-roster-warm',
+              sectorId,
+            }),
+            `hulk:${spec.id}`,
+          ));
+        }
+      } catch (error) {
+        console.warn('[render] crucible warm hulk build failed', spec && spec.id, error);
       }
     }
     // Approach-triggered authored upgrades: place/poi/wr: component boundaries only start their

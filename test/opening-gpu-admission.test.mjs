@@ -11,7 +11,45 @@ import {
   uniqueAdmissionUnits,
   withOnlySubjectsDrawable,
 } from '../src/render/openingGpuAdmission.js';
+import { openingCompileIssueKey } from '../src/render/renderer.js';
 import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
+
+test('compile issue key distinguishes onBeforeCompile bodies a sampled fingerprint would merge', () => {
+  // Two patches with identical length and identical first/middle/last chars: three's program
+  // cache reads the FULL customProgramCacheKey() (the default returns onBeforeCompile
+  // source), so these link separately — a partial fingerprint would merge them and skip the
+  // compile the round then pays mid-flight.
+  const makePatch = (mid) => {
+    // Same length, same first/last/middle char, different body content.
+    const body = mid === 'a'
+      ? 'shader.uniforms.uA.value += 0.0;'
+      : 'shader.uniforms.uB.value += 0.0;';
+    return new Function('shaderobject', 'renderer', body);
+  };
+  const patchA = makePatch('a');
+  const patchB = makePatch('b');
+  const srcA = patchA.toString();
+  const srcB = patchB.toString();
+  assert.equal(srcA.length, srcB.length);
+  assert.equal(srcA[0], srcB[0]);
+  assert.equal(srcA[srcA.length >> 1], srcB[srcB.length >> 1]);
+  assert.equal(srcA[srcA.length - 1], srcB[srcB.length - 1]);
+
+  const geo = new THREE.BoxGeometry();
+  const matA = new THREE.MeshStandardMaterial();
+  const matB = new THREE.MeshStandardMaterial();
+  matA.onBeforeCompile = patchA;
+  matB.onBeforeCompile = patchB;
+  const meshA = new THREE.Mesh(geo, matA);
+  const meshB = new THREE.Mesh(geo, matB);
+  assert.notEqual(openingCompileIssueKey(meshA), openingCompileIssueKey(meshB));
+
+  const matC = new THREE.MeshStandardMaterial();
+  matC.onBeforeCompile = patchA;
+  const meshC = new THREE.Mesh(geo, matC);
+  assert.equal(openingCompileIssueKey(meshA), openingCompileIssueKey(meshC),
+    'identical patch bodies share the issue signature');
+});
 
 test('family customProgramCacheKey values do not collapse distinct maps into one opening program', () => {
   const family = () => 'spaceface-common-rock-pbr';
