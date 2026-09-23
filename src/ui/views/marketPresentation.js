@@ -1,5 +1,6 @@
 // Market display only. Prices, affordability, selection and transaction ownership remain in market.js.
 // An explicit read model keeps the rendered register testable without importing game simulation.
+import { qtyDialSvg } from '../orrery/marketLayouts.js';
 import { escapeMarkup as escapeHtml } from './identity.js';
 import { commodityGlyphHtml } from './commodityGlyphs.js';
 const fmt = n => Math.round(Number(n) || 0).toLocaleString('en-US');
@@ -339,12 +340,13 @@ export function marketReceiptRow(k, v, tone) {
   const cls = tone === 'gain' ? ' k-good' : tone === 'loss' ? ' k-bad' : '';
   return `<li class="k-row k-row--static sx-kv"><span>${escapeHtml(k)}</span><b class="k-row__num${cls}">${escapeHtml(v)}</b></li>`;
 }
-export function marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel = '', totalText = '', note = '' }) {
+export function marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel = '', totalText = '', note = '', limit = 0 }) {
   const word = side => {
     const live = side === mode;
     return `<li><button type="button" class="k-word k-word--emph sx-seg__btn sx-trade__go sx-trade__go--${side}${live ? ' is-on k-word--primary' : ''}" data-mode="${side}" aria-pressed="${live}"${live ? ` data-go${canAct ? '' : ' disabled'}` : ''}>${live ? `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)}` : side === 'buy' ? 'Buy' : 'Sell'}</button></li>`;
   };
-  return `<div class="sx-trade"><div class="sx-qty">
+  // ORRERY: the amount stands inside a dial of light (its arc against what can be moved; drag round it)
+  return `<div class="sx-trade"><div class="sx-qty">${qtyDialSvg({ qty, limit })}
     <label class="k-caps sx-qty__k" for="sx-market-qty">Quantity</label><input id="sx-market-qty" class="k-input k-input--num sx-qty__in" type="text" inputmode="numeric" value="${escapeHtml(qty)}" aria-label="Quantity"/>
     <ul class="k-words k-words--row sx-qty__words"><li><button type="button" class="k-word k-word--body sx-qty__b" data-q="-1">Fewer</button></li><li><button type="button" class="k-word k-word--body sx-qty__b" data-q="1">More</button></li><li><button type="button" class="k-word k-word--body sx-qty__max" data-q="max">Max</button></li></ul></div>
     <div class="so-trade-total"><span data-trade-total-label>${escapeHtml(totalLabel)}</span><strong data-trade-total>${escapeHtml(totalText)}</strong></div>

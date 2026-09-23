@@ -88,9 +88,9 @@ ${S} .so-command-trigger:focus-visible { color:var(--dp-hand, #f2b950) !importan
 /* ---- the crown: the purse is the one numeral; the vitals are dials of light under it ----------- */
 ${S} .sxb-crown { background:none !important; border:0 !important; box-shadow:none !important; position:relative !important; isolation:isolate; }
 /* a pool of shade under the readings (no edge): the bay's truss stays the picture, the small words stay legible */
-${S} .sxb-crown::before { content:""; position:absolute; z-index:-1; left:50%; top:55%; width:max(760px, 150%); height:max(420px, 200%);
+${S} .sxb-crown::before { content:""; position:absolute; z-index:-1; left:50%; top:55%; width:max(980px, 170%); height:max(520px, 250%);
   transform:translate(-50%, -50%); pointer-events:none;
-  background:radial-gradient(closest-side, rgb(7 8 10 / .86), rgb(7 8 10 / .7) 45%, rgb(7 8 10 / 0)); }
+  background:radial-gradient(closest-side, rgb(7 8 10 / .93), rgb(7 8 10 / .84) 42%, rgb(7 8 10 / .6) 62%, rgb(7 8 10 / 0)); }
 ${S} .sxb-purse__value { color:rgb(248 244 234) !important; text-shadow:0 0 22px rgb(0 0 0 / .55) !important;
   font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 500 !important;
   font-weight:500 !important; font-size:40px !important; line-height:1 !important; letter-spacing:.01em !important; font-variant-numeric:tabular-nums; }
@@ -163,7 +163,8 @@ ${S} .sxb-vital--industry .sxb-vital__value .orr-vnum.is-word { margin-top:0; le
 ${S} .sxb-ops, ${S} .sxb-ops .of-facility-rail { align-items:flex-start !important; }
 ${S} .sxb-ops { flex-wrap:nowrap !important; column-gap:clamp(16px, 2vw, 40px) !important; }
 ${S} .sxb-ops .of-facility-rail { flex:0 1 auto !important; min-width:0 !important; max-width:58vw !important; }
-${S} .sxb-ops .sx-comms { margin-left:auto !important; flex:none !important; }
+${S} .sxb-ops .sx-comms { margin-left:48px !important; flex:none !important; }
+${S} .sxb-ops .sxb-launch-seat { margin-left:auto !important; }
 ${S} .sxb-ops .sxb-launch-seat { flex:none !important; }
 ${S} .sxb-ops .sx-tile__seat { display:none !important; }
 ${S} :is(.sxb-ops .so-berth-status, .sx-comms__toggle, .sxb-help) > .so-icon { display:none !important; }
@@ -245,8 +246,8 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} .sxb-vitals { margin-top:2px !important; gap:4px 12px !important; }
   ${S} :is(.sxb-vital__track, .sxb-vital > .orr-vdial-bare, .orr-vdial) { width:72px !important; height:47px !important; }
   ${S} .sxb-vital__value { top:15px; }
-  ${S} .sxb-vital__value .orr-vnum { font-size:15px; }
-  ${S} .sxb-vital__value .orr-vden { font-size:9px !important; }
+  ${S} .sxb-vital__value .orr-vnum { font-size:16px; }
+  ${S} .sxb-vital__value .orr-vden { font-size:10px !important; }
   ${S} .sxb-vital__acts { margin-top:2px !important; gap:0 !important; }
 }
 `;

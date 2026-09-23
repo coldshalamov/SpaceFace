@@ -79,6 +79,7 @@ export function marketFrameHtml() {
         `<aside class="k-t-fine k-62 sx-adboard" data-ad-board aria-label="Dockside commerce notice" hidden></aside>` +
       `</div>` +
       `<div class="sx-mkt__console"><div class="sx-mkt__trade"></div></div>` +
+      `<div class="sx-mkt__decision"></div>` +
     `</section>`;
 }
 

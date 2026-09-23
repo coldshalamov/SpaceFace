@@ -8,6 +8,7 @@ import { marketFrameHtml } from '../../views/stationFrames.js';
 // quotes and the route logic are untouched. Field Hardware chrome (kit plates, keys, quiet type)
 // is pinned from this module; buy/sell stay the same verbs.
 import { COMMODITIES, commodityPresentationFor } from '../../../data/commodities.js';
+import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
@@ -280,7 +281,9 @@ function marketDecisionHtml(state, stationId) {
 
 export function createMarketScreen(ctx) {
   const el = document.createElement('div');
-  el.className = 'k-panel k-panel--split sx-mkt';
+  el.className = 'k-panel k-panel--split sx-mkt orr-market';
+  // ORRERY: the Ladder, the trace as light, the quantity dial (src/ui/orrery/marketLayouts.js)
+  injectOrreryMarket(document);
   el.innerHTML = marketFrameHtml();
   const adBoardEl = el.querySelector('[data-ad-board]');
   const listEl = el.querySelector('.sx-mkt__list');
@@ -289,6 +292,7 @@ export function createMarketScreen(ctx) {
   const consoleEl = el.querySelector('.sx-mkt__console');
   const tradeEl = el.querySelector('.sx-mkt__trade');
   const routesEl = el.querySelector('.sx-mkt__routes');
+  const decisionEl = el.querySelector('.sx-mkt__decision');
   let tradeBusy = false;
 
   let selectedId = null;
@@ -591,6 +595,45 @@ export function createMarketScreen(ctx) {
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   }
 
+  // The register's rows are keyed by commodity: a price tick rewrites only the cells that moved and
+  // keeps every row node, so the row under the pointer, its focus and the rail's Hand survive the
+  // tick (the rows used to be rebuilt wholesale on any price, stock or demand change). A DOM
+  // without <template> content (the node test shim) takes the rebuild.
+  const rowTpl = typeof document !== 'undefined' && document.createElement ? document.createElement('template') : null;
+  function syncRows(keyed) {
+    const canPatch = !!(rowTpl && rowTpl.content && typeof tbodyEl.insertBefore === 'function');
+    if (!canPatch) { tbodyEl.innerHTML = keyed.map(([, html]) => html).join(''); return; }
+    const existing = new Map(rowEls().map((row) => [row.getAttribute('data-cmdty'), row]));
+    let prev = null;
+    for (const [id, html] of keyed) {
+      rowTpl.innerHTML = `<table><tbody>${html}</tbody></table>`;
+      const next = rowTpl.content.querySelector('tr');
+      if (!next) continue;
+      let row = existing.get(id);
+      if (row && row.children.length === next.children.length) {
+        for (const name of ['aria-selected', 'tabindex', 'aria-label', 'data-family']) {
+          const v = next.getAttribute(name);
+          if (v == null) row.removeAttribute(name);
+          else if (row.getAttribute(name) !== v) row.setAttribute(name, v);
+        }
+        row.classList.toggle('is-active', next.classList.contains('is-active'));
+        row.classList.toggle('is-tracked', next.classList.contains('is-tracked'));
+        [...next.children].forEach((cell, i) => {
+          const old = row.children[i];
+          if (old.innerHTML !== cell.innerHTML) old.innerHTML = cell.innerHTML;
+        });
+        existing.delete(id);
+      } else {
+        if (row) { row.remove(); existing.delete(id); }
+        row = next;
+      }
+      const at = prev ? prev.nextElementSibling : tbodyEl.firstElementChild;
+      if (row !== at) tbodyEl.insertBefore(row, at);
+      prev = row;
+    }
+    for (const row of existing.values()) row.remove();
+  }
+
   function renderList(state) {
     const rows = tradedList(state);
     const tracked_ = trackedCmdty(state);
@@ -631,7 +674,7 @@ export function createMarketScreen(ctx) {
       if (searchEl.value !== marketQuery) searchEl.value = marketQuery;
 
       const focused = typeof document !== 'undefined' && tbodyEl.contains(document.activeElement);
-      tbodyEl.innerHTML = visible.map((r) => commodityRowHtml(r, state, tracked_, r.id === selectedId)).join('');
+      syncRows(visible.map((r) => [r.id, commodityRowHtml(r, state, tracked_, r.id === selectedId)]));
       const emptyEl = listEl.querySelector('.sx-mkt-browser__empty');
       emptyEl.hidden = visible.length > 0;
       emptyEl.textContent = visible.length ? '' : `No commodities match ${emptyFilterLabel()}.`;
@@ -660,6 +703,7 @@ export function createMarketScreen(ctx) {
       stageEl.removeAttribute('aria-label');
       stageEl.removeAttribute('aria-describedby');
       consoleEl.hidden = true;
+      if (decisionEl) decisionEl.innerHTML = '';
       mountDataState(quoteEl, 'empty', {
         code: mode === 'sell' ? 'HOLD_EMPTY' : 'EXCHANGE_DARK',
         headline: mode === 'sell' ? 'Your hold is empty.' : 'No market at this berth.',
@@ -704,7 +748,11 @@ export function createMarketScreen(ctx) {
       producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
       quoteAge: quoteAgeWord(state, sid, r.id), saleQty: qty,
-      saleQuote: contemplatedSaleQuote(sid, r.id, qty) }) + marketDecisionHtml(state, sid);
+      saleQuote: contemplatedSaleQuote(sid, r.id, qty) }) + (decisionEl ? '' : marketDecisionHtml(state, sid));
+    if (decisionEl) {
+      const decisionHtml = marketDecisionHtml(state, sid);
+      if (decisionEl.innerHTML !== decisionHtml) decisionEl.innerHTML = decisionHtml;
+    }
     dressStage();
     renderLaunderLedger(state);
   }
@@ -764,6 +812,7 @@ export function createMarketScreen(ctx) {
     if (receiptOnly && tradeEl.querySelector('[data-market-intel]')) {
       // Keep the focused numeric input alive while each keystroke updates its actual quote.
       tradeEl.querySelector('[data-market-intel]').innerHTML = receiptHtml;
+      setQtyDial(tradeEl, qty, maxQty);
       tradeEl.querySelector('[data-trade-total]').textContent = quoteReady ? fmt(total) + ' cr' : 'Unavailable';
       tradeEl.querySelector('[data-trade-total-label]').textContent = mode === 'buy' ? 'Total cost' : 'Total gain';
       const go = tradeEl.querySelector('[data-go]');
@@ -778,7 +827,7 @@ export function createMarketScreen(ctx) {
     }
 
     // Preserve the native event contract: the live side commits, the other side switches mode.
-    tradeEl.innerHTML = bindStationMarkup(marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Total gain', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note }));
+    tradeEl.innerHTML = bindStationMarkup(marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Total gain', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note, limit: maxQty }));
     dressConsole();
   }
 
@@ -1066,6 +1115,43 @@ export function createMarketScreen(ctx) {
     const rows = tradedList(state); const r = rows.find((x) => x.id === selectedId);
     return r ? tradeQuantityLimit(state, { id: selectedId, entry: r.entry, def: r.def }) : 0;
   }
+  // THE DIAL. Press on the ring and turn: the amount is where the pointer points, from 0 at the
+  // foot's left end to all you can move at its right, the total rolling live (one quote a frame).
+  let turn = null;
+  consoleEl.addEventListener('pointerdown', (ev) => {
+    const dial = ev.target.closest && ev.target.closest('.orr-qdial');
+    if (!dial || ev.button !== 0) return;
+    const limit = scrubLimit();
+    if (limit < 1) return;
+    ev.preventDefault();
+    turn = { id: ev.pointerId, dial, limit, host: dial.closest('.sx-qty') };
+    try { dial.setPointerCapture(ev.pointerId); } catch (_) {}
+    if (turn.host) turn.host.classList.add('is-turning');
+    turnTo(ev);
+  });
+  function turnTo(ev) {
+    const next = qtyFromDialPoint(turn.dial, ev.clientX, ev.clientY, turn.limit);
+    if (next == null || next === qty) return;
+    qty = next;
+    const input = tradeEl.querySelector('.sx-qty__in');
+    if (input) input.value = String(qty);
+    if (!scrubFrame) scrubFrame = requestAnimationFrame(flushScrub);
+  }
+  consoleEl.addEventListener('pointermove', (ev) => {
+    if (!turn || ev.pointerId !== turn.id) return;
+    ev.preventDefault();
+    turnTo(ev);
+  });
+  function endTurn(ev) {
+    if (!turn || (ev && ev.pointerId !== turn.id)) return;
+    if (turn.host) turn.host.classList.remove('is-turning');
+    turn = null;
+    if (scrubFrame) { cancelAnimationFrame(scrubFrame); scrubFrame = 0; }
+    renderStage(ctx.state || {}); renderConsole(ctx.state || {});
+  }
+  consoleEl.addEventListener('pointerup', endTurn);
+  consoleEl.addEventListener('pointercancel', endTurn);
+
   consoleEl.addEventListener('pointerdown', (ev) => {
     const input = ev.target.closest && ev.target.closest('.sx-qty__in');
     if (!input || ev.button !== 0) return;
