@@ -39,11 +39,14 @@ the aliases at the end.
 
 Not decoration. These are the things that separate a shipped interface from a prototype.
 
-**Material, not theme.** A surface is lit metal, etched legend, and a lamp — things with a physical
-story — rather than a `background-color` and a `border-radius`. Light has ONE direction (Deckplate:
-top-left, warm key). A bevel is lit on the key side and shadowed on the other. This is why the
-deckplate integrity cluster is the best-looking thing in the game today and the market panel is the
-worst: one is a material, the other is a rectangle.
+**Printed and lit, never a material impersonation.** *(Rewritten 2026-09-22 on the owner's ruling
+that CSS pretending to be a physical material "looks awful" — ONE_PHOTOGRAPH.md §0 and §9.)* A
+surface is a printed field (flat ink, one hard geometric edge, the cut corner if it can be pressed),
+type, and light that is actually emitted (a lit reading, the lamp on what you can act on). It is not
+a gradient posing as brushed steel, a bevel, an inset shadow, an LED dot or a screw. Where the
+interface wants an OBJECT — a hull, a crest, a commodity — that object is produced art at the
+resolution it is shown. The old bullet here ("a surface is lit metal … a bevel is lit on the key
+side") is what put fasteners on every panel in the game.
 
 **One accent, spent on state.** Deckplate's warm lamp at three heats (dim → live → hot) plus the
 same lamp driven red for failure. A screen at rest is ~80% metal and bone. Colour arrives when

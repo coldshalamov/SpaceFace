@@ -23,6 +23,21 @@ This is the most important finding of the review, because it is why five program
 | 2026-09-18 | *"real rock texture, warm directional light, a physical machine, almost no chrome."* | **The 3D world art** — praise |
 | 2026-09-18 | *"a bit generic and simple for an A-list spaceship game."* | The interface — criticism |
 | 2026-09-22 | *"bold and expressive, modern high resolution sleek … unique character per-screen but also a thematic commonality"*, *"gratuitous sleekness"*, *"nothing low resolution"* | The interface |
+| 2026-09-22, later | *"free of any common CSS anti-patterns of old internet (mostly when CSS is pretending to be physical materials, it looks awful and we need either custom or downloaded assets for a lot of things)"*; *"advanced features to display and interact … the screens to make sense … without being too similar across the board"* | The interface — **overrules P4 and the MASS half of §1** |
+
+**The later 09-22 ruling, read plainly.** CSS may not imitate a material. No gradient pretending to be
+brushed steel, no bevel or inset shadow pretending to be a raised cap, no painted LED dot, no screw
+or rivet, no texture tile, no fader cap, no procedural paint worklet machining a plate. Where the
+interface genuinely wants an *object* — a hull, a crest, a commodity — it is a **produced asset**
+(a render or an authored vector, at the resolution it is shown, never upsampled), or it is not
+drawn. Everything else is the LIGHT half of this document, which the owner has now approved twice.
+This does **not** reopen the raster nine-slices retired in step 0: a stretched bitmap is still the
+smudge the owner named first. It narrows "mass" to real art.
+
+What that retires below: **P4 entirely**; the MASS paragraph of §1 as a CSS technique; §3's
+settings row ("switchgear: rockers, faders with detents" — the slider stays a *control*, its cap
+stops being metal); and §8's protection of the slider's *material* (its track, ticks, fill and
+thumb as geometry are still protected).
 
 On 2026-09-18 an agent declared the 09-14 directive void — `hudStyles.js` calls the glass register
 *"the tenth generic one-off"* — and installed the two 09-18 quotes in `deckplate/tokens.js` as
@@ -42,7 +57,9 @@ cockpit framing, no generic glass card. Those are fences on the execution, not a
 
 ## 1. The thesis
 
-> **Everything on the screen is either the machine or the light it throws.**
+> **AMENDED 2026-09-22 (owner, §0): everything on the screen is either PRINTED or LIT.** The MASS half below is history — a printed field claims no material, so it cannot lie about one. §9 is the grammar that replaced it. Read this section for LIGHT, which stands.
+
+> ~~**Everything on the screen is either the machine or the light it throws.**~~
 
 Two substances. There is no third.
 
@@ -190,7 +207,7 @@ wants a bevel, it is light.
 
 Delete, do not improve. Each is a test on a screenshot.
 
-1. **The panel.** Any rectangle of darkening with a visible inner edge over the world. *Can you
+1. **The panel.** *(Amended 2026-09-22, §9.1: a floating card is still dead; ONE `.dp-sheet` per screen that touches a frame edge is the surface, where measurement says the world is too bright for words.)* Any rectangle of darkening with a visible inner edge over the world. *Can you
    point to where the dark starts?* Dead. Occlusion is a **vignette** — a gradient reaching the
    frame edge with no inner boundary — in the stage's grade.
 2. **The chip.** The small bevelled button as the universal control: 8 market filters, 9 chart
@@ -250,7 +267,11 @@ bracket, always. Replaces every focus ring, hover fill and selected-row tint in 
 cast lands on the mass beneath and on the world; every crossing to live plays the cue; the legend
 beside it changes word, so colour is never the only channel.
 
-**P4 — Computed metal, for mass only, calibrated.** The worklet paints mounts, never light.
+**P4 — SUPERSEDED by the owner, 2026-09-22 (§0).** *No gradient, worklet or CSS bevel may paint
+metal. An object is a produced asset or it is light.* The original text is kept below only so the
+history reads; do not build from it.
+
+~~Computed metal, for mass only, calibrated.~~ The worklet paints mounts, never light.
 Corrections to what shipped: feed it the scene's key; the tooth must read as grain at 400% and
 vanish at 100%; **calibrate against `assets/ui/kit/assets/plates/` until a fresh reviewer cannot
 tell the worklet plate from the Cycles render.** That is the Blizzard fidelity test and it is what
@@ -409,10 +430,251 @@ Named by both directors, and not to be knocked down while the rest is:
 the stencil **wordmark**; the **title composition** (ship on rock, engine glow, planet as
 counterweight); the **big bone numerals**, which are the middle of the type ramp; the **INTEGRITY
 hull-silhouette dial**, the only drawn instrument in the game and the seed of P5; the **settings
-sliders** (track, ticks, fill, thumb — the one physical control); the **round compass**;
+sliders** as a *control* (track, fill, value — their fader-cap material is retired, §9.1); the **round compass**;
 **Crucible's nerve** (oversized title, red heat, the seed housing); the **station right rail's
 idea** (one big number, four bars, two actions); the **faction colour rule**, the only place faction
 identity enters the UI; the **chart header**, which titles the chart by where you are; and **the copy
 voice** — *"One hull, one contract, the whole sky"*, *"Mass on accept: 12.4t. Authorization:
 VALE, D."* — rated the product's second-best asset after the 3D, and currently better than the
 layout it sits in.
+
+---
+
+## 9. Printed and lit — the grammar that replaced mass
+
+Written 2026-09-22 by a design-direction pass (Fable) the hour the owner banned CSS material
+imitation, then adjusted for execution: the Deckplate class names are KEPT and their bodies
+rewritten (twenty files consume them); the material tokens are flattened at the root first so
+every screen changes in one step; the sheet ships as its flat `rgb(8 9 12 / .90)` fallback until a
+frame-time number clears `backdrop-filter`; the title's logotype keeps its gradient (§8 protects
+it). Guards: `test/ui-no-material-imitation.test.mjs` is the hard one (the Deckplate root, zero
+today); the broad rules in §9.5 are a ratchet over legacy sheets, never a red-on-day-one gate.
+
+### 9.0 The thesis, corrected
+
+> **Everything on the screen is either printed or lit.**
+
+**PRINTED** — flat ink: a field of one colour with a hard geometric edge, type on it, a hairline
+rule. No thickness, no light direction, no sheen. A *sign*, not a machine. Replaces "mass". A
+control earns a printed field by being pressable; nothing else gets one.
+
+**LIT** — emission, as ONE_PHOTOGRAPH §1 defines it: numerals, readings, traces, the lamp on what
+you can act on. The only thing on the screen that blooms.
+
+Depth is never faked. It comes from two real sources: the **world** behind the interface (and,
+docked, seen *through* the one sheet) and **produced imagery** of real objects — hull renders,
+crests, icons. Printed, lit, and the photograph. Nothing else.
+
+Why this beats "mass": a bevel lies the moment the world's light moves, and the owner has said so
+twice (the wood look, the screws). A printed sign never lies about its material because it claims
+none — Destiny's flat chamfered fields, Blizzard's flat crests at scale, Rockstar's type on the
+photograph are all printed-and-lit. P1's forward half (key light → bevels) dies with the bevels;
+its reverse half (the hottest lamp casting a PointLight into the world) survives and is now the
+only shared-light mechanic. The two temperatures, the veil, the attention lamp, the motion law,
+the two type voices, the numeral as the display moment, one lamp + one red + one phosphor, 12px,
+AA on composited pixels, reduced motion — all unchanged.
+
+### 9.1 The grammar
+
+#### The shape signature — the cut, and it carries state
+
+One 45° chamfer on the **top-right** corner of every printed field that can be pressed:
+`clip-path: polygon(0 0, calc(100% - var(--dp-cut)) 0, 100% var(--dp-cut), 100% 100%, 0 100%)`.
+Things you *read* are never cut, so the grammar reads in 200 ms: **cut corner = you can press
+it.** When the control is live or selected, the cut edge itself lights — a 2px `--dp-lamp`
+diagonal (a rotated `::after` bar clipped to the corner) with `box-shadow: 0 0 8px
+var(--dp-lamp-bloom)`. That replaces the LED pip as the one state mechanic: state is light on
+geometry, not a dot. It is not the rejected visor/wireframe/cockpit because it is a corner on a
+*field* — never a bracket around the screen, never a stroke, never cyan — and it points at the
+world (top-right, away from the standing column), not at the player.
+
+#### Tokens to add (all `--dp-`, no new root)
+
+```
+--dp-field:        rgb(10 12 16 / .84)     /* a printed field over the world; also the dropdown popover */
+--dp-field-ink:    rgb(232 226 212 / .08)  /* the ghost field: ink at 8% (secondary keys, selected row) */
+--dp-field-ink-hi: rgb(232 226 212 / .14)  /* its hover */
+--dp-sheet:        rgb(8 9 12 / .78)       /* THE sheet — one per screen, backdrop-blurred */
+--dp-sheet-w:      calc(var(--dp-col) * 1.25)
+--dp-rule:         rgb(232 226 212 / .10)  /* hairline between rows, under heads */
+--dp-rule-hi:      rgb(232 226 212 / .22)  /* a rail at rest */
+--dp-cut:          calc(10px * var(--dp-s))
+--dp-cut-sheet:    calc(18px * var(--dp-s))
+--dp-key-h:        calc(56px * var(--dp-s))   /* primary */
+--dp-key-h-2:      calc(40px * var(--dp-s))   /* secondary, destructive */
+--dp-hint-h:       calc(var(--dp-u) * 5.5)    /* keyboard-key hint */
+--dp-lamp-glow:    0 0 28px rgb(242 185 80 / .35), 0 0 6px rgb(242 185 80 / .22)
+--dp-text-legible: 0 1px 0 rgb(0 0 0 / .5)    /* the ONLY black shadow: on type over the world */
+```
+
+Delete `--dp-cap-*`, `--dp-well-*`, `--dp-stock-*`, `--dp-pane-*`, `--dp-plate-*`,
+`--dp-channel-*`, `--dp-key-sweep`, `--dp-key-pool`, `--dp-tex-*`, `--dp-glass-*`,
+`--dp-mark-face`, `--dp-mark-shadow`, `--dp-etch-shadow`, `--dp-key`, `--dp-key-edge`,
+`--dp-shade`, `--dp-shade-edge`, `--dp-metal-hi`. `--dp-metal-0..4` survive as flat fills only.
+
+#### Allowed / banned — these are the guard regexes in §5
+
+| Allowed | Banned |
+|---|---|
+| Flat fills, solid or one alpha | Any gradient that does not end in `transparent` (material ramps never do; light falloff always does) |
+| 1px/2px hairlines in `--dp-rule*`, `--dp-ink`, `--dp-lamp` | `inset` in any `box-shadow` |
+| `clip-path` geometry | Outer `box-shadow` in black/grey — no "lift"; outer shadows may only be lamp / phosphor / danger |
+| Glow **on things that emit**: lamp fills, phosphor text, lit rails, the mark's accent | `drop-shadow()` in CSS (the mark's relief pair is a bevel) |
+| The veil (a gradient to the frame edge, no inner boundary) | `repeating-*-gradient` stripes, texture tiles, `paint()` worklets, `border-image`, nine-slices |
+| `backdrop-filter: blur()` on **`.dp-sheet` only**, one per screen, never in flight files | `radial-gradient(circle at …)` lenses (the LED), specular sweeps, smoked-glass tints |
+| Produced imagery of a **real object** — Blender renders, the 44 marks, 263 icons, the logotype SVG, save thumbnails | A raster or gradient standing in for a *material*. "No `url()` in a material" ≠ "no images" |
+| `text-shadow: var(--dp-text-legible)` on type over the world | Any other black `text-shadow`, including the blurred `0 0 18px rgb(0 0 0/.35)` in `light.js` |
+| Archivo (display + etched), Instrument Sans (reading) | Spline Sans Mono / `monospace` anywhere in `src/ui` or `styles` — owner preference since 2026-08 |
+
+**Backdrop-filter: in, docked and menu screens only, one sheet per screen.** A blur of the real
+world is the one honest glass CSS can do — it computes the actual frame; a specular gradient
+paints a fake one. It stays out of `src/ui/hud.js`, `src/ui/views/hud*.js`,
+`src/ui/masslineHud.js`, `src/ui/views/velocityRailStyles.js`, `src/ui/views/hullIntegrityStyles.js`.
+
+**Three edits the survivors need to pass their own guard** (they apply to pause automatically;
+title takes one swap): `.dp-lit__item` and its hover/primary states drop the blurred black shadow
+and use `var(--dp-text-legible)` plus their lamp glows; `.dp-figure__unit` uses
+`var(--dp-text-legible)` instead of `--dp-etch-shadow`; `.dp-mark` loses its three
+`drop-shadow` filters. The **wordmark's brass ramp and shadow move into the logotype SVG**
+(`assets/ui/kit/marks/logotype/`) as an in-file `<linearGradient>` — it is produced imagery, not
+CSS material — and the title swaps the CSS-filled text for that file. The primary verb's 7px lamp
+bead is flat lamp with bloom, not a lens: it stays.
+
+#### The primitives
+
+Every one builds on a `light.js` survivor where one exists. "Bracket" = the existing 2px bone lead
+bar from `dp-attend`. Sizes are `--dp-*` only.
+
+| Primitive | Shape / fill / edge | Type | Rest → hover/focus → pressed → disabled → selected |
+|---|---|---|---|
+| **Primary action** (UNDOCK, LAUNCH, BUY — one per screen) | Printed field `--dp-lamp` flat, `--dp-key-h`, min-width `calc(var(--dp-col) * .52)`, the cut. No border. | Archivo 800 wdth 100, `--dp-fs-read`, uppercase, tracking .06em, colour `--dp-metal-0`. Key hint at trailing edge. | hover/focus `--dp-lamp-hot` + `--dp-lamp-glow` + bracket → pressed `--dp-lamp-dim` for `--dp-d-cut`, no translate → disabled: no fill, 1px `--dp-lamp-dim` hairline, text `--dp-ink-mute`, the reason printed beside it at `--dp-fs-data` |
+| **Secondary action** | Ghost field `--dp-field-ink`, `--dp-key-h-2`, the cut. | Archivo 700 wdth 92, `--dp-fs-data`, uppercase, `--dp-ink` | hover `--dp-field-ink-hi` + cut edge lights → pressed field at .05 → disabled text `--dp-ink-mute`, field .04 |
+| **Destructive** (ABANDON, DELETE SAVE, QUIT) | Ghost field + a 2px `--dp-danger` rule along the bottom edge. Red arrives on intent. | as secondary | hover: field `--dp-danger` flat, text `--dp-metal-0`, glow `--dp-danger-bloom` → pressed danger at 80% → disabled: rule `--dp-ink-mute` |
+| **Tab / filter / segmented** | `dp-lit--fine` — words on a rail. 1px `--dp-rule-hi` rail under the group; the active word's segment is 2px `--dp-lamp` + `0 0 8px var(--dp-lamp-bloom)`. No box, no cut (navigation is not a command). Segmented choice (difficulty, OFF·ON) is the same object, evenly spaced. | Archivo etch `--dp-fs-etch`, tracking .14em, uppercase; rest `--dp-ink-dim`, active `--dp-ink` | hover `--dp-ink` → active segment lit → disabled `--dp-ink-mute`, no segment |
+| **List row / selected** | `--dp-row`, 1px `--dp-rule` between rows. Selected: bracket + flat `--dp-field-ink` tint + name in `--dp-ink`; inside `dp-attend` the neighbours warm. | Name Instrument Sans 500 `--dp-fs-data` `--dp-ink-dim`; data cells `dp-phos` tabular | hover field at .05 → selected as stated → disabled `--dp-ink-mute`, no bracket |
+| **Key-value readout** | No field. Label above or left, value right-aligned. | Label `--dp-fs-etch` tracked uppercase `--dp-ink-mute`; value `dp-phos` `--dp-fs-data`/`--dp-fs-body` tabular. A value you **set** is `--dp-lamp-hot`; a value you **read** is phosphor. | — |
+| **Big numeral** | `dp-figure` (exists). Rolls (P9). | — | — |
+| **Section head** | Etched label sitting on the left of a 1px `--dp-rule` rail that runs to the column's right edge. | `--dp-fs-etch`, tracking .18em, uppercase, `--dp-ink-mute` | — |
+| **Slider** (supersedes ONE_PHOTOGRAPH §8) | Track 2px `--dp-rule-hi`; fill 2px `--dp-lamp`; detents 1px dots `--dp-rule-hi`. Thumb: a 2px × 18px `--dp-ink` bar at the fill's end. **The value rides inline right of the track** (where the % sits today) as a phosphor numeral at `--dp-fs-data` — no cap, no pitch change. | numeral `dp-phos` | hover/focus: bar and numeral go `--dp-lamp-hot` + glow → drag: numeral rolls → disabled: fill and numeral `--dp-ink-mute` |
+| **Toggle** | The two-word segmented choice (OFF · ON). No pill. | as tab | — |
+| **Text input / search** | No box. 2px bottom rail `--dp-rule-hi`; search has the icon left, key hint right. | Instrument Sans `--dp-fs-body` `--dp-ink`; placeholder `--dp-ink-mute` | focus: rail `--dp-lamp` + `0 0 8px var(--dp-lamp-bloom)`, caret lamp → disabled rail `--dp-rule` |
+| **Keyboard-key hint** (ESC, F5, E) | 1px `--dp-rule-hi` hairline rectangle, `--dp-hint-h`, radius `--dp-r-plate`, no fill — a glyph from a manual, not a cap. | Archivo 700 `--dp-fs-etch` uppercase tracking .08em `--dp-ink-dim` | key physically down (where known): fill `--dp-lamp`, text `--dp-metal-0`, `--dp-d-cut` |
+| **Dropdown** | Current value as a readout with a chevron icon; opens a **flat `--dp-field` popover** of rows beneath (no blur — it is not the sheet). No native `<select>` chrome. | value `--dp-ink`, chevron `--dp-ink-dim` | open: the value's rail lights |
+| **The sheet** — only where the world behind is too bright for words, *measured* by `scripts/ui-contrast.mjs` | `.dp-sheet`: `--dp-sheet` flat + `backdrop-filter: blur(18px) saturate(1.05)`. **Must touch at least one frame edge** so it can never read as a floating card; the cut (`--dp-cut-sheet`) on its one free corner. No border, no inner rule, no head bar. One per screen. This is the amendment to ONE_PHOTOGRAPH §4.1: *a floating card is dead; a sheet on a frame edge is the surface.* | — | forced-colors: `Canvas`; no backdrop support: `rgb(8 9 12 / .90)` flat |
+| **Mark** (`dp-mark`, 44 SVGs) | **Flat two-tone.** Body `currentColor` (ink, or the faction colour where that rule already applies); accent path `--dp-lamp-now`. Glow when lit comes from **one SVG `<filter id="dp-bloom">`** (`feGaussianBlur` + merge) defined once in `assets/ui/kit/marks/_sprite.svg` and referenced by `.dp-mark--lit .accent { filter: url(#dp-bloom) }` — one sprite edit, not 44 files. | — | lit: body `--dp-ink`, accent hot + bloom |
+| **Icon** (263 kit icons) | Flat `currentColor`, 24/32/48 only, never scaled between sizes. | — | — |
+
+`dp-attend`, `dp-veil`, `dp-lit`, `dp-phos`/`dp-figure` remain the spine.
+
+### 9.2 The asset plan — ranked by visible return per hour
+
+| # | Asset | Made how | Size (never upsampled) | Return | Hours |
+|---|---|---|---|---|---|
+| 1 | **Three starter hulls, hero view** (Hitch, Pelican, Wasp) | Blender via MCP: ¾ front-left, the world's key (warm top-left, cold rim right), transparent RGBA, Cycles 256 samples + denoise. **Resolve which GLB is the Hitch first** — the HUD calls the starter KESTREL, `find` shows `pelican_production_v1`/`wasp_production_v1` and no `hitch` folder; follow the hull id → GLB binding in the render track, do not assume. | 2400×1350 PNG (2× a 1200×675 slot) → `assets/ui/renders/hulls/<id>.hero@2x.png` + `manifest.json` with `cssWidth` | new-game lineup, save/load, game-over, codex ship entries | 1.5 |
+| 2 | **Hull side elevations + mount JSON** | Same scene, orthographic side camera; export each socket Empty's screen-space UV to `<id>.mounts.json` `{ socket: [u, v] }` (sockets exist in `partsLibrary.js` / `kestrelHero.js`) | 2400×900 @2× | the shipworks jig | 1 |
+| 3 | **Faction crests at scale** | 14 vectors exist; wire flat per §1 | SVG at 96/240 | factions wall, contracts, station head | 0.5 |
+| 4 | **Commodity category pictograms** (8: raw ore, refined, industry, civilian, salvage, military, restricted, in-hold) | Hand-authored SVG, 2px stroke on a 48 grid, `currentColor` | 24/48 | market rows, hold | 1 |
+| 5 | **Save thumbnails** | Not authored: capture the live canvas at save (`toDataURL` JPEG q.82) | 640×360 stored, shown at 320×180 | save/load strip; the empty preview frame becomes a real still | 1 (code) |
+| 6 | **Ordnance / module art** | Kit icons at 48 now; renders of `assets/ships/release/parts/*` GLBs later, same scene | 48 now; 512 @2× later | shipworks slots, flight ordnance dock | 0.5 / 3 |
+| 7 | **Difficulty insignia** | 4 SVGs exist; wire at 48px | SVG | new-game | 0.2 |
+| 8 | **Codex illustrations** | Multi-session; every entry gets its system mark at 140px meanwhile | — | codex | plan |
+
+The bar's portrait is a photograph while everything else is rendered; consistency is a separate
+decision — noted, out of scope.
+
+**The new-game black frame is not a missing image.** `stageHull.js` mounts a *live* WebGL stage
+that renders black on the bench. Paint render #1 as the poster **first**; the live stage draws over
+it when ready. Do not kill the stage; do not leave the bench black.
+
+### 9.3 Per-screen signature instruments
+
+#### First, the station shell — or six instruments sit in the same frame
+
+Market, shipworks, industry, contracts, factions, bar and ledger look identical because the shell
+is: an 80px title on a green rule, two onboarding rows, list / detail / the same credits card. So:
+
+- **The credits card leaves every tab.** In the head band, right of the title (x≈1350–1880 is
+  free at the title baseline): `18,400` as a `dp-figure` right-aligned at the title's cap height,
+  and beneath it on the title's rule **four gauges in one row** (hull · fuel · hold · munitions:
+  a 2px lamp fill on a `--dp-rule-hi` track with the reading beside it). REPAIR / RESUPPLY appear
+  as ghost keys under the gauge that needs them, only when it does. The foot (tab rail · DOCKED ·
+  COMMS · HELP · UNDOCK) is untouched. That frees the right 40% of the frame for each tab.
+- The green title rule is a hue leak (§4.8) — gone; the title sits on 1px `--dp-rule`.
+- The two onboarding rows collapse to one line of light with a lamp bead (§4.7).
+
+#### The instruments
+
+| Screen | The one signature instrument | What the player does with it | Composition (why it differs from its neighbours) | When |
+|---|---|---|---|---|
+| **Market** | **The quote**: the real price history from `economy.js` `entry.history` on a `<canvas>` at devicePixelRatio — 2px phosphor trace, galactic average a 1px dashed `--dp-phos-dim` rule, station buy/sell as two lamp ticks on the right axis | Hover: a vertical hairline crosshair with the price at that time riding it as a phosphor numeral. **Quantity is drag-to-scrub**: press-drag horizontally on the quantity numeral (or arrow keys) runs 0→max with the total rolling live; the affordability limit is a lamp tick on the scrub rail. BUY/SELL is one primary whose word follows the mode segment. | The board is the one sheet on the left edge, 47 rows. The quote is light in the centre with **no surface**. The console is a foot band; the clipped Buy/Sell/Average/Demand row becomes four readouts inside it. The seven-line paragraph → one line, number and cause (§4.6). | **this session** |
+| **Shipworks / THE SHIP** | **The jig**: the side elevation at 2× centred (~60% of frame width), each socket a lamp bead at its `mounts.json` UV, a 2px light leader from bead to slot row on the right | Hover a row *or* a bead: leader and bead go hot; stat deltas print beside the readouts (`+12` lamp, `−4` danger). Click: compatible hardware opens as rows beneath. THE SHIP keeps drag-to-orbit on the live stage; the render is its poster. | The hull owns the centre; MASS/ENERGY/SHIELD… become one phosphor strip *under* it. 439 / +12/S / STOWED stay as the display moment. The text schematic and dotted connectors are deleted. | **this session** |
+| **New game** | **The lineup**: three hero renders side by side *are* the segmented choice | Click/arrow between hulls; the chosen one lights (cut edge, name in ink), the others hold at `--dp-ink-mute`; its four numbers print under it as phosphor and **roll** on change. Difficulty: the four insignia at 48px. Seed: a phosphor odometer, NEW SEED a ghost key. | A horizontal band, not a left-hand form. LAUNCH bottom-right, the only lamp. | **this session** |
+| **Settings** | **Live preview**: the world behind the screen *is* the preview | Exposure, bloom, DoF change the stage live under the sheet (`_set(ctx,'video',key,v,persist)` already applies `bloomStrength` live — verify the stage behind settings answers the same path in one grep before building; if it does not, demote to next and ship the slider only); audio sliders play the channel's sample on release. | A narrow sheet on the left edge (`--dp-sheet-w`); the rest is the world. No plate, no faders. | **this session** |
+| **Chart** | **The map is the screen** (ONE_PHOTOGRAPH §3) | Hover any mark: crosshair + distance/ETA riding the cursor; click selects; double-click lays a course. Lenses become one row of words on a rail across the top. The nine-tab detail appears **only on selection**, as the one sheet on the right edge. | Kill the LENSES sheet and the empty CARGO DECK band. The clipped POSITION/TRACKING readout becomes a foot band across the frame. | **this session** |
+| **Tech tree** | **Traces of light**: the tree as SVG — nodes printed fields with the cut, edges 1px `--dp-rule-hi` | Hover a node: the path back to the root lights 2px lamp with bloom; unlocking runs the light along the trace (`stroke-dashoffset`, `--dp-d-settle`; reduced motion: cut). Cost is a phosphor numeral in the node; researched nodes keep the cut edge lit. | The tree fills and pans the frame; the detail sheet on the right edge only on selection. | **this session** |
+| Contracts | Postings as printed sheets, faction crest at 96px, pay as the display numeral | Hover: the route draws on an inline mini-chart; ACCEPT is the lamp | A grid of postings, not a list | next |
+| Industry | The flow: inputs → plant → output, three columns joined by lit traces carrying the rate | Hover a trace: units/run and time; START RUN is the lamp | Horizontal flow | next |
+| Factions | The crest wall: 14 at 96px, selected at 240px; the standing ladder as a **lit gauge** (vertical rail, tiers as ticks, standing as the lamp bead) | Hover a tier: what it unlocks | Wall left, gauge centre | next |
+| Ledger | The credits odometer at hero size; entries as a printed tape | Hover an entry: the cause | Tape | next |
+| Crucible draft | The rack: choices as printed fields with the mode/arena mark at 140px | Hover: mark lights, modifiers print | Three cards across | next |
+| Save/load | A strip of lit stills (#5) | Hover: hull, sector, time | Horizontal strip | next |
+| Flight HUD | P5 canvas half — plan and fences unchanged | — | — | **multi-session, plan exists** |
+| Codex | A light table of illustrated entries | — | — | **multi-session — write the plan** (needs #8) |
+
+Pause is done; title needs only the logotype swap in §1. Otherwise do not touch them.
+
+### 9.4 Knock-down list — delete, do not restyle
+
+- `src/ui/deckplate/hardware.js` — the whole file. Any *layout* it owned moves to `layout.js`.
+- `src/ui/deckplate/materials.js` — `dp-rivets`, every plate bevel; keep flat-fill helpers only.
+- `src/ui/deckplate/paint/plate-worklet.js` and the `paint.js` registration of `dp-plate`.
+- `KEY_LED_*` and the brushed layer under every key style in `src/ui/deckplate/screens.js`.
+- `assets/ui/deckplate/tex/*.png`, `assets/ui/deckplate/hw/*.svg` — off the runtime path. The raster
+  folders `assets/ui/kit/assets/{keys,plates,windows,tapes,tiles,strips,wear,sockets,gauges,lights,badges,controls,radar}/`
+  stay on disk as reference only; nothing may reference them.
+- `assets/ui/kit/kit/fh.css` first-dock injection — why seven screens render differently before
+  and after a dock. Fold survivors into Deckplate; delete the injection.
+- The station credits card, the green title rule, the two onboarding rows.
+- The shipworks text schematic; the "Take it to the range · Record · Select a slot" foot until
+  those verbs show an outcome under `--walk`.
+- The market "Stable demand" box, the paragraph, the FEWER/MORE/MAX chips.
+- The settings plate, fader caps and detents.
+- The new-game empty frame; the codex placeholder glyph; the save/load empty preview frame; the
+  achievements LOCKED chips (an unearned achievement is its mark, unlit).
+- The chart's LENSES sheet, CARGO DECK band, and nine-tab sheet at rest.
+- `dp-mark`'s three `drop-shadow` filters; `light.js`'s blurred black text-shadows.
+- Every `inset` box-shadow, black outer box-shadow, and non-transparent gradient — by the guard.
+
+The grammar checks (`ui-grammar-surfaces.mjs`, `ui-grammar-thresholds.mjs`,
+`check-ui-grammar-matrix.mjs`) measure floors — 12px, DOM count, frame cost, data states — and
+require no hardware class; nothing there fights this. Inspect the kit's coverage test under
+`assets/ui/kit/tools/` (ONE_PHOTOGRAPH §7.0 says it was inverted once) and delete it if it still
+counts raster materials.
+
+### 9.5 Guard rules — a test the next agent cannot argue with
+
+Scope `src/ui/**` and `styles/**`. Add as `scripts/check-ui-printed.mjs`, wired into
+`check:baseline`; case-insensitive regexes.
+
+**The ratchet.** Legacy sheets (`kit.css`, `ui.css`, `station.css`, `hudStyles.js`, ~12k lines)
+are aliased-while-in-flight per THE_BAR §1, not deleted today, so a hard guard is red on day one
+and gets disabled. Commit `scripts/ui-printed-baseline.json` — per-file violation counts per rule
+— and fail only when any file's count **rises** or a file absent from the baseline has a count
+above zero. Files on the §4 knock-down list must be absent from the tree. Deckplate files start at
+zero.
+
+1. **No inset.** `box-shadow\s*:[^;]*\binset\b`.
+2. **Outer shadows are light.** Every `box-shadow` colour must be `rgb((242 185 80|255 217 140|255 226 178|150 210 255|255 80 56)\b` or a `--dp-(lamp|phos|danger)` token; `rgb\(0 0 0`, `#000`, or a grey hex in a `box-shadow` fails.
+3. **Gradients fall off.** Every `(linear|radial|conic)-gradient\(` must contain `transparent` or `/ 0)`. No exemptions — the wordmark's ramp lives in its SVG.
+4. **No stripes, lenses, paint.** `repeating-(linear|radial)-gradient`, `paint\(`, `border-image`, `radial-gradient\(circle at`.
+5. **No CSS drop-shadow.** `drop-shadow\(` fails; SVG `<filter>` via `filter: url(#…)` is the glow path.
+6. **Text shadows.** `text-shadow` may contain black only as `var(--dp-text-legible)` or the literal `0 1px 0 rgb(0 0 0 / .5)`; any other `rgb\(0 0 0` in a `text-shadow` fails.
+7. **Images are objects.** `url\(` allowed only for `#` fragments, `data:image/svg`, or paths under `/assets/ui/kit/icons/`, `/assets/ui/kit/marks/`, `/assets/ui/renders/`; any other `url(` in `background`, `mask`, `border-image` fails.
+8. **Raster scale.** Every file under `assets/ui/renders/` must be in `manifest.json` with `cssWidth`, and pixel width ≥ 2 × `cssWidth`.
+9. **Backdrop-filter.** Only in a rule whose selector contains `.dp-sheet`; absent from the five flight files named in §1. The bench counts `.dp-sheet` elements per surface: more than one fails.
+10. **Dead tokens and classes.** `--dp-(cap|well|stock|pane|plate|channel|tex|glass|rivet|key-sweep|key-pool|mark-face|mark-shadow|etch-shadow)\b`, `dp-(rivets|bezel|keycap|placard|hw-)`.
+11. **Fonts.** `monospace|Spline Sans Mono`.
+12. **Hue.** Any `#[0-9a-f]{3,8}\b` or `rgb\(` literal in `src/ui/**` outside `src/ui/deckplate/tokens.js` fails. Faction colours enter only through the existing runtime read of `src/data/palettes.js`, which is outside the scan. Greens die by construction.
+13. **Existing floors stay:** `check-type-floor` (12px), `check-wcag-contrast` and `scripts/ui-contrast.mjs` (AA on composited pixels — the sheet at .78 over the bright hangar wall is *measured*; bloom does not count), reduced-motion on every transition, forced-colours on every primitive.
+
+Ship the guard and the baseline in the same commit as the knock-down, or the screws come back.
