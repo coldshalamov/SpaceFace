@@ -160,6 +160,71 @@ html body #screens .k-screen.orr-crucible .sf-back.k-word { background:none !imp
 html body #screens .k-screen.orr-crucible .sf-back.k-word::after { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
   padding:0 !important; color:rgb(232 226 212 / .4) !important; font-size:10px !important; letter-spacing:.2em; }
 
+/* crucible armory, refit, results: the printed cards and plates become readings. Each offer keeps
+   its words and loses its card: a hairline leader down its left that lights amber when it is the
+   choice, the quick-buy key in a ring, the name in display type, the price a numeral. */
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-card { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
+  position:relative; padding:10px 8px 14px 20px !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-card::before { content:""; position:absolute; left:4px; top:12px; bottom:14px; width:1px;
+  background:linear-gradient(rgb(232 226 212 / .45), rgb(232 226 212 / .06)); transition:background .16s linear, box-shadow .16s linear; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-card::after { content:""; position:absolute; left:20px; right:18%; top:4px; height:1px;
+  background:linear-gradient(90deg, rgb(232 226 212 / .26), transparent); }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-card:is(:hover, :focus-visible):not(:disabled)::before { width:2px; left:3px;
+  background:linear-gradient(var(--dp-hand, #f2b950), rgb(242 185 80 / .15)); box-shadow:0 0 10px rgb(242 185 80 / .45); }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-card:is(:hover, :focus-visible):not(:disabled) .sf-cru-name { color:rgb(246 241 230); text-shadow:0 0 1px rgb(255 226 178 / .5), 0 0 10px rgb(255 217 140 / .2); }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-card:focus-visible { outline:none !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-name { font-family:var(--dp-face-display, "Archivo") !important; font-variation-settings:"wght" 780, "wdth" 125 !important;
+  letter-spacing:.02em !important; font-size:clamp(16px, 1.9vh, 22px) !important; color:rgb(236 230 216) !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-verb { font-family:var(--dp-face-label, "Archivo") !important; font-variation-settings:normal !important; font-stretch:112%; font-weight:650;
+  font-size:10px !important; letter-spacing:.26em !important; color:rgb(232 226 212 / .55) !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-key { background:none !important; border:0 !important; border-image:none !important; box-shadow:inset 0 0 0 1px rgb(232 226 212 / .45) !important;
+  border-radius:50%; width:20px; height:20px; min-width:20px; display:inline-grid; place-items:center; font-size:10px !important; color:rgb(236 230 216) !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) :is(.sf-cru-price, .sf-cru-wallet) { font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 760, "wdth" 125;
+  color:rgb(246 241 230) !important; letter-spacing:.02em; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-blurb { color:rgb(232 226 212 / .74) !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-slot { letter-spacing:.06em; }
+/* the category words on their ruled line: no lamp bar, no rail */
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-filters { background:none !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-filters .k-word { background:none !important; padding:0 2px 4px !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-filters .k-word[aria-pressed='true'] { color:rgb(246 241 230) !important; background:none !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-filters .k-word:focus-visible { background:none !important; color:rgb(246 241 230) !important; }
+/* refit and results: the plates go; rows part by space, not rules */
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) :is(.sf-cru-stage, .k-stage, .sf-crd-band, .sf-crd-ledger, .sf-crd-story) { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-row { background:none !important; border:0 !important; box-shadow:none !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-key:empty { display:none !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-rows .k-word { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; min-width:0 !important;
+  min-height:0 !important; padding:6px 2px !important; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:12px !important;
+  letter-spacing:.24em; text-transform:uppercase; color:rgb(232 226 212 / .72) !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-rows .k-word::before { content:""; display:inline-block; width:14px; height:1px; margin-right:10px; vertical-align:middle; background:rgb(232 226 212 / .4); }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-rows .k-word:is(:hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-rows .k-word:is(:hover, :focus-visible)::before { background:var(--dp-hand, #f2b950); box-shadow:0 0 8px rgb(242 185 80 / .5); }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-rows .k-word[aria-disabled="true"], html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-rows .k-word:disabled { color:rgb(232 226 212 / .34) !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) :is(.k-hang, .k-panel, .sf-crres__ledger) { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-stage { position:relative; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-stage::before { content:""; position:absolute; inset:-24px -50px; z-index:-1; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(4 6 9 / .66), rgb(4 6 9 / .38) 64%, transparent); }
+/* the foot: the one forward key is light; the rest are words */
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-foot .k-word, html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-foot .k-word { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
+  min-height:0 !important; padding:8px 2px !important; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
+  font-size:13px !important; letter-spacing:.22em; text-transform:uppercase; color:rgb(232 226 212 / .72) !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-foot .k-word:is(:hover, :focus-visible), html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-foot .k-word:is(:hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-foot .k-word.k-word--primary { color:var(--dp-hand, #f2b950) !important; font-family:var(--dp-face-display, "Archivo");
+  font-variation-settings:"wght" 800, "wdth" 125; font-size:clamp(17px, 2vh, 22px) !important; letter-spacing:.1em; text-shadow:0 0 18px rgb(242 185 80 / .35);
+  background-image:linear-gradient(90deg, var(--dp-hand, #f2b950), rgb(242 185 80 / 0)) !important; background-size:100% 2px !important;
+  background-position:0 100% !important; background-repeat:no-repeat !important; padding-bottom:12px !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; text-shadow:0 0 26px rgb(255 217 140 / .6); }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-foot .k-word::after { background:none !important; border:0 !important; box-shadow:none !important; color:rgb(232 226 212 / .4) !important; }
+/* results: the round reached stands in light rays */
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-hero { position:relative; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-hero::before { content:""; position:absolute; left:50%; top:50%; width:360px; height:360px; margin:-180px 0 0 -180px; z-index:-1; pointer-events:none;
+  background:repeating-conic-gradient(from 0deg, rgb(255 217 140 / .1) 0deg 2deg, transparent 2deg 12deg);
+  -webkit-mask-image:radial-gradient(circle, #000 0%, rgb(0 0 0 / .5) 30%, transparent 70%); mask-image:radial-gradient(circle, #000 0%, rgb(0 0 0 / .5) 30%, transparent 70%);
+  animation:orr-rays-turn 90s linear infinite; }
+@keyframes orr-rays-turn { to { transform:rotate(360deg); } }
+html.sf-reduce-motion html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-hero::before { animation:none; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .k-hero__n { font-family:var(--dp-face-display, "Archivo") !important; font-variation-settings:"wght" 800, "wdth" 125 !important; color:var(--dp-hand, #f2b950) !important;
+  text-shadow:0 0 24px rgb(242 185 80 / .45); }
+
 /* new game: the Field Hardware form becomes instruments. Selectors carry #screens so they meet the
    retired kit sheet's own specificity instead of losing to it. */
 #screens .orr-newgame .orr-ng-title { font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-weight:800;

@@ -36,6 +36,8 @@ import { survivalRun } from '../../systems/survivalRun.js';
 import { el, settle, cue } from '../kit/index.js';
 import { crucibleFittingDescription } from '../crucibleCombatReadout.js';
 import { decorateEntityNode } from '../entityResolver.js';
+import { createStationRow } from '../orrery/stopDial.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 
 /**
  * Show or hide a footer word. `.k-word { display: inline-block }` beats the `hidden`
@@ -400,6 +402,9 @@ export const crucibleDraftScreen = {
     this._root = rootEl;
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-draft');
+    // ORRERY (design/frontend/ORRERY.md §6 Crucible): the composition sheet de-cards the offers.
+    injectOrreryScreens();
+    rootEl.classList.add('orr-crucible');
     rootEl.dataset.kReady = '0';
     rootEl.dataset.stamp = 'CRUCIBLE / REARM';
     rootEl.setAttribute('role', 'dialog');
@@ -431,6 +436,8 @@ export const crucibleDraftScreen = {
     }
     this._filters = filters;
     stage.appendChild(filters);
+    // the category words ride a ruled line with the amber index under the open one
+    this._filterRow = createStationRow({ row: filters });
     const cards = el('div', 'sf-cru-cards');
     cards.setAttribute('role', 'group');
     cards.setAttribute('aria-label', 'Offers');
@@ -684,6 +691,8 @@ export const crucibleRefitScreen = {
     rootEl.innerHTML = '';
     this._spareChoice = new Map(); // INF-060: chosen spare per hardpoint, kept across refreshes.
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-refit');
+    injectOrreryScreens();
+    rootEl.classList.add('orr-crucible');
     rootEl.dataset.kReady = '0';
     rootEl.dataset.stamp = 'CRUCIBLE / REFIT';
     rootEl.setAttribute('role', 'dialog');
