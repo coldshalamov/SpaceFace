@@ -11068,8 +11068,8 @@ export const render = {
           && this._sectorBoundaryPreparations.isBoundaryClaimed(boundary)) return true;
       if (typeof inspectAuthoredBoundaryRegistrations === 'function') {
         const regs = inspectAuthoredBoundaryRegistrations(scene, boundary);
-        if (regs && (regs.preparedRoots > 0 || regs.queuedLifecycle > 0
-            || regs.queuedKey || regs.inJobsArray)) return true;
+        if (regs && (regs.preparedRoots > 0 || regs.queuedLifecycle
+            || regs.queuedKey || regs.inJobsArray > 0)) return true;
       }
       return false;
     };

@@ -3873,6 +3873,8 @@ export function resumeAuthoredUpgradeQueueAfterOpening(scene) {
   const held = state.openingHandoffHold === true || state.firstFlightHandoffHold === true;
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = false;
+  if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
+  state.heldShipWakeTimer = null;
   state.loadingHullsOnly = false;
   scheduleNextUpgradeFrame(state);
   return held;
@@ -3884,6 +3886,8 @@ export function resumeAuthoredUpgradeQueueForLoadingHulls(scene) {
   if (!state) return false;
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = false;
+  if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
+  state.heldShipWakeTimer = null;
   state.loadingHullsOnly = true;
   scheduleNextUpgradeFrame(state);
   return true;
@@ -3893,9 +3897,14 @@ export function resumeAuthoredUpgradeQueueForLoadingHulls(scene) {
 export function holdAuthoredUpgradeQueueForFirstFlight(scene) {
   const state = scene && upgradeQueuesByScene.get(scene);
   if (!state) return false;
+  // The opening cohort's broad hold is over at the first-flight boundary. Carrying it into
+  // flight masks the selective ship lane below, even though firstFlightHandoffHold still fences
+  // every non-ship job until the regular release latch.
+  state.openingHandoffHold = false;
   state.firstFlightHandoffHold = true;
   state.loadingHullsOnly = false;
   invalidateScheduledUpgradeFrame(state);
+  scheduleNextUpgradeFrame(state);
   return true;
 }
 
@@ -3909,6 +3918,7 @@ function upgradeQueueState(scene) {
       inFlight: 0,
       frameScheduled: false,
       frameScheduleToken: 0,
+      heldShipWakeTimer: null,
       openingHandoffHold: false,
       firstFlightHandoffHold: false,
       loadingHullsOnly: false,
@@ -3967,6 +3977,31 @@ function authoredRuntimeState() {
   return globalThis && globalThis.window && globalThis.window.SF
     ? globalThis.window.SF.state || null
     : null;
+}
+
+// The first-flight guard protects leftover places and FX from linking into the opening picture.
+// It must not park a combat/contact ship that has reached the readable glass: that leaves its
+// zero-draw admission boundary (and the temporary marker) where a ship should be for 20 seconds.
+function firstFlightReadableShipJob(job) {
+  const live = authoredRuntimeState();
+  const render = live && live.render;
+  const entity = job && job.entity;
+  return !!(live && live.mode === 'flight' && render
+    && Number.isFinite(render.firstPlayableFrameAt)
+    && render.sectorShellAdmission !== true
+    && entity && entity.type === 'ship' && entity.alive !== false
+    // Submission includes a ship whose outline intersects the glass even when its pivot does
+    // not. The frustum center-point helper can say false while its marker is already drawn.
+    && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true));
+}
+
+function scheduleHeldShipWake(state) {
+  if (!state || state.heldShipWakeTimer != null || state.jobs.length === 0) return;
+  state.heldShipWakeTimer = setTimeout(() => {
+    state.heldShipWakeTimer = null;
+    scheduleNextUpgradeFrame(state);
+  }, 100);
+  state.heldShipWakeTimer.unref?.();
 }
 
 export function waitForOpeningGraphPublicationRelease() {
@@ -4257,11 +4292,15 @@ function processUpgradeQueue(state) {
 }
 
 function scheduleNextUpgradeFrame(state) {
-  if (!state || state.frameScheduled || state.openingHandoffHold === true
-      || state.firstFlightHandoffHold === true) return;
+  if (!state || state.frameScheduled || state.openingHandoffHold === true) return;
   if (state.jobs.length === 0) {
     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
+    return;
+  }
+  if (state.firstFlightHandoffHold === true
+      && !state.jobs.some(firstFlightReadableShipJob)) {
+    scheduleHeldShipWake(state);
     return;
   }
   if (state.inFlight >= authoredUpgradeConcurrencyLimit()) return;
@@ -4271,8 +4310,12 @@ function scheduleNextUpgradeFrame(state) {
   const token = (Number(state.frameScheduleToken) || 0) + 1;
   state.frameScheduleToken = token;
   scheduleUpgradeFrame(() => {
-    if (state.frameScheduleToken !== token || state.openingHandoffHold === true
-        || state.firstFlightHandoffHold === true) return;
+    if (state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
+    if (state.firstFlightHandoffHold === true
+        && !state.jobs.some(firstFlightReadableShipJob)) {
+      scheduleHeldShipWake(state);
+      return;
+    }
     admitNextUpgradeJob(state);
   });
 }
@@ -4292,9 +4335,17 @@ function admitNextUpgradeJob(state) {
     }
   }
   state.jobs.sort((a, b) => {
+    if (state.firstFlightHandoffHold === true) {
+      const urgentDelta = Number(firstFlightReadableShipJob(b)) - Number(firstFlightReadableShipJob(a));
+      if (urgentDelta) return urgentDelta;
+    }
     const priorityDelta = authoredUpgradePriority(a) - authoredUpgradePriority(b);
     return priorityDelta || a.sequence - b.sequence;
   });
+  if (state.firstFlightHandoffHold === true && !firstFlightReadableShipJob(state.jobs[0])) {
+    scheduleHeldShipWake(state);
+    return null;
+  }
   if (state.loadingHullsOnly === true) {
     const hullIndex = state.jobs.findIndex(isLoadingHullUpgradeJob);
     if (hullIndex < 0) {
@@ -4321,6 +4372,9 @@ function admitNextUpgradeJob(state) {
   }
 
   job.lifecycle = 'in-flight';
+  if (state.firstFlightHandoffHold === true && job.options) {
+    job.options.urgentFirstFlightAdmission = true;
+  }
   state.inFlight++;
   const diagnostic = beginUpgradeDiagnostic(state, job);
   let serialSlotReleased = false;
@@ -5491,6 +5545,10 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
           bootstrapPlan: authoredPreloadPlanForEntityAtLod(entity, requested, options),
           libraryScope: 'whole-ship-lod-family',
           residencyRole: 'whole-ship-lod-family',
+          // The demoted level composes outside the admission pipeline: without the boundary as
+          // residency owner the package is only cache/bootstrap-owned and a sweep can evict it
+          // between load and createInstance ("must be retained before creating an instance").
+          residencyOwner: boundary,
         });
         const publicationWait = waitForOpeningGraphPublicationRelease();
         if (publicationWait) await publicationWait;
@@ -5557,7 +5615,15 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
 async function commitAuthoredBoundary(
   boundary, fallbackRoot, entity, library, scene, options, setActive, preparedAuthored = null,
 ) {
-  const publicationWait = waitForOpeningGraphPublicationRelease();
+  // A readable ship admitted after first paint has already passed the exact compile/upload gate.
+  // The global publication freeze only fences leftover opening work; making this ship wait on it
+  // would put the resolving marker back on the glass for the full first-flight hold.
+  const live = authoredRuntimeState();
+  const urgentFlightShip = options.urgentFirstFlightAdmission === true
+    && live && live.mode === 'flight'
+    && Number.isFinite(live.render && live.render.firstPlayableFrameAt)
+    && live.render.sectorShellAdmission !== true;
+  const publicationWait = urgentFlightShip ? null : waitForOpeningGraphPublicationRelease();
   if (publicationWait) {
     boundary.userData.authoredPreparePhase = 'awaiting-publication';
     await publicationWait;
