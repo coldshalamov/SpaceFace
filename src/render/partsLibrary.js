@@ -1954,8 +1954,8 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   };
   syncActiveSurface(boundary, active);
 
-  const trigger = firstRenderable(fallbackRoot);
-  const previousBeforeRender = trigger && trigger.onBeforeRender;
+  let trigger = firstRenderable(fallbackRoot);
+  let previousBeforeRender = trigger && trigger.onBeforeRender;
   let armed = true;
   function authoredAssetTrigger(renderer, scene, ...rest) {
     if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
@@ -2000,7 +2000,11 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       // 'loading' boundary that hung the opening cohort wait and left roster pool chunks cold).
       key: typeof requestOptions.upgradeJobKey === 'string' ? requestOptions.upgradeJobKey : undefined,
       boundary,
-      fallbackRoot,
+      // The interior root a commit should remove is whatever is live at request time — the
+      // original procedural fallback on first admission, the previous authored/LOD root on a
+      // readmission. Capturing the param `fallbackRoot` here kept the detached substrate tree
+      // pinned by this boundary's requestAuthoredUpgrade closure for the boundary's whole life.
+      fallbackRoot: active,
       entity: liveEntity,
       renderer,
       scene,
@@ -2008,6 +2012,14 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       setActive: (next) => {
         active = next;
         syncActiveSurface(boundary, active);
+        if (next !== fallbackRoot) {
+          // Commit detached the procedural substrate — drop the references that would otherwise
+          // keep that island reachable through the retained request/update/LOD closures, and let
+          // `fallbackRoot` track the live interior root a later commit should remove.
+          trigger = null;
+          previousBeforeRender = null;
+          fallbackRoot = next;
+        }
       },
     })).then((result) => {
       if (result && result.status === 'cancelled-before-queue') {
@@ -2109,7 +2121,9 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
       options: upgradeOptions,
       run: () => upgradeAuthoredCargoCapsuleBoundary(
         boundary,
-        fallbackRoot,
+        // Whatever interior root is live at request time is the one a commit removes — not the
+        // original param, which would pin the detached substrate via this closure.
+        activeRoot,
         liveEntity,
         renderer,
         scene,
@@ -2219,9 +2233,14 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   let authoredDisposed = false;
   const disposePreparedCargoCapsule = () => {
     if (authoredDisposed) return false;
-    disposeDetachedAuthoredCargoCapsule(authored.root);
-    unregisterPreparedAuthoredAdmission(authored);
-    authoredDisposed = true;
+    try {
+      disposeDetachedAuthoredCargoCapsule(authored.root);
+      authoredDisposed = true;
+    } finally {
+      // A disposal throw must not strand the registry entry — it pins the boundary and the
+      // whole prepared tree as a strong key/value in sceneState.preparedAuthoredRoots.
+      unregisterPreparedAuthoredAdmission(authored);
+    }
     return true;
   };
   if (options.deferBoundaryPublication === true) {
@@ -2605,7 +2624,9 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       boundary,
       entity: liveEntity,
       run: () => upgradePlaceBoundary(
-        boundary, fallbackRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
+        // Whatever interior root is live at request time is the one a commit removes — not the
+        // original param, which would pin the detached substrate via this closure.
+        boundary, activeRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
       ),
       renderer,
       options: upgradeOptions,
@@ -2710,7 +2731,9 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
       boundary,
       entity: liveEntity,
       run: () => upgradePlaceBoundary(
-        boundary, fallbackRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
+        // Whatever interior root is live at request time is the one a commit removes — not the
+        // original param, which would pin the detached substrate via this closure.
+        boundary, activeRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
       ),
       renderer,
       options: upgradeOptions,
@@ -2833,10 +2856,15 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   let authoredDisposed = false;
   const disposePreparedPlace = () => {
     if (authoredDisposed) return false;
-    disposeDetachedPlaceFallback(authored.root);
-    authored.root.clear();
-    unregisterPreparedAuthoredAdmission(authored);
-    authoredDisposed = true;
+    try {
+      disposeDetachedPlaceFallback(authored.root);
+      authored.root.clear();
+      authoredDisposed = true;
+    } finally {
+      // A disposal throw must not strand the registry entry — it pins the boundary and the
+      // whole prepared tree as a strong key/value in sceneState.preparedAuthoredRoots.
+      unregisterPreparedAuthoredAdmission(authored);
+    }
     return true;
   };
   if (options.deferBoundaryPublication === true) {
@@ -4594,6 +4622,33 @@ export function describeAuthoredUpgradeQueue(scene) {
   };
 }
 
+/** Detached-boundary leak diagnostics: reports which authored registries still hold
+ * this boundary so witness tooling can name the retainer without heap archaeology. */
+export function inspectAuthoredBoundaryRegistrations(scene, boundary) {
+  const out = {
+    preparedRoots: 0,
+    queuedLifecycle: null,
+    queuedKey: null,
+    inJobsArray: 0,
+  };
+  if (!scene || !boundary) return out;
+  const state = sceneStates.get(scene);
+  const roots = state && state.preparedAuthoredRoots && state.preparedAuthoredRoots.get(boundary);
+  if (roots && roots.size) out.preparedRoots = roots.size;
+  const queue = upgradeQueuesByScene.get(scene);
+  if (queue) {
+    const job = queue.byBoundary.get(boundary);
+    if (job) {
+      out.queuedLifecycle = job.lifecycle || 'queued';
+      out.queuedKey = job.key || null;
+    }
+    for (const queued of queue.jobs) {
+      if (queued && queued.boundary === boundary) out.inJobsArray += 1;
+    }
+  }
+  return out;
+}
+
 /** Admit queued upgrades without waiting for a display rAF. Loading-shell only. */
 export function pumpAuthoredUpgradeQueue(scene, options = {}) {
   const state = scene && upgradeQueuesByScene.get(scene);
@@ -5283,10 +5338,12 @@ async function disposePreparedAuthoredShip(authored) {
     await attempt(authored.releaseFlightTemplate, () => authored.releaseFlightTemplate('authored-ship-preparation-failed'));
   }
   await attempt(root, () => root.clear());
+  // Registry detachment cannot wait on disposal success: a thrown cleanup error must not leave
+  // the boundary and its prepared roots pinned in sceneState.preparedAuthoredRoots forever.
+  unregisterPreparedAuthoredAdmission(authored);
   if (cleanupErrors.length) {
     throw new AggregateError(cleanupErrors, 'Prepared authored ship cleanup failed');
   }
-  unregisterPreparedAuthoredAdmission(authored);
   authored.preparedCleanupComplete = true;
   return true;
 }
