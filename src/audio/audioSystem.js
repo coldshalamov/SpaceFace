@@ -853,15 +853,19 @@ export const BARK_PUNCT = Object.freeze({
 export const INSTRUCTOR_REPEAT_WINDOW_S = 8;
 
 // Weapon-id / kind -> SFX recipe id. Player & NPC weapon defIds are 'wpn_*'; the combat:fire
-// payload carries weaponId. We classify by substring so any catalog id resolves.
+// payload carries weaponId. We classify by substring so any catalog id resolves. A mount whose id
+// carries no known family must NEVER borrow the starter pulse's voice: two different guns would
+// become indistinguishable, and an unknown weapon would masquerade as the player's first one. Those
+// fall to the authored generic combat discharge (`sfx_wpn_unclassified`) instead.
 function recipeForWeapon(weaponId) {
   const id = (weaponId || '').toLowerCase();
   if (id.includes('beam')) return 'sfx_wpn_beam_laser';
-  if (id.includes('rail')) return 'sfx_wpn_railgun';
-  if (id.includes('missile') || id.includes('rocket') || id.includes('torp')) return 'sfx_wpn_missile';
-  if (id.includes('cannon') || id.includes('gatling') || id.includes('flak') || id.includes('auto')) return 'sfx_wpn_autocannon';
-  // pulse / laser / blaster / default
-  return 'sfx_wpn_pulse_laser';
+  if (id.includes('rail') || id.includes('lance') || id.includes('driver')) return 'sfx_wpn_railgun';
+  if (id.includes('missile') || id.includes('rocket') || id.includes('torp') || id.includes('mine')) return 'sfx_wpn_missile';
+  if (id.includes('cannon') || id.includes('gatling') || id.includes('flak') || id.includes('auto') || id.includes('stream')) return 'sfx_wpn_autocannon';
+  if (id.includes('pulse') || id.includes('laser') || id.includes('blaster')) return 'sfx_wpn_pulse_laser';
+  // No recognized family — a named generic combat voice, never the starter pulse.
+  return 'sfx_wpn_unclassified';
 }
 
 // Semantic cue ids (audio:cue / toast / ui:*) -> recipe id.

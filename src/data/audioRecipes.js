@@ -93,6 +93,23 @@ export const RECIPES = [
     pitchRange: [0.95, 1.05],
     dopplerEnabled: true,
   },
+  // Family-less fallback (INST-08). A weapon id the classifier cannot place must not borrow the
+  // starter pulse's descending saw — two unrelated mounts would sound identical, and an unknown gun
+  // would masquerade as the player's first weapon. This blunt, dry energy thump is its own voice: a
+  // tight bandpassed noise body with a short low-end drop, so it reads "unclassified mount", never
+  // "pulse" or "cannon". Pure synthesis — no new sample bank (the catalog forbids one).
+  {
+    id: 'sfx_wpn_unclassified',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.003, decay: 0.075, sustain: 0.0, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 1180, filterQ: 3.4,
+    distortionAmount: 0.3, distortionCurve: 'tanh',
+    subBass: { startFreq: 110, endFreq: 40, dur: 0.11, gain: 0.4 },
+    transientClick: { gain: 0.3 },
+    pitchRange: [0.9, 1.12],
+  },
 
   // --- Combat doctrine signatures ---------------------------------------------------------
   // These are short telegraphs, never loops. One squad cue is enough to teach the ear whether the
