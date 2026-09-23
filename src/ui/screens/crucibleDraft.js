@@ -35,8 +35,9 @@ import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../syste
 import { survivalRun } from '../../systems/survivalRun.js';
 import { el, settle, cue } from '../kit/index.js';
 import { crucibleFittingDescription } from '../crucibleCombatReadout.js';
-import { decorateEntityNode } from '../entityResolver.js';
+import { decorateEntityNode, entityLabel } from '../entityResolver.js';
 import { createStationRow } from '../orrery/stopDial.js';
+import { createHullSchematic } from '../orrery/hullSchematic.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 
 /**
@@ -123,7 +124,9 @@ function focusedControlId(rootEl) {
   const rowEl = active.closest ? active.closest('.sf-cru-row') : null;
   if (!rowEl) return null;
   const rows = rowEl.parentNode ? [...rowEl.parentNode.children] : [];
-  return { rowIndex: rows.indexOf(rowEl), kind: active.tagName === 'SELECT' ? 'pick' : 'action' };
+  const rowIndex = rows.indexOf(rowEl);
+  if (active.dataset && active.dataset.spare != null) return { rowIndex, kind: 'spare', spare: active.dataset.spare };
+  return { rowIndex, kind: active.tagName === 'SELECT' ? 'pick' : 'action' };
 }
 
 function restoreFocusedControl(rootEl, saved) {
@@ -133,7 +136,12 @@ function restoreFocusedControl(rootEl, saved) {
   if (saved.card) target = rootEl.querySelector(`[data-offer-id="${saved.card}"]`);
   if (saved.rowIndex != null) {
     const row = rootEl.querySelectorAll('.sf-cru-row')[saved.rowIndex];
-    if (row) target = saved.kind === 'pick' ? row.querySelector('select') : row.querySelector('button');
+    if (row && saved.kind === 'spare') {
+      target = row.querySelector(`[data-spare="${saved.spare}"]`) || row.querySelector('[data-spare]')
+        || row.querySelector('.sf-cru-act');
+    } else if (row) {
+      target = saved.kind === 'pick' ? row.querySelector('select') : (row.querySelector('.sf-cru-act') || row.querySelector('button'));
+    }
   }
   if (target && typeof target.focus === 'function') {
     try {
@@ -706,22 +714,42 @@ export const crucibleRefitScreen = {
     title.appendChild(el('p', 'k-t-emph k-62 sf-cru-sub',
       'Strip a hardpoint, or choose any spare the run has earned and fit it.'));
     rootEl.appendChild(title);
+    // The owner's word on a refused fit or strip, under the title where the eye starts.
+    const note = el('p', 'k-sentence sf-cru-note', '');
+    note.setAttribute('role', 'status');
+    note.setAttribute('aria-live', 'polite');
+    title.appendChild(note);
+    this._note = note;
 
-    // .k-stage — one row per hardpoint: its name, what is fitted beneath, the spare picker and the
-    // verb on the right.
-    const stage = el('section', 'k-stage k-stage--scroll sf-cru-stage');
+    // .k-stage — one row per hardpoint: its name, what is fitted beneath, the spare words and the
+    // verb. ORRERY §6: the rows are the labels of a hull on the jig — the run's ship in plan at the
+    // centre, each hardpoint a node on its real socket, each label on a leader round the ship, and
+    // the Hand on the rim at the hardpoint you are on (src/ui/orrery/hullSchematic.js). Where the
+    // hull has no plan render the rows keep their column.
+    const stage = el('section', 'k-stage k-stage--scroll sf-cru-stage orr-refit-stage');
     const rows = el('ul', 'k-rows sf-cru-rows');
     rows.style.setProperty('--k-row-cols', 'minmax(0, 1fr) auto');
     rows.setAttribute('aria-label', 'Hardpoints');
     stage.appendChild(rows);
     this._rows = rows;
-
-    const note = el('p', 'k-sentence sf-cru-note', '');
-    note.setAttribute('role', 'status');
-    note.setAttribute('aria-live', 'polite');
-    stage.appendChild(note);
-    this._note = note;
     rootEl.appendChild(stage);
+    rootEl.classList.add('orr-refit');
+    this._lit = null;
+    this._jig = createHullSchematic({
+      host: stage,
+      avoid: () => [rootEl.querySelector('.k-title'), rootEl.querySelector('.k-foot')],
+    });
+    // The Hand follows the player: the hardpoint under the pointer or holding focus is lit.
+    const lightRow = (event) => {
+      const rowEl = event && event.target && event.target.closest ? event.target.closest('.sf-cru-row') : null;
+      if (!rowEl || !this._jig) return;
+      const index = [...rows.children].indexOf(rowEl);
+      if (index < 0) return;
+      this._lit = index;
+      this._jig.light(index);
+    };
+    rows.addEventListener('focusin', lightRow);
+    rows.addEventListener('pointerover', lightRow);
 
     this._ctx = ctx;
     this.refresh(ctx);
@@ -792,6 +820,19 @@ export const crucibleRefitScreen = {
         done.click();
         return;
       }
+      // Left/Right walk the spare words of the focused hardpoint, choosing as they go.
+      if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && document.activeElement
+        && document.activeElement.dataset && document.activeElement.dataset.spare != null) {
+        const group = [...document.activeElement.parentElement.querySelectorAll('[data-spare]')];
+        const here = group.indexOf(document.activeElement);
+        const next = group[(here + (event.key === 'ArrowRight' ? 1 : -1) + group.length) % group.length];
+        if (next && next !== document.activeElement) {
+          event.preventDefault();
+          next.focus();
+          next.click();
+        }
+        return;
+      }
       // INF-060 keyboard parity with the pad's spatial nav: Up/Down walk the hardpoint rows.
       // A focused select keeps its native arrows (they change the spare), so the walk only
       // claims the key on buttons.
@@ -840,6 +881,11 @@ export const crucibleRefitScreen = {
     if (canAnimate()) cue('close');
   },
 
+  dispose() {
+    if (this._jig) this._jig.dispose();
+    this._jig = null;
+  },
+
   /** The three keys, their words and their fine print, for the run as it stands now. */
   _syncFoot(context) {
     const run = context && context.state ? context.state.run : null;
@@ -880,20 +926,34 @@ export const crucibleRefitScreen = {
     const rootEl = this._root;
     const savedFocus = rootEl ? focusedControlId(rootEl) : null;
     rows.innerHTML = '';
+    const jigNodes = [];
 
     for (const row of this._rows_data(context)) {
       const lines = refitRowLines(row);
       if (!lines) continue;
 
-      const item = el('li', 'k-row k-row--static sf-cru-row');
-      const left = el('div');
-      const name = el('span', 'k-row__name', lines.label);
+      const state = row.defId ? 'fitted' : (lines.options.length ? 'open' : 'bare');
+      const item = el('li', `k-row k-row--static sf-cru-row orr-hp is-${state}`);
+      const left = el('div', 'orr-hp__body');
+      const head = el('div', 'orr-hp__head');
+      const numeral = el('span', 'orr-hp__n', String((row.slotIndex || 0) + 1).padStart(2, '0'));
+      numeral.setAttribute('aria-hidden', 'true');
+      head.appendChild(numeral);
+      const name = el('span', 'k-row__name', '');
+      name.appendChild(el('span', 'orr-hp__label', lines.label));
       if (lines.slotTag) name.appendChild(el('span', 'sf-cru-slottag', lines.slotTag));
-      left.appendChild(name);
+      head.appendChild(name);
+      left.appendChild(head);
+      // the reading line: what is fitted (or the spares) and, at its end, the verb that changes it
+      const line = el('div', 'orr-hp__line');
+      left.appendChild(line);
       if (lines.options.length) {
-        // Every compatible spare, not just the newest. A select keeps a long inventory answerable
-        // from the keyboard without stacking one button per spare per hardpoint.
+        // Every compatible spare, not just the newest. The spares are words the player reads and
+        // picks (Left/Right walk them); the select stays as their value holder, unseen, so INF-060's
+        // remembered choice reads one value however it was set.
         const pick = el('select', 'k-select sf-cru-pick');
+        pick.hidden = true;
+        pick.tabIndex = -1;
         pick.setAttribute('aria-label', `Spare for ${lines.label.toLowerCase()}`);
         for (const option of lines.options) {
           const opt = el('option', '', option.label);
@@ -908,24 +968,48 @@ export const crucibleRefitScreen = {
         } else {
           this._spareChoice.delete(row.slotIndex);
         }
+        const spareWords = el('div', 'k-row__sub orr-hp__spares');
+        spareWords.setAttribute('role', 'radiogroup');
+        spareWords.setAttribute('aria-label', `Spare for ${lines.label.toLowerCase()}`);
+        const syncSpares = () => {
+          for (const b of spareWords.children) b.setAttribute('aria-checked', String(b.dataset.spare === pick.value));
+        };
         pick.addEventListener('change', () => {
           this._spareChoice.set(row.slotIndex, pick.value);
+          syncSpares();
         });
-        const sub = el('div', 'k-row__sub');
-        sub.appendChild(pick);
-        left.appendChild(sub);
+        for (const option of lines.options) {
+          const [spareName, ...stat] = String(option.label).split(' — ');
+          const b = el('button', 'orr-hp__spare');
+          b.type = 'button';
+          b.dataset.spare = String(option.instanceId);
+          b.setAttribute('role', 'radio');
+          b.setAttribute('aria-label', option.label);
+          b.appendChild(el('span', 'orr-hp__spare-name', spareName));
+          if (stat.length) b.appendChild(el('span', 'orr-hp__spare-stat', stat.join(' — ')));
+          b.addEventListener('click', () => {
+            if (pick.value === b.dataset.spare) return;
+            pick.value = b.dataset.spare;
+            pick.dispatchEvent(new Event('change'));
+          });
+          spareWords.appendChild(b);
+        }
+        syncSpares();
+        line.appendChild(spareWords);
+        left.appendChild(pick);
         row._pick = pick;
       } else {
-        const valueEl = el('div', 'k-row__sub', lines.value);
+        const valueEl = el('div', 'k-row__sub orr-hp__value', lines.value);
         if (lines.valueRef) decorateEntityNode(valueEl, lines.valueRef);
-        left.appendChild(valueEl);
+        line.appendChild(valueEl);
       }
       // INF-036: the honest comparison, under the picker — the picker itself is untouched,
       // so customization is preserved and the contrast only advises.
-      if (lines.contrast) left.appendChild(el('div', 'k-row__sub', lines.contrast));
+      if (lines.contrast) left.appendChild(el('div', 'k-row__sub orr-hp__contrast', lines.contrast));
       item.appendChild(left);
 
       const action = word(lines.action, lines.action === 'Strip' ? 'k-word--body k-word--danger' : 'k-word--body');
+      action.classList.add('sf-cru-act');
       action.disabled = !!lines.disabled;
       if (!lines.disabled) {
         action.addEventListener('click', () => {
@@ -945,8 +1029,25 @@ export const crucibleRefitScreen = {
           this.refresh(context);
         });
       }
-      item.appendChild(action);
+      line.appendChild(action);
       rows.appendChild(item);
+      jigNodes.push({ el: item, slotType: row.slotType, state });
+    }
+
+    if (this._jig) {
+      const hullId = activeLoadout(context).hullId;
+      const fitted = jigNodes.filter((n) => n.state === 'fitted').length;
+      const hullName = hullId ? (entityLabel('hull:' + hullId) || hullId.replace(/^ship_/, '')) : '';
+      this._jig.setHull(hullId);
+      this._jig.setNodes(jigNodes, {
+        engraving: hullName ? `${hullName} · ${jigNodes.length} hardpoints · ${fitted} fitted` : '',
+      });
+      // First sight: the Hand starts on the first hardpoint a spare can fill, else the first.
+      if (!Number.isInteger(this._lit)) {
+        const open = jigNodes.findIndex((n) => n.state === 'open');
+        this._lit = open >= 0 ? open : 0;
+      }
+      this._jig.light(this._lit);
     }
 
     // INF-060: put the player back where the rebuild found them (same row, same control kind).
