@@ -20,6 +20,10 @@ Fresh profile cite: `/workspace/spaceface-scratch/hitch-hillclimb-fresh-20260923
 - `hold-prefetch-inbound` (measured miss; lane-c inbound already on master)
 - Other known misses: `hitch-opening-admission`, `midflight-wave-hull-decode`, `combat-entity-key-cache` / `syncCombatantBounds` early-out, cloneUniforms ocean (avoid)
 
+## Also this session
+
+New measured package outboxed beside this digest: `combat-subsystem-key-cache` (~7.5× subsystem id sort cache). See sibling folder + `report.md` row 23.
+
 ## Picture / live game
 
 Untouched. Report-only folder under the vm-drop fence.

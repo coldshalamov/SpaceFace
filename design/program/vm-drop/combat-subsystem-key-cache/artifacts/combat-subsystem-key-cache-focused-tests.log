@@ -1,0 +1,130 @@
+TAP version 13
+# Subtest: broken attachment history stays bounded during a long tether session
+ok 1 - broken attachment history stays bounded during a long tether session
+  ---
+  duration_ms: 10.663052
+  ...
+# Subtest: new traits validate and compile without disturbing a bare Pulse Laser
+ok 2 - new traits validate and compile without disturbing a bare Pulse Laser
+  ---
+  duration_ms: 4.730283
+  ...
+# Subtest: orbit nodes are bounded by the shared proc budget
+ok 3 - orbit nodes are bounded by the shared proc budget
+  ---
+  duration_ms: 3.236109
+  ...
+# Subtest: orbit node cap refuses a third family beyond the hard bound
+ok 4 - orbit node cap refuses a third family beyond the hard bound
+  ---
+  duration_ms: 0.744159
+  ...
+# Subtest: orbit placement is deterministic in simTime and index, not insertion of targets
+ok 5 - orbit placement is deterministic in simTime and index, not insertion of targets
+  ---
+  duration_ms: 0.163877
+  ...
+# Subtest: parked host has zero orbit efficacy; flying a node onto a target is required
+ok 6 - parked host has zero orbit efficacy; flying a node onto a target is required
+  ---
+  duration_ms: 0.265211
+  ...
+# Subtest: Cryo Lock preserves translational momentum and reduces control authority
+ok 7 - Cryo Lock preserves translational momentum and reduces control authority
+  ---
+  duration_ms: 0.465626
+  ...
+# Subtest: NEGATIVE: a Cryo Lock that zeroes velocity fails the momentum invariant
+ok 8 - NEGATIVE: a Cryo Lock that zeroes velocity fails the momentum invariant
+  ---
+  duration_ms: 1.691431
+  ...
+# Subtest: presented orbit pass applies Cryo Lock without stealing velocity; ignored ring does not
+ok 9 - presented orbit pass applies Cryo Lock without stealing velocity; ignored ring does not
+  ---
+  duration_ms: 1.154739
+  ...
+# Subtest: orbit contact order is score / distance / id, not insertion order
+ok 10 - orbit contact order is score / distance / id, not insertion order
+  ---
+  duration_ms: 1.959517
+  ...
+# Subtest: NEGATIVE: insertion-order contact selection disagrees with score/distance/id
+ok 11 - NEGATIVE: insertion-order contact selection disagrees with score/distance/id
+  ---
+  duration_ms: 0.522181
+  ...
+# Subtest: Thermal Shock reacts off Cryo Lock + Burning, consumes freeze, does not zero velocity
+ok 12 - Thermal Shock reacts off Cryo Lock + Burning, consumes freeze, does not zero velocity
+  ---
+  duration_ms: 0.637191
+  ...
+# Subtest: Thermal Shock order is score / distance / id across shuffled insertion
+ok 13 - Thermal Shock order is score / distance / id across shuffled insertion
+  ---
+  duration_ms: 0.884
+  ...
+# Subtest: Thermal Shock pays the shared reaction proc and stops when it cannot
+ok 14 - Thermal Shock pays the shared reaction proc and stops when it cannot
+  ---
+  duration_ms: 0.448192
+  ...
+# Subtest: Cryo Lock is a real status in the combat catalog
+ok 15 - Cryo Lock is a real status in the combat catalog
+  ---
+  duration_ms: 1.756797
+  ...
+# Subtest: untraited weapons and unfielded ships do nothing in the orbit kernel
+ok 16 - untraited weapons and unfielded ships do nothing in the orbit kernel
+  ---
+  duration_ms: 0.551141
+  ...
+# Subtest: scheduling ionized status applies on the next tick and emits the combat receipt
+ok 17 - scheduling ionized status applies on the next tick and emits the combat receipt
+  ---
+  duration_ms: 3.008013
+  ...
+# Subtest: an unknown status id is refused and an immune tag blocks application
+ok 18 - an unknown status id is refused and an immune tag blocks application
+  ---
+  duration_ms: 0.349351
+  ...
+# Subtest: weapon-blocking catalog statuses block bursts only after runtime recompute
+ok 19 - weapon-blocking catalog statuses block bursts only after runtime recompute
+  ---
+  duration_ms: 2.33286
+  ...
+# Subtest: custom runtime blockedActionTags participate in burst blocking
+ok 20 - custom runtime blockedActionTags participate in burst blocking
+  ---
+  duration_ms: 0.451928
+  ...
+# Subtest: destroying power disables dependent drive and weapons
+ok 21 - destroying power disables dependent drive and weapons
+  ---
+  duration_ms: 3.502635
+  ...
+# Subtest: a lone weapon kill does not take the drive offline
+ok 22 - a lone weapon kill does not take the drive offline
+  ---
+  duration_ms: 0.618556
+  ...
+# Subtest: sensor destruction blocks weapon bursts through derived runtime capabilities
+ok 23 - sensor destruction blocks weapon bursts through derived runtime capabilities
+  ---
+  duration_ms: 0.777982
+  ...
+# Subtest: missing runtime does not block weapons or mutate combat tables
+ok 24 - missing runtime does not block weapons or mutate combat tables
+  ---
+  duration_ms: 0.389025
+  ...
+1..24
+# tests 24
+# suites 0
+# pass 24
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 194.44208

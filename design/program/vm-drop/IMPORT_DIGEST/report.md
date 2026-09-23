@@ -37,6 +37,7 @@ Order follows fresh-profile portable self-time poles, then opening/soft-GPU cook
 | 20 | `opening-plan-complete` | `f69e5c849` | Skip awaiting-authored markers so soft-GPU opening plan finishes; tests 24/24. Stack with #21–#22. |
 | 21 | `hitch-opening-drain` | `d6a1c419e` | Soft-GPU skip planWait/drainWait; `prepareOpeningGpuResources` **874→67 ms**; tests 4/4. |
 | 22 | `opening-residency-deadline` | `9fdb832df` | Soft-GPU residency stops at 750 ms deadline + receipt continue; residency wall **1254→880 ms**; tests 3/3. |
+| 23 | `combat-subsystem-key-cache` | `947d06c70` | Cache sorted subsystem ids; applyPending/recompute **~7.5×** offline; tests 24/24. Covers `applyPendingSubsystemTransitions` **36.3 ms** self. |
 
 ### Optional / separate backlog (not in top portable poles)
 
@@ -99,6 +100,7 @@ Order follows fresh-profile portable self-time poles, then opening/soft-GPU cook
 | `_stepCraft` 45.0 / `makeResult` 40.3 ms | #19 (+ further propulsion leftovers still open) |
 | `queryAsteroidField` residual | #17 (cellKey already on master) |
 | `presentationJournal.append` | #18 |
+| `applyPendingSubsystemTransitions` 36.3 ms | #23 |
 | Soft-GPU `bufferData` / `isProgram` / bloom | **Ignore** for portable hillclimb |
 
 ---
@@ -106,3 +108,9 @@ Order follows fresh-profile portable self-time poles, then opening/soft-GPU cook
 ## How this folder was produced
 
 Report-only under `design/program/vm-drop/IMPORT_DIGEST/`. No `src/` changes. Push is limited to this folder on branch `vm-drop`.
+
+## Hillclimb follow-ups (this session)
+
+- **Shipped:** `combat-subsystem-key-cache` (above).
+- **Tried / miss:** `makeResult` / `normalizeInput` pooling on `propulsionKernel.js` — V8 short-lived alloc beat pooled fill+clear (~0.4–1.0×); travel-drive byte-identical fixture also forbids private result keys. Left for later only if a non-pool approach appears.
+- **Tried / miss earlier:** `combat-entity-key-cache` / syncCombatantBounds early-out (see SKIP).
