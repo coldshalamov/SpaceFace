@@ -52,7 +52,11 @@ const CONVOY_NOTICE_R = 1200;     // player inside this of a hauler marks the co
 const TRADE_PRESSURE_CAP = 12;    // hard cap on units of market pressure per arrival (bounded valve)
 const PREDATION_MIN_RESPONSE_S = 1;
 const FREIGHT_POD_LIMIT = 3;
-const FREIGHT_POD_TTL_S = 90;
+// VERB-11 — spilled freight must outlive the fight that made it: pods go over the side
+// mid-battle, and 90 s can elapse before the player is free to fly the two screen-depths
+// to latch range. Four minutes covers the engagement plus the fetch; announced pods are
+// still claimed by the salvor machinery, so the window stays bounded.
+const FREIGHT_POD_TTL_S = 240;
 const FREIGHT_CUSTODY_WINDOW_S = 80;
 const FREIGHT_RAIDER_CONTACT_PAD = 1;
 const FREIGHT_RAIDER_ESCAPE_R = 600;
