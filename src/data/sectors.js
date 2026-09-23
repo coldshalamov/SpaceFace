@@ -205,7 +205,7 @@ const CORE_SECTORS = [
       { id: 'f_vesta_2', type: 'ast_metallic',    countWeight: 1.0 },
       { id: 'f_vesta_3', type: 'ast_crystalline', countWeight: 0.6 },
     ],
-    hazards: [ { type: 'radiation', center: { x: -800, z: 500 }, radius: 600, intensity: 0.4 } ],
+    hazards: [ { type: 'radiation', center: { x: -540, z: -480 }, radius: 600, intensity: 0.4 } ],
     pois: [
       { id: 'poi_freighter', type: 'derelict', name: 'Derelict Freighter' },
       {
