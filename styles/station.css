@@ -1752,7 +1752,7 @@ html body #screens #sf-ship .sx-sw__slotfield:not(.is-board) .sx-hardpoint:is(:h
 /* The fleet card: the hull's role on its own line, whole, under the name; "Active" rides the
    name's line instead of squeezing the role into "STARTER SC..." beside it. */
 .sx-sw-row.k-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name flag" "sub sub"; align-items: baseline; row-gap: 2px; }
-.sx-sw-row > .sx-sw-row__body { display: contents; }
+.sx-sw-row > .sx-sw-row__body { display: contents; overflow: visible; } /* a box-less wrapper clips nothing; its inherited overflow:hidden read as a panel eating its copy */
 .sx-sw-row .sx-sw-row__name { grid-area: name; min-width: 0; }
 .sx-sw-row .sx-sw-row__sub { grid-area: sub; white-space: normal; overflow: visible; text-overflow: clip; }
 .sx-sw-row > .sx-sw-row__flag, .sx-sw-row > .sx-sw-row__price { grid-area: flag; }
