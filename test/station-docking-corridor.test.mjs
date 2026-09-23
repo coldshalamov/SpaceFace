@@ -33,6 +33,9 @@ import {
 import { consumePhysicsCommand, queuePhysicsImpulse, writePhysicsControl } from '../src/core/physicsAuthority.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { physics } from '../src/core/physics.js';
+import { flightV3 } from '../src/systems/flightV3.js';
+import { PROPULSION_PROFILES } from '../src/core/flight/propulsionCatalog.js';
+import { createBus } from '../src/core/eventBus.js';
 
 const HELIOS = COLLISION_PROXY_MANIFESTS.helios_trade_hub;
 const DEG = Math.PI / 180;
@@ -803,6 +806,121 @@ test('real authority: an off-lane knock inside the silhouette recovers through t
   } finally {
     owner.dispose();
   }
+});
+
+// ---------------------------------------------------------------------------------------------
+// regression: the release-soak dock miss. A hull carrying travel-burn momentum (~3857 wu/s) into
+// the waypoint approach sat in autopilot 'cruising' forever: the brake planner measured stopping
+// distance from RADIAL closing speed, so tangential / outbound / avoidance-aligned vectors read
+// ~zero and never tripped the brake; and the boost gate defaulted to `maxSpeed` — a field the
+// reaction-drive catalog profiles do not author — capping the home leg just under governed cruise.
+// These drive the REAL flightV3._stepCraft (autopilot + propulsion kernel input path) against the
+// real SG-02 authority — no scripted impulses, only the autopilot's own commands.
+// ---------------------------------------------------------------------------------------------
+
+async function flyAutopilotDockApproach({ startPos, startVel, secondsMax }) {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  try {
+    const station = heliosStation();
+    const player = {
+      id: 'player', type: 'ship', alive: true, collides: true, flags: {},
+      pos: { ...startPos }, vel: { ...startVel }, rot: Math.atan2(startVel.z, startVel.x),
+      angVel: 0, radius: 14, mass: 32, data: {},
+      propulsion: PROPULSION_PROFILES.drive_reaction_m,
+      boost: { energy: 200, max: 200 },
+    };
+    const bus = createBus();
+    const autopilot = {
+      active: true, targetEntityId: station.id,
+      target: { x: station.pos.x, z: station.pos.z },
+      label: 'Helios Station', arrivalRadius: 90, status: '', distance: 0,
+    };
+    const state = {
+      mode: 'flight', playerId: player.id, tick: 0, simTime: 0,
+      entities: new Map([[player.id, player], [station.id, station]]),
+      entityIndex: { stations: [station] }, entityList: [player, station],
+      input: {}, ui: {}, nav: { autopilot }, player,
+    };
+    flightV3.bus = bus;
+    dockingCorridor.init({ bus });
+    owner.syncFromEntities([station, player]);
+    const berth = resolveBerthWorld(station, HELIOS);
+    const dt = 1 / 60;
+    const ticks = Math.round(secondsMax * 60);
+    const speeds = [];
+    for (let t = 0; t < ticks; t++) {
+      state.tick = t; state.simTime = t * dt;
+      // input.js republishes the raw pilot axes every tick; no keys are held in these scenarios.
+      state.input.moveX = 0; state.input.moveZ = 0; state.input.turnIntent = 0;
+      state.input.boost = false; state.input.brake = false;
+      flightV3._stepCraft(player, state.input, dt, state, true);
+      dockingCorridor.update(dt, state);
+      owner.step(dt);
+      speeds.push(Math.hypot(player.vel.x, player.vel.z));
+      if (state.dockingCorridor && state.dockingCorridor.phase === 'berthed') break;
+    }
+    return {
+      berthed: state.dockingCorridor.phase === 'berthed',
+      berthDist: Math.hypot(player.pos.x - berth.x, player.pos.z - berth.z),
+      speeds,
+      ticks: speeds.length,
+      speed: Math.hypot(player.vel.x, player.vel.z),
+    };
+  } finally {
+    owner.dispose();
+  }
+}
+
+// The failed soak run's own coordinates: 55,888 wu out, velocity perpendicular to the target
+// line — radial closing speed ≈ 0, so the closing-only planner saw nothing to stop.
+test('real authority: a tangential burn-speed approach sheds the burn and berths', async () => {
+  const dx = -46236.68, dz = 28912.01;
+  const d = Math.hypot(dx, dz);
+  const run = await flyAutopilotDockApproach({
+    startPos: { x: dx, z: dz },
+    startVel: { x: (-dz / d) * 3857, z: (dx / d) * 3857 },
+    secondsMax: 300,
+  });
+  // The defect signature was ~3857 held indefinitely. It must collapse under the brake.
+  const speedAt45s = run.speeds[Math.round(45 * 60) - 1];
+  assert.ok(speedAt45s < 400,
+    `burn momentum must shed, not cruise forever (speed at 45s: ${speedAt45s.toFixed(0)} wu/s)`);
+  assert.ok(run.berthed,
+    `the autopilot must recover a tangential exile and berth (ended ${run.berthDist.toFixed(0)} wu out)`);
+  assert.ok(run.berthDist <= HELIOS.docking.berth.dockRadius);
+  assert.ok(run.speed < HELIOS.docking.berth.speedGate);
+});
+
+// Post-expulsion signature: near the station, thrown OUTBOUND at burn speed — closing speed is
+// large NEGATIVE, which the closing-only planner also read as "no stopping distance needed".
+test('real authority: an outbound burn-speed expulsion brakes, turns back, and berths', async () => {
+  const run = await flyAutopilotDockApproach({
+    startPos: { x: 1200, z: 1600 },
+    startVel: { x: 2722, z: 2722 },
+    secondsMax: 240,
+  });
+  const speedAt50s = run.speeds[Math.round(50 * 60) - 1];
+  assert.ok(speedAt50s < 400,
+    `an outbound exile must shed the burn (speed at 50s: ${speedAt50s.toFixed(0)} wu/s)`);
+  assert.ok(run.berthed,
+    `the autopilot must recover an outbound expulsion and berth (ended ${run.berthDist.toFixed(0)} wu out)`);
+  assert.ok(run.berthDist <= HELIOS.docking.berth.dockRadius);
+});
+
+// The same burn speed aimed straight in: brakes inside its own stopping distance and docks —
+// guards that the total-speed planner did not break the ordinary fast approach.
+test('real authority: an inbound burn-speed approach berths promptly', async () => {
+  const dx = -46236.68, dz = 28912.01;
+  const d = Math.hypot(dx, dz);
+  const run = await flyAutopilotDockApproach({
+    startPos: { x: dx, z: dz },
+    startVel: { x: (-dx / d) * 3857, z: (-dz / d) * 3857 },
+    secondsMax: 75,
+  });
+  assert.ok(run.berthed,
+    `a direct burn-speed approach must berth promptly (ended ${run.berthDist.toFixed(0)} wu out after ${(run.ticks / 60).toFixed(0)}s)`);
+  assert.ok(run.berthDist <= HELIOS.docking.berth.dockRadius);
+  assert.ok(run.speed < HELIOS.docking.berth.speedGate);
 });
 
 function round6(value) {

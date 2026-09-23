@@ -785,9 +785,17 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     const pace = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, trafficHold - 30)));
     if (pace < desiredSpeed) desiredSpeed = pace;
   }
-  const stoppingDistance = closingSpeed > 0 ? (closingSpeed * closingSpeed) / (2 * brakeAccel) : 0;
+  // Plan the stop against TOTAL speed, not only the radial component. Earned momentum on a
+  // tangential, outbound, or avoidance-aligned vector needs the same room to shed as inbound
+  // speed — a closing-only estimate reads ~0 on those vectors, so a hull expelled or slung at
+  // burn speed could orbit the destination at full momentum without ever tripping the brake
+  // (the release-soak 3857 WU/s dock miss).
+  const stoppingDistance = (speed * speed) / (2 * brakeAccel);
   const halfway = Number.isFinite(autopilot.initialDistance) && dist <= autopilot.initialDistance * 0.52;
-  const terminalBrake = closingSpeed > 4 && (
+  // The speed gate is on TOTAL speed: a hull with nothing to shed (parked or settle-slow inside
+  // the arrival margin) must release the brake and creep to the arrival radius, while any fast
+  // vector — inbound, tangential, outbound, or avoidance-aligned — counts down the same room.
+  const terminalBrake = speed > 4 && (
     dist <= stoppingDistance + arrivalRadius + 45 + lateralSpeed * 1.4 ||
     (halfway && closingSpeed > desiredSpeed * 0.92)
   );
@@ -830,9 +838,17 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     throttle = facingDot > -0.25 ? clamp(0.35 + facingDot * 0.78, -1, 1) : 0;
     strafe = clamp((guidance.x * rightX + guidance.z * rightZ) * 0.72, -1, 1);
     const cruiseClear = !guidance.avoiding && Math.abs(turnError) < 0.34;
+    // A hull whose catalog profile carries no authored maxSpeed (the reaction family) read this
+    // gate as speed < 120*1.85 — a hair under its own governed cruise equilibrium — so the boost
+    // latch could never engage and an exiled hull limped home at ~223 WU/s. Gate on the speed
+    // the profile can actually hold under boost, still bounded by the approach plan so the burn
+    // cannot outrun the remaining stopping distance.
+    const boostSpeedCeiling = positive(profile.boostMaxSpeed, 0)
+      || positive(profile.combatSpeed, 0) * positive(profile.boostSpeedMult, 1)
+      || positive(profile.maxSpeed, 120) * positive(profile.boostSpeedMult, 1.5);
     boost = cruiseClear &&
       dist > Math.max(arrivalRadius * 5, stoppingDistance * 1.25 + 220) &&
-      speed < positive(profile.maxSpeed, 120) * 1.85;
+      speed < Math.min(desiredSpeed, boostSpeedCeiling);
   }
 
   const nextInput = {
