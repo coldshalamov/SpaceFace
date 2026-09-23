@@ -3982,17 +3982,26 @@ function authoredRuntimeState() {
 // The first-flight guard protects leftover places and FX from linking into the opening picture.
 // It must not park a combat/contact ship that has reached the readable glass: that leaves its
 // zero-draw admission boundary (and the temporary marker) where a ship should be for 20 seconds.
+// A complete NPC body can spend several seconds in decode and pipeline preparation. Start queued
+// runway ships before the contact reaches the glass instead of making the player watch that work.
+const FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU = 700;
 function firstFlightReadableShipJob(job) {
   const live = authoredRuntimeState();
   const render = live && live.render;
   const entity = job && job.entity;
+  const player = live && live.entities && typeof live.entities.get === 'function'
+    ? live.entities.get(live.playerId)
+    : null;
+  const runwayDistance = planarRangeWU(entity, player);
   return !!(live && live.mode === 'flight' && render
     && Number.isFinite(render.firstPlayableFrameAt)
     && render.sectorShellAdmission !== true
     && entity && entity.type === 'ship' && entity.alive !== false
     // Submission includes a ship whose outline intersects the glass even when its pivot does
     // not. The frustum center-point helper can say false while its marker is already drawn.
-    && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true));
+    && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true
+      || (entity.activity?.presentationTier === PRESENTATION_TIER.R1_RUNWAY
+        && runwayDistance !== null && runwayDistance <= FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU)));
 }
 
 function scheduleHeldShipWake(state) {
@@ -4002,6 +4011,17 @@ function scheduleHeldShipWake(state) {
     scheduleNextUpgradeFrame(state);
   }, 100);
   state.heldShipWakeTimer.unref?.();
+}
+
+function firstFlightShipCanPassBusyPlace(state) {
+  if (!state || state.firstFlightHandoffHold !== true || state.inFlight !== 1
+      || !state.jobs.some(firstFlightReadableShipJob)) return false;
+  const active = [...state.byBoundary.values()].filter((job) =>
+    job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
+  // A slow hub/place upload may remain in flight long after the opening shell has gone. Reserve
+  // one additional serial ship slot for that case. A detached ship that already released its CPU
+  // slot may still be linking GPU pipelines and must not block the next visible contact.
+  return active.length === 1 && active[0].entity?.type !== 'ship';
 }
 
 export function waitForOpeningGraphPublicationRelease() {
@@ -4303,7 +4323,8 @@ function scheduleNextUpgradeFrame(state) {
     scheduleHeldShipWake(state);
     return;
   }
-  if (state.inFlight >= authoredUpgradeConcurrencyLimit()) return;
+  if (state.inFlight >= authoredUpgradeConcurrencyLimit()
+      && !firstFlightShipCanPassBusyPlace(state)) return;
   // One entity admission per frame: keep post-boot authored upgrades bounded even when several
   // decoded packages become eligible together.
   state.frameScheduled = true;
@@ -4313,6 +4334,7 @@ function scheduleNextUpgradeFrame(state) {
     if (state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
     if (state.firstFlightHandoffHold === true
         && !state.jobs.some(firstFlightReadableShipJob)) {
+      state.frameScheduled = false;
       scheduleHeldShipWake(state);
       return;
     }
@@ -4340,7 +4362,16 @@ function admitNextUpgradeJob(state) {
       if (urgentDelta) return urgentDelta;
     }
     const priorityDelta = authoredUpgradePriority(a) - authoredUpgradePriority(b);
-    return priorityDelta || a.sequence - b.sequence;
+    if (priorityDelta) return priorityDelta;
+    if (state.firstFlightHandoffHold === true
+        && firstFlightReadableShipJob(a) && firstFlightReadableShipJob(b)) {
+      const live = authoredRuntimeState();
+      const player = live?.entities?.get?.(live.playerId);
+      const nearA = planarRangeWU(a.entity, player);
+      const nearB = planarRangeWU(b.entity, player);
+      if (nearA !== null && nearB !== null && nearA !== nearB) return nearA - nearB;
+    }
+    return a.sequence - b.sequence;
   });
   if (state.firstFlightHandoffHold === true && !firstFlightReadableShipJob(state.jobs[0])) {
     scheduleHeldShipWake(state);
@@ -4372,6 +4403,7 @@ function admitNextUpgradeJob(state) {
   }
 
   job.lifecycle = 'in-flight';
+  job.serialSlotReleased = false;
   if (state.firstFlightHandoffHold === true && job.options) {
     job.options.urgentFirstFlightAdmission = true;
   }
@@ -4381,6 +4413,7 @@ function admitNextUpgradeJob(state) {
   const releaseSerialSlotAfterPipelineStaging = () => {
     if (serialSlotReleased || job.lifecycle !== 'in-flight') return false;
     serialSlotReleased = true;
+    job.serialSlotReleased = true;
     state.inFlight = Math.max(0, state.inFlight - 1);
     scheduleNextUpgradeFrame(state);
     return true;
@@ -4672,6 +4705,9 @@ export function describeAuthoredUpgradeQueue(scene) {
     inFlight: state.inFlight,
     running: !!state.running,
     held: state.openingHandoffHold === true || state.firstFlightHandoffHold === true,
+    openingHeld: state.openingHandoffHold === true,
+    firstFlightHeld: state.firstFlightHandoffHold === true,
+    frameScheduled: state.frameScheduled === true,
     compiling,
     jobs,
   };
