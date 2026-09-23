@@ -357,7 +357,9 @@ const CORE_SECTORS = [
     id: 'sector_sker_haven', name: 'Sker Haven', tier: 3, security: 0.08, charted: false,
     factionId: 'faction_reach', position: { x: -7, y: 8 }, worldRadius: 5000,
     palette: SECTOR_PALETTE_CLASSES.fringe,
-    trafficPerMin: 0, enemyDensity: 0.70, enemyLevel: [7, 11],
+    // WORLD-07 — the Bazaar is the Reach's market stop, not hollow frontier: a light apron of
+    // haulers/smugglers/couriers clusters near station_sker. enemyDensity stays authored.
+    trafficPerMin: 9, enemyDensity: 0.70, enemyLevel: [7, 11],
     neighbors: ['sector_pallas_drift', 'sector_veil_nebula'],
     stations: [
       { id: 'station_sker', name: 'Sker Bazaar', type: 'blackmarket', factionId: 'faction_reach', size: 'M', services: ['black_market','repair','refuel','missions'], repGated: true,
