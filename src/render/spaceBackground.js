@@ -185,12 +185,10 @@ const LAYER_DEFS = [
 export const SPACE_BACKGROUND_GROUP_ORDER = -100;
 const STAR_DEPTH = 6;       // group-local y for star/flare/hero planes (above the tiles)
 const HERO_DEPTH = 12;
-// How many celestial hero bodies may be resident at once. Was an inline `< 1`, which meant the far
-// field held exactly one planet however many the sector generated (heroPlacement typically ~17).
-// Two gives the backdrop an actual depth relationship — a near landmark and a further body — which
-// is the "back/middle/front" independent review asked for. Each costs one baked impostor and one
-// sprite draw call, so keep this small.
-const MAX_VISIBLE_PLANETS = 2;
+// "One sky" (ZERO_TO_HERO §4 Phase 2): at most ONE hero celestial body is resident at a time —
+// a planet or a wormhole, counting both. The slot is shared across kinds rather than a per-kind
+// budget, so planets never stack beside each other or beside the wormhole. See _refreshHeroes
+// for the admission/retirement rules that hold the single slot.
 const PLANET_PAR = 0.055;   // single parallax factor for planet placement (bg-space grid)
 const WORM_PAR = 0.10;
 const LOOK_BIAS_Z = 0.30;   // camera never yaws; view center sits ahead (+Z) of the camera point
@@ -2262,31 +2260,111 @@ export class SpaceBackground {
       }
     }
     this.heroPlacement = list;
+    this._admitHero();
+  }
 
-    // The signature anchor has first claim at boot; fill remaining slots by proximity rather
-    // than grid iteration order. Existing residents win until they have left the window.
-    list.sort((a, b) => {
-      if (a === this._signatureHeroAnchor) return -1;
-      if (b === this._signatureHeroAnchor) return 1;
-      const ap = a.kind === 'planet' ? PLANET_PAR : WORM_PAR;
-      const bp = b.kind === 'planet' ? PLANET_PAR : WORM_PAR;
-      return Math.hypot(a.bx - this.camX * ap, a.bz - this.camZ * ap)
-        - Math.hypot(b.bx - this.camX * bp, b.bz - this.camZ * bp);
-    });
-    let planetsSpawned = this.planets.length;
-    for (const spec of list) {
+  // Approximate drawn body radius for a not-yet-spawned spec (world units at the hero plane).
+  _specRadiusWorld(spec) {
+    if (!spec || !Number.isFinite(spec.frac)) return 0;
+    const k = Math.max(1.15, Number.isFinite(this.heroSizeK) ? this.heroSizeK : 1.15);
+    if (spec.kind === 'wormhole') return spec.frac * this.H * k * 1.1;
+    return spec.frac * this.H * k * 0.29 / 0.42;
+  }
+
+  // Project a hero body's world bounds through the live chase camera and answer whether any of
+  // it touches the viewport. Harnesses without a camera keep the previous wide-window check as
+  // the conservative fallback, so "offscreen" is still judged rather than assumed.
+  _heroOnGlass(spec, par, radiusWorld) {
+    if (!spec) return false;
+    const cam = this.camera;
+    if (!cam || !cam.isCamera) {
+      const windowR = this.quadSize * 0.5;
+      return Math.abs(spec.bx - this.camX * par) <= windowR
+        && Math.abs(spec.bz - this.camZ * par) <= windowR;
+    }
+    const v = this._heroProjA || (this._heroProjA = new THREE.Vector3());
+    const e = this._heroProjB || (this._heroProjB = new THREE.Vector3());
+    const g = this.group ? this.group.position : { x: 0, y: 0, z: 0 };
+    const r = Number.isFinite(radiusWorld) && radiusWorld > 0 ? radiusWorld : 0;
+    v.set(g.x + spec.bx - this.camX * par, g.y + HERO_DEPTH, g.z + spec.bz - this.camZ * par);
+    e.copy(v);
+    const me = cam.matrixWorld.elements;
+    e.x += me[0] * r; e.y += me[1] * r; e.z += me[2] * r;
+    v.applyMatrix4(cam.matrixWorldInverse);
+    if (v.z >= 0) return false;
+    e.applyMatrix4(cam.matrixWorldInverse);
+    v.applyMatrix4(cam.projectionMatrix);
+    e.applyMatrix4(cam.projectionMatrix);
+    if (!Number.isFinite(v.x) || !Number.isFinite(v.y)) return false;
+    const rNdc = Math.hypot(e.x - v.x, e.y - v.y);
+    return Math.abs(v.x) <= 1 + rNdc && Math.abs(v.y) <= 1 + rNdc;
+  }
+
+  _residentOnGlass() {
+    for (const p of this.planets) {
+      const r = p.sprite && p.sprite.scale ? p.sprite.scale.x * 0.5 : this._specRadiusWorld(p.spec);
+      if (this._heroOnGlass(p.spec, PLANET_PAR, r) !== false) return true;
+    }
+    const w = this.wormhole;
+    if (w && this._heroOnGlass(w.spec, WORM_PAR,
+        Number.isFinite(w.radius) ? w.radius : this._specRadiusWorld(w.spec)) !== false) return true;
+    return false;
+  }
+
+  _candidateVisible(spec) {
+    if (!spec) return false;
+    const par = spec.kind === 'planet' ? PLANET_PAR : WORM_PAR;
+    return this._heroOnGlass(spec, par, this._specRadiusWorld(spec));
+  }
+
+  // The one shared slot: a parked deferred wormhole holds it only while its spec is on-glass,
+  // a resident holds it while any of its body projects into the frame. Otherwise the signature
+  // anchor wins when it actually intersects the frame, else the nearest projected-visible
+  // candidate. An offscreen survivor is retired as the replacement lands, never while visible.
+  _admitHero() {
+    const deferred = this._deferredWormhole;
+    if (deferred) {
+      if (this._heroOnGlass(deferred, WORM_PAR, this._specRadiusWorld(deferred)) !== false) return;
+      this._deferredWormhole = null;
+    }
+    if (this._residentOnGlass()) return;
+    const sig = this._signatureHeroAnchor;
+    let pick = this._candidateVisible(sig) ? sig : null;
+    let pickDist = pick ? -1 : Infinity;
+    for (const spec of this.heroPlacement || []) {
+      if (spec === sig || !this._candidateVisible(spec)) continue;
       const par = spec.kind === 'planet' ? PLANET_PAR : WORM_PAR;
-      const ox = spec.bx - this.camX * par;
-      const oz = spec.bz - this.camZ * par;
-      if (Math.abs(ox) > windowR || Math.abs(oz) > windowR) continue;
-      if (spec.kind === 'planet' && this.planets.some(p => p.spec.bx === spec.bx
-          && p.spec.bz === spec.bz && p.spec.seed === spec.seed)) continue;
-      if (spec.kind === 'planet' && planetsSpawned < MAX_VISIBLE_PLANETS) {
-        this._spawnPlanet(spec);
-        planetsSpawned++;
-      } else if (spec.kind === 'wormhole' && !this.wormhole) {
-        this._spawnWormhole(spec);
-      }
+      const d = Math.hypot(spec.bx - this.camX * par, spec.bz - this.camZ * par);
+      if (d < pickDist) { pickDist = d; pick = spec; }
+    }
+    if (!pick) return;
+    this._clearResidentHeroes();
+    if (pick.kind === 'planet') this._spawnPlanet(pick);
+    else this._spawnWormhole(pick);
+  }
+
+  // Between grid crossings the camera still moves; at a bounded cadence re-check the projected
+  // slot so a departed resident yields and an arriving candidate lands without a cell boundary.
+  _reconcileHeroViewport() {
+    const bound = (Number.isFinite(this.H) ? this.H : 96) * 0.5;
+    const lx = Number.isFinite(this._heroVisCamX) ? this._heroVisCamX : this.camX - bound;
+    const lz = Number.isFinite(this._heroVisCamZ) ? this._heroVisCamZ : this.camZ;
+    const dx = this.camX - lx, dz = this.camZ - lz;
+    if (dx * dx + dz * dz < bound * bound) return;
+    this._heroVisCamX = this.camX; this._heroVisCamZ = this.camZ;
+    this._admitHero();
+  }
+
+  // Remove every resident hero. The shared slot is one body wide, so admission of a replacement
+  // starts by retiring whatever offscreen survivors the margin rules kept.
+  _clearResidentHeroes() {
+    for (const p of this.planets) this.group.remove(p.sprite);
+    this.planets.length = 0;
+    if (this.wormhole) {
+      this.group.remove(this.wormhole.mesh);
+      this.wormhole.mesh.geometry.dispose();
+      this.wormhole.material.dispose();
+      this.wormhole = null;
     }
   }
 
@@ -2329,7 +2407,7 @@ export class SpaceBackground {
     sprite.position.z = spec.bz - this.camZ * PLANET_PAR;
     sprite.userData = spec;
     this.group.add(sprite);
-    this.planets.push({ sprite, mat, spec });
+    this.planets.push({ sprite, mat, spec, radius: quad * 0.5 });
   }
 
   /** Dispose retired card or geometry macro structure. */
@@ -2699,7 +2777,7 @@ export class SpaceBackground {
       lowTier: this.lowTier,
       tierName: this.tierName,
     });
-    this.wormhole = { mesh, material: mesh.material, spec };
+    this.wormhole = { mesh, material: mesh.material, spec, radius: size * 0.5 };
     mesh.position.x = spec.bx - this.camX * WORM_PAR;
     mesh.position.z = spec.bz - this.camZ * WORM_PAR;
     this.group.add(mesh);
@@ -3041,13 +3119,16 @@ export class SpaceBackground {
     this._pumpDeferredNebulaBake();
     // A wormhole that outran its tile promotion waits here instead of stalling its spawn frame.
     // Re-check the ordinary offscreen-retirement rule so a spec that scrolled past while it
-    // waited retires instead of landing somewhere it no longer belongs.
-    if (this._deferredWormhole && !this.wormhole) {
+    // waited retires instead of landing somewhere it no longer belongs. The reservation shares
+    // the one-sky slot: it holds only while its own spec is on-glass — a stale request clears
+    // so it can never starve a visible candidate.
+    if (this._deferredWormhole) {
       const deferredSpec = this._deferredWormhole;
-      this._deferredWormhole = null;
-      const windowR = this.quadSize * 0.5;
-      if (Math.abs(deferredSpec.bx - cx * WORM_PAR) <= windowR * 1.2
-          && Math.abs(deferredSpec.bz - cz * WORM_PAR) <= windowR * 1.2) {
+      if (!this._heroOnGlass(deferredSpec, WORM_PAR, this._specRadiusWorld(deferredSpec))) {
+        this._deferredWormhole = null;
+      } else if (!this._residentOnGlass()) {
+        this._deferredWormhole = null;
+        this._clearResidentHeroes();
         this._spawnWormhole(deferredSpec);
       }
     }
@@ -3057,7 +3138,10 @@ export class SpaceBackground {
     // A sector seam must not compete with the frame that is easing into it. The existing
     // world-space hero window still refreshes naturally on the next settled frame, so a jump or
     // membership change never forces the old synchronous hero rebuild into the boundary frame.
-    if (!sectorTransitionActive) this._refreshHeroes(false);
+    if (!sectorTransitionActive) {
+      this._refreshHeroes(false);
+      this._reconcileHeroViewport();
+    }
   }
 
   _updateSectorVisualTransition(dt) {
