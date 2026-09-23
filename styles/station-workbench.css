@@ -12,7 +12,7 @@
   --k-signal: var(--sf-station-accent);
 }
 
-#screens .sx-berth :is(.sxb-crown, .sx-pop, .sx-comms__history, .so-command-palette) {
+#screens .sx-berth :is(.sx-pop, .sx-comms__history, .so-command-palette) {
   border: 14px solid transparent;
   border-image: none;
   border-radius: 0;
@@ -20,33 +20,11 @@
   box-shadow: none;
 }
 
-/* The vitals plate is taken out of flow. A right padding on the screen never kept the
-   contract out from under it: the dossier title died at "First trade: 8" and the
-   getting-started row died at "Dis". The header and the workspace stop beside the plate. */
-#screens .sx-berth.k-screen {
-  --sx-crown-w: 328px;
-  padding-right: calc(20px * var(--k-s, 1));
-}
-#screens .sx-berth .sxb-berth,
-#screens .sx-berth #sx-panel {
-  margin-right: calc(var(--sx-crown-w) + 16px);
-}
-#screens .sx-berth .sxb-crown {
-  /* grid-area: title makes this plate's containing block the header row, so a
-     right padding on the screen slides the plate left with the contract. Park
-     it on the screen and let the header and the workspace stop beside it. */
-  grid-area: auto;
-  position: absolute;
-  box-sizing: border-box;
-  width: var(--sx-crown-w);
-  max-height: calc(100% - 96px);
-  top: 14px;
-  right: 16px;
-  left: auto;
-  bottom: auto;
-  overflow: auto;
-  z-index: 4;
-}
+/* The vitals plate used to be parked absolutely at the top-right of the screen, with the header
+   and the workspace given a right margin so nothing ran under it (the dossier title died at
+   "First trade: 8" and the getting-started row at "Dis"). As of 2026-09-22 the purse and the
+   gauges are a column of the HEAD BAND itself (styles/station.css, "THE HEAD BAND"), so there is
+   nothing to run under and no margin to reserve: the workspace below takes the whole width. */
 #screens .sx-berth .sxb-handoff {
   flex-wrap: wrap;
   max-width: 100%;
@@ -64,12 +42,6 @@
 }
 #screens .sx-berth .sx-dossier__title {
   max-width: none;
-}
-@media (max-width: 1100px) {
-  #screens .sx-berth.k-screen { --sx-crown-w: 248px; }
-}
-@media (max-width: 720px) {
-  #screens .sx-berth.k-screen { --sx-crown-w: 188px; }
 }
 
 #screens .sx-berth button[data-sf-role="primary"] {

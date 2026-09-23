@@ -546,7 +546,9 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
 #screens .sx-berth.sx-observatory.k-screen {
   display: grid;
   inset: 0;
-  padding: calc(22px * var(--k-s)) calc(400px * var(--k-s)) calc(14px * var(--k-s)) calc(32px * var(--k-s));
+  /* Symmetric. The right padding was 400px -- a hole kept for a vitals panel floating over the frame;
+     the purse and gauges now live in the head band, so the frame runs edge to edge. */
+  padding: calc(22px * var(--k-s)) calc(32px * var(--k-s)) calc(14px * var(--k-s)) calc(32px * var(--k-s));
   border: 0;
   background: transparent;
   box-shadow: none;
@@ -646,14 +648,13 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   margin: 0;
   max-width: none;
   padding: 0;
-  /* Was `plate.legend.strip.png` nine-sliced 12x16. A tape is a thin strip of stock with a
-     shadowed lip; computed, that lip stays 1px at any width instead of smearing. */
+  /* Was a nine-sliced legend strip, then a computed "strip of stock with a shadowed lip". A tape
+     is printed words on the veil (owner, 2026-09-22: no CSS imitating a material). */
   border: 0;
-  border-radius: 1px;
-  padding: 7px 13px;
-  background: linear-gradient(177deg, #1b1f25, #14171c) padding-box;
-  box-shadow:
-    none;
+  border-radius: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
   font-family: var(--fh-face-display, var(--k-display));
   font-variation-settings: "wght" 600, "wdth" 62;
   font-size: var(--k-fs-fine);
@@ -669,9 +670,9 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 #screens .sx-berth .sxb-berth__route[hidden] { display: none; }
 
 #screens .sx-berth .sxb-event[data-tone="danger"] {
-  background: linear-gradient(177deg, #2a1614, #1d0f0e) padding-box;
-  box-shadow:
-    none;
+  padding-left: 10px;
+  background: linear-gradient(90deg, var(--dp-danger, #ff5038) 2px, transparent 0);
+  box-shadow: none;
 }
 #screens .sx-berth .sxb-berth__patch,
 #screens .sx-berth .sxb-berth__route {
@@ -714,77 +715,155 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 }
 #screens .sx-berth .sxb-handoff { margin: calc(10px * var(--k-s)) 0 0 calc(20px * var(--k-s)); }
 
-#screens .sx-berth .so-command-trigger {
-  position: absolute;
-  top: 0;
-  right: 0;
+/* == THE HEAD BAND =============================================================================
+   2026-09-22. The berth's name on the left; on the right, the berth's own readout -- the purse as
+   the band's display number and four gauges on one line beneath it, with a service verb only
+   under the gauge that needs one. Until today this was a panel beside the workspace on every
+   tab, which is why market, shipworks, industry, contracts, factions, bar and ledger all had the
+   same left-list / middle-detail / right-card shape and read as one screen seven times. Moving it
+   up here gives each tab the whole width below to be its own instrument
+   (design/frontend/ONE_PHOTOGRAPH.md section 9.3).
+
+   Nothing here is a surface: the purse and the gauges are readings on the berth's veil. */
+#screens .sx-berth .sxb-berth.dp-frame__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title   trigger"
+    "title   crown"
+    "tape    crown"
+    "handoff crown";
+  grid-template-rows: auto auto auto 1fr;
+  column-gap: clamp(24px, 3vw, 64px);
+  row-gap: 0;
+  align-items: start;
+}
+#screens .sx-berth .sxb-berth.dp-frame__head > .dp-title { grid-area: title; grid-column: auto; }
+#screens .sx-berth .sxb-berth.dp-frame__head > .sxb-tape { grid-area: tape; grid-column: auto; }
+#screens .sx-berth .sxb-berth.dp-frame__head > .sxb-handoff { grid-area: handoff; grid-column: auto; }
+#screens .sx-berth .sxb-berth.dp-frame__head > .so-command-trigger {
+  grid-area: trigger; grid-column: auto;
+  position: static; justify-self: end; align-self: start;
+}
+#screens .sx-berth .sxb-berth.dp-frame__head > .sxb-crown {
+  grid-area: crown; grid-column: auto;
+  position: static; justify-self: end; align-self: start;
+  display: flex; flex-direction: column; align-items: flex-end; gap: calc(10px * var(--k-s));
+  width: auto; max-width: none; max-height: none; overflow: visible;
+  margin: calc(8px * var(--k-s)) 0 0; padding: 0;
+  border: 0; border-image: none; background: none; box-shadow: none;
+  text-align: right;
 }
 
-/* Vitals: one machined plate, not a website header strip. */
-/* 2026-09-22: was `position:absolute; top:18px; right:24px`, floating over the 400px hole the
-   shell's padding reserved for it. It is the body's second column now — same information, inside
-   the frame, aligned with everything else. */
-#screens .sx-berth .sxb-crown {
-  position: relative;
-  align-self: start;
-  width: auto;
-  z-index: 1;
-  align-items: stretch;
+/* The purse: a label and the number, on one baseline. The number is a READING, so it is phosphor
+   (ONE_PHOTOGRAPH section 1, "two temperatures"): the cool ink of what you read. */
+#screens .sx-berth .sxb-crown .sxb-purse {
+  display: flex; align-items: baseline; justify-content: flex-end; gap: calc(14px * var(--k-s));
+  position: relative; order: 0; flex: none;
+}
+#screens .sx-berth .sxb-crown .sxb-purse__label {
+  font-family: var(--dp-face-etch); font-variation-settings: "wght" 700, "wdth" 62;
+  font-size: var(--dp-fs-etch, 12px); letter-spacing: .2em; text-transform: uppercase;
+  color: #c2cfdb;
+}
+#screens .sx-berth .sxb-crown .sxb-purse__value,
+#screens [data-screen="station"] .sxb-crown .sxb-purse__value {
+  font-family: var(--dp-face-display); font-variation-settings: "wght" 780, "wdth" 112;
+  font-size: var(--dp-fs-hero, 56px); line-height: .9; letter-spacing: .01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--dp-phos, #dfeeff);
+  text-shadow: 0 0 18px var(--dp-phos-halo, rgb(150 210 255 / .22)), var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5));
+}
+
+/* The gauges: four readings on one line. Each is a label and its value, a 2px track under them,
+   and -- only when the ship needs it -- the service verb beneath. */
+#screens .sx-berth .sxb-crown .sxb-vitals {
+  display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-start; justify-content: flex-end;
+  gap: calc(26px * var(--k-s));
+  margin: 0; padding: 0; list-style: none;
+}
+#screens .sx-berth .sxb-crown .sxb-vitals > .sxb-vital.k-row {
+  position: relative; display: block;
+  width: clamp(118px, calc(150px * var(--k-s)), 170px); min-height: 0;
+  margin: 0; padding: 0; border: 0; background: none; box-shadow: none;
   text-align: left;
 }
-#screens .sx-berth .sxb-purse { order: 0; flex: none; }
-#screens .sx-berth .sxb-purse__value,
-#screens [data-screen="station"] .sxb-purse__value {
-  font-family: var(--fh-face-display, var(--k-display));
-  font-variation-settings: "wght" 800, "wdth" 125;
-  font-size: var(--fh-size-heroNum, var(--k-fs-num));
-  letter-spacing: 0.02em;
-  color: var(--k-text-live);
+#screens .sx-berth .sxb-crown .sxb-vital__head {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: center;
+  column-gap: 6px; row-gap: 7px; width: 100%; padding-right: 0;
 }
-#screens .sx-berth .sxb-purse__label {
-  font-family: var(--fh-face-display, var(--k-display));
-  font-variation-settings: "wght" 600, "wdth" 62;
-  font-size: var(--k-fs-fine);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--k-bone-38);
+#screens .sx-berth .sxb-crown .sxb-vital__head .so-icon { width: 15px; height: 15px; color: var(--dp-ink-dim, #b7b4a6); }
+#screens .sx-berth .sxb-crown .sxb-vital__label {
+  font-family: var(--dp-face-etch); font-variation-settings: "wght" 700, "wdth" 70;
+  font-size: var(--dp-fs-etch, 12px); letter-spacing: .14em; text-transform: uppercase;
+  color: #c2cfdb;
 }
-#screens .sx-berth .sxb-vitals { flex: none; margin: calc(8px * var(--k-s)) 0 0; --k-row-cols: 1fr auto auto; }
-#screens .sx-berth .sxb-vitals .k-row {
-  min-height: calc(32px * var(--k-s));
-  padding: calc(4px * var(--k-s)) 0;
-  column-gap: calc(10px * var(--k-s));
-  border-color: var(--k-hair);
+#screens .sx-berth .sxb-crown .sxb-vital__track {
+  grid-column: 1 / -1; display: block; width: 100%; height: 2px; margin: 0;
+  background: var(--dp-rule-hi, rgb(232 226 212 / .22)); border-radius: 0; box-shadow: none;
 }
-#screens .sx-berth .sxb-vital__label,
-#screens .sx-berth .sxb-vital__value { font-size: var(--k-fs-data); }
-#screens .sx-berth .sxb-vital__track { width: calc(88px * var(--k-s)); height: 4px; margin-top: 4px; }
-#screens .sx-berth .sxb-vital__acts { min-width: 0; gap: 4px; }
+#screens .sx-berth .sxb-crown .sxb-vital__fill { display: block; height: 2px; border-radius: 0; background: var(--dp-ink-dim, #b7b4a6); box-shadow: none; }
+#screens .sx-berth .sxb-crown .sxb-vital[data-tone="warn"] .sxb-vital__fill { background: var(--dp-lamp, #f2b950); box-shadow: 0 0 6px var(--dp-lamp-bloom, rgb(242 185 80 / .34)); }
+#screens .sx-berth .sxb-crown .sxb-vital[data-tone="bad"] .sxb-vital__fill { background: var(--dp-danger, #ff5038); box-shadow: 0 0 6px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
+#screens .sx-berth .sxb-crown .sxb-vital__value {
+  position: absolute; top: 0; right: 0;
+  font-family: var(--dp-face-read); font-weight: 600; font-size: var(--dp-fs-data, 14px); line-height: 15px;
+  font-variant-numeric: tabular-nums; color: var(--dp-phos, #dfeeff); white-space: nowrap;
+}
+#screens .sx-berth .sxb-crown .sxb-vital__value.k-signal { color: var(--dp-lamp-hot, #ffd98c); }
+#screens .sx-berth .sxb-crown .sxb-vital__value.k-bad { color: var(--dp-danger-hot, #ff8a70); }
+#screens .sx-berth .sxb-crown .sxb-vital__acts {
+  display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; min-width: 0;
+  margin-top: calc(8px * var(--k-s));
+}
+#screens .sx-berth .sxb-crown .sxb-vital__acts:empty { display: none; }
+/* A verb can be wider than its gauge (RESUPPLY · 66 MUN · 792 CR): the last gauge hangs its verb
+   from the frame's right edge instead of running past it. */
+#screens .sx-berth .sxb-crown .sxb-vitals > .sxb-vital:last-child .sxb-vital__acts {
+  position: absolute; right: 0; top: 100%; width: max-content; justify-content: flex-end;
+}
+#screens .sx-berth .sxb-crown .sxb-vital__ok { font-size: var(--dp-fs-etch, 12px); color: #c2cfdb; }
+/* The hold's head is its manifest button: it reads as the same gauge, and says it opens. */
+#screens .sx-berth .sxb-crown .sxb-vital__head[data-hold] { cursor: pointer; }
+#screens .sx-berth .sxb-crown .sxb-vital__head[data-hold]:is(:hover, :focus-visible) .sxb-vital__label { color: var(--dp-ink, #e8e2d4); }
+#screens .sx-berth .sxb-crown .sxb-vital__head[data-hold]:focus-visible { outline: 2px solid var(--dp-ink, #e8e2d4); outline-offset: 4px; }
+
+/* The workspace owns the width the purse used to take. */
+#screens .sx-berth .dp-frame__body--station { grid-template-columns: minmax(0, 1fr); }
+
+/* Narrow frames: the gauges wrap two by two under the purse before anything shrinks. */
+@media (max-width: 1280px) {
+  #screens .sx-berth .sxb-crown .sxb-vitals { flex-wrap: wrap; max-width: calc(2 * 150px + 26px); }
+}
+@media (max-width: 900px) {
+  #screens .sx-berth .sxb-berth.dp-frame__head {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "trigger" "title" "crown" "tape" "handoff";
+  }
+  #screens .sx-berth .sxb-berth.dp-frame__head > :is(.sxb-crown, .so-command-trigger) { justify-self: start; }
+  #screens .sx-berth .sxb-crown, #screens .sx-berth .sxb-crown .sxb-purse { align-items: flex-start; justify-content: flex-start; }
+}
+
 #screens .sx-berth .sxb-vital__acts .k-word,
 #screens .sx-berth .sxb-vital__act {
-  min-height: 36px;
-  padding: 0 calc(8px * var(--k-s));
-  /* A vital's verb is a small cap: it spends credits, so it is mass, just compact. */
+  min-height: 30px;
+  padding: 0 calc(var(--dp-cut, 10px) + 8px) 0 10px;
+  /* A vital's verb spends credits: a printed ghost key with the cut. */
   border: 0;
-  border-radius: 2px;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / .05), rgb(255 255 255 / 0) 44%) padding-box,
-    linear-gradient(168deg, #2b3038, #1c2026) padding-box;
-  box-shadow:
-    none;
+  border-radius: 0;
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-field-ink, rgb(232 226 212 / .08)) 0);
+  box-shadow: none;
   font-size: var(--k-fs-fine);
   color: var(--k-text-live);
-  text-shadow: 0 -1px 0 rgb(0 0 0 / .6);
+  text-shadow: none;
 }
 #screens .sx-berth .sxb-vital__acts .k-word:hover,
 #screens .sx-berth .sxb-vital__act:hover {
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 46%) padding-box,
-    linear-gradient(168deg, #353b45, #22262d) padding-box;
+  background: var(--dp-cut-lit), linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-field-ink-hi, rgb(232 226 212 / .14)) 0);
 }
 #screens .sx-berth .sxb-vital__acts .k-word:active,
 #screens .sx-berth .sxb-vital__act:active {
-  background: linear-gradient(168deg, #16191e, #23272e) padding-box;
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), rgb(232 226 212 / .05) 0);
   box-shadow: none;
 }
 #screens .sx-berth .sxb-vital__ok { font-size: var(--k-fs-fine); color: var(--k-bone-38); }
@@ -798,15 +877,13 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   background: none;
 }
 #screens .sx-berth #sx-panel > .k-panel { height: 100%; min-height: 0; padding: 0; gap: calc(28px * var(--k-s)); }
-/* The index well is a SUNK plate: the light comes from above, so a recess is dark at the top lip
-   and catches light at the bottom -- the exact inverse of a cap. Was `plate.bench.sunk.png`. */
+/* The index is the tab's one sheet: a printed field (it was a "sunk plate" lit dark at the lip). */
 #screens .sx-berth #sx-panel > .k-panel > .k-hang {
   border: 0;
-  border-radius: 2px;
+  border-radius: 0;
   padding: 18px;
-  background: linear-gradient(180deg, #0e1116 0%, #121519 100%) padding-box;
-  box-shadow:
-    none;
+  background: var(--dp-field, rgb(10 12 16 / .84));
+  box-shadow: none;
 }
 #screens .sx-berth #sx-panel > .k-panel > .k-stage {
   background: none;
@@ -1035,16 +1112,15 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   min-height: 56px;
   min-width: calc(140px * var(--k-s));
   padding: 0 calc(16px * var(--k-s));
-  /* The one key on the station that changes the world, so it is the heaviest object on it and
-     the only one lit from inside. Was `key.primary.rest.png` nine-sliced at 18px. */
+  /* The one key on the station that changes the world: the field IS the lamp, with the cut.
+     (It was a nine-sliced render, then a computed amber cap with a lit lip; both imitated a
+     material, which the owner ruled out on 2026-09-22.) */
   border: 0;
-  border-radius: 3px;
-  background:
-    linear-gradient(180deg, rgb(255 236 200 / .24), rgb(255 236 200 / 0) 46%) padding-box,
-    linear-gradient(168deg, #d29b41 0%, #bb862a 52%, #9c6c1d 100%) padding-box;
-  box-shadow:
-    0 4px 16px -4px rgb(242 185 80 / .38);
-  text-shadow: 0 1px 0 rgb(255 236 200 / .28);
+  border-radius: 0;
+  padding-right: calc(var(--dp-cut, 10px) + 16px * var(--k-s));
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-lamp, #f2b950) 0);
+  box-shadow: none;
+  text-shadow: none;
   font-family: var(--fh-face-display, var(--k-display));
   font-variation-settings: "wght" 600, "wdth" 62;
   font-size: var(--k-fs-data);
@@ -1054,39 +1130,31 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 }
 #screens .sx-berth .sxb-launch.k-word:hover,
 #screens .sx-berth .sxb-launch.fh-key:hover {
-  background:
-    linear-gradient(180deg, rgb(255 240 210 / .32), rgb(255 240 210 / 0) 48%) padding-box,
-    linear-gradient(168deg, #dba646 0%, #bd8626 48%, #8d6015 100%) padding-box;
-  box-shadow:
-    0 5px 20px -4px rgb(242 185 80 / .5);
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-lamp-hot, #ffd98c) 0);
+  box-shadow: var(--dp-lamp-glow, 0 0 28px rgb(242 185 80 / .35));
 }
 #screens .sx-berth .sxb-launch.k-word:active,
 #screens .sx-berth .sxb-launch.fh-key:active {
-  background: linear-gradient(168deg, #7d5412 0%, #a9761f 56%, #c8923a 100%) padding-box;
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-lamp-dim, #8a6b3a) 0);
   box-shadow: none;
 }
 /* Focus is a bone bracket, never an amber ring -- amber already means "this is the live verb"
    here, so borrowing it for focus would say two different things with one colour (4.3). */
 #screens .sx-berth .sxb-launch.k-word:focus-visible,
 #screens .sx-berth .sxb-launch.fh-key:focus-visible {
-  outline: 2px solid transparent !important;
-  outline-offset: 0 !important;
-  box-shadow:
-    0 5px 20px -4px rgb(242 185 80 / .45);
+  outline: 2px solid var(--dp-ink, #e8e2d4) !important;
+  outline-offset: 3px !important;
+  box-shadow: var(--dp-lamp-glow, 0 0 28px rgb(242 185 80 / .35));
 }
 /* Undocking into danger: the cap goes red-hot, not grey. */
 #screens .sx-berth .sxb-launch[data-state="risk"] {
-  background:
-    linear-gradient(180deg, rgb(255 210 195 / .2), rgb(255 210 195 / 0) 46%) padding-box,
-    linear-gradient(168deg, #b8452f 0%, #93301f 48%, #6a2014 100%) padding-box;
-  box-shadow:
-    0 4px 16px -4px rgb(214 90 70 / .42);
-  color: #fff0ea;
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-danger, #ff5038) 0);
+  box-shadow: none;
+  color: #1a0806;
 }
 #screens .sx-berth .sxb-launch[data-state="risk"]:hover {
-  background:
-    linear-gradient(180deg, rgb(255 216 203 / .28), rgb(255 216 203 / 0) 48%) padding-box,
-    linear-gradient(168deg, #cd5138 0%, #a53a26 48%, #782518 100%) padding-box;
+  background: linear-gradient(225deg, transparent calc(var(--dp-cut, 10px) * .7071), var(--dp-danger-hot, #ff8a70) 0);
+  box-shadow: 0 0 24px var(--dp-danger-bloom, rgb(255 80 56 / .38));
 }
 @media (forced-colors: active) {
   #screens .sx-berth .sxb-launch.k-word:focus-visible,
@@ -1121,10 +1189,11 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__ident,
 html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__news,
 html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   color: var(--k-text-live);
-  /* WANTED: the tape goes bone-bright rather than swapping to a different printed strip. */
-  background: linear-gradient(177deg, #e8e2d4, #cfc8b8) padding-box;
-  box-shadow:
-    none;
+  /* WANTED: the tape goes bone-bright -- a flat printed bone field, dark ink on it. */
+  background: #e2dccd;
+  box-shadow: none;
+  color: #1a1206;
+  padding: 2px 8px;
 }
 
 /* ───────────── shared scroll-edge fade ───────────── */
@@ -1304,3 +1373,8 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
    the number means; it cannot be the least readable thing beside it. */
 #screens .sx-berth .k-hero__w,
 #screens .sx-berth .k-hero__w.fh-legend { color: #c2cfdb; }
+
+/* A rung's state word ("unlocked", "locked") is a quiet reading, not a hidden one: over the bay's
+   lit right half it measured 4.34:1 at the muted tier (scripts/ui-contrast.mjs), so it takes the
+   station's measured quiet ink instead. */
+#screens .sx-berth .sx-ladder__name .k-row__sub { color: #c9c6be; }

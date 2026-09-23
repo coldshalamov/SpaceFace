@@ -26,16 +26,22 @@ test('berth frame pins its hardware: nameplate, legend tape, vitals plate, works
   assert.match(html, /sxb-berth__news/);
   assert.doesNotMatch(html, /so-bulletin/);
   assert.doesNotMatch(html, /<details[\s\S]*sxb-berth__news/);
-  assert.match(html, /sxb-crown dp-plate/);
+  // The purse and gauges are readings in the head band, not a plate (2026-09-22, section 9.3).
+  assert.match(html, /<aside class="sxb-crown"/);
+  assert.doesNotMatch(html, /sxb-crown dp-plate/);
   assert.match(html, /sx-screen__body/);
   assert.match(html, /sxb-ops[\s\S]*of-facility-rail[\s\S]*sxb-launch/);
   assert.match(html, /sxb-launch fh-key fh-key--primary/);
   assert.match(html, /sxb-launch__light/);
   assert.match(html, /k-world--plate sxb-berth__plate/);
   assert.match(html, /k-world sxb-berth__world/);
-  // The regions are the frame's, and the vitals rail is INSIDE the body beside the workspace.
+  // The regions are the frame's own: head, body, foot.
   assert.match(html, /sxb-berth dp-frame__head/);
-  assert.match(html, /dp-frame__body--station[\s\S]*sx-panel[\s\S]*sxb-crown/);
+  // Was: the vitals rail is INSIDE the body beside the workspace. That made every tab the same
+  // list / detail / card shape; the purse now lives in the head band and the workspace below
+  // takes the whole width (design/frontend/ONE_PHOTOGRAPH.md section 9.3).
+  assert.match(html, /sxb-berth dp-frame__head[\s\S]*sxb-crown[\s\S]*<\/header>/);
+  assert.doesNotMatch(html, /dp-frame__body--station[\s\S]*sxb-crown/);
   assert.match(html, /sxb-ops dp-frame__foot/);
 });
 

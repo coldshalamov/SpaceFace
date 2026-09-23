@@ -40,10 +40,16 @@ export function stationFrameHtml() {
         <p class="sxb-berth__patch" hidden></p><p class="sxb-berth__route" hidden></p>
       </div>
       <div class="sxb-handoff" hidden></div>
+      <!-- THE PURSE AND THE GAUGES live in the head band, right of the name (2026-09-22). They were a
+           panel beside the workspace on every tab, so all seven tabs had the same left-list /
+           middle-detail / right-card shape and looked like one screen. Up here they are the berth's
+           own readout -- the credits as the band's display number, four gauges on one line under
+           it, a service verb only under the gauge that needs one -- and each tab below gets the
+           whole width to be its own instrument. design/frontend/ONE_PHOTOGRAPH.md section 9.3. -->
+      <aside class="sxb-crown" aria-label="Ship vitals and services"><div class="sxb-purse" aria-label="Available credits"><div class="sxb-purse__label dp-etch">Credits</div><div class="sxb-purse__value dp-read">0</div><span class="so-credit-delta" aria-hidden="true"></span></div><ul class="sxb-vitals"></ul></aside>
     </header>
     <div class="dp-frame__body dp-frame__body--station">
       <div class="sx-screen__body dp-glass" id="sx-panel" role="tabpanel" tabindex="0"></div>
-      <aside class="sxb-crown dp-plate dp-pad dp-stack" aria-label="Ship vitals and services"><div class="sxb-purse dp-stack" aria-label="Available credits"><div class="sxb-purse__label dp-etch">Credits</div><div class="sxb-purse__value dp-read">0</div><span class="so-credit-delta" aria-hidden="true"></span></div><ul class="sxb-vitals dp-stack"></ul></aside>
     </div>
     <footer class="sxb-ops dp-frame__foot">
       <nav class="of-facility-rail" aria-label="Station facilities"><div class="sxb-ops__dock"></div><span class="so-berth-status">${stationIcon('signal')}Docked</span></nav>
