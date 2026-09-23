@@ -469,6 +469,7 @@ export function createShipMicroMotionTracker() {
         gimbalYaw: 0,
         gimbalPitch: 0,
         mountMesh: null,   // mesh identity the pivot caches below were scanned from
+        mountHull: null,   // hull object the scale base was captured from — changes on authored swap
         bells: null,       // lazy [{ node, baseY, baseZ, baseSX, baseSY, baseSZ, isPlume }]
         bellCount: 0,
         flareApplied: 1,   // last frame's plume flare factor (unapplied before re-flaring)
@@ -1034,6 +1035,7 @@ export function createShipMicroMotionTracker() {
 
   function scanMountPivots(rec, mesh, hull) {
     rec.mountMesh = mesh;
+    rec.mountHull = hull;
     rec.bellCount = 0;
     rec.rcsNozzleCount = 0;
     rec.flareApplied = 1;
@@ -1431,7 +1433,10 @@ export function createShipMicroMotionTracker() {
 
     // Engine bells steer with stern-local demand (translation minus yaw couple): the drive
     // visibly aims the push. Pitch nods with main-drive power.
-    if (rec.mountMesh !== mesh) scanMountPivots(rec, mesh, hull);
+    // The boundary root survives an authored-root swap while mesh.userData.hull is repointed at
+    // the new hull group — rescan on hull identity too or the scale base stays the pre-swap
+    // fallback's (scale 1) and the next scale channel flattens the authored radius fit to ~1 WU.
+    if (rec.mountMesh !== mesh || rec.mountHull !== hull) scanMountPivots(rec, mesh, hull);
     const driveHeat = isBoosting ? 1 : mainN;
     rec.bellHeat = integrateBellHeat(rec.bellHeat || 0, driveHeat, dt);
     if (!((rec.bellHeat || 0) < 0.004 && rec.bellCool)) {
@@ -1966,6 +1971,7 @@ export function createShipMicroMotionTracker() {
   function clearRecordMeshRefs(rec) {
     if (!rec) return;
     rec.mountMesh = null;
+    rec.mountHull = null;
     rec.bellCount = 0;
     rec.rcsNozzleCount = 0;
     if (rec.bells) rec.bells.length = 0;
