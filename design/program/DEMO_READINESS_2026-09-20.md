@@ -220,13 +220,10 @@ which before closing it.
 
 | # | Where (shot id / route / system) | What a stranger sees | Demo step | State |
 |---|---|---|---|---|
-| D1 | `new-game` | The ship stage is a black rectangle until (or unless) the live hull draws; no picture of any of the three starter hulls | Adventure start | open: produced hull renders as the poster (ONE_PHOTOGRAPH §9 asset #1) |
-| D2 | `new-game` | The hull sub-names (Skater / Tug / Brawler) sit left-aligned under centred tab words; "line 5728 WU/s" is jargon; the first starter's pitch is "Stops badly" | Adventure start | open |
 | D3 | `crucible-draft` | REARM is an empty screen: "Wave 0 cleared. Nothing new fits this hull." and one CONTINUE key | Crucible round break | open (bench fixture may lack offers; a real empty draft must not show a dead screen) |
 | D4 | `crucible-refit` | Two hardpoint rows in a panel sized for twenty; LAUNCH NEXT ROUND and CONTINUE — KEEP GOING read as the same verb; "Esc launch" orphaned at the right edge | Crucible round break | open |
-| D5 | `crucible-results` | The ledger says **Best chain 0** while the story beside it says **Best chain 24 on round 4**; two rows read "Not recorded"; the headline says "from AFT", the story "from astern" | Crucible results | open |
 | D6 | `crucible` | The chosen tile's lit cut edge floats as a stray slash above an unfilled tile; the seed has two stacked rules | Crucible door | open |
-| D7 | `station-contracts` | Long contract titles truncate mid-word ("Contract 47-A: Mass…") | Adventure: take one job | open |
+| D7 | `station-contracts` | An accepted job's title truncates mid-word in a narrow column ("Contract 47-A:…"); an empty board shows two generic wireframe-cube placeholders with dashed circles; the bench board has no posted offers, so the real board is never reviewed | Adventure: take one job | open |
 | D8 | `station-shipworks`, `ship` | The text schematic's labels collide with its dotted connectors | Adventure: fit one upgrade | open: side-elevation render + leader lines (§9 asset #2) |
 | D9 | `station-market` | Every commodity row carries the same cube icon | Adventure: trade | open: 8 category pictograms (§9) |
 | D10 | `chart` | The bottom-left POSITION/TRACKING readout is clipped; the cargo band is half empty | Adventure: route | open |
