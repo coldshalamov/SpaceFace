@@ -295,7 +295,6 @@ export function createToasts(ctx) {
   bindStuntReceipts(bus);
   bindCombatDenialToasts(bus, () => ctx.state);
   bindAutomationPayoffUi(bus, () => ctx.state);
-  bindStuntReceiptToasts(bus);
 
   return { push, tick };
 }
@@ -342,27 +341,6 @@ function isPlayerCombatActor(state, payload) {
   const playerId = state && state.playerId;
   if (playerId == null) return true;
   return payload.actorId === playerId;
-}
-
-// VERB-05 — a detected stunt says its name once, as a receipt. The detector emits
-// stunt:trickDetected once per episode (re-grades ride stunt:trickAmended); the receipt is the
-// name the player earned, on the receipt feed — never a deck card, never repeated. The channel
-// marker lets admitReceipt keep the line through combat quiet: a trick is the result of the
-// fight, not chatter over it.
-export function bindStuntReceiptToasts(bus) {
-  if (!bus || typeof bus.on !== 'function') return;
-  const seen = new Set();
-  bus.on('stunt:trickDetected', (trick) => {
-    const name = String(trick && trick.name || '').trim();
-    if (!name) return;
-    const key = trick.episodeId != null
-      ? `ep:${trick.episodeId}`
-      : `${trick.trickId || name}:${trick.tick ?? ''}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    if (seen.size > 64) seen.delete(seen.values().next().value);
-    bus.emit('toast', { text: name, kind: 'success', ttl: 4, channel: 'stunt' });
-  });
 }
 
 /** VERB-05 — `stunt:trickDetected` becomes one receipt carrying the trick name. */

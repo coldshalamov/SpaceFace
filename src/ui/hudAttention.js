@@ -74,8 +74,6 @@ export function admitReceipt({
   if (k === 'stunt') return { admit: true, reason: 'stunt' };
   if (k === 'danger') return { admit: false, reason: 'danger-floor' };
   if (k === 'bark' || k === 'chatter') return { admit: false, reason: 'chatter' };
-  // A named stunt is the result of the fight, not noise over it — the stunt channel stays
-  // admitted under combat quiet. Everything else still needs the keep-words.
   if (combat && k !== 'error' && channel !== 'stunt' && !COMBAT_KEEP.test(line)) {
     return { admit: false, reason: 'combat-quiet' };
   }

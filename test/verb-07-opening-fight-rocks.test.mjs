@@ -114,6 +114,33 @@ test('a rock shared with a later encounter still survives once the raid mark is 
   }
 });
 
+test('a raid-adopted rock survives even when an unrelated owner resolves last', () => {
+  const { state, bus, system, spawned, snap } = boot();
+  try {
+    bus.emit('encounter:telegraph', { encounterId: 'enc_1', kind: 'skirmish', pos: { x: 400, z: -200 } });
+    const rocks = spawned.splice(0);
+    bus.emit('encounter:telegraph', {
+      encounterId: 'raid_1', kind: 'opening_hauler_raid', pos: { x: 420, z: -180 },
+    });
+    const adopted = rocks.filter((r) => r.data.terrainAnchorEncounterIds.includes('raid_1'));
+    assert.ok(adopted.length >= 1, 'the raid adopted none of the rocks');
+    for (const rock of adopted) assert.equal(rock.data.neighbourhoodAnchor, true);
+
+    // The raid ends first — the foreign owner still holds the rocks, so no wipe either way.
+    bus.emit('encounter:resolved', { encounterId: 'raid_1', shape: 'opening_hauler_raid' });
+    for (const rock of adopted) assert.ok(rock.data.terrainAnchorEncounterIds.includes('enc_1'));
+
+    // The last owner is an ordinary fight — the neighbourhood mark still keeps the rocks.
+    bus.emit('encounter:resolved', { encounterId: 'enc_1', shape: 'skirmish' });
+    for (const rock of adopted) {
+      assert.equal(rock.data.terrainAnchorEncounterIds.length, 0);
+      assert.equal(rock.data.despawnAt, undefined, 'raid-adopted rock wiped by a late unrelated owner');
+    }
+  } finally {
+    teardown(system, bus, snap);
+  }
+});
+
 test('the raid adopting an already-clamped rock lifts the wipe', () => {
   const { state, bus, system, spawned, snap } = boot();
   try {

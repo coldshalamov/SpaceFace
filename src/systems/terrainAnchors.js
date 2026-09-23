@@ -114,6 +114,10 @@ export const terrainAnchors = {
     const arcade = payload.arcadeLayout === true && state.run?.ruleset === 'swarm';
     const required = arcade ? 6 : ANCHOR_MIN;
     const bubbleRadius = arcade ? 390 : ANCHOR_RADIUS;
+    // VERB-07 — rocks dropped for the opening hauler raid are neighbourhood furniture, not
+    // encounter props: the 45-second aftermath sweep must not take them while the player is
+    // still standing in the fight's wreck field. Sector teardown owns them on departure.
+    const openingFight = payload.kind === 'opening_hauler_raid';
 
     // Count existing large solids in the bubble — stations and big rocks both count as anchors.
     let present = 0;
@@ -129,6 +133,9 @@ export const terrainAnchors = {
             ? e.data.terrainAnchorEncounterIds
             : (e.data.terrainAnchorEncounterIds = []);
           if (!owners.includes(payload.encounterId)) owners.push(payload.encounterId);
+          // VERB-07 — a rock the raid adopts gets the same neighbourhood mark as the ones it
+          // drops: it must still be standing after a later, unrelated owner resolves.
+          if (openingFight) e.data.neighbourhoodAnchor = true;
         }
       }
     });
@@ -141,10 +148,6 @@ export const terrainAnchors = {
     const layout = [[-116, -160], [116, -115], [-142, 80], [148, 140], [-35, 292], [48, -302]];
     const rotation = ((Number(payload.arenaSeed) >>> 0) % 360) * Math.PI / 180;
     const survivalCover = payload.kind === 'survival_arena';
-    // VERB-07 — rocks dropped for the opening hauler raid are neighbourhood furniture, not
-    // encounter props: the 45-second aftermath sweep must not take them while the player is
-    // still standing in the fight's wreck field. Sector teardown owns them on departure.
-    const openingFight = payload.kind === 'opening_hauler_raid';
     const spawnAnchor = (dx, dz, size) => {
       const oreHP = Math.round(360 + size * 14);
       const data = {
