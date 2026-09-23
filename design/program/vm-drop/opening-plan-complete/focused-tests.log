@@ -1,0 +1,123 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: resolving-marker meshes are not opening submission leaves
+ok 1 - resolving-marker meshes are not opening submission leaves
+  ---
+  duration_ms: 2.229852
+  ...
+# Subtest: awaiting-authored entity roots do not enter the opening entity census
+ok 2 - awaiting-authored entity roots do not enter the opening entity census
+  ---
+  duration_ms: 3.057736
+  ...
+# Subtest: opening plan completes when only stamped production roots remain after skipping awaiting authored
+ok 3 - opening plan completes when only stamped production roots remain after skipping awaiting authored
+  ---
+  duration_ms: 11.963555
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: opening submission plan freezes production boundary metadata and real leaf references
+ok 4 - opening submission plan freezes production boundary metadata and real leaf references
+  ---
+  duration_ms: 6.33554
+  ...
+# Subtest: producer package hashes and censuses are sourced from real leaves, not counts
+ok 5 - producer package hashes and censuses are sourced from real leaves, not counts
+  ---
+  duration_ms: 2.751803
+  ...
+# Subtest: opening submission plan filters hidden and empty pooled leaves
+ok 6 - opening submission plan filters hidden and empty pooled leaves
+  ---
+  duration_ms: 2.140303
+  ...
+# Subtest: opening admission includes visible ordinary entity roots but defers hidden, offscreen, and unmounted roots
+ok 7 - opening admission includes visible ordinary entity roots but defers hidden, offscreen, and unmounted roots
+  ---
+  duration_ms: 2.407223
+  ...
+# Subtest: opening admission excludes entity leaves masked by the live camera layer contract
+ok 8 - opening admission excludes entity leaves masked by the live camera layer contract
+  ---
+  duration_ms: 0.716326
+  ...
+# Subtest: opening admission adds off-camera roots that the first shadow pass will submit
+ok 9 - opening admission adds off-camera roots that the first shadow pass will submit
+  ---
+  duration_ms: 1.09237
+  ...
+# Subtest: the generated 47-A pod enters the shadow cohort with a verified producer recipe
+ok 10 - the generated 47-A pod enters the shadow cohort with a verified producer recipe
+  ---
+  duration_ms: 19.546862
+  ...
+# Subtest: opening submission plan admits only camera-contributing production leaves
+ok 11 - opening submission plan admits only camera-contributing production leaves
+  ---
+  duration_ms: 0.424261
+  ...
+# Subtest: opening program subject keys keep family shaders distinct when maps differ
+ok 12 - opening program subject keys keep family shaders distinct when maps differ
+  ---
+  duration_ms: 1.219056
+  ...
+# Subtest: first playable pipeline set is content-hash bound and defers global misses
+ok 13 - first playable pipeline set is content-hash bound and defers global misses
+  ---
+  duration_ms: 0.586764
+  ...
+# Subtest: opening submission plan remains incomplete when a blocking production root has no draw leaf
+ok 14 - opening submission plan remains incomplete when a blocking production root has no draw leaf
+  ---
+  duration_ms: 0.692051
+  ...
+# Subtest: opening submission plan fails closed when a blocking root has no verified content hash
+ok 15 - opening submission plan fails closed when a blocking root has no verified content hash
+  ---
+  duration_ms: 1.002489
+  ...
+# Subtest: opening submission plan fails closed when one blocking root loses its boundary hash
+ok 16 - opening submission plan fails closed when one blocking root loses its boundary hash
+  ---
+  duration_ms: 1.616441
+  ...
+# Subtest: opening submission plan fails closed when producer resource census is replaced
+ok 17 - opening submission plan fails closed when producer resource census is replaced
+  ---
+  duration_ms: 1.378404
+  ...
+# Subtest: producer package stamping cannot overwrite an existing producer boundary
+ok 18 - producer package stamping cannot overwrite an existing producer boundary
+  ---
+  duration_ms: 0.380816
+  ...
+# Subtest: opening submission receipt fails closed on an uncaptured first-draw resource
+ok 19 - opening submission receipt fails closed on an uncaptured first-draw resource
+  ---
+  duration_ms: 5.272273
+  ...
+# Subtest: declared pooled resources cover a 0-to-N first-draw growth but stay fail-closed
+ok 20 - declared pooled resources cover a 0-to-N first-draw growth but stay fail-closed
+  ---
+  duration_ms: 1.863234
+  ...
+# Subtest: opening submission receipt fails closed when an exact material has no live Three program binding
+ok 21 - opening submission receipt fails closed when an exact material has no live Three program binding
+  ---
+  duration_ms: 1.504213
+  ...
+# Subtest: production startup no longer invokes a hidden opening discovery render or global loading compile
+ok 22 - production startup no longer invokes a hidden opening discovery render or global loading compile
+  ---
+  duration_ms: 19.100526
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 635.192711
+FOCUSED_EXIT:0
