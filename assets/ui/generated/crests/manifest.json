@@ -1,0 +1,95 @@
+{
+ "schema": "spaceface.generatedArt.v1",
+ "set": "faction crests",
+ "use": "ORRERY section 5: factions crest wall, contacts, contracts, chart, standing gauges",
+ "generator": "OpenAI image generation via codex exec -m gpt-5.5 (ChatGPT account), 1024x1024 transparent",
+ "date": "2026-09-23",
+ "license": "Generated for SpaceFace by the project; no third-party source image supplied.",
+ "style": "flat single-colour warm bone-white (#E8E2D4) emblem, transparent, bold geometric, heraldic yet industrial, reads at 32 px, no text",
+ "files": {
+  "faction_archive": {
+   "file": "faction_archive.webp",
+   "size": 512,
+   "motif": "The Archive, silent monastic archivists of the Severed Codex: an open book cut cleanly in two by a diagonal severing line, with a small key in the gutter, scholarly and austere",
+   "sourceSha256": "43a0b4143b1c10eabed8a53b3a5060a6cd3823f83044f5d8f574a4b4c9b1a209"
+  },
+  "faction_choir": {
+   "file": "faction_choir.webp",
+   "size": 512,
+   "motif": "Ascendant Choir, armed religious zealots of relic shrines: a tall pointed triple arch like a cathedral window with a halo of short rays above it, severe and devotional",
+   "sourceSha256": "659f5ec03012b0f69bc4e43372911ef4657dfd5c2473b52b1040c2bebd87fbde"
+  },
+  "faction_dmc": {
+   "file": "faction_dmc.webp",
+   "size": 512,
+   "motif": "Drift Miners Collective, blue-collar asteroid miners: a stylised pickaxe crossed with an orbital ring with two small moons on the ring, sturdy and working-class",
+   "sourceSha256": "429b2856ff0c9d34ce370facd6ec892f9fd6e5c14bb5cda6e636bb0a9c651104"
+  },
+  "faction_free": {
+   "file": "faction_free.webp",
+   "size": 512,
+   "motif": "Free Frontier, scattered independent waystations: an open compass rose whose outer ring is deliberately broken open on one side, hopeful and independent",
+   "sourceSha256": "9b0443a8dcc4ffda457c5c3f5060c90256bab19e96275434d7b9b1a7b405d5b6"
+  },
+  "faction_fulfillment": {
+   "file": "faction_fulfillment.webp",
+   "size": 512,
+   "motif": "The Fulfillment, clinical automaton administrators of fixed shipping routes: a perfect square set inside a circle with a single check mark and segmented barcode notches, sterile and geometric",
+   "sourceSha256": "7d60d4c35ae1de1aaa5b53e1e07a3f37f72ca180095ee2db5a58f8d4d7777133"
+  },
+  "faction_helix": {
+   "file": "faction_helix.webp",
+   "size": 512,
+   "motif": "Helix Directorate, a bureaucracy of contract allocation, audits and paperwork: a double helix drawn as an official stamp seal with ledger lines across it, clerical and cold",
+   "sourceSha256": "55e76eb8f39e2992c6ec7000335b1c7a8b08a155d19b8578e28a03a719ccee46"
+  },
+  "faction_mts": {
+   "file": "faction_mts.webp",
+   "size": 512,
+   "motif": "Meridian Trade Syndicate, a corporate trade syndicate of commodity exchanges and tolls: a circle bisected by a single meridian arc with fine tick marks and a small balance beam, corporate and precise",
+   "sourceSha256": "923668d9120a5ddb5314e5b443d63057cb78bc08993b7bbbe73d1a2bc43d0419"
+  },
+  "faction_pitborn": {
+   "file": "faction_pitborn.webp",
+   "size": 512,
+   "motif": "The Pitborn, escaped scrappers of salvage yards and wreck fences: a patchwork gear ring stitched together from mismatched plates around a raised crowbar, defiant and scrappy",
+   "sourceSha256": "b9e516da19673a2d67ae015560de63521bd466eefca9d1333efa724f740a127f"
+  },
+  "faction_quiet": {
+   "file": "faction_quiet.webp",
+   "size": 512,
+   "motif": "The Quiet, smugglers of black markets and contraband routes: a hushed closed-eye sigil, a narrow vertical slit inside a circle with two short sealing bars, secretive and minimal",
+   "sourceSha256": "6fcac4d74edaf7a6bd7ff98bc9c97c1dd80fcb7ea8a84ff2f5ed397e177b71f8"
+  },
+  "faction_reach": {
+   "file": "faction_reach.webp",
+   "size": 512,
+   "motif": "Crimson Reach, pirates of the lawless ambush lanes: a hooked boarding claw breaking through a cracked ring, aggressive and jagged",
+   "sourceSha256": "29572c6fb7717479eac917b183aa2500c32d4e58ae10c210d9d8cdf23000599c"
+  },
+  "faction_scn": {
+   "file": "faction_scn.webp",
+   "size": 512,
+   "motif": "Solar Concord Navy, the lawful federation navy of the core worlds and jump-gate checkpoints: a stern eight-point star over a sun disc, framed by a chevron-cut octagonal outline, naval and orderly",
+   "sourceSha256": "5b3c8d371e4c0d0493fe9d639e0567f4561e1eebd9131eea835220affcd61766"
+  },
+  "faction_understory": {
+   "file": "faction_understory.webp",
+   "size": 512,
+   "motif": "The Understory, saprophyte scavengers of graveyard salvage and wreckage: a mushroom and mycelium network branching out of a broken hull fragment, organic and eerie",
+   "sourceSha256": "f384dea3465acebf0ae994f03154e4f03089798cf1627b43d0c2bcd48cfa2f3a"
+  },
+  "faction_vael": {
+   "file": "faction_vael.webp",
+   "size": 512,
+   "motif": "The Vael, xenophobic aliens of the far rim with exotic technology: an asymmetric organic spiral thorn sigil, alien and unsettling, curved blades growing from a seed shape",
+   "sourceSha256": "c0fcef2c95ce8e3ad47fda09d4689f94083f169f16382faa242dce02374fe704"
+  },
+  "faction_verge_layers": {
+   "file": "faction_verge_layers.webp",
+   "size": 512,
+   "motif": "The Verge-Layers, a nacre-shelled precursor intelligence of the jump-gate network: concentric nacre layers forming a gate ring, with an inward-curling spiral like a question mark at its centre, ancient and alien",
+   "sourceSha256": "cfbf2d6a1064972213f35f8096e2888f8d3f32aa243a14a38ff274114767e4de"
+  }
+ }
+}
