@@ -55,7 +55,8 @@ working. Product status and remaining tasks live in
 | INFERENCE catalog PIC-08 (shove-kill schedule cause) | devin-catalog-grunt | DONE 26732571a | `src/systems/masslineThrow.js`, `src/systems/collisionConsequences.js`, `test/entity-killed-presentation-receipt.test.mjs` | recorded, released |
 | INFERENCE catalog TOOL-02 (hover and tab are different recordings) | devin-catalog-grunt | DONE df4d6bd90 | `assets/audio/ui/ui_hover.wav`, `assets/audio/ui/ui_tab.wav`, `src/audio/sampleLibrary.js`, `src/data/audioRecipes.js`, `assets/reference/cc0/PROVENANCE.md`, `test/audio-ui-hover-tab.test.mjs` | recorded, released |
 | Ten seam-polish fixes (user-requested cracks sweep) | devin-polish-ten | DONE 1d1d1c23e | `src/ui/input.js`, `src/ui/promptDeck.js`, `src/ui/screens/sandbox.js`, `src/ui/uiPrimitives.js`, `src/ui/hud.js`, `src/ui/commandBar.js`, `src/ui/galaxyMap.js`, `src/ui/screens/settings.js`, `src/ui/listControls.js`, `src/ui/bandHud.js`, `test/prompt-deck.test.mjs` | recorded, released |
-| B1 (§22.4): hours 1–10 still pay — income curve, encounters still spawn after hour 4 | zcode-gaprow-B1 | MUTATING | `src/systems/economy.js`, `src/systems/encounterDirector.js`, `test/b1-hours-income-encounter-supply.test.mjs` | derived-model fixture prints income > 0 post-hour-1 and hours-5–9 supply > 0 on seeds 4242 and 8008, then pathspec commit |
+| B1 (§22.4): hours 1–10 still pay — income curve, encounters still spawn after hour 4 | zcode-gaprow-B1 | DONE cae268bc9 | `src/systems/economy.js`, `src/systems/encounterDirector.js`, `test/b1-hours-income-encounter-supply.test.mjs` | recorded, released |
+| INFERENCE catalog VERB-04 (first well drop hint) | antigravity-inference | PUBLISHING | `src/systems/onboarding.js`, `test/verb-04-first-well-hint.test.mjs` | pathspec commit |
 
 
 
