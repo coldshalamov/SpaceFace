@@ -74,32 +74,6 @@
   ],
   "units": [
     {
-      "id": "iron-maw-screen-wave",
-      "date": "2026-08-12",
-      "wf": "WF-02",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "Iron Maw now calls one deterministic Vael Wasp screen through the live Tactical AI reinforcement owner below half hull.",
-      "fingerprint": "verb=call-screen,subject=iron-maw,sector=sector_ashfall_reach,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "1c7c503cd92599bd45caa0add62d7705ee90c21c",
-      "verification": "focused_green"
-    },
-    {
-      "id": "iron-maw-capital-broadside",
-      "date": "2026-08-12",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Iron Maw now rolls between telegraphed alternating broadside salvos instead of behaving like a light sniper; the previously-authored brawler doctrine is also restored to the live typed vocabulary.",
-      "fingerprint": "verb=roll-and-broadside,subject=iron-maw,sector=sector_ashfall_reach,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "8ace110b771ab5bc3e88d49155a1383ca2c1050e",
-      "verification": "focused_green"
-    },
-    {
       "id": "ashfall-vault-coordinates",
       "date": "2026-08-12",
       "wf": "WF-10",
@@ -1635,6 +1609,32 @@
       "references": [],
       "integration": "live",
       "commit": "36b111fe2",
+      "verification": "focused_green"
+    },
+    {
+      "id": "scan-glyph-ore-truth",
+      "date": "2026-09-23",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A scan pulse stamps silicate as Si and a rare rock as Xe, and the chart and appraisal use that same glyph.",
+      "fingerprint": "verb=read,subject=asteroid-ore,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "dbd2a74222d9954d1cac4d0011d11bdb8384deba",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-wf01-rescue-craft",
+      "date": "2026-09-23",
+      "wf": "WF-01",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "ambient rescue craft tracks distress and survivor pods, performs proximity claim and station delivery with receipts",
+      "fingerprint": "verb=rescue,subject=rescue_craft,sector=ambient,layer=simulation,tempo=tactical,domain=traffic",
+      "references": [],
+      "integration": "live",
+      "commit": "918a19f1d",
       "verification": "focused_green"
     }
   ],
