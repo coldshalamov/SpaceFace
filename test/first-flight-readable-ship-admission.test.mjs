@@ -89,6 +89,7 @@ test('a slow station cannot occupy the only slot for a first-flight ship contact
   const shipEntity = {
     id: 'ship', type: 'ship', alive: true, mesh: ship,
     pos: { x: 100, z: 0 }, activity: { presentationTier: 'R0_GLASS' },
+    data: { defId: 'ship_wasp' },
   };
   globalThis.window.SF.state.entities.set('ship', shipEntity);
   let shipStarted = false;
@@ -102,15 +103,23 @@ test('a slow station cannot occupy the only slot for a first-flight ship contact
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(describeAuthoredUpgradeQueue(scene).inFlight, 1);
     holdAuthoredUpgradeQueueForFirstFlight(scene);
-    const shipOptions = { overlapAuthoredPipelineCompile: true };
+    let prefetchLoads = 0;
+    const shipOptions = {
+      overlapAuthoredPipelineCompile: true,
+      requiredWholeShip: true,
+      loadAuthoredPart: async () => { prefetchLoads++; return null; },
+    };
     enqueueBoundaryUpgrade(scene, {
-      boundary: ship, entity: shipEntity, options: shipOptions,
+      boundary: ship, entity: shipEntity, renderer: {}, options: shipOptions,
       run: () => {
         shipStarted = true;
         shipOptions.onAuthoredPipelineStaged?.();
         return new Promise((resolve) => { finishShip = resolve; });
       },
     });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.ok(prefetchLoads > 0, 'the close ship starts its asset request before a composition slot opens');
+    assert.equal(shipStarted, false, 'asset lookahead does not construct the ship early');
     scheduled.shift()(0);
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(shipStarted, true, 'the ship must start before the station settles');

@@ -3804,6 +3804,9 @@ export function enqueueBoundaryUpgrade(scene, job) {
   else state.jobs.splice(insertionIndex, 0, queuedJob);
   state.byBoundary.set(queuedJob.boundary, queuedJob);
   state.byKey.set(queuedJob.key, queuedJob);
+  if (state.firstFlightHandoffHold === true && firstFlightReadableShipJob(queuedJob)) {
+    primeNextAuthoredAssetPlan(state);
+  }
   if (!state.running) processUpgradeQueue(state);
   else scheduleNextUpgradeFrame(state);
   return completion;
@@ -3873,6 +3876,7 @@ export function resumeAuthoredUpgradeQueueAfterOpening(scene) {
   const held = state.openingHandoffHold === true || state.firstFlightHandoffHold === true;
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = false;
+  state.firstFlightPrefetchJob = null;
   if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
   state.heldShipWakeTimer = null;
   state.loadingHullsOnly = false;
@@ -3886,6 +3890,7 @@ export function resumeAuthoredUpgradeQueueForLoadingHulls(scene) {
   if (!state) return false;
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = false;
+  state.firstFlightPrefetchJob = null;
   if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
   state.heldShipWakeTimer = null;
   state.loadingHullsOnly = true;
@@ -3919,6 +3924,7 @@ function upgradeQueueState(scene) {
       frameScheduled: false,
       frameScheduleToken: 0,
       heldShipWakeTimer: null,
+      firstFlightPrefetchJob: null,
       openingHandoffHold: false,
       firstFlightHandoffHold: false,
       loadingHullsOnly: false,
@@ -4323,6 +4329,7 @@ function scheduleNextUpgradeFrame(state) {
     scheduleHeldShipWake(state);
     return;
   }
+  if (state.firstFlightHandoffHold === true) primeNextAuthoredAssetPlan(state);
   if (state.inFlight >= authoredUpgradeConcurrencyLimit()
       && !firstFlightShipCanPassBusyPlace(state)) return;
   // One entity admission per frame: keep post-boot authored upgrades bounded even when several
@@ -4492,6 +4499,30 @@ function authoredUpgradeConcurrencyLimit() {
 function primeNextAuthoredAssetPlan(state) {
   const liveState = authoredRuntimeState();
   if (!state || !liveState || liveState.mode !== 'flight') return;
+  if (state.firstFlightHandoffHold === true) {
+    if (state.firstFlightPrefetchJob
+        && state.jobs.includes(state.firstFlightPrefetchJob)
+        && jobStillNeeded(state, state.firstFlightPrefetchJob)) return;
+    state.firstFlightPrefetchJob = null;
+    const player = liveState.entities?.get?.(liveState.playerId);
+    const eligible = state.jobs.filter((job) => firstFlightReadableShipJob(job)
+      && job.renderer && jobStillNeeded(state, job) && !job.prefetchPromise);
+    eligible.sort((a, b) => {
+      const priority = authoredUpgradePriority(a) - authoredUpgradePriority(b);
+      if (priority) return priority;
+      return (planarRangeWU(a.entity, player) ?? Infinity)
+        - (planarRangeWU(b.entity, player) ?? Infinity);
+    });
+    const job = eligible[0];
+    if (!job) return;
+    state.firstFlightPrefetchJob = job;
+    job.prefetchPromise = preloadAuthoredAssetsForEntity(job.renderer, job.entity, job.options || {});
+    job.prefetchPromise.then(() => scheduleNextUpgradeFrame(state), (error) => {
+      job.prefetchError = error && error.message ? error.message : String(error);
+      scheduleNextUpgradeFrame(state);
+    });
+    return;
+  }
   // Only prepare the job that is about to be admitted. The old loop started a preload Promise for
   // every queued ship, which effectively asked the serial decode lane to process the whole live
   // galaxy while the player was already flying. One-job lookahead keeps the same authored asset and
