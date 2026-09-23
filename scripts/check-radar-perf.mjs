@@ -12,7 +12,8 @@ const requiredRadarFeatures = [
   ['single active-objective key', 'sf-radar-objective-key'],
   ['station and gate blips', "type === 'station'"],
   ['pickup blips', "type === 'pickup'"],
-  ['asteroid blips', 'drawAsteroidBlip'],
+  // 5bba14cd1 batched the per-rock drawAsteroidBlip calls into one path over nearRockSlots
+  ['asteroid blips', 'nearRockSlots[i]'],
   ['ship colorblind shapes', 'semanticShape'],
   ['lead marker', 'solveIntercept'],
   ['objective waypoint marker', 'state.nav'],

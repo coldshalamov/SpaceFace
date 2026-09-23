@@ -69,6 +69,16 @@ ${S} #hud .sf-band-hud__button:hover, ${S} #hud .sf-band-hud__button:focus-visib
 ${S} #hud .sf-commtape { flex-wrap:wrap; row-gap:7px; }
 ${S} #hud .sf-commtape__news { flex:1 0 100%; order:5; }
 
+/* ---- the radar: its frame is ORRERY light drawn outside the canvas, so the wrap must not clip ---- */
+${S} #hud .sf-radar-wrap--orrery { position:relative; contain:layout style; overflow:visible; }
+/* the dial stops clipping (its frame lives outside the rim); the canvas keeps its own circle mask */
+${S} #hud .sf-radar-wrap--orrery .sf-radar { overflow:visible; contain:layout style; }
+${S} #hud .sf-radar-wrap--orrery .sf-radar canvas { clip-path:circle(50%); }
+/* the kit bezel, face ring and north caret are the old instrument's chrome; the frame replaces them */
+${S} #hud .sf-radar-wrap--orrery :is(.sf-kit-radar__bezel, .sf-kit-radar__face, .sf-kit-radar__n) { display:none; }
+${S} #hud .sf-radar-wrap--orrery .sf-radar-objective-key { margin-top:26px; font-family:var(--dp-face-label); font-stretch:112%;
+  font-weight:600; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--dp-hand, #f2b950); ${HALO} }
+
 html.sf-reduce-motion ${S} #hud .sf-discovery-plate { transition:opacity .2s linear; }
 @media (forced-colors: active) {
   ${S} #hud .sf-discovery-plate__frame::after, ${S} #hud .sf-toast::after, ${S} #hud .sf-band-hud__button::before { box-shadow:none; border:1px solid CanvasText; }

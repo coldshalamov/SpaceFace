@@ -35,6 +35,9 @@ import {
   tacticalRadarMetrics,
 } from './map/tacticalMapGrammar.js';
 import { installMapParityBridge } from './map/mapParityBridge.js';
+import { svg as orrSvg, circularText } from './orrery/svg.js';
+import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instruments.js';
+import { injectOrrery } from './orrery/tokens.js';
 
 const COMPACT_SIZE = 220;
 const COMPACT_C = COMPACT_SIZE / 2;
@@ -465,7 +468,7 @@ function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   g.restore();
 }
 
-function drawBackground(g, center, radius) {
+function drawBackground(g, center, radius, { grid = true } = {}) {
   g.clearRect(0, 0, center * 2, center * 2);
   // Dark ground first: every mark on this dial is small, so contrast has to come from the plate.
   const gradient = g.createRadialGradient(center, center, 0, center, center, radius);
@@ -483,7 +486,8 @@ function drawBackground(g, center, radius) {
   g.clip();
   g.strokeStyle = 'rgba(232,226,212,0.04)';
   g.lineWidth = 1;
-  const step = radius / 3;
+  // The square grid is the legacy face; under the ORRERY frame the scope is rings and a dotted cross.
+  const step = grid ? radius / 3 : Infinity;
   for (let d = step; d <= radius; d += step) {
     g.beginPath();
     g.moveTo(center - d, center - radius);
@@ -515,6 +519,56 @@ function drawBackground(g, center, radius) {
   g.restore();
 }
 
+// ---- ORRERY frame (design/frontend/ORRERY.md §6 Radar Orrery) ------------------------------------
+// The canvas stays the dense data layer (contacts, rocks, trails, the lead pip); the instrument
+// around it is ORRERY light: the rim, a drifting tick orbit, north, the range ENGRAVED along the
+// lower rim (it was a boxed chip on the canvas), and the amber Hand pointing at the objective. It is
+// built in canvas coordinates, so every mark lines up with what the canvas draws.
+const FRAME_PAD = 30;
+function createRadarFrame(size, center, radius) {
+  injectOrrery();
+  const root = orrSvg('svg', {
+    class: 'orr-svg sf-radar-orrery',
+    viewBox: `${-FRAME_PAD} ${-FRAME_PAD} ${size + FRAME_PAD * 2} ${size + FRAME_PAD * 2}`,
+    'aria-hidden': 'true',
+  });
+  root.appendChild(orrRing({ cx: center, cy: center, r: radius + 0.5, tone: 'rest', width: 1, bloom: 4 }));
+  root.appendChild(orbitRing({ cx: center, cy: center, r: radius + 5, count: 72, major: 6, len: 3, majorLen: 7, tone: 'rest', drift: -2400, inward: false }).el);
+  root.appendChild(orrSvg('path', {
+    d: `M ${center - 4.5} ${center - radius - 13} L ${center} ${center - radius - 19} L ${center + 4.5} ${center - radius - 13}`,
+    class: 'orr-core orr-hi', 'stroke-width': 1.2, fill: 'none',
+  }));
+  const north = orrSvg('text', { x: center, y: center - radius - 22, 'text-anchor': 'middle', 'font-size': 9 });
+  north.textContent = 'N';
+  root.appendChild(north);
+  const objective = orrHand({ cx: center, cy: center, r0: radius - 18, r1: radius + 13, width: 1.5, pip: 4 });
+  objective.el.setAttribute('opacity', '0');
+  root.appendChild(objective.el);
+  let rangeText = null;
+  let rangeNode = null;
+  let bearingNow = null;
+  return {
+    el: root,
+    setRange(text) {
+      if (text === rangeText) return;
+      rangeText = text;
+      if (rangeNode) rangeNode.remove();
+      rangeNode = circularText(center, center, radius + 17, `RANGE  ${text}`.toUpperCase(),
+        { startDeg: 270, size: 8, className: 'orr-micro orr-micro--hi', anchor: 'middle', upright: true });
+      root.appendChild(rangeNode);
+    },
+    /** bearing in degrees (0 = up, clockwise) or null for no objective */
+    setObjective(bearing) {
+      if (bearing === bearingNow) return;
+      if (bearing == null) { objective.el.setAttribute('opacity', '0'); bearingNow = null; return; }
+      if (bearingNow == null) { objective.el.setAttribute('opacity', '1'); objective.pointTo(bearing, { instant: true }); }
+      else objective.pointTo(bearing);
+      bearingNow = bearing;
+    },
+    dispose() { objective.dispose(); root.remove(); },
+  };
+}
+
 export function createRadar(ctx) {
   const { state, bus } = ctx;
   const wrap = document.createElement('div');
@@ -541,6 +595,25 @@ export function createRadar(ctx) {
   let configuredCenter = COMPACT_C;
   let configuredRadius = COMPACT_R;
   let expanded = false;
+  let orreryFrame = false;
+  let frame = null;
+  function mountOrreryFrame() {
+    if (frame) frame.dispose();
+    frame = createRadarFrame(configuredSize, configuredCenter, configuredRadius);
+    // Inside the dial, sized in percent of it, so the frame tracks the dial through every responsive
+    // size (220 / 200 / 132) and the expanded scope without a layout read.
+    const span = `${(((configuredSize + FRAME_PAD * 2) / configuredSize) * 100).toFixed(3)}%`;
+    frame.el.style.cssText = `position:absolute;left:50%;top:50%;width:${span};height:${span};transform:translate(-50%,-50%);pointer-events:none;overflow:visible;z-index:1;`;
+    dial.appendChild(frame.el);
+  }
+  /** Hand the instrument's frame to ORRERY: the canvas keeps the data, the rim/range/north move out. */
+  function setOrreryFrame(on) {
+    orreryFrame = !!on;
+    wrap.classList.toggle('sf-radar-wrap--orrery', orreryFrame);
+    drawBackground(background, configuredCenter, configuredRadius, { grid: !orreryFrame });
+    if (orreryFrame) mountOrreryFrame();
+    else if (frame) { frame.dispose(); frame = null; }
+  }
 
   function configureCanvas(size, center, radius) {
     if (configuredSize === size) return;
@@ -558,7 +631,8 @@ export function createRadar(ctx) {
     background.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.imageSmoothingEnabled = false;
     background.imageSmoothingEnabled = true;
-    drawBackground(background, center, radius);
+    drawBackground(background, center, radius, { grid: !orreryFrame });
+    if (orreryFrame) mountOrreryFrame();
   }
 
   configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
@@ -772,13 +846,15 @@ export function createRadar(ctx) {
     g.stroke();
     g.restore();
 
-    g.save();
-    g.fillStyle = 'rgba(232,226,212,0.62)';
-    g.font = canvasFont(700, 12, 'data');
-    g.textAlign = 'center';
-    g.textBaseline = 'bottom';
-    g.fillText('N', center, center - radius + 14);
-    g.restore();
+    if (!frame) {
+      g.save();
+      g.fillStyle = 'rgba(232,226,212,0.62)';
+      g.font = canvasFont(700, 12, 'data');
+      g.textAlign = 'center';
+      g.textBaseline = 'bottom';
+      g.fillText('N', center, center - radius + 14);
+      g.restore();
+    }
 
     const player = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
@@ -1149,6 +1225,12 @@ export function createRadar(ctx) {
       if (expanded || cue.resolved === false) drawObjectiveLabel(g, cue);
     }
     updateObjectiveKey(waypoint, cue);
+    if (frame) {
+      // same frame as projectRadarPoint: screen = centre - (dx, dz) * scale, so 0 deg (up) is +z
+      frame.setObjective(waypointPos
+        ? Math.round(Math.atan2(-(waypointPos.x - player.pos.x), waypointPos.z - player.pos.z) * 180 / Math.PI)
+        : null);
+    }
 
     const beacons = state.beacons;
     if (Array.isArray(beacons) && beacons.length) {
@@ -1185,7 +1267,8 @@ export function createRadar(ctx) {
     // nearest contacts at every radar size, so the scope draws none.
     drawPlayerHull(g, center, center, player.rot, { label: false });
     drawThreatRing(g, metrics, hostileCount, now, reducedMotion);
-    drawRangePlate(g, metrics, range, expanded);
+    if (frame) frame.setRange(formatRadarDistance(range));
+    else drawRangePlate(g, metrics, range, expanded);
 
     canvas.setAttribute(
       'aria-label',
@@ -1205,10 +1288,11 @@ export function createRadar(ctx) {
       try { unsubscribe(); } catch (_) {}
     }
     try { parityTeardown(); } catch (_) {}
+    if (frame) { frame.dispose(); frame = null; }
     trailMap.clear();
   }
 
-  return { el: wrap, draw, invalidate, destroy };
+  return { el: wrap, draw, invalidate, destroy, setOrreryFrame };
 }
 
 function drawContactThreatPulse(g, x, y, selected, now, reducedMotion) {
