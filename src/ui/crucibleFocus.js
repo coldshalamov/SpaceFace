@@ -29,7 +29,10 @@
 // quitting to the menu mid-fight.
 
 import { isRunSealed } from '../core/runSeal.js';
-import { mountCrucibleCombatReadout } from './crucibleCombatReadout.js';
+// The flight sentence card (crucibleCombatReadout) is retired: ZERO_TO_HERO §3 HUD quiet —
+// zero persistent sentence cards in flight. The ordnance ring already carries the trap count
+// (CHARGE key + remaining), and the draft screen keeps crucibleFittingDescription for activation
+// guidance. Nothing here imports the readout anymore; the module stays for the draft.
 
 export const CRUCIBLE_FOCUS_CLASS = 'sf-crucible-focus';
 const STYLE_ID = 'sf-crucible-focus-style';
@@ -147,14 +150,6 @@ export const crucibleFocus = {
     const run = st && st.run;
     const wanted = !!(run && run.kind === 'survival' && isRunSealed(st));
     const root = focusHost();
-    // Fittings, bindings and readiness can change without changing the run's focus class.
-    if (wanted && root) {
-      if (!this._combatReadout) this._combatReadout = mountCrucibleCombatReadout(root);
-      this._combatReadout.update(st);
-    } else {
-      this._combatReadout?.release();
-      this._combatReadout = null;
-    }
     if (wanted === this._applied) return;
     this._applied = wanted;
     this._applyCamera(st, wanted);
@@ -180,8 +175,6 @@ export const crucibleFocus = {
   },
 
   _release() {
-    this._combatReadout?.release();
-    this._combatReadout = null;
     if (this._applied === true) this._applyCamera(this.state, false);
     this._priorZoom = null;
     this._applied = null;
