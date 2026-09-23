@@ -1048,16 +1048,35 @@ export function setHidden(el, hidden) {
   el.hidden = next;
 }
 // Screen-space HUD overlays: position with translate3d only (never per-frame left/top layout).
+// Quantized numeric early-out: the settled path used to rebuild the transform string every call
+// just to strcmp it against _sfHudTransform. Cache tenths-of-a-px / tenths-of-a-deg keys so a
+// still overlay skips toFixed + template alloc entirely. Picture unchanged (same rounding).
 function setHudScreenTransform(el, x, y, opts = null) {
   if (!el) return;
   const nx = Number(x);
   const ny = Number(y);
   if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
   const center = !opts || opts.center !== false;
-  const rotate = opts && Number.isFinite(opts.rotate) ? ` rotate(${opts.rotate.toFixed(1)}deg)` : '';
-  const offset = (opts && opts.offset) || (center ? 'translate(-50%,-50%)' : '');
-  const next = `translate3d(${nx.toFixed(1)}px,${ny.toFixed(1)}px,0) ${offset}${rotate}`.trim();
-  if (el._sfHudTransform === next) return;
+  const hasRotate = !!(opts && Number.isFinite(opts.rotate));
+  const customOffset = (opts && opts.offset) || '';
+  const qx = Math.round(nx * 10);
+  const qy = Math.round(ny * 10);
+  const qr = hasRotate ? Math.round(opts.rotate * 10) : 0;
+  if (
+    el._sfHudTx === qx
+    && el._sfHudTy === qy
+    && el._sfHudTr === qr
+    && el._sfHudTc === center
+    && el._sfHudTo === customOffset
+  ) return;
+  el._sfHudTx = qx;
+  el._sfHudTy = qy;
+  el._sfHudTr = qr;
+  el._sfHudTc = center;
+  el._sfHudTo = customOffset;
+  const rotate = hasRotate ? ` rotate(${(qr / 10).toFixed(1)}deg)` : '';
+  const offset = customOffset || (center ? 'translate(-50%,-50%)' : '');
+  const next = `translate3d(${(qx / 10).toFixed(1)}px,${(qy / 10).toFixed(1)}px,0) ${offset}${rotate}`.trim();
   el._sfHudTransform = next;
   el.style.transform = next;
 }
