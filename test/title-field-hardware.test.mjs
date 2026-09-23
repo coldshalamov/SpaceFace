@@ -29,9 +29,10 @@ test('title stands on the uiStage, not a word list on black', () => {
   assert.match(frames, /k-world k-world--plate/);
 });
 
-test('title frame is a Deckplate assembly: frame, nameplate, live eyebrow', () => {
+test('title frame is a Deckplate assembly: frame, drawn logotype, live eyebrow', () => {
   assert.match(frames, /dp-frame--screen/);
-  assert.match(frames, /dp-title__name--hero/);
+  // The name is the drawn logotype mark (the h1 keeps its text for the accessibility tree).
+  assert.match(frames, /dp-logotype/);
   assert.match(frames, /dp-title__eyebrow/);
   assert.match(frames, /dp-title__rule/);
   // The contract line moved INTO the eyebrow rather than floating loose near the bottom edge.
@@ -39,12 +40,15 @@ test('title frame is a Deckplate assembly: frame, nameplate, live eyebrow', () =
   assert.match(frames, /data-fh-register|dataset\.dp/);
 });
 
-test('title verbs are machined targets, and the empty decorative rail is gone', () => {
-  assert.match(menu, /system: 'dp'/);
+test('title verbs are words of light on the ORRERY dial, and the empty decorative rail is gone', () => {
+  // The poster weight: words of light (no plates) over the world.
+  assert.match(menu, /system: 'light'/);
   assert.doesNotMatch(menu, /of-title-rail/, 'the painted-and-empty 64x787 rail must not come back');
   assert.doesNotMatch(menu, /fh-menu-item/);
-  // Every item carries its own lamp rail — hardware that also reports which verb is awake.
-  assert.match(DECKPLATE_LAYOUT_CSS, /\.dp-menu__item::before/);
+  // ORRERY (design/frontend/ORRERY.md §6 Title): the same buttons ride the rim of the emblem's dial
+  // and the Hand swings to the awake verb. The rail only positions the list; it builds no menu.
+  assert.match(menu, /createArcRail\(\{ host: stage, list, frame: rootEl/);
+  assert.match(menu, /emblem\.webp/);
   assert.match(DECKPLATE_LAYOUT_CSS, /\.dp-menu__item\[aria-disabled="true"\]/);
 });
 

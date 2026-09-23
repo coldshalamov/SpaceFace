@@ -13,10 +13,14 @@ import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { createArcRail } from '../orrery/arcRail.js';
 
 const LS_PREFIX = 'sf.save.';
 /** The attention lamp's listeners, released when the screen unmounts. */
 let detachLamp = null;
+/** ORRERY: the verbs ride the rim of the emblem's dial (design/frontend/ORRERY.md §6 Title). */
+let arcRail = null;
+const EMBLEM_URL = new URL('../../../assets/ui/generated/emblem/emblem.webp', import.meta.url).href;
 // spec2/03 §3: the still begins its slow drift after this much idle time. Input re-arms the window.
 const ATTRACT_IDLE_MS = 12_000;
 
@@ -341,6 +345,10 @@ export const mainMenuScreen = {
     aside.classList.add('of-title-aside');
     stage.appendChild(aside);
     detachLamp = attachAttentionLamp(stage);
+    // ORRERY: the same buttons, set round the rim of the emblem's dial; the amber Hand swings from
+    // its pivot to whichever verb is awake. The rail only positions the list and draws behind it.
+    if (arcRail) arcRail.dispose();
+    arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside], emblemUrl: EMBLEM_URL, engraving: 'SpaceFace · Helios Reach · Contract 47-A · Mass variance survey' });
 
     const byAction = (action) => stage.querySelector('[data-action="' + action + '"]');
     const bContinue = byAction('continue');
@@ -509,6 +517,7 @@ export const mainMenuScreen = {
       if (current) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
       b.tabIndex = current ? 0 : -1;
     }
+    if (arcRail) arcRail.rest();
   },
 
   onShow(ctx) {
@@ -540,6 +549,7 @@ export const mainMenuScreen = {
 
   dispose() {
     this._stopIdleAttract();
+    if (arcRail) { arcRail.dispose(); arcRail = null; }
     for (const off of this._offBus || []) { try { off(); } catch (_) {} }
     this._offBus = [];
     refs = null;
