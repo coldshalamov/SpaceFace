@@ -79,7 +79,7 @@ not to invent.
 | VERB-04 | The first Well you drop tells you, once, that you dropped it | `src/systems/onboarding.js` | The first player `fields:deployed` emits one hint and does not repeat that session | Change well force or radius | SHIPPED 5b19fa765 |
 | VERB-05 | A detected stunt says its name once, as a receipt | `src/systems/stuntGrammar.js`, `src/ui/hudAttention.js` | `stunt:trickDetected` admits one receipt with the trick name | Add a combo meter. Toast a shove, hit, or dock sentence (§22 G3) | SHIPPED b996f2932 |
 | VERB-06 | The opening hauler's cargo can cook when it slams | `src/data/encounters/015-opening-hauler-raid.js` | Its commodity is one `lootShards.js` already treats as a volatile slam | Add an explosive system. Retint pods (§22 F4) | SHIPPED f6ca40d5b |
-| VERB-07 | Rocks dropped for the opening fight are not wiped at 45 seconds | `src/systems/terrainAnchors.js` | Those anchors survive until the player leaves the neighbourhood | Build a machine (§22 F13) | OPEN |
+| VERB-07 | Rocks dropped for the opening fight are not wiped at 45 seconds | `src/systems/terrainAnchors.js` | Those anchors survive until the player leaves the neighbourhood | Build a machine (§22 F13) | SHIPPED 7dd954190 |
 | VERB-08 | The throw diamond hides when you are the body that will move | `src/ui/masslineHud.js` | A heavy anchor or self-sling does not draw the meeting diamond | Draw a path ghost (§22 F1). Change release impulse | SHIPPED |
 | VERB-09 | Helios sells one stack of impulse charges | Helios market or station stock data consumed by `src/systems/economy.js` | A new game can buy `cmdty_impulse_charge` at Helios Station | Change the charge solver or the ten-verb curve (§22 B8) | SHIPPED 40a2f2c4c |
 | VERB-10 | A pod or chip on your rope is not vacuumed into the hold | `src/systems/mining.js` | `_updatePickups` skips a Massline-latched pickup | Change credit amounts (§22 F6) | SHIPPED ce206fb31 |
@@ -97,9 +97,9 @@ not to invent.
 | WORLD-04 | Salvaging the Choir-Tender draws the investigator the wreck data already describes | a new encounter module beside `src/data/encounters/150-unique-wreck-silver-draft-cleaner.js`, wired from `uniqueWrecks.js` | The director catalog contains that id and it offers the existing complication choice plus one hull | Invent a mission type or a second Helios unique wreck | SHIPPED eb8f3793c |
 | WORLD-05 | A new game's Helios bar can name the Silver-Draft before you have scanned it | `src/ui/station/barContacts.js`, `src/ui/uniqueWreckRumorSurface.js` | `generateContacts('station_helios', new game)` can include rumor `bar.helios_meridian.silver_draft` | Invent a wreck class | SHIPPED |
 | WORLD-06 | The Helios locker reads as a cache | `src/data/sectors.js` (`poi_helios_locker`) | Its POI type is `cache` and the scanner uses the cache label | Add a pirate base or a new POI type | SHIPPED |
-| WORLD-07 | Sker Bazaar has ships on the apron | `src/data/sectors.js` (`sector_sker_haven` traffic) | Seed 4242 spawns at least two non-player ships near `station_sker` | Raise `enemyDensity`. Add an outlaw encounter | OPEN |
+| WORLD-07 | Sker Bazaar has ships on the apron | `src/data/sectors.js` (`sector_sker_haven` traffic) | Seed 4242 spawns at least two non-player ships near `station_sker` | Raise `enemyDensity`. Add an outlaw encounter | SHIPPED 508c038b8 |
 | WORLD-08 | A Collective hull hails in yard language, not Concord boilerplate | `src/data/factionContactGrammar.js`, `src/data/barks.js` | `FACTION_CONTACT_GRAMMAR.faction_dmc` exists and a Ceres trader or patrol line uses it | Change heat math. Add a faction | SHIPPED 44d500c8b |
-| WORLD-09 | A Meridian hull hails in invoice language | `src/data/factionContactGrammar.js`, `src/data/barks.js` | A Tethys trader line uses an MTS-specific sentence | Retune prices | OPEN |
+| WORLD-09 | A Meridian hull hails in invoice language | `src/data/factionContactGrammar.js`, `src/data/barks.js` | A Tethys trader line uses an MTS-specific sentence | Retune prices | SHIPPED fb5af596a |
 | WORLD-10 | Helios outer rocks are not the same type as the starter field | `src/data/sectors.js` Helios fields | `f_helios_outer` uses a second existing asteroid type | Change beam rate, hold size, tax, or next-field distance (§22 A3) | SHIPPED |
 | WORLD-11 | Io Reach traffic can include one named courier | `src/data/laneContacts.js` | `pickNamedLaneContact` can return an Io-only id | Add a station | SHIPPED 0444daa66 |
 | WORLD-12 | Charon traffic can include one named miner | `src/data/laneContacts.js` | The Expanse sector ids include that contact | Add a claimable | SHIPPED |
@@ -107,9 +107,9 @@ not to invent.
 | WORLD-14 | The Veil research station can run a research side event | `src/data/stationSideEvents.js` | `planStationSideEvents` for `research` can pick a research-specific kind | Spawn a combat ship | SHIPPED 8190dd475 |
 | WORLD-15 | The Sker Throne scan agrees with whether it can be claimed | `src/data/sectors.js` (`poi_sker_throne`), `src/data/claimableBodies.js` | The claimable flag and the scan sentence match | Add a teleporter | OPEN |
 | WORLD-16 | The Helios liner has a name when you lock it | `src/data/laneContacts.js`, `src/systems/traffic.js`, `src/systems/barkDirector.js` | The lock title is the liner's name, not "Cargo Hauler" | Sell tickets or change the economy | OPEN |
-| WORLD-17 | Coalition HQ offers the ace duel that already exists | `src/data/missions.js`, `src/systems/setPieceMissionOffers.js` | `station_coalition` board can list `ace_duel` | Spawn the ace in Helios ambient. `enemyDensity` 0 stays | OPEN |
+| WORLD-17 | Coalition HQ offers the ace duel that already exists | `src/data/missions.js`, `src/systems/setPieceMissionOffers.js` | `station_coalition` board can list `ace_duel` | Spawn the ace in Helios ambient. `enemyDensity` 0 stays | SHIPPED already true |
 | WORLD-18 | One Helios passenger or cargo offer reveals a moral trap that already exists | `src/data/moralTraps.js`, `src/systems/moralTrap.js` | Accepting a seeded Helios offer emits `revealLine` once | Add a sixth trap type | OPEN |
-| WORLD-19 | Vesta's slag hazard and its radiation weather occupy the same neighbourhood | `src/data/sectors.js`, `src/data/environmentalMachinery.js` (`vesta_radiation_belt`) | The hazard center sits inside that weather radius | Add a third weather sector | OPEN |
+| WORLD-19 | Vesta's slag hazard and its radiation weather occupy the same neighbourhood | `src/data/sectors.js`, `src/data/environmentalMachinery.js` (`vesta_radiation_belt`) | The hazard center sits inside that weather radius | Add a third weather sector | SHIPPED 36b111fe2 |
 | WORLD-20 | Someone is sightseeing at the Helios memorial | `src/systems/traffic.js`, `src/data/regionalEcology.js` | Seed 4242 has a living `trafficRole === 'tourist'` inside `zone_helios_memorial` | Add hostiles to Helios | OPEN |
 
 ## INSTRUMENT
@@ -118,19 +118,19 @@ not to invent.
 |---|---|---|---|---|---|
 | INST-01 | Field, mass-seed, and planet tells are the flight instrument, not three cyan pills | `src/ui/fieldHud.js`, `src/ui/massSeedHud.js`, `src/ui/planetHud.js` | Those three inject no Segoe UI / `rgba(10, 18, 28` cards; they use tokens already on `#hud` | Invent a new HUD product | SHIPPED |
 | INST-02 | The comms fan matches the power rail | `styles/commsradial.css` | `#sf-commsfan` has no `--sf-surface` fill and no 6px web radius; it uses the flight bezel or glass tokens | Restyle the whole HUD | SHIPPED 5fb238ab7 |
-| INST-03 | The Crucible armory is not a cyan storefront | `styles/crucible.css` | `.sf-cru-card` uses the kit or deckplate face; `#8ee8ff` is not the fill or outline | Redesign the Crucible door | OPEN |
+| INST-03 | The Crucible armory is not a cyan storefront | `styles/crucible.css` | `.sf-cru-card` uses the kit or deckplate face; `#8ee8ff` is not the fill or outline | Redesign the Crucible door | SHIPPED already true |
 | INST-04 | The prompt deck matches the flight cluster | `styles/prompt-deck.css` | No 10px consumer card; the deck uses the same glass or bezel language as the flight cluster | Add a new prompt system | SHIPPED dc6d7d696 |
 | INST-05 | Resting flight does not wear the aerospace G-LOC sheet | `index.html`, `styles/hud.css` | G-LOC and EMP rules apply only while that effect is on | Delete the effects. Repaint station | SHIPPED already true ce69c7916 |
-| INST-06 | The boot screen does not write to instruments that are not in the page | `src/ui/loadingTerminalArt.js` | No queries for `data-loading-diag-stream`, `-hex`, `-subsystems`, or `-segments` | Invent a second boot story | OPEN |
+| INST-06 | The boot screen does not write to instruments that are not in the page | `src/ui/loadingTerminalArt.js` | No queries for `data-loading-diag-stream`, `-hex`, `-subsystems`, or `-segments` | Invent a second boot story | SHIPPED 21a493d8a |
 | INST-07 | The boot picture is not a 640×380 buffer stretched over the window | `index.html` | `#boot-terminal-canvas` is not a tiny buffer scaled to the viewport | Replace the loader with a new product | OPEN |
 | INST-08 | An unknown gun does not sound like the starter pulse | `src/audio/audioSystem.js` (`weaponRecipeFor`) | A weapon id with no family resolves to a named generic combat recipe, or fails closed, never `sfx_wpn_pulse_laser` | Author a new sample bank (§22 C5 is the verb table) | SHIPPED b284eb6f5 |
 | INST-09 | Doctrine setup, telegraph, commit, and aftermath are four cues | `src/audio/audioSystem.js` | Those four cue ids resolve to four recipe ids, not all `sfx_encounter_escalation` | Add a music system | SHIPPED |
-| INST-10 | Hover and tab are not the click sample at another pitch | `src/data/audioRecipes.js` | `sfx_ui_hover` and `sfx_ui_tab` bind distinct samples, or synth-only, not `ui_click` | Replace the combat mix | OPEN |
+| INST-10 | Hover and tab are not the click sample at another pitch | `src/data/audioRecipes.js` | `sfx_ui_hover` and `sfx_ui_tab` bind distinct samples, or synth-only, not `ui_click` | Replace the combat mix | SHIPPED already true |
 | INST-11 | A capital's pre-detonation ticks are not menu hovers | `src/audio/audioSystem.js` | Those ticks use a combat recipe, not `sfx_ui_hover` | Retune the explosion | SHIPPED |
 | INST-12 | Station primary buttons are the same keys as the rest of the kit | `styles/station-orbital.css` | Primary station verbs are `fh-key` or `data-sf-role="primary"`; `button:not(.fh-key)` does not paint a second control language | Redesign the station (that is §23 CV-KIT) | OPEN |
 | INST-13 | Docked, the station has the room tone that already exists | `src/audio/audioSystem.js` | Dock starts `station_hum_loop`; undock stops it | Author a new loop | SHIPPED 1eaf2de75 |
 | INST-14 | "SHIELD DOWN" does not float over the fight | `src/ui/floatingText.js` | `combat:damage` does not spawn that floater | Delete the objective line (§22 G3) | SHIPPED |
-| INST-15 | The local map frame uses the kit, not a one-off plate | `src/ui/screens/localmap.js` | Frame and labels use kit or deckplate tokens | Rebuild the map (that is §22 C2 if it is the chart) | OPEN |
+| INST-15 | The local map frame uses the kit, not a one-off plate | `src/ui/screens/localmap.js` | Frame and labels use kit or deckplate tokens | Rebuild the map (that is §22 C2 if it is the chart) | SHIPPED d5ff6b260 |
 | INST-16 | The UI bench boot is the game boot | `tools/ui-bench.html` | The bench does not load the green `styles/orbital.css` boot overlay on top of `styles/intro.css` | Change the production intro palette | SHIPPED already true |
 
 ## CLAIMED
@@ -142,6 +142,12 @@ not to invent.
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
+| WORLD-19 | world-19-vesta-hazard-weather | 36b111fe2 | Vesta radiation hazard center aligned with vesta_radiation_belt weather volume center |
+| INST-15 | inst-15-localmap-kit-tokens | d5ff6b260 | Local map container, panels, typography, controls, and canvas roles use deckplate and kit tokens |
+| WORLD-09 | world-09-mts-contact-grammar | fb5af596a | FACTION_CONTACT_GRAMMAR.faction_mts defines invoice grammar; Tethys trader and exchange lines speak in invoice register |
+| INST-10 | inst-10-hover-tab-distinct-samples | already true | sfx_ui_hover and sfx_ui_tab bind distinct samples (ui_hover and ui_tab via TOOL-02) |
+| INST-03 | inst-03-crucible-armory-card-tokens | already true | .sf-cru-card uses kit and deckplate tokens; #8ee8ff is not fill or outline |
+| WORLD-17 | world-17-coalition-ace-duel | already true | station_coalition board lists ace_duel authored set piece offer |
 | VERB-08 | verb-08-meeting-diamond | this session | Heavy anchor or self payload hides the throw diamond; the self chevron keeps the release read |
 | WORLD-05 | world-05-helios-silver-draft-bar | this session | New-game Helios barkeep carries bar.helios_meridian.silver_draft until the wreck is scanned |
 | WORLD-12 | world-12-charon-miner | this session | Pell of Claim Nine is the Expanse lane miner |

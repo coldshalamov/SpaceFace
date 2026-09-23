@@ -59,8 +59,9 @@ working. Product status and remaining tasks live in
 | INFERENCE catalog WORLD-08 (Collective yard contact grammar) | antigravity-inference | DONE 44d500c8b | `src/data/factionContactGrammar.js`, `src/data/barks.js`, `test/world-08-dmc-contact-grammar.test.mjs` | recorded, released |
 | INFERENCE catalog PIC-07 (large wreck cannot swallow the chase camera) | zcode-catalog-grunt | DONE 0619e48c4 | `src/render/renderer.js`, `test/pic-07-wreck-camera-clearance.test.mjs`, `design/program/INFERENCE_IDEAS.md`, `design/program/NOW.md` | recorded, released |
 | INFERENCE catalog VERB-10 (skip vacuum on Massline-latched pickup) | antigravity-inference | DONE ce206fb31 | `src/systems/mining.js`, `test/verb-10-latched-pickup-vacuum.test.mjs` | recorded, released |
-
-
+| INFERENCE catalog WORLD-09 (Meridian hull invoice contact grammar) | antigravity-inference | DONE fb5af596a | `src/data/factionContactGrammar.js`, `src/data/barks.js`, `test/world-09-mts-contact-grammar.test.mjs` | recorded, released |
+| INFERENCE catalog INST-15 (local map frame uses kit tokens) | antigravity-inference | DONE d5ff6b260 | `src/ui/screens/localmap.js`, `test/inst-15-localmap-kit-tokens.test.mjs` | recorded, released |
+| INFERENCE catalog WORLD-19 (Vesta slag hazard and radiation weather) | antigravity-inference | DONE 36b111fe2 | `src/data/sectors.js`, `test/world-19-vesta-hazard-weather.test.mjs` | recorded, released |
 
 
 ## Remaster machine

@@ -74,45 +74,6 @@
   ],
   "units": [
     {
-      "id": "ceres-disabled-hauler-recovery",
-      "date": "2026-08-12",
-      "wf": "WF-01",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "The authored Ceres refinery hauler breakdown now physically brakes the live job hull, advertises recovery need on target and hail surfaces, and resumes the same route after repair.",
-      "fingerprint": "verb=disable-brake-resume,subject=ceres-refinery-hauler,sector=sector_ceres_belt,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "bbd4ecd34e436dbbd6630b0e14761ea6eac7828e",
-      "verification": "focused_green"
-    },
-    {
-      "id": "ceres-miner-service-hold",
-      "date": "2026-08-12",
-      "wf": "WF-01",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "The Ceres tender-service event now takes the exact miner physically offline, exposes the service hold on target and hail surfaces, and returns the same job hull to work after service.",
-      "fingerprint": "verb=service-hold-resume,subject=ceres-seam-miner,sector=sector_ceres_belt,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "b76bb637d56d890734f9089d2f5d051440b77767",
-      "verification": "focused_green"
-    },
-    {
-      "id": "iron-maw-discovery-aftermath",
-      "date": "2026-08-12",
-      "wf": "WF-10",
-      "mode": "integration",
-      "verdict": "implemented",
-      "reason": "Defeating Iron Maw now resolves its authored Ashfall site into a durable Codex trophy and exploration progress.",
-      "fingerprint": "verb=defeat-and-record,subject=iron-maw,sector=sector_ashfall_reach,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "51a220b9edf11f693b7cbc106de0c0e40eb867a6",
-      "verification": "focused_green"
-    },
-    {
       "id": "iron-maw-screen-wave",
       "date": "2026-08-12",
       "wf": "WF-02",
@@ -1635,6 +1596,45 @@
       "references": [],
       "integration": "live",
       "commit": "0619e48c4",
+      "verification": "focused_green"
+    },
+    {
+      "id": "world-09-mts-contact-grammar",
+      "date": "2026-09-23",
+      "wf": "WF-01",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "define Meridian invoice contact grammar and Tethys trader line",
+      "fingerprint": "verb=hail,subject=meridian,sector=tethys,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "fb5af596a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inst-15-localmap-kit-tokens",
+      "date": "2026-09-23",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "local map container, panels, typography, controls, and canvas roles use deckplate and kit tokens",
+      "fingerprint": "domain=INSTRUMENT,verb=frame,subject=localmap,sector=global,layer=ui,tempo=screen",
+      "references": [],
+      "integration": "live",
+      "commit": "d5ff6b260",
+      "verification": "focused_green"
+    },
+    {
+      "id": "world-19-vesta-hazard-weather",
+      "date": "2026-09-23",
+      "wf": "WF-04",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Vesta radiation hazard center aligned with vesta_radiation_belt weather volume center",
+      "fingerprint": "domain=WORLD,verb=reposition,subject=hazard_weather,sector=Vesta,layer=sectors,tempo=sim",
+      "references": [],
+      "integration": "live",
+      "commit": "36b111fe2",
       "verification": "focused_green"
     }
   ],
