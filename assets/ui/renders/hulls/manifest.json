@@ -1,0 +1,486 @@
+{
+ "schema": "spaceface.uiRenders.v1",
+ "purpose": "Produced hull renders for the interface (design/frontend/ONE_PHOTOGRAPH.md section 9, asset 1): new-game and load stage posters, shipworks elevation.",
+ "classification": "project-original",
+ "license": "Rendered from project-original SpaceFace ship GLBs; no third-party payload.",
+ "renderer": "Blender 5.1 Cycles, AgX Medium High Contrast, exposure 0.8, transparent film, 64 samples + denoise",
+ "lighting": "warm key upper-left front, cold rim behind right, low fill, top soft; the world background at 0.35",
+ "hidden": "COLLISION_HULL and any helper/proxy/collision mesh (the game never draws them)",
+ "script": "render_hull.py (session scratch; framing described per view below)",
+ "views": {
+  "hero": "perspective 70 mm, camera on the nose side swung 35 deg to port, 24 deg above, framed to the bounding sphere; 2400 x 1350",
+  "side": "orthographic starboard elevation, nose to the right, ortho scale 1.18 x the longest plan dimension; 2400 x 1100"
+ },
+ "cssWidth": {
+  "hero": 1200,
+  "side": 1200
+ },
+ "hulls": {
+  "ship_kestrel": {
+   "sourceGlb": "assets/ships/parts/wholeships/kestrel.glb",
+   "sourceGlbSha256": "E8317C66D9785463F398D535C4F358D2ABA448354170178B1864531119B8099F",
+   "hero": {
+    "file": "ship_kestrel.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 126710,
+    "hullSize": [
+     28.222,
+     14.031,
+     7.13
+    ],
+    "longAxis": 0,
+    "marks": {
+     "KESTREL_V4_LOD0_ROOT": [
+      0.4969,
+      0.5375,
+      73.548
+     ],
+     "RIG_EngineFan.001": [
+      0.4969,
+      0.5375,
+      73.548
+     ],
+     "RIG_MiningEmitter.001": [
+      0.4969,
+      0.5375,
+      73.548
+     ],
+     "RIG_PulseGun_Yaw.001": [
+      0.4969,
+      0.5375,
+      73.548
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4969,
+      0.5225,
+      73.406
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5088,
+      0.6129,
+      75.001
+     ],
+     "SOCKET_Engine_Main": [
+      0.6814,
+      0.3428,
+      83.913
+     ],
+     "SOCKET_Mining_Front": [
+      0.2855,
+      0.813,
+      64.813
+     ],
+     "SOCKET_RCS_Port": [
+      0.6237,
+      0.6238,
+      68.71
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.3344,
+      0.4717,
+      75.626
+     ],
+     "SOCKET_Trail_Main": [
+      0.6837,
+      0.3403,
+      84.062
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.6036,
+      0.4721,
+      71.849
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2748,
+      0.7012,
+      63.523
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_kestrel.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 89556,
+    "hullSize": [
+     28.222,
+     14.031,
+     7.13
+    ],
+    "longAxis": 0,
+    "marks": {
+     "KESTREL_V4_LOD0_ROOT": [
+      0.5062,
+      0.5523,
+      84.666
+     ],
+     "RIG_EngineFan.001": [
+      0.5062,
+      0.5523,
+      84.666
+     ],
+     "RIG_MiningEmitter.001": [
+      0.5062,
+      0.5523,
+      84.666
+     ],
+     "RIG_PulseGun_Yaw.001": [
+      0.5062,
+      0.5523,
+      84.666
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5062,
+      0.5294,
+      84.666
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.4821,
+      0.6899,
+      84.666
+     ],
+     "SOCKET_Engine_Main": [
+      0.0903,
+      0.5523,
+      84.666
+     ],
+     "SOCKET_Mining_Front": [
+      0.8743,
+      0.6231,
+      84.666
+     ],
+     "SOCKET_RCS_Port": [
+      0.5542,
+      0.5228,
+      91.266
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5542,
+      0.5228,
+      78.066
+     ],
+     "SOCKET_Trail_Main": [
+      0.0843,
+      0.5523,
+      84.666
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.4626,
+      0.4246,
+      88.466
+     ],
+     "SOCKET_Weapon_Front": [
+      0.8851,
+      0.4586,
+      84.666
+     ]
+    }
+   }
+  },
+  "ship_pelican": {
+   "sourceGlb": "assets/ships/parts/wholeships/pelican_production_v1.glb",
+   "sourceGlbSha256": "C7D482E511993FCE7BE5CC87AC5C5EBD3D174379075E7D81644FF2F9656BDD8F",
+   "hero": {
+    "file": "ship_pelican.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 56226,
+    "hullSize": [
+     14.627,
+     5.58,
+     3.757
+    ],
+    "longAxis": 0,
+    "marks": {
+     "PELICAN_PRODUCTION_V1_LOD0_ROOT": [
+      0.5104,
+      0.5204,
+      38.646
+     ],
+     "SOCKET_Camera_Focus": [
+      0.469,
+      0.5346,
+      37.456
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5325,
+      0.6038,
+      39.793
+     ],
+     "SOCKET_Engine_Main": [
+      0.6736,
+      0.3448,
+      43.415
+     ],
+     "SOCKET_Mining_Front": [
+      0.2554,
+      0.8033,
+      33.019
+     ],
+     "SOCKET_RCS_Port": [
+      0.4544,
+      0.4128,
+      41.118
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.6625,
+      0.5138,
+      38.446
+     ],
+     "SOCKET_Trail_Main": [
+      0.6826,
+      0.3353,
+      43.714
+     ],
+     "SOCKET_Trail_Port": [
+      0.6256,
+      0.3169,
+      44.222
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.7302,
+      0.3617,
+      42.807
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.4777,
+      0.3806,
+      36.989
+     ],
+     "SOCKET_Weapon_Front": [
+      0.3002,
+      0.7093,
+      33.714
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_pelican.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 39074,
+    "hullSize": [
+     14.627,
+     5.58,
+     3.757
+    ],
+    "longAxis": 0,
+    "marks": {
+     "PELICAN_PRODUCTION_V1_LOD0_ROOT": [
+      0.4709,
+      0.5579,
+      43.782
+     ],
+     "SOCKET_Camera_Focus": [
+      0.552,
+      0.5137,
+      43.782
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.4246,
+      0.7286,
+      43.782
+     ],
+     "SOCKET_Engine_Main": [
+      0.1001,
+      0.5516,
+      43.782
+     ],
+     "SOCKET_Mining_Front": [
+      0.9112,
+      0.5769,
+      43.782
+     ],
+     "SOCKET_RCS_Port": [
+      0.3782,
+      0.539,
+      41.232
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.3782,
+      0.539,
+      46.332
+     ],
+     "SOCKET_Trail_Main": [
+      0.077,
+      0.5516,
+      43.782
+     ],
+     "SOCKET_Trail_Port": [
+      0.0915,
+      0.5478,
+      42.432
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0915,
+      0.5478,
+      45.132
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5347,
+      0.2988,
+      43.782
+     ],
+     "SOCKET_Weapon_Front": [
+      0.8417,
+      0.5137,
+      43.782
+     ]
+    }
+   }
+  },
+  "ship_wasp": {
+   "sourceGlb": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+   "sourceGlbSha256": "45133DB5211F9B6FA345B494AB636298C73186411ABE3B4BB9F13522D31BAA1A",
+   "hero": {
+    "file": "ship_wasp.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 102238,
+    "hullSize": [
+     22.0,
+     16.164,
+     3.699
+    ],
+    "longAxis": 0,
+    "marks": {
+     "WASP_PRODUCTION_V1_LOD0_ROOT": [
+      0.5192,
+      0.5057,
+      58.139
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5154,
+      0.4906,
+      57.847
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5592,
+      0.5237,
+      60.253
+     ],
+     "SOCKET_Engine_Main": [
+      0.6825,
+      0.3342,
+      65.398
+     ],
+     "SOCKET_Mining_Front": [
+      0.2974,
+      0.7603,
+      50.649
+     ],
+     "SOCKET_RCS_Port": [
+      0.3729,
+      0.3805,
+      63.134
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.7558,
+      0.5671,
+      55.798
+     ],
+     "SOCKET_Trail_Main": [
+      0.6869,
+      0.3295,
+      65.623
+     ],
+     "SOCKET_Trail_Port": [
+      0.5469,
+      0.2743,
+      68.381
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.8338,
+      0.3964,
+      62.565
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5401,
+      0.4028,
+      58.352
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2866,
+      0.7437,
+      50.166
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_wasp.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 35114,
+    "hullSize": [
+     22.0,
+     16.164,
+     3.699
+    ],
+    "longAxis": 0,
+    "marks": {
+     "WASP_PRODUCTION_V1_LOD0_ROOT": [
+      0.4615,
+      0.5395,
+      66.0
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4692,
+      0.5101,
+      66.0
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.3767,
+      0.6361,
+      66.0
+     ],
+     "SOCKET_Engine_Main": [
+      0.0878,
+      0.5395,
+      66.0
+     ],
+     "SOCKET_Mining_Front": [
+      0.8544,
+      0.5689,
+      66.0
+     ],
+     "SOCKET_RCS_Port": [
+      0.3921,
+      0.5353,
+      59.0
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.3921,
+      0.5353,
+      73.0
+     ],
+     "SOCKET_Trail_Main": [
+      0.0763,
+      0.5395,
+      66.0
+     ],
+     "SOCKET_Trail_Port": [
+      0.084,
+      0.5395,
+      60.45
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.084,
+      0.5395,
+      71.55
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.4191,
+      0.4134,
+      66.0
+     ],
+     "SOCKET_Weapon_Front": [
+      0.8698,
+      0.5311,
+      66.0
+     ]
+    }
+   }
+  }
+ }
+}

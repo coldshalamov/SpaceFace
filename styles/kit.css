@@ -353,6 +353,19 @@ html.sf-high-contrast .k-screen { --k-bone-62: var(--k-bone); --k-bone-38: var(-
 /* Task B additions */
 /* §1.1/§1.2: a hull bounded to the stage (new game, load) - the title's world canvas clipped to .k-stage. */
 .k-stage > .k-world--stage { left: 0; width: 100%; height: 100%; z-index: -1; }
+/* ONE_PHOTOGRAPH §9 asset #1: the produced hull render (src/ui/hullPosters.js) is the stage until the
+   authored hull draws; stageHull.js puts it after the canvas, so at the same z-index it paints over it,
+   then .is-live fades it out. Transparent film, so the dock the canvas draws shows round the hull. */
+.k-stage > .k-stage__poster {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1;
+  object-fit: contain; object-position: 50% 45%; pointer-events: none; user-select: none;
+  opacity: 1; transition: opacity 600ms var(--k-ease, ease-out);
+}
+.k-stage.is-live > .k-stage__poster { opacity: 0; }
+/* the canvas clears to an opaque frame until the dock and hull stream in: behind a poster it waits */
+.k-stage.has-poster > .k-world--stage { transition: opacity 600ms var(--k-ease, ease-out); }
+.k-stage.has-poster:not(.is-live) > .k-world--stage { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .k-stage > .k-stage__poster, .k-stage.has-poster > .k-world--stage { transition: none; } }
 /* §1.1/§1.2: the stage's caption block (the hull's name and sentence; the save portrait) hangs from the stage's bottom-left. */
 .k-stage__foot { position: absolute; left: 0; bottom: 0; max-width: 100%; }
 /* §1.4: the HUD dims to 38 % only while Pause is the exposed screen. Pause is eagerly mounted,

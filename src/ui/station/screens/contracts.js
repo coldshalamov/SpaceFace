@@ -116,10 +116,20 @@ export function missionBoardDispatchLabel(state, stationId, offerCount = 0) {
   return `${station.dispatchLabel || 'LIVE DISPATCH'} / ${Math.max(0, offerCount | 0)} LIVE / ${sides.join('–')} FRONT ${phase} · ${tension}/100`;
 }
 
+const SECTOR_NAME = new Map(SECTORS.map((sector) => [sector.id, sector.name]));
+
+// A live mission carries destStationId / destSectorId, not a name: resolve the berth, then the
+// sector, before any fallback. (The row used to print the raw sector id, or "Destination".)
 function destName(m) {
   const params = (m && m.params) || {};
-  return m.destinationName || m.destName || params.destinationName || params.destName
-    || (m.local ? 'Local sector' : (m.destSectorId || params.destSectorId || 'Destination'));
+  const named = m.destinationName || m.destName || m.destStationName
+    || params.destinationName || params.destName || params.destStationName;
+  if (named) return named;
+  const stationRec = STATION_DEF.get(m.destStationId || params.destStationId);
+  if (stationRec && stationRec.name) return stationRec.name;
+  if (m.local) return 'Local sector';
+  const sectorId = m.destSectorId || params.destSectorId;
+  return (sectorId && SECTOR_NAME.get(sectorId)) || 'Destination';
 }
 
 function destEntityHtml(m) {

@@ -175,7 +175,8 @@ function paintKey(button, kind = 'legend') {
       ...(kind === 'legend' ? { padding: spec.pad } : {}),
       'font-size': spec.font,
       'text-transform': 'uppercase',
-      'justify-content': 'center',
+      // a rail word sets flush left (data-key-align); every other key centres its legend
+      'justify-content': button.dataset.keyAlign || 'center',
       'align-items': 'center',
       'box-sizing': 'border-box',
       ...capPins(kind, state, spec.width),
@@ -297,6 +298,15 @@ function shipDefFor(ctx, shipId) {
   return SHIP_BY_ID.get(shipId) || null;
 }
 
+// A rail word: the legend key's printed pins, set flush left like the field labels above it and the
+// one-word tag beneath it. paintKey pins its alignment inline on every state change, so the rail
+// asks for it through data-key-align rather than overriding once (the hull names sat centred over
+// left-set tags).
+function railWord(b) {
+  b.dataset.keyAlign = 'flex-start';
+  paintKey(b, 'legend');
+}
+
 // The stage shows the slot-parallel fittings array the render track consumes (a raw id list
 // would place modules in the wrong slot positions), resolved by the same fit rule the run uses.
 function starterStageFittings(starter) {
@@ -401,7 +411,7 @@ export const newGameScreen = {
     });
     starterWords.setAttribute('aria-labelledby', starterField.label.id);
     starterWords.classList.add('of-pause');
-    for (const b of starterWords.querySelectorAll('.k-word')) paintKey(b, 'legend');
+    for (const b of starterWords.querySelectorAll('.k-word')) railWord(b);
     const starterDesc = el('p', 'k-sentence', '');
     starterDesc.id = 'sf-ng-starter-desc';
     starterWords.setAttribute('aria-describedby', starterDesc.id);
@@ -424,7 +434,7 @@ export const newGameScreen = {
     });
     diffWords.setAttribute('aria-labelledby', diffField.label.id);
     diffWords.classList.add('of-pause');
-    for (const b of diffWords.querySelectorAll('.k-word')) paintKey(b, 'legend');
+    for (const b of diffWords.querySelectorAll('.k-word')) railWord(b);
     const diffDesc = el('p', 'k-sentence', '');
     diffDesc.id = 'sf-ng-difficulty-desc';
     diffWords.setAttribute('aria-describedby', diffDesc.id);

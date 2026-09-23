@@ -6,6 +6,7 @@
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { createShipPreviewMount, dockInteriorIdForArchetype } from '../shipPreviewMount.js';
 import { el, reducedMotion } from '../kit/index.js';
+import { hullPosterUrl } from '../hullPosters.js';
 
 // The title's drift: ≈ 3.4° per second. The sheet says the hull turns very slowly, never spins.
 const DRIFT_RAD_PER_S = 0.06;
@@ -38,7 +39,27 @@ export function createStageHull(stageEl, {
   let ctxRef = null;
   let released = false;
 
+  // The produced render of the hull on show (src/ui/hullPosters.js). It sits over the canvas until
+  // the authored hull has drawn, then fades out (.k-stage.is-live, a kit rule): the stage is never
+  // an empty frame, not while the GLB streams in and not where WebGL never arrives.
+  const poster = el('img', 'k-stage__poster');
+  poster.alt = '';
+  poster.setAttribute('aria-hidden', 'true');
+  poster.decoding = 'async';
+  poster.draggable = false;
+  stageEl.prepend(poster);
+  const setPoster = (defId) => {
+    const url = hullPosterUrl(defId || NEW_GAME.shipId);
+    if (url) { if (poster.getAttribute('src') !== url) poster.src = url; poster.hidden = false; }
+    else { poster.removeAttribute('src'); poster.hidden = true; }
+    // With a poster the canvas stays hidden until live (it clears to an opaque frame while the dock
+    // and hull stream in); a hull with no render keeps the old behaviour and shows the canvas at once.
+    if (stageEl.classList) stageEl.classList.toggle('has-poster', !!url);
+  };
+  const setLive = (live) => { if (stageEl.classList) stageEl.classList.toggle('is-live', !!live); };
+
   const ready = () => {
+    setLive(true);
     if (rootEl) rootEl.dataset.kReady = '1';
     if (readyFired) return;
     readyFired = true;
@@ -48,6 +69,8 @@ export function createStageHull(stageEl, {
   function mountHull() {
     canvas = el('canvas', 'k-world k-world--stage');
     canvas.setAttribute('aria-hidden', 'true');
+    // Before the poster in document order: both sit at the kit's z-index -1, so the poster paints
+    // over the canvas until the stage goes live.
     stageEl.prepend(canvas);
     try {
       mount = mountFactory(canvas, {
@@ -70,6 +93,10 @@ export function createStageHull(stageEl, {
   mountHull();
 
   function show(defId, o = {}) {
+    const next = defId || NEW_GAME.shipId;
+    setPoster(next);
+    // A different hull is not on the glass until its own authored frame; the poster covers the swap.
+    if (!mount || (typeof mount.getDefId === 'function' && mount.getDefId() !== next)) setLive(false);
     if (!mount) return;
     try {
       mount.show(defId || NEW_GAME.shipId, {
@@ -148,12 +175,14 @@ export function createStageHull(stageEl, {
   function restore() {
     if (!released) return false;
     released = false;
+    setLive(false);
     mountHull();
     return true;
   }
 
   return {
     get canvas() { return canvas; },
+    get poster() { return poster; },
     hasMount: () => !!mount,
     isReady: () => readyFired,
     show,
