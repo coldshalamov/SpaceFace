@@ -28,6 +28,7 @@ import {
 import { isReleaseAssetMode } from './releaseMode.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
+import { attachRetroMounts } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
@@ -6245,6 +6246,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
   }
   ensureStandardSockets(hull);
+  attachRetroMounts(hull, entity, palette, selected.get('engine')?.url);
 
   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
   // reads on the hull: budget-heavy modules bolt on, whole-ship bodies sprout the guns actually
@@ -6456,11 +6458,10 @@ function flightRootTemplateKey({
   loadoutFingerprint,
 }) {
   const data = entity && entity.data || {};
-  // Whole-ship bodies skip every accessory slot after hull. Excluding those skipped selections is
-  // important: they are seed-selected during assembly, so including them makes identical Kestrel
-  // visuals diverge by entity id even though the unused records never affect pixels.
+  // Whole-ship bodies skip structural accessories, but the selected engine determines the visible
+  // bow retro hardware even when its main bell is baked into the body.
   const consumedSelected = wholeShip
-    ? [...selected.entries()].filter(([slot]) => slot === 'hull')
+    ? [...selected.entries()].filter(([slot]) => slot === 'hull' || slot === 'engine')
     : [...selected.entries()];
   const selectedSources = consumedSelected
     .sort(([left], [right]) => left.localeCompare(right))

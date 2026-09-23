@@ -53,44 +53,35 @@ async function waitForSimTicks(page, ticks) {
   );
 }
 
-async function resetPlayer(page, vel) {
-  await page.evaluate(({ vel }) => {
-    const sf = window.SF;
-    const state = sf.state;
-    const p = state.entities.get(state.playerId);
-    if (!p) return;
-    state.settings.controls.flightMode = 'assisted';
-    Object.assign(state.input, {
-      moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false, fireGroup: null,
-    });
-    p.rot = 0; p.prevRot = 0; p.angVel = 0; p.bank = 0; p.prevBank = 0; p.bankVel = 0;
-    p.vel.x = vel.x; p.vel.y = 0; p.vel.z = vel.z;
-    if (p.pos) { p.pos.x = 0; p.pos.y = 0; p.pos.z = 0; }
-    if (p.prevPos) { p.prevPos.x = 0; p.prevPos.y = 0; p.prevPos.z = 0; }
-    if (p.physicsBody) p.physicsBody.revision = (p.physicsBody.revision || 0) + 1;
-    if (p.data && p.data.propulsionRuntime) p.data.propulsionRuntime = null;
-    const input = sf.registry && typeof sf.registry.get === 'function' ? sf.registry.get('input') : null;
-    if (input && input._keys) {
-      for (const key of Object.keys(input._keys)) input._keys[key] = false;
-      input._m0 = false; input._m1 = false; input._m2 = false;
-    }
-  }, { vel });
-  await waitForSimTicks(page, 6);
-}
-
 async function shot(page, name) {
+  const state = await page.evaluate(() => {
+    const sf = window.SF;
+    const volume = sf.registry.get('vfx')?._energy?.retroVolume;
+    const player = sf.state.entities.get(sf.state.playerId);
+    return {
+      tick: sf.state.tick,
+      speed: Math.hypot(player?.vel?.x || 0, player?.vel?.z || 0),
+      live: volume?._liveCount,
+      spool: volume?.spool,
+      visible: volume?.group?.visible,
+    };
+  });
   const box = await page.locator('#gl-canvas').boundingBox();
   const clip = box
     ? { x: Math.max(0, box.x), y: Math.max(0, box.y), width: Math.ceil(box.width), height: Math.ceil(box.height) }
     : undefined;
   const buf = await page.screenshot({ type: 'png', clip });
   await writeFile(join(OUT, name), buf);
-  console.log(`wrote ${name}`);
+  console.log(`wrote ${name} ${JSON.stringify(state)}`);
 }
 
 const port = await freePort(8240);
 const baseUrl = `http://127.0.0.1:${port}/`;
-const child = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+const child = spawn(process.execPath, ['server.js', String(port)], {
+  cwd: ROOT,
+  stdio: ['ignore', 'pipe', 'pipe'],
+  env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
+});
 let serverOut = '';
 child.stdout.on('data', (c) => { serverOut = (serverOut + c).slice(-4000); });
 child.stderr.on('data', (c) => { serverOut = (serverOut + c).slice(-4000); });
@@ -113,15 +104,28 @@ try {
   page.on('pageerror', (e) => console.log('pageerror:', e.message));
   const url = new URL(baseUrl);
   url.searchParams.set('debug', 'flight');
-  await page.goto(String(url), { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 30000 });
+  await page.goto(String(url), { waitUntil: 'commit', timeout: 120000 });
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 120000 });
   await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Retro Probe' }));
-  await page.waitForFunction(() => {
-    const state = window.SF && window.SF.state;
-    if (!state || state.mode !== 'flight' || !state.playerId) return false;
-    const player = state.entities && state.entities.get(state.playerId);
-    return !!(player && (player.mesh || (player.view && player.view.root)));
-  }, null, { timeout: 70000 });
+  try {
+    await page.waitForFunction(() => {
+      const state = window.SF && window.SF.state;
+      if (!state || state.mode !== 'flight' || !state.playerId) return false;
+      const player = state.entities && state.entities.get(state.playerId);
+      return !!(player && (player.mesh || (player.view && player.view.root)));
+    }, null, { timeout: 150000 });
+  } catch (error) {
+    console.log('boot diagnostic:', await page.evaluate(() => ({
+      mode: window.SF?.state?.mode,
+      tick: window.SF?.state?.tick,
+      playerId: window.SF?.state?.playerId,
+      hasPlayer: !!window.SF?.state?.entities?.get(window.SF?.state?.playerId),
+      bodyState: window.SF?.state?.entities?.get(window.SF?.state?.playerId)?.view?.root?.userData?.authoredAssetState,
+      renderReady: !!window.SF?.state?.render?.cameraCtrl,
+    })));
+    console.log('server tail:', serverOut);
+    throw error;
+  }
   await page.waitForTimeout(400);
   // Dismiss the begin/tutorial modal if present.
   await page.evaluate(() => {
@@ -135,16 +139,19 @@ try {
 
   // --- Sequence matching the report -------------------------------------
   // 1. Accelerate: get the hull moving fast forward.
-  await resetPlayer(page, { x: 0, z: 0 });
   await page.keyboard.down('KeyW');
   await waitForSimTicks(page, 80);
 
-  // 2. Stop accelerating: assisted come-to-rest lights the bow retros while the hull still moves.
+  // 2. Pull the actual pilot brake at speed; inspect the pair and its hardware at shipping zoom.
   await page.keyboard.up('KeyW');
-  await waitForSimTicks(page, 14);
+  await page.keyboard.down('KeyS');
+  await waitForSimTicks(page, 4);
+  await shot(page, '00-retro-ignition.png');
+  await waitForSimTicks(page, 10);
   await shot(page, '01-retro-brake.png');
 
   // 3. Hit the accelerator: the reported bug shed two blobs at the release point.
+  await page.keyboard.up('KeyS');
   await page.keyboard.down('KeyW');
   await waitForSimTicks(page, 5);
   await shot(page, '02-retro-release-early.png');
@@ -155,13 +162,19 @@ try {
 
   const summary = await page.evaluate(() => {
     const sf = window.SF;
-    const vfxRef = sf && sf.render && sf.render.vfx;
+    const vfxRef = sf && sf.registry && sf.registry.get('vfx');
     const volume = vfxRef && vfxRef._energy && vfxRef._energy.retroVolume;
+    const player = sf.state.entities.get(sf.state.playerId);
     return {
       tick: sf.state.tick,
       retroLive: volume && volume._liveCount,
       retroSpool: volume && volume.spool,
       retroVisible: volume && volume.group && volume.group.visible,
+      retroProfile: volume && volume.profileId,
+      mountedPort: !!player?.view?.root?.getObjectByName('SOCKET_Retro_Port'),
+      playerPos: player?.pos,
+      presentedPos: player?.view?.root?.position,
+      cameraPos: sf.state.render.camera?.position,
     };
   });
   console.log(JSON.stringify(summary, null, 2));
