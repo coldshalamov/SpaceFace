@@ -1,0 +1,259 @@
+TAP version 13
+# Subtest: ship numbers appear only when hull or shields are actually low
+ok 1 - ship numbers appear only when hull or shields are actually low
+  ---
+  duration_ms: 1.319636
+  ...
+# Subtest: Lamina owns the complete integrity readout and removes the reflow-driven hit flask
+ok 2 - Lamina owns the complete integrity readout and removes the reflow-driven hit flask
+  ---
+  duration_ms: 0.804851
+  ...
+# Subtest: one destination line already carries distance and ETA
+ok 3 - one destination line already carries distance and ETA
+  ---
+  duration_ms: 1.382062
+  ...
+# Subtest: receipt taxonomy rejects Target and danger, admits pay and errors
+ok 4 - receipt taxonomy rejects Target and danger, admits pay and errors
+  ---
+  duration_ms: 1.650304
+  ...
+# Subtest: createToasts uses admitReceipt and keeps at most two receipts
+ok 5 - createToasts uses admitReceipt and keeps at most two receipts
+  ---
+  duration_ms: 3.73612
+  ...
+# Subtest: receipt lane sits in the HUD layout and misses radar/ship/objective
+ok 6 - receipt lane sits in the HUD layout and misses radar/ship/objective
+  ---
+  duration_ms: 1.159237
+  ...
+# Subtest: roster stays reachable and collapses to a count at rest
+ok 7 - roster stays reachable and collapses to a count at rest
+  ---
+  duration_ms: 0.355612
+  ...
+# Subtest: Massline instrument is analog while latched and absent when cut
+ok 8 - Massline instrument is analog while latched and absent when cut
+  ---
+  duration_ms: 0.380055
+  ...
+# Subtest: first-use is teach-once and object-attached
+ok 9 - first-use is teach-once and object-attached
+  ---
+  duration_ms: 0.93246
+  ...
+# Subtest: windshield key laundry is not mounted on the flight route
+ok 10 - windshield key laundry is not mounted on the flight route
+  ---
+  duration_ms: 0.465941
+  ...
+# Subtest: story HUD lies remain mounted
+ok 11 - story HUD lies remain mounted
+  ---
+  duration_ms: 0.320199
+  ...
+# Subtest: anchored markers wait for the presented hull and track its drawn pose
+ok 12 - anchored markers wait for the presented hull and track its drawn pose
+  ---
+  duration_ms: 0.430703
+  ...
+# Subtest: hud job follows latch, fight, and hurt
+ok 13 - hud job follows latch, fight, and hurt
+  ---
+  duration_ms: 0.213784
+  ...
+# Subtest: the first two minutes keep exactly one instruction on screen
+ok 14 - the first two minutes keep exactly one instruction on screen
+  ---
+  duration_ms: 0.354537
+  ...
+# Subtest: the opening window anchors to the sim clock at game start, never wall time
+ok 15 - the opening window anchors to the sim clock at game start, never wall time
+  ---
+  duration_ms: 0.18631
+  ...
+# Subtest: the law paragraph retires during the opening while live incidents still surface
+ok 16 - the law paragraph retires during the opening while live incidents still surface
+  ---
+  duration_ms: 1.713309
+  ...
+# Subtest: the caption and the bypassed comms log line consult the opening rule
+ok 17 - the caption and the bypassed comms log line consult the opening rule
+  ---
+  duration_ms: 0.391978
+  ...
+# Subtest: the one-voice floor also keeps the objective solo during the opening
+ok 18 - the one-voice floor also keeps the objective solo during the opening
+  ---
+  duration_ms: 0.828824
+  ...
+# Subtest: stepHudGLagSpring converges toward target and damps back to zero when released
+ok 19 - stepHudGLagSpring converges toward target and damps back to zero when released
+  ---
+  duration_ms: 1.697979
+  ...
+# Subtest: stepHudGLagSpring immediately zeroes displacement when reducedMotion is active
+ok 20 - stepHudGLagSpring immediately zeroes displacement when reducedMotion is active
+  ---
+  duration_ms: 0.194869
+  ...
+# Subtest: calculateHudGLagTarget obeys physical directionality and bounds
+ok 21 - calculateHudGLagTarget obeys physical directionality and bounds
+  ---
+  duration_ms: 0.27303
+  ...
+# Subtest: calculateGLocIntensity activates only after 0.6s sustained high-G and ramps smoothly
+ok 22 - calculateGLocIntensity activates only after 0.6s sustained high-G and ramps smoothly
+  ---
+  duration_ms: 0.152084
+  ...
+# Subtest: HUD elements experience optical G-lag during violent bank turns and recover at rest
+ok 23 - HUD elements experience optical G-lag during violent bank turns and recover at rest
+  ---
+  duration_ms: 51.325422
+  ...
+# Subtest: motionReduce disables optical G-lag and vignette even under extreme maneuvers
+ok 24 - motionReduce disables optical G-lag and vignette even under extreme maneuvers
+  ---
+  duration_ms: 10.94174
+  ...
+# Subtest: shield collapse triggers electronic disruption glitch on HUD
+ok 25 - shield collapse triggers electronic disruption glitch on HUD
+  ---
+  duration_ms: 7.707789
+  ...
+# Subtest: combat:emp event triggers electronic disruption glitch
+ok 26 - combat:emp event triggers electronic disruption glitch
+  ---
+  duration_ms: 23.643704
+  ...
+# Subtest: full mode EMP keeps glitch plus audio blip and adds no words
+ok 27 - full mode EMP keeps glitch plus audio blip and adds no words
+  ---
+  duration_ms: 5.122181
+  ...
+# Subtest: motion-reduced EMP keeps blip and gains a short label instead of the flash
+ok 28 - motion-reduced EMP keeps blip and gains a short label instead of the flash
+  ---
+  duration_ms: 5.715715
+  ...
+# Subtest: flash-reduced shield break keeps blip and names the hazard without the flash
+ok 29 - flash-reduced shield break keeps blip and names the hazard without the flash
+  ---
+  duration_ms: 5.750921
+  ...
+# Subtest: missile locking executes multi-stage convergence animation (Acquiring -> Tracking -> Locked)
+ok 30 - missile locking executes multi-stage convergence animation (Acquiring -> Tracking -> Locked)
+  ---
+  duration_ms: 6.460759
+  ...
+# Subtest: sustained max-rate drift turns build peripheral vignette tunnel vision
+ok 31 - sustained max-rate drift turns build peripheral vignette tunnel vision
+  ---
+  duration_ms: 14.099831
+  ...
+# Subtest: Ctrl-drag stores a bounded, save-serializable placement and restores it on save load
+ok 32 - Ctrl-drag stores a bounded, save-serializable placement and restores it on save load
+  ---
+  duration_ms: 3.635821
+  ...
+# Subtest: HUD placement survives the normal settings save and prompts an autosave
+not ok 33 - HUD placement survives the normal settings save and prompts an autosave
+  ---
+  duration_ms: 1.508712
+  location: '/workspace/spaceface/test/hud-layout.test.mjs:39:1'
+  failureType: 'testCodeFailure'
+  error: 'this._syncSharedPlayerStore is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Object.init (file:///workspace/spaceface/src/save/saveSystem.js:286:10)
+    TestContext.<anonymous> (file:///workspace/spaceface/test/hud-layout.test.mjs:57:13)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: uiRoot still mounts the extracted HUD stylesheet
+ok 34 - uiRoot still mounts the extracted HUD stylesheet
+  ---
+  duration_ms: 1.357456
+  ...
+# Subtest: the default radar dial is exactly the size the canvas is drawn at
+ok 35 - the default radar dial is exactly the size the canvas is drawn at
+  ---
+  duration_ms: 0.555885
+  ...
+# Subtest: every breakpoint that narrows the dial also scales the canvas
+ok 36 - every breakpoint that narrows the dial also scales the canvas
+  ---
+  duration_ms: 0.652948
+  ...
+# Subtest: radar ring radius stays inside the radar canvas
+ok 37 - radar ring radius stays inside the radar canvas
+  ---
+  duration_ms: 0.20828
+  ...
+# Subtest: the right dock is one column: no surface hard-codes its own width
+ok 38 - the right dock is one column: no surface hard-codes its own width
+  ---
+  duration_ms: 1.543094
+  ...
+# Subtest: --sf-dock-w is declared for every breakpoint that repositions the dock
+ok 39 - --sf-dock-w is declared for every breakpoint that repositions the dock
+  ---
+  duration_ms: 0.462341
+  ...
+# Subtest: the threat badge styles the tier values scanner.js actually emits
+ok 40 - the threat badge styles the tier values scanner.js actually emits
+  ---
+  duration_ms: 1.130472
+  ...
+# Subtest: the target card does not duplicate health that the world already draws
+ok 41 - the target card does not duplicate health that the world already draws
+  ---
+  duration_ms: 0.477534
+  ...
+# Subtest: the swarm threshold has exactly one owner
+ok 42 - the swarm threshold has exactly one owner
+  ---
+  duration_ms: 0.250278
+  ...
+# Subtest: the contact roster does not wear a leftover instrument title
+ok 43 - the contact roster does not wear a leftover instrument title
+  ---
+  duration_ms: 0.516981
+  ...
+# Subtest: the radar threat pulse is gated in JS, not by a CSS media query
+ok 44 - the radar threat pulse is gated in JS, not by a CSS media query
+  ---
+  duration_ms: 1.197433
+  ...
+# Subtest: every de-boxed surface draws brackets from the one shared recipe
+ok 45 - every de-boxed surface draws brackets from the one shared recipe
+  ---
+  duration_ms: 1.555704
+  ...
+# Subtest: the generated bracket CSS contains no backtick
+ok 46 - the generated bracket CSS contains no backtick
+  ---
+  duration_ms: 10.742437
+  ...
+# Subtest: bracketCss draws all four corners
+ok 47 - bracketCss draws all four corners
+  ---
+  duration_ms: 0.479922
+  ...
+1..47
+# tests 47
+# suites 0
+# pass 46
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4976.563615
