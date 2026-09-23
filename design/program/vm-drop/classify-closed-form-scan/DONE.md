@@ -34,7 +34,7 @@ GPU tier: **software**. Owner iGPU fps not claimed.
 
 ## Apply order
 
-Independent of opening-* packages. Safe alone on master `0612d2b9f`.
+Independent of opening-* packages. Safe alone on master `0612d2b9fc994557dd35cb00d0df21b791722c23`.
 
 ## Risks
 

@@ -10,7 +10,7 @@ Scratch kept local: `vm-work/midflight-wave-hull` @ `bc8b13fc2969dfc684d7ae483ca
 
 ## Soft-GPU crucible seed 4242 (30 s)
 
-| Metric | Before (master `0612d2b9f`) | After (wave-hull) | Notes |
+| Metric | Before (master `0612d2b9fc994557dd35cb00d0df21b791722c23`) | After (wave-hull) | Notes |
 |---|---|---|---|
 | novelty NOVEL | 13 | **8** | mild win |
 | hitch callbacks | **253 / 343** | **279 / 324** | **miss** |
