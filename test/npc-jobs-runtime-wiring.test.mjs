@@ -679,6 +679,54 @@ test('job-owned persistence: a towed lot sheds its mark when the tow releases', 
   assert.equal(custodyLot.flags.persistent, true, 'custody/provenance lot stays serialized');
 });
 
+test('job-owned persistence: a virtualized job keeps the mark through the sweep; relink restamps', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const e = hull(sim, 'rec-sweep');
+  e.data.trafficRole = 'hauler';
+  e.data.durable = true;
+  sim.helpers.npcJobs.assign(e, haulerSpec());
+  assert.equal(e.flags.persistent, true, 'dispatch stamped the mid-job mark');
+
+  // Sector exit virtualizes the job: data.jobId is deleted while the entry lives on in byId.
+  sim.bus.emit('sector:exit', { sectorId: 'sector_a' });
+  assert.equal(e.data.jobId, undefined, 'exit dropped the live marker');
+  const entry = jobs._byId()['job:rec-sweep'];
+  assert.ok(entry && entry.entityId === null, 'job is virtual, awaiting relink');
+
+  // The sweep must not strip the mark while the job is alive — a stripped hull shelves into
+  // the far table where _tryRelink can never find it, stalling the job until proximity.
+  jobs._sweepJobOwnedPersistence();
+  assert.equal(e.flags.persistent, true, 'virtual job still holds the mid-job mark');
+
+  // A rematerialized hull arrives unmarked — world records deliberately don't carry flags —
+  // so relink re-binds jobId bare and the sweep re-earns the mark on the live tick. (Stamping
+  // inside _tryRelink would mark hulls during save restore, where _spawnPersistentEntities
+  // then culls them as stale — the mark must land on the live tick, after the envelope wins.)
+  delete e.flags.persistent;
+  assert.equal(jobs._tryRelink(entry, sim.state.simTime), true);
+  assert.equal(e.data.jobId, 'job:rec-sweep', 'virtual job re-bound to its hull');
+  jobs._sweepJobOwnedPersistence();
+  assert.equal(e.flags.persistent, true, 'the sweep restamps a relinked mid-job hull');
+});
+
+test('job-owned persistence: the sweep still drops the mark once the virtual job is gone', () => {
+  const sim = boot();
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const e = hull(sim, 'rec-sweep-gone');
+  e.data.trafficRole = 'hauler';
+  e.data.durable = true;
+  sim.helpers.npcJobs.assign(e, haulerSpec());
+  sim.bus.emit('sector:exit', { sectorId: 'sector_a' });
+  assert.equal(e.data.jobId, undefined);
+
+  // The job ended while virtual — remove it the way a completed/Released job leaves byId.
+  delete jobs._byId()['job:rec-sweep-gone'];
+  jobs._sweepJobOwnedPersistence();
+  assert.equal(e.flags && e.flags.persistent, undefined,
+    'no live entry owns the worldRecordId — the mark is dead weight and drops');
+});
+
 test('migration v11→v12 (real load): a pre-v12 envelope with no npcJobs loads to an empty bag (fail closed, no crash)', () => {
   const sim = createSimulation({ seed: 7, systems: [npcJobsRuntime, save] });
   sim.state.mode = 'flight';

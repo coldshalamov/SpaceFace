@@ -530,16 +530,24 @@ function unpinOccupationalLatch(entity) {
 function jobPersistenceAnchorReason(entity) {
   const d = (entity && entity.data) || {};
   const f = (entity && entity.flags) || {};
+  const ai = d.ai || {};
   if (d.persistent) return 'data.persistent';
+  if (d.persistenceOwner) return 'persistence-owner';
   if (f.missionPinned || d.missionPinned || d.missionId || d.missionTag
     || d.missionTargetSlot || d.contractId) return 'mission';
   if (d.itinerary || d.claimDepotId || d.claimTravelTrafficHookId) return 'itinerary';
-  if (d.freightCustodyPersistence || d.surrenderRecovery) return 'custody';
-  if (d.ceresActivityCast || d.ceresActivityJobOwned || d.activityActorSlotId) return 'activity';
+  if (d.freightCustodyPersistence || d.surrenderRecovery || d.freightCustody) return 'custody';
+  if (d.ceresActivityCast || d.ceresActivityJobOwned || d.activityActorSlotId
+    || d.activityObjectSlotId) return 'activity';
   if (d.worldSiteTrafficHookId || d.worldRecordSlotId) return 'site';
-  if (d.namedLaneContactId || d.scenarioActorId || d.scenarioRole) return 'scripted';
+  if (d.namedLaneContactId || d.scenarioActorId || d.scenarioRole
+    || d.namedAceId || d.uniqueWreckId || d.uniqueWreck) return 'scripted';
   if (d.isBoss || d.encounterBoss || d.missionBoss) return 'boss';
   if (d.npcTowedByJobId != null) return 'tow';
+  if (f.tethered || d.tethered) return 'tethered';
+  if (d.wingman || d.role === 'wingman') return 'wingman';
+  if (d.predationRole || d.predationIdentityKey || ai.predationStatus || ai.predationRole) return 'predation';
+  if (ai.securityTargetId || ai.witnessRole) return 'security';
   if (d.lotId || d.lotSource || d.custody) return 'lot';
   if (d.manifestId || d.payloadType) return 'manifest-payload';
   const manifest = d.cargoManifest;
@@ -562,6 +570,18 @@ function dropPersistentMark(entity) {
 function isJobPersistenceEligible(entity) {
   const d = (entity && entity.data) || {};
   return !!(d.trafficRole || d.jobRole || d.worldRecordId || d.durable);
+}
+
+// A mid-job traffic worker must survive save/Continue with its work — the same contract the
+// traffic spawn stamps guarantee. release()/the sweep drop the mark when the hull goes idle,
+// so (re)taking a job restores it here. Anchored hulls (Ceres cast, site slots, missions,
+// custody…) already own their persistence — stamping them too would serialize a second copy
+// next to their own rematerialize path.
+function stampJobOwnedPersistence(entity) {
+  const d = (entity && entity.data) || {};
+  if (!d.trafficRole) return;
+  if (jobPersistenceAnchorReason(entity)) return;
+  entity.flags = Object.assign({}, entity.flags, { persistent: true });
 }
 
 // Clear the job-owned persistence mark after the entity's job fields are already gone.
@@ -1883,14 +1903,7 @@ export const npcJobsRuntime = {
       || !this._isCanonicalCeresRealTargetRoute(realTargetActor, job.route, job.speed))) return null;
     byId[jobId] = entry;
     entity.data.jobId = jobId;
-    // A mid-job traffic worker must survive save/Continue with its work — the same
-    // contract the traffic spawn stamps guarantee. release() drops the mark when the
-    // hull goes idle, so taking a job restores it here. Anchored hulls (Ceres cast,
-    // site slots, missions, custody…) already own their persistence — stamping them
-    // too would serialize a second copy next to their own rematerialize path.
-    if (entity.data.trafficRole && !jobPersistenceAnchorReason(entity)) {
-      entity.flags = Object.assign({}, entity.flags, { persistent: true });
-    }
+    stampJobOwnedPersistence(entity);
     this._threatQueryDirty = true;
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     this._refreshCeresRealTargetsForEntry(entry, entity);
@@ -2535,12 +2548,32 @@ export const npcJobsRuntime = {
   _sweepJobOwnedPersistence() {
     const list = this.state && this.state.entityList;
     if (!Array.isArray(list)) return;
+    // Sector exit and deserialize virtualize a job: they delete data.jobId while the entry
+    // lives on in byId, re-binding by worldRecordId when the hull rematerializes. A hull
+    // whose worldRecordId still owns a live entry is mid-job — stripping its mark here
+    // would shelf it into the far table where relink can never find it, stalling the job.
+    const held = new Set();
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const wr = byId[jobId] && byId[jobId].worldRecordId;
+      if (wr != null) held.add(wr);
+    }
     for (const entity of list) {
       if (!entity || entity.alive === false) continue;
+      const d = entity.data;
+      // A hull whose jobId resolves to a live entry is mid-job — re-earn the mark whenever
+      // it was lost. World records deliberately don't carry flags, so a rematerialized hull
+      // re-binds its job unmarked; stamping here (not inside _tryRelink) keeps the mark off
+      // the restore seam — a flag set mid-restore is culled by _spawnPersistentEntities as a
+      // stale body before the live tick ever runs.
+      if (d && d.jobId != null && byId[d.jobId]) {
+        stampJobOwnedPersistence(entity);
+        continue;
+      }
       const flags = entity.flags;
       if (!flags || flags.persistent !== true) continue;
-      const d = entity.data;
       if (d && d.jobId != null) continue;
+      if (d && d.worldRecordId != null && held.has(d.worldRecordId)) continue;
       releaseJobOwnedPersistence(entity);
     }
   },
