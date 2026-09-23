@@ -57,7 +57,7 @@ working. Product status and remaining tasks live in
 | Ten seam-polish fixes (user-requested cracks sweep) | devin-polish-ten | DONE 1d1d1c23e | `src/ui/input.js`, `src/ui/promptDeck.js`, `src/ui/screens/sandbox.js`, `src/ui/uiPrimitives.js`, `src/ui/hud.js`, `src/ui/commandBar.js`, `src/ui/galaxyMap.js`, `src/ui/screens/settings.js`, `src/ui/listControls.js`, `src/ui/bandHud.js`, `test/prompt-deck.test.mjs` | recorded, released |
 | INFERENCE catalog VERB-04 (first well drop hint) | antigravity-inference | DONE 5b19fa765 | `src/systems/onboarding.js`, `test/verb-04-first-well-hint.test.mjs` | recorded, released |
 | INFERENCE catalog WORLD-08 (Collective yard contact grammar) | antigravity-inference | DONE 44d500c8b | `src/data/factionContactGrammar.js`, `src/data/barks.js`, `test/world-08-dmc-contact-grammar.test.mjs` | recorded, released |
-| INFERENCE catalog PIC-07 (large wreck cannot swallow the chase camera) | zcode-catalog-grunt | MUTATING | `src/render/renderer.js`, `test/pic-07-wreck-camera-clearance.test.mjs`, `design/program/INFERENCE_IDEAS.md`, `design/program/NOW.md` | focused green, pathspec commit, SHIPPED flip, row released |
+| INFERENCE catalog PIC-07 (large wreck cannot swallow the chase camera) | zcode-catalog-grunt | DONE 0619e48c4 | `src/render/renderer.js`, `test/pic-07-wreck-camera-clearance.test.mjs`, `design/program/INFERENCE_IDEAS.md`, `design/program/NOW.md` | recorded, released |
 | INFERENCE catalog VERB-10 (skip vacuum on Massline-latched pickup) | antigravity-inference | DONE ce206fb31 | `src/systems/mining.js`, `test/verb-10-latched-pickup-vacuum.test.mjs` | recorded, released |
 
 

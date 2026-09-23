@@ -62,7 +62,7 @@ not to invent.
 | PIC-04 | The hero fan stops when the sim pauses | `src/render/ships/kestrelHero.js` | The fan advances on sim time, not `performance.now()` | Rewrite the hero GLB | SHIPPED |
 | PIC-05 | Pickup spiral motes do not draw far off the glass | `src/render/pickupMotionPresentation.js` | Spiral VFX uses the live table draw radius | Retune the sim magnet range | SHIPPED |
 | PIC-06 | A wreck you just made, on screen, is not hidden for the opening pipeline hold | `src/render/pipelineAutoFlushPolicy.js`, `src/render/renderer.js` | An on-glass fresh wreck submits during the hold the same way on-glass rocks do | Remove the hold | SHIPPED already true |
-| PIC-07 | A large wreck does not swallow the chase camera | `src/render/renderer.js` | `'wreck'` is in the camera-clearance kinds when the span is already large enough for stations | Write a general occluder pass | CLAIMED 2026-09-23 |
+| PIC-07 | A large wreck does not swallow the chase camera | `src/render/renderer.js` | `'wreck'` is in the camera-clearance kinds when the span is already large enough for stations | Write a general occluder pass | SHIPPED 0619e48c4 |
 | PIC-08 | A shove-kill and a gun-kill do not share the generic explosion schedule | `src/render/combat/phasedExplosions.js`, `src/presentation/causalVfxGrammar.js` | The schedule id follows the real cause already in the grammar | Grow the explosion solver | SHIPPED 26732571a |
 | PIC-09 | Starter weapons scar with their own heat, not the unknown-weapon default | `src/render/weapons/contactMarks.js` | `heatForWeaponVariant` maps the starter ids in `vfxProfiles.js` to a named heat, not the unknown default | Redesign the scar atlas | SHIPPED |
 | PIC-10 | The graphics lab does not teach a camera-facing halo as the method | `src/render/graphicsLab.js` | The lab-only halo demo is relabeled or restaged off the banned card | Change production VFX | SHIPPED 49bbd51ca |
@@ -137,12 +137,12 @@ not to invent.
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
-| PIC-07 | 2026-09-23 | zcode-catalog-grunt | `src/render/renderer.js` |
 
 ## SHIPPED
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
+| PIC-07 | pic-07-wreck-camera-clearance | 0619e48c4 | 'wreck' joins CAMERA_CLEARANCE_KINDS; the 120 WU span bar keeps skiff wrecks and pending substrates out |
 | VERB-10 | verb-10-latched-pickup-vacuum | ce206fb31 | isMasslineLatchedPickup skips Massline-latched pickups/pods/chips during updatePickups vacuum and direct collection |
 | VERB-04 | verb-04-first-well-hint | 5b19fa765 | First player fields:deployed emits one-shot contextual hint (firstWellDrop) and does not repeat that session |
 | WORLD-08 | world-08-dmc-contact-grammar | 44d500c8b | FACTION_CONTACT_GRAMMAR.faction_dmc defines yard grammar; Ceres patrol and trader lines speak in yard register |

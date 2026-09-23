@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "ceres-rich-seam-opportunity",
-      "date": "2026-08-12",
-      "wf": "WF-01",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Ceres rich-seam strike now creates one saved material opportunity consumed by player mining or the authored Ore Barge",
-      "fingerprint": "verb=extract,subject=ceres-rich-seam,sector=ceres,layer=world-event,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "9dc1cd40",
-      "verification": "focused_green"
-    },
-    {
       "id": "ceres-disabled-hauler-recovery",
       "date": "2026-08-12",
       "wf": "WF-01",
@@ -1635,6 +1622,19 @@
       "references": [],
       "integration": "live",
       "commit": "ce206fb31",
+      "verification": "focused_green"
+    },
+    {
+      "id": "pic-07-wreck-camera-clearance",
+      "date": "2026-09-23",
+      "wf": "WF-12",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Large wrecks now push the chase camera above their hull like stations do; skiff-sized wrecks stay under the span bar",
+      "fingerprint": "verb=clear,subject=capital-wreck-camera,sector=any,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "0619e48c4",
       "verification": "focused_green"
     }
   ],
