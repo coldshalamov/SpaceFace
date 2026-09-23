@@ -43,6 +43,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| AQ-CAS contrast-adaptive sharpen on below-res frames | devin-aq-cas | DONE e0f3c4236 | `src/render/cas.js`, `src/render/casHeaders.generated.js`, `src/render/bloom.js`, `src/render/renderer.js`, `scripts/build-cas-shader.mjs`, `test/cas-sharpen.test.mjs`, `vendor/fidelityfx-cas/` | recorded, released |
 | INFERENCE catalog VERB-02 (opening raid already happening) | devin-inference-10 | DONE 0c4293e4d | `src/data/encounters/015-opening-hauler-raid.js`, `test/opening-hauler-raid-and-pursuit.test.mjs` | recorded, released |
 | INFERENCE catalog WORLD-03 (Choir-Tender wreck on Helios chart) | devin-inference-10 | DONE 3e6ca5201 | `src/data/sectors.js`, `test/world-03-choir-tender-chart.test.mjs` | recorded, released |
 | INFERENCE catalog INST-02 (comms fan matches power rail) | devin-inference-10 | DONE 5fb238ab7 | `styles/commsradial.css`, `test/inst-02-comms-fan-power-rail.test.mjs` | recorded, released |
