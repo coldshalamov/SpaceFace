@@ -5252,12 +5252,25 @@ export function createHud(ctx, alerts) {
     setStyle(el, 'transform', 'none');
   }
 
+  // Owner, 2026-09-22, on the live HUD: "there's overlapping text". G12 pinned the speed readout
+  // and the weapon name to fixed boxes centred on the bottom band -- exactly where the ordnance rail
+  // lives -- and its check only kept the three readouts off EACH OTHER, never off the rail. Both
+  // readouts are seated in the cluster chassis now (its flex layout keeps them apart), so only the
+  // dock prompt keeps a computed box; any fixed placement G12 left on the other two is cleared.
   function placeFlightReadouts(w, h) {
     const boxes = flightInstrumentRects(w, h);
-    placeFlightBox(speedGaugeEl, boxes.speedReadout);
-    placeFlightBox(document.getElementById('sf-wpnstat'), boxes.weaponName);
+    unplaceFlightBox(speedGaugeEl);
+    unplaceFlightBox(document.getElementById('sf-wpnstat'));
     const dock = document.querySelector('#alerts .sf-alert--dock');
     if (dock) placeFlightBox(dock, boxes.dockPrompt);
+  }
+
+  function unplaceFlightBox(el) {
+    if (!el || !el.style || el.style.position !== 'fixed') return;
+    if (el.classList && el.classList.contains('sf-hud-positioned')) return; // a player's own drag
+    for (const prop of ['position', 'left', 'top', 'width', 'height', 'margin', 'right', 'bottom', 'transform']) {
+      el.style.removeProperty(prop);
+    }
   }
 
   function updateFirstUseHint(player) {

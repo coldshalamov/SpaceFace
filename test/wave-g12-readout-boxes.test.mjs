@@ -20,3 +20,17 @@ test('G12 readout boxes are disjoint at 1280x720 and 1920x1080', () => {
     assert.ok(boxes.speedReadout.x + boxes.speedReadout.width <= boxes.weaponName.x);
   }
 });
+
+// Owner, 2026-09-22, on the live HUD: "there's overlapping text". The G12 boxes centred the speed
+// readout and the weapon name on the bottom band, where the ordnance rail lives, and hud.js pinned
+// them there as position:fixed every slow tick -- only in the live game, so the bench never showed
+// it. Both readouts belong to the cluster chassis; only the dock prompt keeps a computed box.
+test('hud.js never pins the speed readout or the weapon name over the ordnance rail', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('function placeFlightReadouts'), src.indexOf('function unplaceFlightBox'));
+  assert.ok(body.length > 0, 'placeFlightReadouts exists');
+  assert.doesNotMatch(body, /placeFlightBox\(\s*speedGaugeEl/, 'speed readout is not fixed-placed');
+  assert.doesNotMatch(body, /placeFlightBox\([^)]*sf-wpnstat/, 'weapon name is not fixed-placed');
+  assert.match(body, /placeFlightBox\(\s*dock\s*,/, 'the dock prompt keeps its computed box');
+});
