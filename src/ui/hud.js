@@ -45,6 +45,7 @@ import { objectiveText } from './screens/missionLog.js';
 import { adventureDecisionHudLine } from './adventureDecisions.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
+import { mountOrreryCluster } from './orrery/hudAdapter.js';
 import { createForkInstrument } from './forkInstrument.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
@@ -1747,6 +1748,11 @@ export function createHud(ctx, alerts) {
   // CSS-driven cooldown sweep (no rAF — see check:ui-frame-sleep).
   const powerRail = createPowerRail({ bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null });
   root.appendChild(powerRail.el);
+  // ORRERY (design/frontend/ORRERY.md Phase 1): the one-pivot Cluster owns the bottom-left and the
+  // ordnance. It reads the same sources as the chassis and rail (src/ui/orrery/hudAdapter.js); those
+  // stay mounted and hidden (#hud[data-hud="orrery"]) until the live route is checked, because
+  // their DOM contracts are pinned by tests and the slot-claim protocol still drives the rail.
+  const orreryCluster = mountOrreryCluster(root, state, { bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null });
   // Prompts borrow the number row rather than racing the rail for it.
   const offSlotClaim = ctx.bus ? ctx.bus.on('hud:slotClaim', (p) => powerRail.claim(p)) : null;
   const offSlotRelease = ctx.bus ? ctx.bus.on('hud:slotRelease', (p) => powerRail.release(p && p.claimId)) : null;
@@ -4760,6 +4766,9 @@ export function createHud(ctx, alerts) {
     // The cooldown sweep is a CSS animation, so a cooling slot needs no per-frame work either —
     // the rail genuinely stops costing anything once the numbers settle.
     if (slow) powerRail.update(readRailModel(state, state.simTime || 0), Date.now());
+    // ORRERY Cluster: ordnance on the slow clock, speed/drift every frame; its own change detection
+    // means a settled frame writes nothing.
+    if (orreryCluster) orreryCluster.update(state, p, slow);
     // PQ-195.02: the fork instrument rides the slow clock like the rail — its own change detection
     // means a settled reading costs nothing, and a fast approach is heard within a tenth of a second.
     if (slow) forkInstrument.update(state);
@@ -5186,11 +5195,18 @@ export function createHud(ctx, alerts) {
     // The edge arrow never lands on a machined plate: the left column and the right dock own
     // their edges, so an arrow that would sit on one steps just inboard of it.
     let edgeX = edgePlacement.x;
-    const edgeY = edgePlacement.y;
+    let edgeY = edgePlacement.y;
     const obstacles = objectiveEdgeObstacles(performance.now());
     const leftBox = obstacles.left;
     const rightBox = obstacles.right;
-    if (leftBox && edgeX < leftBox.right && edgeY > leftBox.top - 14 && edgeY < leftBox.bottom + 14) {
+    const orreryBox = obstacles.orrery;
+    // The ORRERY instrument is not a plate: stepping inboard of its box would park the arrow in
+    // the middle of the screen. On the left edge the arrow rides up above it; on the bottom edge
+    // it steps right of it. Either way it stays on its own edge and never lands on a numeral.
+    if (orreryBox && edgeX < orreryBox.right && edgeY > orreryBox.top - 16) {
+      if (edgePlacement.edge === 'bottom') edgeX = orreryBox.right + 18;
+      else edgeY = orreryBox.top - 18;
+    } else if (leftBox && edgeX < leftBox.right && edgeY > leftBox.top - 14 && edgeY < leftBox.bottom + 14) {
       edgeX = leftBox.right + 18;
     } else if (rightBox && edgeX > rightBox.left && edgeY > rightBox.top - 14 && edgeY < rightBox.bottom + 14) {
       edgeX = rightBox.left - 18;
@@ -5206,7 +5222,7 @@ export function createHud(ctx, alerts) {
 
   // Plate boxes for the objective edge arrow, read at most every 500 ms and only while the arrow
   // rides an edge — one layout read, never per frame.
-  const objectiveEdgeBoxes = { at: -Infinity, left: null, right: null };
+  const objectiveEdgeBoxes = { at: -Infinity, left: null, right: null, orrery: null };
   function plateBox(el) {
     if (!el || !el.isConnected || typeof el.getBoundingClientRect !== 'function') return null;
     const box = el.getBoundingClientRect();
@@ -5215,12 +5231,15 @@ export function createHud(ctx, alerts) {
   function objectiveEdgeObstacles(nowMs) {
     if (nowMs - objectiveEdgeBoxes.at > 500) {
       objectiveEdgeBoxes.at = nowMs;
-      objectiveEdgeBoxes.left = plateBox(leftStack);
+      // with ORRERY on, the old left column is mounted but hidden: its box is not an obstacle
+      objectiveEdgeBoxes.left = orreryCluster ? null : plateBox(leftStack);
       objectiveEdgeBoxes.right = plateBox(rightDock);
+      objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryCluster.host.querySelector('.orr-cluster')) : null;
     }
     return objectiveEdgeBoxes;
   }
 
+  const ORRERY_RECEIPT_INSET = 30;
   function placeReceiptLane() {
     const laneRoot = document.getElementById('toasts');
     if (!laneRoot) return;
@@ -5234,7 +5253,9 @@ export function createHud(ctx, alerts) {
     setStyle(laneRoot, 'width', `${Math.round(lane.width)}px`);
     // Bottom-anchored: the stack must clear the command-deck readout band (see
     // receiptLaneRect) and grow upward, never down into the speed/weapon row.
-    setStyle(laneRoot, 'bottom', `${Math.round(lane.bottomInset)}px`);
+    // The inset clears the old command-deck band; with ORRERY on that band is hidden and the
+    // bottom-left instrument ends left of the lane, so the receipts sit low on the bottom edge.
+    setStyle(laneRoot, 'bottom', `${Math.round(orreryCluster ? ORRERY_RECEIPT_INSET : lane.bottomInset)}px`);
     setStyle(laneRoot, 'right', 'auto');
     setStyle(laneRoot, 'transform', 'none');
     placeFlightReadouts(w, h);
@@ -5382,6 +5403,7 @@ export function createHud(ctx, alerts) {
       clearCargoGaugeSettle(cargoGaugeSettle.used);
       clearCargoGaugeSettle(cargoGaugeSettle.risk);
       powerRail.destroy();
+      if (orreryCluster) orreryCluster.dispose();
       forkInstrument.destroy();
       threatHalo.destroy();
       if (clusterSizeObserver) clusterSizeObserver.disconnect();

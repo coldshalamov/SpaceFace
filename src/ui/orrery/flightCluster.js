@@ -113,7 +113,7 @@ const f1 = (n) => n.toFixed(1);
  * @param {object} o
  * @param {{name:string, icon:string, slots:{key:string,name:string,icon:string}[]}[]} o.groups
  */
-export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', classLine = 'Kestrel class · starter', groups = [] } = {}) {
+export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', classLine = 'Kestrel class · starter', groups = [], restSlot = null } = {}) {
   injectStyle();
   const root = el('section', 'orr-cluster');
   root.setAttribute('aria-label', 'Ship status');
@@ -192,7 +192,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const energyVal = el('b', 'orr-value');
   energyRead.append(el('span', 'orr-label', 'Energy'), energyVal);
   const [enx, eny] = at(R.flank + 12, 274);
-  place(energyRead, 22, eny - 30);
+  // seated just under the boost arc's lower end, so the label never touches either arc
+  place(energyRead, 22, eny - 17);
   const heatRead = el('div', 'orr-cluster__read orr-cluster__fade orr-soft');
   const heatVal = el('b', 'orr-value');
   heatRead.append(el('span', 'orr-label', 'Heat'), heatVal);
@@ -265,8 +266,12 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     const [a0x, a0y] = at(R.speed + 12, deg);
     const [a1x, a1y] = at(R.crescent - KEY_R - 5, deg);
     const [g0x, g0y] = at(-R.orbit - 4, deg);
+    const [g1x, g1y] = at(-R.shield - 6, deg);
+    const [i0x, i0y] = at(R.shield + 6, deg);
     const d = `M ${f1(a0x)} ${f1(a0y)} L ${f1(a1x)} ${f1(a1y)}`;
-    armGhost.setAttribute('d', `M ${f1(g0x)} ${f1(g0y)} L ${f1(a0x)} ${f1(a0y)}`);
+    // the ghost crosses the rings on both sides of the pivot but breaks over the hull art: a line
+    // through the ship read as a scratch on it, even at 16 %
+    armGhost.setAttribute('d', `M ${f1(g0x)} ${f1(g0y)} L ${f1(g1x)} ${f1(g1y)} M ${f1(i0x)} ${f1(i0y)} L ${f1(a0x)} ${f1(a0y)}`);
     armLine.setAttribute('d', d);
     armBloom.setAttribute('d', d);
     armPip.setAttribute('cx', f1(a0x));
@@ -304,6 +309,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   };
 
   let openGroup = -1;
+  let handSlot = restSlot != null ? String(restSlot) : null;
+  let handPainted = false;
   function layoutCrescent(armedGroup) {
     for (const sk of sockets) { sk.spring.stop(); sk.el.remove(); }
     sockets.length = 0;
@@ -392,43 +399,67 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     if (Number.isFinite(d.drift) && changed('drift', Math.round(d.drift))) {
       driftPip.setAttribute('transform', `rotate(${Math.max(-40, Math.min(40, d.drift))} ${P.x} ${P.y})`);
     }
-    // ordnance: the armed group opens along the crescent; the Hand swings to the armed key
+    // ordnance: the Hand always points at the current choice. An engaged (armed) slot takes it; when
+    // nothing is engaged it stays on the last slot that was, and before any, on the rest slot. Its
+    // group is the one unfolded along the crescent.
     const slotStates = d.ordnance || {};
-    let armedGroup = 0;
-    groups.forEach((g, gi) => { if (g.slots.some((sl) => (slotStates[sl.key] || {}).state === 'armed')) armedGroup = gi; });
-    if (armedGroup !== openGroup) { openGroup = armedGroup; layoutCrescent(armedGroup); }
-    let armedAngle = null;
+    const sid = (sl) => String(sl.id != null ? sl.id : sl.key);
+    let armedGroup = -1;
+    groups.forEach((g, gi) => g.slots.forEach((sl) => {
+      if ((slotStates[sid(sl)] || {}).state === 'armed') { armedGroup = gi; handSlot = sid(sl); }
+    }));
+    let openTo = armedGroup;
+    if (openTo < 0) openTo = Math.max(0, groups.findIndex((g) => g.slots.some((sl) => sid(sl) === handSlot)));
+    if (openTo !== openGroup) { openGroup = openTo; layoutCrescent(openTo); }
+    let handAngle = null;
+    let handArmed = false;
     for (const sk of sockets) {
       if (sk.slot) {
-        const st = slotStates[sk.slot.key] || {};
+        const st = slotStates[sid(sk.slot)] || {};
         const state = st.state || 'ready';
-        sk.el.className = `orr-cluster__key is-${state}`;
-        sk.armed.setAttribute('opacity', state === 'armed' ? '1' : '0');
-        sk.armedB.setAttribute('opacity', state === 'armed' ? '.26' : '0');
+        // write only what changed: a settled HUD frame must not dirty the SVG
+        if (sk.state !== state) {
+          sk.state = state;
+          sk.el.className = `orr-cluster__key is-${state}`;
+          sk.armed.setAttribute('opacity', state === 'armed' ? '1' : '0');
+          sk.armedB.setAttribute('opacity', state === 'armed' ? '.26' : '0');
+        }
         sk.spring.set(state === 'cooldown' ? Number(st.cooldown) || 0 : 0);
-        sk.count.textContent = Number.isFinite(st.count) ? `×${st.count}` : '';
-        if (state === 'armed') armedAngle = sk.angle;
+        const countText = Number.isFinite(st.count) ? `×${st.count}` : '';
+        if (sk.countText !== countText) { sk.countText = countText; sk.count.textContent = countText; }
+        if (handAngle == null || sid(sk.slot) === handSlot) { handAngle = sk.angle; handArmed = state === 'armed'; }
       } else {
         const readiness = sk.group.slots.reduce((m, sl) => {
-          const st = slotStates[sl.key] || {};
+          const st = slotStates[sid(sl)] || {};
           return Math.min(m, st.state === 'cooldown' ? Number(st.cooldown) || 0 : 1);
         }, 1);
-        sk.el.className = 'orr-cluster__key is-node';
         sk.spring.set(readiness < 1 ? readiness : 0);
       }
     }
-    if (armedAngle != null) handSpring.set(armedAngle);
+    if (handAngle != null) {
+      if (!handPainted && handSpring.value === handAngle) handSpring.set(handAngle, { instant: true });
+      else handSpring.set(handAngle);
+      handPainted = true;
+    }
+    // engaged: full light and its bloom; resting: the same Hand, quieter, so "armed" still reads
+    if (changed('handArmed', handArmed)) {
+      armLine.setAttribute('opacity', handArmed ? '1' : '.58');
+      armBloom.setAttribute('opacity', handArmed ? '.34' : '0');
+      armPip.setAttribute('opacity', handArmed ? '1' : '.7');
+    }
     // tether
     const t = d.tether || null;
     const tethered = !!(t && t.state && t.state !== 'Idle' && Number(t.mass) > 0);
     if (changed('tethered', tethered)) { tetherG.setAttribute('opacity', tethered ? '1' : '0'); payload.style.opacity = tethered ? '1' : '0'; }
     if (tethered) {
       const st = Math.max(0, Math.min(1, Number(t.strain) || 0));
-      massCounter.set(Number(t.mass));
+      if (changed('mass', Math.round(Number(t.mass)))) massCounter.set(Number(t.mass));
       strain.set(st);
-      setSag(st);
-      strain.setTone(st > 0.85 ? 'threat' : 'phos');
-      strainEl.textContent = `STRAIN ${Math.round(st * 100)}%`;
+      if (changed('strain', Math.round(st * 100))) {
+        setSag(st);
+        strain.setTone(st > 0.85 ? 'threat' : 'phos');
+        strainEl.textContent = `STRAIN ${Math.round(st * 100)}%`;
+      }
     }
   }
 

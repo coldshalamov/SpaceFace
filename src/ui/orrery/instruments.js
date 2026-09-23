@@ -39,6 +39,7 @@ export function arcGauge({
   if (headDot) g.appendChild(headDot);
 
   let shown = 0;
+  let toneNow = tone;
   let ghostValue = 0;
   let ghostTimer = 0;
   const paint = (v) => {
@@ -69,6 +70,8 @@ export function arcGauge({
       spring.set(v, { instant });
     },
     setTone(nextTone) {
+      if (nextTone === toneNow) return;
+      toneNow = nextTone;
       for (const node of [fill, bloom]) node.setAttribute('class', node.getAttribute('class').replace(/orr-(phos|hand|threat|ink|hi|ice)/, `orr-${nextTone}`));
       if (headDot) headDot.setAttribute('fill', `var(--dp-${nextTone === 'threat' ? 'danger' : nextTone === 'hand' ? 'hand' : 'phos'})`);
     },

@@ -73,7 +73,11 @@ export function createSpring({ value = 0, preset = 'settle', onUpdate, precision
     get value() { return x; },
     get target() { return target; },
     set(to, { instant = false } = {}) {
-      target = Number.isFinite(to) ? to : target;
+      const next = Number.isFinite(to) ? to : target;
+      // Already resting on this target: nothing to animate and nothing to paint. HUD instruments
+      // call set() every frame, and a paint of an unchanged value still dirties the SVG's style.
+      if (!instant && !off && next === target && x === target && v === 0) return;
+      target = next;
       if (instant || reducedMotion() || typeof requestAnimationFrame !== 'function') {
         if (off) { off(); off = null; }
         x = target; v = 0; last = null; emit();
