@@ -8,7 +8,8 @@ export const BACKDROPS = Object.freeze({
   world: '../assets/ui/backdrops/backdrop-crucible-door.jpg',
 });
 
-/** @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string}[]} */
+/** `ruleset` picks the Crucible run a draft/refit shot seeds (tools/ui-bench.js seedCrucibleShot).
+ *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string}[]} */
 export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'title', screen: 'mainMenu', backdrop: 'title' },
   { id: 'mainMenu', screen: 'mainMenu', backdrop: 'title' },
@@ -17,8 +18,10 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'newGame', screen: 'newGame', backdrop: 'title' },
   { id: 'pause', screen: 'pause', backdrop: 'title' },
   { id: 'settings', screen: 'settings', backdrop: 'title' },
-  { id: 'save-load', screen: 'saveLoad', backdrop: 'title' },
-  { id: 'saveLoad', screen: 'saveLoad', backdrop: 'title' },
+  // `saves: 'filed'` loads with two lives on file (tools/ui-bench-saves.js); -empty is a fresh machine.
+  { id: 'save-load', screen: 'saveLoad', backdrop: 'title', saves: 'filed' },
+  { id: 'saveLoad', screen: 'saveLoad', backdrop: 'title', saves: 'filed' },
+  { id: 'save-load-empty', screen: 'saveLoad', backdrop: 'title' },
   { id: 'help', screen: 'help', backdrop: 'title' },
   { id: 'codex', screen: 'codex', backdrop: 'title' },
   { id: 'mission-log', screen: 'missionLog', backdrop: 'title' },
@@ -29,6 +32,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'gameOver', screen: 'gameOver', backdrop: 'title' },
   { id: 'tech-tree', screen: 'techTree', backdrop: 'title' },
   { id: 'techTree', screen: 'techTree', backdrop: 'title' },
+  // A career some hours in: six nodes researched and research points banked (tools/ui-bench.js).
+  { id: 'tech-tree-progress', screen: 'techTree', backdrop: 'title', research: ['tech_combat_basics', 'tech_strike_craft', 'tech_fire_control', 'tech_deflector_theory', 'tech_industrial_mining', 'tech_drive_tuning'] },
 
   { id: 'flight', screen: 'flight', backdrop: 'world' },
   { id: 'power-rail', screen: 'flight', backdrop: 'world' },
@@ -57,8 +62,10 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'crucible-door', screen: 'crucible', backdrop: 'world' },
   { id: 'crucible-draft', screen: 'crucibleDraft', backdrop: 'world' },
   { id: 'crucibleDraft', screen: 'crucibleDraft', backdrop: 'world' },
+  { id: 'crucible-rearm', screen: 'crucibleDraft', backdrop: 'world', ruleset: 'scored' },
   { id: 'crucible-refit', screen: 'crucibleRefit', backdrop: 'world' },
   { id: 'crucibleRefit', screen: 'crucibleRefit', backdrop: 'world' },
+  { id: 'crucible-refit-swarm', screen: 'crucibleRefit', backdrop: 'world', ruleset: 'swarm' },
   { id: 'crucible-results', screen: 'crucibleResults', backdrop: 'world' },
   { id: 'crucibleResults', screen: 'crucibleResults', backdrop: 'world' },
 

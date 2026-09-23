@@ -7,8 +7,17 @@
 // cannot mount stays with `ui-look`.
 
 import { createGameState } from '../src/core/gameState.js';
+import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
+import { createRunState } from '../src/core/runState.js';
+import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
+import { survivalDraft } from '../src/systems/survivalDraft.js';
+import { ships as shipsSystem } from '../src/systems/ships.js';
+import {
+  buildCodeFor, buildNameFor, counterplayFor, deathCauseText, deathSentence, storyMomentsFor,
+} from '../src/systems/survivalResults.js';
 import { injectHudCss } from '../src/ui/views/hudStyles.js';
 import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCatalog.mjs';
+import { createBenchSaveSystem } from './ui-bench-saves.js';
 
 window.__BENCH_READY = false;
 window.__BENCH_OVERLAY = '';
@@ -93,6 +102,8 @@ function seededState() {
     deadline_s: 900,
     destStationName: 'Helios Gate',
   }];
+  // The board the docked station posts: the game's own offers, so the contracts tab is reviewed full.
+  state.missions.boards = { station_helios: structuredClone(BENCH_HELIOS_BOARD) };
   state.nav.waypoint = {
     label: 'Beacon 419 WU', pos: { x: 420, z: -180 }, sectorId: 'sector_helios', stationId: 'station_helios',
   };
@@ -123,23 +134,121 @@ function seededState() {
 
 const state = seededState();
 
-/** Gauntlet at the wave-30 refit: Continue is legal, Extract still ends the run.
- *  Swarm is not this state — Continue stays off unless ruleset is scored. */
-function seedGauntletRefit(gameState) {
-  const ships = gameState.player && gameState.player.ownedShips;
-  const ship = Array.isArray(ships) ? ships[0] : null;
-  if (ship) ship.fittings = ['wpn_autocannon_m', 'wpn_pulse_laser_s'];
-  const ruleset = params.get('ruleset') === 'swarm' ? 'swarm' : 'scored';
-  gameState.run = {
-    kind: 'survival',
-    phase: 'refit',
-    ruleset,
-    wave: 30,
-    score: 4820,
-    credits: 240,
-    arenaId: 'helios_core',
-    seed: 4242,
+/** What a Crucible fixture overwrites, kept so every other shot mounts over the seeded state. */
+const BASELINE = structuredClone({
+  run: state.run,
+  ownedShips: state.player.ownedShips,
+  moduleInventory: state.player.moduleInventory,
+});
+function restoreBaseline() {
+  const copy = structuredClone(BASELINE);
+  state.run = copy.run;
+  state.player.ownedShips = copy.ownedShips;
+  state.player.moduleInventory = copy.moduleInventory;
+  for (const off of benchOwnerUnsubs.splice(0)) off();
+  benchDraftOwner = null;
+  benchOwnerLive = false;
+}
+
+/** The survivalDraft owner a Crucible surface reads, when the shot is one. */
+let benchDraftOwner = null;
+const benchOwnerUnsubs = [];
+/** Set once the Crucible screen is mounted, so a draft resolved while seeding closes nothing. */
+let benchOwnerLive = false;
+
+/**
+ * The owner's own bus. Opening a draft emits ui:pushScreen, which on the bench bus would mount the
+ * screen a second time, so the owner talks to this instead: every event is dropped except the
+ * wallet charge, answered the way runSession answers it (spent when the run wallet covers it,
+ * rejected when it does not), so a purchase or a re-roll on the bench lands or is refused honestly.
+ * A resolved draft closes the draft screen, which is what survivalRun's next phase does in a run.
+ */
+function benchOwnerBus(gameState) {
+  return {
+    on: () => () => {},
+    emit(event, payload) {
+      const owner = benchDraftOwner;
+      if (event === 'run:draftResolved' && benchOwnerLive) {
+        bus.emit('ui:closeScreen', { id: 'crucibleDraft' });
+        return;
+      }
+      if (event !== 'run:spendRequested' || !owner || !gameState.run) return;
+      const run = gameState.run;
+      const credits = Number(payload && payload.credits) || 0;
+      if (Number.isInteger(run.credits) && run.credits >= credits) {
+        run.credits -= credits;
+        owner._onSpent({ credits, reason: payload.reason, totalCredits: run.credits });
+      } else {
+        owner._onSpendRejected({ credits, reason: payload.reason, available: run.credits || 0 });
+      }
+    },
   };
+}
+
+/**
+ * A Crucible run the in-run surfaces can read: the door's default starter (Ricochet Runner on the
+ * Hornet), a run envelope that passes validateRunState, and the REAL survivalDraft owner. The
+ * owner draws the offers, prices the re-roll and lists the hardpoints exactly as it does in a run,
+ * so the rearm, the armory and the refit are the screens a player sees. It fits through the real
+ * ships owner and charges a bench wallet (benchOwnerBus), and it hears the screen's intents on the
+ * bench bus, so --walk strips, fits, buys and re-rolls the way a run does.
+ *
+ * Shots: crucible-draft is the Swarm armory after round 3; crucible-rearm is the Gauntlet's
+ * three-card rearm after wave 3; crucible-refit is the Gauntlet's wave-30 refit (Continue and the
+ * win both live); crucible-refit-swarm is the Swarm refit after round 10 (Extract live).
+ * `?ruleset=` on the page URL still overrides the shot's ruleset.
+ */
+function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fittings = null, spares = [] }) {
+  const starter = COMBAT_LAB_STARTER_PACKAGES.find((entry) => entry.id === 'ricochet_runner');
+  const fitted = [];
+  for (const slot of starter.loadout) fitted[slot.slotIndex] = slot.defId;
+  for (const [slotIndex, defId] of Object.entries(fittings || {})) fitted[Number(slotIndex)] = defId;
+  for (let i = 0; i < fitted.length; i++) if (!fitted[i]) fitted[i] = null;
+  gameState.player.ownedShips = [{ defId: starter.hullId, fittings: fitted }];
+  gameState.player.activeShipIndex = 0;
+  gameState.player.moduleInventory = spares.map((defId, index) => ({ instanceId: 9100 + index, defId }));
+  const run = createRunState({ kind: 'survival', ruleset, seed: 4242 });
+  Object.assign(run, { arenaId: 'helios_core', phase, wave, credits, score, xp: wave * 110 });
+  gameState.run = run;
+  const ownerBus = benchOwnerBus(gameState);
+  const shipsOwner = Object.create(shipsSystem);
+  Object.assign(shipsOwner, { state: gameState, bus: ownerBus, helpers: null, registry: null });
+  const owner = Object.create(survivalDraft);
+  Object.assign(owner, {
+    state: gameState, bus: ownerBus, helpers: null, _unsubs: [],
+    registry: { get: (name) => (name === 'ships' ? shipsOwner : null) },
+  });
+  owner._reset();
+  benchDraftOwner = owner;
+  if (phase === 'draft') owner._openDraft();
+  else if (phase === 'refit') owner._openRefit();
+  benchOwnerUnsubs.push(
+    bus.on('run:draftPickRequested', (p) => owner.resolvePick(p)),
+    bus.on('run:draftRerollRequested', () => owner.requestReroll()),
+    bus.on('run:refitFitRequested', (p) => owner.refitFit(p)),
+    bus.on('run:refitStripRequested', (p) => owner.refitStrip(p)),
+  );
+}
+
+function seedCrucibleShot(screenId, shot) {
+  const ruleset = params.get('ruleset') || shot.ruleset || null;
+  if (screenId === 'crucibleDraft') {
+    seedCrucibleRun(state, ruleset === 'scored'
+      ? { ruleset: 'scored', phase: 'draft', wave: 3, credits: 64, score: 1180 }
+      : { ruleset: 'swarm', phase: 'draft', wave: 3, credits: 64, score: 1180 });
+    return;
+  }
+  if (screenId === 'crucibleRefit') {
+    // A refit is where swapped-out picks wait: two spare guns for the open weapon hardpoint (so
+    // the picker and its fire/shove comparison show) and a drive for the empty engine slot.
+    const loadout = {
+      fittings: { 3: 'mod_shield_booster_s' },
+      spares: ['wpn_railgun_m', 'wpn_autocannon_s', 'mod_engine_fusion_m'],
+    };
+    seedCrucibleRun(state, ruleset === 'swarm'
+      ? { ruleset: 'swarm', phase: 'refit', wave: 10, credits: 212, score: 3040, ...loadout }
+      : { ruleset: 'scored', phase: 'refit', wave: 30, credits: 240, score: 4820, ...loadout });
+  }
 }
 
 function closeTopScreen(next) {
@@ -192,30 +301,40 @@ const manager = {
   isOpen(id) { return stack.includes(id); },
   top() { return stack[stack.length - 1] || null; },
 };
+/** The defeat receipt the fixture's death is told from. The sentences below come from the same
+ *  survivalResults builders a live run uses, so the plate cannot drift from what a player reads. */
+const BENCH_DEFEAT_RECEIPT = Object.freeze({
+  attacker: 'Reaver Corsair', faction: 'Crimson Reach', weapon: 'Heavy Autocannon M',
+  direction: 'AFT', dominantLayer: 'hull', closingHullsPerS: 1.4,
+});
+
+const BENCH_PICKS = Object.freeze([
+  Object.freeze({ verb: 'Volume', defId: 'wpn_autocannon_m', wave: 2 }),
+  Object.freeze({ verb: 'Pierce', defId: 'wpn_railgun_m', wave: 4 }),
+  Object.freeze({ verb: 'Screen', defId: 'wpn_flak_turret_s', wave: 6 }),
+]);
+
 /** A filled flight record so --shot=crucibleResults is the plate a player sees, not the empty. */
 const BENCH_CRUCIBLE_RESULT = Object.freeze({
   outcome: 'defeat', seed: 4242, arenaId: 'helios_core', ruleset: 'swarm',
   wave: 6, deepestWave: 6, wavesCleared: 5, kills: 31, score: 1240, credits: 88, xp: 640, level: 4,
   bestChain: 24, bestChainPoints: 960, lastRoundCleared: 5, remainingEnemies: 6,
   roundThreatResolved: 18, roundThreatBudget: 24,
-  picks: [
-    { verb: 'Volume', defId: 'wpn_autocannon_m', wave: 2 },
-    { verb: 'Pierce', defId: 'wpn_railgun_m', wave: 4 },
-    { verb: 'Screen', defId: 'wpn_flak_turret_s', wave: 6 },
-  ],
-  headline: 'Reaver Corsair killed you on wave 6 from astern with its Heavy Autocannon M, through the hull.',
-  buildName: 'Volume Pierce Screen',
-  buildCode: 'VOL · PRC · SCR',
+  picks: BENCH_PICKS,
+  headline: deathSentence(BENCH_DEFEAT_RECEIPT, { wave: 6 }),
+  buildName: buildNameFor(BENCH_PICKS),
+  buildCode: buildCodeFor(BENCH_PICKS),
   death: {
-    causeText: 'Reaver Corsair killed you from astern with a Heavy Autocannon M, through the hull.',
-    telegraphName: 'cannon spool', telegraphLeadMs: 420,
-    counterplay: 'The tell was the barrel glow — break astern before the burst.',
+    causeText: deathCauseText(BENCH_DEFEAT_RECEIPT),
+    // A witnessed tell: telegraphWord() names it in sentence case.
+    telegraphName: 'Weapon charge', telegraphLeadMs: 420, telegraphSource: 'witnessed',
+    counterplay: counterplayFor(BENCH_DEFEAT_RECEIPT),
   },
-  moments: [
-    { text: 'Best chain 24 on round 4.' },
-    { text: 'Round 6 did the heavy lifting — 11 kills.' },
-    { text: 'Hardest hit: 18 from Heavy Autocannon M.' },
-  ],
+  moments: storyMomentsFor({
+    bestChain: 24, chainWave: 4,
+    waveStats: [{ wave: 4, kills: 7 }, { wave: 6, kills: 11 }],
+    heaviestHit: { amount: 18.4, weapon: 'Heavy Autocannon M' },
+  }),
   defeat: {
     attacker: 'Reaver Corsair', faction: 'Crimson Reach', weapon: 'Heavy Autocannon M',
     direction: 'AFT', dominantLayer: 'hull', cause: 'Reaver Corsair · Crimson Reach · hull breach',
@@ -235,12 +354,17 @@ const registry = {
   get(name) {
     if (name === 'ui') return { screenManager: manager, manager };
     if (name === 'survivalResults') return { lastResult: () => BENCH_CRUCIBLE_RESULT };
+    if (name === 'survivalDraft') return benchDraftOwner;
+    // A shot marked `saves: 'filed'` loads with two lives on file (tools/ui-bench-saves.js).
+    if (name === 'save') return benchSaves;
     return null;
   },
 };
 
 let current = null;
 let currentScreen = null;
+/** The save system the load screen reads: null (no saves) unless the shot files some. */
+let benchSaves = null;
 
 function applyBackdrop(shot) {
   const fromQuery = params.get('bg');
@@ -260,7 +384,13 @@ function clearOverlayHost() {
 async function finishShot(shot) {
   try {
     if (!document.getElementById('bench-broken')) {
-      if (shot.tab) document.querySelector(`#screens [data-nav="${shot.tab}"]`)?.click();
+      if (shot.tab) {
+        // A player's click moves focus to the tab it pressed; a synthetic .click() does not, so the
+        // shot kept the focus bracket on the Market tile while another tab was current.
+        const tabEl = document.querySelector(`#screens [data-nav="${shot.tab}"]`);
+        tabEl?.click();
+        tabEl?.focus({ preventScroll: true });
+      }
       if (shot.focus) {
         const want = String(shot.focus).toUpperCase();
         const button = [...screensEl.querySelectorAll('button')].find((el) => (el.textContent || '').toUpperCase().includes(want));
@@ -283,9 +413,14 @@ async function goto(rawId) {
   const shot = resolveShot(rawId) || { id: rawId, screen: rawId, backdrop: 'title' };
   const id = shot.screen;
   applyBackdrop(shot);
+  benchSaves = shot.saves === 'filed' ? createBenchSaveSystem() : null;
+  // A shot with `research` mounts that career's researched nodes and a research-point balance.
+  state.player.researchedNodes = Array.isArray(shot.research) ? shot.research.slice() : [];
+  state.player.researchPoints = Array.isArray(shot.research) ? 30 : 0;
   clearOverlayHost();
   try {
     if (id === 'flight' || id === 'crucibleHud') {
+      restoreBaseline();
       screensEl.innerHTML = '';
       state.ui.docked = false;
       state.ui.dockedStationId = null;
@@ -316,11 +451,18 @@ async function goto(rawId) {
         state.ui.dockedStationId = null;
       }
       screensEl.appendChild(root);
-      if (id === 'crucibleRefit') seedGauntletRefit(state);
+      // The armory's "Rearrange loadout" opens the refit over the SAME open draft; keep that run.
+      const sameRun = id === 'crucibleRefit' && current === 'crucibleDraft' && !!benchDraftOwner
+        && state.run?.phase === 'draft';
+      if (!sameRun) {
+        restoreBaseline();
+        seedCrucibleShot(id, shot);
+      }
       const screen = await loader();
       const ctx = { state, bus, screenManager: manager, registry, writeStorePage() {}, publishStoreStill() {} };
       screen.mount(root, ctx);
       screen.onShow?.(ctx);
+      benchOwnerLive = !!benchDraftOwner;
       currentScreen = screen;
       current = id;
       note(`— ${id} mounted`);
@@ -896,6 +1038,9 @@ function layoutAudit() {
       const a = controls[i];
       const b = controls[j];
       if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+      // A control scrolled out of its own scroll column is not buried under whatever sits past
+      // that column's edge; the column clips it, and a scroll brings it back.
+      if (scrollHold(a.el)?.kind === 'scrolled' || scrollHold(b.el)?.kind === 'scrolled') continue;
       const menuA = a.el.closest('[role="menu"], #sf-commsfan, #sf-wingman-radial');
       if (menuA && menuA.contains(b.el)) continue;
       const width = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left);
