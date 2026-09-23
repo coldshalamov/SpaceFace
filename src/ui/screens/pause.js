@@ -304,7 +304,11 @@ function fmtSavedAt(value) {
   if (!value) return '';
   const d = new Date(value);
   if (!Number.isFinite(d.getTime())) return '';
-  return d.toLocaleString();
+  // "16:57" today, "Sep 15, 16:57" before: a reading, not a machine timestamp with seconds
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const today = new Date();
+  const sameDay = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+  return sameDay ? time : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + time;
 }
 
 function saveLine(state) {
@@ -781,8 +785,10 @@ export const pauseScreen = {
     const brief = briefKicker.parentElement;
     if (brief) { brief.classList.add('orr-brief'); rootEl.appendChild(brief); }
     if (pauseRail) pauseRail.dispose();
-    pauseRail = createArcRail({ host: stage, list, frame: rootEl, grouped: true, dense: true, emblemUrl: EMBLEM_URL,
-      engraving: 'Flight held · SpaceFace · Helios Reach' });
+    // Every verb on its own tick so the Hand always points at the actual choice; a group is a
+    // cluster with its name engraved on the rim beside it.
+    pauseRail = createArcRail({ host: stage, list, frame: rootEl, clustered: true, dense: true, span: 118, pivotY: 0.54,
+      emblemUrl: EMBLEM_URL });
 
     // The column ends in a legend strip, not an air gap: the keys that are live while this modal
     // is up as machined caps, then the build mark — the two .k-fine lines the pause grid's foot

@@ -18,6 +18,9 @@ import { starterAirCard } from '../starterAirCard.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createStageHull } from './stageHull.js';
+import { createStopScale } from '../orrery/stopDial.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { hullPosterUrl } from '../hullPosters.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
   from '../kit/computedMaterial.js';
@@ -71,11 +74,18 @@ function pin(node, props) {
   }
   return node;
 }
+// ORRERY (design/frontend/ORRERY.md §6 New game): the Field Hardware paint helpers below pinned raster
+// plates, key sprites and etched tiles inline with !important, which no sheet can answer. Under ORRERY
+// they only mark each node for the composition sheet (src/ui/orrery/screenLayouts.js, .orr-newgame)
+// and pin nothing, so every id, class hook, Tab stop and handler stays exactly as it was.
+const ORRERY = true;
 function installShell(root) {
+  if (ORRERY) { root.classList.add('fh-shell', 'orr-newgame'); return; }
   root.classList.add('fh-shell');
   pin(root, { background: 'transparent', 'border-width': '0', 'box-shadow': 'none' });
 }
 function hairline() {
+  if (ORRERY) { const gap = el('div', 'orr-ng-gap'); gap.setAttribute('aria-hidden', 'true'); return gap; }
   const rule = el('hr', 'k-rule fh-hairline');
   return pin(rule, {
     border: '0',
@@ -87,6 +97,7 @@ function hairline() {
 }
 function paintMarking(node) {
   if (!node) return node;
+  if (ORRERY) { node.classList.add('orr-ng-title'); return node; }
   node.classList.add('fh-title');
   return pin(node, {
     'font-family': 'var(--fh-face-display)',
@@ -99,6 +110,7 @@ function paintMarking(node) {
 }
 function paintLegend(node, lit = false) {
   if (!node) return node;
+  if (ORRERY) { node.classList.add('orr-ng-label'); return node; }
   node.classList.add('fh-legend');
   return pin(node, {
     'font-family': 'var(--fh-face-display)',
@@ -112,6 +124,7 @@ function paintLegend(node, lit = false) {
 }
 function paintPlate(node, variant = 'sunk', extra = {}) {
   if (!node) return node;
+  if (ORRERY) { node.classList.add('orr-ng-caption'); return node; }
   const spec = FH_PLATE[variant] || FH_PLATE.sunk;
   node.classList.add('fh-plate', variant === 'edge' ? 'fh-plate--edge' : 'fh-plate--sunk');
   if (forcedColorsActive()) {
@@ -129,6 +142,7 @@ function paintPlate(node, variant = 'sunk', extra = {}) {
 }
 function paintInput(input) {
   if (!input) return input;
+  if (ORRERY) { input.classList.add('orr-ng-input'); return input; }
   input.classList.add('fh-input');
   const apply = (state) => {
     if (forcedColorsActive()) {
@@ -153,6 +167,11 @@ function paintInput(input) {
 }
 function paintKey(button, kind = 'legend') {
   if (!button) return button;
+  if (ORRERY) {
+    button.classList.add('k-word', 'orr-ng-key', 'orr-ng-key--' + kind);
+    button._fhSync = () => {};
+    return button;
+  }
   const spec = FH_KEY[kind] || FH_KEY.legend;
   button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
   const apply = (state) => {
@@ -366,6 +385,7 @@ export const newGameScreen = {
     rootEl.classList.add('k-screen');
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('aria-label', coreText('newGame'));
+    injectOrreryScreens();
     installShell(rootEl);
 
     // Title. `.sf-ng-header` is an inert hook the layout probe measures.
@@ -418,6 +438,16 @@ export const newGameScreen = {
     starterField.wrap.appendChild(starterWords);
     starterField.wrap.appendChild(starterDesc);
     body.appendChild(starterField.wrap);
+    // ORRERY: the three hulls are stations on a ruled scale, each with its holo plan view standing
+    // over it; the amber index slides to the one aria-pressed marks. The words stay the controls.
+    if (ORRERY) {
+      const art = {};
+      for (const s of NEW_GAME_STARTERS) { const url = hullPosterUrl(s.shipId, 'holo'); if (url) art['starter:' + s.id] = url; }
+      // On a short screen the station art would push the seed field under the fold (the launch
+      // traversal must not scroll the form); the big stage hull already shows the choice there.
+      const short = (typeof window !== 'undefined' ? window.innerHeight : 1080) < 860;
+      this._starterDial = createStopScale({ row: starterWords, width: 470, art: short ? null : art, artSize: 76 });
+    }
     body.appendChild(hairline());
 
     // Difficulty: four words in a row, the live one bright, its sentence beneath. A hidden <select>
@@ -442,6 +472,8 @@ export const newGameScreen = {
     diffField.wrap.appendChild(diff);
     diffField.wrap.appendChild(diffDesc);
     body.appendChild(diffField.wrap);
+    // ORRERY: difficulty is a four-stop scale with the amber index.
+    if (ORRERY) this._diffDial = createStopScale({ row: diffWords, width: 470 });
     body.appendChild(hairline());
 
     // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
@@ -610,6 +642,9 @@ export const newGameScreen = {
     caption.appendChild(hullName);
     caption.appendChild(hullBlurb);
     stage.appendChild(caption);
+    // ORRERY: the left column holds the choices; what the chosen hull carries and the run it opens
+    // are about the hull, so they read beside it (and the form no longer scrolls past its fold).
+    if (ORRERY) caption.append(loadoutField.wrap, route);
     rootEl.appendChild(stage);
     this.hull = createStageHull(stage, { rootEl, zoom: STAGE_ZOOM });
 

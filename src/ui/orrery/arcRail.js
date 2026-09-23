@@ -37,13 +37,14 @@ const CSS = `
 .orr-arcrail-host [data-dp-focus]::before { display:none !important; }
 /* one weight, wide capitals, the HUD's spacing; the awake word gains light and a small step */
 .orr-arcrail-host .dp-lit__item, .orr-arcrail-host .dp-lit__item--primary {
-  font-size:clamp(20px, 2.7vh, 31px) !important; font-variation-settings:"wght" 600, "wdth" 94 !important;
-  letter-spacing:.075em !important; color:rgb(232 226 212 / .7) !important; padding:4px 0 !important;
+  font-size:clamp(20px, 2.7vh, 31px) !important; font-variation-settings:"wght" 600, "wdth" 118 !important;
+  letter-spacing:.06em !important; color:rgb(232 226 212 / .7) !important; padding:4px 0 !important;
   text-shadow:0 1px 0 rgb(0 0 0 / .55), 0 0 16px rgb(0 0 0 / .45) !important;
   transform-origin:0 50%; transition:color .16s linear, transform .24s var(--dp-ease-out, ease-out), text-shadow .16s linear; }
 .orr-arcrail-host .dp-lit__item[data-awake] {
-  color:var(--dp-ink, #e8e2d4) !important; transform:scale(1.06);
-  text-shadow:0 0 24px rgb(255 217 140 / .4), 0 0 7px rgb(255 217 140 / .26), 0 1px 0 rgb(0 0 0 / .6) !important; }
+  color:rgb(246 241 230) !important; transform:scale(1.06);
+  text-shadow:0 0 1px rgb(255 226 178 / .55), 0 0 9px rgb(255 217 140 / .2), 0 1px 0 rgb(0 0 0 / .6) !important;
+  background:linear-gradient(90deg, rgb(242 185 80 / .7), rgb(242 185 80 / 0)) no-repeat 0 calc(100% - 1px) / 70% 1.5px !important; }
 .orr-arcrail-host .dp-lit__item[aria-disabled="true"], .orr-arcrail-host .dp-lit__item:disabled {
   color:rgb(232 226 212 / .34) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5) !important; }
 .orr-arcrail-host .dp-lit__item--danger[data-awake] { color:var(--dp-danger-hot, #ff7a5c) !important;
@@ -69,8 +70,10 @@ const CSS = `
 html.sf-reduce-motion .orr-arcrail__trail { display:none; }
 .orr-arcrail { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 .orr-arcrail__layer { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
-.orr-arcrail__emblem { position:absolute; border-radius:50%; pointer-events:none; opacity:.26;
+.orr-arcrail__emblem { position:absolute; border-radius:50%; pointer-events:none; opacity:.17;
   background:center / contain no-repeat; transform-origin:50% 50%;
+  -webkit-mask-image:radial-gradient(circle closest-side, rgb(0 0 0 / .18) 0%, rgb(0 0 0 / .45) 48%, #000 82%);
+  mask-image:radial-gradient(circle closest-side, rgb(0 0 0 / .18) 0%, rgb(0 0 0 / .45) 48%, #000 82%);
   animation:orr-emblem-drift 540s linear infinite; }
 .orr-arcrail__glow { position:absolute; border-radius:50%; pointer-events:none;
   background:radial-gradient(closest-side, rgb(255 217 140 / .07), rgb(255 217 140 / .025) 55%, transparent); }
@@ -79,7 +82,7 @@ html.sf-reduce-motion .orr-arcrail__trail { display:none; }
 .orr-arcrail__tick { transition:stroke .18s linear, opacity .18s linear; }
 .orr-svg text.orr-arcrail__group { letter-spacing:.3em; fill:rgb(232 226 212 / .5); }
 .orr-arcrail.is-arriving .orr-arcrail__emblem { animation:orr-emblem-in 1100ms var(--dp-ease-out, cubic-bezier(.2,.9,.25,1)) both, orr-emblem-drift 540s linear 1100ms infinite; }
-@keyframes orr-emblem-in { from { opacity:0; transform:rotate(-28deg) scale(.94); } to { opacity:.26; transform:none; } }
+@keyframes orr-emblem-in { from { opacity:0; transform:rotate(-28deg) scale(.94); } to { opacity:.17; transform:none; } }
 .orr-arcrail.is-arriving .orr-arcrail__rail { stroke-dasharray:1; stroke-dashoffset:1; animation:orr-rail-draw 900ms var(--dp-ease-out, ease-out) 180ms forwards; }
 @keyframes orr-rail-draw { to { stroke-dashoffset:0; } }
 html.sf-reduce-motion .orr-arcrail__emblem, html.sf-reduce-motion .orr-arcrail__orbit,
@@ -104,16 +107,27 @@ const ROW_GAP = 26;
  * sits off the leading edge, the emblem fills most of the height, and the verbs spread
  * symmetrically about "east" (90 deg, 0 = up, clockwise) on a ring just outside the emblem.
  */
-export function arcRailGeometry(W, H, count, { span = null } = {}) {
-  const re = clamp(H * 0.36, 230, 440);
+export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps = null } = {}) {
+  const re = clamp(H * 0.33, 210, 420);
   // the hub sits just inside the leading edge: a needle needs a visible pivot to read as one
-  const pivot = { x: re * 0.05, y: clamp(H * 0.585, re * 0.7, H - re * 0.35) };
+  const pivot = { x: clamp(W * 0.034, 40, 72), y: clamp(H * pivotY, re * 0.7, H - re * 0.35) };
   const ri = re + clamp(H * 0.046, 34, 56);
   const n = Math.max(1, count);
   const spread = span != null ? span : clamp(n * 12, 30, 80);
-  const step = n > 1 ? spread / (n - 1) : 0;
-  const from = 90 - spread / 2;
-  const angles = Array.from({ length: n }, (_, i) => from + step * i);
+  // Equal VERTICAL rhythm, not equal angles: words are set horizontally, so what must stay even is
+  // the line spacing; equal angles bunch the lines where the arc turns steep at its ends. A group
+  // change adds most of a line of air.
+  const gapBefore = new Set(gaps || []);
+  const units = (n - 1) + gapBefore.size * 0.7;
+  const yExtent = ri * Math.sin((spread / 2) * Math.PI / 180);
+  const angles = [];
+  let u = 0;
+  for (let i = 0; i < n; i += 1) {
+    if (i > 0) u += gapBefore.has(i) ? 1.7 : 1;
+    const y = n > 1 ? pivot.y - yExtent + (2 * yExtent * u) / units : pivot.y;
+    angles.push(Math.acos(clamp((pivot.y - y) / ri, -1, 1)) * 180 / Math.PI);
+  }
+  const step = n > 1 ? spread / units : 0;
   const anchors = angles.map((a) => { const [x, y] = polar(pivot.x, pivot.y, ri, a); return { a, x, y }; });
   return { W, H, re, ri, pivot, step, angles, anchors };
 }
@@ -130,7 +144,8 @@ export function arcRailGeometry(W, H, count, { span = null } = {}) {
  * @param {boolean} [o.grouped]     verbs sharing a data-group ride ONE tick as a row, the group's
  *                                  name engraved over it (a long menu stays a readable dial)
  */
-export function createArcRail({ host, list, frame = null, extra = [], emblemUrl = null, engraving = '', grouped = false, dense = false } = {}) {
+export function createArcRail({ host, list, frame = null, extra = [], emblemUrl = null, engraving = '', grouped = false, dense = false,
+  clustered = false, span = null, pivotY = 0.56 } = {}) {
   const doc = (host && host.ownerDocument) || globalThis.document;
   // Headless shims (tests) mount screens without a real document: the rail is presentation only, so
   // it steps aside and the menu stays exactly the list the screen built.
@@ -160,7 +175,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   host.insertBefore(root, host.firstChild);
 
   for (const node of extra) node.classList.add('orr-arcrail__extra');
-  const items = () => [...list.children].filter((li) => li.getAttribute('role') !== 'presentation').concat(extra);
+  const items = () => [...list.children].filter((li) => li.getAttribute('role') !== 'presentation' && !li.hidden).concat(extra);
   // Rows: each verb its own row, or (grouped) consecutive verbs of one data-group sharing a row.
   const rows = () => {
     const out = [];
@@ -173,7 +188,8 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     return out;
   };
   let geo = null;
-  let blade = null; let bladeBloom = null; let tail = null; let bead = null; let beadBloom = null; let trailHost = null; let ticks = [];
+  let blade = null; let bladeBloom = null; let tail = null; let weight = null; let bead = null; let beadBloom = null;
+  let glint = null; let glintBloom = null; let trailHost = null; let ticks = [];
   // a needle's spring: one slight overshoot, settled in about a quarter second
   const handSpring = createSpring({ value: 20, preset: { k: 300, c: 25 }, onUpdate: (deg) => paintHand(deg) });
   let handIndex = -1;
@@ -183,14 +199,22 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     const { pivot, ri } = geo;
     const rt = ri - 8;                       // the rim: the blade ends ON the lit tick
     const [tx, ty] = polar(pivot.x, pivot.y, rt, deg);
-    const [lx, ly] = polar(pivot.x, pivot.y, 2.2, deg - 90);
-    const [rx, ry] = polar(pivot.x, pivot.y, 2.2, deg + 90);
-    // tapered: about 4 px at the hub to a point at the rim
-    const d = `M ${lx.toFixed(1)} ${ly.toFixed(1)} L ${tx.toFixed(1)} ${ty.toFixed(1)} L ${rx.toFixed(1)} ${ry.toFixed(1)} Z`;
+    const [lx, ly] = polar(pivot.x, pivot.y, 3.2, deg - 90);
+    const [rx, ry] = polar(pivot.x, pivot.y, 3.2, deg + 90);
+    const [t1x, t1y] = polar(tx, ty, 0.5, deg - 90);
+    const [t2x, t2y] = polar(tx, ty, 0.5, deg + 90);
+    // tapered: about 6 px at the hub to 1 px at the rim
+    const d = `M ${lx.toFixed(1)} ${ly.toFixed(1)} L ${t1x.toFixed(1)} ${t1y.toFixed(1)} L ${t2x.toFixed(1)} ${t2y.toFixed(1)} L ${rx.toFixed(1)} ${ry.toFixed(1)} Z`;
     blade.setAttribute('d', d);
     bladeBloom.setAttribute('d', `M ${pivot.x.toFixed(1)} ${pivot.y.toFixed(1)} L ${tx.toFixed(1)} ${ty.toFixed(1)}`);
-    const [cx, cy] = polar(pivot.x, pivot.y, geo.re * 0.2, deg + 180);
+    const [cx, cy] = polar(pivot.x, pivot.y, 30, deg + 180);
     tail.setAttribute('d', `M ${pivot.x.toFixed(1)} ${pivot.y.toFixed(1)} L ${cx.toFixed(1)} ${cy.toFixed(1)}`);
+    weight.setAttribute('cx', cx.toFixed(1));
+    weight.setAttribute('cy', cy.toFixed(1));
+    // the rim answers where the Hand points: a short arc of light on the orbit, centred on the needle
+    const g = arcD(pivot.x, pivot.y, geo.re + 11, deg - 14, deg + 14);
+    glint.setAttribute('d', g);
+    glintBloom.setAttribute('d', g);
     for (const b of [bead, beadBloom]) { b.setAttribute('cx', tx.toFixed(1)); b.setAttribute('cy', ty.toFixed(1)); }
   }
 
@@ -207,7 +231,11 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     const W = host.clientWidth || doc.documentElement.clientWidth;
     const H = host.clientHeight || doc.documentElement.clientHeight;
     const all = rows();
-    geo = arcRailGeometry(W, H, all.length);
+    // clustered: every verb its own tick, a wider gap where its group changes, the group's name
+    // engraved on the rim beside its cluster
+    const gaps = [];
+    if (clustered) all.forEach((row, i) => { if (i > 0 && (row.items[0].dataset.group || '') !== (all[i - 1].items[0].dataset.group || '')) gaps.push(i); });
+    geo = arcRailGeometry(W, H, all.length, { span, pivotY, gaps });
     layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
     layer.textContent = '';
     const { pivot, re, ri, angles } = geo;
@@ -216,40 +244,63 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     Object.assign(emblem.style, { width: `${size}px`, height: `${size}px`, left: `${pivot.x - re}px`, top: `${pivot.y - re}px` });
     Object.assign(glow.style, { width: `${size * 1.5}px`, height: `${size * 1.5}px`, left: `${pivot.x - re * 1.5}px`, top: `${pivot.y - re * 1.5}px` });
     // an outer orbit of fine ticks round the emblem, counter-drifting
+    // the rim scale is the brightest tier: bone ticks over a soft bloom, a lit rim ring
     const orbit = svg('g', { class: 'orr-arcrail__orbit', style: `transform-origin:${pivot.x}px ${pivot.y}px` });
-    orbit.appendChild(svg('path', { d: ticksD(pivot.x, pivot.y, re + 9, 144, { len: 3, major: 12, majorLen: 8, inward: false }), class: 'orr-core orr-rest', 'stroke-width': 1 }));
+    const rimTicks = ticksD(pivot.x, pivot.y, re + 9, 144, { len: 3, major: 12, majorLen: 8, inward: false });
+    orbit.appendChild(svg('path', { d: rimTicks, class: 'orr-bloom orr-hi', 'stroke-width': 4, opacity: '.14' }));
+    orbit.appendChild(svg('path', { d: rimTicks, class: 'orr-core orr-hi', 'stroke-width': 1 }));
     layer.appendChild(orbit);
-    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-core orr-faint', 'stroke-width': 1 }));
+    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-bloom orr-hi', 'stroke-width': 5, opacity: '.1' }));
+    layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, re + 4, 0, 360), class: 'orr-core orr-rest', 'stroke-width': 1.2 }));
+    glintBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 8, opacity: '.18' });
+    glint = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 1.4, opacity: '.55' });
+    layer.append(glintBloom, glint);
     // the rail: an arc of light through the verbs' ticks
     const a0 = angles[0] - 8;
     const a1 = angles[angles.length - 1] + 8;
     layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-core orr-rest orr-arcrail__rail', 'stroke-width': 1, pathLength: 1 }));
     layer.appendChild(svg('path', { d: arcD(pivot.x, pivot.y, ri - 8, a0, a1), class: 'orr-bloom orr-rest', 'stroke-width': 4, opacity: '.12' }));
     ticks = angles.map((a) => {
-      const [tx0, ty0] = polar(pivot.x, pivot.y, ri - 14, a);
-      const [tx1, ty1] = polar(pivot.x, pivot.y, ri - 2, a);
+      const [tx0, ty0] = polar(pivot.x, pivot.y, ri - 8, a);
+      const [tx1, ty1] = polar(pivot.x, pivot.y, ri + 3, a);
       const t = svg('path', { d: `M ${tx0.toFixed(1)} ${ty0.toFixed(1)} L ${tx1.toFixed(1)} ${ty1.toFixed(1)}`, class: 'orr-core orr-hi orr-arcrail__tick', 'stroke-width': 1.4 });
       layer.appendChild(t);
       return t;
     });
-    if (engraving) {
+    if (clustered) {
+      let start = 0;
+      for (let i = 1; i <= all.length; i += 1) {
+        const g = all[start].items[0].dataset.group;
+        const next = i < all.length ? all[i].items[0].dataset.group : Symbol('end');
+        if (next !== g) {
+          if (g) {
+            const mid = (angles[start] + angles[i - 1]) / 2;
+            layer.appendChild(circularText(pivot.x, pivot.y, re + 24, String(g).toUpperCase(),
+              { startDeg: mid + 90, size: 8, className: 'orr-micro orr-micro--hi', anchor: 'middle', upright: true }));
+          }
+          start = i;
+        }
+      }
+    } else if (engraving) {
       layer.appendChild(circularText(pivot.x, pivot.y, re + 22, engraving.toUpperCase(),
         { startDeg: a1 + 34, size: 8, className: 'orr-micro', anchor: 'middle', upright: true }));
     }
     // the Hand: trail, counterweight, bloom, the tapered blade, the hub cap, one bead on the rim
     trailHost = svg('g');
-    tail = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 3, 'stroke-linecap': 'round', opacity: '.55' });
+    tail = svg('path', { d: '', class: 'orr-core orr-hand', 'stroke-width': 2.4, 'stroke-linecap': 'round', opacity: '.7' });
+    weight = svg('circle', { r: 5.5, fill: 'var(--dp-hand, #f2b950)', opacity: '.85' });
     bladeBloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 7, opacity: '.22' });
     blade = svg('path', { d: '', fill: 'var(--dp-hand, #f2b950)' });
     const hub = svg('g');
+    // the hub cap: a dark disc, an amber ring, a bone pin
     hub.append(
-      svg('circle', { cx: pivot.x, cy: pivot.y, r: 9, fill: 'rgb(5 7 10 / .8)', class: 'orr-core orr-hand', 'stroke-width': 1.4 }),
-      svg('circle', { cx: pivot.x, cy: pivot.y, r: 14, class: 'orr-core orr-faint', 'stroke-width': 1, fill: 'none' }),
-      svg('circle', { cx: pivot.x, cy: pivot.y, r: 3, fill: 'var(--dp-hand, #f2b950)' }),
+      svg('circle', { cx: pivot.x, cy: pivot.y, r: 17, class: 'orr-core orr-faint', 'stroke-width': 1, fill: 'none' }),
+      svg('circle', { cx: pivot.x, cy: pivot.y, r: 11, fill: 'rgb(5 7 10 / .92)', class: 'orr-core orr-hand', 'stroke-width': 1.6 }),
+      svg('circle', { cx: pivot.x, cy: pivot.y, r: 3.2, fill: 'rgb(236 230 216)' }),
     );
     beadBloom = svg('circle', { r: 8, fill: 'var(--dp-hand, #f2b950)', opacity: '.22' });
     bead = svg('circle', { r: 3.4, fill: 'var(--dp-hand-hot, #ffd98c)' });
-    layer.append(trailHost, tail, bladeBloom, blade, hub, beadBloom, bead);
+    layer.append(trailHost, tail, weight, bladeBloom, blade, hub, beadBloom, bead);
     // seat each row on its tick: the first verb starts just past the tick, its first line centred on
     // it, and a row's further verbs follow along the line; a group's name is engraved over the row
     all.forEach((row, i) => {

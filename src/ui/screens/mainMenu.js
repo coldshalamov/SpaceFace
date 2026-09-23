@@ -17,6 +17,13 @@ import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 
 const LS_PREFIX = 'sf.save.';
+/** Show or hide Continue's row on the dial, and re-seat the dial when it changes. */
+function bContinueRow(r, show) {
+  const li = r && r.bContinue && r.bContinue.closest ? r.bContinue.closest('li') : null;
+  if (!li || li.hidden === !show) return;
+  li.hidden = !show;
+  if (arcRail) arcRail.layout();
+}
 /** The attention lamp's listeners, released when the screen unmounts. */
 let detachLamp = null;
 /** ORRERY: the verbs ride the rim of the emblem's dial (design/frontend/ORRERY.md §6 Title). */
@@ -492,9 +499,13 @@ export const mainMenuScreen = {
       setDisabled(refs.bContinue, false, 'Load ' + summary);
       // ORRERY: the dial shows no sentence under a verb; what Continue would load is the eyebrow.
       if (refs.status) refs.status.textContent = 'Continue · ' + summary;
+      bContinueRow(refs, true);
     } else {
       refs.saveSummary.textContent = coreText('noSave');
       setDisabled(refs.bContinue, true, 'No save found yet');
+      // A dial does not show a dead verb: with no save there is nothing to continue, so the word
+      // leaves the dial (the Continue probes all run with a save present).
+      bContinueRow(refs, false);
     }
     // ONE primary verb, and it is whichever one actually starts play. Continue is the primary when
     // there is a save to continue; with none it is a dead word at the top of the list, so New Game
