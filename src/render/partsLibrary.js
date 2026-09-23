@@ -52,8 +52,10 @@ import {
 } from './rigidOpaqueBatchPolicy.js';
 import {
   authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency,
+  combatantAdmissionPriority,
   planarRangeWU,
   sectorArrivalPriorityHint,
+  survivalDefersArenaDressingJob,
 } from './authoredUpgradePolicy.js';
 import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
 import {
@@ -3775,6 +3777,13 @@ export function enqueueBoundaryUpgrade(scene, job) {
   if (!boundaryBelongsToScene(job.boundary, scene)) {
     return Promise.resolve({ status: 'cancelled-before-queue', boundary: job.boundary });
   }
+  // A live survival run admits the arena's fight roster, not the staging sector's far dressing.
+  // Refusing at enqueue keeps the boundary armed ('awaiting-authored-admission'), so the ordinary
+  // approach trigger re-requests it if the player ever closes to the fight-fit envelope — and
+  // anything still deferred re-requests when the run ends and the sector returns.
+  if (survivalDefersArenaDressingJob(job.entity, authoredRuntimeState())) {
+    return Promise.resolve({ status: 'deferred-arena-dressing', boundary: job.boundary });
+  }
   let resolveCompletion;
   const completion = new Promise((resolve) => { resolveCompletion = resolve; });
   const queuedJob = {
@@ -3954,6 +3963,11 @@ function upgradeQueueState(scene) {
 function authoredUpgradePriority(job) {
   const entity = job && job.entity;
   if (entity && entity.isPlayer === true) return 0;
+  // A hostile ship inside the camera's fight-fit envelope is being acted on now: it outranks the
+  // critical starting hub and every dressing job. Recomputed on each admission, so a hostile that
+  // closes the distance promotes while it waits; nothing in flight is ever pre-empted.
+  const combatant = combatantAdmissionPriority(entity, authoredRuntimeState());
+  if (combatant !== null) return combatant;
   if (isCriticalStartingHub(entity)) return 1;
   const background = backgroundUpgradePriority(job);
   // A sector arrival hands this queue the destination's whole authored population in one burst, and

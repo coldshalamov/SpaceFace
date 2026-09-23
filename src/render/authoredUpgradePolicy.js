@@ -4,6 +4,8 @@
 // jobs. The opening/loading window and a short post-first-playable settle may overlap two
 // CPU admissions so Helios/hub decode finishes before the player is looking at a live frame.
 
+import { CAMERA_DIRECTOR_COMBAT_MAX_ZOOM } from './cameraDirector.js';
+
 export const AUTHORED_UPGRADE_STEADY_LIMIT = 1;
 export const AUTHORED_UPGRADE_OPENING_LIMIT = 2;
 export const AUTHORED_UPGRADE_SETTLE_MS = 0;
@@ -69,4 +71,60 @@ export function isInsideSectorArrivalBand(distanceWU) {
     && Number.isFinite(distanceWU)
     && distanceWU >= 0
     && distanceWU <= SECTOR_ARRIVAL_NEAR_PUBLISH_WU;
+}
+
+// The fight outranks the furniture.
+//
+// A hostile ship inside the camera's active-attacker fit range is part of the picture the player
+// is acting on right now: its authored body must reach the serial admission lane before station
+// props, rocks, place dressing and fx — and before a critical-hub job that is merely queued.
+// The rung sits between the player's own hull (0) and the critical starting hub (1): the hub
+// stays the gate of last resort for a fresh sector but cannot starve a ship that is already
+// shooting at the player. Ordering only — a job already in flight is never pre-empted.
+//
+// The range is the camera director's combat-fit envelope, not a new gameplay constant: it is the
+// same reach the composition uses to keep every active attacker on the glass.
+export const COMBATANT_ADMISSION_PRIORITY = 0.5;
+
+function livePlayerEntity(liveState) {
+  const entities = liveState && liveState.entities;
+  if (!entities || typeof entities.get !== 'function') return null;
+  return entities.get(liveState.playerId) || null;
+}
+
+/**
+ * Combatant rung for one admission job, or null when the job is ordinary dressing.
+ * Reads the live player at the moment it is applied, never at enqueue time.
+ */
+export function combatantAdmissionPriority(entity, liveState) {
+  if (!entity || entity.type !== 'ship' || entity.alive === false || entity.isPlayer === true) {
+    return null;
+  }
+  const player = livePlayerEntity(liveState);
+  if (!player) return null;
+  // isHostileToPlayer's coarse shape, cheap enough for a per-sort call: allied (0), same-team and
+  // law (2) never take the combatant rung; every other faction inside the envelope does.
+  if (entity.team == null || entity.team === player.team || entity.team === 0 || entity.team === 2) {
+    return null;
+  }
+  const distance = planarRangeWU(entity, player);
+  if (distance === null || distance > CAMERA_DIRECTOR_COMBAT_MAX_ZOOM) return null;
+  return COMBATANT_ADMISSION_PRIORITY;
+}
+
+// A live survival run is one small room with a known fight roster, but the renderer still mounts
+// the staging sector the arena was carved from. Stations, rocks, place dressing and fx that sit
+// beyond the fight-fit envelope cannot appear on the arena's glass, so admitting them through the
+// same serial lane starves the combatants that gate the fight (and the dead hulk exemplars that
+// gate the wrecks). Those jobs are refused at enqueue — the ordinary approach trigger re-requests
+// any body the player actually closes on, and anything still pending re-requests once the run ends.
+const SURVIVAL_DEFERRED_DRESSING_TYPES = new Set(['station', 'asteroid', 'fx', 'place']);
+
+export function survivalDefersArenaDressingJob(entity, liveState) {
+  const run = liveState && liveState.run;
+  if (!run || run.kind !== 'survival' || !run.phase || run.phase === 'inactive') return false;
+  if (!entity || entity.alive === false || entity.isPlayer === true) return false;
+  if (!SURVIVAL_DEFERRED_DRESSING_TYPES.has(entity.type)) return false;
+  const distance = planarRangeWU(entity, livePlayerEntity(liveState));
+  return distance !== null && distance > CAMERA_DIRECTOR_COMBAT_MAX_ZOOM;
 }
