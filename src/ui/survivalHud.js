@@ -688,14 +688,17 @@ export const survivalHud = {
   .sf-crun__word { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 700, "wdth" 62;
     font-weight:700; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
     color:var(--dp-ink-mute, var(--sf-calm)); }
+  /* A bar is a printed track with a flat lit fill (ONE_PHOTOGRAPH section 9): the track is drawn so
+     a part-spent bar reads as a gauge, not as a loose coloured slab, and the fill is one flat colour
+     that glows -- no top-lit ramp pretending to be a rounded rod. */
   .sf-crun__track { position:relative; flex:1 1 auto; min-width:44px; height:8px; overflow:hidden;
-    border-radius:1px; background:none;
+    border-radius:1px; background:var(--dp-rule-hi, rgb(232 226 212 / .22));
     box-shadow:none; }
   .sf-crun__track--xp { height:5px; }
   .sf-crun__fill { position:absolute; inset:0 auto 0 0; width:0; }
-  .sf-crun__fill--foe { background:linear-gradient(180deg, var(--dp-danger-hot, #ff8a70), var(--dp-danger, #ff5038) 55%, #a8241a);
+  .sf-crun__fill--foe { background:var(--dp-danger, #ff5038);
     box-shadow:0 0 6px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
-  .sf-crun__fill--you { background:linear-gradient(180deg, var(--dp-lamp-hot, #ffd98c), var(--dp-lamp, #f2b950) 55%, var(--dp-lamp-dim, #8a6b3a));
+  .sf-crun__fill--you { background:var(--dp-lamp, #f2b950);
     box-shadow:0 0 6px var(--dp-lamp-bloom, rgb(242 185 80 / .34)); }
   .sf-crun__fig { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:13px;
     font-variant-numeric:tabular-nums; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }

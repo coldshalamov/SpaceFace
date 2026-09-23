@@ -729,7 +729,9 @@ export function createRadar(ctx) {
       const wpLabel = label;
       const legacyIdentity = `◆ AMBER DIAMOND · ${wpLabel}`;
       const distance = cue && cue.resolved ? formatRadarDistance(cue.distance) : 'ROUTE PENDING';
-      const nextText = `⌜◆⌝  OBJ  ${distance}  ·  ${label}`;
+      // The diamond alone keys the objective: the corner-bracket glyphs meant to picture the
+      // scope's four-corner bracket rendered as stray marks at caption size.
+      const nextText = `◆  OBJ  ${distance}  ·  ${label}`;
       if (objectiveKey.textContent !== nextText) objectiveKey.textContent = nextText;
       objectiveKey.title = `${legacyIdentity} · FOUR-CORNER BRACKET · ROUTE CORRIDOR`;
       objectiveKey.dataset.mode = 'objective';

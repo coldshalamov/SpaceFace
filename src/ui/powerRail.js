@@ -216,7 +216,9 @@ export function readRailModel(state, nowS) {
 
   const bay = readBombBayModel(s, now);
   return {
-    1: { name: `${repulsionTrapFitted(s) ? 'Trap' : 'Charge'} ${charges}`,
+    // The count rides as "x3" so it reads as a quantity; at zero the verb stands alone in the dim
+    // empty state ("CHARGE 0" read as a broken label, not as "none left").
+    1: { name: `${repulsionTrapFitted(s) ? 'Trap' : 'Charge'}${charges > 0 ? ` ×${charges}` : ''}`,
       state: charges <= 0 ? 'empty' : throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000 },
     2: { state: armed || bay.armedCount > 0 ? 'armed' : 'empty',
       description: 'Detonate your armed bombs and the armed charge network. Active bomb fields finish normally.' },
@@ -268,7 +270,9 @@ export function readBombBayModel(state, nowS) {
     name: def.shortName, glyph: def.field?.kind === 'singularity' ? 'well' : 'weapon',
     state: locked || full ? 'locked' : until > nowS ? 'cooling' : 'ready',
     cooldownMs: Math.max(0, until - nowS) * 1000, deployed, armedCount, fields,
-    badge: `BAY ${deployed}/${BOMB_DRIFT.maxActive}`,
+    // Bombs OUT of the ship, not bombs in the rack: "BAY 0/6" over a loaded key read as an empty
+    // magazine. The legend counts drifting bombs only while there are some.
+    badge: deployed > 0 ? `BAY ${deployed}/${BOMB_DRIFT.maxActive} OUT` : 'BAY',
     // Rack honesty: the loaded magazine count rides the description, never the name.
     description: `${def.name}${cell ? ` ×${cell.count} loaded` : ''}. ${def.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
   };

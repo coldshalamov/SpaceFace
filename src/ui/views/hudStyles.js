@@ -2185,19 +2185,21 @@ export function injectHudCss() {
     font-size:var(--k-fs-fine); letter-spacing:.18em; text-transform:uppercase;
     color:var(--dp-ink-mute); opacity:1; text-shadow:var(--dp-etch-shadow);
   }
+  /* Printed, not machined (ONE_PHOTOGRAPH section 9, owner ruling 2026-09-22): the band is a legend
+     over its keys with no plate behind it, and each key is the keyboard-key hint primitive -- a
+     1px hairline rectangle with no fill, a glyph from a manual rather than a recessed cap. The
+     veil already darkens the bottom band enough for the marks (scripts/ui-contrast.mjs). */
   #hud .sf-prail__slots {
-    border:0; border-image:none; border-radius:var(--dp-r-instrument);
-    background-color:var(--dp-metal-1); background-image:none;
+    border:0; border-image:none; border-radius:0;
+    background:none;
     box-shadow:none;
     padding:8px 10px 24px; gap:8px; align-items:flex-end;
   }
-  /* dp-socket: the bay cut into the rail. State lives in data-state (powerRail.js), the lamp
-     strip on the bay floor carries armed/cooling; the mark dims when the bay is dead. */
+  /* State lives in data-state (powerRail.js): ready = hairline at rest, armed = the lamp on the
+     key's edge, empty/locked = a quieter hairline and a dim mark (an honest gap, never a box). */
   #hud .sf-pslot {
-    background:
-      radial-gradient(120% 90% at 50% 0%, rgb(255 232 190 / .05), transparent 55%),
-      linear-gradient(180deg, rgb(0 0 0 / .62), rgb(0 0 0 / .22) 58%, rgb(255 255 255 / .028));
-    border:0; border-radius:var(--dp-r-instrument);
+    background:none;
+    border:1px solid var(--dp-rule-hi); border-radius:var(--dp-r-plate);
     box-shadow:none;
     color:var(--dp-ink-dim); opacity:1;
   }
@@ -2209,9 +2211,8 @@ export function injectHudCss() {
   #hud .sf-pslot__name { bottom:-17px; color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow); }
   #hud .sf-pslot__sweep circle { stroke:var(--dp-lamp); }
   #hud .sf-pslot[data-state="armed"] {
-    background:
-      radial-gradient(120% 90% at 50% 0%, rgb(255 217 140 / .16), transparent 55%),
-      linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .16) 58%, rgb(255 217 140 / .06));
+    background:var(--dp-lamp-bloom-soft);
+    border-color:var(--dp-lamp);
     color:var(--dp-lamp-hot);
     box-shadow:0 0 12px var(--dp-lamp-bloom-soft);
   }
@@ -2221,9 +2222,9 @@ export function injectHudCss() {
   #hud .sf-pslot[data-state="cooling"] .sf-pslot__art { opacity:.6; }
   #hud .sf-pslot[data-state="unaffordable"] { opacity:.62; }
   #hud .sf-pslot[data-state="unaffordable"] .sf-pslot__art { opacity:.4; }
-  #hud .sf-pslot[data-state="locked"] { box-shadow:none; }
+  #hud .sf-pslot[data-state="locked"] { box-shadow:none; border-color:var(--dp-rule); }
   #hud .sf-pslot[data-state="locked"] .sf-pslot__art { opacity:.36; }
-  #hud .sf-pslot[data-state="empty"] { background:var(--dp-metal-0); }
+  #hud .sf-pslot[data-state="empty"] { background:none; border-color:var(--dp-rule); }
   #hud .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.22; }
   #hud .sf-prail[data-claimed] .sf-pslot__name { color:var(--dp-lamp); }
 
@@ -2286,7 +2287,10 @@ export function injectHudCss() {
   /* --- left contextual column: mission, nav, comms tape, first-use --- */
   #hud .sf-mission-tracker { padding:8px 12px 9px; border-left:2px solid var(--dp-lamp); }
   #hud .sf-mt-title { border-bottom-color:var(--dp-metal-3); color:var(--dp-lamp); }
-  #hud .sf-mt-obj { color:var(--hud-paper); }
+  /* where, then the readings on their own line: the destination line carries a newline
+     (flightDestinationSurface) so a long destination wraps by words and never strands a
+     separator or the bearing glyph on a line of its own */
+  #hud .sf-mt-obj { color:var(--hud-paper); white-space:pre-line; margin-bottom:0; }
   #hud .sf-mt-time { color:var(--hud-muted); }
   #hud .sf-nav-readout { padding:8px 12px; }
   #hud .sf-nav-label { color:var(--hud-paper); }
@@ -2442,35 +2446,16 @@ export function injectHudCss() {
   }
   #hud .sf-cluster-chassis .sf-cluster { justify-content:flex-start; }
 
-  /* the threat lamp: a lens set into the chassis's top ring, legend etched beside it.
-     clear = a dark lens; contact = the lamp driven red, dim and steady; near = full red, beating.
-     Brightness differs at every step, so the state never rests on hue alone. */
-  #hud .sf-threat-lamp {
-    position:absolute; top:-12px; right:18px; display:flex; align-items:center; gap:7px; pointer-events:none;
-  }
-  #hud .sf-threat-lamp::after {
-    content:"THREAT"; font-family:var(--dp-face-etch); font-variation-settings:"wght" 750, "wdth" 62;
-    font-size:12px; letter-spacing:.2em; color:var(--dp-ink-mute); text-shadow:var(--dp-etch-shadow);
-  }
-  #hud .sf-threat-lamp__lens {
-    display:block; width:10px; height:10px; border-radius:50%;
-    background:linear-gradient(var(--dp-rule-hi) 0 0);
-    box-shadow:0 1px 0 1.5px rgb(255 236 204 / .12);
-  }
-  #hud[data-threat="contact"] .sf-threat-lamp__lens {
-    background:linear-gradient(var(--dp-danger) 0 0);
-    box-shadow:0 0 6px rgb(255 80 56 / .3);
-  }
-  #hud[data-threat="contact"] .sf-threat-lamp::after { color:var(--dp-ink-dim); }
-  #hud[data-threat="near"] .sf-threat-lamp__lens {
-    background:linear-gradient(var(--dp-danger) 0 0);
-    box-shadow:0 0 10px var(--dp-danger-bloom), 0 0 22px rgb(255 80 56 / .3);
-    animation:sf-threat-beat 1.1s steps(1, end) infinite;
-  }
-  #hud[data-threat="near"] .sf-threat-lamp::after { color:var(--dp-danger-hot); }
+  /* the threat lamp is the THREAT row's own LED in fire control, lit from that row's state -- the
+     same state that prints its words, so the lamp and the reading can never disagree. It used to
+     be a second lens with a "THREAT" legend pinned above the chassis, which read as a stray label
+     floating off the row it duplicated. clear = a dark mark; contact = red, dim and steady (the
+     PASS 5 rules below); near = full red, beating. Brightness differs at every step, so the state
+     never rests on hue alone. */
+  #hud .sf-fc-row[data-state="near"] .sf-threat-lamp { animation:sf-threat-beat 1.1s steps(1, end) infinite; }
   @keyframes sf-threat-beat { 0%, 60% { opacity:1; } 61%, 100% { opacity:.45; } }
-  @media (prefers-reduced-motion:reduce) { #hud[data-threat="near"] .sf-threat-lamp__lens { animation:none; } }
-  html.sf-reduce-motion #hud[data-threat="near"] .sf-threat-lamp__lens { animation:none; }
+  @media (prefers-reduced-motion:reduce) { #hud .sf-fc-row[data-state="near"] .sf-threat-lamp { animation:none; } }
+  html.sf-reduce-motion #hud .sf-fc-row[data-state="near"] .sf-threat-lamp { animation:none; }
 
   /* the expanded roster: rows on glass; hover and selection are an edge light, never a wash */
   #hud .sf-overview-row {
@@ -2618,7 +2603,6 @@ export function injectHudCss() {
      edge; one legend voice in every instrument. ══ */
   /* (was the SECOND of three stacked chassis paints -- a thin bezel over brushed metal. The
      cluster plate is dead; see the register note above. Section 4.9.) */
-  #hud .sf-threat-lamp { top:-11px; }
   #hud > .sf-leftcontext, #hud #sf-sector-law, #hud .sf-overview, #hud .sf-target, #hud .sf-cargo-panel {
   }
   /* the threat row: dark lens when clear, the lamp driven red with contacts, bright when near */
@@ -2630,7 +2614,9 @@ export function injectHudCss() {
   #hud .sf-fc-row[data-state="clear"] .sf-fc-v { color:var(--dp-ink-mute); font-weight:500; text-shadow:none; }
   #hud .sf-fc-row:is([data-state="contact"], [data-state="near"]) .sf-fc-v { color:var(--dp-danger-hot); text-shadow:0 0 10px var(--dp-danger-bloom); }
   #hud .sf-cluster-chassis .sf-kit-gauge.sf-speed { flex:0 0 auto; }
-  #hud .sf-cluster-chassis .sf-fc-strip { flex:1 1 auto; justify-content:space-evenly; }
+  /* spare column height (the Crucible hides the weapon and chip rows) collects above the rows, so
+     TARGET / TETHER / THREAT stay one tight block over the speed window instead of spreading apart */
+  #hud .sf-cluster-chassis .sf-fc-strip { flex:1 1 auto; justify-content:flex-end; }
   /* The approach tape is invisible between approaches but held ~48px of the column open; it
      leaves layout until it lights. Stacked (narrow) clusters float it beside the chassis, so it
      lighting never grows the column into the comms strip. */
@@ -2728,8 +2714,6 @@ export function injectHudCss() {
     box-shadow:none;
     padding:0;
   }
-  #hud .sf-threat-lamp { display:flex; top:-14px; right:28px; gap:8px; z-index:2; }
-  #hud .sf-threat-lamp__lens { width:12px; height:12px; }
   #hud .sf-cluster-chassis > .sf-bars,
   #hud .sf-cluster-chassis .sf-kit-gauge.sf-speed,
   #hud .sf-cluster-chassis .sf-fc-strip,
@@ -2751,6 +2735,10 @@ export function injectHudCss() {
     border-top:0 !important;
     box-shadow:none !important;
   }
+  /* the objective is ordered to the top of the strip (order:-1) but is not its first child, and in
+     the swarm the run readout heads it past hidden siblings: neither gets a rule capping the strip */
+  #hud > .sf-leftcontext > .sf-mission-tracker,
+  .sf-swarm-flight #hud > .sf-leftcontext > .sf-crun { border-top:0 !important; }
   #hud #sf-wpnstat { background:none; box-shadow:none; }
   html #hud:has(.sf-cluster-chassis) > .sf-leftstack { left:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); bottom:var(--sf-hud-edge); }
   #hud > .sf-leftcontext {
@@ -2770,15 +2758,19 @@ export function injectHudCss() {
   }
   /* the contact count sits above the scope, clear of its north notch */
   #hud .sf-overview.sf-overview--count { margin-bottom:2px; }
-  /* the power rail is a machined plate; the wells cut into it are the glass. A ready power's
-     mark is bone (information); amber is what is armed or chosen. */
+  /* the power rail is printed keys under a legend, no plate (the transparent border is layout: it
+     holds the hanging verb names clear of the frame). A ready power's mark is bone (information);
+     amber is what is armed or chosen. */
   #hud .sf-prail__slots {
     border:8px solid transparent;
     border-image:none;
-    background:var(--dp-metal-1);
+    background:none;
     box-shadow:none;
   }
-  #hud .sf-pslot { background:linear-gradient(180deg, rgb(0 0 0 / .5), rgb(0 0 0 / .18) 60%, rgb(255 255 255 / .03)); }
+  /* The swarm hides the bomb key (styles/crucible.css: the bay is not part of a Crucible run), and
+     it is the BAY band's only key -- which left the "BAY 0/6" legend over an empty box. A band with
+     no key to show leaves the rail with it. */
+  .sf-swarm-flight #hud .sf-prail__band[data-band="BAY"] { display:none; }
   /* The scope's rim is one hairline ring ON THE SCOPE FACE, not a 14px bezel of dark metal -- and
      not a ring on the empty bezel box either, which the bench rightly reports as a painted empty
      box. The bezel element stays only as the layout host. */

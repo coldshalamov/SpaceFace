@@ -10,8 +10,11 @@ export const HULL_INTEGRITY_CSS = `
   --si-signal:var(--si-blue); --si-body:var(--dp-metal-2, #191d24); --si-cut:var(--dp-metal-0, #0b0d10); --si-track:var(--dp-metal-3, #232833);
   position:relative; display:block; isolation:isolate; contain:style; box-sizing:border-box;
   width:100%; max-width:272px; height:auto; aspect-ratio:272 / 174; grid-column:1 / -1; grid-row:auto;
-  margin:0; padding:0; border:0; border-radius:var(--dp-r-instrument, 3px); overflow:visible;
-  background-color:var(--dp-metal-1, #12151a); background-image:none;
+  margin:0; padding:0; border:0; border-radius:0; overflow:visible;
+  /* No card behind the dial: the readings are printed straight on the flight veil like the speed,
+     energy and fire-control readings beside it (ONE_PHOTOGRAPH section 9). The silhouette is the
+     drawn instrument; a filled box around it was the one plate left in the cluster. */
+  background:none;
   box-shadow:none;
   color:var(--si-paper); font-family:var(--k-text, 'Instrument Sans'), Arial, sans-serif;
   font-size:12px; line-height:1; font-variant-numeric:tabular-nums; text-shadow:none;

@@ -24,12 +24,20 @@ test('the instrument cluster is a machined bezel, not a smoke overlay', () => {
     'glass-solid must stay an opaque window in metal, not a translucent overlay');
 });
 
-test('the threat lamp stays a visible channel', () => {
-  assert.match(hudJs, /sf-threat-lamp/, 'hud.js still mounts the lamp');
-  assert.match(hudStyles, /#hud \.sf-threat-lamp \{ display:flex/,
-    'the last paint pass must show the lamp');
-  assert.doesNotMatch(hudStyles, /#hud \.sf-threat-lamp \{ display:none/,
+// 2026-09-22 demo defect pass: the lamp used to be a second lens with a "THREAT" legend pinned
+// above the cluster, floating off the fire-control THREAT row that carries the same state. The
+// lamp is now that row's own LED, lit from the row's state. Still a visible channel, never hidden.
+test('the threat lamp stays a visible channel, seated in the THREAT row', () => {
+  assert.match(hudJs, /data-k="fcthreat"[^>]*><i class="sf-fc-led sf-threat-lamp"/,
+    'hud.js mounts the lamp as the THREAT row LED');
+  assert.match(hudStyles, /\.sf-fc-row\[data-state="near"\] \.sf-fc-led \{\s*background:linear-gradient\(var\(--dp-danger\)/,
+    'a near hostile drives the row lamp red');
+  assert.match(hudStyles, /\.sf-fc-row\[data-state="near"\] \.sf-threat-lamp \{ animation:sf-threat-beat/,
+    'and it beats');
+  assert.doesNotMatch(hudStyles, /\.sf-threat-lamp \{[^}]*display:none/,
     'PASS 6 hid the lamp; that overlay is the web-HUD read');
+  assert.doesNotMatch(hudStyles, /\.sf-threat-lamp \{[^}]*position:absolute/,
+    'the lamp does not float detached from its row again');
 });
 
 test('swarm does not restyle the flight HUD into CSS cards', () => {

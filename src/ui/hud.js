@@ -86,7 +86,6 @@ import {
 import {
   contactRosterExpanded,
   firstUseAttachKind,
-  formatDestinationLine,
   formatRosterCount,
   hudJobFromState,
   flightInstrumentRects,
@@ -501,7 +500,21 @@ function mtMarkerLine(state, wp, suffix = '') {
   return suffix ? `${route} · ${suffix}` : route;
 }
 
-/** One painted destination line for the live flight tracker. Titles and GOAL restatements stay off. */
+/**
+ * The readings half of the destination: the bearing glyph leads, then distance, ETA and any extras,
+ * joined by one separator. It is its own line under the destination, so a long destination can
+ * wrap by words without ever stranding a separator at a line end or the bearing glyph alone on a
+ * line (the bench caught "... ETA 13s ·" over a lone arrow). Short enough to fit one line.
+ */
+function mtReadingsLine(bearing, distanceText, etaText, extra = '') {
+  const lead = [bearing, distanceText].map((part) => String(part || '').trim()).filter(Boolean).join(' ');
+  return [lead, etaText, extra].map((part) => String(part || '').trim()).filter(Boolean).join(' · ');
+}
+
+/**
+ * One painted destination for the live flight tracker: where, then a line break, then the readings
+ * (the tracker sets white-space:pre-line). Titles and GOAL restatements stay off.
+ */
 export function flightDestinationSurface(state, command) {
   if (!command) return { show: false, line: '', urgent: false };
   if (command.owner === 'tracked-mission') {
@@ -509,33 +522,36 @@ export function flightDestinationSurface(state, command) {
     const waypoint = command.waypoint;
     const action = mtObjectiveAction(waypoint && waypoint.reason || mtObjectiveText(tracked), waypoint);
     const travel = objectiveTravelReadout(state, waypoint);
-    let line = formatDestinationLine({
-      action,
-      distanceText: travel.distanceText,
-      // An unknown ETA is left out, not printed as a placeholder dash.
-      etaText: travel.etaS == null ? '' : travel.etaText,
-      bearing: objectiveBearingGlyph(state, waypoint),
-    });
+    let deadline = '';
     let urgent = false;
     if (tracked && tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
       const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
-      line = formatDestinationLine({ action: line, distanceText: mtFmtTime(remaining) });
+      deadline = mtFmtTime(remaining);
       urgent = remaining < 120;
     }
-    return { show: true, line, urgent };
+    const readings = mtReadingsLine(
+      objectiveBearingGlyph(state, waypoint),
+      travel.distanceText,
+      // An unknown ETA is left out, not printed as a placeholder dash.
+      travel.etaS == null ? '' : travel.etaText,
+      deadline,
+    );
+    return { show: true, line: readings ? `${action}\n${readings}` : action, urgent };
   }
   if (command.owner === 'navigation') {
     const wp = command.waypoint;
     const travel = objectiveTravelReadout(state, wp);
     const routeGuide = mtRouteGuidance(state, wp);
+    const action = mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);
+    const readings = mtReadingsLine(
+      objectiveBearingGlyph(state, wp),
+      travel.distanceText,
+      travel.etaS == null ? '' : travel.etaText,
+      routeGuide && routeGuide.summary,
+    );
     return {
       show: true,
-      line: formatDestinationLine({
-        action: mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp),
-        distanceText: travel.distanceText,
-        etaText: travel.etaS == null ? '' : travel.etaText,
-        bearing: objectiveBearingGlyph(state, wp),
-      }) + (routeGuide && routeGuide.summary ? ` · ${routeGuide.summary}` : ''),
+      line: readings ? `${action}\n${readings}` : action,
       urgent: false,
     };
   }
@@ -1326,11 +1342,9 @@ export function createHud(ctx, alerts) {
   const commandDeck = document.createElement('div');
   commandDeck.className = 'sf-command-deck';
   clusterChassis.appendChild(commandDeck);   // seated beside integrity in the cluster
-  const threatLamp = document.createElement('div');
-  threatLamp.className = 'sf-threat-lamp';
-  threatLamp.setAttribute('aria-hidden', 'true');   // alerts announce threats; this is the glance
-  threatLamp.innerHTML = '<i class="sf-threat-lamp__lens"></i>';
-  clusterChassis.appendChild(threatLamp);
+  // The threat lamp is the THREAT row's lamp in fire control (below). It used to be a second,
+  // free-floating "THREAT" legend pinned above the chassis, which read as a stray label detached
+  // from the row that carries the same state.
   // The threat ring around the ship: bearing arcs to near hostiles (red is threat-only).
   const threatRing = document.createElement('div');
   threatRing.className = 'sf-threat-ring';
@@ -1472,8 +1486,9 @@ export function createHud(ctx, alerts) {
 
   // ---- fire control: TARGET and TETHER at a glance, seated above the speed window ----
   // FRONTEND_PROGRAM Wave 1: speed, target, threat and tether must be one glance, in one place.
-  // The cluster already holds speed and the threat lamp; this strip adds the other two as
-  // instrument rows, each with its LED. Informational text, so no live region (alerts speak).
+  // The cluster already holds speed; this strip carries target, tether and threat as instrument
+  // rows, each with its LED (the THREAT row's LED is the threat lamp). Informational text, so no
+  // live region (alerts speak).
   const fcStrip = document.createElement('div');
   fcStrip.className = 'sf-fc-strip';
   fcStrip.setAttribute('role', 'group');
@@ -1485,7 +1500,7 @@ export function createHud(ctx, alerts) {
     + '<div class="sf-fc-row" data-k="fctether" data-state="idle"><i class="sf-fc-led" aria-hidden="true"></i>'
       + '<span class="sf-fc-k">Tether</span><span class="sf-fc-v" data-k="fclname">Idle</span>'
       + '<span class="sf-fc-r" data-k="fclmass"></span></div>'
-    + '<div class="sf-fc-row" data-k="fcthreat" data-state="clear"><i class="sf-fc-led" aria-hidden="true"></i>'
+    + '<div class="sf-fc-row" data-k="fcthreat" data-state="clear"><i class="sf-fc-led sf-threat-lamp" aria-hidden="true"></i>'
       + '<span class="sf-fc-k">Threat</span><span class="sf-fc-v" data-k="fchname">Clear</span>'
       + '<span class="sf-fc-r" data-k="fchrange"></span></div>';
   commandDeck.prepend(fcStrip);
@@ -1502,9 +1517,26 @@ export function createHud(ctx, alerts) {
   };
   // Written by the roster scan (5 Hz), read by fire control (10 Hz): no second hostile scan.
   const threatReadout = { state: 'clear', count: 0, nearest: Infinity };
+  // The annunciator prints TAKING FIRE / SHIELDS DOWN for 1.5 s on any hit to the player
+  // (alerts.js, combat:damage). A hit from something the roster scan does not list (out past the
+  // scan radius, a rock thrown by a hostile's line) would otherwise leave this row reading "Clear"
+  // under a TAKING FIRE banner. The row holds "Under fire" for the same window, so they agree.
+  const UNDER_FIRE_HOLD_MS = 1500;
+  let underFireUntilMs = 0;
+  if (ctx.bus && typeof ctx.bus.on === 'function') {
+    ctx.bus.on('combat:damage', (hit) => {
+      if (hit && hit.isPlayer) underFireUntilMs = performance.now() + UNDER_FIRE_HOLD_MS;
+    });
+  }
   function updateFireControl(p, tether, latching, ml) {
-    setAttr(fc.threatRow, 'data-state', threatReadout.state);
-    setText(fc.hname, threatReadout.state === 'clear' ? 'Clear'
+    let underFire = false;
+    if (underFireUntilMs > 0) {
+      if (performance.now() < underFireUntilMs) underFire = threatReadout.state === 'clear';
+      else underFireUntilMs = 0;
+    }
+    setAttr(fc.threatRow, 'data-state', underFire ? 'contact' : threatReadout.state);
+    setText(fc.hname, underFire ? 'Under fire'
+      : threatReadout.state === 'clear' ? 'Clear'
       : threatReadout.count + ' hostile' + (threatReadout.count === 1 ? '' : 's'));
     setText(fc.hrange, Number.isFinite(threatReadout.nearest) ? Math.round(threatReadout.nearest) + ' WU' : '');
     const tid = state.player && state.player.targetId;
