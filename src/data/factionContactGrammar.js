@@ -93,6 +93,25 @@ export const FACTION_CONTACT_GRAMMAR = Object.freeze({
     }),
     sampleLine: 'Ceres yard hail: keep your distance from the refinery docks, shift is running hot.',
   }),
+  faction_mts: Object.freeze({
+    id: 'faction_mts',
+    callsign: 'Meridian Trade',
+    contactWord: 'INVOICE',
+    firstFire: false,
+    lawfulRoe: 'defensive_only',
+    demandType: 'tariff_inspection',
+    scanPolicy: 'ledger_audit_before_hail',
+    lootLegality: 'bonded_cargo_only',
+    barkSituations: Object.freeze(['scan', 'warn', 'demand-cargo', 'patrol-greeting']),
+    primaryBark: 'patrol-greeting',
+    aftermath: Object.freeze({
+      repChannel: 'faction:repDelta',
+      heatChannel: null,
+      paperwork: true,
+      graffitiTone: 'invoice_ledger',
+    }),
+    sampleLine: 'Tethys exchange hail: present bill of lading or settle the transit tariff at the buoy.',
+  }),
 });
 
 export const PRESSURE_FACTION_IDS = Object.freeze([

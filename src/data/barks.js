@@ -110,6 +110,7 @@ export const BARKS = {
       'Pinging your registry — call it market research. Hold still.',
       'Syndicate hail. We do like to know who we are doing business with.',
       'Account check. Your balance is healthy. The health of your competitors is on the board.',
+      'Tethys lane control: pinging registry against open bills of lading. Maintain heading.',
     ],
     warn: [
       'This lane carries a toll, friend. You have not paid it.',
@@ -153,6 +154,8 @@ export const BARKS = {
       'Trade lane secured. Keep your credits handy.',
       'Syndicate convoy passing. No fees today. Enjoy it.',
       'Good cycle. Clear Air is up. Don’t ask who it’s down on.',
+      'Tethys exchange hail: present bill of lading or settle the transit tariff at the buoy.',
+      'Tethys trader inbound: bonded freight clearance logged with Meridian exchange.',
     ],
     distress: [
       'We are losing her. Invoice the rescue to our account.',
