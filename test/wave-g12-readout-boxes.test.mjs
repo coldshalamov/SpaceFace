@@ -30,7 +30,7 @@ test('hud.js never pins the speed readout or the weapon name over the ordnance r
   const src = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
   const body = src.slice(src.indexOf('function placeFlightReadouts'), src.indexOf('function unplaceFlightBox'));
   assert.ok(body.length > 0, 'placeFlightReadouts exists');
-  assert.doesNotMatch(body, /placeFlightBox\(\s*speedGaugeEl/, 'speed readout is not fixed-placed');
-  assert.doesNotMatch(body, /placeFlightBox\([^)]*sf-wpnstat/, 'weapon name is not fixed-placed');
+  assert.doesNotMatch(body, /\bplaceFlightBox\(\s*speedGaugeEl/, 'speed readout is not fixed-placed');
+  assert.doesNotMatch(body, /\bplaceFlightBox\([^)]*sf-wpnstat/, 'weapon name is not fixed-placed');
   assert.match(body, /placeFlightBox\(\s*dock\s*,/, 'the dock prompt keeps its computed box');
 });
