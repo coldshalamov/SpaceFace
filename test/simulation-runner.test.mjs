@@ -139,7 +139,7 @@ test('SimulationRunner carries between-tick journal writes and aggregates the ea
   assert.equal(first.journalEnd, 2);
 
   ship.presentationVisualRevision = 1;
-  journal.recordVisual(state.tick, ship);
+  const visualSequence = journal.recordVisual(state.tick, ship);
   runner.advance(LOOP_FIXED_DT * 2.1, 1);
 
   const latest = {};
@@ -147,8 +147,18 @@ test('SimulationRunner carries between-tick journal writes and aggregates the ea
   assert.equal(latest.tick, 3);
   assert.equal(latest.journalStart, 2,
     'the next completion must include records published after the prior fixed tick');
-  assert.equal(latest.journalEnd, 5);
-  assert.equal(runner.getDiagnostics().committedJournalSequence, 5);
+  // Transform records coalesce into the retained prior record, so the visual write is
+  // the only new sequence; it carries the refreshed latest pose for the consumer.
+  assert.equal(latest.journalEnd, visualSequence);
+  assert.equal(latest.journalEnd, 3);
+  const delivered = {};
+  assert.equal(journal.visitRange(2, 3, delivered, (record) => {
+    if (record.sequence === visualSequence) {
+      assert.equal(record.kind, 'visual');
+      assert.equal(record.x, 3);
+    }
+  }), 1);
+  assert.equal(runner.getDiagnostics().committedJournalSequence, 3);
 });
 
 test('completed-tick queue exhaustion fails before advancing authoritative state', () => {
