@@ -4191,6 +4191,7 @@ export function createHud(ctx, alerts) {
       if (!presentationAllowsTargetLock(contact, state)) return;
       if (!state.player) state.player = {};
       state.player.targetId = rec.id;
+      if (state.input) state.input.targetAssistDisabled = false;
       ctx.bus.emit('toast', { text: `Selected target: ${rec.name}`, kind: 'info', ttl: 2 });
       updateOverview();
     });
