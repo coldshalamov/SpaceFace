@@ -2408,6 +2408,8 @@ export function deathDialSpec(result, ctx) {
       .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
       .map(([word, value]) => ({ word, value })),
     hitAmounts: trail.map((e) => Number(e && e.amount)).filter((n) => Number.isFinite(n) && n > 0),
+    hitWeapons: trail.filter((e) => Number.isFinite(Number(e && e.amount)) && Number(e.amount) > 0)
+      .map((e) => weaponDisplayName(typeof e.weaponId === 'string' ? e.weaponId : null)),
     hitGroups: breakdown.rows.map((r) => ({ weapon: r.weapon, hits: r.hits, amount: r.amount })),
     hitSummary: breakdown.hits ? `Last ${breakdown.hits} hit${breakdown.hits === 1 ? '' : 's'} · ${breakdown.total} damage` : '',
     engraving: Number(result.deepestWave || result.wave) > 0 ? `Wave ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',

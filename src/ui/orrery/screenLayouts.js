@@ -343,13 +343,14 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-ro
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__stage { grid-template-columns:minmax(0, min(600px, 46vw)) !important; grid-template-rows:auto minmax(0, 1fr); row-gap:18px; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__ledger { grid-column:1; grid-row:1; overflow:visible !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story { grid-column:1; grid-row:2; min-height:0; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial > .sf-crres__dial { position:absolute; top:28px; bottom:112px; right:max(56px, 3.5vw); width:min(46vw, 880px); z-index:1; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial > .sf-crres__dial { position:absolute; top:28px; bottom:112px; left:42vw; right:8vw; z-index:1; }
 /* the ledger's rows stay for the ear; the eye reads four figures */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="ledger"] { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; margin:0 !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figures { display:flex; flex-wrap:wrap; column-gap:34px; row-gap:4px; margin:0 0 6px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figures { display:grid; grid-template-columns:repeat(4, minmax(0, 128px)); row-gap:4px; margin:0 0 6px; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figure { display:flex; flex-direction:column; margin:0; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figure__n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:300; font-size:clamp(30px, 4vh, 44px); line-height:1;
-  font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.02em; color:rgb(246 241 230); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figure__n { font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 560, "wdth" 112; font-size:clamp(34px, 4.4vh, 48px); line-height:1;
+  font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.01em; color:rgb(246 241 230); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figures__rest { grid-column:1 / -1; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figure__w { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11px; letter-spacing:.24em;
   text-transform:uppercase; color:rgb(236 230 216 / .62); margin-top:6px; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .orr-crres-figures__rest { flex-basis:100%; margin:8px 0 0; font-size:12px; color:rgb(236 230 216 / .6); }
@@ -359,7 +360,11 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .k
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crd-headline { text-wrap:balance; max-width:44ch; }
 /* the story in three sentences; the build as a track of nodes on a hairline */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="story"] .sf-crres__story-line ~ .sf-crres__story-line ~ .sf-crres__story-line ~ .sf-crres__story-line { display:none; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial :is(.sf-crres__causal, .sf-crres__build-code) { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] { display:flex; flex-direction:column; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] .sf-crres__build { order:2; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] .sf-crres__build-name { order:3; margin-top:12px; font-size:13px; color:rgb(236 230 216 / .72); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] .sf-crres__build-name::before { content:"Converged on "; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial :is(.sf-crres__causal, .sf-crres__causal-lead, .sf-crres__build-code) { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build { display:flex !important; position:relative; margin-top:12px !important; padding-top:20px !important; border:0 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build::before { content:""; position:absolute; left:5px; right:12%; top:6px; height:1px; background:rgb(236 230 216 / .34); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step { flex:1 1 0; display:block !important; position:relative; border:0 !important; padding:0 12px 0 0 !important; min-height:0 !important; }
