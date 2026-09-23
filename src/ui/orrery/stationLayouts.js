@@ -179,6 +179,7 @@ ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { display:inline-flex !important
 ${S} .sxb-ops .sxb-launch-seat { align-self:flex-start !important; margin-top:-8px !important; }
 ${S} .sxb-ops .sx-dock__group--nav { gap:0 clamp(28px, 2.2vw, 44px) !important; padding-left:6px !important; flex-wrap:nowrap !important; }
 @media (max-width:1500px) {
+  ${S} .sxb-ops .sx-receipt { top:auto !important; bottom:calc(100% + 10px) !important; left:0 !important; max-width:min(560px, 70vw) !important; }
   ${S} .sxb-vital { width:112px !important; }
   ${S} .sxb-vital [data-vital-act] { font-size:10.5px !important; letter-spacing:.08em !important; }
   ${S} .sxb-ops .sx-dock__group--nav { gap:0 16px !important; }
@@ -215,6 +216,18 @@ ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help) .so-icon { width:14px; height:14
 ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help):is(:hover, :focus-visible, [aria-expanded='true']) { color:rgb(246 241 230) !important; outline:none !important; }
 ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help):focus-visible { color:var(--dp-hand, #f2b950) !important; }
 ${S} .sxb-ops .sx-comms__count { background:none !important; border:0 !important; color:rgb(248 244 234) !important; font-weight:700; }
+/* the receipt is a line of light over the foot, not a card: the arrow, what cleared, the sum */
+${S} .sxb-ops .sx-receipt { background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
+  top:0 !important; bottom:auto !important; left:calc(100% + 40px) !important; right:auto !important; width:max-content !important; max-width:min(560px, 36vw) !important; padding:6px 0 !important;
+  flex-wrap:nowrap !important; gap:12px !important; white-space:nowrap !important; isolation:isolate; }
+${S} .sxb-ops .sx-receipt::before { content:""; position:absolute; z-index:-1; left:-60px; right:-60px; top:-26px; bottom:-26px; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(7 8 10 / .85), rgb(7 8 10 / 0)); }
+${S} .sxb-ops .sx-receipt .so-transfer { width:40px; color:rgb(${BONE} / .7); }
+${S} .sxb-ops .sx-receipt__kind { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650; font-size:10px !important;
+  letter-spacing:.22em !important; color:rgb(${BONE} / .7) !important; }
+${S} .sxb-ops .sx-receipt__title { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:12px !important;
+  letter-spacing:.12em; text-transform:uppercase; color:rgb(248 244 234) !important; }
+${S} .sxb-ops .sx-receipt__delta { margin-left:6px !important; font-variant-numeric:tabular-nums; color:rgb(${BONE} / .85) !important; }
 
 /* ---- Undock: the one primary verb. Bone at rest; amber where the player reaches; red at risk --- */
 ${S} .sxb-launch-seat { background:none !important; border:0 !important; box-shadow:none !important; clip-path:none !important; }
