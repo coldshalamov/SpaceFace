@@ -273,7 +273,8 @@ test('the card copy states the verb, the hardpoint, and what it replaces', () =>
     verb: 'Throw', blurb: 'A momentum slug.', slotIndex: 1, replaces: 'wpn_pulse_laser_m',
   });
   assert.equal(lines.verb, 'Throw');
-  assert.equal(lines.slot, 'Hardpoint 2 — replaces pulse laser m');
+  // The replaced fitting is named as the player knows it, never by its id.
+  assert.equal(lines.slot, 'Hardpoint 2 — replaces Pulse Laser M');
   const emptySlot = offerCardLines({ id: 'x', verb: 'X', slotIndex: 0, replaces: null });
   assert.equal(emptySlot.slot, 'Hardpoint 1 — empty');
 });

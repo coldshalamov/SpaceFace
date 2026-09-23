@@ -77,7 +77,7 @@ import { STUNT_RULE_REVISIONS, stuntAssistProfile } from '../../combat/stuntRunR
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
 import { comboSummary } from '../../systems/stuntCombo.js';
 import { el, settle, stamp, cue } from '../kit/index.js';
-import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+import { capPins, platePins, panePins, channelPins, rowPins }
   from '../kit/computedMaterial.js';
 
 const FH_KEY = {
@@ -999,14 +999,10 @@ export const crucibleScreen = {
     // Seed — the number as an underlined input, "New seed" as a fine word, the arena in fine print.
     const seedBody = settingRow('Seed', 'sf-crd-row--seed');
     const seedRow = el('div', 'k-words k-words--row sf-crd-seed');
+    // The well only holds the input: the input's own rail is the one rule under the number. A
+    // well rail beneath it drew a second line, and its 14px frame pushed the number off the caption.
     const seedWell = el('div', 'fh-stepper-well');
-    pin(seedWell, {
-      ...wellPins('14px'),
-      'min-height': '56px',
-      padding: '0 16px',
-      display: 'inline-flex',
-      'align-items': 'center',
-    });
+    pin(seedWell, { display: 'inline-flex', 'align-items': 'center' });
     const seedInput = el('input', 'k-input k-input--num');
     seedInput.type = 'text';
     seedInput.inputMode = 'numeric';
@@ -1264,6 +1260,9 @@ export const crucibleScreen = {
     }
     const quick = word('Quick play', 'k-word--emph');
     quick.setAttribute('aria-label', 'Quick play: Swarm now on a fresh seed');
+    quick.title = 'Swarm now on a fresh seed, with this build and arena.';
+    // A key like Back beside it, not loose words in front of the launch key.
+    paintKey(quick, 'small');
     quick.addEventListener('click', () => {
       // Quick play is the fast game with nothing to decide: Swarm, a fresh seed, no
       // challenge keys, no ghost. Hull and arena stay as chosen — those are loadout.
@@ -1619,27 +1618,61 @@ export function resultHero(result) {
 export function storySentences(result) {
   if (!result) return [];
   const lines = [];
+  const seen = new Set();
+  // Every line ends as a sentence (survivalResults' moments arrive bare), and none repeats one the
+  // plate already printed -- the headline above the band included.
+  const say = (text) => {
+    const line = sentence(text);
+    const key = line.toLowerCase();
+    if (!line || seen.has(key)) return;
+    seen.add(key);
+    lines.push(line);
+  };
+  if (typeof result.headline === 'string' && result.headline) seen.add(sentence(result.headline).toLowerCase());
   const death = result.death;
+  const attacker = result.defeat && typeof result.defeat.attacker === 'string' && result.defeat.attacker
+    ? result.defeat.attacker : null;
   if (death && typeof death === 'object') {
-    if (typeof death.causeText === 'string' && death.causeText) lines.push(death.causeText);
+    // With a defeat receipt, the headline has already said who killed you, with what and from
+    // where, and "How it ended" lists it row by row. causeText is that same receipt again in its
+    // enum words ("Reaver Corsair · Heavy Autocannon M · AFT · hull breach"), so the story starts
+    // at what the headline cannot say: the tell. causeText earns a line only without a receipt --
+    // the trail-only "... fire took you apart" sentence, which the headline does not carry.
+    if (!attacker && typeof death.causeText === 'string' && death.causeText) say(death.causeText);
     if (typeof death.telegraphName === 'string' && death.telegraphName) {
       const lead = Number.isFinite(Number(death.telegraphLeadMs)) ? Number(death.telegraphLeadMs) : 0;
-      lines.push(`The tell was ${death.telegraphName} — ${lead} ms of warning.`);
+      const tell = lowerFirstWord(death.telegraphName);
+      say(attacker
+        ? `${attacker}'s tell was ${tell} — ${lead} ms of warning.`
+        : `The tell was ${tell} — ${lead} ms of warning.`);
     }
-    if (typeof death.counterplay === 'string' && death.counterplay) lines.push(death.counterplay);
+    if (typeof death.counterplay === 'string' && death.counterplay) say(death.counterplay);
   }
   const moments = Array.isArray(result.moments) ? result.moments : [];
   for (const moment of moments) {
     const text = typeof moment === 'string' ? moment : (moment && moment.text);
-    if (typeof text === 'string' && text) lines.push(text);
+    if (typeof text === 'string' && text) say(text);
   }
   if (typeof result.buildName === 'string' && result.buildName) {
-    lines.push(`You converged on ${result.buildName}.`);
+    say(`You converged on ${result.buildName}.`);
   }
   if (typeof result.buildCode === 'string' && result.buildCode) {
     lines.push(`Build code ${result.buildCode}`);
   }
   return lines;
+}
+
+/** A line as a sentence: trimmed, with its full stop when it has no closing mark. */
+function sentence(text) {
+  const line = String(text == null ? '' : text).trim();
+  if (!line) return '';
+  return /[.!?…:]$/.test(line) ? line : `${line}.`;
+}
+
+/** "Weapon charge" reads mid-sentence as "weapon charge"; "EMP burst" keeps its capitals. */
+function lowerFirstWord(text) {
+  const words = String(text || '').trim();
+  return /^[A-Z][a-z]/.test(words) ? words[0].toLowerCase() + words.slice(1) : words;
 }
 
 /* --- the stunt combo band. DOM-free builders over the stunt module's combo snapshot.

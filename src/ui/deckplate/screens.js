@@ -867,6 +867,9 @@ ${RG} .sf-range__verbs .k-word.fh-key { min-height:38px; font-size:12px; }
    paused arena: offers are printed cards with the cut that light under the hand; every verb is a
    key (Strip and Main menu are the destructive kind). -- */
 const CRD = 'html body #screens .of-crucible-door';
+/* The door's tiles have to outweigh the FH bridge's tile rule, which carries two :not() classes:
+   the door adds .k-screen to tie it and wins by order. */
+const CRD_TILE = 'html body #screens .of-crucible-door.k-screen .fh-tile';
 const CR = 'html body #screens > .k-screen:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results)';
 const CRUCIBLE = `
 ${CRD} .fh-key.fh-key--hazard {
@@ -874,27 +877,102 @@ ${CRD} .fh-key.fh-key--hazard {
   color:var(--dp-metal-0); font-variation-settings:"wght" 820, "wdth" 96; letter-spacing:.18em;
 }
 ${CRD} .fh-key.fh-key--hazard:is(:hover, :focus-visible) { --dpk-fill:var(--dp-danger-hot); color:var(--dp-metal-0); box-shadow:0 0 26px var(--dp-danger-bloom); }
+/* A door tile is pressable, so it is a printed field with the cut -- a GHOST field, because the
+   smoked window behind it is the same dark as --dp-field and a dark tile on it was no tile at
+   all: the chosen tile's lit cut floated over nothing. The ink field makes the cut a corner.
+   Chosen = the lamp bar on its leading edge, a brighter ink field, the lit cut and lamp-hot type. */
+${CRD_TILE} { background:${INK_FIELD} border-box; }
+${CRD_TILE}:hover { background:var(--dp-cut-lit) border-box, ${INK_FIELD_HI} border-box; color:var(--dp-ink); }
+${CRD_TILE}[aria-selected='true'] {
+  color:var(--dp-lamp-hot); background:var(--dp-cut-lit) border-box, ${LAMP_EDGE} border-box, ${INK_FIELD_HI} border-box;
+}
+${CRD_TILE}:focus-visible { outline:0 solid transparent !important; background:var(--dp-cut-lit) border-box, var(--dp-bracket) border-box, ${INK_FIELD_HI} border-box; }
+${CRD_TILE}[data-locked='1'] { background:linear-gradient(rgb(232 226 212 / .04) 0 0) border-box; }
+/* the window scrolls (share, modifiers and records sit under the seed): its last rows fade into
+   the edge instead of stopping on a half-cut caption, and the fade is the cue to scroll */
+${CRD} > .k-stage.fh-window {
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 48px), rgb(0 0 0 / .2));
+  mask-image:linear-gradient(180deg, #000 calc(100% - 48px), rgb(0 0 0 / .2));
+}
+/* the seed: one rail under the number (the input's), not a second one under its well */
+${CRD} .fh-stepper-well { background:none !important; border-width:0 !important; padding:0 !important; min-height:0 !important; }
+${CRD} .sf-crd-seed { align-items:center; gap:16px 24px; }
+${CRD} .sf-crd-seed .k-input--num { width:14ch; max-width:100%; text-align:left; }
+/* focus on the door's plain words is the bone bracket, not a white box around a whole row */
+${CRD} :is(.sf-crd-records > summary, .sf-crd-practice .k-word):focus-visible {
+  outline:0 solid transparent !important; background:var(--dp-bracket) no-repeat;
+}
 ${CR} { background:radial-gradient(130% 100% at 30% 30%, rgb(9 10 13 / .84), rgb(5 6 9 / .92) 70%, rgb(4 5 7 / .95)); }
 ${printedKey(`${CR} .k-foot .k-word`)}
 ${printedKey(`${CR} .sf-cru-row .k-word`)}
 ${CR} .sf-cru-row .k-word { min-height:36px; font-size:12px; }
-${CR} .sf-cru-stage.k-stage--scroll { box-sizing:border-box; padding:8px 16px; border:14px solid transparent; ${SURFACE} --sf-fade-edge:14px; }
+/* the keyboard key a verb answers to, printed inside the verb: a hairline glyph from a manual */
+${CR} .sf-cru-kbd { ${HINT} margin-left:4px; height:22px; min-width:22px; padding:0 5px; font-size:11px; }
+${CR} .k-word--primary .sf-cru-kbd { border-color:rgb(12 12 14 / .38); color:var(--dp-metal-0); }
+/* the refit: the field hugs its hardpoints and stops at a readable width */
+${CR} .sf-cru-stage.k-stage--scroll {
+  box-sizing:border-box; padding:8px 16px; border:14px solid transparent; ${SURFACE} --sf-fade-edge:14px;
+  align-self:start; max-height:100%; width:min(100%, 1040px);
+}
 ${CR} .sf-cru-row { align-items:center; min-height:54px; }
+${CR} .sf-cru-row .k-row__sub { display:block; width:max-content; max-width:100%; }
+/* a module's name is a link to its codex entry; it keeps the row's sub size, not the link's own */
+${CR} .sf-cru-row .k-row__sub.sf-entity-link { font-size:14px; line-height:1.4; color:var(--dp-ink-dim); }
+${CR} .sf-cru-slottag {
+  margin-left:12px; font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 78; font-size:12px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--dp-ink-mute);
+}
+/* the foot: each key with what it does printed beneath it */
+${CR} .sf-cru-foot .k-words--row { align-items:flex-start; gap:12px 28px; }
+${CR} .sf-cru-foot .k-words--row > li { display:flex; flex-direction:column; align-items:flex-start; gap:8px; max-width:40ch; }
+${CR} .sf-cru-keynote { margin:0; color:var(--dp-ink-dim); line-height:1.4; text-shadow:var(--dp-text-legible); }
+${CR} .sf-cru-keynote[hidden] { display:none; }
+/* offers: a printed card (the ghost ink field, so the card and its cut are visible over the
+   arena), the focused or hovered one lit at the cut; a sold-out card drops to the quiet tier */
 ${CR} .sf-cru-card {
-  --dpk-fill:var(--dp-field); --dpk-cut:none; --dpk-bracket:none;
+  --dpk-fill:var(--dp-field-ink); --dpk-cut:none; --dpk-bracket:none;
   box-sizing:border-box; text-align:left; border:14px solid transparent; border-image:none; box-shadow:none; color:var(--dp-ink);
   background:var(--dpk-cut) border-box, var(--dpk-bracket) border-box, ${CUT_FILL} border-box;
 }
-${CR} .sf-cru-card:hover:not(:disabled) { --dpk-cut:var(--dp-cut-lit); --dpk-fill:rgb(24 26 30 / .9); }
-${CR} .sf-cru-card:focus-visible:not(:disabled) { outline:0 solid transparent !important; --dpk-cut:var(--dp-cut-lit); --dpk-bracket:var(--dp-bracket); }
+${CR} .sf-cru-card:hover:not(:disabled) { --dpk-cut:var(--dp-cut-lit); --dpk-fill:var(--dp-field-ink-hi); }
+${CR} .sf-cru-card:focus-visible:not(:disabled) { outline:0 solid transparent !important; --dpk-cut:var(--dp-cut-lit); --dpk-fill:var(--dp-field-ink-hi); --dpk-bracket:var(--dp-bracket); }
+${CR} .sf-cru-card:disabled { --dpk-fill:rgb(232 226 212 / .04); cursor:default; }
+${CR} .sf-cru-card:disabled :is(.sf-cru-name, .sf-cru-blurb, .sf-cru-activation) { color:var(--dp-ink-mute); }
 ${CR} .sf-cru-card:is(:hover, :focus-visible):not(:disabled) .sf-cru-verb { color:var(--dp-lamp-hot); }
 ${CR} .sf-cru-verb { font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 72; letter-spacing:.18em; color:var(--dp-ink-mute); }
 ${CR} .sf-cru-name { font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 86; text-transform:uppercase; letter-spacing:.04em; color:var(--dp-ink); }
-${CR} .sf-cru-key { ${HINT} }
+${CR} .sf-cru-cardhead { display:flex; align-items:center; gap:10px; min-height:22px; }
+${CR} .sf-cru-cardhead > * { margin:0; }
+${CR} .sf-cru-cardhead .sf-cru-price { margin-left:auto; }
+${CR} .sf-cru-key { ${HINT} height:22px; min-width:22px; font-size:11px; }
 ${CR} .sf-cru-key:empty { display:none; }
+/* the armory scrolls: its last visible row fades into the edge, which is the cue to scroll */
+${CR}.sf-crucible-armory .sf-cru-stage {
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 56px), rgb(0 0 0 / .15));
+  mask-image:linear-gradient(180deg, #000 calc(100% - 56px), rgb(0 0 0 / .15));
+}
+/* a price and the wallet are readings: phosphor */
+${CR} :is(.sf-cru-price, .sf-cru-wallet) { color:var(--dp-phos); font-variant-numeric:tabular-nums; text-shadow:var(--dp-text-legible); }
+${CR} .sf-cru-afford { color:var(--dp-ink-dim); }
+/* the armory's category filter: words on a rail, the open one lit by a lamp bar beneath it */
+${CR} .sf-cru-filters { display:inline-flex; gap:0 22px; width:max-content; max-width:100%; background:${RAIL}; }
+${CR} .sf-cru-filters .k-word {
+  padding:0 0 8px; border:0; background:none; box-shadow:none; cursor:pointer;
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 700, "wdth" 80; font-size:13px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dp-ink-dim);
+}
+${CR} .sf-cru-filters .k-word::after { display:none; }
+${CR} .sf-cru-filters .sf-cru-count { margin-left:6px; color:var(--dp-ink-mute); font-variant-numeric:tabular-nums; }
+${CR} .sf-cru-filters .k-word:hover { color:var(--dp-ink); }
+${CR} .sf-cru-filters .k-word[aria-pressed='true'] { color:var(--dp-ink); background:${LAMP_UNDER}; }
+${CR} .sf-cru-filters .k-word:focus-visible { outline:0 solid transparent !important; color:var(--dp-ink); background:var(--dp-bracket); }
+${CR} .sf-cru-filters .k-word[aria-pressed='true']:focus-visible { background:var(--dp-bracket), ${LAMP_UNDER}; }
 @media (forced-colors:active) {
   ${CR} :is(.sf-cru-stage, .sf-cru-card) { border:1px solid CanvasText; background:Canvas; box-shadow:none; }
   ${CRD} .fh-key.fh-key--hazard { background:ButtonFace; color:ButtonText; }
+  ${CRD_TILE} { background:Canvas; }
+  ${CRD_TILE}[aria-selected='true'] { outline:2px solid Highlight; }
+  ${CR} .sf-cru-filters .k-word[aria-pressed='true'] { background:none; border-bottom:2px solid Highlight; }
 }
 `;
 
@@ -1028,6 +1106,181 @@ ${AU} .au-outpost-detail summary { color:var(--dp-lamp-hot); }
 }
 `;
 
+/* -- RESEARCH, CODEX, LOAD -- three shell screens with their own instrument each, one grammar.
+   Research is traces of light (the tree is a canvas in src/ui/screens/techTree.js; this dresses the
+   dossier beside it). The codex is an archive and a reader. Load is a ledger of lives beside the
+   save's hull. Scoped to each screen's root so nothing here reaches another screen. -- */
+const TT = 'html body #screens #sf-techtree';
+const SWATCH = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+const TT_SWATCH_AVAILABLE = SWATCH("<svg xmlns='http://www.w3.org/2000/svg' width='22' height='12'><path d='M.5 .5H17.5L21.5 4.5V11.5H.5Z' fill='rgb(10,12,16)' stroke='rgb(242,185,80)'/></svg>");
+const TT_SWATCH_RESEARCHED = SWATCH("<svg xmlns='http://www.w3.org/2000/svg' width='22' height='12'><path d='M0 0H17L22 5V12H0Z' fill='rgb(232,226,212)' fill-opacity='.2'/><path d='M17 0L22 5' stroke='rgb(255,217,140)' stroke-width='2'/></svg>");
+const TT_SWATCH_LOCKED = SWATCH("<svg xmlns='http://www.w3.org/2000/svg' width='22' height='12'><path d='M.5 .5H17.5L21.5 4.5V11.5H.5Z' fill='none' stroke='rgb(232,226,212)' stroke-opacity='.3'/></svg>");
+/* the SELECTION block's .of-codex rules carry .k-screen:not(.sx-observatory); the codex matches that weight */
+const CX = 'html body #screens > .k-screen.of-codex:not(.sx-observatory)';
+const SL = 'html body #screens .of-saveload';
+/** The width of the load screen's record page: the ship picture takes the rest of the stage. */
+const SL_PAGE = 'clamp(360px, 38%, 470px)';
+const ETCH = 'font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 74; font-size:12px; letter-spacing:.16em; text-transform:uppercase;';
+const ARCHIVE_SCREENS = `
+/* research: the dossier stands level with the tree; the zoom reading sits under it */
+${TT}.k-screen .tt-scroll { height:100%; }
+${TT}.k-screen .tt-side { margin-top:0; padding-top:0; }
+${TT} .tt-zoom-badge { bottom:-26px; ${ETCH} color:var(--dp-ink-mute); text-shadow:var(--dp-text-legible); }
+${TT} .tt-side [data-sel] { display:flex; flex-direction:column; gap:10px; }
+${TT} .tt-dossier__kicker { margin:0; ${ETCH} color:var(--dp-ink-mute); }
+${TT} .tt-dossier__name {
+  margin:0; font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 86; font-size:clamp(24px, min(1.8vw, 3.2vh), 32px);
+  line-height:1.05; letter-spacing:.04em; text-transform:uppercase; color:var(--dp-ink); text-shadow:var(--dp-text-legible);
+}
+${TT} .tt-dossier__state { margin:0; font-family:var(--dp-face-read); font-size:15px; color:var(--dp-ink-dim); }
+${TT} .tt-dossier__state[data-state="available"] { color:var(--dp-lamp-hot); }
+${TT} .tt-dossier__state[data-state="researched"] { color:var(--dp-lamp); }
+${TT} .tt-dossier__cost { display:grid; grid-template-columns:1fr 1fr; gap:0 18px; margin:6px 0 2px; padding:10px 0; background:${HAIR_TOP}, linear-gradient(0deg, var(--dp-rule) 1px, transparent 0); }
+${TT} .tt-dossier__cost div { margin:0; }
+${TT} .tt-dossier__cost dt { ${ETCH} color:var(--dp-ink-mute); }
+${TT} .tt-dossier__cost dd {
+  margin:4px 0 0; font-family:var(--dp-face-read); font-weight:600; font-size:28px; line-height:1; font-variant-numeric:tabular-nums;
+  color:var(--dp-phos); text-shadow:var(--dp-phos-emit-soft), var(--dp-text-legible);
+}
+${TT} .tt-side .k-sentence { font-size:14px; line-height:1.45; color:var(--dp-ink-dim); }
+${TT} .tt-side .k-caps { margin:8px 0 0; ${ETCH} color:var(--dp-ink-mute); }
+${TT} .tt-side .k-rows { margin:0; }
+${TT} .tt-side .k-row { min-height:30px; padding:4px 0; background:${HAIR_TOP}; background-repeat:no-repeat; }
+${TT} .tt-side .k-row { grid-template-columns:minmax(0, 1fr) auto; column-gap:12px; }
+${TT} .tt-side .k-row .k-row__name { font-size:15px; color:var(--dp-ink); white-space:normal; overflow:visible; text-overflow:clip; }
+${TT} .tt-side .k-row .k-row__sub { ${ETCH} letter-spacing:.12em; color:var(--dp-ink-mute); }
+${TT} .tt-side .tt-reqs .k-row[data-met="1"] .k-row__sub { color:var(--dp-lamp); }
+${TT} .tt-side .tt-reqs .k-row[data-met="0"] .k-row__name { color:var(--dp-ink-dim); }
+${TT} .tt-side [data-actions] { margin:4px 0 6px; }
+${TT} .tt-side [data-actions] .k-word { width:100%; max-width:none; justify-content:flex-start; }
+/* a locked or unaffordable node: the verb's place holds its reason, as a disabled key (no fill, a
+   dim lamp hairline), never a tab word */
+${TT} .tt-side [data-actions] .k-word[aria-disabled="true"] {
+  box-sizing:border-box; min-height:var(--dp-key-h-2); padding:8px 14px; border:1px solid rgb(138 107 58 / .85); border-image:none; background:none; box-shadow:none;
+  ${ETCH} letter-spacing:.1em; line-height:1.3; color:var(--dp-ink-dim); cursor:default; text-align:left; white-space:normal;
+}
+${TT} .tt-side [data-actions] .k-word[aria-disabled="true"]:focus-visible { outline:0 solid transparent !important; background:var(--dp-bracket); }
+/* the legend: each word wears the form its nodes wear, not a bead */
+${TT} .k-foot { align-items:center; }
+${TT} .tt-legend { display:flex; align-items:center; gap:26px; }
+${TT} .tt-legend [data-swatch] { gap:10px; }
+${TT} .tt-legend [data-swatch]::before { width:22px; height:12px; border-radius:0; box-shadow:none; background:${TT_SWATCH_LOCKED} center / 22px 12px no-repeat; }
+${TT} .tt-legend [data-swatch="available"]::before { background:${TT_SWATCH_AVAILABLE} center / 22px 12px no-repeat; }
+${TT} .tt-legend [data-swatch="researched"]::before { background:${TT_SWATCH_RESEARCHED} center / 22px 12px no-repeat; }
+${TT} .tt-picker { display:flex; align-items:center; gap:12px; margin-left:auto; }
+${TT} .tt-picker select.k-select { min-width:220px; }
+@media (forced-colors:active) {
+  ${TT} .tt-legend [data-swatch]::before { forced-color-adjust:none; background:none; border:1px solid CanvasText; }
+}
+/* codex: an archive and a reader. The entry is a page sized to its words, filed under its section,
+   its illustration (the system mark, or the figure's crest) in the top-right; a turn at its foot. */
+${CX} .k-hang .k-row { min-height:0; padding-block:5px; }
+${CX} .k-hang .k-row .k-row__name { font-size:15px; line-height:1.25; }
+${CX} .k-hang .k-row .k-row__sub { margin-top:1px; font-size:12px; line-height:1.25; }
+${CX} .sf-codex-entry { min-height:0; max-width:min(920px, 100%); padding-bottom:4px; }
+${CX} .sf-codex-entry:has(> .cx-reader__mark) > :not(.cx-reader__mark):not(.cx-reader__turn):not(img) { margin-right:calc(140px * var(--dp-s) + 28px); }
+${CX} .sf-codex-entry > img { display:block; width:100%; object-fit:cover; margin-bottom:14px; }
+${CX} .cx-reader__filed { margin:0 0 10px; ${ETCH} color:var(--dp-ink-mute); }
+${CX} .cx-reader__mark { position:absolute; top:10px; right:14px; }
+${CX} .cx-reader__mark .dp-mark { color:var(--dp-ink-dim); }
+${CX} .cx-reader__mark .dp-mark svg { filter:none; }
+${CX} .cx-reader__mark.is-locked .dp-mark { color:rgb(232 226 212 / .2); }
+${CX} .cx-reader__mark.is-locked .dp-mark .accent { fill:currentColor; }
+/* the ship's ledger page speaks the reader's header voice */
+${CX} #sf-codex-stage .st-ledger .st-sub-h {
+  font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 86; font-size:clamp(24px, min(2vw, 3.6vh), 38px); line-height:1.05;
+  letter-spacing:.04em; text-transform:uppercase; color:var(--dp-ink); text-shadow:var(--dp-text-legible);
+}
+${CX} .sf-codex-entry .k-t-title {
+  margin:0 0 6px; font-family:var(--dp-face-etch); font-variation-settings:"wght" 820, "wdth" 86; letter-spacing:.04em; text-transform:uppercase;
+}
+/* the survey's figures are readings */
+${CX} .sf-codex-entry > .k-words--row { display:flex; flex-wrap:wrap; gap:14px 40px; margin:4px 0 14px; }
+${CX} .sf-codex-entry > .k-words--row .k-hero__n { font-family:var(--dp-face-read); font-weight:600; font-size:clamp(28px, min(2.2vw, 4vh), 40px); line-height:1; font-variant-numeric:tabular-nums; color:var(--dp-phos); text-shadow:var(--dp-phos-emit-soft), var(--dp-text-legible); }
+${CX} .sf-codex-entry > .k-words--row .k-hero__w { margin-top:6px; ${ETCH} letter-spacing:.12em; color:var(--dp-ink-mute); }
+/* the signal archive: four stills of one size in a row, caption and play under each */
+${CX} .sf-codex-entry > ul.fh-cluster { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:18px; width:100%; margin:14px 0 0; padding:0; }
+${CX} .sf-codex-entry > ul.fh-cluster > li { min-width:0; }
+${CX} .sf-codex-entry > ul.fh-cluster .fh-tile { width:100%; }
+${CX} .sf-codex-entry > ul.fh-cluster .fh-fine { min-height:2.6em; font-size:13px; line-height:1.3; color:var(--dp-ink-dim); }
+${CX} .sf-codex-entry > .fh-legend { margin:0 0 14px; ${ETCH} color:var(--dp-ink-mute); }
+${CX} .sf-codex-entry .k-measure { min-height:calc(140px * var(--dp-s) - 60px); }
+${CX} .sf-codex-entry .k-measure .k-sentence { color:var(--dp-ink); }
+${CX} .sf-codex-entry .k-measure .k-sentence.k-38 { color:var(--dp-ink-mute); }
+${CX} .sf-codex-entry .k-measure .k-rule { height:1px; margin:14px 0; border:0; background:var(--dp-rule); }
+${CX} .sf-codex-entry .k-measure .k-sentence--emph { color:var(--dp-ink-dim); font-style:normal; }
+${CX} .cx-reader__turn { display:flex; align-items:center; gap:16px; margin:22px 0 0; padding-top:14px; background:${HAIR_TOP}; background-repeat:no-repeat; }
+${CX} .cx-reader__turn-at { ${ETCH} color:var(--dp-ink-mute); font-variant-numeric:tabular-nums; }
+${printedKey(`${CX} .cx-reader__turn-key`)}
+${CX} .cx-reader__turn-key { min-height:34px; font-size:12px; }
+${CX} .cx-reader__turn-key--next { margin-left:auto; }
+/* the catalogue in the foot: what is filed in each section, as readings */
+${CX} > .k-foot { align-items:center; }
+${CX} .cx-index { display:block; }
+${CX} .cx-index__list { display:flex; flex-wrap:wrap; gap:10px 34px; margin:0; }
+${CX} .cx-index__item { display:flex; flex-direction:column; margin:0; }
+${CX} .cx-index__n {
+  order:-1; margin:0; font-family:var(--dp-face-read); font-weight:600; font-size:22px; line-height:1.05; font-variant-numeric:tabular-nums;
+  color:var(--dp-phos); text-shadow:var(--dp-phos-emit-soft), var(--dp-text-legible);
+}
+${CX} .cx-index__w { margin-top:4px; ${ETCH} letter-spacing:.12em; color:var(--dp-ink-mute); }
+${CX} .cx-index__note { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+@media (forced-colors:active) {
+  ${CX} .cx-index__n { color:CanvasText; text-shadow:none; }
+}
+/* load: a ledger of lives. The saves are ledger lines; the focused save is a page of its record
+   standing on the left of the stage, the produced picture of its ship beside it. */
+${SL} .k-hang .k-row { min-height:58px; padding:9px 14px 9px 16px; }
+${SL} .k-hang .k-row .k-row__name { font-family:var(--dp-face-etch); font-variation-settings:"wght" 760, "wdth" 84; font-size:15px; letter-spacing:.08em; text-transform:uppercase; color:var(--dp-ink); }
+${SL} .k-hang .k-row.empty .k-row__name { color:var(--dp-ink-mute); }
+${SL} .k-hang .k-row .k-row__sub { margin-top:3px; font-family:var(--dp-face-read); font-size:14px; color:var(--dp-ink-dim); }
+${SL} .k-hang .k-row .k-row__num { font-family:var(--dp-face-read); font-weight:600; font-size:16px; font-variant-numeric:tabular-nums; color:var(--dp-phos); text-shadow:var(--dp-phos-emit-soft); }
+${SL} .sf-slot-badges { display:inline-flex; gap:10px; margin-left:12px; vertical-align:2px; }
+${SL} .sf-slot-badge { ${ETCH} letter-spacing:.14em; color:var(--dp-ink-mute); }
+${SL} .sf-slot-badge--you { color:var(--dp-lamp); }
+${SL} .sf-slot-badge--foe { color:var(--dp-danger-hot); }
+${SL} .sf-save-stage > .k-stage__foot.sf-save-ledger {
+  top:0; bottom:0; left:0; width:${SL_PAGE}; box-sizing:border-box; display:flex; flex-direction:column; gap:12px;
+  overflow:hidden auto; scrollbar-width:thin;
+}
+${SL} .sf-save-stage > :is(.k-stage__poster, .k-world--stage) { left:calc(${SL_PAGE} + 12px); width:calc(100% - ${SL_PAGE} - 12px); right:auto; }
+${SL} .sf-save-stage > .k-stage__poster { inset:0 auto 0 calc(${SL_PAGE} + 12px); }
+${SL} .sf-save-stage.is-vacant > :is(.k-stage__poster, .k-world--stage) { visibility:hidden; }
+${SL} .sf-save-vacant { position:absolute; top:0; bottom:0; right:0; left:calc(${SL_PAGE} + 12px); display:none; place-items:center; pointer-events:none; }
+${SL} .sf-save-stage.is-vacant > .sf-save-vacant { display:grid; }
+${SL} .sf-save-vacant .dp-mark { color:rgb(232 226 212 / .14); }
+${SL} .sf-save-vacant .dp-mark svg { filter:none; }
+${SL} .sf-save-vacant .dp-mark .accent { fill:currentColor; }
+${SL} .sf-save-ledger .sf-slot-context { margin:0; ${ETCH} color:var(--dp-ink-mute); }
+${SL} .sf-save-ledger .sf-slot-card-title { margin:0; }
+${SL} .sf-save-ledger .sf-slot-detail { margin:0; max-width:40ch; font-family:var(--dp-face-read); font-weight:500; font-size:16px; line-height:1.4; color:var(--dp-ink); }
+${SL} .sf-save-stage[data-slot-state="empty"] .sf-slot-detail, ${SL} .sf-save-stage[data-slot-state="open"] .sf-slot-detail { color:var(--dp-ink-dim); font-weight:400; }
+${SL} .sf-ledger-facts { display:grid; grid-template-columns:1fr 1fr; gap:12px 20px; margin:4px 0 0; padding:12px 0; background:${HAIR_TOP}, linear-gradient(0deg, var(--dp-rule) 1px, transparent 0); }
+${SL} .sf-ledger-fact { margin:0; min-width:0; }
+${SL} .sf-ledger-fact--figure { grid-column:1 / -1; }
+${SL} .sf-ledger-fact dt { ${ETCH} color:var(--dp-ink-mute); }
+${SL} .sf-ledger-fact dd { margin:4px 0 0; font-family:var(--dp-face-read); font-weight:600; font-size:17px; line-height:1.2; font-variant-numeric:tabular-nums; color:var(--dp-phos); text-shadow:var(--dp-phos-emit-soft); overflow-wrap:anywhere; }
+${SL} .sf-ledger-fact--figure dd { font-size:clamp(28px, min(2.2vw, 4vh), 40px); line-height:1; letter-spacing:.01em; }
+${SL} .sf-ledger-fact dd.is-blank { color:var(--dp-ink-mute); text-shadow:none; }
+${SL} .sf-save-ledger .sf-save-portrait { display:flex; flex-direction:column; margin:0; padding:0; }
+${SL} .sf-ledger-head { display:flex; align-items:center; gap:12px; margin:0 0 4px; ${ETCH} color:var(--dp-ink-mute); }
+${SL} .sf-ledger-head::after { content:""; flex:1; height:1px; background:var(--dp-rule); }
+${SL} .sf-ledger-line { display:grid; grid-template-columns:88px minmax(0, 1fr); align-items:baseline; gap:12px; padding:6px 0; background:${HAIR_TOP}; background-repeat:no-repeat; }
+${SL} .sf-ledger-line:first-of-type { background:none; }
+${SL} .sf-ledger-k { ${ETCH} letter-spacing:.12em; color:var(--dp-ink-mute); }
+${SL} .sf-ledger-line .k-sentence { margin:0; font-family:var(--dp-face-read); font-size:14px; line-height:1.35; color:var(--dp-ink-dim); }
+${SL} .sf-ledger-line .k-sentence::first-letter { text-transform:uppercase; }
+${SL} .sf-save-ledger .sf-save-actions { padding-top:8px; }
+${SL} .sf-save-stage[data-slot-state="filed"] .sf-save-ledger .sf-save-actions { margin-top:auto; }
+@media (max-width:1100px) {
+  ${SL} .sf-save-stage > .k-stage__foot.sf-save-ledger { position:relative; width:auto; }
+  ${SL} .sf-save-stage > :is(.k-stage__poster, .k-world--stage, .sf-save-vacant) { display:none; }
+}
+@media (forced-colors:active) {
+  ${SL} .sf-ledger-fact dd, ${SL} .k-hang .k-row .k-row__num { color:CanvasText; text-shadow:none; }
+}
+`;
+
 /* -- FINISH -- scrollbars are a thin flat thumb on nothing (Windows Chromium drew arrow buttons for
    the standard thin scrollbar, so the standard properties are reset and the part is drawn with the
    scrollbar pseudo-elements). -- */
@@ -1043,4 +1296,4 @@ ${NS} ::-webkit-scrollbar-corner, ${NS}::-webkit-scrollbar-corner { background:t
 ${NS} .k-words--row .fh-key.fh-key--legend::before { display:none; }
 `;
 
-export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + CRUCIBLE_RESULTS + LEGACY + FINISH;
+export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + CRUCIBLE_RESULTS + LEGACY + ARCHIVE_SCREENS + FINISH;

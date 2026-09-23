@@ -27,12 +27,36 @@
 // file owns no CSS. The draft is three offers across on the sky, each a verb, a name and one line,
 // with its key in fine print; the focused one bright. The refit is a column of hardpoint rows.
 
+import { MODULES } from '../../data/modules.js';
 import { SURVIVAL_DRAFT_CHOICES } from '../../data/survivalDraft.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
+import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../systems/survivalEndless.js';
+import { survivalRun } from '../../systems/survivalRun.js';
 import { el, settle, cue } from '../kit/index.js';
 import { crucibleFittingDescription } from '../crucibleCombatReadout.js';
 import { decorateEntityNode } from '../entityResolver.js';
+
+/**
+ * Show or hide a footer word. `.k-word { display: inline-block }` beats the `hidden`
+ * attribute, so a Swarm Continue that only set `hidden` still painted. The wrap `<li>`
+ * has to go with it or the row keeps an empty gap.
+ */
+function setWordShown(button, show) {
+  if (!button) return;
+  button.hidden = !show;
+  if (button.style && typeof button.style.setProperty === 'function') {
+    if (show) button.style.removeProperty('display');
+    else button.style.setProperty('display', 'none', 'important');
+  }
+  const li = button.parentElement;
+  if (!li || String(li.tagName).toUpperCase() !== 'LI') return;
+  li.hidden = !show;
+  if (li.style && typeof li.style.setProperty === 'function') {
+    if (show) li.style.removeProperty('display');
+    else li.style.setProperty('display', 'none', 'important');
+  }
+}
 
 /** A kit word (`button.k-word`). The caller appends it. */
 function word(label, className) {
@@ -47,6 +71,32 @@ function addWord(list, button) {
   li.appendChild(button);
   list.appendChild(li);
   return button;
+}
+
+/**
+ * A key's words with its keyboard hint printed inside it, so the hint is read with the verb it
+ * fires instead of floating at the far edge of the foot. The hint is decoration for sighted
+ * players; the key itself is announced through aria-keyshortcuts.
+ */
+function setKeyLabel(button, label, key, shortcut) {
+  if (!button) return;
+  const current = button.dataset ? `${button.dataset.label || ''}|${button.dataset.key || ''}` : '';
+  if (current === `${label}|${key || ''}` && button.childNodes && button.childNodes.length) return;
+  button.textContent = '';
+  button.appendChild(el('span', 'sf-cru-label', label));
+  if (key) {
+    const hint = el('span', 'sf-cru-kbd', key);
+    hint.setAttribute('aria-hidden', 'true');
+    button.appendChild(hint);
+  }
+  if (typeof button.setAttribute === 'function') {
+    if (shortcut) button.setAttribute('aria-keyshortcuts', shortcut);
+    else if (typeof button.removeAttribute === 'function') button.removeAttribute('aria-keyshortcuts');
+  }
+  if (button.dataset) {
+    button.dataset.label = label;
+    button.dataset.key = key || '';
+  }
 }
 
 /** Guarded kit motion: the unit tests import this module under node with no frame clock. */
@@ -115,6 +165,18 @@ function prettyDefId(defId) {
   return String(defId).replace(/^(wpn|mod)_/, '').replace(/_/g, ' ');
 }
 
+const DEF_NAME_BY_ID = new Map([...MODULES, ...WEAPONS].map((def) => [def && def.id, def && def.name]));
+
+/** A fitting as the player reads it: its authored name, never its id. */
+function fittingName(defId) {
+  if (!defId) return 'empty';
+  return DEF_NAME_BY_ID.get(defId) || prettyDefId(defId);
+}
+
+const SLOT_WORD = Object.freeze({
+  weapon: 'Weapon', shield: 'Shield', engine: 'Engine', utility: 'Utility', thruster: 'Thruster',
+});
+
 /** Card text for one offer. Exported so a check can assert the wording without a DOM. */
 export function offerCardLines(offer, state) {
   if (!offer) return null;
@@ -124,7 +186,7 @@ export function offerCardLines(offer, state) {
     blurb: offer.blurb || '',
     activation: crucibleFittingDescription(offer.defId, state),
     slot: offer.replaces
-      ? `Hardpoint ${offer.slotIndex + 1} — replaces ${prettyDefId(offer.replaces)}`
+      ? `Hardpoint ${offer.slotIndex + 1} — replaces ${fittingName(offer.replaces)}`
       : `Hardpoint ${offer.slotIndex + 1} — empty`,
   };
 }
@@ -229,10 +291,14 @@ export function refitRowLines(row) {
   if (!row) return null;
   const slotIndex = Number.isInteger(row.slotIndex) ? row.slotIndex : 0;
   const label = `Hardpoint ${slotIndex + 1}`;
+  // What kind of hardpoint it is: the reason a spare does or does not go in it.
+  const slotWord = SLOT_WORD[row.slotType] || null;
+  const slotTag = slotWord ? `${slotWord}${row.slotSize ? ' ' + row.slotSize : ''}` : '';
   if (row.defId) {
     return {
       label,
-      value: row.name || prettyDefId(row.defId),
+      slotTag,
+      value: row.name || fittingName(row.defId),
       valueRef: String(row.defId).startsWith('mod_') ? 'module:' + row.defId : null,
       action: 'Strip',
       disabled: false,
@@ -247,6 +313,7 @@ export function refitRowLines(row) {
   }));
   return {
     label,
+    slotTag,
     value: options.length ? '' : 'Empty — no spare in the run inventory fits it',
     action: 'Fit',
     disabled: options.length === 0,
@@ -269,10 +336,56 @@ export function extractionPreviewLines(run) {
   const score = Number.isInteger(run.score) && run.score > 0 ? run.score : 0;
   const salvage = Number.isInteger(run.credits) && run.credits > 0 ? run.credits : 0;
   const wave = Number.isInteger(run.wave) && run.wave > 0 ? run.wave : 0;
+  // Swarm counts rounds everywhere else on screen (the armory, the launch key, the results hero).
+  const unit = run.ruleset === 'swarm' ? 'round' : 'wave';
   return {
-    secured: `Keeps score ${score}, salvage ${salvage} cr and wave ${wave} — recorded as the run's final result.`,
-    risk: `Fly on to wave ${wave + 1}: the shop spends salvage, and death ends the run where it falls.`,
+    secured: `Keeps score ${score}, salvage ${salvage} cr and ${unit} ${wave} — recorded as the run's final result.`,
+    risk: `Fly on to ${unit} ${wave + 1}: the shop spends salvage, and death ends the run where it falls.`,
     amounts: 'Salvage and score are run-only — never campaign credits.',
+  };
+}
+
+/**
+ * What each refit key does, in words, for the run as it stands. DOM-free so a check can pin it.
+ *
+ * The close key goes where the run machine sends it, not where its label says: on the arc's last
+ * wave (the Gauntlet's wave 30) a closed refit is VICTORY. That key used to read "Launch next
+ * round" beside "Continue — keep going", so the key promising a round ended the run, and the one
+ * that did launch wave 31 sounded like its twin. The destination is asked of survivalRun itself,
+ * so these words and the phase machine cannot disagree.
+ *
+ * On that last wave Extract is withdrawn: it would end the same run as "extracted", which is the
+ * win with a worse name. Extraction stays legal on the bus; it is just not offered as a third way
+ * to stop. Continue is only ever offered where canContinueSurvivalEndless allows it.
+ */
+export function refitFootLines(run) {
+  const r = run && typeof run === 'object' && !Array.isArray(run) ? run : {};
+  const wave = Number.isInteger(r.wave) && r.wave > 0 ? r.wave : 0;
+  if (r.phase === 'draft') {
+    // The swarm armory's "Rearrange loadout" opened this screen over the open draft.
+    return {
+      primary: 'Back to armory', primaryNote: '', finishes: false,
+      cont: '', contNote: '', extract: '', extractNote: '',
+    };
+  }
+  let finishes = false;
+  try { finishes = r.phase === 'refit' && survivalRun._isLastWave(r) === true; } catch { finishes = false; }
+  const unit = r.ruleset === 'swarm' ? 'round' : 'wave';
+  const extractOk = !finishes && canExtract(r);
+  const contOk = canContinueSurvivalEndless({ run: r });
+  const preview = extractOk ? extractionPreviewLines(r) : null;
+  return {
+    primary: finishes ? 'Take the win' : `Launch ${unit} ${wave + 1}`,
+    primaryNote: finishes
+      ? `Ends the run here as a clear — wave ${wave}, score ${Number.isInteger(r.score) ? r.score : 0}.`
+      : (preview ? preview.risk : ''),
+    finishes,
+    cont: contOk ? 'Keep going — endless waves' : '',
+    contNote: contOk
+      ? `Wave ${wave + 1} and on, with no finish line. Death ends the run where it falls.`
+      : '',
+    extract: extractOk ? 'Extract — end the run here' : '',
+    extractNote: preview ? `${preview.secured} ${preview.amounts}` : '',
   };
 }
 
@@ -451,8 +564,21 @@ export const crucibleDraftScreen = {
     this._title.textContent = shop ? 'Armory' : 'Rearm';
     this._filters.hidden = !shop;
     this._refitBtn.hidden = !shop;
+    const categoryFor = offer => offer.defId.startsWith('wpn_') ? 'Weapons'
+      : /engine|shield|thermal|afterburner|chaff/.test(offer.defId) ? 'Survival' : 'Rigs';
     for (const button of this._filters.children) {
-      button.setAttribute('aria-pressed', String(button.dataset.category === this._category));
+      const category = button.dataset.category;
+      button.setAttribute('aria-pressed', String(category === this._category));
+      // How much stock each word holds: the armory scrolls, and the count is what says so.
+      const count = category === 'All' ? offers.length : offers.filter((offer) => categoryFor(offer) === category).length;
+      const label = shop ? `${category} ${count}` : category;
+      if (button.dataset.label !== label) {
+        button.dataset.label = label;
+        button.textContent = '';
+        button.appendChild(el('span', 'sf-cru-filter-word', category));
+        if (shop) button.appendChild(el('span', 'sf-cru-count', String(count)));
+        button.setAttribute('aria-label', shop ? `${category}, ${count} offer${count === 1 ? '' : 's'}` : category);
+      }
     }
 
     this._sub.textContent = offers.length
@@ -464,8 +590,6 @@ export const crucibleDraftScreen = {
     // being thrown back to the first card (or into detached-focus limbo).
     const savedFocus = focusedControlId(rootEl);
     cards.innerHTML = '';
-    const categoryFor = offer => offer.defId.startsWith('wpn_') ? 'Weapons'
-      : /engine|shield|thermal|afterburner|chaff/.test(offer.defId) ? 'Survival' : 'Rigs';
     const visibleOffers = shop
       ? offers.filter(offer => this._category === 'All' || categoryFor(offer) === this._category)
         .sort((a, b) => a.price - b.price || a.name.localeCompare(b.name))
@@ -477,10 +601,13 @@ export const crucibleDraftScreen = {
 
     this._note.textContent = notice || lines.notice || '';
 
-    this._skip.textContent = shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue');
+    setKeyLabel(this._skip, shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
+      'Esc', 'Escape');
+    // In the armory the way forward is the one consequential key; buying happens on the cards.
+    this._skip.classList.toggle('k-word--primary', shop);
 
     const reroll = this._rerollBtn;
-    reroll.textContent = lines.label || 'Re-roll';
+    setKeyLabel(reroll, lines.label || 'Re-roll', 'R', 'R');
     reroll.disabled = !!lines.disabled;
     reroll.setAttribute('aria-disabled', lines.disabled ? 'true' : 'false');
     reroll.hidden = !lines.visible;
@@ -489,9 +616,9 @@ export const crucibleDraftScreen = {
     this._wallet.textContent = shop ? `${context.state.run.credits} cr to spend` : lines.visible
       ? (lines.draw ? `${lines.wallet} · ${lines.draw}` : lines.wallet)
       : '';
-    const keys = offers.length
-      ? (shop ? 'Buy and fit · Tab browse · Esc launch' : (lines.visible ? '1-3 choose · R re-roll · Esc keep' : '1-3 choose · Esc keep'))
-      : '';
+    // The keys a card cannot print on itself. Esc and R ride inside their own keys; the offer
+    // numbers are on the cards.
+    const keys = offers.length && shop ? '1–3 buy · Tab browse' : '';
     this._hint.textContent = keys && this._wallet.textContent ? ` · ${keys}` : keys;
 
     // Only claim focus when it is not already inside this surface, and when the rebuild did not
@@ -517,15 +644,21 @@ export const crucibleDraftScreen = {
     card.dataset.offerId = offer.id;
     card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${lines.slot}`);
 
+    // The key numeral rides on the verb's line, so a card with no key (the armory's fourth
+    // offer on) starts its name on the same line as the cards beside it.
+    const head = el('div', 'sf-cru-cardhead');
     const key = el('p', 'k-t-fine k-38 sf-cru-key', keyNumber <= 3 ? String(keyNumber) : '');
     key.setAttribute('aria-hidden', 'true');
-    card.appendChild(key);
-    card.appendChild(el('p', 'k-caps sf-cru-verb', lines.verb));
+    head.appendChild(key);
+    head.appendChild(el('p', 'k-caps sf-cru-verb', lines.verb));
+    card.appendChild(head);
     card.appendChild(el('h2', 'k-display k-t-sub sf-cru-name', lines.name));
     card.appendChild(el('p', 'k-sentence sf-cru-blurb', lines.blurb));
     if (lines.activation) card.appendChild(el('p', 'k-text k-t-data sf-cru-activation', lines.activation));
     if (Number.isFinite(offer.price)) {
-      card.appendChild(el('p', 'k-t-emph sf-cru-price', offer.purchased ? 'FITTED' : `${offer.price} cr`));
+      // The price reads on the head line, beside the verb: one line less per card, so the
+      // armory's next row shows at the bottom edge and says the stock goes on.
+      head.appendChild(el('p', 'k-t-emph sf-cru-price', offer.purchased ? 'FITTED' : `${offer.price} cr`));
       if (offer.unavailableReason && !offer.purchased) {
         card.appendChild(el('p', 'k-t-fine sf-cru-afford', offer.unavailableReason));
       }
@@ -547,6 +680,7 @@ export const crucibleRefitScreen = {
   data: { locked: true },
 
   mount(rootEl, ctx) {
+    this._root = rootEl;
     rootEl.innerHTML = '';
     this._spareChoice = new Map(); // INF-060: chosen spare per hardpoint, kept across refreshes.
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-refit');
@@ -586,13 +720,36 @@ export const crucibleRefitScreen = {
     const foot = el('footer', 'k-foot sf-cru-foot');
     const words = el('ul', 'k-words k-words--row');
     words.setAttribute('aria-label', 'Refit');
+    // Each key carries its consequence in fine print beneath it (refitFootLines), so a stranger
+    // reads what the key DOES, not three verbs that sound alike.
+    const keyNote = (li) => {
+      const line = el('p', 'k-t-fine sf-cru-fine sf-cru-keynote', '');
+      li.appendChild(line);
+      return line;
+    };
     const done = addWord(words, word('Launch next block', 'k-word--emph k-word--primary'));
     done.addEventListener('click', () => {
       if (ctx.state.run?.phase === 'draft') ctx.bus.emit('ui:popScreen', {});
       else ctx.bus.emit('run:refitCloseRequested', {});
     });
     this._done = done;
-    done.textContent = ctx.state.run?.phase === 'draft' ? 'Back to armory' : 'Launch next round';
+    this._doneNote = keyNote(done.parentElement);
+
+    // KEEP GOING (PQ-133.10b): on the Gauntlet's last wave the close key ends the run as a win, so
+    // the only way on to wave 31 is this one — it flips the ruleset to endless, then closes.
+    {
+      const cont = addWord(words, word('Keep going — endless waves', 'k-word--emph'));
+      this._continue = cont;
+      this._continueNote = keyNote(cont.parentElement);
+      cont.addEventListener('click', () => {
+        if (!continueSurvivalEndless(ctx.state)) {
+          cue('deny');
+          return;
+        }
+        cue('confirm');
+        ctx.bus.emit('run:refitCloseRequested', {});
+      });
+    }
 
     // WALK AWAY WITH IT (PQ-135). Extraction has existed since PQ-133.10b and was reachable only
     // from a bus event — "No UI", says its own header — so no player has ever been offered it.
@@ -606,20 +763,17 @@ export const crucibleRefitScreen = {
       out.addEventListener('click', () => {
         requestSurvivalExtraction(ctx.bus);
       });
-      // INF-033: the settlement preview — what leaving secures, what flying on risks, and
-      // which amounts are run-only. Refreshed with the button; the figures are live at
-      // refresh time, so a kill between the preview and the press still settles exactly.
-      const preview = el('p', 'k-t-fine k-38 sf-cru-fine sf-cru-extract', '');
+      // INF-033: the settlement preview — what leaving secures and which amounts are run-only —
+      // sits under the key it settles. The figures are live at refresh time, so a kill between
+      // the preview and the press still settles exactly.
+      const preview = keyNote(out.parentElement);
+      preview.classList.add('sf-cru-extract');
       preview.setAttribute('role', 'status');
-      foot.appendChild(preview);
       this._extractPreview = preview;
-      this._syncExtract(ctx);
     }
     foot.appendChild(words);
-    this._refitHint = el('p', 'k-t-fine k-38 sf-cru-fine sf-cru-hint',
-      ctx.state.run?.phase === 'draft' ? 'Esc back to armory' : 'Esc launch');
-    foot.appendChild(this._refitHint);
     rootEl.appendChild(foot);
+    this._syncFoot(ctx);
 
     // Same reasoning as the draft: the run is paused here, so Escape must mean something.
     rootEl.addEventListener('keydown', (event) => {
@@ -677,18 +831,27 @@ export const crucibleRefitScreen = {
     if (canAnimate()) cue('close');
   },
 
-  _syncExtract(context) {
+  /** The three keys, their words and their fine print, for the run as it stands now. */
+  _syncFoot(context) {
     const run = context && context.state ? context.state.run : null;
-    const show = !!this._extract && canExtract(run);
-    if (this._extract) this._extract.hidden = !show;
-    if (!this._extractPreview) return;
-    this._extractPreview.hidden = !show;
-    if (!show) return;
-    const lines = extractionPreviewLines(run);
-    const text = lines ? `${lines.secured} ${lines.risk} ${lines.amounts}` : '';
-    if (this._extractPreview.textContent !== text) this._extractPreview.textContent = text;
+    const lines = refitFootLines(run);
+    const setNote = (node, text) => {
+      if (!node) return;
+      if (node.textContent !== text) node.textContent = text;
+      node.hidden = !text;
+    };
+    setKeyLabel(this._done, lines.primary, 'Esc', 'Escape');
+    setNote(this._doneNote, lines.primaryNote);
+    if (this._done && this._done.title !== lines.primaryNote) this._done.title = lines.primaryNote;
+
+    setWordShown(this._continue, !!lines.cont);
+    if (this._continue && lines.cont) this._continue.textContent = lines.cont;
+    setNote(this._continueNote, lines.contNote);
+
+    setWordShown(this._extract, !!lines.extract);
+    setNote(this._extractPreview, lines.extractNote);
     // The button's description carries the same settlement, so the offer reads whole to AT.
-    if (this._extract && this._extract.title !== text) this._extract.title = text;
+    if (this._extract && this._extract.title !== lines.extractNote) this._extract.title = lines.extractNote;
   },
 
   refresh(ctx) {
@@ -702,12 +865,11 @@ export const crucibleRefitScreen = {
     const context = ctx || this._ctx;
     if (!rows || !context) return;
     this._ctx = context;
-    if (this._done) this._done.textContent = context.state.run?.phase === 'draft' ? 'Back to armory' : 'Launch next round';
-    this._syncExtract(context);
-    if (this._refitHint) this._refitHint.textContent = context.state.run?.phase === 'draft' ? 'Esc back to armory' : 'Esc launch';
+    this._syncFoot(context);
     // INF-060: a fit/strip rebuilds every row. Capture where the player was (and which spare they
     // had chosen per hardpoint) so the rebuild neither drops focus nor resets their picks.
-    const savedFocus = focusedControlId(rootEl);
+    const rootEl = this._root;
+    const savedFocus = rootEl ? focusedControlId(rootEl) : null;
     rows.innerHTML = '';
 
     for (const row of this._rows_data(context)) {
@@ -716,7 +878,9 @@ export const crucibleRefitScreen = {
 
       const item = el('li', 'k-row k-row--static sf-cru-row');
       const left = el('div');
-      left.appendChild(el('span', 'k-row__name', lines.label));
+      const name = el('span', 'k-row__name', lines.label);
+      if (lines.slotTag) name.appendChild(el('span', 'sf-cru-slottag', lines.slotTag));
+      left.appendChild(name);
       if (lines.options.length) {
         // Every compatible spare, not just the newest. A select keeps a long inventory answerable
         // from the keyboard without stacking one button per spare per hardpoint.
@@ -779,7 +943,7 @@ export const crucibleRefitScreen = {
     // INF-060: put the player back where the rebuild found them (same row, same control kind).
     // If their row vanished entirely — a strip removed the spare picker — the rebuild leaves
     // focus alone rather than yanking them to the footer.
-    restoreFocusedControl(rootEl, savedFocus);
+    if (rootEl) restoreFocusedControl(rootEl, savedFocus);
 
     const owner = draftOwner(context);
     const notice = owner && typeof owner.lastNotice === 'function' ? owner.lastNotice() : null;
