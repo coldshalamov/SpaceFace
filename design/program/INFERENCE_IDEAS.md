@@ -77,10 +77,10 @@ not to invent.
 | VERB-02 | The opening raid is already happening; it does not wait for accept | `src/data/encounters/015-opening-hauler-raid.js` | No offer choice and no pass-on-timeout; the fight is in the sky | Rewrite spawn range or timing (§22 A1) | SHIPPED 0c4293e4d |
 | VERB-03 | The hitch hint can fire on a heavy hauler, not only an express liner | `src/systems/onboarding.js` | Locking the opening mule can show the existing hitch hint once | Add a tow force (§22 F14). Flip the 47-A pin | SHIPPED fb1c6484a |
 | VERB-04 | The first Well you drop tells you, once, that you dropped it | `src/systems/onboarding.js` | The first player `fields:deployed` emits one hint and does not repeat that session | Change well force or radius | SHIPPED 5b19fa765 |
-| VERB-05 | A detected stunt says its name once, as a receipt | `src/systems/stuntGrammar.js`, `src/ui/hudAttention.js` | `stunt:trickDetected` admits one receipt with the trick name | Add a combo meter. Toast a shove, hit, or dock sentence (§22 G3) | OPEN |
+| VERB-05 | A detected stunt says its name once, as a receipt | `src/systems/stuntGrammar.js`, `src/ui/hudAttention.js` | `stunt:trickDetected` admits one receipt with the trick name | Add a combo meter. Toast a shove, hit, or dock sentence (§22 G3) | SHIPPED b996f2932 |
 | VERB-06 | The opening hauler's cargo can cook when it slams | `src/data/encounters/015-opening-hauler-raid.js` | Its commodity is one `lootShards.js` already treats as a volatile slam | Add an explosive system. Retint pods (§22 F4) | SHIPPED f6ca40d5b |
 | VERB-07 | Rocks dropped for the opening fight are not wiped at 45 seconds | `src/systems/terrainAnchors.js` | Those anchors survive until the player leaves the neighbourhood | Build a machine (§22 F13) | OPEN |
-| VERB-08 | The throw diamond hides when you are the body that will move | `src/ui/masslineHud.js` | A heavy anchor or self-sling does not draw the meeting diamond | Draw a path ghost (§22 F1). Change release impulse | OPEN |
+| VERB-08 | The throw diamond hides when you are the body that will move | `src/ui/masslineHud.js` | A heavy anchor or self-sling does not draw the meeting diamond | Draw a path ghost (§22 F1). Change release impulse | SHIPPED |
 | VERB-09 | Helios sells one stack of impulse charges | Helios market or station stock data consumed by `src/systems/economy.js` | A new game can buy `cmdty_impulse_charge` at Helios Station | Change the charge solver or the ten-verb curve (§22 B8) | SHIPPED 40a2f2c4c |
 | VERB-10 | A pod or chip on your rope is not vacuumed into the hold | `src/systems/mining.js` | `_updatePickups` skips a Massline-latched pickup | Change credit amounts (§22 F6) | SHIPPED ce206fb31 |
 | VERB-11 | Spilled freight stays in the world long enough to rope | `src/systems/traffic.js` and the pickup TTL it uses | On seed 4242 a Helios spill still exists when a cruise-speed ship reaches latch range | Add a scavenger behaviour | OPEN |
@@ -95,14 +95,14 @@ not to invent.
 | WORLD-02 | Vesta traffic includes one named hauler | `src/data/laneContacts.js`, `src/systems/traffic.js` | `sector_vesta_forge` can stamp that contact id | Add an encounter shape | SHIPPED |
 | WORLD-03 | The Choir-Tender wreck is a wreck on the Helios chart, not another derelict beacon | `src/data/sectors.js`, `src/data/uniqueWrecks.js` | Helios POIs include `type: 'wreck'` bound to `wreck_choir_tender` | Invent a new unique drop | SHIPPED 3e6ca5201 |
 | WORLD-04 | Salvaging the Choir-Tender draws the investigator the wreck data already describes | a new encounter module beside `src/data/encounters/150-unique-wreck-silver-draft-cleaner.js`, wired from `uniqueWrecks.js` | The director catalog contains that id and it offers the existing complication choice plus one hull | Invent a mission type or a second Helios unique wreck | SHIPPED eb8f3793c |
-| WORLD-05 | A new game's Helios bar can name the Silver-Draft before you have scanned it | `src/ui/station/barContacts.js`, `src/ui/uniqueWreckRumorSurface.js` | `generateContacts('station_helios', new game)` can include rumor `bar.helios_meridian.silver_draft` | Invent a wreck class | OPEN |
+| WORLD-05 | A new game's Helios bar can name the Silver-Draft before you have scanned it | `src/ui/station/barContacts.js`, `src/ui/uniqueWreckRumorSurface.js` | `generateContacts('station_helios', new game)` can include rumor `bar.helios_meridian.silver_draft` | Invent a wreck class | SHIPPED |
 | WORLD-06 | The Helios locker reads as a cache | `src/data/sectors.js` (`poi_helios_locker`) | Its POI type is `cache` and the scanner uses the cache label | Add a pirate base or a new POI type | SHIPPED |
 | WORLD-07 | Sker Bazaar has ships on the apron | `src/data/sectors.js` (`sector_sker_haven` traffic) | Seed 4242 spawns at least two non-player ships near `station_sker` | Raise `enemyDensity`. Add an outlaw encounter | OPEN |
 | WORLD-08 | A Collective hull hails in yard language, not Concord boilerplate | `src/data/factionContactGrammar.js`, `src/data/barks.js` | `FACTION_CONTACT_GRAMMAR.faction_dmc` exists and a Ceres trader or patrol line uses it | Change heat math. Add a faction | SHIPPED 44d500c8b |
 | WORLD-09 | A Meridian hull hails in invoice language | `src/data/factionContactGrammar.js`, `src/data/barks.js` | A Tethys trader line uses an MTS-specific sentence | Retune prices | OPEN |
 | WORLD-10 | Helios outer rocks are not the same type as the starter field | `src/data/sectors.js` Helios fields | `f_helios_outer` uses a second existing asteroid type | Change beam rate, hold size, tax, or next-field distance (§22 A3) | SHIPPED |
 | WORLD-11 | Io Reach traffic can include one named courier | `src/data/laneContacts.js` | `pickNamedLaneContact` can return an Io-only id | Add a station | SHIPPED 0444daa66 |
-| WORLD-12 | Charon traffic can include one named miner | `src/data/laneContacts.js` | The Expanse sector ids include that contact | Add a claimable | OPEN |
+| WORLD-12 | Charon traffic can include one named miner | `src/data/laneContacts.js` | The Expanse sector ids include that contact | Add a claimable | SHIPPED |
 | WORLD-13 | Tethys has one always-there dressing piece made from a place that already exists | `src/data/worldOneOffs.js`, `src/systems/world.js` | Activating Tethys spawns that `placeId` near the customs gate or the hub | Add a GLB or a mission | OPEN |
 | WORLD-14 | The Veil research station can run a research side event | `src/data/stationSideEvents.js` | `planStationSideEvents` for `research` can pick a research-specific kind | Spawn a combat ship | SHIPPED 8190dd475 |
 | WORLD-15 | The Sker Throne scan agrees with whether it can be claimed | `src/data/sectors.js` (`poi_sker_throne`), `src/data/claimableBodies.js` | The claimable flag and the scan sentence match | Add a teleporter | OPEN |
@@ -120,18 +120,18 @@ not to invent.
 | INST-02 | The comms fan matches the power rail | `styles/commsradial.css` | `#sf-commsfan` has no `--sf-surface` fill and no 6px web radius; it uses the flight bezel or glass tokens | Restyle the whole HUD | SHIPPED 5fb238ab7 |
 | INST-03 | The Crucible armory is not a cyan storefront | `styles/crucible.css` | `.sf-cru-card` uses the kit or deckplate face; `#8ee8ff` is not the fill or outline | Redesign the Crucible door | OPEN |
 | INST-04 | The prompt deck matches the flight cluster | `styles/prompt-deck.css` | No 10px consumer card; the deck uses the same glass or bezel language as the flight cluster | Add a new prompt system | SHIPPED dc6d7d696 |
-| INST-05 | Resting flight does not wear the aerospace G-LOC sheet | `index.html`, `styles/hud.css` | G-LOC and EMP rules apply only while that effect is on | Delete the effects. Repaint station | OPEN |
+| INST-05 | Resting flight does not wear the aerospace G-LOC sheet | `index.html`, `styles/hud.css` | G-LOC and EMP rules apply only while that effect is on | Delete the effects. Repaint station | SHIPPED already true ce69c7916 |
 | INST-06 | The boot screen does not write to instruments that are not in the page | `src/ui/loadingTerminalArt.js` | No queries for `data-loading-diag-stream`, `-hex`, `-subsystems`, or `-segments` | Invent a second boot story | OPEN |
 | INST-07 | The boot picture is not a 640×380 buffer stretched over the window | `index.html` | `#boot-terminal-canvas` is not a tiny buffer scaled to the viewport | Replace the loader with a new product | OPEN |
 | INST-08 | An unknown gun does not sound like the starter pulse | `src/audio/audioSystem.js` (`weaponRecipeFor`) | A weapon id with no family resolves to a named generic combat recipe, or fails closed, never `sfx_wpn_pulse_laser` | Author a new sample bank (§22 C5 is the verb table) | SHIPPED b284eb6f5 |
-| INST-09 | Doctrine setup, telegraph, commit, and aftermath are four cues | `src/audio/audioSystem.js` | Those four cue ids resolve to four recipe ids, not all `sfx_encounter_escalation` | Add a music system | OPEN |
+| INST-09 | Doctrine setup, telegraph, commit, and aftermath are four cues | `src/audio/audioSystem.js` | Those four cue ids resolve to four recipe ids, not all `sfx_encounter_escalation` | Add a music system | SHIPPED |
 | INST-10 | Hover and tab are not the click sample at another pitch | `src/data/audioRecipes.js` | `sfx_ui_hover` and `sfx_ui_tab` bind distinct samples, or synth-only, not `ui_click` | Replace the combat mix | OPEN |
-| INST-11 | A capital's pre-detonation ticks are not menu hovers | `src/audio/audioSystem.js` | Those ticks use a combat recipe, not `sfx_ui_hover` | Retune the explosion | OPEN |
+| INST-11 | A capital's pre-detonation ticks are not menu hovers | `src/audio/audioSystem.js` | Those ticks use a combat recipe, not `sfx_ui_hover` | Retune the explosion | SHIPPED |
 | INST-12 | Station primary buttons are the same keys as the rest of the kit | `styles/station-orbital.css` | Primary station verbs are `fh-key` or `data-sf-role="primary"`; `button:not(.fh-key)` does not paint a second control language | Redesign the station (that is §23 CV-KIT) | OPEN |
 | INST-13 | Docked, the station has the room tone that already exists | `src/audio/audioSystem.js` | Dock starts `station_hum_loop`; undock stops it | Author a new loop | SHIPPED 1eaf2de75 |
 | INST-14 | "SHIELD DOWN" does not float over the fight | `src/ui/floatingText.js` | `combat:damage` does not spawn that floater | Delete the objective line (§22 G3) | SHIPPED |
 | INST-15 | The local map frame uses the kit, not a one-off plate | `src/ui/screens/localmap.js` | Frame and labels use kit or deckplate tokens | Rebuild the map (that is §22 C2 if it is the chart) | OPEN |
-| INST-16 | The UI bench boot is the game boot | `tools/ui-bench.html` | The bench does not load the green `styles/orbital.css` boot overlay on top of `styles/intro.css` | Change the production intro palette | OPEN |
+| INST-16 | The UI bench boot is the game boot | `tools/ui-bench.html` | The bench does not load the green `styles/orbital.css` boot overlay on top of `styles/intro.css` | Change the production intro palette | SHIPPED already true |
 
 ## CLAIMED
 
@@ -142,6 +142,12 @@ not to invent.
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
+| VERB-08 | verb-08-meeting-diamond | this session | Heavy anchor or self payload hides the throw diamond; the self chevron keeps the release read |
+| WORLD-05 | world-05-helios-silver-draft-bar | this session | New-game Helios barkeep carries bar.helios_meridian.silver_draft until the wreck is scanned |
+| WORLD-12 | world-12-charon-miner | this session | Pell of Claim Nine is the Expanse lane miner |
+| INST-09 | inst-09-doctrine-cues | this session | Setup, telegraph, commit, and aftermath resolve to four doctrine recipes |
+| INST-11 | inst-11-capital-predet | this session | Capital pre-detonation ticks use sfx_doctrine_ranged_charge |
+| INST-16 | inst-16-bench-boot | already true | ui-bench.html does not load styles/orbital.css |
 | PIC-07 | pic-07-wreck-camera-clearance | 0619e48c4 | 'wreck' joins CAMERA_CLEARANCE_KINDS; the 120 WU span bar keeps skiff wrecks and pending substrates out |
 | VERB-10 | verb-10-latched-pickup-vacuum | ce206fb31 | isMasslineLatchedPickup skips Massline-latched pickups/pods/chips during updatePickups vacuum and direct collection |
 | VERB-04 | verb-04-first-well-hint | 5b19fa765 | First player fields:deployed emits one-shot contextual hint (firstWellDrop) and does not repeat that session |
