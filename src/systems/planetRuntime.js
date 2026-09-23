@@ -33,7 +33,7 @@
 // all harvested cargo persist through their existing owners while heat/stage — seconds-lived,
 // escape-window-forgiving scalars — reset. No save version bump, no golden hash movement.
 
-import { PLANET_SITE, planetSitesForSector, planetFlag, classifyPlanetRegion, PLANET_REGION_RANK } from '../data/planets.js';
+import { PLANET_SITE, planetSitesForSector, planetFlag, classifyPlanetRegion, PLANET_REGION_RANK, ANVIL_SLING_WITNESS, anvilSlingWitnessPose } from '../data/planets.js';
 import { SECTOR_ZONES } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
@@ -175,12 +175,14 @@ export const planetRuntime = {
       },
     });
     if (!entity) return;
+    const witness = this._spawnSlingWitness(state, spawnEntity, global);
 
     rt.active = true;
     rt.siteId = site.id;
     rt.zoneId = site.zoneId;
     rt.sectorId = sectorId;
     rt.entityId = entity.id;
+    rt.witnessId = witness && witness.id;
     rt.fieldId = `${site.id}_pull`;
     rt.center.x = global.x;
     rt.center.z = global.z;
@@ -188,6 +190,35 @@ export const planetRuntime = {
     this.bus.emit('planet:registered', {
       siteId: site.id, zoneId: site.zoneId, entityId: entity.id, fieldId: rt.fieldId,
       center: { x: global.x, z: global.z },
+    });
+  },
+
+  _spawnSlingWitness(state, spawnEntity, center) {
+    const list = state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const existing = list[i];
+      if (existing && existing.alive !== false && existing.data && existing.data.anvilSlingWitness === true) {
+        return existing;
+      }
+    }
+    const pose = anvilSlingWitnessPose(center);
+    return spawnEntity({
+      type: 'ship',
+      team: 2,
+      pos: { x: pose.pos.x, z: pose.pos.z },
+      vel: { x: pose.vel.x, z: pose.vel.z },
+      rot: Math.atan2(pose.vel.z, pose.vel.x),
+      radius: 16,
+      mass: 90,
+      collides: true,
+      hull: 220,
+      hullMax: 220,
+      data: {
+        defId: ANVIL_SLING_WITNESS.defId,
+        anvilSlingWitness: true,
+        trafficRole: 'hauler',
+        ai: { passive: true, archetype: 'passive' },
+      },
     });
   },
 
@@ -215,6 +246,8 @@ export const planetRuntime = {
       if (fsys && typeof fsys.unregisterExternal === 'function' && rt.fieldId) fsys.unregisterExternal(rt.fieldId);
       const entity = state.entities && state.entities.get ? state.entities.get(rt.entityId) : null;
       if (entity && entity.alive !== false) entity.alive = false;
+      const witness = state.entities && state.entities.get ? state.entities.get(rt.witnessId) : null;
+      if (witness && witness.alive !== false) witness.alive = false;
       this.bus && this.bus.emit && this.bus.emit('planet:unregistered', { siteId: rt.siteId, why });
     }
     state.planet = defaultRuntime();

@@ -99,6 +99,23 @@ export const PLANET_SITE = Object.freeze({
   }),
 });
 
+// A hauler already on the sling, coasting, so the curve is a body you can see before you try it.
+// Radius sits in the sling band, just outside the inner soft edge where the pull is on.
+export const ANVIL_SLING_WITNESS = Object.freeze({
+  defId: 'ship_mule',
+  radius: 1200,
+  speed: 70,
+});
+
+export function anvilSlingWitnessPose(center, site = PLANET_SITE) {
+  const r = ANVIL_SLING_WITNESS.radius;
+  return Object.freeze({
+    pos: Object.freeze({ x: center.x + r, z: center.z }),
+    vel: Object.freeze({ x: 0, z: ANVIL_SLING_WITNESS.speed }),
+    region: classifyPlanetRegion(site, r),
+  });
+}
+
 /** All authored planetary sites, keyed by sector — ONE for PQ-013 (STEP 12: one excellent planet). */
 export const PLANET_SITES_BY_SECTOR = Object.freeze({
   [PLANET_SITE.sectorId]: Object.freeze([PLANET_SITE]),
