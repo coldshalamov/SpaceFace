@@ -1,0 +1,210 @@
+TAP version 13
+# Subtest: the live Helios manifest validates clean against its own validator
+ok 1 - the live Helios manifest validates clean against its own validator
+  ---
+  duration_ms: 4.042823
+  ...
+# Subtest: the flag contract is exact, frozen, and carried by every manifest
+ok 2 - the flag contract is exact, frozen, and carried by every manifest
+  ---
+  duration_ms: 0.365035
+  ...
+# Subtest: the validator rejects malformed manifests
+ok 3 - the validator rejects malformed manifests
+  ---
+  duration_ms: 3.491111
+  ...
+# Subtest: Helios expansion is bounded, pinned, and only produces registrable kinds
+ok 4 - Helios expansion is bounded, pinned, and only produces registrable kinds
+  ---
+  duration_ms: 0.920948
+  ...
+# Subtest: the expansion cap holds even under an adversarial chain count
+ok 5 - the expansion cap holds even under an adversarial chain count
+  ---
+  duration_ms: 0.36076
+  ...
+# Subtest: the Helios footprint anchors match the independent hard-coded table
+ok 6 - the Helios footprint anchors match the independent hard-coded table
+  ---
+  duration_ms: 0.319036
+  ...
+# Subtest: the measured Helios silhouette bound respects the declared bound at every snap bearing
+ok 7 - the measured Helios silhouette bound respects the declared bound at every snap bearing
+  ---
+  duration_ms: 21.511109
+  ...
+# Subtest: the corridor gap stays navigable and the berth deck stays clear of every proxy
+ok 8 - the corridor gap stays navigable and the berth deck stays clear of every proxy
+  ---
+  duration_ms: 1.074597
+  ...
+# Subtest: manifests activate ONLY for entities that explicitly declare them
+ok 9 - manifests activate ONLY for entities that explicitly declare them
+  ---
+  duration_ms: 0.384193
+  ...
+# Subtest: scale and corridor bearing resolution are deterministic and snapped
+ok 10 - scale and corridor bearing resolution are deterministic and snapped
+  ---
+  duration_ms: 0.401363
+  ...
+# Subtest: proxyWorldPrimitives composes translation, rotation, and scale exactly
+ok 11 - proxyWorldPrimitives composes translation, rotation, and scale exactly
+  ---
+  duration_ms: 0.479865
+  ...
+# Subtest: berth and corridor axis resolve to pinned world geometry
+ok 12 - berth and corridor axis resolve to pinned world geometry
+  ---
+  duration_ms: 0.389079
+  ...
+# Subtest: distanceToProxy is exact for circle, capsule, and obb primitives
+ok 13 - distanceToProxy is exact for circle, capsule, and obb primitives
+  ---
+  duration_ms: 0.379226
+  ...
+# Subtest: station_ring_hub validates and expands identically to the Helios proof
+ok 14 - station_ring_hub validates and expands identically to the Helios proof
+  ---
+  duration_ms: 5.864086
+  ...
+# Subtest: gate_jump_ring rotates to the stamped approach bearing and keeps a real open throat
+ok 15 - gate_jump_ring rotates to the stamped approach bearing and keeps a real open throat
+  ---
+  duration_ms: 0.544506
+  ...
+# Subtest: proxyWorldPrimitives applies the approach frame — world geometry matches registration
+ok 16 - proxyWorldPrimitives applies the approach frame — world geometry matches registration
+  ---
+  duration_ms: 0.362048
+  ...
+# Subtest: the module is pure: no clock, no RNG, no Three.js, no GLB parsing
+ok 17 - the module is pure: no clock, no RNG, no Three.js, no GLB parsing
+  ---
+  duration_ms: 10.452182
+  ...
+# Subtest: corridor volume: inside the mouth lane classifies corridor, outside does not
+ok 18 - corridor volume: inside the mouth lane classifies corridor, outside does not
+  ---
+  duration_ms: 1.64905
+  ...
+# Subtest: capture volume: the lane and the berth hug classify capture
+ok 19 - capture volume: the lane and the berth hug classify capture
+  ---
+  duration_ms: 0.432213
+  ...
+# Subtest: default station autopilot finishes inside the manifest berth gate, not the legacy center ring
+ok 20 - default station autopilot finishes inside the manifest berth gate, not the legacy center ring
+  ---
+  duration_ms: 1.515476
+  ...
+# Subtest: default station autopilot stages an outside-gap approach through the authored corridor mouth
+ok 21 - default station autopilot stages an outside-gap approach through the authored corridor mouth
+  ---
+  duration_ms: 0.402607
+  ...
+# Subtest: a hull knocked off the lane keeps the mouth aim, and lane lock only arms inside the lane
+ok 22 - a hull knocked off the lane keeps the mouth aim, and lane lock only arms inside the lane
+  ---
+  duration_ms: 0.258999
+  ...
+# Subtest: lane-locked berth guidance paces traffic squarely ahead instead of ramming it
+ok 23 - lane-locked berth guidance paces traffic squarely ahead instead of ramming it
+  ---
+  duration_ms: 0.694083
+  ...
+# Subtest: speed gates: corridor admits ≤55, capture admits ≤26, berth admits ≤12
+ok 24 - speed gates: corridor admits ≤55, capture admits ≤26, berth admits ≤12
+  ---
+  duration_ms: 0.195212
+  ...
+# Subtest: live PQ-024 contact floor still emits dock range before the compound proxy can expel the ship
+ok 25 - live PQ-024 contact floor still emits dock range before the compound proxy can expel the ship
+  ---
+  duration_ms: 0.585461
+  ...
+# Subtest: heading gate: outbound and tangential motion are rejected, near-stationary is always ok
+ok 26 - heading gate: outbound and tangential motion are rejected, near-stationary is always ok
+  ---
+  duration_ms: 0.420615
+  ...
+# Subtest: assist is bounded by maxAccel across the whole capture lane
+ok 27 - assist is bounded by maxAccel across the whole capture lane
+  ---
+  duration_ms: 0.657192
+  ...
+# Subtest: assist force → 0 at the berth and points at the berth elsewhere
+ok 28 - assist force → 0 at the berth and points at the berth elsewhere
+  ---
+  duration_ms: 0.300263
+  ...
+# Subtest: no assist outside the capture volume or past a failed gate
+ok 29 - no assist outside the capture volume or past a failed gate
+  ---
+  duration_ms: 0.164694
+  ...
+# Subtest: player-input blend: assist fades by inputMag × inputBlend and is never negative
+ok 30 - player-input blend: assist fades by inputMag × inputBlend and is never negative
+  ---
+  duration_ms: 0.224182
+  ...
+# Subtest: capture trajectory is deterministic, bounded, and converges onto the berth
+ok 31 - capture trajectory is deterministic, bounded, and converges onto the berth
+  ---
+  duration_ms: 15.538368
+  ...
+# Subtest: system update publishes the capture readout and queues an additive membrane impulse
+ok 32 - system update publishes the capture readout and queues an additive membrane impulse
+  ---
+  duration_ms: 2.240799
+  ...
+# Subtest: system update preserves the input blend through the membrane
+ok 33 - system update preserves the input blend through the membrane
+  ---
+  duration_ms: 0.692443
+  ...
+# Subtest: system update owes nothing outside the corridor, when docked, or for legacy stations
+ok 34 - system update owes nothing outside the corridor, when docked, or for legacy stations
+  ---
+  duration_ms: 0.616247
+  ...
+# Subtest: the nearest manifest station wins when several are in range
+ok 35 - the nearest manifest station wins when several are in range
+  ---
+  duration_ms: 0.4794
+  ...
+# Subtest: proxy diagnostics publish frozen world geometry on the physicsRuntime surface (debug seam)
+ok 36 - proxy diagnostics publish frozen world geometry on the physicsRuntime surface (debug seam)
+  ---
+  duration_ms: 0.465733
+  ...
+# Subtest: system update is deterministic across identical fresh states
+ok 37 - system update is deterministic across identical fresh states
+  ---
+  duration_ms: 0.819021
+  ...
+# Subtest: real authority: capture settles at the berth with bounded per-tick velocity change
+ok 38 - real authority: capture settles at the berth with bounded per-tick velocity change
+  ---
+  duration_ms: 156.696503
+  ...
+# Subtest: real authority: identical timeline produces an identical trajectory hash, twice
+ok 39 - real authority: identical timeline produces an identical trajectory hash, twice
+  ---
+  duration_ms: 57.232404
+  ...
+# Subtest: real authority: an off-lane knock inside the silhouette recovers through the mouth aim
+ok 40 - real authority: an off-lane knock inside the silhouette recovers through the mouth aim
+  ---
+  duration_ms: 5.999681
+  ...
+1..40
+# tests 40
+# suites 0
+# pass 40
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 507.278658

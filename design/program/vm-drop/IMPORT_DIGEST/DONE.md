@@ -22,7 +22,12 @@ Fresh profile cite: `/workspace/spaceface-scratch/hitch-hillclimb-fresh-20260923
 
 ## Also this session
 
-New measured package outboxed beside this digest: `combat-subsystem-key-cache` (~7.5× subsystem id sort cache). See sibling folder + `report.md` row 23.
+New measured packages outboxed beside this digest:
+
+- `combat-subsystem-key-cache` (~7.5× subsystem id sort cache) — row 23
+- `npc-field-role-cache` (~3.6× data/ai identity cache) — row 24
+- `docking-corridor-publish-scratch` (~3.7× proxy-diag scratch + key cache) — row 25
+- `customs-scan-cone-scratch` (~1.38× WeakMap cone pool) — row 26
 
 ## Picture / live game
 
