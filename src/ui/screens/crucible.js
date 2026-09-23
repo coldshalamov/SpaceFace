@@ -1102,7 +1102,10 @@ export const crucibleScreen = {
         shareRow.classList.toggle('is-open', open);
         toggle.setAttribute('aria-expanded', String(open));
       });
-      if (cap) cap.replaceWith(toggle); else shareRow.insertBefore(toggle, shareBody);
+      // the drawer's word sits on the seed row, where the codes belong; the row itself shows only open
+      if (cap) cap.remove();
+      if (seedRow && typeof seedRow.appendChild === 'function') seedRow.appendChild(toggle);
+      else shareRow.insertBefore(toggle, shareBody);
     }
     const shareNote = el('p', 'k-t-fine k-38 sf-crd-share-sub',
       'A run code sets the seed, the build and the rules. A ghost code adds a hull to race.');
