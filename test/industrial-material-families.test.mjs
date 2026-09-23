@@ -224,6 +224,22 @@ test('no family exceeds the existing reflection ceiling — this redistributes, 
     'lacquer is a coating, exposed working edges are metal');
 });
 
+// AQ-SURFACE: the three substances read as different materials, each graded from its own scan —
+// Rubber004 seal (mean 0.59), rusty_painted_metal coating (0.75-1.00), Tiles132C unglazed
+// refractory (~0.8-1.0). The bands must not collapse into each other or invert.
+test('seal, paint, and ceramic occupy three distinct scan-graded roughness bands', () => {
+  const { matte_seal, painted_shell, painted_shell_worn, thermal_ceramic } = MATERIAL_FAMILIES;
+  assert.ok(matte_seal.roughness < painted_shell.roughness,
+    'satin seal must read below the coating');
+  assert.ok(painted_shell.roughness < painted_shell_worn.roughness,
+    'intact coating must read below the worn coating');
+  assert.ok(painted_shell_worn.roughness < thermal_ceramic.roughness,
+    'worn coating must read below the refractory liner');
+  // Every adjacent band keeps a camera-visible gap (~0.07+) — not a hair-splitting tune.
+  assert.ok(painted_shell.roughness - matte_seal.roughness >= 0.07);
+  assert.ok(thermal_ceramic.roughness - painted_shell_worn.roughness >= 0.15);
+});
+
 // TOOL-06: refractory ceramic stays matte next to painted metal. The Tiles132C scan's unglazed
 // tile fraction reads ~0.8-1.0 rough; thermal_ceramic's multiplier must stay clearly above the
 // satin painted_shell family so liner and lacquer never share a response.
