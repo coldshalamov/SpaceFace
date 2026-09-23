@@ -292,7 +292,12 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-ac
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__line { gap:6px 12px !important; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__empty { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:11.5px; letter-spacing:.22em;
   text-transform:uppercase; color:rgb(236 230 216 / .7); }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare-name { font-variation-settings:"wght" 620, "wdth" 112; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare-name { font-variation-settings:"wght" 560, "wdth" 112; }
+/* an offered spare is not fitted: a plus, a quieter weight, a dashed rule under the chosen one */
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare { color:rgb(236 230 216 / .62); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare-name::before { content:"+"; margin-right:6px; font-weight:500; color:rgb(236 230 216 / .6); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare[aria-checked="true"] { color:rgb(236 230 216 / .9); }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare::after { height:1px; background:repeating-linear-gradient(90deg, rgb(236 230 216 / .75) 0 4px, transparent 4px 7px); }
 /* one hardpoint unfolds at a time: the lit one shows every spare and the scales; the rest show their pick */
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open:not(.is-lit) .orr-hp__spare:not([aria-checked="true"]) { display:none; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-row:not(.is-lit) :is(.orr-hp__scales, .orr-hp__contrast) { display:none; }
@@ -325,6 +330,16 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-ro
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled) { color:var(--dp-hand, #f2b950) !important; text-shadow:0 0 12px rgb(242 185 80 / .35); }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-act:not(:disabled):is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-row :is(.orr-hp__n, .sf-cru-slottag, .orr-hp__contrast, .sf-cru-act) { text-shadow:0 1px 0 rgb(0 0 0 / .7), 0 0 10px rgb(0 0 0 / .85); }
+
+/* results: the death dial takes the right of the plate; the ledger and the story keep the left two
+   columns; the kill-chain and last-seconds rows it draws stay for the ear only */
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__stage { grid-template-columns:minmax(260px, 330px) minmax(340px, 470px) minmax(0, 1fr) !important; column-gap:40px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__dial { order:2; align-self:stretch; min-height:520px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band:is([data-band="kill_chain"], [data-band="last_seconds"]) { position:absolute !important; width:1px; height:1px; overflow:hidden;
+  clip:rect(0 0 0 0); white-space:nowrap; margin:0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__hero { z-index:3; }
+/* the build's steps: the wave, then its verb, never run together */
+html body #screens > .k-screen.orr-crucible.sf-crucible-results .sf-crres__step-verb { margin-left:10px; }
 
 /* new game: the Field Hardware form becomes instruments. Selectors carry #screens so they meet the
    retired kit sheet's own specificity instead of losing to it. */

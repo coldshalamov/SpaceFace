@@ -15,14 +15,13 @@ import { svg, polar, arcD, ticksD, circularText } from './svg.js';
 import { createSpring } from './motion.js';
 import { injectOrrery } from './tokens.js';
 import { hullPosterUrl } from '../hullPosters.js';
-import { loadHullPosterManifest, markForSlot } from '../ship/hullPoster.js';
+import { loadHullPosterManifest, markForSlot, SLOT_MARKS } from '../ship/hullPoster.js';
 import { separateBeads } from '../ship/calloutLayout.js';
 
 const STYLE_ID = 'orr-hull-schematic-style';
 
 const CSS = `
-.orr-hull__pool { position:absolute; pointer-events:none; border-radius:50%;
-  background:radial-gradient(closest-side, rgb(4 6 9 / .84), rgb(4 6 9 / .66) 55%, rgb(4 6 9 / 0)); }
+.orr-hull__pool { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
 .orr-hull__art { position:absolute; pointer-events:none; user-select:none; opacity:0;
   transition:opacity .6s var(--dp-ease-out, ease-out); }
 .orr-hull__art.is-ready { opacity:1; }
@@ -44,7 +43,7 @@ html.sf-reduce-motion .orr-hull--settled .orr-hull__label { transition:none; }
 .orr-svg .orr-hull__leader-bloom { opacity:0; transition:opacity .18s linear; }
 .orr-svg .orr-hull__leader-bloom.is-lit { opacity:.22; }
 .orr-hull__node { transform-box:fill-box; transform-origin:center; transition:transform .28s var(--dp-ease-over, ease-out); }
-.orr-hull__node .orr-hull__well { fill:rgb(4 6 9 / .82); }
+.orr-hull__node .orr-hull__well { fill:rgb(4 6 9 / .88); stroke:rgb(10 9 8 / .96); stroke-width:4; }
 .orr-hull__node .orr-hull__ring { fill:none; stroke:rgb(236 230 216 / .88); stroke-width:1.4; transition:stroke .18s linear; }
 .orr-hull__node .orr-hull__core { fill:rgb(246 241 230); transition:fill .18s linear; }
 .orr-hull__node .orr-hull__glow { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:8; opacity:0; transition:opacity .18s linear; }
@@ -176,6 +175,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
   let leaderEls = [];
   let segEls = [];
   let hand = null;
+  let litChangedAt = -1e9;
 
   const schedule = () => {
     if (frame) return;
@@ -191,7 +191,9 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
   if (ro) ro.observe(host);
   if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(() => schedule());
 
-  const spring = createSpring({ value: 0, preset: { k: 105, c: 13 }, onUpdate: (deg) => paintHand(deg) });
+  // near-critically damped: the Hand crosses the rim in about a quarter of a second and stops
+  const spring = createSpring({ value: 0, preset: { k: 240, c: 29 }, onUpdate: (deg) => paintHand(deg) });
+  const now = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 
   /** The plan view's entry (its size and marks); the drawing shares its frame exactly. */
   function entry() {
@@ -309,13 +311,19 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     scan.style.webkitMaskImage = `url("${artUrl}")`;
     scan.style.maskImage = `url("${artUrl}")`;
     scan.hidden = false;
-    const reach = R + gap + labelWidth + 90;
-    Object.assign(pool.style, { left: `${Math.round(hx - reach)}px`, top: `${Math.round(hy - R - 170)}px`, width: `${Math.round(reach * 2)}px`, height: `${Math.round(2 * R + 340)}px` });
+    const reach = R + gap + labelWidth + 60;
+    pool.style.background = `radial-gradient(circle at ${Math.round(hx)}px ${Math.round(hy)}px, rgb(4 6 9 / .66) 0, rgb(4 6 9 / .74) ${Math.round(reach)}px, rgb(4 6 9 / .86) 100%)`;
 
     // the beads on the render's own sockets; several of one type spread along their mark
     const totals = {};
     const ordinals = nodes.map((n) => { totals[n.slotType] = (totals[n.slotType] || 0) + 1; return totals[n.slotType] - 1; });
     const uvs = nodes.map((n, i) => markForSlot(info.marks, n.slotType, ordinals[i], totals[n.slotType]) || [0.5, 0.5]);
+    for (const type of Object.keys(totals)) {
+      if (totals[type] < 2 || (SLOT_MARKS[type] || []).length > 1) continue;
+      const members = nodes.map((n, i) => i).filter((i) => nodes[i].slotType === type);
+      const base = members.reduce((s, i) => s + uvs[i][0], 0) / members.length;
+      members.forEach((i, k) => { uvs[i] = [base + (k - (members.length - 1) / 2) * 0.062, uvs[i][1]]; });
+    }
     let points = uvs.map(([u, v]) => ({ x: imgRect.left + u * imgW, y: imgRect.top + v * imgH }));
     points = separateBeads(points, 22);
 
@@ -383,7 +391,9 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       geo.angles[i] = bearing(hx, hy, ex, ey);
       // inside the ring the line runs behind the drawing; outside it runs flat to its label
       const inner = `M ${p.x.toFixed(1)} ${p.y.toFixed(1)} L ${ex.toFixed(1)} ${ey.toFixed(1)}`;
-      const outer = `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`;
+      const outer = Math.abs(cy - ey) < 4
+        ? `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`
+        : `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${(ex + side * 10).toFixed(1)} ${ey.toFixed(1)} L ${(colEdge - side * 22).toFixed(1)} ${cy.toFixed(1)} L ${colEdge.toFixed(1)} ${cy.toFixed(1)}`;
       const stop = `M ${colEdge.toFixed(1)} ${(cy - 5).toFixed(1)} L ${colEdge.toFixed(1)} ${(cy + 5).toFixed(1)}`;
       const lineUnder = svg('path', { d: inner, class: 'orr-core orr-hi orr-hull__leader orr-hull__leader--under', 'stroke-width': 1, opacity: '.42' });
       const bloom = svg('path', { d: outer, class: 'orr-bloom orr-hand orr-hull__leader-bloom', 'stroke-width': 5, opacity: '0' });
@@ -444,7 +454,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       const len = Math.hypot(ex - p.x, ey - p.y) || 1;
       const dx = (ex - p.x) / len; const dy = (ey - p.y) / len;
       const num = svg('text', {
-        x: (p.x + dx * 19).toFixed(1), y: (p.y + dy * 19 + 4).toFixed(1),
+        x: (p.x + dx * 24).toFixed(1), y: (p.y + dy * 24 + 4).toFixed(1),
         class: 'orr-hull__num', 'text-anchor': dx < -0.35 ? 'end' : dx > 0.35 ? 'start' : 'middle',
       });
       num.textContent = nodes[i].num || String(i + 1).padStart(2, '0');
@@ -467,7 +477,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     arrived = true;
     if (litIndex < 0 || litIndex >= nodes.length) litIndex = 0;
     markLabels();
-    paintLit(first);
+    paintLit(first || now() - litChangedAt > 450);
     paintHand(spring.value);
     laidOut = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
     // after the first placement, labels glide when a lit label unfolds and its column re-spaces
@@ -501,6 +511,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     light(index) {
       if (!Number.isInteger(index) || index === litIndex) return;
       litIndex = index;
+      litChangedAt = now();
       markLabels();
       paintLit(false);
       // a lit label can change height (it unfolds its choices): its column re-spaces

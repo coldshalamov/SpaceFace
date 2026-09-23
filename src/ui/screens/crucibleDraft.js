@@ -895,6 +895,9 @@ export const crucibleRefitScreen = {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.key === 'Escape') {
         event.preventDefault();
+        // Escape resumes (launch the next block, back to the armory); it never ends a run -- the
+        // last wave's "take the win" is pressed, not escaped into.
+        if (refitFootLines(ctx.state && ctx.state.run).finishes) { cue('deny'); return; }
         done.click();
         return;
       }
@@ -978,7 +981,7 @@ export const crucibleRefitScreen = {
       if (node.textContent !== text) node.textContent = text;
       node.hidden = !text;
     };
-    setKeyLabel(this._done, lines.primary, 'Esc', 'Escape');
+    setKeyLabel(this._done, lines.primary, lines.finishes ? '' : 'Esc', lines.finishes ? '' : 'Escape');
     setNote(this._doneNote, lines.primaryNote);
     if (this._done && this._done.title !== lines.primaryNote) this._done.title = lines.primaryNote;
 

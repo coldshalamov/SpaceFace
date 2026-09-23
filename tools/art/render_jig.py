@@ -20,8 +20,9 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
 bpy.ops.import_scene.gltf(filepath=glb)
 
+paint = []
 for o in sc.objects:
-    helper = re.search(r'collision|collider|proxy|helper|shadow_?caster|bounds|decal', o.name, re.I)
+    helper = re.search(r'collision|collider|proxy|helper|shadow_?caster|bounds', o.name, re.I)
     for key in ('collision', 'nonRender', 'helper'):
         try:
             if o.get(key): helper = True
@@ -30,6 +31,12 @@ for o in sc.objects:
     if helper and o.type == 'MESH':
         o.hide_render = True
         o.hide_set(True)
+    # markings, accents, dirt and grime are paint on the model, not its form: the drawing leaves them out
+    # (after the framing, which must match render_hull.py's plan view exactly)
+    elif o.type == 'MESH' and (re.search(r'decal|marking|dirt|grime|accent', o.name, re.I)
+                               or (o.data.materials and all(m and re.search(r'marking|warning|accent|dirt|decal', m.name, re.I)
+                                                            for m in o.data.materials))):
+        paint.append(o)
 meshes = [o for o in sc.objects if o.type == 'MESH' and not o.hide_render and o.visible_get()]
 if not meshes:
     raise SystemExit('no meshes in ' + glb)
@@ -43,6 +50,10 @@ for o in meshes:
 center = (mins + maxs) / 2
 size = maxs - mins
 radius = max(size.x, size.y, size.z) / 2
+for o in paint:
+    o.hide_render = True
+    o.hide_set(True)
+meshes = [o for o in meshes if o not in paint]
 
 # one flat fill for everything: the drawing is the lines
 fill = bpy.data.materials.new('jig_fill')
@@ -81,7 +92,7 @@ sc.render.use_freestyle = True
 sc.render.line_thickness_mode = 'ABSOLUTE'
 vl = sc.view_layers[0]
 fs = vl.freestyle_settings
-fs.crease_angle = math.radians(138)
+fs.crease_angle = math.radians(128)
 fs.use_culling = False
 k = S / 1024.0
 
@@ -103,8 +114,8 @@ def lineset(name, edges, thickness, alpha):
 # the default lineset becomes the fine one; the heavy outline is its own
 for ls in list(fs.linesets):
     fs.linesets.remove(ls)
-lineset('fine', {'select_crease', 'select_border'}, 1.0, 0.55)
-lineset('outline', {'select_silhouette', 'select_external_contour'}, 2.2, 1.0)
+lineset('fine', {'select_crease', 'select_border'}, 0.8, 0.42)
+lineset('outline', {'select_silhouette', 'select_external_contour', 'select_contour'}, 2.2, 0.92)
 
 sc.render.filepath = out
 bpy.ops.render.render(write_still=True)
