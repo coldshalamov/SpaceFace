@@ -8,7 +8,10 @@
 // salvage, or sectorSim edits.
 
 import { hash32 } from '../core/rng.js';
+import { validateRunState } from '../core/runState.js';
 import { salvagePoolFromManifest } from './lootShards.js';
+import { peekPendingSlam } from './hullFracture.js';
+import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
@@ -27,6 +30,15 @@ const MAX_CAUSES = 24;
 const MAX_WRECK_DRIFT_SPEED = 400;
 const MAX_WRECK_TUMBLE = 3.0;
 const WRECK_RADIUS = 9;
+// Arena law (build_map §22 B3): a kill in the Crucible leaves the ship's body. Arena kills are
+// remembered under a run-namespaced field id (`arena:<arenaId>`) because the Crucible has no
+// sector — `world.currentSectorId` is null there, which is why they used to leave nothing.
+const ARENA_SECTOR_PREFIX = 'arena:';
+const ARENA_WRECK_CAP = 8;
+// At-kill momentum keeps the dead hull's real motion; these ceilings only reject physics spikes.
+// The tighter drift/tumble clamps stay for the re-entry spawn path, where they always lived.
+const MAX_WRECK_KILL_SPEED = 600;
+const MAX_WRECK_KILL_TUMBLE = 8;
 // Same 10-sim-minute day as coreSystem / sectorSim / encounterDirector. Wreck fields age on
 // this clock, never wall time. Ecology is a finite budget that decays — never a respawn loop.
 export const WRECK_ECOLOGY_DAY_S = 600;
@@ -266,6 +278,32 @@ function boundedTumble(angVel) {
   return w;
 }
 
+// At-kill momentum: same whole-vector rule as boundedDriftVel — scale, never per-axis — under
+// the wider kill ceiling so the body keeps moving the way the hull died.
+function boundedKillVel(vel) {
+  const x = Number(vel && vel.x);
+  const z = Number(vel && vel.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return { x: 0, z: 0 };
+  const speed = Math.hypot(x, z);
+  if (!(speed > 0)) return { x: 0, z: 0 };
+  if (speed <= MAX_WRECK_KILL_SPEED) return { x, z };
+  const scale = MAX_WRECK_KILL_SPEED / speed;
+  return { x: x * scale, z: z * scale };
+}
+
+function boundedKillTumble(angVel) {
+  const w = Number(angVel);
+  if (!Number.isFinite(w)) return 0;
+  if (w > MAX_WRECK_KILL_TUMBLE) return MAX_WRECK_KILL_TUMBLE;
+  if (w < -MAX_WRECK_KILL_TUMBLE) return -MAX_WRECK_KILL_TUMBLE;
+  return w;
+}
+
+function boundedVictimRadius(radius) {
+  const r = Number(radius);
+  return Number.isFinite(r) && r > 0 ? r : null;
+}
+
 function boundedVictimMass(mass) {
   const m = Number(mass);
   return Number.isFinite(m) && m > 0 ? m : null;
@@ -283,8 +321,41 @@ function poseIsFlat(entity) {
   return !(Math.abs(pitch) > 1e-6 || Math.abs(bank) > 1e-6);
 }
 
+function liveSurvivalRunFor(state) {
+  const run = state && state.run;
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
+  if (run.kind !== 'survival' || run.phase === 'inactive') return null;
+  if (!validateRunState(run).ok) return null;
+  return run;
+}
+
+// The Crucible has no sector, so its kills remember under a run-namespaced field id. The id is
+// never a real sector key, so sector entry/exit and re-entry materialization leave it alone.
+function arenaWreckSectorId(state) {
+  const run = liveSurvivalRunFor(state);
+  if (!run) return null;
+  return ARENA_SECTOR_PREFIX + String(run.arenaId || 'crucible');
+}
+
+function isArenaWreckSectorId(sectorId) {
+  return typeof sectorId === 'string' && sectorId.startsWith(ARENA_SECTOR_PREFIX);
+}
+
+// Where a kill happening right now belongs: an explicit payload sector, else the live arena,
+// else the adventure sector. The arena outranks a stale currentSectorId left over from a run
+// transition.
 function sectorIdFrom(state, payload) {
-  return payload && payload.sectorId || state && state.world && state.world.currentSectorId || null;
+  return payload && payload.sectorId
+    || arenaWreckSectorId(state)
+    || state && state.world && state.world.currentSectorId
+    || null;
+}
+
+// The field id that counts as "here" for immediate materialization.
+function currentWreckFieldId(state) {
+  return arenaWreckSectorId(state)
+    || (state && state.world && state.world.currentSectorId)
+    || null;
 }
 
 function markerIdFor(state, sectorId, payload) {
@@ -489,9 +560,15 @@ function makeMarker(state, payload, entity) {
     pos,
     victimId,
     victimClass,
-    victimVel: boundedDriftVel(payload && payload.victimVel ? payload.victimVel : entity && entity.vel),
-    victimAngVel: boundedTumble(entity && entity.angVel),
+    // The marker records how the hull actually died — its real velocity, spin, and radius —
+    // sanity-bounded at record time. The tighter drift/tumble clamps belong to the re-entry
+    // spawn path (_specForMarker), not to the record of the death.
+    victimVel: boundedKillVel(payload && payload.victimVel ? payload.victimVel : entity && entity.vel),
+    victimAngVel: boundedKillTumble(entity && entity.angVel),
     victimMass: boundedVictimMass(entity && entity.mass),
+    victimRadius: boundedVictimRadius(entity && entity.radius),
+    // The hull it was: enough identity for a render pass to draw the victim's own hull dead.
+    victimDefId: boundedIdentityText(data.defId || null),
     victimRot: boundedPoseAngle(entity && entity.rot),
     victimPitch: boundedPoseAngle(entity && entity.pitch),
     victimBank: boundedPoseAngle(entity && entity.bank),
@@ -541,9 +618,11 @@ function makePlayerWreckMarker(state, payload, entity) {
     pos,
     victimId: state.playerId,
     victimClass,
-    victimVel: boundedDriftVel(payload && payload.victimVel ? payload.victimVel : entity && entity.vel),
-    victimAngVel: boundedTumble(entity && entity.angVel),
+    victimVel: boundedKillVel(payload && payload.victimVel ? payload.victimVel : entity && entity.vel),
+    victimAngVel: boundedKillTumble(entity && entity.angVel),
     victimMass: boundedVictimMass(entity && entity.mass),
+    victimRadius: boundedVictimRadius(entity && entity.radius),
+    victimDefId: boundedIdentityText(entity && entity.data && entity.data.defId || null),
     victimRot: boundedPoseAngle(entity && entity.rot),
     victimPitch: boundedPoseAngle(entity && entity.pitch),
     victimBank: boundedPoseAngle(entity && entity.bank),
@@ -689,9 +768,13 @@ function normalizeMarker(input) {
     pos: { x, z },
     victimId: input.victimId == null ? null : input.victimId,
     victimClass: input.victimClass || 'ship',
-    victimVel: boundedDriftVel(input.victimVel),
-    victimAngVel: boundedTumble(input.victimAngVel),
+    victimVel: boundedKillVel(input.victimVel),
+    victimAngVel: boundedKillTumble(input.victimAngVel),
     victimMass: boundedVictimMass(input.victimMass),
+    // Legacy markers carry no radius — normalize to null so the spawn spec falls back to
+    // WRECK_RADIUS exactly like the day the marker was written.
+    victimRadius: boundedVictimRadius(input.victimRadius),
+    victimDefId: boundedIdentityText(input.victimDefId),
     victimRot: boundedPoseAngle(input.victimRot),
     victimPitch: boundedPoseAngle(input.victimPitch),
     victimBank: boundedPoseAngle(input.victimBank),
@@ -1034,6 +1117,13 @@ export const aftermathWrecks = {
     const entity = entityFor(this.state, payload.id);
     const marker = makeMarker(this.state, payload, entity);
     if (marker) marker.headline = newsLine(marker);
+    // Arena cap enforcement runs BEFORE the marker is remembered: the law is "the ninth body
+    // retires the FARTHEST wreck", and rememberMarker's own trim evicts the oldest marker —
+    // a different rule that would leave its unbound hulk standing forever. Retiring first
+    // keeps marker count and live-body count the same number.
+    if (marker && isArenaWreckSectorId(marker.sectorId)) {
+      this._enforceArenaWreckCap(marker.sectorId);
+    }
     const remembered = rememberMarker(this.state, this.bus, marker, (evicted) => {
       if (!this._spawned) return;
       for (const item of evicted) {
@@ -1049,10 +1139,14 @@ export const aftermathWrecks = {
         const field = own.ecology[aftermathFieldId(remembered.sectorId, remembered.zoneId)];
         if (field) field.contested = true;
       }
-      const current = this.state && this.state.world && this.state.world.currentSectorId;
+      const current = currentWreckFieldId(this.state);
       if (remembered.sectorId && remembered.sectorId === current) {
-        this._spawnForSector(remembered.sectorId);
-        this._syncEcologyForSector(remembered.sectorId);
+        if (isArenaWreckSectorId(remembered.sectorId)) {
+          this._spawnArenaKillWreck(remembered, payload);
+        } else {
+          this._spawnForSector(remembered.sectorId);
+          this._syncEcologyForSector(remembered.sectorId);
+        }
       }
     }
     return remembered;
@@ -1087,13 +1181,89 @@ export const aftermathWrecks = {
       }
     });
     if (remembered) {
-      const current = this.state && this.state.world && this.state.world.currentSectorId;
+      const current = currentWreckFieldId(this.state);
       if (remembered.sectorId && remembered.sectorId === current) {
-        this._spawnForSector(remembered.sectorId);
-        this._syncEcologyForSector(remembered.sectorId);
+        if (isArenaWreckSectorId(remembered.sectorId)) {
+          // Your own hull is a memorial, not a battlefield body: it never counts toward the
+          // arena cap (isProtectedMarker) and never competes with a fracture note — mining
+          // does not see player:death, so no slam can be pending for this path.
+          this._spawnArenaKillWreck(remembered, payload, { skipIfFracture: false });
+        } else {
+          this._spawnForSector(remembered.sectorId);
+          this._syncEcologyForSector(remembered.sectorId);
+        }
       }
     }
     return remembered;
+  },
+
+  // The arena keeps at most ARENA_WRECK_CAP live battlefield bodies. When the cap is full the
+  // FARTHEST wreck from the player retires — never the oldest, so the hulk the player is
+  // lining up on is never the one that vanishes. Retirement is total: the body dies and its
+  // durable marker goes with it, so nothing rematerializes it later.
+  _enforceArenaWreckCap(sectorId) {
+    const own = ensureAftermathState(this.state);
+    const list = own && Array.isArray(own.bySector[sectorId]) ? own.bySector[sectorId] : null;
+    if (!list || !this._spawned) return 0;
+    const bound = [];
+    for (const marker of list) {
+      if (!marker || isProtectedMarker(marker)) continue;
+      const entity = this._resolveBoundWreck(marker.markerId);
+      if (entity) bound.push({ marker, entity });
+    }
+    if (bound.length < ARENA_WRECK_CAP) return 0;
+    const player = entityFor(this.state, this.state && this.state.playerId);
+    const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+    const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+    let retired = 0;
+    while (bound.length >= ARENA_WRECK_CAP) {
+      let pick = 0;
+      let farthestSq = -1;
+      for (let i = 0; i < bound.length; i++) {
+        const entity = bound[i].entity;
+        const dx = (entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : 0) - px;
+        const dz = (entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : 0) - pz;
+        const distSq = dx * dx + dz * dz;
+        if (distSq > farthestSq) { farthestSq = distSq; pick = i; }
+      }
+      const { marker, entity } = bound.splice(pick, 1)[0];
+      entity.alive = false;
+      this._spawned.delete(marker.markerId);
+      const idx = list.indexOf(marker);
+      if (idx >= 0) list.splice(idx, 1);
+      retired++;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('aftermathWreck:retired', {
+          markerId: marker.markerId,
+          entityId: entity.id,
+          sectorId,
+          reason: 'arena_cap',
+        });
+      }
+    }
+    return retired;
+  },
+
+  // One live body per kill, at the victim's pose, carrying the momentum it died with. A slam
+  // kill's body is hullFracture's two seam pieces — mining spawns them from the same
+  // entity:killed event and binds the remainder to this marker, so a whole wreck here would
+  // draw two bodies for one death.
+  _spawnArenaKillWreck(marker, payload, { skipIfFracture = true } = {}) {
+    if (!marker || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    // A duplicate kill receipt must not mint a second body on the same marker.
+    const bound = this._resolveBoundWreck(marker.markerId);
+    if (bound && bound.alive !== false) return bound;
+    if (skipIfFracture && peekPendingSlam(marker.victimId)) return null;
+    const entity = this.helpers.spawnEntity(this._specForMarker(marker, { atKill: true }));
+    if (!entity) return null;
+    const run = liveSurvivalRunFor(this.state);
+    if (run && entity.data) {
+      // The same cohort tag the wave's own hulls carry: the wreck reads as a body of this run
+      // (Massline eligibility, arena census) rather than adventure scenery that wandered in.
+      entity.data.runCohort = SURVIVAL_COHORT_TAG;
+      if (Number.isInteger(run.wave)) entity.data.runWave = run.wave;
+    }
+    return this._bindLiveMarker(marker, entity) ? entity : null;
   },
 
   /**
@@ -1135,9 +1305,11 @@ export const aftermathWrecks = {
       pos: { x, z },
       victimId: payload.victimId,
       victimClass: payload.victimClass || 'payload',
-      victimVel: boundedDriftVel(payload.victimVel),
-      victimAngVel: boundedTumble(payload.victimAngVel),
+      victimVel: boundedKillVel(payload.victimVel),
+      victimAngVel: boundedKillTumble(payload.victimAngVel),
       victimMass: boundedVictimMass(payload.victimMass),
+      victimRadius: boundedVictimRadius(payload.victimRadius),
+      victimDefId: boundedIdentityText(payload.victimDefId),
       victimRot: boundedPoseAngle(payload.victimRot),
       victimPitch: boundedPoseAngle(payload.victimPitch),
       victimBank: boundedPoseAngle(payload.victimBank),
@@ -1226,7 +1398,7 @@ export const aftermathWrecks = {
     return {
       markerId: marker.markerId,
       entityId: existing && existing.alive !== false ? existing.id : null,
-      spec: existing && existing.alive !== false ? null : this._specForMarker(marker),
+      spec: existing && existing.alive !== false ? null : this._specForMarker(marker, { atKill: true }),
     };
   },
 
@@ -1240,7 +1412,7 @@ export const aftermathWrecks = {
     const existing = this._resolveBoundWreck(markerId);
     if (existing && existing.alive !== false && existing.id !== entity.id) return existing;
 
-    const identity = this._specForMarker(marker);
+    const identity = this._specForMarker(marker, { atKill: true });
     entity.data = Object.assign(entity.data || {}, identity.data);
     entity.data.salvagePool = poolForMarker(marker);
     // Adopt dead-man's motion only onto a wreck that is not already moving. A wreck mining spawned
@@ -1416,11 +1588,15 @@ export const aftermathWrecks = {
     return true;
   },
 
-  _specForMarker(marker) {
+  // options.atKill: the body materializing in the same tick as the death keeps the recorded
+  // momentum whole (marker values are already sanity-bounded at record time). Without it —
+  // sector re-entry and rematerialization — the drift/tumble clamps apply, as they always did.
+  _specForMarker(marker, options) {
+    const atKill = !!(options && options.atKill);
     const cls = wreckClassById(marker.wreckClass) || wreckClassById('battlefield');
     const line = aftermathLine(marker);
-    const vel = boundedDriftVel(marker.victimVel);
-    const angVel = boundedTumble(marker.victimAngVel);
+    const vel = atKill ? boundedKillVel(marker.victimVel) : boundedDriftVel(marker.victimVel);
+    const angVel = atKill ? boundedKillTumble(marker.victimAngVel) : boundedTumble(marker.victimAngVel);
     const mass = boundedVictimMass(marker.victimMass);
     const rot = boundedPoseAngle(marker.victimRot);
     const pitch = boundedPoseAngle(marker.victimPitch);
@@ -1433,7 +1609,9 @@ export const aftermathWrecks = {
       rot,
       pitch,
       bank,
-      radius: WRECK_RADIUS,
+      // The wreck is the victim's body: it fills the circle the hull filled. Legacy markers
+      // recorded no radius and keep the historical fallback.
+      radius: boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS,
       // Dead man's mass: the victim's real mass so the wreck is shoveable. 1e6 only when no mass
       // was ever recorded (legacy markers).
       mass: mass != null ? mass : 1e6,
@@ -1459,6 +1637,9 @@ export const aftermathWrecks = {
           : (cls ? cls.label : marker.wreckClassLabel || 'Battlefield Wreck'),
         playerWreck: isPlayerWreckMarker(marker),
         wreckClassBlurb: cls ? cls.blurb : null,
+        // The hull it was, when the victim carried a def id — the handle a dead-hull render
+        // pass would need to draw the victim's own shape instead of generic debris.
+        hulkOfDefId: marker.victimDefId || null,
         provenanceLine: line,
         provenance: {
           source: isPlayerWreckMarker(marker) ? PLAYER_WRECK_KIND : 'battle-aftermath',
@@ -1468,6 +1649,7 @@ export const aftermathWrecks = {
           zoneName: marker.zoneName,
           victimClass: marker.victimClass,
           victimLabel: marker.victimLabel,
+          victimDefId: marker.victimDefId || null,
           victimFactionId: marker.victimFactionId,
           killerId: marker.killerId,
           tick: marker.tick,
