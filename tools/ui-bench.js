@@ -134,6 +134,17 @@ function seededState() {
 
 const state = seededState();
 
+/** Move the seeded player hull to entity id `id` (0 is the seed; 1 reads as a live run). */
+function rekeyPlayer(id) {
+  if (state.playerId === id) return;
+  const hull = state.entities.get(state.playerId);
+  if (!hull) return;
+  state.entities.delete(state.playerId);
+  hull.id = id;
+  state.entities.set(id, hull);
+  state.playerId = id;
+}
+
 /** What a Crucible fixture overwrites, kept so every other shot mounts over the seeded state. */
 const BASELINE = structuredClone({
   run: state.run,
@@ -414,6 +425,10 @@ async function goto(rawId) {
   const id = shot.screen;
   applyBackdrop(shot);
   benchSaves = shot.saves === 'filed' ? createBenchSaveSystem() : null;
+  // A shot marked `live` is a run in progress, so the load screen offers Save here: the screen's
+  // canSave() needs a non-zero player id, and the seeded hull sits at id 0.
+  rekeyPlayer(shot.live ? 1 : 0);
+  state.meta.playtimeS = shot.live ? 5260 : 0;
   // A shot with `research` mounts that career's researched nodes and a research-point balance.
   state.player.researchedNodes = Array.isArray(shot.research) ? shot.research.slice() : [];
   state.player.researchPoints = Array.isArray(shot.research) ? 30 : 0;

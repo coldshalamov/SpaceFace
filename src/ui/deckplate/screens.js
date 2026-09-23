@@ -1272,6 +1272,8 @@ ${SL} .sf-ledger-k { ${ETCH} letter-spacing:.12em; color:var(--dp-ink-mute); }
 ${SL} .sf-ledger-line .k-sentence { margin:0; font-family:var(--dp-face-read); font-size:14px; line-height:1.35; color:var(--dp-ink-dim); }
 ${SL} .sf-ledger-line .k-sentence::first-letter { text-transform:uppercase; }
 ${SL} .sf-save-ledger .sf-save-actions { padding-top:8px; }
+/* the save's verbs are commands, not a choice: keys side by side, no rail under them */
+${SL} .sf-save-actions .k-words.k-words--row.of-pause { gap:12px; align-items:center; background:none; }
 ${SL} .sf-save-stage[data-slot-state="filed"] .sf-save-ledger .sf-save-actions { margin-top:auto; }
 @media (max-width:1100px) {
   ${SL} .sf-save-stage > .k-stage__foot.sf-save-ledger { position:relative; width:auto; }

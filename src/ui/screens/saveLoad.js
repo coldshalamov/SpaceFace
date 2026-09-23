@@ -1020,9 +1020,10 @@ export const saveLoadScreen = {
     list.classList.add('of-pause');
     for (const button of list.querySelectorAll('.k-word')) {
       const action = button.dataset.action;
+      // Save here beside Load is a secondary key (a ghost field with the cut), never a tab word.
       const kind = action === 'delete' ? 'hazard'
         : button.classList.contains('k-word--primary') ? 'primary'
-        : 'legend';
+        : 'small';
       paintKey(button, kind);
     }
     refs.actions.appendChild(list);

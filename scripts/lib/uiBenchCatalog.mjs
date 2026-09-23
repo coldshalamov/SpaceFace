@@ -22,6 +22,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'save-load', screen: 'saveLoad', backdrop: 'title', saves: 'filed' },
   { id: 'saveLoad', screen: 'saveLoad', backdrop: 'title', saves: 'filed' },
   { id: 'save-load-empty', screen: 'saveLoad', backdrop: 'title' },
+  // Mid-run (Esc -> Save/Load): the same two lives on file, and Save here is live.
+  { id: 'save-load-live', screen: 'saveLoad', backdrop: 'title', saves: 'filed', live: true },
   { id: 'help', screen: 'help', backdrop: 'title' },
   { id: 'codex', screen: 'codex', backdrop: 'title' },
   { id: 'mission-log', screen: 'missionLog', backdrop: 'title' },
