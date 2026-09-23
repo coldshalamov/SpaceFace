@@ -75,9 +75,12 @@ test('pause HUD dims only for the exposed pause and lists every verb in one reac
     }
     assert.equal(new Set(labels).size, labels.length, 'no two pause verbs share a label');
     // The vocabulary moved from the kit to Deckplate on 2026-09-22; the CONTRACT did not. Either
-    // name satisfies it, the way test/map-hud-kit.test.mjs already accepts dp-key--primary.
+    // name satisfies it, the way test/map-hud-kit.test.mjs already accepts dp-key--primary. Later
+    // the same day pause became a rail of LIGHT (2a845e831, ONE_PHOTOGRAPH.md order of work item
+    // 6): words(..., { system: 'light' }) emits dp-lit__item, and RESUME is still the one lamp.
     const wears = (button, role) => button.classList.contains('k-word--' + role)
-      || button.classList.contains('dp-menu__item--' + role);
+      || button.classList.contains('dp-menu__item--' + role)
+      || button.classList.contains('dp-lit__item--' + role);
     assert.equal(buttons.filter((button) => wears(button, 'primary')).length, 1, 'Resume is the only primary verb');
     assert.equal(buttons.filter((button) => wears(button, 'danger')).length, 2, 'Main Menu and Quit carry the danger treatment');
     assert.deepEqual(
@@ -85,8 +88,10 @@ test('pause HUD dims only for the exposed pause and lists every verb in one reac
       ['Resume'],
       'Resume is the lit row until focus moves into the column',
     );
-    // One list, and it is the Deckplate one. (The mini-DOM matcher takes a single selector.)
-    assert.equal(root.querySelectorAll('.dp-menu').length, 1, 'every verb is one roving list, not a list plus a disclosure');
+    // One list, and it is the Deckplate one: the rail of light (.dp-lit), with no plated menu
+    // beside it. (The mini-DOM matcher takes a single selector.)
+    assert.equal(root.querySelectorAll('.dp-lit').length, 1, 'every verb is one roving list, not a list plus a disclosure');
+    assert.equal(root.querySelectorAll('.dp-menu').length, 0, 'no plated Deckplate menu is mounted beside the rail');
     assert.equal(root.querySelectorAll('.k-words').length, 0, 'the retired kit list is not mounted beside it');
     // Every verb must actually RUN when picked: the first cut wired the pick callback to a stale
     // handler shape, so every click threw and the whole column was dead. That was caught by
