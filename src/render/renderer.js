@@ -1465,20 +1465,20 @@ function meshNeedsAuthoredDecode(owner, entity) {
 }
 
 /**
- * Structural camera clearance. The chase camera has no general obstacle pass — a station or
- * giant rock can swallow it whole, and every interior face then fights the near plane while the
- * focus damping breathes (the "camera inside the station jig + surface strobing" defect). The
- * renderer is the only layer that knows visual bounds, so it reports a world-Y floor per camera
- * XZ; camera.js owns the snap-up/ease-down hysteresis.
+ * Structural camera clearance. The chase camera has no general obstacle pass — a station,
+ * giant rock, or capital wreck can swallow it whole, and every interior face then fights the
+ * near plane while the focus damping breathes (the "camera inside the station jig + surface
+ * strobing" defect). The renderer is the only layer that knows visual bounds, so it reports a
+ * world-Y floor per camera XZ; camera.js owns the snap-up/ease-down hysteresis.
  *
  * Bounds come from the live mesh subtree: authored roots grow past their pending/fallback volume
  * when the GLB commits, so the cached box is invalidated on any authored state/composition stamp
  * change. Boxes are computed lazily for structural kinds only, and only structures large enough
- * to contain the camera participate — a nav buoy cannot push the camera.
+ * to contain the camera participate — a nav buoy or skiff-sized wreck cannot push the camera.
  */
 const CAMERA_CLEARANCE_MARGIN_WU = 16;
 const CAMERA_CLEARANCE_MIN_SPAN_WU = 120;
-const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid']);
+const CAMERA_CLEARANCE_KINDS = new Set(['station', 'place', 'asteroid', 'wreck']);
 const _clearanceBoxScratch = typeof THREE !== 'undefined' ? new THREE.Box3() : null;
 
 function cameraClearanceBoxForMesh(mesh) {
@@ -1517,7 +1517,8 @@ function cameraClearanceBoxForMesh(mesh) {
   return box;
 }
 
-function cameraClearanceFloorAt(owner, camX, camZ, camY) {
+/** Pure renderer-side clearance policy used by the camera callback and focused tests. */
+export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
   const meshes = owner && owner._meshes;
   if (!meshes) return -Infinity;
   // Structural-only list rebuilt on the _meshes mutation version — the per-frame query walks a
