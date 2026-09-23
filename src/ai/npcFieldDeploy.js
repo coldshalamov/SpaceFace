@@ -14,6 +14,8 @@ const CONE_TRAFFIC_ROLES = new Set(['scavenger', 'scavengers', 'sweeper', 'salvo
 
 const LOOSE_MASS_TYPES = new Set(['pickup', 'wreck', 'payload']);
 
+const EMPTY_AI = Object.freeze({});
+
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
@@ -22,17 +24,31 @@ export function npcFieldRole(entity) {
   if (!entity || entity.alive === false || entity.type !== 'ship') return null;
   if (entity.id != null && entity.isPlayer) return null;
   const data = entity.data || {};
-  const ai = data.ai || {};
+  const ai = data.ai || EMPTY_AI;
+  // Traffic/doctrine bindings are authored at spawn and almost never rewritten in place. Cache the
+  // resolved role against the live data/ai object identities so fields.js stops re-stringifying
+  // every ship every tick (fresh profile: npcFieldRole ~20 ms self / 60 s).
+  if (entity._sfNpcFieldData === data
+    && entity._sfNpcFieldAi === ai
+    && entity._sfNpcFieldRoleCached === true) {
+    return entity._sfNpcFieldRole;
+  }
   const loot = data.lootTableId || data.enemyTypeId;
+  let role = null;
   if (loot === 'field_anchor_controller' || ai.combatDoctrineId === 'field_anchor_controller') {
-    return NPC_FIELD_ROLES.ANCHOR_WELL;
+    role = NPC_FIELD_ROLES.ANCHOR_WELL;
+  } else {
+    const doctrine = String(ai.doctrine || '');
+    const trafficRole = String(data.trafficRole || data.role || ai.role || '').toLowerCase();
+    if (doctrine === 'scavenger' || CONE_TRAFFIC_ROLES.has(trafficRole)) {
+      role = NPC_FIELD_ROLES.SCAVENGER_CONE;
+    }
   }
-  const doctrine = String(ai.doctrine || '');
-  const role = String(data.trafficRole || data.role || ai.role || '').toLowerCase();
-  if (doctrine === 'scavenger' || CONE_TRAFFIC_ROLES.has(role)) {
-    return NPC_FIELD_ROLES.SCAVENGER_CONE;
-  }
-  return null;
+  entity._sfNpcFieldData = data;
+  entity._sfNpcFieldAi = ai;
+  entity._sfNpcFieldRole = role;
+  entity._sfNpcFieldRoleCached = true;
+  return role;
 }
 
 function looseMassLists(state) {
