@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24ak (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24al (post-import hillclimb)
 
 Master tip: **`7850b341e`** (fetched; unchanged).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` through #71 @ `5dd63881a`; +#72 measured on
-stacked tip @ `1dc05e5d9`. Fresh profile `settled-45s-stacked-20260924ac`
+Scratch `vm-work/hillclimb-20260924h` through #72 @ `1dc05e5d9`; +#73 measured on
+stacked tip @ `95eb33e50`. Fresh profile `settled-45s-stacked-20260924ac`
 (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -59,6 +59,7 @@ stacked tip @ `1dc05e5d9`. Fresh profile `settled-45s-stacked-20260924ac`
 | 70 | `stunt-flight-history-quiet-skip` |
 | 71 | `composition-framing-trust` |
 | 72 | `chase-lookat-retain` |
+| 73 | `camera-clearance-floor-retain` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged + this pass)
@@ -92,13 +93,13 @@ native GL / bloom admission owners ignored for portable ranking.
 | 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
 | 202 | `syncEntityViews` | residual after #15+#44+#57 |
-| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72 |
+| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73 |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61 |
 
-### Notable callees (post-#72)
+### Notable callees (post-#73)
 
-- prepareFrame → syncEntityViews (**#57**), camera.follow (**#63+#65** clearance, **#71** framing trust, **#72** lookAt retain), packPresentationWorldToFence (**#68**), spaceBackground (hold)
+- prepareFrame → syncEntityViews (**#57**), camera.follow (**#63+#65+#73** clearance, **#71** framing trust, **#72** lookAt retain), packPresentationWorldToFence (**#68**), spaceBackground (hold)
 - syncEntityViews → updateCraftMicroMotion (**#57**), presentationQueries, applySnapshotPose
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59**), packCombatTable, stampNearWorkBudget (**#61**), input.update (**#55**), lifetimeSweep (dirty-publish trust dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
@@ -107,6 +108,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
+| 73 | `camera-clearance-floor-retain` | Portable settled off-roof `cameraClearanceFloorAt` **~2.07×** median (200k; floor minSpeedup ≥1.72×). Focused camera suites 78/78. Soft-GPU fps not claimed. |
 | 72 | `chase-lookat-retain` | Portable settled `applyChaseLookAt` **~2.14×** median (200k; floor minSpeedup ≥2.05×). Focused camera suites 72/72. |
 
 ## Scour attempts / misses
@@ -116,6 +118,9 @@ native GL / bloom admission owners ignored for portable ranking.
 | composition quiet cadence (skip 2/3 when no sticky attacker) | ~1.0× with near ambient sticky keeping `sticky.id` warm — **hold** |
 | direct Matrix4 lookAt without updateWorldMatrix (moving) | ~1.19× under bar — not shipped alone |
 | settled lookAt retain (exact eye+target identity) | **shipped #72 ~2.14×** |
+| settled off-roof clearance floor retain (static structural) | **shipped #73 ~2.07×** |
+| clearance floor retain with per-mesh stamp-check under-roof | ~1.33× under bar — not primary; off-roof `-Infinity` path is the KPI |
+| moving clearance floor retain | informational ~0.85× (cam floats change) — hold |
 | roster-member-scratch-fill (alloc-only member/squad records) | **~0.97× — drop**; signature/sort dominate; replaced by retain-stable |
 | lifetimeSweep dirty-publish `isMovableEntity` trust | thin sub-loop ~1.51–1.69×; **fair full-pole ~1.08× — drop** |
 | lifetimeSweep pose-publish-list reshape | ~1.00× — no win |
@@ -143,8 +148,8 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72 (syncEntityViews /
-   packFence residual / residual closures / camera.follow clearance residual;
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73 (syncEntityViews /
+   packFence residual / residual closures; under-roof clearance stamp-check path;
    moving lookAt still full Three cost).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins; selectClassify residual).
