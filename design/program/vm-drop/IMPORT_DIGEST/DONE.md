@@ -1,6 +1,6 @@
-# DONE — IMPORT_DIGEST 20260924bp
+# DONE — IMPORT_DIGEST 20260924bq
 
-Post-#108 hillclimb on Quiet Grok Bot VM. Shipped **#109
-`docking-cradle-quiet-skip`** (~2.16× median quiet docking cradle idle latch;
-floor ≥1.76× across package runs). Soft-GPU fps not a KPI. Master tip
-`273f8bad7`. Scratch `vm-work/hillclimb-20260924j` @ `789585bc9`.
+Post-#109 hillclimb on Quiet Grok Bot VM. Shipped **#110
+`law-heat-telegraph-quiet-skip`** (~3.6× median quiet law/heat idle latch;
+floor ≥2.99× across package runs). Soft-GPU fps not a KPI. Master tip
+`273f8bad7`. Scratch `vm-work/hillclimb-20260924j` @ `705479ffe`.
