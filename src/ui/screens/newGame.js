@@ -17,6 +17,7 @@ import { fittingsFromDefaultModules } from '../../systems/ships.js';
 import { starterAirCard } from '../starterAirCard.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
+import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
 import { createStopScale, createTurntable } from '../orrery/stopDial.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
@@ -710,6 +711,7 @@ export const newGameScreen = {
     const back = footWord('back', coreText('back'), 'sf-back');
     const launch = footWord('launch', coreText('launch'), 'k-word--primary sf-ng-launch');
     paintKey(launch, 'primary');
+    if (launch.childNodes) dressLampKey(launch);
     launch.addEventListener('click', () => {
       if (launch.getAttribute('aria-disabled') === 'true') { cue('deny'); return; }
       cue('confirm'); this._launch(ctx);
@@ -735,7 +737,11 @@ export const newGameScreen = {
       for (const b of diffWords.querySelectorAll('.k-word')) setWord(b, launching);
       if (legacyWords) for (const b of legacyWords.querySelectorAll('.k-word')) setWord(b, launching);
       if (legacySelect) legacySelect.disabled = launching || !legacyOn;
-      launch.textContent = launching ? coreText('launching') : coreText('launch');
+      const launchWord = launching ? coreText('launching') : coreText('launch');
+      const lampWord = launch.querySelector && launch.querySelector('.orr-lampkey__word');
+      if (lampWord) lampWord.textContent = launchWord;
+      else launch.textContent = launchWord;
+      launch.disabled = launching;
       syncKeys(rootEl);
     };
     // Launch stops the stage hull at once (_launch) and frees its WebGL context once the loading

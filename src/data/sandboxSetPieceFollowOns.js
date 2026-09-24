@@ -129,6 +129,7 @@ export function setPieceFollowOnBody(pieceId, mission, origin) {
       data: {
         tetherPayload: true,
         scanLabel: 'STRIPPED POD',
+        commodityId: 'cmdty_salvage_electronics',
         salvagePool: { cmdty_salvage_electronics: 3 },
         missionId: mission.id,
       },
@@ -146,6 +147,7 @@ export function setPieceFollowOnBody(pieceId, mission, origin) {
       data: {
         tetherPayload: true,
         scanLabel: 'VAULT TAKE',
+        commodityId: 'cmdty_classified_salvage',
         salvagePool: { cmdty_classified_salvage: 1 },
         missionId: mission.id,
       },

@@ -97,6 +97,8 @@ test('the convoy and the heist each leave a grabbable pod', () => {
   assert.equal(salvage.type, 'payload');
   assert.equal(salvage.data.tetherPayload, true);
   assert.equal(salvage.data.salvagePool.cmdty_salvage_electronics, 3);
+  assert.equal(salvage.data.commodityId, 'cmdty_salvage_electronics');
+  assert.equal(take.data.commodityId, 'cmdty_classified_salvage');
   assert.equal(salvage.mass, 24);
   assert.equal(take.data.scanLabel, 'VAULT TAKE');
   assert.equal(take.data.salvagePool.cmdty_classified_salvage, 1);

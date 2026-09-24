@@ -485,7 +485,9 @@ if (automationSrc.includes('ore-u placeholder') || !automationSrc.includes('DRON
 }
 if (!newGameSrc.includes('let launching = false')
     || !localizedCoreCopySrc.includes("launching: { label: 'Launching...' }")
-    || !newGameSrc.includes("launch.textContent = launching ? coreText('launching') : coreText('launch')")
+    || !newGameSrc.includes("coreText('launching')")
+    || !newGameSrc.includes("orr-lampkey__word")
+    || !newGameSrc.includes('launch.disabled = launching')
   || !newGameSrc.includes("ctx.bus.on('game:startFailed', restoreLaunch)") || !newGameSrc.includes('if (launching) return')) {
   console.log('FAIL newGameScreen - Launch must guard duplicate async starts and restore after failure');
   fail++;
