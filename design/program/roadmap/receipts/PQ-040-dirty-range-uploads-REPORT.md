@@ -639,6 +639,78 @@ packet's ≥25% driver-reduction bar was missed on this run and all capture
 windows were demoted. Electron produced no dirty-vs-full numbers: three
 launches all died upstream of the comparator.
 
+## Native acceptance attempt — 2026-09-24
+
+Continuation on `.worktrees/pq040-native`, merged through `eb9962090`
+(carries `d6827a6fd` — environment-census blocks classified
+non-primary — `3b2133c8e` — the collision-impact scale module the
+committed VFX graph imports — and `7a62ca144` below). All three fast
+gates green on the merged candidate: 58/58, 6/6, render hot-path OK.
+
+**Route repair found by the live run.** A browser acceptance probe
+consumed claim `316-e56a224fd0a1f91a0343e513` (candidate `caa51e09`) at
+15:12Z and ran the public route to the galaxy map, then failed three
+retries waiting for `getByRole('button', { name: 'Set Waypoint' })`.
+Failure screenshot showed the query typed and the result row rendered
+but the dropdown still open and no selection painted: Enter died inside
+`_selectSearchTarget`. Root cause reproduced on the ui-bench —
+`_renderPlaceActions` throws `map control "sweep-sector" has no
+binding-map label` (and `note` was also unregistered) when
+`mapControlAttrs` stamps the place-action row inside `_updateInspector`,
+so every chart selection crashed mid-refresh on master since
+`092a9e298`/`6485635b8`. Repaired on master `7a62ca144` (both ids
+registered in `MAP_CONTROLS` plus a pin that every place-action id
+resolves a binding-map label) and merged into the candidate; the same
+bench flow then closed the dropdown and revealed the primary action.
+
+**Fresh claims, quota spent at mint.** Browser claim
+`10164-e0f883253b41c37a06dd1393` (candidate `d1d5c9d5`, expiry 16:05:24Z)
+and Electron claim `18704-3fdbca5c57874618fd58e96e` (candidate
+`197646c6`, expiry 16:06:23Z) were minted against the repaired digest.
+
+- Browser: 8 acceptance invocations between 15:58Z and 16:02Z all
+  returned `PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED` — foreign
+  browser/soak waves held the 5 s census at 8–52 CPU-seconds aggregate
+  against the ~0.625 budget. The claim lapsed unconsumed; quota was
+  already spent at mint.
+- Electron: 5 consecutive environment blocks, then invocation 6 passed
+  the start census at 16:06:10Z (claim consumed) and the route ran —
+  intro → main menu → new game → authored flight → ordinary flight
+  input → galaxy map — past the previously crashing chart step. The
+  probe was then terminated mid-route by a 90 s outer timeout in the
+  invoking retry wrapper: an orchestration fault in this session's
+  polling loop, not a product or measurement failure. Zero attribution
+  windows; all comparison metrics null.
+
+```yaml
+unit: PQ-040.native-acceptance
+candidateBranch: pq040-native
+candidateHead: eb9962090 (merge of 7a62ca144)
+fastGateResult: 58 pass / 0 fail + 6 pass / 0 fail + render hot-path OK
+browserManifestInvocations: 8
+browserAcceptanceRuntimeLaunches: 0
+browserBrokerResult: PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED x8 — claim lapsed unconsumed
+browserLaunchQuotaConsumed: true
+electronManifestInvocations: 6
+electronAcceptanceRuntimeLaunches: 1
+electronBrokerResult: >-
+  consumed claim and ran route through the repaired chart step;
+  terminated mid-route by outer 90 s retry-wrapper timeout
+  (orchestration fault, not a product failure); zero windows
+electronLaunchQuotaConsumed: true
+routeDefectsRepaired:
+  - map control "sweep-sector" (and "note") missing from MAP_CONTROLS —
+    _renderPlaceActions threw inside _updateInspector, killing every
+    chart selection and the Helios waypoint arm (7a62ca144)
+numericAcceptance: unproven
+```
+
+Disposition: **BLOCKED** on machine quiet, narrowed further than ever —
+the candidate now boots and the route no longer has a known break. The
+next attempt needs one census-quiet window per runtime (~12 min each of
+post-consume execution); claims mint fresh quota on the next candidate
+digest, which this record's commit provides.
+
 ## Implemented architecture
 
 ### Scene-scoped publication coordinator
