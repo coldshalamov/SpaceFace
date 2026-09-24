@@ -1,7 +1,4 @@
-# IMPORT — DIGEST 20260924cs
+# IMPORT — digest 20260924ct
 
-Owner applies vm-drop packages in numeric order. This digest tip records
-hillclimb **miss-only after #136** (no #137 package). Stack base
-`origin/master` @ `4b28a8323`.
-
-See `report.md` for holds and next poles.
+Read `report.md` for the full stack + holds. Apply package folders in numeric
+order; #137 is `docking-corridor-far-quiet-latch/`.
