@@ -1384,6 +1384,10 @@ export function createHud(ctx, alerts) {
   }
   leftStack.appendChild(clusterChassis);   // the speed deck and threat lamp join it below
   root.appendChild(leftStack);
+  // The chassis is always seated (it is never detached); the CSS hook that used to be
+  // #hud:has(.sf-cluster-chassis) is a class so per-frame writes no longer schedule :has()
+  // invalidation on #hud.
+  root.classList.add('sf-hud--cluster');
   // Comms is initialized a few lines before createHud() by uiRoot. Adopt the existing feed into the
   // context rail now that its stable home exists; the module keeps an absolute fallback for boot.
   const existingComms = document.getElementById('sf-comms');
@@ -1551,7 +1555,9 @@ export function createHud(ctx, alerts) {
       '<span class="sf-ml-instrument__v mono" data-k="mllen">—</span>' +
     '</div>' +
     '<div class="sf-ml-instrument__release mono" data-k="mlrel" hidden>RELEASE</div>';
-  commandDeck.prepend(center);
+  commandDeck.prepend(center);   // seats .sf-speed: the gauge is always mounted, never removed
+  commandDeck.classList.add('sf-command-deck--speed');
+  root.classList.add('sf-hud--speed');
   commandDeck.appendChild(masslineInstrument);
   const mlFill = masslineInstrument.querySelector('[data-k=mlfill]');
   const mlLen = masslineInstrument.querySelector('[data-k=mllen]');
@@ -5209,6 +5215,7 @@ export function createHud(ctx, alerts) {
     if (overlayTick || slow) updateFirstUseHint(p);
     if (slow) placeReceiptLane();
     if (slow) updateAdventureDecisionLine();
+    if (slow) refreshLeftContextClasses();
 
     // --- toasts/alerts expiry sweep ---
     if (alerts && alerts.tick) alerts.tick();
@@ -5486,6 +5493,23 @@ export function createHud(ctx, alerts) {
     setHudScreenTransform(firstUse, cleared.x, cleared.y);
   }
 
+  // The comms strip used to hide/show through two :has() rules on #hud; every hidden/inline-style
+  // write inside it then scheduled a style invalidation over the whole HUD each frame. The same
+  // states are classes now, recomputed on the slow tick (and once at mount). Semantics match the
+  // old selectors exactly: empty = every direct child hidden or inline display:none (zero children
+  // counts as empty); crun = a direct .sf-crun child that is not hidden.
+  function refreshLeftContextClasses() {
+    let empty = true;
+    let crun = false;
+    for (const child of leftContext.children) {
+      const childHidden = child.hidden || child.style.display === 'none';
+      if (!childHidden) empty = false;
+      if (child.classList.contains('sf-crun') && !child.hidden) crun = true;
+    }
+    setClass(leftContext, 'sf-leftcontext--empty', empty);
+    setClass(leftContext, 'sf-leftcontext--crun', crun);
+  }
+
   function setVisible(v) {
     setDisplay(root, !!v, 'block');
     if (hudMeta && hudMeta.setVisible) hudMeta.setVisible(v);
@@ -5531,6 +5555,8 @@ export function createHud(ctx, alerts) {
       else arriveTimers.push(setTimeout(() => kitCue('open'), i * 200));
     });
   }
+
+  refreshLeftContextClasses();
 
   return {
     frame, tickHidden, forceRefresh, setVisible, refreshCredits, refreshCargo, refreshObjectives, arrive,

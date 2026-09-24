@@ -21,7 +21,7 @@ function kitSegs() {
 export function hudBarMarkup(label, mod) {
   const modifier = ['energy','boost','heat','fuel'].includes(mod) ? mod : 'energy';
   return `<span class="sf-barrow__label">${escapeMarkup(label)}</span>` +
-    `<div class="sf-bar sf-bar--${modifier} sf-kit-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">` +
+    `<div class="sf-bar sf-bar--${modifier} sf-kit-bar sf-kit-bar--unlit" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">` +
       `<div class="sf-bar__fill"></div>${kitSegs()}` +
     `</div>` +
     `<span class="sf-barrow__num mono">0</span>`;
@@ -71,6 +71,8 @@ export function setKitBar(barEl, frac, kind) {
   if (barEl._sfKitOn === on && barEl._sfKitKind === tone) return;
   barEl._sfKitOn = on;
   barEl._sfKitKind = tone;
+  const unlit = on === 0;
+  if (barEl.classList.contains('sf-kit-bar--unlit') !== unlit) barEl.classList.toggle('sf-kit-bar--unlit', unlit);
   const lit = tone === 'hot' ? 'sf-kit-seg is-on is-hot' : tone === 'cold' ? 'sf-kit-seg is-on is-cold' : 'sf-kit-seg is-on';
   for (let i = 0; i < n; i++) {
     const next = i < on ? lit : 'sf-kit-seg';

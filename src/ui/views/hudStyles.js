@@ -1639,7 +1639,7 @@ export function injectHudCss() {
     position:absolute; inset:6px 10px; width:auto; height:auto; opacity:0; pointer-events:none;
     background:var(--k-signal, var(--hud-amber)); transform-origin:left center;
   }
-  .sf-kit-bar:not(:has(.sf-kit-seg.is-on)) > .sf-bar__fill { opacity:1; }
+  .sf-kit-bar.sf-kit-bar--unlit > .sf-bar__fill { opacity:1; }
   .sf-kit-seg {
     flex:0 0 12px; width:12px; height:16px;
     background:linear-gradient(90deg, rgb(232 226 212 / .16) 9px, transparent 0) center / 12px 16px no-repeat;
@@ -1732,12 +1732,12 @@ export function injectHudCss() {
     background:none center / contain no-repeat;
     z-index:3;
   }
-  .sf-radar-wrap.sf-kit-radar:has(.sf-radar--expanded) {
+  .sf-radar-wrap.sf-kit-radar.sf-radar-wrap--expanded {
     --sf-kit-radar-rim:40px;
     width:420px; min-height:420px;
   }
-  .sf-radar-wrap.sf-kit-radar:has(.sf-radar--expanded) .sf-kit-radar__bezel { height:420px; }
-  .sf-radar-wrap.sf-kit-radar:has(.sf-radar--expanded) .sf-kit-radar__face { width:340px; height:340px; }
+  .sf-radar-wrap.sf-kit-radar.sf-radar-wrap--expanded .sf-kit-radar__bezel { height:420px; }
+  .sf-radar-wrap.sf-kit-radar.sf-radar-wrap--expanded .sf-kit-radar__face { width:340px; height:340px; }
 
   @media (max-width:760px), (max-height:620px) {
     .sf-bars { grid-template-rows:auto 64px repeat(3, 28px); }
@@ -2144,7 +2144,7 @@ export function injectHudCss() {
     box-shadow:none;
   }
   #hud .sf-kit-bar > .sf-bar__fill { inset:6px 8px; background:linear-gradient(var(--dp-lamp) 0 0); opacity:0; }
-  #hud .sf-kit-bar:not(:has(.sf-kit-seg.is-on)) > .sf-bar__fill { opacity:1; }
+  #hud .sf-kit-bar.sf-kit-bar--unlit > .sf-bar__fill { opacity:1; }
   #hud .sf-kit-seg {
     flex:1 1 0; min-width:0; max-width:12px; height:11px; border-radius:1px;
     background:linear-gradient(var(--dp-rule) 0 0);
@@ -2425,7 +2425,7 @@ export function injectHudCss() {
      objective, aim, armed sockets; information reads in bone; red is threat only. ════════════ */
 
   /* the instrument cluster: bottom-left anchor, one chassis, one baseline */
-  html #hud:has(.sf-cluster-chassis) > .sf-leftstack {
+  html #hud.sf-hud--cluster > .sf-leftstack {
     width:auto; max-width:none;
     left:calc(14px * var(--k-s, 1) + var(--sf-safe-inset-x, 0px));
     bottom:calc(14px * var(--k-s, 1));
@@ -2517,7 +2517,7 @@ export function injectHudCss() {
     box-shadow:var(--dp-glass-depth);
     padding:4px 0;
   }
-  #hud > .sf-leftcontext:not(:has(> :not([hidden], [style*="display: none"], [style*="display:none"]))) { display:none; }
+  #hud > .sf-leftcontext.sf-leftcontext--empty { display:none; }
   /* sections inside the strip are not plates: flush, separated by an etched hairline */
   #hud > .sf-leftcontext > *,
   #hud > .sf-leftcontext #sf-onboarding .sf-ob-card {
@@ -2758,12 +2758,12 @@ export function injectHudCss() {
   #hud > .sf-leftcontext > .sf-mission-tracker,
   .sf-swarm-flight #hud > .sf-leftcontext > .sf-crun { border-top:0 !important; }
   #hud #sf-wpnstat { background:none; box-shadow:none; }
-  html #hud:has(.sf-cluster-chassis) > .sf-leftstack { left:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); bottom:var(--sf-hud-edge); }
+  html #hud.sf-hud--cluster > .sf-leftstack { left:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); bottom:var(--sf-hud-edge); }
   #hud > .sf-leftcontext {
     left:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); top:var(--sf-hud-edge);
     max-height:calc(100vh - var(--sf-cluster-h, 0px) - var(--sf-hud-edge) * 3);
   }
-  #hud > .sf-leftcontext:has(> .sf-crun:not([hidden])) { display:flex !important; }
+  #hud > .sf-leftcontext.sf-leftcontext--crun { display:flex !important; }
   #hud .sf-rightdock { right:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); bottom:var(--sf-hud-edge); padding-bottom:0; }
   #hud .sf-prail { bottom:var(--sf-hud-edge); }
   #hud .sf-band-hud { top:var(--sf-hud-edge); right:calc(var(--sf-hud-edge) + var(--sf-safe-inset-x, 0px)); }

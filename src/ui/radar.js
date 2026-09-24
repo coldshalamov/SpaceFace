@@ -715,6 +715,7 @@ export function createRadar(ctx) {
   function setExpanded(value) {
     expanded = !!value;
     dial.classList.toggle('sf-radar--expanded', expanded);
+    wrap.classList.toggle('sf-radar-wrap--expanded', expanded);
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
     else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
     wrap.style.cssText = expanded

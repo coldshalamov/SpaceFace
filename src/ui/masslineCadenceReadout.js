@@ -45,8 +45,9 @@ export function createMasslineCadenceReadout(parent) {
     update(state) {
       if(destroyed)return;
       const tether=state?.player?.tether, solution=state?.massline2?.throw?.solution;
-      root.hidden=!tether?.active;
-      if(root.hidden)return;
+      const hide=!tether?.active;
+      if(root.hidden!==hide)root.hidden=hide;
+      if(hide)return;
       const window=solution?.window,open=!!(solution?.valid&&solution.onSolution&&!solution.decisionStale&&!solution.degraded);
       const field=solution?.fieldAware===true;
       const degraded=solution?.degraded===true;
@@ -63,10 +64,15 @@ export function createMasslineCadenceReadout(parent) {
       const clearance=solution?.clearance;
       text(el.clearance,Number.isFinite(clearance)?`${clearance>=0?'+':''}${clearance.toFixed(1)}`:'—');
       text(el.length,Number.isFinite(tether.restLength)?tether.restLength.toFixed(0):'—');
-      root.dataset.open=String(open);root.dataset.field=String(field);root.dataset.degraded=String(degraded);
+      const openText=String(open),fieldText=String(field),degradedText=String(degraded);
+      if(root.dataset.open!==openText)root.dataset.open=openText;
+      if(root.dataset.field!==fieldText)root.dataset.field=fieldText;
+      if(root.dataset.degraded!==degradedText)root.dataset.degraded=degradedText;
       const start=entry==null?0:Math.min(1.5,entry), end=entry==null?0:Math.min(1.5,window.exitS??1.5);
-      el.bar.setAttribute('x',String(start/1.5*296));el.bar.setAttribute('width',String(Math.max(0,end-start)/1.5*296));
-      el.bar.setAttribute('opacity',window?.exitS==null?'0.45':'1');
+      const barX=String(start/1.5*296),barW=String(Math.max(0,end-start)/1.5*296),barO=window?.exitS==null?'0.45':'1';
+      if(el.bar.getAttribute('x')!==barX)el.bar.setAttribute('x',barX);
+      if(el.bar.getAttribute('width')!==barW)el.bar.setAttribute('width',barW);
+      if(el.bar.getAttribute('opacity')!==barO)el.bar.setAttribute('opacity',barO);
     },
     destroy(){destroyed=true;root.remove();},
   };
