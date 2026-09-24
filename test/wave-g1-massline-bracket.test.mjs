@@ -7,6 +7,8 @@ import assert from 'node:assert/strict';
 import {
   resolveMasslineBracketRead,
   bracketReadText,
+  bracketPaintText,
+  bracketShapeId,
   placeBracketWords,
 } from '../src/ui/masslineHud.js';
 
@@ -24,6 +26,12 @@ test('G1 cycles range, a valid target, and a denied target as three distinct str
   assert.equal(strings.size, 3);
   assert.equal(denied.reason.split(' ').length, 3);
   assert.doesNotMatch(bracketReadText(denied), /REPOSITION|CLOSE IN|PICK /);
+  assert.equal(bracketPaintText(ready), '');
+  assert.equal(bracketPaintText(range), '');
+  assert.equal(bracketPaintText(denied), 'LINE IS BLOCKED');
+  assert.equal(bracketShapeId(ready), 'can');
+  assert.equal(bracketShapeId(range), 'range');
+  assert.equal(bracketShapeId(denied), 'denied');
 });
 
 test('G1 bracket words do not overlap the player hull screen rect', () => {
