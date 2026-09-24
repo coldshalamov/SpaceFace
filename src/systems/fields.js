@@ -51,6 +51,8 @@ const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can 
 // PQ-147.01 — NPC tools share the kernel but not the player's four-slot cap.
 const FIELD_NPC_MAX_ACTIVE = 4;
 const NPC_CONE_HOLD_TICKS = 180;
+// Discover new NPC field deploys on this cadence; live cone geometry stays every tick.
+const NPC_FIELD_PLAN_PERIOD_TICKS = 4;
 const FIELD_LOOSE_TYPES = new Set(['pickup', 'wreck', 'payload']);
 // PQ-137.09 — the well's convergence term is velocity-dependent (see FIELD_DEFS.well.damping),
 // and the leaf that authored it says what it is for: "wells converge SHIPS to 30-60 WU/s
@@ -64,6 +66,12 @@ export const FIELD_VELOCITY_TERM_TYPES = Object.freeze(new Set(['ship', 'drone']
 const MASS_STATE_TYPES = new Set(['ship', 'drone', 'payload', 'asteroid', 'wreck', 'pickup']);
 const MASS_STATE_DURATION_TICKS = 90;
 const MASS_STATE_REFRESH_LEAD_TICKS = 30;
+
+function hasOwnEnumKey(obj) {
+  if (!obj) return false;
+  for (const _k in obj) return true;
+  return false;
+}
 
 function finite(value, fallback = 0) { return Number.isFinite(value) ? value : fallback; }
 function positive(value, fallback) { return Number.isFinite(value) && value > 0 ? value : fallback; }
@@ -564,9 +572,29 @@ export const fields = {
       return;
     }
     this._handleInput(state, rt);
+    // Skim sheet mirrors the planet collector latch — must run even when the kernel is empty
+    // so turning the scoop on can arm a sheet without a pre-existing field.
+    this._syncSkimSheet(state, rt);
+    // Quiet flight: no player cone/deployed/anchored/npc/skim and an empty kernel — still run the
+    // cadenced NPC discover walk so a scavenger can spin up, but skip cone/anchor/orbit/force work.
+    const kernelCount = this._kernel && typeof this._kernel.list === 'function'
+      ? this._kernel.list().length
+      : 0;
+    const idle = !rt.coneActive
+      && !rt.skimActive
+      && !rt.skimFieldId
+      && kernelCount === 0
+      && !hasOwnEnumKey(rt.deployed)
+      && !hasOwnEnumKey(rt.anchored)
+      && !hasOwnEnumKey(rt.npcFields)
+      && !hasOwnEnumKey(rt.hitches);
+    if (idle) {
+      this._syncNpcFields(state, rt);
+      this._publish(state, rt, 0, 0, 0);
+      return;
+    }
     this._syncCone(state, rt);
     this._syncNpcFields(state, rt);
-    this._syncSkimSheet(state, rt);
     this._syncAnchoredFields(state, rt);
     this._syncOrbit(state);
     this._syncEmitters(state, rt, /*applyForces*/ true, dt);
@@ -925,10 +953,12 @@ export const fields = {
   },
 
   _syncNpcFields(state, rt) {
-    const ids = Object.keys(rt.npcFields || {});
+    const npcFields = rt.npcFields || {};
+    const ids = Object.keys(npcFields);
+    const tick = (state.tick | 0);
     for (let i = 0; i < ids.length; i++) {
       const sourceId = ids[i];
-      const rec = rt.npcFields[sourceId];
+      const rec = npcFields[sourceId];
       const entity = state.entities && state.entities.get ? state.entities.get(Number(sourceId) || sourceId) : null;
       const live = entity && entity.alive !== false ? entity : null;
       const resolved = live || (state.entities && typeof state.entities.get === 'function'
@@ -937,7 +967,7 @@ export const fields = {
       const hull = resolved && resolved.alive !== false ? resolved : null;
       if (!hull) {
         if (rec && rec.fieldId && this._kernel) this._kernel.unregister(rec.fieldId);
-        delete rt.npcFields[sourceId];
+        delete npcFields[sourceId];
         if (rec) this.bus.emit('fields:ended', { fieldId: rec.fieldId, kind: rec.kind, reason: FIELD_END_REASONS.destroyed });
         continue;
       }
@@ -948,18 +978,22 @@ export const fields = {
       this._coneCenter.x = hull.pos.x + this._coneDir.x * def.originGap;
       this._coneCenter.z = hull.pos.z + this._coneDir.z * def.originGap;
       this._kernel.update(rec.fieldId, { center: this._coneCenter, dir: this._coneDir });
+      // Live cones refresh/retire every tick (hold window + loose-mass probe). Cheap vs the
+      // all-ship discover walk below — typically 0–4 owners.
+      this.applyNpcFieldPlan(state, hull);
     }
+    // Discover new NPC deploys on cadence. Quiet traffic paid a full aiShips walk every
+    // tick even when nobody held a scavenger role; live geometry stays above.
+    if ((tick % NPC_FIELD_PLAN_PERIOD_TICKS) !== 0) return;
     const ships = (state.entityIndex && state.entityIndex.aiShips)
       || (state.entityIndex && state.entityIndex.ships)
       || state.entityList
       || [];
-    const npcFields = rt.npcFields || {};
     for (let i = 0; i < ships.length; i++) {
       const entity = ships[i];
       if (!entity || entity.type !== 'ship' || entity.id === state.playerId) continue;
-      if (entity.physicsSleeping === true && !npcFields[entity.id] && !npcFields[String(entity.id)]) {
-        continue;
-      }
+      if (npcFields[entity.id] || npcFields[String(entity.id)]) continue;
+      if (entity.physicsSleeping === true) continue;
       this.applyNpcFieldPlan(state, entity);
     }
   },

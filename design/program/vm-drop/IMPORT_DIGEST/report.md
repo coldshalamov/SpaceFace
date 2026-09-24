@@ -1,12 +1,12 @@
-# IMPORT_DIGEST report — 2026-09-24j (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24k (post-import hillclimb)
 
-Master tip: **`f4150f648`** (fetched; moved from `37f50a70d` via `2bbbc6312` + docs).
+Master tip: **`3b62f00e9`** (fetched; moved from `f4150f648`).
 
 ## Stack refresh
 
-Scratch `vm-work/hillclimb-20260924h` rebased onto `f4150f648` (19 commits clean).
-Prior tip content retained (#31–#40 + opening hitch + sync-entity-views-closure-gate
-+ #37/#12 rebases). New work measured from stacked tip `c5c52256f`.
+Scratch `vm-work/hillclimb-20260924h` rebased onto `3b62f00e9` (21 commits clean).
+Prior tip content retained (#31–#42 + opening hitch + sync-entity-views-closure-gate).
+New work measured from stacked tip + #43/#44.
 
 ### Already on stack (do not rediscover)
 
@@ -27,34 +27,30 @@ Prior tip content retained (#31–#40 + opening hitch + sync-entity-views-closur
 | 15 | `sync-entity-views-submit-scratch` |
 | 12 | `massline-settext-cache` (rebased) |
 | 40 | `stunt-threat-index-lanes` |
+| 41 | `far-query-row-scan` |
+| 42 | `hud-objective-plate-cache` |
 | + | sync-entity-views-closure-gate, opening-plan-complete, hitch-opening-drain, opening-residency-deadline |
 
 ### SKIP / hold (unchanged)
 
 `flight-propulsion-scratch`, `classify-closed-form-scan` (superseded by #37),
 physics S1-idle sleep, spatial-hash surface@600, hitch-opening-admission,
-midflight-wave-hull-decode, combat-entity-key-cache, syncCombatantBounds (prior miss).
+midflight-wave-hull-decode, combat-entity-key-cache, syncCombatantBounds (prior miss),
+classifyWorld visit-loop cadence (prior under bar).
 
-## Quiet CPU / hitch profile (stacked tip, pre-#41/#42 cite)
+## Quiet CPU / hitch profile (stacked tip pre-#43/#44 cite)
 
-Tool cite: `node scripts/probe-main-thread-profile.mjs --ms=45000 --label=settled-45s-stacked-20260924h`
-Picture ON, soft-GPU. Idle **61.4%**; long tasks **15** (worst **1401 ms** — opening admission inclusive).
-Artifacts: `/workspace/spaceface-scratch/hillclimb-20260924h/.devshots/main-thread-profile/settled-45s-stacked-20260924h/`.
-
+Tool cite: prior `settled-45s-stacked-20260924h` (Picture ON, soft-GPU). Idle **61.4%**.
 Soft-GPU / native GL / bloom admission owners ignored for portable ranking.
 
-### Top portable src/ self (aggregated) — post-stack pre-ship
+### Top portable src/ self (aggregated) — climb targets
 
 | ms | owner | notes |
 |---:|---|---|
-| 100 | `registry.step` | residual after #39 content-gate |
+| 100 | `registry.step` | residual after #39; **#43** cuts fields NPC walk |
 | 66 | `prepareFrame` | residual after #13 |
-| 61 | `classifyWorld` | residual after #37+#38 |
-| 45 | `syncEntityViews` | residual after #15 + closure-gate |
-| 37 | `getBoundingClientRect` | **SHIPPED** #42 resize-only plates (~45× reads) |
-| 35 | `hud.frame` | residual after #34; plate tax was under it |
-| 25 | `stuntFlightEvidence.update` | #40 landed (~16×) |
-| 20 | `queryFarActors` | **SHIPPED** #41 adaptive row-scan (~11× wide disc) |
+| 61 | `classifyWorld` | residual after #37+#38 — **miss this pass** |
+| 45 | `syncEntityViews` | residual after #15 + closure-gate; **#44** cadences policy |
 | 22 | `_stepCraft` | HOLD propulsion |
 | 19 | `_stepFixed` | physics sleep residual |
 
@@ -62,8 +58,8 @@ Soft-GPU / native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
-| 41 | `far-query-row-scan` | Portable wide-disc **~11.0×** (96 rows / 3600 WU / 8000 iters). Far suites pass. Master-clean + after-#1 patches. |
-| 42 | `hud-objective-plate-cache` | Settled-edge layout reads **270 → 3** (~45×). Orrery/HUD focused pass. Clean on bare master. |
+| 43 | `fields-npc-plan-cadence` | Portable NPC plan walk **~2.67×** (80 ships / 30 wrecks / 6k ticks). Quiet idle early-out after skim. Fields suites pass. |
+| 44 | `sync-entity-views-middle-policy-cadence` | Portable middle-band policy **~2.10×** (400×240, 72% middle). LOD/shadow/classifyRender share closure cadence. Band/visibility/micro-motion/shadow tests pass. |
 
 ## Scour attempts / misses
 
@@ -71,11 +67,10 @@ Soft-GPU / native GL / bloom admission owners ignored for portable ranking.
 |---|---|
 | Physics S1-idle sleep expansion | Hold — not retried |
 | classifyWorld visit-loop cadence | Prior under bar — leave |
+| classifyWorld stamp-reuse / inert fast-path | Explored; near-disc already trimmed — no ≥1.5× package |
 | spatial-hash surface @600 | Hold — not retried |
-| Remaining registry content-gates after #39 | No extra owner cleared ≥1.5× |
 | syncCombatantBounds early-out | Prior miss — not retried |
-| Far-AI residual after #1+#40 | **Closed** via #41 row-scan |
-| HUD leftover getBoundingClientRect after #34 | **Closed** via #42 |
+| Remaining registry content-gates after #39 | No extra owner cleared ≥1.5× (fields path shipped instead) |
 
 ## Rock audit (unchanged)
 
@@ -83,8 +78,8 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. registry.step residual after #39 (~100 ms self).
-2. classifyWorld residual after #37+#38 (~61 ms).
-3. prepareFrame / syncEntityViews leftovers.
+1. classifyWorld residual after #37+#38 (~61 ms).
+2. prepareFrame leftovers after #13+#44.
+3. registry.step after #39+#43 (physics / flight / AI holds).
 4. Physics sleep / spatial-hash@600 holds.
 5. Soft-GPU fps is not a KPI.
