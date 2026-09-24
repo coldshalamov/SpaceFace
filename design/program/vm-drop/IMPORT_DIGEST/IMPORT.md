@@ -1,6 +1,6 @@
-# IMPORT — DIGEST 20260924bj
+# IMPORT — DIGEST 20260924bk
 
 Owner applies vm-drop packages in numeric order. This digest tip records
-hillclimb through **#103 `energy-quiet-hide-latch`**.
+hillclimb through **#104 `energy-quiet-relevant-skip`**.
 
 See `report.md` for stack, holds, and next poles.

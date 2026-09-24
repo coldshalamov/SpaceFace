@@ -1,0 +1,78 @@
+{
+  "name": "energy-quiet-relevant-skip",
+  "primary": "quiet-hidden-energy-relevant-probe",
+  "iterations": 200000,
+  "runs": 11,
+  "npcs": 8,
+  "pairs": [
+    {
+      "beforeMs": 84.49006600000001,
+      "afterMs": 18.707548000000003,
+      "speedup": 4.516362379505855,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 81.274353,
+      "afterMs": 19.23633799999999,
+      "speedup": 4.225042884981542,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 86.575462,
+      "afterMs": 18.659150999999994,
+      "speedup": 4.639839293867123,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 80.49131299999999,
+      "afterMs": 19.382188,
+      "speedup": 4.152849667952864,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 125.65909400000001,
+      "afterMs": 19.054637999999997,
+      "speedup": 6.594672331219309,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 81.70457599999999,
+      "afterMs": 18.830886000000007,
+      "speedup": 4.338859892200503,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 79.24577400000001,
+      "afterMs": 20.332764999999995,
+      "speedup": 3.8974420842418644,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 97.377426,
+      "afterMs": 21.265751999999992,
+      "speedup": 4.579072773913664,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 83.77294900000001,
+      "afterMs": 20.837258000000006,
+      "speedup": 4.020344183481338,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 87.484052,
+      "afterMs": 20.314819,
+      "speedup": 4.306415528486865,
+      "afterSkips": 200000
+    },
+    {
+      "beforeMs": 87.24744700000001,
+      "afterMs": 18.713562999999994,
+      "speedup": 4.662257369160541,
+      "afterSkips": 200000
+    }
+  ],
+  "medianSpeedup": 4.338859892200503,
+  "minSpeedup": 3.8974420842418644,
+  "maxSpeedup": 6.594672331219309
+}
