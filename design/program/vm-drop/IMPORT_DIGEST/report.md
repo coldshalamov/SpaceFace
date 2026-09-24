@@ -1,11 +1,11 @@
-# IMPORT_DIGEST report — 2026-09-24bx (post-import hillclimb)
+# IMPORT_DIGEST report — 2026-09-24by (post-import hillclimb)
 
 Master tip: **`8ebdf5537`** (fetched; station UI / ORRERY / model-survey landed after #114 base).
 
 ## Stack refresh
 
 Scratch `vm-work/hillclimb-20260924k` on `origin/master` @ `8ebdf5537`;
-through #116 @ `aa3386084`; +#117 measured on stacked tip @ `6e0af77bf`. Profile
+through #117 @ `6e0af77bf`; +#118 measured on stacked tip @ `33355d9bc`. Profile
 cite remains `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU; tip through #64).
 
 ### Already on stack (do not rediscover)
@@ -172,13 +172,13 @@ native GL / bloom admission owners ignored for portable ranking.
 | 323 | `registry.step` | residual after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67+#69+#70+#82+#83+#84+#85+#86+#87+#88 |
 | 269 | `classifyWorld` | residual after #37+#38+#45+#48+#60+#62+#64 |
 | 202 | `syncEntityViews` | residual after #15+#44+#57+#74+#76+#77+#81 |
-| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109+#110+#111+#112+#113+#114+#115+#116+#117 |
+| 186 | `prepareFrame` | residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109+#110+#111+#112+#113+#114+#115+#116+#117+#118 |
 | 132 | `hud.frame` | radar.draw + setLagTranslate |
 | 111 | `preStep` | residual after #56+#59+#61+#82 |
 
 ### Notable callees (post-#94)
 
-- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), HullScorch (**#95**), DistortionField (**#96**), WeaponRibbon (**#97**), RcsImpulse (**#98**), WeaponLight (**#99**), ContinuousPlume fleet sleep (**#100**), Quarks empty update (**#101**), EnergyBolt begin+commit (**#102**), energy quiet hide (**#103**), energy quiet relevant skip (**#104**), seam markers quiet hide (**#105**), status-attached quiet empty (**#106**), tumble body-language quiet (**#107**), trail emit idle drive (**#108**), docking cradle quiet (**#109**), law-heat telegraph quiet (**#110**), swing-trace quiet (**#111**), speed-lines quiet (**#112**), field-force quiet empty (**#113**), bomb telegraph quiet empty (**#114**), loot-magnet quiet empty buckets (**#115**), sprites idle commit (**#116**), wreck-wisps quiet empty (**#117**), spaceBg (hold), hot plasma residual (volumetric/retro held)
+- prepareFrame → syncEntityViews (**#57+#74+#76+#77+#81**), camera.follow (**#63+#65+#73+#78** clearance, **#71** framing trust, **#72+#79** lookAt retain), syncAsteroidInstancePool (**#80**), packPresentationWorldToFence (**#68+#75**), ArcadeStructuralFx (**#89**), PhasedExplosion (**#90**), PersistentBeams (**#91**), particles idle commit (**#92**), WeaponDischargePool (**#93**), plasmaStream cold reset (**#94**), HullScorch (**#95**), DistortionField (**#96**), WeaponRibbon (**#97**), RcsImpulse (**#98**), WeaponLight (**#99**), ContinuousPlume fleet sleep (**#100**), Quarks empty update (**#101**), EnergyBolt begin+commit (**#102**), energy quiet hide (**#103**), energy quiet relevant skip (**#104**), seam markers quiet hide (**#105**), status-attached quiet empty (**#106**), tumble body-language quiet (**#107**), trail emit idle drive (**#108**), docking cradle quiet (**#109**), law-heat telegraph quiet (**#110**), swing-trace quiet (**#111**), speed-lines quiet (**#112**), field-force quiet empty (**#113**), bomb telegraph quiet empty (**#114**), loot-magnet quiet empty buckets (**#115**), sprites idle commit (**#116**), wreck-wisps quiet empty (**#117**), momentum-sink quiet empty (**#118**), spaceBg (hold), hot plasma residual (volumetric/retro held)
 - syncEntityViews → presentationQueries.query (**#74+#77**), refreshVisibleEntity (**#76**), updateCraftMicroMotion (**#57**), noteRealtimeShadowCasterPose (**#81** call-site quiet skip), applySnapshotPose (hold ~0.85×)
 - classifyWorld → resolvePins, normalizePinReasons (**#64**), selectClassifyEntities (**#60**), reusablePins, shouldSyncPhysics (**#62**)
 - registry.step → preStep (**#56+#59+#82**), packCombatTable, stampNearWorkBudget (**#61+#82**), combat kernel pre/post (**#83+#84+#85+#86+#87**), input.update (**#55**), lifetimeSweep (**#88** lane corpse compact; dirty-publish trust still dropped), eventTrace sanitize (**#58**), ai.stack liveFramesFor (**#66**), liveListSquads (**#67**), sampleProjectileEvidence (**#69**), StuntFlightObserver.update (**#70**)
@@ -187,6 +187,7 @@ native GL / bloom admission owners ignored for portable ranking.
 
 | # | Package | Evidence |
 |---:|---|---|
+| 118 | `momentum-sink-quiet-empty-latch` | Portable quiet `_updateMomentumSinkPresentation` empty combat.entities walk **~137×** median (48 entities × 200k; floor minSpeedup ≥101.99× across 4 package runs). Latch after empty collect when statusNextPendingSeq trustworthy; wake on seq bump. Dirty-wake proved. No-seq refuses latch. Focused momentum-sink latch+presentation + loot-magnet+wreck-wisps+sprites+field-force+inactive 26/26. Soft-GPU fps not claimed. |
 | 117 | `wreck-wisps-quiet-irrelevant-latch` | Portable quiet `_wreckWispsRelevant` empty wrecks latch **~3.4×** median (200k; floor minSpeedup ≥2.87× across 4 package runs). Latch after empty observe when entityIndexVersion trustworthy; wake on version bump. Dirty-wake proved. Type-filter empty check; no-index refuses latch. Focused wreck-wisps+loot-magnet+sprites+field-force+bomb+vfx-save+inactive 18/18. Soft-GPU fps not claimed. |
 | 116 | `sprites-idle-commit-skip` | Portable quiet `_integrateSprites` idle reset+commit latch **~6.4×** median (4 buckets × 7 bindings × 200k; floor minSpeedup ≥5.89× across 4 package runs). Latch after first idle publish; wake on `_activateSprite`. Dirty-wake proved. Focused sprites latch+instanced-pool+structured-transients+vfx-save 16/16. Soft-GPU fps not claimed. |
 | 115 | `loot-magnet-quiet-empty-latch` | Portable quiet `_lootMagnetRelevant` empty pickups+payloads latch **~3.0×** median (200k; floor minSpeedup ≥2.48× across 4 package runs). Latch after empty-bucket observe when entityIndexVersion trustworthy; wake on version bump. Dirty-wake proved. No-index fallback refuses latch. Focused loot-magnet+inactive+field-force+bomb+speed-lines+swing-trace 16/16. Soft-GPU fps not claimed. |
@@ -221,6 +222,7 @@ native GL / bloom admission owners ignored for portable ranking.
 | bomb-presentation quiet empty latch (frustum + a11y + empty walk + publish(0) after owner exists) | **shipped #114 ~2.6×** (floor ≥2.15× across package runs; entityIndexVersion dirty-wake; no-index refuses latch) |
 | loot-magnet quiet empty buckets (player + dual indexedTypeScan when pickups/payloads empty) | **shipped #115 ~3.0×** (floor ≥2.48× across package runs; entityIndexVersion dirty-wake; no-index refuses latch) |
 | wreck-wisps quiet irrelevant latch (player + scan + Map.clear; version-only wake) | **shipped #117 ~3.4×** (floor ≥2.87× across package runs; entityIndexVersion dirty-wake; supersedes prior re-scan wake hold ~0.96×) |
+| momentum-sink quiet empty latch (combat.entities for-in + MOMENTUM_SINK status probe; statusNextPendingSeq wake) | **shipped #118 ~137×** (floor ≥101.99× across package runs; statusNextPendingSeq dirty-wake; no-seq refuses latch) |
 | ceres-job-action / pending-detonations / overlay-bundle / gas-a11y quiet latches | **~0.99–1.03× under bar / hold** (thin residual; latch overhead ≥ saved work) |
 | contact-shadow retain commit-skip (N=8 unchanged) | **~1.04× under bar / hold** |
 | tether-web quiet empty latch (empty byId for-in + count/visible reassign) | **~0.93× drop** (empty-assign noise) |
@@ -250,9 +252,9 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109+#110+#111+#112+#113+#114+#115+#116+#117
+1. prepareFrame residual after #13+#44+#46+#47+#51–#58+#63+#65+#68+#71+#72+#73+#74+#75+#76+#77+#78+#79+#80+#81+#89+#90+#91+#92+#93+#94+#95+#96+#97+#98+#99+#100+#101+#102+#103+#104+#105+#106+#107+#108+#109+#110+#111+#112+#113+#114+#115+#116+#117+#118
    (syncEntityViews residual closures / microMotion; sprites idle-commit shipped #116;
-   wreck-wisps empty shipped #117; authored-instance
+   wreck-wisps empty shipped #117; momentum-sink empty shipped #118; authored-instance
    static reuse held ~1.3×; under-roof clearance stamp-check path; clearance movers
    retain held ~1.26×; applySnapshotPose identical-write held; spaceBg; feel
    speed-lines shipped #112; field-force shipped #113; bomb telegraph shipped #114;

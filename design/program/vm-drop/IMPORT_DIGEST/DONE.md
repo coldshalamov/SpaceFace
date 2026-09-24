@@ -1,6 +1,6 @@
-# DONE — IMPORT_DIGEST 20260924bx
+# DONE — IMPORT_DIGEST 20260924by
 
-Post-#116 hillclimb on Quiet Grok Bot VM. Shipped **#117
-`wreck-wisps-quiet-irrelevant-latch`** (~3.4× median quiet wreck-wisps empty
-bucket latch; floor ≥2.87× across package runs). Soft-GPU fps not a KPI.
-Master tip `8ebdf5537`. Scratch `vm-work/hillclimb-20260924k` @ `6e0af77bf`.
+Post-#117 hillclimb on Quiet Grok Bot VM. Shipped **#118
+`momentum-sink-quiet-empty-latch`** (~137× median quiet momentum-sink empty
+combat walk; floor ≥101.99× across package runs). Soft-GPU fps not a KPI.
+Master tip `8ebdf5537`. Scratch `vm-work/hillclimb-20260924k` @ `33355d9bc`.
