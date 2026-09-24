@@ -204,6 +204,7 @@ import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
+import { SWARM_RULESET, swarmEligibleEnemyIds } from '../data/swarmMode.js';
 import { applySectorExitResidency, getAssetResidency } from './assetResidency.js';
 import { createCrucibleWarmPackageResidency } from './crucibleWarmPackageResidency.js';
 import {
@@ -296,9 +297,11 @@ import {
   collectContextLossRoots,
   deferWebGlContextRestore,
   detachStaleWebGlDisposeListeners,
+  detachStashedStaleWebGlDisposeListeners,
   isWebGlContextUnavailable,
   pauseSimForContextLoss,
   resumeSimAfterContextRestore,
+  stashStaleWebGlDisposeProvenance,
 } from './contextResourceLifecycle.js';
 import {
   assertDynamicBufferOwnerWritable,
@@ -1841,15 +1844,16 @@ function getContactShadowTex() {
   const c = document.createElement('canvas'); c.width = c.height = 64;
   const ctx = c.getContext('2d');
   const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-  g.addColorStop(0.0, 'rgba(0,0,0,0.70)');
-  g.addColorStop(0.6, 'rgba(0,0,0,0.35)');
-  g.addColorStop(1.0, 'rgba(0,0,0,0)');
+  // Same blue-violet ink as the painted shadow pools. A neutral grey disc read as a sticker.
+  g.addColorStop(0.0, 'rgba(18,14,36,0.72)');
+  g.addColorStop(0.42, 'rgba(28,22,58,0.34)');
+  g.addColorStop(1.0, 'rgba(28,22,58,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
   _shadowTex = new THREE.CanvasTexture(c);
   return _shadowTex;
 }
 function getContactShadowGeo() {
-  if (!_shadowGeo) _shadowGeo = new THREE.CircleGeometry(1, 20);
+  if (!_shadowGeo) _shadowGeo = new THREE.CircleGeometry(1, 32);
   return _shadowGeo;
 }
 function getContactShadowMat() {
@@ -4416,7 +4420,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
 /** The loading cook's bounded warm roots (see render._parkBoundedWarmRoots). */
 function isBoundedWarmRoot(root) {
   const tag = root && root.userData && root.userData.rosterPrewarm;
-  return tag === 'bounded-cook' || tag === 'opening-species-warm';
+  return tag === 'bounded-cook' || tag === 'opening-species-warm' || tag === 'deferred-warm';
 }
 
 export const render = {
@@ -4707,6 +4711,12 @@ export const render = {
         );
         this._contextRecovery.detachedStaleDisposeListeners = detachReceipt.listenersDetached;
         this._contextRecovery.detachedContextResources = detachReceipt;
+        // This provenance is consumed once here, but resources OUTSIDE the walked roots — parked
+        // boundary trees, procedural world-site fixtures on detached structures — can still carry
+        // the same stale callbacks. Keep the identities: the boundary-teardown chokepoint strips
+        // them before any dispose fires, so a parked root torn down after the loss cannot delete
+        // its dead handles through the lost generation's managers (the v6 Electron delete storm).
+        stashStaleWebGlDisposeProvenance(preparedPoolResources.provenance);
         if (this._assetResidency) this._assetResidency.handleContextLost();
         // The restored WebGL context has a fresh driver program cache. Drop only our JS-side
         // admission receipts here; the detached warmup graph belongs to the lost context and must
@@ -9614,12 +9624,34 @@ export const render = {
     // pipeline precompile (soft-GPU skips those anyway).
     onBus('survivalArena:rosterPrewarm', (p) => this._admitSurvivalRosterPrewarm(p));
     onBus('run:wavePlanned', (p) => this._kickWaveHullDecodeRunway(p));
+    // Between-round roster warm: every swarm wave ends in the armory, and the next wave's
+    // newcomer set is fixed by its number, so the eligible-minus-covered cohort builds and
+    // compiles during the shop dwell rather than inside the launch cook or the next round.
+    // cleanup fires first (the short post-clear breath) so the batch starts as early as the
+    // run lets it; wavePlanned is the fallback for a draft that resolved before the warm
+    // began (its links then land in the round's first seconds, not missing coverage).
+    onBus('run:transitioned', (p) => {
+      const phase = p && p.phase;
+      if (phase !== 'cleanup' && phase !== 'draft') return;
+      const run = this.state && this.state.run;
+      if (!run || run.kind !== 'survival' || run.ruleset !== SWARM_RULESET) return;
+      try { this._warmSwarmDeferredRoster(run.wave + 1); }
+      catch (error) { console.warn('[render] deferred swarm warm trigger failed', error); }
+    });
+    onBus('run:wavePlanned', (p) => {
+      const wave = p && Number.isInteger(p.wave) ? p.wave : null;
+      if (wave == null || wave < 2) return;
+      try { this._warmSwarmDeferredRoster(wave); }
+      catch (error) { console.warn('[render] deferred swarm warm fallback failed', error); }
+    });
     onBus('run:ended', () => {
       this._releaseSurvivalRosterPrewarm('run_ended');
       // The early warm's root was pushed into _rosterPrewarmRoots at begin, so the release
       // above already disposed it — drop the handle so the cook never adopts a dead root.
       this._earlyCrucibleWarm = null;
       this._earlyCrucibleWarmMenu = false;
+      this._swarmWarmCoveredEnemyIds = null;
+      if (this.state && this.state.render) this.state.render.swarmDeferredWarm = null;
       clearWaveHullRunwayKeys(this.state);
       if (this._waveHullDecodePending) this._waveHullDecodePending.clear();
     });
@@ -10505,7 +10537,27 @@ export const render = {
     // skips this block: the scripted intro spawns no roster ships, and sixteen whole-ship
     // compose jobs queued behind the live entities' upgrades could not settle inside the
     // 20 s shell — their late drain would link inside measured frames instead.
-    const shipSpecs = profile === 'crucible' ? swarmRosterShipExemplarSpecs(`${specPrefix}ship:`) : [];
+    // Launch warms only what the current wave can field (swarmEligibleEnemyIds). The whole-roster
+    // cohort — eleven archetypes plus every boss package, ~3000 palette subjects — was the
+    // dominant cook cost, and a wave cannot spawn a hull before its eligibility wave, so each
+    // newcomer rides the armory dwell ahead of it instead (_warmSwarmDeferredRoster). The
+    // covered ledger records what this warm owns so the deferred lane never rebuilds it.
+    // waveBase is the live run's wave, not a literal 1: a mid-run save load re-cooks and must
+    // cover every archetype already unlocked, while a fresh launch pays only wave 1.
+    // Non-swarm survival cooks share this profile but have no eligibility ladder — a
+    // schedule-driven plan can field anything on wave 1, so they keep the whole roster.
+    const liveRuleset = survivalRunHoldsArena(state) ? state.run.ruleset : SWARM_RULESET;
+    const swarmScoped = liveRuleset === SWARM_RULESET;
+    warm.swarmScoped = swarmScoped;
+    const waveBase = Math.max(1,
+      (swarmScoped && state && state.run && Number.isInteger(state.run.wave) ? state.run.wave : 1));
+    const launchEligibility = swarmScoped ? swarmEligibleEnemyIds(waveBase) : null;
+    const shipSpecs = profile === 'crucible'
+      ? swarmRosterShipExemplarSpecs(`${specPrefix}ship:`, { enemyIds: launchEligibility })
+      : [];
+    if (profile === 'crucible' && swarmScoped) {
+      this._swarmWarmCoveredEnemyIds = new Set(launchEligibility);
+    }
     // The player hull joins the set: its live entity only spawns at the flight transition,
     // so without an exemplar its authored compose (the GLTFKit_ship_wasp cluster) runs inside
     // the round. The enemy roster never reaches the defId-resolved wasp file — hostiles map
@@ -10701,9 +10753,17 @@ export const render = {
         this._discardEarlyCrucibleWarm();
         return;
       }
-      this._earlyCrucibleWarmMenu = false;
-      this._topUpEarlyCrucibleWarmPlayerSpec(staged);
-      return;
+      // The door staged this warm before a run existed, so it scoped to the default ruleset
+      // (swarm, wave-1 eligibility). A scored/boss_circuit launch can field the whole roster —
+      // the scoped cohort would leave its hulls cold. Restart unscoped and let the cook's own
+      // begin take the whole-roster branch.
+      if (state.run.ruleset !== SWARM_RULESET) {
+        this._discardEarlyCrucibleWarm();
+      } else {
+        this._earlyCrucibleWarmMenu = false;
+        this._topUpEarlyCrucibleWarmPlayerSpec(staged);
+        return;
+      }
     }
     if (state.mode !== 'loading') return;
     if (!survivalRunHoldsArena(state)) return;
@@ -10847,7 +10907,15 @@ export const render = {
       warm.building = false;
     }
     const { palettes: fallbackPalettes } = poolWitnessPalettesForState(state);
-    const rosterFilePalettes = rosterPoolWitnessFilePalettes(state && state.entityList);
+    // Live entities always contribute their real palettes; the static roster half is scoped
+    // to current-wave eligibility like the ship cohort above — later archetypes' (file, palette)
+    // pairs mint their subjects inside the deferred dwell batch, not the launch cook.
+    const rosterFilePalettes = rosterPoolWitnessFilePalettes(state && state.entityList, {
+      rosterEnemyIds: warm.profile === 'crucible' && warm.swarmScoped === true
+        ? swarmEligibleEnemyIds(Math.max(1,
+            (state && state.run && Number.isInteger(state.run.wave) ? state.run.wave : 1)))
+        : null,
+    });
     const signatureOf = (palette) => [
       palette && palette.hull, palette && palette.accent, palette && palette.thruster,
       palette && palette.dark, palette && palette.finish, palette && palette.wear,
@@ -11031,6 +11099,216 @@ export const render = {
       };
     }
     return root;
+  },
+
+  /**
+   * Between-round roster warm for swarm runs. The launch warm only covers wave 1's
+   * eligibility — every later archetype would otherwise mint its authored compose, its
+   * dead-hulk attach, and its (file × palette) program families on first spawn inside a
+   * measured round. Each wave's newcomer set is known from data (swarmEligibleEnemyIds),
+   * and every wave ends in the player-paced armory, so the whole per-archetype recipe the
+   * launch warm used to pay runs here instead: exemplar builds + authored boundary kicks
+   * + palette subjects, then the same compile→residency→exact-target admission chain any
+   * mid-flight root takes. The draft's exit gate (crucibleDraft's launch control) reads
+   * state.render.swarmDeferredWarm and holds launch until this settles; a skipped draft
+   * still gets the batch through the run:wavePlanned call — its links just land inside
+   * the round's first seconds rather than behind the shop.
+   */
+  _warmSwarmDeferredRoster(nextWave) {
+    const { renderer, scene, state } = this;
+    if (!renderer || !scene || !this.vf || !state || !state.render) return null;
+    const run = state.run;
+    if (!run || run.kind !== 'survival' || run.ruleset !== SWARM_RULESET) return null;
+    if (run.phase === 'ended' || run.phase === 'victory' || run.phase === 'inactive') return null;
+    if (!Number.isInteger(nextWave) || nextWave < 2) return null;
+    if (!(this._swarmWarmCoveredEnemyIds instanceof Set)) {
+      // No launch warm ran this session (mid-run restore off the cook path): every hull the
+      // cleared waves could field already spawned — and linked — in the rounds played, so the
+      // ledger starts at current-wave eligibility and the batch below takes only newcomers.
+      this._swarmWarmCoveredEnemyIds = new Set(swarmEligibleEnemyIds(run.wave || 1));
+    }
+    const fresh = [...swarmEligibleEnemyIds(nextWave)]
+      .filter((enemyId) => !this._swarmWarmCoveredEnemyIds.has(enemyId));
+    if (fresh.length === 0) return null;
+    // Mark before building: a second trigger (cleanup -> draft -> wavePlanned) must not
+    // double-queue the same exemplars. A build that throws unmarks so the next dwell retries.
+    for (const enemyId of fresh) this._swarmWarmCoveredEnemyIds.add(enemyId);
+    const freshSet = new Set(fresh);
+
+    const warm = { root: new THREE.Group(), pendingAttachments: [], building: true };
+    const root = warm.root;
+    root.name = `SF_SwarmDeferredWarm_w${nextWave}`;
+    root.visible = false;
+    // The cohort tag parks/releases this root with the launch warm's — compiled programs and
+    // uploaded buffers survive the detach, and run end still disposes the whole subtree.
+    root.userData.rosterPrewarm = 'deferred-warm';
+    if (root.parent !== scene) scene.add(root);
+    this._rosterPrewarmRoots.push(root);
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const track = (promise, label = 'deferred-warm') => {
+      const settled = Promise.resolve(promise).catch(() => null);
+      if (this._rosterPrewarmPending) {
+        this._rosterPrewarmPending.add(settled);
+        if (this._rosterPrewarmPendingLabels) this._rosterPrewarmPendingLabels.set(settled, label);
+        settled.finally(() => {
+          if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
+        });
+      }
+      return settled;
+    };
+    const unmark = () => {
+      for (const enemyId of fresh) this._swarmWarmCoveredEnemyIds.delete(enemyId);
+    };
+
+    try {
+      const shipSpecs = swarmRosterShipExemplarSpecs('deferred-warm:ship:', { enemyIds: freshSet });
+      for (const spec of shipSpecs) {
+        // Twin witnesses: a packaged hull promotes its direct-mesh candidate into a
+        // GLTFKit_InstancePool chunk on the SECOND same-key owner — one exemplar leaves the
+        // promotion (chunk program link + bufferData) for the first live twin spawn.
+        for (let witness = 0; witness < 2; witness += 1) {
+          let ship = null;
+          try { ship = this.vf.build(spec); } catch (error) {
+            console.warn('[render] deferred swarm warm ship build failed', spec && spec.id, error);
+            break;
+          }
+          if (!ship) break;
+          ship.visible = false;
+          root.add(ship);
+          if (typeof ship.userData?.requestAuthoredUpgrade === 'function') {
+            warm.pendingAttachments.push(track(requestAuthoredUpgrade(ship, renderer, scene, {
+              residencyRole: 'crucible-roster-warm',
+              sectorId,
+              deferPackagePoolActivation: false,
+              deferBoundaryPublication: true,
+              overlapAuthoredPipelineCompile: true,
+              upgradeJobKey: `deferred-warm:job:${spec.id}:w${witness}`,
+            }), `ship:${spec.id}:w${witness}`));
+          }
+        }
+      }
+      // The first kill of a newcomer draws its dead hulk — the 'place'-slot packaged attach
+      // the live hull's 'hull' decode never produces. Same exemplar the launch warm builds.
+      for (const spec of hulkExemplarSpecsForShips(shipSpecs, 'deferred-warm:hulk:')) {
+        try {
+          const hulk = this.vf.build(spec);
+          if (!hulk) continue;
+          hulk.visible = false;
+          root.add(hulk);
+          if (typeof hulk.userData?.requestAuthoredUpgrade === 'function') {
+            warm.pendingAttachments.push(track(
+              hulk.userData.requestAuthoredUpgrade(renderer, scene, {
+                residencyRole: 'crucible-roster-warm',
+                sectorId,
+              }),
+              `hulk:${spec.id}`,
+            ));
+          }
+        } catch (error) {
+          console.warn('[render] deferred swarm warm hulk build failed', spec && spec.id, error);
+        }
+      }
+    } catch (error) {
+      console.warn('[render] deferred swarm warm build failed', error);
+      unmark();
+      return null;
+    }
+
+    // Settle: authored attaches land first (they decode the records the palette pass reads),
+    // then the (file x palette) subjects mint exactly like finish() does, then the whole root
+    // runs the mid-flight admission chain — compile, residency upload, exact-target touch.
+    const done = Promise.allSettled(warm.pendingAttachments)
+      .then(() => this._mintDeferredPaletteSubjects(root, freshSet, sectorId))
+      .then(() => (
+        state.render && typeof state.render.compileObjectPipelines === 'function'
+          ? state.render.compileObjectPipelines(root, { explicit: true })
+          : null
+      ))
+      // The compile links programs and touches buffers, but texture uploads live on the
+      // residency lane — without this leg a newcomer file's maps would upload on its first
+      // in-round draw (the PQ-210.00 zero-first-draw-upload rule).
+      .then(() => (
+        state.render && typeof state.render.prepareAuthoredGpuResidency === 'function'
+          ? state.render.prepareAuthoredGpuResidency(root, { isActive: false })
+          : null
+      ))
+      .catch((error) => {
+        console.warn('[render] deferred swarm warm compile failed', error);
+        // Coverage only counts what actually compiled: unmark so the next dwell (or the
+        // wavePlanned fallback) retries the batch instead of leaving its links in-round.
+        unmark();
+      })
+      .then(() => {
+        warm.building = false;
+        try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
+        const record = state.render && state.render.swarmDeferredWarm;
+        if (record && record.wave === nextWave) {
+          state.render.swarmDeferredWarm = { wave: nextWave, pending: false, promise: record.promise };
+        }
+      });
+    state.render.swarmDeferredWarm = { wave: nextWave, pending: true, promise: done };
+    return done;
+  },
+
+  /**
+   * The deferred half of finish()'s palette pass: sharedMaterialFor(material, tags, palette)
+   * families a live spawn's poolable surfaces draw, which no exemplar composition links.
+   * One direct mesh + one count-0 instanced twin per (poolable key x palette), exactly the
+   * launch recipe, scoped to this wave's fresh archetypes.
+   */
+  async _mintDeferredPaletteSubjects(root, freshSet, sectorId) {
+    const { renderer, state } = this;
+    if (!root || !renderer) return;
+    let records = [];
+    try {
+      records = await listDecodedAuthoredParts(renderer, { settledOnly: true });
+    } catch (error) {
+      console.warn('[render] deferred swarm warm census failed', error);
+      return;
+    }
+    const rosterFilePalettes = rosterPoolWitnessFilePalettes([], { rosterEnemyIds: freshSet });
+    if (rosterFilePalettes.size === 0) return;
+    const normalizeFile = (url) => String(url || '')
+      .replace(/\\/g, '/').split(/[?#]/, 1)[0].replace(/^.*\/parts\//, '');
+    const seenPairs = new Set();
+    let minted = 0;
+    for (const { cacheKey, record } of records) {
+      if (!record) continue;
+      const parts = String(cacheKey || '').split('::');
+      if (parts[1] !== 'hull') continue;
+      const palettes = rosterFilePalettes.get(normalizeFile(parts[0]));
+      if (!palettes) continue;
+      for (const palette of palettes.values()) {
+        let subjects = [];
+        try { subjects = paletteWarmSubjectsForRecord(record, palette); }
+        catch (error) {
+          console.warn('[render] deferred swarm warm palette subjects failed', record.assetId || parts[0], error);
+        }
+        for (const subject of subjects) {
+          if (!subject || !subject.geometry || !subject.material) continue;
+          const key = `${subject.geometry.uuid}:${subject.material.uuid}`;
+          if (seenPairs.has(key)) continue;
+          seenPairs.add(key);
+          const direct = new THREE.Mesh(subject.geometry, subject.material);
+          direct.visible = true;
+          direct.frustumCulled = false;
+          // Caster flags on both forms: the shadow pass only compiles casters — a live hull
+          // draws this palette share's depth variant as a caster.
+          direct.castShadow = true;
+          direct.name = 'SF_DeferredWarm_PaletteMesh';
+          root.add(direct);
+          const twin = new THREE.InstancedMesh(subject.geometry, subject.material, 1);
+          twin.count = 0;
+          twin.visible = true;
+          twin.frustumCulled = false;
+          twin.castShadow = true;
+          twin.name = 'SF_DeferredWarm_PaletteTwin';
+          root.add(twin);
+          minted += 1;
+        }
+      }
+    }
+    if (minted > 0) canonicalizeObjectSurfaceProgramKeys(root);
   },
 
   /**
@@ -14917,6 +15195,13 @@ function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
 
 function disposeObject(obj) {
   if (!obj || typeof obj.traverse !== 'function') return;
+  // Strip the stashed lost-generation dispose listeners from the whole tree BEFORE any disposal
+  // callback runs. A parked tree carried callbacks the loss-time detach pass never visited, and
+  // firing them during teardown deletes dead handles through the lost managers — every one logs
+  // as `delete: object does not belong to this context` (the v6 Electron storm's residual).
+  // No-op until a context loss stashes the identities; an identity is only removed when the
+  // recorded provenance set holds it, so foreign listeners are never touched.
+  detachStashedStaleWebGlDisposeListeners([obj]);
   obj.traverse((c) => {
     if (!c) return;
     // A boundary torn down while its publication-deferred authored payload is still parked

@@ -504,6 +504,24 @@ export function swarmRosterFor(wave) {
 }
 
 /**
+ * Every enemy id a wave can actually field: the unlocked roster plus the champion's
+ * packages on a boss wave. The launch and between-round GPU warms scope their exemplar
+ * work to this set — hulls a wave can never spawn are deferred to the dwell before it.
+ */
+export function swarmEligibleEnemyIds(wave) {
+  const w = swarmWaveOf(wave);
+  const ids = new Set();
+  for (const entry of swarmRosterFor(w)) ids.add(entry.enemyId);
+  const boss = swarmBossFor(w);
+  if (boss) {
+    for (const pkg of boss.packages || []) {
+      if (pkg && pkg.enemyId) ids.add(pkg.enemyId);
+    }
+  }
+  return ids;
+}
+
+/**
  * The archetype that first becomes legal on exactly this wave, or null. Used for the wave banner.
  * Wave 1 has no newcomer by definition — on the first wave everything is new, so calling the wasp
  * out would be noise rather than a warning.
