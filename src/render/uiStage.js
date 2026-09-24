@@ -25,6 +25,7 @@ import { wholeShipVisualForEntity } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 import { yieldToBrowser } from './startupGpuResidency.js';
+import { buildTitleAttractStage } from './titleAttractStage.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
@@ -159,6 +160,33 @@ const SCENES = Object.freeze({
     floor: { color: 0x2a0c04, roughness: 0.92, size: 900, y: -9.4 },
   },
 
+  // LIVE TITLE (build_map.md §25 Phase 5.2): the deterministic Crucible replay tape
+  // plays behind the menu instead of the authored still. There is no authored set —
+  // the fight is the picture. The title's plate keeps covering load/failure exactly as
+  // it does for the still, so a tape or hull that cannot run fails closed to the still.
+  'title-attract': {
+    live: 'titleAttract',
+    sky: {
+      zenith: 0x060a13, horizon: 0x141d2e, ground: 0x05070c,
+      horizonSoftness: 0.5, stars: 0.9, starSeed: 2947,
+    },
+    fog: { color: 0x0a101c, density: 0.0012 },
+    lights: {
+      // Open space, no shadow pass: the fight is the subject and a shadow map over a
+      // moving arena buys nothing the key + rim do not already say.
+      key: { color: 0xcfe0ff, intensity: 1.9, dir: [-0.42, 0.78, 0.46], shadow: false },
+      rim: { color: 0x7fa8ff, intensity: 1.1, dir: [0.72, 0.3, -0.6] },
+      hemi: { sky: 0x27324e, ground: 0x0b0d13, intensity: 0.6 },
+      ambient: { color: 0x161a26, intensity: 0.4 },
+      practicals: [],
+    },
+    // The live module owns the camera (a slow orbit around the fight centroid); these
+    // values are only the first-frame seed before its update runs.
+    camera: { at: [0, 120, 170], target: [0, 0, 0], fov: 42 },
+    drift: { yaw: 0.02, pitch: 0.006, period: 70 },
+    props: [],
+  },
+
   'held-world': null,
 });
 
@@ -289,7 +317,7 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   stage.clock += motionAllowed(state) ? dt : 0;
 
   try {
-    drawStage(stage, renderer, state);
+    drawStage(stage, renderer, state, dt);
   } catch (error) {
     console.warn('[uiStage] stage draw failed', error);
     publishStatus(request, 'unavailable');
@@ -297,7 +325,7 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
     return false;
   }
 
-  if (!stage.hullDrawn) publishStatus(request, 'loading');
+  if (!stage.hullDrawn) publishStatus(request, stage.liveFailed ? 'unavailable' : 'loading');
   // A drawn frame is not a SEEN frame. A host can hide the world canvas — the reference-frame
   // capture does exactly that, and a forced-colours or reduced-transparency host may too — and a
   // screen that faded its authored plate out for a stage nobody can see is a black screen. Report
@@ -322,6 +350,10 @@ export function releaseUiStage(reason = 'release') {
     if (residency && typeof residency.releaseOwner === 'function') {
       residency.releaseOwner(dying.residencyOwner, `ui-stage-${reason || 'release'}`);
     }
+  }
+  if (dying.live && typeof dying.live.dispose === 'function') {
+    try { dying.live.dispose(); } catch (error) { console.warn('[uiStage] live content dispose failed', error); }
+    dying.live = null;
   }
   try {
     dying.scene.traverse((node) => {
@@ -368,6 +400,7 @@ export function uiStageReport() {
     lastScene,
     status: lastStatus,
     phase: stage ? stage.phase : 'none',
+    live: !!(stage && stage.live),
     hullDrawn: !!(stage && stage.hullDrawn),
     props: stage ? stage.propsLoaded : 0,
     propsRequested: stage ? stage.propsRequested : 0,
@@ -501,6 +534,40 @@ function buildStage(id, renderer, request, hullFile) {
 async function loadSceneContent(built, renderer, request) {
   const { spec } = built;
   built.phase = 'loading-props';
+
+  // Live scenes own no authored props or seated hull — their content module builds the
+  // world (for the title, the deterministic Crucible replay). The same discipline holds:
+  // admit the whole set into the graph invisible, compile, then reveal in one frame.
+  if (spec.live === 'titleAttract') {
+    let live = null;
+    try {
+      live = await buildTitleAttractStage(built, {
+        loadPart: (file, slot) => loadPart(file, renderer, slot, built),
+      });
+    } catch (error) {
+      lastError = error && error.message ? error.message : String(error);
+      console.warn('[uiStage] live title content failed; the plate stays', error);
+      live = null;
+    }
+    // Released while the live content was still building: the stage's traverse never sees
+    // roots that were never admitted, so the live owner must dispose its own pools here.
+    if (built.disposed) { live?.dispose?.(); return; }
+    built.phase = 'preparing';
+    const admitted = live && Array.isArray(live.roots) ? live.roots.filter(Boolean) : [];
+    await prepareForFirstDraw(admitted, renderer, built);
+    if (built.disposed) { live?.dispose?.(); return; }
+    for (const group of admitted) group.visible = true;
+    built.live = live;
+    built.marks.prepared = stageNow() - built.marks.start;
+    built.hullDrawn = !!(live && live.ready === true);
+    built.liveFailed = !built.hullDrawn;
+    built.phase = built.hullDrawn ? 'live' : 'no-hull';
+    if (!built.hullDrawn) {
+      console.warn('[uiStage] live title has nothing to show; the stage stays on its plate');
+    }
+    return;
+  }
+
   const hullFile = built.hullFile;
 
   const propGroups = await Promise.all(spec.props.map(async (placement, index) => {
@@ -899,14 +966,23 @@ function applyCamera(built, time) {
   camera.lookAt(_stageTarget);
 }
 
-function drawStage(built, renderer, state) {
+function drawStage(built, renderer, state, dt = 0) {
   const size = renderer.getSize(_stageSize);
   const aspect = size.y > 0 ? size.x / size.y : 16 / 9;
   if (Math.abs(built.camera.aspect - aspect) > 1e-4) {
     built.camera.aspect = aspect;
     built.camera.updateProjectionMatrix();
   }
-  applyCamera(built, built.clock);
+  // Live content poses its world first and may own the camera outright (the attract's
+  // orbit follows the fight, not the authored drift). A throwing live update must not
+  // kill the draw — the frame still renders whatever was posed last.
+  if (built.live && typeof built.live.update === 'function') {
+    try { built.live.update(built, dt); }
+    catch (error) {
+      if (!built.liveUpdateWarned) { built.liveUpdateWarned = true; console.warn('[uiStage] live update failed', error); }
+    }
+  }
+  if (!(built.live && built.live.controlsCamera)) applyCamera(built, built.clock);
   for (const rider of built.skyRiders) rider.position.copy(built.camera.position);
   if (built.rig.shadows && built.hullDrawn && built.shadowsRendered !== true) {
     built.shadowsRendered = true;
