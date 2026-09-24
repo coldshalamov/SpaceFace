@@ -93,6 +93,14 @@ test('only injected non-transition workloads hold the measured pose', async () =
     'station scenarios restore the exact Flyby Focus journal after measurement');
   assert.match(source, /flybyFocus: !snapshot\.isolatesFlybyFocus[\s\S]*sameFlybyFocus/,
     'restoration fails closed when the Flyby Focus journal does not round-trip');
+  // Injected ships carry a live thrust intent — without a pose hold they boost past the render
+  // glass during a slow authored-admission wait and the ready predicate can never converge
+  // (observed: unmeshed ships 1,300 WU out). The hold must pin position back to the arm-time
+  // hold point, not merely zero velocity once.
+  assert.match(source, /holdsMeasuredPose && snapshot\.liveInjectedIds\.length[\s\S]*poseHoldTimer = setInterval/);
+  assert.match(source, /entity\.pos\.set\(hold\.x, 0, hold\.z\)[\s\S]*stabilizeAuthoredPose\(entity\)/);
+  assert.match(source, /if \(snapshot\.poseHoldTimer != null\) clearInterval\(snapshot\.poseHoldTimer\)/);
+  assert.match(source, /activityStopped: snapshot\.activityTimer == null && snapshot\.poseHoldTimer == null/);
 });
 
 test('presentation-world scenarios use live owner journals and restore temporary authority exactly', async () => {

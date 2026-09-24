@@ -70,6 +70,7 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       liveInjectedIds: [],
       retiredInjectedIds: [],
       activityTimer: null,
+      poseHoldTimer: null,
       timeScale: state.timeScale,
       playerTargetId: state.player?.targetId ?? null,
       flybyFocus: id.startsWith('station_') && state.player?.flybyFocus
@@ -273,6 +274,29 @@ export async function preparePerformanceScenario(page, scenarioId, { seed = 47, 
       player.rot = Math.PI;
       player.prevRot = player.rot;
       snapshot.physicsPoseSynchronized = syncPlayerPhysics(player, snapshot.player.noInterp);
+    }
+
+    if (holdsMeasuredPose && snapshot.liveInjectedIds.length) {
+      // The measured-pose hold pins the player at arm, but injected combat/transparent ships
+      // carry a live thrust intent — under admission starvation they boost past the render
+      // glass before their mesh lands, and the ready wait can never converge (observed:
+      // unmeshed ships 1,300 WU out after a 300 s starve). Pin injected ships the same way so
+      // admission latency cannot relocate the measured scene.
+      for (const entityId of snapshot.liveInjectedIds) {
+        const entity = state.entities.get(entityId);
+        if (entity?.data?.perfScenario && entity.pos) {
+          entity.data.perfScenario.holdPos = { x: entity.pos.x, z: entity.pos.z };
+        }
+      }
+      snapshot.poseHoldTimer = setInterval(() => {
+        for (const entityId of snapshot.liveInjectedIds) {
+          const entity = state.entities.get(entityId);
+          const hold = entity?.data?.perfScenario?.holdPos;
+          if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos || !hold) continue;
+          entity.pos.set(hold.x, 0, hold.z);
+          stabilizeAuthoredPose(entity);
+        }
+      }, 250);
     }
 
     return {
@@ -1276,6 +1300,8 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
     }
     if (snapshot.activityTimer != null) clearInterval(snapshot.activityTimer);
     snapshot.activityTimer = null;
+    if (snapshot.poseHoldTimer != null) clearInterval(snapshot.poseHoldTimer);
+    snapshot.poseHoldTimer = null;
     if (snapshot.miningDiagnosticArmed) {
       sf.bus.emit('mining:stop', {
         minerId: state.playerId,
@@ -1330,6 +1356,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
         inField: state?.world?.asteroidField?.byId?.has?.(id) === true,
       })).filter((r) => r.inEntities || r.inMeshes || r.slot >= 0);
       const stuckIds = stuck.map((r) => r.id);
+      const prev = window.__SF_SCENARIO_RESTORE_WAIT_LAST__;
       const detail = {
         scenarioId: expectedId,
         stuckIds,
@@ -1344,6 +1371,17 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
         baselineFrameOrigin: baseline?.frameOrigin,
         membraneSeq: render?._frameMembrane?.seq,
         frameOriginSeq: state?.world?.frameOriginSeq,
+        // Sim-clock fields: entity:destroyed is bus-queued and only flushed inside lifetimeSweep
+        // on a sim tick. A frozen clock leaks inMeshes/slot forever — the deltas name it.
+        tick: state?.tick ?? null,
+        simTime: state?.simTime ?? null,
+        timeScale: state?.timeScale ?? null,
+        mode: state?.mode ?? null,
+        paused: state?.paused === true || null,
+        tickDelta: prev && Number.isFinite(prev.tick) && Number.isFinite(state?.tick)
+          ? state.tick - prev.tick : null,
+        simTimeDelta: prev && Number.isFinite(prev.simTime) && Number.isFinite(state?.simTime)
+          ? state.simTime - prev.simTime : null,
       };
       window.__SF_SCENARIO_RESTORE_WAIT_LAST__ = detail;
       if (stuckIds.length) return false;
@@ -1402,7 +1440,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
     const checks = routeProgression ? {
       injectedEntitiesRemoved: remainingInjectedIds.length === 0,
       timeScale: state.timeScale === snapshot.timeScale,
-      activityStopped: snapshot.activityTimer == null,
+      activityStopped: snapshot.activityTimer == null && snapshot.poseHoldTimer == null,
       miningDiagnosticStopped: !snapshot.miningDiagnosticArmed
         || (snapshot.miningDiagnosticStopped === true && vfxSystem?._miningBeam?.active !== true),
       routeProgressed: state.world?.currentSectorId !== snapshot.currentSectorId,
@@ -1416,7 +1454,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       playerRotation: player?.rot === snapshot.player.rot && player?.prevRot === snapshot.player.prevRot,
       flybyFocus: !snapshot.isolatesFlybyFocus
         || sameFlybyFocus(state.player?.flybyFocus, snapshot.flybyFocus),
-      activityStopped: snapshot.activityTimer == null,
+      activityStopped: snapshot.activityTimer == null && snapshot.poseHoldTimer == null,
       miningDiagnosticStopped: !snapshot.miningDiagnosticArmed
         || (snapshot.miningDiagnosticStopped === true && vfxSystem?._miningBeam?.active !== true),
       playerNoInterp: !player?.flags || player.flags.noInterp === snapshot.player.noInterp,
