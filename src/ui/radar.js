@@ -63,6 +63,181 @@ const MAX_SEMANTIC_INFRASTRUCTURE = 20;
 const ASTEROID_FIELD_CELLS = 9;
 const ASTEROID_DOT_LIMIT = 14;
 
+/** Bench A/B: production default ON. Quantized-player still-layer skips asteroid field walk. */
+let RADAR_ASTEROID_STILL_LAYER = true;
+export function setRadarAsteroidStillLayerForBench(enabled) {
+  RADAR_ASTEROID_STILL_LAYER = enabled !== false;
+}
+export function getRadarAsteroidStillLayerForBench() {
+  return RADAR_ASTEROID_STILL_LAYER !== false;
+}
+
+/** Bench A/B: production default ON. drawTrail uses one path/stroke instead of per-segment. */
+let RADAR_DRAW_TRAIL_BATCH = true;
+export function setRadarDrawTrailBatchForBench(enabled) {
+  RADAR_DRAW_TRAIL_BATCH = enabled !== false;
+}
+export function getRadarDrawTrailBatchForBench() {
+  return RADAR_DRAW_TRAIL_BATCH !== false;
+}
+
+/** Rescan while still-latched (~0.5 s at 10 Hz radar). */
+const RADAR_ASTEROID_STILL_RESCAN_DRAWS = 5;
+
+/**
+ * Asteroid field census for radar.draw. When the still-layer latch is armed and the
+ * quantized player pose / range / target / field+index versions match, skips the source
+ * walk and reuses the retained cell counts + near-dot slots (picture-identical at ≤1 px).
+ * `cache` is a retained record owned by createRadar (or the microbench).
+ */
+export function censusRadarAsteroidStillLayer({
+  asteroidSource,
+  player,
+  playerX,
+  playerZ,
+  range,
+  rangeSq,
+  radarScale,
+  center,
+  size,
+  targetId,
+  fieldVersion,
+  indexVersion,
+  entities,
+  fieldCellCounts,
+  nearRockSlots,
+  cache,
+}) {
+  const fieldCellPx = size / ASTEROID_FIELD_CELLS;
+  const stillQx = Math.round(playerX * radarScale);
+  const stillQz = Math.round(playerZ * radarScale);
+  const stillLayerOn = RADAR_ASTEROID_STILL_LAYER !== false;
+  const stillHit = stillLayerOn
+    && cache.armed
+    && stillQx === cache.qx
+    && stillQz === cache.qz
+    && range === cache.range
+    && size === cache.size
+    && targetId === cache.targetId
+    && fieldVersion === cache.fieldVersion
+    && indexVersion === cache.indexVersion
+    && cache.rescanDraws > 0;
+
+  if (stillHit) {
+    cache.rescanDraws -= 1;
+    cache.skipped = true;
+    return {
+      fieldOccupied: cache.fieldOccupied,
+      nearRockCount: cache.nearRockCount,
+      targetAsteroid: cache.targetValid
+        ? (cache.targetOut.x = cache.targetX, cache.targetOut.y = cache.targetY, cache.targetOut)
+        : null,
+      skipped: true,
+    };
+  }
+
+  fieldCellCounts.fill(0);
+  let fieldOccupied = 0;
+  let nearRockCount = 0;
+  let targetAsteroid = null;
+  const get = entities && typeof entities.get === 'function' ? entities.get.bind(entities) : null;
+
+  for (let i = 0; i < asteroidSource.length; i += 1) {
+    const entity = asteroidSource[i];
+    if (
+      !entity
+      || !entity.pos
+      || !entity.alive
+      || entity === player
+      || entity.type !== 'asteroid'
+    ) continue;
+    const liveRock = get ? get(entity.id) : null;
+    if (liveRock && liveRock !== entity) continue;
+    if (!liveRock && !entity.fieldResident) continue;
+    const dx = entity.pos.x - playerX;
+    const dz = entity.pos.z - playerZ;
+    const distanceSq = dx * dx + dz * dz;
+    if (distanceSq > rangeSq) continue;
+    const x = center - dx * radarScale;
+    const y = center - dz * radarScale;
+    const gx = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(x / fieldCellPx)));
+    const gy = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(y / fieldCellPx)));
+    const key = gy * ASTEROID_FIELD_CELLS + gx;
+    if (fieldCellCounts[key] === 0) fieldOccupied += 1;
+    fieldCellCounts[key] += 1;
+    if (nearRockCount < ASTEROID_DOT_LIMIT) {
+      const slot = nearRockSlots[nearRockCount++];
+      slot.x = x; slot.y = y; slot.distanceSq = distanceSq;
+      for (let k = nearRockCount - 1; k > 0 && nearRockSlots[k].distanceSq < nearRockSlots[k - 1].distanceSq; k--) {
+        const tmp = nearRockSlots[k];
+        nearRockSlots[k] = nearRockSlots[k - 1];
+        nearRockSlots[k - 1] = tmp;
+      }
+    } else if (distanceSq < nearRockSlots[nearRockCount - 1].distanceSq) {
+      const slot = nearRockSlots[nearRockCount - 1];
+      slot.x = x; slot.y = y; slot.distanceSq = distanceSq;
+      for (let k = nearRockCount - 1; k > 0 && nearRockSlots[k].distanceSq < nearRockSlots[k - 1].distanceSq; k--) {
+        const tmp = nearRockSlots[k];
+        nearRockSlots[k] = nearRockSlots[k - 1];
+        nearRockSlots[k - 1] = tmp;
+      }
+    }
+    if (entity.id === targetId) {
+      if (!cache.targetOut) cache.targetOut = { x: 0, y: 0 };
+      cache.targetOut.x = x;
+      cache.targetOut.y = y;
+      targetAsteroid = cache.targetOut;
+    }
+  }
+
+  cache.qx = stillQx;
+  cache.qz = stillQz;
+  cache.range = range;
+  cache.size = size;
+  cache.targetId = targetId;
+  cache.fieldVersion = fieldVersion;
+  cache.indexVersion = indexVersion;
+  cache.fieldOccupied = fieldOccupied;
+  cache.nearRockCount = nearRockCount;
+  if (targetAsteroid) {
+    cache.targetX = targetAsteroid.x;
+    cache.targetY = targetAsteroid.y;
+    cache.targetValid = true;
+  } else {
+    cache.targetValid = false;
+  }
+  cache.rescanDraws = RADAR_ASTEROID_STILL_RESCAN_DRAWS;
+  cache.armed = true;
+  cache.skipped = false;
+  return {
+    fieldOccupied,
+    nearRockCount,
+    targetAsteroid,
+    skipped: false,
+  };
+}
+
+export function createRadarAsteroidStillCache() {
+  return {
+    armed: false,
+    qx: NaN,
+    qz: NaN,
+    range: NaN,
+    size: 0,
+    targetId: null,
+    fieldVersion: NaN,
+    indexVersion: NaN,
+    fieldOccupied: 0,
+    nearRockCount: 0,
+    targetX: 0,
+    targetY: 0,
+    targetValid: false,
+    targetOut: { x: 0, y: 0 },
+    rescanDraws: 0,
+    skipped: false,
+  };
+}
+
 /* Deckplate one-accent law (2026-09-18): the radar scope is an instrument of THIS ship, not a
    multicolor sticker chart. Friendly/faction contacts read as warm bone; the lamp itself is kept for
    the objective and the selection, and hostile is the lamp driven red. Shape carries role. The keys
@@ -205,16 +380,30 @@ function drawTrail(g, entity, playerX, playerZ, scale, center, colour) {
   g.save();
   g.lineWidth = 1;
   g.strokeStyle = colour;
-  for (let i = 1; i < history.length; i += 1) {
-    g.globalAlpha = (i / history.length) * 0.2;
-    const x0 = center - (history[i - 1].x - playerX) * scale;
-    const y0 = center - (history[i - 1].z - playerZ) * scale;
-    const x1 = center - (history[i].x - playerX) * scale;
-    const y1 = center - (history[i].z - playerZ) * scale;
+  if (RADAR_DRAW_TRAIL_BATCH !== false) {
+    // One continuous path, one stroke. Prior per-segment stroke faded 0→0.2; a single mid
+    // alpha keeps the same readable wake without N canvas strokes on the 10 Hz draw path.
+    g.globalAlpha = 0.12;
     g.beginPath();
-    g.moveTo(x0, y0);
-    g.lineTo(x1, y1);
+    for (let i = 0; i < history.length; i += 1) {
+      const x = center - (history[i].x - playerX) * scale;
+      const y = center - (history[i].z - playerZ) * scale;
+      if (i === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
     g.stroke();
+  } else {
+    for (let i = 1; i < history.length; i += 1) {
+      g.globalAlpha = (i / history.length) * 0.2;
+      const x0 = center - (history[i - 1].x - playerX) * scale;
+      const y0 = center - (history[i - 1].z - playerZ) * scale;
+      const x1 = center - (history[i].x - playerX) * scale;
+      const y1 = center - (history[i].z - playerZ) * scale;
+      g.beginPath();
+      g.moveTo(x0, y0);
+      g.lineTo(x1, y1);
+      g.stroke();
+    }
   }
   g.restore();
 }
@@ -740,6 +929,8 @@ export function createRadar(ctx) {
   const radarQueryScratch = [];
   const fieldCellCounts = new Uint16Array(ASTEROID_FIELD_CELLS * ASTEROID_FIELD_CELLS);
   const nearRockSlots = Array.from({ length: ASTEROID_DOT_LIMIT }, () => ({ x: 0, y: 0, distanceSq: Infinity }));
+  // Asteroid still-layer cache (see censusRadarAsteroidStillLayer).
+  const asteroidStillCache = createRadarAsteroidStillCache();
   const hostileMarks = [];
   const infrastructureMarks = [];
   // Retained projection + mark slots: projectRadarPoint used to Object.freeze a fresh record
@@ -800,6 +991,8 @@ export function createRadar(ctx) {
     clearAllTrails();
     if (expanded) setExpanded(false);
     markContactsDirty();
+    asteroidStillCache.armed = false;
+    asteroidStillCache.rescanDraws = 0;
   }
 
   if (bus && typeof bus.on === 'function') {
@@ -1017,53 +1210,32 @@ export function createRadar(ctx) {
       }
     }
 
-    let targetAsteroid = null;
+    const field = state.world && state.world.asteroidField;
+    const fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
+    const index = state.entityIndex;
+    const indexVersion = index && index.__spacefaceEntityIndexV1 ? (index.version || 0) : -1;
+    const asteroidCensus = censusRadarAsteroidStillLayer({
+      asteroidSource,
+      player,
+      playerX,
+      playerZ,
+      range,
+      rangeSq,
+      radarScale,
+      center,
+      size,
+      targetId,
+      fieldVersion,
+      indexVersion,
+      entities: state.entities,
+      fieldCellCounts,
+      nearRockSlots,
+      cache: asteroidStillCache,
+    });
+    const fieldOccupied = asteroidCensus.fieldOccupied;
+    const nearRockCount = asteroidCensus.nearRockCount;
+    const targetAsteroid = asteroidCensus.targetAsteroid;
     const fieldCellPx = size / ASTEROID_FIELD_CELLS;
-    fieldCellCounts.fill(0);
-    let fieldOccupied = 0;
-    let nearRockCount = 0;
-    for (let i = 0; i < asteroidSource.length; i += 1) {
-      const entity = asteroidSource[i];
-      if (
-        !entity
-        || !entity.pos
-        || !entity.alive
-        || entity === player
-        || entity.type !== 'asteroid'
-      ) continue;
-      const liveRock = state.entities && state.entities.get && state.entities.get(entity.id);
-      if (liveRock && liveRock !== entity) continue;
-      if (!liveRock && !entity.fieldResident) continue;
-      const dx = entity.pos.x - playerX;
-      const dz = entity.pos.z - playerZ;
-      const distanceSq = dx * dx + dz * dz;
-      if (distanceSq > rangeSq) continue;
-      const x = center - dx * radarScale;
-      const y = center - dz * radarScale;
-      const gx = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(x / fieldCellPx)));
-      const gy = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(y / fieldCellPx)));
-      const key = gy * ASTEROID_FIELD_CELLS + gx;
-      if (fieldCellCounts[key] === 0) fieldOccupied += 1;
-      fieldCellCounts[key] += 1;
-      if (nearRockCount < ASTEROID_DOT_LIMIT) {
-        const slot = nearRockSlots[nearRockCount++];
-        slot.x = x; slot.y = y; slot.distanceSq = distanceSq;
-        for (let k = nearRockCount - 1; k > 0 && nearRockSlots[k].distanceSq < nearRockSlots[k - 1].distanceSq; k--) {
-          const tmp = nearRockSlots[k];
-          nearRockSlots[k] = nearRockSlots[k - 1];
-          nearRockSlots[k - 1] = tmp;
-        }
-      } else if (distanceSq < nearRockSlots[nearRockCount - 1].distanceSq) {
-        const slot = nearRockSlots[nearRockCount - 1];
-        slot.x = x; slot.y = y; slot.distanceSq = distanceSq;
-        for (let k = nearRockCount - 1; k > 0 && nearRockSlots[k].distanceSq < nearRockSlots[k - 1].distanceSq; k--) {
-          const tmp = nearRockSlots[k];
-          nearRockSlots[k] = nearRockSlots[k - 1];
-          nearRockSlots[k - 1] = tmp;
-        }
-      }
-      if (entity.id === targetId) targetAsteroid = { x, y };
-    }
     if (fieldOccupied) {
       g.save();
       g.beginPath();
@@ -1404,6 +1576,8 @@ export function createRadar(ctx) {
 
   function invalidate() {
     markContactsDirty();
+    asteroidStillCache.armed = false;
+    asteroidStillCache.rescanDraws = 0;
   }
 
   function destroy() {
