@@ -1,13 +1,14 @@
-# IMPORT_DIGEST report — 20260924dt (post-#156; **#157 ship** sync-entity-lod-retain)
+# IMPORT_DIGEST report — 20260924du (post-#157; **#158 ship** radar-contacts-still-layer)
 
-Master tip: **`97c88f92b`** (fetched; unchanged since #156 / digests 20260924ds).
+Master tip: **`97c88f92b`** (fetched; unchanged since #157 / digests 20260924dt).
 
 ## Stack refresh
 
-Portable scour branch `vm-work/hillclimb-20260924r` @ bare `origin/master`
-`97c88f92b` + #157 (`/workspace/spaceface-scratch/hillclimb-20260924p` tip
-`105574052`). Stacked WIP remains on `vm-work/hillclimb-20260924o` @ `2911f4458`
-(trust-sleep — not packaged) `/workspace/spaceface-scratch/hillclimb-20260924h`.
+Portable scour branch `vm-work/hillclimb-20260924s` @ bare `origin/master`
+`97c88f92b` + #158 (`/workspace/spaceface-scratch/hillclimb-20260924p` tip
+`7bc4701bd`). Prior #157 scratch `vm-work/hillclimb-20260924r` @ `105574052`
+remains historical. Stacked WIP remains on `vm-work/hillclimb-20260924o` @
+`2911f4458` (trust-sleep — not packaged) `/workspace/spaceface-scratch/hillclimb-20260924h`.
 No restack needed (master tip unchanged). Profile cite remains
 `settled-45s-stacked-20260924ac` (+ `settled-20s-stacked-20260924ad`
 cross-check; Picture ON, soft-GPU; tip through #64).
@@ -16,8 +17,8 @@ cross-check; Picture ON, soft-GPU; tip through #64).
 
 | # | Package |
 |---:|---|
-| 31–156 | (unchanged — see digest 20260924ds / dr / dq / …) |
-| **157** | **`sync-entity-lod-retain`** (~3.9–4.2× median / ≥3.33× floor quiet mix) |
+| 31–157 | (unchanged — see digest 20260924dt / ds / dr / …) |
+| **158** | **`radar-contacts-still-layer`** (~4.26–4.34× median / ≥2.78× floor quiet contact census) |
 
 Including already-packaged but **not yet on master** (do not re-ship):
 `combat-table-pose-incremental` (~4.78×), `stamp-near-work-awake-cache`,
@@ -28,19 +29,19 @@ parked latches, `sync-entity-views-closure-gate`, `micromotion-settled-skip`,
 `hull-scorch-quiet-live-skip`, `countermeasures-quiet-empty-latch`,
 `overlay-quartet-quiet-empty-latch`, weapon-light / rcs-impulse / ribbon /
 arcade-structural / distortion / quarks / discharge / presenter-composite,
-`radar-asteroid-still-layer` (#156), **`sync-entity-lod-retain` (#157)**, etc.
+`radar-asteroid-still-layer` (#156), `sync-entity-lod-retain` (#157),
+**`radar-contacts-still-layer` (#158)**, etc.
 
 ### SKIP / hold (unchanged + this pass)
 
-Carry forward all holds from digest 20260924ds / dr / dq / dp / do / dn / … / da / cz.
+Carry forward all holds from digest 20260924dt / ds / dr / dq / dp / do / … / da / cz.
 
-**#157 pass — NEW:**
-- **SYNC NEW shipped:** projection/LOD retain (#157). Asteroid/station
-  updateLod lastLod + central `_appliedLodLevel` gate.
-- pickup/ordnance/infra updater abs measured thin-to-moderate on bare mocks;
-  not deepened this pass (closure-gate already packages runClosures for the
-  whole micro-motion branch — do not rediscover).
-- HUD contacts still-layer canvas still open if ≥1.5× after #156.
+**#158 pass — NEW:**
+- **HUD NEW shipped:** contacts still-layer (#158). Quantized player + contact-pose
+  signature retains mark census; glyph paint stays live.
+- objective idle deepen abs ~0.37 µs — **thin, not packaged**.
+- pickup/ordnance/infra updater abs still ~2–3 µs thin-to-moderate on bare mocks;
+  not deepened this pass (closure-gate already packages cadence).
 - classify / trust-sleep / packCombat / stampNear / lifetime / law / traffic /
   bandRadio / flying residual — **not casually retried** (held).
 
@@ -55,27 +56,28 @@ Cross-check `settled-20s-stacked-20260924ad`.
 
 | samples | owner | notes |
 |---:|---|---|
-| 323 | `registry.step` | residual after …+#157; fair-aiPorts; packCombat only if not pose-incremental / single-dirty; **imported packCombat/stampNear/lifetime not yet on master** |
+| 323 | `registry.step` | residual after …+#158; fair-aiPorts; packCombat only if not pose-incremental / single-dirty; **imported packCombat/stampNear/lifetime not yet on master** |
 | 269 | `classifyWorld` | residual after …+#141; **flying residual over parked ~1.3×**; flying-early-latch held; NPC/disc-admission still thin |
 | 202 | `syncEntityViews` | residual after …+#157 LOD retain; closures / microMotion already packaged — hunt fresh pickup/ordnance/infra **updater** residuals only; asteroid settled + render-entity-frame retain held |
 | 186 | `prepareFrame` | residual after …+#126 (quiet-VFX floors still held; many quiet-live pools packaged, not on master) |
-| 132 | `hud.frame` | residual after #156; contacts still-layer canvas / objective idle deepen open if ≥1.5× |
+| 132 | `hud.frame` | residual after #156+#158; objective idle deepen thin; further HUD NEW only if ≥1.5× |
 | 111 | `preStep` | **trust-sleep held (bare-master ~1.24×)**; remasure after packCombat+stampNear imports |
 
 ## New packages this pass
 
 | # | Package | Evidence |
 |---:|---|---|
-| **157** | **`sync-entity-lod-retain`** | Quiet mix median **~3.87–4.19×** / floor **≥3.33×** (5×11 isolated); dirty-wake ok; focused **23/23**; am-verify `956734569` |
+| **158** | **`radar-contacts-still-layer`** | Quiet contact census median **~4.26–4.34×** / floor **≥2.78×** (5×11 isolated); dirty-wake ok; focused **18/18**; am-verify `083db86d1` |
 
 ## Scour attempts / misses this pass
 
 | Attempt | Result |
 |---|---|
-| sync projection/LOD retain (central + asteroid/station lastLod) | **SHIP #157** — ~3.9–4.2× / ≥3.33× floor |
-| pickup/ordnance/infra absolute probes | abs present but not chased as separate package (closure-gate already covers cadence; updater residuals deferred) |
+| radar contacts still-layer (quantized player + contact-pose signature) | **SHIP #158** — ~4.26–4.34× / ≥2.78× floor |
+| objective idle deepen (updateObjectiveKey retain) | **thin abs ~0.37 µs** — not packaged |
+| pickup/ordnance/infra updater abs | still thin-to-moderate; deferred (closure-gate covers cadence) |
 | classify / trust-sleep / packCombat / stampNear / lifetime / law / traffic / bandRadio | **not casually retried** (held) |
-| closure-gate / micromotion-settled rediscovery | **not rediscovered** (already packaged) |
+| closure-gate / micromotion-settled / LOD retain / asteroid still-layer rediscovery | **not rediscovered** (already packaged) |
 
 ## Rock audit (unchanged)
 
@@ -83,10 +85,10 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
 
 ## Next poles
 
-1. registry.step after …+#157 — fair-aiPorts / packCombat only if not
-   pose-incremental or single-dirty / further HUD (contacts still-layer canvas /
-   objective idle deepen) if ≥1.5×. After owner imports pose-incremental +
-   stampNear + lifetime, remeasure bare-master preStep before retrying trust-sleep.
+1. registry.step after …+#158 — fair-aiPorts / packCombat only if not
+   pose-incremental or single-dirty / further HUD NEW only if ≥1.5×. After owner
+   imports pose-incremental + stampNear + lifetime, remeasure bare-master
+   preStep before retrying trust-sleep.
 2. syncEntityViews residual after #157 LOD retain — fresh pickup/ordnance/infra
    **updater** residuals only (not closure-gate rediscovery); applySnapshotPose
    hold ~0.85×; asteroid settled ~1.14× + render-entity-frame retain ~1.21× held.
@@ -108,12 +110,14 @@ Quiet Ceres after #31: **11** live rocks pinned. **No legal cut**.
    ai/aiPorts isolation-only sketches (classify-inflated);
    **preStep trust-physicsSleeping bare-master ~1.24×**;
    **bandRadio ~2.2 µs thin**; traffic classify-inflated;
-   **classify flying residual over parked ~1.3×**.
+   **classify flying residual over parked ~1.3×**;
+   **objective idle deepen ~0.37 µs thin**.
 
 ## Scratch
 
-- Portable scour branch: `vm-work/hillclimb-20260924r`
-- Portable worktree: `/workspace/spaceface-scratch/hillclimb-20260924p` @ `105574052` (#157)
+- Portable scour branch: `vm-work/hillclimb-20260924s`
+- Portable worktree: `/workspace/spaceface-scratch/hillclimb-20260924p` @ `7bc4701bd` (#158)
+- Prior #157 scratch: `vm-work/hillclimb-20260924r` @ `105574052`
 - Stacked WIP (trust-sleep only; not packaged): `vm-work/hillclimb-20260924o`
   @ `2911f4458` / `/workspace/spaceface-scratch/hillclimb-20260924h`
 - Master tip: `97c88f92b`
