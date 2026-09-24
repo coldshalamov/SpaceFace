@@ -121,7 +121,10 @@ test('presentation-world scenarios use live owner journals and restore temporary
     'an injected adapter failure removes its authority, resets query/frame state, and proves the next dense frame');
   assert.match(source, /captureVisibleSemantics[\s\S]*same-population visible semantic parity mismatch/);
   assert.match(source, /_livingHullPresentation\.sync/);
-  assert.match(source, /if \(state\.entities\.has\(id\)\) sf\.helpers\.removeEntity\(id\)/);
+  // Immediate removal is the contract: the deferred path only marks alive=false and waits for a
+  // lifetimeSweep sim tick, so a frozen or starved clock strands injected entities in
+  // state.entities and the restore wait never satisfies.
+  assert.match(source, /if \(state\.entities\.has\(id\)\) sf\.helpers\.removeEntity\(id, \{ immediate: true \}\)/);
   assert.match(source, /presentationCountsRestored[\s\S]*presentationMeshesRestored[\s\S]*presentationResourcesIdle/);
 
   const failed = validateScenarioRestoration({
@@ -131,6 +134,18 @@ test('presentation-world scenarios use live owner journals and restore temporary
   });
   assert.equal(failed.pass, false);
   assert.match(failed.failures.join(' | '), /legacyAdapterRestored/);
+});
+
+test('scenario readiness requires driver-visible upload quiescence only when counters are live', async () => {
+  const source = await readFile(new URL('../scripts/lib/performanceScenarioDriver.mjs', import.meta.url), 'utf8');
+  // The gate must never gate an uninstrumented session: no counter, no wait.
+  assert.match(source, /perfApi\?\.tier1\?\.isEnabled\?\.\(\) !== true\) return true/);
+  // The rate is read from the same tier-1 counter the comparator debits.
+  assert.match(source, /getCounterSnapshot\(\)\.totals\?\.bufferUploadBytes/);
+  // Quiet must be sustained, not instantaneous — a single sub-floor poll cannot open the window.
+  assert.match(source, /quiet\.since != null && now - quiet\.since >= uploadQuietRequiredMs/);
+  assert.match(source, /UPLOAD_QUIET_FLOOR_BYTES_PER_SEC = 3 \* 1024 \* 1024/);
+  assert.match(source, /UPLOAD_QUIET_REQUIRED_MS = 1_500/);
 });
 
 test('terminal jump warmup preserves five-second stability inside a bounded longer envelope', async () => {

@@ -774,6 +774,18 @@ function scenarioReadyTimeoutMs() {
   return Number.isFinite(override) && override > 0 ? override : 120_000;
 }
 
+// Driver-visible upload quiescence, part of scenario readiness. The dirty-range comparator reads
+// tier1 postBoot.bufferUploadBytes — every buffer upload, not just the measured owners'. Route and
+// authored-admission churn emit MB-scale ambient uploads for tens of seconds after the admission
+// counters reach zero (2026-09-24 run: ~5.1 MB/s still decaying when the ranged window opened, vs a
+// ~1.5 MB/s steady floor under live combat). A window that opens mid-tail charges the tail to its
+// driver bytes and the shipped variant loses the ratio on traffic it never produced. Readiness
+// therefore requires the driver-visible rate under the steady-state band — 3 MB/s splits the
+// observed tail from the observed combat floor — sustained for 1.5 s. The gate engages only when
+// the tier1 counter set is actually enabled; uninstrumented callers keep the previous semantics.
+const UPLOAD_QUIET_FLOOR_BYTES_PER_SEC = 3 * 1024 * 1024;
+const UPLOAD_QUIET_REQUIRED_MS = 1_500;
+
 async function waitForPresentationWorldBaseline(page, scenarioId, { timeoutMs = scenarioReadyTimeoutMs() } = {}) {
   await page.waitForFunction(() => {
     const sf = window.SF;
@@ -808,7 +820,7 @@ async function waitForPresentationWorldBaseline(page, scenarioId, { timeoutMs = 
 }
 
 export async function waitForPerformanceScenarioReady(page, scenarioId, { timeoutMs = scenarioReadyTimeoutMs() } = {}) {
-  await page.waitForFunction((expectedId) => {
+  await page.waitForFunction(({ expectedId, uploadQuietFloorBytesPerSec, uploadQuietRequiredMs }) => {
     const sf = window.SF;
     const state = sf?.state;
     const snapshot = window.__SF_PERFORMANCE_SCENARIO_RESTORE__;
@@ -844,8 +856,39 @@ export async function waitForPerformanceScenarioReady(page, scenarioId, { timeou
       ? Math.max(0, renderSystem._meshBuildQueue.length - (renderSystem._meshBuildQueueHead || 0))
       : 0;
     const upgrades = state.render?.scene?.userData?.authoredUpgradeDiagnostics;
-    return queueRemaining === 0 && renderSystem?._meshReconcileDirty !== true && Number(upgrades?.activeJobs || 0) === 0;
-  }, scenarioId, { timeout: timeoutMs });
+    if (!(queueRemaining === 0 && renderSystem?._meshReconcileDirty !== true && Number(upgrades?.activeJobs || 0) === 0)) return false;
+
+    const perfApi = window.__SPACEFACE_PERF__;
+    if (typeof perfApi?.getCounterSnapshot !== 'function' || perfApi?.tier1?.isEnabled?.() !== true) return true;
+    const tag = `${expectedId}:${snapshot.resourceStartTime}`;
+    const quiet = window.__SF_SCENARIO_UPLOAD_QUIET__?.tag === tag
+      ? window.__SF_SCENARIO_UPLOAD_QUIET__
+      : (window.__SF_SCENARIO_UPLOAD_QUIET__ = { tag, samples: [], lastAt: null, since: null });
+    const now = performance.now();
+    // getCounterSnapshot allocates a full report — sampling the byte counter at ~10 Hz is enough
+    // for a 1 s rate window, so most polls skip the snapshot entirely.
+    if (quiet.lastAt == null || now - quiet.lastAt >= 100) {
+      const uploadBytes = perfApi.getCounterSnapshot().totals?.bufferUploadBytes;
+      if (!Number.isFinite(uploadBytes)) return true;
+      quiet.samples.push({ at: now, bytes: uploadBytes });
+      quiet.lastAt = now;
+      while (quiet.samples.length > 2 && now - quiet.samples[0].at > 1_000) quiet.samples.shift();
+    }
+    const first = quiet.samples[0];
+    const last = quiet.samples[quiet.samples.length - 1];
+    const spanMs = first && last ? last.at - first.at : 0;
+    const rate = spanMs >= 250
+      ? (last.bytes - first.bytes) / (spanMs / 1_000)
+      : Number.POSITIVE_INFINITY;
+    if (rate <= uploadQuietFloorBytesPerSec) {
+      if (quiet.since == null) quiet.since = now;
+    } else quiet.since = null;
+    return quiet.since != null && now - quiet.since >= uploadQuietRequiredMs;
+  }, {
+    expectedId: scenarioId,
+    uploadQuietFloorBytesPerSec: UPLOAD_QUIET_FLOOR_BYTES_PER_SEC,
+    uploadQuietRequiredMs: UPLOAD_QUIET_REQUIRED_MS,
+  }, { timeout: timeoutMs });
   return page.evaluate((expectedId) => {
     const state = window.SF?.state;
     const snapshot = window.__SF_PERFORMANCE_SCENARIO_RESTORE__;
@@ -874,11 +917,21 @@ export async function waitForPerformanceScenarioReady(page, scenarioId, { timeou
         publisher: copyPublisher(publisher),
       };
     }
+    const quiet = window.__SF_SCENARIO_UPLOAD_QUIET__;
+    const quietSamples = quiet?.samples || [];
+    const quietFirst = quietSamples[0];
+    const quietLast = quietSamples[quietSamples.length - 1];
+    const quietSpanMs = quietFirst && quietLast ? quietLast.at - quietFirst.at : 0;
     return {
       scenarioId: expectedId,
       injectedAlive: entities.filter((entity) => entity.alive !== false).length,
       renderedShips: entities.filter((entity) => entity.type === 'ship' && entity.mesh).length,
       authoredShips: entities.filter((entity) => entity.type === 'ship' && entity.mesh?.userData?.authoredAssetState === 'authored').length,
+      uploadQuiet: {
+        tag: quiet?.tag || null,
+        observedBytesPerSec: quietSpanMs > 0 ? (quietLast.bytes - quietFirst.bytes) / (quietSpanMs / 1_000) : null,
+        quietForMs: quiet?.since != null && quietLast ? quietLast.at - quiet.since : null,
+      },
       presentationWorld: snapshot?.presentationWorldMode ? {
         active: world?.activeCount ?? null,
         bound: world?.boundCount ?? null,
@@ -1175,7 +1228,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
   if (removal.injectedIds?.length || removal.presentationBaseline) {
     // Each poll records which sub-conditions hold so a starvation timeout names the blocker
     // instead of reporting a bare 600 s wait.
-    await page.waitForFunction(({ ids, baseline }) => {
+    await page.waitForFunction(({ ids, baseline, expectedId }) => {
       const sf = window.SF;
       const state = sf?.state;
       const render = sf?.registry?.get?.('render');
@@ -1191,6 +1244,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       })).filter((r) => r.inEntities || r.inMeshes || r.slot >= 0);
       const stuckIds = stuck.map((r) => r.id);
       const detail = {
+        scenarioId: expectedId,
         stuckIds,
         stuck,
         activeCount: world?.activeCount,
@@ -1213,7 +1267,7 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
         && state?.world?.frameOrigin?.x === baseline.frameOrigin.x
         && state?.world?.frameOrigin?.z === baseline.frameOrigin.z
         && render?._frameMembrane?.seq === state?.world?.frameOriginSeq;
-    }, { ids: removal.injectedIds || [], baseline: removal.presentationBaseline || null }, { timeout: scenarioReadyTimeoutMs() }).catch(async (error) => {
+    }, { ids: removal.injectedIds || [], baseline: removal.presentationBaseline || null, expectedId: scenarioId }, { timeout: scenarioReadyTimeoutMs() }).catch(async (error) => {
       const last = await page.evaluate(() => window.__SF_SCENARIO_RESTORE_WAIT_LAST__ || null).catch(() => null);
       log(`[scenario] restore wait starved for ${scenarioId}: ${JSON.stringify(last)}`);
       throw new Error(`scenario restore wait starved for ${scenarioId}: ${JSON.stringify(last)} — ${error?.message || error}`);

@@ -855,6 +855,80 @@ electronLaunchQuotaConsumed: true
 numericAcceptance: unproven
 ```
 
+**Second completed acceptance run (browser, 18:44Z, claim
+`23180-8cd3eed298aac57c5c60d15b`).** Route + both variant windows
+completed in ~3.5 min; both restores `ok=true`. Both windows valid
+(zero shader/link/render-target contamination). Comparison:
+
+```yaml
+rangedLogicalBytes: 1031644
+fullSpanLogicalBytes: 1595244
+logicalByteDriftFraction: 0.3533
+rangedRequestedUploadBytes: 1051708
+fullSpanRequestedUploadBytes: 31354240
+ownerRequestedByteReductionFraction: 0.9481   # ≥ 25% PASS
+rangedDriverUploadBytes: 25720768
+fullSpanDriverUploadBytes: 42142396
+rangedDriverBytesPerLogicalByte: 24.93
+fullSpanDriverBytesPerLogicalByte: 26.42
+driverUploadByteReductionFraction: 0.0562     # ≥ 25% FAIL
+rangedFrameP95: 16.8ms / fullSpanFrameP95: 83.4ms
+```
+
+Four failures: the driver ratio; `windows[0]-pipeline-warmup-unsettled`
+(baseline pipeline fingerprint never held stable inside its 20 s
+envelope under contention); and two warning-class failures carrying
+three `[GPU brick] bloomScene` warnings (393/257/649 ms — first
+bloom-target compiles of the *injected* kestrels' shared materials,
+fired during scenario prepare/warmup, outside either window).
+
+**Ambient-upload tail measured; readiness gate added.** Decomposing
+tier1 `bufferUploadBytes` against owner accounting: the ranged window
+(≈4.8 s) carried ~24.6 MB of ambient (non-owner) upload traffic —
+~5.1 MB/s — while the full-span window (≈7.4 s) carried ~10.8 MB —
+~1.5 MB/s under hotter combat. Ambient upload traffic decays over
+session time; the first window always inherits the post-route tail.
+`waitForPerformanceScenarioReady` therefore now also requires the
+driver-visible upload rate under 3 MB/s sustained for 1.5 s before a
+variant may open its window (symmetric for both variants; engages only
+when tier-1 counters are enabled; bounded by the same
+`SF_SCENARIO_READY_TIMEOUT_MS` host budget). With ambient at the
+steady floor the ranged ratio lands ~11 vs full's ~26 — the gate
+removes the tail that made the metric a lottery. Restore-wait default
+bound also moved 30 s → the shared `scenarioReadyTimeoutMs()` default
+(120 s): the starvation it guards against is the same host-speed class
+as the ready waits.
+
+**GPU bricks are a real product gap, not scenario noise.** The shared
+material (`SF_Shared_mechanical_dark` etc.) keeps a warm *canvas*
+`currentProgram`, so bloom's unready-drawable scan sees it ready —
+but bloom renders to its offscreen target under a different program
+key (linear output path), which compiles lazily on first draw.
+`touchExactTargetSubject`/`bloom.touchScenePipelines` exists to warm
+exactly this variant during admission; the bricks show authored parts
+can reach a presented bloom frame before that touch covers them — a
+~0.4–0.65 s stall a player would also feel when a fresh ship class
+first enters a bloom frame. Worth a demo-ledger row if it persists
+after the readiness gate lands (the gate may also reduce it indirectly
+by holding windows until admission churn fully drains).
+
+Review-surface repairs: a stale source pin in
+`test/performance-scenario-driver.test.mjs` (literal `removeEntity(id)`
+regex) was updated to the deliberate `immediate: true` contract — it
+gates two other manifests' fast gates; the quiet gate gained a source
+pin and `uploadQuiet` fields in the readiness receipt.
+
+```yaml
+unit: PQ-040.native-acceptance (browser leg, third completed run)
+candidateHead: 1e4ed2331
+browserBrokerResult: >-
+  consumed claim; route + both windows complete; restores ok; windows
+  valid; failed on driver ratio (5.6%), pipeline-warmup-unsettled, and
+  three admission-time GPU-brick warnings
+browserLaunchQuotaConsumed: true
+numericAcceptance: unproven
+```
+
 ## Implemented architecture
 
 ### Scene-scoped publication coordinator
