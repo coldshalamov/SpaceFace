@@ -1,0 +1,281 @@
+From 929ae19496c5c9f3ee6ac363ec926daf43b724ff Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 10:54:12 -0400
+Subject: [PATCH] =?UTF-8?q?perf(world):=20still-player=20quiet-latch=20ast?=
+ =?UTF-8?q?eroid-field=20ram=20query=20(~14=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet parked flight still paid queryAsteroidField on the near ram reach
+every tick. Empty latch rarely arms on Ceres (near-disc often non-empty);
+dormant field rocks do not translate, so a still-player latch safely skips
+the grid walk while parked. Wake on asteroidField.version, player move,
+unpark, or 0.5 s rescan. First probe still promotes touching rocks.
+---
+ src/systems/world.js                          |  84 ++++++++++-
+ ...-field-interact-still-quiet-latch.test.mjs | 135 ++++++++++++++++++
+ 2 files changed, 217 insertions(+), 2 deletions(-)
+ create mode 100644 test/asteroid-field-interact-still-quiet-latch.test.mjs
+
+diff --git a/src/systems/world.js b/src/systems/world.js
+index bcd581d01..2a86f6cb0 100644
+--- a/src/systems/world.js
++++ b/src/systems/world.js
+@@ -397,6 +397,28 @@ function poiMustStayLiveActor(poi, activityObjectSlotId) {
+   return false;
+ }
+ 
++/** Bench A/B: production default ON. Still-player latch skips asteroid-field ram query. */
++let ASTEROID_FIELD_INTERACT_STILL_QUIET = true;
++export function setAsteroidFieldInteractStillQuietForBench(enabled) {
++  ASTEROID_FIELD_INTERACT_STILL_QUIET = enabled !== false;
++}
++export function getAsteroidFieldInteractStillQuietForBench() {
++  return ASTEROID_FIELD_INTERACT_STILL_QUIET !== false;
++}
++
++/** Field-version / parked-pose rescan while latched (0.5 s @ 60 Hz). */
++const ASTEROID_FIELD_INTERACT_STILL_RESCAN_TICKS = 30;
++/** Player speed² below this is "parked" for the still-player latch. */
++const ASTEROID_FIELD_INTERACT_STILL_SPEED2 = 0.25;
++
++function publishAsteroidFieldInteractQuiet(state, latched) {
++  const worldState = state && state.world;
++  if (!worldState) return;
++  const rt = worldState.asteroidFieldInteractRuntime
++    || (worldState.asteroidFieldInteractRuntime = {});
++  rt.quietLatched = !!latched;
++}
++
+ export const world = {
+   name: 'world',
+   // records/embodiment serializers already return owned trees; the remaining live overlays are
+@@ -449,6 +471,7 @@ export const world = {
+     this._pallasDecisionNeedsRebind = false;
+     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
+     this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
++    this._fieldInteractQuiet = null;  // still-player asteroid-field ram latch
+     // Floating-origin scratch (allocation-free no-shift path).
+     this._frameOriginScratch = { x: 0, z: 0 };
+     // Ensure coordinate membrane defaults exist even if state was hand-built.
+@@ -3239,9 +3262,51 @@ export const world = {
+ 
+   _tickAsteroidFieldInteractions(state) {
+     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+-    if (!player || !player.pos) return;
++    if (!player || !player.pos) {
++      this._fieldInteractQuiet = null;
++      publishAsteroidFieldInteractQuiet(state, false);
++      return;
++    }
++    // Quiet parked flight: dormant field rocks do not translate (vel defaults 0; only angVel
++    // spins). After #134's empty-far family, the remaining cost here is queryAsteroidField on
++    // a near reach every tick — often non-empty on quiet Ceres, so an empty latch rarely arms.
++    // Still-player latch skips the grid walk while the player is parked; wake on
++    // asteroidField.version, player move beyond ~15% of reach, player unpark (speed), or a
++    // 0.5 s rescan. First probe (and any wake) still promotes rocks inside collide radius.
++    const field = state.world && state.world.asteroidField;
++    const fieldVersion = field && Number.isFinite(field.version) ? field.version : null;
++    const px = Number.isFinite(player.pos.x) ? player.pos.x : 0;
++    const pz = Number.isFinite(player.pos.z) ? player.pos.z : 0;
++    const pvx = player.vel ? Number(player.vel.x) || 0 : 0;
++    const pvz = player.vel ? Number(player.vel.z) || 0 : 0;
++    const parked = (pvx * pvx + pvz * pvz) <= ASTEROID_FIELD_INTERACT_STILL_SPEED2;
++    const tick = state.tick | 0;
++    const latchOn = ASTEROID_FIELD_INTERACT_STILL_QUIET !== false;
++
++    if (latchOn) {
++      const quiet = this._fieldInteractQuiet;
++      if (quiet
++        && parked
++        && quiet.fieldVersion === fieldVersion
++        && ((tick - (quiet.armedTick | 0)) < ASTEROID_FIELD_INTERACT_STILL_RESCAN_TICKS)) {
++        const mdx = px - quiet.x;
++        const mdz = pz - quiet.z;
++        if (mdx * mdx + mdz * mdz <= quiet.wakeMove2) {
++          publishAsteroidFieldInteractQuiet(state, true);
++          return;
++        }
++      }
++    } else if (this._fieldInteractQuiet) {
++      this._fieldInteractQuiet = null;
++    }
++
+     const reach = (player.radius || 8) + 36;
+-    const hits = queryAsteroidField(state, player.pos, reach, this._fieldHitScratch || (this._fieldHitScratch = []));
++    const hits = queryAsteroidField(
++      state,
++      player.pos,
++      reach,
++      this._fieldHitScratch || (this._fieldHitScratch = []),
++    );
+     for (let i = 0; i < hits.length; i++) {
+       const rec = hits[i];
+       if (!rec || !rec.pos) continue;
+@@ -3252,6 +3317,21 @@ export const world = {
+         promoteAsteroidFieldRock(state, rec.id, this.helpers, 'ram');
+       }
+     }
++
++    if (latchOn && parked) {
++      const wakeR = Math.max(2, reach * 0.15);
++      this._fieldInteractQuiet = {
++        fieldVersion,
++        armedTick: tick,
++        x: px,
++        z: pz,
++        wakeMove2: wakeR * wakeR,
++      };
++      publishAsteroidFieldInteractQuiet(state, true);
++    } else {
++      this._fieldInteractQuiet = null;
++      publishAsteroidFieldInteractQuiet(state, false);
++    }
+   },
+ 
+   /**
+diff --git a/test/asteroid-field-interact-still-quiet-latch.test.mjs b/test/asteroid-field-interact-still-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..d36dedfb7
+--- /dev/null
++++ b/test/asteroid-field-interact-still-quiet-latch.test.mjs
+@@ -0,0 +1,135 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  world,
++  setAsteroidFieldInteractStillQuietForBench,
++  getAsteroidFieldInteractStillQuietForBench,
++} from '../src/systems/world.js';
++import {
++  ensureAsteroidField,
++  insertAsteroidFieldRock,
++  getAsteroidFieldRock,
++} from '../src/world/asteroidField.js';
++
++function boot() {
++  const state = createGameState(21);
++  state.mode = 'flight';
++  state.meta.seed = 21;
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  world.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    radius: 8,
++    mass: 12,
++    hull: 100,
++    hullMax: 100,
++    collides: true,
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++  player.maxSpeed = 160;
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    if (!Number.isFinite(state.entityIndex.version)) state.entityIndex.version = 1;
++  }
++  ensureAsteroidField(state);
++  return { state, bus, helpers, player };
++}
++
++function step(state) {
++  state.tick = (state.tick | 0) + 1;
++  state.simTime = (state.simTime || 0) + 1 / 60;
++  world._tickAsteroidFieldInteractions(state);
++}
++
++test('still-player latch engages with nearby non-touching rocks', () => {
++  setAsteroidFieldInteractStillQuietForBench(true);
++  assert.equal(getAsteroidFieldInteractStillQuietForBench(), true);
++  const { state, player } = boot();
++  for (let i = 0; i < 24; i++) {
++    const ang = (i / 24) * Math.PI * 2;
++    insertAsteroidFieldRock(state, {
++      pos: { x: Math.cos(ang) * 30, z: Math.sin(ang) * 30 },
++      radius: 8,
++    });
++  }
++  step(state);
++  assert.equal(state.world.asteroidFieldInteractRuntime.quietLatched, true);
++  assert.ok(world._fieldInteractQuiet);
++  const armed = world._fieldInteractQuiet.armedTick;
++  step(state);
++  assert.equal(state.world.asteroidFieldInteractRuntime.quietLatched, true);
++  assert.equal(world._fieldInteractQuiet.armedTick, armed);
++  assert.equal(player.vel.x, 0);
++});
++
++test('asteroidField.version bump wakes still-player latch', () => {
++  setAsteroidFieldInteractStillQuietForBench(true);
++  const { state } = boot();
++  step(state);
++  assert.equal(state.world.asteroidFieldInteractRuntime.quietLatched, true);
++  const armed = world._fieldInteractQuiet.armedTick;
++  insertAsteroidFieldRock(state, { pos: { x: 40, z: 0 }, radius: 8 });
++  step(state);
++  assert.ok(world._fieldInteractQuiet);
++  assert.notEqual(world._fieldInteractQuiet.armedTick, armed);
++});
++
++test('player move beyond wake radius re-probes', () => {
++  setAsteroidFieldInteractStillQuietForBench(true);
++  const { state, player } = boot();
++  step(state);
++  assert.equal(state.world.asteroidFieldInteractRuntime.quietLatched, true);
++  const wake2 = world._fieldInteractQuiet.wakeMove2;
++  player.pos.x += Math.sqrt(wake2) + 4;
++  step(state);
++  assert.ok(world._fieldInteractQuiet);
++  assert.ok(Math.abs(world._fieldInteractQuiet.x - player.pos.x) < 1e-9);
++});
++
++test('player unpark (speed) clears latch and re-queries', () => {
++  setAsteroidFieldInteractStillQuietForBench(true);
++  const { state, player } = boot();
++  step(state);
++  assert.equal(state.world.asteroidFieldInteractRuntime.quietLatched, true);
++  player.vel.x = 10;
++  player.vel.z = 0;
++  step(state);
++  assert.equal(state.world.asteroidFieldInteractRuntime.quietLatched, false);
++  assert.equal(world._fieldInteractQuiet, null);
++});
++
++test('touching rock promotes on first probe before latch', () => {
++  setAsteroidFieldInteractStillQuietForBench(true);
++  const { state, helpers } = boot();
++  const rec = insertAsteroidFieldRock(state, {
++    pos: { x: 10, z: 0 },
++    radius: 8,
++  });
++  assert.equal(rec.liveEntityId, null);
++  step(state);
++  const after = getAsteroidFieldRock(state, rec.id);
++  // promote removes/marks live — either liveEntityId set or rock gone from field
++  const live = state.entities.get(rec.id) || (after && after.liveEntityId != null
++    ? state.entities.get(after.liveEntityId)
++    : null);
++  assert.ok(live || (after && after.liveEntityId != null), 'ram promote should fire on first probe');
++  assert.equal(state.world.asteroidFieldInteractRuntime.quietLatched, true);
++});
++
++test('bench toggle off restores always-query (no latch)', () => {
++  setAsteroidFieldInteractStillQuietForBench(false);
++  assert.equal(getAsteroidFieldInteractStillQuietForBench(), false);
++  const { state } = boot();
++  step(state);
++  assert.equal(state.world.asteroidFieldInteractRuntime.quietLatched, false);
++  assert.equal(world._fieldInteractQuiet, null);
++  setAsteroidFieldInteractStillQuietForBench(true);
++});
+-- 
+2.47.3
+

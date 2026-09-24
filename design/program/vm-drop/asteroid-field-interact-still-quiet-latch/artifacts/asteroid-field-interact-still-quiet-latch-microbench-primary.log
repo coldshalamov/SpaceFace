@@ -1,0 +1,46 @@
+{
+  "name": "asteroid-field-interact-still-quiet-latch",
+  "iters": 60000,
+  "runs": 11,
+  "quietParkedNearNonempty": {
+    "medianSpeedup": 13.504,
+    "minSpeedup": 8.015,
+    "maxSpeedup": 16.38,
+    "pairs": [
+      8.015,
+      13.815,
+      16.38,
+      13.504,
+      14.977,
+      12.71,
+      13.973,
+      13.192,
+      13.864,
+      8.428,
+      13.137
+    ]
+  },
+  "quietParkedEmpty": {
+    "medianSpeedup": 2.397,
+    "minSpeedup": 2.216,
+    "maxSpeedup": 2.574,
+    "pairs": [
+      2.346,
+      2.571,
+      2.377,
+      2.434,
+      2.397,
+      2.398,
+      2.216,
+      2.52,
+      2.574,
+      2.299,
+      2.326
+    ]
+  },
+  "flyingNoLatch": {
+    "medianSpeedup": 1.017,
+    "minSpeedup": 0.991,
+    "maxSpeedup": 1.05
+  }
+}
