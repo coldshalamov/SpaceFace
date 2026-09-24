@@ -22,11 +22,16 @@ export function shouldFreezeFlightSubmit(state) {
   return false;
 }
 
-/** Input and save keep ticking while the 3D world is hidden. Everything else does not. */
-export const HIDDEN_KEEPALIVE_SYSTEM_NAMES = Object.freeze(['input', 'save']);
+/**
+ * Input, save, and the station yard keep ticking while the 3D world is hidden. Everything else
+ * does not. The yard is the one docked-only service: it can only take a job while ui.docked is
+ * true — the same flag that freezes the world — and undock destroys the job, so without a
+ * keepalive slot a paid repair could never deliver before the player leaves.
+ */
+export const HIDDEN_KEEPALIVE_SYSTEM_NAMES = Object.freeze(['input', 'save', 'stationServices']);
 
 export function isHiddenKeepaliveSystem(name) {
-  return name === 'input' || name === 'save';
+  return HIDDEN_KEEPALIVE_SYSTEM_NAMES.includes(name);
 }
 
 /**

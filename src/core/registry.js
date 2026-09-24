@@ -769,10 +769,16 @@ export function createRegistry(ctx) {
     get(name) { return byName.get(name); },
     init: lifecycle.init,
     destroy: lifecycle.destroy,
-    keepalive(dt = 0) {
+    keepalive(dt = 0, wallDt = dt) {
       const state = ctx.state;
       if (input.update) input.update(dt, state);
       if (save.update) save.update(dt, state);
+      // The yard is the one service the freeze must not starve: it only accepts a job while
+      // ui.docked is true — the same flag that freezes the world — and undock aborts the job, so
+      // without a keepalive tick a paid repair could never deliver. It runs on wall-clock dt:
+      // state.simTime stays frozen, so the seeded client schedule holds still with it.
+      const yard = byName.get('stationServices');
+      if (yard && typeof yard.update === 'function' && wallDt > 0) yard.update(wallDt, state);
     },
     step(dt, tickBoundary = null) {
       const state = ctx.state;
