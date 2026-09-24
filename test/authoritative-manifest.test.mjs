@@ -47,8 +47,10 @@ test('production init + update order lengths match the live browser baseline', (
   // 156 -> 157 init / 117 -> 118 update: emergent combat primitives. One fixed-step owner,
   // after bombs and before impulseCharges, so it still sees chargeDetonate and queues forces
   // before the physics solve.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 157);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 118);
+  // 157 -> 158 init / 118 -> 119 update: the kill replay ring. It ticks after the swarm
+  // chain so the five seconds it keeps are the positions this step already moved.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 158);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 119);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -185,7 +187,8 @@ test('browser production system set is unchanged vs production manifest constant
   // nemesis packet (nemesis + nemesisEncounter + event-only nemesisSignals); 156 with packet 09's
   // capitalBossEncounters (one system in both orders; score orders precede AI action consumption).
   // 157 with emergentPrimitives (one system in both orders; reads chargeDetonate before it is consumed).
-  assert.equal(registry.systems.length, 157);
+  // 158 with the kill-replay ring (one system in both orders; records after the swarm chain).
+  assert.equal(registry.systems.length, 158);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

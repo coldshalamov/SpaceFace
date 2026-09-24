@@ -44,7 +44,7 @@ export function contractDossierView({ typeName, titleHtml, clientHtml, reward, s
   return `<div class="sx-dossier${focusAccept ? ' is-attention' : ''}">
     <p class="k-caps">${escapeHtml(typeName)}</p>
     <h2 class="k-display k-t-title sx-dossier__title">${titleHtml}</h2>
-    <p class="k-sentence k-sentence--emph sx-dossier__client">${clientHtml} · ${escapeHtml(typeName)}</p>
+    <p class="k-sentence k-sentence--emph sx-dossier__client">${clientHtml}</p>
     <div class="k-hero k-hero--hero k-hero--signal sx-dossier__reward"><span class="k-hero__n">${escapeHtml(reward)}</span><span class="k-hero__w">cr on delivery</span></div>
     ${summary ? `<p class="k-sentence sx-dossier__summary">${escapeHtml(summary)}</p>` : ''}
     <p class="k-sentence sx-dossier__route" aria-label="Mission operation route">${routeHtml}</p>

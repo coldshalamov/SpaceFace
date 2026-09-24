@@ -360,7 +360,7 @@ export function createBarScreen(ctx) {
     appendVonnFreightLossMapOffer(state, c);
 
     const big = stageEl.querySelector('[data-bigpic]');
-    if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 640, eager: true }); } catch (_) {} }
+    if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 1024, eager: true }); } catch (_) {} }
     dressStage();
     composeStage(c);
   }
@@ -376,7 +376,11 @@ export function createBarScreen(ctx) {
       const host = document.createElement('div');
       host.className = 'orr-bar-wave';
       nameEl.insertAdjacentElement('afterend', host);
-      wave = createWaveform(host, { bars: 30 });
+      // the waveform is as wide as the name itself (not its column): measured off the glyph run
+      let nameW = 0;
+      try { const r = document.createRange(); r.selectNodeContents(nameEl); nameW = r.getBoundingClientRect().width; } catch (_) { nameW = 0; }
+      if (nameW > 0) host.style.width = `${Math.round(nameW)}px`;
+      wave = createWaveform(host, { bars: Math.max(30, Math.min(96, Math.round((nameW || 210) / 5.6))) });
     }
     const reply = stageEl.querySelector('.sx-talk__reply');
     if (reply && saidText && saidText !== spokenText && !reducedMotion()) {
@@ -410,14 +414,14 @@ export function createBarScreen(ctx) {
 
     const surveyRow = survey
       ? `<li class="k-row k-row--static sx-lead sx-lead--survey">` +
-          `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${entitySpanHtml('sector:' + survey.sectorId, escapeHtml(survey.sectorName))}</span>` +
+          `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${escapeHtml(survey.sectorName)}</span>` +
             `<span class="k-row__sub sx-lead__s">${escapeHtml(surveyOfferLabel ? (surveyOfferLabel(survey) || 'Nav data') : 'Nav data')}</span></span>` +
           `<button type="button" ${stationControlAttrs('buy-survey')} class="k-word k-word--fine sx-lead__go" data-survey="${escapeHtml(survey.sectorId)}"${credits >= survey.price ? '' : ' disabled'}>${stationControlLabel('buy-survey')} · ${fmt(survey.price)} cr</button>` +
         `</li>`
       : '';
 
     const leadRows = leads.map((m) => `<li class="k-row k-row--static sx-lead">` +
-        `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${mid(m) ? entitySpanHtml('contract:' + mid(m), escapeHtml(m.title || 'Contract')) : escapeHtml(m.title || 'Contract')}</span>` +
+        `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${escapeHtml(m.title || 'Contract')}</span>` +
           `<span class="k-row__sub sx-lead__s">${fmt(rewardOf(m))} cr</span></span>` +
         `<button type="button" ${stationControlAttrs('inspect-lead')} class="k-word k-word--fine sx-lead__go" data-inspect="${escapeHtml(String(mid(m)))}">${stationControlLabel('inspect-lead')}</button>` +
       `</li>`).join('');

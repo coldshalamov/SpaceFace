@@ -297,18 +297,22 @@ const GAMEPAD_ROWS_STOCK = Object.freeze([
   ['Mine beam', null, 'LT / L2'],
   ['Boost', null, 'RB / R1'],
   ['Brake / reverse', null, 'LB / L1'],
-  ['Massline', null, 'A / X: Massline (dock/accept when prompted)'],
+  ['Shove (repulsor)', null, 'Y / △'],
+  ['Massline', null, 'A / Cross'],
   ['Anchor Mass Seed', null, 'keyboard verb — rebind under Settings → Controls'],
   ['Countermeasure', null, 'R3'],
   ['Drop bomb', null, 'D-Pad Right'],
   ['Cycle bomb-bay payload', null, 'D-Pad Left'],
   ['Cycle target', null, 'X / □'],
   ['Open star-map', null, 'View / Select'],
-  ['Open codex', null, 'Y / △'],
+  ['Open codex', null, 'Guide (or Pause → Codex)'],
   ['Open mission log', null, 'Start / Options → Pause → Mission Log'],
   ['Pause', null, 'Start / Options'],
-  ['Dock / activate', null, 'A / X (when prompted)'],
+  ['Dock / activate', null, 'B / ○ (when prompted)'],
   ['Cancel / back', null, 'B / ○'],
+  ['Travel burn', null, 'L3'],
+  ['Auto-target', null, 'D-Pad Up'],
+  ['Detonate charge', null, 'D-Pad Down'],
 ]);
 
 // Row verb, pad action, and the stock-map sentence shape for the live projection.
@@ -317,7 +321,8 @@ const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Mine beam', 'mine', (g) => g],
   ['Boost', 'boost', (g) => g],
   ['Brake / reverse', 'brake', (g) => g],
-  ['Massline', 'massline', (g) => `${g}: Massline (dock/accept when prompted)`],
+  ['Shove (repulsor)', 'deployRepulsor', (g) => g],
+  ['Massline', 'massline', (g) => g],
   ['Countermeasure', 'countermeasure', (g) => g],
   ['Drop bomb', 'dropBomb', (g) => g],
   ['Cycle bomb-bay payload', 'cycleBomb', (g) => g],
@@ -325,11 +330,14 @@ const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Open star-map', 'map', (g) => g],
   ['Open codex', 'codex', (g) => g],
   ['Pause', 'pause', (g) => g],
-  ['Dock / activate', 'accept', (g) => `${g} (when prompted)`],
+  ['Dock / activate', 'dock', (g) => `${g} (when prompted)`],
   ['Cancel / back', 'cancel', (g) => g],
+  ['Travel burn', 'travelBurn', (g) => g],
+  ['Auto-target', 'autoTarget', (g) => g],
+  ['Detonate charge', 'chargeDetonate', (g) => g],
 ]);
 
-const GAMEPAD_STATIC_ROW_INDEXES = Object.freeze(new Set([0, 1, 7, 14]));
+const GAMEPAD_STATIC_ROW_INDEXES = Object.freeze(new Set([0, 1, 8, 15]));
 
 export function gamepadControlRows(map) {
   if (map == null || map === GAMEPAD_DEFAULT_BINDINGS) {
@@ -377,6 +385,8 @@ export function controlSections(state) {
       ['Open a scoop sheet and harvest by grazing a planet band', 'toggleSkimCollector'],
       ['Drop bomb (releases at ship velocity; payload from the bomb bay)', 'dropBomb'],
       ['Cycle bomb-bay payload', 'cycleBomb'],
+      ['Detonate armed charge', 'chargeDetonate'],
+      ['Travel burn (latch a long burn)', 'travelBurn'],
     ]],
     ['Interface (fixed keys)', [
       ['Aim weapons freely', null, 'Backspace, then Mouse'],

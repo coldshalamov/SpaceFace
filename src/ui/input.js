@@ -159,8 +159,8 @@ export function createUiInput(ctx, screenManager) {
   unsubscribers.push(bus.on('dock:range', ({ stationId, inRange }) => {
     dockInRange = !!inRange;
     dockStationId = inRange ? stationId : null;
-    // PQ-003 contextual A/Cross arbitration: UI owns docking when the prompt is live; the flight
-    // input owner reads this UI-owned fact so the same press cannot also latch the Massline.
+    // The dock prompt is a fact the HUD reads. The rope and the dock are different pad buttons,
+    // so a live prompt does not take the Massline press.
     if (!state.ui) state.ui = {};
     state.ui.dockInRange = dockInRange;
   }));
@@ -1033,7 +1033,7 @@ export function createUiInput(ctx, screenManager) {
 
     // Global UI actions when no modal is open (mode must be flight).
     if (!modalOpen && state.mode === 'flight') {
-      if (gp.actions.accept && gp.actions.accept.pressed && dockInRange) {
+      if (gp.actions.dock && gp.actions.dock.pressed && dockInRange) {
         doDock();
       }
       if (gp.actions.pause && gp.actions.pause.pressed) {

@@ -174,14 +174,18 @@ test('common-rock PBR maps are decoded and GPU-warmed before publication', async
 test('five common-rock buckets reuse stable geometry/material identities and preserve gameplay scale', () => {
   const factory = createVisualFactory();
   const geometriesByVariant = new Map();
-  let sharedMaterial = null;
+  const materialsByVariant = new Map();
   for (let id = 1; id <= 128; id++) {
     const radius = 6 + id % 9;
     const asteroid = factory.build({ id, type: 'asteroid', radius, data: { typeId: 'ast_common_rock' } });
     const body = asteroid.userData.asteroidInstanceBody;
     const variant = body.userData.asteroidInstanceVariant;
-    sharedMaterial ||= body.material;
-    assert.equal(body.material, sharedMaterial, 'common rocks share one instancing-compatible material');
+    if (materialsByVariant.has(variant)) {
+      assert.equal(body.material, materialsByVariant.get(variant),
+        `variant ${variant} reuses one instancing-compatible material`);
+    } else {
+      materialsByVariant.set(variant, body.material);
+    }
     assert.deepEqual(body.scale.toArray(), [radius, radius, radius], 'visual work does not rewrite gameplay radius');
     if (geometriesByVariant.has(variant)) {
       assert.equal(body.geometry, geometriesByVariant.get(variant), `variant ${variant} reuses cached geometry`);
@@ -190,6 +194,7 @@ test('five common-rock buckets reuse stable geometry/material identities and pre
     }
   }
   assert.equal(geometriesByVariant.size, 5);
+  assert.equal(materialsByVariant.size, 5, 'each displacement bucket keeps its own material');
   assert.deepEqual([...geometriesByVariant.keys()].sort(), [0, 1, 2, 3, 4]);
   const geometries = [...geometriesByVariant.entries()].sort(([a], [b]) => a - b);
   assert.equal(new Set(geometries.map(([, geometry]) => (
@@ -229,6 +234,6 @@ test('opening GPU admission waits for the rock maps, and rocks that went out bar
   assert.match(source, /this\.rockSurfaceLibraryReady\.then\(\(\) => \{[\s\S]{0,400}?upgradeBareRockMaterials\(mesh\)/,
     'every live rock that published bare is re-skinned when the library lands');
   const factory = readFileSync(new URL('../src/render/visualFactory.js', import.meta.url), 'utf8');
-  assert.match(factory, /astmat:\$\{typeId\}:\$\{tint \|\| 'def'\}\$\{bare \? ':bare' : ''\}/,
+  assert.match(factory, /astmat:\$\{typeId\}:\$\{tint \|\| 'def'\}\$\{variantKey\}\$\{bare \? ':bare' : ''\}/,
     'a bare common-rock material is cached under its own key so the textured one can still be built');
 });

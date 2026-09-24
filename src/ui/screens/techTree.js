@@ -14,6 +14,7 @@
 //
 // Export: techTreeScreen  (id 'techTree'). No 'three' import.
 
+import { dressLampKey } from '../orrery/lampKey.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
@@ -1205,7 +1206,11 @@ export const techTreeScreen = {
     }
     if (actions) {
       const btn = actions.querySelector('button');
-      if (btn) paintKey(btn, btn.getAttribute('data-act') === 'unlock' ? 'primary' : 'legend');
+      if (btn && btn.getAttribute('data-act') === 'unlock') {
+        if (btn.childNodes) dressLampKey(btn);
+      } else if (btn) {
+        paintKey(btn, 'legend');
+      }
     }
   },
 

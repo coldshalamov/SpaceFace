@@ -371,9 +371,9 @@ function captainDossier(state, id) {
   return { kicker: 'Captain', facts, lines, links, route: null };
 }
 
-function contractDossier(state, id) {
-  // Contracts are LIVE records, not a catalogue: existence is a state question. No record → null,
-  // and the caller renders nothing rather than a dossier for a contract that is not on offer.
+/** The live contract record for an id, across active/available/offered and every station board.
+ *  Shared with the watch list's deadline pin — contracts are live records, not a catalogue. */
+export function findContractRecord(state, id) {
   const pools = [
     state && state.missions && state.missions.active,
     state && state.missions && state.missions.available,
@@ -395,6 +395,13 @@ function contractDossier(state, id) {
     rec = list.find((m) => m && (m.id === id || m.missionId === id)) || rec;
     if (rec) break;
   }
+  return rec;
+}
+
+function contractDossier(state, id) {
+  // Contracts are LIVE records, not a catalogue: existence is a state question. No record → null,
+  // and the caller renders nothing rather than a dossier for a contract that is not on offer.
+  const rec = findContractRecord(state, id);
   if (!rec) return null;
   const facts = [];
   // Board offers pay in `reward_cr` and go to `destSectorId`; accepted missions carry

@@ -53,7 +53,9 @@ import {
   authorityResponsePolicy,
   rankLawfulResponders,
   reserveArrivalPoint,
+  WITNESS_FRAME_HALF_WU,
 } from '../law/authorityResponse.js';
+import { scaleBySector } from '../data/sectorPhysical.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import {
   collectLivingWorldActors,
@@ -752,15 +754,16 @@ export const lawSecurity = {
       victimAnchor: null,
     };
     const policy = authorityResponsePolicy(effectiveLawSecurity(state));
+    const patrolResponse = scaleBySector(currentSectorId(state), 'patrolResponse', 1);
     incident.security = policy.security;
-    incident.dispatchDelayS = policy.dispatchDelayS;
-    incident.dispatchAt = incident.startedAt + policy.dispatchDelayS;
+    incident.dispatchDelayS = policy.dispatchDelayS * patrolResponse;
+    incident.dispatchAt = incident.startedAt + incident.dispatchDelayS;
     incident.responderCap = policy.responderCap;
     incident.reserveAllowed = jurisdiction.rankFromVictim === true ? false : policy.reserveAllowed;
     incident.rankFromVictim = jurisdiction.rankFromVictim === true;
-    incident.challengeWindowS = policy.challengeWindowS;
+    incident.challengeWindowS = policy.challengeWindowS * patrolResponse;
     own.incidents[key] = incident;
-    this._say('alert', `CONTROL: distress logged. Patrol ETA ${policy.dispatchDelayS.toFixed(2)} seconds.`, `law:distress:${incident.id}`, jurisdiction.factionId);
+    this._say('alert', `CONTROL: distress logged. Patrol ETA ${incident.dispatchDelayS.toFixed(2)} seconds.`, `law:distress:${incident.id}`, jurisdiction.factionId);
     this._emit('law:distressRaised', publicIncident(incident));
     this._emit('law:incidentOpened', publicIncident(incident));
     this._lawResponse('incident_opened', {
@@ -771,7 +774,7 @@ export const lawSecurity = {
     this._recordReceipt({
       incidentId: incident.id, cause, outcome: 'distress_received', attackerId: attacker.id,
       targetId: victim.id, stationId: jurisdiction.stationId,
-      text: `DISTRESS RECEIVED — patrol dispatch in ${policy.dispatchDelayS.toFixed(2)} seconds.`,
+      text: `DISTRESS RECEIVED — patrol dispatch in ${incident.dispatchDelayS.toFixed(2)} seconds.`,
     });
     return incident;
   },
@@ -1064,6 +1067,8 @@ export const lawSecurity = {
             ),
           }
           : null,
+        // A4: the answering patrol is inside the composed frame, not a ring ten screens out.
+        frameHalfWu: WITNESS_FRAME_HALF_WU,
       });
       const spec = makeEnemySpawnSpec('patrol_lawman', 3, pos, {
         factionId: incident.factionId || 'faction_scn',

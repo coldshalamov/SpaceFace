@@ -185,6 +185,7 @@ test('live bloom defaults resolve through renderer and render-graph behavior for
     belt: { bloomStrength: 0.572, bloomThreshold: 0.94, exposure: 0.95 },
     fringe: { bloomStrength: 0.5616, bloomThreshold: 0.96, exposure: 0.94 },
     anomaly: { bloomStrength: 0.6032, bloomThreshold: 0.90, exposure: 0.95 },
+    tethys: { bloomStrength: 0.5512, bloomThreshold: 0.96, exposure: 0.93 },
   };
 
   assert.equal(DEFAULT_BLOOM_STRENGTH, 0.52);

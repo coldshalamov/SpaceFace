@@ -63,6 +63,7 @@ import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
 import { createPromptDeck } from './promptDeck.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
+import { createWatchlistHud } from './watchlistHud.js';
 import { createDiscoveryPlate } from './discoveryPlate.js';
 import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
 import { createAlerts } from './alerts.js';
@@ -121,9 +122,8 @@ const SCREEN_MODULES = [
   { path: './screens/achievements.js', load: () => import('./screens/achievements.js'), name: 'achievementsScreen' },
   { path: './screens/codex.js', load: () => import('./screens/codex.js'), name: 'codexScreen' },
   { path: './screens/missionLog.js', load: () => import('./screens/missionLog.js'), name: 'missionLogScreen' },
-  // DEV ONLY — Sandbox testing harness (src/ui/screens/sandbox.js). Conditionally spread so the
-  // dynamic import and the module never enter build/web when IS_DEV folds false at build time.
-  ...(IS_DEV ? [{ path: './screens/sandbox.js', load: () => import('./screens/sandbox.js'), name: 'sandboxScreen' }] : []),
+  // Wave B11 — Physics lab / Sandbox toy on front door.
+  { path: './screens/sandbox.js', load: () => import('./screens/sandbox.js'), name: 'sandboxScreen' },
 ];
 
 // Title / pause / death must win the first parse wave. Galaxy map, station, and shipworks
@@ -405,6 +405,8 @@ export const ui = {
     this.entityLinks = null;
     if (this.whyReveal && typeof this.whyReveal.destroy === 'function') this.whyReveal.destroy();
     this.whyReveal = null;
+    if (this.watchlistHud && typeof this.watchlistHud.destroy === 'function') this.watchlistHud.destroy();
+    this.watchlistHud = null;
     if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
     this.screenManager = null;
     this.manager = null;
@@ -429,6 +431,9 @@ export const ui = {
 
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
+    // PQ-183.01 the watch list: pinned readings render inside the receipts lane (#toasts), above
+    // the transient cards. It mounts after toasts exist and reads only state.ui.watchlist.
+    this.watchlistHud = createWatchlistHud(ctx);
     // Feature 20: first-discovery glass plate (POI / unique wreck / flagship ace receipts).
     this.discoveryPlate = createDiscoveryPlate(ctx);
     replaceMarketNewsOwner(this, ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
@@ -1403,6 +1408,8 @@ export const ui = {
     this.entityLinks = null;
     if (this.whyReveal && typeof this.whyReveal.destroy === 'function') this.whyReveal.destroy();
     this.whyReveal = null;
+    if (this.watchlistHud && typeof this.watchlistHud.destroy === 'function') this.watchlistHud.destroy();
+    this.watchlistHud = null;
     if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
     this.screenManager = null;
     this.manager = null;

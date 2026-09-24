@@ -1,6 +1,7 @@
 import { shipworksFrameHtml } from '../../views/stationFrames.js';
 import { injectOrreryShipworks, powerDialSvg } from '../../orrery/shipworksLayouts.js';
 import { createHullSchematic } from '../../orrery/hullSchematic.js';
+import { dressLampKey } from '../../orrery/lampKey.js';
 import { hullPosterUrl } from '../../hullPosters.js';
 // src/ui/station/screens/shipworks.js — "Shipworks" and THE SHIP: the shared stage (Frontend
 // Task C §1.9). The hull fills the panel behind everything, orbitable; the hulls (fleet / for sale)
@@ -399,6 +400,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       statsEl.parentElement.appendChild(verbsRack);
     }
     pinKeyrack(verbsRack);
+    // at rest, taking the ship to the range is the screen's Lamp Key
+    const range = verbsRack && verbsRack.querySelector('[data-verb="range"]');
+    if (range && host === 'dock' && mode === 'fleet') dressLampKey(range);
+    else if (range) range.classList.remove('orr-lampkey');
+    // a hull for sale has no slot to select: the verb stands down while the For Sale rail is open
+    el.classList.toggle('sx-sw--buying', mode === 'buy');
     for (const btn of statsEl.querySelectorAll('[data-verb]')) {
       paintKey(btn, btn.getAttribute('data-verb') === 'fit' || btn.getAttribute('data-verb') === 'activate' ? 'primary' : 'legend');
     }
@@ -445,6 +452,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
     for (const btn of chooserEl.querySelectorAll('[data-buyfit], [data-payload-fit]')) {
       paintKey(btn, btn.hasAttribute('data-fit-slot') || btn.hasAttribute('data-payload-fit') ? 'primary' : 'small');
+      // the one verb that fits the chosen module is the screen's Lamp Key while choosing
+      if (btn.hasAttribute('data-fit-slot') || btn.hasAttribute('data-payload-fit')) dressLampKey(btn);
     }
     for (const btn of chooserEl.querySelectorAll('[data-payload-buy], [data-payload-sell]')) paintKey(btn, 'small');
     syncKeys(chooserEl);
@@ -2124,7 +2133,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const def = SHIP_BY_ID.get(buyId);
       if (!def) { sideEl.innerHTML = ''; return; }
       const slotSummary = Object.entries(def.slots || {}).filter(([, arr]) => (arr || []).length)
-        .map(([t, arr]) => `${(arr || []).length}× ${SLOT_LABEL[t] || t}`).join(' · ');
+        .map(([t, arr]) => `<span class="sx-spec__hp">${(arr || []).length}× ${escapeHtml(SLOT_LABEL[t] || t)}</span>`).join('');
       const credits = (ctx.state.player && ctx.state.player.credits) || 0;
       const afford = def.price <= credits;
       const isOwned = owned().some((s) => s.defId === def.id);
@@ -2243,6 +2252,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         rackBlock +
       `</div>`;
     dressSide();
+    // ORRERY: on the jig the six readouts are a ruled ladder under the rack, not a strip under the hull
+    if (host === 'dock' && el.classList.contains('orr-sw--jig') && gaugeRackEl) {
+      const circuit = sideEl.querySelector('.sx-sw-circuit');
+      if (circuit) { gaugeRackEl.classList.add('orr-sw-readouts'); circuit.appendChild(gaugeRackEl); }
+    }
   }
 
   // The rack lives on the bombs bag, not the hull record — the bay is one per player, shared
@@ -2514,7 +2528,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `<div class="sx-chooser__panel" role="region" aria-label="Compatible ${escapeHtml(SLOT_LABEL[slot.type] || slot.type)} modules">` +
         `<header class="sx-chooser__head">` +
           `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">${stationControlLabel('back')}</button></li></ul>` +
-          `<p class="k-caps sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type} slot · size ${escapeHtml(slot.size || '')}${hardpoint === 'ring' ? ' · turret ring' : (slot.facing ? ' · ' + escapeHtml(slot.facing) + ' hardpoint' : '')}</p>` +
+          `<p class="k-caps sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type} · ${escapeHtml(slot.size || '')}${hardpoint === 'ring' ? ' · ring' : (slot.facing ? ' · ' + escapeHtml(slot.facing) : '')}</p>` +
           `<h3 class="k-t-sub">Compatible modules${compat.length ? ` <span class="k-38">${compat.length}</span>` : ''}</h3>` +
         `</header>` +
         (hardpoint === 'ring'

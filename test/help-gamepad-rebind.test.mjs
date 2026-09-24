@@ -19,30 +19,34 @@ function padState(custom) {
 
 test('a stock (or missing) pad map keeps the authored dual-naming table byte for byte', () => {
   const stock = gamepadControlRows(null);
-  assert.equal(stock.length, 18);
+  assert.equal(stock.length, 22);
   assert.deepEqual(stock[2], ['Fire', null, 'RT / R2']);
-  assert.deepEqual(stock[6], ['Massline', null, 'A / X: Massline (dock/accept when prompted)']);
-  assert.deepEqual(stock[12], ['Open star-map', null, 'View / Select']);
-  assert.deepEqual(stock[16], ['Dock / activate', null, 'A / X (when prompted)']);
+  assert.deepEqual(stock[6], ['Shove (repulsor)', null, 'Y / △']);
+  assert.deepEqual(stock[7], ['Massline', null, 'A / Cross']);
+  assert.deepEqual(stock[13], ['Open star-map', null, 'View / Select']);
+  assert.deepEqual(stock[17], ['Dock / activate', null, 'B / ○ (when prompted)']);
+  assert.deepEqual(stock[19], ['Travel burn', null, 'L3']);
+  assert.deepEqual(stock[20], ['Auto-target', null, 'D-Pad Up']);
+  assert.deepEqual(stock[21], ['Detonate charge', null, 'D-Pad Down']);
   assert.deepEqual(gamepadControlRows(GAMEPAD_DEFAULT_BINDINGS), stock, 'the frozen default map renders the same table');
 });
 
 test('a pad remap re-labels the help rows: the moved verb names its new button', () => {
-  // 'home' is unowned in the stock map, so accept→home is a legal single remap.
-  const map = resolveGamepadBindings(padState({ accept: ['home'] }).settings);
-  assert.deepEqual(map.accept, ['home'], 'the remap took (share rules keep stolen-button overrides honest)');
+  // Guide is the codex. Unbind it, then dock may take that button.
+  const map = resolveGamepadBindings(padState({ codex: [], dock: ['home'] }).settings);
+  assert.deepEqual(map.dock, ['home'], 'the remap took (share rules keep stolen-button overrides honest)');
   const rows = gamepadControlRows(map);
-  assert.deepEqual(rows[16], ['Dock / activate', null, 'Home (when prompted)'], 'dock row follows the remap');
+  assert.deepEqual(rows[17], ['Dock / activate', null, 'Home (when prompted)'], 'dock row follows the remap');
   // Untouched actions keep the stock buttons — named in the live single-glyph register.
   assert.deepEqual(rows[2], ['Fire', null, 'RT'], 'fire row unchanged');
-  assert.deepEqual(rows[6], ['Massline', null, 'A: Massline (dock/accept when prompted)'], 'massline row unchanged');
+  assert.deepEqual(rows[7], ['Massline', null, 'A'], 'massline row unchanged');
 });
 
 test('a deliberately unbound action names itself instead of printing a phantom button', () => {
   const map = resolveGamepadBindings(padState({ countermeasure: [] }).settings);
   assert.deepEqual(map.countermeasure, [], 'explicit empty list stays an unbind');
   const rows = gamepadControlRows(map);
-  assert.equal(rows[8][2], 'unbound — Settings → Controls');
+  assert.equal(rows[9][2], 'unbound — Settings → Controls');
 });
 
 test('the Help screen feeds the section from the live resolved map, not literals', () => {

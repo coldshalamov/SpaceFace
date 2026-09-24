@@ -27,7 +27,8 @@ const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: Number(process.env.VW || 1920), height: Number(process.env.VH || 1080) } });
   page.on('pageerror', (e) => console.error('pageerror', e.message));
-  await page.goto(`${server.baseUrl}tools/ui-bench.html?${new URLSearchParams({ screen: id, chrome: '0' })}`);
+  // a busy machine (other lanes' browsers) can stretch a cold module load well past the 30 s default
+  await page.goto(`${server.baseUrl}tools/ui-bench.html?${new URLSearchParams({ screen: id, chrome: '0' })}`, { timeout: Number(process.env.LOAD_TIMEOUT_MS || 120000) });
   await page.waitForFunction(() => document.documentElement.dataset.benchReady === '1' || window.__benchReady === true || window.__BENCH_READY === true,
     null, { timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(1500);

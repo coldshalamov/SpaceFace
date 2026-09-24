@@ -38,7 +38,9 @@ void main(){
   bool releasing = cycle && iLife.z >= 0.0;
   float poweredAt = releasing ? min(uTime, iLife.z) : uTime;
   float age = max(0.0, poweredAt - iLife.x);
-  float motionTime = (cycle ? age : uTime) * uMotion;
+  // Age, not the session clock. A muzzle flash is a tenth of a second; tying its
+  // travel to uTime made the band crawl at ignition and thrash after a long flight.
+  float motionTime = age * uMotion;
   float release = releasing ? smoothstep(0.0, iLife.w, max(0.0, uTime-iLife.z)) : 0.0;
   float build = cycle ? smoothstep(0.0, iLife.y, age) : 1.0;
   float phase=fract(motionTime*0.58*iMotion.x+iMotion.y);

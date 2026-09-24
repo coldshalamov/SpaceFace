@@ -300,7 +300,7 @@ test('PQ-003 modal reset blocks held-through input but accepts the first fresh p
   assert.equal(state.input.actions.massline.latch, false, 'a held-through press cannot leak out of the modal');
 });
 
-test('PQ-003 gamepad A/Cross reaches the same grammar in open flight but yields to a dock prompt', () => {
+test('the rope stays on A while a dock prompt is up, because dock is a different button', () => {
   const gp = {
     axes: { leftX: -0.75, leftY: -0.8, rightX: 0, rightY: 0 },
     actions: {
@@ -329,7 +329,7 @@ test('PQ-003 gamepad A/Cross reaches the same grammar in open flight but yields 
   dockState.ui.dockInRange = true;
   step(dockHost, dockState);
   assert.ok(dockState.input.actions.massline);
-  assert.equal(dockState.input.actions.massline.latch, false, 'dock/accept wins the contextual A press');
+  assert.equal(dockState.input.actions.massline.latch, true, 'A still latches while the dock prompt is up');
 });
 
 test('active cold gamepad right-stick aim is explicit intent and neutral/modal input clears it', () => {

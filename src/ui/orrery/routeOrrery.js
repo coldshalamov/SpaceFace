@@ -14,7 +14,7 @@
 import { SECTORS, dangerIndex } from '../../data/sectors.js';
 import { svg, polar, arcD, ticksD } from './svg.js';
 import { injectOrrery } from './tokens.js';
-import { reducedMotion } from './motion.js';
+import { reducedMotion, createSpring } from './motion.js';
 
 const STYLE_ID = 'orr-route-orrery-style';
 const BONE = '236 230 216';
@@ -34,8 +34,12 @@ const CSS = `
 .orr-svg .orr-route__ring { stroke:rgb(${BONE} / .18); }
 .orr-svg .orr-route__ring--near { stroke:rgb(${BONE} / .26); }
 .orr-svg .orr-route__lane { stroke:rgb(${BONE} / .16); }
-.orr-svg .orr-route__beam { stroke:rgb(${BONE} / .72); }
-.orr-svg .orr-route__beam-bloom { stroke:rgb(${BONE} / .9); opacity:.16; }
+.orr-svg .orr-route__beam { stroke:var(--dp-hand, #f2b950); }
+.orr-svg .orr-route__beam-bloom { stroke:var(--dp-hand, #f2b950); opacity:.26; }
+.orr-svg .orr-route__swing { stroke:var(--dp-hand, #f2b950); }
+.orr-svg .orr-route__swing-bloom { stroke:var(--dp-hand, #f2b950); opacity:.26; }
+.orr-route__beamg { transition:opacity .25s linear; }
+.orr-svg .orr-route__leader { stroke:rgb(${BONE} / .45); }
 .orr-svg .orr-route__pulse { fill:var(--dp-ice, #8fcbff); }
 .orr-svg .orr-route__pulse-bloom { fill:var(--dp-ice, #8fcbff); opacity:.28; }
 .orr-svg .orr-route__dot { fill:rgb(${BONE} / .55); }
@@ -58,6 +62,7 @@ const CSS = `
 .orr-route__fade { opacity:0; animation:orr-route-fade .46s var(--dp-ease-out, ease-out) forwards; animation-delay:var(--orr-delay, 0ms); }
 @keyframes orr-route-fade { to { opacity:1; } }
 html.sf-reduce-motion .orr-route__fade { animation:none; opacity:1; }
+html.sf-reduce-motion .orr-route__pulse-g { display:none; }
 `;
 
 function injectStyle(doc) {
@@ -176,6 +181,9 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
   let ro = null;
   let on = false;
   let drawnKey = '';
+  let lastEnd = null;      // where the arm last pointed (bearing), for the swing to the next berth
+  let swingFrom = null;    // the bearing the next layout swings the arm from, or null
+  let swingSpring = null;
 
   const schedule = () => {
     if (frame) return;
@@ -282,7 +290,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
     const nodeR = (id) => (id === dest ? 7 : place.get(id).onRoute ? 5 : 2.2);
     const nodeBoxes = [...place].map(([id, p]) => ({ l: p.x - 9, r: p.x + 9, t: p.y - 9, b: p.y + 9, id, r0: nodeR(id) }));
     const labelSize = (text, small) => ({ w: text.length * (small ? 6.6 : 7.2), h: small ? 11 : 12 });
-    function placeName(p, lines, { isDest = false, reserve = false } = {}) {
+    function placeName(p, lines, { isDest = false, reserve = false, outside = false } = {}) {
       const sizes = lines.map((ln) => labelSize(ln.text, !!ln.small));
       const w = Math.max(...sizes.map((s) => s.w));
       const h = sizes.reduce((s, x) => s + x.h + 1, -1);
@@ -307,8 +315,24 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
         if (reserve) nameBoxes.push(box);
         return { box, anchor, ax, top: box.t, w, h };
       }
+      if (isDest || outside) {
+        // no room round the node: the name hangs outside the outer ring on the node's bearing, off a leader
+        const rad = ((p.deg - 90) * Math.PI) / 180;
+        const ux = Math.cos(rad); const uy = Math.sin(rad);
+        const ox = cx + ux * (R + 20); const oy = cy + uy * (R + 20);
+        const anchor = Math.abs(ux) < 0.3 ? 'middle' : (ux > 0 ? 'start' : 'end');
+        const ax = anchor === 'middle' ? ox : ox + (ux > 0 ? 4 : -4);
+        const cyText = anchor === 'middle' ? oy + uy * (h / 2 + 4) : oy;
+        const l0 = anchor === 'middle' ? ax - w / 2 : anchor === 'start' ? ax : ax - w;
+        const box = { l: Math.max(2, Math.min(W - 2 - w, l0)), t: Math.max(2, Math.min(H - capH - 2 - h, cyText - h / 2)) };
+        box.r = box.l + w; box.b = box.t + h;
+        const axc = anchor === 'middle' ? box.l + w / 2 : anchor === 'start' ? box.l : box.r;
+        if (reserve) nameBoxes.push(box);
+        return { box, anchor, ax: axc, top: box.t, w, h, leader: { x1: p.x, y1: p.y, x2: ox, y2: oy } };
+      }
       return null;
     }
+    const leaderD = (ld) => `M ${f(ld.x1)} ${f(ld.y1)} L ${f(ld.x2)} ${f(ld.y2)}`;
     const textLines = (spot, lines) => {
       const g = svg('g', {});
       let y = spot.top;
@@ -341,7 +365,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
       .sort((a, b) => (Number(b[1].onRoute) - Number(a[1].onRoute)) || (a[1].d - b[1].d));
     const drawn = new Map();
     for (const [id, p] of others) {
-      const spot = placeName({ ...p, id }, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }], { reserve: true });
+      const spot = placeName({ ...p, id }, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }], { reserve: true, outside: !!p.onRoute });
       if (spot) drawn.set(id, spot);
     }
 
@@ -362,12 +386,16 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
     }
     if (laneParts.length) layer.appendChild(fade(svg('path', { d: laneParts.join(' '), class: 'orr-core orr-route__lane', 'stroke-width': 1, 'stroke-dasharray': '6 4' }), 60));
 
+    // the beam, its pulse, the hops and the hand ride in one group, so the arm can swing before they show
+    const beamG = svg('g', { class: 'orr-route__beamg' });
+    const swinging = swingFrom != null && arriveNow && !!endPoint && !local;
+    layer.appendChild(beamG);
     if (beamD) {
       const id = `orr-route-path-${++pathSeq}`;
-      layer.appendChild(svg('path', { d: beamD, class: 'orr-bloom orr-route__beam-bloom', 'stroke-width': 7, pathLength: 1, 'stroke-linejoin': 'round' }));
-      const core = svg('path', { id, d: beamD, class: `orr-core orr-route__beam${arriveNow ? ' orr-draw' : ''}`, 'stroke-width': 1.6, pathLength: 1, 'stroke-linejoin': 'round' });
+      beamG.appendChild(svg('path', { d: beamD, class: 'orr-bloom orr-route__beam-bloom', 'stroke-width': 7, pathLength: 1, 'stroke-linejoin': 'round' }));
+      const core = svg('path', { id, d: beamD, class: `orr-core orr-route__beam${arriveNow && !swinging ? ' orr-draw' : ''}`, 'stroke-width': 1.6, pathLength: 1, 'stroke-linejoin': 'round' });
       core.style.setProperty('--orr-delay', '120ms');
-      layer.appendChild(core);
+      beamG.appendChild(core);
       if (arriveNow) {
         const pulse = svg('g', { class: 'orr-route__pulse-g' });
         const bloom = svg('circle', { r: 6, class: 'orr-route__pulse-bloom' });
@@ -378,7 +406,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
           keyPoints: '0;0;1;1', keyTimes: '0;0.2;0.88;1' });
         motion.appendChild(svg('mpath', { href: `#${id}` }));
         pulse.appendChild(motion);
-        layer.appendChild(pulse);
+        beamG.appendChild(pulse);
       }
       // a tick across the beam where each jump lands, the destination included
       for (let i = 1; i < routePts.length; i += 1) {
@@ -414,6 +442,7 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
       if (!spot) continue;
       if (p.onRoute) layer.appendChild(fade(svg('circle', { cx: f(p.x), cy: f(p.y), r: 5, class: 'orr-route__node' }), 200 + li * 40));
       else layer.appendChild(fade(svg('circle', { cx: f(p.x), cy: f(p.y), r: 2.2, class: 'orr-route__dot' }), 200 + li * 40));
+      if (spot.leader) layer.appendChild(fade(svg('path', { d: leaderD(spot.leader), class: 'orr-core orr-route__leader', 'stroke-width': 1, 'stroke-dasharray': '2 3' }), 240 + li * 40));
       layer.appendChild(fade(textLines(spot, [{ text: String(SECTOR.get(id).name || id).toUpperCase(), cls: p.onRoute ? 'orr-route__name--live' : 'orr-route__name--faint', small: !p.onRoute }]), 260 + li * 40));
       li += 1;
     }
@@ -434,7 +463,8 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
         svg('circle', { cx: f(endPoint.x), cy: f(endPoint.y), r: local ? 6 : 7, class: 'orr-core orr-route__hand-ring', 'stroke-width': 1.4, fill: 'none' }),
         svg('circle', { cx: f(endPoint.x), cy: f(endPoint.y), r: 3.2, class: 'orr-route__hand-bead' }),
       );
-      layer.appendChild(fade(hg, 520));
+      beamG.appendChild(fade(hg, 520));
+      if (destSpot && destSpot.leader) layer.appendChild(fade(svg('path', { d: leaderD(destSpot.leader), class: 'orr-core orr-route__leader', 'stroke-width': 1, 'stroke-dasharray': '2 3' }), 540));
       if (destSpot && destLines) layer.appendChild(fade(textLines(destSpot, destLines), 560));
       if (local) {
         const t = svg('text', { x: f(endPoint.x + 12), y: f(endPoint.y + 3), 'text-anchor': 'start', class: 'orr-route__name orr-route__name--live' });
@@ -459,12 +489,39 @@ export function createRouteOrrery(host, { maxRings = 3 } = {}) {
       via.textContent = `${n === 1 ? 'JUMP' : 'JUMPS'} · ${mids.length ? `VIA ${mids.join(' · ')} TO ` : 'TO '}${destSector}`;
     }
     caption.append(jumps, via);
+
+    // the arm swings from the last berth to this one (a spring with a little overshoot), and only
+    // then does the route with its hops and pulse take its place
+    const armR = endPoint ? Math.hypot(endPoint.x - cx, endPoint.y - cy) : 0;
+    if (swinging) {
+      const fromDeg = swingFrom;
+      const toDeg = fromDeg + ((((endPoint.deg - fromDeg) % 360) + 540) % 360) - 180;
+      const sg = svg('g', { class: 'orr-route__swingg' });
+      const armBloom = svg('path', { class: 'orr-bloom orr-route__swing-bloom', 'stroke-width': 7, 'stroke-linecap': 'round' });
+      const arm = svg('path', { class: 'orr-core orr-route__swing', 'stroke-width': 1.6, 'stroke-linecap': 'round' });
+      sg.append(armBloom, arm);
+      layer.appendChild(sg);
+      beamG.style.opacity = '0';
+      const paint = (deg) => { const [x, y] = polar(cx, cy, armR, deg); const d = `M ${f(cx)} ${f(cy)} L ${f(x)} ${f(y)}`; arm.setAttribute('d', d); armBloom.setAttribute('d', d); };
+      paint(fromDeg);
+      if (swingSpring) swingSpring.stop();
+      const spring = createSpring({ value: fromDeg, preset: 'swing', precision: 0.02, onUpdate: (v) => {
+        paint(v);
+        if (spring.value === spring.target) { sg.remove(); beamG.style.opacity = ''; if (swingSpring === spring) swingSpring = null; }
+      } });
+      swingSpring = spring;
+      spring.set(toDeg);
+    }
+    swingFrom = null;
+    lastEnd = endPoint && !local ? { deg: endPoint.deg } : null;
   }
 
   return {
     el: host,
     /** @param {{ origin: string, dest?: string|null, originName?: string, destName?: string }} next */
     set(next) {
+      const changed = !!(data && next && next.dest && next.dest !== data.dest);
+      swingFrom = changed && lastEnd && !reducedMotion() ? lastEnd.deg : null;
       data = next ? { ...next } : null;
       drawnKey = '';
       schedule();

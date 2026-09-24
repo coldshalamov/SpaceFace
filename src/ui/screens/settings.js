@@ -188,11 +188,13 @@ export const REBIND_LABELS = {
 // PQ-164.01 pad remap. Every gamepad action is rebindable; labels describe the verb, not the
 // default button (the live resolved map prints the button on the right of each row).
 export const GAMEPAD_REBINDABLE = [
-  'accept', 'cancel', 'massline', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
+  'accept', 'cancel', 'massline', 'dock', 'deployRepulsor', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
   'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'dropBomb', 'cycleBomb', 'chargeDetonate', 'tabPrev', 'tabNext',
 ];
 export const GAMEPAD_REBIND_LABELS = {
-  accept: 'Accept / dock',
+  accept: 'Accept',
+  dock: 'Dock (when prompted)',
+  deployRepulsor: 'Shove (repulsor)',
   cancel: 'Back / cancel',
   massline: 'Massline: tap latch/cut; hold line control',
   fire: 'Fire',
@@ -388,6 +390,10 @@ export const settingsScreen = {
       rowSelect('Quality preset', () => vd.qualityPreset || DEFAULT_QUALITY_PRESET,
         QUALITY_PRESETS.map((preset) => [preset.id, preset.label]),
         (value) => this._applyPreset(ctx, value));
+      const chosen = QUALITY_PRESETS.find((preset) => preset.id === (vd.qualityPreset || DEFAULT_QUALITY_PRESET));
+      if (chosen && Array.isArray(chosen.stays) && Array.isArray(chosen.substitutes)) {
+        build.note('Keeps ' + chosen.stays.join(', ') + '. Substitutes: ' + chosen.substitutes.join(', ') + '.');
+      }
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
       // Shadows are a sun-depth pass of nearby ships/rocks/stations so they darken each other.
       // Empty space does not receive them. Off skips that extra pass — now the shipped default
@@ -610,7 +616,7 @@ export const settingsScreen = {
     build.toggle('Invert right-stick Y', () => !!gp().invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), invertY: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
-    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline (dock/accept when prompted), X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Y/Triangle codex, Start → Pause → Mission Log.');
+    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Guide or Pause for the codex, Start → Pause → Mission Log.');
 
     // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
     // a word, then press the pad button. Conflict detection honours the designed context shares

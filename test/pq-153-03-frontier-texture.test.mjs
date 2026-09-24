@@ -176,7 +176,7 @@ test('PQ-153.03: rumours fire on seed 15330 without a story promise', () => {
   );
 });
 
-test('PQ-153.03: atlas integrity is green and the west "not merged" comment is stale', () => {
+test('PQ-153.03: atlas integrity is green and the stale "not wired" comments are corrected', () => {
   const result = checkAtlasIntegrity();
   const failed = result.checks.filter((row) => !row.pass).map((row) => `${row.name}: ${(row.details || []).join('; ')}`);
   assert.deepEqual(failed, []);
@@ -184,8 +184,10 @@ test('PQ-153.03: atlas integrity is green and the west "not merged" comment is s
 
   const west = readFileSync(WEST_SRC, 'utf8');
   const north = readFileSync(NORTH_SRC, 'utf8');
-  assert.match(west, /Not yet merged into/);
-  assert.match(north, /Not wired into live SECTORS/);
+  assert.doesNotMatch(west, /Not yet merged into/);
+  assert.doesNotMatch(north, /Not wired into live SECTORS/);
+  assert.match(west, /Wired: \.\/index\.js aggregates/);
+  assert.match(north, /Wired: \.\/index\.js aggregates/);
   for (const id of ['sector_nyx_march', 'sector_hyperion_cut', 'sector_rhea_cinder']) {
     assert.ok(SECTOR_BY_ID.has(id), `${id} is already live; the pack comment is a stale lie`);
   }

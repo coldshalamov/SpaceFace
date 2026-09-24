@@ -23,6 +23,7 @@ export async function runNewGameStartTransition(options = {}) {
     waitForVisuals,
     waitForWarmup,
     waitForGpuResources,
+    waitForPhysics,
     enterFlight,
     reportProgress,
     yieldForPresentation,
@@ -86,6 +87,24 @@ export async function runNewGameStartTransition(options = {}) {
       }
     }
     if (!current()) return stale();
+    if (typeof waitForPhysics === 'function') {
+      // The loading route runs at timeScale 0, so no live tick ever initializes the
+      // dynamic physics owner: the first unfrozen flight tick would start the async
+      // Rapier/SG-02 bring-up and early-return until it resolved — thrust demanded,
+      // speed and displacement exactly 0 (D26). Hand over flight only with the
+      // authority already stepped-ready.
+      publishProgress(reportProgress, current, 'physics-authority', 0.94, 'Preparing flight dynamics');
+      const physicsReady = await waitForPhysics();
+      if (!current()) return stale();
+      if (physicsReady === false) {
+        throw new GameStartReadinessError(
+          'PHYSICS_BACKEND_UNAVAILABLE',
+          'physics-authority',
+          'The dynamic physics backend did not initialize; refusing to enter flight frozen in place.',
+        );
+      }
+    }
+    if (!current()) return stale();
     publishProgress(reportProgress, current, 'entering-flight', 0.96, 'Handing over flight control');
     const enteredFlight = guard.commit(token, enterFlight);
     return enteredFlight ? { stale: false, enteredFlight: true } : stale();
@@ -119,6 +138,8 @@ export function describeGameStartFailure(error) {
     text = 'The flight renderer did not finish preparing. Retry Launch; saved games are unchanged.';
   } else if (code === 'GPU_RESIDENCY_UNAVAILABLE') {
     text = 'The opening flight materials did not finish preparing. Retry Launch; saved games are unchanged.';
+  } else if (code === 'PHYSICS_BACKEND_UNAVAILABLE') {
+    text = 'The flight physics systems did not finish preparing. Retry Launch; saved games are unchanged.';
   } else if (code === 'NEW_GAME_PLUS_UNAVAILABLE') {
     text = 'That New Run+ legacy could not be restored. Choose it again or launch a fresh run; saved games are unchanged.';
   }

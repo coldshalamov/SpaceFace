@@ -103,6 +103,28 @@ export function bracketReadText(read) {
   return read.reason ? `${read.text} · ${read.reason}` : read.text;
 }
 
+/** What the glass paints. CAN and OUT OF RANGE are shapes on the mark; a denial keeps its three-word reason. */
+export function bracketPaintText(read) {
+  if (!read || read.state === 'CAN' || read.state === 'OUT OF RANGE') return '';
+  return read.reason || '';
+}
+
+/** Shape id on the acquisition mark: open diamond, broken ring, or crossed diamond. */
+export function bracketShapeId(read) {
+  if (!read) return '';
+  if (read.state === 'CAN') return 'can';
+  if (read.state === 'OUT OF RANGE') return 'range';
+  return 'denied';
+}
+
+const BRACKET_SHAPE_CLASSES = Object.freeze(['ml2-shape-can', 'ml2-shape-range', 'ml2-shape-denied']);
+
+function setBracketShape(mark, shape) {
+  if (!mark) return;
+  for (const name of BRACKET_SHAPE_CLASSES) setClass(mark, name, name === `ml2-shape-${shape}`);
+  setAttr(mark, 'data-bracket-shape', shape || '');
+}
+
 function rectsOverlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
@@ -218,6 +240,16 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-preview-mark.ml2-mark-protected i { border-radius:50%; transform:none; }
 #sf-ml2 .ml2-preview-mark.ml2-mark-unavailable { color:var(--dp-ink-dim, #a9a696); }
 #sf-ml2 .ml2-preview-mark.ml2-mark-unavailable i { border-style:dashed; box-shadow:none; }
+/* Phase 4.2 — the latch state is the shape. CAN is an open diamond, range is a broken ring,
+   a denial is a diamond with a cross. The word itself is not painted beside the body. */
+#sf-ml2 .ml2-preview-mark.ml2-shape-can i { border-style:solid; border-radius:0; transform:rotate(45deg);
+  box-shadow:0 0 9px currentColor; background:none; }
+#sf-ml2 .ml2-preview-mark.ml2-shape-range i { border-style:solid; border-radius:50%; transform:none;
+  border-right-color:transparent; box-shadow:none; background:none; }
+#sf-ml2 .ml2-preview-mark.ml2-shape-denied i { border-style:solid; border-radius:0; transform:rotate(45deg);
+  box-shadow:none;
+  background:linear-gradient(currentColor, currentColor) center/2px 70% no-repeat,
+    linear-gradient(currentColor, currentColor) center/70% 2px no-repeat; }
 #sf-ml2 .ml2-preview-mark.ml2-bridle-source { color:var(--dp-lamp, #f2b950); }
 #sf-ml2 .ml2-preview-mark.ml2-bridle-source i { inset:2px; transform:none; box-shadow:0 0 9px currentColor; }
 #sf-ml2 .ml2-preview-mark.ml2-bridle-target { color:#ffb547; }
@@ -745,7 +777,8 @@ export const masslineHud = {
     const ready = selected.status === 'ready';
     const read = resolveMasslineBracketRead(selected.status, selected.reason);
     const text = bracketReadText(read);
-    const captionWidth = estimateCaptionWidth(text);
+    const paint = bracketPaintText(read);
+    const captionWidth = estimateCaptionWidth(paint || text);
     const placed = placeBracketWords(
       { x: cueX, y: cueY },
       playerHullScreenRect(player, w2s),
@@ -762,14 +795,18 @@ export const masslineHud = {
     setClass(dom.previewMark, 'ml2-offscreen', offscreen);
     setClass(dom.previewMark, 'ml2-mark-protected', selected.status === 'protected');
     setClass(dom.previewMark, 'ml2-mark-unavailable', !ready && selected.status !== 'protected');
+    setBracketShape(dom.previewMark, bracketShapeId(read));
+    setAttr(dom.previewMark, 'aria-hidden', 'false');
+    setAttr(dom.previewMark, 'role', 'img');
+    setAttr(dom.previewMark, 'aria-label', offscreen ? `${text}, offscreen` : text);
 
-    setStyle(dom.previewEl, 'display', 'block');
+    setStyle(dom.previewEl, 'display', paint ? 'block' : 'none');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
     setClass(dom.previewSvg, 'ml2-bridle-preview', false);
     setStyle(dom.previewSvg, 'display', 'none');
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
-    if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
+    if (dom.previewEl.textContent !== paint) dom.previewEl.textContent = paint;
     setAttr(dom.previewEl, 'data-bracket-state', read.state);
     setAttr(dom.previewEl, 'aria-label', offscreen ? `${text}, offscreen` : text);
     setAttr(dom.previewEl, 'data-receipt-id', String(receipt.id || ''));
@@ -799,7 +836,8 @@ export const masslineHud = {
     const cueY = pinned ? pinned.y : screen.y;
     const read = resolveMasslineBracketRead('invalid', denial.reason);
     const text = bracketReadText(read);
-    const captionWidth = estimateCaptionWidth(text);
+    const paint = bracketPaintText(read);
+    const captionWidth = estimateCaptionWidth(paint || text);
     const placed = placeBracketWords(
       { x: cueX, y: cueY },
       playerHullScreenRect(player, w2s),
@@ -815,13 +853,17 @@ export const masslineHud = {
       setClass(dom.previewMark, 'ml2-offscreen', offscreen);
       setClass(dom.previewMark, 'ml2-mark-protected', false);
       setClass(dom.previewMark, 'ml2-mark-unavailable', true);
+      setBracketShape(dom.previewMark, bracketShapeId(read));
+      setAttr(dom.previewMark, 'aria-hidden', 'false');
+      setAttr(dom.previewMark, 'role', 'img');
+      setAttr(dom.previewMark, 'aria-label', text);
     }
     setStyle(dom.previewSourceMark, 'display', 'none');
     setStyle(dom.previewSvg, 'display', 'none');
     setStyle(dom.previewEl, 'display', 'block');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
-    if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
+    if (dom.previewEl.textContent !== paint) dom.previewEl.textContent = paint;
     setAttr(dom.previewEl, 'data-bracket-state', read.state);
     setAttr(dom.previewEl, 'aria-label', text);
     setAttr(dom.previewEl, 'data-receipt-id', '');
@@ -834,6 +876,9 @@ export const masslineHud = {
 
   _hideAcquisitionPreview(dom) {
     setStyle(dom.previewEl, 'display', 'none');
+    setBracketShape(dom.previewMark, '');
+    setAttr(dom.previewMark, 'aria-hidden', 'true');
+    setAttr(dom.previewMark, 'aria-label', '');
     setStyle(dom.previewMark, 'display', 'none');
     setStyle(dom.previewSourceMark, 'display', 'none');
     setStyle(dom.previewSvg, 'display', 'none');

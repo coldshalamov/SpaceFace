@@ -47,6 +47,20 @@ export const BODY_NEAR_MISS_EXIT_WU = 90;
 export const BODY_NEAR_MISS_WINDOW_TICKS = 480;
 export const BODY_NEAR_MISS_COOLDOWN_TICKS = 120;
 
+/** What a near-miss bark calls the body. A thrown rock is a rock, a pod is a pod. */
+export function nearMissBodyNoun(body) {
+  const type = body && body.type;
+  if (type === 'asteroid') return 'rock';
+  if (type === 'payload') return 'pod';
+  if (type === 'wreck') return 'wreck';
+  return 'hull';
+}
+
+export function nearMissBarkText(source, body) {
+  const motion = source === 'throw' ? 'thrown' : 'loose';
+  return `That ${motion} ${nearMissBodyNoun(body)} nearly hit us. Clear the lane!`;
+}
+
 // PQ-142.01 hull recognition. `design/VISION.md` Part II: the ship earns "a reputation by hull —
 // until it is my fucking ship." A witness who was in the room when the hull did something says the
 // SHIP'S NAME, not "unidentified vessel".
@@ -675,7 +689,8 @@ export const barkDirector = {
     if (!state || bodyId == null || actorId !== state.playerId) return false;
     const body = state.entities && state.entities.get && state.entities.get(bodyId);
     if (!body || body.alive === false || !body.pos) return false;
-    if (body.type !== 'ship' && body.type !== 'drone' && body.type !== 'payload' && body.type !== 'wreck') return false;
+    if (body.type !== 'ship' && body.type !== 'drone' && body.type !== 'payload'
+      && body.type !== 'wreck' && body.type !== 'asteroid') return false;
     const existing = this._bodyNearMisses && this._bodyNearMisses.get(bodyId);
     const witnesses = existing ? existing.witnesses : new Map();
     const hitWitnesses = existing ? existing.hitWitnesses : new Set();
@@ -746,9 +761,8 @@ export const barkDirector = {
     const voice = this.helpers && this.helpers.voice;
     if (!state || !voice || typeof voice.say !== 'function') return false;
     const factionId = factionFor(witness);
-    const text = track.source === 'throw'
-      ? 'That thrown hull nearly hit us. Clear the lane!'
-      : 'That loose hull nearly hit us. Clear the lane!';
+    const body = state.entities && state.entities.get && state.entities.get(track.bodyId);
+    const text = nearMissBarkText(track.source, body);
     const t = Number(state.simTime) || 0;
     const accepted = voice.say({
       channel: 'bark',

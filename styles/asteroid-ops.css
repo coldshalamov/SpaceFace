@@ -73,9 +73,10 @@
    TYPE STAYS SENTENCE CASE. Field Hardware normally speaks in tracked stencil
    caps, but law §3.3 bans every uppercase transform on this screen and
    scripts/check-asteroid-theater.mjs enforces it on every visible element. The
-   Field Hardware voice therefore arrives here as QUIET TYPE — legend tracking
-   (--fh-track-legend), the kit's own size ramp, tabular numerals and the legend
-   amber for lit state — and never as tracked caps.
+   Field Hardware voice therefore arrives here as QUIET TYPE — display tracking
+   (--fh-track-display, 0.02em — the law's cap, so legend tracking stays out), the
+   kit's own size ramp, tabular numerals and the legend amber for lit state — and
+   never as tracked caps.
 
    Slices are often rendered NARROWER than the sprite's authored slice (e.g.
    `border-image-slice: 16 fill` drawn at `border-width: 8px`). That is deliberate:
@@ -113,7 +114,7 @@
   box-sizing: border-box;
   background: transparent;
   font: 500 var(--fh-size-fine)/1 var(--aw-font);
-  letter-spacing: var(--fh-track-legend);
+  letter-spacing: var(--fh-track-display);
   color: var(--aw-ink-2);
   white-space: nowrap;
   border-style: solid;
@@ -231,7 +232,7 @@
   box-sizing: border-box;
   background: transparent;
   font: 600 var(--fh-size-fine)/1 var(--aw-font);
-  letter-spacing: var(--fh-track-legend);
+  letter-spacing: var(--fh-track-display);
   color: var(--aw-ink-2);
   transition: color 120ms var(--k-ease);
   border: 10px solid transparent;
@@ -254,7 +255,7 @@
 .aw-key {
   font: 500 var(--fh-size-fine)/1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  letter-spacing: var(--fh-track-legend);
+  letter-spacing: var(--fh-track-display);
   /* NOT --fh-legend-rest. The kit's resting legend is amber at 45% alpha, which composites to
      2.9:1 on these plates — under the 4.5:1 floor, and this screen's labels are text, not
      decoration. The Field Hardware voice here is the TRACKING and the size step; the ink stays
@@ -316,7 +317,7 @@
   flex: 0 0 auto;
   width: 56px;
   font: 500 var(--fh-size-fine)/1 var(--aw-font);
-  letter-spacing: var(--fh-track-legend);
+  letter-spacing: var(--fh-track-display);
   color: var(--aw-ink-2); /* 8.9:1 on the sunk plate — see the note on .aw-key */
 }
 .aw-gauge-track { width: 148px; }
@@ -703,7 +704,7 @@
   box-shadow: var(--dp-cap-lift);
 }
 .ast-summary-box .title {
-  font: 600 20px/1.2 var(--aw-name-font, var(--aw-font, sans-serif));
+  font: 600 20px/1.2 var(--aw-font, sans-serif);
   letter-spacing: var(--fh-track-display);
   color: var(--aw-ink, #f2e8d5);
   padding-bottom: 10px;
@@ -724,6 +725,13 @@
   color: var(--aw-gold, #ffb648);
 }
 .ast-summary-box .sf-btn { align-self: center; min-width: 150px; }
+/* The report's close verb is a kit fh-key: keep the visible focus ring on it and take the hover
+   ink-swap off — the primary plate already reads as the one verb. The !important is load-bearing:
+   styles/ui.css carries a legacy `*:focus-visible` accent rule with !important of its own. */
+.ast-summary-box .fh-key:focus-visible { outline: 2px solid var(--dp-lamp) !important; outline-offset: 3px; }
+.ast-summary-box .fh-key:is(:hover, :focus-visible, :active) {
+  color: #1a1206; translate: none; box-shadow: none; filter: none;
+}
 .ast-screen .sf-btn,
 .ast-summary-box .sf-btn {
   display: inline-flex;
@@ -735,7 +743,7 @@
   box-sizing: border-box;
   background: transparent;
   font: 600 var(--fh-size-fine)/1.1 var(--aw-font);
-  letter-spacing: var(--fh-track-legend);
+  letter-spacing: var(--fh-track-display);
   color: var(--fh-ground);
   transition: transform 120ms var(--k-ease), color 120ms var(--k-ease);
   border: 14px solid transparent;
@@ -930,7 +938,7 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   background: transparent;
   color: var(--aw-ink-2);
   font: 500 var(--fh-size-fine)/1.1 var(--aw-font);
-  letter-spacing: var(--fh-track-legend);
+  letter-spacing: var(--fh-track-display);
   transition: color 120ms var(--k-ease);
   border: 11px solid transparent;
   background: none;
@@ -1099,7 +1107,7 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
 .aw-site-title {
   margin: 0 0 2px;
   font: 600 var(--fh-size-fine)/1.2 var(--aw-font);
-  letter-spacing: var(--fh-track-legend);
+  letter-spacing: var(--fh-track-display);
   color: var(--aw-ink); /* a block heading is read, not glanced — see the note on .aw-key */
 }
 .aw-site-stat {
@@ -1162,7 +1170,7 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   border-style: solid;
   color: var(--aw-ink-2);
   font: 500 var(--fh-size-fine)/1.1 var(--aw-font);
-  letter-spacing: var(--fh-track-legend);
+  letter-spacing: var(--fh-track-display);
   transition: color 120ms var(--k-ease), transform 120ms var(--k-ease);
 }
 .ast-screen .aw-verb-chip,
@@ -1307,7 +1315,7 @@ html.sf-reduce-motion .aw-verb-step:hover { transform: none; }
    `.ast-screen .aw-*` rules above — deliberately, because those rules ARE the kit, applied at
    this screen's law: the same produced sprites, at law §6.1-§6.3's geometry, in sentence case.
 
-   TWO properties are not, and they are the whole reason this block exists. Both are load-order
+   THREE properties are not, and they are the whole reason this block exists. All are load-order
    traps, not taste:
 
    1. `text-transform`. fh.css sets `uppercase` on `.fh-key`, because a kit key is a POSTER/BENCH
@@ -1319,6 +1327,12 @@ html.sf-reduce-motion .aw-verb-step:hover { transform: none; }
       fails the screen on one uppercase computed style — scripts/check-asteroid-theater.mjs walks
       every visible element and counts them. Naming the element's own class as well makes this
       (0,2,0) and settles it.
+
+   1b. `letter-spacing`. Same `.fh-key` rule sets `.1em`, and `.ast-screen *` declares no
+      letter-spacing at all — so nothing even ties it, and every `fh-key` element here inherits
+      the bench track unless its own class sets one. `.aw-drawer-key` is that element: an icon
+      button with no tracking of its own. The law caps tracking at .02em (§3.4), which is what
+      `--fh-track-display` already is; naming it here reaches every marker key at once.
 
    2. `min-width`. fh.css floors a key at 120px (88px small, 96px legend) because it is sized for
       a bench at 1920. This screen's controls are a 30px stepper, a 30px icon button and a crest key inside
@@ -1337,6 +1351,7 @@ html.sf-reduce-motion .aw-verb-step:hover { transform: none; }
 .ast-screen .fh-key,
 .ast-summary-box .fh-key {
   text-transform: none;
+  letter-spacing: var(--fh-track-display);
   font-variation-settings: normal;
 }
 /* The width floor is released for the SCREEN only. The extraction report's one verb is the one

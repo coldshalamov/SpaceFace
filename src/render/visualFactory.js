@@ -20,6 +20,7 @@ import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/u
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
+  COMMON_ROCK_MINERAL_SHEEN,
   COMMON_ROCK_UV_TRANSFORMS,
   COMMON_ROCK_VARIANTS,
   displacementScalar as geologyDisplacement,
@@ -2155,7 +2156,7 @@ function configureCommonRockPbr(material) {
         'float sfRockLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));',
         'diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma), 0.28);',
         'float sfMineralExposure = smoothstep(0.10, 0.55, vSfGeologyPbr.b);',
-        'diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma) * vec3(0.63, 0.94, 1.04), sfMineralExposure * 0.68);',
+        `diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma) * vec3(${COMMON_ROCK_MINERAL_SHEEN.join(', ')}), sfMineralExposure * 0.68);`,
       ].join('\n'),
       'fragment substrate color chunk',
     );
@@ -2823,10 +2824,22 @@ function applyStructureProfile(g, pal, R, seed) {
 // ---------------------------------------------------------------------------------------------
 // PICKUPS — spinning gem colored by commodity. Bloom comes from the gem's own emissive surface.
 // ---------------------------------------------------------------------------------------------
+function payloadCommodityId(data) {
+  if (!data) return null;
+  if (data.commodityId) return data.commodityId;
+  const pool = data.salvagePool;
+  if (!pool || typeof pool !== 'object') return null;
+  for (const [id, qty] of Object.entries(pool)) {
+    if (Number(qty) > 0 && id) return id;
+  }
+  return null;
+}
+
 function commodityColor(e) {
   const d = e.data || {};
   if (d.kind === 'credits' || d.kind === 'credit_chip') return '#ffcc44';
-  if (d.commodityId) return commodityPresentationFor(d.commodityId).color;
+  const commodityId = payloadCommodityId(d);
+  if (commodityId) return commodityPresentationFor(commodityId).color;
   if (d.kind === 'module' || d.kind === 'cargo') return '#9b6cff';
   return '#7af7d0';
 }
@@ -4728,9 +4741,8 @@ function laneTrafficVisualEntity(e) {
 function buildPayload(e) {
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
-  const presentation = e && e.data && e.data.commodityId
-    ? commodityPresentationFor(e.data.commodityId)
-    : null;
+  const commodityId = payloadCommodityId(e && e.data);
+  const presentation = commodityId ? commodityPresentationFor(commodityId) : null;
   const shellKey = presentation ? `payload:shell:${presentation.id}` : 'payload:shell';
   const bandKey = presentation ? `payload:band:${presentation.id}` : 'payload:band';
   const shell = getMaterial(shellKey, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({

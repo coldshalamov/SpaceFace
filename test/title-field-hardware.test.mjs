@@ -23,8 +23,11 @@ const frames = readFileSync(join(ROOT, 'src/ui/views/menuFrames.js'), 'utf8');
 const menu = readFileSync(join(ROOT, 'src/ui/screens/mainMenu.js'), 'utf8');
 
 test('title stands on the uiStage, not a word list on black', () => {
-  assert.equal(mainMenuScreen.stage.scene, 'title-field');
-  assert.equal(mainMenuScreen.stage.hullDefId, NEW_GAME.shipId);
+  // stage is a spec FUNCTION of ctx (screenManager resolves it per stack sync): the
+  // still is the default picture; the idle attract swaps the request to title-attract.
+  const spec = mainMenuScreen.stage({});
+  assert.equal(spec.scene, 'title-field');
+  assert.equal(spec.hullDefId, NEW_GAME.shipId);
   // The lit scene's own backdrop contract, and the plate that holds the frame while it assembles.
   assert.match(frames, /k-world k-world--plate/);
 });

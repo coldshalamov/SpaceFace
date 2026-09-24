@@ -163,7 +163,9 @@ export default defineEncounter(trigger, {
   squad: {
     anchorArchetype: 'reaver_pirate',
     archetypes: ['reaver_pirate', 'wasp_swarmer'],
-    size: [2, 2],
+    size: [3, 3],
+    clusterRadius: 75,
+    minSeparation: 38,
     doctrine: 'thief',
     formation: 'wedge',
   },

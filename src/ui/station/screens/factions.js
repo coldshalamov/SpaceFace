@@ -109,6 +109,14 @@ function relationEntries(meta) {
     .slice(0, 7);
 }
 
+/** The next contract rung and what it buys, in one line; or the top when every rung is reached. */
+function nextRungLine(rep) {
+  const rows = factionContractLadderRows(rep);
+  const next = rows.find((row) => !row.unlocked);
+  if (!next) return 'Every contract rung is open.';
+  return `Next: ${next.name} at ${next.minRep > 0 ? '+' : ''}${next.minRep} · ${next.unlocks}`;
+}
+
 function heroHtml(n, w, cls = '') {
   return `<div class="k-hero"><span class="k-hero__n${cls ? ` ${cls}` : ''}">${n}</span><span class="k-hero__w">${w}</span></div>`;
 }
@@ -156,10 +164,10 @@ export function createFactionsScreen(ctx) {
               // The crest rides the row. Fifteen names at identical weight was a spreadsheet;
               // a power is recognisable by its mark before its name is read.
               `<span class="sx-fac-row__crest" aria-hidden="true">${crest(f.id, 'badge')}</span>` +
-              `<span class="k-row__name sx-fac-row__name">${authority ? '<span class="k-62">Authority · </span>' : ''}${escapeHtml(f.name)}</span>` +
+              `<span class="k-row__name sx-fac-row__name">${authority ? '<span class="k-62">Authority</span>' : ''}${escapeHtml(f.name)}</span>` +
               `<span class="k-bar sx-fac-row__bar" aria-hidden="true"><span class="k-bar__fill sx-fac-row__fill" style="width:${(frac * 100).toFixed(1)}%"></span><span class="sx-fac-row__zero"></span></span>` +
             `</span>` +
-            `<span class="k-row__num sx-fac-row__tier ${standingClass(rep)}">${signed(rep)}</span>` +
+            `<span class="k-row__num sx-fac-row__tier ${standingClass(rep)}">${rep === 0 ? '<span class="sx-fac-row__nil">—</span>' : signed(rep)}</span>` +
           `</button></li>`
         );
       }).join('') +
@@ -192,16 +200,20 @@ export function createFactionsScreen(ctx) {
         `<span class="k-row__num sx-ladder__min">${t.min > 0 ? '+' : ''}${t.min}</span>` +
       `</li>`
     )).join('');
-    const contractLadder = factionContractLadderRows(rep).map((row) => (
-      `<li class="k-row k-row--static sx-ladder__step${row.unlocked ? ' is-reached' : ''}">` +
+    let marked = false;
+    const contractLadder = factionContractLadderRows(rep).map((row) => {
+      const next = !row.unlocked && !marked; if (next) marked = true;
+      return (
+      `<li class="k-row k-row--static sx-ladder__step${row.unlocked ? ' is-reached' : ''}${next ? ' is-next' : ''}">` +
         // A contract rung is a sentence -- "Recovery Work · R0-R1 local hauling · unlocked" -- so it
         // WRAPS. Truncating it with an ellipsis hides the part that says what the rung buys you.
         // The standing ladder above is one short tier name per row and keeps `k-row__name`.
         `<span class="sx-ladder__name sx-ladder__name--wrap${row.unlocked ? '' : ' k-62'}">${escapeHtml(row.name)} · ${escapeHtml(row.unlocks)}` +
-          `<span class="k-row__sub"> · ${row.aspirational ? 'future work' : row.unlocked ? 'unlocked' : 'locked'}</span></span>` +
+          `<span class="k-row__sub"> · ${row.aspirational ? 'sealed' : row.unlocked ? 'unlocked' : 'locked'}</span></span>` +
         `<span class="k-row__num sx-ladder__min">${row.minRep > 0 ? '+' : ''}${row.minRep}</span>` +
       `</li>`
-    )).join('');
+      );
+    }).join('');
     const relationRows = relations.map((relation) => {
       const related = factions.find((candidate) => candidate.id === relation.id);
       const name = related ? related.name : relation.id;
@@ -224,30 +236,34 @@ export function createFactionsScreen(ctx) {
         `<p class="k-sentence k-sentence--emph sx-fac-ident__flag">${f.id === authorityId ? 'Current station authority' : 'External power'}` +
           `${controls.length ? ` · ${escapeHtml(controls.slice(0, 3).join(' · '))}` : ' · no confirmed jurisdiction at this berth'}</p>` +
         `<div class="sx-fac-heroes" aria-label="Standing with ${escapeHtml(f.name)}">` +
-          heroHtml(`${escapeHtml(tier.name)} ${signed(rep)}`, escapeHtml(guidance.last), cls) +
-          heroHtml(next ? `${next.need}` : 'Peak held', next ? `reputation to ${escapeHtml(next.name)} · ${escapeHtml(guidance.next)}` : escapeHtml(guidance.next)) +
-          heroHtml(`${buffer}`, `hostility buffer · ${escapeHtml(guidance.risk)}`, buffer <= 0 ? 'k-bad' : '') +
+          heroHtml(`<span class="sx-fac-tier">${escapeHtml(tier.name)}</span>${signed(rep)}`, escapeHtml(guidance.last), cls) +
+          heroHtml(next ? `${next.need}` : 'Peak held', next ? `to ${escapeHtml(next.name)}` : 'the top of the ladder') +
+          heroHtml(`${buffer}`, 'above the aggro line', buffer <= 0 ? 'k-bad' : '') +
         `</div>` +
         `<div class="sx-fac__detail">` +
           `<div class="sx-fac-ladder">` +
             `<p class="k-caps">Standing ladder</p>` +
             // ORRERY: the ladder as a ruler -- the tiers as ticks, the aggro line red, a light cursor
-            standingScaleSvg({ rep, tiers: FACTION_TIERS, aggro: FACTION_AGGRO_THRESHOLD, width: 560 }) +
+            standingScaleSvg({ rep, tiers: FACTION_TIERS, aggro: FACTION_AGGRO_THRESHOLD, width: 560,
+              rungs: factionContractLadderRows(rep).map((row) => ({ minRep: row.minRep, name: row.name, state: row.aspirational ? 'sealed' : row.unlocked ? 'reached' : 'locked' })) }) +
             ladderRows(standingLadder) +
           `</div>` +
           `<div class="sx-fac-ladder sx-fac-contracts" aria-label="Contract access">` +
             `<p class="k-caps">Contract access</p>` +
             ladderRows(contractLadder) +
+            // the rungs hang off the standing scale; the reading names the next one and what it buys
+            `<p class="k-sentence sx-fac-rung-next">${escapeHtml(nextRungLine(rep))}</p>` +
           `</div>` +
           `<div class="sx-fac-intent">` +
             `<p class="k-caps">Next move</p>` +
             `<p class="k-sentence k-sentence--emph">${escapeHtml(guidance.plan)}</p>` +
           `</div>` +
           `<div class="sx-fac-network" aria-label="Relations of ${escapeHtml(f.name)}">` +
-            `<p class="k-caps">Relations</p>` +
+            // folded: a word that unfolds the relations when asked
+            `<button type="button" class="k-word k-word--fine sx-fac-network__toggle" data-relations-toggle aria-expanded="false">Relations${relations.length ? ` · ${relations.length}` : ''}</button>` +
             (relations.length
-              ? `<ul class="k-rows sx-fac-network__rows">${relationRows}</ul>`
-              : `<p class="k-empty sx-fac-network__empty">No material relations recorded.</p>`) +
+              ? `<ul class="k-rows sx-fac-network__rows" hidden>${relationRows}</ul>`
+              : `<p class="k-empty sx-fac-network__empty" hidden>No material relations recorded.</p>`) +
           `</div>` +
         `</div>` +
       `</div>`;
@@ -259,7 +275,7 @@ export function createFactionsScreen(ctx) {
     if (!orbit) orbit = createCrestOrbit(orbitHost, { crestSize: 44, centreSize: 150 });
     const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
     orbit.set({
-      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name }; }),
+      items: factions.map((x) => { const r = repOf(state, x.id); return { id: x.id, name: x.name, short: (x.meta && x.meta.short) || x.name, rep: r, tierName: tierFor(r).name, tierSteps: tierIndex(r) - 4 }; }),
       selectedId: f.id,
       authorityId,
       swing: picked,
@@ -292,7 +308,18 @@ export function createFactionsScreen(ctx) {
     if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   }
 
+  function onRelationsToggle(ev) {
+    const t = ev.target && ev.target.closest && ev.target.closest('[data-relations-toggle]');
+    if (!t) return false;
+    const box = t.nextElementSibling;
+    const open = t.getAttribute('aria-expanded') !== 'true';
+    t.setAttribute('aria-expanded', String(open));
+    if (box) box.hidden = !open;
+    return true;
+  }
+
   function onFactionClick(ev) {
+    if (onRelationsToggle(ev)) return;
     const btn = ev.target.closest('[data-fac]');
     if (!btn) return;
     selectFaction(btn.getAttribute('data-fac'), false);

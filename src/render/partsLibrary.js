@@ -5554,8 +5554,28 @@ function installPreparedBoundaryPublisher(boundary, publish) {
  * Pilot: ship_wasp separate-file LOD family. LOD0 remains the admitted root; demotion lazily
  * composes LOD1/LOD2 behind the whole-ship-lod-family residency role and swaps without blanking.
  */
-function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {
-  if (!boundary || !entity || entity.isPlayer === true) return false;
+// An aborted demotion owns a fully composed root whose packages were already compiled and
+// uploaded while hidden (prepareAuthoredShipVisualPipelines). Neither failure path — the
+// stale-race early return after upload or a compose/prepare throw — reaches the swap, so
+// the root never gains a scene retainer and nothing else disposes it: every abandoned root
+// leaves its renderer-registered geometries and materials behind forever (v6 evidence:
+// residentResources stayed flat while renderer geometries climbed — growth with no ledger
+// owner). Disposal mirrors the prepared-authored teardown: per-boundary package instances,
+// instance-local materials/geometries, and the template pin; shared template/library
+// resources are deliberately untouched.
+async function disposeAbandonedWholeShipLodRoot(composed) {
+  if (!composed || !composed.root) return false;
+  try {
+    await disposePreparedAuthoredShip(composed);
+    return true;
+  } catch (error) {
+    // Cleanup failing must not mask the race or throw that abandoned the root.
+    console.info('[partsLibrary] whole-ship LOD demotion abandonment cleanup failed', error);
+    return false;
+  }
+}
+
+function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {  if (!boundary || !entity || entity.isPlayer === true) return false;
   const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
   const family = selection && selection.lodFamily;
   if (!canInstallWholeShipLodFamily(entity, selection)) return false;
@@ -5627,6 +5647,8 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
       return;
     }
     const lodLoad = (async () => {
+      // Hoisted so the catch can still dispose a root abandoned by a mid-prepare throw.
+      let composed = null;
       try {
         const library = await preloadAuthoredAssetsForEntity(renderer, entity, {
           ...options,
@@ -5643,23 +5665,38 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
         const publicationWait = waitForOpeningGraphPublicationRelease();
         if (publicationWait) await publicationWait;
         if (!shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) return;
-        const composed = buildComposedShip(entity, library, scene, boundary, {
+        composed = buildComposedShip(entity, library, scene, boundary, {
           ...options,
           requiredWholeShip: true,
           forceWholeShipFile: file,
           residencyRole: 'whole-ship-lod-family',
         });
-        if (!composed || !composed.root) return;
+        if (!composed || !composed.root) {
+          composed = null;
+          return;
+        }
         composed.root.visible = false;
         // The demoted root never went through the boundary's admission pipeline: without this its
         // programs link and its buffers upload inside the first frame it is drawn — a measured
         // bloomScene brick. Compile and upload it while still hidden, then swap. Compile uses the
         // shared flight admission path, which slices across presents in flight.
         await prepareAuthoredShipVisualPipelines(composed, options);
-        if (!shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) return;
+        if (!shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) {
+          // Lost the race after the upload: the root is fully live in renderer memory but will
+          // never be swapped in. Dispose it — returning here used to leak every uploaded
+          // buffer/geometry of this demotion attempt (D24 growth with no residency owner).
+          await disposeAbandonedWholeShipLodRoot(composed);
+          composed = null;
+          return;
+        }
         roots[requested] = composed.root;
         if (shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) swapTo(requested);
       } catch (error) {
+        // A throw after compose abandons the same uploaded root — dispose before logging.
+        if (composed) {
+          await disposeAbandonedWholeShipLodRoot(composed);
+          composed = null;
+        }
         // AggregateError reasons do not survive console text capture, which leaves the
         // demotion failure undiagnosable in soak evidence. Name the causes inline.
         const causes = Array.isArray(error && error.errors)

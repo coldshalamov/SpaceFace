@@ -162,6 +162,7 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
       if (SURVIVAL_LAUNCH_RULESETS.has(overrides.survivalRuleset)) {
         out.survivalRuleset = overrides.survivalRuleset;
       }
+      if (overrides.openingLesson === true) out.openingLesson = true;
     }
   }
   return out;
@@ -1136,6 +1137,7 @@ export function applySandboxSetup(ctx, config) {
           ruleset: SURVIVAL_LAUNCH_RULESETS.has(cfg.survivalRuleset) ? cfg.survivalRuleset : 'scored',
           seed: setup.seed,
           arenaId: setup.arenaId,
+          openingLesson: cfg.openingLesson === true,
         });
       }
       // 3. Hull and fittings through the ships writers.

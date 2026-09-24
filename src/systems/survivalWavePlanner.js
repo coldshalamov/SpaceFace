@@ -172,6 +172,8 @@ function expandSchedule(packages) {
       // Champion marker, carried only when a package sets it. Authored arc packages never do, so
       // an arc schedule is byte-identical to what it always was.
       if (pkg.champion === true) entry.champion = true;
+      if (pkg.lesson === true) entry.lesson = true;
+      if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
       entries.push(entry);
       remaining -= n;
       if (remaining > 0) tick += gap;
@@ -462,6 +464,58 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
   return decorateWeeklyPlan(plan, mutators);
 }
 
+/** First swarm minute, before the pack. 45 seconds at the 60 Hz sim. */
+export const OPENING_LESSON_HOLD_TICKS = 45 * 60;
+
+/**
+ * Wave 1 of a first swarm run. The same bodies still arrive — one light hull now, the rest
+ * after the hold — so the budget does not grow. A rock and a well ride on the plan for the
+ * arena to place. Callers that omit teachOpening never see this.
+ */
+export function applyOpeningLesson(plan) {
+  if (!plan || !Array.isArray(plan.packages) || plan.packages.length === 0) return plan;
+  const packages = plan.packages.map((pkg) => ({
+    ...pkg,
+    atTick: (Number.isInteger(pkg.atTick) ? pkg.atTick : 0) + OPENING_LESSON_HOLD_TICKS,
+  }));
+  const donorIndex = packages.findIndex((pkg) => pkg && pkg.enemyId === 'wasp_swarmer' && pkg.count > 0);
+  const index = donorIndex >= 0 ? donorIndex : 0;
+  const donor = packages[index];
+  if (donor && donor.count > 1) {
+    donor.count -= 1;
+    donor.batchSize = Math.max(1, Math.min(donor.batchSize || donor.count, donor.count));
+    packages.unshift({
+      atTick: 0,
+      gateGroup: donor.gateGroup,
+      role: donor.role || 'mass',
+      enemyId: 'wasp_swarmer',
+      count: 1,
+      batchSize: 1,
+      batchGapTicks: 0,
+      distance: 90,
+      lesson: true,
+    });
+  } else if (donor) {
+    donor.atTick = 0;
+    donor.distance = 90;
+    donor.lesson = true;
+  }
+  plan.packages = packages;
+  plan.schedule = expandSchedule(packages);
+  if (plan.swarm && typeof plan.swarm === 'object') {
+    const base = Number.isInteger(plan.swarm.durationTicks) && plan.swarm.durationTicks > 0
+      ? plan.swarm.durationTicks
+      : 0;
+    plan.swarm = { ...plan.swarm, durationTicks: base + OPENING_LESSON_HOLD_TICKS };
+  }
+  plan.openingLesson = {
+    holdTicks: OPENING_LESSON_HOLD_TICKS,
+    rock: { x: 78, z: 16, radius: 6 },
+    well: { x: -24, z: 108, radius: 96, strength: 90, falloff: 1.35 },
+  };
+  return plan;
+}
+
 export function planWave(input) {
   try {
     return planWaveInner(input);
@@ -498,12 +552,16 @@ function planWaveInner(input) {
   // Swarm waves are generated from the wave number alone, so they short-circuit the recipe
   // lookup entirely — there is no authored ceiling to fall off at wave 31.
   if (mode === SWARM_RULESET) {
-    return planSwarmWave({
+    const planned = planSwarmWave({
       seed,
       wave,
       mutators,
       rng: mulberry32(wavePlanStreamSeed(seed, arenaId, wave, 0)),
     });
+    if (input.teachOpening === true && wave === 1 && planned && planned.ok !== false && !planned.error) {
+      return applyOpeningLesson(planned);
+    }
+    return planned;
   }
 
   const act = Number.isInteger(input.act)

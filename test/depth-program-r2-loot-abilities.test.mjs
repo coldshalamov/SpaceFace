@@ -24,6 +24,7 @@ import {
   TIDELINE_MAGNET_RANGE,
   UNIQUE_LOOT_ABILITY_STATE_VERSION,
   fittedUniqueEnergyPremium,
+  fittedVerbSpec,
   uniqueLootAbilities,
 } from '../src/systems/uniqueLootAbilities.js';
 
@@ -576,6 +577,29 @@ test('only fitted unique variant premiums drain capacitor at exact per-second ra
     assert.equal(inventoryOnly.player.cap, 100);
   } finally {
     inventoryOnly.dispose();
+  }
+});
+
+test('PQ-208.01 blink and missile knockback read the declared verb keys', () => {
+  const pale = fittingState(['unique_pale_coil_warp_drive']);
+  const bell = fittingState(['unique_choir_bell_aegis']);
+  const plain = fittingState(['mod_engine_warp_l']);
+  assert.equal(fittedVerbSpec(pale, 'microJumpBlink').usesPerEncounter, 1);
+  assert.equal(fittedVerbSpec(pale, 'microJumpBlink').id, 'unique_pale_coil_warp_drive');
+  assert.equal(fittedVerbSpec(bell, 'reactiveMissileKnockback').usesPerEncounter, 1);
+  assert.equal(fittedVerbSpec(plain, 'microJumpBlink'), null);
+  assert.equal(fittedVerbSpec(pale, 'reactiveMissileKnockback'), null);
+
+  const t = bootAbilities(['mod_engine_warp_l']);
+  try {
+    t.player.pos.set(10, 0, 20);
+    t.player.rot = 0;
+    t.bus.emit('encounter:spawned', { encounterId: 'enc:plain' });
+    t.bus.emit('ship:dash', { shipId: t.player.id });
+    assert.deepEqual({ x: t.player.pos.x, z: t.player.pos.z }, { x: 10, z: 20 },
+      'an engine that does not declare microJumpBlink does not blink');
+  } finally {
+    t.dispose();
   }
 });
 

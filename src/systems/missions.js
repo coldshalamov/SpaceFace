@@ -68,6 +68,11 @@ import {
   offerHistoryTierFor,
   offerHistoryMultiplier,
 } from '../data/missions.js';
+import {
+  SET_PIECE_FOLLOW_ON_SOURCE,
+  setPieceFollowOnBody,
+  setPieceFollowOnOffer,
+} from '../data/sandboxSetPieceFollowOns.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
 import {
   RESEARCH_GRANTS,
@@ -829,7 +834,8 @@ function isFingerprintBoardSource(source) {
     || source === LANDMARK_QUEST_SOURCE
     // Each cargo-kill chain mints its own salvage offer — dedupe per chain, not per source, so
     // a second completed chain at the same station still boards its contract.
-    || source === 'cargoKillChain';
+    || source === 'cargoKillChain'
+    || source === SET_PIECE_FOLLOW_ON_SOURCE;
 }
 
 function isZeroPayLandmarkMission(mission, rewardCr) {
@@ -1455,6 +1461,12 @@ export const missions = {
       offer && offer.source === 'cargoKillChain'
       && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
     )).slice(0, 1);
+    // B7 follow-ons are the contract the set piece just became. A refresh must not
+    // eat them before the player can take the salvage, the escape, or the tow.
+    const retainedSetPieceFollowOns = previousSlots.filter((offer) => (
+      offer && offer.source === SET_PIECE_FOLLOW_ON_SOURCE
+      && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
+    )).slice(0, 4);
     // B5's three authored choices are tutorial progress, not disposable procedural rows. Keep them
     // together through an epoch refresh until the player accepts one; acceptMission withdraws the
     // two unchosen siblings atomically before publishing mission:accepted.
@@ -1504,6 +1516,7 @@ export const missions = {
         ...retainedCapitalBoss,
         ...retainedGhostConvoyOffers,
         ...retainedCargoKillOffers,
+        ...retainedSetPieceFollowOns,
       ],
     };
     state.missions.boards[stationId] = board;
@@ -1971,9 +1984,11 @@ export const missions = {
     if (!fact || fact.kind !== 'price_move' || !fact.chainId || !fact.saleStationId) return false;
     const info = stationInfoFor(this.state, fact.saleStationId);
     if (!info) return false;
-    const commodity = CMDTY_BY_ID.get('cmdty_scrap_metal');
-    const qty = 4;
+    const spilledId = typeof fact.commodityId === 'string' ? fact.commodityId : '';
+    const commodity = CMDTY_BY_ID.get(spilledId) || CMDTY_BY_ID.get('cmdty_scrap_metal');
+    const qty = Math.max(1, Math.min(12, Math.floor(Number(fact.qty) || 0) || 4));
     const unit = commodity ? commodity.basePrice : 10;
+    const goodsName = commodity ? commodity.name : 'the spilled cargo';
     const epoch = this._epoch();
     const offer = {
       id: `cksalv_${fact.chainId}`,
@@ -1981,7 +1996,7 @@ export const missions = {
       type: 'salvage_retrieval',
       stationId: info.id,
       factionId: info.factionId,
-      reward_cr: 640,
+      reward_cr: Math.max(120, Math.round(unit * qty * 1.4)),
       time_limit_s: 900,
       duration_s: 900,
       collateral_cr: 0,
@@ -1991,7 +2006,7 @@ export const missions = {
       destSectorId: info.sectorId,
       distance: 600,
       params: {
-        cmdtyId: 'cmdty_scrap_metal',
+        cmdtyId: commodity ? commodity.id : spilledId,
         qty,
         cargoValue: unit * qty,
         fValue: 1.2,
@@ -1999,8 +2014,8 @@ export const missions = {
         wreckPos: fact.pos ? { x: fact.pos.x, z: fact.pos.z } : null,
         sectorId: fact.sectorId || info.sectorId,
       },
-      title: `Recover ${qty}u ${commodity ? commodity.name : 'Scrap Metal'} for ${info.name}`,
-      brief: `A witness marked the hull. ${info.name} pays for the scrap that is still out there.`,
+      title: `Recover ${qty}u ${goodsName} for ${info.name}`,
+      brief: `A witness marked the hull. ${info.name} pays for the ${goodsName} that is still out there.`,
       summary: fact.moved
         ? `Witness at the kill. ${fact.commodityId} moved at the destination.`
         : 'Witness at the kill. The wreck is still recoverable.',
@@ -2043,6 +2058,7 @@ export const missions = {
       || rawOffer.source === 'ghostConvoyRumor'
       || rawOffer.source === 'cargoKillChain'
       || rawOffer.source === SET_PIECE_MISSION_SOURCE
+      || rawOffer.source === SET_PIECE_FOLLOW_ON_SOURCE
     );
     if (!allowedSource) return false;
     if (rawOffer.source === 'poiBehavior' && !validatePoiCausalOffer(rawOffer).ok) return false;
@@ -4607,23 +4623,25 @@ export const missions = {
       const rng = nextRng(durableSlot);
       const ang = rng() * Math.PI * 2;
       const r = 220 + rng() * 80;
+      const bodyRadius = Math.max(8, Number(m.params && m.params.bodyRadius) || 16);
       spawnAt(durableSlot, {
         type: 'asteroid',
         team: 2,
         pos: { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
         vel: { x: 0, z: 0 },
         rot: rng() * Math.PI * 2,
-        radius: 16,
+        radius: bodyRadius,
         mass: Math.max(40, m.params && m.params.massU || 36),
         hull: 220,
         hullMax: 220,
         collides: true,
-        physicsBody: { radius: asteroidColliderRadius(null, 16) },
+        physicsBody: { radius: asteroidColliderRadius(null, bodyRadius) },
         data: {
           missionTag: m.id,
           physicalRole: PHYSICAL_ROLE.SLAG_CORE,
-          scanLabel: 'SLAG CORE',
+          scanLabel: (m.params && m.params.scanLabel) || 'SLAG CORE',
           tetherable: true,
+          ...(m.params && m.params.tetherPayload ? { tetherPayload: true } : {}),
         },
       });
     }
@@ -5118,7 +5136,43 @@ export const missions = {
     m.params.completionMethod = method;
     m.objectiveProgress = m.objectiveTarget;
     this._completeMission(m, index);
+    this._offerSetPieceFollowOn(m);
     return true;
+  },
+
+  /** B7: a finished convoy, heist, or disabled ship posts the next contract. Never a fail. */
+  _offerSetPieceFollowOn(m) {
+    const pieceId = m && m.params && m.params.authoredSetPieceId;
+    const offer = setPieceFollowOnOffer(pieceId, m, this._epoch());
+    if (!offer) return false;
+    const boarded = this._onExternalBoardOffer(offer);
+    if (!boarded) return false;
+    this._spawnSetPieceFollowOnBody(m, pieceId);
+    const text = offer.title;
+    const voice = this.helpers && this.helpers.voice;
+    const said = voice && typeof voice.say === 'function'
+      ? voice.say({ channel: 'news', text, kind: 'info', ttl: 4, id: offer.id })
+      : false;
+    if (!said && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('toast', { text, kind: 'info', ttl: 4, source: SET_PIECE_FOLLOW_ON_SOURCE });
+    }
+    return true;
+  },
+
+  _spawnSetPieceFollowOnBody(m, pieceId) {
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function') return null;
+    const player = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    const origin = player && player.pos ? { x: player.pos.x, z: player.pos.z } : { x: 0, z: 0 };
+    const spec = setPieceFollowOnBody(pieceId, m, origin);
+    if (!spec) return null;
+    try {
+      return spawn(spec);
+    } catch (_) {
+      return null;
+    }
   },
 
   _authoredRoleClear(m, role, ignoreId = null) {

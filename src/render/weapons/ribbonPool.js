@@ -9,6 +9,11 @@ export const WEAPON_RIBBON_SEGMENTS = 24;
 
 /** Screen floor for a wake, measured on the PROJECTED sheet so foreshortening cannot erase it. */
 export const RIBBON_MIN_PIXELS = 1.7;
+/**
+ * A wake is a short line behind the round, not the whole flight. History still stores the path
+ * the round flew (the frame-truth pin reads that). Vertices past this arc length are not drawn.
+ */
+export const WAKE_VISIBLE_ARC_WU = 42;
 const RIBBON_MIN_FACING = 0.25;
 
 const RIBBON_VERT = /* glsl */`
@@ -391,7 +396,7 @@ export class WeaponRibbonPool {
         nx /= nm; ny /= nm; nz /= nm;
 
         const u = s / (seg - 1);
-        const hidden = s >= usable;
+        const hidden = s >= usable || arc > WAKE_VISIBLE_ARC_WU;
         const taper = hidden ? 0 : (1 - u) * (1 - u * 0.35);
         // Projected pixel floor: a world-anchored sheet foreshortens, so the floor is measured
         // on the sheet as the camera sees it. Without this a 0.12 WU rail wake is subpixel.

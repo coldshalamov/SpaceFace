@@ -10,8 +10,51 @@ import { WEAPONS } from '../../data/weapons.js';
 import { bestLineRows, loadCrucibleMeta } from '../../systems/survivalRecords.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { el, settle, cue } from '../kit/index.js';
+import { dressLampKey } from '../orrery/lampKey.js';
+import { createCounter, decrypt } from '../orrery/text.js';
+import { hand, ring } from '../orrery/instruments.js';
+import { svg } from '../orrery/svg.js';
 
 const MODULE_NAME = new Map([...MODULES, ...WEAPONS].map((def) => [def && def.id, def && def.name]));
+
+function dressPrimary(button) {
+  if (!button) return button;
+  if (!button.childNodes) {
+    button.classList.add('orr-lampkey');
+    return button;
+  }
+  return dressLampKey(button);
+}
+
+function mountFactValue(dd, fact) {
+  if (typeof fact.value === 'number') {
+    const counter = createCounter(dd, {
+      format: (n) => Math.max(0, Math.round(Number(n) || 0)).toLocaleString('en-US') + ' CR',
+    });
+    counter.set(fact.value);
+    return;
+  }
+  dd.textContent = fact.text;
+  decrypt(dd, fact.text);
+}
+
+function mountEndDial(host) {
+  const doc = host.ownerDocument || globalThis.document;
+  if (!doc || typeof doc.createElementNS !== 'function') return null;
+  const figure = svg('svg', {
+    class: 'sf-demo-end__dial',
+    viewBox: '0 0 160 160',
+    width: '160',
+    height: '160',
+    'aria-hidden': 'true',
+  });
+  figure.appendChild(ring({ cx: 80, cy: 80, r: 68, tone: 'faint', width: 1, bloom: 4, draw: true }));
+  const needle = hand({ cx: 80, cy: 80, r0: 14, r1: 62 });
+  figure.appendChild(needle.el);
+  needle.pointTo(28);
+  host.appendChild(figure);
+  return needle;
+}
 
 function moduleName(defId) {
   return MODULE_NAME.get(defId) || String(defId || '');
@@ -30,7 +73,8 @@ export function demoEndFacts(state, profile) {
     facts.push({ key: 'bestLine', label: 'Best Crucible chain', text: `${best.namedLine} — ${best.points} points` });
   }
   const stats = state && state.player && state.player.stats;
-  facts.push({ key: 'credits', label: 'Credits earned', text: fmtCr(stats && stats.creditsEarned) });
+  const credits = Math.max(0, Math.round(Number(stats && stats.creditsEarned) || 0));
+  facts.push({ key: 'credits', label: 'Credits earned', text: fmtCr(credits), value: credits });
   const moduleDefId = state && state.ui && state.ui.demoEnd && state.ui.demoEnd.moduleDefId;
   if (moduleDefId) facts.push({ key: 'module', label: 'Fitted', text: moduleName(moduleDefId) });
   return facts;
@@ -76,7 +120,9 @@ export const demoEndScreen = {
     for (const fact of facts) {
       const row = el('div', 'sf-demo-end__fact');
       row.appendChild(el('dt', 'k-caps', fact.label));
-      row.appendChild(el('dd', 'k-sentence', fact.text));
+      const dd = el('dd', 'k-sentence');
+      mountFactValue(dd, fact);
+      row.appendChild(dd);
       list.appendChild(row);
     }
     stage.appendChild(list);
@@ -96,6 +142,8 @@ export const demoEndScreen = {
 
     const play = addItem(el('button', 'k-word k-word--emph k-word--primary', 'Keep playing'));
     play.type = 'button';
+    dressPrimary(play);
+    mountEndDial(foot);
     play.setAttribute('aria-label', 'Keep playing — close the card and return to flight');
     play.addEventListener('click', () => {
       cue('confirm');

@@ -33,7 +33,8 @@ const CAP_VALUES = [30, 60, 120, 0]; // 0 = off
 const PRESET_VIDEO_KEYS = ['renderScale', 'bloom', 'shadows', 'energyMaterials', 'renderGraph', 'engineTrails', 'particleQuality'];
 
 test('three presets each select an adaptive-quality tier (seed 16500)', () => {
-  assert.equal(QUALITY_PRESETS.length, 3, 'exactly three player presets');
+  assert.equal(QUALITY_PRESETS.length, 4, 'the three picture presets plus iGPU 60');
+  assert.deepEqual(QUALITY_PRESETS.slice(0, 3).map((row) => row.id), PRESET_IDS);
   const rows = [];
   for (const presetId of PRESET_IDS) {
     const state = createGameState(SEED);

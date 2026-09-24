@@ -4925,3 +4925,33 @@ rank out-shouts a higher one fails, whatever the numbers say.
 
 Every phase ends with a **stranger pass**: the path played at the shipping camera and the frames
 opened and judged against the order above. Progress lines live in the program file's §7.
+
+## 26. Use what we already have
+
+A full second checkout of this repo is not a way to work. If one is left behind, keep any commits
+that are not already on master by leaving them on their branch, then remove the checkout. Do not
+merge that branch into master just to retire the checkout, and do not merge it while master has
+someone else's uncommitted work. A checkout touched since 2026-09-22 stays until that work lands
+or goes quiet. The record of which branches were kept, and why they were not merged, is
+[`design/program/UTILIZATION.md`](./design/program/UTILIZATION.md).
+
+**Models.** The buyable roster is the live list in `src/data/ships.js`. Hitch stays frozen. Every
+other authored hull already has a disposition: field it, turn it into a faction kit or a wreck, or
+record why it cannot be used. That record is the hull triage and the stocktake plan, and the order
+is still §13B (`PQ-136`) and §13D (`PQ-193`), with flyable remasters on `PQ-050`. A byte-for-byte
+copy of a live release, with no source role and no plan, is the case for deletion. A filename
+search is not that test. `check:asset-reachability` is. Do not commission a new hull while a shelf
+body can fill the slot.
+
+**One picture, at the current settings.** Hulls stay Lacquer & Starlight. The glass stays the
+Orrery. The next work is already ordered, and it is not a new art direction:
+
+1. `PQ-193.00` — every ship the player can lock on the opening flyby is a complete packaged body.
+2. `PQ-193.01` — the opening smuggler, pirate, and recovery tug belong in Hitch's world.
+3. `PQ-193.02` — reverse thrust is one jet, not a leftover needle.
+4. §25 phase 2 — common rocks and the remaining sky join that same illustrated world.
+5. `PQ-193.03` — the lane buoy, beacon, and cargo pod are recognizable at chase distance.
+
+Corsair, Arclight, the Span and Wasp faction kits, and the tanker are the variety we already paid
+for. They wait until that flyby is one world. Shelf bodies that are only a repaint of a live hull
+do not get a second production pass. Captures, tool caches, and old checkouts are not the game.

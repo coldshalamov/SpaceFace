@@ -246,6 +246,48 @@ export const SECTOR_VISUAL_PROFILES = Object.freeze({
     },
     post: { exposure: 0.95, bloomStrengthScale: 1.16, bloomThresholdBias: -0.10, grade: 0.12, vignette: 0.12 },
   }),
+  // The sixth sky. Tethys is a junction, not a second Helios: one galactic spur, no hero planet,
+  // no painted plate. Exactly this profile carries the galaxy.
+  tethys: freezeProfile({
+    id: 'tethys',
+    galaxyPlate: true,
+    skyPalette: 'AZURE',
+    lighting: { ambient: 0.14, key: 2.55, rim: 1.05, fill: 0.40 },
+    background: {
+      intensity: 0.42,
+      nebulaOpacity: 0.0,
+      paintedSky: null,
+      structure: {
+        ...DEFAULT_STRUCTURE,
+        recipeId: 'galactic_spur',
+        structureKind: 'galactic_band',
+        starDensity: 0.82,
+        clusterCount: 4,
+        clusterStrength: 1.1,
+        voidFloor: 0.14,
+        flareDensity: 0.7,
+        maxCoverage: 0.16,
+        regionLo: 0.46,
+        regionHi: 0.62,
+        warp: 0.16,
+        dustAmt: 0.12,
+        l1Alpha: 0.22,
+        l2Alpha: 0.04,
+        bandCenter: 0.52,
+        bandWidth: 0.08,
+        bandAngle: 0.18,
+        landmarkBias: 'none',
+      },
+      composition: {
+        planetChance: 0,
+        wormholeChance: 0,
+        ringChance: 0,
+        cometInterval: [40, 90],
+        signatureHero: null,
+      },
+    },
+    post: { exposure: 0.93, bloomStrengthScale: 1.06, bloomThresholdBias: -0.04, grade: 0.22, vignette: 0.11 },
+  }),
 });
 
 const PROFILE_BY_NEBULA_TINT = new Map([
@@ -257,6 +299,7 @@ const PROFILE_BY_NEBULA_TINT = new Map([
 
 const PROFILE_BY_ID = new Map([
   ['sector_helios_prime', SECTOR_VISUAL_PROFILES.helios_core],
+  ['sector_tethys_junction', SECTOR_VISUAL_PROFILES.tethys],
   ['sector_frontier_east_ridge', SECTOR_VISUAL_PROFILES.fringe],
   ['sector_ceres_belt', SECTOR_VISUAL_PROFILES.belt],
   ['sector_anomaly_well', SECTOR_VISUAL_PROFILES.anomaly],
@@ -306,6 +349,22 @@ export function resolveBackgroundComposition(profile) {
     cometInterval: deepFreeze([Math.min(a, b), Math.max(a, b)]),
     signatureHero: signature,
   });
+}
+
+/**
+ * Plate contribution the fixture compares with the starter muzzle and the engine core.
+ * A galaxy profile contributes its spur alpha. A painted plate contributes strength times
+ * the background intensity. A deliberately empty sky contributes nothing.
+ */
+export function skyPlateLuminance(profile) {
+  if (!profile || !profile.background) return 0;
+  if (profile.galaxyPlate === true) {
+    return resolveBackgroundStructure(profile).l1Alpha;
+  }
+  const paint = resolveBackgroundPaintedSky(profile);
+  if (!paint) return 0;
+  const intensity = Number.isFinite(profile.background.intensity) ? profile.background.intensity : 1;
+  return paint.strength * intensity;
 }
 
 /**

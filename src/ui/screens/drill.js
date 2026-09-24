@@ -650,6 +650,7 @@ function injectStyle() {
   box-sizing: border-box;
   pointer-events: auto;
   align-items: stretch;
+  overflow-y: auto;
   font-family: var(--sf-body-face);
   color: var(--sf-calm);
   background: var(--sf-surface);
@@ -765,18 +766,16 @@ function injectStyle() {
   margin-top: 2px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.15s ease;
 }
-.drill-scan-button:hover {
-  translate: 0 -1px;
+.drill-scan-button [data-scan-state] { color: var(--sf-paper); }
+.drill-scan-button:disabled,
+.drill-scan-button[disabled] {
+  opacity: 1;
+  color: var(--sf-paper);
 }
-.drill-scan-button:active {
-  translate: 0 1px;
-}
-.drill-scan-button [data-scan-state] { color: var(--sf-calm); }
 .drill-stage {
   min-width: 0;
   display: flex;
@@ -924,11 +923,21 @@ function injectStyle() {
 .drill-legend-note {
   font-size:12px; color:var(--sf-calm); letter-spacing:0; text-align:center;
 }
-.drill-foot { display:flex; gap:10px; justify-content:center; margin-top:4px; }
-.drill-foot button.sf-btn { width:auto; min-height:40px; padding:9px 22px; }
-.drill-screen button:focus-visible {
-  outline:2px solid var(--sf-you);
+.drill-foot { display:flex; gap:10px; justify-content:center; margin-top:4px; flex-wrap:wrap; }
+.drill-foot .k-word { width:auto; min-height:40px; }
+.drill-screen, .drill-summary-drawer { --k-signal: var(--dp-lamp); }
+.drill-screen button:focus-visible,
+.drill-summary-drawer button:focus-visible {
+  outline:2px solid var(--dp-lamp) !important;
   outline-offset:3px;
+}
+.drill-screen button:hover,
+.drill-screen button:active,
+.drill-summary-drawer button:hover,
+.drill-summary-drawer button:active {
+  translate: none;
+  box-shadow: none;
+  filter: none;
 }
 .drill-sr-status {
   position:absolute;
@@ -1011,8 +1020,8 @@ function injectStyle() {
   font-variant-numeric: tabular-nums;
 }
 .drill-summary-slab .total-row .val { color: var(--sf-you); }
-.drill-summary-slab button.sf-btn {
-  margin-top: 8px; align-self: center; width: 140px;
+.drill-summary-slab .k-word {
+  margin-top: 8px; align-self: center;
 }
 @media (max-width: 900px) {
   .drill-screen {
@@ -1029,6 +1038,7 @@ function injectStyle() {
 }
 @media (max-width: 620px) {
   .drill-screen { grid-template-columns: minmax(0,1fr); width: calc(100vw - 16px); }
+  .drill-foot { flex-direction: column; align-items: stretch; }
   .drill-stage,
   .drill-housing.left-housing,
   .drill-housing.right-housing { grid-column: 1; }
@@ -1040,7 +1050,7 @@ function injectStyle() {
   .drill-title { font-size:14px; letter-spacing:0; }
 }
 @media (max-height: 760px) and (min-width: 901px) {
-  .drill-screen { height: 94vh; gap:10px; }
+  .drill-screen { height: 94vh; gap:10px; overflow-y: auto; }
   .drill-housing { padding:11px; gap:11px; }
   .drill-housing .drill-deck { gap:6px; padding-bottom:10px; }
   .drill-legend-grid { padding:5px; gap:4px; }
@@ -1120,10 +1130,10 @@ export const drillScreen = {
       <ul class="drill-control-list">
         <li><kbd>${controlMap.movementLabel}</kbd><span>Hold to move or bore continuously</span></li>
         <li><kbd>${controlMap.scanLabel}</kbd><span>Pulse the local seismic survey</span></li>
-        <li><kbd>ESC</kbd><span>Retract the rig</span></li>
+        <li><kbd>Esc</kbd><span>Retract the rig</span></li>
       </ul>
-      <button type="button" class="sf-btn drill-scan-button" data-drill-scan>
-        <span>Pulse survey</span><span data-scan-state>Ready</span>
+      <button type="button" class="k-word k-word--emph k-word--primary drill-scan-button" data-drill-scan data-sf-role="primary" aria-label="Pulse survey, ${escapeHtml(controlMap.scanLabel)}">
+        <span>Pulse survey · ${escapeHtml(controlMap.scanLabel)}</span><span data-scan-state>Ready</span>
       </button>
     `;
     const scanBtn = controlSec.querySelector('[data-drill-scan]');
@@ -1203,16 +1213,21 @@ export const drillScreen = {
     const foot = document.createElement('div');
     foot.className = 'drill-foot';
     const exitBtn = document.createElement('button');
-    exitBtn.className = 'sf-btn';
-    exitBtn.textContent = 'Retract rig  Esc';
+    exitBtn.type = 'button';
+    exitBtn.className = 'k-word k-word--emph';
+    exitBtn.textContent = 'Retract rig · Esc';
+    exitBtn.setAttribute('aria-keyshortcuts', 'Escape');
     foot.appendChild(exitBtn);
     const retryBtn = document.createElement('button');
-    retryBtn.className = 'sf-btn';
+    retryBtn.type = 'button';
+    retryBtn.className = 'k-word k-word--emph';
     retryBtn.textContent = 'Restart bore';
     foot.appendChild(retryBtn);
     const abortBtn = document.createElement('button');
-    abortBtn.className = 'sf-btn';
+    abortBtn.type = 'button';
+    abortBtn.className = 'k-word k-word--danger';
     abortBtn.textContent = 'Abort & return';
+    abortBtn.setAttribute('aria-label', 'Abort and return. Ore already hauled stays in the hold.');
     foot.appendChild(abortBtn);
     centerPanel.appendChild(foot);
     
@@ -2387,7 +2402,7 @@ export const drillScreen = {
           if (!surveyed) {
             name = 'UNSURVEYED STRATA';
             subtitle = 'Composition unresolved';
-            reqText = 'SPACE: Pulse survey';
+            reqText = 'Pulse survey · ' + controlMap.scanLabel;
           } else if (t.type === 'dirt') {
             name = 'SOFT REGOLITH';
             subtitle = 'HP: ' + Math.ceil(t.hp) + '/' + t.maxHp;
@@ -2887,8 +2902,11 @@ function showDrillSummaryModal(yieldLog) {
   box.appendChild(totalRow);
   
   const closeBtn = document.createElement('button');
-  closeBtn.className = 'sf-btn';
-  closeBtn.textContent = 'Acknowledge';
+  closeBtn.type = 'button';
+  closeBtn.className = 'k-word k-word--emph k-word--primary';
+  closeBtn.dataset.sfRole = 'primary';
+  closeBtn.textContent = 'Close extraction report';
+  closeBtn.setAttribute('aria-label', 'Close extraction report');
   const previousFocus = document.activeElement;
   let closing = false;
   const close = () => {
@@ -2904,6 +2922,7 @@ function showDrillSummaryModal(yieldLog) {
   const onModalKeyDown = (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
+      event.stopPropagation();
       close();
     } else if (event.key === 'Tab') {
       event.preventDefault();

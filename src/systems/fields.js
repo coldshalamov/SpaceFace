@@ -602,7 +602,9 @@ export const fields = {
     const rt = ensureRuntime(this.state);
     const existing = Object.values(rt.anchored).find((rec) => rec && rec.sourceId === entity.id);
     if (existing && this._kernel.has(existing.fieldId)) return existing.fieldId;
-    if (playerOwnedFieldCount(this._kernel) >= FIELD_MAX_ACTIVE) return null;
+    // An enemy snare is not one of the player's six wells. Filling the player cap
+    // used to refuse the anchor, so the kite plan survived the specialist.
+    if (defKey !== 'anchorSnare' && playerOwnedFieldCount(this._kernel) >= FIELD_MAX_ACTIVE) return null;
     const now = nowOf(this.state);
     const spinupTicks = Math.max(0, Math.floor(Number(anchor.spinupTicks ?? def.spinupTicks) || 0));
     const fieldId = String(anchor.fieldId || `field_anchor_${entity.id}`);

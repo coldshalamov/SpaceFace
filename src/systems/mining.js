@@ -932,8 +932,9 @@ export const mining = {
       // A towable body (47-A evidence spindle, rescue pods, the swing-lesson rock) is moved by the
       // tether, never vacuumed: it carries no salvage to collect, so the homing write only rammed a
       // 960 t spindle into the Kestrel at spawn and pinned it there, shoving the ship ~80 WU and
-      // flinching the hull for seconds on every New Game.
-      if (pickupData.tetherPayload) continue;
+      // flinching the hull for seconds on every New Game. A follow-on pod that actually holds a
+      // salvage pool is cargo: overlap collects it, and a live rope still blocks that below.
+      if (pickupData.tetherPayload && !salvagePoolHasCargo(pickupData)) continue;
       // A facility-owned heist capsule is custody freight, not scrap: the magnet's velocity write
       // corrupts the fork's fresh-custody sample, and a collection would consume a mission load.
       if (pickupData.heistFacilityRole === 'cargo_capsule') continue;
@@ -2305,15 +2306,26 @@ function maxFittedMagnetRange(player) {
  * Covers state.player.tether, player.tether, combat.attachments authority,
  * player.masslineTelemetry, and entity-level latched/tethered flags.
  */
+function salvagePoolHasCargo(data) {
+  const pool = data && data.salvagePool;
+  if (!pool || typeof pool !== 'object') return false;
+  for (const qty of Object.values(pool)) {
+    if (Number(qty) > 0) return true;
+  }
+  return false;
+}
+
 export function isMasslineLatchedPickup(state, player, entity) {
   if (!entity) return false;
   const id = entity.id;
   if (id == null) return false;
   const idStr = String(id);
 
-  // 1. Direct flags on entity or entity.data
+  // 1. Direct flags on entity or entity.data. A bare tether payload is a tow, not scrap.
+  //    One that holds a salvage pool is cargo unless a live rope is actually on it.
   const d = entity.data;
-  if (d && (d.masslineLatched || d.latched || d.tethered || d.tetherPayload)) return true;
+  if (d && (d.masslineLatched || d.latched || d.tethered)) return true;
+  if (d && d.tetherPayload && !salvagePoolHasCargo(d)) return true;
   if (entity.masslineLatched || entity.latched || entity.tethered) return true;
 
   // 2. state.player.tether mirror or player.tether entity field

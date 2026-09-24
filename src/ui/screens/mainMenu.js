@@ -301,7 +301,19 @@ export const mainMenuScreen = {
 
   // P20/P22: the approved "Field at dusk" shot as a live presentation scene on the main renderer
   // (src/render/uiStage.js). Simulation stays frozen; the plate is the assemble / no-WebGL fallback.
-  stage: { scene: 'title-field', hullDefId: NEW_GAME.shipId },
+  //
+  // LIVE TITLE (build_map.md §25 Phase 5.2): once the screen has been visibly up and idle
+  // for ATTRACT_IDLE_MS, `_attractLive` swaps the request to the `title-attract` scene —
+  // the deterministic Crucible replay tape plays behind the menu instead of the still.
+  // The manager re-resolves this function on every stack sync, so the flag plus a
+  // syncVisibility() nudge is the whole swap; anything that fails upstream keeps the
+  // authored plate, which is the same still the screen started on.
+  stage(ctx) {
+    return {
+      scene: this._attractLive === true ? 'title-attract' : 'title-field',
+      hullDefId: NEW_GAME.shipId,
+    };
+  },
 
   mount(rootEl, ctx) {
     injectDeckplate();   // the title can mount before the HUD that otherwise injects the system
@@ -347,10 +359,11 @@ export const mainMenuScreen = {
     }));
     // The quiet line: reference and dev, at etch size, out of the way of the decision.
     // "Archive" opens the Codex on its Archive tab, where the authored intro cinematics replay.
-    const asideItems = [{ action: 'archive', label: 'Archive' }];
-    // "Sandbox" — DEV ONLY. A testing harness for reaching mid-game features without playing for
-    // an hour. Stripped from production builds via IS_DEV. See src/ui/screens/sandbox.js.
-    if (IS_DEV) asideItems.push({ action: 'sandbox', label: 'Sandbox' });
+    // Wave B11: Physics lab / Sandbox toy on front door.
+    const asideItems = [
+      { action: 'archive', label: 'Archive' },
+      { action: 'sandbox', label: 'Sandbox' },
+    ];
 
     // The decorative legend rail is gone (2026-09-22). It was a 64x787 nine-slice plate whose only
     // job was to stand beside the verbs; the bench measured it as painted and empty, and in the
@@ -460,6 +473,15 @@ export const mainMenuScreen = {
   },
 
   _pick(ctx, action) {
+    // Any menu action ends the live title: the flag drops now and the stack change the
+    // action triggers (push / load / quit) makes uiStage release the fight for real.
+    this._attractLive = false;
+    // Keep flag and stage in lockstep even on actions that do not move the stack
+    // (e.g. continue with no save) — arming uses the same manager nudge.
+    const mgr = getManager(ctx);
+    if (mgr && typeof mgr.syncVisibility === 'function') {
+      try { mgr.syncVisibility(); } catch (e) { console.warn('[mainMenu] attract stage drop failed to request', e); }
+    }
     switch (action) {
       case 'continue': {
         const latest = latestSave(readSaveIndex(ctx));
@@ -596,7 +618,7 @@ export const mainMenuScreen = {
       if (target) try { target.focus(); } catch (e) {}
     }
     this._loadVersion();
-    this._startIdleAttract({ state: ctx && ctx.state, rootEl: refs && refs.root });
+    this._startIdleAttract({ ctx, state: ctx && ctx.state, rootEl: refs && refs.root });
   },
   onHide() {
     this._stopIdleAttract();
@@ -618,12 +640,14 @@ export const mainMenuScreen = {
     refs = null;
   },
 
-  // The idle attract (spec2/03 §3, MAP_OVERHAUL_BRIEF "cinematic still + idle drift"): after
-  // ATTRACT_IDLE_MS without input the authored still itself begins a slow drift — `data-attract`
-  // on the screen root arms a compositor-cheap transform on `.k-world--plate` (kit.css). This is
-  // the still breathing, not a second scene: no renderer, no stage, no camera. Any input re-arms
-  // the idle window; reduced motion never lets it arm at all.
-  _startIdleAttract({ state, rootEl } = {}) {
+  // The idle attract (spec2/03 §3, MAP_OVERHAUL_BRIEF "cinematic still + idle drift",
+  // build_map.md §25 Phase 5.2): after ATTRACT_IDLE_MS without input two things arm
+  // together — `data-attract` starts the still's cheap transform drift (kit.css), and
+  // `_attractLive` swaps the stage request to `title-attract`, the deterministic
+  // Crucible replay that plays behind the menu instead of the still. Input re-arms the
+  // idle window but does not tear the live fight down — once it is up it stays until
+  // the screen hides or the player picks; reduced motion never lets either arm at all.
+  _startIdleAttract({ ctx, state, rootEl } = {}) {
     this._stopIdleAttract();
     if (!rootEl || !rootEl.dataset) return;
     const motionReduced = () => !!(
@@ -634,7 +658,20 @@ export const mainMenuScreen = {
     let drifting = false;
     const setDrift = (on) => {
       drifting = on;
-      if (on) rootEl.dataset.attract = '1'; else delete rootEl.dataset.attract;
+      if (on) {
+        rootEl.dataset.attract = '1';
+        // The flag alone changes nothing — the manager owns stageRequest and only
+        // re-resolves stage specs on a stack sync, so arming needs the explicit nudge.
+        if (this._attractLive !== true) {
+          this._attractLive = true;
+          const mgr = getManager(ctx);
+          if (mgr && typeof mgr.syncVisibility === 'function') {
+            try { mgr.syncVisibility(); } catch (e) { console.warn('[mainMenu] attract stage swap failed to request', e); }
+          }
+        }
+      } else {
+        delete rootEl.dataset.attract;
+      }
     };
     const reset = () => { idleStartedAtMs = null; if (drifting) setDrift(false); };
     this._attractRoot = rootEl;
@@ -687,6 +724,10 @@ export const mainMenuScreen = {
     this._attractRoot = null;
     this._attractSession = null;
     if (root && root.dataset && root.dataset.attract) delete root.dataset.attract;
+    // The live title's whole teardown is this flag plus the stack sync that follows
+    // every hide/unmount: the next resolve sees 'title-field' again (or nothing, when
+    // another screen owns the top) and uiStage releases the fight with the stage.
+    this._attractLive = false;
   },
 
   // Arrival (sheet: "the menu arrives after the hull"): the title settles from the top, then the

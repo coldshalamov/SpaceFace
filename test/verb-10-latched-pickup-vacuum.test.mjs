@@ -81,6 +81,13 @@ test('isMasslineLatchedPickup identifies Massline-latched pickups across authori
   chip.data.latched = true;
   assert.equal(isMasslineLatchedPickup(state, player, chip), true);
   chip.data.latched = false;
+
+  chip.data.tetherPayload = true;
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true, 'a bare tow payload is not scrap');
+  chip.data.salvagePool = { cmdty_salvage_electronics: 3 };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false, 'a salvage pod is cargo until a rope is on it');
+  chip.data.tetherPayload = false;
+  delete chip.data.salvagePool;
 });
 
 test('mining _updatePickups skips Massline-latched pickup while vacuuming unlatched pickup', () => {
@@ -184,6 +191,41 @@ test('mining _updatePickups skips Massline-latched pickup while vacuuming unlatc
   // Now that it is unlatched, it can be collected
   assert.ok(collectedReceipts.some((r) => r.pickupId === latchedChip.id), 'once unlatched, chip can be collected');
 
+  if (typeof mining.destroy === 'function') mining.destroy();
+  mining.bus = null;
+});
+
+test('a tethered salvage pod is collected on overlap and a bare tow payload is not', () => {
+  const state = createGameState(515);
+  const bus = createBus();
+  const player = {
+    id: 1, type: 'ship', team: 0, alive: true,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 6,
+    data: { derived: { magnetRange: 0 } },
+  };
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  state.playerId = player.id;
+  const pod = {
+    id: 40, type: 'payload', alive: true,
+    pos: { x: 2, z: 0 }, vel: { x: 0, z: 0 }, radius: 4,
+    data: { tetherPayload: true, salvagePool: { cmdty_salvage_electronics: 3 } },
+  };
+  const rock = {
+    id: 41, type: 'payload', alive: true,
+    pos: { x: 2, z: 1 }, vel: { x: 0, z: 0 }, radius: 4,
+    data: { tetherPayload: true },
+  };
+  state.entities.set(pod.id, pod);
+  state.entities.set(rock.id, rock);
+  state.entityList.push(pod, rock);
+  const collected = [];
+  bus.on('pickup:collected', (payload) => collected.push(payload));
+  mining.init({ state, bus, helpers: {}, registry: null });
+  mining._updatePickups(1 / 60, state);
+  assert.ok(collected.some((row) => row.pickupId === pod.id && row.commodityId === 'cmdty_salvage_electronics'),
+    'overlap puts the pod goods into the collect path');
+  assert.equal(collected.some((row) => row.pickupId === rock.id), false, 'a bare tow payload stays in the world');
   if (typeof mining.destroy === 'function') mining.destroy();
   mining.bus = null;
 });

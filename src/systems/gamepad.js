@@ -50,14 +50,19 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   mine: Object.freeze(['l2']),
   boost: Object.freeze(['r1']),
   brake: Object.freeze(['l1']),
+  // §22 E1: shove is its own face button. Y used to open the codex; the codex stays on the
+  // guide button and inside Pause, so a fight never needs a chord to drop the repulsor.
+  deployRepulsor: Object.freeze(['alt']),
   cycleTarget: Object.freeze(['action']),
   autoTarget: Object.freeze(['dUp']),
   map: Object.freeze(['view']),
-  codex: Object.freeze(['alt']),
+  codex: Object.freeze(['home']),
   pause: Object.freeze(['menu']),
   countermeasure: Object.freeze(['r3']),
   accept: Object.freeze(['accept']),
   massline: Object.freeze(['accept']),
+  // Dock is B, which is cancel only while a screen is open. The rope keeps A in flight.
+  dock: Object.freeze(['cancel']),
   cancel: Object.freeze(['cancel']),
   tabPrev: Object.freeze(['l1']),
   tabNext: Object.freeze(['r1']),
@@ -100,8 +105,9 @@ export const GAMEPAD_BUTTON_LABELS = Object.freeze({
 // --- Remapping (PQ-164.01) -------------------------------------------------------------------
 // A button may serve two actions only when their contexts are disjoint — a modal-only verb
 // (cancel, station tab cycling) is inert in flight, and flight verbs are neutralized while a
-// modal owns input — or when the pair is a designed arbitration (A/Cross is Massline in flight
-// but dock/accept under the dock prompt; brake/boost share LB/RB with station tab cycling).
+// modal owns input — or when the pair is a designed arbitration (A/Cross is the Massline and
+// also UI accept; B is dock in flight and cancel on a screen; brake/boost share LB/RB with
+// station tab cycling).
 const PAD_ACTION_CONTEXT = Object.freeze({
   accept: 'both',
   map: 'both',
@@ -119,6 +125,8 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   cycleBomb: 'flight',
   chargeDetonate: 'flight',
   massline: 'flight',
+  deployRepulsor: 'flight',
+  dock: 'flight',
   cancel: 'modal',
   tabPrev: 'modal',
   tabNext: 'modal',

@@ -38,6 +38,8 @@ export function rankLawfulResponders(candidates, anchor, {
 export const RESERVE_STATION_LAUNCH_CLEARANCE_WU = 40;
 export const RESERVE_STATION_LAUNCH_MIN_LEG_WU = 150;
 
+export const WITNESS_FRAME_HALF_WU = 126;
+
 export function reserveArrivalPoint({
   anchor,
   aggressorPos,
@@ -45,6 +47,7 @@ export function reserveArrivalPoint({
   seed = 1,
   incidentId = 'law:incident',
   station = null,
+  frameHalfWu = null,
 } = {}) {
   const origin = finitePoint(anchor);
   const aggressor = finitePoint(aggressorPos, origin);
@@ -69,17 +72,62 @@ export function reserveArrivalPoint({
       const near = pointAt(stationOrigin, toward, launch);
       const far = pointAt(stationOrigin, toward + Math.PI, launch);
       const minLeg = RESERVE_STATION_LAUNCH_MIN_LEG_WU;
-      if (distanceSq(near, aggressor) >= minLeg * minLeg) return Object.freeze(near);
-      if (distanceSq(far, aggressor) >= minLeg * minLeg) return Object.freeze(far);
+      if (distanceSq(near, aggressor) >= minLeg * minLeg) return Object.freeze(pullIntoFrame(near, aggressor, frameHalfWu, station));
+      if (distanceSq(far, aggressor) >= minLeg * minLeg) return Object.freeze(pullIntoFrame(far, aggressor, frameHalfWu, station));
     }
   }
   const radius = Math.max(2000, Math.max(0, Number(jurisdictionRadius) || 0) + 700);
   const angle = hash32(seed, incidentId, 'law_reserve_arrival') / 0xffffffff * Math.PI * 2;
   const first = pointAt(origin, angle, radius);
   const opposite = pointAt(origin, angle + Math.PI, radius);
-  return Object.freeze(distanceSq(first, aggressor) >= 900 * 900
-    ? first
-    : opposite);
+  const picked = distanceSq(first, aggressor) >= 900 * 900 ? first : opposite;
+  return Object.freeze(pullIntoFrame(picked, aggressor, frameHalfWu, station));
+}
+
+function pullIntoFrame(point, aggressor, frameHalfWu, station) {
+  const half = Number(frameHalfWu);
+  if (!(half > 0)) return point;
+  const dx = point.x - aggressor.x;
+  const dz = point.z - aggressor.z;
+  const dist = Math.hypot(dx, dz);
+  const keepOff = 40;
+  // The chase picture is shorter than the 126 WU screen constant along the
+  // near edge, so the visible ring sits at half of that constant.
+  const edge = Math.max(keepOff, Math.min(half * 0.5, half - 16));
+  let placed;
+  if (dist <= half && dist >= keepOff) placed = { x: point.x, z: point.z };
+  else if (dist < 1e-6) placed = { x: aggressor.x + edge, z: aggressor.z };
+  else {
+    const scale = edge / dist;
+    placed = { x: aggressor.x + dx * scale, z: aggressor.z + dz * scale };
+  }
+  const origin = station && station.pos;
+  if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return placed;
+  const clear = Math.max(Number(station.launchRadius) || 0, 80);
+  const clearOfStation = (p) => Math.hypot(p.x - origin.x, p.z - origin.z) >= clear;
+  if (clearOfStation(placed)) return placed;
+  // The close ring can sit entirely inside a station when the fight is beside
+  // the port. Walk outward, both ways, and stop at the first point that is
+  // still on the glass and outside the body.
+  const away = Math.atan2(aggressor.z - origin.z, aggressor.x - origin.x);
+  const inner = Math.max(keepOff, Math.hypot(placed.x - aggressor.x, placed.z - aggressor.z));
+  const outer = Math.max(inner, half - 1);
+  for (let ring = 0; ring <= 8; ring++) {
+    const radius = inner + (outer - inner) * (ring / 8);
+    for (let step = 0; step < 32; step++) {
+      const turn = Math.ceil(step / 2) * (Math.PI / 16);
+      const ang = away + (step % 2 === 0 ? turn : -turn);
+      const candidate = {
+        x: aggressor.x + Math.cos(ang) * radius,
+        z: aggressor.z + Math.sin(ang) * radius,
+      };
+      if (clearOfStation(candidate)) return candidate;
+    }
+  }
+  return {
+    x: aggressor.x + Math.cos(away) * outer,
+    z: aggressor.z + Math.sin(away) * outer,
+  };
 }
 
 function pointAt(origin, angle, radius) {

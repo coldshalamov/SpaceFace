@@ -54,7 +54,8 @@ PQ-034 through PQ-041 accepted
 ```
 
 PQ-007, PQ-019, PQ-020, PQ-021, and PQ-034 are checked off and retained under `../retired/`. PQ-018,
-PQ-022, and PQ-024 have their headless implementation layers integrated. Current corridor
+PQ-022, and PQ-024 have their headless implementation layers integrated; PQ-024 is promoted and
+retired. Current corridor
 work is exact acceptance repair, headed capture, evidence-bound review, performance
 evidence, and promotion;
 run `node scripts/program-dispatch.mjs --ready` and claim the returned unit rather than redispatching
@@ -79,7 +80,7 @@ evidence triggers are proved.
 | [`PQ-020.md`](../retired/PQ-020.md) | RETIRED 2026-09-14 — Ceres topology is integrated with its Cathedral-keyed route, presence review, and matched performance | — |
 | [`PQ-022.md`](./PQ-022.md) | run asset/family leaf packets through source→release→route→perf | exact leaf selected from the queue |
 | [`PQ-023.md`](./PQ-023.md) | finish the broader physics-readable presentation umbrella through exact leaves | Gold Corridor-required cue subslice accepted at `93c76f65`; broader propulsion/environment/HUD/camera/dense-scene work remains TODO |
-| [`PQ-024.md`](./PQ-024.md) | one transient survey target, Core commitment, real-output producing receipt, one exterior consequence | PQ-017 seam rebound; one accepted exterior visual |
+| [`PQ-024.md`](../retired/PQ-024.md) | RETIRED 2026-09-23 — the survey/claim lifecycle is integrated at `07d2ba53` with the route_accepted exterior relay blob bound | — |
 | [`PQ-025.md`](./PQ-025.md) | observational held-out qualification, not a feature branch | PQ-019–024 exact integrated receipts and frozen owner evidence map |
 | [`PQ-035.md`](../retired/PQ-035.md) | foreground/background lifecycle correctness | route-accepted, released, and retired at `f3046007`; physical host/package boundary assigned to PQ-041 |
 | [`PQ-036.md`](../retired/PQ-036.md) | main-thread simulation/presentation ownership plus journals | route-accepted, released, and retired at `391e8658` from retained source-paired PERF-00 evidence plus current lifecycle authority |

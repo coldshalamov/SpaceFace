@@ -103,12 +103,41 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     engineTrails: true,
     particleQuality: 'high',
   }),
+  // E8 — designed for an integrated GPU, not "everything low". Bloom, trails, and energy
+  // materials stay. The sun-shadow map stays off (it crawls at this texel size; contact
+  // shadows still ground the body). Particles step down from high, not off.
+  igpu60: Object.freeze({
+    id: 'igpu60',
+    label: 'iGPU 60',
+    adaptiveFloor: 0.5,
+    renderScale: 0.75,
+    bloom: true,
+    shadows: false,
+    energyMaterials: true,
+    renderGraph: false,
+    engineTrails: true,
+    particleQuality: 'medium',
+  }),
 });
 
 export const QUALITY_PRESETS = Object.freeze([
   Object.freeze({ id: 'low', label: 'Performance', tier: 'low' }),
   Object.freeze({ id: 'medium', label: 'Balanced (recommended)', tier: 'medium' }),
   Object.freeze({ id: 'high', label: 'Quality', tier: 'high' }),
+  Object.freeze({
+    id: 'igpu60',
+    label: 'iGPU 60',
+    tier: 'igpu60',
+    frameCap: 60,
+    stays: Object.freeze(['bloom', 'engine trails', 'energy materials']),
+    substitutes: Object.freeze([
+      'render scale 0.75',
+      'medium particles',
+      'no sun-shadow map',
+      'no render graph',
+      'frame cap 60',
+    ]),
+  }),
 ]);
 export const DEFAULT_QUALITY_PRESET = 'medium';
 
@@ -137,6 +166,11 @@ export function applyQualityPreset(settings, presetId) {
     if (video[key] !== tier[key]) { video[key] = tier[key]; changed.push(key); }
   }
   if (video.qualityPreset !== tier.id) { video.qualityPreset = tier.id; changed.push('qualityPreset'); }
+  const preset = QUALITY_PRESETS.find((row) => row.id === tier.id);
+  if (preset && Number.isFinite(preset.frameCap) && video.frameCap !== preset.frameCap) {
+    video.frameCap = preset.frameCap;
+    changed.push('frameCap');
+  }
   return { preset: tier.id, tier: tier.id, changed };
 }
 

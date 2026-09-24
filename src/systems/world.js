@@ -149,6 +149,7 @@ import {
   queryAsteroidField,
   shouldKeepLiveAsteroid,
 } from '../world/asteroidField.js';
+import { asteroidMass } from '../data/sectorPhysical.js';
 import {
   dropDressingSector,
   insertDressingRow,
@@ -1972,7 +1973,7 @@ export const world = {
     const ent = keepLive
       ? this.helpers.spawnEntity({
         type: 'asteroid', pos,
-        radius: size, mass: 200 + size * 40, angVel,
+        radius: size, mass: asteroidMass(params && params._homeSectorId, size), angVel,
         hull: oreHP, hullMax: oreHP, collides: true,
         // The render mesh's displaced bumps exceed entity.radius; the collider covers them.
         physicsBody: { radius: asteroidColliderRadius(def.id, size) },
@@ -1983,7 +1984,7 @@ export const world = {
         rot: 0,
         angVel,
         radius: size,
-        mass: 200 + size * 40,
+        mass: asteroidMass(params && params._homeSectorId, size),
         hull: oreHP,
         hullMax: oreHP,
         data,
@@ -3321,7 +3322,7 @@ export const world = {
           type: 'asteroid',
           pos: { x: px, z: pz },
           radius: size,
-          mass: 200 + size * 40,
+          mass: asteroidMass(sector && sector.id, size),
           angVel: (rng() - 0.5) * 0.35,
           hull: oreHP,
           hullMax: oreHP,
@@ -3540,7 +3541,7 @@ export const world = {
         type: 'asteroid',
         pos: { x: rock.x, z: rock.z },
         radius: size,
-        mass: 200 + size * 40,
+        mass: asteroidMass(sector && sector.id, size),
         hull: oreHP,
         hullMax: oreHP,
         collides: true,

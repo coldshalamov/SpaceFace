@@ -16,6 +16,7 @@ import {
   readPlayerFirstHitTruth,
   writePlayerFirstHitTruth,
 } from './rewardEligibility.js';
+import { wardScreenTarget } from '../ai/specialistCounterplay.js';
 
 /** Player id 0 is a real entity id. A truthy check treated that hull as nobody. */
 export function playerIsDamageTarget(state, target) {
@@ -42,9 +43,21 @@ export function createDamageRouter(context, statusService, options = {}) {
   const ROUTE_SCRATCH = [{}, {}, {}, {}, {}, {}];
 
   function routeDamage(input) {
+    const attacker = entity(input && input.attackerId);
+    const aimed = entity(input && input.targetId);
+    const screen = wardScreenTarget(state, attacker, aimed, input && input.origin);
+    if (screen && screen.id !== (input && input.targetId)) {
+      input = { ...input, targetId: screen.id, wardFromId: aimed && aimed.id };
+      if (bus && typeof bus.emit === 'function') {
+        bus.emit('combat:warded', {
+          escortId: screen.id,
+          targetId: aimed && aimed.id,
+          attackerId: attacker && attacker.id,
+        });
+      }
+    }
     const packet = normalizeDamagePacket(input && input.packet, catalog.damageModel.channelOrder);
     const target = entity(input && input.targetId);
-    const attacker = entity(input && input.attackerId);
     // INF-025: authored directional armor. A heavy with data.directionalArmor sheds shots that
     // arrive on its mirror prow and takes bonus damage on its exposed stern, so circling changes
     // the outcome instead of inflating health. Pure geometry off hit.pos (attacker pos fallback);

@@ -21,7 +21,7 @@ import {
 import { RulesOfEngagement, ActivityKind } from '../src/ai/doctrine.js';
 import {
   RESERVE_STATION_LAUNCH_CLEARANCE_WU,
-  RESERVE_STATION_LAUNCH_MIN_LEG_WU,
+  WITNESS_FRAME_HALF_WU,
   reserveArrivalPoint,
 } from '../src/law/authorityResponse.js';
 import { isHostileToPlayer } from '../src/systems/scanner.js';
@@ -797,18 +797,18 @@ test('9. high-security reserve response arrives at range and scales to jurisdict
     for (const id of dispatched.responderIds) {
       const responder = t.state.entities.get(id);
       assert.ok(responder);
-      // PQ-138.00 (B10a): reserves now launch from the jurisdiction station's dock ring, so the
-      // pursuing half of the witness choice is on camera within ten seconds. "They fly from
-      // somewhere; teleporting NPCs are a bug" — the somewhere is the port, never the fight.
+      // A4: the answering reserve is on the glass, outside the station body, and not on the hull.
       const station = t.state.entities.get(incident.stationEntityId);
       const launchRadius = Math.max(
         Number(station.data && station.data.dockRadius) || 0,
         Number(station.radius) || 0,
       ) + RESERVE_STATION_LAUNCH_CLEARANCE_WU;
-      assert.ok(Math.abs(Math.hypot(responder.pos.x - station.pos.x, responder.pos.z - station.pos.z) - launchRadius) < 1e-6,
-        'reserve responder launches from the station dock ring, not a 2000 WU ring');
-      assert.ok(Math.hypot(responder.pos.x - pirate.pos.x, responder.pos.z - pirate.pos.z) >= RESERVE_STATION_LAUNCH_MIN_LEG_WU,
-        'reserve responder starts with an intercept leg, not adjacent teleportation');
+      const fromPirate = Math.hypot(responder.pos.x - pirate.pos.x, responder.pos.z - pirate.pos.z);
+      const fromStation = Math.hypot(responder.pos.x - station.pos.x, responder.pos.z - station.pos.z);
+      assert.ok(fromPirate < WITNESS_FRAME_HALF_WU && fromPirate >= 40,
+        `reserve is on the glass (${fromPirate})`);
+      assert.ok(fromStation >= launchRadius,
+        'reserve does not spawn inside the station');
       assert.equal(responder.data.ai.securityTargetId, pirate.id);
       assert.equal(isHostileToPlayer(responder, 0, t.state), false,
         'security response never becomes globally hostile to the neutral player');
@@ -873,6 +873,7 @@ test('9b. saturated reserve response defers under the hard cap, retries, and rel
             Number(station.radius) || 0,
           ),
         },
+        frameHalfWu: WITNESS_FRAME_HALF_WU,
       });
       assert.deepEqual({ x: responderAtOrdinal.pos.x, z: responderAtOrdinal.pos.z }, expected,
         `reserve ordinal ${ordinal} owns its distinct seed-stable arrival point`);

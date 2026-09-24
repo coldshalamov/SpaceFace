@@ -3032,6 +3032,12 @@ function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) 
   const [lo, hi] = Array.isArray(squad.size) && squad.size.length === 2 ? squad.size : [1, 2];
   const n = Math.max(1, Math.round(lo + rng() * Math.max(0, hi - lo)));
   const hasIdentityAnchor = typeof squad.anchorArchetype === 'string' && squad.anchorArchetype.length > 0;
+  const clusterR = Number.isFinite(squad.clusterRadius)
+    ? squad.clusterRadius
+    : Math.min(zone.radius || 260, 260);
+  const minSep = Number.isFinite(squad.minSeparation) ? squad.minSeparation : 0;
+  const squadCenterZone = zone;
+  const squadPositions = [];
   for (let i = 0; i < n; i++) {
     // Authored swarm packets guarantee exactly one identity/controller anchor. It is first so a
     // partial cap grant preserves faction readability; every remaining slot draws from the light
@@ -3042,12 +3048,23 @@ function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) 
       ? squad.anchorArchetype
       : squad.archetypes[Math.floor(rng() * squad.archetypes.length) % squad.archetypes.length];
     const level = Math.round(levelBand[0] + (levelBand[1] - levelBand[0]) * (0.4 + rng() * 0.6));
+    let pos = jitter(squadCenterZone, rng, clusterR);
+    if (minSep > 0 && squadPositions.length > 0) {
+      for (let attempt = 0; attempt < 24; attempt++) {
+        const tooClose = squadPositions.some(
+          (p) => Math.hypot(p.x - pos.x, p.z - pos.z) < minSep,
+        );
+        if (!tooClose) break;
+        pos = jitter(squadCenterZone, rng, clusterR);
+      }
+    }
+    squadPositions.push(pos);
     ships.push({
       archetype,
       ...(hasIdentityAnchor ? { compositionRole: isAnchor ? 'identity_anchor' : 'light' } : {}),
       combatDoctrineId: ENEMY_BY_ID.get(archetype)?.combatDoctrineId || null,
       level,
-      pos: jitter(zone, rng, Math.min(zone.radius || 260, 260)),
+      pos,
       factionId,
       context,
       doctrine: squad.doctrine,

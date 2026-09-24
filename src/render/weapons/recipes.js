@@ -50,6 +50,9 @@ export const BOLT_VARIANT = Object.freeze({
 
 export const WEAPON_SOCKET_NAME = 'SOCKET_Weapon_Front';
 
+/** Starter pulse muzzle light. Sky plates stay under this and under the engine core. */
+export const STARTER_PULSE_MUZZLE_LIGHT_PEAK = 3.1;
+
 const PULSE = Object.freeze({
   family: 'plasma',
   variant: 'pulse-bolt',
@@ -61,7 +64,7 @@ const PULSE = Object.freeze({
     bore: true,
     boreLife: 0.32,
     haze: 0.42,
-    lightPeak: 3.1,
+    lightPeak: STARTER_PULSE_MUZZLE_LIGHT_PEAK,
     lightDistance: 16,
     coreColor: '#34cfff',
     accentColor: '#5ff0ff',

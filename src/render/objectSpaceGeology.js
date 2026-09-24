@@ -13,13 +13,18 @@ export const COMMON_ROCK_VARIANTS = Object.freeze([
 // These are response identities rather than four tints. The runtime blends them in object space,
 // then applies the shared Rock023-derived maps as microstructure. Values are deliberately different
 // in several PBR dimensions so a fracture wall cannot become "matrix, but darker" and a ferrite
-// inclusion cannot become an orange emissive ore cue.
+// inclusion stays mill iron: metallic, not an emissive ore lamp and not a cyan crystal.
 export const COMMON_ROCK_MATERIAL_ROLES = Object.freeze({
-  matrix: Object.freeze({ color: [1.04, 1.02, 0.99], roughness: 0.74, metalness: 0.025, ao: 0.98, normalStrength: 0.56 }),
-  fracture: Object.freeze({ color: [0.42, 0.46, 0.59], roughness: 0.965, metalness: 0.012, ao: 0.50, normalStrength: 1.1 }),
-  regolith: Object.freeze({ color: [1.19, 1.1, 0.88], roughness: 0.985, metalness: 0.006, ao: 0.84, normalStrength: 0.5 }),
-  ferrite: Object.freeze({ color: [0.78, 1.03, 1.10], roughness: 0.25, metalness: 0.64, ao: 0.9, normalStrength: 0.26 }),
+  // Painted industrial stone. Matrix stays near the scan so the rock is not dimmed to mud;
+  // regolith is matte dust, not a beige clay highlight; ferrite is mill iron, not a cyan crystal.
+  matrix: Object.freeze({ color: [0.88, 0.86, 0.82], roughness: 0.74, metalness: 0.025, ao: 0.98, normalStrength: 0.56 }),
+  fracture: Object.freeze({ color: [0.44, 0.42, 0.40], roughness: 0.965, metalness: 0.012, ao: 0.50, normalStrength: 1.1 }),
+  regolith: Object.freeze({ color: [0.70, 0.66, 0.60], roughness: 0.985, metalness: 0.006, ao: 0.84, normalStrength: 0.5 }),
+  ferrite: Object.freeze({ color: [0.72, 0.55, 0.42], roughness: 0.25, metalness: 0.64, ao: 0.9, normalStrength: 0.26 }),
 });
+
+/** Mineral sheen mixed onto common rock. Iron in the cut, not a pink or cyan crystal. */
+export const COMMON_ROCK_MINERAL_SHEEN = Object.freeze([0.55, 0.42, 0.34]);
 
 // UV transforms live on the five shared geometries, not on the shared material. This keeps a single
 // draw-compatible material while ensuring the Rock023 microstructure is attached, deterministic,

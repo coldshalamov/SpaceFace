@@ -28,6 +28,7 @@ import {
   runNewGameStartTransition,
 } from './core/newGameStartTransition.js';
 import { applyAccessibility } from './ui/accessibility.js';
+import { ensureStylesheet as ensureStationStylesheet } from './ui/station/stationStyles.js';
 import { createLoadingPresenter } from './ui/loadingPresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import {
@@ -209,6 +210,11 @@ async function boot() {
     applyAccessibility(state.settings);
     bus.on('settings:changed', () => applyAccessibility(state.settings));
     bus.on('save:loaded', () => applyAccessibility(state.settings));
+    // Ledger D15: the station sheet set used to arrive at first dock, so every screen rendered
+    // differently before vs after docking once. Loading it at boot keeps the cascade identical
+    // regardless of dock history; stationStyles positions it after the Deckplate sheet, matching
+    // the order dock-time injection produced.
+    ensureStationStylesheet();
     // PQ-210.07: the one-time motion ask lives on the boot route as the motionAsk screen
     // (uiRoot routes the first screen through firstBootScreenId). Reconciled over INF-007's
     // boot-time DOM prompt so the ask is a real screen, not an unstyled overlay — exactly one
@@ -589,6 +595,18 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
         return false;
       }
     },
+    waitForPhysics: async () => {
+      const physicsSystem = registry.get('physics');
+      if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return true;
+      try {
+        // Fresh-run entities were just spawned while timeScale was 0; reset so no
+        // record from a prior run's entity objects survives into the new world.
+        return await physicsSystem.prepareBackend(state, { reset: true });
+      } catch (error) {
+        console.warn('[startup] physics backend preparation failed', error);
+        return false;
+      }
+    },
     reportProgress: (stage) => bus.emit('game:loadingProgress', {
       ...stage,
       detail: loadingDetailForStage(stage && stage.id),
@@ -746,6 +764,20 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
           await cook;
         } catch (error) {
           console.warn('[startup] continue GPU cook failed', error);
+        }
+      }
+    }
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    {
+      // Same D26 gate as New Game: the loaded world must enter flight only after the
+      // SG-02 authority exists. No reset — save:loaded already rebound the retained
+      // player record; prepareBackend just awaits any pending init and republishes.
+      const physicsSystem = registry.get('physics');
+      if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
+        const physicsReady = await physicsSystem.prepareBackend(state);
+        if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+        if (physicsReady === false) {
+          throw new Error('The dynamic physics backend did not initialize after save load; refusing to enter flight frozen in place.');
         }
       }
     }
@@ -930,6 +962,7 @@ function loadingDetailForStage(stageId) {
   if (stageId === 'authored-visuals') return 'Committing authored objects before the first playable frame';
   if (stageId === 'render-pipelines') return 'Warming the current render path to avoid first-use stalls';
   if (stageId === 'gpu-resources') return 'Uploading opening materials in responsive batches';
+  if (stageId === 'physics-authority') return 'Standing up the flight dynamics authority';
   if (stageId === 'entering-flight') return 'Finalizing the playable frame';
   return 'Preparing the playable scene';
 }

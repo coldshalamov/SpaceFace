@@ -48,6 +48,48 @@ function ensureLedgerStyle() {
   document.head.appendChild(style);
 }
 
+/**
+ * What the reading column says about an entry: a hero figure with its unit when the entry is about
+ * a number, the name of the thing it files, and a kicker of type · cycle · place. Pure over the
+ * entry's own tokens (src/systems/shipLedger.js keeps them on the candidate), so a template's
+ * wording never has to be parsed back.
+ */
+export function readingOf(entry) {
+  const type = entry && entry.type ? String(entry.type) : '';
+  const t = (entry && entry.tokens) || {};
+  const cycle = (entry && entry.cycleLabel) || '';
+  const kick = (...parts) => parts.filter(Boolean).join(' · ').toUpperCase();
+  const str = (v) => (v == null ? '' : String(v));
+  switch (type) {
+    case 'trade':
+      return { hero: str(t.credits), unit: `cr · ${t.verbPast || 'traded'}`, title: [t.qty != null ? `${t.qty}u` : '', str(t.commodity)].filter(Boolean).join(' '), kicker: kick(type, cycle, str(t.station)) };
+    case 'witness':
+      return t.credits
+        ? { hero: str(t.credits), unit: 'cr paid', title: str(t.event), kicker: kick(type, cycle, str(t.cause)) }
+        : { hero: '', unit: '', title: str(t.event), kicker: kick(type, cycle, str(t.outcome)) };
+    case 'bearing':
+      return { hero: str(t.radius), unit: 'u search ring', title: str(t.wreck), kicker: kick(type, cycle, str(t.sector)) };
+    case 'loss':
+      return { hero: '', unit: '', title: str(t.ship), kicker: kick(type, cycle, str(t.sector)) };
+    case 'rumor':
+    case 'unique':
+      return { hero: '', unit: '', title: str(t.wreck), kicker: kick(type, cycle, str(t.source || t.choice || t.outcome)) };
+    case 'scar':
+    case 'patch':
+      return { hero: '', unit: '', title: [str(t.band), str(t.facing)].filter(Boolean).join(' · '), kicker: kick(type, cycle, str(t.what)) };
+    case 'renown':
+      return { hero: '', unit: '', title: str(t.ship), kicker: kick(type, cycle, str(t.faction), str(t.sector)) };
+    case 'title':
+      return { hero: '', unit: '', title: str(t.title), kicker: kick(type, cycle) };
+    case 'name':
+      return { hero: '', unit: '', title: str(t.name), kicker: kick(type, cycle) };
+    default: {
+      const digits = cycleDigits(cycle);
+      return { hero: digits, unit: 'cycle', title: '', kicker: kick(type) };
+    }
+  }
+}
+
 function cycleDigits(label) {
   const match = String(label || '').match(/(\d+)/);
   return match ? match[1] : '';
@@ -146,13 +188,17 @@ export function createLedgerScreen(ctx) {
     if (!entry) { read.hidden = true; dressLedger(); return; }
     for (const row of rows) row.setAttribute('aria-selected', String(row === item));
     const type = entry.type ? String(entry.type) : '';
-    readKicker.textContent = type ? type.toUpperCase() : '';
     const color = toneColor(type);
     if (color) pin(readKicker, { color });
-    const digits = cycleDigits(entry.cycleLabel);
-    readHeroN.textContent = digits;
-    readHero.hidden = !digits;
-    readTitle.textContent = entry.cycleLabel || '';
+    // The reading leads with the figure the entry is about (the credits of a trade, the ring of a
+    // bearing), then the thing it names; the cycle rides in the kicker so it is never said twice.
+    const r = readingOf(entry);
+    readKicker.textContent = r.kicker;
+    readHeroN.textContent = r.hero;
+    readHeroW.textContent = r.unit;
+    readHero.hidden = !r.hero;
+    readTitle.textContent = r.title;
+    readTitle.hidden = !r.title;
     readLine.textContent = entry.text || '';
     readHand.textContent = entry.annotation || '';
     readHand.hidden = !entry.annotation;

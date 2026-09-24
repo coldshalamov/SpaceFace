@@ -5,6 +5,25 @@ import { sampleDischargeLifecycle, sampleImpactLifecycle } from './effectLifecyc
 
 export const DISCHARGE_CAPACITY = 48;
 
+/**
+ * §22 A7 — a steady travel speed for the whole flash, then nothing.
+ * The fragment advances the bright band by `life * flow * 5` radians. These
+ * speeds carry one band out of the bore before a starter flash dies.
+ * Machined burst is the kinetic default kit. Split aperture is the starter pulse.
+ */
+export const DISCHARGE_FLOW = Object.freeze({
+  'machined-burst': 18,
+  'split-aperture': 14,
+});
+
+export function dischargeFlowAt(source, age, life) {
+  const span = Math.max(0.001, Number(life) || 0);
+  const t = Number(age);
+  if (!Number.isFinite(t) || t < 0 || t >= span) return 0;
+  const speed = DISCHARGE_FLOW[source];
+  return speed > 0 ? speed : 0;
+}
+
 /** Source events (muzzle ignition) and contact events (impact flash) share one retained pool so
  *  the weapon surface language has exactly one owner, one material and one admission budget. */
 export const SURFACE_ROLE = Object.freeze({ SOURCE: 0, IMPACT: 1 });
@@ -133,8 +152,7 @@ export class WeaponDischargePool {
     // get their own rhythm; every other family keeps the untouched zero path. Reduced flash is
     // preserved through s.opacity (flash.opacity0 arrives already scaled); reduced motion freezes
     // transport in-shader via uMotion-scaled vCycle.z, so no lifecycle handling changes here.
-    const dischargeFlowEnvelope=s.role===0?Math.max(0,1-s.age/Math.max(.001,s.life))*(0.4+0.6*(Number.isFinite(s.opacity)?s.opacity:1)):0;
-    d[16]=s.source==='machined-burst'?dischargeFlowEnvelope*(1.2+0.8*Math.sin(s.age*62.83+s.seed*6.283)):s.source==='split-aperture'?dischargeFlowEnvelope*(1.0+0.5*Math.sin(s.age*125.66+s.seed*6.283)):0;d[17]=phase>=0?phase:s.seed;d[18]=frontMode;d[19]=this.style;
+    d[16]=s.role===0?dischargeFlowAt(s.source,s.age,s.life):0;d[17]=phase>=0?phase:s.seed;d[18]=frontMode;d[19]=this.style;
     d[20]=1;d[21]=1;d[22]=1;d[23]=s.pitch;
     this.batch.add(d);
   }

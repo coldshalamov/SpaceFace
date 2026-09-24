@@ -99,14 +99,14 @@ function buildKbmPrompts(state) {
 }
 
 const GAMEPAD_PROMPTS = Object.freeze({
-  flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine / selected Site beam  •  RB boost  •  LB brake  •  R3 countermeasure  •  A/Cross Massline (dock/accept when prompted)  •  X target  •  View star map  •  Y codex  •  Start → Pause → Mission Log',
+  flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine / selected Site beam  •  RB boost  •  LB brake  •  Y shove  •  R3 countermeasure  •  A/Cross Massline  •  B dock when prompted  •  X target  •  View star map  •  Start → Pause → Mission Log',
   mining: 'LT hold to mine  •  Release to cool  •  Fly through cargo drift  •  X next signal',
   combat: 'RT fire  •  Right stick aim at target  •  X cycle targets  •  R3 countermeasure  •  D-Pad Right bomb  •  D-Pad Left cycle bombs  •  RB boost to dodge  •  Start pause',
-  station: 'A dock  •  Hub: LB/RB tabs  •  D-pad/left stick focus  •  A act  •  B undock',
+  station: 'B dock when prompted  •  Hub: LB/RB tabs  •  D-pad/left stick focus  •  A act  •  B leave once aboard',
   gate: 'View open Star Map  •  Select destination  •  Jump to travel between systems',
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right stick aims.',
   tutorialMine: 'The Hitch is armed: RT fires the Pulse Laser S. Hold LT on the marked rock to mine the mass reading, then collect the drift.',
-  tutorialDock: 'Follow the cyan station arrow. Press A at the dock prompt. Bring the discrepancy back before someone edits it out.',
+  tutorialDock: 'Follow the cyan station arrow. Press B at the dock prompt. Bring the discrepancy back before someone edits it out.',
   firstFlight: 'Left stick flies. Right stick aims.',
   firstCombat: 'Fire with RT. X cycles targets.',
   firstStation: 'Review Departure Check before B undocks.',

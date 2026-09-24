@@ -81,10 +81,11 @@ export function normalizeSeed(seed) {
 }
 
 /** The ordinary launch config, with the Crucible setup and its ruleset riding along. */
-export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET) {
+export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET, extras = {}) {
   return buildSandboxLaunchConfig({}, {
     survivalSetup: setup,
     survivalRuleset: normalizeCrucibleRuleset(ruleset),
+    openingLesson: extras.openingLesson === true,
   });
 }
 
@@ -128,7 +129,17 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   if (dailyDateKey) lastSetup.dailyDateKey = dailyDateKey;
   if (weeklyMutatorId) lastSetup.weeklyMutatorId = weeklyMutatorId;
   if (ghostHash != null) lastSetup.ghostHash = ghostHash;
-  requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved));
+  let openingLesson = false;
+  if (resolved === SWARM_RULESET && !dailyDateKey && !weeklyMutatorId && ghostHash == null) {
+    try {
+      const profile = loadCrucibleMeta();
+      const history = profile && Array.isArray(profile.history) ? profile.history : [];
+      openingLesson = history.length === 0;
+    } catch {
+      openingLesson = false;
+    }
+  }
+  requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved, { openingLesson }));
   return true;
 }
 

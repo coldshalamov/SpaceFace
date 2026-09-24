@@ -267,6 +267,20 @@ export function injectHudCss() {
   .sf-toast__count { font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-cyan); margin-left:6px;
     padding:0; }
 
+  /* ===== watch list (PQ-183.01) — pinned readings in the receipts lane ===== */
+  /* The pinned stack sits above the transient receipts in the same lane. Thin lines, no box:
+     a pin is a reading, not a card. Kind word is the small label, label is the entity, detail is
+     the live number. */
+  .sf-watchlist { width:100%; max-width:360px; margin-bottom:4px; }
+  .sf-watchline { display:flex; align-items:baseline; gap:8px; padding:1px 0;
+    color:var(--hud-paper, var(--ink)); font-size:var(--k-fs-data); pointer-events:none; }
+  .sf-watchline__kind { flex:none; width:52px; font-family:var(--hud-data);
+    letter-spacing:0.06em; color:var(--hud-cyan); opacity:.75; }
+  .sf-watchline__label { flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sf-watchline__detail { flex:none; font-family:var(--hud-data); color:var(--hud-paper, var(--ink)); }
+  .sf-watchline--you .sf-watchline__detail { color:var(--hud-cyan); }
+  .sf-watchline--foe .sf-watchline__detail { color:var(--k-red); }
+
   /* ===== alerts ===== */
   .sf-alert { display:flex; align-items:center; gap:8px; padding:6px 16px;
     font-family:var(--hud-data); font-size:var(--k-fs-data); border:1px solid var(--k-hair); color:var(--hud-paper); }

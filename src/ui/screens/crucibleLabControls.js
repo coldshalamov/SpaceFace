@@ -74,12 +74,15 @@ function getPlayerEntity(ctx) {
 
 function isLiveCombatLab(ctx) {
   const run = ctx && ctx.state && ctx.state.run;
-  if (run && run.kind === 'lab') return true;
+  if (run && (run.kind === 'lab' || run.kind === 'sandbox')) return true;
+  if (ctx && ctx.state && (ctx.state.sandbox || ctx.state.mode === 'flight')) return true;
   return hasCombatLabBudgetOwner(ctx);
 }
 
 function isLiveLabSession(ctx) {
   const run = ctx && ctx.state && ctx.state.run;
+  if (run && (run.kind === 'lab' || run.kind === 'sandbox') && run.phase !== 'inactive') return true;
+  if (ctx && ctx.state && (ctx.state.sandbox || ctx.state.mode === 'flight')) return true;
   return !!(run && run.kind === 'lab' && run.phase !== 'inactive');
 }
 

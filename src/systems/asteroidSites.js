@@ -40,6 +40,7 @@ import {
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { asteroidMass } from '../data/sectorPhysical.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { presentationOwnerAdmissionForWorldRecord } from '../core/presentationAdmission.js';
 import { WORLD_SITE_MANIFESTS, worldSiteManifestById } from '../data/worldSiteManifests.js';
@@ -1430,7 +1431,7 @@ export const asteroidSites = {
         type: 'asteroid',
         pos: { x: site.anchor.x, z: site.anchor.z },
         radius: site.anchor.radius,
-        mass: 200 + site.anchor.radius * 40,
+        mass: asteroidMass(site.sectorId, site.anchor.radius),
         angVel: 0,
         hull: 1e9, hullMax: 1e9,
         collides: true,

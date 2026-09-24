@@ -1,3 +1,4 @@
+import { dressLampKey } from '../orrery/lampKey.js';
 import { SHIPS } from '../../data/ships.js';
 import { ENEMY_TYPES } from '../../data/enemies.js';
 import { masslineCounterByHead } from '../../data/masslineCounters.js';
@@ -1528,7 +1529,7 @@ export const rangeScreen = {
     const emptyReturn = el('button', 'k-word k-word--emph k-word--primary', 'Return to the ship');
     emptyReturn.type = 'button';
     emptyReturn.setAttribute('data-range-empty-return', '');
-    paintKey(emptyReturn, 'primary');
+    if (emptyReturn.childNodes) dressLampKey(emptyReturn);
     empty.appendChild(emptyReturn);
     stage.appendChild(empty);
     rootEl.appendChild(stage);

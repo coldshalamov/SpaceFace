@@ -191,6 +191,7 @@ export const survivalRun = {
     this._pendingFrom = null;
     this._pendingTo = null;
     this._controlMark = null;
+    this._openingLesson = false;
   },
 
   _clearReceiptLatches() {
@@ -204,8 +205,11 @@ export const survivalRun = {
 
   _onStarted(payload) {
     this._resetMachine();
-    this._lastDeath = null;
     const queued = takeQueuedChallenge();
+    // A queued/share challenge rewrites the run's mutators and ruleset — its wave contract must
+    // stay byte-identical for reproduction, so it never also gets the first-run opening lesson.
+    this._openingLesson = !!(payload && payload.openingLesson === true) && !queued;
+    this._lastDeath = null;
     const run = liveSurvivalRun(this.state);
     if (run && queued) {
       run.arenaMutators = queued.mutators.slice();
@@ -346,6 +350,7 @@ export const survivalRun = {
       buildSummary: null,
       mode: swarm ? 'swarm' : (endless ? 'endless' : (circuit ? 'boss_circuit' : undefined)),
       ruleset: run.ruleset,
+      teachOpening: swarm && nextWave === 1 && this._openingLesson === true,
     });
     if (isPlanError(plan)) {
       this._planFailed = true;

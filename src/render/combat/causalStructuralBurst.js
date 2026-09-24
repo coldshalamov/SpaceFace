@@ -12,6 +12,16 @@ import {
 } from './phasedExplosions.js';
 import { resolveImpactPresentation } from '../../presentation/causalVfxGrammar.js';
 
+/** A ring beat stays on the body it marks. Arc length never exceeds this multiple of the victim radius. */
+export const ARC_BODY_LENGTH_SCALE = 1.15;
+
+export function fitArcLengthToBody(length, radius) {
+  const cap = Math.max(0.2, Number(radius) || 0) * ARC_BODY_LENGTH_SCALE;
+  const n = Number(length);
+  if (!Number.isFinite(n) || n < 0) return cap;
+  return Math.min(n, cap);
+}
+
 export function spawnCausalStructuralBurst({
   fx,
   spec,
@@ -79,6 +89,8 @@ export function spawnCausalStructuralBurst({
     const pose = arcPose(layout, k, arcCount, {
       baseAngle, mixed, phase, radius, pattern01, patternSigned,
     });
+    pose.length0 = fitArcLengthToBody(pose.length0, radius);
+    pose.length1 = fitArcLengthToBody(pose.length1, radius);
     writeSpec(
       spec,
       priority,
