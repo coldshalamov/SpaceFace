@@ -49,6 +49,11 @@ import {
   syncKeys,
 } from './fhChrome.js';
 import { bindStationMarkup, stationControlAttrs } from '../stationBindingMap.js';
+import { createRouteOrrery, sectorOfStation } from '../../orrery/routeOrrery.js';
+import { createCounter, decrypt } from '../../orrery/text.js';
+import { reducedMotion, stagger } from '../../orrery/motion.js';
+import { attachHoldVerb } from '../../kit/holdVerb.js';
+import { dressLampKey } from '../../orrery/lampKey.js';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FAC = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -379,7 +384,8 @@ export function missionDossierHtml(m, state, options = {}) {
     riskHtml: riskSentence(m, consequences, facShort),
     termsHtml: (cargoName ? termRow('Payload', cargoEntityHtml(cargo, cargoName), cargo.qty ? `${num(cargo.qty)} u` : '') : '')
       + termRow('Time', escapeHtml(m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible')))
-      + (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure') : '')
+      // a forfeit is a loss: the one term that carries the threat channel's red tick
+      + (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure', { cls: 'sx-term--threat' }) : '')
       + (upfrontCr ? termRow('Upfront', cr(upfrontCr), 'to accept') : '')
       + (missionOffersFollowUp(m) ? termRow('Follow-up', 'Posted on success', 'same contract family') : '')
       + (m.featured ? termRow('Featured', 'Day rate', `pays ×${m.featured.rewardMult} · +${m.featured.repBonus} rep`) : '')
@@ -409,6 +415,15 @@ export function createContractsScreen(ctx) {
   /** @type {null|{ focusMissionId?: string, kind?: string, reason?: string, title?: string, surface?: string }} */
   let attention = null;
   boardEl.setAttribute('role', 'tablist');
+  // ORRERY (design/frontend/ORRERY.md §6 Contracts): the route as a beam on a mini orrery beside the
+  // dossier, the dossier's words resolving on arrival, the reward rolling, and Accept held (a ring
+  // fills) when collateral is at risk. The tab arrives once per show; a selection re-renders quietly.
+  let routeInstrument = null;
+  let holdVerb = null;
+  let holdFired = false;
+  let arriving = false;
+  const stopDecrypt = [];
+  const raf = typeof globalThis.requestAnimationFrame === 'function' ? globalThis.requestAnimationFrame : null;
 
   function dressHangLabels() {
     ensureInteriorStyle();
@@ -490,7 +505,40 @@ export function createContractsScreen(ctx) {
       return;
     }
     const recommended = boardRecommendedOfferId(list, state);
-    const decisionHtml = contractDecisionHtml(state, stationId);
+    // ORRERY: the dispatch's choice hangs off the jobs it names, as flagged sub-rows on the same
+    // ladder; only an option that names no posted job keeps its own section under the list.
+    const decisions = presentSurfaceDecisions(state, stationId, 'contracts');
+    const optionsByMission = new Map();
+    const loose = [];
+    for (const decision of decisions) {
+      for (const option of decision.options) {
+        const target = option.effect && option.effect.missionId != null ? String(option.effect.missionId) : null;
+        const entry = { decision, option };
+        if (target && list.some((m) => String(mid(m)) === target)) {
+          if (!optionsByMission.has(target)) optionsByMission.set(target, []);
+          optionsByMission.get(target).push(entry);
+        } else loose.push(entry);
+      }
+    }
+    // A sub-row that would only repeat its job's title carries the dispatch's flag instead, and the
+    // tradeoff is its line; a loose option keeps its own label.
+    const optionHtml = ({ decision, option }, sub, jobTitle = '') => {
+      const repeats = sub && jobTitle && String(option.label || '').trim().toLowerCase() === String(jobTitle).trim().toLowerCase();
+      return (
+        `<button type="button" ${stationControlAttrs('decision-option')} class="k-row sx-ct-row sx-decision__opt${sub ? ' sx-decision__opt--sub' : ''}" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}" aria-label="${escapeHtml(`${option.label}. ${option.tradeoff}`)}">` +
+          `<span class="k-row__name">${repeats ? 'Dispatch' : escapeHtml(option.label)}</span>` +
+          `<span class="k-row__sub">${escapeHtml(option.tradeoff)}</span>` +
+        `</button>`
+      );
+    };
+    const decisionHtml = loose.length
+      ? decisions.filter((d) => loose.some((e) => e.decision === d)).map((decision) => (
+        `<section class="sx-decision">` +
+          `<p class="k-sentence">${escapeHtml(decision.situation)}</p>` +
+          loose.filter((e) => e.decision === decision).map((e) => optionHtml(e, false)).join('') +
+        `</section>`
+      )).join('')
+      : '';
     boardEl.innerHTML = decisionHtml +
       `<ul class="k-rows sx-ct__rows">` +
       list.map((m) => {
@@ -520,11 +568,92 @@ export function createContractsScreen(ctx) {
               `${escapeHtml(m.title || typeLabel(m.type))}` +
             `</span>` +
             `<span class="k-row__num sx-ct-row__rew">${filing ? 'Review' : reward(m).toLocaleString('en-US')}</span>` +
-          `</button></li>`
+          `</button>` +
+          (optionsByMission.get(id) || []).map((e) => optionHtml(e, true, m.title || typeLabel(m.type))).join('') +
+          `</li>`
         );
       }).join('') +
       `</ul>`;
     dressBoard();
+    if (arriving && !reducedMotion()) {
+      const rows = boardEl.querySelectorAll('.sx-ct-row');
+      stagger(rows, { base: 60, step: 34 });
+      for (const row of rows) row.classList.add('orr-rise');
+    }
+  }
+
+  /** Where the docked berth stands, so the route beam starts from the right sector. */
+  function originSectorId(state) {
+    const sid = state && state.ui && state.ui.dockedStationId;
+    return sectorOfStation(sid) || (state && state.world && state.world.currentSectorId) || null;
+  }
+
+  function destSectorIdOf(m) {
+    const params = (m && m.params) || {};
+    return m.destSectorId || params.destSectorId || sectorOfStation(m.destStationId || params.destStationId) || null;
+  }
+
+  /** The ORRERY instruments on a rendered dossier: the route beam, the words that resolve, the
+   *  rolling reward, the hold ring on Accept. Everything here is presentation over the markup the
+   *  pure builder made; tests read that markup, not this. */
+  function composeDossier(m, state) {
+    const dossier = dossierEl.querySelector('.sx-dossier');
+    if (!dossier) return;
+    for (const stop of stopDecrypt.splice(0)) stop();
+    if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
+    if (holdVerb) { holdVerb.dispose(); holdVerb = null; }
+    // the route orrery beside the reading
+    const routeHost = document.createElement('div');
+    routeHost.className = 'orr-ct-route';
+    routeHost.setAttribute('aria-hidden', 'true');
+    dossier.appendChild(routeHost);
+    routeInstrument = createRouteOrrery(routeHost);
+    routeInstrument.set({
+      origin: originSectorId(state),
+      originName: (ctx.station && ctx.station.name) || 'This station',
+      dest: destSectorIdOf(m),
+      destName: destName(m),
+    });
+    // the words resolve; the reward rolls
+    if (!reducedMotion()) {
+      const targets = [
+        dossier.querySelector('.sx-dossier__title .sf-entity-link') || dossier.querySelector('.sx-dossier__title'),
+        dossier.querySelector(':scope > .k-caps'),
+        dossier.querySelector('.k-hero__w'),
+        ...dossier.querySelectorAll('.sx-dossier__terms > li > .k-62'),
+      ].filter(Boolean);
+      targets.forEach((node, i) => {
+        const text = node.textContent;
+        if (text) stopDecrypt.push(decrypt(node, text, { duration: 240, delay: 40 + i * 50 }));
+      });
+    }
+    const heroN = dossier.querySelector('.sx-dossier__reward .k-hero__n');
+    if (heroN && !heroN.querySelector('.orr-counter__digit')) {
+      const value = reward(m);
+      const counter = createCounter(heroN);
+      if (raf && !reducedMotion()) { counter.set(0); raf(() => raf(() => counter.set(value))); }
+      else counter.set(value);
+    }
+    // Accept is the tab's Lamp Key. When collateral is at risk it is held: the ring at its side
+    // fills with the Hand, and letting go early empties it.
+    const accept = dossier.querySelector('.sx-ct-commit[data-accept]');
+    const consequences = missionConsequenceSummary(m);
+    if (accept && !accept.disabled && consequences.collateral > 0) {
+      accept.setAttribute('aria-label', `${accept.getAttribute('aria-label') || 'Accept'} Hold to accept: ${cr(consequences.collateral)} collateral is at risk.`);
+      holdVerb = attachHoldVerb(accept, { ms: 720, onFire: () => { holdFired = true; accept.classList.remove('is-holding'); acceptMission(accept); holdFired = false; } });
+      dressLampKey(accept, { hold: true, note: 'hold' });
+    } else if (accept) {
+      dressLampKey(accept);
+    }
+    // a short screen takes the smaller key
+    if (accept && typeof globalThis.matchMedia === 'function' && globalThis.matchMedia('(max-height:800px)').matches) accept.classList.add('orr-lampkey--small');
+  }
+
+  function feedHold(held) {
+    if (!holdVerb) return;
+    holdVerb.feed(held);
+    const accept = dossierEl.querySelector('.sx-ct-commit[data-hold]');
+    if (accept) accept.classList.toggle('is-holding', !!held);
   }
 
   function renderDossier(state) {
@@ -560,6 +689,7 @@ export function createContractsScreen(ctx) {
       focusAccept,
     });
     dressDossier();
+    composeDossier(m, state);
   }
 
   function renderActive(state) {
@@ -626,22 +756,6 @@ export function createContractsScreen(ctx) {
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   }
 
-  function contractDecisionHtml(state, stationId) {
-    const shown = presentSurfaceDecisions(state, stationId, 'contracts');
-    if (!shown.length) return '';
-    return shown.map((decision) => (
-      `<section class="sx-decision">` +
-        `<p class="k-sentence">${escapeHtml(decision.situation)}</p>` +
-        decision.options.map((option) => (
-          `<button type="button" ${stationControlAttrs('decision-option')} class="k-row sx-ct-row sx-decision__opt" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}">` +
-            `<span class="k-row__name">${escapeHtml(option.label)}</span>` +
-            `<span class="k-row__sub">${escapeHtml(option.tradeoff)}</span>` +
-          `</button>`
-        )).join('') +
-      `</section>`
-    )).join('');
-  }
-
   boardEl.addEventListener('click', (ev) => {
     const adventure = ev.target.closest('[data-adventure-option]');
     if (adventure) {
@@ -673,26 +787,48 @@ export function createContractsScreen(ctx) {
     select(rows[next].getAttribute('data-mid'), true);
   });
 
+  function acceptMission(acc) {
+    if (!acc || acc.disabled) return;
+    acc.disabled = true;
+    const missionId = acc.getAttribute('data-accept');
+    const state = ctx.state || {};
+    const stationId = state.ui && state.ui.dockedStationId;
+    const shown = presentSurfaceDecisions(state, stationId, 'contracts');
+    const match = shown.find((decision) => decision.options.some((option) => (
+      option.effect && option.effect.missionId === missionId
+    )));
+    if (match && ctx.bus) {
+      const option = match.options.find((row) => row.effect && row.effect.missionId === missionId);
+      const chosen = chooseAdventureDecision(state, match.id, option.id, { bus: ctx.bus });
+      ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+    } else if (ctx.bus) {
+      ctx.bus.emit('ui:acceptMission', { missionId });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    }
+    setTimeout(() => renderAll(state), 60);
+  }
+
+  // A held Accept fires from its ring, never from the tap that started the hold. Pointer, keyboard
+  // and the pad's confirm all feed the same clock; the plain click is swallowed while it is armed.
+  const holdTarget = (ev) => (holdVerb && ev.target && ev.target.closest ? ev.target.closest('.sx-ct-commit[data-hold]') : null);
+  el.addEventListener('pointerdown', (ev) => { if (holdTarget(ev) && ev.button === 0) feedHold(true); });
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+    el.addEventListener(type, (ev) => { if (holdTarget(ev)) feedHold(false); }, true);
+  }
+  el.addEventListener('keydown', (ev) => {
+    if (!holdTarget(ev) || ev.repeat || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    ev.preventDefault();
+    feedHold(true);
+  });
+  el.addEventListener('keyup', (ev) => { if (holdTarget(ev) && (ev.key === 'Enter' || ev.key === ' ')) feedHold(false); });
+  el.addEventListener('click', (ev) => {
+    if (holdTarget(ev) && !holdFired) { ev.preventDefault(); ev.stopImmediatePropagation(); }
+  }, true);
+
   el.addEventListener('click', (ev) => {
     const acc = ev.target.closest('[data-accept]');
     if (acc && !acc.disabled) {
-      acc.disabled = true;
-      const missionId = acc.getAttribute('data-accept');
-      const state = ctx.state || {};
-      const stationId = state.ui && state.ui.dockedStationId;
-      const shown = presentSurfaceDecisions(state, stationId, 'contracts');
-      const match = shown.find((decision) => decision.options.some((option) => (
-        option.effect && option.effect.missionId === missionId
-      )));
-      if (match && ctx.bus) {
-        const option = match.options.find((row) => row.effect && row.effect.missionId === missionId);
-        const chosen = chooseAdventureDecision(state, match.id, option.id, { bus: ctx.bus });
-        ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
-      } else if (ctx.bus) {
-        ctx.bus.emit('ui:acceptMission', { missionId });
-        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
-      }
-      setTimeout(() => renderAll(state), 60);
+      acceptMission(acc);
       return;
     }
     const trk = ev.target.closest('[data-track]');
@@ -711,7 +847,9 @@ export function createContractsScreen(ctx) {
     onShow(c) {
       const next = c || ctx;
       applyShowOptions(next || {});
+      arriving = true;
       renderAll(next.state || {});
+      arriving = false;
     },
     refresh(c) {
       const next = c || ctx;
@@ -720,6 +858,9 @@ export function createContractsScreen(ctx) {
     },
     dispose() {
       if (ctx.bus && ctx.bus.off) ctx.bus.off('mission:updated', onMissionChanged);
+      for (const stop of stopDecrypt.splice(0)) stop();
+      if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
+      if (holdVerb) { holdVerb.dispose(); holdVerb = null; }
     },
   };
 }

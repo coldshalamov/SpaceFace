@@ -114,24 +114,28 @@ try {
   assert.ok(missionHover.every((sample) => sample.sameNode), 'station refresh must not replace a hovered active mission');
 
   await page.click('[data-nav="shipworks"]');
-  await page.waitForSelector('.sx-hardpoint[data-spatial-slot]', { state: 'visible', timeout: 30_000 });
-  const hardpoint = page.locator('.sx-hardpoint[data-spatial-slot]').first();
+  // The dock host stands the hull on its jig (src/ui/orrery/hullSchematic.js): the hardpoints are
+  // then its nodes and labels, and the old spatial pins stay mounted but hidden. Either surface counts.
+  const HARDPOINT = '.orr-sw-jig.orr-hull--on .orr-sw-node[data-slot], .sx-hardpoint[data-spatial-slot]';
+  await page.waitForSelector(HARDPOINT, { state: 'visible', timeout: 30_000 });
+  const hardpoint = page.locator(HARDPOINT).first();
   await hardpoint.hover();
-  const shipworks = await page.evaluate(async () => {
+  const shipworks = await page.evaluate(async (selector) => {
     const stage = document.querySelector('.sx-sw__stage')?.getBoundingClientRect();
-    const initial = document.querySelector('.sx-hardpoint[data-spatial-slot]');
+    const initial = document.querySelector(selector);
     const stable = [];
     for (let i = 0; i < 80; i++) {
       await new Promise((resolve) => requestAnimationFrame(resolve));
-      stable.push(document.querySelector('.sx-hardpoint[data-spatial-slot]') === initial);
+      stable.push(document.querySelector(selector) === initial);
     }
-    const clipped = [...document.querySelectorAll('.sx-hardpoint__copy')].filter((node) => {
+    const clipped = [...document.querySelectorAll('.sx-hardpoint__copy, .orr-sw-jig.orr-hull--on .orr-sw-node')].filter((node) => {
       const box = node.getBoundingClientRect();
+      if (!box.width || !box.height) return false; // hidden under the jig: not on the stage at all
       return !stage || box.left < stage.left - 1 || box.top < stage.top - 1
         || box.right > stage.right + 1 || box.bottom > stage.bottom + 1;
     }).map((node) => node.textContent.trim());
     return { stable, clipped };
-  });
+  }, HARDPOINT);
   assert.ok(shipworks.stable.every(Boolean), 'station refresh must not replace hovered Shipworks hardpoints');
   assert.deepEqual(shipworks.clipped, [], `Shipworks callouts must stay inside the preview (${shipworks.clipped.join(', ')})`);
   await page.screenshot({ path: join(OUT, 'shipworks.png') });

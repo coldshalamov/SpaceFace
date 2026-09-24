@@ -1,9 +1,9 @@
 // Presentation only: readiness, cargo, consequences and route policy are supplied by the native
 // missionPreflight/controller. *Html values are trusted renderer fragments, never raw user text.
 import { escapeMarkup as escapeHtml } from './identity.js';
-export function termRow(k, v, sub) {
+export function termRow(k, v, sub, { cls = '' } = {}) {
   return (
-    `<li class="k-row k-row--static">` +
+    `<li class="k-row k-row--static${cls ? ` ${cls}` : ''}">` +
       `<span class="k-62">${k}</span>` +
       `<span class="k-row__num sx-term__v">${v}${sub ? `<span class="k-row__sub sx-term__sub">${sub}</span>` : ''}</span>` +
     `</li>`
