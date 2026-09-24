@@ -3,19 +3,19 @@
 ## Summary
 
 Post-import hillclimb on master **`abcccfd87`** (fetched; unchanged).
-Scratch `vm-work/hillclimb-20260924h` through #65; +#66 @ `2fcf7a7fc`.
+Scratch `vm-work/hillclimb-20260924h` through #66; +#67 @ `454dab17b`.
 
 Fresh quiet profile `settled-45s-stacked-20260924ac` (Picture ON, soft-GPU,
-tip through #64) cites ranking; #66 cuts residual `liveFramesFor` /
-`entityContacts` spread-alloc after #39+#43+#49+#50+#55+#56+#58+#59+#61.
+tip through #64) cites ranking; #67 cuts residual `liveListSquads` full rebuild
+after #66 sensor-contact scratch-fill.
 
 **Shipped this pass:**
-- **#66 `sensor-contact-scratch-fill`** — portable quiet live sensor contact
-  scratch fill **~5.75×** median (6 observers × 18 contacts × 2500 iters with
-  PerceptionMemory-style Object.assign; floor minSpeedup ≥5.52×); focused
-  suites **20/20**.
+- **#67 `roster-retain-stable`** — portable quiet liveListSquads retain-when-stable
+  **~1.78×** median (6×4 members × 30000 iters; floor minSpeedup ≥1.72×); focused
+  AI suites **59/59**.
 
-**Holds / misses:** lifetimeSweep dirty-publish trust full-pole ~1.08×;
+**Holds / misses:** roster-member-scratch-fill (alloc-only ~0.97× — drop; replaced
+by retain-stable); lifetimeSweep dirty-publish trust full-pole ~1.08×;
 lifetimeSweep pose-publish-list(~1.00×); classify physics-partition fuse-only
 (~1.44×); physics S1-idle; spatial-hash@600; visit-loop cadence;
 stamp-reuse/inert/near-disc; imminent-collision (~1.22×); rock-resolvePins;
@@ -29,8 +29,9 @@ Map-epoch marks. 11 rocks pinned.
    packFence / residual closures / camera.follow residual).
 2. classifyWorld after #37+#38+#45+#48+#60+#62+#64 (resolvePins residual /
    reusablePins).
-3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66 (preStep residual /
-   lifetimeSweep residual / tacticalAI residual).
+3. registry.step after #39+#43+#49+#50+#55+#56+#58+#59+#61+#66+#67 (preStep residual /
+   lifetimeSweep residual / tacticalAI residual after liveFramesFor+#66 and
+   liveListSquads+#67).
 4. syncEntityViews residual after #15+#44+#57 (ordnance / query / residual
    microMotion).
 5. Soft-GPU fps is not a KPI.

@@ -1,0 +1,14 @@
+{
+  "label": "roster-retain-stable",
+  "iters": 30000,
+  "members": 24,
+  "runs": 11,
+  "beforeMedMs": 231.31378699999993,
+  "afterMedMs": 128.63520600000004,
+  "minSpeedup": 1.7188578685943001,
+  "medSpeedup": 1.7818702921013687,
+  "maxSpeedup": 1.865088747499385,
+  "primary": "~1.78×",
+  "ship_bar": 1.5,
+  "clears_bar": true
+}
