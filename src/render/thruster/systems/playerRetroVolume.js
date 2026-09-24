@@ -280,8 +280,8 @@ export class PlayerRetroJets {
     this.group.visible = false;
 
     const ribbonOpts = {
-      ribbons: 6,
-      stations: 32,
+      ribbons: recipe.ribbons || 8,
+      stations: recipe.stations || 40,
       across: recipe.across || 5,
       jetLength: recipe.lengthWU,
       coreColor: recipe.coreColor,
@@ -300,8 +300,8 @@ export class PlayerRetroJets {
       this._plumes.push(plume);
 
       const forge = new DriveForge(T, {
-        lengthWU: 1.6, mouthScale: 0.86, aftScale: 1.02,
-        opacity: 0.2, radiance: 1.35, forceSinglePass: true,
+        lengthWU: 1.35, mouthScale: 0.82, aftScale: 1.06,
+        opacity: 0.24, radiance: 1.55, forceSinglePass: true,
       });
       forge.mesh.name = `${this.name}-forge-${i}`;
       forge.attach(this.group);
@@ -332,15 +332,17 @@ export class PlayerRetroJets {
       u.uCoreColor.value.set(engine.coreColor || '#ffffff');
       u.uMidColor.value.set(engine.plumeCore || '#36c8ff');
       u.uEdgeColor.value.set(engine.plumeHalo || '#5a78ff');
-      // A retro is a compressed column. The cruising drive's rolling sheets and broad far widths
-      // are what read as a squid ball when squeezed into two short bow jets.
+      // A retro is a brake dart: collimated at the lip, then it frays into a few curling
+      // streamers that shred and dissolve. The cruising drive's rolling sheets and broad far
+      // widths are what read as a squid ball when squeezed into two short bow jets — but a column
+      // with no breakup at all is a rigid tube, so the tail is allowed to live.
       u.uCoherence.value = this.variant.coherence;
-      u.uRollAmp.value = 0.04;
-      u.uSwirl.value = 0.04;
-      u.uWobble.value = 0.05;
-      u.uCurve.value = 0.08;
+      u.uRollAmp.value = 0.55;
+      u.uSwirl.value = 1.15;
+      u.uWobble.value = 0.9;
+      u.uCurve.value = 0.9;
       u.uFlowRate.value = this.variant.flow;
-      u.uAxialFreq.value = 2.3;
+      u.uAxialFreq.value = 3.5;
       const forge = this._forges[i].material.uniforms;
       forge.uCoreColor.value.set(engine.coreColor || '#ffffff');
       forge.uEdgeColor.value.set(engine.plumeCore || '#36c8ff');
@@ -412,9 +414,13 @@ export class PlayerRetroJets {
       }
       const sock = sockets[i];
       const u = plume.material.uniforms;
-      u.uWidthNear.value = shape.throatRadius * 0.72;
-      u.uWidthFar.value = shape.throatRadius * 0.82;
-      u.uEmbed.value = shape.throatRadius * 0.48;
+      u.uWidthNear.value = shape.throatRadius * 0.52;
+      u.uWidthFar.value = shape.throatRadius * 1.05;
+      u.uEmbed.value = shape.throatRadius * 0.55;
+      if (sock.retroIris && sock.retroIris.material) {
+        sock.retroIris.material.emissiveIntensity = sock.retroIris.idle
+          + shape.drive * (sock.retroIris.lit - sock.retroIris.idle);
+      }
       let ax = Number.isFinite(sock.ax) ? sock.ax : -1;
       let ay = Number.isFinite(sock.ay) ? sock.ay : 0;
       let az = Number.isFinite(sock.az) ? sock.az : 0;
