@@ -1,3 +1,4 @@
-# IMPORT — IMPORT_DIGEST 20260924dj
+# IMPORT — IMPORT_DIGEST 20260924dk
 
-Digest only. No code. Read report.md after importing #150.
+Read-only digest for owner import of vm-drop #151
+(`pirate-parley-empty-quiet-latch`). No live wiring performed here.

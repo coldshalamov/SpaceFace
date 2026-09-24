@@ -1,0 +1,111 @@
+{
+  "name": "pirate-parley-empty-quiet-latch",
+  "primary": "quiet-pirate-parley-empty-shipLike-census",
+  "iterations": 60000,
+  "shipN": 48,
+  "runs": 11,
+  "medianSpeedup": 21.509925997556227,
+  "minSpeedup": 17.504239158263143,
+  "maxSpeedup": 25.409262097765126,
+  "medianBeforeAbsUs": 2.1153708833333336,
+  "medianAfterAbsUs": 0.09744416666666637,
+  "dirtyWake": {
+    "ok": true,
+    "latched": true,
+    "afterLatched": false,
+    "started": true,
+    "squadIds": [
+      "sq-toll-wake"
+    ]
+  },
+  "pairs": [
+    {
+      "beforeMs": 126.263365,
+      "afterMs": 5.921019000000001,
+      "speedup": 21.324600545953317,
+      "beforeAbsUs": 2.1043894166666663,
+      "afterAbsUs": 0.09868365000000003,
+      "afterQuiet": true
+    },
+    {
+      "beforeMs": 127.59034200000002,
+      "afterMs": 5.931695999999988,
+      "speedup": 21.509925997556227,
+      "beforeAbsUs": 2.1265057000000005,
+      "afterAbsUs": 0.0988615999999998,
+      "afterQuiet": true
+    },
+    {
+      "beforeMs": 164.809505,
+      "afterMs": 6.486198000000002,
+      "speedup": 25.409262097765126,
+      "beforeAbsUs": 2.7468250833333334,
+      "afterAbsUs": 0.10810330000000004,
+      "afterQuiet": true
+    },
+    {
+      "beforeMs": 126.2799,
+      "afterMs": 5.823779999999999,
+      "speedup": 21.6834942254,
+      "beforeAbsUs": 2.104665,
+      "afterAbsUs": 0.09706299999999998,
+      "afterQuiet": true
+    },
+    {
+      "beforeMs": 123.61629100000002,
+      "afterMs": 5.801377000000031,
+      "speedup": 21.30809478508281,
+      "beforeAbsUs": 2.060271516666667,
+      "afterAbsUs": 0.09668961666666717,
+      "afterQuiet": true
+    },
+    {
+      "beforeMs": 137.134052,
+      "afterMs": 6.267006000000038,
+      "speedup": 21.881908522187338,
+      "beforeAbsUs": 2.2855675333333334,
+      "afterAbsUs": 0.10445010000000063,
+      "afterQuiet": true
+    },
+    {
+      "beforeMs": 129.10652900000002,
+      "afterMs": 5.775355999999988,
+      "speedup": 22.354730859881244,
+      "beforeAbsUs": 2.1517754833333336,
+      "afterAbsUs": 0.09625593333333313,
+      "afterQuiet": true
+    },
+    {
+      "beforeMs": 132.22866800000003,
+      "afterMs": 7.554093999999964,
+      "speedup": 17.504239158263143,
+      "beforeAbsUs": 2.203811133333334,
+      "afterAbsUs": 0.12590156666666605,
+      "afterQuiet": true
+    },
+    {
+      "beforeMs": 121.42879799999997,
+      "afterMs": 5.844842999999969,
+      "speedup": 20.77537377821793,
+      "beforeAbsUs": 2.0238132999999996,
+      "afterAbsUs": 0.09741404999999949,
+      "afterQuiet": true
+    },
+    {
+      "beforeMs": 126.92225300000001,
+      "afterMs": 5.519966000000011,
+      "speedup": 22.993303400781773,
+      "beforeAbsUs": 2.1153708833333336,
+      "afterAbsUs": 0.09199943333333352,
+      "afterQuiet": true
+    },
+    {
+      "beforeMs": 122.00854900000002,
+      "afterMs": 5.846649999999983,
+      "speedup": 20.86811233783455,
+      "beforeAbsUs": 2.033475816666667,
+      "afterAbsUs": 0.09744416666666637,
+      "afterQuiet": true
+    }
+  ]
+}
