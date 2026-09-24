@@ -1,7 +1,7 @@
-# DONE — IMPORT_DIGEST 20260924dr
+# DONE — IMPORT_DIGEST 20260924ds
 
-Post-#155 digest; **#156 miss-only** (third scour; no weak package).
-Master tip still `97c88f92b`. Soft-GPU fps not a KPI.
+Post-#155 digest; **#156 ship** `radar-asteroid-still-layer` (HUD NEW —
+quantized-player asteroid census still-layer + drawTrail batch).
 
-Classify residual under flying retain measured ~1.3× over parked (thin);
-bare-master thick abs audited as already-packaged (do not rediscover).
+Parked floor median ~5.8× / ≥3.95× across 5×11 isolated runs on bare master
+`97c88f92b`. Focused 17/17. Soft-GPU fps not claimed.

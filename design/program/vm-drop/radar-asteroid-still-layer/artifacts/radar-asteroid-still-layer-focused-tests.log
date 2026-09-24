@@ -1,0 +1,95 @@
+TAP version 13
+# Subtest: radar range ring follows the active entity live loadout without a stale aggregate field
+ok 1 - radar range ring follows the active entity live loadout without a stale aggregate field
+  ---
+  duration_ms: 1.335839
+  ...
+# Subtest: radar range ring ignores invalid live ranges and retains the no-tool fallback
+ok 2 - radar range ring ignores invalid live ranges and retains the no-tool fallback
+  ---
+  duration_ms: 0.162036
+  ...
+# Subtest: radar asteroid still-layer defaults ON
+ok 3 - radar asteroid still-layer defaults ON
+  ---
+  duration_ms: 1.267518
+  ...
+# Subtest: first census walks; still pose then skips
+ok 4 - first census walks; still pose then skips
+  ---
+  duration_ms: 1.263652
+  ...
+# Subtest: latch OFF always walks
+ok 5 - latch OFF always walks
+  ---
+  duration_ms: 0.393272
+  ...
+# Subtest: field.version bump wakes the still-layer
+ok 6 - field.version bump wakes the still-layer
+  ---
+  duration_ms: 0.275253
+  ...
+# Subtest: player move beyond one radar pixel wakes
+ok 7 - player move beyond one radar pixel wakes
+  ---
+  duration_ms: 0.279736
+  ...
+# Subtest: sub-pixel drift stays latched
+ok 8 - sub-pixel drift stays latched
+  ---
+  duration_ms: 0.254536
+  ...
+# Subtest: rescan budget eventually forces a walk
+ok 9 - rescan budget eventually forces a walk
+  ---
+  duration_ms: 0.3973
+  ...
+# Subtest: bench toggles restore
+ok 10 - bench toggles restore
+  ---
+  duration_ms: 0.137562
+  ...
+# Subtest: primary tactical identities use unique shapes, redundant channels, and executable contrast
+ok 11 - primary tactical identities use unique shapes, redundant channels, and executable contrast
+  ---
+  duration_ms: 1.708246
+  ...
+# Subtest: radar projection matches the chase view, rejects corrupt coordinates, and keeps large rim glyphs inside
+ok 12 - radar projection matches the chase view, rejects corrupt coordinates, and keeps large rim glyphs inside
+  ---
+  duration_ms: 0.629049
+  ...
+# Subtest: objective guidance degrades gracefully under threat and general contact density
+ok 13 - objective guidance degrades gracefully under threat and general contact density
+  ---
+  duration_ms: 0.332614
+  ...
+# Subtest: the full chart teaches the exact vocabulary and brackets the actual live objective
+ok 14 - the full chart teaches the exact vocabulary and brackets the actual live objective
+  ---
+  duration_ms: 1.827102
+  ...
+# Subtest: the public radar is a native crisp renderer, not a blurred legacy canvas copy
+ok 15 - the public radar is a native crisp renderer, not a blurred legacy canvas copy
+  ---
+  duration_ms: 0.911552
+  ...
+# Subtest: every pushed menu, map, log, and future screen freezes through ScreenManager itself
+ok 16 - every pushed menu, map, log, and future screen freezes through ScreenManager itself
+  ---
+  duration_ms: 1.536429
+  ...
+# Subtest: changed map UI obeys the repository-wide 12px text floor
+ok 17 - changed map UI obeys the repository-wide 12px text floor
+  ---
+  duration_ms: 0.783808
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 17
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 565.229758

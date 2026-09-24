@@ -1,0 +1,17 @@
+{
+  "rocks": 211,
+  "pixelWu": 38.1,
+  "us": {
+    "flyAlways": 1.167,
+    "flyLatch": 0.184,
+    "parkAlways": 4.648,
+    "parkLatch": 0.028,
+    "driftAlways": 2.014,
+    "driftLatch": 0.062
+  },
+  "speedup": {
+    "fly": 6.342,
+    "park": 166,
+    "drift": 32.484
+  }
+}

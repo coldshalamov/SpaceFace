@@ -1,0 +1,21 @@
+{
+  "label": "radar-asteroid-still-layer-floor",
+  "runs": 5,
+  "pairsPerRun": 11,
+  "medians": [
+    5.828,
+    5.817,
+    5.864,
+    5.871,
+    5.697
+  ],
+  "mins": [
+    3.948,
+    5.289,
+    5.595,
+    5.524,
+    5.564
+  ],
+  "medianOfMedians": 5.828,
+  "floorMinSpeedup": 3.948
+}

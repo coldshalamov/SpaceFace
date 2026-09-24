@@ -1,0 +1,40 @@
+{
+  "trails": 8,
+  "hist": 12,
+  "iters": 80000,
+  "us": {
+    "perSeg": 9.7881,
+    "batched": 1.5737,
+    "bucket4": 5.3021
+  },
+  "speedup": {
+    "batched": 6.22,
+    "bucket4": 1.846
+  },
+  "ops": {
+    "perSeg": {
+      "strokes": 11,
+      "begins": 11,
+      "moves": 11,
+      "lines": 11,
+      "alphas": 11,
+      "saves": 1
+    },
+    "batched": {
+      "strokes": 1,
+      "begins": 1,
+      "moves": 1,
+      "lines": 11,
+      "alphas": 1,
+      "saves": 1
+    },
+    "bucket4": {
+      "strokes": 4,
+      "begins": 4,
+      "moves": 4,
+      "lines": 24,
+      "alphas": 4,
+      "saves": 1
+    }
+  }
+}
