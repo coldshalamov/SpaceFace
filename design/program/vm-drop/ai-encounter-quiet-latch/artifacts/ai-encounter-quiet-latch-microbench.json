@@ -1,0 +1,11 @@
+{
+  "N": 40,
+  "ITERS": 30000,
+  "modes": {
+    "on": {
+      "label": "on",
+      "us": 0.2731,
+      "quietLatched": true
+    }
+  }
+}
