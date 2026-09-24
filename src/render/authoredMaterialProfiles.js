@@ -13,9 +13,10 @@ const ROLE_RULES = Object.freeze([
   ['repair', /field.?repair|repair.?paint|repair.?green|weld.?patch/i],
   ['service', /service|access|maintenance|utility/i],
   ['drive', /thruster|engine.?glow|drive.?core|drive.?aperture/i],
-  ['signal', /material_emissive|emission|nav.?light|cockpit.?display|sensor.?slit|mining.?lens/i],
+  // Delimited cyan/warm so FrontierCyan paint stays accent. Nav optics and signal lenses are lights.
+  ['signal', /material_emissive|emission|nav.?light|nav.?optic|cockpit.?display|sensor.?slit|mining.?lens|signal|(?:^|[_-])cyan(?:[_-]|$)|(?:^|[_-])warm(?:[_-]|$)/i],
   ['warning', /warning|hazard|decal.?red/i],
-  ['mechanical', /mechanical|machinery|hardware|exposed|brushed.?metal|fastener|pipe/i],
+  ['mechanical', /mechanical|machinery|hardware|exposed|brushed.?metal|fastener|pipe|stabilizer.?frame|identity.?plate/i],
   ['accent', /accent|trim|paint.?secondary/i],
   ['hull', /hull|armor|body.?primary/i],
 ]);
