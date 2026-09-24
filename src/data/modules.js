@@ -287,6 +287,17 @@ const SHIPPED_MODULES = [
     energyDraw: 3, mods: { swingDrive: true },
   },
   {
+    // SWING DRIVE S — the same pendulum dash in the small bay the Hitch and Wasp actually carry.
+    // The M sibling needs an M utility slot the starter hulls do not have; without this row the
+    // first-haul rack sells a module the ship in front of it can never fit. Helios stocks it at
+    // the same first-haul terms; elsewhere it sits on the Drive Tuning stop like its sibling.
+    id: 'mod_swing_drive_s', name: 'Swing Drive S', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 14000, requiresTech: 'tech_drive_tuning',
+    // first-haul terms measured against the honest opening: starter stake plus a defended-raid
+    // salvage sweep lands ~7.4k at the Helios counter (seed 4242), so the rack meets it there.
+    shopOffers: { station_helios: { price: 7400 } },
+    energyDraw: 2, mods: { swingDrive: true },
+  },
+  {
     // LOOT MAGNET — reach without the line. Debris shards and jettisoned pods inside the ring are
     // drawn to the hull (bounded attraction through physics authority), so salvage is a fly-by
     // instead of a latch-per-piece. Consumed via derived.lootMagnetRange by systems/lootShards.js.
