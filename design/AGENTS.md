@@ -39,8 +39,9 @@ and process recipes are non-binding.
 - Do not copy global status outside `design/program/`.
 - Plans specify outcomes and contracts, not universal visual recipes, asset ceilings, technique
   quotas, iteration counts, or permanent ownership lanes.
-- Runtime/build dependencies and authored media are allowed under the repository-wide documented
-  quality, licensing, performance, determinism/save, and maintenance policy.
+- Runtime/build dependencies and authored media follow
+  [`../docs/OPEN_SOURCE_INTAKE.md`](../docs/OPEN_SOURCE_INTAKE.md) §0. That section names what to
+  bring in. License, performance, determinism/save, and maintenance stay documented.
 - Acceptance comes from the relevant checks plus player-facing evidence where applicable; worker
   reports, self-scores, and transcript claims are not proof.
 
