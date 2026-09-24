@@ -1,4 +1,4 @@
-# IMPORT — DIGEST 20260924do
+# IMPORT — DIGEST 20260924dp
 
-Read `report.md`. Ship #155 `combat-postphysics-quiet-latch` after #154
-`combat-prephysics-quiet-latch` (digest 20260924dn). Apply #154 first.
+Read `report.md`. **#156 miss-only** — no new patches this pass.
+Prior tip remains #155 `combat-postphysics-quiet-latch` (digest 20260924do).
