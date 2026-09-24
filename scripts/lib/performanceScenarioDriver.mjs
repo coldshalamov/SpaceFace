@@ -1164,14 +1164,31 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
   }, scenarioId);
 
   if (removal.injectedIds?.length || removal.presentationBaseline) {
+    // Each poll records which sub-conditions hold so a starvation timeout names the blocker
+    // instead of reporting a bare 600 s wait.
     await page.waitForFunction(({ ids, baseline }) => {
       const sf = window.SF;
       const state = sf?.state;
       const render = sf?.registry?.get?.('render');
       const world = render?._presentationWorld;
-      if (!ids.every((id) => !state?.entities?.has?.(id)
-        && !render?._meshes?.has?.(id)
-        && (!world || world.getSlotForEntityId(id) < 0))) return false;
+      const stuckIds = ids.filter((id) => state?.entities?.has?.(id)
+        || render?._meshes?.has?.(id)
+        || (world && world.getSlotForEntityId(id) >= 0));
+      const detail = {
+        stuckIds,
+        activeCount: world?.activeCount,
+        boundCount: world?.boundCount,
+        meshesSize: render?._meshes?.size,
+        baselineActive: baseline?.active,
+        baselineBound: baseline?.bound,
+        baselineMeshes: baseline?.meshes,
+        frameOrigin: state?.world?.frameOrigin,
+        baselineFrameOrigin: baseline?.frameOrigin,
+        membraneSeq: render?._frameMembrane?.seq,
+        frameOriginSeq: state?.world?.frameOriginSeq,
+      };
+      window.__SF_SCENARIO_RESTORE_WAIT_LAST__ = detail;
+      if (stuckIds.length) return false;
       if (!baseline) return true;
       return world?.activeCount === baseline.active
         && world?.boundCount === baseline.bound
@@ -1179,7 +1196,10 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
         && state?.world?.frameOrigin?.x === baseline.frameOrigin.x
         && state?.world?.frameOrigin?.z === baseline.frameOrigin.z
         && render?._frameMembrane?.seq === state?.world?.frameOriginSeq;
-    }, { ids: removal.injectedIds || [], baseline: removal.presentationBaseline || null }, { timeout: scenarioReadyTimeoutMs() });
+    }, { ids: removal.injectedIds || [], baseline: removal.presentationBaseline || null }, { timeout: scenarioReadyTimeoutMs() }).catch(async (error) => {
+      const last = await page.evaluate(() => window.__SF_SCENARIO_RESTORE_WAIT_LAST__ || null).catch(() => null);
+      throw new Error(`scenario restore wait starved for ${scenarioId}: ${JSON.stringify(last)} — ${error?.message || error}`);
+    });
   }
   const receipt = await page.evaluate((expectedId) => {
     const sf = window.SF;
