@@ -784,6 +784,77 @@ compiles/links/render-target allocations during the window — host
 contention) and the driver-upload ratio needing a comparable-workload
 window pair. Claims re-mint on this record's digest.
 
+**First completed acceptance run (browser, 18:19Z, claim
+`29192-879e46a60b936029b565d845`).** The full public route plus both
+variant windows completed end-to-end in ~3 min; both scenario restores
+finished `ok=true` in ~24 s. Windows were **valid** — zero post-boot
+shaderLinks/shaderCompiles/renderTargetAllocations in either window,
+pipeline program counts stable. Comparison:
+
+```yaml
+rangedLogicalBytes: 794416
+fullSpanLogicalBytes: 2494768
+logicalByteDriftFraction: 0.6816
+rangedRequestedUploadBytes: 814760
+fullSpanRequestedUploadBytes: 41633920
+ownerRequestedByteReductionFraction: 0.9385   # ≥ 25% PASS
+rangedDriverUploadBytes: 40257608
+fullSpanDriverUploadBytes: 56554352           # absolute fall ≈ 28.9%
+rangedDriverBytesPerLogicalByte: 50.68
+fullSpanDriverBytesPerLogicalByte: 22.67
+driverUploadByteReductionFraction: -1.2354    # ≥ 25% FAIL
+```
+
+Other failures: `runtime-errors-observed-or-unreported` (one [GPU
+brick] warning — a 784 ms first-compile of the parallax bloom-pass
+variant inside the window, a warmup gap under load).
+
+**Metric bias is now measured, not theorized.** The full-span window
+always runs second and saw 3.14× the logical dirty-component writes —
+`vfxEmissions` 1380 vs 54, `collisionPairs` 54 vs 2 — because ambient
+sector combat accumulates between the two windows (the first
+scenario's aggro and its aftermath persist after injected-id restore).
+`logicalBytesChanged` counts real dirty components in both modes
+(`Math.min(count, pending.logicalComponents)`), so the second window's
+denominator inflates and the per-logical-byte driver ratio always
+punishes the first (ranged) variant. With equal workload the metric
+would read ≈ +61% (25.8 M vs 66.6 M against a shared 800 k logical
+denominator); it is winnable only on a low-drift window pair, which
+ambient accumulation makes a lottery rather than a guarantee.
+
+Disposition unchanged: numeric acceptance **unproven**. The candidate
+is sound; the remaining gap is comparator exposure to ambient combat
+drift plus one warmup-gap warning — both host/session variables, not
+implementation defects. Options for the program: (a) keep firing on
+quiet windows and accept the drift lottery; (b) isolate ambient combat
+between variant windows in the scenario driver (deterministic
+workload, same thresholds); (c) re-derive the driver denominator
+(owner-verdict territory).
+
+**Electron attempt (claim `23228-a5b279baa10ee0b74ff9d8a4`, 18:26Z).**
+Route completed through station hub (18:29:33). Baseline variant then
+starved `waitForPerformanceScenarioReady` for the full 600 s bound —
+the authored-admission starvation class documented 09-21, still
+present on the Electron runtime under load — sampled, and restored
+`ok=true` at 18:39:37. The full-span variant's preparation then died
+on `CSP-safe page condition timed out after 600000ms` (18:40:40); the
+Electron shell also failed graceful release (`Electron application
+connection was not released`, force-close fallback required). Zero
+windows; all comparison metrics null. The same candidate code produced
+two clean windows on the browser runtime minutes earlier, so this is a
+runtime/host starvation record, not a product regression signal.
+
+```yaml
+unit: PQ-040.native-acceptance (electron leg)
+candidateHead: 22c7ba553
+electronBrokerResult: >-
+  consumed claim; route complete; baseline restore ok=true after a
+  ~600 s ready-starve; full-span prepare timed out on CSP-safe page
+  condition; Electron cleanup non-graceful; zero windows
+electronLaunchQuotaConsumed: true
+numericAcceptance: unproven
+```
+
 ## Implemented architecture
 
 ### Scene-scoped publication coordinator
