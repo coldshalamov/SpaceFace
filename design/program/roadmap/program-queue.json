@@ -19501,7 +19501,7 @@
       "priority": 9851,
       "title": "Wire or reclassify unwired verb keys",
       "kind": "implementation",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [
         "PQ-208.00"
       ],

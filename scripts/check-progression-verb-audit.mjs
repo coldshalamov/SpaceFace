@@ -66,11 +66,8 @@ const VERB_MOD_KEYS = Object.freeze({
   jumpDriveTier: ['jump verb', 'ships.js derived fold (jumpDriveTier)', { file: 'src/systems/ships.js', symbol: 'jumpDriveTier' }],
   tractorWholeWrecks: ['whole-wreck latch (implemented by module id, not by reading this key)', 'unique_tideline_tractor latch in systems/uniqueLootAbilities.js', { file: 'src/systems/uniqueLootAbilities.js', symbol: 'unique_tideline_tractor' }],
   repairDockedDrones: ['repair docked drones (test-pinned contract; no live systems consumer reads this key yet)', 'pinned by test/depth-program-authored-salvage.test.mjs', { file: 'test/depth-program-authored-salvage.test.mjs', symbol: 'repairDockedDrones' }],
-  // PQ-208.01 resolves these two: wire the key to the capability or reclassify honestly. The
-  // capabilities currently ship BY MODULE ID (pale-coil dash blink / choir-bell missile knockback
-  // in src/systems/uniqueLootAbilities.js); no system reads the mods keys themselves.
-  microJumpBlink: ['micro-jump blink (usesPerEncounter)', 'DECLARED ONLY — no system reads this key; behaviour ships by module id (unique_pale_coil_warp_drive) in systems/uniqueLootAbilities.js', { declaredOnly: 'PQ-208.01' }],
-  reactiveMissileKnockback: ['reactive missile knockback (usesPerEncounter)', 'DECLARED ONLY — no system reads this key; behaviour ships by module id (unique_choir_bell_aegis) in systems/uniqueLootAbilities.js', { declaredOnly: 'PQ-208.01' }],
+  microJumpBlink: ['micro-jump blink (usesPerEncounter)', 'systems/uniqueLootAbilities.js fittedVerbSpec', { file: 'src/systems/uniqueLootAbilities.js', symbol: 'microJumpBlink' }],
+  reactiveMissileKnockback: ['reactive missile knockback (usesPerEncounter)', 'systems/uniqueLootAbilities.js fittedVerbSpec', { file: 'src/systems/uniqueLootAbilities.js', symbol: 'reactiveMissileKnockback' }],
   swingDrive: ['pendulum dash through a taut line', 'systems/flightV3.js + ships.js fold (landed)', { file: 'src/systems/flightV3.js', symbol: 'swingDrive' }],
   lootMagnetRange: ['pull loot shards into magnet range', 'systems/lootShards.js + ships.js fold (landed)', { file: 'src/systems/lootShards.js', symbol: 'lootMagnetRange' }],
   towFlail: ['towed mass becomes flail damage', 'systems/collisionConsequences.js + ships.js fold (landed)', { file: 'src/systems/collisionConsequences.js', symbol: 'towFlail' }],

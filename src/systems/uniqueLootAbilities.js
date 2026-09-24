@@ -60,7 +60,9 @@ export function normalizeUniqueLootAbilityState(value) {
       record: {
         active: !!rawRecord.active,
         paleCoilUsed: !!rawRecord.paleCoilUsed,
+        paleCoilUses: nonNegativeInt(rawRecord.paleCoilUses),
         choirBellUsed: !!rawRecord.choirBellUsed,
+        choirBellUses: nonNegativeInt(rawRecord.choirBellUses),
         order: nonNegativeInt(rawRecord.order),
         openedAt: finite(rawRecord.openedAt),
         resolvedAt: finite(rawRecord.resolvedAt, null),
@@ -74,6 +76,22 @@ export function normalizeUniqueLootAbilityState(value) {
     normalized.sequence = Math.max(normalized.sequence, row.record.order);
   }
   return normalized;
+}
+
+/**
+ * The live fitted module that declares `key` in its mods. The capability is the key, not the
+ * item id: Pale-Coil blinks because it declares `microJumpBlink`, and the Choir-Bell knocks a
+ * missile back because it declares `reactiveMissileKnockback`.
+ */
+export function fittedVerbSpec(state, key) {
+  if (typeof key !== 'string' || !key) return null;
+  for (const definition of fittedModuleDefs(state)) {
+    const spec = definition && definition.mods && definition.mods[key];
+    if (!spec || typeof spec !== 'object' || Array.isArray(spec)) continue;
+    const uses = Math.max(1, Math.floor(Number(spec.usesPerEncounter) || 1));
+    return { id: definition.id, key, usesPerEncounter: uses };
+  }
+  return null;
 }
 
 /** Sum only the positive continuous-power surcharge of fitted unique variants over their bases. */
@@ -133,8 +151,9 @@ export const uniqueLootAbilities = {
 
     // Restored missiles or a future target-acquisition path may not pass through entity:spawned
     // while their encounter is active. The marker makes this deterministic fallback idempotent.
-    if (state.mode === 'flight' && hasFittedModule(state, CHOIR_BELL_ID)
-      && newestUnusedEncounter(ensureAbilityState(state), 'choirBellUsed')) {
+    const knockback = state.mode === 'flight' ? fittedVerbSpec(state, 'reactiveMissileKnockback') : null;
+    if (knockback
+      && newestEncounterWithUses(ensureAbilityState(state), 'choirBellUsed', knockback.usesPerEncounter)) {
       const projectiles = indexedTypeScan(state, 'projectiles');
       if (projectiles.length) {
         for (const projectile of projectiles) this._tryChoirBellDeflection(projectile, player);
@@ -157,7 +176,9 @@ export const uniqueLootAbilities = {
       record = {
         active: false,
         paleCoilUsed: false,
+        paleCoilUses: 0,
         choirBellUsed: false,
+        choirBellUses: 0,
         order: 0,
         openedAt: 0,
         resolvedAt: null,
@@ -182,11 +203,16 @@ export const uniqueLootAbilities = {
   _onShipDash(payload) {
     const player = livePlayer(this.state);
     if (!player || payload?.shipId !== player.id) return;
-    if (!hasFittedModule(this.state, PALE_COIL_ID)) return;
-    const selected = newestUnusedEncounter(ensureAbilityState(this.state), 'paleCoilUsed');
+    const blink = fittedVerbSpec(this.state, 'microJumpBlink');
+    if (!blink) return;
+    const selected = newestEncounterWithUses(
+      ensureAbilityState(this.state),
+      'paleCoilUsed',
+      blink.usesPerEncounter,
+    );
     if (!selected) return;
 
-    selected.record.paleCoilUsed = true;
+    noteEncounterUse(selected.record, 'paleCoilUsed');
     const from = { x: finite(player.pos?.x), z: finite(player.pos?.z) };
     const heading = finite(player.rot);
     player.pos.x = from.x + Math.cos(heading) * PALE_COIL_BLINK_DISTANCE;
@@ -208,7 +234,7 @@ export const uniqueLootAbilities = {
     if (!entity || entity.alive === false || entity.type !== 'projectile') return;
     this._splitNestbreaker(entity);
     const player = livePlayer(this.state);
-    if (player && hasFittedModule(this.state, CHOIR_BELL_ID)) {
+    if (player && fittedVerbSpec(this.state, 'reactiveMissileKnockback')) {
       this._tryChoirBellDeflection(entity, player);
     }
   },
@@ -271,8 +297,10 @@ export const uniqueLootAbilities = {
     if (!projectile || projectile.alive === false || projectile.type !== 'projectile') return false;
     if (!data || data.kind !== 'missile' || data.targetId !== player.id || data.choirBellDeflected) return false;
     const encounterId = missileEncounterId(projectile, this.state);
+    const knockback = fittedVerbSpec(this.state, 'reactiveMissileKnockback');
+    if (!knockback) return false;
     const record = encounterId && ensureAbilityState(this.state).encounters[encounterId];
-    if (!record?.active || record.choirBellUsed) return false;
+    if (!record?.active || encounterUses(record, 'choirBellUsed') >= knockback.usesPerEncounter) return false;
 
     const toPlayerX = finite(player.pos?.x) - finite(projectile.pos?.x);
     const toPlayerZ = finite(player.pos?.z) - finite(projectile.pos?.z);
@@ -296,7 +324,7 @@ export const uniqueLootAbilities = {
     const desiredZ = awayZ * outwardSpeed;
     const mass = positive(projectile.physicsBody?.mass, positive(projectile.mass, 1));
 
-    record.choirBellUsed = true;
+    noteEncounterUse(record, 'choirBellUsed');
     data.targetId = null;
     data.turnRate = 0;
     data.choirBellDeflected = true;
@@ -385,6 +413,38 @@ function ensureAbilityState(state) {
 
 function livePlayer(state) {
   return state?.entities?.get?.(state.playerId) || null;
+}
+
+function usesKey(flag) {
+  return flag === 'choirBellUsed' ? 'choirBellUses' : 'paleCoilUses';
+}
+
+/** A saved boolean with no counter is one spent use. A counter, once written, is the authority. */
+function encounterUses(record, flag) {
+  if (!record) return 0;
+  const counted = record[usesKey(flag)];
+  if (Number.isInteger(counted) && counted > 0) return counted;
+  return record[flag] ? 1 : 0;
+}
+
+function noteEncounterUse(record, flag) {
+  const next = encounterUses(record, flag) + 1;
+  record[usesKey(flag)] = next;
+  record[flag] = true;
+  return next;
+}
+
+function newestEncounterWithUses(abilityState, flag, cap) {
+  const limit = Math.max(1, Math.floor(Number(cap) || 1));
+  let selected = null;
+  for (const [encounterId, record] of Object.entries(abilityState.encounters)) {
+    if (!record.active || encounterUses(record, flag) >= limit) continue;
+    if (!selected || record.order > selected.record.order
+      || (record.order === selected.record.order && encounterId < selected.encounterId)) {
+      selected = { encounterId, record };
+    }
+  }
+  return selected;
 }
 
 function newestUnusedEncounter(abilityState, key) {

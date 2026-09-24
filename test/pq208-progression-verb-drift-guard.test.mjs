@@ -5,8 +5,7 @@
 //   2. consumer drift — a registered verb key whose declared consumer no longer exists (renamed,
 //      moved or deleted), or an unwired key hiding without an honest declared-only label.
 // Positive cases run against the real tree: the shipped vocabulary must verify clean, and the two
-// packet-named keys (microJumpBlink, reactiveMissileKnockback) must stay honestly declared-only
-// until leaf PQ-208.01 wires or reclassifies them.
+// packet-named keys (microJumpBlink, reactiveMissileKnockback) are wired consumers (PQ-208.01).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -39,23 +38,24 @@ test('PQ-208.00 every registered verb key carries verifiable or honestly declare
   assert.ok(outcome.verified.length >= 14, `expected the landed consumers to verify, got ${outcome.verified.length}`);
 });
 
-test('PQ-208.00 the packet-named unwired keys stay declared-only, tracked by PQ-208.01', () => {
+test('PQ-208.01 Pale-Coil and Choir-Bell verb keys are read by the unique-loot consumer', () => {
   for (const [key, entry] of Object.entries(VERB_MOD_KEYS)) {
     const evidence = entry[2] || {};
     if (evidence.declaredOnly) {
       assert.match(evidence.declaredOnly, /^PQ-\d+\.\d+$/, `declared-only key '${key}' must name the packet leaf that resolves it`);
-      assert.ok(
-        key === 'microJumpBlink' || key === 'reactiveMissileKnockback',
-        `unexpected declared-only verb key '${key}' — a new unwired key needs its own packet leaf and this pin updated`,
-      );
     }
   }
-  // Both packet-named keys must currently carry the honest label, never a fake consumer claim.
   for (const key of ['microJumpBlink', 'reactiveMissileKnockback']) {
     const entry = VERB_MOD_KEYS[key];
     assert.ok(entry, `packet key '${key}' must stay registered`);
-    assert.ok(entry[2] && entry[2].declaredOnly === 'PQ-208.01', `'${key}' must remain tracked by PQ-208.01 until resolved`);
+    assert.equal(entry[2].file, 'src/systems/uniqueLootAbilities.js');
+    assert.equal(entry[2].symbol, key);
+    assert.equal(entry[2].declaredOnly, undefined);
   }
+  const outcome = verifyVerbKeyConsumers();
+  assert.equal(outcome.declaredOnly.length, 0, `unwired keys remain: ${outcome.declaredOnly.join(', ')}`);
+  assert.ok(outcome.verified.includes('microJumpBlink'));
+  assert.ok(outcome.verified.includes('reactiveMissileKnockback'));
 });
 
 test('PQ-208.00 the audit passes on the current tree', () => {
