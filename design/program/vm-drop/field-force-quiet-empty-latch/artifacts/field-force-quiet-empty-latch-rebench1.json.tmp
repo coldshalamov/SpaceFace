@@ -1,0 +1,129 @@
+{
+  "name": "field-force-quiet-empty-latch",
+  "primary": "quiet-field-force-empty-frustum+commit0",
+  "iterations": 200000,
+  "runs": 11,
+  "pairs": [
+    {
+      "beforeMs": 15.318796000000006,
+      "afterMs": 7.895380000000003,
+      "speedup": 1.940222763185559,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0,
+      "beforeCommits": 200000,
+      "afterCommits": 0
+    },
+    {
+      "beforeMs": 14.959189999999992,
+      "afterMs": 6.555285999999995,
+      "speedup": 2.2820041719003568,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0,
+      "beforeCommits": 200000,
+      "afterCommits": 0
+    },
+    {
+      "beforeMs": 14.312702000000002,
+      "afterMs": 6.054175999999998,
+      "speedup": 2.3641040498327115,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0,
+      "beforeCommits": 200000,
+      "afterCommits": 0
+    },
+    {
+      "beforeMs": 14.500304,
+      "afterMs": 6.110120000000009,
+      "speedup": 2.3731619018939036,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0,
+      "beforeCommits": 200000,
+      "afterCommits": 0
+    },
+    {
+      "beforeMs": 14.611814999999993,
+      "afterMs": 5.989643999999998,
+      "speedup": 2.4395130996099263,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0,
+      "beforeCommits": 200000,
+      "afterCommits": 0
+    },
+    {
+      "beforeMs": 14.81192,
+      "afterMs": 5.981808999999998,
+      "speedup": 2.476160639699463,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0,
+      "beforeCommits": 200000,
+      "afterCommits": 0
+    },
+    {
+      "beforeMs": 16.47474899999999,
+      "afterMs": 6.322736000000006,
+      "speedup": 2.6056360727381267,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0,
+      "beforeCommits": 200000,
+      "afterCommits": 0
+    },
+    {
+      "beforeMs": 15.377791000000002,
+      "afterMs": 5.833248999999995,
+      "speedup": 2.6362308552232236,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0,
+      "beforeCommits": 200000,
+      "afterCommits": 0
+    },
+    {
+      "beforeMs": 15.714969999999994,
+      "afterMs": 5.860061999999999,
+      "speedup": 2.681707121870041,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0,
+      "beforeCommits": 200000,
+      "afterCommits": 0
+    },
+    {
+      "beforeMs": 16.876346999999996,
+      "afterMs": 5.768891999999994,
+      "speedup": 2.9254052597968574,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0,
+      "beforeCommits": 200000,
+      "afterCommits": 0
+    },
+    {
+      "beforeMs": 20.768012,
+      "afterMs": 6.765104000000008,
+      "speedup": 3.06987327910997,
+      "beforeWalks": 200000,
+      "afterSkips": 200000,
+      "afterWalks": 0,
+      "beforeCommits": 200000,
+      "afterCommits": 0
+    }
+  ],
+  "medianSpeedup": 2.476,
+  "minSpeedup": 1.94,
+  "maxSpeedup": 3.07,
+  "dirtyWake": {
+    "ok": true,
+    "latched": true,
+    "woke": true,
+    "relatch": true,
+    "walks": 3,
+    "skips": 99
+  }
+}
