@@ -1145,7 +1145,10 @@ export async function restorePerformanceScenario(page, scenarioId, { log = () =>
       snapshot.miningDiagnosticStopped = true;
     }
     for (const id of snapshot.injectedIds) {
-      if (state.entities.has(id)) sf.helpers.removeEntity(id);
+      // Immediate removal: the default path only marks alive=false and waits for the next
+      // lifetimeSweep, which couples restore to a sim tick — a frozen or starved clock strands
+      // the injected entities in state.entities and the restore wait never satisfies.
+      if (state.entities.has(id)) sf.helpers.removeEntity(id, { immediate: true });
     }
     snapshot.restoreRequested = true;
     snapshot.legacyAdapterRestored = legacyAdapterRestored;
