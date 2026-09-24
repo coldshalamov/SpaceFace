@@ -1,0 +1,315 @@
+From fc3d7670b9e5aecb7b13556f84dfda94425eee7c Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 08:56:50 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20npc-job=20?=
+ =?UTF-8?q?signatures=20empty=20bag=20(~2.5=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid npcJobs existence probe + 12-slot sleep
+clear every tick with an empty job bag. Latch after first empty sleep when
+npcJobs.revision is trustworthy; wake on revision bump from
+_invalidateJobIds. Soft-GPU fps not claimed. Picture unchanged while no
+job signatures are live.
+---
+ src/render/vfx.js                             |  63 ++++++---
+ src/systems/npcJobsRuntime.js                 |  21 ++-
+ ...-job-signatures-quiet-sleep-latch.test.mjs | 127 ++++++++++++++++++
+ 3 files changed, 190 insertions(+), 21 deletions(-)
+ create mode 100644 test/npc-job-signatures-quiet-sleep-latch.test.mjs
+
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 33ba78aa0..b24419e7c 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1322,6 +1322,11 @@ export const vfx = {
+     };
+     this._npcJobSignatureActive = 0;
+     this._npcJobSignatureDrawn = 0;
++    // Quiet settled flight: empty npcJobs bag still paid existence probe +
++    // 12-slot sleep clear every tick. Latch after first empty sleep when
++    // npcJobs.revision is trustworthy; wake on revision bump. Soft-GPU fps not claimed.
++    this._npcJobSignaturesQuietAsleep = false;
++    this._npcJobSignaturesQuietRev = -1;
+     this._lastNpcJobSignatureId = null;
+     // R6B is event-driven rather than phase-pulled. The controller owns only fixed scalar slots;
+     // this bound emitter is allocated once so the render loop never creates a callback.
+@@ -2239,12 +2244,12 @@ export const vfx = {
+     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
+     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
+     add('heat:changed', (p) => this._onLawHeatChanged(p));
+-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
+     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
+-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('save:restoring', () => this._resetRibbonTrails());
+-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
++    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
+     add('world:playerRelocated', () => this._resetRibbonTrails());
+     add('settings:changed', (p) => {
+       if (!p || p.section !== 'video') return;
+@@ -6924,6 +6929,43 @@ export const vfx = {
+     }
+   },
+ 
++  /**
++   * Pull/sleep NPC job signatures with quiet-empty latch.
++   * Empty bag still paid existence probe + 12-slot sleep every tick; latch after first
++   * empty sleep when npcJobs.revision is trustworthy; wake on revision bump.
++   * Soft-GPU fps not claimed.
++   * @returns {boolean} true when the subsystem drew this frame
++   */
++  _syncNpcJobSignatures(dt) {
++    if (this._npcJobSignaturesQuietAsleep) {
++      const bag = this.state && this.state.npcJobs;
++      const rev = bag && Number.isInteger(bag.revision) ? bag.revision : null;
++      if (rev != null && rev === this._npcJobSignaturesQuietRev) {
++        return false;
++      }
++      this._npcJobSignaturesQuietAsleep = false;
++    }
++    if (this._npcJobSignaturesRelevant()) {
++      const jobStep = this._consumeCadence(
++        '_cadenceNpcJobSignature',
++        dt,
++        VFX_NPC_JOB_SIGNATURE_HZ,
++      );
++      return jobStep > 0 && this._updateNpcJobSignatures(jobStep) > 0;
++    }
++    this._sleepNpcJobSignatures();
++    const bag = this.state && this.state.npcJobs;
++    const rev = bag && Number.isInteger(bag.revision) ? bag.revision : null;
++    if (rev != null) {
++      this._npcJobSignaturesQuietAsleep = true;
++      this._npcJobSignaturesQuietRev = rev;
++    } else {
++      this._npcJobSignaturesQuietAsleep = false;
++      this._npcJobSignaturesQuietRev = -1;
++    }
++    return false;
++  },
++
+   /**
+    * Is this hull heavy?
+    *
+@@ -11582,19 +11624,8 @@ export const vfx = {
+     sub.ceresJobActions = this._updateCeresJobActionVfx(dt) > 0 ? 1 : 0;
+     // WF-12 law/heat telegraph — scan sweep / suspicion / WANTED flip (shared event-light pool).
+     sub.lawHeatTelegraph = this._updateLawHeatTelegraph(dt) > 0 ? 1 : 0;
+-    // "The Working Light" — civilian hulls showing what job they are on. Asleep in any sector with
+-    // no live NPC job, which costs one existence probe per frame and nothing else.
+-    if (this._npcJobSignaturesRelevant()) {
+-      const jobStep = this._consumeCadence(
+-        '_cadenceNpcJobSignature',
+-        dt,
+-        VFX_NPC_JOB_SIGNATURE_HZ,
+-      );
+-      sub.npcJobSignatures = jobStep > 0 && this._updateNpcJobSignatures(jobStep) > 0 ? 1 : 0;
+-    } else {
+-      this._sleepNpcJobSignatures();
+-      sub.npcJobSignatures = 0;
+-    }
++    // "The Working Light" — civilian hulls showing what job they are on.
++    sub.npcJobSignatures = this._syncNpcJobSignatures(dt) ? 1 : 0;
+     // Quiet-hidden residual: consecutive irrelevant ticks still paid full
+     // `_seamMarkersRelevant` asteroid walk + `_sleepSeamMarkers` commit. Cheap
+     // dirty wake first; false-wake falls through to full relevant (sleep latch
+diff --git a/src/systems/npcJobsRuntime.js b/src/systems/npcJobsRuntime.js
+index 0192b5f63..3ce1b259f 100644
+--- a/src/systems/npcJobsRuntime.js
++++ b/src/systems/npcJobsRuntime.js
+@@ -858,7 +858,10 @@ export const npcJobsRuntime = {
+   // ── owned state ────────────────────────────────────────────────────────────────────────────
+   _ensureState() {
+     const state = this.state;
+-    if (!state.npcJobs || typeof state.npcJobs !== 'object') state.npcJobs = { byId: {}, siteCouriers: {} };
++    if (!state.npcJobs || typeof state.npcJobs !== 'object') {
++      state.npcJobs = { byId: {}, siteCouriers: {}, revision: 0 };
++    }
++    if (!Number.isInteger(state.npcJobs.revision)) state.npcJobs.revision = 0;
+     if (!state.npcJobs.byId || typeof state.npcJobs.byId !== 'object') {
+       state.npcJobs.byId = {};
+       this._invalidateJobIds();
+@@ -878,7 +881,15 @@ export const npcJobsRuntime = {
+   },
+   _byId() { return this._ensureState().byId; },
+   _lots() { return this._ensureState().lots; },
+-  _invalidateJobIds() { this._jobIdsDirty = true; },
++  _invalidateJobIds() {
++    this._jobIdsDirty = true;
++    // Membership dirty wake for VFX quiet-empty latch (prepareFrame residual).
++    // Soft-GPU fps not claimed.
++    const bag = this.state && this.state.npcJobs;
++    if (bag && typeof bag === 'object') {
++      bag.revision = ((bag.revision | 0) + 1) | 0;
++    }
++  },
+   _jobIdList() {
+     const byId = this._byId();
+     if (this._jobIdsDirty !== true
+@@ -1762,7 +1773,7 @@ export const npcJobsRuntime = {
+   },
+ 
+   newGame() {
+-    this.state.npcJobs = { byId: {}, siteCouriers: {}, lots: {} };
++    this.state.npcJobs = { byId: {}, siteCouriers: {}, lots: {}, revision: 0 };
+     this._invalidateJobIds();
+     this._pendingMinerFieldRetargets = new Map();
+     this._heaveToLease = null;
+@@ -1781,7 +1792,7 @@ export const npcJobsRuntime = {
+    */
+   noteSiteCourier(spec) {
+     if (!spec || typeof spec.worldRecordId !== 'string' || !spec.worldRecordId) return null;
+-    if (!this.state.npcJobs) this.state.npcJobs = { byId: {}, siteCouriers: {} };
++    if (!this.state.npcJobs) this.state.npcJobs = { byId: {}, siteCouriers: {}, revision: 0 };
+     if (!this.state.npcJobs.siteCouriers || typeof this.state.npcJobs.siteCouriers !== 'object'
+       || Array.isArray(this.state.npcJobs.siteCouriers)) {
+       this.state.npcJobs.siteCouriers = {};
+@@ -4093,7 +4104,7 @@ export const npcJobsRuntime = {
+         towNextScanSimT: 0,
+       };
+     }
+-    this.state.npcJobs = { byId, siteCouriers: {}, lots: {} };
++    this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, revision: 0 };
+     this._invalidateJobIds();
+     if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
+       this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));
+diff --git a/test/npc-job-signatures-quiet-sleep-latch.test.mjs b/test/npc-job-signatures-quiet-sleep-latch.test.mjs
+new file mode 100644
+index 000000000..1e95f11dc
+--- /dev/null
++++ b/test/npc-job-signatures-quiet-sleep-latch.test.mjs
+@@ -0,0 +1,127 @@
++// Quiet latch for empty npcJobs bag residual under prepareFrame / vfx.
++// Soft-GPU fps not claimed. Picture unchanged while no job signatures are live.
++
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++
++import { createBus } from '../src/core/eventBus.js';
++import { vfx } from '../src/render/vfx.js';
++
++const PLAYER_ID = 1;
++
++function makeShip(id, overrides = {}) {
++  return {
++    id,
++    type: 'ship',
++    alive: true,
++    team: id === 1 ? 0 : 1,
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    rot: 0,
++    radius: 8,
++    maxSpeed: 180,
++    flags: { docked: false },
++    data: {},
++    ...overrides,
++  };
++}
++
++function makeHarness({ byId = {}, revision = 1 } = {}) {
++  const player = makeShip(PLAYER_ID);
++  const entities = new Map([[player.id, player]]);
++  const entityList = [player];
++  const state = {
++    mode: 'flight',
++    tick: 30,
++    simTime: 0.5,
++    playerId: player.id,
++    player: { targetId: null, tether: { active: false } },
++    entities,
++    entityList,
++    entityIndex: { __spacefaceEntityIndexV1: true, shipLike: entityList },
++    npcJobs: { byId, siteCouriers: {}, lots: {}, revision },
++    settings: {
++      video: {
++        particleQuality: 'low',
++        engineTrails: false,
++        energyMaterials: false,
++        motionReduce: false,
++        flashReduce: false,
++      },
++      accessibility: { flashReduce: false },
++    },
++    input: { turnIntent: 0 },
++    render: { scene: new THREE.Scene() },
++    world: { frameOrigin: { x: 0, z: 0 }, frameOriginSeq: 1 },
++    content: {},
++  };
++  const bus = createBus();
++  const system = Object.create(vfx);
++  system.init({ state, bus, helpers: { player: () => player } });
++  return { system, state, bus, player, entities };
++}
++
++test('npc-job signatures quiet-latch on empty bag with trustworthy revision', () => {
++  const { system } = makeHarness({ byId: {}, revision: 3 });
++  assert.equal(system._syncNpcJobSignatures(1 / 60), false);
++  assert.equal(system._npcJobSignaturesQuietAsleep, true, 'empty bag must latch');
++  assert.equal(system._npcJobSignaturesQuietRev, 3);
++
++  for (let i = 0; i < 40; i++) {
++    assert.equal(system._syncNpcJobSignatures(1 / 60), false);
++  }
++  assert.equal(system._npcJobSignaturesQuietAsleep, true);
++  assert.equal(system._npcJobSignaturesQuietRev, 3);
++});
++
++test('npcJobs.revision dirty-wake resumes then re-latches when empty', () => {
++  const { system, state, entities } = makeHarness({ byId: {}, revision: 1 });
++  assert.equal(system._syncNpcJobSignatures(1 / 60), false);
++  assert.equal(system._npcJobSignaturesQuietAsleep, true);
++
++  const worker = makeShip(7, { pos: { x: 40, z: -20 } });
++  entities.set(7, worker);
++  state.entityList = [entities.get(PLAYER_ID), worker];
++  state.npcJobs.revision = 2;
++  state.npcJobs.byId = {
++    'job:wake': {
++      job: { kind: 'hauler', phase: 'transit', corrupt: false, route: [], progress: 0 },
++      kind: 'hauler',
++      entityId: 7,
++      sectorId: 'ceres',
++    },
++  };
++
++  system._syncNpcJobSignatures(1 / 60);
++  assert.equal(system._npcJobSignaturesQuietAsleep, false, 'must wake on revision bump');
++  assert.ok(
++    (system._npcJobSignatureActive || 0) >= 1 || system._npcJobSignaturesRelevant(),
++    'live job must be seen after wake',
++  );
++
++  state.npcJobs.byId = {};
++  state.npcJobs.revision = 3;
++  assert.equal(system._syncNpcJobSignatures(1 / 60), false);
++  assert.equal(system._npcJobSignaturesQuietAsleep, true);
++  assert.equal(system._npcJobSignaturesQuietRev, 3);
++
++  for (let i = 0; i < 10; i++) assert.equal(system._syncNpcJobSignatures(1 / 60), false);
++  assert.equal(system._npcJobSignaturesQuietAsleep, true);
++});
++
++test('missing npcJobs.revision refuses latch (fallback stays live)', () => {
++  const { system, state } = makeHarness({ byId: {}, revision: 1 });
++  delete state.npcJobs.revision;
++  assert.equal(system._syncNpcJobSignatures(1 / 60), false);
++  assert.equal(system._npcJobSignaturesQuietAsleep, false, 'must refuse latch without revision');
++});
++
++test('boundary resets clear npc-job quiet latch', () => {
++  const { system, bus } = makeHarness({ byId: {}, revision: 1 });
++  assert.equal(system._syncNpcJobSignatures(1 / 60), false);
++  assert.equal(system._npcJobSignaturesQuietAsleep, true);
++  bus.emit('sector:enter', {});
++  assert.equal(system._npcJobSignaturesQuietAsleep, false);
++  assert.equal(system._npcJobSignaturesQuietRev, -1);
++});
+-- 
+2.47.3
+
