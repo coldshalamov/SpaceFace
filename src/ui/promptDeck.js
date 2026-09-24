@@ -603,7 +603,8 @@ export function createPromptDeck(ctx = {}) {
         disabled: !!(c && c.disabled),
         danger: !!(c && c.danger),
         cancel: !!(c && c.cancel),
-        reason: c && (c.reason != null ? String(c.reason) : undefined),
+        reason: c && (c.reason != null ? String(c.reason)
+          : (c.title != null ? String(c.title) : undefined)),
       })).filter((c) => c.id)
       : [];
     return {

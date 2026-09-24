@@ -32,6 +32,20 @@ test('semantic Blender material names resolve to stable runtime roles', () => {
   assert.equal(authoredMaterialRole('mystery'), null);
 });
 
+test('live lamp and bare-metal names from small places and ships do not fall through to hull', () => {
+  assert.equal(authoredMaterialRole('furniture_signal_lens'), 'signal');
+  assert.equal(authoredMaterialRole('Buoy_Nav_Optic'), 'signal');
+  assert.equal(authoredMaterialRole('Material_Cyan'), 'signal');
+  assert.equal(authoredMaterialRole('Material_Warm'), 'signal');
+  assert.equal(authoredMaterialRole('Buoy_Stabilizer_Frame'), 'mechanical');
+  assert.equal(authoredMaterialRole('furniture_identity_plate'), 'mechanical');
+  assert.equal(authoredMaterialRole('Material_Hull'), 'hull');
+  assert.equal(authoredMaterialRole('Material_Hull_DeepSeaEnamel'), 'hull');
+  assert.equal(authoredMaterialRole('Material_Accent_FrontierCyan'), 'accent');
+  assert.equal(authoredMaterialRole('Material_Glass'), 'glass');
+  assert.equal(authoredMaterialRole('Material_Hull_VitreousCeramic'), 'ceramic');
+});
+
 test('a base-color skin is not misreported as a complete PBR surface', () => {
   const skinOnly = new THREE.MeshStandardMaterial({
     map: new THREE.Texture(), roughness: 0.95, metalness: 0.9,

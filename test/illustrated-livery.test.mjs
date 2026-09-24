@@ -28,6 +28,11 @@ test('fleet paint varies by occupation while optics, markings and authored colou
     assert.equal(illustratedPigmentForMaterial(assetIds[0],'hull',name),null);
   }
   assert.equal(illustratedLiveryForAsset('new-unknown-asset'),null);
+  assert.equal(illustratedLiveryForAsset('SF_IRONBACK_PRODUCTION_V1').hull, '#c18a36');
+  assert.equal(illustratedLiveryForAsset('SF_RANGER_PRODUCTION_V1').hull, '#ae5739');
+  assert.equal(illustratedLiveryForAsset('SF_COLOSSUS_PRODUCTION_V1').hull, '#526d89');
+  assert.equal(illustratedLiveryForAsset('SF_LEVIATHAN_PRODUCTION_V1').hull, '#29445f');
+  assert.equal(illustratedLiveryForAsset('SF_HAWSER').hull, '#874c36');
 });
 
 test('a shared-material rename retains the precise stencil and armour response', () => {

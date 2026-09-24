@@ -3,7 +3,8 @@
  *
  * One ContinuousPlumeSystem per live engine family (fixed, not per-entity).
  * Ships are assigned into a **growable** ship table sized from live demand;
- * only candidates past the sanity ceiling fall back to legacy streaks.
+ * only candidates past the sanity ceiling leave this fleet. They draw from the
+ * overflow ribbon pool (or not at all) — never from sprite needles.
  * No render-time sim recomputation.
  *
  * ## Why the ship table grows

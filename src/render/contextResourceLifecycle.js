@@ -244,6 +244,40 @@ function visitMaterialValue(value, visitResource, depth) {
   }
 }
 
+// The loss-time detach pass can only strip callbacks from roots it is handed. Resources outside
+// those roots — parked boundary trees, procedural world-site fixtures on detached structures —
+// keep the dying generation's callbacks attached, and their later teardown fires those callbacks
+// against handles that are already dead: Chromium logs every one as `delete: object does not
+// belong to this context` (the 2026-09-23 v6 Electron storm, 256 warnings, and its 09-22 browser
+// equivalent, 1120). The renderer therefore stashes the dying generation's exact identities here
+// at loss; the teardown chokepoint strips those identities from a root's resources BEFORE any
+// dispose fires. Stripping an identity that is no longer attached is a no-op, and an identity is
+// only ever detached when the recorded provenance set contains it — foreign listeners stay.
+let stashedStaleWebGlDisposeProvenance = null;
+
+export function stashStaleWebGlDisposeProvenance(provenance) {
+  if (!provenance) return false;
+  let stashed = false;
+  for (const kind of WEBGL_DISPOSE_LISTENER_KINDS) {
+    const listeners = provenance[kind];
+    if (!(listeners instanceof Set) || listeners.size === 0) continue;
+    for (const listener of listeners) {
+      if (typeof listener !== 'function') continue;
+      if (!stashedStaleWebGlDisposeProvenance) {
+        stashedStaleWebGlDisposeProvenance = createWebGlDisposeListenerProvenance();
+      }
+      stashedStaleWebGlDisposeProvenance[kind].add(listener);
+      stashed = true;
+    }
+  }
+  return stashed;
+}
+
+export function detachStashedStaleWebGlDisposeListeners(roots) {
+  if (!stashedStaleWebGlDisposeProvenance) return null;
+  return detachStaleWebGlDisposeListeners(roots, stashedStaleWebGlDisposeProvenance);
+}
+
 function enqueueRestoreMicrotask(callback) {
   if (typeof queueMicrotask === 'function') queueMicrotask(callback);
   else Promise.resolve().then(callback);

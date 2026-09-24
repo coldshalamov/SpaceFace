@@ -9132,7 +9132,7 @@ export function poolWitnessPalettesForState(state) {
 // — a chunk key the exemplar never created. Map each roster ship's whole-ship LOD files to its
 // exact palette so the catalog warm covers just those (file, palette) pairs instead of every
 // palette on every package.
-export function rosterPoolWitnessFilePalettes(entities) {
+export function rosterPoolWitnessFilePalettes(entities, options = {}) {
   const byFile = new Map();
   const addFor = (entity) => {
     if (!entity || entity.type !== 'ship') return;
@@ -9157,8 +9157,13 @@ export function rosterPoolWitnessFilePalettes(entities) {
   // SWARM_BOSS_ROTATION packages, so a wave-2+ ship's (file, faction-palette) pair is
   // enumerable from data alone — no live entity needed. Without this a choir zealot
   // (same ashline_dart.glb file as the wave-1 wasp, different faction palette) promotes
-  // its chunk inside the fight.
-  for (const pseudo of swarmRosterShipExemplarSpecs()) addFor(pseudo);
+  // its chunk inside the fight. `rosterEnemyIds` scopes that static half to one wave's
+  // eligibility (swarmEligibleEnemyIds): the launch warm covers wave 1 only, and the
+  // between-round warm takes each wave's newcomers during its armory dwell.
+  const scope = options && options.rosterEnemyIds != null ? options.rosterEnemyIds : null;
+  for (const pseudo of swarmRosterShipExemplarSpecs('pool-witness:ship:', { enemyIds: scope })) {
+    addFor(pseudo);
+  }
   return byFile;
 }
 
@@ -9168,9 +9173,17 @@ export function rosterPoolWitnessFilePalettes(entities) {
  * wholeShipLodFileForEntity/paletteFor/vf.build resolve exactly what the live spawn resolves.
  * Admission subjects only — never registered with the sim.
  */
-export function swarmRosterShipExemplarSpecs(idPrefix = 'crucible-warm:ship:') {
+export function swarmRosterShipExemplarSpecs(idPrefix = 'crucible-warm:ship:', options = {}) {
   const prefix = String(idPrefix || 'crucible-warm:ship:');
-  return swarmRosterEnemyDefs().map((def) => ({
+  // `enemyIds` scopes the cohort to what one wave can field (swarmEligibleEnemyIds): the
+  // launch warm takes wave 1's set only, and each between-round dwell takes the ids its
+  // next wave introduces — an archetype that cannot spawn yet no longer rides the launch
+  // window's compose and compile serials.
+  const scope = options && options.enemyIds != null ? options.enemyIds : null;
+  const defs = scope
+    ? swarmRosterEnemyDefs().filter((def) => scope.has(def.id))
+    : swarmRosterEnemyDefs();
+  return defs.map((def) => ({
     id: `${prefix}${def.id}`,
     type: 'ship',
     team: 1,

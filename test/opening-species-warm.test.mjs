@@ -171,7 +171,7 @@ test('the bounded warm decodes the rescue intro packaged bodies explicitly', () 
   assert.match(block, /PQ_193_05_WRECK_PACKAGED_FILES/);
   // The survival roster ship exemplars stay crucible-scoped: the 20 s opening shell cannot
   // settle sixteen whole-ship compose jobs before flight.
-  assert.match(block, /profile === 'crucible' \? swarmRosterShipExemplarSpecs/);
+  assert.match(block, /profile === 'crucible'\s*\?\s*swarmRosterShipExemplarSpecs/);
   // finish() must still wait on the rock-surface library so the PBR reskin recompiles behind
   // the shell rather than mid-flight.
   const releaseDef = RENDERER_SOURCE.indexOf('_releaseSurvivalRosterPrewarm(reason)', finishDef);

@@ -451,7 +451,7 @@ function getConfirmDialog() {
   assert.match(SHIPWORKS_SOURCE, /describeOutfittingSpendConfirm\(def,\s*credits,\s*\{[\s\S]*?fitSlotIndex[\s\S]*?\}\)/, 'Shipworks uses the selected fitting action in the shared module-spend description');
   assert.match(SHIPWORKS_SOURCE, /ok\s*=\s*await\s+confirm\(confirmOpts\)/, 'Shipworks awaits paid-spend confirmation');
   assert.match(SHIPWORKS_SOURCE, /if\s*\(!ok\)\s*\{[\s\S]*?return;\s*\}/, 'Shipworks cancellation returns before purchase');
-  const shipworksBuyIndex = SHIPWORKS_SOURCE.indexOf("ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex })");
+  const shipworksBuyIndex = SHIPWORKS_SOURCE.search(/ctx\.bus\.emit\('ui:buyModule',\s*\{\s*defId,\s*fitSlotIndex/);
   const shipworksConfirmIndex = SHIPWORKS_SOURCE.indexOf('ok = await confirm(confirmOpts)');
   assert.ok(shipworksBuyIndex > shipworksConfirmIndex, 'default-route module purchase follows confirmation');
 }

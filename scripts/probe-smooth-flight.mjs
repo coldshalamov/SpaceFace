@@ -76,7 +76,7 @@ function freePort() {
   });
 }
 
-async function waitForServer(url, timeoutMs = 30_000) {
+async function waitForServer(url, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
@@ -141,7 +141,9 @@ try {
       }
     } catch (_) { /* storage unavailable */ }
   });
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
+  // domcontentloaded is cheap on a quiet box but Chromium itself is starved on a contended
+  // one — the cook wait below already tolerates that class of host, so the navigation does too.
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 300_000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
   const bootedAt = Date.now();
   if (CRUCIBLE) {
@@ -234,6 +236,16 @@ try {
                 });
               }
             }
+          }
+        } catch { /* diagnostic only */ }
+        try {
+          // Long-lived rounds (>=16 s) make the LIVE projectile count a frame-cost input, not
+          // just an end-state number — the peak is what the physics/presenter had to carry.
+          const list = window.SF && window.SF.state && window.SF.state.entityList;
+          if (Array.isArray(list)) {
+            let live = 0;
+            for (const e of list) if (e && e.type === 'projectile' && e.alive !== false) live++;
+            if (live > (record.projPeak || 0)) record.projPeak = live;
           }
         } catch { /* diagnostic only */ }
       }
@@ -737,7 +749,7 @@ try {
         });
         return owners;
       })(),
-      scene: { mode: state.mode, ships: hostiles, projectiles, entities: (state.entityList || []).length, drawCalls: info ? info.calls : 0, triangles: info ? info.triangles : 0 },
+      scene: { mode: state.mode, ships: hostiles, projectiles, projectilePeak: window.__SF_SMOOTH__ && window.__SF_SMOOTH__.projPeak || 0, entities: (state.entityList || []).length, drawCalls: info ? info.calls : 0, triangles: info ? info.triangles : 0 },
       longFrames: long.count,
       longCallbackBound: long.callbackBound,
       longMean: mean(long),
@@ -964,7 +976,7 @@ try {
     'SMOOTH-FLIGHT WITNESS',
     `  GPU                         ${result.gpu || 'unknown'}`,
     `  whole-machine CPU busy      ${hostBusy.toFixed(0)} % of ${os.cpus().length} logical cores during the sample (the game alone is ~10-15 %)`,
-    `  route                       ${CRUCIBLE ? 'CRUCIBLE swarm, seed 4242, default kit' : 'open flight, new game'}; at end: ${result.scene.ships} other ships, ${result.scene.projectiles} projectiles, ${result.scene.entities} entities, ${result.scene.drawCalls} draw calls, ${(result.scene.triangles / 1000).toFixed(0)}k triangles`,
+    `  route                       ${CRUCIBLE ? 'CRUCIBLE swarm, seed 4242, default kit' : 'open flight, new game'}; at end: ${result.scene.ships} other ships, ${result.scene.projectiles} projectiles (peak ${result.scene.projectilePeak}), ${result.scene.entities} entities, ${result.scene.drawCalls} draw calls, ${(result.scene.triangles / 1000).toFixed(0)}k triangles`,
     `  launch to flight            ${launchToFlightS.toFixed(1)} s`,
     `  sample                      after ${(SETTLE_MS / 1000).toFixed(0)} s of flight: ${(SAMPLE_MS / 1000).toFixed(0)} s, ${result.frames} frames, ${(1000 / result.meanMs).toFixed(1)} fps mean`,
     `  frame time p50/p95/p99      ${result.p50.toFixed(1)} / ${result.p95.toFixed(1)} / ${result.p99.toFixed(1)} ms; worst ${result.worst.toFixed(0)} ms`,

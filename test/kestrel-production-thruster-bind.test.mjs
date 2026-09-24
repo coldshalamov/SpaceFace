@@ -455,10 +455,10 @@ test('legacy NPC engine fallback cannot emit moving particle beads', () => {
     rot: 0, radius: 4, maxSpeed: 40, flags: {},
   }, 0.8, 1 / 60, system._trailSpawnScratch);
   assert.equal(particleSpawns, 0,
-    'engine fallback must use attached pooled streak layers, never round moving particles');
-  assert.equal(streakSpawns, 1,
-    'fallback emits one alternating core-or-sheath layer per cadence to stay bounded');
-  assert.deepEqual(result, { particles: 0, streaks: 1 });
+    'engine fallback must not spray moving particles');
+  assert.equal(streakSpawns, 0,
+    'overflow drive must not fall back to a camera-facing streak');
+  assert.deepEqual(result, { particles: 0, streaks: 0 });
 });
 
 test('low-tier ContinuousPlumeSystem is readable core+inner GPU feedback', () => {

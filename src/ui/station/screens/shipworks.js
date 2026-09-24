@@ -38,6 +38,7 @@ import {
   stationShopOffer,
 } from '../../../systems/ships.js';
 import { SHIPS } from '../../../data/ships.js';
+import { techDisplayName } from '../../../data/tech.js';
 import { describeHullRole } from '../../../data/shipRoleLattice.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
@@ -450,8 +451,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     for (const row of chooserEl.querySelectorAll('.sx-modrow')) {
       paintRow(row, row.classList.contains('is-eq'));
     }
-    for (const btn of chooserEl.querySelectorAll('[data-buyfit], [data-payload-fit]')) {
-      paintKey(btn, btn.hasAttribute('data-fit-slot') || btn.hasAttribute('data-payload-fit') ? 'primary' : 'small');
+    for (const btn of chooserEl.querySelectorAll('[data-buyfit], [data-payload-fit], [data-fit-inv]')) {
+      paintKey(btn, btn.hasAttribute('data-fit-slot') || btn.hasAttribute('data-payload-fit') || btn.hasAttribute('data-fit-inv') ? 'primary' : 'small');
       // the one verb that fits the chosen module is the screen's Lamp Key while choosing
       if (btn.hasAttribute('data-fit-slot') || btn.hasAttribute('data-payload-fit')) dressLampKey(btn);
     }
@@ -2444,6 +2445,66 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const hardpoint = hardpointClassOf(slot);
     const ringPct = Math.round(TURRET_RING_OUTPUT * 100);
 
+    // Modules the player already owns and un-fitted sit in player.moduleInventory — the only
+    // way back into a slot is ui:fitModule with the row's instanceId, so the hold leads the
+    // chooser. Duplicate defs collapse to one row with a count; the fit verb carries the first
+    // matching instance. Rows without a usable instanceId are unfittable — a dead Fit button is
+    // the defect class this section exists to close, so they are skipped.
+    const inventory = (ctx.state.player && Array.isArray(ctx.state.player.moduleInventory))
+      ? ctx.state.player.moduleInventory : [];
+    const holdByDef = new Map();
+    const holdRefusedByDef = new Map();
+    for (const item of inventory) {
+      const d = item && FITTABLE_BY_ID.get(item.defId);
+      if (!d || d.slotType !== slot.type) continue;
+      if (fits(slot, d)) {
+        if (typeof item.instanceId !== 'string' || !item.instanceId) continue;
+        const row = holdByDef.get(d.id) || { d, count: 0, instanceId: item.instanceId };
+        row.count += 1;
+        holdByDef.set(d.id, row);
+      } else if (slot.type === 'weapon' && sizeFits(slot, d)) {
+        // Right size, wrong mount — the buy list refuses these in words; the hold must too.
+        const row = holdRefusedByDef.get(d.id) || { d, count: 0 };
+        row.count += 1;
+        holdRefusedByDef.set(d.id, row);
+      }
+    }
+    const researched = (ctx.state.player && Array.isArray(ctx.state.player.researchedNodes))
+      ? ctx.state.player.researchedNodes : [];
+    const holdRowHtml = ({ d, count, instanceId, mountBlock }) => {
+      const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
+      const prospective = fittings.slice();
+      prospective[slotIndex] = d.id;
+      const budgetBlocker = outfitBudgetBlocker(def, prospective);
+      // The backend's isUnlocked gate — a held research-locked module must refuse in words,
+      // not click through to a toast.
+      const researchBlock = d.requiresTech && !researched.includes(d.requiresTech) && !stationShopOffer(d, shopStationId)
+        ? 'Research required: ' + techDisplayName(d.requiresTech) : null;
+      const blocked = mountBlock || headConflict || budgetBlocker || researchBlock;
+      const blockedText = mountBlock
+        ? (mountRefusal(slot, d) || fitRefusalText(slot, d) || `${d.name} does not fit this slot`)
+        : headConflict
+          ? `Unfit ${headConflict.name} before installing another Massline head.`
+          : researchBlock || (budgetBlocker && budgetBlocker.text) || '';
+      const countTag = count > 1 ? ` ×${count}` : '';
+      const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
+      const btn = blocked
+        ? `<span class="k-t-fine k-38 sx-modrow__lock">In hold${countTag}</span>`
+        : `<button type="button" ${stationControlAttrs('fit-from-hold')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-fit-inv="${escapeHtml(instanceId)}" data-fit-inv-slot="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>Fit${countTag}</button>`;
+      return (
+        `<li class="k-row sx-modrow sx-modrow--hold${blocked ? ' is-locked' : ''}"${headConflict ? '' : ` data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
+            `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
+            `<span class="k-row__sub k-38 sx-modrow__role"${blocked ? ' data-refusal' : ''}>${blocked ? escapeHtml(blockedText) : 'Already paid for — fits this slot.'}</span>` +
+          `<span class="k-row__num sx-modrow__act">${btn}</span>` +
+        `</li>`
+      );
+    };
+    const byTierThenName = (a, b) => (a.d.tier - b.d.tier) || String(a.d.name).localeCompare(String(b.d.name));
+    const holdList = [...holdByDef.values()].sort(byTierThenName).map((r) => holdRowHtml(r)).join('')
+      + [...holdRefusedByDef.values()].sort(byTierThenName).map((r) => holdRowHtml({ ...r, mountBlock: true })).join('');
+
     const list = compat.map((d) => {
       const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
       const equipped = d.id === fittedId;
@@ -2536,6 +2597,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           : '') +
         (availability.outfitEnabled ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
         (fittedId ? `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('remove-module')} class="k-word k-word--emph sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Remove ${escapeHtml(fittedName)}` : 'Dock to remove'}</button></li></ul>` : '') +
+        (holdList ? `<p class="k-caps sx-chooser__kicker sx-chooser__hold">In your hold</p><ul class="k-rows sx-chooser__list">${holdList}</ul>` : '') +
         `<ul class="k-rows sx-chooser__list">${(list + refusedList) || '<li class="k-sentence sx-muted">No compatible modules.</li>'}</ul>` +
       `</div>`;
     dressChooser();
@@ -3188,11 +3250,25 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           return;
         }
       }
-      if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); }
+      if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex, shipIndex: viewIdx }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); }
+      closeChooser(); setTimeout(refresh, 70); return;
+    }
+    // A module already owned in the hold: ui:fitModule takes the row's instanceId and the viewed
+    // hull's index — the chooser outfits the ship on screen, not always the active one.
+    const fi = ev.target.closest('[data-fit-inv]');
+    if (fi && !fi.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      if (ctx.bus) {
+        ctx.bus.emit('ui:fitModule', {
+          shipIndex: viewIdx,
+          slotIndex: Number(fi.getAttribute('data-fit-inv-slot')),
+          instanceId: fi.getAttribute('data-fit-inv'),
+        });
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+      }
       closeChooser(); setTimeout(refresh, 70); return;
     }
     const uf = ev.target.closest('[data-unfit]');
-    if (uf && !uf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) { if (ctx.bus) { ctx.bus.emit('ui:unfitModule', { slotIndex: Number(uf.getAttribute('data-unfit')) }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); } closeChooser(); setTimeout(refresh, 70); }
+    if (uf && !uf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) { if (ctx.bus) { ctx.bus.emit('ui:unfitModule', { shipIndex: viewIdx, slotIndex: Number(uf.getAttribute('data-unfit')) }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); } closeChooser(); setTimeout(refresh, 70); }
   });
 
   // Hover/focus: ghost afterFittings geometry + derived stats; leave restores current loadout.

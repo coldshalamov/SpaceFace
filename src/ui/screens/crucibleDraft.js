@@ -654,6 +654,32 @@ export const crucibleDraftScreen = {
     words.setAttribute('aria-label', 'Rearm');
     const skip = addWord(words, word('Keep current loadout', 'k-word--emph'));
     skip.addEventListener('click', () => {
+      // The render lane warms the next wave's newcomers behind this surface; launching
+      // before that batch links would pay its program links inside the round. The dwell
+      // is player-paced so the promise has normally already settled and this emits
+      // immediately — the button only shows a hold when the player out-clicks a compile
+      // that is still running.
+      const warm = ctx.state && ctx.state.render && ctx.state.render.swarmDeferredWarm;
+      if (warm && warm.pending === true && warm.promise && typeof warm.promise.then === 'function') {
+        if (this._warmHold === true) return;
+        this._warmHold = true;
+        skip.disabled = true;
+        skip.setAttribute('aria-disabled', 'true');
+        setKeyLabel(skip, 'Readying the field…', 'Esc', 'Escape');
+        // Bounded: a compile that never settles must not strand the player in the armory.
+        Promise.race([
+          Promise.resolve(warm.promise).catch(() => null),
+          new Promise((resolve) => setTimeout(resolve, 10000)),
+        ]).then(() => {
+          this._warmHold = false;
+          // The run could have ended while the batch settled — a stale emit must not
+          // resolve a draft that no longer waits on an answer.
+          if (ctx.state && ctx.state.run && ctx.state.run.phase === 'draft') {
+            ctx.bus.emit('run:draftPickRequested', { offerId: null });
+          }
+        });
+        return;
+      }
       ctx.bus.emit('run:draftPickRequested', { offerId: null });
     });
     this._skip = skip;
@@ -832,10 +858,16 @@ export const crucibleDraftScreen = {
       if (shop && first) this._paintReading(context, first);
     }
 
-    setKeyLabel(this._skip, shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
+    setKeyLabel(this._skip,
+      this._warmHold === true ? 'Readying the field…'
+        : shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
       'Esc', 'Escape');
     // In the armory the way forward is the one consequential key; buying happens on the cards.
     this._skip.classList.toggle('k-word--primary', shop);
+    // A warm hold that resolved off-draft left the control disabled+relabelled; re-arm it here
+    // (and keep it held while a hold is actually in flight, so a repaint cannot un-gate it).
+    this._skip.disabled = this._warmHold === true;
+    this._skip.setAttribute('aria-disabled', this._warmHold === true ? 'true' : 'false');
 
     const reroll = this._rerollBtn;
     setKeyLabel(reroll, lines.label || 'Re-roll', 'R', 'R');
